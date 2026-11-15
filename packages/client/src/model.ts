@@ -547,7 +547,6 @@ function snapToServer(s: Self, st: SelfState): void {
   s.unconfirmedSince = null;
 }
 
-/** Reconciles your predicted walker with the server's `you`. */
 /** `{ t: "death" }`: the next playfield draw is the black frame. */
 export function onDeath(m: Model): void {
   m.deathStage = "black";
@@ -558,12 +557,18 @@ export function onRespawnDrawn(m: Model): void {
   m.deathStage = "none";
 }
 
+/** Reconciles your predicted walker with the server's `you`. */
 export function applyYou(m: Model, st: SelfState): void {
   const s = m.self;
   if (!s) {
     return;
   }
+  const rejected = st.moveRejected !== undefined && st.moveRejected !== s.server.moveRejected;
   s.server = st;
+  if (rejected) {
+    snapToServer(s, st);
+    return;
+  }
   if (st.n > s.n) {
     snapToServer(s, st);
     return;
@@ -588,8 +593,9 @@ export function applyYou(m: Model, st: SelfState): void {
     snapToServer(s, st);
     return;
   }
+  // Keep the acknowledged tile while ahead: another update at the same count may follow.
   for (const k of [...s.predicted.keys()]) {
-    if (k <= st.n) {
+    if (k < st.n) {
       s.predicted.delete(k);
     }
   }
@@ -687,13 +693,22 @@ function actorPass(m: Model): void {
   advanceStep(s);
 }
 
+/** One direction committed at the local tile boundary, with its expected starting state. */
+export type ScheduledStep = {
+  dir: Dir;
+  turn: boolean;
+  at: { map: string; n: number; x: number; y: number; blocked?: boolean };
+};
+
 /**
- * One client tick, in 1.6's frame order: the frame-script counters, actor pass 1,
- * the key poll where your walker acts on the input exactly as the server will (shared rules), then
- * actor pass 2. Map edges are not predicted: the server's snapshot
- * moves you.
+ * One client tick: frame counters, actor pass 1, key poll, actor pass 2.
+ * Commit the chosen direction through sendStep; edges wait for the server's snapshot.
  */
-export function clientTick(m: Model, intent: Intent): void {
+export function clientTick(
+  m: Model,
+  intent: Intent,
+  sendStep?: (step: ScheduledStep) => void,
+): void {
   m.tick += 1;
   if (m.itemPause > 0) {
     m.itemPause -= 1;
@@ -702,14 +717,14 @@ export function clientTick(m: Model, intent: Intent): void {
     tickAttackTimers(m.self.timers);
   }
   actorPass(m);
-  keyPoll(m, intent);
+  keyPoll(m, intent, sendStep);
   for (let pass = 1; pass < STEPFRAMES_PER_FRAME; pass++) {
     actorPass(m);
   }
 }
 
 /** The key poll: starts a predicted step from the held or pending arrow. */
-function keyPoll(m: Model, intent: Intent): void {
+function keyPoll(m: Model, intent: Intent, sendStep?: (step: ScheduledStep) => void): void {
   const s = m.self;
   if (!s) {
     return;
@@ -747,6 +762,19 @@ function keyPoll(m: Model, intent: Intent): void {
     return;
   }
   intent.pending = null;
+  if (m.map) {
+    sendStep?.({
+      dir,
+      turn,
+      at: {
+        map: m.map.name,
+        n: s.n,
+        x: s.x,
+        y: s.y,
+        ...(o.kind === "blocked" || o.kind === "web" ? { blocked: true } : {}),
+      },
+    });
+  }
   if (o.kind === "edge") {
     s.facing = o.facing; // the server sends the new map
     return;

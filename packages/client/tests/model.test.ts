@@ -78,6 +78,19 @@ describe("client prediction", () => {
     expect(m.self).toMatchObject({ x: 6, n: 1 });
   });
 
+  test("repeated updates for the same acknowledged step retain the prediction history", () => {
+    const { m, intent } = setup();
+    intent.held = "R";
+    for (let i = 0; i < 9; i++) {
+      clientTick(m, intent);
+    }
+    const update = self({ n: 1, x: 6, facing: "E", frames: 1 });
+    applyYou(m, update);
+    applyYou(m, { ...update, hidden: true });
+    expect(m.self).toMatchObject({ x: 7, n: 2, stepFrames: 15 });
+    expect(m.self?.predicted.get(1)).toEqual({ x: 6, y: 5 });
+  });
+
   test("the server stepping where we did not snaps us to it (a key released late)", () => {
     const { m } = setup();
     applyYou(m, self({ n: 1, x: 5, y: 6, facing: "S", frames: 16 }));

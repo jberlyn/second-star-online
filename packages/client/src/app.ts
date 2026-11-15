@@ -258,7 +258,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       intent.held = held;
       intent.turn = turn;
       if (game) {
-        send({ t: "move", seq: ++seq, held, turn });
+        send({ t: "move", seq: ++seq, held, turn, scheduled: true });
       }
     },
     step(dir: Dir, turn: boolean) {
@@ -266,7 +266,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       }
       intent.pending = { dir, turn, age: 0 };
-      send({ t: "step", seq: ++seq, dir, turn });
     },
     attack(held: boolean) {
       if (game) {
@@ -1224,7 +1223,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     while (acc >= TICK_MS) {
       acc -= TICK_MS;
       if (game) {
-        clientTick(model, intent);
+        clientTick(model, intent, (step) => send({ t: "step", seq: ++seq, ...step }));
       }
     }
     if (game) {

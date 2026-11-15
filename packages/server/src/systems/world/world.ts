@@ -260,6 +260,14 @@ export interface Player {
   pending: { dir: Dir; turn: boolean; age: number } | null;
   /** Ticks left in the `loading` lock; 0 when the map is drawn. */
   loading: number;
+  /** Present for clients that commit individual step directions at their tile boundaries. */
+  walkQueue?: {
+    seq: number;
+    dir: Dir;
+    turn: boolean;
+    at: { map: string; n: number; x: number; y: number; blocked?: boolean };
+  }[];
+  moveRejected?: number;
   /** Steps started since login; lets the client match its predictions (SelfState.n). */
   n: number;
   /** True when this stay began with a resumed session, not a real login. */
@@ -1011,6 +1019,9 @@ export function inventoryView(p: Player): InventoryView {
 
 export function selfState(p: Player): SelfState {
   const s: SelfState = { n: p.n, x: p.x, y: p.y, facing: p.facing, frames: p.stepFrames };
+  if (p.moveRejected !== undefined) {
+    s.moveRejected = p.moveRejected;
+  }
   if (p.hidden) {
     s.hidden = true;
   }
@@ -1086,6 +1097,9 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
     p.char.respawn = { mapId: p.map.id, x: p.x, y: p.y };
   }
   p.pending = null;
+  if (p.walkQueue) {
+    p.walkQueue = [];
+  }
   p.lastSent = selfState(p);
   p.forceYou = false;
   out.push({

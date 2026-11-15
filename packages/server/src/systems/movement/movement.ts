@@ -4,7 +4,7 @@
  *
  * Per tick, per map (tick step 2):
  * 1. every player's step animation advances (`stepFrame` runs before the frame script);
- * 2. each player, in arrival order, acts on its held arrow or pending press. A walk off the edge
+ * 2. each player, in arrival order, acts on its next scheduled direction or legacy held input. A walk off the edge
  *    is returned as a map change for the caller to carry out. A step blocked into a standing player
  *    rolls a push for each of them (push.ts).
  */
@@ -23,6 +23,7 @@ import {
   type MoveOutcome,
   monsterSpriteTile,
   type ServerMsg,
+  type StepMsg,
   stepLengthFor,
   type WalkWorld,
   WEB_TEXT,
@@ -52,17 +53,47 @@ export interface MoveCtx {
 }
 
 /** Records a `move` intent: the held arrow and the Turn modifier. */
-export function setHeld(p: Player, held: Dir | null, turn: boolean): void {
-  p.held = held;
+export function setHeld(p: Player, held: Dir | null, turn: boolean, scheduled = false): void {
+  if (scheduled) {
+    p.walkQueue ??= [];
+    p.pending = null;
+  }
+  // Pushes also read the current Turn modifier, even for scheduled clients.
   p.heldTurn = turn;
+  if (p.walkQueue) {
+    p.held = null;
+    return;
+  }
+  p.held = held;
 }
 
 /** Records a `step` press. A newer press replaces an older one that was not acted on. */
 export function pressStep(p: Player, dir: Dir, turn: boolean): void {
-  if (p.loading > 0) {
+  if (p.walkQueue || p.loading > 0) {
     return;
   }
   p.pending = { dir, turn, age: 0 };
+}
+
+/** Bounded FIFO of directions committed by prediction. The server still checks every move. */
+export function scheduleStep(p: Player, msg: StepMsg): void {
+  if (!msg.at) {
+    return;
+  }
+  p.walkQueue ??= [];
+  p.held = null;
+  p.pending = null;
+  if (p.loading > 0 || p.keyLock || p.walkQueue.length >= 4) {
+    rejectScheduled(p, msg.seq);
+    return;
+  }
+  p.walkQueue.push({ seq: msg.seq, dir: msg.dir, turn: msg.turn, at: msg.at });
+}
+
+function rejectScheduled(p: Player, seq: number): void {
+  p.moveRejected = Math.max(seq, p.walkQueue?.at(-1)?.seq ?? seq);
+  p.walkQueue = [];
+  p.forceYou = true;
 }
 
 export function walkWorld(room: Room, self: Player): WalkWorld {
@@ -154,13 +185,17 @@ export function tickLoading(p: Player): void {
 }
 
 /**
- * Step 2 for one player: acts on its pending press or held arrow. Others' views go to
+ * Step 2 for one player: acts on its next scheduled direction or legacy input. Others' views go to
  * `ctx.emit`; an edge crossing goes to `ctx.crossings`.
  */
 export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
   // 1.6's client-side input lock: map loading, or a window holding the keys.
   if (p.loading > 0 || p.keyLock) {
     p.pending = null;
+    const queued = p.walkQueue?.[0];
+    if (queued) {
+      rejectScheduled(p, queued.seq);
+    }
     return;
   }
   // Pushed off the screen earlier this tick: the map change comes first.
@@ -171,6 +206,11 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
   // No step starts during the attack animation, while held (the hold counter) or in the death
   // lock.
   if (p.timers.atkAnim > 0 || p.spell.hold > 0 || p.deadLock > 0) {
+    // A committed prediction cannot wait through a combat lock and move after it timed out.
+    const queued = p.walkQueue?.[0];
+    if (queued) {
+      rejectScheduled(p, queued.seq);
+    }
     if (pending) {
       pending.age += 1;
       if (pending.age > PENDING_MAX_TICKS) {
@@ -179,8 +219,19 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
     }
     return;
   }
-  const dir = pending ? pending.dir : p.held;
-  const turn = pending ? pending.turn : p.heldTurn;
+  const queued = p.walkQueue?.[0];
+  if (
+    queued &&
+    (queued.at.map !== p.map.name ||
+      queued.at.n !== p.n ||
+      queued.at.x !== p.x ||
+      queued.at.y !== p.y)
+  ) {
+    rejectScheduled(p, queued.seq);
+    return;
+  }
+  const dir = queued ? queued.dir : pending ? pending.dir : p.held;
+  const turn = queued ? queued.turn : pending ? pending.turn : p.heldTurn;
   if (!dir) {
     return;
   }
@@ -194,6 +245,12 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
       }
     }
     return;
+  }
+  if (queued) {
+    p.walkQueue?.shift();
+    if (!queued.at.blocked && (o.kind === "blocked" || o.kind === "web")) {
+      rejectScheduled(p, queued.seq);
+    }
   }
   p.pending = null;
   // The client may have shown a refused press as a step; tell it where it really is.

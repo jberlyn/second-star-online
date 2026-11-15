@@ -1,10 +1,10 @@
 /**
  * Chat UI, windows and the Enter-to-chat keyboard, in happy-dom.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import type { ClientMsg, ServerMsg } from "@secondstaronline/shared";
+import { type ClientMsg, NO_EQUIPMENT, NO_FOG, type ServerMsg } from "@secondstaronline/shared";
 
 import { type App, runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -178,10 +178,53 @@ describe("desktop chat keys", () => {
     expect(document.activeElement).not.toBe(input);
   });
 
-  test("arrows walk while the input is closed", () => {
-    const { key, sent } = inGame();
-    key(window, "keydown", "ArrowLeft");
-    expect(sent.some((m) => m.t === "step" && m.dir === "L")).toBe(true);
+  test("arrows walk while the input is closed, committing the direction on the game tick", async () => {
+    let nextFrame: FrameRequestCallback | undefined;
+    const raf = spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+      nextFrame = cb;
+      return 1;
+    });
+    try {
+      const { key, sent, receive } = inGame();
+      const rows = (code: string) =>
+        Array.from({ length: 12 }, () => Array(17).fill(code).join(" "));
+      receive({
+        t: "snapshot",
+        map: {
+          name: "x1000y992",
+          title: "",
+          layers: [rows("G1"), rows("G3"), rows("G3"), rows("5A")],
+          signs: ["", "", ""],
+          fog: { ...NO_FOG },
+        },
+        you: {
+          id: "me",
+          name: "Me",
+          head: 1,
+          x: 5,
+          y: 5,
+          facing: "N",
+          step: null,
+          equip: { ...NO_EQUIPMENT },
+          body: null,
+        },
+        self: { n: 0, x: 5, y: 5, facing: "N", frames: 0 },
+        players: [],
+        monsters: [],
+        ground: [],
+      });
+      await Bun.sleep(0);
+      expect(sent.some((m) => m.t === "mapReady")).toBe(true);
+      key(window, "keydown", "ArrowLeft");
+      expect(sent.some((m) => m.t === "step")).toBe(false);
+      nextFrame?.(performance.now() + 100);
+      expect(sent.filter((m) => m.t === "step")).toMatchObject([
+        { dir: "L", at: { map: "x1000y992", n: 0, x: 5, y: 5 } },
+      ]);
+      expect(sent.filter((m) => m.t === "move")).toMatchObject([{ held: "L", scheduled: true }]);
+    } finally {
+      raf.mockRestore();
+    }
   });
 
   test("Escape closes the input and keeps the text; Enter on an empty line sends nothing", () => {

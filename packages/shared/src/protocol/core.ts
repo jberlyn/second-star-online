@@ -44,10 +44,28 @@ export const moveSchema = z.strictObject({
   seq,
   held: dir.nullable(),
   turn: z.boolean(),
+  /** Directions arrive as scheduled steps; this only updates modifier state. */
+  scheduled: z.boolean().optional(),
 });
 
-/** A press, so a tap shorter than one tick still makes one step attempt. */
-export const stepSchema = z.strictObject({ t: z.literal("step"), seq, dir, turn: z.boolean() });
+/** A scheduled prediction when `at` is present; otherwise a legacy buffered key press. */
+export const stepSchema = z.strictObject({
+  t: z.literal("step"),
+  seq,
+  dir,
+  turn: z.boolean(),
+  /** A prediction commits one direction at a tile boundary, never a destination. */
+  at: z
+    .strictObject({
+      map: z.string().max(64),
+      n: z.number().int().min(0),
+      x: z.number().int().min(1).max(17),
+      y: z.number().int().min(1).max(12),
+      /** The client also found a block; matching refusals need no position correction. */
+      blocked: z.boolean().optional(),
+    })
+    .optional(),
+});
 
 /** The client has drawn the new map; ends the `loading` lock. */
 export const mapReadySchema = z.strictObject({ t: z.literal("mapReady") });
@@ -156,6 +174,8 @@ export interface SelfState {
   frames: number;
   /** While the hold counter runs, no step starts, so the client does not predict one. */
   hold?: boolean;
+  /** Sequence of the last refused scheduled movement request. */
+  moveRejected?: number;
   /**
    * Your own sprite is hidden this frame: the hit blink's flips. Only you get it; peers never see a
    * blink.

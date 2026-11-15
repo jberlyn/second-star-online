@@ -219,7 +219,7 @@ import {
 import { clickNpc, closeBio } from "./systems/monsters/npc.ts";
 import { archiveNpcStore, npcFileNamed, setNpcFile } from "./systems/monsters/npcfiles.ts";
 import type { MonsterSlot } from "./systems/monsters/slots.ts";
-import { noteShown, pressStep, setHeld } from "./systems/movement/movement.ts";
+import { noteShown, pressStep, scheduleStep, setHeld } from "./systems/movement/movement.ts";
 import { type AssassinDeps, setAssassinMode } from "./systems/social/assassin.ts";
 import { bioRequest, profileSave } from "./systems/social/bios.ts";
 import { factionLogin } from "./systems/social/factions.ts";
@@ -1748,10 +1748,14 @@ export function createGame(deps: GameDeps): Game {
           npcSave(p, msg.name, msg.text);
           return;
         case "move":
-          setHeld(p, msg.held, msg.turn);
+          setHeld(p, msg.held, msg.turn, msg.scheduled);
           return;
         case "step":
-          pressStep(p, msg.dir, msg.turn);
+          if (msg.at) {
+            scheduleStep(p, msg);
+          } else {
+            pressStep(p, msg.dir, msg.turn);
+          }
           return;
         case "mapReady":
           p.loading = 0;
