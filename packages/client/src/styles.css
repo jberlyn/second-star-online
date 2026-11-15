@@ -1,0 +1,1873 @@
+/*
+ * Second Star Online client styles. Text uses the decoded field styles
+ * (assets/original/main/layout/text-styles.jsonl): Arial 12, colours per field.
+ */
+:root {
+  color-scheme: dark;
+  --bg: #000;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: Arial, Helvetica, sans-serif;
+}
+#app,
+.app {
+  width: 100%;
+  height: 100%;
+}
+.app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- original stage ------------------------------------------------------------------- */
+.stage-holder {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+.stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 800px;
+  height: 600px;
+  transform-origin: 0 0;
+  image-rendering: pixelated;
+  overflow: hidden;
+}
+.stage-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-top: 12px;
+}
+.stage-region {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+.art {
+  display: block;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+/* `display: block` above outranks the browser's own [hidden] rule, so hidden art must say so. */
+.art[hidden] {
+  display: none;
+}
+.hit {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  min-width: 0;
+}
+.hit:focus-visible {
+  outline: 1px dotted #ff0;
+}
+.field {
+  font:
+    12px Arial,
+    sans-serif;
+  color: #000;
+  background: transparent;
+  border: 0;
+  padding: 0 1px;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.cc-stat {
+  font:
+    bold 12px Arial,
+    sans-serif;
+  color: rgb(238, 238, 238);
+  text-align: right;
+  line-height: 15px;
+}
+.cc-points {
+  font:
+    bold 12px Arial,
+    sans-serif;
+  color: #fff;
+  text-align: center;
+  line-height: 16px;
+}
+.cc-classes {
+  font:
+    12px Arial,
+    sans-serif;
+  color: #000;
+  line-height: 15px;
+}
+
+/* ---- game ------------------------------------------------------------------------------- */
+.game {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.playfield {
+  display: block;
+  image-rendering: pixelated;
+  background: #000;
+}
+.chat-log {
+  font:
+    12px Arial,
+    sans-serif;
+  color: #fff;
+  overflow-y: auto;
+  padding: 1px;
+  line-height: 15px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/*
+ * Director #scroll fields (chat on the desktop stage, the spellbook): the box is DIRECTOR_BAR_W
+ * (19 px) wider than the field, and the bar is always on, 16 px wide, 3 px clear of the text, at
+ * the x where 1.6 drew Director's (chat x 765-780, spellbook x 775-790; measured in Director).
+ * Text keeps the field's width: 1 px margin, then 3 px gap + 16 px bar. Firefox ignores the
+ * ::-webkit-scrollbar rules and draws its own bar in the same place, at its own width.
+ */
+.director-scroll,
+.game[data-shell="desktop"] .chat-log {
+  overflow-x: hidden;
+  overflow-y: scroll;
+  padding: 1px 4px 1px 1px;
+}
+.director-scroll::-webkit-scrollbar,
+.game[data-shell="desktop"] .chat-log::-webkit-scrollbar {
+  width: 16px;
+}
+.director-scroll::-webkit-scrollbar-track,
+.game[data-shell="desktop"] .chat-log::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.35);
+}
+.director-scroll::-webkit-scrollbar-thumb,
+.game[data-shell="desktop"] .chat-log::-webkit-scrollbar-thumb {
+  background: #6e6e6e;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
+}
+.chat-input {
+  font:
+    bold 12px Arial,
+    sans-serif;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  padding: 1px;
+  outline: none;
+}
+
+.panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  background: #2a1a0e;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Alert box (stands in for the original Windows alert). */
+.alert-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.alert-box {
+  max-width: min(90vw, 420px);
+  padding: 16px;
+  background: #d4d0c8;
+  color: #000;
+  border: 2px outset #fff;
+  font:
+    13px Arial,
+    sans-serif;
+}
+.alert-box p {
+  margin: 0 0 12px;
+  /* Windows alert() kept line breaks (the NPC editor's warnings). */
+  white-space: pre-line;
+}
+.alert-ok {
+  min-width: 88px;
+  min-height: 32px;
+  font:
+    13px Arial,
+    sans-serif;
+}
+
+/* ---- chat --------------------------------------------------------------------------------- */
+.chat-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+}
+.chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ---- windows (as 1.6 drew them) ----------------------------- */
+.window-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+}
+.sso-window {
+  position: absolute;
+  pointer-events: auto;
+  transform-origin: 0 0;
+  background: #000;
+  border: 1px solid #555;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.sso-window[hidden] {
+  display: none;
+}
+.window-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 20px;
+  padding: 0 2px 0 6px;
+  background: #0a246a;
+  color: #fff;
+  font:
+    bold 11px Tahoma,
+    Arial,
+    sans-serif;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.window-close {
+  width: 18px;
+  height: 16px;
+  padding: 0;
+  font:
+    bold 12px Arial,
+    sans-serif;
+  line-height: 14px;
+  cursor: pointer;
+}
+.window-body {
+  position: relative;
+  width: var(--w);
+  height: var(--h);
+  overflow: hidden;
+}
+/* Settings (ui/settings.ts): an SSO panel, not original art (1.6 had no settings
+   screen). Colours follow the ≡ menu. */
+.settings {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1c1c1c;
+  color: #ddd;
+  font:
+    13px / 1.4 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+}
+.settings-intro {
+  margin: 0;
+  padding: 10px 16px;
+  color: #aaa;
+  border-bottom: 1px solid #333;
+}
+.settings-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 16px 12px;
+}
+.settings-section h3 {
+  margin: 16px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8fb3ff;
+}
+.settings-row {
+  padding: 10px 0;
+  border-top: 1px solid #2e2e2e;
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.settings-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  color: #fff;
+}
+.settings-dot {
+  flex: none;
+  margin-left: -13px; /* hangs in the list's padding, so labels line up with the headings */
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: transparent;
+}
+.settings-changed .settings-dot {
+  background: #f0b429;
+}
+.settings-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.settings-kind-points .settings-head {
+  flex-wrap: wrap;
+}
+.settings-kind-points .settings-control {
+  flex: 1 1 100%;
+}
+.settings-help {
+  margin: 4px 0 0;
+  color: #9a9a9a;
+  font-size: 12px;
+}
+.settings-error {
+  margin: 4px 0 0;
+  color: #ff8a80;
+  font-size: 12px;
+}
+.settings-error[hidden],
+.settings-reset[hidden] {
+  display: none;
+}
+.settings-unit {
+  color: #9a9a9a;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.settings input,
+.settings select,
+.settings textarea {
+  font: inherit;
+  color: #eee;
+  background: #2a2a2a;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+.settings input:focus,
+.settings select:focus,
+.settings textarea:focus {
+  outline: none;
+  border-color: #8fb3ff;
+}
+.settings-invalid input,
+.settings-invalid select,
+.settings-invalid textarea {
+  border-color: #ff8a80;
+}
+.settings .settings-check {
+  width: 16px;
+  height: 16px;
+  accent-color: #8fb3ff;
+}
+.settings-int {
+  width: 96px;
+}
+.settings-map {
+  width: 104px;
+}
+.settings-xy {
+  width: 52px;
+}
+.settings .settings-points {
+  width: 100%;
+  margin-top: 6px;
+  resize: vertical;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.settings-reset {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8fb3ff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.settings-reset:hover {
+  text-decoration: underline;
+}
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #333;
+  background: #222;
+}
+.settings-status {
+  flex: 1;
+  color: #aaa;
+  font-size: 12px;
+}
+.settings-status-ok {
+  color: #7ee2a8;
+}
+.settings-status-error {
+  color: #ff8a80;
+}
+.settings-btn {
+  min-width: 72px;
+  padding: 5px 14px;
+  font: inherit;
+  color: #eee;
+  background: #2f2f2f;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.settings-btn:hover {
+  background: #3a3a3a;
+}
+.settings-save {
+  color: #0b1a3a;
+  background: #8fb3ff;
+  border-color: #8fb3ff;
+}
+.settings-save:hover {
+  background: #a9c4ff;
+}
+
+/* Who's Online (WhoWindow sub-movie, 120×240). */
+.who-stage {
+  position: absolute;
+  inset: 0;
+}
+.who-frame {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 120px;
+  height: 242px;
+}
+.who-list {
+  position: absolute;
+  left: 8px;
+  top: 9px;
+  width: 105px;
+  height: 205px;
+  overflow-y: auto;
+  padding: 1px;
+  font:
+    12px Geneva,
+    Verdana,
+    sans-serif;
+  line-height: 15px;
+  color: #fff;
+}
+.who-name {
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.who-name[aria-selected="true"] {
+  background: #fff;
+  color: #000;
+}
+.who-buttons {
+  position: absolute;
+  left: 6px;
+  top: 219px;
+  display: flex;
+}
+.who-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  width: 19px;
+  height: 15px;
+  margin-right: 1px;
+  display: block;
+}
+.who-btn img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ---- bars and the Attack button ------------------------------------------------------------ */
+.bars {
+  position: absolute;
+  width: 210px;
+  height: 50px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.bar-value {
+  width: 34px;
+  height: 12px;
+  text-align: right;
+  color: #fff;
+  font:
+    bold 10px Arial,
+    sans-serif;
+  line-height: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* The right panel (ui/panel.ts): pages of original art at their stage positions. */
+.panel-page {
+  transform-origin: 0 0;
+  overflow: visible;
+}
+.panel-page .panel-bg,
+.panel-page .tab-icon {
+  display: none;
+}
+.panel-page .sprite,
+.panel-page .art {
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+.panel-page .tab-hit,
+.panel-page .skill-arrow,
+.panel-page .gold-button,
+.panel-page .bag-slot,
+.panel-page .equip-x {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.panel-page .tab-hit:focus-visible,
+.panel-page .skill-arrow:focus-visible,
+.panel-page .gold-button:focus-visible,
+.panel-page .bag-slot:focus-visible,
+.panel-page .equip-x:focus-visible {
+  outline: 1px dotted #ff0;
+}
+.panel-page .page[hidden] {
+  display: none;
+}
+/* Fields: Arial 12 bold (238, 238, 238) for the stats and gold, Arial 10 bold white for
+   quantities (text-styles.jsonl). */
+.panel-page .stat-labels,
+.panel-page .stat-values,
+.panel-page .gold,
+.panel-page .skill-names {
+  font:
+    bold 12px Arial,
+    sans-serif;
+  color: rgb(238, 238, 238);
+  white-space: pre;
+  line-height: 15px;
+  user-select: none;
+}
+.panel-page .skill-values {
+  font:
+    12px Arial,
+    sans-serif;
+  color: rgb(238, 238, 238);
+  white-space: pre;
+  line-height: 15px;
+}
+.panel-page .skills-clip {
+  overflow: hidden;
+}
+.panel-page .qty {
+  font:
+    bold 10px Arial,
+    sans-serif;
+  color: #fff;
+  pointer-events: none;
+}
+.panel-page .doll {
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+.item-menu {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 50;
+}
+.item-menu .sel-title {
+  font:
+    10px Arial,
+    sans-serif;
+  color: #fff;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
+}
+.item-menu .menu-btn-art {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.item-menu .menu-btn-art img,
+.item-menu .menu-btn-art canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.amount-dialog {
+  position: relative;
+}
+.amount-dialog .amount-title {
+  /* The gold amount field (#125) is regular weight. */
+  font:
+    12px Arial,
+    sans-serif;
+  color: #fff;
+}
+.amount-dialog .amount-input {
+  font:
+    bold 12px Arial,
+    sans-serif;
+  color: #fff;
+  user-select: text;
+}
+.amount-dialog .art-btn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* The Spellbook page (frame 67): field Spellbook, Arial 12 white, scroll box (DBAdmin #19). */
+.spell-list {
+  color: #fff;
+  font:
+    12px Arial,
+    Helvetica,
+    sans-serif;
+  line-height: 15px;
+  box-sizing: border-box;
+  cursor: default;
+  white-space: nowrap;
+}
+.spell-line {
+  min-height: 15px;
+}
+/* `hilite line`: the system highlight (Windows: navy, white text). */
+.spell-line.selected {
+  background: #000080;
+}
+.spell-info,
+.spell-cast {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.spell-info .fill,
+.spell-cast .fill {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.menu-layer {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+}
+.menu-layer .item-menu {
+  pointer-events: auto;
+}
+
+/* ---- the Bio window, shop and vault, the player menu, trade --------------------------------- */
+/* Bio window (BioWindow sub-movie, 315×286). */
+.bio-stage {
+  position: absolute;
+  inset: 0;
+}
+.bio-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 315px;
+  height: 286px;
+}
+.bio-text {
+  position: absolute;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+  white-space: pre-wrap;
+  overflow: hidden;
+  padding: 1px;
+}
+.bio-bio {
+  left: 22px;
+  top: 16px;
+  width: 271px;
+  height: 43px;
+  font:
+    10px Arial,
+    sans-serif;
+}
+.bio-profile {
+  left: 23px;
+  top: 138px;
+  width: 271px;
+  height: 109px;
+  font:
+    bold 12px Arial,
+    sans-serif;
+}
+.bio-btn {
+  position: absolute;
+  top: 253px;
+  width: 51px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.bio-btn[hidden] {
+  display: none;
+}
+.bio-buy {
+  left: 14px;
+}
+.bio-sell {
+  left: 66px;
+}
+/* SSO's own Train button, drawn as Buy and Sell look: black, 1 px white border,
+   white text, 51x17 at [118, 253, 169, 270]. */
+.bio-train {
+  left: 118px;
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  background: #000;
+  color: #fff;
+  font:
+    11px Arial,
+    sans-serif;
+  line-height: 15px;
+  text-align: center;
+}
+.bio-btn .art {
+  width: 100%;
+  height: 100%;
+}
+
+/* Shop and vault (channels 210-219 of frame 63), in the playfield. */
+.shop-dialog {
+  position: relative;
+}
+.shop-dialog[hidden] {
+  display: none;
+}
+.shop-dialog > * {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+}
+.shop-list {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  color: #fff;
+  font:
+    12px Arial,
+    sans-serif;
+  line-height: 15px;
+}
+.shop-list[hidden] {
+  display: none;
+}
+.shop-row {
+  display: grid;
+  grid-template-columns: 130px 46px;
+  cursor: default;
+  padding-left: 1px;
+}
+.shop-vault .shop-row {
+  grid-template-columns: 1fr;
+}
+.shop-row[aria-selected="true"] {
+  background: #fff;
+  color: #000;
+}
+.shop-name {
+  white-space: nowrap;
+  overflow: hidden;
+}
+.shop-price {
+  text-align: right;
+  font-weight: bold;
+  padding-right: 1px;
+}
+.shop-count {
+  color: rgb(221, 221, 221);
+  border-top: 0;
+}
+.shop-count[hidden],
+.shop-dialog .art-btn[hidden] {
+  display: none;
+}
+.shop-dialog .art-btn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.shop-dialog .art-btn .art {
+  width: 100%;
+  height: 100%;
+}
+.shop-busy {
+  position: relative;
+}
+
+/* The playfield overlay and the player menu (sprites 302-304). */
+.pf-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 544px;
+  height: 384px;
+  pointer-events: none;
+  transform-origin: 0 0;
+  z-index: 55;
+}
+.char-menu {
+  position: absolute;
+  width: 59px;
+  height: 39px;
+  pointer-events: auto;
+}
+.char-menu[hidden] {
+  display: none;
+}
+.char-menu > * {
+  position: absolute;
+}
+.char-menu-back {
+  width: 59px;
+  height: 39px;
+}
+.char-menu-item {
+  width: 55px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.char-menu .char-menu-item .art {
+  width: 100%;
+  height: 100%;
+}
+
+/* Trade window (TradeWindow sub-movie, 556×421). */
+.trade-stage {
+  position: absolute;
+  inset: 0;
+}
+.trade-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 556px;
+  height: 421px;
+}
+.trade-trader {
+  position: absolute;
+  left: var(--x);
+  top: 12px;
+  width: 170px;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+  font:
+    bold 14px Arial,
+    sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.trade-col[hidden] {
+  display: none;
+}
+.trade-name,
+.trade-amount {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  height: 16px;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+  font:
+    bold 12px Arial,
+    sans-serif;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.trade-name {
+  width: 175px;
+}
+.trade-amount {
+  width: 42px;
+  border: 0;
+  background: transparent;
+}
+.trade-btn {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.trade-btn[hidden] {
+  display: none;
+}
+.trade-stage .trade-btn img {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* ---- signs and the World Editor ---------------------------------------------------------- */
+.sign-panel {
+  position: absolute;
+  pointer-events: auto;
+}
+.sign-panel[hidden] {
+  display: none;
+}
+.sign-text {
+  position: absolute;
+  overflow: hidden;
+  white-space: pre-wrap;
+  font:
+    12px Arial,
+    sans-serif;
+  color: #fff;
+}
+.we-canvas {
+  image-rendering: pixelated;
+  touch-action: none;
+}
+.we-xy,
+.we-exit {
+  font-weight: bold;
+}
+.we-header {
+  font-weight: bold;
+  color: #fff;
+}
+.we-label {
+  pointer-events: none;
+  font:
+    bold 12px Arial,
+    sans-serif;
+  color: #fff;
+}
+.we-list {
+  overflow-y: auto;
+  font:
+    10px Arial,
+    Helvetica,
+    sans-serif;
+  color: rgb(221, 221, 221);
+  line-height: 12px;
+  cursor: default;
+  user-select: none;
+}
+.we-row.on {
+  background: #000080;
+  color: #fff;
+}
+.we-panel[hidden],
+.we-chat[hidden] {
+  display: none;
+}
+.we-sign {
+  color: #fff;
+  resize: none;
+  white-space: pre-wrap;
+}
+.art.we-chatimg {
+  display: block;
+}
+.we-chat {
+  overflow-y: auto;
+  font:
+    12px Arial,
+    sans-serif;
+  color: #fff;
+  pointer-events: none;
+}
+/* ---- 1.6's menu bar above the stage (ui/menubar.ts, gamemenu.ts, quit.ts) -------------------
+   Windows classic grey, in stage pixels; the holder and the bar are scaled with the stage. */
+.desktop-frame {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+.menu-bar-holder {
+  position: relative;
+  flex: none;
+  z-index: 1000;
+}
+.menu-catcher {
+  position: fixed;
+  inset: 0;
+}
+.menu-catcher[hidden] {
+  display: none;
+}
+.menu-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 800px;
+  height: 20px;
+  display: flex;
+  background: #d4d0c8;
+  font:
+    11px Tahoma,
+    Verdana,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  color: #000;
+  transform-origin: 0 0;
+  image-rendering: auto;
+}
+.menu-title {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0 6px;
+  line-height: 20px;
+  height: 20px;
+  cursor: default;
+}
+.menu-title[hidden] {
+  display: none;
+}
+.menu-title.open {
+  background: #0a246a;
+  color: #fff;
+}
+.menu-drop {
+  position: absolute;
+  top: 20px;
+  min-width: 150px;
+  box-sizing: border-box;
+  padding: 2px;
+  background: #d4d0c8;
+  border: 1px solid;
+  border-color: #fff #404040 #404040 #fff;
+  box-shadow:
+    inset -1px -1px #808080,
+    inset 1px 1px #d4d0c8;
+  display: flex;
+  flex-direction: column;
+}
+.menu-item {
+  position: relative;
+  display: block;
+  font: inherit;
+  height: 17px;
+  line-height: 17px;
+  padding: 0 20px 0 18px;
+  text-align: left;
+  white-space: nowrap;
+  color: #000;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  cursor: default;
+}
+.menu-item[aria-checked="true"]::before {
+  content: attr(data-mark);
+  position: absolute;
+  left: 5px;
+}
+.menu-item:hover {
+  background: #0a246a;
+  color: #fff;
+}
+.menu-item[aria-disabled="true"] {
+  color: #808080;
+  text-shadow: 1px 1px #fff;
+}
+.menu-item[aria-disabled="true"]:hover {
+  background: transparent;
+  color: #808080;
+}
+.menu-sep {
+  height: 0;
+  margin: 3px 1px;
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #fff;
+}
+.quit-black {
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+.quit-text {
+  text-align: center;
+  font:
+    12px Arial,
+    sans-serif;
+  line-height: 20px;
+  color: #fff;
+  pointer-events: none;
+}
+
+/* ---- the NPC editor (frame 311) ---------------------------------------------------------- */
+.npced-list {
+  /* A Director scroll field: the text box with its scroll bar to the right, always shown. */
+  overflow-y: scroll;
+  font:
+    bold 10px Arial,
+    Helvetica,
+    sans-serif;
+  color: #fff;
+  line-height: 12px;
+  cursor: default;
+  user-select: none;
+}
+.npced-row.on {
+  background: #000080;
+  color: #fff;
+}
+.npced-script {
+  overflow-y: scroll;
+  resize: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  white-space: pre-wrap;
+  font:
+    bold 12px Arial,
+    Helvetica,
+    sans-serif;
+  color: #fff;
+}
+
+/* The map header (the map-header field on sprite 299, 319×16 at (139, 426);
+   Arial 12 white, centred, a 1 px shadow (text-styles.jsonl WorldEdit #45). */
+.map-header {
+  color: #fff;
+  font:
+    12px Arial,
+    Helvetica,
+    sans-serif;
+  line-height: 16px;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+.map-header:empty {
+  display: none;
+}
+
+/* The Guild Center (frame 72; ui/guildcenter.ts): in place on the stage
+   (SSO's own rule). Children sit at their stage rects less (151, 29). */
+.guild-center {
+  position: absolute;
+}
+.guild-center[hidden],
+.guild-center [hidden] {
+  display: none;
+}
+.guild-center > * {
+  position: absolute;
+}
+.guild-center .gc-art,
+.guild-center .gc-button .art {
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+.guild-center .gc-button .art {
+  width: 100%;
+  height: 100%;
+}
+/* Fields: Arial 10 bold white, ink 36. */
+.guild-center .gc-field,
+.guild-center .gc-input {
+  font:
+    bold 10px Arial,
+    Helvetica,
+    sans-serif;
+  color: #fff;
+  line-height: 13px;
+  white-space: pre;
+  overflow: hidden;
+}
+.guild-center .gc-input {
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  outline: none;
+}
+/* Director scroll fields: the text box with its 16-px bar to the right, always shown. */
+.guild-center .gc-list {
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+/* The guild list: Arial 12 plain white, border 1. */
+.guild-center .gc-guilds {
+  font:
+    12px Arial,
+    Helvetica,
+    sans-serif;
+  line-height: 15px;
+  border: 1px solid #fff;
+  box-sizing: border-box;
+}
+.guild-center .gc-row {
+  cursor: default;
+  min-height: 13px;
+}
+.guild-center .gc-row.on {
+  background: #000080;
+  color: #fff;
+}
+/* Frame 72 hides the tab icons and every tab's contents. */
+.game.f72 .tab-art,
+.game.f72 .panel-page .tab-icon,
+.game.f72 .panel-page .tab-on,
+.game.f72 .panel-page .tab-hit,
+.game.f72 .panel-page .page {
+  visibility: hidden;
+}
+
+/* ---- The Slot Machine panel (ui/slots.ts), sprites 333-336 on frame 72 -------------------- */
+.slot-machine {
+  position: absolute;
+}
+.slot-machine[hidden] {
+  display: none;
+}
+.slot-machine > * {
+  position: absolute;
+}
+.slot-machine .slot-art {
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* ---- IMsend, IM windows, Away and the ChatWindow (ui/im.ts, away.ts, chatroom.ts) --------------
+   Each piece at its frame-1.json rect (inline styles), fields with ink 36 over the art. */
+
+.im-stage {
+  position: absolute;
+  inset: 0;
+}
+.im-abs {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+  box-sizing: border-box;
+  margin: 0;
+}
+.im-art {
+  display: block;
+  image-rendering: pixelated;
+}
+.im-field,
+.im-to {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #000;
+  resize: none;
+  outline: none;
+  font:
+    12px Geneva,
+    Verdana,
+    sans-serif;
+  line-height: 15px;
+}
+.im-to {
+  font-weight: bold;
+}
+.im-receive {
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #000;
+  font:
+    bold 12px Geneva,
+    Verdana,
+    sans-serif;
+  line-height: 15px;
+}
+.im-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.im-btn-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.away-field {
+  color: #fff;
+}
+.away-messages {
+  color: #fff;
+  font-weight: normal;
+}
+.room-title,
+.room-text {
+  color: #000;
+  font:
+    12px Arial,
+    sans-serif;
+  line-height: 15px;
+}
+.room-title {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.room-text {
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.room-users {
+  white-space: pre;
+}
+.room-input {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #000;
+  outline: none;
+  font:
+    12px "Courier New",
+    Courier,
+    monospace;
+}
+
+/* ---- the Friends window and player bios ---------------------------------------------------- */
+/* Friends (Friendsgui, 120×240, white stage): the list as the Who window's, Geneva 12 white. */
+.friends-list {
+  overflow-y: auto;
+  padding: 1px;
+  color: #fff;
+  font:
+    12px Geneva,
+    Verdana,
+    sans-serif;
+  line-height: 15px;
+}
+.friends-name {
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.friends-name[aria-selected="true"] {
+  background: #fff;
+  color: #000;
+}
+
+/* A player's bio: the bio field grows with its lines (box type `adjust`); the editable profile
+   (your profile field, 271×102 at (22, 137)) and the medal strip (224×16 at (17, 113)). */
+.bio-bio {
+  height: auto;
+  min-height: 43px;
+}
+.bio-myprofile {
+  left: 22px;
+  top: 137px;
+  width: 271px;
+  height: 102px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  resize: none;
+  outline: none;
+  font:
+    bold 12px Arial,
+    sans-serif;
+}
+.bio-myprofile[hidden],
+.bio-profile[hidden],
+.bio-medals[hidden] {
+  display: none;
+}
+.bio-medals {
+  position: absolute;
+  left: 17px;
+  top: 113px;
+  width: 224px;
+  height: 16px;
+  overflow: hidden;
+}
+/* Each 14×16 tile copied into a 16×15 slot at y 1. */
+.bio-medal {
+  position: absolute;
+  top: 1px;
+  width: 16px;
+  height: 15px;
+  image-rendering: pixelated;
+}
+.bio-medal[hidden] {
+  display: none;
+}
+
+/* ---- the mail screen and the message board (ui/mail.ts, ui/board.ts) ---------------------------
+   Every piece at its frame rect (inline styles), children placed relative to the
+   window's origin (mail 154,28; board 185,14). */
+.mail-screen,
+.board-window {
+  position: absolute;
+}
+.mail-screen[hidden],
+.mail-screen [hidden],
+.board-window[hidden],
+.board-window [hidden] {
+  display: none;
+}
+.mail-screen > .mail-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 350px;
+  height: 350px;
+}
+.mail-screen .mail-layer > *,
+.board-window > * {
+  position: absolute;
+}
+.mail-screen .mail-art,
+.mail-screen .mail-button .art,
+.board-window .board-art,
+.board-window .board-button .art {
+  image-rendering: pixelated;
+}
+.mail-screen .mail-button .art,
+.board-window .board-button .art {
+  pointer-events: none;
+}
+/* Each layer is a 350×350 box but its sprites are smaller: only the pieces take clicks, so the
+   list's buttons stay reachable under an open pane (1.6's sprites were hit by their own art). A
+   pane's art does take them (a click on it reaches nothing below). */
+.mail-screen > .mail-layer {
+  pointer-events: none;
+}
+.mail-screen .mail-layer > * {
+  pointer-events: auto;
+}
+.mail-screen .mail-button .art,
+.board-window .board-button .art {
+  width: 100%;
+  height: 100%;
+}
+/* The click blocker over the chat entry, taking its clicks while the list is up. */
+.chat-blocker {
+  pointer-events: auto !important;
+}
+/* Fields: the list columns and the read pane are Arial bold 10 (body 12), white on the art,
+   the compose fields Helvetica. */
+.mail-screen .mail-field,
+.mail-screen .mail-input {
+  font:
+    bold 10px Arial,
+    Helvetica,
+    sans-serif;
+  color: #fff;
+  line-height: 13px;
+  white-space: pre;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.mail-screen .mail-input {
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-family: Helvetica, Arial, sans-serif;
+}
+.mail-screen .mail-body,
+.mail-screen .mail-read-body {
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.mail-screen .mail-body {
+  resize: none;
+  font-family: Helvetica, Arial, sans-serif;
+}
+.mail-screen .mail-read-body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+.mail-screen .mail-row {
+  cursor: default;
+  min-height: 13px;
+}
+.mail-screen .mail-row.on {
+  background: #000080;
+  color: #fff;
+}
+.mail-screen .mail-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+/* The board: Arial 12 white; the text box has Director's own scroll bar. */
+.board-window .board-field {
+  font:
+    12px Arial,
+    Helvetica,
+    sans-serif;
+  color: #fff;
+  line-height: 15px;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.board-window .board-topic {
+  font-weight: bold;
+  text-align: center;
+  white-space: pre;
+  overflow: hidden;
+}
+.board-window .board-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+.board-window .board-post-text {
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+}
+.board-window .board-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ---- Paintings, photos and the camera lens (ui/paint.ts) ---------------------------------- */
+.paint-screen,
+.paint-viewer {
+  position: absolute;
+}
+.paint-screen[hidden],
+.paint-viewer[hidden],
+.paint-lens[hidden] {
+  display: none;
+}
+.paint-screen > *,
+.paint-viewer > * {
+  position: absolute;
+}
+.paint-screen .art,
+.paint-screen .paint-canvas,
+.paint-viewer .art,
+.paint-viewer .paint-canvas {
+  image-rendering: pixelated;
+}
+/* Only the hit layer, the image and the viewer's image take pointers (sprites 395 and 398). */
+.paint-gui,
+.paint-preview,
+.paint-swatch,
+.paint-tool,
+.paint-viewer-bg,
+.paint-author {
+  pointer-events: none;
+}
+.paint-hit,
+.paint-image,
+.paint-viewer-image {
+  touch-action: none;
+}
+/* The viewer's catcher: any release anywhere on the page closes it. */
+.paint-viewer > .paint-catcher {
+  left: -3000px;
+  top: -3000px;
+  width: 6800px;
+  height: 6800px;
+  touch-action: none;
+}
+.paint-swatch {
+  border: 0;
+}
+.paint-author {
+  font:
+    12px Arial,
+    Helvetica,
+    sans-serif;
+  color: #fff;
+  line-height: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* The lens lives in the playfield overlay (playfield pixels) and never takes a click. */
+.paint-lens {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  pointer-events: none;
+  z-index: 9999;
+}
+.paint-lens .paint-lens-art {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+
+/* ---- The newspaper windows (ui/newspaper.ts) ---------------------------------------------- */
+.news-stage {
+  position: absolute;
+  inset: 0;
+}
+.news-abs {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+  box-sizing: border-box;
+  margin: 0;
+}
+.news-art,
+.news-photo,
+.news-save-art {
+  display: block;
+  image-rendering: pixelated;
+}
+.news-photo {
+  width: var(--w);
+  height: var(--h);
+}
+.news-photo[hidden] {
+  display: none;
+}
+.news-field {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #000;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font:
+    12px "Courier New",
+    Courier,
+    monospace;
+}
+.news-f1 {
+  font-size: 36px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 28px;
+}
+.news-f2 {
+  font-weight: bold;
+  text-align: center;
+}
+.news-f3.news-scroll {
+  overflow-y: auto;
+}
+.news-f6 {
+  font-size: 10px;
+  text-align: center;
+}
+.news-photo-name {
+  color: #fff;
+  font-size: 10px;
+  text-align: center;
+}
+.news-save {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.news-save-art {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- The Blackjack Table (ui/blackjack.ts), sprites 333, 338-353 on frame 72 ----------------- */
+.blackjack {
+  position: absolute;
+}
+.blackjack[hidden] {
+  display: none;
+}
+.blackjack > * {
+  position: absolute;
+}
+.blackjack .bj-art {
+  image-rendering: pixelated;
+}
+.blackjack .bj-art:not(.bj-card),
+.blackjack .bj-button img {
+  pointer-events: none;
+}
+.blackjack .bj-card {
+  pointer-events: none;
+}
+.blackjack .bj-name,
+.blackjack .bj-bid {
+  font:
+    12px Helvetica,
+    Arial,
+    sans-serif;
+  color: #fff;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.blackjack .bj-bid {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  outline-offset: 0;
+}
+.blackjack .bj-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.blackjack .bj-hot {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* ---- The Checkers window (ui/checkers.ts): the `Checkers` sub-movie, 304×310 ---------------- */
+.ck-stage {
+  position: relative;
+  width: 304px;
+  height: 310px;
+  background: #fff;
+}
+.ck-stage > * {
+  position: absolute;
+}
+.ck-stage .ck-art {
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.ck-stage .ck-board,
+.ck-stage .ck-piece {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.ck-stage .ck-piece[hidden] {
+  display: none;
+}
+.ck-stage .ck-name {
+  font:
+    12px Arial,
+    Helvetica,
+    sans-serif;
+  color: #000;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Title credits: three centred bold Arial lines, 10, 14 and 12 px. */
+.title-credits {
+  text-align: center;
+  color: #efefef;
+  pointer-events: none;
+  user-select: none;
+}
+.title-credits .title-credit {
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.title-credits .title-credit:nth-child(1) {
+  font-size: 10px;
+  line-height: 14px;
+}
+.title-credits .title-credit:nth-child(2) {
+  font-size: 14px;
+  line-height: 17px;
+}
+.title-credits .title-credit:nth-child(3) {
+  font-size: 12px;
+  line-height: 14px;
+}

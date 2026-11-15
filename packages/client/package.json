@@ -1,0 +1,17 @@
+{
+  "name": "@secondstaronline/client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@secondstaronline/data": "workspace:*",
+    "@secondstaronline/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^21.0.4",
+    "happy-dom": "^21.0.4"
+  }
+}

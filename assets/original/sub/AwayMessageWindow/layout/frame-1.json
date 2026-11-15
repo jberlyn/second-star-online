@@ -1,0 +1,197 @@
+{
+ "frame": 1,
+ "label": null,
+ "stage": [
+  300,
+  225
+ ],
+ "stageColor": "#FFFFFF",
+ "stageColorFrom": "config chunk, palette index 0",
+ "sprites": [
+  {
+   "channel": 1,
+   "castLib": 1,
+   "member": 3,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    41,
+    107
+   ],
+   "size": [
+    89,
+    217
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    0,
+    -1,
+    300,
+    225
+   ],
+   "reg": [
+    41,
+    108
+   ],
+   "asset": "bitmaps/00011_member.png"
+  },
+  {
+   "channel": 2,
+   "castLib": 1,
+   "member": 4,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    216,
+    87
+   ],
+   "size": [
+    19,
+    15
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    190,
+    77,
+    242,
+    97
+   ],
+   "reg": [
+    26,
+    10
+   ],
+   "asset": "bitmaps/00012_member.png"
+  },
+  {
+   "channel": 3,
+   "castLib": 1,
+   "member": 8,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    269,
+    87
+   ],
+   "size": [
+    52,
+    20
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    243,
+    77,
+    295,
+    97
+   ],
+   "reg": [
+    26,
+    10
+   ],
+   "asset": "bitmaps/00013_member.png"
+  },
+  {
+   "channel": 4,
+   "castLib": 1,
+   "member": 1,
+   "name": "Messages",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    8,
+    102
+   ],
+   "size": [
+    285,
+    115
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    8,
+    102,
+    293,
+    217
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 5,
+   "castLib": 1,
+   "member": 9,
+   "name": "AwayMessage",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    10,
+    11
+   ],
+   "size": [
+    280,
+    60
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    10,
+    11,
+    290,
+    71
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  }
+ ]
+}

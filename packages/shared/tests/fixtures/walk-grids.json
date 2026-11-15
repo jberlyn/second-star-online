@@ -1,0 +1,1703 @@
+[
+  {
+    "id": "case-01",
+    "layers": {
+      "1": [
+        "W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 W1",
+        "W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1 W1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 T3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 T3 G3 G3 G3 G3 G3 T3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 T3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 T3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 T3 G3 G3 G3 T3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 T3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#...............#",
+        "#......#........#",
+        "#...............#",
+        "#...#.....#.....#",
+        "#............#..#",
+        "#....#..........#",
+        "#...............#",
+        "#..#...#........#",
+        "#..........#....#",
+        "#...............#",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-02",
+    "layers": {
+      "1": [
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 K4 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 T4 T4",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2",
+        "G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2 G2"
+      ],
+      "2": [
+        "D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8",
+        "D8 K4 C4 A4 G3 G3 G3 J4 E4 K4 G3 G3 G3 A4 D4 J4 D8",
+        "D8 K4 G3 G3 G3 G3 G3 J4 E4 K4 G3 G3 G3 G3 G3 J4 D8",
+        "D8 X9 G3 G3 G3 G3 X9 J4 G3 G3 X9 G3 G3 G3 G3 J4 D8",
+        "D8 E4 E4 5A X3 J4 E4 E4 E4 E4 E4 K4 X3 J4 E4 E4 D8",
+        "D8 K4 G3 G3 G3 G3 G3 C4 G3 D4 G3 G3 G3 G3 G3 J4 D8",
+        "D8 K4 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 V4 J4 D8",
+        "D8 E4 E4 K4 X3 J4 E4 E4 E4 E4 E4 K4 X3 J4 E4 E4 D8",
+        "D8 K4 X9 G3 G3 G3 G3 J4 E4 K4 X9 G3 G3 G3 G3 J4 B8",
+        "D8 K4 G3 G3 G3 G3 G3 J4 E4 K4 G3 G3 G3 A4 D4 J4 D8",
+        "D8 K4 G3 G3 G3 C4 A4 J4 E4 K4 G3 G3 G3 G3 G3 J4 D8",
+        "D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "##.#...###...#.##",
+        "##.....###.....##",
+        "##....##..#....##",
+        "#################",
+        "##.............##",
+        "##.............##",
+        "#################",
+        "###....####....##",
+        "##.....###...#.##",
+        "##....####.....##",
+        "#################"
+      ],
+      "playerAirship": [
+        "#################",
+        "#...............#",
+        "#...............#",
+        "#...............#",
+        "#...............#",
+        "#...............#",
+        "#...............#",
+        "#...............#",
+        "#................",
+        "#...............#",
+        "#...............#",
+        "#################"
+      ]
+    }
+  },
+  {
+    "id": "case-03",
+    "layers": {
+      "1": [
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-04",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 V7 V7 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 V7 V7 N1 N1 N1 N1 D6 H1 H1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 V7 V7 N1 N1 N1 N1 D6 H1 H1",
+        "N1 N1 N1 N1 N1 N1 N1 X6 V7 V7 U6 U6 U6 U6 U6 U6 N1",
+        "N1 N1 N1 N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 X6 U6 D6 G3 H1 G3 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 P9 L9 H1",
+        "N1 N1 N1 N1 X6 H7 H1 H1 P9 H1 H1 H1 H1 H1 H1 P9 H1",
+        "N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 2C 2B H1 H1",
+        "N1 N1 N1 N1 D6 H1 H1 H1 2C 1Q 1Q 1Q 1Q 1V 1U 1Q 1Q",
+        "N1 N1 X6 U6 H7 H1 H1 H1 2F 2A 2A 2A 2A 1X 1W 2A 2A",
+        "N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 2C 2B H1 H1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 U7 G3 G3 X7 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 U7 G3 G3 X7 G3 G3 G3 N1 N1 N1",
+        "G3 G3 G3 G3 G3 G3 G3 U7 G3 G3 X7 G3 G3 G3 N1 N1 N1",
+        "G3 G3 G3 G3 G3 G3 G3 U7 G3 G3 X7 G3 G3 G3 T3 G3 U6",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 O3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 9J 9J 9J 9J 9J",
+        "G3 G3 G3 G3 G3 G3 9Q 9J 9J 9J 9J G3 W9 E9 DA 0X G3",
+        "G3 G3 G3 G3 G3 G3 9K W9 CA E9 A9 G3 N9 T9 D9 0X 0X",
+        "G3 G3 G3 G3 G3 G3 9K N9 D9 P9 0X G3 G3 X9 G3 G3 G3",
+        "G3 G3 G3 G3 G3 WK 9K N3 G3 X9 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 S3 9K G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 9K G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "########..#######",
+        "########..#######",
+        "########..#######",
+        "########..#...#.#",
+        "########........#",
+        "#####..#....#####",
+        "###########.####.",
+        "####.######.##.##",
+        "#####.##.##..#...",
+        "########.#.......",
+        "##..###..........",
+        "###...#.........."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-05",
+    "layers": {
+      "1": [
+        "N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 D6 H1 H1 O9 O9 O9 O9 P9 O9 O9 O9 O9 H1 H1 H1 H1",
+        "N1 D6 H1 H1 T9 T9 P9 P9 P9 P9 T9 T9 T9 H1 H1 H1 H1",
+        "N1 D6 H1 H1 K1 K1 K1 K1 K1 K1 K1 K1 K1 H1 H1 H1 H1",
+        "N1 D6 H1 H1 K1 K1 K1 K1 K1 K1 K1 K1 K1 H1 H1 H1 H1",
+        "N1 D6 H1 H1 K1 K1 K1 K1 K1 K1 K1 K1 K1 H1 H1 H1 H1",
+        "X6 H7 H1 H1 K1 K1 K1 K1 K1 K1 K1 K1 K1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 K1 K1 K1 K1 K1 K1 K1 K1 K1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 K1 K1 K1 K1 K1 K1 K1 K1 K1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H9 H9 H9 H9 K1 H9 H9 E9 H9 H1 H1 H1 H1",
+        "D6 H1 H1 H1 T9 T9 T9 T9 K1 T9 T9 P9 T9 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 2G 1Q 1Q"
+      ],
+      "2": [
+        "G3 G3 9Q N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3 G3 N9",
+        "G3 G3 9K N9 P9 P9 P9 P9 G3 P9 P9 P9 P9 0X G3 G3 N9",
+        "G3 G3 9K N9 P9 P9 M3 M3 V3 M3 P9 P9 P9 0X G3 G3 N9",
+        "G3 G3 9K N9 K3 G3 C3 G3 L4 G3 C3 G3 K3 0X G3 G3 N9",
+        "G3 G3 9K N9 K3 G3 D3 I3 I3 I3 E3 G3 K3 0X G3 G3 N9",
+        "G3 G3 9K N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3 G3 N9",
+        "G3 G3 9K N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3 WK N9",
+        "G3 G3 9K N9 C4 A4 D4 G3 G3 G3 C4 A4 D4 0X G3 G3 N9",
+        "G3 G3 9K N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3 G3 G3",
+        "G3 WK 9K N9 P9 P9 P9 P9 G3 P9 P9 I9 P9 0X G3 G3 G3",
+        "G3 G3 9K N9 P9 P9 P9 P9 G3 P9 P9 P9 P9 0X G3 G3 G3",
+        "G3 G3 9K G3 L8 K8 G3 G3 F3 G3 G3 X9 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "####.........#..#",
+        "##############..#",
+        "##############..#",
+        "#####.#...#.##..#",
+        "#####.#####.##..#",
+        "####.........#..#",
+        ".###.........#.##",
+        "#.##.#.....#.#..#",
+        "#.##.........#...",
+        "########.#####...",
+        "#.######.#####...",
+        "#.#.##.....#....."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "....##..........."
+      ]
+    }
+  },
+  {
+    "id": "case-06",
+    "layers": {
+      "1": [
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 O9 O9 O9 O9 P9 O9 O9 O9 O9 H1 H1 H1 H1",
+        "H1 H1 H1 H1 T9 T9 P9 P9 P9 P9 T9 T9 T9 H1 H1 H1 H1",
+        "H1 H1 H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 K1 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H9 H9 H9 U1 U1 U1 H9 E9 H9 H1 H1 H1 H1",
+        "H1 H1 H1 H1 T9 T9 T9 U1 U1 U1 T9 P9 T9 H1 H1 H1 H1",
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1"
+      ],
+      "2": [
+        "G3 G3 G3 N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X 9J 9J 9J",
+        "G3 G3 G3 N9 P9 P9 Q3 P9 G3 P9 P9 P9 P9 0X G3 G3 G3",
+        "G3 G3 G3 N9 P9 P9 G3 V3 M3 V3 P9 P9 P9 0X G3 G3 G3",
+        "G3 G3 G3 N9 K3 K3 C3 G3 L4 G3 C3 K3 K3 0X G3 G3 G3",
+        "G3 G3 G3 N9 K3 G3 D3 I3 I3 I3 E3 G3 K3 0X G3 G3 G3",
+        "G3 G3 G3 N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3 G3 G3",
+        "G3 WK G3 N9 G3 G3 G3 C4 A4 D4 G3 G3 G3 0X G3 G3 G3",
+        "G3 G3 G3 N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3 G3 G3",
+        "G3 G3 G3 N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3 G3 G3",
+        "G3 G3 G3 N9 P9 I9 P9 0X G3 N9 P9 P9 P9 0X G3 G3 G3",
+        "G3 G3 G3 N9 P9 P9 P9 0X G3 N9 G3 G3 P9 0X G3 G3 G3",
+        "A9 G3 G3 G3 G3 G3 X9 G3 F3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "...#.........####",
+        "...###########...",
+        "...###########...",
+        "...####...####...",
+        "...##.#####.##...",
+        "...#.........#...",
+        ".#.#....#....#...",
+        "...#.........#...",
+        "...#.........#...",
+        "...#####.#####...",
+        "...#####.#####...",
+        "#.....#.........."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-07",
+    "layers": {
+      "1": [
+        "N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 2C 2B H1 H1",
+        "N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 2C 2B H1 H1",
+        "N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1 2C 2B H1 H1",
+        "N1 N1 N1 C6 A6 H1 H1 H1 H1 P9 H1 H1 H1 2C 2B H1 H1",
+        "N1 N1 X6 R6 D6 H1 H1 H1 H1 H1 H1 H1 H1 2D 1S H1 H1",
+        "N1 X6 H7 N6 D6 H1 H1 H1 2G 2H 1Q 1Q 1Q 1V 2B H1 H1",
+        "N1 D6 H1 N6 D6 H1 H1 H1 2F 2A 2A 2A 2A 1X 2B H1 H1",
+        "N1 C6 P6 W6 C6 A6 H1 H1 H1 H1 H1 H1 H1 2D 1S H1 H1",
+        "N1 N1 X6 U6 R6 D6 H1 H1 H1 H1 P9 H1 H1 2D 1U 1Q 1Q",
+        "N1 N1 C6 A6 N6 D6 H1 H1 H1 H1 H1 H1 H1 2C 1W 2A 2A",
+        "N1 N1 N1 C6 W6 D6 H1 H1 H1 2G 2H 1Q 1Q 1V 2B H1 H1",
+        "N1 N1 N1 N1 N1 D6 H1 H1 2G 1V 2H 2H 2H 2H 1U 1R H1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 9K G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 9K G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 WK 9K G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 O3 9K N9 I9 BA I9 0X S3 G3 G3 WK G3",
+        "G3 G3 G3 G3 G3 G3 9K N9 P9 D9 P9 0X G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 9K O3 X9 G3 X9 G3 G3 G3 G3 N3 G3",
+        "G3 G3 WK G3 G3 G3 9K G3 G3 G3 G3 G3 F3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 9K G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 S3 G3 G3 9K N3 N9 I9 AA I9 0X G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 9U 9P N9 P9 D9 P9 0X G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 9K G3 X9 G3 X9 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 9K G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "###...#..........",
+        "###...#..........",
+        "####.##..........",
+        "#############..#.",
+        "##.##.###.##.....",
+        "#.###.###.#....#.",
+        "#####.#..........",
+        "#######..........",
+        "##.##########....",
+        "##########.##....",
+        "######.#.#.#.....",
+        "######.#........."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-08",
+    "layers": {
+      "1": [
+        "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 2C",
+        "H1 H1 H9 H9 H9 P9 P9 P9 P9 P9 P9 P9 H9 H9 H9 H1 2C",
+        "H1 H1 T9 T9 T9 P9 P9 P9 P9 P9 P9 P9 T9 T9 T9 H1 2C",
+        "H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 2C",
+        "H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 2C",
+        "H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 2C",
+        "H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 2C",
+        "H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 2C",
+        "H1 H1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 U1 H1 2C",
+        "H1 H1 H9 H9 H9 H9 H9 U1 U1 U1 H9 H9 H9 H9 H9 H1 2C",
+        "H1 H1 T9 T9 T9 T9 T9 U1 U1 U1 T9 T9 T9 T9 T9 H1 2C",
+        "H1 H1 H1 H1 H1 2D 2H 2H 2H 2H 2H 1U 1Q 1Q 1Q 1Q 1V"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 N9 P9 P9 P9 P9 Q3 P9 G3 P9 P9 P9 X4 P9 P9 0X G3",
+        "G3 N9 P9 P9 P9 V3 M3 L3 L3 L3 M3 V3 P9 P9 P9 0X G3",
+        "N3 N9 K3 K3 G3 G3 C3 G3 L4 G3 C3 G3 G3 K3 K3 0X G3",
+        "N3 N9 K3 G3 G3 G3 D3 I3 I3 I3 E3 G3 G3 G3 K3 0X G3",
+        "G3 N9 G3 C4 A4 D4 G3 G3 G3 G3 G3 C4 A4 D4 G3 0X G3",
+        "G3 N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3",
+        "N3 N9 G3 C4 A4 D4 G3 G3 G3 G3 G3 C4 A4 D4 G3 0X G3",
+        "9P N9 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 0X G3",
+        "9K N9 P9 P9 P9 I9 P9 0X G3 N9 P9 I9 P9 P9 P9 0X G3",
+        "9K N9 P9 P9 P9 P9 P9 0X G3 N9 P9 P9 P9 P9 P9 G3 G3",
+        "9K G3 G3 G3 G3 X9 G3 G3 G3 G3 G3 X9 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        ".................",
+        ".###############.",
+        ".###############.",
+        "####..#...#..###.",
+        "###...#####...##.",
+        ".#..#.......#..#.",
+        ".#.............#.",
+        "##..#.......#..#.",
+        "##.............#.",
+        "########.#######.",
+        "########.######..",
+        "#....#.....#....."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-09",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 C6 A6 H1 2C 2H 2H 2H 2H 2H 2H 2B H1",
+        "N1 N1 N1 N1 N1 N1 D6 H1 2F 2A 2A 2A 2A 2A 2A 2E H1",
+        "N1 N1 N1 N1 N1 N1 C6 P6 V7 V7 V7 P6 P6 V7 V7 V7 P6",
+        "N1 N1 N1 N1 N1 N1 N1 N1 V7 V7 V7 N1 N1 V7 V7 V7 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 V7 V7 V7 N1 N1 V7 V7 V7 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 V7 V7 V7 N1 N1 V7 V7 V7 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 X6 G7 U6 U6 U6 U6 U6",
+        "N1 N1 N1 N1 X6 U6 U6 U6 U6 U6 H7 H1 H1 H1 H1 H1 H1",
+        "N1 N1 X6 U6 H7 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 X6 H7 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 9K G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 9S G3 G3 G3 G3 G3 G3 G3 G3 9I",
+        "G3 G3 G3 G3 G3 G3 G3 G8 G3 G3 G3 X7 G8 G3 G3 G3 X7",
+        "G3 G3 G3 G3 G3 G3 G3 U7 G3 G3 G3 X7 U7 G3 G3 G3 X7",
+        "G3 G3 G3 G3 G3 G3 G3 U7 G3 G3 G3 X7 G8 G3 G3 G3 X7",
+        "G3 G3 G3 G3 G3 G3 G3 G8 G3 G3 G3 X7 U7 G3 G3 G3 X7",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 T3 T3 T3 T3 T3 T3",
+        "G3 G3 G3 G3 G3 T3 T3 N3 T3 T3 T3 T3 O3 T3 T3 S3 T3",
+        "G3 G3 G3 T3 T3 T3 T3 T3 T3 T3 S3 T3 T3 T3 O3 T3 T3",
+        "G3 G3 T3 N3 S3 T3 O3 T3 S3 T3 T3 T3 N3 N3 T3 T3 T3",
+        "G3 G3 T3 N3 T3 T3 T3 T3 T3 T3 T3 T3 T3 T3 T3 T3 T3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "########.........",
+        "########........#",
+        "########...##...#",
+        "########...##...#",
+        "########...##...#",
+        "########...##...#",
+        "#################",
+        "##########.######",
+        "####.############",
+        "##.##############",
+        "#.###############",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-10",
+    "layers": {
+      "1": [
+        "N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1"
+      ],
+      "2": [
+        "G3 G3 T3 T3 T3 T3 S3 T3 T3 T3 T3 T3 T3 T3 T3 S3 T3",
+        "G3 G3 T3 S3 T3 T3 T3 T3 T3 N3 T3 S3 T3 T3 T3 T3 T3",
+        "G3 G3 T3 T3 O3 T3 T3 T3 T3 T3 T3 T3 T3 T3 T3 T3 T3",
+        "G3 G3 G3 T3 T3 T3 T3 T3 S3 T3 T3 T3 T3 T3 N3 O3 T3",
+        "G3 G3 G3 T3 T3 T3 T3 S3 T3 S3 T3 T3 P3 T3 G3 G3 G3",
+        "G3 G3 G3 T3 T3 T3 T3 T3 T3 N3 T3 T3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 T3 T3 T3 T3 T3 T3 T3 P3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 T3 S3 T3 T3 T3 T3 G3 G3 G3 G3 G3 T3 P3",
+        "G3 G3 G3 G3 T3 T3 O3 T3 T3 P3 G3 G3 G3 G3 G3 T3 T3",
+        "G3 G3 G3 G3 T3 T3 S3 S3 WK G3 G3 G3 G3 G3 WK T3 T3",
+        "G3 G3 G3 G3 T3 T3 T3 T3 G3 G3 G3 G3 G3 G3 P3 N3 T3",
+        "G3 G3 G3 G3 T3 T3 T3 P3 G3 G3 G3 G3 G3 T3 T3 T3 O3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "##############...",
+        "############.....",
+        "###########......",
+        "##########.....##",
+        "##########.....##",
+        "#########.....###",
+        "########......###",
+        "########.....####"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-11",
+    "layers": {
+      "1": [
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 T3 T3 T3 P3 G3 G3 G3 G3 G3 T3 N3 T3 T3",
+        "G3 G3 G3 G3 T3 O3 T3 T3 G3 G3 G3 G3 G3 P3 T3 S3 T3",
+        "G3 G3 G3 G3 T3 S3 T3 T3 P3 G3 G3 G3 G3 T3 T3 T3 T3",
+        "G3 G3 G3 G3 T3 T3 T3 T3 T3 G3 G3 G3 G3 G3 P3 O3 T3",
+        "G3 G3 G3 G3 T3 N3 T3 T3 T3 G3 G3 G3 G3 G3 T3 T3 T3",
+        "G3 G3 G3 G3 T3 T3 S3 T3 T3 P3 G3 G3 G3 G3 G3 T3 T3",
+        "G3 G3 G3 G3 T3 T3 T3 O3 T3 T3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 T3 N3 T3 T3 P3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 T3 S3 T3 T3 T3 G3 G3 G3 G3 G3 T3 P3",
+        "G3 G3 G3 G3 G3 T3 T3 T3 T3 T3 T3 G3 G3 G3 T3 T3 T3",
+        "G3 G3 G3 G3 G3 T3 T3 S3 N3 T3 T3 G3 G3 G3 P3 O3 T3",
+        "G3 G3 G3 G3 G3 T3 T3 T3 T3 T3 P3 G3 G3 G3 T3 T3 S3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "########.....####",
+        "########.....####",
+        "#########....####",
+        "#########.....###",
+        "#########.....###",
+        "##########.....##",
+        "##########.......",
+        "##########.......",
+        "##########.....##",
+        "###########...###",
+        "###########...###",
+        "###########...###"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-12",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 C6 A6 H1 H1 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 C6 P6 A6 H1 H1 H1 H1 H1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 C6 P6 P6 P6 A6 H1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 C6 P6",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 T3 T3 S3 T3 T3 T3 G3 G3 G3 T3 N3 T3",
+        "G3 G3 G3 G3 G3 G3 T3 N3 T3 O3 T3 G3 G3 G3 P3 P3 O3",
+        "G3 G3 G3 G3 G3 G3 T3 T3 T3 T3 S3 T3 G3 G3 G3 G3 T3",
+        "G3 G3 G3 G3 G3 G3 G3 T3 T3 S3 N3 T3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 T3 T3 T3 T3 T3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 T3 O3 S3 T3 T3 T3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 T3 T3 T3 T3 N3 T3 P3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 T3 T3 O3 T3 T3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 T3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "###########...###",
+        "###########...###",
+        "############....#",
+        "############.....",
+        "#############....",
+        "###############..",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-13",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "B7 B7 B7 O7 N1 T7 B7 B7 B7 O7 N1 N1 N1 N1 N1 N1 N1",
+        "O1 O1 O1 K6 N1 Q6 O1 O1 O1 K6 N1 N1 N1 N1 N1 N1 N1",
+        "P9 I9 S9 K6 N1 Q6 F9 D9 S9 K6 N1 N1 N1 N1 N1 N1 N1",
+        "I9 I9 S9 K6 N1 M6 I6 I6 I6 J6 N1 N1 N1 N1 N1 N1 N1",
+        "I9 P9 S9 K6 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "P9 I9 S9 K6 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "I6 I6 I6 J6 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 N1 N1 N1 N1 N1 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "K9 K9 K9 G3 G3 G3 K9 K9 K9 G3 G3 G3 G3 G3 G3 G3 G3",
+        "L9 L9 L9 G3 G3 C7 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "...###...########",
+        "#######.#########",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-14",
+    "layers": {
+      "1": [
+        "N1 N1 N1 X6 U6 U6 U6 U6 U6 U6 U6 U6 U6 R6 N1 N1 N1",
+        "N1 N1 X6 H7 H1 H1 H1 H1 H1 H1 H1 H1 H1 V6 U6 R6 N1",
+        "N1 X6 H7 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 V6 U6",
+        "N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "X6 H7 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 T1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 T1 H1 H1 H1",
+        "D6 H1 H1 H1 T1 T1 T1 H1 H1 H1 H1 H1 H1 T1 T1 T1 H1",
+        "D6 H1 H1 H1 T1 T1 T1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 T1 T1 T1 H1 H1 H1 H1 T1 T1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 S3 G3 SL SL SL SL SL S3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 SL SL SL SL SL SL SL SL SL O3 G3 G3 G3",
+        "G3 G3 G3 SL SL SL SL SL SL SL SL SL SL SL G3 S3 G3",
+        "G3 G3 T3 SL SL SL SL SL SL SL SL SL SL SL SL G3 G3",
+        "G3 G3 TL TL TL TL SL SL SL SL N3 SL SL SL SL SL G3",
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL N3 TL",
+        "G3 TL TL TL D4 WK C4 TL TL TL TL TL TL TL TL TL TL",
+        "G3 TL TL TL TL N3 TL TL TL TL TL N3 TL TL TL TL TL",
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "###..........####",
+        "##.##......#...##",
+        "#.#..........#...",
+        "##.............#.",
+        ".##..............",
+        "#.........#......",
+        "#................",
+        "#..............#.",
+        "#....#...........",
+        "#....#.....#.....",
+        "#................",
+        "#................"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-15",
+    "layers": {
+      "1": [
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 T1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 T1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 T1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 T1 H1 H1 H1",
+        "D6 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 T1 H1 H1 H1 H1",
+        "C6 A6 H1 H1 H1 H1 H1 H1 H1 H1 H1 T1 H1 H1 H1 H1 H1",
+        "N1 D6 H1 H1 H1 H1 H1 H1 H1 H1 T1 T1 H1 H1 H1 H1 H1",
+        "N1 C6 A6 H1 H1 H1 H1 H1 H1 T1 T1 H1 H1 H1 H1 S6 P6",
+        "N1 N1 C6 P6 P6 A6 H1 H1 H1 H1 H1 H1 H1 H1 S6 W6 N1",
+        "N1 N1 N1 N1 N1 C6 P6 P6 P6 P6 P6 P6 P6 P6 W6 N1 N1"
+      ],
+      "2": [
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 TL TL N3 TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 TL TL TL N3 TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL N3 TL TL",
+        "G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 P3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 G3 G3 TL TL TL TL TL TL TL TL TL TL TL TL TL TL",
+        "G3 G3 G3 T3 TL TL TL TL TL TL TL TL TL TL T3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 P3 TL TL TL TL TL O3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#................",
+        "#................",
+        "#..#.............",
+        "#...#............",
+        "#.............#..",
+        "#................",
+        "##...............",
+        "##...............",
+        "##...............",
+        "####..........###",
+        "#######.....#.###",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-16",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 M8 J8 K8 G3 G3 G3 G3 L8 J8 K8 G3 G3",
+        "M8 L8 K8 L8 J8 J8 D8 D8 K8 G3 G3 G3 E8 D8 D8 K8 G3",
+        "L8 D8 D8 D8 D8 D8 D8 D8 D8 J8 K8 M8 L8 D8 D8 D8 K8",
+        "D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 J8 D8 D8 D8 D8 D8"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "......##....###..",
+        ".########...####.",
+        "###########.#####",
+        "#################"
+      ]
+    }
+  },
+  {
+    "id": "case-17",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-18",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-19",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-20",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-21",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-22",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-23",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-24",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-25",
+    "layers": {
+      "1": [
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1",
+        "N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1 N1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "D2 D2 D2 D2 D2 D2 D2 D2 D2 D2 D2 D2 D2 D2 D2 D2 D2",
+        "D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8 D8"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################",
+        "#################"
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "#################"
+      ]
+    }
+  },
+  {
+    "id": "case-26",
+    "layers": {
+      "1": [
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1",
+        "G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1 G1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  },
+  {
+    "id": "case-27",
+    "layers": {
+      "1": [
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1",
+        "B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1 B1"
+      ],
+      "2": [
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+        "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+      ]
+    },
+    "walk": {
+      "playerOnFoot": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ],
+      "playerAirship": [
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        ".................",
+        "................."
+      ]
+    }
+  }
+]

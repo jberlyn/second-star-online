@@ -1,0 +1,17 @@
+{
+  "movie": "mp3player.dir",
+  "castLibs": [
+    {
+      "index": 1,
+      "name": "Internal",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 24
+    }
+  ],
+  "labels": {},
+  "frameCount": 28,
+  "channels": 1000,
+  "memberCount": 21,
+  "spanCount": 17
+}

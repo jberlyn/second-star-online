@@ -1,0 +1,4811 @@
+{
+  "npcs": [
+    {
+      "name": "Acrostia",
+      "bio": ["Name: Healer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Adventurer Faction Member",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Agavar",
+      "bio": ["Name: Avagar", "Class: Farmer"],
+      "profile": [
+        "I own all of these fields... but I am too old to plow them now. If you'd plow them for me, and plant seeds, all of the produce can be yours, if you take it."
+      ],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Hoe",
+          "line": 4,
+          "price": 200,
+          "stock": 999963
+        },
+        {
+          "item": "Watering Bucket",
+          "line": 5,
+          "price": 50,
+          "stock": 999940
+        },
+        {
+          "item": "Seeds",
+          "line": 6,
+          "price": 30,
+          "stock": 99962
+        },
+        {
+          "item": "Premium Seeds",
+          "line": 7,
+          "price": 50,
+          "stock": 99799
+        },
+        {
+          "item": "Magic Seeds",
+          "line": 8,
+          "price": 80,
+          "stock": 99154
+        },
+        {
+          "item": "Flower Seeds",
+          "line": 9,
+          "price": 75,
+          "stock": 9956
+        },
+        {
+          "item": "Rose Seeds",
+          "line": 10,
+          "price": 150,
+          "stock": 98309
+        }
+      ],
+      "buys": [
+        {
+          "item": "Hoe",
+          "line": 11,
+          "price": 100
+        },
+        {
+          "item": "Watering Bucket",
+          "line": 12,
+          "price": 25
+        },
+        {
+          "item": "Corn",
+          "line": 13,
+          "price": 3
+        },
+        {
+          "item": "Watermelon",
+          "line": 14,
+          "price": 6
+        },
+        {
+          "item": "Nectar",
+          "line": 15,
+          "price": 14
+        },
+        {
+          "item": "Flowers",
+          "line": 16,
+          "price": 9
+        },
+        {
+          "item": "Roses",
+          "line": 17,
+          "price": 18
+        }
+      ],
+      "gold": 996793978,
+      "banker": false
+    },
+    {
+      "name": "Akadius",
+      "bio": ["Name: Akadius", "Class: Food Seller"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Raw Fish",
+          "line": 4,
+          "price": 70,
+          "stock": 11539
+        },
+        {
+          "item": "Fish Sticks",
+          "line": 6,
+          "price": 65,
+          "stock": 11375
+        },
+        {
+          "item": "Trout",
+          "line": 8,
+          "price": 60,
+          "stock": 12824
+        },
+        {
+          "item": "Trout Fillet",
+          "line": 10,
+          "price": 55,
+          "stock": 15037
+        },
+        {
+          "item": "Catfish",
+          "line": 12,
+          "price": 50,
+          "stock": 12811
+        },
+        {
+          "item": "Catfish Sandwich",
+          "line": 14,
+          "price": 45,
+          "stock": 15174
+        },
+        {
+          "item": "Fishing Pole",
+          "line": 16,
+          "price": 200,
+          "stock": 9632
+        }
+      ],
+      "buys": [
+        {
+          "item": "Raw Fish",
+          "line": 5,
+          "price": 25
+        },
+        {
+          "item": "Fish Sticks",
+          "line": 7,
+          "price": 30
+        },
+        {
+          "item": "Trout",
+          "line": 9,
+          "price": 20
+        },
+        {
+          "item": "Trout Fillet",
+          "line": 11,
+          "price": 25
+        },
+        {
+          "item": "Catfish",
+          "line": 13,
+          "price": 15
+        },
+        {
+          "item": "Catfish Sandwich",
+          "line": 15,
+          "price": 20
+        },
+        {
+          "item": "Fishing Pole",
+          "line": 17,
+          "price": 100
+        }
+      ],
+      "gold": 294825,
+      "banker": false
+    },
+    {
+      "name": "Akiro",
+      "bio": ["Name: Akiro", "Class: Adventurer Equipment Dealer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Green Arrows",
+          "line": 4,
+          "price": 500,
+          "stock": 9975
+        },
+        {
+          "item": "Purple Arrows",
+          "line": 6,
+          "price": 800,
+          "stock": 9975
+        },
+        {
+          "item": "Ring of Experience",
+          "line": 8,
+          "price": 3000,
+          "stock": 10044
+        },
+        {
+          "item": "Wooden Crossbow",
+          "line": 10,
+          "price": 4000,
+          "stock": 9963
+        }
+      ],
+      "buys": [
+        {
+          "item": "Green Arrows",
+          "line": 5,
+          "price": 250
+        },
+        {
+          "item": "Purple Arrows",
+          "line": 7,
+          "price": 400
+        },
+        {
+          "item": "Ring of Experience",
+          "line": 9,
+          "price": 1500
+        },
+        {
+          "item": "Wooden Crossbow",
+          "line": 11,
+          "price": 2000
+        }
+      ],
+      "gold": 727508719,
+      "banker": false
+    },
+    {
+      "name": "Alex",
+      "bio": ["Name: Alex", "Class: Weaponary Dealer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Red Arrows",
+          "line": 4,
+          "price": 100,
+          "stock": 9922
+        },
+        {
+          "item": "Yellow Arrows",
+          "line": 6,
+          "price": 300,
+          "stock": 974
+        },
+        {
+          "item": "Steel Bow",
+          "line": 8,
+          "price": 2000,
+          "stock": 9966
+        },
+        {
+          "item": "Broad Sword",
+          "line": 10,
+          "price": 3000,
+          "stock": 9951
+        },
+        {
+          "item": "Thor's Hammer",
+          "line": 12,
+          "price": 3000,
+          "stock": 10003
+        },
+        {
+          "item": "Dark Sword",
+          "line": 14,
+          "price": 9000,
+          "stock": 10130
+        }
+      ],
+      "buys": [
+        {
+          "item": "Red Arrows",
+          "line": 5,
+          "price": 50
+        },
+        {
+          "item": "Yellow Arrows",
+          "line": 7,
+          "price": 150
+        },
+        {
+          "item": "Steel Bow",
+          "line": 9,
+          "price": 1000
+        },
+        {
+          "item": "Broad Sword",
+          "line": 11,
+          "price": 1500
+        },
+        {
+          "item": "Thor's Hammer",
+          "line": 13,
+          "price": 1500
+        },
+        {
+          "item": "Dark Sword",
+          "line": 15,
+          "price": 4500
+        }
+      ],
+      "gold": 99780599,
+      "banker": false
+    },
+    {
+      "name": "Amber",
+      "bio": ["Name: Amber", "Class: Casino Manager"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 4,
+          "price": 10,
+          "stock": 10031
+        },
+        {
+          "item": "Ale",
+          "line": 6,
+          "price": 10,
+          "stock": 9604
+        },
+        {
+          "item": "Pie",
+          "line": 8,
+          "price": 10,
+          "stock": 5771
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 5,
+          "price": 5
+        },
+        {
+          "item": "Ale",
+          "line": 7,
+          "price": 5
+        },
+        {
+          "item": "Pie",
+          "line": 9,
+          "price": 5
+        }
+      ],
+      "gold": 107537424,
+      "banker": false
+    },
+    {
+      "name": "Andero",
+      "bio": ["Name: Andero", "Class: Artist"],
+      "profile": [
+        "Wow you look like a good artist! Here, buy a canvas or a camera and film and let me see your work."
+      ],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Canvas",
+          "line": 5,
+          "price": 100,
+          "stock": 9825
+        },
+        {
+          "item": "Camera",
+          "line": 7,
+          "price": 4000,
+          "stock": 99998
+        },
+        {
+          "item": "Film",
+          "line": 8,
+          "price": 50,
+          "stock": 9984
+        }
+      ],
+      "buys": [
+        {
+          "item": "Canvas",
+          "line": 6,
+          "price": 50
+        },
+        {
+          "item": "Camera",
+          "line": 9,
+          "price": 1000
+        },
+        {
+          "item": "Film",
+          "line": 10,
+          "price": 10
+        }
+      ],
+      "gold": 100051154,
+      "banker": true
+    },
+    {
+      "name": "Angela",
+      "bio": ["Name: Angela", "Class: Secret Of The Magery Faction"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Assasin",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Barnum",
+      "bio": ["Name: Barnum", "Class: Weapon Salesman"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Beghi",
+      "bio": ["Name: Beghi", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Beldros",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Benolio",
+      "bio": ["Name: Benolio", "Class: Mage"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Crush Book",
+          "line": 3,
+          "price": 45000,
+          "stock": 99992
+        },
+        {
+          "item": "Stone Skin Book",
+          "line": 4,
+          "price": 50000,
+          "stock": 99998
+        }
+      ],
+      "buys": [
+        {
+          "item": "Crush Book",
+          "line": 5,
+          "price": 22500
+        },
+        {
+          "item": "Stone Skin Book",
+          "line": 6,
+          "price": 25000
+        }
+      ],
+      "gold": 1216117191,
+      "banker": false
+    },
+    {
+      "name": "Coched",
+      "bio": ["Name: Coched", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        },
+        {
+          "item": "gauntlets",
+          "line": 8,
+          "price": 100,
+          "stock": 0
+        },
+        {
+          "item": "red crystal",
+          "line": 10,
+          "price": 1,
+          "stock": 96
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        },
+        {
+          "item": "gauntlets",
+          "line": 9,
+          "price": 20
+        },
+        {
+          "item": "red crystal",
+          "line": 11,
+          "price": 1
+        }
+      ],
+      "gold": 604,
+      "banker": false
+    },
+    {
+      "name": "Corin",
+      "bio": ["Name: Corin", "Class:Secret Of the Adventurer's Faction"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Cril",
+      "bio": ["Name: Cril", "Class: Banker"],
+      "profile": [
+        "Your belongings are safe with me. To withdraw $$$ type /withdraw $$$, to deposit $$$ type /deposit $$$$ and to view your balance type /balance"
+      ],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": true
+    },
+    {
+      "name": "Crushto",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Cucha",
+      "bio": ["Name: Cucha", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Cuchad",
+      "bio": ["Name: Cuchad", "Class: Shopkeeper"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "long sword",
+          "line": 5,
+          "price": 5,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "long sword",
+          "line": 6,
+          "price": 5
+        }
+      ],
+      "gold": 1000,
+      "banker": false
+    },
+    {
+      "name": "Cuche",
+      "bio": ["Name: Cuche", "Class: Shopkeeper"],
+      "profile": ["muwhahahahha hi!"],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 1
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 999,
+      "banker": false
+    },
+    {
+      "name": "Cyclops",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Dan",
+      "bio": ["Name: Dann", "Class: Tutor"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Dann",
+      "bio": ["Name: Dann", "Class: Tutor"],
+      "profile": [
+        "Click on the buy and sell buttons below to buy and sell items. Highlight the item select the amount then press OK."
+      ],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Leather Cap",
+          "line": 5,
+          "price": 20,
+          "stock": 99092
+        }
+      ],
+      "buys": [
+        {
+          "item": "Mining Hammer",
+          "line": 6,
+          "price": 20
+        }
+      ],
+      "gold": 83319,
+      "banker": false
+    },
+    {
+      "name": "Dantan",
+      "bio": ["Name: Dantan", "Class: Weaponary Salesman"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Long Sword",
+          "line": 4,
+          "price": 1000,
+          "stock": 100083
+        },
+        {
+          "item": "Unholy Lance",
+          "line": 6,
+          "price": 1200,
+          "stock": 10025
+        },
+        {
+          "item": "Bo",
+          "line": 8,
+          "price": 2000,
+          "stock": 9912
+        }
+      ],
+      "buys": [
+        {
+          "item": "Long Sword",
+          "line": 5,
+          "price": 400
+        },
+        {
+          "item": "Unholy Lance",
+          "line": 7,
+          "price": 600
+        },
+        {
+          "item": "Bo",
+          "line": 9,
+          "price": 1000
+        }
+      ],
+      "gold": 1000209599,
+      "banker": false
+    },
+    {
+      "name": "Dark Fairy",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Death",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Demon",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Divela",
+      "bio": ["Name: Divela", "Class: Mage Specialist"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Raise Dead Book",
+          "line": 4,
+          "price": 4000,
+          "stock": 9996
+        },
+        {
+          "item": "Bolt Book",
+          "line": 6,
+          "price": 10000,
+          "stock": 9996
+        },
+        {
+          "item": "Hold Book",
+          "line": 8,
+          "price": 50000,
+          "stock": 1000000
+        }
+      ],
+      "buys": [
+        {
+          "item": "Raise Dead Book",
+          "line": 5,
+          "price": 2000
+        },
+        {
+          "item": "Bolt Book",
+          "line": 7,
+          "price": 5000
+        },
+        {
+          "item": "Hold Book",
+          "line": 9,
+          "price": 25000
+        }
+      ],
+      "gold": 1000272999,
+      "banker": false
+    },
+    {
+      "name": "Dragon Hatchling",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Dragon Snake",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Dustug",
+      "bio": ["Name: Dustug", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Dwarf",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Earth God",
+      "bio": ["Name:The Earth God", "Class:Earth Elemental"],
+      "profile": ["This being rules the earth. "],
+      "chatter": [
+        "Wind cannot penetrate nature's stones.",
+        "I worry that fire will spread into my world and set us ablaze."
+      ],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Edwin",
+      "bio": ["Name: Edwin", "Class: Pilot"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Elf",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Fire Demon",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Fire God",
+      "bio": ["Name:The Fire God", "Class:Fire Elemental"],
+      "profile": ["Standing this close makes you feel warm, but cautios."],
+      "chatter": [
+        "Bring me the wind orbs or all will be lost.",
+        "Fire does not effect us in the slightest."
+      ],
+      "sells": [
+        {
+          "item": "Fireball Book",
+          "line": 1,
+          "price": 100,
+          "stock": 98
+        }
+      ],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Galor",
+      "bio": ["Name:Galor"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Potion Bottle",
+          "line": 2,
+          "price": 5,
+          "stock": 9876612
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 3,
+          "price": 7,
+          "stock": 845590
+        },
+        {
+          "item": "Red Crystals",
+          "line": 4,
+          "price": 15,
+          "stock": 9839648
+        },
+        {
+          "item": "Green Crystals",
+          "line": 5,
+          "price": 18,
+          "stock": 820352
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 6,
+          "price": 20,
+          "stock": 887069
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 7,
+          "price": 23,
+          "stock": 886417
+        },
+        {
+          "item": "White Crystals",
+          "line": 8,
+          "price": 26,
+          "stock": 865140
+        },
+        {
+          "item": "Red Sand",
+          "line": 9,
+          "price": 100,
+          "stock": 999913
+        }
+      ],
+      "buys": [
+        {
+          "item": "Potion Bottle",
+          "line": 10,
+          "price": 2
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 11,
+          "price": 4
+        },
+        {
+          "item": "Red Crystals",
+          "line": 12,
+          "price": 7
+        },
+        {
+          "item": "Green Crystals",
+          "line": 13,
+          "price": 9
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 14,
+          "price": 10
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 15,
+          "price": 11
+        },
+        {
+          "item": "White Crystals",
+          "line": 16,
+          "price": 13
+        },
+        {
+          "item": "Red Potion",
+          "line": 17,
+          "price": 23
+        }
+      ],
+      "gold": 1424337707,
+      "banker": false
+    },
+    {
+      "name": "Gazer",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Gelu",
+      "bio": ["Name: Gelu", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Ghost",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Ghoul",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Giant Slime",
+      "bio": ["Name: Giant Slime", "Class: Slime"],
+      "profile": ["...arrrhhhggg..."],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Girl",
+      "bio": ["Name: Jessica", "Class: Girl"],
+      "profile": ["I have lost my trumpet in the woods, can you help me find it?"],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Gryphon",
+      "bio": ["RAH!"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Hellhound",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Helum",
+      "bio": ["Name: Helum", "Class: Armorer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Chain Boots",
+          "line": 4,
+          "price": 300,
+          "stock": 10081
+        },
+        {
+          "item": "Chain Helm",
+          "line": 6,
+          "price": 300,
+          "stock": 9775
+        },
+        {
+          "item": "Chain Armor",
+          "line": 8,
+          "price": 500,
+          "stock": 9660
+        }
+      ],
+      "buys": [
+        {
+          "item": "Chain Boots",
+          "line": 5,
+          "price": 150
+        },
+        {
+          "item": "Chain Helm",
+          "line": 7,
+          "price": 150
+        },
+        {
+          "item": "Chain Armor",
+          "line": 9,
+          "price": 250
+        }
+      ],
+      "gold": 1000323049,
+      "banker": false
+    },
+    {
+      "name": "Imp",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "James",
+      "bio": ["Name: James"],
+      "profile": [
+        "I found a trumpet in these woods here...I will give you it if you can kill the Giant Slime and bring me back my tom tom."
+      ],
+      "chatter": [],
+      "sells": [],
+      "buys": [
+        {
+          "item": "knife",
+          "line": 2,
+          "price": 500
+        }
+      ],
+      "gold": 99833500,
+      "banker": false
+    },
+    {
+      "name": "Jelstar",
+      "bio": ["Mermaid"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Jim",
+      "bio": ["Name: Jim", "Class: Psycho"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Murder Helm",
+          "line": 6,
+          "price": 100000,
+          "stock": 99996
+        },
+        {
+          "item": "Murder Shield",
+          "line": 7,
+          "price": 100000,
+          "stock": 99997
+        }
+      ],
+      "buys": [
+        {
+          "item": "Warrior's Head",
+          "line": 3,
+          "price": 30
+        },
+        {
+          "item": "Mage's Head",
+          "line": 4,
+          "price": 30
+        },
+        {
+          "item": "Adventurer's Head",
+          "line": 5,
+          "price": 30
+        }
+      ],
+      "gold": 1316629811,
+      "banker": false
+    },
+    {
+      "name": "Jithan",
+      "bio": ["Name: Jithan", "Class: Master Ninja"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Kanta",
+      "bio": ["Name: Kanta", "Class: Junk Collecter"],
+      "profile": ["I have little money, I spend most of it on drinks."],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Chair",
+          "line": 5,
+          "price": 20,
+          "stock": 103176
+        },
+        {
+          "item": "Stool",
+          "line": 7,
+          "price": 50,
+          "stock": 2325
+        },
+        {
+          "item": "Table",
+          "line": 9,
+          "price": 75,
+          "stock": 100326
+        }
+      ],
+      "buys": [
+        {
+          "item": "Chair",
+          "line": 6,
+          "price": 2
+        },
+        {
+          "item": "Stool",
+          "line": 8,
+          "price": 4
+        },
+        {
+          "item": "Table",
+          "line": 10,
+          "price": 10
+        },
+        {
+          "item": "Crate",
+          "line": 11,
+          "price": 15
+        },
+        {
+          "item": "Cabinet",
+          "line": 12,
+          "price": 45
+        }
+      ],
+      "gold": 10122254,
+      "banker": false
+    },
+    {
+      "name": "Katks",
+      "bio": ["Name: Katks", "Class: Armor Saleswoman"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Titanium Armor",
+          "line": 4,
+          "price": 9000,
+          "stock": 10059
+        },
+        {
+          "item": "War Helm",
+          "line": 6,
+          "price": 30000,
+          "stock": 99979
+        },
+        {
+          "item": "Royal Ninja Uniform",
+          "line": 8,
+          "price": 20000,
+          "stock": 9980
+        }
+      ],
+      "buys": [
+        {
+          "item": "Titanium Armor",
+          "line": 5,
+          "price": 4500
+        },
+        {
+          "item": "War Helm",
+          "line": 7,
+          "price": 15000
+        },
+        {
+          "item": "Royal Ninja Uniform",
+          "line": 9,
+          "price": 10000
+        }
+      ],
+      "gold": 100784499,
+      "banker": false
+    },
+    {
+      "name": "Kin",
+      "bio": ["Name: Kin", "Class: Armor Dealer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Ninja Gloves",
+          "line": 5,
+          "price": 1000,
+          "stock": 9985
+        },
+        {
+          "item": "Plate Armor",
+          "line": 7,
+          "price": 3000,
+          "stock": 10022
+        }
+      ],
+      "buys": [
+        {
+          "item": "Ninja Gloves",
+          "line": 6,
+          "price": 500
+        },
+        {
+          "item": "Plate Armor",
+          "line": 8,
+          "price": 1500
+        }
+      ],
+      "gold": 1410172407,
+      "banker": false
+    },
+    {
+      "name": "Kocho",
+      "bio": ["Name: Kocho", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Krist",
+      "bio": ["Name: Krist", "Class: Armorer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Argon's Plate",
+          "line": 3,
+          "price": 40000,
+          "stock": 99994
+        },
+        {
+          "item": "War Helm",
+          "line": 4,
+          "price": 30000,
+          "stock": 99998
+        },
+        {
+          "item": "Knight Shield",
+          "line": 5,
+          "price": 35000,
+          "stock": 99988
+        }
+      ],
+      "buys": [
+        {
+          "item": "Argon's Plate",
+          "line": 6,
+          "price": 20000
+        },
+        {
+          "item": "War Helm",
+          "line": 7,
+          "price": 15000
+        },
+        {
+          "item": "Knight Shield",
+          "line": 8,
+          "price": 17500
+        }
+      ],
+      "gold": 1000614999,
+      "banker": false
+    },
+    {
+      "name": "Krista",
+      "bio": ["Name: Krista", "Class: Food Saleswoman"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Swordfish",
+          "line": 4,
+          "price": 30,
+          "stock": 14974
+        },
+        {
+          "item": "Swordfish Steak",
+          "line": 6,
+          "price": 40,
+          "stock": 18363
+        },
+        {
+          "item": "Squid",
+          "line": 8,
+          "price": 20,
+          "stock": 38309
+        },
+        {
+          "item": "Squid Platter",
+          "line": 10,
+          "price": 25,
+          "stock": 151046
+        },
+        {
+          "item": "Fishing Pole",
+          "line": 12,
+          "price": 200,
+          "stock": 9853
+        }
+      ],
+      "buys": [
+        {
+          "item": "Swordfish",
+          "line": 5,
+          "price": 15
+        },
+        {
+          "item": "Swordfish Steak",
+          "line": 7,
+          "price": 20
+        },
+        {
+          "item": "Squid",
+          "line": 9,
+          "price": 5
+        },
+        {
+          "item": "Squid Platter",
+          "line": 11,
+          "price": 15
+        },
+        {
+          "item": "Fishing Pole",
+          "line": 13,
+          "price": 100
+        }
+      ],
+      "gold": 998426909,
+      "banker": false
+    },
+    {
+      "name": "Krommie",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Lir",
+      "bio": ["Name: Lir", "Class: Food Salesman"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Squid",
+          "line": 4,
+          "price": 20,
+          "stock": 33096
+        },
+        {
+          "item": "Squid Platter",
+          "line": 6,
+          "price": 30,
+          "stock": 71691
+        }
+      ],
+      "buys": [
+        {
+          "item": "Squid",
+          "line": 5,
+          "price": 10
+        },
+        {
+          "item": "Squid Platter",
+          "line": 7,
+          "price": 15
+        },
+        {
+          "item": "Orc Burger",
+          "line": 8,
+          "price": 20
+        },
+        {
+          "item": "Orc Pot Pie",
+          "line": 9,
+          "price": 30
+        },
+        {
+          "item": "Cyclops Burger",
+          "line": 10,
+          "price": 30
+        }
+      ],
+      "gold": 1409215137,
+      "banker": false
+    },
+    {
+      "name": "Lizard Warrior",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Mage Faction Member",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Mega Slime",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Melag",
+      "bio": ["Name: Melag", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Mellanie",
+      "bio": ["race: Mermaid"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Merius",
+      "bio": ["Mermaid"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Damaged Armor",
+          "line": 2,
+          "price": 10,
+          "stock": 999
+        }
+      ],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Minmaye",
+      "bio": ["Name: Minmaye", "Class: Drunken Mermaid"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [
+        {
+          "item": "Ale",
+          "line": 3,
+          "price": 50
+        }
+      ],
+      "gold": 999985999,
+      "banker": false
+    },
+    {
+      "name": "Miqa",
+      "bio": ["Name: Miqa", "Class: Armorer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Plate Boots",
+          "line": 4,
+          "price": 1200,
+          "stock": 9836
+        },
+        {
+          "item": "Plate Helm",
+          "line": 6,
+          "price": 1200,
+          "stock": 9814
+        },
+        {
+          "item": "Steel Shield",
+          "line": 8,
+          "price": 1500,
+          "stock": 9923
+        }
+      ],
+      "buys": [
+        {
+          "item": "Plate Boots",
+          "line": 5,
+          "price": 600
+        },
+        {
+          "item": "Plate Helm",
+          "line": 7,
+          "price": 600
+        },
+        {
+          "item": "Steel Shield",
+          "line": 9,
+          "price": 750
+        }
+      ],
+      "gold": 1000636749,
+      "banker": false
+    },
+    {
+      "name": "Mirra",
+      "bio": ["Name: Mirra", "Class: Magic Supplier"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Steel Staff",
+          "line": 4,
+          "price": 800,
+          "stock": 9948
+        },
+        {
+          "item": "Diminish Hunger Book",
+          "line": 6,
+          "price": 1000,
+          "stock": 9957
+        },
+        {
+          "item": "Create Food Book",
+          "line": 8,
+          "price": 1000,
+          "stock": 971
+        },
+        {
+          "item": "Inxition Book",
+          "line": 10,
+          "price": 1200,
+          "stock": 9964
+        },
+        {
+          "item": "Necromancer's Robe",
+          "line": 12,
+          "price": 1500,
+          "stock": 10056
+        }
+      ],
+      "buys": [
+        {
+          "item": "Steel Staff",
+          "line": 5,
+          "price": 400
+        },
+        {
+          "item": "Diminish Hunger Book",
+          "line": 7,
+          "price": 500
+        },
+        {
+          "item": "Create Food Book",
+          "line": 9,
+          "price": 500
+        },
+        {
+          "item": "Inxition Book",
+          "line": 11,
+          "price": 600
+        },
+        {
+          "item": "Necromancer's Robe",
+          "line": 13,
+          "price": 750
+        }
+      ],
+      "gold": 100155999,
+      "banker": false
+    },
+    {
+      "name": "Missie",
+      "bio": ["Name: Missie", "Class: HardWare Specialist"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Mining Hammer",
+          "line": 4,
+          "price": 100,
+          "stock": 10000
+        },
+        {
+          "item": "Blacksmith Hammer",
+          "line": 6,
+          "price": 100,
+          "stock": 10000
+        },
+        {
+          "item": "Axe",
+          "line": 8,
+          "price": 200,
+          "stock": 9990
+        },
+        {
+          "item": "Saw",
+          "line": 10,
+          "price": 200,
+          "stock": 10000
+        },
+        {
+          "item": "Chunk of Steel",
+          "line": 12,
+          "price": 400,
+          "stock": 9957
+        },
+        {
+          "item": "Chunk of Star",
+          "line": 14,
+          "price": 1200,
+          "stock": 99974
+        }
+      ],
+      "buys": [
+        {
+          "item": "Mining Hammer",
+          "line": 5,
+          "price": 50
+        },
+        {
+          "item": "Blacksmith Hammer",
+          "line": 7,
+          "price": 50
+        },
+        {
+          "item": "Axe",
+          "line": 9,
+          "price": 100
+        },
+        {
+          "item": "Saw",
+          "line": 11,
+          "price": 100
+        },
+        {
+          "item": "Chunk of Steel",
+          "line": 13,
+          "price": 200
+        },
+        {
+          "item": "Chunk of Star",
+          "line": 15,
+          "price": 600
+        }
+      ],
+      "gold": 27418069,
+      "banker": false
+    },
+    {
+      "name": "Mizella",
+      "bio": ["Underwater Performer"],
+      "profile": ["Slappy"],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Mutant Worm",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Ninja Champion",
+      "bio": ["Name: Jithan", "Class: Master Ninja"],
+      "profile": [
+        " I just won the Ninja Championship but on the way back to Brinkston I was mugged by a gang of Cyclops. If you could help me find my Argon's Medal I would reward thee."
+      ],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Nucher",
+      "bio": ["Name: Nucher", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Officer",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Orc King",
+      "bio": ["Name: Orc King", "Class: Orc"],
+      "profile": ["Bring me an Orc Burger and I will give you the key to my dungeons."],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Orc Lord",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Orc",
+      "bio": ["Orc"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Overlord",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Pa1",
+      "bio": ["Name: Picha1", "Class: Shopkeeper"],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": 4,
+      "banker": false
+    },
+    {
+      "name": "Peghom",
+      "bio": ["Name: Peghom", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Phil",
+      "bio": ["Name: Phil", "Class: Imp"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Wooden Key",
+          "line": 3,
+          "price": 5000,
+          "stock": 99995
+        }
+      ],
+      "buys": [],
+      "gold": 11000,
+      "banker": false
+    },
+    {
+      "name": "Picha1",
+      "bio": ["Name: Picha1", "Class: Shopkeeper"],
+      "profile": ["hi"],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "long sword",
+          "line": 5,
+          "price": 30,
+          "stock": 0
+        },
+        {
+          "item": "apple",
+          "line": 7,
+          "price": 1,
+          "stock": 6
+        }
+      ],
+      "buys": [
+        {
+          "item": "long sword",
+          "line": 6,
+          "price": 1
+        },
+        {
+          "item": "apple",
+          "line": 8,
+          "price": 1
+        }
+      ],
+      "gold": 9993,
+      "banker": false
+    },
+    {
+      "name": "Plone",
+      "bio": ["Name: Plone", "Class: Master Alchemist"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "White Sand",
+          "line": 4,
+          "price": 150,
+          "stock": 99985
+        },
+        {
+          "item": "Potion Bottle",
+          "line": 5,
+          "price": 5,
+          "stock": 10624
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 7,
+          "price": 7,
+          "stock": 955947
+        },
+        {
+          "item": "Red Crystals",
+          "line": 9,
+          "price": 15,
+          "stock": 9980945
+        },
+        {
+          "item": "Green Crystals",
+          "line": 11,
+          "price": 18,
+          "stock": 1011276
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 13,
+          "price": 20,
+          "stock": 992135
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 15,
+          "price": 23,
+          "stock": 968132
+        },
+        {
+          "item": "White Crystals",
+          "line": 17,
+          "price": 26,
+          "stock": 53757
+        }
+      ],
+      "buys": [
+        {
+          "item": "Potion Bottle",
+          "line": 6,
+          "price": 2
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 8,
+          "price": 4
+        },
+        {
+          "item": "Red Crystals",
+          "line": 10,
+          "price": 7
+        },
+        {
+          "item": "Green Crystals",
+          "line": 12,
+          "price": 9
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 14,
+          "price": 10
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 16,
+          "price": 11
+        },
+        {
+          "item": "White Crystals",
+          "line": 18,
+          "price": 13
+        },
+        {
+          "item": "White Sand",
+          "line": 19,
+          "price": 75
+        },
+        {
+          "item": "White Potion",
+          "line": 20,
+          "price": 35
+        }
+      ],
+      "gold": 1876060692,
+      "banker": false
+    },
+    {
+      "name": "Poison Frog",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Prestin",
+      "bio": ["Name: Prestin", "Class: Hardware Specialist"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Mining Hammer",
+          "line": 4,
+          "price": 100,
+          "stock": 99983
+        },
+        {
+          "item": "Blacksmith Hammer",
+          "line": 6,
+          "price": 100,
+          "stock": 9986
+        },
+        {
+          "item": "Axe",
+          "line": 8,
+          "price": 200,
+          "stock": 9967
+        },
+        {
+          "item": "Saw",
+          "line": 10,
+          "price": 200,
+          "stock": 9976
+        },
+        {
+          "item": "Chunk of Iron",
+          "line": 12,
+          "price": 200,
+          "stock": 99721
+        },
+        {
+          "item": "Chunk of Steel",
+          "line": 14,
+          "price": 400,
+          "stock": 98734
+        },
+        {
+          "item": "Shovel",
+          "line": 16,
+          "price": 300,
+          "stock": 9974
+        }
+      ],
+      "buys": [
+        {
+          "item": "Mining Hammer",
+          "line": 5,
+          "price": 50
+        },
+        {
+          "item": "Blacksmith Hammer",
+          "line": 7,
+          "price": 50
+        },
+        {
+          "item": "Axe",
+          "line": 9,
+          "price": 100
+        },
+        {
+          "item": "Saw",
+          "line": 11,
+          "price": 100
+        },
+        {
+          "item": "Chunk of Iron",
+          "line": 13,
+          "price": 100
+        },
+        {
+          "item": "Chunk of Steel",
+          "line": 15,
+          "price": 200
+        },
+        {
+          "item": "Shovel",
+          "line": 17,
+          "price": 150
+        }
+      ],
+      "gold": 1000252199,
+      "banker": false
+    },
+    {
+      "name": "Qieros",
+      "bio": ["Name: Qieros", "Class: Weaponary Salesman"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Dagger",
+          "line": 5,
+          "price": 50,
+          "stock": 10652
+        },
+        {
+          "item": "Short Sword",
+          "line": 7,
+          "price": 175,
+          "stock": 9739
+        }
+      ],
+      "buys": [
+        {
+          "item": "Knife",
+          "line": 4,
+          "price": 10
+        },
+        {
+          "item": "Dagger",
+          "line": 6,
+          "price": 25
+        },
+        {
+          "item": "Short Sword",
+          "line": 8,
+          "price": 85
+        }
+      ],
+      "gold": 100019274,
+      "banker": false
+    },
+    {
+      "name": "Ratmas",
+      "bio": ["Name: Ratmas", "Class: Armorer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Leather Boots",
+          "line": 4,
+          "price": 75,
+          "stock": 9812
+        },
+        {
+          "item": "Leather Cap",
+          "line": 6,
+          "price": 50,
+          "stock": 10635
+        },
+        {
+          "item": "Leather Armor",
+          "line": 8,
+          "price": 200,
+          "stock": 10454
+        },
+        {
+          "item": "Small Shield",
+          "line": 10,
+          "price": 200,
+          "stock": 9610
+        }
+      ],
+      "buys": [
+        {
+          "item": "Leather Boots",
+          "line": 5,
+          "price": 35
+        },
+        {
+          "item": "Leather Cap",
+          "line": 7,
+          "price": 25
+        },
+        {
+          "item": "Leather Armor",
+          "line": 9,
+          "price": 100
+        },
+        {
+          "item": "Small Shield",
+          "line": 11,
+          "price": 100
+        }
+      ],
+      "gold": 10044284,
+      "banker": false
+    },
+    {
+      "name": "Roulan",
+      "bio": ["Name: Roulan", "Class: Merchant"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Sword of Hope",
+          "line": 4,
+          "price": 150000,
+          "stock": 10002
+        }
+      ],
+      "buys": [
+        {
+          "item": "Sword of Hope",
+          "line": 3,
+          "price": 75000
+        }
+      ],
+      "gold": 999849999,
+      "banker": false
+    },
+    {
+      "name": "Rutxon",
+      "bio": ["Name: Ruxton", "Class: Mage Equipment Supplier"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Mage's Ring",
+          "line": 4,
+          "price": 4000,
+          "stock": 9982
+        },
+        {
+          "item": "Ceramic Armor",
+          "line": 6,
+          "price": 8000,
+          "stock": 9988
+        },
+        {
+          "item": "Firebolt Book",
+          "line": 8,
+          "price": 25000,
+          "stock": 9993
+        },
+        {
+          "item": "Web Book",
+          "line": 10,
+          "price": 45000,
+          "stock": 9993
+        },
+        {
+          "item": "Yellow Sand",
+          "line": 12,
+          "price": 200,
+          "stock": 10001
+        }
+      ],
+      "buys": [
+        {
+          "item": "Mage's Ring",
+          "line": 5,
+          "price": 2000
+        },
+        {
+          "item": "Ceramic Armor",
+          "line": 7,
+          "price": 4000
+        },
+        {
+          "item": "Firebolt Book",
+          "line": 9,
+          "price": 12500
+        },
+        {
+          "item": "Web Book",
+          "line": 11,
+          "price": 22500
+        },
+        {
+          "item": "Yellow Sand",
+          "line": 13,
+          "price": 100
+        }
+      ],
+      "gold": 1000675399,
+      "banker": false
+    },
+    {
+      "name": "Shark",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Skeleton",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Slime",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Smithy",
+      "bio": ["Name: Smithy", "Class: Real Estate Dealer"],
+      "profile": ["Only two of each deed per customer."],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "House Key",
+          "line": 5,
+          "price": 100,
+          "stock": 99966
+        },
+        {
+          "item": "Guild Key",
+          "line": 7,
+          "price": 500,
+          "stock": 99962
+        },
+        {
+          "item": "Small House Deed",
+          "line": 9,
+          "price": 10000,
+          "stock": 99967
+        },
+        {
+          "item": "Blue Cottage Deed",
+          "line": 11,
+          "price": 12000,
+          "stock": 9986
+        },
+        {
+          "item": "Small Guild Hall Deed",
+          "line": 13,
+          "price": 20000,
+          "stock": 9995
+        },
+        {
+          "item": "Small Shop Deed",
+          "line": 15,
+          "price": 50000,
+          "stock": 10000
+        },
+        {
+          "item": "Fortress Guild Hall Deed",
+          "line": 17,
+          "price": 100000,
+          "stock": 300000
+        }
+      ],
+      "buys": [
+        {
+          "item": "House Key",
+          "line": 6,
+          "price": 50
+        },
+        {
+          "item": "Guild Key",
+          "line": 8,
+          "price": 250
+        },
+        {
+          "item": "Small House Deed",
+          "line": 10,
+          "price": 5000
+        },
+        {
+          "item": "Blue Cottage Deed",
+          "line": 12,
+          "price": 6000
+        },
+        {
+          "item": "Small Guild Hall Deed",
+          "line": 14,
+          "price": 10000
+        },
+        {
+          "item": "Small Shop Deed",
+          "line": 16,
+          "price": 25000
+        },
+        {
+          "item": "Fortress Guild Hall Deed",
+          "line": 18,
+          "price": 50000
+        }
+      ],
+      "gold": 1216782841,
+      "banker": false
+    },
+    {
+      "name": "Snared Loah",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Snow Demon",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Snow Serpent",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Solum",
+      "bio": ["Name: Solum", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Squid",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Stephie",
+      "bio": ["Name: Stephie", "Class: Alchemist"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Purple Sand",
+          "line": 4,
+          "price": 125,
+          "stock": 99978
+        },
+        {
+          "item": "Potion Bottle",
+          "line": 5,
+          "price": 5,
+          "stock": 4755
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 6,
+          "price": 7,
+          "stock": 949266
+        },
+        {
+          "item": "Red Crystals",
+          "line": 8,
+          "price": 15,
+          "stock": 9986084
+        },
+        {
+          "item": "Green Crystals",
+          "line": 10,
+          "price": 18,
+          "stock": 1012522
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 12,
+          "price": 20,
+          "stock": 996625
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 14,
+          "price": 23,
+          "stock": 824344
+        },
+        {
+          "item": "White Crystals",
+          "line": 16,
+          "price": 26,
+          "stock": 915285
+        }
+      ],
+      "buys": [
+        {
+          "item": "Blue Crystals",
+          "line": 7,
+          "price": 4
+        },
+        {
+          "item": "Red Crystals",
+          "line": 9,
+          "price": 7
+        },
+        {
+          "item": "Green Crystals",
+          "line": 11,
+          "price": 9
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 13,
+          "price": 10
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 15,
+          "price": 11
+        },
+        {
+          "item": "White Crystals",
+          "line": 17,
+          "price": 13
+        },
+        {
+          "item": "Purple Sand",
+          "line": 18,
+          "price": 65
+        },
+        {
+          "item": "Purple Potion",
+          "line": 19,
+          "price": 32
+        }
+      ],
+      "gold": 1870865497,
+      "banker": false
+    },
+    {
+      "name": "Tastad",
+      "bio": ["Name: Tastad", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Tela",
+      "bio": ["Name: Tela", "Class: Crystal Vendor"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Potion Bottle",
+          "line": 4,
+          "price": 5,
+          "stock": 9883179
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 6,
+          "price": 7,
+          "stock": 9919922
+        },
+        {
+          "item": "Red Crystals",
+          "line": 8,
+          "price": 15,
+          "stock": 99948602
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 10,
+          "price": 20,
+          "stock": 9911961
+        },
+        {
+          "item": "Green Crystals",
+          "line": 12,
+          "price": 18,
+          "stock": 9986790
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 14,
+          "price": 23,
+          "stock": 908927
+        },
+        {
+          "item": "Yellow Sand",
+          "line": 16,
+          "price": 125,
+          "stock": 9980
+        },
+        {
+          "item": "White Crystals",
+          "line": 17,
+          "price": 26,
+          "stock": 9965131
+        }
+      ],
+      "buys": [
+        {
+          "item": "Potion Bottle",
+          "line": 5,
+          "price": 2
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 7,
+          "price": 4
+        },
+        {
+          "item": "Red Crystals",
+          "line": 9,
+          "price": 7
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 11,
+          "price": 10
+        },
+        {
+          "item": "Green Crystals",
+          "line": 13,
+          "price": 9
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 15,
+          "price": 11
+        },
+        {
+          "item": "White Crystals",
+          "line": 18,
+          "price": 13
+        },
+        {
+          "item": "Yellow Sand",
+          "line": 19,
+          "price": 65
+        },
+        {
+          "item": "Yellow Potion",
+          "line": 20,
+          "price": 28
+        }
+      ],
+      "gold": 1006008096,
+      "banker": false
+    },
+    {
+      "name": "Teli",
+      "bio": ["Name: Teli", "Class: Mage Specialist"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Gold Staff",
+          "line": 4,
+          "price": 2000,
+          "stock": 9999
+        },
+        {
+          "item": "Wizard's Robe",
+          "line": 6,
+          "price": 3000,
+          "stock": 9997
+        },
+        {
+          "item": "Morph Book",
+          "line": 8,
+          "price": 3000,
+          "stock": 9976
+        },
+        {
+          "item": "White Robe",
+          "line": 10,
+          "price": 4000,
+          "stock": 10723
+        },
+        {
+          "item": "Wind Wave Book",
+          "line": 12,
+          "price": 5000,
+          "stock": 9975
+        }
+      ],
+      "buys": [
+        {
+          "item": "Gold Staff",
+          "line": 5,
+          "price": 1000
+        },
+        {
+          "item": "Wizard's Robe",
+          "line": 7,
+          "price": 1500
+        },
+        {
+          "item": "Morph Book",
+          "line": 9,
+          "price": 1500
+        },
+        {
+          "item": "White Robe",
+          "line": 11,
+          "price": 2000
+        },
+        {
+          "item": "Wind Wave Book",
+          "line": 13,
+          "price": 2500
+        }
+      ],
+      "gold": 1408836007,
+      "banker": false
+    },
+    {
+      "name": "Teral",
+      "bio": ["Name: Teral", "Class: Weaponary Salesman"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Steel Scimitar",
+          "line": 4,
+          "price": 250,
+          "stock": 9977
+        },
+        {
+          "item": "Dark Scimitar",
+          "line": 6,
+          "price": 250,
+          "stock": 10150
+        },
+        {
+          "item": "Katana",
+          "line": 8,
+          "price": 300,
+          "stock": 9907
+        },
+        {
+          "item": "War Hammer",
+          "line": 10,
+          "price": 350,
+          "stock": 9936
+        },
+        {
+          "item": "Unholy Lance",
+          "line": 12,
+          "price": 1200,
+          "stock": 9868
+        },
+        {
+          "item": "Wooden Bow",
+          "line": 14,
+          "price": 750,
+          "stock": 10216
+        },
+        {
+          "item": "Red Arrows",
+          "line": 16,
+          "price": 150,
+          "stock": 9987
+        }
+      ],
+      "buys": [
+        {
+          "item": "Steel Scimitar",
+          "line": 5,
+          "price": 125
+        },
+        {
+          "item": "Dark Scimitar",
+          "line": 7,
+          "price": 125
+        },
+        {
+          "item": "Katana",
+          "line": 9,
+          "price": 150
+        },
+        {
+          "item": "War Hammer",
+          "line": 11,
+          "price": 175
+        },
+        {
+          "item": "Unholy Lance",
+          "line": 13,
+          "price": 600
+        },
+        {
+          "item": "Wooden Bow",
+          "line": 15,
+          "price": 375
+        },
+        {
+          "item": "Red Arrows",
+          "line": 17,
+          "price": 75
+        }
+      ],
+      "gold": 100565999,
+      "banker": false
+    },
+    {
+      "name": "Toste",
+      "bio": ["Name: Toste", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Trianus",
+      "bio": ["Name: Trianus", "Class: Secret Of The Warrior Faction"],
+      "profile": ["Welcome to the Arena!  Proceed downstairs to fight."],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Trimble",
+      "bio": ["Name: Trimble", "Class: Warrior Equipment Dealer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Gauntlets",
+          "line": 4,
+          "price": 1500,
+          "stock": 9937
+        },
+        {
+          "item": "Ring of Quickness",
+          "line": 6,
+          "price": 2000,
+          "stock": 9977
+        },
+        {
+          "item": "Magical Shield",
+          "line": 8,
+          "price": 6000,
+          "stock": 9947
+        }
+      ],
+      "buys": [
+        {
+          "item": "Gauntlets",
+          "line": 5,
+          "price": 750
+        },
+        {
+          "item": "Ring of Quickness",
+          "line": 7,
+          "price": 1000
+        },
+        {
+          "item": "Magical Shield",
+          "line": 9,
+          "price": 3000
+        }
+      ],
+      "gold": 1316602161,
+      "banker": false
+    },
+    {
+      "name": "Trixin",
+      "bio": ["Name: Trixin", "Class: Weapons Dealer"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Star Sword",
+          "line": 3,
+          "price": 50000,
+          "stock": 99994
+        }
+      ],
+      "buys": [
+        {
+          "item": "Star Sword",
+          "line": 4,
+          "price": 25000
+        }
+      ],
+      "gold": 1000249999,
+      "banker": false
+    },
+    {
+      "name": "Velor",
+      "bio": ["Name: Velor", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        }
+      ],
+      "gold": 0,
+      "banker": false
+    },
+    {
+      "name": "Vin",
+      "bio": ["Name: Vin", "Class: Magic Supplier"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Wooden Staff",
+          "line": 4,
+          "price": 300,
+          "stock": 9973
+        },
+        {
+          "item": "Minor Heal Book",
+          "line": 7,
+          "price": 500,
+          "stock": 9722
+        },
+        {
+          "item": "Fireball Book",
+          "line": 9,
+          "price": 800,
+          "stock": 9826
+        },
+        {
+          "item": "Nature Shift Book",
+          "line": 10,
+          "price": 1000,
+          "stock": 9934
+        }
+      ],
+      "buys": [
+        {
+          "item": "Wooden Staff",
+          "line": 5,
+          "price": 150
+        },
+        {
+          "item": "Minor Heal Book",
+          "line": 6,
+          "price": 250
+        },
+        {
+          "item": "Fireball Book",
+          "line": 8,
+          "price": 400
+        },
+        {
+          "item": "Nature Shift Book",
+          "line": 11,
+          "price": 500
+        }
+      ],
+      "gold": 99318399,
+      "banker": false
+    },
+    {
+      "name": "Warrior Faction Member",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Water God",
+      "bio": ["Name:The Water God", "Class:Water Elemental"],
+      "profile": ["Standing before you is the being that controls all water in the world. "],
+      "chatter": [
+        "Bring me the wind orbs or all will be lost.",
+        "Fire does not effect us in the slightest."
+      ],
+      "sells": [
+        {
+          "item": "Splash Book",
+          "line": 1,
+          "price": 100,
+          "stock": 98
+        }
+      ],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Wenslas",
+      "bio": ["Name: Wenslas", "Class: Hardware Specialist"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Mining Hammer",
+          "line": 4,
+          "price": 100,
+          "stock": 11182
+        },
+        {
+          "item": "Blacksmith Hammer",
+          "line": 6,
+          "price": 100,
+          "stock": 9684
+        },
+        {
+          "item": "Saw",
+          "line": 8,
+          "price": 200,
+          "stock": 9881
+        },
+        {
+          "item": "Axe",
+          "line": 10,
+          "price": 200,
+          "stock": 9836
+        },
+        {
+          "item": "Chunk of Iron",
+          "line": 12,
+          "price": 200,
+          "stock": 8455
+        },
+        {
+          "item": "Shovel",
+          "line": 14,
+          "price": 300,
+          "stock": 99995
+        }
+      ],
+      "buys": [
+        {
+          "item": "Mining Hammer",
+          "line": 5,
+          "price": 50
+        },
+        {
+          "item": "Blacksmith Hammer",
+          "line": 7,
+          "price": 50
+        },
+        {
+          "item": "Saw",
+          "line": 9,
+          "price": 100
+        },
+        {
+          "item": "Axe",
+          "line": 11,
+          "price": 100
+        },
+        {
+          "item": "Chunk of Iron",
+          "line": 13,
+          "price": 100
+        },
+        {
+          "item": "Shovel",
+          "line": 15,
+          "price": 150
+        }
+      ],
+      "gold": 10367799,
+      "banker": false
+    },
+    {
+      "name": "Wind God",
+      "bio": ["Name:The Wind God", "Class:Wind Elemental"],
+      "profile": ["The Wind Mage controls the mightiest storms, to the calm breeze."],
+      "chatter": [
+        "The earth blocks our passage with its high mountains, therefore it must be stopped.",
+        "Water? Ha! We simply blow it out of our path."
+      ],
+      "sells": [
+        {
+          "item": "Whirlwind Book",
+          "line": 1,
+          "price": 100,
+          "stock": 98
+        },
+        {
+          "item": "Wind Wave Book",
+          "line": 2,
+          "price": 500,
+          "stock": 98
+        }
+      ],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Wolf",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Wrel",
+      "bio": ["Name: Wrel", "Class: Crystal Vendor"],
+      "profile": [],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Green Sand",
+          "line": 4,
+          "price": 125,
+          "stock": 100002
+        },
+        {
+          "item": "Potion Bottle",
+          "line": 5,
+          "price": 5,
+          "stock": 3878
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 7,
+          "price": 7,
+          "stock": 933633
+        },
+        {
+          "item": "Red Crystals",
+          "line": 9,
+          "price": 15,
+          "stock": 9960898
+        },
+        {
+          "item": "Green Crystals",
+          "line": 11,
+          "price": 18,
+          "stock": 939713
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 13,
+          "price": 20,
+          "stock": 990037
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 15,
+          "price": 23,
+          "stock": 965511
+        },
+        {
+          "item": "White Crystals",
+          "line": 20,
+          "price": 26,
+          "stock": 9033
+        }
+      ],
+      "buys": [
+        {
+          "item": "Potion Bottle",
+          "line": 6,
+          "price": 2
+        },
+        {
+          "item": "Blue Crystals",
+          "line": 8,
+          "price": 4
+        },
+        {
+          "item": "Red Crystals",
+          "line": 10,
+          "price": 7
+        },
+        {
+          "item": "Green Crystals",
+          "line": 12,
+          "price": 9
+        },
+        {
+          "item": "Yellow Crystals",
+          "line": 14,
+          "price": 10
+        },
+        {
+          "item": "Purple Crystals",
+          "line": 16,
+          "price": 11
+        },
+        {
+          "item": "White Crystals",
+          "line": 17,
+          "price": 13
+        },
+        {
+          "item": "Green Sand",
+          "line": 18,
+          "price": 65
+        },
+        {
+          "item": "Green Potion",
+          "line": 19,
+          "price": 26
+        }
+      ],
+      "gold": 1874337789,
+      "banker": false
+    },
+    {
+      "name": "Yeti",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    },
+    {
+      "name": "Zola",
+      "bio": ["Name: Zola", "Class: Shopkeeper"],
+      "profile": [""],
+      "chatter": [],
+      "sells": [
+        {
+          "item": "Apple",
+          "line": 6,
+          "price": 2,
+          "stock": 0
+        },
+        {
+          "item": "Knight's Sword",
+          "line": 8,
+          "price": 1,
+          "stock": 2
+        }
+      ],
+      "buys": [
+        {
+          "item": "Apple",
+          "line": 7,
+          "price": 1
+        },
+        {
+          "item": "Knight's Sword",
+          "line": 9,
+          "price": 9999
+        }
+      ],
+      "gold": 49995,
+      "banker": false
+    },
+    {
+      "name": "Zombie",
+      "bio": [],
+      "profile": [],
+      "chatter": [],
+      "sells": [],
+      "buys": [],
+      "gold": null,
+      "banker": false
+    }
+  ],
+  "lootTables": [
+    {
+      "npc": "Adventurer Faction Member",
+      "lines": [
+        {
+          "item": "adventurer's Head",
+          "oneIn": 1
+        },
+        {
+          "item": "Wooden Crossbow",
+          "oneIn": 300
+        }
+      ]
+    },
+    {
+      "npc": "Assasin",
+      "lines": [
+        {
+          "item": "50 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "60 Gold",
+          "oneIn": 5
+        },
+        {
+          "item": "Titanium Armor",
+          "oneIn": 25
+        }
+      ]
+    },
+    {
+      "npc": "Cyclops",
+      "lines": [
+        {
+          "item": "Long Sword",
+          "oneIn": 40
+        },
+        {
+          "item": "Chain boots",
+          "oneIn": 20
+        },
+        {
+          "item": "3 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "8 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "15 Gold",
+          "oneIn": 7
+        },
+        {
+          "item": "5 Blue Crystals",
+          "oneIn": 15
+        },
+        {
+          "item": "Cyclops Meat",
+          "oneIn": 6
+        }
+      ]
+    },
+    {
+      "npc": "Dark Fairy",
+      "lines": [
+        {
+          "item": "50 Gold",
+          "oneIn": 10
+        },
+        {
+          "item": "150 Gold",
+          "oneIn": 30
+        },
+        {
+          "item": "Lord's Staff",
+          "oneIn": 200
+        }
+      ]
+    },
+    {
+      "npc": "Death",
+      "lines": [
+        {
+          "item": "20 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "30 Gold",
+          "oneIn": 5
+        },
+        {
+          "item": "Dark Sword",
+          "oneIn": 50
+        },
+        {
+          "item": "Wooden Bow",
+          "oneIn": 30
+        }
+      ]
+    },
+    {
+      "npc": "Demon",
+      "lines": [
+        {
+          "item": "40 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "70 Gold",
+          "oneIn": 5
+        },
+        {
+          "item": "90 Gold",
+          "oneIn": 7
+        }
+      ]
+    },
+    {
+      "npc": "Dragon Hatchling",
+      "lines": [
+        {
+          "item": "100 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "200 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "250 Gold",
+          "oneIn": 5
+        },
+        {
+          "item": "Plate Armor",
+          "oneIn": 30
+        }
+      ]
+    },
+    {
+      "npc": "Dragon Snake",
+      "lines": [
+        {
+          "item": "100 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "200 Gold",
+          "oneIn": 6
+        },
+        {
+          "item": "Ceramic Armor",
+          "oneIn": 20
+        }
+      ]
+    },
+    {
+      "npc": "Dwarf",
+      "lines": [
+        {
+          "item": "10 gold",
+          "oneIn": 2
+        },
+        {
+          "item": "30 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "5 White Crystals",
+          "oneIn": 10
+        }
+      ]
+    },
+    {
+      "npc": "Elf",
+      "lines": [
+        {
+          "item": "10 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "25 Gold",
+          "oneIn": 9
+        },
+        {
+          "item": "Wooden Crossbow",
+          "oneIn": 500
+        }
+      ]
+    },
+    {
+      "npc": "Gazer",
+      "lines": [
+        {
+          "item": "20 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "40 Gold",
+          "oneIn": 8
+        },
+        {
+          "item": "White Robe",
+          "oneIn": 40
+        }
+      ]
+    },
+    {
+      "npc": "Ghost",
+      "lines": [
+        {
+          "item": "Parry Book",
+          "oneIn": 50
+        }
+      ]
+    },
+    {
+      "npc": "Ghoul",
+      "lines": [
+        {
+          "item": "50 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "Broad Sword",
+          "oneIn": 30
+        }
+      ]
+    },
+    {
+      "npc": "Giant Slime",
+      "lines": [
+        {
+          "item": "Tom Tom",
+          "oneIn": 2
+        },
+        {
+          "item": "5 Gold",
+          "oneIn": 1
+        }
+      ]
+    },
+    {
+      "npc": "Hellhound",
+      "lines": [
+        {
+          "item": "Damaged Sword, Of Hope",
+          "oneIn": 50
+        },
+        {
+          "item": "100 gold",
+          "oneIn": 10
+        },
+        {
+          "item": "75 gold",
+          "oneIn": 8
+        },
+        {
+          "item": "50 gold",
+          "oneIn": 7
+        }
+      ]
+    },
+    {
+      "npc": "Imp",
+      "lines": [
+        {
+          "item": "2 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "5 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "10 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "Leather Armor",
+          "oneIn": 30
+        },
+        {
+          "item": "Chain Helm",
+          "oneIn": 50
+        }
+      ]
+    },
+    {
+      "npc": "Lizard Warrior",
+      "lines": [
+        {
+          "item": "10 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "25 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "5 Purple Crystals",
+          "oneIn": 10
+        },
+        {
+          "item": "Steel Shield",
+          "oneIn": 15
+        }
+      ]
+    },
+    {
+      "npc": "Mage Faction Member",
+      "lines": [
+        {
+          "item": "Mage's Head",
+          "oneIn": 1
+        },
+        {
+          "item": "Lord's Staff",
+          "oneIn": 300
+        }
+      ]
+    },
+    {
+      "npc": "Mega Slime",
+      "lines": [
+        {
+          "item": "10 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "15 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "25 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "Apple",
+          "oneIn": 7
+        },
+        {
+          "item": "5 Green Crystals",
+          "oneIn": 10
+        }
+      ]
+    },
+    {
+      "npc": "Mutant Worm",
+      "lines": [
+        {
+          "item": "100 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "200 Gold",
+          "oneIn": 3
+        }
+      ]
+    },
+    {
+      "npc": "Officer",
+      "lines": [
+        {
+          "item": "30 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "50 Gold",
+          "oneIn": 5
+        },
+        {
+          "item": "Damaged Sword, Broad",
+          "oneIn": 50
+        },
+        {
+          "item": "Broad Sword",
+          "oneIn": 100
+        }
+      ]
+    },
+    {
+      "npc": "Orc Lord",
+      "lines": [
+        {
+          "item": "Orc Meat",
+          "oneIn": 17
+        },
+        {
+          "item": "5 gold",
+          "oneIn": 2
+        },
+        {
+          "item": "Orc Burger",
+          "oneIn": 10
+        },
+        {
+          "item": "Ring of Quickness",
+          "oneIn": 30
+        }
+      ]
+    },
+    {
+      "npc": "Orc",
+      "lines": [
+        {
+          "item": "5 Red Crystals",
+          "oneIn": 10
+        },
+        {
+          "item": "Orc Meat",
+          "oneIn": 4
+        },
+        {
+          "item": "5 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "15 Gold",
+          "oneIn": 5
+        }
+      ]
+    },
+    {
+      "npc": "Overlord",
+      "lines": [
+        {
+          "item": "3000 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "5000 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "Fortress Guild Hall Deed",
+          "oneIn": 4
+        }
+      ]
+    },
+    {
+      "npc": "Poison Frog",
+      "lines": [
+        {
+          "item": "8 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "15 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "5 Yellow Crystals",
+          "oneIn": 10
+        }
+      ]
+    },
+    {
+      "npc": "Shark",
+      "lines": [
+        {
+          "item": "Mage's Head",
+          "oneIn": 3
+        },
+        {
+          "item": "Warrior's Head",
+          "oneIn": 3
+        },
+        {
+          "item": "Adventurer's Head",
+          "oneIn": 3
+        },
+        {
+          "item": "Raw Fish",
+          "oneIn": 3
+        },
+        {
+          "item": "Trout",
+          "oneIn": 3
+        },
+        {
+          "item": "Catfish",
+          "oneIn": 3
+        },
+        {
+          "item": "Swordfish",
+          "oneIn": 3
+        },
+        {
+          "item": "Squid",
+          "oneIn": 3
+        }
+      ]
+    },
+    {
+      "npc": "Skeleton",
+      "lines": [
+        {
+          "item": "20 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "40 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "Dark Scimitar",
+          "oneIn": 9
+        },
+        {
+          "item": "Necromancer's robe",
+          "oneIn": 30
+        }
+      ]
+    },
+    {
+      "npc": "Slime",
+      "lines": [
+        {
+          "item": "2 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "3 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "12 Gold",
+          "oneIn": 5
+        },
+        {
+          "item": "Leather Armor",
+          "oneIn": 60
+        }
+      ]
+    },
+    {
+      "npc": "Snared Loah",
+      "lines": [
+        {
+          "item": "70 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "100 Gold",
+          "oneIn": 6
+        },
+        {
+          "item": "Fishle",
+          "oneIn": 15
+        }
+      ]
+    },
+    {
+      "npc": "Snow Serpent",
+      "lines": [
+        {
+          "item": "100 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "200 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "Ice Sword",
+          "oneIn": 100
+        },
+        {
+          "item": "Chunk of Ice",
+          "oneIn": 50
+        }
+      ]
+    },
+    {
+      "npc": "Squid",
+      "lines": [
+        {
+          "item": "20 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "Squid",
+          "oneIn": 6
+        }
+      ]
+    },
+    {
+      "npc": "Warrior Faction Member",
+      "lines": [
+        {
+          "item": "Warrior's Head",
+          "oneIn": 1
+        },
+        {
+          "item": "Broad Sword",
+          "oneIn": 300
+        }
+      ]
+    },
+    {
+      "npc": "Wolf",
+      "lines": [
+        {
+          "item": "4 Gold",
+          "oneIn": 1
+        },
+        {
+          "item": "8 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "Raw Fish",
+          "oneIn": 9
+        },
+        {
+          "item": "Dagger",
+          "oneIn": 15
+        }
+      ]
+    },
+    {
+      "npc": "Yeti",
+      "lines": [
+        {
+          "item": "50 Gold",
+          "oneIn": 2
+        },
+        {
+          "item": "75 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "Yeti Meat",
+          "oneIn": 7
+        },
+        {
+          "item": "Chunk of Ice",
+          "oneIn": 60
+        }
+      ]
+    },
+    {
+      "npc": "Zombie",
+      "lines": [
+        {
+          "item": "5 Gold",
+          "oneIn": 3
+        },
+        {
+          "item": "10 Gold",
+          "oneIn": 4
+        },
+        {
+          "item": "20 Gold",
+          "oneIn": 6
+        },
+        {
+          "item": "Necromancer's Robe",
+          "oneIn": 13
+        }
+      ]
+    }
+  ],
+  "monsterParses": [
+    {
+      "name": "Slime",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Orc",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Wolf",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Imp",
+      "flags": ["FLG|Aggressive"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Cyclops",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Dragon Hatchling",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Poison Frog",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Mega Slime",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Gazer",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Death",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Lizard Warrior",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Demon",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Illusionary Spikes",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Ghoul",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Snared Loah",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Fire Demon",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Elf",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Pig",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Zombie",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Dwarf",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Assasin",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Ogre",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Stone Skull",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Dragon",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Web",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Skeleton",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Yeti",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Ghost",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Dragon Snake",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Dark Fairy",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Trimble",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Water God",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Fire God",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Earth God",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Wind God",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Cril",
+      "flags": ["FLG|Still"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Akadius",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Galor",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Qieros",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Ratmas",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Wenslas",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Krista",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Roulan",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Amber",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Teral",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Vin",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Helum",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Lir",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Prestin",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Miqa",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Dantan",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Tela",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Mirra",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Wrel",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Andero",
+      "flags": ["FLG|Still", "FLG|Passive"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Teli",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Crushto",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Alex",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Kin",
+      "flags": ["FLG|Passive"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Barnum",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Beldros",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Katks",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Divela",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Stephie",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Plone",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Agavar",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Jim",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Krist",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Benolio",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Trixin",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Missie",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Kanta",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Smithy",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Rutxon",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Akiro",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Acrostia",
+      "flags": ["FLG|Passive", "FLG|Still"],
+      "spells": ["SPL|Major Heal"],
+      "npcData": true
+    },
+    {
+      "name": "Mutant Worm",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Angela",
+      "flags": ["FLG|Still"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Trianus",
+      "flags": ["FLG|Passive", "FLG|Still"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Corin",
+      "flags": ["FLG|Still"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Warrior Faction Member",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Mage Faction Member",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Adventurer Faction Member",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Officer",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Cow",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Oraku",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Orc Lord",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Squid",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Shark",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Stripper",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Somewhat Naked Stripper",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Naked Stripper",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Snow Serpent",
+      "flags": ["FLG|Agressive"],
+      "spells": ["SPL|Whirlwind"],
+      "npcData": true
+    },
+    {
+      "name": "Snow Demon",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Overlord",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Holy Shield",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Mizella",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Krommie",
+      "flags": [],
+      "spells": [],
+      "npcData": false
+    },
+    {
+      "name": "Jelstar",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Merius",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Mellanie",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Minmaye",
+      "flags": [],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Gryphon",
+      "flags": ["FLG|Passive"],
+      "spells": [],
+      "npcData": true
+    },
+    {
+      "name": "Hellhound",
+      "flags": ["FLG|Aggressive"],
+      "spells": [],
+      "npcData": true
+    }
+  ]
+}

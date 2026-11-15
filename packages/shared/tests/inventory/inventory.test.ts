@@ -1,0 +1,537 @@
+/** Golden tests for the bag, equipment, use, armour, breaks, ground items and paperdoll rules. */
+import { describe, expect, test } from "bun:test";
+
+import { classesData } from "@secondstaronline/data";
+import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
+
+import {
+  armourRows,
+  breakOdds,
+  damagedForm,
+  elementalRows,
+  pvpHit,
+  rollArmourBreak,
+  rollWeaponBreak,
+  shattersText,
+} from "../../src/rules/combat/armour.ts";
+import { attackPower } from "../../src/rules/combat/attpower.ts";
+import { monsterHitShown, monsterHitsPlayer } from "../../src/rules/combat/combat.ts";
+import {
+  type Equipment,
+  type Fighter,
+  NO_EQUIPMENT,
+  NO_FACTION,
+  skillIndex,
+} from "../../src/rules/core/fighter.ts";
+import type { Rng } from "../../src/rules/core/lingo.ts";
+import {
+  checkEquip,
+  EQUIP_TEXT,
+  equipSlotFor,
+  menuAction,
+  strengthRequirement,
+  useItem,
+} from "../../src/rules/inventory/equip.ts";
+import {
+  amountPath,
+  blocksMonster,
+  blocksPlayer,
+  clickGate,
+  ctrlGate,
+  groundPicture,
+  groundPictureTopLeft,
+  tilePixel,
+} from "../../src/rules/inventory/ground.ts";
+import {
+  type Bag,
+  emptyBag,
+  invAdd,
+  invDelSlot,
+  pileToItem,
+} from "../../src/rules/inventory/inventory.ts";
+import { normaliseLook, paperdollLayers } from "../../src/rules/inventory/paperdoll.ts";
+import { rollDeathDrop, rollLoot } from "../../src/rules/monsters/loot.ts";
+
+function scripted(results: readonly number[]): Rng & { calls: number[] } {
+  let i = 0;
+  const calls: number[] = [];
+  return {
+    calls,
+    random(n) {
+      calls.push(n);
+      const r = results[Math.min(i, results.length - 1)] ?? 0;
+      i += 1;
+      return n >= 1 ? Math.min(r, n) : 0;
+    },
+  };
+}
+
+function fighter(over: Partial<Fighter> = {}): Fighter {
+  return {
+    level: 1,
+    str: 10,
+    sta: 10,
+    int: 1,
+    wis: 1,
+    spd: 1,
+    skills: [...classesData.creation.startingSkills[1].values],
+    equip: { ...NO_EQUIPMENT },
+    faction: { ...NO_FACTION },
+    attackBonus: 0,
+    wanted: false,
+    ...over,
+  };
+}
+const gear = (e: Partial<Equipment>): Equipment => ({ ...NO_EQUIPMENT, ...e });
+const zeroSkills = () => Array(38).fill(0) as number[];
+
+describe("bag (InvAdd)", () => {
+  test("stacks on an exact name, case-insensitive, and the stack takes the incoming spelling", () => {
+    const inv = { bag: emptyBag(), gold: 0 };
+    inv.bag[3] = { item: "Chain Boots", qty: 1 };
+    expect(invAdd(inv, "Chain boots", 1, scripted([1]))).toEqual({
+      kind: "bag",
+      slot: 3,
+      item: "Chain boots",
+    });
+    expect(inv.bag[3]).toEqual({ item: "Chain boots", qty: 2 });
+  });
+  test("otherwise the lowest empty line", () => {
+    const inv = { bag: emptyBag(), gold: 0 };
+    inv.bag[0] = { item: "Apple", qty: 2 };
+    expect(invAdd(inv, "Knife", 1, scripted([1]))).toMatchObject({ slot: 1 });
+  });
+  test('a name containing " Gold" adds the first word as an integer to gold', () => {
+    const inv = { bag: emptyBag(), gold: 5 };
+    expect(invAdd(inv, "10 gold", 1, scripted([1]))).toEqual({ kind: "gold", amount: 10 });
+    expect(inv.gold).toBe(15);
+  });
+  test("a full bag with no stack adds nothing", () => {
+    const bag: Bag = emptyBag().map((_, i) => ({ item: `X${i}`, qty: 1 }));
+    expect(invAdd({ bag, gold: 0 }, "Apple", 1, scripted([1]))).toEqual({ kind: "full" });
+  });
+  test("Crate and Cauldron get #random(999999)", () => {
+    const inv = { bag: emptyBag(), gold: 0 };
+    expect(invAdd(inv, "Crate", 1, scripted([4242]))).toMatchObject({ item: "Crate#4242" });
+    expect(invAdd(inv, "Cauldron", 1, scripted([7]))).toMatchObject({ item: "Cauldron#7" });
+  });
+  test("a crystal pile is n of <Colour> Crystals", () => {
+    expect(pileToItem("5 Blue Crystals")).toEqual({ item: "Blue Crystals", qty: 5 });
+    expect(pileToItem("Apple")).toEqual({ item: "Apple", qty: 1 });
+  });
+  test("removal is by slot, blanking at 0", () => {
+    const bag = emptyBag();
+    bag[0] = { item: "Apple", qty: 1 };
+    expect(invDelSlot(bag, 0, 2)).toBe(false);
+    expect(invDelSlot(bag, 0, 1)).toBe(true);
+    expect(bag[0]).toBeNull();
+  });
+});
+
+describe("equip", () => {
+  test("the slot table: Knife LeftHand, Leather Armor Body, Apple No", () => {
+    expect(equipSlotFor("Knife")).toBe("LeftHand");
+    expect(equipSlotFor("Leather Armor")).toBe("Body");
+    expect(equipSlotFor("Apple")).toBe("No");
+  });
+  test('kept bug: books and Boat Deed equip LeftHand as a "Bo"', () => {
+    expect(equipSlotFor("Fireball Book")).toBe("LeftHand");
+    expect(equipSlotFor("Boat Deed")).toBe("LeftHand");
+  });
+  test("kept bug: Catfish Sandwich equips RightHand", () => {
+    expect(equipSlotFor("Catfish Sandwich")).toBe("RightHand");
+  });
+  test("kept bug: Dragon Sword cannot be equipped", () => {
+    expect(checkEquip("Dragon Sword", { str: 99, wanted: false, equip: gear({}) })).toEqual({
+      ok: false,
+      text: "You cannot equip the Dragon Sword",
+    });
+  });
+  test("strength comes first", () => {
+    expect(strengthRequirement("Pharaoh Sword")).toBe(28);
+    expect(checkEquip("Pharaoh Sword", { str: 27, wanted: false, equip: gear({}) })).toEqual({
+      ok: false,
+      text: EQUIP_TEXT.weak,
+    });
+  });
+  test("two-handed rules", () => {
+    expect(
+      checkEquip("Small Shield", { str: 99, wanted: false, equip: gear({ weapon: "War Hammer" }) }),
+    ).toEqual({ ok: false, text: EQUIP_TEXT.twoHandedHeld });
+    expect(
+      checkEquip("War Hammer", {
+        str: 99,
+        wanted: false,
+        equip: gear({ offHand: "Small Shield" }),
+      }),
+    ).toEqual({ ok: false, text: EQUIP_TEXT.shieldHeld });
+  });
+  test("murder gear needs the flag", () => {
+    expect(checkEquip("Murder Helm", { str: 99, wanted: false, equip: gear({}) })).toEqual({
+      ok: false,
+      text: EQUIP_TEXT.vile,
+    });
+    expect(checkEquip("Murder Helm", { str: 99, wanted: true, equip: gear({}) })).toEqual({
+      ok: true,
+      slot: "Head",
+    });
+  });
+  test("kept bug: an occupied slot is refused, not swapped", () => {
+    expect(
+      checkEquip("Knife", { str: 99, wanted: false, equip: gear({ weapon: "Dagger" }) }),
+    ).toEqual({
+      ok: false,
+      text: EQUIP_TEXT.occupied,
+    });
+  });
+  test("the menu swaps Equip for Cook/Mix/Build/Smith/Storage", () => {
+    expect(menuAction("Knife")).toBe("Equip");
+    expect(menuAction("Orc Meat")).toBe("Cook");
+    expect(menuAction("Potion Bottle")).toBe("Mix");
+    expect(menuAction("Logs")).toBe("Build");
+    expect(menuAction("Damaged Sword, Long")).toBe("Smith");
+    expect(menuAction("Crate#12")).toBe("Storage");
+  });
+});
+
+describe("use", () => {
+  const v = { hp: 10, hpMax: 20, sp: 10, spMax: 20, hunger: 1000 };
+  test("Apple: HP 1 + random(3), Hunger +1750", () => {
+    const rng = scripted([2]);
+    expect(useItem("Apple", v, rng)).toEqual({
+      consume: true,
+      lines: ["You eat an apple."],
+      hp: 13,
+      sp: 10,
+      hunger: 2750,
+      argon: false,
+    });
+    expect(rng.calls).toEqual([3]);
+  });
+  test("HP is capped at HPmax, hunger is not", () => {
+    expect(useItem("Yeti Burger", { ...v, hp: 19 }, scripted([8]))).toMatchObject({ hp: 20 });
+  });
+  test("kept bug: eating while stuffed still consumes the item", () => {
+    const rng = scripted([3]);
+    expect(useItem("Apple", { ...v, hunger: 35000 }, rng)).toEqual({
+      consume: true,
+      lines: ["You eat an apple.", "You're stuffed!"],
+      hp: 10,
+      sp: 10,
+      hunger: 35000,
+      argon: false,
+    });
+    expect(rng.calls).toEqual([]);
+  });
+  test('kept bug: "You\'re stuffed!" on the bite that crosses the limit', () => {
+    expect(useItem("Apple", { ...v, hunger: 34000 }, scripted([1])).lines).toEqual([
+      "You eat an apple.",
+      "You're stuffed!",
+    ]);
+  });
+  test("kept bug: Purple Potion prints its line twice and works when stuffed", () => {
+    const out = useItem("Purple Potion", { ...v, hunger: 40000 }, scripted([1]));
+    expect(out.argon).toBe(true);
+    expect(out.lines).toEqual([
+      "The power of argon flows through your body.",
+      "The power of argon flows through your body.",
+      "You're stuffed!",
+    ]);
+  });
+  test("a potion's line names it", () => {
+    expect(useItem("Blue Potion", v, scripted([1])).lines).toEqual(["You drink the Blue Potion."]);
+  });
+  test('not on the whitelist: "You cannot use the X." and nothing is consumed', () => {
+    expect(useItem("Knife", v, scripted([1]))).toMatchObject({
+      consume: false,
+      lines: ["You cannot use the Knife."],
+    });
+    expect(useItem("Potion Bottle", v, scripted([1])).consume).toBe(false);
+  });
+});
+
+describe("armour and PvP", () => {
+  test("a +N item also matches its contains row", () => {
+    expect(armourRows(20, gear({ body: "Chain Armor+2" }), "HitMe")).toBe(14);
+  });
+  test("HitMe2 column: Fire Armor -6, Ceramic Armor no row", () => {
+    expect(armourRows(20, gear({ body: "Fire Armor" }), "HitMe2")).toBe(14);
+    expect(armourRows(20, gear({ body: "Ceramic Armor" }), "HitMe2")).toBe(20);
+    expect(armourRows(20, gear({ body: "Ceramic Armor" }), "HitMe")).toBe(17);
+  });
+  test("elemental rows are exact", () => {
+    expect(elementalRows(10, gear({ body: "Ice Armor" }), "HitMe", "Ice Sword")).toBe(3);
+    expect(elementalRows(10, gear({ body: "Ice Armor" }), "HitMe", "Ice Sword +1")).toBe(10);
+  });
+  test("PvP parry: base random(90), then one draw per threshold passed", () => {
+    const rng = scripted([2, 2, 2, 2, 2]);
+    pvpHit(10, fighter({ skills: zeroSkills() }), "Knife", 0, rng);
+    // random(3) for the attack, then one parry draw at Parry 0, no block draw at Block 0.
+    expect(rng.calls).toEqual([3, 90]);
+    const skills = zeroSkills();
+    skills[skillIndex("Parry")] = 15;
+    const at15 = scripted([2]);
+    pvpHit(10, fighter({ skills }), "Knife", 0, at15);
+    expect(at15.calls).toEqual([3, 90, 90, 90]);
+  });
+  test("kept bug: faction-3 parry/block bonus nearly void in PvP: a draw pushed below 1 is re-rolled as random(90), not clamped to 1 as against monsters", () => {
+    const adventurer = fighter({ skills: zeroSkills(), faction: { ...NO_FACTION, id: 3 } });
+    // PvP: random(3) = 2; parry draw 3 − 4 < 1 → random(90) = 5, no parry; block 5 − 10 < 1 →
+    // random(90) = 7, no block: a hit.
+    const pvp = scripted([2, 3, 5, 7]);
+    expect(pvpHit(10, adventurer, "Knife", 0, pvp).kind).toBe("hit");
+    expect(pvp.calls).toEqual([3, 90, 90, 90]);
+    // Only a re-roll of exactly 1 parries.
+    expect(pvpHit(10, adventurer, "Knife", 0, scripted([2, 3, 1]))).toEqual({ kind: "parry" });
+    // Against a monster the same low draw clamps to 1: random(3000) = 8 − 10 → 1, a parry.
+    expect(monsterHitsPlayer(10, adventurer, 0, scripted([2, 8]))).toEqual({ kind: "parry" });
+  });
+  test("kept bug: PvP Block 0 never blocks", () => {
+    const rng = scripted([3, 1]);
+    expect(pvpHit(10, fighter({ skills: zeroSkills() }), "Knife", 0, rng)).toEqual({
+      kind: "parry",
+    });
+    expect(pvpHit(10, fighter({ skills: zeroSkills() }), "Knife", 0, scripted([3, 2]))).toEqual({
+      kind: "hit",
+      dmg: 13,
+    });
+  });
+  test('monster hit shown after the HP loss: elemental vs "a Yeti"', () => {
+    expect(monsterHitShown(10, gear({ body: "Ice Armor" }), "a Yeti", scripted([1]))).toBe(3);
+    expect(monsterHitShown(5, gear({ body: "Ice Armor" }), "a Yeti", scripted([2]))).toBe(2);
+  });
+  test("HitMe2 runs the armour rows before random(3)", () => {
+    const f = fighter({ equip: gear({ body: "Leather Armor" }), skills: zeroSkills() });
+    expect(monsterHitsPlayer(10, f, 0, scripted([1, 2, 2]))).toEqual({ kind: "hit", lost: 9 });
+  });
+});
+
+describe("breaks", () => {
+  test("odds 1 + 3·Sta + 600 (+500 weapons) plus the hunger terms", () => {
+    expect(breakOdds(10, 1000, 600)).toBe(631);
+    expect(breakOdds(10, 45000, 500)).toBe(661);
+  });
+  test("armour: draw the break chance first, then up to four three-way slot picks", () => {
+    const e = gear({ head: "Plate Helm" });
+    const rng = scripted([1, 1, 3, 1, 2]);
+    expect(rollArmourBreak(e, 10, 1000, "a Slime", rng)).toBe("Head");
+    expect(rng.calls).toEqual([631, 3, 3, 3, 3]);
+    const none = scripted([1, 1]);
+    expect(rollArmourBreak(gear({}), 10, 1000, "a Slime", none)).toBeNull();
+    expect(none.calls).toEqual([631, 3, 3, 3, 3]);
+  });
+  test('kept bug: the armour exclusion list never matches "a <name>"', () => {
+    expect(rollArmourBreak(gear({ body: "Chain Armor" }), 1, 0, "a Slime", scripted([1, 1]))).toBe(
+      "Body",
+    );
+  });
+  test("weapon: exclusions and the exact list before the draw", () => {
+    const rng = scripted([1]);
+    expect(rollWeaponBreak(gear({ weapon: "Long Sword" }), 1, 0, "Slime", rng)).toBe(false);
+    expect(rollWeaponBreak(gear({ weapon: "Knife" }), 1, 0, "Orc", rng)).toBe(false);
+    expect(rng.calls).toEqual([]);
+    expect(rollWeaponBreak(gear({ weapon: "Long Sword" }), 1, 0, "Orc", rng)).toBe(true);
+    expect(rng.calls).toEqual([504]);
+  });
+  test("the damaged form, last contains rule wins", () => {
+    expect(damagedForm("Long Sword")).toBe("Damaged Sword, Long");
+    expect(damagedForm("Leather Armor")).toBe("Leather Armor");
+    expect(shattersText("Long Sword")).toBe("Your Long Sword shatters in battle!");
+  });
+});
+
+describe("arrows and crystals", () => {
+  test('kept bug: "geen crystals"', () => {
+    const f = fighter({ equip: gear({ weapon: "Wooden Bow", offHand: "Green Arrows" }) });
+    expect(attackPower(f, scripted([1]), () => false).outOfCrystals).toBe(
+      "You don't have any geen crystals left!",
+    );
+  });
+});
+
+describe("ground items", () => {
+  test("tile pixel 32x+14, 32y-3", () => {
+    expect(tilePixel(5, 8)).toEqual({ px: 174, py: 253 });
+  });
+  test("loot never blocks; fixtures do", () => {
+    const who = { level: 1, skills: zeroSkills() };
+    expect(blocksPlayer("Apple", who)).toBe(false);
+    expect(blocksPlayer("15 Gold", who)).toBe(false);
+    expect(blocksPlayer("Windmill", who)).toBe(true);
+    expect(blocksPlayer("Bob's Newspaper", who)).toBe(true);
+    expect(blocksPlayer("Experience Platform", { ...who, level: 21 })).toBe(false);
+  });
+  test("kept bug: the Experience Platform says 30 hit points but blocks by level (21 passes)", () => {
+    const who = { level: 20, skills: zeroSkills() };
+    // Ctrl on it says "over 30 hit points", yet the block is decided by level alone.
+    expect(ctrlGate("Experience Platform")).toMatchObject({
+      kind: "text",
+      text: "You must be over 30 hit points to pass this platform.",
+    });
+    expect(blocksPlayer("Experience Platform", who)).toBe(true);
+    expect(blocksPlayer("Experience Platform", { ...who, level: 21 })).toBe(false);
+  });
+  test("kept bug: monsters walk onto Holy Water and newspapers", () => {
+    expect(blocksMonster("Holy Water")).toBe(false);
+    expect(blocksMonster("Bob's Newspaper")).toBe(false);
+    expect(blocksMonster("Windmill")).toBe(true);
+  });
+  test("gold piles: small 1-49, medium 50-99, large 100+", () => {
+    expect(groundPicture("2 Gold")).toBe("SmallGold");
+    expect(groundPicture("50 Gold")).toBe("MediumGold");
+    expect(groundPicture("100 gold")).toBe("LargeGold");
+    expect(groundPicture("5 Blue Crystals")).toBe("BlueCrystal");
+    // The named pictures, last match seen.
+    expect(groundPicture("Cauldron#12")).toBe("CauldronPic");
+    expect(groundPicture("Cauldron")).toBe("Cauldron");
+    expect(groundPicture("Wind Cabinet#3")).toBe("WindCabinetPic");
+    expect(groundPicture("Crate#4")).toBe("CratePic");
+    expect(groundPicture("Treasure Map")).toBe("MapPic");
+  });
+  test("custom pictures sit at (1, 1) of a 32x32 scratch member, reg (16, -2)", () => {
+    // The crystal picture's own regpoint (3, -4) plays no part.
+    expect(groundPictureTopLeft(100, 200)).toEqual({ x: 85, y: 203 });
+  });
+  test("kept bug: Ctrl takes paintings, a click does not", () => {
+    expect(clickGate("Painting#12", 10)).toEqual({ kind: "view" }); // a click views it
+    expect(ctrlGate("Painting#12")).toEqual({ kind: "take" });
+    expect(clickGate("Copy Machine", 10)).toEqual({ kind: "take" });
+  });
+});
+
+describe("loot and the death drop", () => {
+  const slime = npcsData.lootTables.find((t) => t.npc === "Slime")?.lines ?? null;
+  test("Slime's table: the archived INV| lines", () => {
+    expect(slime).toEqual([
+      { item: "2 Gold", oneIn: 1 },
+      { item: "3 Gold", oneIn: 1 },
+      { item: "12 Gold", oneIn: 5 },
+      { item: "Leather Armor", oneIn: 60 },
+    ]);
+  });
+  test("two draws: the line, then random(N) = 1", () => {
+    const rng = scripted([3, 1]);
+    expect(rollLoot(slime, rng)).toBe("12 Gold");
+    expect(rng.calls).toEqual([4, 5]);
+    const one = scripted([1, 1]);
+    expect(rollLoot(slime, one)).toBe("2 Gold");
+    expect(one.calls).toEqual([4, 1]);
+    expect(rollLoot(null, scripted([1]))).toBeNull();
+  });
+  test("death: random(2) gold-or-item even with DropOnDeath off", () => {
+    const rng = scripted([2]);
+    expect(
+      rollDeathDrop({ bag: emptyBag(), gold: 5, wanted: false, inVehicle: false }, false, rng),
+    ).toEqual({
+      kind: "none",
+    });
+    expect(rng.calls).toEqual([2]);
+  });
+  test("kept bug: the death drop picks lines 1 to the filled count", () => {
+    const bag = emptyBag();
+    bag[0] = { item: "Apple", qty: 2 };
+    bag[5] = { item: "Knife", qty: 1 };
+    // Two filled lines: random(2) = 2 picks line 2, which is empty: nothing drops.
+    expect(
+      rollDeathDrop({ bag, gold: 0, wanted: false, inVehicle: false }, true, scripted([2])),
+    ).toEqual({
+      kind: "none",
+    });
+    expect(
+      rollDeathDrop({ bag, gold: 0, wanted: false, inVehicle: false }, true, scripted([1])),
+    ).toEqual({
+      kind: "item",
+      slot: 0,
+    });
+  });
+  test("gold branch draws random(gold), random(200) over 200, again when wanted", () => {
+    const rng = scripted([1, 250, 30, 7]);
+    expect(
+      rollDeathDrop({ bag: emptyBag(), gold: 300, wanted: true, inVehicle: false }, true, rng),
+    ).toEqual({
+      kind: "gold",
+      amount: 7,
+    });
+    expect(rng.calls).toEqual([2, 300, 200, 300]);
+  });
+});
+
+describe("paperdoll", () => {
+  test("bare character: BIM, DEFBOD, head", () => {
+    expect(paperdollLayers({ head: 3, equip: gear({}) }, "F1", "S")).toEqual([
+      "BIM",
+      "DEFBOD-F1-S",
+      "Head3-F1-S",
+    ]);
+  });
+  test("knife is drawn as Dagger, in front facing E and S, behind facing W", () => {
+    expect(paperdollLayers({ head: 1, equip: gear({ weapon: "Knife" }) }, "F2", "W")).toEqual([
+      "BIM",
+      "Dagger-F2-W",
+      "DEFBOD-F2-W",
+      "Head1-F2-W",
+    ]);
+    expect(paperdollLayers({ head: 1, equip: gear({ weapon: "Knife" }) }, "F2", "E")).toEqual([
+      "BIM",
+      "DEFBOD-F2-E",
+      "Head1-F2-E",
+      "Dagger-F2-E",
+    ]);
+    expect(paperdollLayers({ head: 1, equip: gear({ weapon: "Knife" }) }, "F2", "N")).not.toContain(
+      "Dagger-F2-N",
+    );
+  });
+  test("a helm replaces the head; armour replaces DEFBOD", () => {
+    expect(
+      paperdollLayers(
+        { head: 1, equip: gear({ head: "Plate Helm", body: "Chain Armor+1" }) },
+        "F1",
+        "E",
+      ),
+    ).toEqual(["BIM", "Chain Armor-F1-E", "Plate Helm-F1-E"]);
+  });
+  test("kept bug: boots are never drawn; gloves come from the Ring slot", () => {
+    const layers = paperdollLayers(
+      { head: 1, equip: gear({ feet: "Chain Boots", ring: "Gauntlets" }) },
+      "F1",
+      "S",
+    );
+    expect(layers).toEqual(["BIM", "DEFBOD-F1-S", "Gauntlets-F1-S", "Head1-F1-S"]);
+    expect(
+      paperdollLayers({ head: 1, equip: gear({ ring: "Ruby Ring" }) }, "F1", "S"),
+    ).toHaveLength(3);
+  });
+  test("shields are never drawn facing E", () => {
+    expect(
+      paperdollLayers({ head: 1, equip: gear({ offHand: "Steel Shield" }) }, "F1", "E"),
+    ).toEqual(["BIM", "DEFBOD-F1-E", "Head1-F1-E"]);
+  });
+});
+
+describe("the amount dialog's branches", () => {
+  const at = (o: Partial<Parameters<typeof amountPath>[0]>) =>
+    amountPath({ gold: true, enough: true, playerAhead: false, monsterAhead: false, ...o });
+  test("balance first, then a player ahead, then gold's monster exit, else the drop", () => {
+    expect(at({ enough: false, playerAhead: true })).toBe("short");
+    expect(at({ playerAhead: true, monsterAhead: true })).toBe("give");
+    expect(at({ monsterAhead: true })).toBe("monster");
+    expect(at({ gold: false, monsterAhead: true })).toBe("drop");
+    expect(at({})).toBe("drop");
+  });
+});
+
+describe("paperdoll aliases", () => {
+  test("weapon, shield, helm, body and ring names are rewritten to the layers that are drawn", () => {
+    const look = (e: Partial<Equipment>) => normaliseLook(gear(e));
+    expect(look({ weapon: "knife" }).weapon).toBe("Dagger");
+    expect(look({ weapon: "Ice Hammer" }).weapon).toBe("Mining Hammer");
+    expect(look({ offHand: "Steel Arrows" }).shield).toBe("Arrows");
+    expect(look({ offHand: "Saw" }).shield).toBe("NOTHING");
+    expect(look({ weapon: "Katana" }).weapon).toBe("Short Sword");
+    expect(look({ weapon: "Scimitar+2" }).weapon).toBe("Short Sword");
+    expect(look({ head: "Damaged Helm" }).helm).toBe("NOTHING");
+    expect(look({ body: "Titanium Armor" }).body).toBe("Argon's Plate");
+    expect(look({ body: "Damaged Armor" }).body).toBe("DEFBOD");
+    expect(look({ ring: "Gold Ring" }).gloves).toBe("NOTHING");
+  });
+});

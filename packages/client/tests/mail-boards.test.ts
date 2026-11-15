@@ -1,0 +1,370 @@
+/**
+ * Client: the mail screen (frame 72's channels 6-17 and 362-368) and the message board. Rects are
+ * checked against the shipped layout data's frame-72.json.
+ */
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import type { AssetIndex } from "@secondstaronline/data";
+
+import type { Assets } from "../src/assets.ts";
+import { type Sfx, SOUND } from "../src/sfx.ts";
+import { BOARD_RECTS, createBoardWindow } from "../src/ui/board.ts";
+import { createMailScreen, MAIL_RECTS, type MailMessage } from "../src/ui/mail.ts";
+
+const fakeAssets: Assets = {
+  index: { version: 1, inputHash: "", atlases: {} as AssetIndex["atlases"], ui: {}, sounds: {} },
+  sheets: {},
+  loadGroup: async () => {},
+  sprite: () => undefined,
+  ui: (cast, member) => `/assets/ui/${cast.toLowerCase()}-${member}.png`,
+};
+
+const MSGS: MailMessage[] = [
+  { id: 11, from: "Bob", subject: "Hello", body: "First body" },
+  { id: 12, from: "Carol", subject: "Re: Hi", body: "Second body" },
+  { id: 13, from: "Dave", subject: "Third", body: "Third body" },
+];
+
+function mailScreen() {
+  const log: unknown[] = [];
+  const sounds: Sfx[] = [];
+  const state = { locked: false, framed: false, blocked: false };
+  const m = createMailScreen(fakeAssets, {
+    ui: (act) => log.push(["ui", act]),
+    send: (to, subject, body) => log.push(["send", to, subject, body]),
+    del: (id) => log.push(["del", id]),
+    say: (t) => log.push(["say", t]),
+    lock: (on) => {
+      state.locked = on;
+    },
+    frame: (on) => {
+      state.framed = on;
+    },
+    blocker: (on) => {
+      state.blocked = on;
+    },
+    sound: (s) => sounds.push(s),
+  });
+  document.body.replaceChildren(m.el);
+  const btn = (label: string, layer = ".mail-list") =>
+    m.el.querySelector<HTMLButtonElement>(`${layer} [aria-label="${label}"]`) as HTMLButtonElement;
+  const rows = (cls: string) => [...m.el.querySelectorAll<HTMLElement>(`${cls} .mail-row`)];
+  const input = (label: string) =>
+    m.el.querySelector<HTMLInputElement>(`[aria-label="${label}"]`) as HTMLInputElement;
+  return { m, log, sounds, state, btn, rows, input };
+}
+
+const FRAME = JSON.parse(
+  readFileSync(join(import.meta.dir, "../../../assets/original/main/layout/frame-72.json"), "utf8"),
+) as { sprites: { channel: number; rect: number[] }[] };
+const rectOf = (ch: number) => FRAME.sprites.find((s) => s.channel === ch)?.rect;
+const asRect = (r: { x: number; y: number; w: number; h: number }) => [
+  r.x,
+  r.y,
+  r.x + r.w,
+  r.y + r.h,
+];
+
+describe("placement", () => {
+  test("every mail bitmap and field sits at its sprite's rect", () => {
+    const pairs: [keyof typeof MAIL_RECTS, number][] = [
+      ["composeArt", 6],
+      ["send", 7],
+      ["composeClose", 8],
+      ["to", 9],
+      ["subject", 10],
+      ["body", 11],
+      ["readArt", 12],
+      ["readClose", 13],
+      ["reply", 14],
+      ["readTo", 15],
+      ["readSubject", 16],
+      ["listArt", 362],
+      ["subjectList", 364],
+      ["blocker", 366],
+      ["fromList", 368],
+    ];
+    for (const [key, ch] of pairs) {
+      expect({ key, rect: asRect(MAIL_RECTS[key]) }).toEqual({ key, rect: rectOf(ch) as number[] });
+    }
+  });
+  test("kept bug: the list columns are fixed 271-px boxes with no scroll bar", () => {
+    const { m } = mailScreen();
+    for (const cls of [".mail-from", ".mail-subject"]) {
+      expect((m.el.querySelector(cls) as HTMLElement).style.height).toBe("271px");
+    }
+  });
+  test("a layer's empty area passes clicks through, so an open pane never covers the list's buttons", () => {
+    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    expect(css).toMatch(/\.mail-screen > \.mail-layer \{\s*pointer-events: none;/);
+    expect(css).toMatch(/\.mail-screen \.mail-layer > \* \{\s*pointer-events: auto;/);
+  });
+  test("ReadBody is its 214×119 member box, not the stored 16-px rect", () => {
+    expect(MAIL_RECTS.readBody).toEqual({ x: 225, y: 140, w: 214, h: 119 });
+    expect(rectOf(17)?.[3]).toBe(156);
+  });
+});
+
+describe("the list", () => {
+  test("opens with both columns; the click sound plays on every line, selecting in both", () => {
+    const { m, rows, sounds } = mailScreen();
+    m.show(MSGS);
+    expect(m.el.hidden).toBe(false);
+    expect(rows(".mail-from").map((r) => r.textContent)).toEqual(["Bob", "Carol", "Dave"]);
+    expect(rows(".mail-subject").map((r) => r.textContent)).toEqual(["Hello", "Re: Hi", "Third"]);
+    rows(".mail-from")[1]?.click();
+    expect(sounds).toEqual([SOUND.click]);
+    expect(rows(".mail-from")[1]?.classList.contains("on")).toBe(true);
+    expect(rows(".mail-subject")[1]?.classList.contains("on")).toBe(true);
+  });
+
+  test("READ with nothing selected does nothing; with a line it fills the read pane", () => {
+    const { m, btn, rows } = mailScreen();
+    m.show(MSGS);
+    btn("Read message").click();
+    expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
+    rows(".mail-from")[0]?.click();
+    btn("Read message").click();
+    const read = m.el.querySelector<HTMLElement>(".mail-read") as HTMLElement;
+    expect(read.hidden).toBe(false);
+    // The sender sits under TO: (a kept bug: 1.6 did the same).
+    expect(read.querySelector(".mail-read-to")?.textContent).toBe("Bob");
+    expect(read.querySelector(".mail-read-subject")?.textContent).toBe("Hello");
+    expect(read.querySelector(".mail-read-body")?.textContent).toBe("First body");
+  });
+
+  test("DELETE twice removes the next message with the read pane unchanged", () => {
+    const { m, btn, rows, log } = mailScreen();
+    m.show(MSGS);
+    rows(".mail-from")[0]?.click();
+    btn("Read message").click();
+    btn("Delete message").click();
+    btn("Delete message").click();
+    expect(log).toEqual([
+      ["del", 11],
+      ["del", 12],
+    ]);
+    expect(rows(".mail-from").map((r) => r.textContent)).toEqual(["Dave"]);
+    expect(m.el.querySelector(".mail-read-to")?.textContent).toBe("Bob");
+    // A line past the end deletes nothing.
+    btn("Delete message").click();
+    btn("Delete message").click();
+    expect(log.filter((l) => (l as unknown[])[0] === "del")).toHaveLength(3);
+  });
+
+  test("a click below the last line selects no mail, so READ does nothing", () => {
+    const { m, btn, rows } = mailScreen();
+    m.show(MSGS);
+    rows(".mail-from")[0]?.click();
+    (m.el.querySelector(".mail-from") as HTMLElement).click();
+    btn("Read message").click();
+    expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
+  });
+
+  test("the chat blocker follows the list; CLOSE unlocks, leaves frame 72 and tells the server", () => {
+    const { m, btn, state, log } = mailScreen();
+    m.show(MSGS);
+    expect(state).toMatchObject({ framed: true, blocked: true });
+    state.locked = true;
+    btn("Close mailbox").click();
+    expect(state).toEqual({ locked: false, framed: false, blocked: false });
+    expect(m.el.hidden).toBe(true);
+    expect(m.listUp).toBe(false);
+    expect(log).toContainEqual(["ui", "close"]);
+  });
+
+  test("a reload keeps the open panes and the screen", () => {
+    const { m, btn } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    m.show(MSGS.slice(0, 2));
+    expect(m.composeUp).toBe(true);
+    expect(m.el.querySelector<HTMLElement>(".mail-compose")?.hidden).toBe(false);
+  });
+});
+
+describe("compose, reply and send", () => {
+  test("REPLY locks, answers the sender and stacks Re:", () => {
+    const { m, btn, rows, input, state, log } = mailScreen();
+    m.show(MSGS);
+    rows(".mail-from")[1]?.click();
+    btn("Read message").click();
+    btn("Reply", ".mail-read").click();
+    expect(state.locked).toBe(true);
+    expect(input("To").value).toBe("Carol");
+    expect(input("Subject").value).toBe("Re: Re: Hi");
+    expect((m.el.querySelector(".mail-body") as HTMLTextAreaElement).value).toBe("");
+    expect(m.composeUp).toBe(true);
+    expect(log).toContainEqual(["ui", "reply"]);
+  });
+
+  test("either CLOSE unlocks and hides both panes, the list stays up", () => {
+    const { m, btn, rows, state, log } = mailScreen();
+    m.show(MSGS);
+    rows(".mail-from")[0]?.click();
+    btn("Read message").click();
+    btn("Reply", ".mail-read").click();
+    btn("Close", ".mail-compose").click();
+    expect(state.locked).toBe(false);
+    expect(m.composeUp).toBe(false);
+    expect(m.listUp).toBe(true);
+    expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
+    expect(log).toContainEqual(["ui", "composeClose"]);
+    btn("Write message").click();
+    btn("Close", ".mail-compose").click();
+    expect(log.filter((l) => (l as unknown[])[1] === "composeClose")).toHaveLength(2);
+  });
+
+  test("SEND waits for mailSent; then the line (item 1 filled), unlock, cleared and hidden", () => {
+    const { m, btn, input, state, log } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    input("To").value = "Bob, Al";
+    input("Subject").value = "Hi";
+    const body = m.el.querySelector(".mail-body") as HTMLTextAreaElement;
+    body.value = "Hello";
+    state.locked = true;
+    btn("Send", ".mail-compose").click();
+    expect(log).toEqual([["send", "Bob, Al", "Hi", "Hello"]]);
+    // Nothing has happened yet: the draft stays until the server answers.
+    expect(m.composeUp).toBe(true);
+    expect(input("To").value).toBe("Bob, Al");
+    m.sent();
+    expect(log).toContainEqual(["say", "*** Sending Mail..."]);
+    expect(state.locked).toBe(false);
+    expect(m.composeUp).toBe(false);
+    expect(input("To").value).toBe("");
+    expect(input("Subject").value).toBe("");
+    expect(body.value).toBe("");
+  });
+
+  test("a To with no item 1 sends but prints no line", () => {
+    const { m, btn, input, log } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    input("To").value = ",Bob";
+    (m.el.querySelector(".mail-body") as HTMLTextAreaElement).value = "x";
+    btn("Send", ".mail-compose").click();
+    m.sent();
+    expect(log.filter((l) => (l as unknown[])[0] === "say")).toEqual([]);
+  });
+
+  test("an empty body or no recipient sends nothing and the compose stays", () => {
+    const { m, btn, input, log } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    input("To").value = "Bob";
+    btn("Send", ".mail-compose").click();
+    input("To").value = " * , ";
+    (m.el.querySelector(".mail-body") as HTMLTextAreaElement).value = "x";
+    btn("Send", ".mail-compose").click();
+    expect(log).toEqual([]);
+    expect(m.composeUp).toBe(true);
+  });
+
+  test("kept bug: a refused send (no mailSent) keeps the draft with the compose open", () => {
+    const { m, btn, input } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    input("To").value = "Bob";
+    (m.el.querySelector(".mail-body") as HTMLTextAreaElement).value = "draft";
+    btn("Send", ".mail-compose").click();
+    expect(m.composeUp).toBe(true);
+    expect((m.el.querySelector(".mail-body") as HTMLTextAreaElement).value).toBe("draft");
+  });
+
+  test("an unsent draft survives WRITE, and list CLOSE with the compose up leaves Use dead; reopen shows it", () => {
+    const { m, btn, input } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    input("To").value = "Bob";
+    btn("Close mailbox").click();
+    expect(m.el.hidden).toBe(true);
+    expect(m.composeUp).toBe(true);
+    m.show(MSGS);
+    expect(m.el.querySelector<HTMLElement>(".mail-compose")?.hidden).toBe(false);
+    expect(input("To").value).toBe("Bob");
+  });
+
+  test("game entry clears every flag", () => {
+    const { m, btn, state } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    m.reset();
+    expect(m.composeUp).toBe(false);
+    expect(m.listUp).toBe(false);
+    expect(m.el.hidden).toBe(true);
+    expect(state.blocked).toBe(false);
+  });
+});
+
+function boardWindow() {
+  const log: unknown[] = [];
+  const state = { locked: false };
+  const b = createBoardWindow(fakeAssets, {
+    post: (t) => log.push(["post", t]),
+    close: () => log.push(["close"]),
+    lock: (on) => {
+      state.locked = on;
+    },
+  });
+  document.body.replaceChildren(b.el);
+  const btn = (label: string) =>
+    b.el.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`) as HTMLButtonElement;
+  const post = () => b.el.querySelector(".board-post-text") as HTMLTextAreaElement;
+  return { b, log, state, btn, post };
+}
+
+describe("the message board", () => {
+  test("rects are the members' own boxes at their placeholders", () => {
+    expect(asRect(BOARD_RECTS.art)).toEqual([185, 14, 535, 317]);
+    expect(asRect(BOARD_RECTS.topic)).toEqual([261, 23, 479, 39]);
+    expect(asRect(BOARD_RECTS.close)).toEqual([415, 288, 472, 308]);
+    expect(asRect(BOARD_RECTS.post)).toEqual([472, 288, 524, 307]);
+    expect(asRect(BOARD_RECTS.text)).toEqual([203, 45, 502, 210]);
+    expect(asRect(BOARD_RECTS.postText)).toEqual([204, 215, 516, 273]);
+  });
+
+  test("open: topic, text with line breaks, an emptied PostText and the lock", () => {
+    const { b, state, post } = boardWindow();
+    post().value = "old";
+    b.show({ topic: "Town Square", text: "From: A\r\rHi\r____\r", lock: true });
+    expect(b.isOpen).toBe(true);
+    expect(b.el.querySelector(".board-topic")?.textContent).toBe("Town Square");
+    expect(b.el.querySelector(".board-text")?.textContent).toBe("From: A\n\nHi\n____\n");
+    expect(post().value).toBe("");
+    expect(state.locked).toBe(true);
+    b.show({ topic: "The Knights's Board", text: "", lock: false });
+    expect(state.locked).toBe(false);
+  });
+
+  test("Post unlocks first and sends the field; the server's null closes it", () => {
+    const { b, state, btn, post, log } = boardWindow();
+    b.show({ topic: "Town Square", text: "", lock: true });
+    post().value = "Hello";
+    btn("Post").click();
+    expect(state.locked).toBe(false);
+    expect(log).toEqual([["post", "Hello"]]);
+    expect(b.isOpen).toBe(true);
+    b.show(null);
+    expect(b.isOpen).toBe(false);
+  });
+
+  test("Close hides, unlocks and tells the server", () => {
+    const { b, state, btn, log } = boardWindow();
+    b.show({ topic: "Town Square", text: "", lock: true });
+    btn("Close").click();
+    expect(b.isOpen).toBe(false);
+    expect(state.locked).toBe(false);
+    expect(log).toEqual([["close"]]);
+  });
+
+  test("game entry hides an open board", () => {
+    const { b } = boardWindow();
+    b.show({ topic: "Town Square", text: "", lock: false });
+    b.reset();
+    expect(b.isOpen).toBe(false);
+  });
+});

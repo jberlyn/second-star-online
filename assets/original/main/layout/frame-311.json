@@ -1,0 +1,231 @@
+{
+ "frame": 311,
+ "label": null,
+ "stage": [
+  800,
+  600
+ ],
+ "stageColor": null,
+ "stageColorFrom": "config chunk unreadable (stage rect 8195x22530)",
+ "sprites": [
+  {
+   "channel": 1,
+   "castLib": 1,
+   "member": 224,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    367,
+    191
+   ],
+   "size": [
+    253,
+    117
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    84,
+    103,
+    704,
+    296
+   ],
+   "reg": [
+    283,
+    88
+   ],
+   "asset": "bitmaps/209781_member.png"
+  },
+  {
+   "channel": 2,
+   "castLib": 1,
+   "member": 225,
+   "name": "NPCed",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    224,
+    117
+   ],
+   "size": [
+    90,
+    166
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    224,
+    117,
+    314,
+    283
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 3,
+   "castLib": 1,
+   "member": 233,
+   "name": "MONed",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    100,
+    117
+   ],
+   "size": [
+    92,
+    432
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    100,
+    117,
+    192,
+    549
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 4,
+   "castLib": 1,
+   "member": 226,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    617,
+    272
+   ],
+   "size": [
+    39,
+    31
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    598,
+    263,
+    635,
+    282
+   ],
+   "reg": [
+    19,
+    9
+   ],
+   "asset": "bitmaps/208008_member.png"
+  },
+  {
+   "channel": 5,
+   "castLib": 1,
+   "member": 227,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    667,
+    272
+   ],
+   "size": [
+    36,
+    19
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    649,
+    263,
+    685,
+    282
+   ],
+   "reg": [
+    18,
+    9
+   ],
+   "asset": "bitmaps/208007_member.png"
+  },
+  {
+   "channel": 7,
+   "castLib": 1,
+   "member": 228,
+   "name": "NPCScript",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    331,
+    115
+   ],
+   "size": [
+    359,
+    139
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    331,
+    115,
+    690,
+    254
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  }
+ ]
+}

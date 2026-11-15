@@ -1,0 +1,44 @@
+# Casino
+
+## What happens in play
+
+Two players sit at a blackjack table, lock bids and play a hand; the server holds their stakes and settles the result.
+
+## Where it lives
+
+Shared rules calculate outcomes; server systems apply them to world and player state.
+
+- [packages/server/src/systems/casino/blackjack.ts](../../packages/server/src/systems/casino/blackjack.ts): holds bids, deals and settles hands.
+- [packages/server/src/systems/casino/checkers.ts](../../packages/server/src/systems/casino/checkers.ts): handles seats and validates checkers moves.
+- [packages/server/src/systems/casino/index.ts](../../packages/server/src/systems/casino/index.ts): coordinates casino leave, return and ticking.
+- [packages/server/src/systems/casino/slots.ts](../../packages/server/src/systems/casino/slots.ts): runs slot spins and submits scores.
+- [packages/server/src/systems/casino/tables.ts](../../packages/server/src/systems/casino/tables.ts): identifies tables and builds player views.
+- [packages/shared/src/rules/casino/blackjack.ts](../../packages/shared/src/rules/casino/blackjack.ts): defines cards, bids and hand outcomes.
+- [packages/shared/src/rules/casino/casino.ts](../../packages/shared/src/rules/casino/casino.ts): defines slot and high-score rules.
+- [packages/shared/src/rules/casino/checkers.ts](../../packages/shared/src/rules/casino/checkers.ts): defines board moves and promotion.
+
+Entry points:
+
+- `packages/server/src/systems/casino/index.ts` (`casinoTick`).
+- `packages/shared/src/rules/casino/blackjack.ts` (`handTotal`).
+
+## How it works
+
+Slots check the machine and player state, run the spin on ticks, and settle the reels against the player's gold. Tables are identified by map and coordinates, with a seat for each side. Blackjack validates bids, holds the locked gold, returns any excess over the matched stake and deals on the server. Cards, totals and the outcome use shared rules; the server sends each seat its view and eventually resets the table.
+
+A player who leaves during a hand forfeits; a disconnected seat has a grace period before it is dropped. Saved gold includes a held stake while the hand is unresolved. Checkers has no stake: the server validates ownership, moves and turns, advances the board and handles promotion. High scores are submitted separately. The server decides and settles these games rather than trusting a player's client.
+
+### Slots, tables and scores
+
+A slot panel has an idle state and a spin countdown. A pull is allowed only when the panel is open and idle; the server enforces the spin interval and computes the reels and payout. If the player's gold is gone when the spin settles, the server refuses the settlement. The panel can remain open across a map change. The slot and score values are editable in [casino content](../../packages/data/content/casino.json).
+
+At a blackjack table, a seat is tied to the table's map and tile. Joining resets the table and releases any held bids. After both players lock a bid, the lower bid is the stake and excess is returned. Cards are drawn uniformly with replacement, and each player's view is sent by the server. A draw returns the held stake; a win transfers it. A disconnect retains the blackjack seat for the configured grace period, after which an unfinished hand is forfeited; a return during grace restores its view. Leaving before the deal releases holds. A seat can survive a map change.
+
+For checkers, the server stores the pieces and turn while the client keeps its own selection and turn marker. A move must belong to the moving side and pass the shared move rules. Closing or disconnecting frees a checkers seat. The high-score statue computes points on the server and stores ranked entries through [high-score persistence](../../packages/server/src/persistence/highscores.ts).
+
+## Kept bugs and differences
+
+A slot pull costs 5 gold, and the 2-3-2 row pays 80. In blackjack the lower bid sets the stake; if both hands bust, the higher bust can still win. Checkers does not force a capture or allow a multi-jump.
+
+See the [casino kept bugs](../bug-ledger.md#casino) and [casino differences](../divergences.md#casino) for the specific player-visible cases.
+

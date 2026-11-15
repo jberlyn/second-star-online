@@ -1,0 +1,34 @@
+{
+  "name": "@secondstaronline/root",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run assets:build && NODE_ENV=development bun --hot packages/server/src/main.ts",
+    "start": "bun packages/server/src/main.ts",
+    "content:report": "bun packages/server/src/cli/content-report.ts",
+    "admin:role": "bun packages/server/src/cli/set-role.ts",
+    "admin:audit": "bun packages/server/src/cli/admin-audit.ts",
+    "build": "bun run assets:build && bun run build:client",
+    "build:client": "bun build packages/client/index.html --outdir dist/client --minify",
+    "assets:build": "bun packages/data/build/assets.ts",
+    "data:build": "bun packages/data/build/data.ts",
+    "data:check": "bun packages/data/build/data.ts --check",
+    "typecheck": "tsc -b",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "fix": "biome check --write .",
+    "test": "bun test ./tests && bun run --filter './packages/*' test",
+    "perf": "bun packages/perf/src/main.ts",
+    "docker:check": "bun tools/docker-smoke.ts",
+    "gate": "bun run typecheck && bun run lint && bun run test && bun run data:check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@types/bun": "^1.4.4",
+    "typescript": "^5.8.0"
+  }
+}

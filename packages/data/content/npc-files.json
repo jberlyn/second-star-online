@@ -1,0 +1,484 @@
+{
+  "files": [
+    {
+      "name": "Acrostia",
+      "text": "BIO|Name: Healer\rFLG|Passive\rFLG|Still\rSPL|Major Heal\r"
+    },
+    {
+      "name": "Adventurer Faction Member",
+      "text": "INV|adventurer's Head:1\rINV|Wooden Crossbow:300"
+    },
+    {
+      "name": "Agavar",
+      "text": "BIO|Name: Avagar\rBIO|Class: Farmer\rPRO|I own all of these fields... but I am too old to plow them now. If you'd plow them for me, and plant seeds, all of the produce can be yours, if you take it.\rSEL|Hoe:200:999963\rSEL|Watering Bucket:50:999940\rSEL|Seeds:30:99962\rSEL|Premium Seeds:50:99799\rSEL|Magic Seeds:80:99154\rSEL|Flower Seeds:75:9956\rSEL|Rose Seeds:150:98309\rBUY|Hoe:100\rBUY|Watering Bucket:25\rBUY|Corn:3\rBUY|Watermelon:6\rBUY|Nectar:14\rBUY|Flowers:9\rBUY|Roses:18\rGLD|996793978\r"
+    },
+    {
+      "name": "Akadius",
+      "text": "BIO|Name: Akadius\rBIO|Class: Food Seller\rGLD|294825\rSEL|Raw Fish:70:11539\rBUY|Raw Fish:25:10000\rSEL|Fish Sticks:65:11375\rBUY|Fish Sticks:30:10000\rSEL|Trout:60:12824\rBUY|Trout:20:10000\rSEL|Trout Fillet:55:15037\rBUY|Trout Fillet:25:10000\rSEL|Catfish:50:12811\rBUY|Catfish:15:10000\rSEL|Catfish Sandwich:45:15174\rBUY|Catfish Sandwich:20:10000\rSEL|Fishing Pole:200:9632\rBUY|Fishing Pole:100:10000\r"
+    },
+    {
+      "name": "Akiro",
+      "text": "BIO|Name: Akiro\rBIO|Class: Adventurer Equipment Dealer\rGLD|727508719\rSEL|Green Arrows:500:9975\rBUY|Green Arrows:250:10000\rSEL|Purple Arrows:800:9975\rBUY|Purple Arrows:400:10000\rSEL|Ring of Experience:3000:10044\rBUY|Ring of Experience:1500:10000\rSEL|Wooden Crossbow:4000:9963\rBUY|Wooden Crossbow:2000:10000\r"
+    },
+    {
+      "name": "Alex",
+      "text": "BIO|Name: Alex\rBIO|Class: Weaponary Dealer\rGLD|99780599\rSEL|Red Arrows:100:9922\rBUY|Red Arrows:50:10000\rSEL|Yellow Arrows:300:974\rBUY|Yellow Arrows:150:1000\rSEL|Steel Bow:2000:9966\rBUY|Steel Bow:1000:10000\rSEL|Broad Sword:3000:9951\rBUY|Broad Sword:1500:10000\rSEL|Thor's Hammer:3000:10003\rBUY|Thor's Hammer:1500:10000\rSEL|Dark Sword:9000:10130\rBUY|Dark Sword:4500:10000\r"
+    },
+    {
+      "name": "Amber",
+      "text": "BIO|Name: Amber\rBIO|Class: Casino Manager\rGLD|107537424\rSEL|Apple:10:10031\rBUY|Apple:5\rSEL|Ale:10:9604\rBUY|Ale:5\rSEL|Pie:10:5771\rBUY|Pie:5"
+    },
+    {
+      "name": "Andero",
+      "text": "BIO|Name: Andero\rBIO|Class: Artist\rPRO|Wow you look like a good artist! Here, buy a canvas or a camera and film and let me see your work.\rGLD|100051154\rSEL|Canvas:100:9825\rBUY|Canvas:50:10000\rSEL|Camera:4000:99998\rSEL|Film:50:9984\rBUY|Camera:1000:100000\rBUY|Film:10:10000\rFLG|Still\rFLG|Passive\rBNK|\r"
+    },
+    {
+      "name": "Angela",
+      "text": "BIO|Name: Angela\rBIO|Class: Secret Of The Magery Faction\rFLG|Still"
+    },
+    {
+      "name": "Assasin",
+      "text": "INV|50 Gold:4\rINV|60 Gold:5\rINV|Titanium Armor:25\r"
+    },
+    {
+      "name": "Barnum",
+      "text": "BIO|Name: Barnum\rBIO|Class: Weapon Salesman"
+    },
+    {
+      "name": "Beghi",
+      "text": "OWN|king\rBIO|Name: Beghi\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Beldros",
+      "text": ""
+    },
+    {
+      "name": "Benolio",
+      "text": "BIO|Name: Benolio\rBIO|Class: Mage\rSEL|Crush Book:45000:99992\rSEL|Stone Skin Book:50000:99998\rBUY|Crush Book:22500\rBUY|Stone Skin Book:25000\rGLD|1216117191"
+    },
+    {
+      "name": "Coched",
+      "text": "OWN|king\rBIO|Name: Coched\rBIO|Class: Shopkeeper\rPRO|\rGLD|604\rSEL|Apple:2:0\rBUY|Apple:1\rSEL|gauntlets:100:0\rBUY|gauntlets:20\rSEL|red crystal:1:96\rBUY|red crystal:1\r"
+    },
+    {
+      "name": "Corin",
+      "text": "BIO|Name: Corin\rBIO|Class:Secret Of the Adventurer's Faction\rFLG|Still"
+    },
+    {
+      "name": "Cril",
+      "text": "BIO|Name: Cril\rBIO|Class: Banker\rPRO|Your belongings are safe with me. To withdraw $$$ type /withdraw $$$, to deposit $$$ type /deposit $$$$ and to view your balance type /balance\rBNK|\rFLG|Still"
+    },
+    {
+      "name": "Crushto",
+      "text": ""
+    },
+    {
+      "name": "Cucha",
+      "text": "OWN|King\rBIO|Name: Cucha\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Cuchad",
+      "text": "OWN|king\rBIO|Name: Cuchad\rBIO|Class: Shopkeeper\rGLD|1000\rSEL|long sword:5:0\rBUY|long sword:5\r"
+    },
+    {
+      "name": "Cuche",
+      "text": "OWN|king\rBIO|Name: Cuche\rBIO|Class: Shopkeeper\rPRO|muwhahahahha hi!\rGLD|999\rSEL|Apple:2:1\rBUY|Apple:1"
+    },
+    {
+      "name": "Cyclops",
+      "text": "INV|Long Sword:40\rINV|Chain boots:20\rINV|3 Gold:1\rINV|8 Gold:3\rINV|15 Gold:7\rINV|5 Blue Crystals:15\rINV|Cyclops Meat:6"
+    },
+    {
+      "name": "Dan",
+      "text": "BIO|Name: Dann\rBIO|Class: Tutor\r"
+    },
+    {
+      "name": "Dann",
+      "text": "BIO|Name: Dann\rBIO|Class: Tutor\rPRO|Click on the buy and sell buttons below to buy and sell items. Highlight the item select the amount then press OK.\rGLD|83319\rSEL|Leather Cap:20:99092\rBUY|Mining Hammer:20\r"
+    },
+    {
+      "name": "Dantan",
+      "text": "BIO|Name: Dantan\rBIO|Class: Weaponary Salesman\rGLD|1000209599\rSEL|Long Sword:1000:100083\rBUY|Long Sword:400:10000\rSEL|Unholy Lance:1200:10025\rBUY|Unholy Lance:600:10000\rSEL|Bo:2000:9912\rBUY|Bo:1000:10000"
+    },
+    {
+      "name": "Dark Fairy",
+      "text": "INV|50 Gold:10\rINV|150 Gold:30\rINV|Lord's Staff:200"
+    },
+    {
+      "name": "Death",
+      "text": "INV|20 Gold:2\rINV|30 Gold:5\rINV|Dark Sword:50\rINV|Wooden Bow:30\r"
+    },
+    {
+      "name": "Demon",
+      "text": "INV|40 Gold:3\rINV|70 Gold:5\rINV|90 Gold:7\r"
+    },
+    {
+      "name": "Divela",
+      "text": "BIO|Name: Divela\rBIO|Class: Mage Specialist\rGLD|1000272999\rSEL|Raise Dead Book:4000:9996\rBUY|Raise Dead Book:2000:10000\rSEL|Bolt Book:10000:9996\rBUY|Bolt Book:5000:10000\rSEL|Hold Book:50000:1000000\rBUY|Hold Book:25000:1000000\r"
+    },
+    {
+      "name": "Dragon Hatchling",
+      "text": "INV|100 Gold:2\rINV|200 Gold:4\rINV|250 Gold:5\rINV|Plate Armor:30"
+    },
+    {
+      "name": "Dragon Snake",
+      "text": "INV|100 Gold:3\rINV|200 Gold:6\rINV|Ceramic Armor:20"
+    },
+    {
+      "name": "Dustug",
+      "text": "OWN|king\rBIO|Name: Dustug\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Dwarf",
+      "text": "INV|10 gold:2\rINV|30 Gold:4\rINV|5 White Crystals:10\r"
+    },
+    {
+      "name": "Earth God",
+      "text": "TRN|Earth Mage:10000\rBIO|Name:The Earth God\rBIO|Class:Earth Elemental\rPRO|This being rules the earth. \rRND|Wind cannot penetrate nature's stones.\rRND|I worry that fire will spread into my world and set us ablaze."
+    },
+    {
+      "name": "Edwin",
+      "text": "BIO|Name: Edwin\rBIO|Class: Pilot\r"
+    },
+    {
+      "name": "Elf",
+      "text": "INV|10 Gold:4\rINV|25 Gold:9\rINV|Wooden Crossbow:500\r"
+    },
+    {
+      "name": "Fire Demon",
+      "text": ""
+    },
+    {
+      "name": "Fire God",
+      "text": "SEL|Fireball Book:100:98\rTRN|Fire Mage:10000\rBIO|Name:The Fire God\rBIO|Class:Fire Elemental\rPRO|Standing this close makes you feel warm, but cautios.\rRND|Bring me the wind orbs or all will be lost.\rRND|Fire does not effect us in the slightest.\r"
+    },
+    {
+      "name": "Galor",
+      "text": "BIO|Name:Galor\rSEL|Potion Bottle:5:9876612\rSEL|Blue Crystals:7:845590\rSEL|Red Crystals:15:9839648\rSEL|Green Crystals:18:820352\rSEL|Yellow Crystals:20:887069\rSEL|Purple Crystals:23:886417\rSEL|White Crystals:26:865140\rSEL|Red Sand:100:999913\rBUY|Potion Bottle:2\rBUY|Blue Crystals:4\rBUY|Red Crystals:7\rBUY|Green Crystals:9\rBUY|Yellow Crystals:10\rBUY|Purple Crystals:11\rBUY|White Crystals:13\rBUY|Red Potion:23\rGLD|1424337707\r"
+    },
+    {
+      "name": "Gazer",
+      "text": "INV|20 Gold:2\rINV|40 Gold:8\rINV|White Robe:40\r"
+    },
+    {
+      "name": "Gelu",
+      "text": "OWN|king\rBIO|Name: Gelu\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Ghost",
+      "text": "INV|Parry Book:50"
+    },
+    {
+      "name": "Ghoul",
+      "text": "INV|50 Gold:2\rINV|Broad Sword:30\r"
+    },
+    {
+      "name": "Giant Slime",
+      "text": "BIO|Name: Giant Slime\rBIO|Class: Slime\rPRO|...arrrhhhggg...\rFLG|Passive\rINV|Tom Tom:2\rINV|5 Gold:1\r"
+    },
+    {
+      "name": "Girl",
+      "text": "BIO|Name: Jessica\rBIO|Class: Girl\rPRO|I have lost my trumpet in the woods, can you help me find it?\r"
+    },
+    {
+      "name": "Gryphon",
+      "text": "BIO|RAH!\rFLG|Passive\r"
+    },
+    {
+      "name": "Hellhound",
+      "text": "FLG|Aggressive\rINV|Damaged Sword, Of Hope:50\rINV|100 gold:10\rINV|75 gold:8\rINV|50 gold:7\r"
+    },
+    {
+      "name": "Helum",
+      "text": "BIO|Name: Helum\rBIO|Class: Armorer\rGLD|1000323049\rSEL|Chain Boots:300:10081\rBUY|Chain Boots:150:10000\rSEL|Chain Helm:300:9775\rBUY|Chain Helm:150:10000\rSEL|Chain Armor:500:9660\rBUY|Chain Armor:250:10000\r"
+    },
+    {
+      "name": "Imp",
+      "text": "INV|2 Gold:1\rINV|5 Gold:2\rINV|10 Gold:4\rINV|Leather Armor:30\rINV|Chain Helm:50\rFLG|Aggressive"
+    },
+    {
+      "name": "James",
+      "text": "BIO|Name: James\rBUY|knife:500:10000\rGLD|99833500\rPRO|I found a trumpet in these woods here...I will give you it if you can kill the Giant Slime and bring me back my tom tom.\r"
+    },
+    {
+      "name": "Jelstar",
+      "text": "BIO|Mermaid\r"
+    },
+    {
+      "name": "Jim",
+      "text": "BIO|Name: Jim\rBIO|Class: Psycho\rBUY|Warrior's Head:30\rBUY|Mage's Head:30\rBUY|Adventurer's Head:30\rSEL|Murder Helm:100000:99996\rSEL|Murder Shield:100000:99997\rGLD|1316629811"
+    },
+    {
+      "name": "Jithan",
+      "text": "BIO|Name: Jithan\rBIO|Class: Master Ninja\r"
+    },
+    {
+      "name": "Kanta",
+      "text": "BIO|Name: Kanta\rBIO|Class: Junk Collecter\rPRO|I have little money, I spend most of it on drinks.\rGLD|10122254\rSEL|Chair:20:103176\rBUY|Chair:2\rSEL|Stool:50:2325\rBUY|Stool:4\rSEL|Table:75:100326\rBUY|Table:10\rBUY|Crate:15\rBUY|Cabinet:45\r"
+    },
+    {
+      "name": "Katks",
+      "text": "BIO|Name: Katks\rBIO|Class: Armor Saleswoman\rGLD|100784499\rSEL|Titanium Armor:9000:10059\rBUY|Titanium Armor:4500:10000\rSEL|War Helm:30000:99979\rBUY|War Helm:15000:10000\rSEL|Royal Ninja Uniform:20000:9980\rBUY|Royal Ninja Uniform:10000:10000\r"
+    },
+    {
+      "name": "Kin",
+      "text": "FLG|Passive\rBIO|Name: Kin\rBIO|Class: Armor Dealer\rGLD|1410172407\rSEL|Ninja Gloves:1000:9985\rBUY|Ninja Gloves:500:1000\rSEL|Plate Armor:3000:10022\rBUY|Plate Armor:1500:10000\r"
+    },
+    {
+      "name": "Kocho",
+      "text": "OWN|King\rBIO|Name: Kocho\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Krist",
+      "text": "BIO|Name: Krist\rBIO|Class: Armorer\rSEL|Argon's Plate:40000:99994\rSEL|War Helm:30000:99998\rSEL|Knight Shield:35000:99988\rBUY|Argon's Plate:20000\rBUY|War Helm:15000\rBUY|Knight Shield:17500\rGLD|1000614999"
+    },
+    {
+      "name": "Krista",
+      "text": "BIO|Name: Krista\rBIO|Class: Food Saleswoman\rGLD|998426909\rSEL|Swordfish:30:14974\rBUY|Swordfish:15:10000\rSEL|Swordfish Steak:40:18363\rBUY|Swordfish Steak:20:10000\rSEL|Squid:20:38309\rBUY|Squid:5:10000\rSEL|Squid Platter:25:151046\rBUY|Squid Platter:15:10000\rSEL|Fishing Pole:200:9853\rBUY|Fishing Pole:100:10000\r"
+    },
+    {
+      "name": "Krommie",
+      "text": ""
+    },
+    {
+      "name": "Lir",
+      "text": "BIO|Name: Lir\rBIO|Class: Food Salesman\rGLD|1409215137\rSEL|Squid:20:33096\rBUY|Squid:10:10000\rSEL|Squid Platter:30:71691\rBUY|Squid Platter:15:10000\rBUY|Orc Burger:20:10000\rBUY|Orc Pot Pie:30:10000\rBUY|Cyclops Burger:30:10000"
+    },
+    {
+      "name": "Lizard Warrior",
+      "text": "INV|10 Gold:2\rINV|25 Gold:4\rINV|5 Purple Crystals:10\rINV|Steel Shield:15\r"
+    },
+    {
+      "name": "Mage Faction Member",
+      "text": "INV|Mage's Head:1\rINV|Lord's Staff:300"
+    },
+    {
+      "name": "Mega Slime",
+      "text": "INV|10 Gold:1\rINV|15 Gold:2\rINV|25 Gold:3\rINV|Apple:7\rINV|5 Green Crystals:10\r"
+    },
+    {
+      "name": "Melag",
+      "text": "OWN|king\rBIO|Name: Melag\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Mellanie",
+      "text": "BIO|race: Mermaid\r"
+    },
+    {
+      "name": "Merius",
+      "text": "BIO|Mermaid\rSEL|Damaged Armor:10:999"
+    },
+    {
+      "name": "Minmaye",
+      "text": "BIO|Name: Minmaye\rBIO|Class: Drunken Mermaid\rBUY|Ale:50\rGLD|999985999"
+    },
+    {
+      "name": "Miqa",
+      "text": "BIO|Name: Miqa\rBIO|Class: Armorer\rGLD|1000636749\rSEL|Plate Boots:1200:9836\rBUY|Plate Boots:600:10000\rSEL|Plate Helm:1200:9814\rBUY|Plate Helm:600:10000\rSEL|Steel Shield:1500:9923\rBUY|Steel Shield:750:10000\r"
+    },
+    {
+      "name": "Mirra",
+      "text": "BIO|Name: Mirra\rBIO|Class: Magic Supplier\rGLD|100155999\rSEL|Steel Staff:800:9948\rBUY|Steel Staff:400:9997\rSEL|Diminish Hunger Book:1000:9957\rBUY|Diminish Hunger Book:500:10000\rSEL|Create Food Book:1000:971\rBUY|Create Food Book:500:10000\rSEL|Inxition Book:1200:9964\rBUY|Inxition Book:600:10000\rSEL|Necromancer's Robe:1500:10056\rBUY|Necromancer's Robe:750:10000"
+    },
+    {
+      "name": "Missie",
+      "text": "BIO|Name: Missie\rBIO|Class: HardWare Specialist\rGLD|27418069\rSEL|Mining Hammer:100:10000\rBUY|Mining Hammer:50:10000\rSEL|Blacksmith Hammer:100:10000\rBUY|Blacksmith Hammer:50:10000\rSEL|Axe:200:9990\rBUY|Axe:100:10000\rSEL|Saw:200:10000\rBUY|Saw:100:10000\rSEL|Chunk of Steel:400:9957\rBUY|Chunk of Steel:200:10000\rSEL|Chunk of Star:1200:99974\rBUY|Chunk of Star:600"
+    },
+    {
+      "name": "Mizella",
+      "text": "BIO|Underwater Performer\rPRO|Slappy"
+    },
+    {
+      "name": "Mutant Worm",
+      "text": "INV|100 Gold:2\rINV|200 Gold:3"
+    },
+    {
+      "name": "Ninja Champion",
+      "text": "BIO|Name: Jithan\rBIO|Class: Master Ninja\rPRO| I just won the Ninja Championship but on the way back to Brinkston I was mugged by a gang of Cyclops. If you could help me find my Argon's Medal I would reward thee.\r"
+    },
+    {
+      "name": "Nucher",
+      "text": "OWN|king\rBIO|Name: Nucher\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Officer",
+      "text": "INV|30 Gold:1\rINV|50 Gold:5\rINV|Damaged Sword, Broad:50\rINV|Broad Sword:100"
+    },
+    {
+      "name": "Orc King",
+      "text": "BIO|Name: Orc King\rBIO|Class: Orc\rPRO|Bring me an Orc Burger and I will give you the key to my dungeons.\r"
+    },
+    {
+      "name": "Orc Lord",
+      "text": "INV|Orc Meat:17\rINV|5 gold:2\rINV|Orc Burger:10\rINV|Ring of Quickness:30\r"
+    },
+    {
+      "name": "Orc",
+      "text": "BIO|Orc\rINV|5 Red Crystals:10\rINV|Orc Meat:4\rINV|5 Gold:1\rINV|15 Gold:5\r"
+    },
+    {
+      "name": "Overlord",
+      "text": "INV|3000 Gold:1\rINV|5000 Gold:2\rINV|Fortress Guild Hall Deed:4"
+    },
+    {
+      "name": "Pa1",
+      "text": "OWN|king\rBIO|Name: Picha1\rBIO|Class: Shopkeeper\rGLD|4\r"
+    },
+    {
+      "name": "Peghom",
+      "text": "OWN|king\rBIO|Name: Peghom\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Phil",
+      "text": "BIO|Name: Phil\rBIO|Class: Imp\rSEL|Wooden Key:5000:99995\rGLD|11000\r"
+    },
+    {
+      "name": "Picha1",
+      "text": "OWN|king\rBIO|Name: Picha1\rBIO|Class: Shopkeeper\rGLD|9993\rSEL|long sword:30:0\rBUY|long sword:1\rSEL|apple:1:6\rBUY|apple:1\rPRO|hi"
+    },
+    {
+      "name": "Plone",
+      "text": "BIO|Name: Plone\rBIO|Class: Master Alchemist\rGLD|1876060692\rSEL|White Sand:150:99985\rSEL|Potion Bottle:5:10624\rBUY|Potion Bottle:2\rSEL|Blue Crystals:7:955947\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:9980945\rBUY|Red Crystals:7\rSEL|Green Crystals:18:1011276\rBUY|Green Crystals:9\rSEL|Yellow Crystals:20:992135\rBUY|Yellow Crystals:10\rSEL|Purple Crystals:23:968132\rBUY|Purple Crystals:11\rSEL|White Crystals:26:53757\rBUY|White Crystals:13\rBUY|White Sand:75\rBUY|White Potion:35\r"
+    },
+    {
+      "name": "Poison Frog",
+      "text": "INV|8 Gold:2\rINV|15 Gold:4\rINV|5 Yellow Crystals:10\r"
+    },
+    {
+      "name": "Prestin",
+      "text": "BIO|Name: Prestin\rBIO|Class: Hardware Specialist\rGLD|1000252199\rSEL|Mining Hammer:100:99983\rBUY|Mining Hammer:50:10000\rSEL|Blacksmith Hammer:100:9986\rBUY|Blacksmith Hammer:50:10000\rSEL|Axe:200:9967\rBUY|Axe:100:10000\rSEL|Saw:200:9976\rBUY|Saw:100:10000\rSEL|Chunk of Iron:200:99721\rBUY|Chunk of Iron:100\rSEL|Chunk of Steel:400:98734\rBUY|Chunk of Steel:200:10000\rSEL|Shovel:300:9974\rBUY|Shovel:150"
+    },
+    {
+      "name": "Qieros",
+      "text": "BIO|Name: Qieros\rBIO|Class: Weaponary Salesman\rGLD|100019274\rBUY|Knife:10:100000000\rSEL|Dagger:50:10652\rBUY|Dagger:25:10000\rSEL|Short Sword:175:9739\rBUY|Short Sword:85:10000\r"
+    },
+    {
+      "name": "Ratmas",
+      "text": "BIO|Name: Ratmas\rBIO|Class: Armorer\rGLD|10044284\rSEL|Leather Boots:75:9812\rBUY|Leather Boots:35:10000\rSEL|Leather Cap:50:10635\rBUY|Leather Cap:25:10000\rSEL|Leather Armor:200:10454\rBUY|Leather Armor:100:10000\rSEL|Small Shield:200:9610\rBUY|Small Shield:100:10000\r"
+    },
+    {
+      "name": "Roulan",
+      "text": "BIO|Name: Roulan\rBIO|Class: Merchant\rBUY|Sword of Hope:75000\rSEL|Sword of Hope:150000:10002\rGLD|999849999\r"
+    },
+    {
+      "name": "Rutxon",
+      "text": "BIO|Name: Ruxton\rBIO|Class: Mage Equipment Supplier\rGLD|1000675399\rSEL|Mage's Ring:4000:9982\rBUY|Mage's Ring:2000:10000\rSEL|Ceramic Armor:8000:9988\rBUY|Ceramic Armor:4000:10000\rSEL|Firebolt Book:25000:9993\rBUY|Firebolt Book:12500:10000\rSEL|Web Book:45000:9993\rBUY|Web Book:22500:10000\rSEL|Yellow Sand:200:10001\rBUY|Yellow Sand:100\r"
+    },
+    {
+      "name": "Shark",
+      "text": "INV|Mage's Head:3\rINV|Warrior's Head:3\rINV|Adventurer's Head:3\rINV|Raw Fish:3\rINV|Trout:3\rINV|Catfish:3\rINV|Swordfish:3\rINV|Squid:3"
+    },
+    {
+      "name": "Skeleton",
+      "text": "INV|20 Gold:1\rINV|40 Gold:3\rINV|Dark Scimitar:9\rINV|Necromancer's robe:30"
+    },
+    {
+      "name": "Slime",
+      "text": "INV|2 Gold:1\rINV|3 Gold:1\rINV|12 Gold:5\rINV|Leather Armor:60\r"
+    },
+    {
+      "name": "Smithy",
+      "text": "BIO|Name: Smithy\rBIO|Class: Real Estate Dealer\rPRO|Only two of each deed per customer.\rGLD|1216782841\rSEL|House Key:100:99966\rBUY|House Key:50:100000\rSEL|Guild Key:500:99962\rBUY|Guild Key:250:10000\rSEL|Small House Deed:10000:99967\rBUY|Small House Deed:5000:10000\rSEL|Blue Cottage Deed:12000:9986\rBUY|Blue Cottage Deed:6000:100000\rSEL|Small Guild Hall Deed:20000:9995\rBUY|Small Guild Hall Deed:10000:10000\rSEL|Small Shop Deed:50000:10000\rBUY|Small Shop Deed:25000:20000\rSEL|Fortress Guild Hall Deed:100000:300000\rBUY|Fortress Guild Hall Deed:50000:100000\r"
+    },
+    {
+      "name": "Snared Loah",
+      "text": "INV|70 Gold:4\rINV|100 Gold:6\rINV|Fishle:15\r"
+    },
+    {
+      "name": "Snow Demon",
+      "text": ""
+    },
+    {
+      "name": "Snow Serpent",
+      "text": "SPL|Whirlwind\rFLG|Agressive\rINV|100 Gold:2\rINV|200 Gold:4\rINV|Ice Sword:100\rINV|Chunk of Ice:50\r"
+    },
+    {
+      "name": "Solum",
+      "text": "OWN|Kingme\rBIO|Name: Solum\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Squid",
+      "text": "INV|20 Gold:3\rINV|Squid:6"
+    },
+    {
+      "name": "Stephie",
+      "text": "BIO|Name: Stephie\rBIO|Class: Alchemist\rGLD|1870865497\rSEL|Purple Sand:125:99978\rSEL|Potion Bottle:5:4755\rSEL|Blue Crystals:7:949266\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:9986084\rBUY|Red Crystals:7\rSEL|Green Crystals:18:1012522\rBUY|Green Crystals:9\rSEL|Yellow Crystals:20:996625\rBUY|Yellow Crystals:10\rSEL|Purple Crystals:23:824344\rBUY|Purple Crystals:11\rSEL|White Crystals:26:915285\rBUY|White Crystals:13\rBUY|Purple Sand:65\rBUY|Purple Potion:32\r"
+    },
+    {
+      "name": "Tastad",
+      "text": "OWN|king\rBIO|Name: Tastad\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Tela",
+      "text": "BIO|Name: Tela\rBIO|Class: Crystal Vendor\rGLD|1006008096\rSEL|Potion Bottle:5:9883179\rBUY|Potion Bottle:2\rSEL|Blue Crystals:7:9919922\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:99948602\rBUY|Red Crystals:7\rSEL|Yellow Crystals:20:9911961\rBUY|Yellow Crystals:10\rSEL|Green Crystals:18:9986790\rBUY|Green Crystals:9\rSEL|Purple Crystals:23:908927\rBUY|Purple Crystals:11\rSEL|Yellow Sand:125:9980\rSEL|White Crystals:26:9965131\rBUY|White Crystals:13\rBUY|Yellow Sand:65\rBUY|Yellow Potion:28\r"
+    },
+    {
+      "name": "Teli",
+      "text": "BIO|Name: Teli\rBIO|Class: Mage Specialist\rGLD|1408836007\rSEL|Gold Staff:2000:9999\rBUY|Gold Staff:1000:10000\rSEL|Wizard's Robe:3000:9997\rBUY|Wizard's Robe:1500:10000\rSEL|Morph Book:3000:9976\rBUY|Morph Book:1500:10000\rSEL|White Robe:4000:10723\rBUY|White Robe:2000:10000\rSEL|Wind Wave Book:5000:9975\rBUY|Wind Wave Book:2500:10000"
+    },
+    {
+      "name": "Teral",
+      "text": "BIO|Name: Teral\rBIO|Class: Weaponary Salesman\rGLD|100565999\rSEL|Steel Scimitar:250:9977\rBUY|Steel Scimitar:125:10000\rSEL|Dark Scimitar:250:10150\rBUY|Dark Scimitar:125:10000\rSEL|Katana:300:9907\rBUY|Katana:150:10000\rSEL|War Hammer:350:9936\rBUY|War Hammer:175:10000\rSEL|Unholy Lance:1200:9868\rBUY|Unholy Lance:600:10000\rSEL|Wooden Bow:750:10216\rBUY|Wooden Bow:375\rSEL|Red Arrows:150:9987\rBUY|Red Arrows:75"
+    },
+    {
+      "name": "Toste",
+      "text": "OWN|king\rBIO|Name: Toste\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Trianus",
+      "text": "FLG|Passive\rBIO|Name: Trianus\rBIO|Class: Secret Of The Warrior Faction\rPRO|Welcome to the Arena!  Proceed downstairs to fight.\rFLG|Still"
+    },
+    {
+      "name": "Trimble",
+      "text": "BIO|Name: Trimble\rBIO|Class: Warrior Equipment Dealer\rGLD|1316602161\rSEL|Gauntlets:1500:9937\rBUY|Gauntlets:750:10000\rSEL|Ring of Quickness:2000:9977\rBUY|Ring of Quickness:1000:10000\rSEL|Magical Shield:6000:9947\rBUY|Magical Shield:3000:10000"
+    },
+    {
+      "name": "Trixin",
+      "text": "BIO|Name: Trixin\rBIO|Class: Weapons Dealer\rSEL|Star Sword:50000:99994\rBUY|Star Sword:25000\rGLD|1000249999"
+    },
+    {
+      "name": "Velor",
+      "text": "OWN|Kingme\rBIO|Name: Velor\rBIO|Class: Shopkeeper\rPRO|\rGLD|0\rSEL|Apple:2:0\rBUY|Apple:1"
+    },
+    {
+      "name": "Vin",
+      "text": "BIO|Name: Vin\rBIO|Class: Magic Supplier\rGLD|99318399\rSEL|Wooden Staff:300:9973\rBUY|Wooden Staff:150:9996\rBUY|Minor Heal Book:250:10000\rSEL|Minor Heal Book:500:9722\rBUY|Fireball Book:400:10000\rSEL|Fireball Book:800:9826\rSEL|Nature Shift Book:1000:9934\rBUY|Nature Shift Book:500:10000\r"
+    },
+    {
+      "name": "Warrior Faction Member",
+      "text": "INV|Warrior's Head:1\rINV|Broad Sword:300"
+    },
+    {
+      "name": "Water God",
+      "text": "SEL|Splash Book:100:98\rTRN|Water Mage:10000\rBIO|Name:The Water God\rBIO|Class:Water Elemental\rPRO|Standing before you is the being that controls all water in the world. \rRND|Bring me the wind orbs or all will be lost.\rRND|Fire does not effect us in the slightest.\r"
+    },
+    {
+      "name": "Wenslas",
+      "text": "BIO|Name: Wenslas\rBIO|Class: Hardware Specialist\rGLD|10367799\rSEL|Mining Hammer:100:11182\rBUY|Mining Hammer:50:10000\rSEL|Blacksmith Hammer:100:9684\rBUY|Blacksmith Hammer:50:10000\rSEL|Saw:200:9881\rBUY|Saw:100:10000\rSEL|Axe:200:9836\rBUY|Axe:100:10000\rSEL|Chunk of Iron:200:8455\rBUY|Chunk of Iron:100:10000\rSEL|Shovel:300:99995\rBUY|Shovel:150"
+    },
+    {
+      "name": "Wind God",
+      "text": "SEL|Whirlwind Book:100:98\rSEL|Wind Wave Book:500:98\rTRN|Wind Mage:10000\rBIO|Name:The Wind God\rBIO|Class:Wind Elemental\rPRO|The Wind Mage controls the mightiest storms, to the calm breeze.\rRND|The earth blocks our passage with its high mountains, therefore it must be stopped.\rRND|Water? Ha! We simply blow it out of our path.\r"
+    },
+    {
+      "name": "Wolf",
+      "text": "INV|4 Gold:1\rINV|8 Gold:2\rINV|Raw Fish:9\rINV|Dagger:15\r"
+    },
+    {
+      "name": "Wrel",
+      "text": "BIO|Name: Wrel\rBIO|Class: Crystal Vendor\rGLD|1874337789\rSEL|Green Sand:125:100002\rSEL|Potion Bottle:5:3878\rBUY|Potion Bottle:2\rSEL|Blue Crystals:7:933633\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:9960898\rBUY|Red Crystals:7\rSEL|Green Crystals:18:939713\rBUY|Green Crystals:9\rSEL|Yellow Crystals:20:990037\rBUY|Yellow Crystals:10\rSEL|Purple Crystals:23:965511\rBUY|Purple Crystals:11\rBUY|White Crystals:13\rBUY|Green Sand:65\rBUY|Green Potion:26\rSEL|White Crystals:26:9033"
+    },
+    {
+      "name": "Yeti",
+      "text": "INV|50 Gold:2\rINV|75 Gold:3\rINV|Yeti Meat:7\rINV|Chunk of Ice:60\r"
+    },
+    {
+      "name": "Zola",
+      "text": "OWN|Zeilion\rBIO|Name: Zola\rBIO|Class: Shopkeeper\rPRO|\rGLD|49995\rSEL|Apple:2:0\rBUY|Apple:1\rSEL|Knight's Sword:1:2\rBUY|Knight's Sword:9999\r"
+    },
+    {
+      "name": "Zombie",
+      "text": "INV|5 Gold:3\rINV|10 Gold:4\rINV|20 Gold:6\rINV|Necromancer's Robe:13\r"
+    }
+  ]
+}

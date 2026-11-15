@@ -1,0 +1,17 @@
+{"channel":1,"frames":[1,28],"castLib":1,"member":21,"ink":0,"trails":false,"stretch":false,"loc":[160,125],"size":[320,250],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":2,"frames":[1,28],"castLib":1,"member":5,"ink":0,"trails":false,"stretch":true,"loc":[207,21],"size":[200,7],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":3,"frames":[1,28],"castLib":1,"member":4,"ink":36,"trails":false,"stretch":true,"loc":[107,20],"size":[20,20],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":4,"frames":[1,1],"castLib":1,"member":2,"ink":0,"trails":false,"stretch":false,"loc":[29,47],"size":[50,50],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":5,"frames":[1,1],"castLib":1,"member":14,"ink":36,"trails":false,"stretch":false,"loc":[15,60],"size":[291,167],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}
+{"channel":6,"frames":[1,1],"castLib":1,"member":16,"ink":36,"trails":false,"stretch":false,"loc":[24,11],"size":[57,17],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}
+{"channel":7,"frames":[1,1],"castLib":1,"member":18,"ink":0,"trails":false,"stretch":false,"loc":[279,42],"size":[49,14],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":8,"frames":[1,1],"castLib":1,"member":19,"ink":8,"trails":false,"stretch":false,"loc":[298,42],"size":[9,18],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":9,"frames":[1,28],"castLib":1,"member":22,"ink":0,"trails":false,"stretch":false,"loc":[75,47],"size":[38,15],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":10,"frames":[1,1],"castLib":1,"member":23,"ink":36,"trails":false,"stretch":false,"loc":[105,36],"size":[142,10],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}
+{"channel":11,"frames":[1,28],"castLib":1,"member":24,"ink":0,"trails":false,"stretch":false,"loc":[18,237],"size":[40,30],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":4,"frames":[2,28],"castLib":1,"member":2,"ink":0,"trails":false,"stretch":false,"loc":[29,47],"size":[39,15],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":5,"frames":[2,28],"castLib":1,"member":14,"ink":36,"trails":false,"stretch":true,"loc":[15,60],"size":[291,167],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}
+{"channel":6,"frames":[2,28],"castLib":1,"member":16,"ink":36,"trails":false,"stretch":true,"loc":[24,11],"size":[57,17],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}
+{"channel":7,"frames":[2,28],"castLib":1,"member":18,"ink":0,"trails":false,"stretch":false,"loc":[279,42],"size":[49,10],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":8,"frames":[2,28],"castLib":1,"member":19,"ink":8,"trails":false,"stretch":false,"loc":[298,42],"size":[9,15],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":10,"frames":[2,28],"castLib":1,"member":23,"ink":36,"trails":false,"stretch":true,"loc":[105,36],"size":[142,10],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}

@@ -1,0 +1,11 @@
+{
+ "frame": 310,
+ "label": "NPC Editor",
+ "stage": [
+  800,
+  600
+ ],
+ "stageColor": null,
+ "stageColorFrom": "config chunk unreadable (stage rect 8195x22530)",
+ "sprites": []
+}

@@ -1,0 +1,7651 @@
+{
+  "frame": 72,
+  "label": null,
+  "stage": [
+    800,
+    600
+  ],
+  "stageColor": null,
+  "stageColorFrom": "config chunk unreadable (stage rect 8195x22530)",
+  "sprites": [
+    {
+      "channel": 1,
+      "castLib": 1,
+      "member": 340,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        302,
+        223
+      ],
+      "size": [
+        544,
+        384
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        30,
+        31,
+        574,
+        415
+      ],
+      "reg": [
+        272,
+        192
+      ],
+      "asset": "bitmaps/506846_member.png"
+    },
+    {
+      "channel": 3,
+      "castLib": 1,
+      "member": 188,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        699,
+        188
+      ],
+      "size": [
+        204,
+        271
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        597,
+        53,
+        801,
+        324
+      ],
+      "reg": [
+        102,
+        135
+      ],
+      "asset": "bitmaps/342257_member.png"
+    },
+    {
+      "channel": 4,
+      "castLib": 1,
+      "member": 186,
+      "name": "Gui test",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        400,
+        300
+      ],
+      "size": [
+        234,
+        600
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        566,
+        0,
+        800,
+        600
+      ],
+      "reg": [
+        -166,
+        300
+      ],
+      "asset": "bitmaps/362527_Gui_test.png"
+    },
+    {
+      "channel": 5,
+      "castLib": 1,
+      "member": 173,
+      "name": "SpellTooClose",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        294,
+        -77
+      ],
+      "size": [
+        47,
+        68
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        270,
+        -94,
+        317,
+        -26
+      ],
+      "reg": [
+        24,
+        17
+      ],
+      "asset": "bitmaps/319662_SpellTooClose.png"
+    },
+    {
+      "channel": 6,
+      "castLib": 26,
+      "member": 3,
+      "name": "send note",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        332,
+        189
+      ],
+      "size": [
+        250,
+        226
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        207,
+        76,
+        457,
+        302
+      ],
+      "reg": [
+        125,
+        113
+      ],
+      "asset": "bitmaps/341770_send_note.png"
+    },
+    {
+      "channel": 7,
+      "castLib": 26,
+      "member": 16,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        388,
+        279
+      ],
+      "size": [
+        42,
+        17
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        394,
+        270,
+        436,
+        287
+      ],
+      "reg": [
+        -6,
+        9
+      ],
+      "asset": "bitmaps/234730_member.png"
+    },
+    {
+      "channel": 8,
+      "castLib": 26,
+      "member": 17,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        388,
+        279
+      ],
+      "size": [
+        44,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        334,
+        272,
+        378,
+        286
+      ],
+      "reg": [
+        54,
+        7
+      ],
+      "asset": "bitmaps/234731_member.png"
+    },
+    {
+      "channel": 9,
+      "castLib": 26,
+      "member": 18,
+      "name": "ComposeTo",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        266,
+        91
+      ],
+      "size": [
+        176,
+        14
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        266,
+        91,
+        442,
+        105
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 10,
+      "castLib": 26,
+      "member": 19,
+      "name": "ComposeSubject",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        266,
+        114
+      ],
+      "size": [
+        174,
+        13
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        266,
+        114,
+        440,
+        127
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 11,
+      "castLib": 26,
+      "member": 20,
+      "name": "ComposeBody",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        223,
+        138
+      ],
+      "size": [
+        216,
+        119
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        223,
+        138,
+        439,
+        257
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 12,
+      "castLib": 26,
+      "member": 1,
+      "name": "compose note",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        332,
+        189
+      ],
+      "size": [
+        250,
+        226
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        207,
+        76,
+        457,
+        302
+      ],
+      "reg": [
+        125,
+        113
+      ],
+      "asset": "bitmaps/395300_compose_note.png"
+    },
+    {
+      "channel": 13,
+      "castLib": 26,
+      "member": 17,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        388,
+        279
+      ],
+      "size": [
+        44,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        334,
+        272,
+        378,
+        286
+      ],
+      "reg": [
+        54,
+        7
+      ],
+      "asset": "bitmaps/234731_member.png"
+    },
+    {
+      "channel": 14,
+      "castLib": 26,
+      "member": 13,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        386,
+        279
+      ],
+      "size": [
+        57,
+        26
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        389,
+        270,
+        437,
+        287
+      ],
+      "reg": [
+        -3,
+        9
+      ],
+      "asset": "bitmaps/329252_member.png"
+    },
+    {
+      "channel": 15,
+      "castLib": 26,
+      "member": 21,
+      "name": "ReadTo",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        266,
+        91
+      ],
+      "size": [
+        174,
+        13
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        266,
+        91,
+        440,
+        104
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 16,
+      "castLib": 26,
+      "member": 22,
+      "name": "ReadSubject",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        266,
+        115
+      ],
+      "size": [
+        174,
+        13
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        266,
+        115,
+        440,
+        128
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 17,
+      "castLib": 26,
+      "member": 23,
+      "name": "ReadBody",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        225,
+        140
+      ],
+      "size": [
+        214,
+        16
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        225,
+        140,
+        439,
+        156
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 36,
+      "castLib": 1,
+      "member": 169,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        677,
+        101
+      ],
+      "size": [
+        205,
+        9
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        596,
+        99,
+        801,
+        108
+      ],
+      "reg": [
+        81,
+        2
+      ],
+      "asset": "bitmaps/362403_member.png"
+    },
+    {
+      "channel": 38,
+      "castLib": 1,
+      "member": 150,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        893,
+        68
+      ],
+      "size": [
+        205,
+        8
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        812,
+        67,
+        1017,
+        75
+      ],
+      "reg": [
+        81,
+        1
+      ],
+      "asset": "bitmaps/342258_member.png"
+    },
+    {
+      "channel": 39,
+      "castLib": 1,
+      "member": 152,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        907,
+        86
+      ],
+      "size": [
+        205,
+        9
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        826,
+        84,
+        1031,
+        93
+      ],
+      "reg": [
+        81,
+        2
+      ],
+      "asset": "bitmaps/342260_member.png"
+    },
+    {
+      "channel": 62,
+      "castLib": 1,
+      "member": 151,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        897,
+        68
+      ],
+      "size": [
+        205,
+        8
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        816,
+        67,
+        1021,
+        75
+      ],
+      "reg": [
+        81,
+        1
+      ],
+      "asset": "bitmaps/342259_member.png"
+    },
+    {
+      "channel": 63,
+      "castLib": 1,
+      "member": 472,
+      "name": "",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        874,
+        101
+      ],
+      "size": [
+        205,
+        9
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 127,
+      "stretch": false,
+      "rect": [
+        793,
+        99,
+        998,
+        108
+      ],
+      "reg": [
+        81,
+        2
+      ],
+      "asset": "bitmaps/362197_member.png"
+    },
+    {
+      "channel": 64,
+      "castLib": 1,
+      "member": 153,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        900,
+        86
+      ],
+      "size": [
+        205,
+        9
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        819,
+        84,
+        1024,
+        93
+      ],
+      "reg": [
+        81,
+        2
+      ],
+      "asset": "bitmaps/342261_member.png"
+    },
+    {
+      "channel": 65,
+      "castLib": 22,
+      "member": 729,
+      "name": "xxooxxoo",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        274,
+        -61
+      ],
+      "size": [
+        19,
+        31
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 127,
+      "stretch": false,
+      "rect": [
+        267,
+        -89,
+        286,
+        -58
+      ],
+      "reg": [
+        7,
+        28
+      ],
+      "asset": "bitmaps/372844_xxooxxoo.png"
+    },
+    {
+      "channel": 66,
+      "castLib": 22,
+      "member": 729,
+      "name": "xxooxxoo",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        274,
+        -61
+      ],
+      "size": [
+        19,
+        31
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 127,
+      "stretch": false,
+      "rect": [
+        267,
+        -89,
+        286,
+        -58
+      ],
+      "reg": [
+        7,
+        28
+      ],
+      "asset": "bitmaps/372844_xxooxxoo.png"
+    },
+    {
+      "channel": 67,
+      "castLib": 22,
+      "member": 729,
+      "name": "xxooxxoo",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        274,
+        -61
+      ],
+      "size": [
+        19,
+        31
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 127,
+      "stretch": false,
+      "rect": [
+        267,
+        -89,
+        286,
+        -58
+      ],
+      "reg": [
+        7,
+        28
+      ],
+      "asset": "bitmaps/372844_xxooxxoo.png"
+    },
+    {
+      "channel": 68,
+      "castLib": 22,
+      "member": 729,
+      "name": "xxooxxoo",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        274,
+        -61
+      ],
+      "size": [
+        19,
+        31
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 127,
+      "stretch": false,
+      "rect": [
+        267,
+        -89,
+        286,
+        -58
+      ],
+      "reg": [
+        7,
+        28
+      ],
+      "asset": "bitmaps/372844_xxooxxoo.png"
+    },
+    {
+      "channel": 71,
+      "castLib": 1,
+      "member": 294,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        334,
+        102
+      ],
+      "size": [
+        316,
+        145
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        164,
+        29,
+        480,
+        174
+      ],
+      "reg": [
+        170,
+        73
+      ],
+      "asset": "bitmaps/341990_member.png"
+    },
+    {
+      "channel": 72,
+      "castLib": 1,
+      "member": 295,
+      "name": "TheCurrentGuilds",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        180,
+        60
+      ],
+      "size": [
+        286,
+        68
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        180,
+        60,
+        466,
+        128
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 105,
+      "castLib": 1,
+      "member": 47,
+      "name": "chat",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        20,
+        456
+      ],
+      "size": [
+        742,
+        24
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        20,
+        456,
+        762,
+        480
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 106,
+      "castLib": 1,
+      "member": 48,
+      "name": "sendchat",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        20,
+        560
+      ],
+      "size": [
+        756,
+        12
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        20,
+        560,
+        776,
+        572
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 108,
+      "castLib": 1,
+      "member": 332,
+      "name": "",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        302,
+        223
+      ],
+      "size": [
+        544,
+        384
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        30,
+        31,
+        574,
+        415
+      ],
+      "reg": [
+        272,
+        192
+      ],
+      "asset": "bitmaps/506847_member.png"
+    },
+    {
+      "channel": 110,
+      "castLib": 1,
+      "member": 300,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        302,
+        223
+      ],
+      "size": [
+        544,
+        384
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        30,
+        31,
+        574,
+        415
+      ],
+      "reg": [
+        272,
+        192
+      ],
+      "asset": "bitmaps/506849_member.png"
+    },
+    {
+      "channel": 111,
+      "castLib": 1,
+      "member": 449,
+      "name": "NoTex",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        301,
+        221
+      ],
+      "size": [
+        544,
+        384
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": true,
+      "rect": [
+        -14496,
+        -5923,
+        -13952,
+        -5539
+      ],
+      "reg": [
+        136,
+        96
+      ],
+      "asset": "bitmaps/376138_NoTex.png"
+    },
+    {
+      "channel": 112,
+      "castLib": 20,
+      "member": 11,
+      "name": "1-F2-N",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        226,
+        -5000
+      ],
+      "size": [
+        24,
+        31
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        209,
+        -5006,
+        233,
+        -4975
+      ],
+      "reg": [
+        17,
+        6
+      ],
+      "asset": "bitmaps/136479_1-F2-N.png"
+    },
+    {
+      "channel": 115,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 118,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 121,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 124,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 127,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 130,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 133,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 136,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 139,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 142,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 145,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 148,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 151,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 154,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 156,
+      "castLib": 20,
+      "member": 725,
+      "name": "FloatChars",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        109,
+        -61
+      ],
+      "size": [
+        118,
+        12
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        109,
+        -61,
+        227,
+        -49
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 157,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5000
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5000,
+        329,
+        -4999
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 158,
+      "castLib": 9,
+      "member": 56,
+      "name": "",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        31,
+        11
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        376,
+        -5005,
+        407,
+        -4994
+      ],
+      "reg": [
+        -57,
+        5
+      ],
+      "asset": "bitmaps/237809_member.png"
+    },
+    {
+      "channel": 159,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 160,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        320,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        314,
+        -4991,
+        326,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 161,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 162,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 163,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 164,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 165,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 166,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 167,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 168,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 169,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 170,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 171,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 172,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 173,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 174,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 175,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 176,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 177,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        319,
+        -5000
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        313,
+        -4991,
+        325,
+        -4975
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 180,
+      "castLib": 20,
+      "member": 66,
+      "name": "30-F2-E",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        287,
+        -5000
+      ],
+      "size": [
+        32,
+        22
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        271,
+        -4990,
+        303,
+        -4968
+      ],
+      "reg": [
+        16,
+        -10
+      ],
+      "asset": "bitmaps/168270_30-F2-E.png"
+    },
+    {
+      "channel": 181,
+      "castLib": 20,
+      "member": 66,
+      "name": "30-F2-E",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        287,
+        -5000
+      ],
+      "size": [
+        32,
+        22
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        271,
+        -4990,
+        303,
+        -4968
+      ],
+      "reg": [
+        16,
+        -10
+      ],
+      "asset": "bitmaps/168270_30-F2-E.png"
+    },
+    {
+      "channel": 182,
+      "castLib": 20,
+      "member": 66,
+      "name": "30-F2-E",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        287,
+        -5000
+      ],
+      "size": [
+        32,
+        22
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        271,
+        -4990,
+        303,
+        -4968
+      ],
+      "reg": [
+        16,
+        -10
+      ],
+      "asset": "bitmaps/168270_30-F2-E.png"
+    },
+    {
+      "channel": 183,
+      "castLib": 20,
+      "member": 66,
+      "name": "30-F2-E",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        287,
+        -5000
+      ],
+      "size": [
+        32,
+        22
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        271,
+        -4990,
+        303,
+        -4968
+      ],
+      "reg": [
+        16,
+        -10
+      ],
+      "asset": "bitmaps/168270_30-F2-E.png"
+    },
+    {
+      "channel": 192,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5201
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5201,
+        329,
+        -5200
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 193,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        360,
+        177
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        360,
+        177,
+        361,
+        178
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 194,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        261,
+        23
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        261,
+        23,
+        262,
+        24
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 195,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        442,
+        300
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        442,
+        300,
+        443,
+        301
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 196,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        500,
+        299
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        500,
+        299,
+        501,
+        300
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 197,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        203,
+        45
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        203,
+        45,
+        204,
+        46
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 198,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        204,
+        215
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        204,
+        215,
+        205,
+        216
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 200,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        328,
+        -5017
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        328,
+        -5017,
+        329,
+        -5016
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 210,
+      "castLib": 11,
+      "member": 11,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        331,
+        240
+      ],
+      "size": [
+        213,
+        266
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        205,
+        89,
+        418,
+        355
+      ],
+      "reg": [
+        126,
+        151
+      ],
+      "asset": "bitmaps/357990_member.png"
+    },
+    {
+      "channel": 211,
+      "castLib": 11,
+      "member": 13,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        386,
+        331
+      ],
+      "size": [
+        35,
+        18
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        366,
+        320,
+        401,
+        338
+      ],
+      "reg": [
+        20,
+        11
+      ],
+      "asset": "bitmaps/68312_member.png"
+    },
+    {
+      "channel": 212,
+      "castLib": 11,
+      "member": 14,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        386,
+        334
+      ],
+      "size": [
+        34,
+        20
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        366,
+        321,
+        400,
+        341
+      ],
+      "reg": [
+        20,
+        13
+      ],
+      "asset": "bitmaps/31543_member.png"
+    },
+    {
+      "channel": 213,
+      "castLib": 11,
+      "member": 22,
+      "name": "NumberofItems",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        238,
+        321
+      ],
+      "size": [
+        40,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        238,
+        321,
+        278,
+        337
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 215,
+      "castLib": 11,
+      "member": 15,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        337,
+        334
+      ],
+      "size": [
+        63,
+        21
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        301,
+        319,
+        364,
+        340
+      ],
+      "reg": [
+        36,
+        15
+      ],
+      "asset": "bitmaps/31405_member.png"
+    },
+    {
+      "channel": 217,
+      "castLib": 11,
+      "member": 9,
+      "name": "List",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        222,
+        109
+      ],
+      "size": [
+        135,
+        80
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        222,
+        109,
+        357,
+        189
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 218,
+      "castLib": 11,
+      "member": 10,
+      "name": "Prices",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        352,
+        110
+      ],
+      "size": [
+        46,
+        64
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        352,
+        110,
+        398,
+        174
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 219,
+      "castLib": 11,
+      "member": 23,
+      "name": "VaultList",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        226,
+        109
+      ],
+      "size": [
+        173,
+        198
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        226,
+        109,
+        399,
+        307
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 252,
+      "castLib": 1,
+      "member": 119,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        334,
+        151
+      ],
+      "size": [
+        253,
+        117
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        208,
+        153,
+        461,
+        270
+      ],
+      "reg": [
+        126,
+        -2
+      ],
+      "asset": "bitmaps/339777_member.png"
+    },
+    {
+      "channel": 253,
+      "castLib": 19,
+      "member": 1,
+      "name": null,
+      "type": null,
+      "ink": 0,
+      "loc": [
+        427,
+        240
+      ],
+      "size": [
+        39,
+        31
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        427,
+        240,
+        466,
+        271
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 254,
+      "castLib": 19,
+      "member": 2,
+      "name": null,
+      "type": null,
+      "ink": 0,
+      "loc": [
+        387,
+        241
+      ],
+      "size": [
+        25,
+        36
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        387,
+        241,
+        412,
+        277
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 256,
+      "castLib": 1,
+      "member": 187,
+      "name": "Gui test",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        401,
+        300
+      ],
+      "size": [
+        565,
+        41
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        1,
+        0,
+        566,
+        41
+      ],
+      "reg": [
+        400,
+        300
+      ],
+      "asset": "bitmaps/362424_Gui_test.png"
+    },
+    {
+      "channel": 257,
+      "castLib": 1,
+      "member": 190,
+      "name": "Gui test",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        401,
+        300
+      ],
+      "size": [
+        33,
+        559
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        1,
+        41,
+        34,
+        600
+      ],
+      "reg": [
+        400,
+        259
+      ],
+      "asset": "bitmaps/362473_Gui_test.png"
+    },
+    {
+      "channel": 258,
+      "castLib": 1,
+      "member": 191,
+      "name": "Gui test",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        401,
+        300
+      ],
+      "size": [
+        532,
+        196
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        34,
+        404,
+        566,
+        600
+      ],
+      "reg": [
+        367,
+        -104
+      ],
+      "asset": "bitmaps/362472_Gui_test.png"
+    },
+    {
+      "channel": 260,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 261,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 262,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 263,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 264,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 265,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 266,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 267,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 268,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 269,
+      "castLib": 22,
+      "member": 1,
+      "name": "minor heal-1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        188,
+        -4300
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        177,
+        -4312,
+        200,
+        -4287
+      ],
+      "reg": [
+        11,
+        12
+      ],
+      "asset": "bitmaps/159672_minor_heal-1.png"
+    },
+    {
+      "channel": 271,
+      "castLib": 1,
+      "member": 406,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        28,
+        230
+      ],
+      "size": [
+        12,
+        379
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        22,
+        41,
+        34,
+        420
+      ],
+      "reg": [
+        6,
+        189
+      ],
+      "asset": "bitmaps/377929_member.png"
+    },
+    {
+      "channel": 272,
+      "castLib": 22,
+      "member": 30,
+      "name": "Txt1",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        74,
+        -5000
+      ],
+      "size": [
+        53,
+        12
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        74,
+        -5000,
+        127,
+        -4988
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 273,
+      "castLib": 22,
+      "member": 31,
+      "name": "Txt2",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        57,
+        -5000
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "fore": [
+        0,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        57,
+        -5000,
+        89,
+        -4984
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 274,
+      "castLib": 22,
+      "member": 32,
+      "name": "Txt3",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        62,
+        -5000
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "fore": [
+        0,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        62,
+        -5000,
+        94,
+        -4984
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 275,
+      "castLib": 22,
+      "member": 33,
+      "name": "Txt4",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        56,
+        -5000
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "fore": [
+        0,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        56,
+        -5000,
+        88,
+        -4984
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 276,
+      "castLib": 22,
+      "member": 34,
+      "name": "Txt5",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        69,
+        -5000
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "fore": [
+        0,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        69,
+        -5000,
+        101,
+        -4984
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 277,
+      "castLib": 22,
+      "member": 35,
+      "name": "Txt6",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        67,
+        -5000
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "fore": [
+        0,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        67,
+        -5000,
+        99,
+        -4984
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 278,
+      "castLib": 22,
+      "member": 36,
+      "name": "Txt7",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        59,
+        -5000
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "fore": [
+        0,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        59,
+        -5000,
+        91,
+        -4984
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 279,
+      "castLib": 1,
+      "member": 407,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        300,
+        414
+      ],
+      "size": [
+        532,
+        21
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        34,
+        404,
+        566,
+        425
+      ],
+      "reg": [
+        266,
+        10
+      ],
+      "asset": "bitmaps/377928_member.png"
+    },
+    {
+      "channel": 280,
+      "castLib": 22,
+      "member": 38,
+      "name": "S1h",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        152,
+        -5000
+      ],
+      "size": [
+        27,
+        29
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        139,
+        -5014,
+        166,
+        -4985
+      ],
+      "reg": [
+        13,
+        14
+      ],
+      "asset": "bitmaps/165596_S1h.png"
+    },
+    {
+      "channel": 281,
+      "castLib": 22,
+      "member": 38,
+      "name": "S1h",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        152,
+        -5000
+      ],
+      "size": [
+        27,
+        29
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        139,
+        -5014,
+        166,
+        -4985
+      ],
+      "reg": [
+        13,
+        14
+      ],
+      "asset": "bitmaps/165596_S1h.png"
+    },
+    {
+      "channel": 282,
+      "castLib": 22,
+      "member": 38,
+      "name": "S1h",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        152,
+        -5000
+      ],
+      "size": [
+        27,
+        29
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        139,
+        -5014,
+        166,
+        -4985
+      ],
+      "reg": [
+        13,
+        14
+      ],
+      "asset": "bitmaps/165596_S1h.png"
+    },
+    {
+      "channel": 283,
+      "castLib": 22,
+      "member": 97,
+      "name": "kill1",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        265,
+        -5000
+      ],
+      "size": [
+        23,
+        20
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        255,
+        -5001,
+        278,
+        -4981
+      ],
+      "reg": [
+        10,
+        1
+      ],
+      "asset": "bitmaps/171883_kill1.png"
+    },
+    {
+      "channel": 284,
+      "castLib": 1,
+      "member": 405,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        572,
+        224
+      ],
+      "size": [
+        12,
+        397
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        566,
+        26,
+        578,
+        423
+      ],
+      "reg": [
+        6,
+        198
+      ],
+      "asset": "bitmaps/377930_member.png"
+    },
+    {
+      "channel": 292,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        209,
+        223
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        209,
+        223,
+        210,
+        224
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 293,
+      "castLib": 21,
+      "member": 40,
+      "name": "SignTextb",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        192,
+        175
+      ],
+      "size": [
+        241,
+        16
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        192,
+        175,
+        433,
+        191
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 298,
+      "castLib": 31,
+      "member": 11,
+      "name": null,
+      "type": null,
+      "ink": 0,
+      "loc": [
+        386,
+        -85
+      ],
+      "size": [
+        32,
+        32
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        386,
+        -85,
+        418,
+        -53
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 299,
+      "castLib": 21,
+      "member": 45,
+      "name": "InGameMapHeader",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        139,
+        426
+      ],
+      "size": [
+        319,
+        16
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        139,
+        426,
+        458,
+        442
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 300,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        298,
+        209
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        298,
+        209,
+        299,
+        210
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 302,
+      "castLib": 9,
+      "member": 210,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        470,
+        -72
+      ],
+      "size": [
+        59,
+        39
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        441,
+        -91,
+        500,
+        -52
+      ],
+      "reg": [
+        29,
+        19
+      ],
+      "asset": "bitmaps/474379_member.png"
+    },
+    {
+      "channel": 303,
+      "castLib": 9,
+      "member": 211,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        472,
+        -79
+      ],
+      "size": [
+        55,
+        17
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        445,
+        -87,
+        500,
+        -70
+      ],
+      "reg": [
+        27,
+        8
+      ],
+      "asset": "bitmaps/474378_member.png"
+    },
+    {
+      "channel": 304,
+      "castLib": 9,
+      "member": 212,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        467,
+        -62
+      ],
+      "size": [
+        55,
+        17
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        440,
+        -70,
+        495,
+        -53
+      ],
+      "reg": [
+        27,
+        8
+      ],
+      "asset": "bitmaps/474377_member.png"
+    },
+    {
+      "channel": 310,
+      "castLib": 1,
+      "member": 271,
+      "name": "guildcreate",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        332,
+        158
+      ],
+      "size": [
+        350,
+        156
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        157,
+        34,
+        507,
+        190
+      ],
+      "reg": [
+        175,
+        124
+      ],
+      "asset": "bitmaps/329236_guildcreate.png"
+    },
+    {
+      "channel": 311,
+      "castLib": 1,
+      "member": 275,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        449,
+        168
+      ],
+      "size": [
+        57,
+        17
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        404,
+        159,
+        461,
+        176
+      ],
+      "reg": [
+        45,
+        9
+      ],
+      "asset": "bitmaps/224463_member.png"
+    },
+    {
+      "channel": 312,
+      "castLib": 1,
+      "member": 274,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        449,
+        168
+      ],
+      "size": [
+        33,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        462,
+        159,
+        493,
+        178
+      ],
+      "reg": [
+        -13,
+        9
+      ],
+      "asset": "bitmaps/329238_member.png"
+    },
+    {
+      "channel": 313,
+      "castLib": 1,
+      "member": 279,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        383,
+        118
+      ],
+      "size": [
+        56,
+        28
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        301,
+        104,
+        357,
+        132
+      ],
+      "reg": [
+        82,
+        14
+      ],
+      "asset": "bitmaps/224467_member.png"
+    },
+    {
+      "channel": 314,
+      "castLib": 1,
+      "member": 277,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        383,
+        118
+      ],
+      "size": [
+        64,
+        28
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        358,
+        104,
+        422,
+        132
+      ],
+      "reg": [
+        25,
+        14
+      ],
+      "asset": "bitmaps/224465_member.png"
+    },
+    {
+      "channel": 315,
+      "castLib": 1,
+      "member": 278,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        383,
+        118
+      ],
+      "size": [
+        44,
+        28
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        421,
+        104,
+        465,
+        132
+      ],
+      "reg": [
+        -38,
+        14
+      ],
+      "asset": "bitmaps/224466_member.png"
+    },
+    {
+      "channel": 316,
+      "castLib": 1,
+      "member": 282,
+      "name": "GuildName",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        265,
+        79
+      ],
+      "size": [
+        210,
+        13
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        265,
+        79,
+        475,
+        92
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 318,
+      "castLib": 1,
+      "member": 216,
+      "name": "MyCurHPs",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        814,
+        67
+      ],
+      "size": [
+        34,
+        12
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        814,
+        67,
+        848,
+        79
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 319,
+      "castLib": 1,
+      "member": 217,
+      "name": "MyCurSPs",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        820,
+        82
+      ],
+      "size": [
+        34,
+        11
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        820,
+        82,
+        854,
+        93
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 320,
+      "castLib": 1,
+      "member": 272,
+      "name": "basic GUILD GUI!!!",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        326,
+        183
+      ],
+      "size": [
+        350,
+        289
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        151,
+        39,
+        501,
+        328
+      ],
+      "reg": [
+        175,
+        144
+      ],
+      "asset": "bitmaps/341989_basic_GUILD_GUI_.png"
+    },
+    {
+      "channel": 321,
+      "castLib": 1,
+      "member": 285,
+      "name": "GuildNameB",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        259,
+        85
+      ],
+      "size": [
+        210,
+        13
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        259,
+        85,
+        469,
+        98
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 322,
+      "castLib": 1,
+      "member": 276,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        377,
+        123
+      ],
+      "size": [
+        56,
+        28
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        295,
+        109,
+        351,
+        137
+      ],
+      "reg": [
+        82,
+        14
+      ],
+      "asset": "bitmaps/224464_member.png"
+    },
+    {
+      "channel": 323,
+      "castLib": 1,
+      "member": 277,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        377,
+        123
+      ],
+      "size": [
+        64,
+        28
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        352,
+        109,
+        416,
+        137
+      ],
+      "reg": [
+        25,
+        14
+      ],
+      "asset": "bitmaps/224465_member.png"
+    },
+    {
+      "channel": 324,
+      "castLib": 1,
+      "member": 278,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        377,
+        123
+      ],
+      "size": [
+        44,
+        28
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        415,
+        109,
+        459,
+        137
+      ],
+      "reg": [
+        -38,
+        14
+      ],
+      "asset": "bitmaps/224466_member.png"
+    },
+    {
+      "channel": 325,
+      "castLib": 1,
+      "member": 286,
+      "name": "GuildLeader",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        279,
+        149
+      ],
+      "size": [
+        173,
+        16
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        279,
+        149,
+        452,
+        165
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 326,
+      "castLib": 1,
+      "member": 287,
+      "name": "GuildMembers",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        280,
+        174
+      ],
+      "size": [
+        167,
+        13
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        280,
+        174,
+        447,
+        187
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 327,
+      "castLib": 1,
+      "member": 288,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        474,
+        308
+      ],
+      "size": [
+        33,
+        26
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        459,
+        297,
+        486,
+        316
+      ],
+      "reg": [
+        15,
+        11
+      ],
+      "asset": "bitmaps/329239_member.png"
+    },
+    {
+      "channel": 328,
+      "castLib": 1,
+      "member": 289,
+      "name": "leaveguild",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        201,
+        308
+      ],
+      "size": [
+        76,
+        26
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        163,
+        297,
+        239,
+        316
+      ],
+      "reg": [
+        38,
+        11
+      ],
+      "asset": "bitmaps/224224_leaveguild.png"
+    },
+    {
+      "channel": 329,
+      "castLib": 1,
+      "member": 291,
+      "name": "disbandguild",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        191,
+        306
+      ],
+      "size": [
+        63,
+        26
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        166,
+        297,
+        223,
+        314
+      ],
+      "reg": [
+        25,
+        9
+      ],
+      "asset": "bitmaps/224603_disbandguild.png"
+    },
+    {
+      "channel": 330,
+      "castLib": 1,
+      "member": 292,
+      "name": "exileguild",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        244,
+        306
+      ],
+      "size": [
+        41,
+        26
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        224,
+        297,
+        265,
+        314
+      ],
+      "reg": [
+        20,
+        9
+      ],
+      "asset": "bitmaps/224601_exileguild.png"
+    },
+    {
+      "channel": 331,
+      "castLib": 1,
+      "member": 293,
+      "name": "abdicateguild",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        304,
+        306
+      ],
+      "size": [
+        66,
+        26
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        271,
+        297,
+        337,
+        314
+      ],
+      "reg": [
+        33,
+        9
+      ],
+      "asset": "bitmaps/224111_abdicateguild.png"
+    },
+    {
+      "channel": 333,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        323,
+        170
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        323,
+        170,
+        324,
+        171
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 334,
+      "castLib": 27,
+      "member": 9,
+      "name": "clrrr",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        245,
+        148
+      ],
+      "size": [
+        51,
+        39
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        229,
+        159,
+        280,
+        198
+      ],
+      "reg": [
+        16,
+        -11
+      ],
+      "asset": "bitmaps/293025_clrrr.png"
+    },
+    {
+      "channel": 335,
+      "castLib": 27,
+      "member": 9,
+      "name": "clrrr",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        307,
+        148
+      ],
+      "size": [
+        51,
+        39
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        291,
+        159,
+        342,
+        198
+      ],
+      "reg": [
+        16,
+        -11
+      ],
+      "asset": "bitmaps/293025_clrrr.png"
+    },
+    {
+      "channel": 336,
+      "castLib": 27,
+      "member": 9,
+      "name": "clrrr",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        368,
+        148
+      ],
+      "size": [
+        51,
+        39
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        352,
+        159,
+        403,
+        198
+      ],
+      "reg": [
+        16,
+        -11
+      ],
+      "asset": "bitmaps/293025_clrrr.png"
+    },
+    {
+      "channel": 338,
+      "castLib": 27,
+      "member": 35,
+      "name": "p1name",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        231,
+        65
+      ],
+      "size": [
+        107,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        231,
+        65,
+        338,
+        81
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 339,
+      "castLib": 27,
+      "member": 36,
+      "name": "p1bid",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        231,
+        85
+      ],
+      "size": [
+        58,
+        16
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        231,
+        85,
+        289,
+        101
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 340,
+      "castLib": 27,
+      "member": 37,
+      "name": "p2name",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        332,
+        65
+      ],
+      "size": [
+        88,
+        16
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        332,
+        65,
+        420,
+        81
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 341,
+      "castLib": 27,
+      "member": 38,
+      "name": "p2bid",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        333,
+        85
+      ],
+      "size": [
+        54,
+        16
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        333,
+        85,
+        387,
+        101
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 342,
+      "castLib": 27,
+      "member": 41,
+      "name": "B1Off",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        181,
+        95
+      ],
+      "size": [
+        14,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        175,
+        87,
+        189,
+        101
+      ],
+      "reg": [
+        6,
+        8
+      ],
+      "asset": "bitmaps/301949_B1Off.png"
+    },
+    {
+      "channel": 343,
+      "castLib": 27,
+      "member": 43,
+      "name": "B2Off",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        459,
+        95
+      ],
+      "size": [
+        14,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        453,
+        87,
+        467,
+        101
+      ],
+      "reg": [
+        6,
+        8
+      ],
+      "asset": "bitmaps/301951_B2Off.png"
+    },
+    {
+      "channel": 344,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        193,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        193,
+        182,
+        194,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 345,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        210,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        210,
+        182,
+        211,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 346,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        227,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        227,
+        182,
+        228,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 347,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        245,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        245,
+        182,
+        246,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 348,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        261,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        261,
+        182,
+        262,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 349,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        383,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        383,
+        182,
+        384,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 350,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        400,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        400,
+        182,
+        401,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 351,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        417,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        417,
+        182,
+        418,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 352,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        434,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        434,
+        182,
+        435,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 353,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        451,
+        182
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        451,
+        182,
+        452,
+        183
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 360,
+      "castLib": 1,
+      "member": 84,
+      "name": "L1n",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        254,
+        -62
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        254,
+        -62,
+        255,
+        -61
+      ],
+      "reg": [
+        0,
+        0
+      ],
+      "asset": "bitmaps/237888_L1n.png"
+    },
+    {
+      "channel": 362,
+      "castLib": 26,
+      "member": 2,
+      "name": "note list",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        329,
+        203
+      ],
+      "size": [
+        350,
+        350
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        154,
+        28,
+        504,
+        378
+      ],
+      "reg": [
+        175,
+        175
+      ],
+      "asset": "bitmaps/341771_note_list.png"
+    },
+    {
+      "channel": 364,
+      "castLib": 26,
+      "member": 12,
+      "name": "SubjectList",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        242,
+        59
+      ],
+      "size": [
+        246,
+        271
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        242,
+        59,
+        488,
+        330
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 366,
+      "castLib": 1,
+      "member": 203,
+      "name": "BCastBlocker",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        399,
+        565
+      ],
+      "size": [
+        766,
+        22
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": true,
+      "rect": [
+        17,
+        554,
+        783,
+        576
+      ],
+      "reg": [
+        137,
+        13
+      ],
+      "asset": "bitmaps/419452_BCastBlocker.png"
+    },
+    {
+      "channel": 368,
+      "castLib": 26,
+      "member": 11,
+      "name": "FromList",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        169,
+        59
+      ],
+      "size": [
+        71,
+        271
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        169,
+        59,
+        240,
+        330
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 370,
+      "castLib": 1,
+      "member": 41,
+      "name": "processingtransaction",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        353,
+        236
+      ],
+      "size": [
+        106,
+        32
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        271,
+        221,
+        377,
+        253
+      ],
+      "reg": [
+        82,
+        15
+      ],
+      "asset": "bitmaps/329234_processingtransaction.png"
+    },
+    {
+      "channel": 373,
+      "castLib": 29,
+      "member": 8,
+      "name": "PaintingAuthor",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        413,
+        180
+      ],
+      "size": [
+        139,
+        12
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        0,
+        153,
+        204
+      ],
+      "blend": 0,
+      "rect": [
+        413,
+        180,
+        552,
+        192
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 375,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 376,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 377,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 378,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 379,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 380,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 381,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 382,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 383,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 384,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 385,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 386,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 387,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 388,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 389,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 390,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 391,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 392,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 393,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 394,
+      "castLib": 9,
+      "member": 2,
+      "name": "Apple",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        115,
+        -55
+      ],
+      "size": [
+        12,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        255,
+        0
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        109,
+        -46,
+        121,
+        -30
+      ],
+      "reg": [
+        6,
+        -9
+      ],
+      "asset": "bitmaps/339324_Apple.png"
+    },
+    {
+      "channel": 395,
+      "castLib": 29,
+      "member": 13,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        299,
+        218
+      ],
+      "size": [
+        1,
+        1
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        320,
+        201,
+        321,
+        202
+      ],
+      "reg": [
+        -21,
+        17
+      ],
+      "asset": "bitmaps/363165_member.png"
+    },
+    {
+      "channel": 396,
+      "castLib": 29,
+      "member": 14,
+      "name": "rounded outline qd shape",
+      "type": "shape",
+      "ink": 0,
+      "loc": [
+        103,
+        328
+      ],
+      "size": [
+        23,
+        25
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        103,
+        328,
+        126,
+        353
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 397,
+      "castLib": 1,
+      "member": 505,
+      "name": "Painting",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        168,
+        286
+      ],
+      "size": [
+        64,
+        64
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        136,
+        254,
+        200,
+        318
+      ],
+      "reg": [
+        32,
+        32
+      ],
+      "asset": "bitmaps/363167_Painting.png"
+    },
+    {
+      "channel": 398,
+      "castLib": 1,
+      "member": 505,
+      "name": "Painting",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        370,
+        209
+      ],
+      "size": [
+        64,
+        64
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        338,
+        177,
+        402,
+        241
+      ],
+      "reg": [
+        32,
+        32
+      ],
+      "asset": "bitmaps/363167_Painting.png"
+    },
+    {
+      "channel": 399,
+      "castLib": 29,
+      "member": 16,
+      "name": "bbb1",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        299,
+        218
+      ],
+      "size": [
+        37,
+        36
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        119,
+        85,
+        156,
+        121
+      ],
+      "reg": [
+        180,
+        133
+      ],
+      "asset": "bitmaps/363143_bbb1.png"
+    }
+  ]
+}

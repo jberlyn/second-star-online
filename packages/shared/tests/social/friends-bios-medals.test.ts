@@ -1,0 +1,330 @@
+/** Goldens for buddies, bios, profiles and medals. */
+import { describe, expect, test } from "bun:test";
+
+import { socialData } from "@secondstaronline/data";
+
+import {
+  type BioSource,
+  BUDDY_MAX,
+  BUDDY_TEXT,
+  bioScore,
+  bioTitle,
+  buddyAdd,
+  buddyRemove,
+  buddyString,
+  checkForAwards,
+  drawProfile,
+  friendsAtEntry,
+  friendsDelete,
+  friendsLogoff,
+  friendsLogon,
+  giveBio,
+  medalStrip,
+  parseFriends,
+  saveProfile,
+  skillIndex,
+} from "../../src/index.ts";
+
+const skills = (set: Record<string, number> = {}) => {
+  const s: number[] = Array(38).fill(0);
+  for (const [k, v] of Object.entries(set)) {
+    s[skillIndex(k)] = v;
+  }
+  return s;
+};
+
+describe("buddies", () => {
+  test("the four texts verbatim", () => {
+    expect(BUDDY_TEXT.added("Bob")).toBe("*** Bob was added to your friend's list.");
+    expect(BUDDY_TEXT.already("Bob")).toBe("*** Bob is already on your friend's list!");
+    expect(BUDDY_TEXT.removed("Bob")).toBe("*** Bob was removed from your friend's list.");
+    expect(BUDDY_TEXT.notOn("Bob")).toBe("*** Bob is not on your friend's list!");
+    expect(BUDDY_TEXT.title).toBe("Friends");
+  });
+
+  test("/friends uses only word 3; anything else is swallowed", () => {
+    expect(parseFriends("/friends add Bob Smith")).toEqual({ kind: "add", name: "Bob" });
+    expect(parseFriends("/friends REMOVE bob")).toEqual({ kind: "remove", name: "bob" });
+    expect(parseFriends("/friends")).toBeNull();
+    expect(parseFriends("/friends add")).toBeNull();
+    expect(parseFriends("/friends list Bob")).toBeNull();
+  });
+
+  test("adding a buddy: a case-blind `contains`, yourself allowed", () => {
+    expect(buddyString([])).toBe(":");
+    const a = buddyAdd([], "Bob");
+    expect(a).toEqual({
+      items: ["Bob"],
+      line: "*** Bob was added to your friend's list.",
+      ask: true,
+    });
+    expect(buddyString(a.items)).toBe(":Bob:");
+    expect(buddyAdd(a.items, "BOB")).toEqual({
+      items: ["Bob"],
+      line: "*** BOB is already on your friend's list!",
+      ask: false,
+    });
+  });
+
+  test("divergence: the list holds 199 names; an add past that is refused", () => {
+    expect(BUDDY_MAX).toBe(199);
+    const many = Array.from({ length: 198 }, (_, i) => `P${i}`);
+    const last = buddyAdd(many, "Zed");
+    expect(last.items).toHaveLength(199);
+    expect(buddyAdd(last.items, "Amy")).toEqual({
+      items: last.items,
+      line: "Your friends list is full.",
+      ask: false,
+    });
+    // A name with colons adds several items: refused whole when they would pass the cap.
+    expect(buddyAdd(many, "a:b").line).toBe("Your friends list is full.");
+    expect(buddyAdd(many.slice(1), "a:b").items).toHaveLength(199);
+  });
+
+  test("kept bug: removing a buddy finds only items 1-190, so the 190th name and later cannot go", () => {
+    const list = Array.from({ length: 195 }, (_, i) => `P${i + 1}`);
+    // Name k is item k + 1 (item 1 is the empty piece before the first colon).
+    const first = buddyRemove(list, "p189");
+    expect(first.line).toBe("*** p189 was removed from your friend's list.");
+    expect(first.items).toHaveLength(194);
+    expect(first.items).not.toContain("P189");
+    expect(buddyRemove(list, "P190")).toEqual({
+      items: list,
+      line: "*** P190 is not on your friend's list!",
+      removed: false,
+    });
+    expect(buddyRemove(list, "Nobody").line).toBe("*** Nobody is not on your friend's list!");
+  });
+
+  test("a removal rebuilds from items 1-200 only: names past the 199th are dropped", () => {
+    const list = Array.from({ length: 205 }, (_, i) => `P${i + 1}`);
+    const r = buddyRemove(list, "P1");
+    expect(r.items).toHaveLength(198);
+    expect(r.items.at(-1)).toBe("P199");
+  });
+
+  test("the window: entry from everyone online in the server's order and spelling", () => {
+    expect(friendsAtEntry(["bob", "zed", "alice"], ["Alice", "Bob", "Carol"])).toEqual([
+      "Alice",
+      "Bob",
+    ]);
+    const online = Array.from({ length: 205 }, (_, i) => `P${i + 1}`);
+    expect(friendsAtEntry(["P201", "P5"], online)).toEqual(["P5"]);
+  });
+
+  test("the window: logon appends a buddy once, logoff deletes it", () => {
+    expect(friendsLogon(["Alice"], ["bob"], "Bob")).toEqual(["Alice", "Bob"]);
+    expect(friendsLogon(["Alice", "Bob"], ["bob"], "Bob")).toEqual(["Alice", "Bob"]);
+    expect(friendsLogon(["Alice"], ["bob"], "Carol")).toEqual(["Alice"]);
+    expect(friendsLogoff(["Alice", "Bob"], ["bob"], "Bob")).toEqual(["Alice"]);
+    expect(friendsLogoff(["Alice", "Bob"], [], "Bob")).toEqual(["Alice", "Bob"]);
+    // The deletion loop skips the line that moves up.
+    expect(friendsDelete(["Bob", "bob", "Cy"], "BOB")).toEqual(["bob", "Cy"]);
+  });
+});
+
+const base: BioSource = {
+  name: "Bob",
+  sex: 1,
+  level: 7,
+  profile: "Hello there",
+  medals: "39-31-",
+  skills: skills(),
+  hpMax: 40,
+  spMax: 25,
+  guild: null,
+  faction: 0,
+  wanted: false,
+  body: null,
+  tree: false,
+  bodyItem: "",
+  inVehicle: false,
+};
+
+describe("bios", () => {
+  test("the title table: strict >, the last true row wins", () => {
+    expect(bioTitle(skills())).toBe("Adventurer");
+    expect(bioTitle(skills({ Cooking: 10 }))).toBe("Adventurer");
+    expect(bioTitle(skills({ Cooking: 11 }))).toBe("Apprentice Cook");
+    expect(bioTitle(skills({ Fishing: 91 }))).toBe("Master Baiter");
+    // Later rows win: Archery > 30 comes after Slash > 45.
+    expect(bioTitle(skills({ Slash: 50, Archery: 31 }))).toBe("Apprentice Archer");
+    expect(bioTitle(skills({ Slash: 61, Swordsmanship: 51 }))).toBe("Swordsman");
+    expect(bioTitle(skills({ Slash: 61, Swordsmanship: 51, Thrust: 51 }))).toBe("Jouster");
+    expect(bioTitle(skills({ Fencing: 81, Slash: 81, Swordsmanship: 91 }))).toBe(
+      "Master Swordsman",
+    );
+    expect(bioTitle(skills({ Magery: 81, Sorcery: 61, UnholyCombat: 61 }))).toBe("Death Knight");
+    expect(bioTitle(skills({ Magery: 95, Archery: 96 }))).toBe("Master Archer");
+  });
+
+  test("kept bug: the score drops the eight skills of the misspelt-variable line", () => {
+    expect(socialData.bios.score.lost).toEqual([
+      "Lumberjacking",
+      "Archery",
+      "Blessing",
+      "Musicianship",
+      "Illusion",
+      "Punch",
+      "fire",
+      "wind",
+    ]);
+    const s = skills({
+      Slash: 10,
+      Lumberjacking: 50,
+      Archery: 50,
+      Punch: 50,
+      Cooking: 5,
+      Farming: 9,
+    });
+    expect(bioScore(s, 40, 25)).toBe(10 + 5 + 40 + 25);
+  });
+
+  test("the reply's items and the viewer's lines", () => {
+    const items = giveBio({
+      ...base,
+      guild: { name: "Knights", leader: true },
+      faction: 1,
+      wanted: true,
+    });
+    expect(items).toEqual([
+      "Bob Star",
+      "Adventurer",
+      "1",
+      "7",
+      "Hello there",
+      "",
+      "39-31-",
+      "65",
+      "Leader of the Knights",
+      "Loyal to the Mages",
+      "Vile Murderer",
+    ]);
+    expect(drawProfile(items, "Alice")).toEqual({
+      title: "Bob Star",
+      bio: [
+        "Name: Bob Star",
+        "Class: Adventurer",
+        "Sex: Male",
+        "Score: 65",
+        "Leader of the Knights",
+        "Loyal to the Mages",
+        "Vile Murderer",
+      ],
+      profile: "Hello there",
+      medals: ["39", "31"],
+      own: false,
+    });
+    expect(drawProfile(items, "bob").own).toBe(true);
+  });
+
+  test("a member, the Warriors and Adventurers, and empty lines left out", () => {
+    const d = drawProfile(
+      giveBio({ ...base, sex: 2, guild: { name: "Knights", leader: false }, faction: 2 }),
+      "Bob",
+    );
+    expect(d.bio).toEqual([
+      "Name: Bob Star",
+      "Class: Adventurer",
+      "Sex: Female",
+      "Score: 65",
+      "Member of the Knights",
+      "Loyal to the Warriors",
+    ]);
+    expect(drawProfile(giveBio({ ...base, faction: 3 }), "x").bio.at(-1)).toBe(
+      "Loyal to the Adventurers",
+    );
+  });
+
+  test("disguises: a tree is A Tree, then the Robe out of a vehicle wins; both hide the rest", () => {
+    const tree = drawProfile(giveBio({ ...base, tree: true, wanted: true }), "Bob");
+    expect(tree).toEqual({
+      title: "A Tree",
+      bio: ["Name: A Tree", "Class: ", "Sex: ", "Score: "],
+      profile: "",
+      medals: [],
+      own: false,
+    });
+    const robe = giveBio({ ...base, tree: true, bodyItem: "Robe of Invisibility" });
+    expect(robe[0]).toBe("????");
+    expect(drawProfile(robe, "Bob").bio).toEqual(["Name: ????", "Class: ", "Sex: ", "Score: "]);
+    // In a vehicle the Robe hides nothing.
+    expect(giveBio({ ...base, bodyItem: "Robe of Invisibility", inVehicle: true })[0]).toBe(
+      "Bob Star",
+    );
+  });
+
+  test("kept bug: each bio clears slots 1-10 and draws from slot 1; slots 11-14 keep the last bio's medals", () => {
+    const blank = socialData.bios.medalStrip.blankMember;
+    const member = (id: number) => socialData.medals.awards.find((a) => a.id === id)?.member;
+    const twelve = ["39", "31", "94", "95", "93", "35", "61", "44", "45", "91", "92", "20"];
+    const first = medalStrip([], twelve);
+    expect(first).toHaveLength(14);
+    expect(first[0]).toBe(member(39));
+    expect(first[11]).toBe(member(20));
+    expect(first[12]).toBeNull();
+    const second = medalStrip(first, ["21"]);
+    expect(second[0]).toBe(member(21));
+    expect(second.slice(1, 10)).toEqual(Array(9).fill(blank));
+    expect(second[10]).toBe(member(92));
+    expect(second[11]).toBe(member(20));
+  });
+});
+
+describe("SaveProfile", () => {
+  test("periods and semicolons are lost on every close", () => {
+    expect(saveProfile("I like fish. And chips; really")).toEqual({
+      profile: "I like fish And chips really",
+      alert: null,
+    });
+  });
+
+  test("one forward pass: of two adjacent characters the second survives", () => {
+    expect(saveProfile("Wait..")).toEqual({ profile: "Wait.", alert: null });
+    expect(saveProfile("a::b")).toEqual({
+      profile: null,
+      alert: "You can't have a : in your profile!",
+    });
+    expect(saveProfile("http//x")).toEqual({
+      profile: null,
+      alert: "You can't have a / in your profile!",
+    });
+    expect(saveProfile("a:b/c")).toEqual({ profile: "abc", alert: null });
+  });
+
+  test("capped at 500 characters before the strip", () => {
+    expect(saveProfile("x".repeat(600)).profile).toHaveLength(500);
+  });
+});
+
+describe("CheckForAwards", () => {
+  test("every medal, each at exactly 90, with its line and stats", () => {
+    for (const a of socialData.medals.awards) {
+      const r = checkForAwards(skills({ [a.skill]: 90 }), "");
+      expect(r.medals).toBe(`${a.id}-`);
+      expect(r.lines).toEqual([a.text]);
+      expect(r.stats).toEqual(a.stats);
+    }
+  });
+
+  test("the cook's and the smith's lines and points", () => {
+    expect(checkForAwards(skills({ Cooking: 90 }), "")).toEqual({
+      medals: "39-",
+      lines: ["You have been awarded the silver spatula for being a master chef!"],
+      stats: { sta: 1 },
+    });
+    expect(checkForAwards(skills({ Blacksmithing: 90 }), "").stats).toEqual({ str: 2, sta: 2 });
+  });
+
+  test("kept bug: 89 or 91 earns nothing; a medal already held is not given again", () => {
+    expect(checkForAwards(skills({ Cooking: 91 }), "").lines).toEqual([]);
+    expect(checkForAwards(skills({ Cooking: 89 }), "").lines).toEqual([]);
+    expect(checkForAwards(skills({ Cooking: 90 }), "39-").lines).toEqual([]);
+  });
+
+  test("several at once, in the script's order", () => {
+    const r = checkForAwards(skills({ Slash: 90, Cooking: 90 }), "");
+    expect(r.medals).toBe("39-95-");
+    expect(r.stats).toEqual({ sta: 1, str: 1 });
+  });
+});

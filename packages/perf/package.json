@@ -1,0 +1,15 @@
+{
+  "name": "@secondstaronline/perf",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@secondstaronline/client": "workspace:*",
+    "@secondstaronline/data": "workspace:*",
+    "@secondstaronline/server": "workspace:*",
+    "@secondstaronline/shared": "workspace:*"
+  }
+}

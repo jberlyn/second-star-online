@@ -1,0 +1,102 @@
+/**
+ * Spell FX on a map: a cast becomes a cast message that every client places at the top of its next
+ * frame script, in the lowest free FX sprite; the actorList then steps it each frame. The server
+ * keeps one copy.
+ *
+ * - A slot is free when its sprite's `locV < 0`. With no 11-sprite cap the slot is the lowest free
+ *   number.
+ * - A FX whose `locV <= 0` never steps; one placed above the stage (a Splash clicked in the top
+ *   32 px) stays until its slot is reused.
+ */
+import {
+  type DeltaEvent,
+  lingoContains,
+  newFx,
+  placeFx,
+  type Rng,
+  spellImp,
+  stepFx,
+} from "@secondstaronline/shared";
+
+import type { CastMessage, Player, Room, SpellFx } from "../world/world.ts";
+
+/** Queues a cast for the next frame script. */
+export function queueCast(room: Room, c: CastMessage): void {
+  room.fxQueue.push(c);
+}
+
+/** The monster-spell block, 30 frames. */
+export const NPC_SPELL_BLOCK_FRAMES = 30;
+
+function freeSlot(room: Room): number {
+  for (let k = 1; ; k += 1) {
+    const at = room.fx.find((f) => f.slot === k);
+    if (!at || at.v < 0) {
+      return k;
+    }
+  }
+}
+
+export interface PlaceResult {
+  events: DeltaEvent[];
+  /** Skill-gain lines for casters (the cast skill gain on their own echo). */
+  lines: { to: Player; text: string }[];
+}
+
+/**
+ * The frame script's network message: each queued cast as every client ran it. A caster name
+ * containing "18" blocks monster spells for everyone here; the caster's own client runs the cast skill gain
+ * when the caster's loc is positive; then the FX takes the lowest free slot, unless the name places
+ * nothing.
+ */
+export function placeQueued(room: Room, rng: Rng): PlaceResult {
+  const res: PlaceResult = { events: [], lines: [] };
+  const queue = room.fxQueue.splice(0);
+  for (const q of queue) {
+    const { casterH, casterV } = q;
+    for (const p of room.players) {
+      // A client that is still loading ignores spells: it drops the whole message.
+      if (p.loading > 0) {
+        continue;
+      }
+      if (lingoContains(q.owner, "18")) {
+        p.spell.npcSpellBlock = NPC_SPELL_BLOCK_FRAMES;
+      }
+    }
+    const caster = q.ownerId ? room.players.find((p) => p.id === q.ownerId) : undefined;
+    if (casterH > 0 && casterV > 0 && caster && caster.loading === 0) {
+      for (const text of spellImp(q.name, caster.char.skills, caster.char.faction, rng)) {
+        res.lines.push({ to: caster, text });
+      }
+    }
+    const at = placeFx(q.name, { h: casterH, v: casterV }, { h: q.h, v: q.v });
+    if (!at) {
+      continue;
+    }
+    const slot = freeSlot(room);
+    room.fx = room.fx.filter((f) => f.slot !== slot);
+    const fx: SpellFx = {
+      ...newFx(q.name, at),
+      slot,
+      power: q.power,
+      owner: q.owner,
+      ownerId: q.ownerId,
+    };
+    room.fx.push(fx);
+    room.fx.sort((a, b) => a.slot - b.slot);
+    const ev: DeltaEvent = { e: "fx", slot, name: q.name, h: at.h, v: at.v };
+    if (caster && casterH > 0 && casterV > 0) {
+      ev.caster = caster.id;
+    }
+    res.events.push(ev);
+  }
+  return res;
+}
+
+/** Every FX's `stepFrame`, before the frame's scripts; finished ones go. */
+export function advanceFx(room: Room): void {
+  for (const fx of room.fx) {
+    stepFx(fx);
+  }
+  room.fx = room.fx.filter((f) => !f.gone);
+}

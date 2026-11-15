@@ -1,0 +1,163 @@
+{
+ "frame": 1,
+ "label": null,
+ "stage": [
+  120,
+  240
+ ],
+ "stageColor": "#FFFFFF",
+ "stageColorFrom": "config chunk, palette index 0",
+ "sprites": [
+  {
+   "channel": 1,
+   "castLib": 1,
+   "member": 3,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    41,
+    107
+   ],
+   "size": [
+    89,
+    217
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    0,
+    -1,
+    120,
+    241
+   ],
+   "reg": [
+    41,
+    108
+   ],
+   "asset": "bitmaps/00006_member.png"
+  },
+  {
+   "channel": 2,
+   "castLib": 1,
+   "member": 1,
+   "name": "GlobalUsers",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    8,
+    9
+   ],
+   "size": [
+    105,
+    205
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    8,
+    9,
+    113,
+    214
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 4,
+   "castLib": 1,
+   "member": 6,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    14,
+    226
+   ],
+   "size": [
+    21,
+    15
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    6,
+    219,
+    25,
+    234
+   ],
+   "reg": [
+    8,
+    7
+   ],
+   "asset": "bitmaps/00009_member.png"
+  },
+  {
+   "channel": 5,
+   "castLib": 1,
+   "member": 7,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    34,
+    226
+   ],
+   "size": [
+    19,
+    15
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    26,
+    219,
+    45,
+    234
+   ],
+   "reg": [
+    8,
+    7
+   ],
+   "asset": "bitmaps/00010_member.png"
+  }
+ ]
+}

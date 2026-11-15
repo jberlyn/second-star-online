@@ -1,0 +1,1012 @@
+{
+  "account-name": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "account-password": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "alert-confirm": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "alert-dismiss": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "amount-cancel": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "amount-confirm": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "amount-input": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "away-back": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "away-message": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "away-set": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "bio-buy": {
+    "count": 2,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "bio-profile": {
+    "count": 2,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "bio-sell": {
+    "count": 2,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "bio-train": {
+    "count": 2,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "blackjack-bid": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "blackjack-hit": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "blackjack-leave-the-table": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "blackjack-lock-bid": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "blackjack-stand": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "board-close": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "board-post": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "board-post-text": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "character-menu-dismiss": {
+    "count": 2,
+    "hidden": 2,
+    "disabled": 0
+  },
+  "character-trade": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "character-view-bio": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "chat-input": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "checkers-move": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "checkers-select-piece": {
+    "count": 24,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-cancel": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-class-fighter": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-class-mage": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-class-ranger": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-decrease-dex": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-decrease-int": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-decrease-sta": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-decrease-str": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-decrease-wis": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-female": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-increase-dex": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-increase-int": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-increase-sta": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-increase-str": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-increase-wis": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-male": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-next-head": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-previous-head": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "creation-submit": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-blend-level": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-chat-toggle": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-clear-items": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-clear-monsters": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-clear-npcs": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-exit-map-x": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-exit-map-y": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-exit-tile-x": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-exit-tile-y": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-faction-a": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-faction-m": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-faction-w": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-fat-brush": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-fog-colour": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-fog-texture": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-header": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-indoor": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-items": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-layer-1": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-layer-2": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-layer-3": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-load": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-map": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-map-east": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-map-north": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-map-south": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-map-west": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-map-x": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-map-y": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-monsters": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-next-tiles": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-no-pvp": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-npcs": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-ok": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-paint-bucket": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-pencil": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-previous-tiles": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-safe-area": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-save": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-shadow-layer": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-sign-background": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-sign-save": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-sign-text": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "editor-tile": {
+    "count": 60,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "friends-away": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "friends-message": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "friends-remove": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "friends-select-player": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-abdicate": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-cancel": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-disband": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-evil": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-exile": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-good": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-guild-list": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-leave-guild": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-list-cancel": {
+    "count": 1,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "guild-list-open": {
+    "count": 1,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "guild-name": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-neutral": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-ok": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "guild-select-guild": {
+    "count": 1,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "guild-select-member": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-build": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-cook": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-drop": {
+    "count": 8,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-equip": {
+    "count": 3,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-give": {
+    "count": 8,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-gold": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-mix": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-select-slot": {
+    "count": 15,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-smith": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-storage": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-unequip-body": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-unequip-feet": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-unequip-head": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-unequip-lefthand": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-unequip-righthand": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-unequip-ring": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "inventory-use": {
+    "count": 8,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "login-cancel": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "login-submit": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-body": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-close": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-close-mailbox": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-delete-message": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-mail-subj": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-mail-to": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-read-message": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-reply": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-select-from": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-select-subject": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-send": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "mail-write-message": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "menu-dismiss": {
+    "count": 1,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "menu-focus": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "menu-open-admin": {
+    "count": 1,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "menu-open-edit": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "menu-open-file": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "menu-open-game": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "menu-open-options": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "message-recipient": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "message-reply-send": {
+    "count": 10,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "message-reply-text": {
+    "count": 10,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "message-send": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "message-text": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "newspaper-photo": {
+    "count": 3,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "newspaper-save": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "newspaper-text": {
+    "count": 6,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "npc-editor-load": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "npc-editor-save": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "npc-editor-script": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "npc-editor-select-monster": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "npc-editor-select-npc": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "paint-draw": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "paint-tools": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "paint-viewer-close": {
+    "count": 1,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "panel-tab-inventory": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "panel-tab-skills": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "panel-tab-spellbook": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "panel-tab-stats": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "playfield": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "room-chat-input": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "settings-reset": {
+    "count": 6,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "settings-revert": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "settings-save": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "settings-value": {
+    "count": 8,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "shop-buy": {
+    "count": 3,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "shop-cancel": {
+    "count": 3,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "shop-quantity": {
+    "count": 3,
+    "hidden": 1,
+    "disabled": 0
+  },
+  "shop-select-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "shop-sell": {
+    "count": 3,
+    "hidden": 3,
+    "disabled": 0
+  },
+  "sign-close": {
+    "count": 2,
+    "hidden": 2,
+    "disabled": 0
+  },
+  "skills-scroll-down": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "skills-scroll-up": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "slots-close": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "slots-pull": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "spell-info": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "spell-select": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "spell-toggle-cast": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "title-load-character": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "title-new-character": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "trade-accept": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "trade-cancel-a": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "trade-cancel-b": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "trade-left-amount": {
+    "count": 32,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "trade-offer-a": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "trade-offer-b": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "trade-right-amount": {
+    "count": 32,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "vault-select-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "who-im": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "who-profile": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "who-select-player": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "window-close": {
+    "count": 29,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "window-drag": {
+    "count": 29,
+    "hidden": 0,
+    "disabled": 0
+  }
+}

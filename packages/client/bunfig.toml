@@ -1,0 +1,4 @@
+# Client tests run in a happy-dom window. Only this package loads it,
+# so server and shared tests keep the real Bun globals.
+[test]
+preload = ["./tests/helpers/happydom.ts"]

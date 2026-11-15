@@ -1,0 +1,6 @@
+{"castLib":1,"cast":"Internal","member":1,"name":"ChatGUI","type":"bitmap","rect":[0,0,500,300],"width":500,"height":300,"regX":250,"regY":150,"rawReg":[250,150],"depth":32,"pitch":2000,"pitchFlags":8,"flags22":0,"byte10":1,"clut":[-1,0],"asset":"bitmaps/00004_ChatGUI.png","assetSize":[500,300],"border":{"rgb":[6,6,6],"fraction":0.497},"scoreUsage":[{"ink":0,"back":[255,255,255],"fore":[0,0,0],"blend":0,"frames":28}],"keyHint":"opaque"}
+{"castLib":1,"cast":"Internal","member":2,"name":"Title","type":"field","asset":["text/00005_Title_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":3,"name":"Chat","type":"field","asset":["text/00006_Chat_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":4,"name":"SendChat","type":"field","asset":["text/00007_SendChat_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":5,"name":"Title","type":"field","asset":["text/00008_Title_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":6,"name":"UserList","type":"field","asset":["text/00009_UserList_stxt_0.txt"]}

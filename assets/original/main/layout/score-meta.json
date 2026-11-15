@@ -1,0 +1,254 @@
+{
+  "movie": "First Star Online 1.6.dir",
+  "castLibs": [
+    {
+      "index": 1,
+      "name": "Internal",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 509
+    },
+    {
+      "index": 2,
+      "name": "DBAdmin",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 88
+    },
+    {
+      "index": 3,
+      "name": "DBUser",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 20
+    },
+    {
+      "index": 4,
+      "name": "DBPlayer",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 21
+    },
+    {
+      "index": 5,
+      "name": "DBApplication",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 33
+    },
+    {
+      "index": 6,
+      "name": "NPC",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 0
+    },
+    {
+      "index": 7,
+      "name": "Names",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 24
+    },
+    {
+      "index": 8,
+      "name": "NPCs",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 151
+    },
+    {
+      "index": 9,
+      "name": "Inventory",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 982
+    },
+    {
+      "index": 10,
+      "name": "Scripts",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 511
+    },
+    {
+      "index": 11,
+      "name": "shop",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 28
+    },
+    {
+      "index": 12,
+      "name": "Maps",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 0
+    },
+    {
+      "index": 13,
+      "name": "Codes",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 1
+    },
+    {
+      "index": 14,
+      "name": "Monsters",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 115
+    },
+    {
+      "index": 15,
+      "name": "Chat",
+      "path": "",
+      "minMember": 3,
+      "maxMember": 16
+    },
+    {
+      "index": 16,
+      "name": "Audio",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 99
+    },
+    {
+      "index": 17,
+      "name": "Characters",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 1582
+    },
+    {
+      "index": 18,
+      "name": "TempSave",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 22
+    },
+    {
+      "index": 19,
+      "name": "Newspaper",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 0
+    },
+    {
+      "index": 20,
+      "name": "Chars",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 1595
+    },
+    {
+      "index": 21,
+      "name": "WorldEdit",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 92
+    },
+    {
+      "index": 22,
+      "name": "FX",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 814
+    },
+    {
+      "index": 23,
+      "name": "MapGFX",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 1000
+    },
+    {
+      "index": 24,
+      "name": "Story",
+      "path": "",
+      "minMember": 8,
+      "maxMember": 46
+    },
+    {
+      "index": 25,
+      "name": "Houses",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 7
+    },
+    {
+      "index": 26,
+      "name": "Mail",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 23
+    },
+    {
+      "index": 27,
+      "name": "Casino",
+      "path": "",
+      "minMember": 2,
+      "maxMember": 50
+    },
+    {
+      "index": 28,
+      "name": "WorldMapEdit",
+      "path": "",
+      "minMember": 2,
+      "maxMember": 13
+    },
+    {
+      "index": 29,
+      "name": "Paintings",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 25
+    },
+    {
+      "index": 30,
+      "name": "Movie",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 0
+    },
+    {
+      "index": 31,
+      "name": "Specialchars",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 0
+    },
+    {
+      "index": 32,
+      "name": "B Scripts",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 2
+    }
+  ],
+  "labels": {
+    "20": "Waiting...",
+    "25": "DBAdmin",
+    "34": "New Marker",
+    "35": "New Marker",
+    "50": "Game Area",
+    "65": "New Marker",
+    "76": "New Marker",
+    "84": "New Marker",
+    "103": "New Marker",
+    "186": "prefs",
+    "261": "World Editor",
+    "291": "mini map",
+    "310": "NPC Editor",
+    "341": "File Editor",
+    "360": "Big World Editor",
+    "380": "Credits",
+    "391": "File Edit",
+    "411": "Movie",
+    "460": "Register"
+  },
+  "frameCount": 488,
+  "channels": 1000,
+  "memberCount": 5265,
+  "spanCount": 762
+}

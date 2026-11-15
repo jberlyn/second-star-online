@@ -1,0 +1,191 @@
+/**
+ * The player's swing on the server sim: the attack poll and its latch, Hold, and PvP's victim
+ * test and skill gains.
+ */
+import { describe, expect, test } from "bun:test";
+
+import { skillIndex } from "@secondstaronline/shared";
+
+import {
+  ATTACK_LATCH_TICKS,
+  pollAttack,
+  setAttackHeld,
+  swingSound,
+} from "../src/systems/combat/melee.ts";
+import type { Player, Room } from "../src/systems/world/world.ts";
+import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
+
+function scene(queues: Record<number, number[]> = {}) {
+  const map = testMap("x1000y992");
+  const rng = rngByN(queues);
+  const { world, join, run } = setup([map], undefined, rng);
+  const add = (id: string, x: number, y: number): Player => {
+    const p = player(id, map, x, y);
+    p.flicker = 0;
+    join(p);
+    return p;
+  };
+  const room = () => world.rooms.get(map.name) as Room;
+  const poll = (p: Player) => pollAttack(room(), p, { rng, now: 0, world });
+  return { map, world, rng, add, room, poll, run };
+}
+
+describe("the attack poll", () => {
+  test(`SSO: a tap is latched for ${ATTACK_LATCH_TICKS} ticks: it swings if the attack re-arms by then`, () => {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    a.timers.canAttack = false;
+    // A tap: press and release before the next tick.
+    setAttackHeld(a, true);
+    setAttackHeld(a, false);
+    expect(s.poll(a).swing).toBeNull();
+    expect(s.poll(a).swing).toBeNull();
+    a.timers.canAttack = true;
+    expect(s.poll(a).swing).not.toBeNull();
+  });
+
+  test("SSO: a tap older than the latch is lost, as 1.6's keyPressed poll lost it", () => {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    a.timers.canAttack = false;
+    setAttackHeld(a, true);
+    setAttackHeld(a, false);
+    for (let i = 0; i <= ATTACK_LATCH_TICKS; i++) {
+      expect(s.poll(a).swing).toBeNull();
+    }
+    a.timers.canAttack = true;
+    expect(s.poll(a).swing).toBeNull();
+    // A held key swings whenever the attack is armed.
+    setAttackHeld(a, true);
+    expect(s.poll(a).swing).not.toBeNull();
+  });
+
+  test("kept bug: Hold stops walking but not attacking: the key is polled before the Hold gate", () => {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    a.spell.hold = 100;
+    a.held = "R";
+    s.run(2);
+    expect([a.x, a.y]).toEqual([5, 5]);
+    setAttackHeld(a, true);
+    const out = s.run(1);
+    const swings = out.flatMap((o) =>
+      o.to === "Ann" && o.msg.t === "delta" ? o.msg.events.filter((e) => e.e === "swing") : [],
+    );
+    expect(swings).toHaveLength(1);
+    expect(a.timers.atDelay).toBeGreaterThan(0);
+  });
+});
+
+describe("PvP melee", () => {
+  test("kept bug: the victim's old-tile test uses the old Y twice: a victim stepping from (9,4) is hit by a swing at (4,4)", () => {
+    const s = scene();
+    const a = s.add("Ann", 4, 5); // faces north: the faced tile is (4, 4)
+    const b = s.add("Bob", 9, 5);
+    b.char.skills = Array(38).fill(0);
+    // Bob is mid-step south from (9, 4): his old Y is 4, compared with both 4 and 4.
+    b.facing = "S";
+    b.stepFrames = 8;
+    a.timers.canAttack = true;
+    setAttackHeld(a, true);
+    const ev = s.poll(a);
+    expect(ev.pvp.map((h) => h.victim.name)).toEqual(["Bob"]);
+    expect(b.lastToHitMe).toBe("Ann");
+  });
+
+  test("kept bug: a victim who has just left the faced tile is missed when its old Y is not the faced X", () => {
+    const s = scene();
+    const a = s.add("Ann", 4, 6); // faces north: the faced tile is (4, 5)
+    const b = s.add("Bob", 5, 5);
+    b.char.skills = Array(38).fill(0);
+    // Bob is mid-step east from (4, 5), the faced tile; his old Y 5 is not 4.
+    b.facing = "E";
+    b.stepFrames = 8;
+    a.timers.canAttack = true;
+    setAttackHeld(a, true);
+    expect(s.poll(a).pvp).toEqual([]);
+  });
+
+  test('a PvP block can raise Block: "You have advanced in the art of Block!" at Parry > 50', () => {
+    // Parry 55: random(90) ×3, 85, 80, 70, then random(60) = 2, no parry. Block 5: random(90)
+    // = 1, a block. The skill-gain roll: random(5) = 1.
+    const s = scene({ 90: [9, 9, 9, 1], 60: [2], 5: [1] });
+    const a = s.add("Ann", 5, 5);
+    const b = s.add("Bob", 5, 4);
+    b.char.skills = Array(38).fill(0);
+    b.char.skills[skillIndex("Parry")] = 55;
+    b.char.skills[skillIndex("Block")] = 5;
+    a.timers.canAttack = true;
+    setAttackHeld(a, true);
+    const ev = s.poll(a);
+    expect(ev.pvp.map((h) => [h.text, h.lines])).toEqual([
+      ["Block", ["You have advanced in the art of Block!"]],
+    ]);
+    expect(b.char.skills[skillIndex("Block")]).toBe(6);
+  });
+});
+
+describe("the hit blink on the victim's screen only", () => {
+  test("a melee hit (key poll) hides the victim's sprite for 20 frames; the attacker's screen shows no blink on the victim", () => {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    const b = s.add("Bob", 5, 4);
+    b.char.skills = Array(38).fill(0);
+    a.timers.canAttack = true;
+    setAttackHeld(a, true);
+    // The key poll runs between the tick's two actor passes (tick.ts), so one player-sprite
+    // call is left this tick and the flips never cancel: Bob is hidden at every tick end.
+    const out = s.run(1);
+    setAttackHeld(a, false);
+    expect(b.flicker).toBe(39);
+    const ticks = [b.hidden];
+    for (let i = 0; i < 19; i++) {
+      s.run(1);
+      ticks.push(b.hidden);
+    }
+    expect(ticks.slice(0, 20).every((h) => h)).toBe(true);
+    s.run(1);
+    expect(b.hidden).toBe(false);
+    const youOf = (to: string) =>
+      out.flatMap((o) => (o.to === to && o.msg.t === "you" ? [o.msg.self] : []));
+    expect(youOf("Bob").some((y) => y.hidden)).toBe(true);
+    expect(youOf("Ann").every((y) => !y.hidden)).toBe(true);
+  });
+});
+
+describe("the swing sound", () => {
+  test("swing sounds: none for Watering Bucket, Hoe and Fishing Pole, LaserSword for a laser sword", () => {
+    for (const w of ["Watering Bucket", "hoe", "Fishing Pole"]) {
+      expect(swingSound(w)).toBeNull();
+    }
+    expect(swingSound("Red Laser Sword")).toBe("LaserSword");
+    expect(swingSound("Long Sword")).toBe("swordswing");
+    expect(swingSound("NOTHING")).toBe("swordswing");
+  });
+
+  test("an Overlord kill is broadcast to everyone", () => {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    a.facing = "E";
+    a.timers.canAttack = true;
+    a.char.stats.str = 500;
+    const slot = s.map.slots[0];
+    if (slot) {
+      slot.live = {
+        name: "Overlord",
+        hp: 0,
+        x: 6,
+        y: 5,
+        facing: "W",
+        anim: 0,
+        fromX: 6,
+        fromY: 5,
+        queue: [],
+        hitCountb: 0,
+      };
+    }
+    setAttackHeld(a, true);
+    const ev = s.poll(a);
+    expect(ev.broadcast).toBe("*** ** * All hail Ann who has rid the world of an evil overlord!");
+  });
+});

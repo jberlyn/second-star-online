@@ -1,0 +1,192 @@
+import { describe, expect, test } from "bun:test";
+
+import { classesData } from "@secondstaronline/data";
+
+import {
+  type Fighter,
+  NO_EQUIPMENT,
+  NO_FACTION,
+  skillValue,
+} from "../../src/rules/core/fighter.ts";
+import type { Rng } from "../../src/rules/core/lingo.ts";
+import {
+  checkLevelUp,
+  deathText,
+  hungerTick,
+  meleeKillXp,
+  regenTarget,
+  regenTick,
+  rollDeathPenalty,
+  type Vitals,
+  xpGained,
+} from "../../src/rules/progression/progression.ts";
+import {
+  monsterSkillCap,
+  rollKillSkillGain,
+  weaponSkillList,
+  wisAdd,
+} from "../../src/rules/progression/skillgain.ts";
+
+const minRng: Rng = { random: (n) => (n >= 1 ? 1 : 0) };
+const maxRng: Rng = { random: (n) => (n >= 1 ? n : 0) };
+
+const vitals = (): Vitals => ({
+  level: 1,
+  hp: 20,
+  hpMax: 20,
+  sp: 20,
+  spMax: 20,
+  exp: 0,
+  expNeeded: 30,
+});
+
+describe("kill XP", () => {
+  test("Slime: 14 + Regged 10, less the level: 23 at level 1", () => {
+    expect(meleeKillXp(14, "Slime", "NOTHING")).toBe(24);
+    expect(xpGained(24, 1)).toBe(23);
+  });
+  test("the > 100 … > 400 bonuses test the growing value", () => {
+    expect(meleeKillXp(85, "Orc Lord", "NOTHING")).toBe(95);
+    expect(meleeKillXp(91, "x", "NOTHING")).toBe(111); // 101 > 100 → 111
+    expect(meleeKillXp(625, "Overlord", "NOTHING")).toBe(705);
+  });
+  test("Ring of Experience +5, but Cow is set to 5 after it", () => {
+    expect(meleeKillXp(14, "Slime", "Ring of Experience")).toBe(29);
+    expect(meleeKillXp(30, "Cow", "Ring of Experience")).toBe(15);
+  });
+  test("a level above the XP gives nothing", () => {
+    expect(xpGained(24, 30)).toBe(0);
+  });
+});
+
+describe("level-up", () => {
+  test("kept bug: overflow is lost, one level per kill, no heal", () => {
+    const v = vitals();
+    v.hp = 5;
+    v.exp = 46;
+    expect(checkLevelUp(v)).toBe(true);
+    expect(v).toEqual({ level: 2, hp: 5, hpMax: 21, sp: 20, spMax: 21, exp: 0, expNeeded: 400 });
+    v.exp = 2000;
+    checkLevelUp(v);
+    expect(v.level).toBe(3);
+    expect(v.expNeeded).toBe(406);
+    expect(v.exp).toBe(0);
+  });
+  test("ExpNeeded = 400 + 2·level after level 2", () => {
+    const v = { ...vitals(), level: 9, exp: 999, expNeeded: 418 };
+    checkLevelUp(v);
+    expect(v.expNeeded).toBe(420);
+  });
+});
+
+describe("regen", () => {
+  test("target 60 − speed + 90 = 149 at speed 1", () => {
+    expect(regenTarget(1, null)).toBe(149);
+    expect(regenTarget(1, 0)).toBe(144);
+  });
+  test("the counter starts at 1 and is raised first, so regen fires every 148 frames", () => {
+    const v = { ...vitals(), hp: 10, sp: 10 };
+    let c = 1;
+    const fired: number[] = [];
+    for (let f = 1; f <= 400; f++) {
+      const before = v.hp;
+      c = regenTick(c, 149, 50000, v);
+      if (v.hp !== before) {
+        fired.push(f);
+      }
+    }
+    expect(fired).toEqual([148, 296]);
+  });
+  test("kept bug: regen stalls for 50 <= Hunger <= 500 and never fires again", () => {
+    const v = { ...vitals(), hp: 10 };
+    let c = 1;
+    for (let f = 1; f <= 147; f++) {
+      c = regenTick(c, 149, 50000, v);
+    }
+    c = regenTick(c, 149, 300, v); // frame 148 on the target with hunger 300: no reset
+    for (let f = 0; f < 2000; f++) {
+      c = regenTick(c, 149, 50000, v);
+    }
+    expect(v.hp).toBe(10);
+  });
+  test("starving takes 1 HP and SP per period, floor 1", () => {
+    const v = { ...vitals(), hp: 2, sp: 1 };
+    expect(regenTick(148, 149, 10, v)).toBe(1);
+    expect(v.hp).toBe(1);
+    expect(v.sp).toBe(1);
+  });
+});
+
+describe("hunger", () => {
+  test("random(3) = 1 takes one; immortals never get hungry", () => {
+    expect(hungerTick(100, false, minRng).hunger).toBe(99);
+    expect(hungerTick(100, false, maxRng).hunger).toBe(100);
+    expect(hungerTick(100, true, minRng).hunger).toBe(100);
+  });
+  test("kept bug: a warning prints on every frame hunger sits on the value", () => {
+    expect(hungerTick(1501, false, minRng).warning).toBe("You are very hungry.");
+    expect(hungerTick(1500, false, maxRng).warning).toBe("You are very hungry.");
+    expect(hungerTick(1001, false, minRng).warning).toBe(
+      "You are extremely hungry, you need to eat.",
+    );
+    expect(hungerTick(501, false, minRng).warning).toBe("You are starving!");
+  });
+});
+
+describe("death", () => {
+  test("kept bug: DeathPenalty is forced, random(5) = 1 → HPmax and SPmax −1 above 2", () => {
+    const v = vitals();
+    expect(rollDeathPenalty(v, false, minRng)).toBe(true);
+    expect([v.hpMax, v.spMax]).toEqual([19, 19]);
+    expect(rollDeathPenalty(v, false, maxRng)).toBe(false);
+    const low = { ...vitals(), hpMax: 2, spMax: 2 };
+    expect(rollDeathPenalty(low, false, minRng)).toBe(true);
+    expect([low.hpMax, low.spMax]).toEqual([2, 2]);
+  });
+  test("the death message line", () => {
+    expect(deathText("Bob", "a Slime")).toBe("*** Bob was just killed by a Slime.");
+    expect(deathText("Bob", null)).toBe("Bob was just killed.");
+  });
+});
+
+describe("kill skill gain", () => {
+  const f = (): Fighter => ({
+    level: 1,
+    str: 1,
+    sta: 1,
+    int: 1,
+    wis: 1,
+    spd: 1,
+    skills: [...classesData.creation.startingSkills[1].values],
+    equip: { ...NO_EQUIPMENT },
+    faction: { ...NO_FACTION },
+    attackBonus: 0,
+    wanted: false,
+  });
+  test("a Dark Scimitar trains Unholy Combat, Slash, Thrust, Swordsmanship and Fencing", () => {
+    expect(weaponSkillList("Dark Scimitar")).toEqual([
+      "Unholy Combat",
+      "Slash",
+      "Thrust",
+      "Swordsmanship",
+      "Fencing",
+    ]);
+  });
+  test("bare hands train Punch and Martial Arts", () => {
+    expect(weaponSkillList("NOTHING")).toEqual(["Punch", "Martial Arts"]);
+  });
+  test("Slime (body 30) caps kill gains at 30", () => {
+    expect(monsterSkillCap(30, 1)).toBe(30);
+    expect(monsterSkillCap(30, 21)).toBe(48);
+  });
+  test("WisAdd 30 minus the Wisdom tiers", () => {
+    expect(wisAdd(1)).toBe(30);
+    expect(wisAdd(24)).toBe(0);
+  });
+  test("Punch rises on random(Punch + WisAdd) = 1", () => {
+    const x = f();
+    expect(rollKillSkillGain(x, 30, minRng)).toEqual(["Punch", "MartialArts"]);
+    expect(skillValue(x.skills, "Punch")).toBe(2);
+    expect(rollKillSkillGain(f(), 30, maxRng)).toEqual([]);
+  });
+});

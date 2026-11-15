@@ -1,0 +1,260 @@
+{
+ "frame": 1,
+ "label": null,
+ "stage": [
+  164,
+  136
+ ],
+ "stageColor": null,
+ "stageColorFrom": "config chunk unreadable (stage rect -23552x-30720)",
+ "sprites": [
+  {
+   "channel": 1,
+   "castLib": 1,
+   "member": 2,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    82,
+    68
+   ],
+   "size": [
+    164,
+    136
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    0,
+    0,
+    164,
+    136
+   ],
+   "reg": [
+    82,
+    68
+   ],
+   "asset": "bitmaps/00005_member.png"
+  },
+  {
+   "channel": 2,
+   "castLib": 1,
+   "member": 3,
+   "name": "Who",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    70,
+    10
+   ],
+   "size": [
+    83,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    70,
+    10,
+    153,
+    26
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 3,
+   "castLib": 1,
+   "member": 4,
+   "name": "Where",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    70,
+    26
+   ],
+   "size": [
+    83,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    70,
+    26,
+    153,
+    42
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 4,
+   "castLib": 1,
+   "member": 5,
+   "name": "Map",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    70,
+    58
+   ],
+   "size": [
+    83,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    70,
+    58,
+    153,
+    74
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 5,
+   "castLib": 1,
+   "member": 6,
+   "name": "X",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    70,
+    74
+   ],
+   "size": [
+    83,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    70,
+    74,
+    153,
+    90
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 6,
+   "castLib": 1,
+   "member": 7,
+   "name": "Y",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    70,
+    90
+   ],
+   "size": [
+    83,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    70,
+    90,
+    153,
+    106
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 7,
+   "castLib": 1,
+   "member": 8,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    128,
+    120
+   ],
+   "size": [
+    54,
+    23
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    101,
+    109,
+    155,
+    132
+   ],
+   "reg": [
+    27,
+    11
+   ],
+   "asset": "bitmaps/00011_member.png"
+  }
+ ]
+}

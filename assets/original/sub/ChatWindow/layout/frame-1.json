@@ -1,0 +1,187 @@
+{
+  "frame": 1,
+  "label": null,
+  "stage": [
+    500,
+    300
+  ],
+  "stageColor": null,
+  "stageColorFrom": "config chunk unreadable (stage rect 62466x-54271)",
+  "sprites": [
+    {
+      "channel": 1,
+      "castLib": 1,
+      "member": 1,
+      "name": "ChatGUI",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        250,
+        148
+      ],
+      "size": [
+        500,
+        300
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        0,
+        -2,
+        500,
+        298
+      ],
+      "reg": [
+        250,
+        150
+      ],
+      "asset": "bitmaps/00004_ChatGUI.png"
+    },
+    {
+      "channel": 2,
+      "castLib": 1,
+      "member": 2,
+      "name": "Title",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        13,
+        10
+      ],
+      "size": [
+        468,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        13,
+        10,
+        481,
+        24
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 3,
+      "castLib": 1,
+      "member": 4,
+      "name": "SendChat",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        11,
+        252
+      ],
+      "size": [
+        476,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        153,
+        204
+      ],
+      "blend": 0,
+      "rect": [
+        11,
+        252,
+        487,
+        266
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 4,
+      "castLib": 1,
+      "member": 3,
+      "name": "Chat",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        12,
+        34
+      ],
+      "size": [
+        375,
+        209
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        153,
+        204
+      ],
+      "blend": 0,
+      "rect": [
+        12,
+        34,
+        387,
+        243
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 5,
+      "castLib": 1,
+      "member": 6,
+      "name": "UserList",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        397,
+        34
+      ],
+      "size": [
+        77,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        153,
+        204
+      ],
+      "blend": 0,
+      "rect": [
+        397,
+        34,
+        474,
+        48
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    }
+  ]
+}

@@ -1,0 +1,3440 @@
+{
+  "equip": {
+    "strength": [
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Sword",
+        "strength": 28
+      },
+      {
+        "match": "contains",
+        "pattern": "Plate Armor",
+        "strength": 10
+      },
+      {
+        "match": "contains",
+        "pattern": "Demon Helm",
+        "strength": 25
+      },
+      {
+        "match": "contains",
+        "pattern": "War Helm",
+        "strength": 22
+      },
+      {
+        "match": "contains",
+        "pattern": "Sword of Hope",
+        "strength": 27
+      },
+      {
+        "match": "contains",
+        "pattern": "Star Sword",
+        "strength": 25
+      },
+      {
+        "match": "contains",
+        "pattern": "Knight Shield",
+        "strength": 10
+      },
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Shield",
+        "strength": 22
+      },
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Helm",
+        "strength": 22
+      },
+      {
+        "match": "contains",
+        "pattern": "Knight's Sword",
+        "strength": 10
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Sword",
+        "strength": 20
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Sword",
+        "strength": 20
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Armor",
+        "strength": 20
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Armor",
+        "strength": 20
+      },
+      {
+        "match": "contains",
+        "pattern": "Titanium Armor",
+        "strength": 22
+      },
+      {
+        "match": "contains",
+        "pattern": "Argon's Plate",
+        "strength": 24
+      },
+      {
+        "match": "contains",
+        "pattern": "Broad Sword",
+        "strength": 13
+      },
+      {
+        "match": "contains",
+        "pattern": "Long Sword",
+        "strength": 8
+      },
+      {
+        "match": "contains",
+        "pattern": "Lord's Armor",
+        "strength": 25
+      }
+    ],
+    "slots": [
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Hoe",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Watering Bucket",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Knight's Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Star Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "White Robe",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Titanium Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Wizard's Robe",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Lord's Staff",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Argon's Plate",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "White Tiara",
+        "slot": "Head"
+      },
+      {
+        "match": "exact",
+        "pattern": "Mirror",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Ocarina",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Dragon Wing",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Trumpet",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ceramic Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Lord's Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "exact",
+        "pattern": "Herb",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Flask",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Silver Token",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Scroll",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fishle",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Argon's Medal",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Steel Bow",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Blue Arrows",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Red Arrows",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Yellow Arrows",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Green Arrows",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Purple Arrows",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "White Arrows",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Wooden Bow",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "House Key",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Guild Key",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": " Deed",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Meat",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Meat",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Meat",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Meat",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish Sticks",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Burger",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Burger",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Burger",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Pot Pie",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Saw",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Mining Hammer",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Hammer",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Table",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Chair",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Stool",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Cabinet",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fishing Pole",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Crate",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Blacksmith Hammer",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Damaged Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Damaged Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "exact",
+        "pattern": "Damaged Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Damaged Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "exact",
+        "pattern": "Murder Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Painting",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Cauldron",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Crossbow",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Knife",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dagger",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Apple",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Campfire",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Torch",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Potion",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": " Sand",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Steel Key",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Wooden Key",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Emerald Key",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fire Key",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Gold Key",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Ale",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Corn",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Pie",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Orb",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
+        "pattern": "Nectar",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "CHampions Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Small Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dark Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dark Scimitar",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Staff",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Unholy Lance",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Shovel",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Short Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Axe",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Long Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gold Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Katana",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Steel Scimitar",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Bo",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Laser Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Sword of Hope",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Leather Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Broad Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Scimitar",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "War Hammer",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Thor's Hammer",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Rune Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Plate Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Chain Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Tuxedo",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Leather Boots",
+        "slot": "Feet"
+      },
+      {
+        "match": "contains",
+        "pattern": "Steel Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Rune Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Flowers",
+        "slot": "RightHand"
+      },
+      {
+        "match": "exact",
+        "pattern": "Roses",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Magical Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Knight Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gold Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gold Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Robe of Invisibility",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ninja Outfit",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ninja Uniform",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Necromancer's Robe",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Rune Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Chain Boots",
+        "slot": "Feet"
+      },
+      {
+        "match": "contains",
+        "pattern": "Plate Boots",
+        "slot": "Feet"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fawn Cap",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Chain Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Leather Cap",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Crown",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Plate Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "War Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Demon Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Wooden Staff",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Steel Staff",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Cap",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gold Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gold Staff",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gold Boots",
+        "slot": "Feet"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gold Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dark Staff",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dark Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ruby Ring",
+        "slot": "Ring"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ring of Quickness",
+        "slot": "Ring"
+      },
+      {
+        "match": "contains",
+        "pattern": "Gauntlets",
+        "slot": "Ring"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ninja Gloves",
+        "slot": "Ring"
+      },
+      {
+        "match": "contains",
+        "pattern": "Argon's Ring",
+        "slot": "Ring"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ring",
+        "slot": "Ring"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Sword",
+        "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Helm",
+        "slot": "Head"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Shield",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Armor",
+        "slot": "Body"
+      },
+      {
+        "match": "contains",
+        "pattern": "Camera",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Chunk of ",
+        "slot": "RightHand"
+      },
+      {
+        "match": "contains",
+        "pattern": " Head",
+        "slot": "No"
+      },
+      {
+        "match": "contains",
+        "pattern": "Watering Bucket",
+        "slot": "LeftHand"
+      }
+    ],
+    "twoHanded": [
+      {
+        "match": "contains",
+        "pattern": "War Hammer"
+      },
+      {
+        "match": "contains",
+        "pattern": "Thor's Hammer"
+      }
+    ],
+    "murder": {
+      "match": "contains",
+      "pattern": "Murder"
+    }
+  },
+  "use": {
+    "silent": [
+      {
+        "match": "contains",
+        "pattern": "Key"
+      },
+      {
+        "match": "contains",
+        "pattern": "Deed"
+      },
+      {
+        "match": "contains",
+        "pattern": "Seeds"
+      },
+      {
+        "match": "contains",
+        "pattern": "Map"
+      },
+      {
+        "match": "exact",
+        "pattern": "Ocarina"
+      }
+    ],
+    "books": [
+      {
+        "match": "contains",
+        "pattern": "Firesword",
+        "mysticism": 25
+      },
+      {
+        "match": "contains",
+        "pattern": "Meteor",
+        "mysticism": 25
+      },
+      {
+        "match": "contains",
+        "pattern": "Fireball",
+        "mysticism": 15
+      },
+      {
+        "match": "contains",
+        "pattern": "Hold",
+        "mysticism": 15
+      },
+      {
+        "match": "contains",
+        "pattern": "Major Heal",
+        "mysticism": 22
+      },
+      {
+        "match": "contains",
+        "pattern": "Argon's First",
+        "mysticism": 10
+      },
+      {
+        "match": "contains",
+        "pattern": "Stone Skin",
+        "mysticism": 23
+      },
+      {
+        "match": "contains",
+        "pattern": "Smoke bomb",
+        "mysticism": 17
+      },
+      {
+        "match": "exact",
+        "pattern": "Bolt Book",
+        "mysticism": 24
+      },
+      {
+        "match": "contains",
+        "pattern": "Firebolt",
+        "mysticism": 20
+      },
+      {
+        "match": "contains",
+        "pattern": "Splash",
+        "mysticism": 18
+      },
+      {
+        "match": "contains",
+        "pattern": "Portal",
+        "mysticism": 26
+      },
+      {
+        "match": "contains",
+        "pattern": "Illusionary",
+        "mysticism": 10
+      },
+      {
+        "match": "contains",
+        "pattern": "Raise Dead",
+        "mysticism": 15
+      },
+      {
+        "match": "contains",
+        "pattern": "Magic Shield",
+        "mysticism": 21
+      }
+    ],
+    "skillBooks": [
+      {
+        "match": "exact",
+        "pattern": "Unholy Combat Book",
+        "skill": "UnholyCombat",
+        "shown": "Unholy Combat"
+      },
+      {
+        "match": "exact",
+        "pattern": "Thrust Book",
+        "skill": "Thrust",
+        "shown": "Thrust"
+      },
+      {
+        "match": "exact",
+        "pattern": "Heavy Arms Book",
+        "skill": "HeavyArms",
+        "shown": "Heavy Arms"
+      },
+      {
+        "match": "exact",
+        "pattern": "Parry Book",
+        "skill": "Parry",
+        "shown": "Parry"
+      },
+      {
+        "match": "exact",
+        "pattern": "Slash Book",
+        "skill": "Slash",
+        "shown": "Slash"
+      }
+    ],
+    "usable": [
+      {
+        "match": "exact",
+        "pattern": "Apple"
+      },
+      {
+        "match": "contains",
+        "pattern": " Potion"
+      },
+      {
+        "match": "contains",
+        "pattern": " photo"
+      },
+      {
+        "match": "exact",
+        "pattern": "Steel Key"
+      },
+      {
+        "match": "exact",
+        "pattern": "Wooden Key"
+      },
+      {
+        "match": "exact",
+        "pattern": "Emerald Key"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fire Key"
+      },
+      {
+        "match": "exact",
+        "pattern": "Gold Key"
+      },
+      {
+        "match": "exact",
+        "pattern": "Pie"
+      },
+      {
+        "match": "exact",
+        "pattern": "Nectar"
+      },
+      {
+        "match": "exact",
+        "pattern": "Watermelon"
+      },
+      {
+        "match": "exact",
+        "pattern": "Ale"
+      },
+      {
+        "match": "exact",
+        "pattern": "Corn"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish"
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Meat"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cooked Pig"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Meat"
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Meat"
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Fish"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish Sticks"
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Burger"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Burger"
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Burger"
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Pot Pie"
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout"
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish"
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish"
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid"
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout Fillet"
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish Sandwich"
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish Steak"
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid Platter"
+      },
+      {
+        "match": "contains",
+        "pattern": "Seeds"
+      },
+      {
+        "match": "contains",
+        "pattern": "Book"
+      },
+      {
+        "match": "contains",
+        "pattern": "Film"
+      }
+    ],
+    "effects": [
+      {
+        "match": "exact",
+        "pattern": "Apple",
+        "stat": "HP",
+        "flat": 1,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Pie",
+        "stat": "HP",
+        "flat": 5,
+        "randomN": 5
+      },
+      {
+        "match": "exact",
+        "pattern": "Nectar",
+        "stat": "SP",
+        "flat": 4,
+        "randomN": 4
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish",
+        "stat": "HP",
+        "flat": 5,
+        "randomN": 4
+      },
+      {
+        "match": "exact",
+        "pattern": "Corn",
+        "stat": "HP",
+        "flat": 4,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Watermelon",
+        "stat": "HP",
+        "flat": 6,
+        "randomN": 4
+      },
+      {
+        "match": "exact",
+        "pattern": "Ale",
+        "stat": "HP",
+        "flat": 1,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Meat",
+        "stat": "HP",
+        "flat": 3,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Meat",
+        "stat": "HP",
+        "flat": 3,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Meat",
+        "stat": "HP",
+        "flat": 3,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Fish",
+        "stat": "HP",
+        "flat": 1,
+        "randomN": 2
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish Sticks",
+        "stat": "HP",
+        "flat": 6,
+        "randomN": 5
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Burger",
+        "stat": "HP",
+        "flat": 9,
+        "randomN": 6
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Burger",
+        "stat": "HP",
+        "flat": 12,
+        "randomN": 7
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Burger",
+        "stat": "HP",
+        "flat": 17,
+        "randomN": 8
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Pot Pie",
+        "stat": "HP",
+        "flat": 9,
+        "randomN": 5
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout",
+        "stat": "HP",
+        "flat": 2,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish",
+        "stat": "HP",
+        "flat": 3,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish",
+        "stat": "HP",
+        "flat": 4,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid",
+        "stat": "HP",
+        "flat": 5,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout Fillet",
+        "stat": "HP",
+        "flat": 3,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish Sandwich",
+        "stat": "HP",
+        "flat": 4,
+        "randomN": 4
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish Steak",
+        "stat": "HP",
+        "flat": 7,
+        "randomN": 4
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid Platter",
+        "stat": "HP",
+        "flat": 8,
+        "randomN": 5
+      },
+      {
+        "match": "exact",
+        "pattern": "Blue Potion",
+        "stat": "HP",
+        "flat": 14,
+        "randomN": 8
+      },
+      {
+        "match": "exact",
+        "pattern": "Red Potion",
+        "stat": "SP",
+        "flat": 8,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Green Potion",
+        "stat": "HP",
+        "flat": 19,
+        "randomN": 5
+      },
+      {
+        "match": "exact",
+        "pattern": "Yellow Potion",
+        "stat": "SP",
+        "flat": 14,
+        "randomN": 6
+      },
+      {
+        "match": "exact",
+        "pattern": "Purple Potion",
+        "stat": "HP",
+        "flat": 19,
+        "randomN": 8
+      },
+      {
+        "match": "exact",
+        "pattern": "Purple Potion",
+        "stat": "SP",
+        "flat": 19,
+        "randomN": 8
+      },
+      {
+        "match": "exact",
+        "pattern": "White Potion",
+        "stat": "HP",
+        "flat": 30,
+        "randomN": 8
+      },
+      {
+        "match": "exact",
+        "pattern": "White Potion",
+        "stat": "SP",
+        "flat": 30,
+        "randomN": 8
+      },
+      {
+        "match": "exact",
+        "pattern": "Cooked Pig",
+        "stat": "HP",
+        "flat": 20,
+        "randomN": 8
+      },
+      {
+        "match": "exact",
+        "pattern": "Cooked Pig",
+        "stat": "Hunger",
+        "flat": 7200,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Apple",
+        "stat": "Hunger",
+        "flat": 1750,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Pie",
+        "stat": "Hunger",
+        "flat": 2100,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Nectar",
+        "stat": "Hunger",
+        "flat": 1300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish",
+        "stat": "Hunger",
+        "flat": 2400,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Corn",
+        "stat": "Hunger",
+        "flat": 2500,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Watermelon",
+        "stat": "Hunger",
+        "flat": 8500,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Ale",
+        "stat": "Hunger",
+        "flat": 450,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Meat",
+        "stat": "Hunger",
+        "flat": 1700,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Meat",
+        "stat": "Hunger",
+        "flat": 1800,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Meat",
+        "stat": "Hunger",
+        "flat": 1900,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Fish",
+        "stat": "Hunger",
+        "flat": 1900,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish Sticks",
+        "stat": "Hunger",
+        "flat": 2300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Burger",
+        "stat": "Hunger",
+        "flat": 3200,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Burger",
+        "stat": "Hunger",
+        "flat": 4300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Burger",
+        "stat": "Hunger",
+        "flat": 5400,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Pot Pie",
+        "stat": "Hunger",
+        "flat": 4300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout",
+        "stat": "Hunger",
+        "flat": 1300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish",
+        "stat": "Hunger",
+        "flat": 1300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish",
+        "stat": "Hunger",
+        "flat": 1300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid",
+        "stat": "Hunger",
+        "flat": 1300,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout Fillet",
+        "stat": "Hunger",
+        "flat": 2800,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish Sandwich",
+        "stat": "Hunger",
+        "flat": 3900,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish Steak",
+        "stat": "Hunger",
+        "flat": 4100,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid Platter",
+        "stat": "Hunger",
+        "flat": 5400,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Blue Potion",
+        "stat": "Hunger",
+        "flat": 3200,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Red Potion",
+        "stat": "Hunger",
+        "flat": 3200,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Green Potion",
+        "stat": "Hunger",
+        "flat": 3500,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Yellow Potion",
+        "stat": "Hunger",
+        "flat": 3500,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Purple Potion",
+        "stat": "Hunger",
+        "flat": 3500,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "White Potion",
+        "stat": "Hunger",
+        "flat": 3500,
+        "randomN": null
+      }
+    ],
+    "messages": [
+      {
+        "match": "exact",
+        "pattern": "Cooked Pig",
+        "text": "You eat the cooked pig."
+      },
+      {
+        "match": "exact",
+        "pattern": "Apple",
+        "text": "You eat an apple."
+      },
+      {
+        "match": "exact",
+        "pattern": "Watermelon",
+        "text": "You eat the watermelon."
+      },
+      {
+        "match": "exact",
+        "pattern": "Pie",
+        "text": "You eat a pie."
+      },
+      {
+        "match": "exact",
+        "pattern": "corn",
+        "text": "You eat some corn."
+      },
+      {
+        "match": "exact",
+        "pattern": "nectar",
+        "text": "You eat the nectar."
+      },
+      {
+        "match": "exact",
+        "pattern": "fish",
+        "text": "You eat some raw fish. *yeck*"
+      },
+      {
+        "match": "exact",
+        "pattern": "ale",
+        "text": "You drink the ale. *burp*"
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Meat",
+        "text": "You eat some raw orc meat. You're disgusting."
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Meat",
+        "text": "You eat some raw cyclops meat. You're disgusting."
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Meat",
+        "text": "You eat some raw yeti meat. You're disgusting."
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Fish",
+        "text": "You eat some raw fish. You're disgusting."
+      },
+      {
+        "match": "exact",
+        "pattern": "Fish Sticks",
+        "text": "You eat some fish sticks."
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Burger",
+        "text": "You eat an orc burger."
+      },
+      {
+        "match": "exact",
+        "pattern": "Cyclops Burger",
+        "text": "You eat a cyclops burger."
+      },
+      {
+        "match": "exact",
+        "pattern": "Yeti Burger",
+        "text": "You eat a yeti burger."
+      },
+      {
+        "match": "exact",
+        "pattern": "Orc Pot Pie",
+        "text": "You eat an orc pot pie."
+      },
+      {
+        "match": "contains",
+        "pattern": " Potion",
+        "text": "You drink the \" & SelInventory & \"."
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout",
+        "text": "You eat the trout."
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish",
+        "text": "You eat the catfish."
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish",
+        "text": "You eat the swordfish."
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid",
+        "text": "You eat the squid."
+      },
+      {
+        "match": "exact",
+        "pattern": "Trout Fillet",
+        "text": "You eat the trout fillet."
+      },
+      {
+        "match": "exact",
+        "pattern": "Catfish Sandwich",
+        "text": "You eat the catfish sandwich."
+      },
+      {
+        "match": "exact",
+        "pattern": "Swordfish Steak",
+        "text": "You eat the swordfish steak."
+      },
+      {
+        "match": "exact",
+        "pattern": "Squid Platter",
+        "text": "You eat the squid platter."
+      },
+      {
+        "match": "contains",
+        "pattern": "Book",
+        "text": "Your mysticism is not high enough to learn this spell."
+      },
+      {
+        "match": "contains",
+        "pattern": "Book",
+        "text": "You read the book..."
+      },
+      {
+        "match": "exact",
+        "pattern": "Purple Potion",
+        "text": "The power of argon flows through your body."
+      }
+    ]
+  },
+  "armour": {
+    "rows": [
+      {
+        "slot": "RingE",
+        "match": "contains",
+        "pattern": "Ninja Gloves",
+        "hitMe": -1,
+        "hitMe2": -1
+      },
+      {
+        "slot": "RingE",
+        "match": "contains",
+        "pattern": "Gauntlets",
+        "hitMe": -3,
+        "hitMe2": -3
+      },
+      {
+        "slot": "RingE",
+        "match": "contains",
+        "pattern": "Ruby Ring",
+        "hitMe": -4,
+        "hitMe2": -4
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "chain Helm",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "White Tiara",
+        "hitMe": -1,
+        "hitMe2": -1
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "Plate Helm",
+        "hitMe": -3,
+        "hitMe2": -3
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "War Helm",
+        "hitMe": -4,
+        "hitMe2": -4
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "leather cap",
+        "hitMe": -1,
+        "hitMe2": -1
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "Murder Helm",
+        "hitMe": -4,
+        "hitMe2": -4
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "Ice Helm",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "Fire Helm",
+        "hitMe": -4,
+        "hitMe2": -3
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "Pharaoh Helm",
+        "hitMe": -6,
+        "hitMe2": -6
+      },
+      {
+        "slot": "HeadE",
+        "match": "contains",
+        "pattern": "Crown",
+        "hitMe": -3,
+        "hitMe2": -3
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "leather armor",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "necromancer's robe",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "chain armor",
+        "hitMe": -4,
+        "hitMe2": -4
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "plate armor",
+        "hitMe": -5,
+        "hitMe2": -5
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Titanium armor",
+        "hitMe": -6,
+        "hitMe2": -6
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Argon's Plate",
+        "hitMe": -7,
+        "hitMe2": -7
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Wizard's Robe",
+        "hitMe": -1,
+        "hitMe2": -1
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "White Robe",
+        "hitMe": -3,
+        "hitMe2": -3
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Rune armor",
+        "hitMe": -9,
+        "hitMe2": -9
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Ninja Outfit",
+        "hitMe": -3,
+        "hitMe2": -3
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Royal Ninja Uniform",
+        "hitMe": -6,
+        "hitMe2": -6
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Ice Armor",
+        "hitMe": -4,
+        "hitMe2": -4
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Fire Armor",
+        "hitMe": -5,
+        "hitMe2": -6
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Ceramic Armor",
+        "hitMe": -3,
+        "hitMe2": null
+      },
+      {
+        "slot": "BodyE",
+        "match": "contains",
+        "pattern": "Lord's armor",
+        "hitMe": -12,
+        "hitMe2": -12
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Champions Shield",
+        "hitMe": -4,
+        "hitMe2": -4
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Murder Shield",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Small Shield",
+        "hitMe": -1,
+        "hitMe2": -1
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Steel Shield",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Knight Shield",
+        "hitMe": -3,
+        "hitMe2": -3
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Magical Shield",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Gold Shield",
+        "hitMe": -4,
+        "hitMe2": -4
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Ice Shield",
+        "hitMe": -2,
+        "hitMe2": -2
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Fire Shield",
+        "hitMe": -1,
+        "hitMe2": -1
+      },
+      {
+        "slot": "RightHandE",
+        "match": "contains",
+        "pattern": "Pharaoh Shield",
+        "hitMe": -5,
+        "hitMe2": -5
+      },
+      {
+        "slot": "FeetE",
+        "match": "exact",
+        "pattern": "Chain Boots",
+        "hitMe": -1,
+        "hitMe2": -1
+      },
+      {
+        "slot": "FeetE",
+        "match": "exact",
+        "pattern": "Plate Boots",
+        "hitMe": -2,
+        "hitMe2": -2
+      }
+    ],
+    "elemental": [
+      {
+        "handler": "HitMe",
+        "trigger": "Ice Sword",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Ice Armor",
+        "delta": -7
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Ice Sword",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Ice Helm",
+        "delta": -3
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Ice Sword",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Ice Shield",
+        "delta": -4
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Ice Sword",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Fire Armor",
+        "delta": 7
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Ice Sword",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Fire Helm",
+        "delta": 3
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Ice Sword",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Fire Shield",
+        "delta": 4
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Fire Sword",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Ice Armor",
+        "delta": 7
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Fire Sword",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Ice Helm",
+        "delta": 3
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Fire Sword",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Ice Shield",
+        "delta": 4
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Fire Sword",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Fire Armor",
+        "delta": -7
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Fire Sword",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Fire Helm",
+        "delta": -3
+      },
+      {
+        "handler": "HitMe",
+        "trigger": "Fire Sword",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Fire Shield",
+        "delta": -4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Yeti",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Ice Armor",
+        "delta": -7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Yeti",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Ice Helm",
+        "delta": -3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Yeti",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Ice Shield",
+        "delta": -4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Yeti",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Fire Armor",
+        "delta": 7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Yeti",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Fire Helm",
+        "delta": 3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Yeti",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Fire Shield",
+        "delta": 4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Serpent",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Ice Armor",
+        "delta": -7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Serpent",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Ice Helm",
+        "delta": -3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Serpent",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Ice Shield",
+        "delta": -4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Serpent",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Fire Armor",
+        "delta": 7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Serpent",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Fire Helm",
+        "delta": 3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Serpent",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Fire Shield",
+        "delta": 4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Demon",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Ice Armor",
+        "delta": -7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Demon",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Ice Helm",
+        "delta": -3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Demon",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Ice Shield",
+        "delta": -4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Demon",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Fire Armor",
+        "delta": 7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Demon",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Fire Helm",
+        "delta": 3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Snow Demon",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Fire Shield",
+        "delta": 4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Fire Demon",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Ice Armor",
+        "delta": 7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Fire Demon",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Ice Helm",
+        "delta": 3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Fire Demon",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Ice Shield",
+        "delta": 4
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Fire Demon",
+        "slot": "BodyE",
+        "match": "exact",
+        "pattern": "Fire Armor",
+        "delta": -7
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Fire Demon",
+        "slot": "HeadE",
+        "match": "exact",
+        "pattern": "Fire Helm",
+        "delta": -3
+      },
+      {
+        "handler": "HitMe2",
+        "trigger": "a Fire Demon",
+        "slot": "RightHandE",
+        "match": "exact",
+        "pattern": "Fire Shield",
+        "delta": -4
+      }
+    ]
+  },
+  "breaks": {
+    "armour": {
+      "excludedMonsters": [
+        "Slime",
+        "Wolf",
+        "Imp",
+        "Cow",
+        "Pig",
+        "Shark",
+        "Squid",
+        "Dragon Snake",
+        "Fire Demon"
+      ],
+      "items": [
+        {
+          "slot": "BodyE",
+          "item": "Chain Armor"
+        },
+        {
+          "slot": "BodyE",
+          "item": "Plate Armor"
+        },
+        {
+          "slot": "BodyE",
+          "item": "Titanium Armor"
+        },
+        {
+          "slot": "BodyE",
+          "item": "Argon's Plate"
+        },
+        {
+          "slot": "BodyE",
+          "item": "Ceramic Armor"
+        },
+        {
+          "slot": "BodyE",
+          "item": "Fire Armor"
+        },
+        {
+          "slot": "BodyE",
+          "item": "Ice Armor"
+        },
+        {
+          "slot": "BodyE",
+          "item": "Lord's Armor"
+        },
+        {
+          "slot": "HeadE",
+          "item": "Plate Helm"
+        },
+        {
+          "slot": "HeadE",
+          "item": "Chain Helm"
+        },
+        {
+          "slot": "HeadE",
+          "item": "Pharaoh Helm"
+        },
+        {
+          "slot": "HeadE",
+          "item": "War Helm"
+        },
+        {
+          "slot": "HeadE",
+          "item": "Demon Helm"
+        },
+        {
+          "slot": "HeadE",
+          "item": "Ice Helm"
+        },
+        {
+          "slot": "HeadE",
+          "item": "Fire Helm"
+        },
+        {
+          "slot": "HeadE",
+          "item": "Murder Helm"
+        },
+        {
+          "slot": "RightHandE",
+          "item": "Small Shield"
+        },
+        {
+          "slot": "RightHandE",
+          "item": "Pharaoh Shield"
+        },
+        {
+          "slot": "RightHandE",
+          "item": "Ice Shield"
+        },
+        {
+          "slot": "RightHandE",
+          "item": "Fire Shield"
+        },
+        {
+          "slot": "RightHandE",
+          "item": "Knight Shield"
+        },
+        {
+          "slot": "RightHandE",
+          "item": "Steel Shield"
+        }
+      ]
+    },
+    "weapon": {
+      "excludedMonsters": [
+        "Slime",
+        "Wolf",
+        "Imp",
+        "Mega Slime",
+        "Snared Loah",
+        "Cow",
+        "Pig",
+        "Shark",
+        "Squid",
+        "Yeti",
+        "Ghost",
+        "Zombie"
+      ],
+      "items": [
+        {
+          "slot": "LeftHandE",
+          "item": "Short Sword"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Long Sword"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Broad Sword"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Knight's Sword"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Star Sword"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Sword of Hope"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "War Hammer"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Thor's Hammer"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Fire Sword"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Ice Sword"
+        },
+        {
+          "slot": "LeftHandE",
+          "item": "Pharaoh Sword"
+        }
+      ]
+    },
+    "damaged": [
+      {
+        "match": "contains",
+        "pattern": "Chain Armor",
+        "damaged": "Damaged Armor, Chain"
+      },
+      {
+        "match": "contains",
+        "pattern": "Plate Armor",
+        "damaged": "Damaged Armor, Plate"
+      },
+      {
+        "match": "contains",
+        "pattern": "Titanium Armor",
+        "damaged": "Damaged Armor, Titanium"
+      },
+      {
+        "match": "contains",
+        "pattern": "Argon's Plate",
+        "damaged": "Damaged Armor, Argon's"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ceramic Armor",
+        "damaged": "Damaged Armor, Ceramic"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Armor",
+        "damaged": "Damaged Armor, Fire"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Armor",
+        "damaged": "Damaged Armor, Ice"
+      },
+      {
+        "match": "contains",
+        "pattern": "Lord's Armor",
+        "damaged": "Damaged Armor, Lord's"
+      },
+      {
+        "match": "contains",
+        "pattern": "Plate Helm",
+        "damaged": "Damaged Helm, Plate"
+      },
+      {
+        "match": "contains",
+        "pattern": "Chain Helm",
+        "damaged": "Damaged Helm, Chain"
+      },
+      {
+        "match": "contains",
+        "pattern": "War Helm",
+        "damaged": "Damaged Helm, War"
+      },
+      {
+        "match": "contains",
+        "pattern": "Demon Helm",
+        "damaged": "Damaged Helm, Demon"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Helm",
+        "damaged": "Damaged Helm, Ice"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Helm",
+        "damaged": "Damaged Helm, Fire"
+      },
+      {
+        "match": "contains",
+        "pattern": "Murder Helm",
+        "damaged": "Damaged Helm, Murder"
+      },
+      {
+        "match": "contains",
+        "pattern": "Small Shield",
+        "damaged": "Damaged Shield, Small"
+      },
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Shield",
+        "damaged": "Damaged Shield, Pharaoh"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Shield",
+        "damaged": "Damaged Shield, Ice"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Shield",
+        "damaged": "Damaged Shield, Fire"
+      },
+      {
+        "match": "contains",
+        "pattern": "Knight Shield",
+        "damaged": "Damaged Shield, Knight"
+      },
+      {
+        "match": "contains",
+        "pattern": "Steel Shield",
+        "damaged": "Damaged Shield, Steel"
+      },
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Helm",
+        "damaged": "Damaged Helm, Pharaoh"
+      },
+      {
+        "match": "contains",
+        "pattern": "Short Sword",
+        "damaged": "Damaged Sword, Short"
+      },
+      {
+        "match": "contains",
+        "pattern": "Long Sword",
+        "damaged": "Damaged Sword, Long"
+      },
+      {
+        "match": "contains",
+        "pattern": "Broad Sword",
+        "damaged": "Damaged Sword, Broad"
+      },
+      {
+        "match": "contains",
+        "pattern": "Knight's Sword",
+        "damaged": "Damaged Sword, Knight's"
+      },
+      {
+        "match": "contains",
+        "pattern": "Star Sword",
+        "damaged": "Damaged Sword, Star"
+      },
+      {
+        "match": "contains",
+        "pattern": "Sword of Hope",
+        "damaged": "Damaged Sword, of Hope"
+      },
+      {
+        "match": "contains",
+        "pattern": "War Hammer",
+        "damaged": "Damaged Hammer, War"
+      },
+      {
+        "match": "contains",
+        "pattern": "Thor's Hammer",
+        "damaged": "Damaged Hammer, Thor's"
+      },
+      {
+        "match": "contains",
+        "pattern": "Fire Sword",
+        "damaged": "Damaged Sword, Fire"
+      },
+      {
+        "match": "contains",
+        "pattern": "Ice Sword",
+        "damaged": "Damaged Sword, Ice"
+      },
+      {
+        "match": "contains",
+        "pattern": "Pharaoh Sword",
+        "damaged": "Damaged Sword, Pharaoh"
+      }
+    ]
+  },
+  "menu": [
+    {
+      "match": "contains",
+      "pattern": "Meat",
+      "action": "Cook"
+    },
+    {
+      "match": "contains",
+      "pattern": "Raw Fish",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Trout",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Swordfish",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Squid",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Pig",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Catfish",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Potion Bottle",
+      "action": "Mix"
+    },
+    {
+      "match": "exact",
+      "pattern": "Logs",
+      "action": "Build"
+    },
+    {
+      "match": "contains",
+      "pattern": "Damaged",
+      "action": "Smith"
+    },
+    {
+      "match": "contains",
+      "pattern": "cabinet",
+      "action": "Storage"
+    },
+    {
+      "match": "contains",
+      "pattern": "crate",
+      "action": "Storage"
+    },
+    {
+      "match": "contains",
+      "pattern": "chest",
+      "action": "Storage"
+    },
+    {
+      "match": "contains",
+      "pattern": "cauldron",
+      "action": "Storage"
+    }
+  ],
+  "paperdoll": {
+    "aliases": [
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "knife",
+        "becomes": "Dagger"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Blacksmith Hammer",
+        "becomes": "Mining Hammer"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Ice Hammer",
+        "becomes": "Mining Hammer"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Fire Hammer",
+        "becomes": "Mining Hammer"
+      },
+      {
+        "layer": "shield",
+        "match": "contains",
+        "pattern": "Arrows",
+        "becomes": "Arrows"
+      },
+      {
+        "layer": "shield",
+        "match": "contains",
+        "pattern": "sand",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "shield",
+        "match": "contains",
+        "pattern": "Camera",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Lord's Staff",
+        "becomes": "Steel Staff"
+      },
+      {
+        "layer": "shield",
+        "match": "exact",
+        "pattern": "Saw",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Unholy Lance",
+        "becomes": "Dark Sword"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Knight's Sword",
+        "becomes": "Broad Sword"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Sword of Hope",
+        "becomes": "Broad Sword"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Katana",
+        "becomes": "Short Sword"
+      },
+      {
+        "layer": "weapon",
+        "match": "contains",
+        "pattern": "Scimitar",
+        "becomes": "Short Sword"
+      },
+      {
+        "layer": "weapon",
+        "match": "contains",
+        "pattern": "Damaged",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "shield",
+        "match": "contains",
+        "pattern": "Damaged",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "helm",
+        "match": "contains",
+        "pattern": "Damaged",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "helm",
+        "match": "contains",
+        "pattern": "Damaged",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "shield",
+        "match": "contains",
+        "pattern": "Chunk",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "gloves",
+        "match": "contains",
+        "pattern": "Ring",
+        "becomes": "NOTHING"
+      },
+      {
+        "layer": "body",
+        "match": "exact",
+        "pattern": "Titanium Armor",
+        "becomes": "Argon's Plate"
+      },
+      {
+        "layer": "body",
+        "match": "contains",
+        "pattern": "Damaged",
+        "becomes": "DEFBOD"
+      }
+    ]
+  },
+  "ground": {
+    "blocks": [
+      {
+        "match": "exact",
+        "pattern": "Fire Pot",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Chimney",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Windmill",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Holy Water",
+        "monsters": false
+      },
+      {
+        "match": "contains",
+        "pattern": "'s Newspaper",
+        "monsters": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Fountain",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Piano",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "Statue",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "Universal",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Steel Door",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Wooden Door",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Emerald Door",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Fire Door",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Gold Door",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Large Rock",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Sign 1",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Sign 2",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Sign 3",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": " Chest",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "Vault",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Guild Center",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "'s Door",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Stove",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Alchemy Lab",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Anvil",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Table",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "Crate",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "Cauldron",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "Painting",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "Cabinet",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Campfire",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "'s Airship",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Street Lamp",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Blackjack Table",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Checkers Table",
+        "monsters": true
+      },
+      {
+        "match": "contains",
+        "pattern": "slot machine",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Copy Machine",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Switch Door",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "OFF Switch",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "ON Switch",
+        "monsters": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Cauldron",
+        "monsters": true
+      }
+    ],
+    "platforms": [
+      {
+        "match": "exact",
+        "pattern": "Slash Master Platform",
+        "needs": "Slash",
+        "atLeast": 90
+      },
+      {
+        "match": "exact",
+        "pattern": "Mage Master Platform",
+        "needs": "Magery",
+        "atLeast": 90
+      },
+      {
+        "match": "exact",
+        "pattern": "Ninja Master Platform",
+        "needs": "MartialArts",
+        "atLeast": 90
+      },
+      {
+        "match": "exact",
+        "pattern": "Experience Platform",
+        "needs": "level",
+        "atLeast": 21
+      }
+    ],
+    "overlays": [
+      {
+        "match": "contains",
+        "pattern": "Crystal",
+        "overlay": "CC"
+      },
+      {
+        "match": "exact",
+        "pattern": "Campfire",
+        "overlay": "CF"
+      },
+      {
+        "match": "exact",
+        "pattern": "Guild Center",
+        "overlay": "GC"
+      },
+      {
+        "match": "exact",
+        "pattern": "Alchemy Lab",
+        "overlay": "AL"
+      },
+      {
+        "match": "exact",
+        "pattern": "Wall Torch",
+        "overlay": "TW"
+      },
+      {
+        "match": "exact",
+        "pattern": "Windmill",
+        "overlay": "WM"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fountain",
+        "overlay": "FT"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fire Pot",
+        "overlay": "FP"
+      },
+      {
+        "match": "exact",
+        "pattern": "Chimney",
+        "overlay": "CM"
+      }
+    ],
+    "layers": [
+      {
+        "match": "exact",
+        "pattern": "Exit",
+        "layer": "hidden"
+      },
+      {
+        "match": "exact",
+        "pattern": "Exit2",
+        "layer": "hidden"
+      },
+      {
+        "match": "exact",
+        "pattern": "Chimney",
+        "layer": "overLayer3"
+      },
+      {
+        "match": "contains",
+        "pattern": " Ray",
+        "layer": "overChars"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dragon Rock",
+        "layer": "overChars"
+      },
+      {
+        "match": "exact",
+        "pattern": "DungeonAlpha",
+        "layer": "overChars"
+      }
+    ],
+    "offsets": [
+      {
+        "match": "exact",
+        "pattern": "Left Ray",
+        "dx": 15,
+        "dy": -10
+      },
+      {
+        "match": "exact",
+        "pattern": "Right Ray",
+        "dx": 15,
+        "dy": -10
+      }
+    ]
+  },
+  "pickup": {
+    "ctrlTexts": [
+      {
+        "match": "contains",
+        "pattern": "Piano",
+        "text": "This is a piano.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Wall Torch",
+        "text": "This is a brightly lit torch.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Windmill",
+        "text": "This is a windmill.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Holy Water",
+        "text": "This is Holy Water.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Fire Pot",
+        "text": "I bet that's hot.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Fountain",
+        "text": "This is a fountain.",
+        "unpause": false
+      },
+      {
+        "match": "contains",
+        "pattern": "Clock",
+        "text": "This is a clock.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Experience Platform",
+        "text": "You must be over 30 hit points to pass this platform.",
+        "unpause": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Slash Master Platform",
+        "text": "This is a slash master's platform, only a master of slash can pass through this.",
+        "unpause": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Mage Master Platform",
+        "text": "This is a mage master's platform, only a master of magery can pass through this.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Ninja Master Platform",
+        "text": "This is a ninja master's platform, only a master of martial arts can pass through this.",
+        "unpause": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Street Lamp",
+        "text": "This is a street lamp.",
+        "unpause": true
+      }
+    ]
+  },
+  "containers": {
+    "capacity": [
+      {
+        "match": "contains",
+        "pattern": "Crate",
+        "capacity": 3
+      },
+      {
+        "match": "contains",
+        "pattern": "Vault",
+        "capacity": 15
+      },
+      {
+        "match": "contains",
+        "pattern": "Chest",
+        "capacity": 15
+      },
+      {
+        "match": "contains",
+        "pattern": "Cabinet",
+        "capacity": 10
+      },
+      {
+        "match": "contains",
+        "pattern": "Wind Cabinet",
+        "capacity": 20
+      }
+    ],
+    "defaultCapacity": 15,
+    "uniqueIds": [
+      {
+        "match": "exact",
+        "pattern": "Crate"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cabinet"
+      },
+      {
+        "match": "exact",
+        "pattern": "Wind Cabinet"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cauldron"
+      }
+    ]
+  },
+  "gear": [
+    {
+      "slot": "body",
+      "match": "exact",
+      "pattern": "White Robe",
+      "power": "spell",
+      "add": 2
+    },
+    {
+      "slot": "body",
+      "match": "exact",
+      "pattern": "Wizard's Robe",
+      "power": "spell",
+      "add": 5
+    },
+    {
+      "slot": "head",
+      "match": "exact",
+      "pattern": "White Tiara",
+      "power": "spell",
+      "add": 1
+    },
+    {
+      "slot": "body",
+      "match": "exact",
+      "pattern": "Ceramic Armor",
+      "power": "spell",
+      "add": 5
+    },
+    {
+      "slot": "ring",
+      "match": "exact",
+      "pattern": "Mage's Ring",
+      "power": "spell",
+      "add": 3
+    },
+    {
+      "slot": "body",
+      "match": "exact",
+      "pattern": "Necromancer's Robe",
+      "power": "blackArts",
+      "add": 5
+    },
+    {
+      "slot": "body",
+      "match": "exact",
+      "pattern": "Ninja Outfit",
+      "power": "martialArts",
+      "add": 60
+    },
+    {
+      "slot": "body",
+      "match": "exact",
+      "pattern": "Royal Ninja Uniform",
+      "power": "martialArts",
+      "add": 80
+    },
+    {
+      "slot": "ring",
+      "match": "exact",
+      "pattern": "Argon's Ring",
+      "power": "attack",
+      "add": 3
+    }
+  ],
+  "swing": {
+    "cooldowns": [
+      {
+        "slot": "ring",
+        "match": "exact",
+        "pattern": "Ring of Quickness",
+        "atDelay": 10,
+        "actionDelay": 10
+      }
+    ],
+    "sounds": [
+      {
+        "match": "exact",
+        "pattern": "Watering Bucket",
+        "sound": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Hoe",
+        "sound": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Fishing Pole",
+        "sound": null
+      },
+      {
+        "match": "contains",
+        "pattern": "laser sword",
+        "sound": "LaserSword"
+      }
+    ]
+  }
+}

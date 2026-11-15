@@ -1,0 +1,11 @@
+{"castLib":1,"cast":"Internal","member":1,"name":"newpaperImage","type":"bitmap","rect":[0,0,400,412],"width":400,"height":412,"regX":200,"regY":206,"rawReg":[200,206],"depth":16,"pitch":800,"pitchFlags":8,"flags22":0,"byte10":1,"clut":[-1,-101],"asset":"bitmaps/00004_newpaperImage.png","assetSize":[400,412],"border":{"rgb":[16,16,16],"fraction":0.267},"scoreUsage":[{"ink":0,"back":[255,255,255],"fore":[0,0,0],"blend":0,"frames":28}],"keyHint":"opaque"}
+{"castLib":1,"cast":"Internal","member":5,"name":"Newspaper1","type":"field","asset":["text/00011_Newspaper1_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":6,"name":"Newspaper2","type":"field","asset":["text/00032_Newspaper2_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":7,"name":"Newspaper3","type":"field","asset":["text/00030_Newspaper3_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":8,"name":"Newspaper4","type":"field","asset":["text/00033_Newspaper4_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":9,"name":"Newspaper5","type":"field","asset":["text/00034_Newspaper5_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":10,"name":"Newspaper6","type":"field","asset":["text/00035_Newspaper6_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":11,"name":"Photo1Name","type":"field","asset":["text/00037_Photo1Name_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":12,"name":"Photo2Name","type":"field","asset":["text/00038_Photo2Name_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":13,"name":"Photo3Name","type":"field","asset":["text/00039_Photo3Name_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":14,"name":"newpaperImage","type":"bitmap","rect":[0,0,103,31],"width":103,"height":31,"regX":172,"regY":31,"rawReg":[172,31],"depth":16,"pitch":206,"pitchFlags":8,"flags22":0,"byte10":1,"clut":[-1,-101],"asset":"bitmaps/00036_newpaperImage.png","assetSize":[103,31],"border":{"rgb":[8,8,8],"fraction":0.582},"scoreUsage":[{"ink":0,"back":[255,255,255],"fore":[0,0,0],"blend":0,"frames":28}],"keyHint":"opaque"}

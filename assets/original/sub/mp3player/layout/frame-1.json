@@ -1,0 +1,416 @@
+{
+  "frame": 1,
+  "label": null,
+  "stage": [
+    320,
+    250
+  ],
+  "stageColor": null,
+  "stageColorFrom": "config chunk unreadable (stage rect 16385x-1535)",
+  "sprites": [
+    {
+      "channel": 1,
+      "castLib": 1,
+      "member": 21,
+      "name": "better gui for mp3x",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        160,
+        125
+      ],
+      "size": [
+        320,
+        250
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        0,
+        0,
+        320,
+        250
+      ],
+      "reg": [
+        160,
+        125
+      ],
+      "asset": "bitmaps/00033_better_gui_for_mp3x.png"
+    },
+    {
+      "channel": 2,
+      "castLib": 1,
+      "member": 5,
+      "name": "boundary",
+      "type": "xtra",
+      "ink": 0,
+      "loc": [
+        207,
+        21
+      ],
+      "size": [
+        200,
+        7
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        207,
+        21,
+        407,
+        28
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 3,
+      "castLib": 1,
+      "member": 4,
+      "name": "handle",
+      "type": "xtra",
+      "ink": 36,
+      "loc": [
+        107,
+        20
+      ],
+      "size": [
+        20,
+        20
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        107,
+        20,
+        127,
+        40
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 4,
+      "castLib": 1,
+      "member": 2,
+      "name": "play",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        29,
+        47
+      ],
+      "size": [
+        50,
+        50
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        10,
+        40,
+        49,
+        55
+      ],
+      "reg": [
+        19,
+        7
+      ],
+      "asset": "bitmaps/00005_play.png"
+    },
+    {
+      "channel": 5,
+      "castLib": 1,
+      "member": 14,
+      "name": "Mp3s",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        15,
+        60
+      ],
+      "size": [
+        291,
+        167
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        15,
+        60,
+        306,
+        227
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 6,
+      "castLib": 1,
+      "member": 16,
+      "name": "Timem",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        24,
+        11
+      ],
+      "size": [
+        57,
+        17
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        24,
+        11,
+        81,
+        28
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 7,
+      "castLib": 1,
+      "member": 18,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        279,
+        42
+      ],
+      "size": [
+        49,
+        14
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        255,
+        37,
+        304,
+        47
+      ],
+      "reg": [
+        24,
+        5
+      ],
+      "asset": "bitmaps/00077_member.png"
+    },
+    {
+      "channel": 8,
+      "castLib": 1,
+      "member": 19,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        298,
+        42
+      ],
+      "size": [
+        9,
+        18
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        295,
+        35,
+        304,
+        50
+      ],
+      "reg": [
+        3,
+        7
+      ],
+      "asset": "bitmaps/00078_member.png"
+    },
+    {
+      "channel": 9,
+      "castLib": 1,
+      "member": 22,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        75,
+        47
+      ],
+      "size": [
+        38,
+        15
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        56,
+        40,
+        94,
+        55
+      ],
+      "reg": [
+        19,
+        7
+      ],
+      "asset": "bitmaps/00043_member.png"
+    },
+    {
+      "channel": 10,
+      "castLib": 1,
+      "member": 23,
+      "name": "TrackName",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        105,
+        36
+      ],
+      "size": [
+        142,
+        10
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        105,
+        36,
+        247,
+        46
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 11,
+      "castLib": 1,
+      "member": 24,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        18,
+        237
+      ],
+      "size": [
+        40,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        0,
+        220,
+        40,
+        250
+      ],
+      "reg": [
+        18,
+        17
+      ],
+      "asset": "bitmaps/00097_member.png"
+    }
+  ]
+}

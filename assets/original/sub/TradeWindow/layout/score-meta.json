@@ -1,0 +1,17 @@
+{
+  "movie": "TradeWindow.dir",
+  "castLibs": [
+    {
+      "index": 1,
+      "name": "Internal",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 80
+    }
+  ],
+  "labels": {},
+  "frameCount": 28,
+  "channels": 1000,
+  "memberCount": 73,
+  "spanCount": 138
+}

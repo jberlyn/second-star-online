@@ -1,0 +1,1079 @@
+{
+  "stations": {
+    "frameOrder": {
+      "order": [
+        "Smith",
+        "Cook",
+        "Build",
+        "Mix"
+      ],
+      "smithFxChance": 30
+    },
+    "failure": {
+      "rows": [
+        {
+          "lt": 10,
+          "value": 3
+        },
+        {
+          "gt": 10,
+          "value": 5
+        },
+        {
+          "gt": 20,
+          "value": 7
+        },
+        {
+          "gt": 40,
+          "value": 9
+        },
+        {
+          "gt": 50,
+          "value": 11
+        },
+        {
+          "gt": 60,
+          "value": 13
+        },
+        {
+          "gt": 70,
+          "value": 15
+        },
+        {
+          "gt": 80,
+          "value": 18
+        },
+        {
+          "gt": 90,
+          "value": 100
+        }
+      ]
+    },
+    "smith": {
+      "station": "Anvil",
+      "tool": "Blacksmith Hammer",
+      "maxOccupied": 14,
+      "timer": {
+        "default": 300,
+        "rows": [
+          {
+            "gt": 10,
+            "value": 460
+          },
+          {
+            "gt": 20,
+            "value": 400
+          },
+          {
+            "gt": 30,
+            "value": 350
+          },
+          {
+            "gt": 40,
+            "value": 340
+          },
+          {
+            "gt": 50,
+            "value": 320
+          },
+          {
+            "gt": 60,
+            "value": 240
+          },
+          {
+            "gt": 70,
+            "value": 150
+          },
+          {
+            "gt": 80,
+            "value": 110
+          },
+          {
+            "gt": 90,
+            "value": 40
+          },
+          {
+            "gt": 98,
+            "value": 12
+          }
+        ]
+      },
+      "chunkDefault": "Chunk of Iron",
+      "chunks": [
+        {
+          "item": "Damaged Helm, Demon",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Helm, Ice",
+          "chunk": "Chunk of Ice"
+        },
+        {
+          "item": "Damaged Helm, Fire",
+          "chunk": "Chunk of Fire"
+        },
+        {
+          "item": "Damaged Armor, Argon's",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Armor, Ice",
+          "chunk": "Chunk of Ice"
+        },
+        {
+          "item": "Damaged Armor, Fire",
+          "chunk": "Chunk of Fire"
+        },
+        {
+          "item": "Damaged Armor, Titanium",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Armor, Lord's",
+          "chunk": "Chunk of Star"
+        },
+        {
+          "item": "Damaged Shield, Ice",
+          "chunk": "Chunk of Ice"
+        },
+        {
+          "item": "Damaged Shield, Fire",
+          "chunk": "Chunk of Fire"
+        },
+        {
+          "item": "Damaged Shield, Pharaoh",
+          "chunk": "Chunk of Star"
+        },
+        {
+          "item": "Damaged Shield, Knight",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Helm, Pharaoh",
+          "chunk": "Chunk of Star"
+        },
+        {
+          "item": "Damaged Sword, Ice",
+          "chunk": "Chunk of Ice"
+        },
+        {
+          "item": "Damaged Sword, Fire",
+          "chunk": "Chunk of Fire"
+        },
+        {
+          "item": "Damaged Sword, Broad",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Sword, Knight",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Sword, of Hope",
+          "chunk": "Chunk of Star"
+        },
+        {
+          "item": "Damaged Sword, Star",
+          "chunk": "Chunk of Star"
+        },
+        {
+          "item": "Damaged Hammer, Thor's",
+          "chunk": "Chunk of Steel"
+        }
+      ],
+      "repairs": [
+        {
+          "input": "Damaged Sword, Pharaoh",
+          "output": "Pharaoh Sword"
+        },
+        {
+          "input": "Damaged Armor, Lord's",
+          "output": "Lord's Armor"
+        },
+        {
+          "input": "Damaged Armor, Chain",
+          "output": "Chain Armor"
+        },
+        {
+          "input": "Damaged Helm, Plate",
+          "output": "Plate Helm"
+        },
+        {
+          "input": "Damaged Armor, Plate",
+          "output": "Plate Armor"
+        },
+        {
+          "input": "Damaged Armor, Argon's",
+          "output": "Argon's Plate"
+        },
+        {
+          "input": "Damaged Armor, Ceramic",
+          "output": "Ceramic Armor"
+        },
+        {
+          "input": "Damaged Armor, Titanium",
+          "output": "Titanium Armor"
+        },
+        {
+          "input": "Damaged Armor, Ice",
+          "output": "Ice Armor"
+        },
+        {
+          "input": "Damaged Armor, Fire",
+          "output": "Fire Armor"
+        },
+        {
+          "input": "Damaged Shield, Small",
+          "output": "Small Shield"
+        },
+        {
+          "input": "Damaged Hammer, War",
+          "output": "War Hammer"
+        },
+        {
+          "input": "Damaged Hammer, Thor's",
+          "output": "Thor's Hammer"
+        },
+        {
+          "input": "Damaged Shield, Pharaoh",
+          "output": "Pharaoh Shield"
+        },
+        {
+          "input": "Damaged Helm, Pharaoh",
+          "output": "Pharaoh Helm"
+        },
+        {
+          "input": "Damaged Shield, Ice",
+          "output": "Ice Shield"
+        },
+        {
+          "input": "Damaged Shield, Fire",
+          "output": "Fire Shield"
+        },
+        {
+          "input": "Damaged Shield, Knight",
+          "output": "Knight Shield"
+        },
+        {
+          "input": "Damaged Helm, Chain",
+          "output": "Chain Helm"
+        },
+        {
+          "input": "Damaged Helm, War",
+          "output": "War Helm"
+        },
+        {
+          "input": "Damaged Helm, Demon",
+          "output": "Demon Helm"
+        },
+        {
+          "input": "Damaged Helm, Ice",
+          "output": "Ice Helm"
+        },
+        {
+          "input": "Damaged Helm, Fire",
+          "output": "Fire Helm"
+        },
+        {
+          "input": "Damaged Helm, Murder",
+          "output": "Murder Helm"
+        },
+        {
+          "input": "Damaged Shield, Steel",
+          "output": "Steel Shield"
+        },
+        {
+          "input": "Damaged Sword, Star",
+          "output": "Star Sword"
+        },
+        {
+          "input": "Damaged Sword, Long",
+          "output": "Long Sword"
+        },
+        {
+          "input": "Damaged Sword, Broad",
+          "output": "Broad Sword"
+        },
+        {
+          "input": "Damaged Sword, Knight",
+          "output": "Knight's Sword"
+        },
+        {
+          "input": "Damaged Sword, of Hope",
+          "output": "Sword of Hope"
+        },
+        {
+          "input": "Damaged Sword, Fire",
+          "output": "Fire Sword"
+        },
+        {
+          "input": "Damaged Sword, Ice",
+          "output": "Ice Sword"
+        },
+        {
+          "input": "Damaged Sword, Short",
+          "output": "Short Sword"
+        }
+      ],
+      "masterworkPool": {
+        "default": 250,
+        "rows": [
+          {
+            "gt": 50,
+            "value": 100
+          },
+          {
+            "gt": 60,
+            "value": 90
+          },
+          {
+            "gt": 70,
+            "value": 80
+          },
+          {
+            "gt": 80,
+            "value": 70
+          },
+          {
+            "gt": 90,
+            "value": 50
+          },
+          {
+            "gt": 98,
+            "value": 35
+          }
+        ]
+      },
+      "masterwork": [
+        {
+          "item": "Plate Armor",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Plate Armor +1"
+            },
+            {
+              "roll": 2,
+              "result": "Plate Armor +2"
+            }
+          ]
+        },
+        {
+          "item": "Chain Helm",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Chain Helm +1"
+            },
+            {
+              "roll": 2,
+              "result": "Chain Helm +1"
+            }
+          ]
+        },
+        {
+          "item": "Steel Shield",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Steel Shield +1"
+            },
+            {
+              "roll": 2,
+              "result": "Steel Shield +1"
+            }
+          ]
+        },
+        {
+          "item": "War Helm",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "War Helm +1"
+            },
+            {
+              "roll": 2,
+              "result": "War Helm +2"
+            },
+            {
+              "roll": 3,
+              "result": "War Helm +3"
+            }
+          ]
+        },
+        {
+          "item": "Small Shield",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Small Shield +1"
+            }
+          ]
+        },
+        {
+          "item": "Leather Armor",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Leather Armor +1"
+            }
+          ]
+        },
+        {
+          "item": "Ice Helm",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Ice Helm +1"
+            }
+          ]
+        },
+        {
+          "item": "Sword of Hope",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Sword of Hope +1"
+            }
+          ]
+        },
+        {
+          "item": "Knight Shield",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Knight Shield +1"
+            },
+            {
+              "roll": 2,
+              "result": "Knight Shield +2"
+            }
+          ]
+        },
+        {
+          "item": "Pharaoh Shield",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Pharaoh Shield +1"
+            }
+          ]
+        },
+        {
+          "item": "Knight's Sword",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Knight's Sword +1"
+            },
+            {
+              "roll": 2,
+              "result": "Knight's Sword +2"
+            },
+            {
+              "roll": 3,
+              "result": "Knight's Sword +3"
+            },
+            {
+              "roll": 4,
+              "result": "Knight's Sword +4"
+            }
+          ]
+        },
+        {
+          "item": "Star Sword",
+          "outcomes": [
+            {
+              "roll": 1,
+              "result": "Star Sword +1"
+            },
+            {
+              "roll": 2,
+              "result": "Star Sword +2"
+            }
+          ]
+        }
+      ]
+    },
+    "cook": {
+      "stations": [
+        "Stove",
+        "Campfire"
+      ],
+      "doubles": "Campfire",
+      "minSkill": 1,
+      "timer": {
+        "default": 200,
+        "rows": [
+          {
+            "gt": 10,
+            "value": 190
+          },
+          {
+            "gt": 20,
+            "value": 170
+          },
+          {
+            "gt": 30,
+            "value": 160
+          },
+          {
+            "gt": 40,
+            "value": 150
+          },
+          {
+            "gt": 50,
+            "value": 120
+          },
+          {
+            "gt": 60,
+            "value": 100
+          },
+          {
+            "gt": 70,
+            "value": 70
+          },
+          {
+            "gt": 80,
+            "value": 50
+          },
+          {
+            "gt": 90,
+            "value": 20
+          }
+        ]
+      },
+      "clickFoods": [
+        {
+          "item": "Cyclops Meat",
+          "food": "Cyclops Burger"
+        },
+        {
+          "item": "Pig",
+          "food": "Cooked Pig"
+        },
+        {
+          "item": "Orc Meat",
+          "food": "Orc Burger"
+        },
+        {
+          "item": "Orc Meat",
+          "food": "Orc Pot Pie"
+        },
+        {
+          "item": "Raw Fish",
+          "food": "Fish Sticks"
+        },
+        {
+          "item": "Yeti Meat",
+          "food": "Yeti Burger"
+        }
+      ],
+      "doneFoods": [
+        {
+          "item": "Cyclops Meat",
+          "food": "Cyclops Burger"
+        },
+        {
+          "item": "Orc Meat",
+          "food": "Orc Burger"
+        },
+        {
+          "item": "Orc Meat",
+          "food": "Orc Pot Pie"
+        },
+        {
+          "item": "Raw Fish",
+          "food": "Fish Sticks"
+        },
+        {
+          "item": "Trout",
+          "food": "Trout Fillet"
+        },
+        {
+          "item": "Catfish",
+          "food": "Catfish Sandwich"
+        },
+        {
+          "item": "Swordfish",
+          "food": "Swordfish Steak"
+        },
+        {
+          "item": "Squid",
+          "food": "Squid Platter"
+        },
+        {
+          "item": "Yeti Meat",
+          "food": "Yeti Burger"
+        },
+        {
+          "item": "Pig",
+          "food": "Cooked Pig"
+        }
+      ],
+      "recipes": [
+        {
+          "input": "Cyclops Meat",
+          "output": "Cyclops Burger"
+        },
+        {
+          "input": "Orc Meat",
+          "output": "Orc Pot Pie"
+        },
+        {
+          "input": "Raw Fish",
+          "output": "Fish Sticks"
+        },
+        {
+          "input": "Trout",
+          "output": "Trout Fillet"
+        },
+        {
+          "input": "Catfish",
+          "output": "Catfish Sandwich"
+        },
+        {
+          "input": "Swordfish",
+          "output": "Swordfish Steak"
+        },
+        {
+          "input": "Yeti Meat",
+          "output": "Yeti Meat"
+        },
+        {
+          "input": "Squid",
+          "output": "Squid Platter"
+        },
+        {
+          "input": "Pig",
+          "output": "Cooked Pig"
+        }
+      ]
+    },
+    "mix": {
+      "station": "Alchemy Lab",
+      "sandMatch": " Sand",
+      "timer": {
+        "default": 200,
+        "rows": [
+          {
+            "gt": 10,
+            "value": 190
+          },
+          {
+            "gt": 20,
+            "value": 170
+          },
+          {
+            "gt": 30,
+            "value": 160
+          },
+          {
+            "gt": 40,
+            "value": 150
+          },
+          {
+            "gt": 50,
+            "value": 120
+          },
+          {
+            "gt": 60,
+            "value": 100
+          },
+          {
+            "gt": 70,
+            "value": 70
+          },
+          {
+            "gt": 80,
+            "value": 50
+          },
+          {
+            "gt": 90,
+            "value": 20
+          }
+        ]
+      },
+      "sands": [
+        {
+          "sand": "Red Sand",
+          "potion": "Red Potion",
+          "crystal": "Red Crystals",
+          "need": "You need 1 red crystal to create this potion!"
+        },
+        {
+          "sand": "Blue Sand",
+          "potion": "Blue Potion",
+          "crystal": "Blue Crystals",
+          "need": "You need 1 blue crystal to create this potion!"
+        },
+        {
+          "sand": "Yellow Sand",
+          "potion": "Yellow Potion",
+          "crystal": "Yellow Crystals",
+          "need": "You need 1 yellow crystal to create this potion!"
+        },
+        {
+          "sand": "Green Sand",
+          "potion": "Green Potion",
+          "crystal": "Green Crystals",
+          "need": "You need 1 green crystal to create this potion!"
+        },
+        {
+          "sand": "Purple Sand",
+          "potion": "Purple Potion",
+          "crystal": "Purple Crystals",
+          "need": "You need 1 purple crystal to create this potion!"
+        },
+        {
+          "sand": "White Sand",
+          "potion": "White Potion",
+          "crystal": "White Crystals",
+          "need": "You need 1 white crystal to create this potion!"
+        }
+      ]
+    },
+    "build": {
+      "tool": "Saw",
+      "timer": {
+        "default": 200,
+        "rows": [
+          {
+            "gt": 10,
+            "value": 190
+          },
+          {
+            "gt": 20,
+            "value": 170
+          },
+          {
+            "gt": 30,
+            "value": 160
+          },
+          {
+            "gt": 40,
+            "value": 150
+          },
+          {
+            "gt": 50,
+            "value": 120
+          },
+          {
+            "gt": 60,
+            "value": 100
+          },
+          {
+            "gt": 70,
+            "value": 70
+          },
+          {
+            "gt": 80,
+            "value": 50
+          },
+          {
+            "gt": 90,
+            "value": 20
+          }
+        ]
+      },
+      "bands": [
+        {
+          "lt": 1000,
+          "pool": 7,
+          "results": [
+            {
+              "roll": 1,
+              "item": "Crate",
+              "id": true
+            },
+            {
+              "roll": 2,
+              "item": "Stool",
+              "id": false
+            },
+            {
+              "roll": 3,
+              "item": "Chair",
+              "id": false
+            },
+            {
+              "roll": 4,
+              "item": "Table",
+              "id": false
+            },
+            {
+              "roll": 5,
+              "item": "Crate",
+              "id": true
+            },
+            {
+              "roll": 6,
+              "item": "Cabinet",
+              "id": true
+            },
+            {
+              "roll": 7,
+              "item": "Wind Cabinet",
+              "id": true
+            }
+          ]
+        },
+        {
+          "lt": 80,
+          "pool": 6,
+          "results": [
+            {
+              "roll": 1,
+              "item": "Crate",
+              "id": true
+            },
+            {
+              "roll": 2,
+              "item": "Stool",
+              "id": false
+            },
+            {
+              "roll": 3,
+              "item": "Chair",
+              "id": false
+            },
+            {
+              "roll": 4,
+              "item": "Table",
+              "id": false
+            },
+            {
+              "roll": 5,
+              "item": "Stool",
+              "id": false
+            },
+            {
+              "roll": 6,
+              "item": "Cabinet",
+              "id": true
+            }
+          ]
+        },
+        {
+          "lt": 60,
+          "pool": 5,
+          "results": [
+            {
+              "roll": 1,
+              "item": "Crate",
+              "id": true
+            },
+            {
+              "roll": 2,
+              "item": "Stool",
+              "id": false
+            },
+            {
+              "roll": 3,
+              "item": "Chair",
+              "id": false
+            },
+            {
+              "roll": 4,
+              "item": "Table",
+              "id": false
+            },
+            {
+              "roll": 5,
+              "item": "Chair",
+              "id": false
+            }
+          ]
+        },
+        {
+          "lt": 50,
+          "pool": 4,
+          "results": [
+            {
+              "roll": 1,
+              "item": "Crate",
+              "id": true
+            },
+            {
+              "roll": 2,
+              "item": "Stool",
+              "id": false
+            },
+            {
+              "roll": 3,
+              "item": "Chair",
+              "id": false
+            },
+            {
+              "roll": 4,
+              "item": "Table",
+              "id": false
+            }
+          ]
+        },
+        {
+          "lt": 30,
+          "pool": null,
+          "results": [
+            {
+              "roll": null,
+              "item": "Table",
+              "id": false
+            }
+          ]
+        },
+        {
+          "lt": 25,
+          "pool": null,
+          "results": [
+            {
+              "roll": null,
+              "item": "Stool",
+              "id": false
+            }
+          ]
+        },
+        {
+          "lt": 14,
+          "pool": null,
+          "results": [
+            {
+              "roll": null,
+              "item": "Chair",
+              "id": false
+            }
+          ]
+        }
+      ]
+    },
+    "startPause": {
+      "Smith": 40,
+      "Cook": 440,
+      "Mix": 440,
+      "Build": 40
+    },
+    "cauldron": {
+      "match": "Cauldron#",
+      "capacity": 15,
+      "recipes": [
+        {
+          "requires": [
+            "Chunk of Star",
+            "Silver Crown"
+          ],
+          "result": "Gold Crown"
+        },
+        {
+          "requires": [
+            "Chunk of Star",
+            "Axe"
+          ],
+          "result": "Gold Axe"
+        },
+        {
+          "requires": [
+            "Lord's Staff",
+            "Fireball Book"
+          ],
+          "result": "Fire Staff"
+        },
+        {
+          "requires": [
+            "Magic Shield Spell Book",
+            "Small Shield"
+          ],
+          "result": "Magic Shield"
+        },
+        {
+          "requires": [
+            "Parry Book",
+            "Ruby Ring"
+          ],
+          "result": "Ring of Quickness"
+        },
+        {
+          "requires": [
+            "Ninja Outfit",
+            "Ring of Quickness"
+          ],
+          "result": "Royal Ninja Uniform"
+        },
+        {
+          "requires": [
+            "White Robe",
+            "Magic Shield Spell Book"
+          ],
+          "result": "Wizard's Robe"
+        }
+      ]
+    },
+    "texts": {
+      "noAnvil": {
+        "text": "You have to be standing in front of an anvil lab to blacksmith something!"
+      },
+      "crowded": {
+        "text": "Your inventory is too crowded!"
+      },
+      "noHammer": {
+        "text": "You need to equip a blacksmith tool to repair this!"
+      },
+      "needChunk": {
+        "text": "You need a {} to repair this!"
+      },
+      "smithBegin": {
+        "text": "You begin to smith the {}..."
+      },
+      "noStove": {
+        "text": "You have to be standing in front of a stove or a campfire to cook something!"
+      },
+      "unskilled": {
+        "text": "You aren't skilled in cooking, you'd just burn it"
+      },
+      "cookBegin": {
+        "text": "You begin to cook the {}."
+      },
+      "burned": {
+        "text": "Your food is rea....wait a minute, you burned it! You need more practice!"
+      },
+      "noLab": {
+        "text": "You have to be standing in front of an alchemy lab to mix something!"
+      },
+      "noSand": {
+        "text": "You must be holding some alchemist sand in your hand to mix the potion!"
+      },
+      "mixBegin": {
+        "text": "You begin to mix the potion."
+      },
+      "potionOff": {
+        "text": "Your potion seems a little off...maybe you should practice more."
+      },
+      "potionReady": {
+        "text": "Your potion is ready!"
+      },
+      "noSaw": {
+        "text": "You need a carpentry tool equipped to build with!"
+      },
+      "buildBegin": {
+        "text": "You begin to build something..."
+      },
+      "buildFailed": {
+        "text": "You built a...a...you messed it all up!! You need more practice in carpentry"
+      },
+      "built": {
+        "text": "Your built a {}!"
+      },
+      "ready": {
+        "text": "Your {} is ready!"
+      },
+      "error": {
+        "text": "!@@ Error!"
+      },
+      "fizzle": {
+        "text": "The cauldron bubbles...but then fizzles out."
+      },
+      "puff": {
+        "text": "The cauldron bubbles...and with a huge puff of smoke, a new item appears inside."
+      }
+    }
+  }
+}

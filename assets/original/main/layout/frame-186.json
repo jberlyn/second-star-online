@@ -1,0 +1,392 @@
+{
+  "frame": 186,
+  "label": "prefs",
+  "stage": [
+    800,
+    600
+  ],
+  "stageColor": null,
+  "stageColorFrom": "config chunk unreadable (stage rect 8195x22530)",
+  "sprites": [
+    {
+      "channel": 1,
+      "castLib": 1,
+      "member": 240,
+      "name": "prefs",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        408,
+        149
+      ],
+      "size": [
+        350,
+        194
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        222,
+        140,
+        595,
+        297
+      ],
+      "reg": [
+        186,
+        9
+      ],
+      "asset": "bitmaps/342318_prefs.png"
+    },
+    {
+      "channel": 2,
+      "castLib": 1,
+      "member": 241,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        550,
+        270
+      ],
+      "size": [
+        55,
+        28
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        523,
+        262,
+        578,
+        278
+      ],
+      "reg": [
+        27,
+        8
+      ],
+      "asset": "bitmaps/123562_member.png"
+    },
+    {
+      "channel": 3,
+      "castLib": 1,
+      "member": 242,
+      "name": "ServerIP",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        839,
+        119
+      ],
+      "size": [
+        227,
+        17
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        839,
+        119,
+        1066,
+        136
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 4,
+      "castLib": 1,
+      "member": 243,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        344,
+        182
+      ],
+      "size": [
+        12,
+        11
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        338,
+        177,
+        350,
+        188
+      ],
+      "reg": [
+        6,
+        5
+      ],
+      "asset": "bitmaps/123560_member.png"
+    },
+    {
+      "channel": 5,
+      "castLib": 1,
+      "member": 243,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        344,
+        197
+      ],
+      "size": [
+        12,
+        11
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        338,
+        192,
+        350,
+        203
+      ],
+      "reg": [
+        6,
+        5
+      ],
+      "asset": "bitmaps/123560_member.png"
+    },
+    {
+      "channel": 6,
+      "castLib": 1,
+      "member": 243,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        344,
+        216
+      ],
+      "size": [
+        12,
+        11
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        338,
+        211,
+        350,
+        222
+      ],
+      "reg": [
+        6,
+        5
+      ],
+      "asset": "bitmaps/123560_member.png"
+    },
+    {
+      "channel": 7,
+      "castLib": 1,
+      "member": 243,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        344,
+        231
+      ],
+      "size": [
+        12,
+        11
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        338,
+        226,
+        350,
+        237
+      ],
+      "reg": [
+        6,
+        5
+      ],
+      "asset": "bitmaps/123560_member.png"
+    },
+    {
+      "channel": 8,
+      "castLib": 1,
+      "member": 239,
+      "name": "ServerIPList",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        838,
+        156
+      ],
+      "size": [
+        231,
+        51
+      ],
+      "fore": [
+        255,
+        255,
+        255
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        838,
+        156,
+        1069,
+        207
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 9,
+      "castLib": 1,
+      "member": 243,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        900,
+        231
+      ],
+      "size": [
+        12,
+        11
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        894,
+        226,
+        906,
+        237
+      ],
+      "reg": [
+        6,
+        5
+      ],
+      "asset": "bitmaps/123560_member.png"
+    },
+    {
+      "channel": 10,
+      "castLib": 1,
+      "member": 243,
+      "name": "",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        900,
+        246
+      ],
+      "size": [
+        12,
+        11
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        894,
+        241,
+        906,
+        252
+      ],
+      "reg": [
+        6,
+        5
+      ],
+      "asset": "bitmaps/123560_member.png"
+    }
+  ]
+}

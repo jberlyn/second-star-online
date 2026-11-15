@@ -1,0 +1,158 @@
+{
+  "frame": 1,
+  "label": null,
+  "stage": [
+    315,
+    150
+  ],
+  "stageColor": "#FFFFFF",
+  "stageColorFrom": "config chunk, palette index 0",
+  "sprites": [
+    {
+      "channel": 1,
+      "castLib": 1,
+      "member": 1,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        157,
+        62
+      ],
+      "size": [
+        361,
+        239
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        7,
+        7,
+        307,
+        118
+      ],
+      "reg": [
+        150,
+        55
+      ],
+      "asset": "bitmaps/00013_member.png"
+    },
+    {
+      "channel": 2,
+      "castLib": 1,
+      "member": 2,
+      "name": "",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        282,
+        134
+      ],
+      "size": [
+        41,
+        21
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        261,
+        123,
+        304,
+        145
+      ],
+      "reg": [
+        21,
+        11
+      ],
+      "asset": "bitmaps/00005_member.png"
+    },
+    {
+      "channel": 6,
+      "castLib": 1,
+      "member": 6,
+      "name": "Send",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        11,
+        43
+      ],
+      "size": [
+        291,
+        71
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        153,
+        204
+      ],
+      "blend": 0,
+      "rect": [
+        11,
+        43,
+        302,
+        114
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 7,
+      "castLib": 1,
+      "member": 7,
+      "name": "To",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        56,
+        9
+      ],
+      "size": [
+        176,
+        15
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        56,
+        9,
+        232,
+        24
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    }
+  ]
+}

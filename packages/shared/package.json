@@ -1,0 +1,16 @@
+{
+  "name": "@secondstaronline/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@secondstaronline/data": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

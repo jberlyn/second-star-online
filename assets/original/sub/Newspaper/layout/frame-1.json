@@ -1,0 +1,372 @@
+{
+ "frame": 1,
+ "label": null,
+ "stage": [
+  400,
+  412
+ ],
+ "stageColor": null,
+ "stageColorFrom": "config chunk unreadable (stage rect -28670x39938)",
+ "sprites": [
+  {
+   "channel": 1,
+   "castLib": 1,
+   "member": 1,
+   "name": "newpaperImage",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    200,
+    206
+   ],
+   "size": [
+    400,
+    412
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    0,
+    0,
+    400,
+    412
+   ],
+   "reg": [
+    200,
+    206
+   ],
+   "asset": "bitmaps/00004_newpaperImage.png"
+  },
+  {
+   "channel": 2,
+   "castLib": 1,
+   "member": 2,
+   "name": "Photo1",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    80,
+    142
+   ],
+   "size": [
+    128,
+    128
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": true,
+   "rect": [
+    16,
+    78,
+    144,
+    206
+   ],
+   "reg": [
+    32,
+    32
+   ],
+   "asset": "bitmaps/00036_Photo1.png"
+  },
+  {
+   "channel": 3,
+   "castLib": 1,
+   "member": 3,
+   "name": "Photo2",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    44,
+    300
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    12,
+    268,
+    76,
+    332
+   ],
+   "reg": [
+    32,
+    32
+   ],
+   "asset": "bitmaps/00006_Photo2.png"
+  },
+  {
+   "channel": 4,
+   "castLib": 1,
+   "member": 4,
+   "name": "Photo3",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    44,
+    370
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    12,
+    338,
+    76,
+    402
+   ],
+   "reg": [
+    32,
+    32
+   ],
+   "asset": "bitmaps/00007_Photo3.png"
+  },
+  {
+   "channel": 5,
+   "castLib": 1,
+   "member": 5,
+   "name": "Newspaper1",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    13,
+    14
+   ],
+   "size": [
+    377,
+    28
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    13,
+    14,
+    390,
+    42
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 6,
+   "castLib": 1,
+   "member": 6,
+   "name": "Newspaper2",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    12,
+    47
+   ],
+   "size": [
+    377,
+    17
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    12,
+    47,
+    389,
+    64
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 7,
+   "castLib": 1,
+   "member": 7,
+   "name": "Newspaper3",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    160,
+    80
+   ],
+   "size": [
+    212,
+    17
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    160,
+    80,
+    372,
+    97
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 8,
+   "castLib": 1,
+   "member": 8,
+   "name": "Newspaper4",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    82,
+    269
+   ],
+   "size": [
+    302,
+    61
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    82,
+    269,
+    384,
+    330
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 9,
+   "castLib": 1,
+   "member": 9,
+   "name": "Newspaper5",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    82,
+    339
+   ],
+   "size": [
+    302,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    82,
+    339,
+    384,
+    355
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 10,
+   "castLib": 1,
+   "member": 10,
+   "name": "Newspaper6",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    18,
+    208
+   ],
+   "size": [
+    125,
+    13
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    18,
+    208,
+    143,
+    221
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  }
+ ]
+}

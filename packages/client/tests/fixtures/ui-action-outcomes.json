@@ -1,0 +1,5443 @@
+[
+  {
+    "action": "title-load-character",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "load",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "title-new-character",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 1
+          }
+        ]
+      },
+      {
+        "action": "create",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "account-name",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "ok",
+        "args": ["", ""]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "account-password",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "ok",
+        "args": ["", ""]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "login-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "cancel",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "login-submit",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "ok",
+        "args": ["", ""]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "creation-increase-str",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-decrease-str",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-increase-sta",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-decrease-sta",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-increase-int",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-decrease-int",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-increase-wis",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-decrease-wis",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-increase-dex",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-decrease-dex",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-previous-head",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-next-head",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-male",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-female",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-class-fighter",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-class-ranger",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-class-mage",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "account-name",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "account-password",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "creation-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "cancel",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "creation-submit",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "ok",
+        "args": [
+          {
+            "name": "",
+            "password": "",
+            "sex": 2,
+            "head": 2,
+            "classCode": 2,
+            "str": 1,
+            "sta": 1,
+            "int": 1,
+            "wis": 1,
+            "dex": 1
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-stats",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-inventory",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-skills",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-spellbook",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-gold",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "gold",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-head",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-lefthand",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "canModify",
+        "args": []
+      },
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "unequip",
+        "args": ["LeftHand"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-feet",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-body",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-righthand",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-ring",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "canModify",
+        "args": []
+      },
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "skills-scroll-up",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "skills-scroll-down",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "spell-select",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "spell-info",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "spell-toggle-cast",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "use",
+        "args": [7]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-equip",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "equip",
+        "args": [7]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "crystals",
+        "args": [7, "blue"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "crystals",
+        "args": [7, "blue"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-equip",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-cook",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-mix",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-build",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-smith",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-storage",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-use",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-equip",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-drop",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-give",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "amount-input",
+    "tag": "INPUT",
+    "events": ["click", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "amount-confirm",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "amount-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-quantity",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-buy",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-sell",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-cancel",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-select-item",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "vault-select-item",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "shop-quantity",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-buy",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "take",
+        "args": [1]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "shop-sell",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "shop-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
+      },
+      {
+        "action": "cancel",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "character-menu-dismiss",
+    "tag": "DIV",
+    "events": ["pointerleave"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "character-view-bio",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "character-trade",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "who-select-player",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "who-im",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "who-profile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "closed",
+        "args": [
+          {
+            "player": true,
+            "profile": "hi"
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "bio-profile",
+    "tag": "TEXTAREA",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bio-buy",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [
+      {
+        "action": "list",
+        "args": ["buy"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "bio-sell",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [
+      {
+        "action": "list",
+        "args": ["sell"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "bio-train",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [
+      {
+        "action": "list",
+        "args": ["train"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-select-player",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-remove",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-message",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-away",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "away",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-recipient",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-reply-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "away-message",
+    "tag": "TEXTAREA",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "away-set",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "away",
+        "args": [""]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "away-back",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "away",
+        "args": [null]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "room-chat-input",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-offer-a",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "offer",
+        "args": [0, []]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "trade-accept",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "accept",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "trade-cancel-a",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "cancel",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "trade-offer-b",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "offer",
+        "args": [0, []]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "trade-cancel-b",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "cancel",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-value",
+    "tag": "TEXTAREA",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-map",
+    "tag": "CANVAS",
+    "events": ["pointercancel", "pointerdown", "pointermove", "pointerup"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-map-x",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-map-y",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-pencil",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-paint-bucket",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-fat-brush",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-load",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": [1000, 992]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "editor-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "save",
+        "args": [
+          {
+            "mx": 1000,
+            "my": 992,
+            "layers": [
+              [
+                "G1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1",
+                "H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1 H1"
+              ],
+              [
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+              ],
+              [
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 5A G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3",
+                "G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3 G3"
+              ],
+              [
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A",
+                "5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A 5A"
+              ]
+            ],
+            "flags": {
+              "canFight": "O",
+              "fctSpwn": "X",
+              "isIndoors": "X",
+              "canPvp": "X"
+            },
+            "header": "",
+            "signs": ["", "", ""],
+            "exit1": null,
+            "exit2": null,
+            "fog": {
+              "tex": "NoTex",
+              "blend": 0,
+              "r": 255,
+              "g": 255,
+              "b": 255
+            },
+            "mobs": [null, null, null, null],
+            "items": []
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "editor-shadow-layer",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-layer-3",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-layer-2",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-layer-1",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-map-west",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": [999, 992]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "editor-map-east",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": [1000, 992]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "editor-map-north",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": [1000, 991]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "editor-map-south",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": [1000, 992]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-tile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-previous-tiles",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-next-tiles",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-header",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-safe-area",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-no-pvp",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-indoor",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-faction-w",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-faction-m",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-faction-a",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-npcs",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-monsters",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-items",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-fog-texture",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-blend-level",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-clear-npcs",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-clear-monsters",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-clear-items",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-fog-colour",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-map-x",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-map-y",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-tile-x",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-tile-y",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-ok",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-map-x",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-map-y",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-tile-x",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-exit-tile-y",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-ok",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-sign-background",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-sign-text",
+    "tag": "TEXTAREA",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-sign-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "editor-chat-toggle",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "sign-close",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "npc-editor-select-monster",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "npc-editor-select-npc",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "npc-editor-script",
+    "tag": "TEXTAREA",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "npc-editor-load",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "npc-editor-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "alert-dismiss",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "alert-confirm",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "menu-dismiss",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "menu-focus",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "menu-open-file",
+    "tag": "BUTTON",
+    "events": ["click", "pointerenter"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "menu-open-edit",
+    "tag": "BUTTON",
+    "events": ["click", "pointerenter"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "menu-open-admin",
+    "tag": "BUTTON",
+    "events": ["click", "pointerenter"],
+    "hidden": true,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "menu-open-game",
+    "tag": "BUTTON",
+    "events": ["click", "pointerenter"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "menu-open-options",
+    "tag": "BUTTON",
+    "events": ["click", "pointerenter"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "chat-input",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "playfield",
+    "tag": "CANVAS",
+    "events": ["click", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-stats",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-inventory",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-skills",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "panel-tab-spellbook",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-gold",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-head",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-lefthand",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-feet",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-body",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-righthand",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-unequip-ring",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "skills-scroll-up",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "skills-scroll-down",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "spell-select",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "spell-info",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "spell-toggle-cast",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "amount-input",
+    "tag": "INPUT",
+    "events": ["click", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "amount-confirm",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "amount-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-quantity",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-buy",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-sell",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "shop-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "character-menu-dismiss",
+    "tag": "DIV",
+    "events": ["pointerleave"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "character-view-bio",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "character-trade",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "sign-close",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-good",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-neutral",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-evil",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-name",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-ok",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-guild-list",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-select-member",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-ok",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-leave-guild",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-disband",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-exile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-abdicate",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-select-guild",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-list-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "guild-list-open",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "slots-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "slots-pull",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "blackjack-bid",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "blackjack-bid",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "blackjack-lock-bid",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "blackjack-lock-bid",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "blackjack-leave-the-table",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "blackjack-stand",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "blackjack-hit",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-select-from",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-select-subject",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-close-mailbox",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-delete-message",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-write-message",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-read-message",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-reply",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-mail-to",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-mail-subj",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "mail-body",
+    "tag": "TEXTAREA",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "board-post-text",
+    "tag": "TEXTAREA",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "board-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "board-post",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "paint-tools",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "paint-draw",
+    "tag": "CANVAS",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "paint-viewer-close",
+    "tag": "DIV",
+    "events": ["pointerup"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "paint-draw",
+    "tag": "CANVAS",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-recipient",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-text",
+    "tag": "TEXTAREA",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "message-send",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "who-select-player",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "who-im",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "who-profile",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "away-message",
+    "tag": "TEXTAREA",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "away-set",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "away-back",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-select-player",
+    "tag": "DIV",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-remove",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-message",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "friends-away",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "room-chat-input",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bio-profile",
+    "tag": "TEXTAREA",
+    "events": [],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bio-buy",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bio-sell",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bio-train",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-select-piece",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "checkers-move",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-text",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-text",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-text",
+    "tag": "TEXTAREA",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-text",
+    "tag": "TEXTAREA",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-text",
+    "tag": "TEXTAREA",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-text",
+    "tag": "TEXTAREA",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-photo",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-photo",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-photo",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "newspaper-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-left-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-right-amount",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-offer-a",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-accept",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-cancel-a",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-offer-b",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-cancel-b",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  }
+]

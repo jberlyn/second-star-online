@@ -1,0 +1,383 @@
+{
+  "current": [
+    {
+      "npc": "Edwin",
+      "wants": "scroll",
+      "reward": "Airship Deed"
+    },
+    {
+      "npc": "Stephie",
+      "wants": "Fishle",
+      "reward": "Yellow Potion"
+    },
+    {
+      "npc": "",
+      "wants": "Steel Key",
+      "reward": "Trumpet"
+    },
+    {
+      "npc": "Missie",
+      "wants": "Dragon Wing",
+      "reward": "Knight Shield"
+    },
+    {
+      "npc": "James",
+      "wants": "tom tom",
+      "reward": "trumpet"
+    },
+    {
+      "npc": "Girl",
+      "wants": "trumpet",
+      "reward": "Ruby Ring"
+    },
+    {
+      "npc": "Dantan",
+      "wants": "Water Orb",
+      "reward": "Plate Boots"
+    }
+  ],
+  "pools": {
+    "npcs": [
+      {
+        "roll": 1,
+        "npc": "Water God"
+      },
+      {
+        "roll": 2,
+        "npc": "Fire God"
+      },
+      {
+        "roll": 3,
+        "npc": "Earth God"
+      },
+      {
+        "roll": 4,
+        "npc": "Wind God"
+      },
+      {
+        "roll": 5,
+        "npc": "Cril"
+      },
+      {
+        "roll": 6,
+        "npc": "Akadius"
+      },
+      {
+        "roll": 7,
+        "npc": "Galor"
+      },
+      {
+        "roll": 8,
+        "npc": "Qieros"
+      },
+      {
+        "roll": 9,
+        "npc": "Ratmas"
+      },
+      {
+        "roll": 10,
+        "npc": "Wenslas"
+      },
+      {
+        "roll": 11,
+        "npc": "Krista"
+      },
+      {
+        "roll": 12,
+        "npc": "Roulan"
+      },
+      {
+        "roll": 13,
+        "npc": "Amber"
+      },
+      {
+        "roll": 14,
+        "npc": "Teral"
+      },
+      {
+        "roll": 15,
+        "npc": "Vin"
+      },
+      {
+        "roll": 16,
+        "npc": "Helum"
+      },
+      {
+        "roll": 17,
+        "npc": "Miqa"
+      },
+      {
+        "roll": 18,
+        "npc": "Dantan"
+      },
+      {
+        "roll": 19,
+        "npc": "Tela"
+      },
+      {
+        "roll": 20,
+        "npc": "Mirra"
+      },
+      {
+        "roll": 21,
+        "npc": "Wrel"
+      },
+      {
+        "roll": 22,
+        "npc": "Andero"
+      },
+      {
+        "roll": 23,
+        "npc": "Teli"
+      },
+      {
+        "roll": 24,
+        "npc": "Crushto"
+      },
+      {
+        "roll": 25,
+        "npc": "Alex"
+      },
+      {
+        "roll": 26,
+        "npc": "Kin"
+      },
+      {
+        "roll": 27,
+        "npc": "Barnum"
+      },
+      {
+        "roll": 28,
+        "npc": "Beldros"
+      },
+      {
+        "roll": 29,
+        "npc": null
+      },
+      {
+        "roll": 30,
+        "npc": "Divela"
+      },
+      {
+        "roll": 31,
+        "npc": "Stephie"
+      },
+      {
+        "roll": 32,
+        "npc": "Plone"
+      },
+      {
+        "roll": 33,
+        "npc": "Agavar"
+      },
+      {
+        "roll": 34,
+        "npc": "Jim"
+      },
+      {
+        "roll": 35,
+        "npc": "Krist"
+      },
+      {
+        "roll": 36,
+        "npc": "Benolio"
+      },
+      {
+        "roll": 37,
+        "npc": "Trixin"
+      },
+      {
+        "roll": 38,
+        "npc": "Missie"
+      },
+      {
+        "roll": 39,
+        "npc": "Kanta"
+      },
+      {
+        "roll": 40,
+        "npc": "Smithy"
+      },
+      {
+        "roll": 41,
+        "npc": "Rutxon"
+      },
+      {
+        "roll": 42,
+        "npc": "Akiro"
+      },
+      {
+        "roll": 43,
+        "npc": "Trimble"
+      },
+      {
+        "roll": 44,
+        "npc": "Acrostia"
+      }
+    ],
+    "wanted": [
+      {
+        "roll": 1,
+        "item": "Dragon Wing"
+      },
+      {
+        "roll": 2,
+        "item": "Nectar"
+      },
+      {
+        "roll": 3,
+        "item": "Corn"
+      },
+      {
+        "roll": 4,
+        "item": "Wooden Key"
+      },
+      {
+        "roll": 5,
+        "item": "House Key"
+      },
+      {
+        "roll": 6,
+        "item": "Damaged Helm"
+      },
+      {
+        "roll": 7,
+        "item": "Water Orb"
+      },
+      {
+        "roll": 8,
+        "item": "Mirror"
+      },
+      {
+        "roll": 9,
+        "item": "Ocarina"
+      },
+      {
+        "roll": 10,
+        "item": "Flask"
+      },
+      {
+        "roll": 11,
+        "item": "Herb"
+      },
+      {
+        "roll": 12,
+        "item": "Silver Token "
+      },
+      {
+        "roll": 13,
+        "item": "Scroll"
+      },
+      {
+        "roll": 14,
+        "item": "Fishle"
+      },
+      {
+        "roll": 15,
+        "item": "Argon's Medal"
+      },
+      {
+        "roll": 16,
+        "item": "Potion Bottle"
+      },
+      {
+        "roll": 17,
+        "item": "Orc Meat"
+      },
+      {
+        "roll": 18,
+        "item": "Torch"
+      },
+      {
+        "roll": 19,
+        "item": "Steel Key"
+      },
+      {
+        "roll": 20,
+        "item": "Blacksmith Hammer"
+      }
+    ],
+    "rewards": [
+      {
+        "roll": 1,
+        "item": "Fire Key"
+      },
+      {
+        "roll": 2,
+        "item": "Emerald Key"
+      },
+      {
+        "roll": 3,
+        "item": "Short Sword"
+      },
+      {
+        "roll": 4,
+        "item": "Long Sword"
+      },
+      {
+        "roll": 5,
+        "item": "Steel Shield"
+      },
+      {
+        "roll": 6,
+        "item": "Ninja Gloves"
+      },
+      {
+        "roll": 7,
+        "item": "Plate Boots"
+      },
+      {
+        "roll": 8,
+        "item": "Gold Key"
+      },
+      {
+        "roll": 9,
+        "item": "Trumpet"
+      },
+      {
+        "roll": 10,
+        "item": "Plate Helm"
+      },
+      {
+        "roll": 11,
+        "item": "Knight Shield"
+      },
+      {
+        "roll": 12,
+        "item": "Ring of Quickness"
+      },
+      {
+        "roll": 13,
+        "item": "Argon's Ring"
+      },
+      {
+        "roll": 14,
+        "item": "Katana"
+      },
+      {
+        "roll": 15,
+        "item": "Knight's Sword"
+      },
+      {
+        "roll": 16,
+        "item": "Green Potion"
+      },
+      {
+        "roll": 17,
+        "item": "Blue Potion"
+      },
+      {
+        "roll": 18,
+        "item": "Yellow Potion"
+      },
+      {
+        "roll": 19,
+        "item": "Purple Potion"
+      },
+      {
+        "roll": 20,
+        "item": "Scimitar"
+      }
+    ]
+  }
+}

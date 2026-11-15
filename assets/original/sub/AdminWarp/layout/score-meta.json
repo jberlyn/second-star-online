@@ -1,0 +1,17 @@
+{
+  "movie": "AdminWarp.dir",
+  "castLibs": [
+    {
+      "index": 1,
+      "name": "Internal",
+      "path": "",
+      "minMember": 2,
+      "maxMember": 9
+    }
+  ],
+  "labels": {},
+  "frameCount": 28,
+  "channels": 1000,
+  "memberCount": 8,
+  "spanCount": 12
+}

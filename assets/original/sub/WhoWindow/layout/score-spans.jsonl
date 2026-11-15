@@ -1,0 +1,7 @@
+{"channel":1,"frames":[1,1],"castLib":1,"member":3,"ink":0,"trails":false,"stretch":false,"loc":[41,107],"size":[89,217],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":2,"frames":[1,1],"castLib":1,"member":1,"ink":36,"trails":false,"stretch":false,"loc":[8,9],"size":[105,205],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}
+{"channel":4,"frames":[1,1],"castLib":1,"member":6,"ink":0,"trails":false,"stretch":false,"loc":[14,226],"size":[21,15],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":5,"frames":[1,28],"castLib":1,"member":7,"ink":0,"trails":false,"stretch":false,"loc":[34,226],"size":[19,15],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":1,"frames":[2,28],"castLib":1,"member":3,"ink":0,"trails":false,"stretch":false,"loc":[41,107],"size":[117,242],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}
+{"channel":2,"frames":[2,28],"castLib":1,"member":1,"ink":36,"trails":false,"stretch":true,"loc":[8,9],"size":[105,205],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":48}
+{"channel":4,"frames":[2,28],"castLib":1,"member":6,"ink":0,"trails":false,"stretch":false,"loc":[14,226],"size":[19,15],"fore":[0,0,0],"back":[255,255,255],"blend":0,"colorcode":0}

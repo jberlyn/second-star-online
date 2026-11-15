@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": ".tsbuild" },
+  "include": ["src/**/*", "tests/**/*"],
+  "references": [
+    { "path": "../data" },
+    { "path": "../shared" },
+    { "path": "../server" },
+    { "path": "../client" }
+  ]
+}

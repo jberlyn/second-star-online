@@ -1,0 +1,2490 @@
+{
+ "frame": 1,
+ "label": null,
+ "stage": [
+  556,
+  421
+ ],
+ "stageColor": null,
+ "stageColorFrom": "config chunk unreadable (stage rect 11266x-23295)",
+ "sprites": [
+  {
+   "channel": 1,
+   "castLib": 1,
+   "member": 1,
+   "name": "secure trade window",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    278,
+    210
+   ],
+   "size": [
+    556,
+    421
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    0,
+    0,
+    556,
+    421
+   ],
+   "reg": [
+    278,
+    210
+   ],
+   "asset": "bitmaps/00004_secure_trade_window.png"
+  },
+  {
+   "channel": 2,
+   "castLib": 1,
+   "member": 4,
+   "name": "",
+   "type": "bitmap",
+   "ink": 8,
+   "loc": [
+    32,
+    403
+   ],
+   "size": [
+    40,
+    19
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    12,
+    394,
+    52,
+    413
+   ],
+   "reg": [
+    20,
+    9
+   ],
+   "asset": "bitmaps/00007_member.png"
+  },
+  {
+   "channel": 3,
+   "castLib": 1,
+   "member": 2,
+   "name": "",
+   "type": "bitmap",
+   "ink": 8,
+   "loc": [
+    77,
+    403
+   ],
+   "size": [
+    49,
+    19
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    54,
+    394,
+    103,
+    413
+   ],
+   "reg": [
+    23,
+    9
+   ],
+   "asset": "bitmaps/00005_member.png"
+  },
+  {
+   "channel": 4,
+   "castLib": 1,
+   "member": 3,
+   "name": "",
+   "type": "bitmap",
+   "ink": 8,
+   "loc": [
+    126,
+    402
+   ],
+   "size": [
+    46,
+    15
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    105,
+    395,
+    151,
+    410
+   ],
+   "reg": [
+    21,
+    7
+   ],
+   "asset": "bitmaps/00006_member.png"
+  },
+  {
+   "channel": 5,
+   "castLib": 1,
+   "member": 79,
+   "name": "",
+   "type": "bitmap",
+   "ink": 8,
+   "loc": [
+    466,
+    403
+   ],
+   "size": [
+    40,
+    19
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    446,
+    394,
+    486,
+    413
+   ],
+   "reg": [
+    20,
+    9
+   ],
+   "asset": "bitmaps/00092_member.png"
+  },
+  {
+   "channel": 6,
+   "castLib": 1,
+   "member": 78,
+   "name": "",
+   "type": "bitmap",
+   "ink": 8,
+   "loc": [
+    511,
+    402
+   ],
+   "size": [
+    46,
+    15
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    490,
+    395,
+    536,
+    410
+   ],
+   "reg": [
+    21,
+    7
+   ],
+   "asset": "bitmaps/00090_member.png"
+  },
+  {
+   "channel": 7,
+   "castLib": 1,
+   "member": 5,
+   "name": "Trader1",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    17,
+    12
+   ],
+   "size": [
+    157,
+    17
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    17,
+    12,
+    174,
+    29
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 8,
+   "castLib": 1,
+   "member": 6,
+   "name": "Trader2",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    295,
+    12
+   ],
+   "size": [
+    169,
+    17
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    295,
+    12,
+    464,
+    29
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 9,
+   "castLib": 1,
+   "member": 7,
+   "name": "P1Item1",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    42
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    42,
+    194,
+    58
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 10,
+   "castLib": 1,
+   "member": 8,
+   "name": "P1Item2",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    64
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    64,
+    194,
+    80
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 11,
+   "castLib": 1,
+   "member": 9,
+   "name": "P1Item3",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    86
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    86,
+    194,
+    102
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 12,
+   "castLib": 1,
+   "member": 10,
+   "name": "P1Item4",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    108
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    108,
+    194,
+    124
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 13,
+   "castLib": 1,
+   "member": 11,
+   "name": "P1Item5",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    130
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    130,
+    194,
+    146
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 14,
+   "castLib": 1,
+   "member": 12,
+   "name": "P1Item6",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    152
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    152,
+    194,
+    168
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 15,
+   "castLib": 1,
+   "member": 13,
+   "name": "P1Item7",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    174
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    174,
+    194,
+    190
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 16,
+   "castLib": 1,
+   "member": 14,
+   "name": "P1Item8",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    196
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    196,
+    194,
+    212
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 17,
+   "castLib": 1,
+   "member": 15,
+   "name": "P1Item9",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    218
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    218,
+    194,
+    234
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 18,
+   "castLib": 1,
+   "member": 16,
+   "name": "P1Item10",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    240
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    240,
+    194,
+    256
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 19,
+   "castLib": 1,
+   "member": 17,
+   "name": "P1Item11",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    262
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    262,
+    194,
+    278
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 20,
+   "castLib": 1,
+   "member": 18,
+   "name": "P1Item12",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    284
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    284,
+    194,
+    300
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 21,
+   "castLib": 1,
+   "member": 19,
+   "name": "P1Item13",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    306
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    306,
+    194,
+    322
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 22,
+   "castLib": 1,
+   "member": 20,
+   "name": "P1Item14",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    328
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    328,
+    194,
+    344
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 23,
+   "castLib": 1,
+   "member": 21,
+   "name": "P1Item15",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    350
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    350,
+    194,
+    366
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 24,
+   "castLib": 1,
+   "member": 22,
+   "name": "P1Item16",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    19,
+    372
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    19,
+    372,
+    194,
+    388
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 25,
+   "castLib": 1,
+   "member": 23,
+   "name": "P1ItemAmount1",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    42
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    42,
+    249,
+    58
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 26,
+   "castLib": 1,
+   "member": 24,
+   "name": "P1ItemAmount2",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    64
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    64,
+    249,
+    80
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 27,
+   "castLib": 1,
+   "member": 25,
+   "name": "P1ItemAmount3",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    86
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    86,
+    249,
+    102
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 28,
+   "castLib": 1,
+   "member": 26,
+   "name": "P1ItemAmount4",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    108
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    108,
+    249,
+    124
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 29,
+   "castLib": 1,
+   "member": 27,
+   "name": "P1ItemAmount5",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    130
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    130,
+    249,
+    146
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 30,
+   "castLib": 1,
+   "member": 28,
+   "name": "P1ItemAmount6",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    152
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    152,
+    249,
+    168
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 31,
+   "castLib": 1,
+   "member": 29,
+   "name": "P1ItemAmount7",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    174
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    174,
+    249,
+    190
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 32,
+   "castLib": 1,
+   "member": 30,
+   "name": "P1ItemAmount8",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    196
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    196,
+    249,
+    212
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 33,
+   "castLib": 1,
+   "member": 31,
+   "name": "P1ItemAmount9",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    218
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    218,
+    249,
+    234
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 34,
+   "castLib": 1,
+   "member": 32,
+   "name": "P1ItemAmount10",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    240
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    240,
+    249,
+    256
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 35,
+   "castLib": 1,
+   "member": 33,
+   "name": "P1ItemAmount11",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    262
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    262,
+    249,
+    278
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 36,
+   "castLib": 1,
+   "member": 34,
+   "name": "P1ItemAmount12",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    284
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    284,
+    249,
+    300
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 37,
+   "castLib": 1,
+   "member": 35,
+   "name": "P1ItemAmount13",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    306
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    306,
+    249,
+    322
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 38,
+   "castLib": 1,
+   "member": 36,
+   "name": "P1ItemAmount14",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    328
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    328,
+    249,
+    344
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 39,
+   "castLib": 1,
+   "member": 37,
+   "name": "P1ItemAmount15",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    350
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    350,
+    249,
+    366
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 40,
+   "castLib": 1,
+   "member": 38,
+   "name": "P1ItemAmount16",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    207,
+    372
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    207,
+    372,
+    249,
+    388
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 41,
+   "castLib": 1,
+   "member": 41,
+   "name": "P2Item1",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    42
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    42,
+    477,
+    58
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 42,
+   "castLib": 1,
+   "member": 42,
+   "name": "P2Item2",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    64
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    64,
+    477,
+    80
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 43,
+   "castLib": 1,
+   "member": 43,
+   "name": "P2Item3",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    86
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    86,
+    477,
+    102
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 44,
+   "castLib": 1,
+   "member": 44,
+   "name": "P2Item4",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    108
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    108,
+    477,
+    124
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 45,
+   "castLib": 1,
+   "member": 45,
+   "name": "P2Item5",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    130
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    130,
+    477,
+    146
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 46,
+   "castLib": 1,
+   "member": 46,
+   "name": "P2Item6",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    152
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    152,
+    477,
+    168
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 47,
+   "castLib": 1,
+   "member": 47,
+   "name": "P2Item7",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    174
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    174,
+    477,
+    190
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 48,
+   "castLib": 1,
+   "member": 48,
+   "name": "P2Item8",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    196
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    196,
+    477,
+    212
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 49,
+   "castLib": 1,
+   "member": 49,
+   "name": "P2Item9",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    218
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    218,
+    477,
+    234
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 50,
+   "castLib": 1,
+   "member": 50,
+   "name": "P2Item10",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    240
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    240,
+    477,
+    256
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 51,
+   "castLib": 1,
+   "member": 51,
+   "name": "P2Item11",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    262
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    262,
+    477,
+    278
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 52,
+   "castLib": 1,
+   "member": 52,
+   "name": "P2Item12",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    284
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    284,
+    477,
+    300
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 53,
+   "castLib": 1,
+   "member": 53,
+   "name": "P2Item13",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    306
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    306,
+    477,
+    322
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 54,
+   "castLib": 1,
+   "member": 54,
+   "name": "P2Item14",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    327
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    327,
+    477,
+    343
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 55,
+   "castLib": 1,
+   "member": 55,
+   "name": "P2Item15",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    350
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    350,
+    477,
+    366
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 56,
+   "castLib": 1,
+   "member": 56,
+   "name": "P2item16",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    302,
+    372
+   ],
+   "size": [
+    175,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    302,
+    372,
+    477,
+    388
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 57,
+   "castLib": 1,
+   "member": 57,
+   "name": "P2ItemAmount1",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    42
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    42,
+    532,
+    58
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 58,
+   "castLib": 1,
+   "member": 58,
+   "name": "P2ItemAmount2",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    64
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    64,
+    532,
+    80
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 59,
+   "castLib": 1,
+   "member": 59,
+   "name": "P2ItemAmount3",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    86
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    86,
+    532,
+    102
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 60,
+   "castLib": 1,
+   "member": 60,
+   "name": "P2ItemAmount4",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    108
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    108,
+    532,
+    124
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 61,
+   "castLib": 1,
+   "member": 61,
+   "name": "P2ItemAmount5",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    130
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    130,
+    532,
+    146
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 62,
+   "castLib": 1,
+   "member": 62,
+   "name": "P2ItemAmount6",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    152
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    152,
+    532,
+    168
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 63,
+   "castLib": 1,
+   "member": 63,
+   "name": "P2ItemAmount7",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    174
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    174,
+    532,
+    190
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 64,
+   "castLib": 1,
+   "member": 64,
+   "name": "P2ItemAmount8",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    196
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    196,
+    532,
+    212
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 65,
+   "castLib": 1,
+   "member": 65,
+   "name": "P2ItemAmount9",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    218
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    218,
+    532,
+    234
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 66,
+   "castLib": 1,
+   "member": 66,
+   "name": "P2ItemAmount10",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    240
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    240,
+    532,
+    256
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 67,
+   "castLib": 1,
+   "member": 67,
+   "name": "P2ItemAmount11",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    262
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    262,
+    532,
+    278
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 68,
+   "castLib": 1,
+   "member": 68,
+   "name": "P2ItemAmount12",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    284
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    284,
+    532,
+    300
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 69,
+   "castLib": 1,
+   "member": 69,
+   "name": "P2ItemAmount13",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    306
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    306,
+    532,
+    322
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 70,
+   "castLib": 1,
+   "member": 70,
+   "name": "P2ItemAmount14",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    328
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    328,
+    532,
+    344
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 71,
+   "castLib": 1,
+   "member": 71,
+   "name": "P2ItemAmount15",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    350
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    350,
+    532,
+    366
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 72,
+   "castLib": 1,
+   "member": 72,
+   "name": "P2ItemAmount16",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    490,
+    372
+   ],
+   "size": [
+    42,
+    16
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    0,
+    153,
+    204
+   ],
+   "blend": 0,
+   "rect": [
+    490,
+    372,
+    532,
+    388
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  }
+ ]
+}

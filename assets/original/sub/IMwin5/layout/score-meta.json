@@ -1,0 +1,19 @@
+{
+  "movie": "IMwin5.dir",
+  "castLibs": [
+    {
+      "index": 1,
+      "name": "Internal",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 7
+    }
+  ],
+  "labels": {
+    "16": "New Marker"
+  },
+  "frameCount": 28,
+  "channels": 1000,
+  "memberCount": 5,
+  "spanCount": 8
+}

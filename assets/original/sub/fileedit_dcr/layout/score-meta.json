@@ -1,0 +1,17 @@
+{
+  "movie": "fileedit.dir",
+  "castLibs": [
+    {
+      "index": 1,
+      "name": "Internal",
+      "path": "",
+      "minMember": 1,
+      "maxMember": 8
+    }
+  ],
+  "labels": {},
+  "frameCount": 28,
+  "channels": 1000,
+  "memberCount": 8,
+  "spanCount": 12
+}

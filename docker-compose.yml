@@ -1,0 +1,24 @@
+services:
+  game:
+    image: second-star-online:local
+    build:
+      context: .
+      platforms:
+        - linux/amd64
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      SSO_PROXY_HOPS: "1"
+    volumes:
+      - world:/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "bun", "packages/server/src/cli/healthcheck.ts"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  world:

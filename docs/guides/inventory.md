@@ -1,0 +1,44 @@
+# Inventory
+
+## What happens in play
+
+A player picks up a pile, equips a weapon, and later gives an item to someone nearby. The server applies each action to its own state.
+
+## Where it lives
+
+Shared rules calculate outcomes; server systems apply them to world and player state.
+
+- [packages/server/src/systems/inventory/items.ts](../../packages/server/src/systems/inventory/items.ts): handles item use, equipment, ground items and delayed gives.
+- [packages/shared/src/rules/inventory/equip.ts](../../packages/shared/src/rules/inventory/equip.ts): checks equipment and item use.
+- [packages/shared/src/rules/inventory/ground.ts](../../packages/shared/src/rules/inventory/ground.ts): defines ground item blocking, pictures and pickup gates.
+- [packages/shared/src/rules/inventory/inventory.ts](../../packages/shared/src/rules/inventory/inventory.ts): defines bags, stacking and equipment slots.
+- [packages/shared/src/rules/inventory/paperdoll.ts](../../packages/shared/src/rules/inventory/paperdoll.ts): selects character appearance layers.
+
+Entry points:
+
+- `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`).
+- `packages/shared/src/rules/inventory/equip.ts` (`checkEquip`).
+- `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `dueGives`, `decayLoot`).
+
+## How it works
+
+A bag has ordered slots and quantities; additions stack where the rules permit and unique containers carry IDs. Equipment matching and its checks run in order. Using an item can consume it or hand the action to another system. The server checks and applies equip, drop and pickup requests, and a give can be delivered after a delay.
+
+Ground items have blocking and drawing rules distinct from bag entries. Monster loot can decay on the ground. Paperdoll rules select layers for equipment and animation frames; they describe appearance rather than changing the bag. The unreachable orb game remains omitted. Inventory and ground state are saved through [inventory persistence](../../packages/server/src/persistence/inventory.ts) and [ground persistence](../../packages/server/src/persistence/ground.ts).
+
+### Bag, equipment and use
+
+The bag has 15 lines. Ordinary items stack by case-insensitive exact name or use the first empty line; gold piles increase gold instead. Containers needing individual storage get IDs, including cauldrons. Equipping derives the slot from the item name and checks requirements before moving one item; the server also refuses an occupied slot. Name rules are ordered and the last matching rule can determine the slot or strength requirement. Item use applies its effects and consumes items according to their rules, with special items delegated to other systems. [Item rules](../../packages/data/content/item-rules.json) contain the editable matching data.
+
+### Ground and transfers
+
+Dropping puts an item on the faced tile after the action's checks. Giving a normal item creates a ground item at the target and schedules its grab 60 frames later; gold and NPC hand-ins follow their own routes. Pickup checks the current map, position and item before moving it to the bag. The server records ground changes for persistence and removes expired monster loot on its decay step. Ground objects can block players and monsters differently; for example monsters can cross Holy Water and newspapers that stop players.
+
+The paperdoll combines body, head and equipment layers for the current frame and facing. Boots are not drawn, a retained original behaviour; an absent layer is skipped. Ground pictures and their draw layers are selected by shared name rules, independently of collision.
+
+## Kept bugs and differences
+
+A clicked pickup can be refused when the bag is full even if the item would stack. Food can still be consumed when the player is already stuffed. The server checks adjacency and the actual bag slot for item transfers.
+
+See the [inventory kept bugs](../bug-ledger.md#inventory) and [inventory differences](../divergences.md#inventory) for the specific player-visible cases.
+

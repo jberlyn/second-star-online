@@ -1,0 +1,2068 @@
+{
+  "frame": 1,
+  "label": null,
+  "stage": [
+    304,
+    310
+  ],
+  "stageColor": "#FFFFFF",
+  "stageColorFrom": "config chunk, palette index 0",
+  "sprites": [
+    {
+      "channel": 1,
+      "castLib": 1,
+      "member": 1,
+      "name": "checkerboard",
+      "type": "bitmap",
+      "ink": 0,
+      "loc": [
+        152,
+        155
+      ],
+      "size": [
+        304,
+        310
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        0,
+        0,
+        304,
+        310
+      ],
+      "reg": [
+        152,
+        155
+      ],
+      "asset": "bitmaps/00004_checkerboard.png"
+    },
+    {
+      "channel": 2,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        73,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        58,
+        263,
+        88,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 3,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        137,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        122,
+        263,
+        152,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 4,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        201,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        186,
+        263,
+        216,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 5,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        265,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        250,
+        263,
+        280,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 6,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        41,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        26,
+        231,
+        56,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 7,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        105,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        90,
+        231,
+        120,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 8,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        169,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        154,
+        231,
+        184,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 9,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        233,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        218,
+        231,
+        248,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 10,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        73,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        58,
+        199,
+        88,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 11,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        137,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        122,
+        199,
+        152,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 12,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        201,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        186,
+        199,
+        216,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 13,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        265,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        250,
+        199,
+        280,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 14,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        41,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        26,
+        39,
+        56,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 15,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        105,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        90,
+        39,
+        120,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 16,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        169,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        154,
+        39,
+        184,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 17,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        233,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        218,
+        39,
+        248,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 18,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        73,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        58,
+        71,
+        88,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 19,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        137,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        122,
+        71,
+        152,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 20,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        201,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        186,
+        71,
+        216,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 21,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        265,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        250,
+        71,
+        280,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 22,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        41,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        26,
+        103,
+        56,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 23,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        105,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        90,
+        103,
+        120,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 24,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        169,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        154,
+        103,
+        184,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 25,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 8,
+      "loc": [
+        233,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        218,
+        103,
+        248,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 26,
+      "castLib": 1,
+      "member": 4,
+      "name": "P1name",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        95,
+        3
+      ],
+      "size": [
+        100,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "rect": [
+        95,
+        3,
+        195,
+        19
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 27,
+      "castLib": 1,
+      "member": 5,
+      "name": "P2name",
+      "type": "field",
+      "ink": 36,
+      "loc": [
+        93,
+        17
+      ],
+      "size": [
+        131,
+        16
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        0,
+        153,
+        204
+      ],
+      "blend": 0,
+      "rect": [
+        93,
+        17,
+        224,
+        33
+      ],
+      "note": "non-bitmap: rect assumes top-left reg"
+    },
+    {
+      "channel": 28,
+      "castLib": 1,
+      "member": 8,
+      "name": "Box\r",
+      "type": "bitmap",
+      "ink": 36,
+      "loc": [
+        41,
+        -64
+      ],
+      "size": [
+        34,
+        34
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        24,
+        -81,
+        58,
+        -47
+      ],
+      "reg": [
+        17,
+        17
+      ],
+      "asset": "bitmaps/00011_Box_.png"
+    },
+    {
+      "channel": 29,
+      "castLib": 1,
+      "member": 14,
+      "name": "",
+      "type": "bitmap",
+      "ink": 3,
+      "loc": [
+        99,
+        -41
+      ],
+      "size": [
+        17,
+        17
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        "pal",
+        4
+      ],
+      "blend": 0,
+      "stretch": false,
+      "rect": [
+        91,
+        -49,
+        108,
+        -32
+      ],
+      "reg": [
+        8,
+        8
+      ],
+      "asset": "bitmaps/00018_member.png"
+    },
+    {
+      "channel": 112,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        73,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        58,
+        263,
+        88,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 113,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        137,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        122,
+        263,
+        152,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 114,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        201,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        186,
+        263,
+        216,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 115,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        265,
+        278
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        250,
+        263,
+        280,
+        293
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 116,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        41,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        26,
+        231,
+        56,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 117,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        105,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        90,
+        231,
+        120,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 118,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        169,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        154,
+        231,
+        184,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 119,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        233,
+        246
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        218,
+        231,
+        248,
+        261
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 120,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        73,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        58,
+        199,
+        88,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 121,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        137,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        122,
+        199,
+        152,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 122,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        201,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        186,
+        199,
+        216,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 123,
+      "castLib": 1,
+      "member": 2,
+      "name": "Black",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        265,
+        214
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        250,
+        199,
+        280,
+        229
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00005_Black.png"
+    },
+    {
+      "channel": 124,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        41,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        26,
+        39,
+        56,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 125,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        105,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        90,
+        39,
+        120,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 126,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        169,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        154,
+        39,
+        184,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 127,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        233,
+        54
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        218,
+        39,
+        248,
+        69
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 128,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        73,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        58,
+        71,
+        88,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 129,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        137,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        122,
+        71,
+        152,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 130,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        201,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        186,
+        71,
+        216,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 131,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        265,
+        86
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        250,
+        71,
+        280,
+        101
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 132,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        41,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        26,
+        103,
+        56,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 133,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        105,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        90,
+        103,
+        120,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 134,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        169,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        154,
+        103,
+        184,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    },
+    {
+      "channel": 135,
+      "castLib": 1,
+      "member": 3,
+      "name": "White",
+      "type": "bitmap",
+      "ink": 32,
+      "loc": [
+        233,
+        118
+      ],
+      "size": [
+        30,
+        30
+      ],
+      "fore": [
+        0,
+        0,
+        0
+      ],
+      "back": [
+        255,
+        255,
+        255
+      ],
+      "blend": 255,
+      "stretch": false,
+      "rect": [
+        218,
+        103,
+        248,
+        133
+      ],
+      "reg": [
+        15,
+        15
+      ],
+      "asset": "bitmaps/00006_White.png"
+    }
+  ]
+}

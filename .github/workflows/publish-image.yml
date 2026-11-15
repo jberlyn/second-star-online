@@ -1,0 +1,411 @@
+name: Publish image
+
+"on":
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Publish this tag after a fresh build and healthcheck (tag refs only)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-image-publish
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  image:
+    name: Build, healthcheck and publish
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the triggering ref
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate the event and compute the publish flag
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          DISPATCH_PUSH: ${{ github.event.inputs.push || 'false' }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            push)
+              case "$REF" in
+                refs/heads/main) run_mode=main; publish=false ;;
+                refs/tags/*) run_mode=tag; publish=true ;;
+                *) echo "::error::Unsupported push ref: $REF"; exit 1 ;;
+              esac
+              ;;
+            workflow_dispatch)
+              case "$REF" in
+                refs/heads/main)
+                  if [ "$DISPATCH_PUSH" = "true" ]; then
+                    echo "::error::workflow_dispatch push=true is only allowed on a tag ref"; exit 1
+                  fi
+                  run_mode=main; publish=false
+                  ;;
+                refs/tags/*)
+                  run_mode=tag
+                  if [ "$DISPATCH_PUSH" = "true" ]; then publish=true; else publish=false; fi
+                  ;;
+                *)
+                  echo "::error::workflow_dispatch must run on main or a tag ref"; exit 1
+                  ;;
+              esac
+              ;;
+            *)
+              echo "::error::Unsupported event: $EVENT_NAME"; exit 1
+              ;;
+          esac
+          {
+            echo "RUN_MODE=$run_mode"
+            echo "PUBLISH=$publish"
+          } >> "$GITHUB_ENV"
+
+      - name: Resolve the image name and revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          C=$(git rev-parse HEAD)
+          WORKFLOW_SHA=$(git rev-parse "HEAD:.github/workflows/publish-image.yml")
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          {
+            echo "C=$C"
+            echo "WORKFLOW_SHA=$WORKFLOW_SHA"
+            echo "IMAGE=$IMAGE"
+          } >> "$GITHUB_ENV"
+          {
+            echo "### Image workflow"
+            echo "- repository: $GITHUB_REPOSITORY"
+            echo "- commit: $C"
+            echo "- workflow blob: $WORKFLOW_SHA"
+            echo "- run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate the tag, version and main reachability
+        if: success() && env.RUN_MODE == 'tag'
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ref_name="$REF_NAME"
+          if [ "${ref_name#v}" = "$ref_name" ]; then
+            echo "::error::Tag must start with one leading v: $ref_name"; exit 1
+          fi
+          version="${ref_name#v}"
+          if [ "${#version}" -gt 128 ]; then
+            echo "::error::Version is too long for a Docker tag"; exit 1
+          fi
+          if [[ "$version" == *+* || "$version" == */* ]]; then
+            echo "::error::Version must not contain build metadata or a slash: $version"; exit 1
+          fi
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if [[ ! "$version" =~ $semver ]]; then
+            echo "::error::Tag is not a SemVer major.minor.patch version with an optional prerelease: $ref_name"; exit 1
+          fi
+          is_prerelease=false
+          if [[ "$version" == *-* ]]; then
+            is_prerelease=true
+            pre="${version#*-}"
+            IFS='.' read -r -a identifiers <<< "$pre"
+            for identifier in "${identifiers[@]}"; do
+              if [[ ! "$identifier" =~ ^[0-9A-Za-z-]+$ ]]; then
+                echo "::error::Invalid prerelease identifier: $identifier"; exit 1
+              fi
+              if [[ "$identifier" =~ ^[0-9]+$ && "$identifier" != "0" && "$identifier" == 0* ]]; then
+                echo "::error::Numeric prerelease identifiers must not have leading zeroes: $identifier"; exit 1
+              fi
+            done
+          fi
+          if ! PEELED="$(git rev-parse "refs/tags/$ref_name^{}" 2>/dev/null)"; then
+            if ! git fetch --no-tags origin "+refs/tags/$ref_name:refs/tags/$ref_name"; then
+              echo "::error::Could not fetch tag $ref_name"; exit 1
+            fi
+            if ! PEELED="$(git rev-parse "refs/tags/$ref_name^{}" 2>/dev/null)"; then
+              echo "::error::Could not peel tag $ref_name"; exit 1
+            fi
+          fi
+          if [ "$(git rev-parse "$PEELED^{commit}")" != "$C" ]; then
+            echo "::error::Checked-out commit does not match tag $ref_name"; exit 1
+          fi
+          if ! git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main; then
+            echo "::error::Could not fetch main to check tag reachability"; exit 1
+          fi
+          if ! git merge-base --is-ancestor "$C" refs/remotes/origin/main; then
+            echo "::error::Tagged commit must be reachable from main"; exit 1
+          fi
+          {
+            echo "PEELED_TAG=$PEELED"
+            echo "VERSION=$version"
+            echo "VERSION_LABEL=$version"
+            echo "LOCAL_REF=$IMAGE:$version"
+            echo "IS_PRERELEASE=$is_prerelease"
+          } >> "$GITHUB_ENV"
+          echo "- tag: $ref_name (peeled $PEELED)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set the main branch image labels
+        if: success() && env.RUN_MODE == 'main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "VERSION="
+            echo "VERSION_LABEL=ci-$C"
+            echo "LOCAL_REF=second-star-online:ci"
+            echo "IS_PRERELEASE=false"
+          } >> "$GITHUB_ENV"
+          echo "- branch: main (unpublished CI build)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Buildx
+        if: success()
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build and load the image
+        if: success()
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.C }}
+            org.opencontainers.image.version=${{ env.VERSION_LABEL }}
+          provenance: false
+          sbom: false
+          push: false
+          load: true
+          no-cache: ${{ env.RUN_MODE == 'tag' }}
+          tags: ${{ env.LOCAL_REF }}
+
+      - name: Start and healthcheck the loaded image
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p healthcheck
+          CONFIG_ID=$(docker image inspect --format '{{.Id}}' "$LOCAL_REF")
+          echo "CONFIG_ID=$CONFIG_ID" >> "$GITHUB_ENV"
+          cleanup() {
+            set +e
+            docker inspect image-health > healthcheck/container.json 2>/dev/null
+            docker logs image-health > healthcheck/container.log 2>&1
+            docker image inspect "$LOCAL_REF" > healthcheck/image.json 2>/dev/null
+            docker rm -f image-health >/dev/null 2>&1
+            docker volume rm -f image-health-data >/dev/null 2>&1
+          }
+          trap cleanup EXIT
+          docker rm -f image-health >/dev/null 2>&1 || true
+          docker volume rm -f image-health-data >/dev/null 2>&1 || true
+          docker volume create image-health-data >/dev/null
+          docker run -d --name image-health --mount type=volume,src=image-health-data,dst=/data "$LOCAL_REF"
+          RUN_IMAGE_ID=$(docker inspect --format '{{.Image}}' image-health)
+          if [ "$RUN_IMAGE_ID" != "$CONFIG_ID" ]; then
+            echo "::error::Started container does not use the healthchecked image"; exit 1
+          fi
+          healthy=false
+          deadline=$((SECONDS + 120))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' image-health 2>/dev/null || echo missing)
+            case "$status" in
+              healthy) healthy=true; break ;;
+              unhealthy|exited|dead) echo "::error::Container became $status"; docker logs image-health || true; exit 1 ;;
+              missing) echo "::error::Container disappeared"; exit 1 ;;
+            esac
+            sleep 3
+          done
+          if [ "$healthy" != true ]; then
+            docker logs image-health || true
+            echo "::error::Container did not become healthy within 120 seconds"; exit 1
+          fi
+          docker exec image-health bun packages/server/src/cli/healthcheck.ts
+          docker inspect --format 'image={{.Image}} status={{.State.Status}} health={{.State.Health.Status}}' image-health
+          docker logs --tail 20 image-health 2>&1 || true
+          echo "- image config: $CONFIG_ID" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Log in to GHCR
+        if: success() && env.PUBLISH == 'true'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the healthchecked version
+        if: success() && env.PUBLISH == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p published
+          registry_absent() {
+            local ref="$1" output
+            if output=$(docker buildx imagetools inspect "$ref" 2>&1); then return 1; fi
+            if printf '%s\n' "$output" | grep -Eqi 'manifest unknown|not found|no such manifest|NAME_UNKNOWN|does not exist'; then
+              return 0
+            fi
+            printf '%s\n' "$output" >&2
+            return 2
+          }
+          set +e
+          registry_absent "$IMAGE:$VERSION"
+          version_state=$?
+          set -e
+          case "$version_state" in
+            0) ;;
+            1) echo "::error::$IMAGE:$VERSION already exists; refusing to overwrite"; exit 1 ;;
+            *) echo "::error::Registry query failed; refusing to publish"; exit 1 ;;
+          esac
+          local_config_id=$(docker image inspect --format '{{.Id}}' "$LOCAL_REF")
+          if [ "$local_config_id" != "$CONFIG_ID" ]; then
+            echo "::error::Loaded image changed after its healthcheck"; exit 1
+          fi
+          docker push "$IMAGE:$VERSION"
+          D=$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{.Manifest.Digest}}')
+          if [ -z "$D" ]; then
+            echo "::error::Could not read the published manifest digest"; exit 1
+          fi
+          inspect_json=$(docker buildx imagetools inspect "$IMAGE@$D" --format '{{json .}}')
+          manifest_json=$(docker buildx imagetools inspect "$IMAGE@$D" --raw)
+          registry_info=$(python3 - "$inspect_json" "$manifest_json" <<'PY'
+          import json
+          import sys
+
+          data = json.loads(sys.argv[1])
+          manifest = json.loads(sys.argv[2])
+          image = data.get("image")
+          if isinstance(image, dict) and "config" in image:
+              config = image
+          elif isinstance(image, dict):
+              config = image.get("linux/amd64")
+          else:
+              config = None
+          if not config:
+              raise SystemExit("no linux/amd64 image config in registry manifest")
+          labels = config.get("config", {}).get("Labels") or {}
+          print("\t".join([
+              (manifest.get("config") or {}).get("digest", ""),
+              config.get("os", ""),
+              config.get("architecture", ""),
+              labels.get("org.opencontainers.image.source", ""),
+              labels.get("org.opencontainers.image.revision", ""),
+              labels.get("org.opencontainers.image.version", ""),
+          ]))
+          PY
+          )
+          IFS=$'\t' read -r registry_config registry_os registry_arch registry_source registry_revision registry_version <<< "$registry_info"
+          if [ "$registry_config" != "$CONFIG_ID" ]; then
+            echo "::error::Registry config ID does not match the healthchecked image"; exit 1
+          fi
+          if [ "$registry_os" != linux ] || [ "$registry_arch" != amd64 ]; then
+            echo "::error::Published image is not linux/amd64"; exit 1
+          fi
+          if [ "$registry_source" != "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" ]; then
+            echo "::error::Published image source label is wrong"; exit 1
+          fi
+          if [ "$registry_revision" != "$C" ] || [ "$registry_version" != "$VERSION" ]; then
+            echo "::error::Published image revision/version labels are wrong"; exit 1
+          fi
+          printf '%s\n' "$D" > published/digest.txt
+          {
+            echo "D=$D"
+          } >> "$GITHUB_ENV"
+          {
+            echo "### Published $IMAGE:$VERSION"
+            echo "- source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+            echo "- tag: $VERSION"
+            echo "- commit: $C"
+            echo "- image config: $CONFIG_ID"
+            echo "- manifest digest: $D"
+            echo "- platform: linux/amd64"
+            echo "- version tag: $IMAGE:$VERSION"
+            if [ "$IS_PRERELEASE" = true ]; then
+              echo "- latest: not moved for a prerelease"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Promote latest for a stable version
+        if: success() && env.PUBLISH == 'true' && env.IS_PRERELEASE == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f latest.err
+          if latest_json=$(docker buildx imagetools inspect "$IMAGE:latest" --format '{{json .}}' 2>latest.err); then
+            latest_present=true
+          elif grep -Eqi 'manifest unknown|not found|no such manifest|NAME_UNKNOWN|does not exist' latest.err; then
+            latest_present=false
+          else
+            cat latest.err
+            echo "::error::Registry query for latest failed; refusing to move the tag"; exit 1
+          fi
+          if [ "$latest_present" = false ]; then
+            promote=true
+            latest_disposition="absent; first promotion"
+          else
+            latest_values=$(python3 - "$latest_json" <<'PY'
+          import json
+          import sys
+
+          data = json.loads(sys.argv[1])
+          digest = data["manifest"]["digest"]
+          image = data.get("image")
+          if isinstance(image, dict) and "config" in image:
+              config = image
+          elif isinstance(image, dict):
+              config = image.get("linux/amd64")
+          else:
+              config = None
+          if not config:
+              raise SystemExit("no linux/amd64 image config for latest")
+          labels = config.get("config", {}).get("Labels") or {}
+          print("\t".join([labels.get("org.opencontainers.image.version", ""), digest]))
+          PY
+            )
+            IFS=$'\t' read -r latest_version latest_digest <<< "$latest_values"
+            stable_re='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+            if [[ ! "$latest_version" =~ $stable_re ]]; then
+              echo "::error::Existing latest has no valid stable version label: $latest_version"; exit 1
+            fi
+            IFS=. read -r latest_major latest_minor latest_patch <<< "$latest_version"
+            IFS=. read -r version_major version_minor version_patch <<< "$VERSION"
+            if ((10#$version_major > 10#$latest_major)) ||
+               { ((10#$version_major == 10#$latest_major)) && ((10#$version_minor > 10#$latest_minor)); } ||
+               { ((10#$version_major == 10#$latest_major)) && ((10#$version_minor == 10#$latest_minor)) && ((10#$version_patch > 10#$latest_patch)); }; then
+              promote=true
+              latest_disposition="advanced from $latest_version"
+            elif [ "$latest_version" = "$VERSION" ]; then
+              if [ "$latest_digest" = "$D" ]; then
+                promote=false
+                latest_disposition="already points at this digest"
+              else
+                echo "::error::latest already has version $VERSION with a different digest"; exit 1
+              fi
+            else
+              promote=false
+              latest_disposition="kept $latest_version (no downgrade)"
+            fi
+          fi
+          if [ "$promote" = true ]; then
+            docker buildx imagetools create --prefer-index=false --tag "$IMAGE:latest" "$IMAGE@$D"
+            latest_digest=$(docker buildx imagetools inspect "$IMAGE:latest" --format '{{.Manifest.Digest}}')
+            if [ "$latest_digest" != "$D" ]; then
+              echo "::error::latest does not point at the published digest"; exit 1
+            fi
+            echo "- latest: moved to $D" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- latest: $latest_disposition" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "- latest digest: $latest_digest" >> "$GITHUB_STEP_SUMMARY"

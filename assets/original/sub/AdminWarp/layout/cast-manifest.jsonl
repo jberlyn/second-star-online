@@ -1,0 +1,7 @@
+{"castLib":1,"cast":"Internal","member":2,"name":"","type":"bitmap","rect":[0,0,164,136],"width":164,"height":136,"regX":82,"regY":68,"rawReg":[82,68],"depth":16,"pitch":328,"pitchFlags":8,"flags22":32,"byte10":1,"clut":[-1,-101],"asset":"bitmaps/00005_member.png","assetSize":[164,136],"border":{"rgb":[0,0,0],"fraction":1.0},"scoreUsage":[{"ink":0,"back":[255,255,255],"fore":[0,0,0],"blend":0,"frames":28}],"keyHint":"opaque"}
+{"castLib":1,"cast":"Internal","member":3,"name":"Who","type":"field","asset":["text/00006_Who_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":4,"name":"Where","type":"field","asset":["text/00007_Where_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":5,"name":"Map","type":"field","asset":["text/00008_Map_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":6,"name":"X","type":"field","asset":["text/00009_X_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":7,"name":"Y","type":"field","asset":["text/00010_Y_stxt_0.txt"]}
+{"castLib":1,"cast":"Internal","member":8,"name":"","type":"bitmap","rect":[0,0,54,23],"width":54,"height":23,"regX":27,"regY":11,"rawReg":[27,11],"depth":16,"pitch":108,"pitchFlags":8,"flags22":0,"byte10":1,"clut":[-1,-101],"asset":"bitmaps/00011_member.png","assetSize":[54,23],"border":{"rgb":[0,0,0],"fraction":1.0},"scoreUsage":[{"ink":0,"back":[255,255,255],"fore":[0,0,0],"blend":0,"frames":28}],"keyHint":"opaque"}

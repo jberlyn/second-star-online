@@ -1,0 +1,183 @@
+/**
+ * Regen, hunger and death on the server.
+ */
+import {
+  ARENA_TEXT,
+  DEATH_HUNGER,
+  DEATH_LOCK_FRAMES,
+  DEATH_PAUSE_FRAMES,
+  DEATH_PENALTY_TEXT,
+  deathHead,
+  deathVitals,
+  exileAtDeath,
+  hungerTick,
+  invDelSlot,
+  lingoEq,
+  NO_FACTION,
+  pickArenaExit,
+  REGROWTH_STOP_FRAMES,
+  type Rng,
+  regenTarget,
+  regenTick,
+  rollDeathDrop,
+  rollDeathPenalty,
+} from "@secondstaronline/shared";
+
+import { onArenaTile } from "../combat/melee.ts";
+import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
+import { vehicleDeath } from "../vehicles/airship.ts";
+import type { Outgoing, Player, Room } from "../world/world.ts";
+
+/** The timer sprite (channel 4) for one player: the HP and SP regeneration counter. */
+export function regenStep(p: Player): void {
+  const v = p.char.vitals;
+  const before = `${v.hp}/${v.sp}`;
+  const adventurer = p.char.faction.id === 3 ? p.char.faction.f3Bonus : null;
+  const target = regenTarget(p.char.stats.spd, adventurer);
+  p.regenCounter = regenTick(p.regenCounter, target, p.char.hunger, v);
+  if (`${v.hp}/${v.sp}` !== before) {
+    p.vitalsDirty = true;
+  }
+}
+
+/** Hunger for one player. Returns a warning line, if any. */
+export function hungerStep(p: Player, immortal: boolean, rng: Rng): string | null {
+  const r = hungerTick(p.char.hunger, immortal, rng);
+  p.char.hunger = r.hunger;
+  return r.warning;
+}
+
+export type DeathOutcome =
+  | { kind: "none" }
+  /** An arena death: no penalty, a random free tile on the same map. */
+  | { kind: "arena"; tile: { x: number; y: number } | null; text: string }
+  /** A normal death: the lock starts; the penalty line, if rolled; the drop's ground event. */
+  | { kind: "death"; lines: string[]; out: Outgoing[] };
+
+/** DropOnDeath: the operator setting, forced on for immortals. */
+export interface DeathDropCtx {
+  item: ItemCtx;
+  dropOnDeath: boolean;
+  immortal: boolean;
+}
+
+/**
+ * The frame script's `HP < 1 → RunDeathScript`. The guard is a separate don't-hit-again flag, not
+ * the i-frames. After the arena exit, in 1.6's order: the drop's draws, a faction member's head on
+ * a map whose PvP flag is X (whatever killed it, created from nothing), the item or gold, the stat
+ * penalty, then exile on the new HPmax (no channel leave, as in 1.6). The wanted flag waits for the
+ * end of the lock (`respawn`).
+ */
+export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx): DeathOutcome {
+  const v = p.char.vitals;
+  // A Lightning hit runs `RunDeathScript2`, which has no `HP > 0` exit.
+  const lightning = p.lightningDeath;
+  p.lightningDeath = false;
+  if ((v.hp >= 1 && !lightning) || p.dontHitMeAgain) {
+    return { kind: "none" };
+  }
+  // A 400-frame respawn timer, arena deaths too.
+  p.regrowthStop = REGROWTH_STOP_FRAMES;
+  if (onArenaTile(room, p.x, p.y)) {
+    v.hp = 1;
+    v.sp = 1;
+    p.vitalsDirty = true;
+    // The rider's exit is drawn from the Airship grid; `null` = no passing tile.
+    const tile = pickArenaExit(
+      room.map.layers[0],
+      p.vehicle === "Airship" ? room.map.walkAir : room.map.walk,
+      rng,
+    );
+    const text = ARENA_TEXT.defeated(p.name, p.lastToHitMe ?? "");
+    return { kind: "arena", tile, text };
+  }
+  p.dontHitMeAgain = true;
+  p.facing = "S";
+  p.stepFrames = 0; // the walk is cut
+  p.attackHeld = false;
+  p.attackPress = null;
+  const lines: string[] = [];
+  const out: Outgoing[] = [];
+  // Dying aboard loses the airship, after the arena exit above; the Lightning death clears it too.
+  const aboard = p.vehicle !== null;
+  if (aboard) {
+    out.push(...vehicleDeath(room, p));
+  }
+  if (lightning) {
+    // The Lightning death script sets 1.6's don't-drop flag and has no head, stat penalty or exile
+    // code at all; the HP/SP reset, the lock and the pause are as below. The flag and the points
+    // still follow at the end of the lock.
+    deathVitals(v);
+    p.vitalsDirty = true;
+    p.deadLock = DEATH_LOCK_FRAMES;
+    p.deathPause = DEATH_PAUSE_FRAMES;
+    return { kind: "death", lines, out };
+  }
+  if (drop) {
+    // The drop draws; the pile goes on the death tile.
+    const d = rollDeathDrop(
+      { bag: p.char.bag, gold: p.char.gold, wanted: p.char.wanted, inVehicle: aboard },
+      drop.dropOnDeath || drop.immortal,
+      rng,
+    );
+    // The faction head goes down first, even in a vehicle or with drops off.
+    const head = deathHead(p.char.faction.id, lingoEq(room.map.flags.canPvp, "X"));
+    if (head) {
+      const io = new ItemOut(room);
+      addGround(drop.item, room, io, { item: head, x: p.x, y: p.y, kind: "drop", expiresAt: null });
+      out.push(...io.out);
+    }
+    if (d.kind === "item") {
+      const line = p.char.bag[d.slot];
+      if (line) {
+        const io = new ItemOut(room);
+        addGround(drop.item, room, io, {
+          item: line.item,
+          x: p.x,
+          y: p.y,
+          kind: "drop",
+          expiresAt: null,
+        });
+        invDelSlot(p.char.bag, d.slot, 1);
+        p.invDirty = true;
+        out.push(...io.out);
+      }
+    }
+    if (d.kind === "gold") {
+      // A "<n> Gold" pile goes on the death pixel; the server takes the gold since n ≤ gold. No
+      // chat line.
+      const io = new ItemOut(room);
+      addGround(drop.item, room, io, {
+        item: `${d.amount} Gold`,
+        x: p.x,
+        y: p.y,
+        kind: "drop",
+        expiresAt: null,
+      });
+      p.char.gold -= d.amount;
+      p.invDirty = true;
+      out.push(...io.out);
+    }
+  }
+  if (rollDeathPenalty(v, p.char.wanted, rng)) {
+    lines.push(DEATH_PENALTY_TEXT);
+  }
+  const exile = exileAtDeath({ id: p.char.faction.id, count: p.char.factionCount }, v.hpMax);
+  if (exile) {
+    p.char.faction = { ...NO_FACTION };
+    p.char.factionCount = 0;
+    lines.push(exile);
+  }
+  deathVitals(v);
+  p.vitalsDirty = true;
+  p.deadLock = DEATH_LOCK_FRAMES;
+  p.deathPause = DEATH_PAUSE_FRAMES;
+  return { kind: "death", lines, out };
+}
+
+/** What happens when the death lock ends: hunger 40000, then the respawn warp. */
+export function finishDeath(p: Player): void {
+  p.char.hunger = DEATH_HUNGER;
+  p.lastToHitMe = null;
+  p.lastToHitId = null;
+}

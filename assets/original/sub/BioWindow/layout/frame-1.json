@@ -1,0 +1,269 @@
+{
+ "frame": 1,
+ "label": null,
+ "stage": [
+  315,
+  286
+ ],
+ "stageColor": null,
+ "stageColorFrom": "config chunk unreadable (stage rect 15106x-57855)",
+ "sprites": [
+  {
+   "channel": 1,
+   "castLib": 1,
+   "member": 1,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    157,
+    143
+   ],
+   "size": [
+    315,
+    286
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    0,
+    0,
+    315,
+    286
+   ],
+   "reg": [
+    157,
+    143
+   ],
+   "asset": "bitmaps/00004_member.png"
+  },
+  {
+   "channel": 2,
+   "castLib": 1,
+   "member": 2,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    39,
+    261
+   ],
+   "size": [
+    51,
+    17
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    14,
+    253,
+    65,
+    270
+   ],
+   "reg": [
+    25,
+    8
+   ],
+   "asset": "bitmaps/00008_member.png"
+  },
+  {
+   "channel": 3,
+   "castLib": 1,
+   "member": 3,
+   "name": "",
+   "type": "bitmap",
+   "ink": 0,
+   "loc": [
+    91,
+    261
+   ],
+   "size": [
+    51,
+    17
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    66,
+    253,
+    117,
+    270
+   ],
+   "reg": [
+    25,
+    8
+   ],
+   "asset": "bitmaps/00024_member.png"
+  },
+  {
+   "channel": 4,
+   "castLib": 1,
+   "member": 4,
+   "name": "CharBio",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    22,
+    16
+   ],
+   "size": [
+    269,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    22,
+    16,
+    291,
+    32
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 5,
+   "castLib": 1,
+   "member": 5,
+   "name": "CharPro",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    23,
+    138
+   ],
+   "size": [
+    269,
+    14
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    23,
+    138,
+    292,
+    152
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 6,
+   "castLib": 1,
+   "member": 6,
+   "name": "MyCharPro",
+   "type": "field",
+   "ink": 36,
+   "loc": [
+    22,
+    137
+   ],
+   "size": [
+    269,
+    14
+   ],
+   "fore": [
+    255,
+    255,
+    255
+   ],
+   "back": [
+    255,
+    255,
+    255
+   ],
+   "blend": 0,
+   "rect": [
+    22,
+    137,
+    291,
+    151
+   ],
+   "note": "non-bitmap: rect assumes top-left reg"
+  },
+  {
+   "channel": 7,
+   "castLib": 1,
+   "member": 7,
+   "name": "DrawMedal",
+   "type": "bitmap",
+   "ink": 36,
+   "loc": [
+    129,
+    121
+   ],
+   "size": [
+    224,
+    16
+   ],
+   "fore": [
+    0,
+    0,
+    0
+   ],
+   "back": [
+    "pal",
+    5
+   ],
+   "blend": 0,
+   "stretch": false,
+   "rect": [
+    17,
+    113,
+    241,
+    129
+   ],
+   "reg": [
+    112,
+    8
+   ],
+   "asset": "bitmaps/00045_DrawMedal.png"
+  }
+ ]
+}

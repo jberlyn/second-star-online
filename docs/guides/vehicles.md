@@ -1,0 +1,23 @@
+# Vehicles
+
+## What happens in play
+
+Use an Airship Deed while standing still and facing an empty landing pad to build an Airship. Face it and click it or press Ctrl to board; when you reach an empty landing pad, use Ctrl to park and get off.
+
+## Where it lives
+
+- [packages/shared/src/rules/vehicles/vehicles.ts](../../packages/shared/src/rules/vehicles/vehicles.ts): checks deed placement, boarding, ownership and landing pads.
+- [packages/server/src/systems/vehicles/airship.ts](../../packages/server/src/systems/vehicles/airship.ts): applies those checks, changes ground items and rider state, and handles death aboard.
+
+Entry points include `packages/server/src/systems/vehicles/airship.ts` (`airshipDeed`), `packages/server/src/systems/vehicles/airship.ts` (`airshipClick`), `packages/server/src/systems/vehicles/airship.ts` (`unboardAirship`) and `packages/server/src/systems/vehicles/airship.ts` (`vehicleDeath`).
+
+## How it works
+
+Building checks whether the player is moving, whether the faced position is on the map and is a J2 landing pad, and whether an item occupies it. Success consumes a deed and creates an owned ground item. A stationary owner facing the Airship can board it; another player cannot. An item without a stored owner falls back to the name on the item. Boarding removes the ground item and changes the rider's body and position for the room.
+
+An Airship uses its own walk grid while ridden, flies over players, monsters, items and exits, and takes a shorter step than a walker. Riders cannot cast or swing; monster melee does not hit them, although projectiles and damage spells can. To unboard, the rider must be stationary on a J2 pad without a ground item. Parking restores the ground item and the player's normal body. The server marks the relevant ground, inventory and vehicle state for persistence together. A normal death aboard removes the vehicle rather than parking it; an arena defeat keeps the rider aboard. Boats are not implemented. Ctrl aboard always tries to unboard; ordinary item drops are refused, but a Pig can be dropped, and gold and crystals can still be dropped.
+
+## Kept bugs and differences
+
+Landing pad checks retain the original's map-record lookup, including its behavior on the lower rows. Airships are converted by the server and the original ground item cap is removed. See the [vehicle kept bugs](../bug-ledger.md#vehicles), [movement kept bugs](../bug-ledger.md#movement), and [vehicle differences](../divergences.md#vehicles).
+
