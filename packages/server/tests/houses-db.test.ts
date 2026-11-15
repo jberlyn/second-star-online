@@ -15,6 +15,7 @@ import { loadInventory } from "../src/persistence/inventory.ts";
 import { findMapByCoords } from "../src/persistence/maps.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { demolish } from "../src/systems/housing/houses.ts";
+import { prepareScenarioMap } from "./helpers/scenario-map.ts";
 import { rngByN } from "./helpers/sim.ts";
 
 let db: Db;
@@ -26,6 +27,7 @@ const ROW_8R = Array.from({ length: 17 }, () => "8R").join(" ");
 beforeEach(() => {
   db = openDatabase();
   migrate(db);
+  prepareScenarioMap(db);
   sent = [];
   now = "2026-11-05T00:00:00.000Z";
   // Paint the seed map's ground buildable (layer 1 `8R`).

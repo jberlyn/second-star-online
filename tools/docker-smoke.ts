@@ -55,10 +55,10 @@ async function waitForHealthy(project: string, overrideFile: string, timeoutMs =
     overrideFile,
     "ps",
     "-q",
-    "game",
+    "second-star-online",
   ]).stdout.trim();
   if (!cid) {
-    throw new Error("game container id missing");
+    throw new Error("second-star-online container id missing");
   }
   while (Date.now() < deadline) {
     const status = run([
@@ -82,7 +82,7 @@ async function waitForHealthy(project: string, overrideFile: string, timeoutMs =
 function writeOverrideCompose(path: string, port: number): void {
   writeFileSync(
     path,
-    `services:\n  game:\n    ports: !override\n      - "127.0.0.1:${port}:3000"\n`,
+    `services:\n  second-star-online:\n    ports: !override\n      - "127.0.0.1:${port}:3000"\n`,
   );
 }
 
@@ -221,12 +221,22 @@ async function main(): Promise<void> {
       bot.close();
     }
 
-    run([...compose1, "exec", "-T", "game", "bun", "run", "admin:role", "SmokeHero", "immortal"]);
+    run([
+      ...compose1,
+      "exec",
+      "-T",
+      "second-star-online",
+      "bun",
+      "run",
+      "admin:role",
+      "SmokeHero",
+      "immortal",
+    ]);
     const auditOut = run([
       ...compose1,
       "exec",
       "-T",
-      "game",
+      "second-star-online",
       "bun",
       "run",
       "admin:audit",
@@ -257,7 +267,7 @@ async function main(): Promise<void> {
 
     console.log("5. Testing graceful SIGTERM stop (< 30s) and recreate persistence...");
     const stopStart = Date.now();
-    run([...compose1, "stop", "-t", "30", "game"]);
+    run([...compose1, "stop", "-t", "30", "second-star-online"]);
     const stopMs = Date.now() - stopStart;
     expect(stopMs).toBeLessThan(30_000);
     const exitCode = run(["docker", "inspect", "-f", "{{.State.ExitCode}}", cid1]).stdout.trim();
@@ -285,10 +295,10 @@ async function main(): Promise<void> {
     }
 
     console.log("6. Backing up stopped world and restoring into a second fresh test volume...");
-    run([...compose1, "stop", "-t", "30", "game"]);
+    run([...compose1, "stop", "-t", "30", "second-star-online"]);
     const backupDir = join(scratch, "world-backup");
     mkdirSync(backupDir, { recursive: true });
-    const vol1 = `${project1}_world`;
+    const vol1 = `${project1}_sso-data`;
     run([
       "docker",
       "run",
@@ -307,7 +317,7 @@ async function main(): Promise<void> {
     ]);
 
     // Create second volume, restore backup into it, fix ownership, and verify login + world edit.
-    const vol2 = `${project2}_world`;
+    const vol2 = `${project2}_sso-data`;
     run([...compose2, "up", "--no-start"]);
     run([
       "docker",
@@ -392,7 +402,7 @@ http {
     ssl_certificate /certs/cert.pem;
     ssl_certificate_key /certs/key.pem;
     location / {
-      proxy_pass http://game:3000;
+      proxy_pass http://second-star-online:3000;
       proxy_http_version 1.1;
       proxy_set_header Host $host;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

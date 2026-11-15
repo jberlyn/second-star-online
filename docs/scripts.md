@@ -1,6 +1,6 @@
 # Script reference
 
-Run these commands from the repository root. Install [Bun](https://bun.sh/) and run `bun install --frozen-lockfile` first. Commands that start the server use `SSO_DB` if set, or `sso.sqlite` in the working directory; a new database is migrated and seeded on first start. See [running a server](running-a-server.md) for deployment, database and proxy configuration.
+These commands are for source development and custom builds. To host the standard game, use the [public image quick start](running-a-server.md#docker-compose-recommended). Run the commands below from the repository root. Install [Bun](https://bun.sh/) and run `bun install --frozen-lockfile` first. Commands that start the server use `SSO_DB` if set, or `sso.sqlite` in the working directory; a new database is migrated and seeded on first start. See [running a server](running-a-server.md) for deployment, database and proxy configuration.
 
 ## Develop and build
 

@@ -64,7 +64,7 @@ export function letters(i: number): string {
 const WIDTH = 17;
 const HEIGHT = 12;
 
-/** The seed map's tree tiles (layer 2 "S3"), as `x,y`; the rest is open ground. */
+/** The benchmark arena's tree tiles (layer 2 "S3"), as `x,y`; the rest is open ground. */
 const TREES = new Set([
   "1,1",
   "2,1",

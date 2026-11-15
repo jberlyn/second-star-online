@@ -76,3 +76,5 @@ Three hours (2026-11-10 23:31 to 02:30), 200 bots on `world200` at the `home` pr
 - One host, one run per cell. Differences of a millisecond or two between profiles are noise; the target cells are close enough to 25 ms that a rerun can flip `world200` at `lan`.
 - The `behind` scenario (one player on a 4 KB/s link) cannot reach the 1 MB limit within a run on loopback, for the reason above; the close and the resume are pinned by `fell-behind.test.ts`, which makes one socket look behind.
 - The bots keep the town busy: players wander across the grid's edges, so the town ends up with 90-100 players, more than the 40 planned. That makes `world200` a harder test than 40-in-town.
+
+Load scenarios use a fixed grass-and-trees benchmark arena, independent of the playable starter landscape. This keeps scenario placements and historical measurements comparable when the seed map changes.

@@ -17,6 +17,7 @@ import { monstersDataSchema } from "../schema/monsters.ts";
 import { npcFilesDataSchema } from "../schema/npcfiles.ts";
 import { questDataSchema } from "../schema/quests.ts";
 import { rectsDataSchema } from "../schema/rects.ts";
+import { seedMapDataSchema } from "../schema/seed-map.ts";
 import { socialDataSchema } from "../schema/social.ts";
 import { spellsDataSchema } from "../schema/spells.ts";
 import { tilesDataSchema } from "../schema/tiles.ts";
@@ -52,6 +53,12 @@ interface Module {
 
 /** The modules written to src/generated/, in index order. */
 export const MODULES: readonly Module[] = [
+  {
+    module: "seed-map",
+    schema: seedMapDataSchema,
+    dataName: "seedMapData",
+    typeName: "SeedMapData",
+  },
   {
     module: "tiles",
     schema: tilesDataSchema,
@@ -215,6 +222,22 @@ export function renderDataModules(contentDir = CONTENT): Map<string, string> {
     const parsed = m.schema.safeParse(data);
     if (!parsed.success) {
       throw new Error(`${from} does not match its schema:\n${parsed.error.message}`);
+    }
+    if (m.module === "seed-map") {
+      const seed = seedMapDataSchema.parse(data);
+      const tiles = tilesDataSchema.parse(
+        JSON.parse(readFileSync(join(contentDir, "tiles.json"), "utf8")),
+      );
+      const codes = new Set(tiles.catalogue.map((tile) => tile.code));
+      for (const layer of seed.layers) {
+        for (const row of layer) {
+          for (const code of row.split(" ")) {
+            if (!codes.has(code)) {
+              throw new Error(`${from} references unknown tile ${code}`);
+            }
+          }
+        }
+      }
     }
     const base = m.module;
     out.set(

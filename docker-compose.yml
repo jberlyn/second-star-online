@@ -1,5 +1,5 @@
 services:
-  game:
+  second-star-online:
     image: second-star-online:local
     build:
       context: .
@@ -10,7 +10,7 @@ services:
     environment:
       SSO_PROXY_HOPS: "1"
     volumes:
-      - world:/data
+      - sso-data:/data
     restart: unless-stopped
     stop_grace_period: 30s
     healthcheck:
@@ -21,4 +21,4 @@ services:
       retries: 3
 
 volumes:
-  world:
+  sso-data:

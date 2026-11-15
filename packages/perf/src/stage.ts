@@ -22,7 +22,7 @@ import {
   startingCharacter,
 } from "@secondstaronline/shared";
 
-import type { BotPlan } from "./scenarios.ts";
+import { type BotPlan, isTree } from "./scenarios.ts";
 
 export const PASSWORD = "secret";
 const NOW = "2026-11-10T00:00:00.000Z";
@@ -52,6 +52,16 @@ export async function stage(options: StageOptions): Promise<void> {
   const hash = await hashPassword(PASSWORD);
 
   db.transaction(() => {
+    // Benchmark geometry is fixed independently of the playable starter landscape, so
+    // scenario positions and historical capacity measurements still describe the same arena.
+    const ground = Array.from({ length: 12 }, () => Array(17).fill("G1").join(" "));
+    const objects = Array.from({ length: 12 }, (_, y) =>
+      Array.from({ length: 17 }, (_, x) => (isTree(x, y) ? "S3" : "G3")).join(" "),
+    );
+    db.run("UPDATE maps SET layer1 = ?, layer2 = ? WHERE mx = 1000 AND my = 992", [
+      JSON.stringify(ground),
+      JSON.stringify(objects),
+    ]);
     // Maps: copies of the seed map (with its monster roster) at each grid name.
     for (const name of options.maps) {
       const m = /^x(\d+)y(\d+)$/.exec(name);

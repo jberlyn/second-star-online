@@ -22,6 +22,7 @@ import type { Db } from "../src/persistence/database.ts";
 import { saveSettingOverride } from "../src/persistence/settings.ts";
 import { type Rng, scriptedRng } from "../src/rng.ts";
 import { manualClock } from "../tests/helpers/manual-clock.ts";
+import { prepareScenarioMap } from "../tests/helpers/scenario-map.ts";
 
 export interface TestServer extends RunningServer {
   /** Every throw the game caught at an entry point since the server started. */
@@ -87,6 +88,7 @@ export function startTestServer(options: TestServerOptions = {}): TestServer {
     isoNow: options.isoNow ?? (() => "2026-11-04T00:00:00.000Z"),
     rng: options.rng ?? scriptedRng([2]),
     prepare: (db) => {
+      prepareScenarioMap(db);
       if (!options.limits) {
         for (const key of [
           "loginFailsPerIp",

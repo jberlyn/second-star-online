@@ -25,6 +25,7 @@ import { loadPlayerShops } from "../src/persistence/playershops.ts";
 import { ledgerFromTemplate, npcBuy, SHOP_TEXT } from "../src/systems/economy/shop.ts";
 import { monsterView } from "../src/systems/monsters/slots.ts";
 import type { Player } from "../src/systems/world/world.ts";
+import { prepareScenarioMap } from "./helpers/scenario-map.ts";
 import { rngByN } from "./helpers/sim.ts";
 
 let db: Db;
@@ -37,6 +38,7 @@ const INTERIOR = "xH11000yH1992";
 beforeEach(() => {
   db = openDatabase();
   migrate(db);
+  prepareScenarioMap(db);
   sent = [];
   now = "2026-11-05T00:00:00.000Z";
   db.run("UPDATE maps SET layer1 = ?", [JSON.stringify(Array.from({ length: 12 }, () => ROW_8R))]);

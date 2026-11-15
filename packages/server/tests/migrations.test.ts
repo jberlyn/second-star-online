@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { startingCharacter } from "@secondstaronline/shared";
 
@@ -55,11 +57,11 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(db.query("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 });
   });
 
-  test("the seed map is named Test map; a title already given is kept", () => {
+  test("the seed map is named Willowbrook Wilds; a title already given is kept", () => {
     const fresh = openDatabase();
     migrate(fresh);
     expect(fresh.query("SELECT title FROM maps WHERE mx = 1000 AND my = 992").get()).toEqual({
-      title: "Test map",
+      title: "Willowbrook Wilds",
     });
     // A database migrated before this one, with a title an operator set.
     const old = openDatabase();
@@ -72,6 +74,33 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(old.query("SELECT title FROM maps WHERE mx = 1000 AND my = 992").get()).toEqual({
       title: "Home",
     });
+  });
+
+  test("upgrades preserve both the old seed landscape and operator-authored maps", () => {
+    for (const customized of [false, true]) {
+      const existing = openDatabase();
+      // Raw historical SQL reproduces a released database before the newest schema migration.
+      runMigrations(
+        existing,
+        loadMigrations()
+          .filter((m) => !m.name.startsWith("20261112_26"))
+          .map((m) => ({
+            name: m.name,
+            sql: readFileSync(join(MIGRATIONS_DIR, m.name), "utf8"),
+          })),
+      );
+      if (customized) {
+        existing.run("UPDATE maps SET title = 'My forest', layer1 = replace(layer1, 'G1', 'H1')");
+      }
+      const before = existing.query("SELECT * FROM maps ORDER BY id").all();
+      const settings = existing.query("SELECT * FROM settings ORDER BY key").all();
+      migrate(existing);
+      expect(existing.query("SELECT * FROM maps ORDER BY id").all()).toEqual(before);
+      expect(existing.query("SELECT * FROM settings ORDER BY key").all()).toEqual(settings);
+      migrate(existing);
+      expect(existing.query("SELECT * FROM maps ORDER BY id").all()).toEqual(before);
+      existing.close();
+    }
   });
 
   test("skills are open-ended: rows kept, 39 accepted, 0 refused (open_skills migration)", () => {

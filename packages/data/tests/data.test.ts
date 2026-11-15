@@ -23,6 +23,7 @@ import { classesDataSchema } from "../schema/classes.ts";
 import { itemRulesDataSchema } from "../schema/item-rules.ts";
 import { itemSchema } from "../schema/items.ts";
 import { monsterSchema, monstersDataSchema } from "../schema/monsters.ts";
+import { seedMapDataSchema } from "../schema/seed-map.ts";
 import { spellsDataSchema } from "../schema/spells.ts";
 import { tileSchema, tilesDataSchema } from "../schema/tiles.ts";
 import {
@@ -34,6 +35,7 @@ import {
   itemRulesData,
   itemsData,
   monstersData,
+  seedMapData,
   spellsData,
   tilesData,
 } from "../src/index.ts";
@@ -101,6 +103,24 @@ describe("content files (packages/data/content/)", () => {
       const text = renderDataModules(dir).get("monsters.ts") ?? "";
       expect(text).toContain('"hp": 9999');
       expect(text).toContain("from packages/data/content/monsters.json");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("seed maps require four 17×12 layers and catalogue tile codes", () => {
+    expect(seedMapDataSchema.safeParse(seedMapData).success).toBe(true);
+    const short = structuredClone(seedMapData);
+    short.layers[0][0] = "G1";
+    expect(seedMapDataSchema.safeParse(short).success).toBe(false);
+    expect(seedMapDataSchema.safeParse({ ...seedMapData, unexpected: true }).success).toBe(false);
+    const dir = mkdtempSync(join(tmpdir(), "sso-seed-map-"));
+    try {
+      cpSync(CONTENT_DIR, dir, { recursive: true });
+      const unknown = structuredClone(seedMapData);
+      unknown.layers[0][0] = unknown.layers[0][0]!.replace("N1", "UNKNOWN");
+      writeFileSync(join(dir, "seed-map.json"), JSON.stringify(unknown));
+      expect(() => renderDataModules(dir)).toThrow(/unknown tile UNKNOWN/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

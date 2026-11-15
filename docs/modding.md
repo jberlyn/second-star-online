@@ -2,6 +2,9 @@
 
 Game data lives as JSON files in [packages/data/content/](../packages/data/content/README.md). Each file is validated against its strict Zod schema in [packages/data/schema/](../packages/data/schema/) (unknown or missing fields fail the build) and compiled into committed TypeScript modules in `packages/data/src/generated/`.
 
+The [public image](running-a-server.md#docker-compose-recommended) is ready to host the standard game. In-game map, NPC, and settings edits persist in your database without rebuilding. To change the content files, assets, or code described below, clone the repository and build a custom image; these files are baked into the image and are not hot-reloaded at runtime.
+
+The starter landscape is defined in [seed-map.json](../packages/data/content/seed-map.json). It supplies the map title and four 17×12 tile layers when a database first creates its world. Rebuild data and your image after changing it. Existing worlds keep their saved maps; use the in-game World Editor to change those. Keep the configured spawn and respawn tiles walkable.
 
 ## Workflow and validation
 
@@ -25,7 +28,7 @@ Game data lives as JSON files in [packages/data/content/](../packages/data/conte
    bun run gate
    ```
 
-6. If you run the server with Docker (`docker-compose.yml`), rebuild the image before restarting: the container bakes the generated modules, asset atlases, and prebuilt client into the image at build time, so mounted or edited JSON files are not hot-reloaded at runtime:
+6. If you run the server with Docker, use the repository’s source-build `docker-compose.yml` (which builds `second-star-online:local`) and rebuild before restarting: the container bakes the generated modules, asset atlases, and prebuilt client into the image at build time, so mounted or edited JSON files are not hot-reloaded at runtime:
 
    ```sh
    docker compose up -d --build

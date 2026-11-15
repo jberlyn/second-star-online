@@ -40,20 +40,23 @@ beforeEach(() => {
 });
 
 describe("seed map migration", () => {
-  test("one 17×12 map at x1000y992: G1 grass, S3 trees, G3 and 5A layers", () => {
+  test("Willowbrook Wilds has a 17×12 lake, forest and rocks with empty upper layers", () => {
     const m = findMapByCoords(db, 1000, 992);
     if (!m) {
       throw new Error("seed map missing");
     }
     expect(m.name).toBe("x1000y992");
+    expect(m.title).toBe("Willowbrook Wilds");
     for (const layer of m.layers) {
       expect(layer).toHaveLength(12);
       for (const row of layer) {
         expect(row.split(" ")).toHaveLength(17);
       }
     }
-    expect(new Set(m.layers[0].join(" ").split(" "))).toEqual(new Set(["G1"]));
-    expect(new Set(m.layers[1].join(" ").split(" "))).toEqual(new Set(["G3", "S3"]));
+    expect(new Set(m.layers[0].join(" ").split(" "))).toEqual(new Set(["G1", "N1"]));
+    expect(new Set(m.layers[1].join(" ").split(" "))).toEqual(
+      new Set(["G3", "S3", "T3", "N3", "B8", "T8", "Q6", "T7", "P7", "B7"]),
+    );
     expect(new Set(m.layers[2].join(" ").split(" "))).toEqual(new Set(["G3"]));
     expect(new Set(m.layers[3].join(" ").split(" "))).toEqual(new Set(["5A"]));
   });
@@ -67,7 +70,11 @@ describe("seed map migration", () => {
     const at = (x: number, y: number) => walk[y - 1]?.[x - 1];
     expect(at(6, 4)).toBe(true);
     expect(at(5, 5)).toBe(true);
-    expect(at(2, 2)).toBe(false); // S3 tree
+    expect(at(2, 2)).toBe(false); // lake
+    expect(at(7, 3)).toBe(false); // harvestable tree
+    expect(m.layers[0][2]?.split(" ")[6]).toBe("G1"); // tree stands on land
+    expect(at(12, 4)).toBe(false); // mineable rock
+    expect(m.layers[0][3]?.split(" ")[11]).toBe("G1");
     // Flood fill from the start tile reaches all four edges.
     const seen = new Set<string>();
     const queue: [number, number][] = [[6, 4]];
@@ -81,6 +88,16 @@ describe("seed map migration", () => {
       queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     const reached = [...seen].map((k) => k.split(",").map(Number) as [number, number]);
+    // Every open tile belongs to the same clearing; resources can be approached on foot.
+    expect(seen.size).toBe(walk.flat().filter(Boolean).length);
+    for (const [x, y] of [
+      [6, 4],
+      [5, 5],
+      [4, 10],
+      [12, 5],
+    ]) {
+      expect(seen.has(`${x},${y}`)).toBe(true);
+    }
     expect(reached.some(([x]) => x === 1)).toBe(true);
     expect(reached.some(([x]) => x === 17)).toBe(true);
     expect(reached.some(([, y]) => y === 1)).toBe(true);

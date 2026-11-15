@@ -1,30 +1,90 @@
 # Running a server
 
-Second Star Online runs on [Bun](https://bun.sh/). One Bun process serves the client page, the generated assets, and the game WebSocket on `http://localhost:3000` by default.
+The recommended way to host Second Star Online is with the [public container image](https://github.com/jberlyn/second-star-online/pkgs/container/second-star-online): `ghcr.io/jberlyn/second-star-online`. It includes the server, browser client, and game assets. You need Docker and Docker Compose, with no repository checkout, Bun installation, or local build required. Published images target **Linux AMD64**.
+
+One Bun process inside the container serves the client page, generated assets, and game WebSocket on port `3000`.
 
 ## Quick start
 
-### Docker (one-command local service)
+### Docker Compose (recommended)
 
-Requires Docker and Docker Compose. From the repository root:
+Create a directory for your server and save the following as `docker-compose.yml` inside it:
 
-```sh
-docker compose up -d --build
+```yaml
+services:
+  second-star-online:
+    image: ghcr.io/jberlyn/second-star-online:latest
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      SSO_PROXY_HOPS: "0"
+    volumes:
+      - sso-data:/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+volumes:
+  sso-data:
 ```
 
-This builds the `second-star-online:local` image (non-root `bun` user, UID/GID `1000`), mounts the named `world` volume at `/data` (`SSO_DB=/data/sso.sqlite`), sets `SSO_PROXY_HOPS=1`, and binds `http://127.0.0.1:3000` on loopback for a local HTTP demo. Public servers must terminate TLS in front of this loopback binding (see [Reverse proxies and TLS](#reverse-proxies-and-tls)).
+From that directory, download the image and start the server:
 
-- **Named volume vs. bind mount:** The `world` named volume is initialized with ownership for UID/GID `1000`. If you mount a host directory instead, pre-create it and set ownership on the host (`chown -R 1000:1000 /path/to/world-data`) rather than running the container as root or opening permissions with `chmod 777`.
+```sh
+docker compose pull second-star-online
+docker compose up -d second-star-online
+```
+
+Open [http://localhost:3000](http://localhost:3000) on the Docker host and create an account. The image runs as the non-root `bun` user (UID/GID `1000`) and stores the database in the named `sso-data` volume at `/data` (`SSO_DB=/data/sso.sqlite`). This example binds the service to loopback for local access; for public hosting, add a TLS reverse proxy and set `SSO_PROXY_HOPS` to the number of proxies in front of the game (see [Reverse proxies and TLS](#reverse-proxies-and-tls)).
+
+If you used the README's `docker run` quick start, it uses a volume named `sso-data`. To keep that world when switching to Compose, replace the final `sso-data:` declaration above with `sso-data: { external: true, name: sso-data }` and stop the old container before starting Compose.
+
+### Choosing an image version
+
+- `latest` follows the newest stable release. Pulling it downloads an update; an already running container keeps its current image until you recreate it.
+- For controlled upgrades, replace `latest` with a published version, such as `ghcr.io/jberlyn/second-star-online:1.0.0`, or pin a digest with `ghcr.io/jberlyn/second-star-online@sha256:<digest>`.
+- Release image tags omit the Git tag's leading `v`. Prereleases use their full version (for example, `1.1.0-rc.1`) and do not move `latest`. Builds of `main` are checked in CI but are not published.
+
+Find available tags and digests on the [container package page](https://github.com/jberlyn/second-star-online/pkgs/container/second-star-online). Back up your world before upgrading; see [Docker volume backup, restore, and upgrade](#docker-volume-backup-restore-and-upgrade).
+
+### Container operations
+
+- **Named volumes:** Compose normally prefixes the volume name with the project directory, such as `myserver_sso-data`. Use `docker volume ls` to find the actual name. Docker initializes it with ownership for UID/GID `1000`.
+- **Existing installations:** Renaming a Compose volume key does not migrate data. If your server already uses a volume such as `<project>_world`, preserve it with `sso-data: { external: true, name: <existing-volume-name> }` in the top-level `volumes` section. Stop the old server before reusing its volume.
 - **Migrating an existing database:** Mount the entire directory containing `sso.sqlite` (and any `-wal`/`-shm` sidecars) at `/data`. Existing migrations run automatically on startup. Never run two game processes against the same database directory.
 - **Health and restarts:** The container uses `restart: unless-stopped`, `stop_grace_period: 30s`, and a dependency-free Bun healthcheck (`GET /`, an emitted JS bundle, and a generated asset every 30 s with a 5 s timeout, 30 s start period, and 3 retries). Docker health status alone does not restart an unhealthy container; verify player readiness over `/ws` after major changes.
-- **Mod rebuilds:** Generated data modules, asset atlases, and `dist/client` are baked into the image at build time. After editing content or added assets (`bun run data:build`), rebuild with `docker compose up -d --build`.
+- **Customization:** In-game map, NPC, and settings edits persist in the database. Changes to content JSON, generated modules, art, or the client require a custom image; see [Modding](modding.md).
+
+### Bind mounts (alternative to named volumes)
+
+Use a bind mount if you prefer to keep the database in a visible host directory. On a Linux Docker host, create the directory next to `docker-compose.yml` and give the image’s non-root user write access:
+
+```sh
+mkdir -p ./sso-data
+sudo chown 1000:1000 ./sso-data
+```
+
+Replace the `second-star-online` service’s volume mapping with the following, and remove the top-level `volumes` section:
+
+```yaml
+    volumes:
+      - type: bind
+        source: ./sso-data
+        target: /data
+        bind:
+          create_host_path: false
+```
+
+Then run `docker compose pull second-star-online` and `docker compose up -d second-star-online` as above. For `docker run`, replace `-v sso-data:/data` with `--mount type=bind,src="$PWD/sso-data",dst=/data`. Use the directory prepared above; do not run the game as root or use `chmod 777` to bypass ownership requirements. Hosts enforcing SELinux may also require an appropriate container file label on the directory.
+
+Changing the mount does not copy an existing world. Stop the server and copy the entire old data directory, including SQLite sidecars, into the new directory before starting it. For backups, stop the server and copy the entire `sso-data` directory; restore into an empty directory and preserve UID/GID `1000` ownership. The Docker volume backup commands below apply to named volumes.
 
 ### From source (development and host production)
 
-From the repository root:
+For development or a custom build, clone the repository and install [Bun](https://bun.sh/). From the repository root:
 
 ```sh
-bun install
+bun install --frozen-lockfile
 ```
 
 For development (builds assets, enables live reload, and serves the unminified client):
@@ -40,7 +100,17 @@ bun run build
 bun run start
 ```
 
-On first start against a new SQLite file, the server runs database migrations automatically and starts with a fresh seed world (including the starting map and seed NPC files). An operator builds maps in-game with the World Editor rather than importing an archived world.
+On first start against a new SQLite file, the server runs database migrations automatically and starts with Willowbrook Wilds: a forest-and-lake starting map with rocks for mining, trees for woodcutting, and water for fishing, plus the seed NPC files. Spawn and respawn tiles remain clear. Existing databases keep their saved maps when upgraded. An operator builds maps in-game with the World Editor rather than importing an archived world.
+
+### Building a custom Docker image
+
+The repository’s `docker-compose.yml` builds `second-star-online:local` from source. Use it when changing game content, assets, or code:
+
+```sh
+docker compose up -d --build
+```
+
+That source-build configuration sets `SSO_PROXY_HOPS=1` for a host reverse proxy. Set it to `0` for direct local access. Keep your deployment configuration and volume selection consistent when switching between custom and public images.
 
 ## Environment variables
 
@@ -50,16 +120,18 @@ On first start against a new SQLite file, the server runs database migrations au
 | `SSO_DB` | `sso.sqlite` | SQLite database path relative to the working directory (`/data/sso.sqlite` in the container). `:memory:` runs a throwaway database that is lost on exit. |
 | `NODE_ENV` | unset | Only `development` selects development serving. Any other value (or unset) serves the prebuilt `dist/client` bundle with strict security headers. |
 | `SSO_CLIENT_DIR` | `dist/client` | Optional override for the prebuilt production client directory (used by tests). |
-| `SSO_PROXY_HOPS` | `0` | Number of trusted reverse proxies in front of the server (whole number `>= 0`; invalid values refuse startup). `docker-compose.yml` sets `1`. |
+| `SSO_PROXY_HOPS` | `0` | Number of trusted reverse proxies in front of the server (whole number `>= 0`; invalid values refuse startup). The recommended Compose example sets `0`; use `1` behind a single reverse proxy. |
 | `SSO_FRAME_ANCESTORS` | unset | Optional CSP `frame-ancestors` directive value. Unset adds no `frame-ancestors` directive. |
 | `SSO_PERF_OUT` | unset | Path to append once-a-second JSON performance samples (see [performance.md](performance.md)). |
 | `SSO_CRASH_AT` | unset | Test hook that kills the process at a named crash point; not an operator setting. |
 
 ### Reverse proxies and TLS
 
-Keep `SSO_PROXY_HOPS=0` when the server is exposed directly; the gateway uses the socket's IP address. When running behind reverse proxies, set `SSO_PROXY_HOPS` to the number of proxies in front of Bun (default `1` in `docker-compose.yml`): the gateway reads the `SSO_PROXY_HOPS`-th entry from the right of `X-Forwarded-For` (falling back to the socket address if fewer entries are present), so earlier client-supplied entries cannot spoof the address. `docker-compose.yml` publishes port `3000` on `127.0.0.1` (loopback) so clients cannot connect directly; when running the server from source instead of Compose, Bun listens on `0.0.0.0` (all interfaces) on `PORT`, so firewall `PORT` externally when placing it behind a reverse proxy.
+Keep `SSO_PROXY_HOPS=0` when the server is exposed directly; the gateway uses the socket's IP address. When running behind reverse proxies, set `SSO_PROXY_HOPS` to the number of proxies in front of Bun (`1` for a single host proxy): the gateway reads the `SSO_PROXY_HOPS`-th entry from the right of `X-Forwarded-For` (falling back to the socket address if fewer entries are present), so earlier client-supplied entries cannot spoof the address. The Compose examples publish port `3000` on `127.0.0.1` (loopback) so clients cannot connect directly; when running the server from source instead of Compose, Bun listens on `0.0.0.0` (all interfaces) on `PORT`, so firewall `PORT` externally when placing it behind a reverse proxy.
 
 Terminate TLS at your reverse proxy, serve the same host, and forward WebSocket upgrades on `/ws`. Public automatic HTTPS requires a public DNS record pointing at your host and reachable ports `80` and `443`. The client automatically selects `wss://` when loaded over `https://` and `ws://` otherwise. The server accepts WebSocket connections from any `Origin`; if your deployment requires an origin policy, enforce it at the reverse proxy. Authentication is carried in WebSocket frames rather than cookies.
+
+For either host proxy example below, set `SSO_PROXY_HOPS: "1"` in your Compose environment and apply it with `docker compose up -d second-star-online`.
 
 **Host Caddy example** (`/etc/caddy/Caddyfile`, forwards WebSockets and `X-Forwarded-For` automatically):
 
@@ -94,7 +166,7 @@ server {
 }
 ```
 
-**Existing containerised reverse proxy:** Attach both your proxy container and `game` to a shared private Docker network and proxy to `http://game:3000` (never `127.0.0.1:3000`, which refers to the proxy container itself). Omit or keep `ports:` bound to `127.0.0.1` so Bun is never exposed on a public host interface.
+**Existing containerised reverse proxy:** Attach both your proxy container and `second-star-online` to a shared private Docker network and proxy to `http://second-star-online:3000` (never `127.0.0.1:3000`, which refers to the proxy container itself). Omit or keep `ports:` bound to `127.0.0.1` so Bun is never exposed on a public host interface.
 
 ## Accounts, roles, and auditing
 
@@ -111,7 +183,7 @@ Roles live on the `accounts` table, not on character names:
 
    ```sh
    # Docker Compose:
-   docker compose exec -T game bun run admin:role <account-name> immortal
+   docker compose exec -T second-star-online bun run admin:role <account-name> immortal
 
    # From source:
    SSO_DB=sso.sqlite bun run admin:role <account-name> immortal
@@ -125,7 +197,7 @@ Actions that change state or reveal privileged information (effective admin comm
 
 ```sh
 # Docker Compose:
-docker compose exec -T game bun run admin:audit 50
+docker compose exec -T second-star-online bun run admin:audit 50
 
 # From source:
 SSO_DB=sso.sqlite bun run admin:audit 50
@@ -277,25 +349,34 @@ See the official SQLite [Online Backup](https://sqlite.org/backup.html) and [CLI
 
 ### Docker volume backup, restore, and upgrade
 
-> **Warning:** `docker compose down -v` **deletes the named `world` volume and all world data**. Use `docker compose stop`, `docker compose down` (without `-v`), or `docker compose up -d --build` for normal stops and upgrades.
+> **Warning:** `docker compose down -v` **deletes the named `sso-data` volume and all world data**. Use `docker compose stop`, `docker compose down` (without `-v`), or `docker compose up -d second-star-online` for normal stops and container recreation.
 
 1. Stop the game container cleanly (waits up to `stop_grace_period: 30s` for `SIGTERM` save and exit):
 
    ```sh
-   docker compose stop game
+   docker compose stop second-star-online
    ```
 
-2. Back up the entire `/data` directory from the stopped volume (replace `<project>_world` with your Compose project's volume name from `docker volume ls`):
+2. Back up the entire `/data` directory from the stopped volume (replace `<project>_sso-data` with your Compose project's volume name from `docker volume ls`, or `sso-data` for the README quick start). Use your deployed image reference in place of `latest` below if you pinned a version or use a custom image:
 
    ```sh
    mkdir -p ./world-backup
-   docker run --rm -u 0:0 -v <project>_world:/data:ro -v "$PWD/world-backup:/backup" --entrypoint sh second-star-online:local -c 'cp -a /data/. /backup/'
+   docker run --rm -u 0:0 -v <project>_sso-data:/data:ro -v "$PWD/world-backup:/backup" --entrypoint sh ghcr.io/jberlyn/second-star-online:latest -c 'cp -a /data/. /backup/'
    ```
 
-3. To upgrade, rebuild and recreate the container (`docker compose up -d --build`); migrations run automatically on startup.
-4. To restore into a clean volume, stop `game`, clear `/data`, copy the backup in, restore `1000:1000` ownership, and start `game`:
+3. To upgrade, change the image reference in `docker-compose.yml` if you pinned a version, then pull and recreate the container. Migrations run automatically on startup:
 
    ```sh
-   docker run --rm -u 0:0 -v <project>_world:/data -v "$PWD/world-backup:/backup:ro" --entrypoint sh second-star-online:local -c 'rm -rf /data/* && cp -a /backup/. /data/ && chown -R 1000:1000 /data'
-   docker compose up -d game
+   docker compose pull second-star-online
+   docker compose up -d second-star-online
+   docker compose ps
+   docker compose logs --tail 50 second-star-online
+   ```
+
+   Check health, logins, and world state after the update. Rolling back an image may also require restoring the matching pre-upgrade database backup.
+4. To restore into a clean volume, stop `second-star-online`, clear `/data`, copy the backup in, restore `1000:1000` ownership, and start `second-star-online`:
+
+   ```sh
+   docker run --rm -u 0:0 -v <project>_sso-data:/data -v "$PWD/world-backup:/backup:ro" --entrypoint sh ghcr.io/jberlyn/second-star-online:latest -c 'rm -rf /data/* && cp -a /backup/. /data/ && chown -R 1000:1000 /data'
+   docker compose up -d second-star-online
    ```

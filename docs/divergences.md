@@ -632,17 +632,18 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** World content
 - **What you notice:** A fresh server's seed map has a Slime to fight.
 - **1.6:** The Test map at x1000y992 had a Slime in roster slot 1.
-- **SSO:** The grass-and-trees seed map at the same grid position starts with that roster; operators can change it with `/roster`. The [seed roster migration](../packages/server/migrations/20261105_03_monsters.sql) inserts it.
+- **SSO:** Willowbrook Wilds, the forest-and-lake seed map at the same grid position, starts with that roster; operators can change it with `/roster`. The [seed roster migration](../packages/server/migrations/20261105_03_monsters.sql) inserts it.
 - **Why:** Although archived maps are not shipped, the roster is the original one for that map position.
 - **In the code:** `packages/server/src/persistence/migrations.ts` (`runMigrations`)
 
 ### Archived maps not shipped; one seed map
 - **Kind:** World content
-- **What you notice:** A fresh server starts with one grass-and-trees map; its operators build the rest of the world.
+- **What you notice:** A fresh server starts with Willowbrook Wilds, a forest-and-lake map with harvestable trees and mineable rocks; its operators build the rest of the world.
 - **1.6:** The server shipped 27 maps with item and monster sidecars, although community servers generally made their own worlds in the World Editor.
-- **SSO:** Operators author maps, monster rosters and NPC placements with the in-game editors. Game rules and catalogues ship as data; there is no original-format map importer.
+- **SSO:** The starting landscape comes from `packages/data/content/seed-map.json` and is applied only when the original map migration creates a new world. Existing saved worlds are preserved. Spawn and respawn tiles are clear, and every walkable tile is connected. Operators author further maps, monster rosters and NPC placements with the in-game editors. Game rules and catalogues ship as data; there is no original-format map importer.
 - **Why:** Most community servers did not use the default world, and much of its placement data is missing from the archive.
-- **In the code:** `packages/server/src/persistence/migrations.ts` (`runMigrations`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
+- **In the code:** `packages/server/src/persistence/seed-map.ts` (`seedMapSql`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
+- **Pinned by:** `Willowbrook Wilds has a 17×12 lake, forest and rocks with empty upper layers`; `the start (6,4) and respawn (5,5) tiles are walkable, trees are not, every edge is reachable` (packages/server/tests/world.test.ts); `upgrades preserve both the old seed landscape and operator-authored maps` (packages/server/tests/migrations.test.ts)
 
 ### Hard-coded world references become operator settings
 - **Kind:** World content

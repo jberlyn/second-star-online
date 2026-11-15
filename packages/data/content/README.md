@@ -6,6 +6,7 @@ For modding workflows, rule precedence, and worked examples, see the [Modding gu
 
 | File | What it holds | Read by |
 |---|---|---|
+| `seed-map.json` | the title and four layers of Willowbrook Wilds, the fresh-server starter landscape | first map creation; existing maps are preserved |
 | `tiles.json` | the tile catalogue (`code`, `member`, `flags`), the walk whitelist (`walkable`), and single-tile `defaults` | movement, housing, spells, the map editor, the client draw |
 | `items.json` | the item catalogue (name, archived spellings, icon: an original member or added art), fixtures, the World Editor's item list, the player-shop whitelist | inventory, shops, drops, the World Editor |
 | `attpower.json`, `item-rules.json` | weapon power; the item rules: equip, use, armour, breaks, the item menu, the paperdoll, ground items, containers, gear bonuses, the swing | combat, inventory, spells, the paperdoll |
