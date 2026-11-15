@@ -89,7 +89,14 @@ export function keyDown(
   key: string,
   altKey: boolean,
   repeat = false,
+  metaKey = false,
 ): boolean {
+  if (key === "Meta" || metaKey) {
+    // macOS swallows keyup for non-modifier keys pressed with Command; release any held keys
+    // and let the browser handle the shortcut without leaving a direction stuck.
+    releaseAll(s, sink);
+    return false;
+  }
   if (key === ACTION_KEY) {
     if (!repeat) {
       sink.action();
@@ -118,6 +125,10 @@ export function keyDown(
 }
 
 export function keyUp(s: InputState, sink: InputSink, key: string): boolean {
+  if (key === "Meta") {
+    releaseAll(s, sink);
+    return false;
+  }
   if (key === ATTACK_KEY) {
     setAttack(s, sink, false);
     return true;

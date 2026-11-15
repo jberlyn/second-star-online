@@ -1194,7 +1194,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       return;
     }
     // Stop the page scrolling and the Alt menu bar.
-    if (keyDown(input, sink, e.key, e.altKey, e.repeat)) {
+    if (keyDown(input, sink, e.key, e.altKey, e.repeat, e.metaKey)) {
       e.preventDefault();
     }
   };

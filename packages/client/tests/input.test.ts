@@ -56,6 +56,25 @@ describe("keyboard", () => {
     keyDown(s, sink, "ArrowLeft", true);
     expect(out).toEqual(["move null true", "step L true", "move L true"]);
   });
+
+  test("Meta (Cmd) + arrow does not lock movement when keyup is swallowed", () => {
+    const s = createInputState();
+    const { out, sink } = recorder();
+    expect(keyDown(s, sink, "Meta", false, false, true)).toBe(false);
+    expect(keyDown(s, sink, "ArrowLeft", false, false, true)).toBe(false);
+    expect(keyUp(s, sink, "Meta")).toBe(false);
+    expect(out).toEqual([]);
+    expect(s.keys).toEqual({});
+  });
+
+  test("pressing Meta releases any already-held direction", () => {
+    const s = createInputState();
+    const { out, sink } = recorder();
+    keyDown(s, sink, "ArrowRight", false);
+    expect(keyDown(s, sink, "Meta", false, false, true)).toBe(false);
+    expect(out).toEqual(["step R false", "move R false", "move null false"]);
+    expect(s.keys).toEqual({});
+  });
 });
 
 describe("releaseAll", () => {
