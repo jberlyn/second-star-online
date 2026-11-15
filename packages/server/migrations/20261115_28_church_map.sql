@@ -1,0 +1,2 @@
+-- The church at x999y999 is supplied from validated content/church-map.json by the migration
+-- loader. Insert only when absent so existing operator-authored church maps are preserved.

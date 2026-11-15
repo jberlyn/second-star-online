@@ -4,7 +4,7 @@ Game data lives as JSON files in [packages/data/content/](../packages/data/conte
 
 The [public image](running-a-server.md#docker-compose-recommended) is ready to host the standard game. In-game map, NPC, and settings edits persist in your database without rebuilding. To change the content files, assets, or code described below, clone the repository and build a custom image; these files are baked into the image and are not hot-reloaded at runtime.
 
-The starter landscape is defined in [seed-map.json](../packages/data/content/seed-map.json). It supplies the map title and four 17×12 tile layers when a database first creates its world. Rebuild data and your image after changing it. Existing worlds keep their saved maps; use the in-game World Editor to change those. Keep the configured spawn and respawn tiles walkable.
+The starter landscape is defined in [seed-map.json](../packages/data/content/seed-map.json), the enclosed Jail in [jail-map.json](../packages/data/content/jail-map.json), and the church bell map in [church-map.json](../packages/data/content/church-map.json). Each supplies a map title and four 17×12 tile layers. The seed map fills a fresh world; the Jail and Church are added where those coordinates are absent. Rebuild data and your image after changing them. Existing worlds keep their saved maps; use the in-game World Editor to change those. Keep the configured spawn and respawn tiles walkable.
 
 ## Workflow and validation
 

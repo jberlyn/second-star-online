@@ -19,6 +19,7 @@ import npcsData from "../test-fixtures/npc-expectations.json";
 
 const CONTENT_DIR = resolve(import.meta.dir, "../content");
 
+import { churchMapDataSchema } from "../schema/church-map.ts";
 import { classesDataSchema } from "../schema/classes.ts";
 import { itemRulesDataSchema } from "../schema/item-rules.ts";
 import { itemSchema } from "../schema/items.ts";
@@ -29,6 +30,7 @@ import { tileSchema, tilesDataSchema } from "../schema/tiles.ts";
 import {
   attPowerData,
   casinoData,
+  churchMapData,
   classesData,
   gatherData,
   helpData,
@@ -108,8 +110,9 @@ describe("content files (packages/data/content/)", () => {
     }
   });
 
-  test("seed maps require four 17×12 layers and catalogue tile codes", () => {
+  test("seed and church maps require four 17×12 layers and catalogue tile codes", () => {
     expect(seedMapDataSchema.safeParse(seedMapData).success).toBe(true);
+    expect(churchMapDataSchema.safeParse(churchMapData).success).toBe(true);
     const short = structuredClone(seedMapData);
     short.layers[0][0] = "G1";
     expect(seedMapDataSchema.safeParse(short).success).toBe(false);
@@ -120,6 +123,11 @@ describe("content files (packages/data/content/)", () => {
       const unknown = structuredClone(seedMapData);
       unknown.layers[0][0] = unknown.layers[0][0]!.replace("N1", "UNKNOWN");
       writeFileSync(join(dir, "seed-map.json"), JSON.stringify(unknown));
+      expect(() => renderDataModules(dir)).toThrow(/unknown tile UNKNOWN/);
+      writeFileSync(join(dir, "seed-map.json"), JSON.stringify(seedMapData));
+      const unknownChurch = structuredClone(churchMapData);
+      unknownChurch.layers[0][0] = unknownChurch.layers[0][0]!.replace("E2", "UNKNOWN");
+      writeFileSync(join(dir, "church-map.json"), JSON.stringify(unknownChurch));
       expect(() => renderDataModules(dir)).toThrow(/unknown tile UNKNOWN/);
     } finally {
       rmSync(dir, { recursive: true, force: true });

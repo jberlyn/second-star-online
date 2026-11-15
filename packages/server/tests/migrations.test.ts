@@ -83,7 +83,12 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       runMigrations(
         existing,
         loadMigrations()
-          .filter((m) => !m.name.startsWith("20261112_26") && !m.name.includes("jail_map"))
+          .filter(
+            (m) =>
+              !m.name.startsWith("20261112_26") &&
+              !m.name.includes("jail_map") &&
+              !m.name.includes("church_map"),
+          )
           .map((m) => ({
             name: m.name,
             sql: readFileSync(join(MIGRATIONS_DIR, m.name), "utf8"),
@@ -99,15 +104,26 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         existing.query("SELECT title FROM maps WHERE mx = 0 AND my = 0 AND slot = 0").get(),
       ).toEqual({ title: "Jail" });
       expect(
+        existing.query("SELECT title FROM maps WHERE mx = 999 AND my = 999 AND slot = 0").get(),
+      ).toEqual({ title: "Church of the Bells" });
+      expect(
         existing
-          .query("SELECT * FROM maps WHERE NOT (mx = 0 AND my = 0 AND slot = 0) ORDER BY id")
+          .query(
+            `SELECT * FROM maps WHERE NOT (
+              (mx = 0 AND my = 0 AND slot = 0) OR (mx = 999 AND my = 999 AND slot = 0)
+            ) ORDER BY id`,
+          )
           .all(),
       ).toEqual(before);
       expect(existing.query("SELECT * FROM settings ORDER BY key").all()).toEqual(settings);
       migrate(existing);
       expect(
         existing
-          .query("SELECT * FROM maps WHERE NOT (mx = 0 AND my = 0 AND slot = 0) ORDER BY id")
+          .query(
+            `SELECT * FROM maps WHERE NOT (
+              (mx = 0 AND my = 0 AND slot = 0) OR (mx = 999 AND my = 999 AND slot = 0)
+            ) ORDER BY id`,
+          )
           .all(),
       ).toEqual(before);
       existing.close();

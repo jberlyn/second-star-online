@@ -6,6 +6,7 @@ import type { z } from "zod";
 
 import { attPowerDataSchema } from "../schema/attpower.ts";
 import { casinoDataSchema } from "../schema/casino.ts";
+import { churchMapDataSchema } from "../schema/church-map.ts";
 import { classesDataSchema } from "../schema/classes.ts";
 import { craftDataSchema } from "../schema/craft.ts";
 import { gatherDataSchema } from "../schema/gather.ts";
@@ -59,6 +60,12 @@ export const MODULES: readonly Module[] = [
     schema: jailMapDataSchema,
     dataName: "jailMapData",
     typeName: "JailMapData",
+  },
+  {
+    module: "church-map",
+    schema: churchMapDataSchema,
+    dataName: "churchMapData",
+    typeName: "ChurchMapData",
   },
   {
     module: "seed-map",
@@ -230,7 +237,7 @@ export function renderDataModules(contentDir = CONTENT): Map<string, string> {
     if (!parsed.success) {
       throw new Error(`${from} does not match its schema:\n${parsed.error.message}`);
     }
-    if (m.module === "seed-map" || m.module === "jail-map") {
+    if (m.module === "seed-map" || m.module === "jail-map" || m.module === "church-map") {
       const seed = seedMapDataSchema.parse(data);
       const tiles = tilesDataSchema.parse(
         JSON.parse(readFileSync(join(contentDir, "tiles.json"), "utf8")),

@@ -100,7 +100,7 @@ bun run build
 bun run start
 ```
 
-On first start against a new SQLite file, the server runs database migrations automatically and starts with Willowbrook Wilds: a forest-and-lake starting map with rocks for mining, trees for woodcutting, and water for fishing, plus the seed NPC files. Spawn and respawn tiles remain clear. Existing databases keep their saved maps when upgraded. An operator builds maps in-game with the World Editor rather than importing an archived world.
+On first start against a new SQLite file, the server runs database migrations automatically and starts with Willowbrook Wilds: a forest-and-lake starting map with rocks for mining, trees for woodcutting, and water for fishing, plus the seed NPC files, the enclosed Jail at x0y0, and the Church of the Bells at x999y999. Spawn and respawn tiles remain clear. Existing databases keep their saved maps when upgraded; the Jail and Church of the Bells are added only where those coordinates are empty. An operator builds maps in-game with the World Editor rather than importing an archived world.
 
 ### Building a custom Docker image
 

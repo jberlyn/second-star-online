@@ -5,6 +5,7 @@
 
 export type { AttPowerData, AttPowerTier } from "../schema/attpower.ts";
 export type { CasinoData } from "../schema/casino.ts";
+export type { ChurchMapData } from "../schema/church-map.ts";
 export type { ClassesData, Creation, Promotion, Skill, WeaponSkills } from "../schema/classes.ts";
 export type { CraftData } from "../schema/craft.ts";
 export type { GatherData, GatherTool, SkillGainRule } from "../schema/gather.ts";
@@ -43,6 +44,7 @@ export { ASSET_INDEX_FILE } from "./assets.ts";
 export {
   attPowerData,
   casinoData,
+  churchMapData,
   classesData,
   craftData,
   gatherData,

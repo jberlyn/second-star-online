@@ -37,8 +37,8 @@ An entry uses this shape; `Pinned by` is optional:
 | [social](#social) | 16 |
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 2 |
-| [world](#world) | 7 |
-| **Total** | **181** |
+| [world](#world) | 8 |
+| **Total** | **182** |
 
 ## admin
 
@@ -637,14 +637,14 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Although archived maps are not shipped, the roster is the original one for that map position.
 - **In the code:** `packages/server/src/persistence/migrations.ts` (`runMigrations`)
 
-### Archived maps not shipped; one seed map
+### Archived maps not shipped; seeded starter, jail and church
 - **Kind:** World content
-- **What you notice:** A fresh server starts with Willowbrook Wilds, a forest-and-lake map with harvestable trees and mineable rocks; its operators build the rest of the world.
+- **What you notice:** A fresh server starts with Willowbrook Wilds, the enclosed Jail at x0y0, and the Church of the Bells at x999y999; its operators build the rest of the world.
 - **1.6:** The server shipped 27 maps with item and monster sidecars, although community servers generally made their own worlds in the World Editor.
-- **SSO:** The starting landscape comes from `packages/data/content/seed-map.json` and is applied only when the original map migration creates a new world. Existing saved worlds are preserved. Spawn and respawn tiles are clear, and every walkable tile is connected. Operators author further maps, monster rosters and NPC placements with the in-game editors. Game rules and catalogues ship as data; there is no original-format map importer.
-- **Why:** Most community servers did not use the default world, and much of its placement data is missing from the archive.
-- **In the code:** `packages/server/src/persistence/seed-map.ts` (`seedMapSql`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
-- **Pinned by:** `Willowbrook Wilds has a 17×12 lake, forest and rocks with empty upper layers`; `the start (6,4) and respawn (5,5) tiles are walkable, trees are not, every edge is reachable` (packages/server/tests/world.test.ts); `upgrades preserve both the old seed landscape and operator-authored maps` (packages/server/tests/migrations.test.ts)
+- **SSO:** The starting landscape comes from `packages/data/content/seed-map.json` and is applied only when the original map migration creates a new world. The Jail and Church come from validated content files and are added only where those coordinates are absent, preserving operator-authored maps. Existing saved maps are otherwise preserved. Spawn and respawn tiles are clear, and every walkable tile on the seed map is connected. Operators author further maps, monster rosters and NPC placements with the in-game editors. Game rules and catalogues ship as data; there is no original-format map importer.
+- **Why:** Most community servers did not use the default world, and much of its placement data is missing from the archive; the jail and bell map are required by server rules.
+- **In the code:** `packages/server/src/persistence/seed-map.ts` (`seedMapSql`, `jailMapSql`, `churchMapSql`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
+- **Pinned by:** `Willowbrook Wilds has a 17×12 lake, forest and rocks with empty upper layers`; `the start (6,4) and respawn (5,5) tiles are walkable, trees are not, every edge is reachable` (packages/server/tests/world.test.ts); `upgrades preserve both the old seed landscape and operator-authored maps` (packages/server/tests/migrations.test.ts); `the seeded jail encloses every walkable area and has no exits or landing pads` (packages/server/tests/jail.test.ts); `the seeded church is the validated Church of the Bells at x999y999 with no exits` (packages/server/tests/church.test.ts)
 
 ### Hard-coded world references become operator settings
 - **Kind:** World content
@@ -1566,3 +1566,12 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** A shared server cannot block, and freezing other players was never intended.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`tick`), `packages/client/src/playfield.ts` (`createPlayfield`)
 - **Pinned by:** `death: the dying player gets { t: "death" } after the tick's vitals, once, and nobody else does` (packages/server/tests/monsters.test.ts); `death: black for one draw, then frozen until the respawn map is drawn` (packages/client/tests/death-stage.test.ts)
+
+### Seeded church bell map
+- **Kind:** World content
+- **What you notice:** A fresh server has the Church of the Bells at x999y999, the enclosed sanctuary where the church bell sounds. It has no exits or landing pads; players reach it by an operator warp.
+- **1.6:** The bell rang for players on the hard-wired map x999y999.
+- **SSO:** A migration adds the validated church landscape if x999y999 is absent, preserving operator-authored maps there. The map is fully enclosed, so walking cannot reach it or leak through its edges into a nonexistent neighbour. The bell's timer and sound behavior are unchanged.
+- **Why:** The hard-wired bell map should exist on a fresh server.
+- **In the code:** `packages/data/content/church-map.json`, `packages/server/src/persistence/seed-map.ts` (`churchMapSql`), `packages/server/src/systems/spells/hazards.ts` (`CHURCH_MAP`, `serverTimer`)
+- **Pinned by:** `the seeded church is the validated Church of the Bells at x999y999 with no exits` (packages/server/tests/church.test.ts); `the church bell rings at the 20th run to x999y999, Churchy:5:200` (packages/server/tests/spells.test.ts)

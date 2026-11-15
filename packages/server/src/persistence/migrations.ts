@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Db } from "./database.ts";
-import { jailMapSql, seedMapSql } from "./seed-map.ts";
+import { churchMapSql, jailMapSql, seedMapSql } from "./seed-map.ts";
 
 /** `YYYYMMDD_NN_<name>.sql` */
 export const MIGRATION_FILE_PATTERN = /^\d{8}_\d{2}_[\w-]+\.sql$/;
@@ -40,6 +40,9 @@ export function loadMigrations(dir: string = MIGRATIONS_DIR): Migration[] {
       const seed = dir === MIGRATIONS_DIR && name === "20261104_02_characters_and_world.sql";
       if (dir === MIGRATIONS_DIR && name === "20261115_27_jail_map.sql") {
         return { name, sql: `${sql}\n${jailMapSql()}\n` };
+      }
+      if (dir === MIGRATIONS_DIR && name === "20261115_28_church_map.sql") {
+        return { name, sql: `${sql}\n${churchMapSql()}\n` };
       }
       return { name, sql: seed ? `${sql}\n${seedMapSql()}\n` : sql };
     });
