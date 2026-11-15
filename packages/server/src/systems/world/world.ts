@@ -1077,9 +1077,12 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   }
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;
-  // Drawing an O-O-O map (no fighting, indoors, no PvP) writes the respawn point to the entry tile.
+  // Drawing an O-O-O map (no fighting, indoors, no PvP) saves the respawn point, except in jail.
   const f = p.map.flags;
-  if (`${f.canFight}-${f.isIndoors}-${f.canPvp}`.toUpperCase().includes("O-O-O")) {
+  if (
+    !isJailMap(p.map.name) &&
+    `${f.canFight}-${f.isIndoors}-${f.canPvp}`.toUpperCase().includes("O-O-O")
+  ) {
     p.char.respawn = { mapId: p.map.id, x: p.x, y: p.y };
   }
   p.pending = null;

@@ -256,7 +256,7 @@ describe("the jail", () => {
     world.jailFrames = 30;
     say(imm, "/jail Bob");
     run(5);
-    // Out of the jail by a warp (a Portal or the death respawn does the same).
+    // An administrator can explicitly release a prisoner with a warp.
     say(imm, "/warp Bob x1001y992 3 3");
     expect([bob.map.name, bob.jailIn]).toEqual(["x1001y992", 25]);
     run(25);

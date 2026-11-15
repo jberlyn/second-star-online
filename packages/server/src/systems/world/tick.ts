@@ -30,6 +30,7 @@ import {
   deathText,
   exitTarget,
   isJailMap,
+  JAIL,
   lingoEq,
   neighbourMapName,
   REGROWTH_STOP_FRAMES,
@@ -679,6 +680,13 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
   out.push(...scoreKill(world, p));
   finishDeath(p);
   p.vitalsDirty = true;
+  // Death cannot bypass confinement. Revive at the jail arrival without restarting the sentence.
+  if (isJailMap(p.map.name)) {
+    const sentence = p.jailIn;
+    out.push(...warp(world, p, p.map, JAIL.x, JAIL.y));
+    p.jailIn = sentence;
+    return out;
+  }
   const stored = p.char.respawn;
   const storedMap = stored ? (deps.loadMapById?.(stored.mapId) ?? null) : null;
   if (stored && storedMap) {
@@ -695,6 +703,9 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
  * `random(0)` draws once, matches no line, and the empty warp falls back to the start point.
  */
 function portal(world: World, deps: TickDeps, p: Player): Outgoing[] {
+  if (isJailMap(p.map.name)) {
+    return [];
+  }
   const targets = deps.portalTargets ?? [];
   const t = targets[deps.rng.random(targets.length) - 1];
   const map = t ? deps.loadMap(t.map) : null;
@@ -732,6 +743,9 @@ export function exitUnder(p: Player): "Exit" | "Exit2" | null {
  * unchecked: no exit, or no map there, takes the missing-map fallback to the start point.
  */
 function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit2"): Outgoing[] {
+  if (isJailMap(p.map.name)) {
+    return [];
+  }
   const e = which === "Exit" ? p.map.exit1 : p.map.exit2;
   // A house's exit names its interior (`H1<mx>`).
   const map = e ? deps.loadMap(exitTarget(e)) : null;
@@ -749,6 +763,9 @@ function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit
  */
 export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Outgoing[] {
   const { player: p, outcome: o } = c;
+  if (isJailMap(p.map.name)) {
+    return [];
+  }
   const from = p.map.name;
   const nextName = neighbourMapName(from, o.dmx, o.dmy);
   const next = nextName ? deps.loadMap(nextName) : null;

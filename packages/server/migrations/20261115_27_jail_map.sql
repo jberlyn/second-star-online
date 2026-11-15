@@ -1,0 +1,2 @@
+-- The enclosed jail at x0y0 is supplied from validated content/jail-map.json by the migration
+-- loader. Insert only when absent so existing operator-authored jail maps are preserved.

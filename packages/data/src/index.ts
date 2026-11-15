@@ -12,6 +12,7 @@ export type { HelpData, HelpTopic } from "../schema/help.ts";
 export type { HouseData, HouseType } from "../schema/houses.ts";
 export type { EquipSlot, ItemRulesData } from "../schema/item-rules.ts";
 export type { Item, ItemsData } from "../schema/items.ts";
+export type { JailMapData } from "../schema/jail-map.ts";
 export type {
   MeleeAffinity,
   Monster,
@@ -49,6 +50,7 @@ export {
   houseData,
   itemRulesData,
   itemsData,
+  jailMapData,
   monstersData,
   questData,
   seedMapData,

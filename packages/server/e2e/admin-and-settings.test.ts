@@ -1,6 +1,6 @@
 /**
  * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; Mo reads her `-` line but his
- * own stays typed. Mo warps Bob. Alice builds the jail map x0y0 in the World Editor and jails Bob
+ * own stays typed. Mo warps Bob. Alice uses the seeded jail map x0y0 to jail Bob
  * for the `jailFrames` she sets in Settings: his shout fails, and when the sentence ends he is on
  * the start point. Her `/warpscript` pulls Bob over when he broadcasts the keyword. `/warpmeto`,
  * `/Location`, `/IPlookup`, a counted `/drop`, a forged editor save that lands in `/CheatFile`, and
@@ -9,13 +9,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import {
-  ADMIN_TEXT,
-  type CreateMsg,
-  type EditorMap,
-  type ServerMsg,
-  TEXT,
-} from "@secondstaronline/shared";
+import { ADMIN_TEXT, type CreateMsg, type ServerMsg, TEXT } from "@secondstaronline/shared";
 
 import { recentAudit } from "../src/persistence/admin.ts";
 import type { Rng } from "../src/rng.ts";
@@ -38,9 +32,7 @@ const make = (name: string): CreateMsg => ({
 /** No spawns, moves, attacks or pushes. */
 const rng: Rng = { random: (n) => (n >= 1 ? n : 0) };
 
-type Editor = Extract<ServerMsg, { t: "editor"; editing: true }>;
 type Snapshot = Extract<ServerMsg, { t: "snapshot" }>;
-const isEditor = (m: ServerMsg): m is Editor => m.t === "editor" && m.editing;
 const isSnapshot = (m: ServerMsg): m is Snapshot => m.t === "snapshot";
 const lines = (bot: Bot) => bot.inbox.flatMap((m) => (m.t === "chat" ? [m.text] : []));
 
@@ -135,25 +127,7 @@ describe("admin commands, roles, bans and settings", () => {
     expect(server.game.settings.jailFrames).toBe(40);
   });
 
-  test("/jail needs the jail map; with x0y0 built Bob serves his sentence and is released", async () => {
-    alice.clear();
-    await say(alice, "/jail Bob");
-    expect(lines(alice)).toEqual(["*** Jailing Bob...", ADMIN_TEXT.noJail]);
-
-    alice.send({ t: "editOpen" });
-    await alice.waitFor(isEditor);
-    alice.clear();
-    alice.send({ t: "editLoad", mx: 0, my: 0 });
-    const ed = await alice.waitFor(isEditor);
-    const jail: EditorMap = structuredClone(ed.map);
-    jail.layers[0] = jail.layers[0].map((r) => r.replaceAll("H1", "G1"));
-    jail.header = "Jail";
-    alice.send({ t: "editSave", map: jail });
-    await alice.waitFor((m) => m.t === "alert" && m.text === TEXT.mapSaved);
-    alice.send({ t: "editClose" });
-    await alice.waitFor(isSnapshot);
-    alice.send({ t: "mapReady" });
-
+  test("the seeded jail confines Bob until his sentence ends", async () => {
     bob.clear();
     alice.clear();
     await say(alice, "/jail bob");
@@ -295,7 +269,6 @@ describe("admin commands, roles, bans and settings", () => {
       "/unban",
       "/banip",
       "/unbanip",
-      "editSave",
     ]) {
       expect(cmds).toContain(c);
     }

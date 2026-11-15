@@ -1825,9 +1825,9 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
 - **Pinned by:** `kept bug: walking off an edge with no neighbour lands on the start point` (packages/server/tests/world.test.ts); `kept bug: walking off an edge with no map beyond lands on the start point` (packages/server/e2e/login-and-walk.test.ts)
 
-### The jail sentence ends early if you leave the jail map
-- **What you notice:** the jail sentence is 8000 frames (6 minutes 40 seconds, though labelled as a minute) and restarts on every entry to the jail map. The timer counts on any map but only releases you on the jail map, so dying or taking a Portal ends the sentence early, and a prisoner who is dead when it runs out is still released.
-- **In 1.6 and SSO:** the release warps to the start point, dead or alive, and the jail blocks only broadcasts. In SSO the server keeps the timer (the `jailFrames` setting, default 8000) with the same rules, and release goes to the operator's configured start point. It isn't counted while you are in an editor.
+### An administrator warp out of jail leaves its timer counting
+- **What you notice:** The jail sentence is 8000 frames (6 minutes 40 seconds) and restarts on each entry to the jail map. An administrator can warp a prisoner out early; the remaining timer counts down elsewhere without a second release. A prisoner dead when the timer expires is still released.
+- **In 1.6 and SSO:** The timer counts on any map but releases only on x0y0. SSO keeps this timer behavior and permits administrator warps, but blocks player escapes through Portal, exits, edges and death respawn; see [enforced confinement](divergences.md#seeded-jail-and-enforced-confinement). Release uses the configured start point. Editing pauses the timer.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`jailTick`)
 - **Pinned by:** `kept bug: the sentence is jailFrames from every entry, counted anywhere, and releases only on x0y0 to the start point`; `kept bug: leaving the jail any other way ends it: the sentence runs out off x0y0 and releases nobody; going back in restarts it`; `a prisoner dead when the sentence ends is still released: the dead flag never stops the self-warp` (packages/server/tests/admin.test.ts)
 

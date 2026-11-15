@@ -215,7 +215,7 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/iplookup <name>` | `moderator` | Online player (word 2) | Prints the target's IP address (refuses if a moderator targets an immortal). |
 | `/kick <name>` | `moderator` | Online player (word 2) | Sends kick notice and disconnects the target (refuses if a moderator targets an immortal). |
 | `/warp <name> <map> <x> <y>` | `moderator` | Online player, `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Warps target to `<map>` at `(x, y)` (single-space split, cut at `*`; missing map falls back to `startPoint`). |
-| `/jail <name>` | `moderator` | Online player (word 2) | Warps target to jail (`x0y0` at `4, 4`); requires map `x0y0` to exist. |
+| `/jail <name>` | `moderator` | Online player (word 2) | Warps target to the seeded jail (`x0y0` at `4, 4`). Player escapes are blocked until timed release; administrators can warp prisoners out. |
 | `/warptome <name>` | `moderator` | Online player (word 2) | Warps target to your current map and tile (refuses if a moderator targets an immortal). |
 | `/warpmeto <name>` | `moderator` | Online player (word 2) | Warps you to the target's current map and tile. |
 | `/save` | `immortal` | None | Saves all online characters and dirty maps immediately. |

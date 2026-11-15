@@ -171,13 +171,14 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** The 20-item ground limit is lifted and saving a map should not destroy players' items.
 - **In the code:** `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
 
-### Jail needs a jail map
-- **Kind:** World content
-- **What you notice:** An operator must save a map at X 0, Y 0 before `/jail` can work; otherwise the command says “There is no jail map: save a map at X 0, Y 0 in the World Editor first.”
-- **1.6:** `/jail` warped a player to tile 4,4 on the archive's walled x0y0 Jail map. If that map was missing, the start-point fallback was used and no sentence started, since the sentence required x0y0.
-- **SSO:** Archived maps are not shipped, so the operator builds the jail map in the World Editor. The missing-map refusal follows the command echo.
-- **Why:** On a fresh server the original rule would silently send prisoners to the start point.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+### Seeded jail and enforced confinement
+- **Kind:** World content and server authority
+- **What you notice:** `/jail` works on a fresh server. The stone jail at x0y0 has barred cells, an enclosed perimeter, no exits, and no landing pads. Prisoners arrive at tile 4,4 and remain until their sentence ends or an administrator warps them out.
+- **1.6:** Used the archived Jail map. Portal and death respawn could bypass the sentence.
+- **SSO:** A migration adds a validated jail landscape if x0y0 is absent, preserving operator-authored jails. Portal, map exits and edge crossings cannot leave x0y0. Death revives prisoners at 4,4 without restarting their sentence. The jail does not overwrite a character's ordinary respawn point. Administrator warps and timed release remain available. A deleted jail still produces the missing-map refusal.
+- **Why:** A fresh server needs a working jail, and confinement must not depend on a prisoner's spells or inventory.
+- **In the code:** `packages/data/content/jail-map.json`, `packages/server/src/persistence/seed-map.ts` (`jailMapSql`), `packages/server/src/systems/world/tick.ts` (`portal`, `takeExit`, `crossMapEdge`, `respawn`), `packages/server/src/systems/world/world.ts` (`enterRoom`)
+- **Pinned by:** `the seeded jail encloses every walkable area and has no exits or landing pads`; `jail blocks Portal and exits while keeping the sentence and normal respawn point`; `death revives a prisoner in jail without restarting the sentence; expiry still releases`; `every jail edge refuses a map crossing, even for an arriving airship rider` (packages/server/tests/jail.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
 
 ### Roster chat commands for operators
 - **Kind:** World content

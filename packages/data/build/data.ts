@@ -13,6 +13,7 @@ import { helpDataSchema } from "../schema/help.ts";
 import { houseDataSchema } from "../schema/houses.ts";
 import { itemRulesDataSchema } from "../schema/item-rules.ts";
 import { itemsDataSchema } from "../schema/items.ts";
+import { jailMapDataSchema } from "../schema/jail-map.ts";
 import { monstersDataSchema } from "../schema/monsters.ts";
 import { npcFilesDataSchema } from "../schema/npcfiles.ts";
 import { questDataSchema } from "../schema/quests.ts";
@@ -53,6 +54,12 @@ interface Module {
 
 /** The modules written to src/generated/, in index order. */
 export const MODULES: readonly Module[] = [
+  {
+    module: "jail-map",
+    schema: jailMapDataSchema,
+    dataName: "jailMapData",
+    typeName: "JailMapData",
+  },
   {
     module: "seed-map",
     schema: seedMapDataSchema,
@@ -223,7 +230,7 @@ export function renderDataModules(contentDir = CONTENT): Map<string, string> {
     if (!parsed.success) {
       throw new Error(`${from} does not match its schema:\n${parsed.error.message}`);
     }
-    if (m.module === "seed-map") {
+    if (m.module === "seed-map" || m.module === "jail-map") {
       const seed = seedMapDataSchema.parse(data);
       const tiles = tilesDataSchema.parse(
         JSON.parse(readFileSync(join(contentDir, "tiles.json"), "utf8")),
