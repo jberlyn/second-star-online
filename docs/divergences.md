@@ -200,7 +200,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** World content
 - **What you notice:** An immortal can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
 - **1.6:** `/drop` put one name on the ground. Gold and crystal piles carried a count; another pile gave one item. A bare dropped crystal name parsed into a useless quantity and item name.
-- **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count because each addition gets an ID. A bare crystal name is a pile of one; the World Editor shows and saves the count.
+- **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several still puts the whole count on one line under one ID (bug ledger). A bare crystal name is a pile of one; the World Editor shows and saves the count.
 - **Why:** Operators can stock the world without dropping items one at a time, and bare crystal piles work.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`parseDrop`, `handleDrop`)
 
@@ -736,7 +736,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Architecture
 - **What you notice:** A built crate or cabinet has its own container contents.
 - **1.6:** The client appended a random number to a built Crate, Cabinet or Wind Cabinet, so two could share the same vault file.
-- **SSO:** The server mints a unique increasing ID; World Editor Cauldrons use the same minter.
+- **SSO:** The server mints a unique increasing ID; World Editor Cauldrons use the same minter. Only built and placed containers are minted: a bare container added to a bag from a purchase, loot or gift gets a random ID instead, which can collide, and a bought stack shares one (see Cauldrons get unique ids and the bug ledger).
 - **Why:** Each container needs its own contents and clients must not choose server file names.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`)
 
@@ -753,7 +753,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Architecture
 - **What you notice:** A World Editor placed or crafted Cauldron has its own container ID and retains it on later saves.
 - **1.6:** A World Editor save gave a bare Cauldron a random ID and kept an existing one; random IDs could collide. A carried Cauldron kept no ID and opened the shared Cauldron file. No Cauldron was placed in archived maps.
-- **SSO:** A placed or crafted Cauldron receives a unique minted ID. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed and crafted ones are guaranteed unique.
+- **SSO:** A placed or crafted Cauldron receives a unique minted ID. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed and crafted ones are guaranteed unique. A purchase of several puts the whole count on one line under one random ID, so those Cauldrons share storage, and the random ID can collide with another container or an orphaned one (bug ledger).
 - **Why:** Container ownership needs a separate container for each placed or crafted Cauldron.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`)
 
@@ -795,7 +795,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** You can open and use a personal, house or guild vault only when its rules allow you; a refused house or guild vault says “You can't open a vault that's not yours!”
 - **1.6:** Chest and vault requests had no ownership or position check. A house door was its only protection.
-- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members. A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. For a forbidden house or guild vault the original standing-in-front line appears before the SSO refusal, modeled on the mailbox's ownership line. A forbidden deposit is refused before the drop line and takes nothing. The original remote withdrawal after the initial successful opening remains.
+- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, so a later guild created under the same name inherits the old vault's contents (bug ledger). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. For a forbidden house or guild vault the original standing-in-front line appears before the SSO refusal, modeled on the mailbox's ownership line. A forbidden deposit is refused before the drop line and takes nothing. The original remote withdrawal after the initial successful opening remains.
 - **Why:** Anyone could otherwise read and loot any vault.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `openContainer`, `depositContainer`, `withdrawContainer`), `packages/server/src/systems/economy/vault.ts` (`openVault`)
 
@@ -927,7 +927,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** House furniture permissions use the full owner name, or the exact name of your guild hall.
 - **1.6:** The header test accepted a name followed by apostrophe-s anywhere in the header, so Bob could pass the test in “Jimbob's House” and place furniture or take Jimbob's Stove, Anvil and Alchemy Lab.
-- **SSO:** A personal header must begin with “<name>'s ”; a guild hall header must equal “Hall of the <guild>”.
+- **SSO:** A personal header must begin with “<name>'s ”; a guild hall header must equal “Hall of the <guild>”, so a later guild of that name still matches the old hall (bug ledger).
 - **Why:** One player's name inside another's allowed theft of furniture.
 - **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`)
 
@@ -1281,10 +1281,10 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** Guild actions use current membership and leadership, and accepting an invitation requires the inviter to remain online and in charge.
 - **1.6:** Clients could overwrite or delete guild files, join without an invitation and use path-like guild names to read other files, including character files containing passwords. An ex-leader's open screen still allowed exile, abdication and disbanding, and could crown a stale selection. A peer accept sent after its leader left was lost.
-- **SSO:** Guild and member rows and each character's Guild field are written together. Each action checks current membership and leadership, names resolve to rows rather than paths, and Accept requires a pending invitation from an online current leader. A disbanded row remains so offline members can be told on login, and its name can be created again.
+- **SSO:** Guild and member rows and each character's Guild field are written together. Each action checks current membership and leadership, names resolve to rows rather than paths, and Accept requires a pending invitation from an online current leader. A disbanded row remains so offline members can be told on login, and its name can be created again; the new guild reuses the old row's id. Because the vault, Guild Key doors and hall header name the guild, a guild created under that name inherits the old vault's contents, key doors and hall permissions (bug ledger).
 - **Why:** Unchecked file and action requests allowed guild hijacking, forgery, disclosure and disbanding.
-- **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildAction`, `guildAnswer`)
-- **Pinned by:** `divergence: a stale target (exiled since) is refused`, `divergence: ACCEPT after the inviter left joins nothing` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts)
+- **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildAction`, `guildAnswer`, `guildCreate`)
+- **Pinned by:** `divergence: a stale target (exiled since) is refused`, `divergence: ACCEPT after the inviter left joins nothing` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts); `kept bug: a re-created guild's name opens the old vault, Guild Key door and hall` (packages/server/tests/guilds.test.ts)
 
 ### Faction membership and power are server state
 - **Kind:** Exploit closed

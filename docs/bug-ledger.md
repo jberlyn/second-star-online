@@ -37,19 +37,19 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [client](#client) | 18 |
 | [combat](#combat) | 28 |
 | [crafting](#crafting) | 28 |
-| [economy](#economy) | 32 |
+| [economy](#economy) | 33 |
 | [housing](#housing) | 20 |
 | [inventory](#inventory) | 33 |
 | [mail](#mail) | 16 |
 | [monsters](#monsters) | 21 |
 | [movement](#movement) | 7 |
 | [progression](#progression) | 11 |
-| [social](#social) | 17 |
+| [social](#social) | 18 |
 | [spells](#spells) | 25 |
 | [vehicles](#vehicles) | 1 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **336** |
+| **Total** | **338** |
 
 ## admin
 
@@ -714,10 +714,16 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 - **Pinned by:** `a save refills 1 in 4000; random(6) picks the chest; a line overwrites it` (packages/shared/tests/housing/doors.test.ts); `after 400 frames a 1-in-350 save rolls 1 in 4000; the refill overwrites the chest` (packages/server/tests/doors.test.ts); `Drop routes: the five chests by name take items; a Wind Chest or a bare Crate is crowded` (packages/server/tests/doors.test.ts)
 
 ### Selling a crate or cabinet leaves its contents locked away
-- **What you notice:** sell a Crate, Cabinet or Wind Cabinet to a shopkeeper and whatever you had stored in it is gone for good: nothing can open or reach it again.
-- **In 1.6 and SSO:** the sale looks up the bag line for the container by its base name and removes that line, but the stored contents are never cleared or made reachable again. SSO does the same: the bag line goes and the stored rows stay behind, unreachable.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`, `sellName`)
-- **Pinned by:** `kept bug: selling a container orphans its contents: the bag line goes, the container_items rows stay` (packages/server/tests/economy-db.test.ts)
+- **What you notice:** sell a Crate, Cabinet or Wind Cabinet to a shopkeeper and whatever you had stored in it is gone: the sale takes the bag line and nothing in the game lists or opens that container again. The stored items sit there, reachable only if another container later draws the same random name.
+- **In 1.6 and SSO:** the sale looks up the bag line for the container by its base name and removes that line, but the stored contents are never cleared. 1.6 left its vault file; SSO leaves the stored rows. Normally nothing points at them again, but a bare container's random `#` can collide with the sold name, and opening that new container reaches the old contents.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`, `sellName`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`)
+- **Pinned by:** `kept bug: selling a container orphans its contents: the bag line goes, the container_items rows stay` (packages/server/tests/economy-db.test.ts); `kept bug: two players holding the same container name share its storage` (packages/server/tests/craft.test.ts)
+
+### A bought stack of containers shares one ID
+- **What you notice:** buy two or more Crates, Cabinets, Wind Cabinets or Cauldrons from a shopkeeper who sells them and they arrive as one bag line, such as `Crate#4242-2`. Give or trade one from that line away and both players open the same storage, because a container is found by its whole name, ID included.
+- **In 1.6 and SSO:** the purchase adds the whole count in one `InvAdd` call, so the bare container gets a single random ID for the line rather than one per item. 1.6's server did the same for a Crate, Cabinet or Wind Cabinet; a carried Cauldron had no ID there and opened the shared Cauldron file, while SSO gives the line a random ID too. No seeded NPC file sells a container, loot and gifts add one at a time, and `/drop` and the World Editor refuse a container count, so in the seeded game only an NPC file an operator adds or edits reaches this through a shop.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`), `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `withdrawContainer`)
+- **Pinned by:** `kept bug: a bought stack shares one id and one bag line` (packages/server/tests/economy.test.ts); `kept bug: two players holding the same container name share its storage` (packages/server/tests/craft.test.ts)
 
 ### A shopkeeper with no gold line gives goods away free
 - **What you notice:** a few shopkeepers charge nothing: the Fire God, Water God and Wind God books (98 in stock each) and Merius' Damaged Armor. Even so, you must hold enough gold to cover the price first, so a free 100-gold book needs 100 gold in your hand.
@@ -1566,6 +1572,12 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 - **In 1.6 and SSO:** 1.6 tests the first character for a letter and otherwise deletes it. SSO reads the guild header through the same transform: on your own guild's lines at login, on every change and for the guild screen. A guild you only view is read raw. Honest data never changes.
 - **In the code:** `packages/shared/src/rules/social/guilds.ts` (`loadGuildStrip`)
 - **Pinned by:** `kept bug: a line not starting with a letter loses its first character; honest data never does` (packages/shared/tests/social/guilds.test.ts)
+
+### Re-creating a disbanded guild's name inherits its vault, doors and hall
+- **What you notice:** after a guild disbands, found a new guild with the same name and it gets what the old one left behind: the old Guild Vault's contents, Guild Key doors and permission to place furniture in its hall. You need not have belonged to the old guild, and nobody is warned.
+- **In 1.6 and SSO:** vault contents, guild doors and the hall header are all found by guild name. Disbanding leaves the vault and the hall in place, so a new guild of the same name matches them. 1.6 kept vault files in the world and wrote `!DISBAND!` over the guild file; SSO keeps the disbanded row and a new guild of that name reuses it. In both, the old guild's name can be created again.
+- **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildCreate`, `guildAction`), `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`), `packages/shared/src/rules/housing/doors.ts` (`turnKey`), `packages/shared/src/rules/housing/houses.ts` (`headDrop`)
+- **Pinned by:** `kept bug: a re-created guild's name opens the old vault, Guild Key door and hall` (packages/server/tests/guilds.test.ts); `a guild of the same name created again: an old member is kicked at login` (packages/server/tests/guilds.test.ts)
 
 ### Abdicating announces the guild's name, not the new leader's
 - **What you notice:** When a leader abdicates, the line reads "*** Abdicating to <guild>", naming the guild. The leader screen stays up unrefreshed, and the old leader becomes the last member.

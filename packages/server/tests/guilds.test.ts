@@ -421,4 +421,19 @@ describe("halls, keys, vaults and head drops follow the guild", () => {
   test("furniture may go down in your guild's hall", () => {
     expect(headDrop(1, "Hall of the Knights", "Bob", "Knights")).toBe(0);
   });
+
+  test("kept bug: a re-created guild's name opens the old vault, Guild Key door and hall", () => {
+    const s = scene();
+    const { a } = s.full();
+    s.world.containers.set("The Knights's Guild Vault", ["Gold Crown"]);
+    s.open(a);
+    guildAction(s.world, a, "disband", "Knights", undefined);
+    const d = s.join("Dave", 2, 2);
+    s.open(d);
+    guildCreate(s.world, d, "knights", "N", guildDeps);
+    expect(mayUseContainer(d, "The Knights's Guild Vault")).toBe(true);
+    expect(s.world.containers.get("The Knights's Guild Vault")).toEqual(["Gold Crown"]);
+    expect(turnKey("Guild Key", "The Knights's Door", d.name, d.guild).kind).toBe("turn");
+    expect(headDrop(1, "Hall of the Knights", d.name, d.guild)).toBe(0);
+  });
 });

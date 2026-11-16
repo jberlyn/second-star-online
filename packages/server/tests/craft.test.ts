@@ -332,6 +332,21 @@ describe("the Cauldron", () => {
     expect(c.world.containers.get("Crate#6")).toEqual([]);
   });
 
+  test("kept bug: two players holding the same container name share its storage", () => {
+    const c = cauldron();
+    c.world.containers.set("Crate#4242", ["Gold Crown", "Pie"]);
+    c.a.char.bag[0] = { item: "Crate#4242", qty: 2 };
+    storageIntent(c.world, c.a, 1);
+    withdrawContainer(c.world, c.a, 1, c.ictx.rng);
+    expect(c.a.char.bag[1]).toEqual({ item: "Gold Crown", qty: 1 });
+    // The second crate from the same bought line, now in another player's bag.
+    c.b.char.bag[0] = { item: "Crate#4242", qty: 1 };
+    storageIntent(c.world, c.b, 1);
+    withdrawContainer(c.world, c.b, 1, c.ictx.rng);
+    expect(c.b.char.bag[1]).toEqual({ item: "Pie", qty: 1 });
+    expect(c.world.containers.get("Crate#4242")).toEqual([]);
+  });
+
   test("Ctrl opens it; the window is not refreshed; a withdraw takes the line by name", () => {
     const c = cauldron();
     c.world.containers.set("Cauldron#7", ["Pie", "Chunk of Star"]);

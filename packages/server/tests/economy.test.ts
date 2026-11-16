@@ -59,6 +59,23 @@ describe("NPC shops: buying", () => {
     expect(stock(s, 4)).toBe(11539);
   });
 
+  test("kept bug: a bought stack shares one id and one bag line", () => {
+    const s: ShopLedger = {
+      npc: "Test",
+      gold: 1000,
+      lines: [{ line: 1, kind: "SEL", item: "Crate", price: 15, stock: 10 }],
+      dirty: false,
+    };
+    const r = npcBuy(s, 1, 3, { gold: 100, bag: emptyBag() }, rngByN({ 999999: [4242] }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) {
+      return;
+    }
+    expect(r.buyer.bag.filter((l) => l !== null)).toEqual([{ item: "Crate#4242", qty: 3 }]);
+    expect(r.buyer.gold).toBe(55);
+    expect(stock(r.ledger, 1)).toBe(7);
+  });
+
   test("short of price × count: 'You don't have enough gold to buy this!'", () => {
     expect(npcBuy(shop("Akadius"), 4, 2, { gold: 139, bag: emptyBag() }, rng)).toEqual({
       ok: false,
