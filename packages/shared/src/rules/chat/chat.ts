@@ -16,7 +16,7 @@ export type ChatCommand =
   | { kind: "emote"; text: string }
   /** `'text`: the text after the original's prefix stripping. */
   | { kind: "broadcast"; text: string }
-  /** `/help [word]`: only word 2 is looked up. */
+  /** `/help [topic]`: the whole rest of the line is looked up. */
   | { kind: "help"; topic: string }
   /** The whole line is `who`. */
   | { kind: "who" }
@@ -27,8 +27,8 @@ export type ChatCommand =
   /** A command of the original grammar that SSO has not built yet: dropped. */
   | { kind: "unbuilt"; command: string }
   /**
-   * `Password=<new>`: `password` is the second part of the whole line split on `=`, with 1.6's four
-   * stripping passes applied (`passwordFrom`). The server hashes it into the account.
+   * `Password=<new>`: `password` is the second part of the whole line split on `=`, with every
+   * forbidden character removed (`passwordFrom`). The server hashes it into the account.
    */
   | { kind: "password"; password: string }
   /**
@@ -144,20 +144,13 @@ function deleteWord1(s: string): string {
 
 /**
  * `Password=<new>` uses the second part of the whole line split on `=` (empty when no `=`
- * appears). It then removes spaces, `/`, `:` and `\` in four passes, each scanning positions
- * 1 through 100. After a deletion the index advances, skipping the character that slid into
- * place: of two adjacent forbidden characters one survives (kept bug: `Password=a  b` is `a b`).
+ * appears). It removes every space, `/`, `:` and `\`, including adjacent ones and a leading one.
  */
 export function passwordFrom(text: string): string {
-  const chars = (text.split("=")[1] ?? "").split("");
-  for (const c of [" ", "/", ":", "\\"]) {
-    for (let x = 1; x <= 100; x++) {
-      if (chars[x - 1] === c) {
-        chars.splice(x - 1, 1);
-      }
-    }
-  }
-  return chars.join("");
+  return (text.split("=")[1] ?? "")
+    .split("")
+    .filter((c) => ![" ", "/", ":", "\\"].includes(c))
+    .join("");
 }
 
 /**
@@ -187,8 +180,8 @@ export function parseChatLine(raw: string): ChatCommand | null {
   const w1 = lingoWord(text, 1);
 
   if (lingoEq(w1, "/help")) {
-    const w2 = lingoWord(text, 2);
-    return { kind: "help", topic: w2 === "" ? "Help" : w2 };
+    const topic = deleteWord1(text).trim();
+    return { kind: "help", topic: topic === "" ? "Help" : topic };
   }
   if (text.startsWith("'")) {
     // drop the ', then up to two spaces, then one more ' if present.
@@ -283,9 +276,10 @@ export function parseChatLine(raw: string): ChatCommand | null {
   if (UNBUILT_WORD1.some((c) => lingoEq(w1, c))) {
     return { kind: "unbuilt", command: w1 };
   }
-  // Local chat re-reads the field and deletes one leading space, then up to 98 more. A line of only
-  // spaces still sends `Bob says ""`.
-  return { kind: "say", text: dropLeadingSpaces(dropLeadingSpaces(raw, 1), 98) };
+  // Local chat re-reads the field and deletes one leading space, then up to 98 more. A line with
+  // nothing but spaces sends nothing, rather than `Bob says ""`.
+  const say = dropLeadingSpaces(dropLeadingSpaces(raw, 1), 98);
+  return say.trim() === "" ? null : { kind: "say", text: say };
 }
 
 /** `"<name> says "<text>""`. */
@@ -315,15 +309,14 @@ export const CHAT_TEXT = {
 } as const;
 
 /**
- * The broadcast cooldown refusal. Whole seconds by integer division, so with fewer than 20 frames
- * left it reads 0 and the broadcast goes through (kept quirk).
+ * The broadcast cooldown refusal. Seconds round up, so any positive remainder still refuses and
+ * the full 1,000-frame cooldown applies.
  */
 export function broadcastRefusal(framesLeft: number): string | null {
   if (framesLeft <= 0) {
     return null;
   }
-  const secs = Math.floor(framesLeft / 20);
-  return secs > 0 ? `You cannot broadcast yet - ${secs} seconds remaining.` : null;
+  return `You cannot broadcast yet - ${Math.ceil(framesLeft / 20)} seconds remaining.`;
 }
 
 /** SSO's local chat cooldown refusal. Seconds round up, so it never reads 0 while it refuses. */

@@ -98,19 +98,18 @@ export function stripReturns(text: string): string {
 }
 
 /**
- * Whether an away text answers IMs: the away text is not "OFF", compared ignoring case, so an away
- * text of `off` is off though the ON line printed; an empty text is on and answers with an empty IM
- * (kept bugs). null: Back was pressed, or never Away.
+ * Whether an away text answers IMs: the away text is neither empty nor "OFF" (compared ignoring
+ * case). null: Back was pressed, or never Away.
  */
 export function awayAnswers(away: string | null): boolean {
-  return away !== null && !lingoEq(away, "OFF");
+  return away !== null && away !== "" && !lingoEq(away, "OFF");
 }
 
 /**
  * The IM window an incoming IM shows in: the slot already holding this sender (ignoring case;
  * the lowest such); else the lowest free slot, opening it; else `random(10)`, opening it and
- * clearing the conversation it held. Slots are never freed: closing a window keeps its sender.
- * `slots` holds 10 names or null; `random` is 1-10.
+ * clearing the conversation it held. Closing a window frees its slot. `slots` holds 10 names or
+ * null; `random` is 1-10.
  */
 export function pickImSlot(
   slots: readonly (string | null)[],

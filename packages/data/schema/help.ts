@@ -6,7 +6,7 @@ export const helpTopicSchema = z.strictObject({
   file: z.string().min(1),
   /** File name without `.txt`: what `gethelp` must receive to find it. */
   topic: z.string().min(1),
-  /** One-word names only: `/help` sends word 2 alone (a kept bug). */
+  /** Whether `/help <topic>` can reach this file (all committed topics do). */
   reachable: z.boolean(),
   /** The file's lines, blank ones included. */
   lines: z.array(z.string()).min(1),

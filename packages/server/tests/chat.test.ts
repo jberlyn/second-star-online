@@ -71,7 +71,7 @@ describe("local say", () => {
     expect(texts(handleChat(world, a, "/me waves", deps), "a")[0]).toMatch(/cannot chat yet/);
   });
 
-  test("kept bug: in a house at y > 10 you cannot talk; /me still goes", () => {
+  test("in a house at y > 10 neither talk nor /me goes, and neither starts the cooldown", () => {
     const house = testMap("x5H1y2");
     const s = setup([house]);
     const a = player("a", house, 5, 11);
@@ -80,7 +80,16 @@ describe("local say", () => {
       "You need to enter this building to talk",
     ]);
     expect(a.chatIn).toBe(0);
-    expect(texts(handleChat(s.world, a, "/me waves", deps), "a")).toEqual(["a  waves"]);
+    expect(texts(handleChat(s.world, a, "/me waves", deps), "a")).toEqual([
+      "You need to enter this building to talk",
+    ]);
+    expect(a.chatIn).toBe(0);
+  });
+
+  test("a line of only spaces sends nothing and starts no cooldown", () => {
+    const { world, a } = twoMaps();
+    expect(handleChat(world, a, "   ", deps)).toEqual([]);
+    expect(a.chatIn).toBe(0);
   });
 
   test("a listener in a house at y > 10 hears a muffled voice", () => {
@@ -113,7 +122,7 @@ describe(`broadcast`, () => {
     expect(chats(out, "a")).toEqual([
       {
         t: "chat",
-        text: "You cannot broadcast yet - 49 seconds remaining.",
+        text: "You cannot broadcast yet - 50 seconds remaining.",
         color: 0,
         restore: "'two",
       },
@@ -121,7 +130,7 @@ describe(`broadcast`, () => {
     expect(texts(out, "b")).toEqual([]);
   });
 
-  test("kept bug: with fewer than 20 frames left the broadcast goes through", () => {
+  test("the full 1000-frame cooldown applies, including its last 19 frames", () => {
     const { world, a, run } = twoMaps();
     handleChat(world, a, "'one", deps);
     run(980);
@@ -129,8 +138,13 @@ describe(`broadcast`, () => {
     expect(texts(handleChat(world, a, "'early", deps), "a")[0]).toBe(
       "You cannot broadcast yet - 1 seconds remaining.",
     );
+    run(19);
+    expect(a.broadcastIn).toBe(1);
+    expect(texts(handleChat(world, a, "'early", deps), "a")[0]).toBe(
+      "You cannot broadcast yet - 1 seconds remaining.",
+    );
     run(1);
-    expect(texts(handleChat(world, a, "'early", deps), "b")).toEqual(['a broadcasts "early"']);
+    expect(texts(handleChat(world, a, "'now", deps), "b")).toEqual(['a broadcasts "now"']);
   });
 
   test("from jail no one hears, and the cooldown still starts", () => {
@@ -158,9 +172,12 @@ describe("/help", () => {
     expect(banking).toHaveLength(8);
   });
 
-  test("kept bug: only word 2 is sent, so two-word topics have no help", () => {
+  test("the whole topic is sent, so two-word topics have help", () => {
     const { world, a } = twoMaps();
-    expect(texts(handleChat(world, a, "/help basic commands", deps), "a")).toEqual([
+    const basic = texts(handleChat(world, a, "/help basic commands", deps), "a");
+    expect(basic[0]).toBe("BASIC COMMANDS");
+    expect(basic).toHaveLength(helpLines("basic commands")?.length ?? 0);
+    expect(texts(handleChat(world, a, "/help no such topic", deps), "a")).toEqual([
       "There is no help on that subject!",
     ]);
   });

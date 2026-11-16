@@ -75,12 +75,13 @@ describe("Password=", () => {
     expect(fresh.ok).toBe(true);
   });
 
-  test("kept bug: Password= keeps one of two forbidden characters in a row", async () => {
+  test("Password= removes adjacent and leading forbidden characters", async () => {
     const { game, make } = await gameWith();
     const alice = await make("Alice");
-    game.intent(alice.characterId, { t: "chat", text: "Password=a  b" });
+    game.intent(alice.characterId, { t: "chat", text: "Password= a  b" });
     await Bun.sleep(300);
-    expect((await game.login("Alice", "a b")).ok).toBe(true);
+    expect((await game.login("Alice", "a b")).ok).toBe(false);
+    expect((await game.login("Alice", "ab")).ok).toBe(true);
   });
 
   test("an empty or 65-character Password= is refused", async () => {

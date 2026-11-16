@@ -13,7 +13,6 @@ import {
   CHAT_COLOR,
   CHAT_SOCIAL_TEXT,
   chatRefusal,
-  IGNORE_WINDOW,
   lingoEq,
   parseMsg,
   type RestoreTarget,
@@ -46,9 +45,9 @@ function online(world: World, name: string): Player | null {
 }
 
 /**
- * Delivers one IM to `to` (`Chatmsg "MG@ …"`): dropped if `to` ignores the sender among its first
- * 40 entries; while `to` is away, logged and answered with the away text unless it came from `to`
- * itself or is itself an auto-reply; else shown in its window. Reaches the dead.
+ * Delivers one IM to `to` (`Chatmsg "MG@ …"`): dropped if `to` ignores the sender anywhere on its
+ * list; while `to` is away, logged and answered with the away text unless it came from `to` itself
+ * or is itself an auto-reply; else shown in its window. Reaches the dead.
  */
 export function deliverIm(
   world: World,
@@ -57,7 +56,7 @@ export function deliverIm(
   text: string,
   autoReply = false,
 ): Outgoing[] {
-  if (!hears(to, from.name, IGNORE_WINDOW.im)) {
+  if (!hears(to, from.name)) {
     return [];
   }
   if (awayAnswers(to.away)) {
@@ -146,9 +145,14 @@ export function imIntent(
 
 /**
  * The Away window: Away holds the field's text, Back turns it off; each prints its line in the main
- * chat. Held for the session.
+ * chat. An empty text or "OFF" (any case) turns it off. Held for the session.
  */
 export function setAway(p: Player, text: string | null, deps: ImDeps): Outgoing[] {
-  p.away = text === null ? null : text.slice(0, deps.maxChars);
-  return [tell(p, text === null ? CHAT_SOCIAL_TEXT.awayOff : CHAT_SOCIAL_TEXT.awayOn)];
+  const away = text === null ? null : text.slice(0, deps.maxChars);
+  if (away === null || !awayAnswers(away)) {
+    p.away = null;
+    return [tell(p, CHAT_SOCIAL_TEXT.awayOff)];
+  }
+  p.away = away;
+  return [tell(p, CHAT_SOCIAL_TEXT.awayOn)];
 }

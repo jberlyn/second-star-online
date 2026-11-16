@@ -99,16 +99,16 @@ describe("/msg", () => {
     expect(out.filter((o) => o.to === "Bob")).toEqual([]);
   });
 
-  test("kept bug: only the first 40 entries count for IMs", () => {
+  test("an entry past the first 40 still blocks IMs", () => {
     const { alice, bob, say } = scene();
-    bob.ignore = [...Array.from({ length: 40 }, (_, i) => `p${i}`), "Alice"];
-    expect(ims(say(alice, "/msg bob hi"), "Bob")).toHaveLength(1);
+    bob.ignore = [...Array.from({ length: 99 }, (_, i) => `p${i}`), "Alice"];
+    expect(ims(say(alice, "/msg bob hi"), "Bob")).toEqual([]);
   });
 });
 
 describe("the IM windows' sends", () => {
   test("IMsend: no echo anywhere", () => {
-    const { world, alice, bob } = scene();
+    const { world, alice } = scene();
     const out = imIntent(world, alice, "bob", "hi\r", "send", deps);
     expect(out).toEqual([{ to: "Bob", msg: { t: "im", from: "Alice", text: "hi", away: false } }]);
   });
@@ -188,15 +188,36 @@ describe("away", () => {
     ]);
   });
 
-  test("kept bug: an away text of OFF answers nothing; an empty one answers empty", () => {
+  test("OFF in any case or an empty text turns away off instead of answering", () => {
     const { alice, bob, say } = scene();
-    setAway(bob, "off", deps);
-    expect(ims(say(alice, "/msg bob a"), "Alice")).toEqual([]);
-    alice.chatIn = 0;
-    setAway(bob, "", deps);
-    expect(ims(say(alice, "/msg bob b"), "Alice")).toEqual([
-      { t: "im", from: "Bob", text: "", away: false },
+    expect(texts(setAway(bob, "off", deps), "Bob")).toEqual([
+      "*** Your away message has been turned OFF.",
     ]);
+    expect(bob.away).toBeNull();
+    expect(ims(say(alice, "/msg bob a"), "Bob")).toEqual([
+      { t: "im", from: "Alice", text: "a", away: false },
+    ]);
+    alice.chatIn = 0;
+    expect(texts(setAway(bob, "", deps), "Bob")).toEqual([
+      "*** Your away message has been turned OFF.",
+    ]);
+    expect(bob.away).toBeNull();
+    expect(ims(say(alice, "/msg bob b"), "Bob")).toEqual([
+      { t: "im", from: "Alice", text: "b", away: false },
+    ]);
+  });
+
+  test("the chat limit is applied before the off test", () => {
+    const { bob } = scene();
+    const tiny = { ...deps, maxChars: 3 };
+    expect(texts(setAway(bob, "office", tiny), "Bob")).toEqual([
+      "*** Your away message has been turned OFF.",
+    ]);
+    expect(bob.away).toBeNull();
+    expect(texts(setAway(bob, "onward", tiny), "Bob")).toEqual([
+      "*** Your away message has been turned ON.",
+    ]);
+    expect(bob.away).toBe("onw");
   });
 
   test("an ignored sender gets no auto-reply: the ignore check runs before the message is sorted", () => {
@@ -257,16 +278,22 @@ describe("chat rooms", () => {
     expect(bob.room?.group).toBe("@NewPlayer");
   });
 
-  test("kept bug: Guild Chat with no guild leaves your room first; your lines then go nowhere", () => {
+  test("Guild Chat with no guild says so but leaves your current room alone", () => {
     const { world, alice, bob } = scene();
     enterRoom(world, alice, "general");
     enterRoom(world, bob, "general");
     const out = enterRoom(world, bob, "guild");
     expect(texts(out, "Bob")).toEqual(["You don't belong to a guild!"]);
-    expect(of(out, "Alice", "roomUser")).toEqual([{ t: "roomUser", name: "Bob", on: false }]);
+    expect(of(out, "Alice", "roomUser")).toEqual([]);
     expect(of(out, "Bob", "room")).toEqual([]);
-    expect(bob.room).toBeNull();
-    expect(roomSay(world, bob, "anyone?", deps, () => [])).toEqual([]);
+    expect(bob.room?.group).toBe("@GeneralChat");
+    expect(
+      of(
+        roomSay(world, bob, "anyone?", deps, () => []),
+        "Alice",
+        "roomLine",
+      ),
+    ).toEqual([{ t: "roomLine", text: "Bob: anyone?" }]);
   });
 
   test("divergence: Guild Chat is your guild's room; losing the guild drops you silently", () => {
@@ -352,10 +379,10 @@ describe("ignore filters what the ignored player's client sent", () => {
     expect(texts(out, "Carol")).toEqual([]);
   });
 
-  test("kept bug: only the first 50 entries count for chat", () => {
+  test("an entry past the first 50 still blocks chat", () => {
     const { alice, bob, say } = scene();
-    bob.ignore = [...Array.from({ length: 50 }, (_, i) => `p${i}`), "Alice"];
-    expect(texts(say(alice, "hi"), "Bob")).toEqual(['Alice says "hi"']);
+    bob.ignore = [...Array.from({ length: 99 }, (_, i) => `p${i}`), "Alice"];
+    expect(texts(say(alice, "hi"), "Bob")).toEqual([]);
   });
 
   test("ignoring yourself does nothing", () => {
@@ -401,11 +428,11 @@ describe("/ignore, /unignore, /ignorelist", () => {
     const run = (line: string) => handleChat(world, alice, line, d);
     expect(texts(run("/ignore Bob"), "Alice")).toEqual(["Added Bob to your ignore list."]);
     expect(texts(run("/ignore Bob"), "Alice")).toEqual(["Added Bob to your ignore list."]);
-    expect(texts(run("/ignorelist"), "Alice")).toEqual(["*** Your Ignore List ", "Bob", "Bob", ""]);
+    expect(texts(run("/ignorelist"), "Alice")).toEqual(["*** Your Ignore List ", "Bob", ""]);
     expect(texts(run("/unignore bob"), "Alice")).toEqual(["Removed bob from your ignore list."]);
-    expect(alice.ignore).toEqual(["Bob"]);
-    expect(carol.ignore).toEqual(["Bob"]);
-    expect(saved).toEqual([["Bob"], ["Bob", "Bob"], ["Bob"]]);
+    expect(alice.ignore).toEqual([]);
+    expect(carol.ignore).toEqual([]);
+    expect(saved).toEqual([["Bob"], []]);
     expect(say).toBeDefined();
   });
 });

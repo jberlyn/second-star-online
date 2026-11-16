@@ -163,18 +163,30 @@ describe("chat, help, who, pushing and presence", () => {
       color: 0,
       restore: "'too soon",
     });
-    await tick(1000);
+    await tick(981);
+    await say(bob, "'still too soon");
+    expect(chats(bob).at(-1)).toEqual({
+      t: "chat",
+      text: "You cannot broadcast yet - 1 seconds remaining.",
+      color: 0,
+      restore: "'still too soon",
+    });
+    await tick(19);
     await say(bob, "'now");
     expect(chatTexts(cara).at(-1)).toBe('Bob broadcasts "now"');
   });
 
-  test("kept bug: /help topics, a missing topic, and a two-word topic", async () => {
+  test("/help topics, a missing topic, and a two-word topic", async () => {
     clearAll();
     await say(cara, "/help banking");
     expect(chatTexts(cara)[0]).toBe("BANKING");
     expect(chatTexts(cara)).toHaveLength(8);
     cara.clear();
     await say(cara, "/help basic commands");
+    expect(chatTexts(cara)[0]).toBe("BASIC COMMANDS");
+    expect(chatTexts(cara).length).toBeGreaterThan(1);
+    cara.clear();
+    await say(cara, "/help no such topic");
     expect(chatTexts(cara)).toEqual(["There is no help on that subject!"]);
     expect(chatTexts(alice)).toEqual([]);
   });

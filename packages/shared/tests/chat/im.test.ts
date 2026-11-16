@@ -5,7 +5,6 @@ import {
   awayAnswers,
   CHAT_SOCIAL_TEXT,
   IGNORE_MAX,
-  IGNORE_WINDOW,
   ignoreAdd,
   ignoreListLines,
   ignoreRemove,
@@ -71,10 +70,10 @@ describe("away", () => {
     expect(CHAT_SOCIAL_TEXT.awayTitle).toBe("Away Message");
   });
 
-  test("kept bug: an away text of off (any case) is off; an empty one is on", () => {
+  test("an away text of off (any case) or an empty one is off", () => {
     expect(awayAnswers(null)).toBe(false);
     expect(awayAnswers("Off")).toBe(false);
-    expect(awayAnswers("")).toBe(true);
+    expect(awayAnswers("")).toBe(false);
     expect(awayAnswers("brb")).toBe(true);
   });
 });
@@ -97,7 +96,7 @@ describe("IM windows", () => {
     expect(pickImSlot(s, "Bob", never)).toEqual({ slot: 2, opening: true });
   });
 
-  test("kept bug: slots are never freed; the 11th sender takes random(10) and clears it", () => {
+  test("with every slot held, the 11th sender takes random(10) and clears it", () => {
     const s = Array.from({ length: 10 }, (_, i) => `P${i + 1}`);
     let asked = 0;
     const pick = pickImSlot(s, "Eleven", (n) => {
@@ -124,11 +123,12 @@ describe("ignore", () => {
     expect(ignoreRest("/ignore")).toBe("");
   });
 
-  test("add accepts anything, duplicates and the empty name, with its line", () => {
-    const a = ignoreAdd(["bob"], "bob");
-    expect(a.list).toEqual(["bob", "bob"]);
-    expect(a.line).toBe("Added bob to your ignore list.");
-    expect(ignoreAdd([], "").line).toBe("Added  to your ignore list.");
+  test("add keeps one entry, ignoring case, and accepts the empty name once", () => {
+    const a = ignoreAdd(["bob"], "BOB");
+    expect(a.list).toEqual(["bob"]);
+    expect(a.line).toBe("Added BOB to your ignore list.");
+    expect(ignoreAdd([], "").list).toEqual([""]);
+    expect(ignoreAdd([""], "").list).toEqual([""]);
   });
 
   test("the list holds 100; the 101st is refused", () => {
@@ -136,9 +136,18 @@ describe("ignore", () => {
     expect(ignoreAdd(full, "x")).toEqual({ list: full, line: "Your ignore list is full." });
   });
 
-  test("kept bug: unignore skips the line after each deletion, so one of two adjacent copies survives", () => {
-    expect(ignoreRemove(["bob", "BOB", "ann"], "bob").list).toEqual(["BOB", "ann"]);
+  test("a duplicate is still accepted when the list is full and does not grow it", () => {
+    const full = Array.from({ length: IGNORE_MAX }, (_, i) => `p${i}`);
+    expect(ignoreAdd(full, "P0")).toEqual({
+      list: full,
+      line: "Added P0 to your ignore list.",
+    });
+  });
+
+  test("unignore removes every matching copy, adjacent or apart", () => {
+    expect(ignoreRemove(["bob", "BOB", "ann"], "bob").list).toEqual(["ann"]);
     expect(ignoreRemove(["bob", "ann", "bob"], "bob").list).toEqual(["ann"]);
+    expect(ignoreRemove(["bob", "ann"], "BOB").list).toEqual(["ann"]);
   });
 
   test("unignore always prints, found or not", () => {
@@ -153,17 +162,19 @@ describe("ignore", () => {
     expect(ignoreListLines([])).toEqual(["*** Your Ignore List ", ""]);
   });
 
-  test("kept bug: only the first 50 entries count, 40 for IMs", () => {
-    const list = Array.from({ length: 60 }, (_, i) => `p${i + 1}`);
-    expect(ignores(list, "P50", IGNORE_WINDOW.chat)).toBe(true);
-    expect(ignores(list, "p51", IGNORE_WINDOW.chat)).toBe(false);
-    expect(ignores(list, "p40", IGNORE_WINDOW.im)).toBe(true);
-    expect(ignores(list, "p41", IGNORE_WINDOW.im)).toBe(false);
+  test("every entry counts, not just the first 50 for chat or 40 for IMs", () => {
+    const list = Array.from({ length: 100 }, (_, i) => `p${i + 1}`);
+    expect(ignores(list, "P50")).toBe(true);
+    expect(ignores(list, "p51")).toBe(true);
+    expect(ignores(list, "p40")).toBe(true);
+    expect(ignores(list, "p41")).toBe(true);
+    expect(ignores(list, "p100")).toBe(true);
+    expect(ignores(list, "p101")).toBe(false);
   });
 
   test("whole-entry match: a trailing space or two words never matches", () => {
-    expect(ignores(["bob "], "bob", 50)).toBe(false);
-    expect(ignores(["bob smith"], "bob", 50)).toBe(false);
+    expect(ignores(["bob "], "bob")).toBe(false);
+    expect(ignores(["bob smith"], "bob")).toBe(false);
   });
 });
 

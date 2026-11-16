@@ -252,11 +252,13 @@ describe("guild chat /g", () => {
     expect(b.guild).toBe("Knights");
   });
 
-  test("kept bug: guild chat never consults an ignore list", () => {
+  test("guild chat is filtered by each member's ignore list", () => {
     const s = scene();
     const { a, b } = s.full();
     b.ignore = ["Alice"];
-    expect(chat(s.say(a, "/g hello"), "Bob")).toEqual(['Alice tells the Knights "hello"']);
+    const out = s.say(a, "/g hello");
+    expect(chat(out, "Alice")).toEqual(['Alice tells the Knights "hello"']);
+    expect(chat(out, "Bob")).toEqual([]);
   });
 
   test("divergence: it shares the chat cooldown", () => {

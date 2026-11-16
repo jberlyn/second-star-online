@@ -26,6 +26,7 @@ import {
   sanitiseGuildName,
 } from "@secondstaronline/shared";
 
+import { hears } from "../chat/ignore.ts";
 import type { GroundItem, GuildRow, Outgoing, Player, World } from "../world/world.ts";
 
 export interface GuildDeps {
@@ -76,9 +77,14 @@ function channel(world: World, g: GuildRow): Player[] {
   return [...world.players.values()].filter((o) => o.guild !== "" && lingoEq(o.guild, g.name));
 }
 
-/** A Guildcast to `@<guild>`: in colour 0, never filtered by ignore. */
-function guildcast(world: World, g: GuildRow, text: string): Outgoing[] {
-  return channel(world, g).map((o) => chat(o, text));
+/**
+ * A Guildcast to `@<guild>`: in colour 0. A player's `/g` line is filtered by each reader's ignore
+ * list; the guild system's own lines are not.
+ */
+function guildcast(world: World, g: GuildRow, text: string, speaker?: string): Outgoing[] {
+  return channel(world, g)
+    .filter((o) => speaker === undefined || hears(o, speaker))
+    .map((o) => chat(o, text));
 }
 
 function setField(world: World, p: Player, guild: string): void {
@@ -369,7 +375,7 @@ export function guildAnswer(world: World, p: Player, accept: boolean): Outgoing[
 
 /**
  * `/g text`: "You don't belong to a guild!" without one; otherwise the line to the channel, the
- * sender included. It shares the chat cooldown.
+ * sender included, filtered by each reader's ignore list. It shares the chat cooldown.
  */
 export function guildChat(
   world: World,
@@ -389,7 +395,7 @@ export function guildChat(
     ];
   }
   p.chatIn = cooldownFrames;
-  return guildcast(world, g, GUILD_TEXT.chat(p.name, p.guild, text));
+  return guildcast(world, g, GUILD_TEXT.chat(p.name, p.guild, text), p.name);
 }
 
 /**

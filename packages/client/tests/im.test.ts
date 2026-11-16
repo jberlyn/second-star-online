@@ -180,19 +180,29 @@ describe("the IM windows", () => {
     expect(w?.el.querySelector(".im-receive")?.textContent).toBe("Bob: hi\n");
   });
 
-  test("kept bug: closing keeps the slot and its text; the next IM reopens it", () => {
+  test("closing frees the slot; the next IM in it starts with a clean window", () => {
     const { ims } = imScene();
     ims.receive("Bob", "one");
     ims.windowOf(1)?.close();
+    expect(ims.slots[0]).toBeNull();
     ims.receive("bob", "two");
     expect(ims.windowOf(1)?.isOpen).toBe(true);
-    expect(ims.windowOf(1)?.el.querySelector(".im-receive")?.textContent).toBe(
-      "Bob: one\nbob: two\n",
-    );
+    expect(ims.windowOf(1)?.el.querySelector(".im-receive")?.textContent).toBe("bob: two\n");
     expect(ims.slots[0]).toBe("bob");
   });
 
-  test("kept bug: the 11th sender takes random(10) and clears it", () => {
+  test("closing a slot makes a later sender reuse it instead of taking random(10)", () => {
+    const { ims } = imScene([]);
+    for (let n = 1; n <= 10; n++) {
+      ims.receive(`P${n}`, "x");
+    }
+    ims.windowOf(3)?.close();
+    ims.receive("Eleven", "new");
+    expect(ims.slots[2]).toBe("Eleven");
+    expect(ims.windowOf(3)?.el.querySelector(".im-receive")?.textContent).toBe("Eleven: new\n");
+  });
+
+  test("with all ten slots held, the 11th sender takes random(10) and clears it", () => {
     const { ims } = imScene([3]);
     for (let n = 1; n <= 10; n++) {
       ims.receive(`P${n}`, "x");

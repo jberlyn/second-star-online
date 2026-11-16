@@ -249,8 +249,8 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
           ...(asksAboutFaction(typed) ? askFactionPower(world, p) : []),
         ];
       };
-      // `/me` skips the house rule.
-      if (cmd.kind === "say" && sayRefusedInHouse(p.map.name, p.y)) {
+      // The house rule applies to plain talk and `/me` alike.
+      if (sayRefusedInHouse(p.map.name, p.y)) {
         return [{ to: p.id, msg: line(CHAT_TEXT.houseRefused) }, ...shop().out, ...rumours()];
       }
       p.chatIn = deps.chatCooldownFrames;

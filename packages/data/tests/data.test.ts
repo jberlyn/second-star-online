@@ -198,24 +198,11 @@ describe("help topics", () => {
     }
   });
 
-  test("these 11 of the 17 files are reachable by one word; the two-word ones are not (a kept bug)", () => {
-    const reachable = helpData.topics.filter((t) => t.reachable).map((t) => t.file);
-    for (const file of [
-      "Help.txt",
-      "airships.txt",
-      "banking.txt",
-      "factions.txt",
-      "guilds.txt",
-      "hunger.txt",
-      "menu.txt",
-      "movement.txt",
-      "topics.txt",
-      "installation.txt",
-      "communitcating.txt",
-    ]) {
-      expect(reachable).toContain(file);
-    }
-    expect(helpData.topics.find((t) => t.topic === "basic commands")?.reachable).toBe(false);
+  test("all 17 files are reachable by their full topic name, one word or two", () => {
+    expect(helpData.topics).toHaveLength(17);
+    expect(helpData.topics.every((t) => t.reachable)).toBe(true);
+    expect(helpData.topics.find((t) => t.topic === "basic commands")?.reachable).toBe(true);
+    expect(helpData.topics.find((t) => t.topic === "casting spells")?.reachable).toBe(true);
   });
 });
 

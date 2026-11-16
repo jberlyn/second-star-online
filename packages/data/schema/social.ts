@@ -160,8 +160,11 @@ export const chatSchema = z.strictObject({
     .length(5),
   windows: z.strictObject({
     imSlots: z.literal(10),
+    /** 1.6's chat ignore window. SSO keeps the archive value but checks every entry. */
     chatIgnoreLines: z.number().int().positive(),
+    /** 1.6's IM ignore window. SSO keeps the archive value but checks every entry. */
     imIgnoreLines: z.number().int().positive(),
+    /** 1.6's `/unignore` scan. SSO removes every matching entry. */
     unignoreScan: z.number().int().positive(),
     returnScan: z.number().int().positive(),
   }),

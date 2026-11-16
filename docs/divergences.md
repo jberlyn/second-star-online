@@ -23,7 +23,7 @@ An entry uses this shape; `Pinned by` is optional:
 |---|---:|
 | [admin](#admin) | 29 |
 | [casino](#casino) | 20 |
-| [chat](#chat) | 7 |
+| [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
 | [core](#core) | 34 |
 | [crafting](#crafting) | 8 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 2 |
 | [world](#world) | 8 |
-| **Total** | **206** |
+| **Total** | **216** |
 
 ## admin
 
@@ -470,7 +470,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** Chat names and channel membership come from the server; an ignored player's messages are filtered for the reader.
 - **1.6:** Clients built their own “X says …” text and could join administrator, guild and faction groups by hand.
-- **SSO:** The server stamps the speaker and controls faction, guild and room membership. Each reader's ignore list filters what the ignored player's client sent in 1.6: say, `/me`, admin lines, broadcasts, IMs, the Overlord line, Radar and Inxition read-outs, and faction announcements. It also filters NPC replies relayed by that player, including quest slots 2–4, treasure rumours, faction-leader replies and their shop's stock list.
+- **SSO:** The server stamps the speaker and controls faction, guild and room membership. Each reader's ignore list filters what the ignored player's client sent in 1.6: say, `/me`, admin lines, broadcasts, IMs, guild chat, the Overlord line, Radar and Inxition read-outs, and faction announcements. It also filters NPC replies relayed by that player, including quest slots 2–4, treasure rumours, faction-leader replies and their shop's stock list.
 - **Why:** Client-supplied names and group joins allowed impersonation and eavesdropping.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/chat/rooms.ts` (`enterRoom`), `packages/server/src/systems/chat/ignore.ts` (`hears`)
 
@@ -496,7 +496,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** A 101st ignore is refused with “Your ignore list is full.”
 - **1.6:** The list had no limit, but only lines 1–50 filtered ordinary messages, lines 1–40 filtered IMs, and `/unignore` reached lines 1–100.
-- **SSO:** The account's ignore list holds at most 100 entries.
+- **SSO:** The account's ignore list holds at most 100 entries, and every entry filters chat, broadcasts and IMs.
 - **Why:** Entries past line 100 could neither work nor be removed, and the list is stored per account.
 - **In the code:** `packages/shared/src/rules/chat/ignore.ts` (`ignoreAdd`)
 - **Pinned by:** `the list holds 100; the 101st is refused` (packages/shared/tests/chat/im.test.ts)
@@ -526,6 +526,96 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** A silently lost message looks like being ignored.
 - **In the code:** `packages/server/src/systems/chat/im.ts` (`msgCommand`, `imIntent`)
 - **Pinned by:** `divergence: to someone not online, the echo then '<name> is not online.'` and `divergence: not online is said for IMsend and replies too` (packages/server/tests/im.test.ts)
+
+### /help looks up the whole topic
+- **Kind:** Bug fixed
+- **What you notice:** `/help basic commands` shows the Basic Commands file, and `/help` with no topic still shows Help.
+- **1.6:** Only the second word after `/help` was looked up, so six of the seventeen shipped help files, whose topics have two words, could not be reached. SSO did the same.
+- **SSO:** The whole rest of the line is the topic, with surrounding spaces trimmed; no topic means “Help”.
+- **Why:** The shipped two-word help files should be reachable by their own names.
+- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`parseChatLine`), `packages/server/src/systems/chat/chat.ts` (`helpReply`)
+- **Pinned by:** `/help: the whole topic, 'Help' when absent, any case` (packages/shared/tests/chat/chat.test.ts); `the whole topic is sent, so two-word topics have help` (packages/server/tests/chat.test.ts); `/help topics, a missing topic, and a two-word topic` (packages/server/e2e/chat-and-presence.test.ts); `all 17 files are reachable by their full topic name, one word or two` (packages/data/tests/data.test.ts)
+
+### Closing an IM window frees its slot
+- **Kind:** Bug fixed
+- **What you notice:** Closing an IM window ends that conversation. The next IM from anyone takes the freed slot and starts with an empty window; a random window is replaced only when all ten are open.
+- **1.6:** Closing a window kept its sender and text in the slot, so the next IM from that sender reopened the old conversation. An eleventh sender took a random window and wiped it even when another window had been closed.
+- **SSO:** The window frees its slot when it closes. `pickImSlot` then finds the lowest free slot, and the reopened window clears its field and log.
+- **Why:** Closing a conversation should not keep it alive or make the next sender overwrite an unrelated one.
+- **In the code:** `packages/client/src/ui/im.ts` (`createImWindows`), `packages/shared/src/rules/chat/im.ts` (`pickImSlot`)
+- **Pinned by:** `closing frees the slot; the next IM in it starts with a clean window`, `closing a slot makes a later sender reuse it instead of taking random(10)`, and `with all ten slots held, the 11th sender takes random(10) and clears it` (packages/client/tests/im.test.ts); `with every slot held, the 11th sender takes random(10) and clears it` (packages/shared/tests/chat/im.test.ts)
+
+### /ignore keeps one entry and /unignore removes every copy
+- **Kind:** Bug fixed
+- **What you notice:** Ignoring the same name again, in any case, leaves one entry. Unignoring a name removes every copy at once.
+- **1.6:** `/ignore` appended whatever was typed, duplicates included. `/unignore` stepped forward through the list and skipped the line that moved into each deleted position, so of two adjacent copies one survived. SSO did the same on the stored list.
+- **SSO:** `/ignore` adds a name only when it is not already present, compared without case, and `/unignore` filters out all matching entries.
+- **Why:** Duplicates fill the 100-entry cap, and an unignore that leaves a copy looks broken.
+- **In the code:** `packages/shared/src/rules/chat/ignore.ts` (`ignoreAdd`, `ignoreRemove`)
+- **Pinned by:** `add keeps one entry, ignoring case, and accepts the empty name once`, `a duplicate is still accepted when the list is full and does not grow it` and `unignore removes every matching copy, adjacent or apart` (packages/shared/tests/chat/im.test.ts); `the texts and the stored list, shared by the account's characters` (packages/server/tests/im.test.ts)
+
+### Every ignore-list entry filters chat and IMs
+- **Kind:** Bug fixed
+- **What you notice:** A name anywhere on the ignore list silences that player's chat, broadcasts and instant messages, up to the 100-entry cap.
+- **1.6:** Only lines 1–50 filtered `sqa` lines and broadcasts, and only lines 1–40 filtered IMs, so later entries did nothing. SSO did the same.
+- **SSO:** Every entry on the list is checked for every delivery path; the list is still capped at 100.
+- **Why:** An entry the game accepts should work, and `/unignore` already reached line 100.
+- **In the code:** `packages/shared/src/rules/chat/ignore.ts` (`ignores`), `packages/server/src/systems/chat/ignore.ts` (`hears`)
+- **Pinned by:** `every entry counts, not just the first 50 for chat or 40 for IMs` (packages/shared/tests/chat/im.test.ts); `an entry past the first 50 still blocks chat` and `an entry past the first 40 still blocks IMs` (packages/server/tests/im.test.ts)
+
+### Guild Chat with no guild keeps your current room
+- **Kind:** Bug fixed
+- **What you notice:** Choosing Guild Chat without a guild says “You don't belong to a guild!” and leaves you in the room you were already in, still hearing and sending its lines.
+- **1.6:** The old room was left before the guild check, so the refusal ejected you and the room window stayed up while your later lines went nowhere. SSO did the same.
+- **SSO:** The guild check runs before `leaveRoom`; with no guild the membership and the other members' rosters are untouched.
+- **Why:** Refusing one room should not remove you from another.
+- **In the code:** `packages/server/src/systems/chat/rooms.ts` (`enterRoom`)
+- **Pinned by:** `Guild Chat with no guild says so but leaves your current room alone` (packages/server/tests/im.test.ts)
+
+### An away message of "off" or an empty one turns away off
+- **Kind:** Bug fixed
+- **What you notice:** Setting the away text to “off” in any case, or to nothing, prints the OFF line, stores no away message and answers no IM.
+- **1.6:** Away answered whenever the text was anything other than “OFF” ignoring case, so “off” printed ON but answered nothing, and an empty text answered every IM with an empty message. SSO did the same.
+- **SSO:** `setAway` applies the chat length limit first. `awayAnswers` then treats null, empty and “OFF” as off; `setAway` stores null and prints the OFF line for those.
+- **Why:** The ON/OFF line and the actual away state should agree, and an empty auto-reply is noise.
+- **In the code:** `packages/shared/src/rules/chat/im.ts` (`awayAnswers`), `packages/server/src/systems/chat/im.ts` (`setAway`)
+- **Pinned by:** `an away text of off (any case) or an empty one is off` (packages/shared/tests/chat/im.test.ts); `OFF in any case or an empty text turns away off instead of answering` and `the chat limit is applied before the off test` (packages/server/tests/im.test.ts)
+
+### /me follows the house rule, and guild chat honours ignore lists
+- **Kind:** Bug fixed
+- **What you notice:** On the lower rows of a house, `/me` is refused just like plain talk. A guild member who ignores the speaker no longer hears that speaker's `/g` lines.
+- **1.6:** The house rule applied only to plain talk, so `/me` still went through, and guild chat never consulted ignore lists. SSO did the same.
+- **SSO:** `handleChat` applies the house rule to both say and `/me`. A player's `/g` line is filtered by each reader's ignore list; the guild system's own lines are not.
+- **Why:** Talking restrictions and ignore choices should not be bypassed by another chat route.
+- **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/social/guilds.ts` (`guildChat`)
+- **Pinned by:** `in a house at y > 10 neither talk nor /me goes, and neither starts the cooldown` (packages/server/tests/chat.test.ts); `guild chat is filtered by each member's ignore list` (packages/server/tests/guilds.test.ts)
+
+### A broadcast cooldown covers its whole 1000 frames
+- **Kind:** Bug fixed
+- **What you notice:** A broadcast is refused for the full 50 seconds; the last fraction of a second no longer lets a shout through.
+- **1.6:** The remaining time was rounded down to whole seconds, so with 1–19 frames left it read 0 and the broadcast went through. 1.6 never showed this because its cooldown was cleared for registered players; SSO applied the cooldown, making its effective length 981 frames.
+- **SSO:** Seconds round up, so any positive remainder refuses and the broadcast waits the full 1,000 frames.
+- **Why:** The configured cooldown should be the actual cooldown.
+- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`broadcastRefusal`)
+- **Pinned by:** `broadcast: seconds round up, so any positive remainder refuses` (packages/shared/tests/chat/chat.test.ts); `the full 1000-frame cooldown applies, including its last 19 frames` (packages/server/tests/chat.test.ts); `a broadcast reaches everyone in yellow; the next waits 1000 frames` (packages/server/e2e/chat-and-presence.test.ts)
+
+### A line of only spaces sends nothing
+- **Kind:** Bug fixed
+- **What you notice:** Pressing Enter on spaces sends no chat line, and no one sees `Bob says ""`.
+- **1.6:** It stripped the spaces but still sent the line with an empty quote. SSO did the same.
+- **SSO:** A local-chat line that is empty after whitespace is dropped and does not start the chat cooldown.
+- **Why:** An empty quote is noise and costs the sender a cooldown.
+- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`parseChatLine`, `formatSay`)
+- **Pinned by:** `a line of only spaces sends nothing` (packages/shared/tests/chat/chat.test.ts); `a line of only spaces sends nothing and starts no cooldown` (packages/server/tests/chat.test.ts)
+
+### Password= removes every forbidden character
+- **Kind:** Bug fixed
+- **What you notice:** Spaces, slashes, colons and backslashes are all removed from a new password, including adjacent ones and one at the start: `Password= a  b` becomes `ab`.
+- **1.6:** Four forward stripping passes skipped the character that slid into place after each deletion, so one of two adjacent forbidden characters survived. SSO ran the same passes.
+- **SSO:** `passwordFrom` removes every space, `/`, `:` and `\` from the password text.
+- **Why:** The stored password should match the sanitised password the player is told about, without a hidden leftover character.
+- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`passwordFrom`)
+- **Pinned by:** `Password= strips every space, slash, colon and backslash` (packages/shared/tests/chat/chat.test.ts); `Password= removes adjacent and leading forbidden characters` (packages/server/tests/password-db.test.ts)
 
 ## combat
 

@@ -39,7 +39,7 @@ export const helpData: HelpData = {
     {
       "file": "basic commands.txt",
       "topic": "basic commands",
-      "reachable": false,
+      "reachable": true,
       "lines": [
         "BASIC COMMANDS",
         "There are a series of commands you can type into the chat window to accomplish certain tasks. For example, to retrieve a list of who is online, you could simply type who.",
@@ -66,7 +66,7 @@ export const helpData: HelpData = {
     {
       "file": "casting spells.txt",
       "topic": "casting spells",
-      "reachable": false,
+      "reachable": true,
       "lines": [
         "CASTING SPELLS",
         "Before you can cast a spell, you will first need to attain it. You can purchase spell books in Magic Shops in order to learn new spells. To cast a spell, first click on the \"spells\" tab then highlight the spell you wish to cast. Next, click the cast icon (below the list which shows a yellow character with a blue swirl around him) and then click on the screen where you want to cast the spell. If you have the required crystals for the spell, it will then be cast."
@@ -158,7 +158,7 @@ export const helpData: HelpData = {
     {
       "file": "keyboard commands.txt",
       "topic": "keyboard commands",
-      "reachable": false,
+      "reachable": true,
       "lines": [
         "KEYBOARD COMMANDS",
         "Tab - wields weapons and tools. Use it to attack, to fish, to mine... etc. You must have an item equipped in order to use it.",
@@ -211,7 +211,7 @@ export const helpData: HelpData = {
     {
       "file": "running shops.txt",
       "topic": "running shops",
-      "reachable": false,
+      "reachable": true,
       "lines": [
         "RUNNING YOUR OWN SHOP",
         "You can run your own shop 24/7 in FSO, even when you're not logged on. To do so you'll first need to get a shop deed and build your shop (the same as you would a house or guild hall). Your new shop comes equipped with an employee that will do all of the work for you.",
@@ -251,7 +251,7 @@ export const helpData: HelpData = {
     {
       "file": "using items.txt",
       "topic": "using items",
-      "reachable": false,
+      "reachable": true,
       "lines": [
         "USING ITEMS",
         "In order to use an item such as a tool or weapon, you will need to equip it. Do this by clicking on the item in your inventory window and choosing (clicking) EQUIP. If you already have an item equipped (for instance, a dagger equipped in your hand when you are trying to place a hammer there), you will need to unequip the present item before equipping the new one. You can unequip an item by clicking on the X beside it. Weapons and tools are all wielded in the same manner, by using the tab key.",
@@ -262,7 +262,7 @@ export const helpData: HelpData = {
     {
       "file": "using skills.txt",
       "topic": "using skills",
-      "reachable": false,
+      "reachable": true,
       "lines": [
         "USING SKILLS",
         "There are various different skills in FSO you can use to your advantage. Some skills you may want to develop more than others, depending on the class of your character. For example; if you are a Mage, it will be more beneficial for you to work on skills such as alchemy, whereas if you are a Fighter it would probably benefit you more to work on skills such as blacksmithing since you are apt to need those skills for repairing armor damaged in battle.",

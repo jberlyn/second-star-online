@@ -1104,8 +1104,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     who.window.close();
     friends.window.close();
     friends.setNames([]);
-    // The session's room and away state end with it; the IM windows keep their slots and text in
-    // the page.
+    // The session's room and away state end with it; closing the IM windows frees their slots.
     ims.closeAll();
     mail.reset();
     board.reset();
@@ -1175,7 +1174,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
   };
   const sendChat = () => {
-    // Only spaces still sends: 1.6 said `Bob says ""`.
+    // A line of only spaces is sent, and the server drops it instead of saying `Bob says ""`.
     const text = chatInput.value.slice(0, chatInput.maxLength);
     // `/logchat <file>` saves the main chat as it stands, then says so.
     const file = logchatFile(text);

@@ -32,9 +32,9 @@ describe("parseChatLine: the ChatSend order", () => {
     expect(parseChatLine("     hello  ")).toEqual({ kind: "say", text: "hello  " });
   });
 
-  test("kept bug: a line of only spaces still says an empty quote", () => {
-    const c = parseChatLine("   ");
-    expect(c).toEqual({ kind: "say", text: "" });
+  test("a line of only spaces sends nothing", () => {
+    expect(parseChatLine("   ")).toBeNull();
+    expect(parseChatLine(" \t  ")).toBeNull();
     expect(formatSay("Bob", "")).toBe('Bob says ""');
   });
 
@@ -46,10 +46,18 @@ describe("parseChatLine: the ChatSend order", () => {
     expect(parseChatLine("'")).toEqual({ kind: "broadcast", text: "" });
   });
 
-  test("/help: word 2 only, 'Help' when absent, any case", () => {
+  test("/help: the whole topic, 'Help' when absent, any case", () => {
     expect(parseChatLine("/help")).toEqual({ kind: "help", topic: "Help" });
+    expect(parseChatLine("/help   ")).toEqual({ kind: "help", topic: "Help" });
     expect(parseChatLine("/HeLp banking")).toEqual({ kind: "help", topic: "banking" });
-    expect(parseChatLine("/help basic commands")).toEqual({ kind: "help", topic: "basic" });
+    expect(parseChatLine("/help basic commands")).toEqual({
+      kind: "help",
+      topic: "basic commands",
+    });
+    expect(parseChatLine("/help  using   items  ")).toEqual({
+      kind: "help",
+      topic: "using   items",
+    });
   });
 
   test("who must be the whole line, any case", () => {
@@ -89,11 +97,12 @@ describe("parseChatLine: the ChatSend order", () => {
     expect(parseChatLine("Password=")).toEqual({ kind: "password", password: "" });
   });
 
-  test("kept bug: Password= strips space, slash, colon and backslash and keeps one of two in a row", () => {
-    expect(passwordFrom("Password=a  b")).toBe("a b");
+  test("Password= strips every space, slash, colon and backslash", () => {
+    expect(passwordFrom("Password=a  b")).toBe("ab");
     expect(passwordFrom("Password=x/y:z\\w")).toBe("xyzw");
     expect(passwordFrom("Password=a b c")).toBe("abc");
-    expect(passwordFrom("Password=a///b")).toBe("a/b");
+    expect(passwordFrom("Password=a///b")).toBe("ab");
+    expect(passwordFrom("Password= a b ")).toBe("ab");
     expect(passwordFrom("Password=")).toBe("");
     expect(passwordFrom("Password=abc")).toBe("abc");
     expect(PASSWORD_TEXT.changed).toBe("Password has been changed.");
@@ -134,15 +143,13 @@ describe("formats", () => {
 });
 
 describe("cooldowns", () => {
-  test("broadcast: whole seconds by integer division", () => {
+  test("broadcast: seconds round up, so any positive remainder refuses", () => {
     expect(broadcastRefusal(0)).toBeNull();
     expect(broadcastRefusal(1000)).toBe("You cannot broadcast yet - 50 seconds remaining.");
-    expect(broadcastRefusal(39)).toBe("You cannot broadcast yet - 1 seconds remaining.");
-  });
-
-  test("kept bug: under 20 frames left reads 0 seconds and lets the broadcast through", () => {
-    expect(broadcastRefusal(19)).toBeNull();
-    expect(broadcastRefusal(1)).toBeNull();
+    expect(broadcastRefusal(39)).toBe("You cannot broadcast yet - 2 seconds remaining.");
+    expect(broadcastRefusal(20)).toBe("You cannot broadcast yet - 1 seconds remaining.");
+    expect(broadcastRefusal(19)).toBe("You cannot broadcast yet - 1 seconds remaining.");
+    expect(broadcastRefusal(1)).toBe("You cannot broadcast yet - 1 seconds remaining.");
   });
 
   test("local chat (SSO): seconds round up, never 0 while refusing", () => {

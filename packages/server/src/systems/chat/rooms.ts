@@ -68,17 +68,15 @@ function joinGroup(world: World, p: Player, key: RoomKey, group: string): Outgoi
 
 /**
  * A Game menu room or Admin Chat (`EnterGeneralChat`, `NewPlayerChat`, `TradingPostChat`,
- * `xxGuildChat`, `EnterAdminChat`): the old room is left first, so Guild Chat with no guild leaves
- * you in no room and prints "You don't belong to a guild!" while the window stays up (a 1.6 bug
- * kept; your later lines go nowhere). Admin Chat from anyone but an immortal is refused before that
- * by the caller (no disconnect).
+ * `xxGuildChat`, `EnterAdminChat`): Guild Chat with no guild prints "You don't belong to a guild!"
+ * and leaves your current room untouched; otherwise the old room is left first. Admin Chat from
+ * anyone but an immortal is refused before that by the caller (no disconnect).
  */
 export function enterRoom(world: World, p: Player, key: RoomKey): Outgoing[] {
-  const out = leaveRoom(world, p);
   if (key === "guild" && p.guild === "") {
-    out.push(tell(p, CHAT_SOCIAL_TEXT.noGuild));
-    return out;
+    return [tell(p, CHAT_SOCIAL_TEXT.noGuild)];
   }
+  const out = leaveRoom(world, p);
   const group = roomGroup(key, p.guild);
   out.push(...joinGroup(world, p, key, group));
   const { title, entering } = roomTexts(key, p.guild);
@@ -140,7 +138,7 @@ export function rejoinRoom(
  * A line typed into the room's input: `who` and `/msg` as in the main input, with `/msg`'s echo in
  * the main chat; everything else is room text, line breaks in chars 1-200 blanked, sent to every member
  * as `<sender>: <text>`. `/logchat` never reaches the server (the client saves the room log). Out
- * of a room (after the no-guild entry above, or after losing membership) a line goes nowhere.
+ * of a room, or after losing membership, a line goes nowhere.
  */
 export function roomSay(
   world: World,

@@ -1,23 +1,14 @@
 /**
- * The ignore list. Pure rules over the generated `socialData.chat.windows`.
+ * The ignore list.
  *
  * 1.6 kept the list as RETURN-separated text for the session; SSO keeps the same lines per account
- * with 1.6's quirks: the whole rest of the line is one entry, any entry and duplicates are
- * accepted, `/unignore` skips the line after each deletion, and only the first 50 entries filter
- * chat lines and broadcasts, the first 40 IMs. The list holds at most 100 entries.
+ * with 1.6's entry rule: the whole rest of the line is one entry. The list holds at most 100
+ * entries, an entry is added once, `/unignore` removes every matching copy, and every entry
+ * filters chat, broadcasts and IMs.
  */
-import { socialData } from "@secondstaronline/data";
-
 import { lingoEq } from "../core/lingo.ts";
 import { CHAT_SOCIAL_TEXT } from "./im.ts";
 
-const W = socialData.chat.windows;
-
-/** `sqa` and `Broadcast` check lines 1-50; IMs lines 1-40. */
-export const IGNORE_WINDOW = { chat: W.chatIgnoreLines, im: W.imIgnoreLines } as const;
-export type IgnoreWindow = (typeof IGNORE_WINDOW)[keyof typeof IGNORE_WINDOW];
-/** `/unignore` scans lines 1-100. */
-const UNIGNORE_SCAN = W.unignoreScan;
 /** SSO's cap: past line 100 an entry could never be removed nor work. */
 export const IGNORE_MAX = 100;
 
@@ -31,8 +22,11 @@ export function ignoreRest(text: string): string {
   return t;
 }
 
-/** `/ignore <rest>`: appended unchecked, or refused when full. */
+/** `/ignore <rest>`: appended once (ignoring case), or refused when a new entry would pass the cap. */
 export function ignoreAdd(list: readonly string[], rest: string): { list: string[]; line: string } {
+  if (list.some((entry) => lingoEq(entry, rest))) {
+    return { list: [...list], line: CHAT_SOCIAL_TEXT.ignoreAdded(rest) };
+  }
   if (list.length >= IGNORE_MAX) {
     return { list: [...list], line: CHAT_SOCIAL_TEXT.ignoreFull };
   }
@@ -40,22 +34,17 @@ export function ignoreAdd(list: readonly string[], rest: string): { list: string
 }
 
 /**
- * `/unignore <rest>`: for x = 1 to 100, a line equal to the rest (ignoring case) is deleted, and
- * the line that moves into x is not tested: of two adjacent copies one survives. The line always
+ * `/unignore <rest>`: every line equal to the rest (ignoring case) is deleted. The line always
  * prints.
  */
 export function ignoreRemove(
   list: readonly string[],
   rest: string,
 ): { list: string[]; line: string } {
-  const out = [...list];
-  for (let x = 1; x <= UNIGNORE_SCAN; x++) {
-    const entry = out[x - 1];
-    if (entry !== undefined && lingoEq(entry, rest)) {
-      out.splice(x - 1, 1);
-    }
-  }
-  return { list: out, line: CHAT_SOCIAL_TEXT.ignoreRemoved(rest) };
+  return {
+    list: list.filter((entry) => !lingoEq(entry, rest)),
+    line: CHAT_SOCIAL_TEXT.ignoreRemoved(rest),
+  };
 }
 
 /**
@@ -68,9 +57,8 @@ export function ignoreListLines(list: readonly string[]): string[] {
 
 /**
  * Whether a line from `sender` is dropped for a reader with this list: a whole-entry match ignoring
- * case among the first `window` lines. An entry with a trailing space or two words never matches a
- * name.
+ * case anywhere in the list. An entry with a trailing space or two words never matches a name.
  */
-export function ignores(list: readonly string[], sender: string, window: IgnoreWindow): boolean {
-  return list.slice(0, window).some((e) => lingoEq(e, sender));
+export function ignores(list: readonly string[], sender: string): boolean {
+  return list.some((e) => lingoEq(e, sender));
 }

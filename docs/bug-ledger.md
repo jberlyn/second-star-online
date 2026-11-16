@@ -33,7 +33,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 |---|---|
 | [admin](#admin) | 0 |
 | [casino](#casino) | 0 |
-| [chat](#chat) | 10 |
+| [chat](#chat) | 0 |
 | [client](#client) | 17 |
 | [combat](#combat) | 28 |
 | [crafting](#crafting) | 28 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 1 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **314** |
+| **Total** | **304** |
 
 ## admin
 
@@ -61,65 +61,7 @@ No kept bugs (all fourteen former entries were fixed; see [casino differences](d
 
 ## chat
 
-### /help only looks at the first word after it
-- **What you notice:** Type /help followed by a topic of two words and you get nothing useful: only the word right after /help is looked up, so two-word topics have no help.
-- **In 1.6 and SSO:** 1.6 took word 2 of the line as the topic, and SSO looks it up the same way. With no topic the topic is "Help".
-- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`parseChatLine`), `packages/server/src/systems/chat/chat.ts` (`helpReply`)
-- **Pinned by:** `/help: word 2 only, 'Help' when absent, any case` (packages/shared/tests/chat/chat.test.ts); `kept bug: only word 2 is sent, so two-word topics have no help` (packages/server/tests/chat.test.ts); `kept bug: /help topics, a missing topic, and a two-word topic` (packages/server/e2e/chat-and-presence.test.ts)
-
-### Instant-message windows are never freed
-- **What you notice:** Closing an IM window does not free it: it keeps its sender and text, and the next message from that person reopens it. After ten different senders, an eleventh takes a random window and wipes the conversation in it.
-- **In 1.6 and SSO:** 1.6 picked the window already holding the sender, else the lowest free one, else a random one of ten, and nothing ever reset a slot. SSO does the same, in the page.
-- **In the code:** `packages/shared/src/rules/chat/im.ts` (`pickImSlot`), `packages/client/src/ui/im.ts` (`createImWindows`)
-- **Pinned by:** `kept bug: slots are never freed; the 11th sender takes random(10) and clears it` (packages/shared/tests/chat/im.test.ts); `kept bug: closing keeps the slot and its text; the next IM reopens it` and `kept bug: the 11th sender takes random(10) and clears it` (packages/client/tests/im.test.ts)
-
-### Ignoring someone twice keeps two entries, and unignore removes one
-- **What you notice:** /ignore adds whatever you typed without checking it. /unignore always says "Removed ...", but if the same name is listed twice in a row, one copy survives.
-- **In 1.6 and SSO:** 1.6 deleted matches while stepping through the list and skipped the line after each deletion, so of two adjacent copies one stayed. SSO does the same on the stored list.
-- **In the code:** `packages/shared/src/rules/chat/ignore.ts` (`ignoreAdd`, `ignoreRemove`)
-- **Pinned by:** `kept bug: unignore skips the line after each deletion, so one of two adjacent copies survives` (packages/shared/tests/chat/im.test.ts)
-
-### Only the first 50 names on your ignore list work
-- **What you notice:** If your ignore list is long, names past the 50th no longer silence chat or broadcasts, and names past the 40th no longer block instant messages.
-- **In 1.6 and SSO:** 1.6 tested only the first 50 lines of the list for chat and broadcasts and the first 40 for IMs. SSO does the same.
-- **In the code:** `packages/shared/src/rules/chat/ignore.ts` (`IGNORE_WINDOW`, `ignores`)
-- **Pinned by:** `kept bug: only the first 50 entries count, 40 for IMs` (packages/shared/tests/chat/im.test.ts); `kept bug: only the first 50 entries count for chat` and `kept bug: only the first 40 entries count for IMs` (packages/server/tests/im.test.ts)
-
-### Guild Chat without a guild drops you from your current room
-- **What you notice:** Choose Guild Chat when you have no guild and you read "You don't belong to a guild!", but you have already left the room you were in. You no longer hear it and the other members' lists drop you.
-- **In 1.6 and SSO:** 1.6 left the old room before checking for a guild, and the chat window stayed up. SSO does the same, except that your later lines go nowhere, because the server checks room membership.
-- **In the code:** `packages/server/src/systems/chat/rooms.ts` (`enterRoom`)
-- **Pinned by:** `kept bug: Guild Chat with no guild leaves your room first; your lines then go nowhere` (packages/server/tests/im.test.ts)
-
-### An away message of "off" is off, and an empty one replies blank
-- **What you notice:** Set an away message of "off" in any case and you are told it is turned on, but nobody who messages you gets a reply. Set an empty away message and every IM is answered with an empty message.
-- **In 1.6 and SSO:** 1.6 answered IMs while the away text was anything other than OFF, ignoring case. SSO does the same.
-- **In the code:** `packages/shared/src/rules/chat/im.ts` (`awayAnswers`)
-- **Pinned by:** `kept bug: an away text of off (any case) is off; an empty one is on` (packages/shared/tests/chat/im.test.ts); `kept bug: an away text of OFF answers nothing; an empty one answers empty` (packages/server/tests/im.test.ts)
-
-### /me works where talking is blocked, and guild chat skips ignore lists
-- **What you notice:** Inside a house on the lower rows, plain talk is refused, but /me still goes through. Guild chat is heard even by members who have the speaker on their ignore list.
-- **In 1.6 and SSO:** 1.6 applied the house rule only to plain talk and never consulted the ignore list for guild chat. SSO does the same.
-- **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/social/guilds.ts` (`guildChat`)
-- **Pinned by:** `kept bug: in a house at y > 10 you cannot talk; /me still goes` (packages/server/tests/chat.test.ts); `kept bug: guild chat never consults an ignore list` (packages/server/tests/guilds.test.ts).
-
-### A broadcast gets through with under a second of cooldown left
-- **What you notice:** Shout again just before the wait is over and it goes through, because the wait is counted in whole seconds and under one second reads as none.
-- **In 1.6 and SSO:** 1.6 rounded the remaining time down, so with 1 to 19 frames left the broadcast was allowed; 1.6 never showed this, because its cooldown was cleared for registered players. SSO applies the cooldown, so the rounding now matters, and the effective cooldown is 981 frames. A failed shout from jail still starts the cooldown.
-- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`broadcastRefusal`)
-- **Pinned by:** `kept bug: under 20 frames left reads 0 seconds and lets the broadcast through` (packages/shared/tests/chat/chat.test.ts); `kept bug: with fewer than 20 frames left the broadcast goes through` (packages/server/tests/chat.test.ts)
-
-### A line of only spaces says an empty quote
-- **What you notice:** Type some spaces and press Enter and everyone on the map sees `Bob says ""`.
-- **In 1.6 and SSO:** 1.6 stripped the spaces but still sent the line with nothing between the quotes. SSO does the same.
-- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`parseChatLine`, `formatSay`)
-- **Pinned by:** `kept bug: a line of only spaces still says an empty quote` (packages/shared/tests/chat/chat.test.ts)
-
-### Password= keeps one of two forbidden characters in a row
-- **What you notice:** Set a password with two forbidden characters side by side (for example two spaces) and one of them stays in the password: `Password=a  b` becomes `a b`.
-- **In 1.6 and SSO:** 1.6 stripped spaces, slashes, colons and backslashes in four passes that skip the character sliding into place after each deletion. SSO runs the same four passes on the server.
-- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`passwordFrom`)
-- **Pinned by:** `kept bug: Password= strips space, slash, colon and backslash and keeps one of two in a row` (packages/shared/tests/chat/chat.test.ts); `kept bug: Password= keeps one of two forbidden characters in a row` (packages/server/tests/password-db.test.ts)
+No kept bugs (all ten former entries were fixed; see [chat differences](divergences.md#chat)).
 
 ## client
 

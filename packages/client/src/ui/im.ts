@@ -13,7 +13,7 @@
  * 207]; the received-text field [6, 10, 362, 114] (Geneva 12 bold black, scrolling, not editable); `Send` at
  * frames 2-28's stretched rect [9, 132, 359, 203]; Send (member 2) at [321, 213, 364, 235]. An
  * IM shows in the slot already holding its sender, else the lowest free one, else a random one,
- * which it clears; closing a window never frees its slot (as in 1.6) (`pickImSlot`).
+ * which it clears; closing a window frees its slot (`pickImSlot`).
  *
  * Neither plays a sound.
  */
@@ -220,6 +220,9 @@ export function createImWindows(
       width: IMWIN_STAGE.w,
       height: IMWIN_STAGE.h,
       body: stage,
+      onClose: () => {
+        slots[slot - 1] = null;
+      },
     });
     // The window's Send button: the field is emptied, then the message is sent to
     // this window's sender (the front window's slot).
