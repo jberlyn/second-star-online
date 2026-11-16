@@ -13,8 +13,8 @@ export interface Rect {
 
 export interface StageItem extends Rect {
   el: HTMLElement;
-  /** Score channel: higher draws on top. */
-  z: number;
+  /** Score channel: higher draws on top. Omit to let positioned children use their own channels. */
+  z?: number;
   /** Plain art can be repeated in several regions; controls cannot. */
   art?: boolean;
 }
@@ -29,13 +29,15 @@ export const STAGE_H = 600;
  */
 export const DIRECTOR_BAR_W = 19;
 
-export function place(el: HTMLElement, r: Rect, z: number): void {
+export function place(el: HTMLElement, r: Rect, z?: number): void {
   el.style.position = "absolute";
   el.style.left = `${r.x}px`;
   el.style.top = `${r.y}px`;
   el.style.width = `${r.w}px`;
   el.style.height = `${r.h}px`;
-  el.style.zIndex = String(z);
+  if (z !== undefined) {
+    el.style.zIndex = String(z);
+  }
 }
 
 /** An <img> of a UI file (decoded `internal:<member>` art), drawn at its own size. */

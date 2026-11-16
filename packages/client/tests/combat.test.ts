@@ -191,10 +191,32 @@ describe("bars", () => {
     };
     const view = createGameView(fakeAssets, parts);
     expect(view.root.contains(parts.bars)).toBe(true);
-    // The panel frame (Internal #186, opaque from stage x 789) cuts the bars off, as in a still of
-    // the running 1.6: the box spans stage x 590-789, not to the stage edge.
+    // Stage clips at x 800 (no wrapper zIndex so channels 36-64 and 318-319 keep their order).
     expect(parts.bars.style.left).toBe("590px");
-    expect(parts.bars.style.width).toBe("199px");
+    expect(parts.bars.style.width).toBe("210px");
+    expect(parts.bars.style.zIndex).toBe("");
+    const edge = view.root.querySelector(".bars-edge") as HTMLElement;
+    expect(edge.style.left).toBe("789px");
+    expect(edge.style.width).toBe("11px");
+    expect(edge.style.zIndex).toBe("320");
+  });
+
+  test("kept bug: at 1 HP/SP the number sits past the 800-px stage edge; above 200 the fill caps and the number spills left", () => {
+    const b = createBars(fakeAssets);
+    b.setVitals({ level: 1, hp: 1, hpMax: 200, sp: 1029, spMax: 1029, exp: 0, expNeeded: 30 });
+    const imgs = [...b.el.querySelectorAll("img")] as HTMLImageElement[];
+    const hpFill = imgs.find((i) => i.src.endsWith("internal-151.png"));
+    const spFill = imgs.find((i) => i.src.endsWith("internal-153.png"));
+    const hpVal = b.el.querySelector(".hp-value") as HTMLElement;
+    const spVal = b.el.querySelector(".sp-value") as HTMLElement;
+    // HP = 1: fill locH = 870 (left 870 - 81 - 590 = 199), number locH = 768 (left 178, right 802 > 800).
+    expect(hpFill?.style.left).toBe("199px");
+    expect(hpVal.style.left).toBe("178px");
+    expect(hpVal.style.zIndex).toBe("318");
+    // SP = 1029: capped at 200 -> fill locH = 671 (left 0), number locH = 569 (left -21, visible over the frame).
+    expect(spFill?.style.left).toBe("0px");
+    expect(spVal.style.left).toBe("-21px");
+    expect(spVal.style.zIndex).toBe("319");
   });
 });
 

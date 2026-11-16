@@ -19,8 +19,6 @@ import type { Assets } from "../assets.ts";
 import { artImg } from "./stage.ts";
 
 export const BARS_RECT = { x: 590, y: 60, w: 210, h: 50 } as const;
-/** Stage x where the desktop panel frame (Internal #186) turns opaque over the bars. */
-export const BARS_FRAME_EDGE_X = 789;
 const OX = BARS_RECT.x;
 const OY = BARS_RECT.y;
 

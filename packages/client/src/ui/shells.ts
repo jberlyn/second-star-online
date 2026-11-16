@@ -5,7 +5,7 @@
  */
 import type { Assets } from "../assets.ts";
 import { PLAYFIELD_H, PLAYFIELD_W } from "../playfield.ts";
-import { BARS_FRAME_EDGE_X, BARS_RECT } from "./bars.ts";
+import { BARS_RECT } from "./bars.ts";
 import { MENU_BAR_H, type MenuBar } from "./menubar.ts";
 import { artImg, DIRECTOR_BAR_W, fitScale, type StageItem, wholeStage } from "./stage.ts";
 
@@ -98,6 +98,15 @@ export function createGameView(a: Assets, parts: GameParts): GameView {
   const blocker = artImg(a.ui("internal", 203));
   blocker.classList.add("chat-blocker");
   blocker.hidden = true;
+  // Wooden bar-slot cutouts of Internal #186: drawn above the bar tracks/fills (36-64) so the
+  // bars sit inside the 5 px transparent slots without overlapping the bevels, and the right 11 px
+  // edge (x 789-800) drawn above the numbers (318-319) so 1 HP/SP hides behind the wooden edge.
+  const barsCutout = document.createElement("div");
+  barsCutout.className = "bars-cutout";
+  barsCutout.append(artImg(a.ui("internal", 186)));
+  const barsEdge = document.createElement("div");
+  barsEdge.className = "bars-edge";
+  barsEdge.append(artImg(a.ui("internal", 186)));
 
   const stage = wholeStage([
     ...frameArt(a),
@@ -108,11 +117,12 @@ export function createGameView(a: Assets, parts: GameParts): GameView {
     { el: parts.chatLog, x: 20, y: 456, w: 742 + DIRECTOR_BAR_W, h: 88, z: 300 },
     { el: parts.chatInput, x: 20, y: 560, w: 756, h: 20, z: 301 },
     { el: parts.playfield, x: 30, y: 31, w: PLAYFIELD_W, h: PLAYFIELD_H, z: 110 },
-    // Score channels 36-64 and 318-319: above the panel art (4), below the strips (256+). The
-    // original's bars are cut off by the panel frame's wooden edge: Internal #186 is opaque from
-    // stage x 789 on every bar row, and a still of 1.6 running shows the frame's dark edge and wood
-    // over the bar ends. So the box ends at 789 on the stage.
-    { el: parts.bars, ...BARS_RECT, w: BARS_FRAME_EDGE_X - BARS_RECT.x, z: 36 },
+    // Score channels 36-64 (bars, above panel art 4 and below strips 256+) and 318-319 (numbers,
+    // above strips 256+ and playfield 110). No z on the wrapper so each child keeps its own
+    // channel on the stage, and high numbers spill left of x 590 over the frame.
+    { el: parts.bars, ...BARS_RECT },
+    { el: barsCutout, x: 566, y: BARS_RECT.y, w: 234, h: BARS_RECT.h, z: 65 },
+    { el: barsEdge, x: 789, y: BARS_RECT.y, w: 11, h: BARS_RECT.h, z: 320 },
     // The pages (channels 35-100, 220-234, 354-359) above the panel art (3, 4).
     { el: parts.panel, x: 566, y: 0, w: 234, h: 410, z: 35 },
     // The item menu: a bag click sets sprites 95-100 to locZ 7000-7005, above everything.

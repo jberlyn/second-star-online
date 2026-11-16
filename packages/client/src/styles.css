@@ -537,8 +537,27 @@ body {
   position: absolute;
   width: 210px;
   height: 50px;
+  overflow: visible;
+  pointer-events: none;
+}
+.bars-cutout,
+.bars-edge {
   overflow: hidden;
   pointer-events: none;
+}
+.bars-cutout img {
+  position: absolute;
+  left: 0;
+  top: -60px;
+  width: 234px;
+  height: 600px;
+}
+.bars-edge img {
+  position: absolute;
+  left: -223px;
+  top: -60px;
+  width: 234px;
+  height: 600px;
 }
 .bar-value {
   width: 34px;
