@@ -13,10 +13,11 @@
  * - The item menu: Use, Equip (or Cook/Mix/Build/Smith/Storage), Drop, Give at the pointer; it
  *   hides when the pointer leaves it.
  * - Stats (frames 50-61): labels "Strength … Mysticism" (the stat label field), values STR, STA,
- *   INT, WIS, DEX (the stat value fields) and Gold (field Gold at (668, 126)). The gold drop
- *   button (Internal #118, channel 2, matte, loc (619, 133), drawn 14×13 at [613, 127, 627, 140]
- *   on the Game Area frame 50; the score's 18×15 is stale, the sprite is unstretched) opens the
- *   amount dialog.
+ *   INT, WIS, DEX (the stat value fields) and Gold (field Gold at (668, 126)). Gold and the five
+ *   stats sit on one 30 px row grid, each icon centred on its row (see the stats page). The gold
+ *   drop button (Internal #118, channel 2, matte, loc (619, 133), drawn 14×13 at
+ *   [613, 127, 627, 140] on the Game Area frame 50; the score's 18×15 is stale, the sprite is
+ *   unstretched) opens the amount dialog.
  * - Spellbook (frame 67): the spell list, Info and the cast button (spellbook.ts).
  * - Skills (frame 65): the 35 rows of 1.6's fixed list (`classesData.skillPanel`): names
  *   (the skill name field, Arial 12 bold) at (620, 117) and values (the skill value field,
@@ -329,10 +330,42 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   // ---- stats page ----------------------------------------------------------------------
   const statsPage = document.createElement("div");
   statsPage.className = "page page-stats";
+  // Gold and the five stats are one column of icons on a common 30 px row grid. The icons
+  // are a single 24×177 strip (Internal #34, its regpoint 14/90 puts it at [635, 124]) whose
+  // glyphs are unevenly spaced and of uneven height, so each slice gets its own clipping box
+  // and is centred on its row. Each slice is an odd number of rows (one transparent row pads
+  // the two even-height glyphs), which keeps every box on a whole stage pixel. The text
+  // fields use the same grid: Arial 12 bold on a 15 px line with a blank line between rows is
+  // a 30 px pitch, gold row included.
+  const ICON_X = 635;
+  const ROW_H = 30;
+  const GOLD_MID = 133.5; // the gold field (668, 126) on its 15 px line
+  const STAT_ICONS: readonly [cropTop: number, height: number][] = [
+    [0, 15], // gold
+    [26, 21], // Strength (bicep; its pixels are rows 27-46)
+    [64, 15], // Stamina (heart)
+    [93, 23], // Intelligence (bulb)
+    [130, 15], // Wisdom (brain)
+    [156, 21], // Mysticism (wand; its pixels are rows 157-176)
+  ];
+  const icons = STAT_ICONS.map(([cropTop, h], row) => {
+    const clip = document.createElement("div");
+    clip.className = "stat-icon";
+    at(clip, ICON_X, GOLD_MID + row * ROW_H - h / 2, 24, h);
+    const img = artImg(a.ui("internal", 34));
+    img.style.position = "absolute";
+    img.style.left = "0";
+    img.style.top = `${-cropTop}px`;
+    img.style.width = "24px";
+    img.style.height = "177px";
+    clip.append(img);
+    return clip;
+  });
   const labels = field("Strength\n\nStamina\n\nIntelligence\n\nWisdom\n\nMysticism", "stat-labels");
-  at(labels, 668, 154, 88, 160);
+  // Both fields start on the first stat row, 30 px below the gold row's 15 px line.
+  at(labels, 668, 156, 88, 160);
   const values = field("", "stat-values");
-  at(values, 613, 155, 27, 175);
+  at(values, 613, 156, 27, 175);
   const gold = field("", "gold");
   at(gold, 668, 126, 88, 16);
   // Internal #118 at its own 14×13, loc (619, 133) less its regpoint (6, 6) (frame-50.json).
@@ -349,7 +382,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   goldArt.style.height = "13px";
   goldButton.append(goldArt);
   goldButton.addEventListener("click", () => act.gold());
-  statsPage.append(uiAt(a, "internal", 34, 649, 214), labels, values, gold, goldButton);
+  statsPage.append(...icons, labels, values, gold, goldButton);
 
   // ---- skills page ---------------------------------------------------------------------
   const skillsPage = document.createElement("div");

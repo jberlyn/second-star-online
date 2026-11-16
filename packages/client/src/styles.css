@@ -660,6 +660,15 @@ body {
 .panel-page .skills-clip {
   overflow: hidden;
 }
+/* The stats icons are slices of one 24×177 strip: each wrapper clips its row and centres
+   that slice on the row's text line. */
+.panel-page .stat-icon {
+  overflow: hidden;
+  pointer-events: none;
+}
+.panel-page .stat-icon img {
+  display: block;
+}
 .panel-page .qty {
   font:
     bold 10px Arial,

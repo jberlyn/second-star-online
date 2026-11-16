@@ -25,7 +25,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
-| [core](#core) | 34 |
+| [core](#core) | 35 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
 | [housing](#housing) | 7 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **217** |
+| **Total** | **218** |
 
 ## admin
 
@@ -884,6 +884,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **SSO:** Each icon bitmap is centered in its box. The 15×14 markers are centered on rows and placed eight pixels outside both sides; the boxes themselves do not click. The preview moves so the bare character's drawn pixels sit at stage x 676–710, y 306–359 in the middle box; added gear does not move it.
 - **Why:** The user requested centered icons. Director drew unstretched sprites at their own bitmap size and registration point, not the score's stale 32×32 size.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
+
+### Stats icons centred on their rows and evenly spaced
+- **Kind:** Platform
+- **What you notice:** The gold and stat icons line up with their labels and values, and every row has the same spacing.
+- **1.6:** The six icons were one 24×177 cast-member bitmap drawn at its registration point at [635, 124]. Its glyphs were unevenly spaced, with row centres near y 131, 161, 195, 228, 261 and 291 on the stage, so the icons kept their own spacing rather than the text's.
+- **SSO:** The bitmap's glyphs are clipped apart and each icon is centered on its row. Gold and the five stats share a 30-pixel row grid, with icon centres at y 133.5, 163.5, 193.5, 223.5, 253.5 and 283.5; the label and value fields start on the same rows.
+- **Why:** The user requested the icons centered with their text and evenly spaced. The strip's baked-in spacing did not match the 30-pixel text grid, so each icon drifted a little further from its label down the column.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
+- **Pinned by:** `the six stat icons are centred on the rows and evenly spaced` (packages/client/tests/panel.test.ts)
 
 ### /logchat becomes a browser download
 - **Kind:** Platform

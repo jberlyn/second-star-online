@@ -213,6 +213,30 @@ describe("the right panel (frames 50-65)", () => {
     panel.setStats({ str: 11, sta: 12, int: 13, wis: 14, dex: 15 });
     expect(panel.el.querySelector(".stat-values")?.textContent).toBe("11\n\n12\n\n13\n\n14\n\n15");
   });
+  test("the six stat icons are centred on the rows and evenly spaced", () => {
+    const { panel } = panelWith([]);
+    const icons = [...panel.el.querySelectorAll<HTMLElement>(".stat-icon")];
+    expect(icons).toHaveLength(6);
+    expect(icons.map((i) => i.querySelector("img")?.getAttribute("src"))).toEqual(
+      Array(6).fill("/assets/ui/internal-34.png"),
+    );
+    // Each wrapper is centred on its row.
+    const middles = icons.map(
+      (i) => Number.parseFloat(i.style.top) + Number.parseFloat(i.style.height) / 2,
+    );
+    // Gold, then the five stats, once every 30 px (15 px line + a blank line).
+    for (let i = 1; i < middles.length; i++) {
+      expect(middles[i]! - middles[i - 1]!).toBe(30);
+    }
+    // The text's first lines share those rows: top + half a 15 px line box.
+    const lineMiddle = (sel: string) => {
+      const el = panel.el.querySelector<HTMLElement>(sel);
+      return Number.parseFloat(el?.style.top ?? "NaN") + 7.5;
+    };
+    expect(lineMiddle(".gold")).toBe(middles[0]!);
+    expect(lineMiddle(".stat-labels")).toBe(middles[1]!);
+    expect(lineMiddle(".stat-values")).toBe(middles[1]!);
+  });
 });
 
 describe("panel sounds", () => {
