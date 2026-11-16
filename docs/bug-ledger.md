@@ -35,7 +35,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [casino](#casino) | 0 |
 | [chat](#chat) | 0 |
 | [client](#client) | 17 |
-| [combat](#combat) | 28 |
+| [combat](#combat) | 29 |
 | [crafting](#crafting) | 28 |
 | [economy](#economy) | 33 |
 | [housing](#housing) | 20 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **303** |
+| **Total** | **304** |
 
 ## admin
 
@@ -186,6 +186,13 @@ No kept bugs (all ten former entries were fixed; see [chat differences](divergen
 - **In 1.6 and SSO:** the axe skill steps are checked from low to high, from 25 frames at the lowest skills down to 15, and the last step that matches wins. So every skill below 90 ends on 15. SSO runs the same ladder in the same order.
 - **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`)
 - **Pinned by:** `kept bug: axe cascade gives AtDelay 15 below AxeFighting 90, so 16 frames` (packages/shared/tests/combat/combat.test.ts)
+
+### Mining Hammers swing every 8 frames below Mining 90, then slow to 15
+
+- **What you notice:** a Mining Hammer swings every 8 frames at any Mining skill below 90, then jumps to the normal 15 frames at 90 and above. The skill ladder is written to speed up from AtDelay 15 to 7, but the fastest step applies from the first swing.
+- **In 1.6 and SSO:** the mining skill steps are checked from low to high, from AtDelay 15 at the lowest skills down to 7, and the last step that matches wins. So every skill below 90 ends on 7; at 90 and above none match and the base AtDelay 14 applies. SSO runs the same ladder in the same order.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`)
+- **Pinned by:** `kept bug: Mining Hammer swings every 8 frames below Mining 90, then 15 at 90+` (packages/shared/tests/combat/combat.test.ts)
 
 ### A fishing pole swings slowly even with the Ring of Quickness
 - **What you notice:** a Fishing Pole always makes you wait 20 frames between swings, and the Ring of Quickness does not shorten it.

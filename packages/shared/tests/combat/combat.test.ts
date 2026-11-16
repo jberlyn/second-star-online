@@ -97,8 +97,20 @@ describe("attack cadence", () => {
       heldCadence({ ...NO_EQUIPMENT, weapon: "Fishing Pole", ring: "Ring of Quickness" }, skills),
     ).toEqual([21, 21, 21, 21]);
   });
-  test("held Mining Hammer swings every 8 frames: ActionDelay 14 calls = 7 frames under AtDelay 7", () => {
-    expect(heldCadence({ ...NO_EQUIPMENT, weapon: "Mining Hammer" }, skills)).toEqual([8, 8, 8, 8]);
+  test("kept bug: Mining Hammer swings every 8 frames below Mining 90, then 15 at 90+", () => {
+    const withMining = (mining: number) => {
+      const s = [...skills];
+      s[skillIndex("Mining")] = mining;
+      return s;
+    };
+    for (const mining of [0, 50, 89]) {
+      expect(heldCadence({ ...NO_EQUIPMENT, weapon: "Mining Hammer" }, withMining(mining))).toEqual(
+        [8, 8, 8, 8],
+      );
+    }
+    expect(heldCadence({ ...NO_EQUIPMENT, weapon: "Mining Hammer" }, withMining(90))).toEqual([
+      15, 15, 15, 15,
+    ]);
   });
 });
 
