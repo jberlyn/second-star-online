@@ -707,14 +707,17 @@ describe("the death gold drop", () => {
 });
 
 describe("/drop", () => {
-  test("immortals and moderators drop catalogue items on the faced tile; players do nothing", () => {
+  test("only immortals drop items or gold; moderators and players do nothing", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
     expect(handleDrop(s.ctx(), s.room(), a, "Long Sword")).toEqual([]);
+    // Item and gold creation stays immortal-only, count or not.
     a.role = "moderator";
-    handleDrop(s.ctx(), s.room(), a, "Apple");
-    expect(groundAt(s.map, 6, 5)).toEqual(["Apple"]);
+    expect(handleDrop(s.ctx(), s.room(), a, "Apple")).toEqual([]);
+    expect(handleDrop(s.ctx(), s.room(), a, "50 gold")).toEqual([]);
+    expect(handleDrop(s.ctx(), s.room(), a, "20 Apple")).toEqual([]);
+    expect(groundAt(s.map, 6, 5)).toEqual([]);
     a.facing = "S";
     a.role = "immortal";
     handleDrop(s.ctx(), s.room(), a, "Long Sword");

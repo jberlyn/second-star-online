@@ -143,13 +143,13 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Architecture
 - **What you notice:** An administrator receives a useful refusal when a command cannot act, after the original command echo.
 - **1.6:** The client printed its echo and sent the request whether or not the target was online; malformed warp lines were sent unchanged and the administrator heard nothing further.
-- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “Only an immortal can kick an immortal.” or “Only an immortal can do that to an immortal.” A moderator cannot kick an immortal, nor use IP lookup, jail, warp, warptome or ban on one; warpmeto still moves the moderator.
+- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “Only an immortal can kick an immortal.” or “Only an immortal can do that to an immortal.” A moderator cannot kick an immortal, nor use IP lookup, jail, warp, warptome or ban on one; warpmeto still moves the moderator. IP bans are immortal-only, and a moderator cannot lift a ban an immortal made.
 - **Why:** The server can report failed actions, and an immortal's address and editor session should not be controlled by a moderator.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
 ### Role and unban chat commands
 - **Kind:** Architecture
-- **What you notice:** An immortal can change another account's role with `/role <name> player|moderator|immortal`, and immortals or moderators can unban with `/unban <name>`.
+- **What you notice:** An immortal can change another account's role with `/role <name> player|moderator|immortal`, and immortals or moderators can unban with `/unban <name>`, though a moderator cannot lift a ban an immortal made.
 - **1.6:** Roles were lines in an immortals file edited with the File Editor; unbanning meant removing a prefix from the character file.
 - **SSO:** A role change takes effect immediately in the admin menu, chat and role table; changing one's own role is refused. For anyone else `/role` is local chat, as in 1.6. `bun run admin:role` remains available to create the first immortal.
 - **Why:** Roles now live on accounts and the File Editor is gone.
@@ -196,9 +196,9 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Operators needed a way to place shopkeepers and bankers before the NPC editor existed.
 - **In the code:** `packages/server/src/systems/admin/spawn.ts` (`handleSpawn`)
 
-### Staff /drop takes a count
+### Immortal /drop takes a count
 - **Kind:** World content
-- **What you notice:** An immortal or moderator can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
+- **What you notice:** An immortal can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
 - **1.6:** `/drop` put one name on the ground. Gold and crystal piles carried a count; another pile gave one item. A bare dropped crystal name parsed into a useless quantity and item name.
 - **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several still puts the whole count on one line under one ID (bug ledger). A bare crystal name is a pile of one; the World Editor shows and saves the count.
 - **Why:** Operators can stock the world without dropping items one at a time, and bare crystal piles work.
@@ -213,14 +213,14 @@ An entry uses this shape; `Pinned by` is optional:
 - **In the code:** `packages/shared/src/rules/admin/admin.ts` (`warpscriptMatches`), `packages/server/src/systems/admin/commands.ts` (`warpscriptOnBroadcast`), `packages/server/src/systems/chat/chat.ts` (`handleChat`)
 - **Pinned by:** `matches whole keyword tokens ignoring case in the broadcast message content`, `prevents accidental substring triggers` (packages/shared/tests/admin/admin.test.ts); `speaker name, protocol wrapper, and substrings do not trigger /warpscript`, `multiple matching staff: deterministic single winner (first in login order)` (packages/server/tests/admin.test.ts)
 
-### Moderators share the original admin commands and admin chat
+### Moderators share the original moderation commands and admin chat
 - **Kind:** Bug fixed
-- **What you notice:** Moderators can use `/ban`, `/unban`, `/BanIP`, `/unbanip`, `/pardon`, `/drop`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` admin chat, in addition to kick, warp, jail, IP lookup, and location. `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
+- **What you notice:** Moderators can use `/ban`, `/unban` (except a ban an immortal made), `/pardon`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` admin chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
 - **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
-- **SSO:** `ADMIN_ROLES`, `handleDrop`, `readsAdminChat`, and `warpscriptOnBroadcast` grant moderators the full original command set and admin chat while keeping server authority and player denials.
-- **Why:** Completes the moderator moderation toolkit without expanding editor or role-management access.
-- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `readsAdminChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `adminChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`)
-- **Pinned by:** `moderators can use all 1.6 admin commands and /unban; /role and /setclass stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run all 1.6 admin commands and /unban, but not /role or /setclass` (packages/server/tests/admin.test.ts)
+- **SSO:** `ADMIN_ROLES`, `readsAdminChat`, and `warpscriptOnBroadcast` grant moderators the original moderation command set and admin chat while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: `handleDrop` and `ADMIN_ROLES` keep them immortal-only, and `/unban` refuses a ban whose stored `banned_by` account is an immortal.
+- **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an immortal's ban.
+- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `readsAdminChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `adminChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/server/src/persistence/admin.ts` (`findCharacterAccount`)
+- **Pinned by:** `moderators keep the moderation commands; IP bans, /role and /setclass stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
 
 ### World editor Fat brush reaches the full 17 × 12 map
 - **Kind:** Bug fixed
@@ -740,7 +740,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** A banned address is refused at login, while IP lookup is available to moderators and immortals.
 - **1.6:** IP sorting trusted the client-reported address and used substring matching; anyone could call the server's IP lookup. The IP ban did nothing because its response had no client handler and its marker files were never read.
-- **SSO:** `/BanIP` and `/unbanIP` work. A banned address is refused before the password check with the original unshown “You are banned from playing on this server.”; existing sessions are not kicked. The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` is restricted to moderators and immortals.
+- **SSO:** `/BanIP` and `/unbanIP` work and are immortal-only. A banned address is refused before the password check with the original unshown “You are banned from playing on this server.”; existing sessions are not kicked. The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` is restricted to moderators and immortals.
 - **Why:** Trusting a client address allowed ban evasion and exposed IP addresses; an ineffective ban provided no protection.
 - **In the code:** `packages/server/src/gateway/server.ts` (`clientIp`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 

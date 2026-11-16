@@ -46,6 +46,9 @@ export interface CharacterAccount {
   role: Role;
   classCode: number;
   bannedAt: string | null;
+  /** The account that made the current ban, and its role now. */
+  bannedBy: string | null;
+  bannedByRole: Role | null;
 }
 
 /** One audit log row (persistence/admin.ts `insertAudit`). */
@@ -373,6 +376,10 @@ export function handleAdmin(
       }
       if (!c.bannedAt) {
         return tell(p, ADMIN_TEXT.notBanned(c.name));
+      }
+      // A moderator may not undo an immortal's ban, whoever its target now is.
+      if (p.role !== "immortal" && c.bannedByRole === "immortal") {
+        return tell(p, ADMIN_TEXT.immortalBan);
       }
       deps.setBan(c.accountId, null);
       audit(c.name, c.bannedAt, null);

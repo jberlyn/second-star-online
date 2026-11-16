@@ -17,7 +17,7 @@ import {
 } from "../../src/index.ts";
 
 describe("the moderator/immortal table", () => {
-  test("moderators can use all 1.6 admin commands and /unban; /role and /setclass stay immortal-only", () => {
+  test("moderators keep the moderation commands; IP bans, /role and /setclass stay immortal-only", () => {
     const mod = Object.entries(ADMIN_ROLES)
       .filter(([, roles]) => roles.includes("moderator"))
       .map(([c]) => c)
@@ -25,7 +25,6 @@ describe("the moderator/immortal table", () => {
     expect(mod).toEqual(
       [
         "ban",
-        "banip",
         "cheatfile",
         "inventory",
         "iplookup",
@@ -36,13 +35,14 @@ describe("the moderator/immortal table", () => {
         "refresh",
         "save",
         "unban",
-        "unbanip",
         "warp",
         "warpmeto",
         "warpscript",
         "warptome",
       ].sort(),
     );
+    expect(mayRun("banip", "moderator")).toBe(false);
+    expect(mayRun("unbanip", "moderator")).toBe(false);
     expect(mayRun("role", "moderator")).toBe(false);
     expect(mayRun("setclass", "moderator")).toBe(false);
     for (const cmd of Object.keys(ADMIN_ROLES)) {

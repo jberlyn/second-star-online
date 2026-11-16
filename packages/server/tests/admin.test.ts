@@ -49,14 +49,22 @@ function scene(withJail = true) {
   const classes = new Map<string, number>();
   const roles = new Map<string, string>();
   const ipBans = new Set<string>();
-  const accountOf = (p: Player): CharacterAccount => ({
-    characterId: p.id,
-    accountId: p.accountId,
-    name: p.name,
-    role: p.role,
-    classCode: classes.get(p.id) ?? 1,
-    bannedAt: bans.get(p.accountId) ?? null,
-  });
+  const accountOf = (p: Player): CharacterAccount => {
+    const bannedBy = bans.get(p.accountId) ?? null;
+    const banner = bannedBy
+      ? [...s.world.players.values()].find((o) => o.accountId === bannedBy)
+      : null;
+    return {
+      characterId: p.id,
+      accountId: p.accountId,
+      name: p.name,
+      role: p.role,
+      classCode: classes.get(p.id) ?? 1,
+      bannedAt: bannedBy ? "2026-11-06T00:00:00.000Z" : null,
+      bannedBy,
+      bannedByRole: banner?.role ?? null,
+    };
+  };
   const admin: AdminDeps = {
     findCharacter: (name) => {
       const p = [...s.world.players.values()].find(
@@ -111,7 +119,7 @@ describe("the role table (moderator command set)", () => {
     }
   });
 
-  test("a moderator may run all 1.6 admin commands and /unban, but not /role or /setclass", () => {
+  test("a moderator may run the moderation commands, but not IP bans, /role or /setclass", () => {
     const { mod, say, bob, bans, ipBans, audits } = scene();
     expect(texts(say(mod, "/Location"), "Mod")).toEqual([
       "You are at map: x1000y992 at position: 6-5",
@@ -125,10 +133,12 @@ describe("the role table (moderator command set)", () => {
     bob.char.wanted = true;
     expect(texts(say(mod, "/Pardon Bob"), "Mod")).toEqual(["Pardoning Bob..."]);
     expect(bob.char.wanted).toBe(false);
-    expect(texts(say(mod, "/BanIP 1.2.3.4"), "Mod")).toEqual(["Banning 1.2.3.4..."]);
+    // IP bans can lock out an immortal or the whole proxy, so they stay immortal-only.
+    ipBans.add("1.2.3.4");
+    expect(say(mod, "/BanIP 2.3.4.5")).toEqual([]);
+    expect(texts(say(mod, "/unbanip 1.2.3.4"), "Mod")).toEqual([]);
+    expect(ipBans.has("2.3.4.5")).toBe(false);
     expect(ipBans.has("1.2.3.4")).toBe(true);
-    expect(texts(say(mod, "/unbanip 1.2.3.4"), "Mod")).toEqual(["Unbanning 1.2.3.4..."]);
-    expect(ipBans.has("1.2.3.4")).toBe(false);
     expect(texts(say(mod, "/ban Bob"), "Mod")).toEqual(["*** banning Bob..."]);
     expect(bans.get("Bob")).toBe("Mod");
     expect(texts(say(mod, "/unban Bob"), "Mod")).toEqual(["Bob is no longer banned."]);
@@ -139,6 +149,17 @@ describe("the role table (moderator command set)", () => {
     say(mod, "/Refresh");
     expect(audits).toContain("saved");
     expect(audits).toContain("reloaded");
+  });
+
+  test("SSO: a moderator may not lift a ban an immortal made", () => {
+    const { imm, mod, say, bans } = scene();
+    expect(texts(say(imm, "/ban Bob"), "Imm")).toEqual(["*** banning Bob..."]);
+    expect(bans.get("Bob")).toBe("Imm");
+    expect(texts(say(mod, "/unban Bob"), "Mod")).toEqual([ADMIN_TEXT.immortalBan]);
+    expect(bans.get("Bob")).toBe("Imm");
+    // An immortal may still lift it.
+    expect(texts(say(imm, "/unban Bob"), "Imm")).toEqual(["Bob is no longer banned."]);
+    expect(bans.get("Bob")).toBeNull();
   });
 
   test("SSO's /role and /setclass are said as local chat by anyone but an immortal", () => {
@@ -535,7 +556,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       rng: NEVER_PUSH,
       kick: (id) => kicked.push(id),
     });
-    const make = async (name: string, role?: "immortal") => {
+    const make = async (name: string, role?: "moderator" | "immortal") => {
       await game.create({
         t: "create",
         name,
@@ -578,6 +599,26 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       "Alice /ban Bob",
       "Alice /unban Bob",
     ]);
+  });
+
+  test("a moderator cannot lift a ban an immortal made", async () => {
+    const { game, make } = await start();
+    const alice = await make("Alice", "immortal");
+    const mo = await make("Mo", "moderator");
+    const bob = await make("Bob");
+    game.intent(alice.characterId, { t: "chat", text: "/ban Bob" });
+    expect(kicked).toEqual([bob.characterId]);
+    game.leave(bob.characterId);
+    sent.length = 0;
+    game.intent(mo.characterId, { t: "chat", text: "/unban bob" });
+    expect(texts(sent, mo.characterId)).toEqual([ADMIN_TEXT.immortalBan]);
+    expect(await game.login("Bob", "pw", "10.0.0.2")).toEqual({
+      ok: false,
+      text: ADMIN_TEXT.banned,
+    });
+    // The stored banned_by lets an immortal undo its own ban.
+    game.intent(alice.characterId, { t: "chat", text: "/unban bob" });
+    expect((await game.login("Bob", "pw", "10.0.0.2")).ok).toBe(true);
   });
 
   test("an IP ban refuses a login from that address before the password", async () => {

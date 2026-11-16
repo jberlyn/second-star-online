@@ -33,16 +33,16 @@ export type AdminCmd =
 
 /**
  * Who may run each command.
- * Moderators and immortals share the 1.6 admin commands and `/unban`; `/role` and `/setclass`
- * remain immortal-only.
+ * Moderators share most of the 1.6 admin commands and `/unban`; IP bans, `/role` and `/setclass`
+ * remain immortal-only. Item creation (`/drop`) is immortal-only too, checked in `handleDrop`.
  */
 export const ADMIN_ROLES: Readonly<Record<AdminCmd, readonly Role[]>> = {
   save: ["immortal", "moderator"],
   refresh: ["immortal", "moderator"],
   cheatfile: ["immortal", "moderator"],
-  unbanip: ["immortal", "moderator"],
+  unbanip: ["immortal"], // an IP ban can lock out an immortal or the whole proxy
   inventory: ["immortal", "moderator"],
-  banip: ["immortal", "moderator"],
+  banip: ["immortal"], // an IP ban can lock out an immortal or the whole proxy
   location: ["immortal", "moderator"],
   iplookup: ["immortal", "moderator"],
   kick: ["immortal", "moderator"],
@@ -121,6 +121,8 @@ export const ADMIN_TEXT = {
   kickImmortal: "Only an immortal can kick an immortal.",
   /** `/iplookup`, `/jail`, `/warp`, `/warptome` by a moderator on an immortal. */
   immortalTarget: "Only an immortal can do that to an immortal.",
+  /** `/unban` by a moderator of an account an immortal banned. */
+  immortalBan: "Only an immortal can lift an immortal's ban.",
   setClassUsage: "Usage: /setclass <name> <class name or number 1-26>",
   noSuchClass: (cls: string) => `There is no class called ${cls}.`,
   classSet: (name: string, cls: string) => `${name} is now a ${cls}.`,

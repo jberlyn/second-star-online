@@ -173,7 +173,7 @@ server {
 Roles live on the `accounts` table, not on character names:
 
 - **`player`**: standard gameplay.
-- **`moderator`**: can run the original admin commands and `/unban`, and can read and post admin chat (`-text`). Cannot kick, ban, jail, warp, or look up the IP of an immortal. `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and settings windows remain immortal-only.
+- **`moderator`**: can run the original moderation commands and `/unban` (but cannot lift a ban an immortal made), and can read and post admin chat (`-text`). Cannot kick, ban, jail, warp, or look up the IP of an immortal. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and settings windows remain immortal-only.
 - **`immortal`**: full command access, admin chat posting (`-text`), World Editor, NPC Editor, Settings, Newspaper editor, and Assassin's Game controls.
 
 ### Bootstrapping an immortal
@@ -222,15 +222,15 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/refresh` | `moderator` | None | Reloads settings overrides from the database and applies them to everyone online. |
 | `/cheatfile` | `moderator` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. |
 | `/inventory` | `moderator` | None | Prints your 15 bag lines as held by the server (`Name-qty`). |
-| `/banip <ip>` | `moderator` | IP address (word 2) | Adds `<ip>` to `ip_bans` and refuses future logins from that address. |
-| `/unbanip <ip>` | `moderator` | IP address (word 2) | Removes `<ip>` from `ip_bans`. |
+| `/banip <ip>` | `immortal` | IP address (word 2) | Adds `<ip>` to `ip_bans` and refuses future logins from that address. |
+| `/unbanip <ip>` | `immortal` | IP address (word 2) | Removes `<ip>` from `ip_bans`. |
 | `/ban <name>` | `moderator` | Character name (word 2) | Bans the target's account (cannot ban yourself; moderators cannot ban immortals) and kicks if online. |
-| `/unban <name>` | `moderator` | Character name (word 2) | Clears the ban on the target's account. (Said as local chat by players.) |
+| `/unban <name>` | `moderator` | Character name (word 2) | Clears the ban on the target's account (a moderator cannot lift a ban an immortal made). (Said as local chat by players.) |
 | `/pardon <name>` | `moderator` | Online player (word 2) | Clears the target's murder/wanted flag and saves the character. |
 | `/warpscript <word\|OFF>` | `moderator` | Keyword (word 2) or `OFF` | Matches `<word>` as a whole token in broadcast message content, ignoring case; the first matching staff member in login order warps the speaker (`OFF` disables). |
 | `/role <name> <role>` | `immortal` | Character name, `player` / `moderator` / `immortal` | Updates the account's role (cannot change your own) and applies immediately if online. (Local chat for non-immortals.) |
 | `/setclass <name> <class>` | `immortal` | Character name, class name or number `1`–`26` | Changes the character's class in the database. (Local chat for non-immortals.) |
-| `/drop <item>` | `moderator` | `<n> gold`, item name, or `<n> <item>` (1–9999) | Places the pile on the tile you face; admin drops never decay. |
+| `/drop <item>` | `immortal` | `<n> gold`, item name, or `<n> <item>` (1–9999) | Places the pile on the tile you face; admin drops never decay. |
 | `/roster [slot species\|clear]` | `immortal` | None, or slot `1`–`4` + species name or `clear` | Lists the current map's 4 monster/NPC slots, or sets/clears a slot (saving the map). (Local chat for non-immortals.) |
 | `/spawn <1-4>` | `immortal` | Slot `1`–`4` | Immediately spawns the rostered creature in that slot on the tile you face. (Local chat for non-immortals.) |
 

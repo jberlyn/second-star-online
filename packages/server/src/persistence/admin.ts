@@ -13,6 +13,9 @@ export interface CharacterAccount {
   role: Role;
   classCode: number;
   bannedAt: string | null;
+  /** The account that made the current ban, and its role now. */
+  bannedBy: string | null;
+  bannedByRole: Role | null;
 }
 
 export function findCharacterAccount(db: Db, name: string): CharacterAccount | null {
@@ -25,11 +28,17 @@ export function findCharacterAccount(db: Db, name: string): CharacterAccount | n
         role: Role;
         class_code: number;
         banned_at: string | null;
+        banned_by: string | null;
+        banned_by_role: Role | null;
       },
       [string]
     >(
-      `SELECT c.id AS character_id, a.id AS account_id, c.name, a.role, c.class_code, a.banned_at
-       FROM characters c JOIN accounts a ON a.id = c.account_id WHERE c.name = ? LIMIT 1`,
+      `SELECT c.id AS character_id, a.id AS account_id, c.name, a.role, c.class_code, a.banned_at,
+              a.banned_by, banner.role AS banned_by_role
+       FROM characters c
+       JOIN accounts a ON a.id = c.account_id
+       LEFT JOIN accounts banner ON banner.id = a.banned_by
+       WHERE c.name = ? LIMIT 1`,
     )
     .get(name);
   return row
@@ -40,6 +49,8 @@ export function findCharacterAccount(db: Db, name: string): CharacterAccount | n
         role: row.role,
         classCode: row.class_code,
         bannedAt: row.banned_at,
+        bannedBy: row.banned_by,
+        bannedByRole: row.banned_by_role,
       }
     : null;
 }
