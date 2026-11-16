@@ -36,9 +36,9 @@ An entry uses this shape; `Pinned by` is optional:
 | [progression](#progression) | 4 |
 | [social](#social) | 16 |
 | [spells](#spells) | 10 |
-| [vehicles](#vehicles) | 2 |
+| [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **216** |
+| **Total** | **217** |
 
 ## admin
 
@@ -1811,6 +1811,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** The cap came from ground-item sprite channels.
 - **In the code:** `packages/server/src/systems/vehicles/airship.ts` (`airshipDeed`, `unboardAirship`)
 - **Pinned by:** `SSO: no 20-item cap at the deed or at the unboard` (packages/server/tests/vehicles.test.ts)
+
+### Airship landing pads work on map rows 10–12
+- **Kind:** Bug fixed
+- **What you notice:** You can build and unboard an Airship on `J2` landing pads on rows 10 to 12 of a map, just as on rows 1 to 9.
+- **1.6:** The dock check read fields 1–12 of the `#`-delimited map record, where fields 10–12 held non-tile data instead of layer-1 rows, so `J2` pads on rows 10–12 were never recognised.
+- **SSO:** `isDock` reads layer 1 via `layer1Tile` across all 12 map rows (`1..MAP_HEIGHT`). (`isArenaTile` still uses `recordTile` to preserve the separate arena rows 10–12 bug.)
+- **Why:** Allows landing pads placed on the bottom three rows of a map to work for building and parking airships.
+- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`layer1Tile`, `isDock`)
+- **Pinned by:** `a J2 pad on rows 10-12 counts for building and unboarding` (packages/shared/tests/vehicles/vehicles.test.ts); `a pad on row 10 counts for building` (packages/server/tests/vehicles.test.ts); `a pad on row 10 lets you off` (packages/server/tests/vehicles.test.ts)
 
 ## world
 

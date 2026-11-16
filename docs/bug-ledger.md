@@ -46,10 +46,10 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [progression](#progression) | 11 |
 | [social](#social) | 18 |
 | [spells](#spells) | 25 |
-| [vehicles](#vehicles) | 1 |
+| [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **304** |
+| **Total** | **303** |
 
 ## admin
 
@@ -1631,11 +1631,7 @@ No kept bugs (all ten former entries were fixed; see [chat differences](divergen
 
 ## vehicles
 
-### Dock and arena tests on map rows 10-12 read the wrong field
-- **What you notice:** an Airship pad or dock on rows 10 to 12 of a map never counts, so you can't unboard or use the pad there, and an arena tile there gives an ordinary death.
-- **In 1.6 and SSO:** the lookup of a tile's record reads fields 10 to 12 for rows 10 to 12 instead of the tile's own. SSO does the same lookup against the raw map record, in one shared function used by the arena test, the Airship deed's pad test and the unboard test. Boat disembark is not built.
-- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`recordTile`)
-- **Pinned by:** `kept bug: a J2 pad on rows 10-12 never counts` (packages/shared/tests/vehicles/vehicles.test.ts); `kept bug: a pad on row 10 never counts` (packages/server/tests/vehicles.test.ts); `kept bug: a pad on row 10 never lets you off` (packages/server/tests/vehicles.test.ts)
+No kept bugs (the former entry was fixed; see [vehicle differences](divergences.md#vehicles)).
 
 ## world
 

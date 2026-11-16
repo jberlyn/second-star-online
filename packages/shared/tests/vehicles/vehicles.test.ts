@@ -4,6 +4,7 @@ import {
   boardCheck,
   deedCheck,
   isDock,
+  layer1Tile,
   ownerName,
   recordTile,
   unboardCheck,
@@ -49,16 +50,19 @@ describe("airship drop checks", () => {
   test("a pad with the way clear builds", () => {
     expect(deedCheck(base)).toEqual({ kind: "build" });
   });
-  test("kept bug: a J2 pad on rows 10-12 never counts", () => {
-    const layer1 = pad(5, 10);
-    expect(recordTile(layer1, 5, 10)).toBe("");
-    expect(isDock(layer1, 5, 10)).toBe(false);
-    expect(deedCheck({ ...base, layer1, faced: { x: 5, y: 10 } })).toEqual({
-      kind: "text",
-      text: VEHICLE_TEXT.cannotBuild,
-    });
+  test("a J2 pad on rows 10-12 counts for building and unboarding", () => {
+    for (const y of [10, 11, 12]) {
+      const layer1 = pad(5, y);
+      expect(recordTile(layer1, 5, y)).toBe("");
+      expect(layer1Tile(layer1, 5, y)).toBe("J2");
+      expect(isDock(layer1, 5, y)).toBe(true);
+      expect(deedCheck({ ...base, layer1, faced: { x: 5, y } })).toEqual({ kind: "build" });
+    }
     expect(isDock(pad(5, 9), 5, 9)).toBe(true);
     expect(isDock(pad(5, 9, "j2"), 5, 9)).toBe(true);
+    expect(isDock(pad(5, 12, "j2"), 5, 12)).toBe(true);
+    expect(layer1Tile(pad(5, 12), 5, 0)).toBe("");
+    expect(layer1Tile(pad(5, 12), 5, 13)).toBe("");
   });
 });
 
@@ -113,11 +117,12 @@ describe("UnboardAirship", () => {
       text: "There's already something here, you can't park your Airship here!",
     });
   });
-  test("kept bug: a pad on row 10 never lets you off", () => {
-    expect(unboardCheck({ ...base, me: { x: 5, y: 10 }, layer1: pad(5, 10) })).toEqual({
-      kind: "text",
-      text: VEHICLE_TEXT.cannotGetOff,
-    });
+  test("a pad on rows 10-12 lets you off", () => {
+    for (const y of [10, 11, 12]) {
+      expect(unboardCheck({ ...base, me: { x: 5, y }, layer1: pad(5, y) })).toEqual({
+        kind: "park",
+      });
+    }
   });
   test("a clear pad parks", () => {
     expect(unboardCheck(base)).toEqual({ kind: "park" });

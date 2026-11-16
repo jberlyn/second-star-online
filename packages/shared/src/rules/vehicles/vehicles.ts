@@ -35,8 +35,8 @@ export const VEHICLE_TEXT = {
 
 /**
  * Word `x` of the map record's field `y` (where `#` separates fields), which is a layer-1 row only
- * for y = 1..9 (a kept 1.6 bug: a dock or arena on rows 10-12 reads another field). Returns ""
- * outside rows 1-9.
+ * for y = 1..9 (a kept 1.6 bug for arena checks: an arena on rows 10-12 reads another field).
+ * Returns "" outside rows 1-9.
  */
 export function recordTile(layer1: readonly string[], x: number, y: number): string {
   if (y < 1 || y > 9) {
@@ -45,9 +45,17 @@ export function recordTile(layer1: readonly string[], x: number, y: number): str
   return lingoWord(layer1[y - 1] ?? "", x);
 }
 
+/** Word `x` of layer 1's row `y` (1-based, 1..MAP_HEIGHT). Returns "" outside 1..MAP_HEIGHT. */
+export function layer1Tile(layer1: readonly string[], x: number, y: number): string {
+  if (y < 1 || y > MAP_HEIGHT) {
+    return "";
+  }
+  return lingoWord(layer1[y - 1] ?? "", x);
+}
+
 /** A landing pad: the tile is "J2" (ignoring case). */
 export function isDock(layer1: readonly string[], x: number, y: number): boolean {
-  return tileHas(recordTile(layer1, x, y), "dock");
+  return tileHas(layer1Tile(layer1, x, y), "dock");
 }
 
 export type DeedResult = { kind: "silent" } | { kind: "text"; text: string } | { kind: "build" };

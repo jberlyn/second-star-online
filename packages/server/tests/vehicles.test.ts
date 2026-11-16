@@ -35,7 +35,7 @@ const chat = (out: Out, to: string) =>
 const events = (out: Out, to: string): DeltaEvent[] =>
   out.flatMap((m) => (m.to === to && m.msg.t === "delta" ? m.msg.events : []));
 
-/** A map with a `J2` pad at each of `pads` (layer 1, rows 1-9 only count). */
+/** A map with a `J2` pad at each of `pads` on layer 1. */
 const padMap = (pads: [number, number][]) =>
   testMap("x1000y992", [], (x, y) => (pads.some(([px, py]) => px === x && py === y) ? "J2" : "G1"));
 
@@ -129,11 +129,13 @@ describe("the Airship Deed", () => {
     give(s.ann, 1, "Airship Deed");
     expect(chat(useIntent(s.ctx(), s.room, s.ann, 1), "Ann")).toEqual([VEHICLE_TEXT.inTheWay]);
   });
-  test("kept bug: a pad on row 10 never counts", () => {
+  test("a pad on row 10 counts for building", () => {
     const s = scene({ pads: [[6, 10]] });
     s.ann.y = 10;
     give(s.ann, 1, "Airship Deed");
-    expect(chat(useIntent(s.ctx(), s.room, s.ann, 1), "Ann")).toEqual([VEHICLE_TEXT.cannotBuild]);
+    expect(chat(useIntent(s.ctx(), s.room, s.ann, 1), "Ann")).toEqual([]);
+    expect(airshipAt(s.map, 6, 10)?.ownerId).toBe("Ann");
+    expect(s.ann.char.bag[0]).toBeNull();
   });
 });
 
@@ -446,7 +448,7 @@ describe("unboarding", () => {
     expect(s.ann.vehicle).toBeNull();
     expect(airshipAt(s.map, 6, 5)?.ownerId).toBe("Ann");
   });
-  test("kept bug: a pad on row 10 never lets you off", () => {
+  test("a pad on row 10 lets you off", () => {
     const s = aboard({
       pads: [
         [6, 5],
@@ -455,7 +457,10 @@ describe("unboarding", () => {
     });
     s.ann.x = 6;
     s.ann.y = 10;
-    expect(chat(actionIntent(s.ctx(), s.room, s.ann), "Ann")).toEqual([VEHICLE_TEXT.cannotGetOff]);
+    expect(chat(actionIntent(s.ctx(), s.room, s.ann), "Ann")).toEqual([]);
+    expect(s.ann.vehicle).toBeNull();
+    expect(s.ann.spell.body).toBeNull();
+    expect(airshipAt(s.map, 6, 10)?.ownerId).toBe("Ann");
   });
 });
 

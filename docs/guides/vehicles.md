@@ -19,5 +19,5 @@ An Airship uses its own walk grid while ridden, flies over players, monsters, it
 
 ## Kept bugs and differences
 
-Landing pad checks retain the original's map-record lookup, including its behavior on the lower rows. Airships are converted by the server and the original ground item cap is removed. See the [vehicle kept bugs](../bug-ledger.md#vehicles), [movement kept bugs](../bug-ledger.md#movement), and [vehicle differences](../divergences.md#vehicles).
+Landing pad checks read layer 1 across all 12 rows (fixing the original's row 10–12 map-record lookup bug). Airships are converted by the server and the original ground item cap is removed. See the [vehicle kept bugs](../bug-ledger.md#vehicles), [movement kept bugs](../bug-ledger.md#movement), and [vehicle differences](../divergences.md#vehicles).
 
