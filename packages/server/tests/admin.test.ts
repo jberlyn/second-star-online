@@ -76,6 +76,7 @@ function scene(withJail = true) {
     reloadSettings: () => audits.push("reloaded"),
     loadMap: (n) => byName.get(n) ?? null,
     startPoint: () => ({ map: "x1000y992", x: 6, y: 4 }),
+    casino: { graceTicks: 600, addGoldOffline: () => {} },
   };
   const deps: ChatDeps = {
     maxChars: 200,
@@ -248,7 +249,16 @@ describe("warps", () => {
     const imm2 = player("Ed", seed, 1, 1);
     imm2.role = "immortal";
     world.players.set(imm2.id, imm2);
-    openEditor(world, imm2, () => seed, { mx: 1000, my: 992 });
+    openEditor(
+      world,
+      imm2,
+      () => seed,
+      { mx: 1000, my: 992 },
+      {
+        graceTicks: 600,
+        addGoldOffline: () => {},
+      },
+    );
     expect(imm2.editing).toBe("world");
     const out = say(imm, "/warp Ed x1001y992 4 4");
     expect(imm2.editing).toBeNull();

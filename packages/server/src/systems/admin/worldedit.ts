@@ -25,6 +25,7 @@ import {
   TEXT,
 } from "@secondstaronline/shared";
 
+import { type CasinoDeps, casinoMapChange } from "../casino/index.ts";
 import { mintContainerId } from "../crafting/craft.ts";
 import { leaveTrade } from "../economy/trade.ts";
 import { species } from "../monsters/slots.ts";
@@ -89,12 +90,18 @@ export function editorMap(
  * it ticks for you. From the other editor you are already off the map (menu 502 opens either editor
  * from either).
  */
-export function leaveForEditor(world: World, p: Player, which: "world" | "npc"): Outgoing[] {
+export function leaveForEditor(
+  world: World,
+  p: Player,
+  which: "world" | "npc",
+  casino: CasinoDeps,
+): Outgoing[] {
   if (p.editing) {
     p.editing = which;
     return [];
   }
   const out = leaveTrade(world, p);
+  out.push(...casinoMapChange(world, p, casino));
   out.push(...leaveRoom(world, p));
   p.editing = which;
   p.held = null;
@@ -112,11 +119,12 @@ export function openEditor(
   p: Player,
   loadMap: (name: string) => WorldMap | null,
   coords: { mx: number; my: number } | null,
+  casino: CasinoDeps,
 ): Outgoing[] {
   if (p.role !== "immortal" || p.editing === "world" || !coords) {
     return [];
   }
-  const out = leaveForEditor(world, p, "world");
+  const out = leaveForEditor(world, p, "world", casino);
   const { map, exists } = editorMap(loadMap, coords.mx, coords.my);
   out.push({ to: p.id, msg: { t: "editor", editing: true, map, exists } });
   return out;

@@ -107,6 +107,23 @@ export async function startApp(root: HTMLElement): Promise<App> {
   return runApp(root, assets, conn);
 }
 
+/** Closes any open casino UI when a snapshot moves the player to a different map. */
+export function closeCasinoOnMapChange(
+  prevMap: string | undefined,
+  nextMap: string,
+  ui: {
+    slots: { show(open: boolean): void };
+    blackjack: { close(): void };
+    checkers: { reset(): void };
+  },
+): void {
+  if (prevMap !== undefined && prevMap !== nextMap) {
+    ui.slots.show(false);
+    ui.blackjack.close();
+    ui.checkers.reset();
+  }
+}
+
 /**
  * The hover name for what the pointer is over (sprite 156). Another player in
  * a body armour containing "Invis" shows "???"; your own name always shows. Ground items have
@@ -388,7 +405,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     sound,
   });
   // The Slot Machine (frame 72's sprites 333-336). Close and a server close free the
-  // keys and play the first tab; the panel survives a map change.
+  // keys and play the first tab; a map change closes the panel.
   const slots = createSlotMachine(assets, {
     pull: () => send({ t: "slotPull" }),
     close: () => send({ t: "slotClose" }),
@@ -405,7 +422,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     sound,
   });
   // The Blackjack Table (frame 72's sprites 333 and 338-353). Leave frees the keys
-  // and plays the first tab; the seat survives a map change.
+  // and plays the first tab; a map change closes the seat.
   const blackjack = createBlackjack(assets, {
     bid: (text) => send({ t: "bjBid", text }),
     hit: () => send({ t: "bjHit" }),
@@ -781,11 +798,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         // so the title waits for OK.
         kickAlert = showAlert(root, msg.text);
         return;
-      case "snapshot":
+      case "snapshot": {
+        const prevMap = model.map?.name;
         if (!game) {
           enterGame();
         }
         applySnapshot(model, msg);
+        closeCasinoOnMapChange(prevMap, msg.map.name, { slots, blackjack, checkers });
         // Drawing the map's items clears the key lock.
         model.keyLock = false;
         void playfield.setMap(msg.map).then(() => {
@@ -794,6 +813,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           send({ t: "mapReady" });
         });
         return;
+      }
       case "death":
         onDeath(model);
         return;

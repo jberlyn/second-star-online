@@ -5,6 +5,8 @@ import { describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
 
+import { adminWarp } from "../src/systems/admin/commands.ts";
+import { openEditor } from "../src/systems/admin/worldedit.ts";
 import {
   bjBid,
   bjHit,
@@ -34,12 +36,12 @@ const views = (msgs: Out, to: string) =>
 
 const STAND = "This is blackjack table, but you must be standing beside it to play!";
 
-/** `cards` are the `random(10)` rolls (1-10 = crd51-crd60), in deal order. */
+/** `cards` are the `random(13)` rolls (1-9 = crd51-crd59, 10-13 = crd60), in deal order. */
 function scene(cards: number[] = []) {
   const map = testMap("x1000y992");
   const other = testMap("x1001y992");
   const s = setup([map, other]);
-  const rng = rngByN({ 10: cards });
+  const rng = rngByN({ 13: cards });
   const table: GroundItem = {
     id: "bj",
     item: "Blackjack Table",
@@ -95,16 +97,16 @@ describe("sitting", () => {
     expect(v?.sfx).toEqual(["shuffle"]);
   });
 
-  test("kept bug: the wrong-spot text shows once, then goes silent, also after a slot panel", () => {
+  test("the wrong-spot text shows every time, even after opening a table or slot panel", () => {
     const t = scene();
     const far = t.join("Far", 3);
     expect(chat(t.sit(far), "Far")).toEqual([STAND]);
-    expect(chat(t.sit(far), "Far")).toEqual([STAND]); // nothing opened: the joined flag is unset
+    expect(chat(t.sit(far), "Far")).toEqual([STAND]);
     const a = t.join("Alice", 9);
     t.sit(a);
     bjLeave(t.world, a, t.deps);
-    expect(chat(t.sit(far), "Far")).toEqual([STAND]);
-    // A slot panel sets it: a different player, a different session flag.
+    a.x = 3;
+    expect(chat(t.sit(a), "Alice")).toEqual([STAND]);
     const s2 = t.join("Slotter", 5, 6);
     s2.facing = "N";
     t.map.ground.push({
@@ -118,8 +120,7 @@ describe("sitting", () => {
     slotOpen(s2, t.map.ground.find((g) => g.id === "sm") as GroundItem);
     s2.slot = null;
     s2.keyLock = false;
-    s2.casinoShown = true; // set by slotOpen's session in the full flow
-    expect(t.sit(s2)).toEqual([]);
+    expect(chat(t.sit(s2), "Slotter")).toEqual([STAND]);
   });
 
   test("divergence: a taken seat, a third player, a longer name, and an open casino screen all refuse", () => {
@@ -220,7 +221,7 @@ describe("bids and the deal", () => {
 });
 
 describe("play and settlement", () => {
-  test("Hit and Stand gates; a sixth card fills nothing and can be repeated", () => {
+  test("Hit and Stand gates; a fifth card stands you at once", () => {
     // P1: 2, 2 (4); P2: 10, 10 (20); then P1 hits 2, 2, 2 -> 5 cards of 2 = 10
     const t = scene([2, 2, 10, 10, 2, 2, 2, 2]);
     const a = t.join("Alice", 9);
@@ -231,17 +232,15 @@ describe("play and settlement", () => {
     expect(bjHit(t.world, a, t.rng)).toEqual([]); // no cards yet
     bjBid(t.world, a, "10", t.rng);
     bjBid(t.world, b, "10", t.rng);
+    let lastHit: Out = [];
     for (let i = 0; i < 3; i += 1) {
-      bjHit(t.world, a, t.rng);
+      lastHit = bjHit(t.world, a, t.rng);
     }
     expect(t.tbl().hands[0]).toHaveLength(5);
-    const full = bjHit(t.world, a, t.rng);
-    expect(full).toEqual([]);
+    expect(t.tbl().holds).toEqual([true, false]);
+    expect(chat(lastHit, "Bob")).toEqual(["Alice holds."]);
     expect(bjHit(t.world, a, t.rng)).toEqual([]);
-    const stand = bjStand(t.world, a);
-    expect(chat(stand, "Bob")).toEqual(["Alice holds."]);
-    expect(bjStand(t.world, a)).toEqual([]); // you do not hold twice
-    expect(bjHit(t.world, a, t.rng)).toEqual([]);
+    expect(bjStand(t.world, a)).toEqual([]); // already holding
   });
 
   test("a bust stands you at once", () => {
@@ -254,21 +253,22 @@ describe("play and settlement", () => {
     expect(chat(end, "Alice")).toContain("Bob has won the game!!!");
   });
 
-  test("kept bug: both bust, different totals: one draw line then the higher bust wins the stake", () => {
+  test("both bust, different totals: single draw line and refund", () => {
     // P1: 10, 10 + hit 10 = 30; P2: 10, 10 + hit 9 = 29.
     const t = scene([10, 10, 10, 10, 10, 9]);
     const { a, b } = t.dealt(30, 50);
     const lines = chat([...bjHit(t.world, a, t.rng), ...bjHit(t.world, b, t.rng)], "Alice");
-    expect(lines.slice(-2)).toEqual(["The game is a draw!!!", "Alice has won the game!!!"]);
-    expect(a.char.gold).toBe(70 + 60);
-    expect(b.char.gold).toBe(70);
+    expect(lines.filter((l) => l === "The game is a draw!!!")).toHaveLength(1);
+    expect(lines.some((l) => l.endsWith("has won the game!!!"))).toBe(false);
+    expect(a.char.gold).toBe(100);
+    expect(b.char.gold).toBe(100);
   });
 
-  test("kept bug: equal busts print the draw line twice and refund; an equal non-bust hand once", () => {
+  test("equal busts print the draw line once and refund; an equal non-bust hand once", () => {
     const t = scene([10, 10, 10, 10, 10, 10]);
     const { a, b } = t.dealt(20, 20);
     const lines = chat([...bjHit(t.world, a, t.rng), ...bjHit(t.world, b, t.rng)], "Alice");
-    expect(lines.filter((l) => l === "The game is a draw!!!")).toHaveLength(2);
+    expect(lines.filter((l) => l === "The game is a draw!!!")).toHaveLength(1);
     expect(lines.some((l) => l.endsWith("has won the game!!!"))).toBe(false);
     expect(a.char.gold).toBe(100);
     expect(b.char.gold).toBe(100);
@@ -344,25 +344,25 @@ describe("leaving", () => {
     expect([a.char.gold, b.char.gold]).toEqual(before);
   });
 
-  test("kept bug: the seat stays across a map change; walking is freed and the hand finishes", () => {
+  test("a map change leaves the blackjack seat, closes the window, and forfeits a mid-hand stake", () => {
     const t = scene([10, 9, 10, 8]);
     const { a, b } = t.dealt(50, 30);
-    warp(t.world, a, t.other, 3, 3);
-    a.keyLock = false; // `enterRoom` frees the key lock
-    expect(a.casino).toEqual({ key: t.key, side: 1 });
-    expect(chat(bjStand(t.world, a), "Bob")).toEqual(["Alice holds."]);
-    bjStand(t.world, b);
-    expect(a.char.gold).toBe(70 + 60);
+    const wOut = warp(t.world, a, t.other, 3, 3, t.deps);
+    expect(wOut.some((m) => m.to === "Alice" && m.msg.t === "bj" && !m.msg.open)).toBe(true);
+    expect(chat(wOut, "Bob")).toEqual(["Alice has left the table!"]);
+    expect(a.casino).toBeNull();
+    expect(b.char.gold).toBe(70 + 60);
+    expect(bjStand(t.world, a)).toEqual([]);
   });
 
-  test("kept bug: a five-card hand can keep hitting with nothing happening", () => {
+  test("a five-card hand stands automatically and cannot hit again", () => {
     const t = scene([2, 2, 10, 10, 2, 2, 2]);
     const { a } = t.dealt(1, 1);
     for (let i = 0; i < 3; i += 1) {
       bjHit(t.world, a, t.rng);
     }
+    expect(t.tbl().holds[0]).toBe(true);
     const calls = t.rng.calls.length;
-    expect(bjHit(t.world, a, t.rng)).toEqual([]);
     expect(bjHit(t.world, a, t.rng)).toEqual([]);
     expect(t.rng.calls.length).toBe(calls);
     expect(a.casino).not.toBeNull();
@@ -439,6 +439,44 @@ describe("a dropped connection", () => {
     expect(a.char.gold).toBe(70);
     expect(savedGold(t.world, a)).toBe(100);
     expect(savedGold(t.world, b)).toBe(100);
+  });
+
+  test("adminWarp mid-hand while opponent is in reconnect grace credits addGoldOffline and clears table", () => {
+    const t = scene([10, 9, 10, 8]);
+    const { a, b } = t.dealt(50, 30);
+    casinoLeave(t.world, b, t.deps);
+    t.world.players.delete("Bob");
+    const out = adminWarp(t.world, a, t.other.name, 3, 3, {
+      loadMap: (n) => (n === t.other.name ? t.other : t.map),
+      startPoint: () => ({ map: t.map.name, x: 5, y: 5 }),
+      casino: t.deps,
+    });
+    expect(out.some((m) => m.to === "Alice" && m.msg.t === "bj" && !m.msg.open)).toBe(true);
+    expect(a.casino).toBeNull();
+    expect(a.invDirty).toBe(true);
+    expect(t.offline).toEqual([["Bob", 30]]);
+    expect(t.world.casinoTables.size).toBe(0);
+  });
+
+  test("openEditor mid-hand while opponent is in reconnect grace credits addGoldOffline and clears table", () => {
+    const t = scene([10, 9, 10, 8]);
+    const { a, b } = t.dealt(50, 30);
+    a.role = "immortal";
+    casinoLeave(t.world, b, t.deps);
+    t.world.players.delete("Bob");
+    const out = openEditor(
+      t.world,
+      a,
+      (n) => (n === t.map.name ? t.map : null),
+      { mx: 1000, my: 992 },
+      t.deps,
+    );
+    expect(out.some((m) => m.to === "Alice" && m.msg.t === "bj" && !m.msg.open)).toBe(true);
+    expect(a.casino).toBeNull();
+    expect(a.editing).toBe("world");
+    expect(a.invDirty).toBe(true);
+    expect(t.offline).toEqual([["Bob", 30]]);
+    expect(t.world.casinoTables.size).toBe(0);
   });
 });
 

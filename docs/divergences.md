@@ -22,7 +22,7 @@ An entry uses this shape; `Pinned by` is optional:
 | Code folder | Entries |
 |---|---:|
 | [admin](#admin) | 29 |
-| [casino](#casino) | 6 |
+| [casino](#casino) | 20 |
 | [chat](#chat) | 7 |
 | [combat](#combat) | 10 |
 | [core](#core) | 34 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 2 |
 | [world](#world) | 8 |
-| **Total** | **191** |
+| **Total** | **205** |
 
 ## admin
 
@@ -291,7 +291,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** Blackjack bids are held when locked, and leaving during a hand forfeits the stake to the opponent.
 - **1.6:** Clients dealt their own cards, and a settlement message could name any winner and loser; no gold was held in escrow.
-- **SSO:** The server deals using the same distribution and applies the original outcome rules. Each bid is held from the purse at lock and excess is returned when the stake is set; saved gold includes the hold until settlement. Leaving mid-hand or disconnecting past the configurable grace, 30 seconds by default, forfeits the stake to the opponent, who sees “<user> has left the table!”. Returning within the grace restores the table.
+- **SSO:** The server deals from a 13-rank shoe (`1..9` and 4/13 `10`-value) and applies standard bust/draw outcome rules. Each bid is held from the purse at lock and excess is returned when the stake is set; saved gold includes the hold until settlement. Leaving mid-hand or disconnecting past the configurable grace, 30 seconds by default, forfeits the stake to the opponent, who sees “<user> has left the table!”. Returning within the grace restores the table.
 - **Why:** A forged settlement could drain another player's gold or choose cards.
 - **In the code:** `packages/server/src/systems/casino/blackjack.ts` (`bjBid`, `bjLeave`, `bjReturn`, `bjTick`)
 - **Pinned by:** `divergence: gold drops at the lock, the excess returns when both lock, four cards P1 P1 P2 P2`, `divergence: mid-hand Leave forfeits the stake to the opponent` and `divergence: past the grace the stake is forfeit: the opponent gains, the dropped player's saved row loses the hold` (packages/server/tests/blackjack.test.ts); `a flush mid-hand writes gold + the held stake; a forfeit past the grace moves the stake in SQL` (packages/server/tests/casino-db.test.ts)
@@ -300,7 +300,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** Only the seated player whose turn it is can make a legal step or jump.
 - **1.6:** Any client in the group could send a move for either side's pieces.
-- **SSO:** The server holds the board and turn and accepts only a legal move by the seated side on its turn; the other rules are those of 1.6.
+- **SSO:** The server holds the board and turn and accepts only a legal move by the seated side on its turn, enforcing forced capture, multi-jump continuation, blocked-side loss, single start line, and Black moving first.
 - **Why:** A forged message could move the other player's pieces or impersonate a seat.
 - **In the code:** `packages/server/src/systems/casino/checkers.ts` (`ckMove`)
 - **Pinned by:** `only on your turn, only the legal move; the new turn goes to both views` (packages/server/tests/checkers.test.ts)
@@ -317,7 +317,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** The leaderboard score reflects your character's skills and is submitted on each periodic save.
 - **1.6:** Clients could submit any integer as a high score; ordinary clients submitted only one time in three.
-- **SSO:** The server computes the original formula from authoritative skills and submits each periodic save.
+- **SSO:** The server computes the high-score points from authoritative skills (`bioScore` plus the 8 formerly dropped skills) and ranks each periodic save with tie-friendly ordering.
 - **Why:** A modified client could otherwise submit fake leaderboard scores.
 - **In the code:** `packages/server/src/systems/casino/slots.ts` (`submitHighScore`)
 
@@ -337,6 +337,132 @@ An entry uses this shape; `Pinned by` is optional:
 - **SSO:** The result settles once at the end. Insufficient gold costs nothing, returns the lever and stops the reels while leaving the panel open.
 - **Why:** The stuck panel was a peer-to-peer timing artefact; each pull still changes gold once.
 - **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotTick`)
+
+### Three Pigs (4-4-4) pays 80 and 2-3-2 pays 50
+- **Kind:** Bug fixed
+- **What you notice:** Three Pigs (`4-4-4`) pay 80 gross, and `2-3-2` pays 50 gross.
+- **1.6:** `2-3-2` paid 80 and `4-4-4` paid 50.
+- **SSO:** Swaps the two bonuses in `casino.json` so `4-4-4` pays 80 and `2-3-2` pays 50.
+- **Why:** Three Pigs (`S4`) are the top jackpot symbol on the reels.
+- **In the code:** `packages/data/content/casino.json`; `packages/shared/src/rules/casino/casino.ts` (`slotPayout`)
+- **Pinned by:** `4-4-4 pays 80 and 2-3-2 pays 50; RTP 245/64 over all 64 reels` (packages/shared/tests/casino/casino.test.ts)
+
+### Blackjack aces reduce one at a time
+- **Kind:** Bug fixed
+- **What you notice:** Multiple aces drop from 11 to 1 one at a time as needed (`A-A` = 12, `A-A-9` = 21, `A-A-A` = 13).
+- **1.6:** Over 21, 10 was subtracted for every ace at once and 11 added back if under 11 (`A-A` = 13, `A-A-9` = 11, `A-A-A` = 14).
+- **SSO:** Reduces one Ace by 10 at a time while the total exceeds 21.
+- **Why:** Standard blackjack ace valuation prevents invalid totals like `A-A-9` = 11.
+- **In the code:** `packages/shared/src/rules/casino/blackjack.ts` (`handTotal`)
+- **Pinned by:** `handTotal reduces Aces one at a time: A-A 12, A-A-9 21, A-A-A 13, A-5 16, 10-9-5 24` (packages/shared/tests/casino/blackjack.test.ts)
+
+### Both blackjack hands busting is a draw
+- **Kind:** Bug fixed
+- **What you notice:** When both players bust, a single draw line prints and both stakes are refunded.
+- **1.6:** Different-total busts printed a draw line and still awarded the pot to the higher bust; equal busts printed the draw line twice.
+- **SSO:** Returns a single `["draw"]` when both hands bust or totals are equal.
+- **Why:** A busted hand cannot win the pot.
+- **In the code:** `packages/shared/src/rules/casino/blackjack.ts` (`outcome`); `packages/server/src/systems/casino/blackjack.ts` (`settle`)
+- **Pinned by:** `outcome: both bust is a single draw; bust loses; higher non-bust wins` (packages/shared/tests/casino/blackjack.test.ts); `both bust, different totals: single draw line and refund` (packages/server/tests/blackjack.test.ts)
+
+### Blackjack uses a 13-rank shoe and requires positive bids
+- **Kind:** Bug fixed
+- **What you notice:** Ten-value cards occur with 4/13 probability, and bids must be positive integers (`>= 1`).
+- **1.6:** Cards were uniform over 10 values (1/10 for 10) and non-numeric or `0` bids started a free game.
+- **SSO:** Draws from 13 ranks (`10..13` map to 10-value) and rejects bids `< 1` or non-numeric strings.
+- **Why:** Matches standard card odds and prevents forcing free hands with invalid bids.
+- **In the code:** `packages/shared/src/rules/casino/blackjack.ts` (`drawCard`, `bidCheck`, `stake`)
+- **Pinned by:** `drawCard draws from 13 ranks: 1..9 map to 51..59, 10..13 map to 60` and `bidCheck: <= 0 or non-numeric is none, 100000 is max, gold short is poor` (packages/shared/tests/casino/blackjack.test.ts)
+
+### Checkers enforces forced capture, multi-jump, and win by blocking
+- **Kind:** Bug fixed
+- **What you notice:** You must jump when a capture is available, a jumping piece continues jumping while more jumps exist (unless crowned), and a blocked side with no legal moves loses.
+- **1.6:** Steps were allowed when a jump existed, turns ended after one jump, and blocked sides did not lose.
+- **SSO:** Validates forced capture and `jumpFrom` multi-jump continuation and treats a blocked side as losing.
+- **Why:** Standard checkers rules prevent stalemates and skipped captures.
+- **In the code:** `packages/shared/src/rules/casino/checkers.ts` (`checkersMove`, `loser`, `pieceHasJump`, `sideHasJump`, `sideHasMove`); `packages/server/src/systems/casino/checkers.ts` (`ckMove`)
+- **Pinned by:** `forced capture and multi-jump: steps are blocked when a jump exists, and jumpFrom restricts to the jumping piece` (packages/shared/tests/casino/checkers.test.ts); `multi-jump keeps the turn on the jumping piece; forced capture blocks steps; blocking a side wins` (packages/server/tests/checkers.test.ts)
+
+### High score points restore the eight dropped skills and ties rank after the tied slot
+- **Kind:** Bug fixed
+- **What you notice:** The 8 skills formerly dropped from `bioScore` (`Lumberjacking`, `Archery`, `Blessing`, `Musicianship`, `Illusion`, `Punch`, `Fire`, `Wind`) count toward the high-score board, ties rank right after the tied entry, and your own lower score never replaces a higher entry.
+- **1.6:** Eight skills were omitted by a typo, ties failed to rank, and blanking your own entry allowed a lower score to overwrite it.
+- **SSO:** Sums both `counted` and `lost` skills (`bioScore` plus the 8 formerly dropped skills) for `highScorePoints` and uses `rankHighScore` for tie-friendly ranking.
+- **Why:** Reflects full character progression and preserves personal bests.
+- **In the code:** `packages/shared/src/rules/casino/casino.ts` (`highScorePoints`, `rankHighScore`); `packages/server/src/systems/casino/slots.ts` (`submitHighScore`)
+- **Pinned by:** `the points include bioScore plus the eight formerly dropped skills` and `rankHighScore places ties right after the tied slot and keeps a higher existing score` (packages/shared/tests/casino/casino.test.ts)
+
+### Blackjack wrong-spot text always shows
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a blackjack table from the wrong tile always tells you to stand beside it.
+- **1.6:** Opening any slot panel or blackjack table silenced the wrong-spot message for the rest of the session.
+- **SSO:** Always returns the wrong-spot message regardless of prior casino panels.
+- **Why:** Players should always get feedback when clicking from an invalid tile.
+- **In the code:** `packages/server/src/systems/casino/blackjack.ts` (`bjSit`)
+- **Pinned by:** `the wrong-spot text shows every time, even after opening a table or slot panel` (packages/server/tests/blackjack.test.ts)
+
+### Changing map closes any active casino seat or slot panel
+- **Kind:** Bug fixed
+- **What you notice:** Warping, respawning, or opening an editor closes any open slot panel, blackjack seat, or checkers seat.
+- **1.6:** Casino windows and seats stayed active across map changes and could be played from another map.
+- **SSO:** Closes slot panels and leaves blackjack/checkers seats on map change or editor entry, and rejects table actions off-map.
+- **Why:** Prevents playing or holding seats from other maps.
+- **In the code:** `packages/server/src/systems/casino/index.ts` (`casinoMapChange`); `packages/server/src/systems/casino/blackjack.ts` (`bjTableOf`); `packages/server/src/systems/casino/checkers.ts` (`ckTableOf`, `ckClose`); `packages/server/src/systems/casino/slots.ts` (`slotMapLeave`, `slotPull`); `packages/server/src/systems/world/tick.ts` (`warp`); `packages/server/src/systems/admin/worldedit.ts` (`leaveForEditor`); `packages/client/src/app.ts`
+- **Pinned by:** `the slot panel closes on a map change and a pull away from a machine closes it` (packages/server/tests/casino.test.ts); `a map change leaves the blackjack seat, closes the window, and forfeits a mid-hand stake` (packages/server/tests/blackjack.test.ts); `a map change closes the checkers window and frees the seat` (packages/server/tests/checkers.test.ts)
+
+### Checkers start line is sent once to each player
+- **Kind:** Bug fixed
+- **What you notice:** When a second player joins checkers, both players see the start line once.
+- **1.6:** The first player received the start line twice.
+- **SSO:** Sends the start line once to each seated player.
+- **Why:** Removes duplicate chat output on game start.
+- **In the code:** `packages/server/src/systems/casino/checkers.ts` (`ckSit`)
+- **Pinned by:** `both players see the start line once` (packages/server/tests/checkers.test.ts)
+
+### Black moves first on a checkers rematch
+- **Kind:** Bug fixed
+- **What you notice:** After a checkers win, the board resets with Black moving first and both players see the start line.
+- **1.6:** The loser moved first on the reset board with no start line.
+- **SSO:** Resets `turn` to `1` (Black) and sends the start line to both seated players.
+- **Why:** Standard checkers rules have Black open every game.
+- **In the code:** `packages/server/src/systems/casino/checkers.ts` (`ckMove`)
+- **Pinned by:** `a capture, then a king, then the win line from the loser to the map` (packages/server/tests/checkers.test.ts)
+
+### A five-card blackjack hand stands automatically
+- **Kind:** Bug fixed
+- **What you notice:** Drawing a fifth card in blackjack automatically stands your hand.
+- **1.6:** A player with five cards could keep pressing Hit with no effect.
+- **SSO:** Stands automatically in `bjHit` once `hand.length >= BJ_HAND_SIZE`.
+- **Why:** Avoids a dead-end state where Hit does nothing.
+- **In the code:** `packages/server/src/systems/casino/blackjack.ts` (`bjHit`)
+- **Pinned by:** `a five-card hand stands automatically and cannot hit again` (packages/server/tests/blackjack.test.ts)
+
+### A slot pull without 5 gold keeps the panel open
+- **Kind:** Bug fixed
+- **What you notice:** Pulling the slot lever with under 5 gold returns the lever and prints the message while leaving the panel open.
+- **1.6:** The panel closed before printing the not-enough-gold message.
+- **SSO:** Emits `slotResult` with `reels: null` and `SLOT_TEXT.poor` while keeping `p.slot` open.
+- **Why:** Consistent with mid-spin insufficient gold handling.
+- **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotPull`)
+- **Pinned by:** `a short slot pull returns the lever and prints the gold line without closing the panel` (packages/server/tests/casino.test.ts)
+
+### Slot pulls require standing in front of a machine
+- **Kind:** Bug fixed
+- **What you notice:** Pulling the lever when no longer in front of a slot machine closes the panel.
+- **1.6:** `slotPull` did not check position, allowing pulls from anywhere.
+- **SSO:** Verifies `slotOpenCheck` against a slot machine on `room.map` during `slotPull` and closes the panel if not in front of one.
+- **Why:** Prevents remote slot pulls after moving or warping.
+- **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotPull`)
+- **Pinned by:** `the slot panel closes on a map change and a pull away from a machine closes it` (packages/server/tests/casino.test.ts)
+
+### Any item containing "Slot Machine" plays
+- **Kind:** Bug fixed
+- **What you notice:** Variant names like `"Slot Machine 2"` open and play when clicked or activated with Ctrl.
+- **1.6:** Routing matched `"Slot Machine"` by substring, but `slotOpen` required an exact name match.
+- **SSO:** Click routing (`clickGate`) and Ctrl routing (`ctrlGate`) match `"Slot Machine"` by substring, and `slotOpen`/`slotPull` use `isSlotMachine` (`lingoContains`) to match the same items.
+- **Why:** Aligns the handler with click/Ctrl routing.
+- **In the code:** `packages/shared/src/rules/casino/casino.ts` (`isSlotMachine`); `packages/server/src/systems/casino/slots.ts` (`slotOpen`, `slotPull`)
+- **Pinned by:** `any item containing 'Slot Machine' opens and plays, including 'Slot Machine 2'` (packages/server/tests/casino.test.ts)
 
 ## chat
 

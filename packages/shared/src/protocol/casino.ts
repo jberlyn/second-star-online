@@ -35,7 +35,7 @@ export const ckMoveSchema = z.strictObject({
 export const ckCloseSchema = z.strictObject({ t: z.literal("ckClose") });
 
 export type CasinoServerMsg =
-  /** The slot panel opens or closes. It survives a map change. */
+  /** The slot panel opens or closes. It closes on a map change. */
   | { t: "slot"; open: boolean }
   /** A pull is settling: the reels spin until `slotResult`. */
   | { t: "slotSpin" }

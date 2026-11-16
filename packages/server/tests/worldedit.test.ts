@@ -80,8 +80,9 @@ describe("opening, saving and closing", () => {
     imm.role = "immortal";
     join(p);
     join(imm);
-    expect(openEditor(world, p, () => a, { mx: 1000, my: 992 })).toEqual([]);
-    const out = openEditor(world, imm, () => a, { mx: 1000, my: 992 });
+    const casino = { graceTicks: 600, addGoldOffline: () => {} };
+    expect(openEditor(world, p, () => a, { mx: 1000, my: 992 }, casino)).toEqual([]);
+    const out = openEditor(world, imm, () => a, { mx: 1000, my: 992 }, casino);
     expect(out.some((o) => o.to === "p" && o.msg.t === "delta")).toBe(true);
     expect(out.some((o) => o.to === "imm" && o.msg.t === "editor")).toBe(true);
     expect(world.rooms.get("x1000y992")?.players).toEqual([p]);

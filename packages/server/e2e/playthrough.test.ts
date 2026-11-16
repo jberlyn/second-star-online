@@ -1592,7 +1592,7 @@ describe("the playthrough", () => {
     await warp("Bob", "x1001y993", 9, 4);
     await turn(alice, "U"); // facing the Slot Machine at (4,4)
     await t(50);
-    // Slots: a losing pull costs 5 gold, a win pays the table (2-3-2 is 80 gross).
+    // Slots: a losing pull costs 5 gold, a win pays the table (2-3-2 is 50 gross).
     clearAll();
     alice.send({ t: "pickup", id: groundOf("Alice", "Slot Machine") });
     await settle();
@@ -1614,7 +1614,7 @@ describe("the playthrough", () => {
     await settle();
     await t(30);
     expect(chats(alice)).toContain("You won!!!!");
-    expect(goldOf(alice)).toBe(gold - 5 + 80);
+    expect(goldOf(alice)).toBe(gold - 5 + 50);
     alice.send({ t: "slotClose" });
     await settle();
     // Blackjack: Alice sits west of the table at (8,4), Bob east; Alice's 19 beats Bob's 18.
@@ -1634,7 +1634,7 @@ describe("the playthrough", () => {
     const b0 = goldOf(bob) ?? 0;
     alice.send({ t: "bjBid", text: "20" });
     await t(1);
-    rng.queue(10, 10, 9, 10, 8); // Alice 19, Bob 18 (queued late: other rolls use random(10))
+    rng.queue(13, 10, 9, 10, 8); // Alice 19, Bob 18
     bob.send({ t: "bjBid", text: "20" });
     await t(1);
     expect(chats(bob)).toContain("You are currently holding 18.");

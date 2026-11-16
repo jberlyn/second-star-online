@@ -945,6 +945,7 @@ export function createGame(deps: GameDeps): Game {
     reloadSettings: () => applySettings(resolveSettings(loadSettingOverrides(db))),
     loadMap,
     startPoint: () => settings.startPoint,
+    casino: casinoDeps,
   };
   chatDeps.admin = adminDeps;
 
@@ -1720,7 +1721,7 @@ export function createGame(deps: GameDeps): Game {
           persistItems([]);
           return;
         case "editOpen":
-          deliver(openEditor(world, p, loadMap, parseMapName(p.map.name)));
+          deliver(openEditor(world, p, loadMap, parseMapName(p.map.name), casinoDeps));
           return;
         case "editLoad":
           if (p.editing === "world") {
@@ -1739,7 +1740,7 @@ export function createGame(deps: GameDeps): Game {
           }
           return;
         case "npcEditOpen":
-          deliver(openNpcEditor(world, p));
+          deliver(openNpcEditor(world, p, casinoDeps));
           return;
         case "npcLoad":
           deliver(loadNpc(world, p, msg.name, ledgerOf));

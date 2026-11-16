@@ -79,25 +79,48 @@ describe("checkers", () => {
     expect(checkersMove(b, 0, 1, 1, 0).kind).toBe("none");
   });
 
-  test("no multi-jump: a jump is one move, the turn passes after it", () => {
+  test("forced capture and multi-jump: steps are blocked when a jump exists, and jumpFrom restricts to the jumping piece", () => {
     const b = empty();
     put(b, 0, 105, 214, "Black");
+    put(b, 1, 201, 214, "Black");
     put(b, 12, 73, 182, "White");
     put(b, 13, 41, 118, "White");
+    // Piece 0 can jump (-1, -1), so stepping (1, -1) or moving piece 1 is rejected.
+    expect(checkersMove(b, 0, 1, 1, -1).kind).toBe("none");
+    expect(checkersMove(b, 1, 1, -1, -1).kind).toBe("none");
     const j = checkersMove(b, 0, 1, -1, -1);
     expect(j.kind).toBe("jump");
     if (j.kind === "jump") {
-      // A second jump would be a second move, which the server only allows on the next turn.
-      expect(j.board[13]?.v).toBe(118);
+      expect(j.board[0]).toEqual({ h: 41, v: 150, m: "Black" });
+      // Continuation with jumpFrom = 0: piece 1 cannot move, piece 0 can jump piece 13.
+    }
+    const mj = empty();
+    put(mj, 0, 105, 214, "Black");
+    put(mj, 1, 201, 214, "Black");
+    put(mj, 12, 73, 182, "White");
+    put(mj, 13, 73, 118, "White");
+    const j1 = checkersMove(mj, 0, 1, -1, -1);
+    expect(j1.kind).toBe("jump");
+    if (j1.kind === "jump") {
+      expect(checkersMove(j1.board, 1, 1, -1, -1, 0).kind).toBe("none");
+      const j2 = checkersMove(j1.board, 0, 1, 1, -1, 0);
+      expect(j2.kind).toBe("jump");
     }
   });
 
-  test("the loser is the side with no piece on the board; blocked sides do not lose", () => {
+  test("the loser is the side with no piece on the board or no legal move", () => {
     const b = startBoard();
     expect(loser(b)).toBeNull();
     const nb = b.map((p) => (p.m === "Black" ? { ...p, h: p.h - 864, v: p.v - 864 } : p));
     expect(loser(nb)).toBe(1);
     const nw = b.map((p) => (p.m === "White" ? { ...p, h: p.h - 864, v: p.v - 864 } : p));
     expect(loser(nw)).toBe(2);
+    // Blocked side with pieces left loses.
+    const blocked = empty();
+    put(blocked, 0, 41, 54, "Black"); // at top edge, cannot move forward
+    put(blocked, 12, 265, 54, "White");
+    expect(loser(blocked, 1)).toBe(1);
+    expect(loser(blocked, 2)).toBeNull();
+    expect(loser(blocked)).toBe(1);
   });
 });

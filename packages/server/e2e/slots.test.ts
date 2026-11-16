@@ -183,7 +183,7 @@ describe("slots and high scores", () => {
     expect(who("Alice").char.gold).toBe(95);
   });
 
-  test("a win pays the table: 2-3-2 is 80 gross", async () => {
+  test("a win pays the table: 2-3-2 is 50 gross", async () => {
     alice.clear();
     reelQueue.push(2, 3, 2);
     alice.send({ t: "slotPull" });
@@ -191,7 +191,7 @@ describe("slots and high scores", () => {
     await tick(30);
     expect(msgsOf(alice, "slotResult")).toEqual([{ t: "slotResult", reels: [2, 3, 2], win: true }]);
     expect(lines(alice)).toContain("You won!!!!");
-    expect(who("Alice").char.gold).toBe(95 - 5 + 80);
+    expect(who("Alice").char.gold).toBe(95 - 5 + 50);
   });
 
   test("Close frees the keys and Alice walks again", async () => {
@@ -207,7 +207,7 @@ describe("slots and high scores", () => {
     expect(who("Alice").x).toBe(x - 1);
   });
 
-  test("with 3 gold a pull closes the panel, then the line", async () => {
+  test("with 3 gold a pull returns the lever and prints the line without closing the panel", async () => {
     const a = who("Alice");
     a.x = 12;
     a.y = 9;
@@ -221,11 +221,17 @@ describe("slots and high scores", () => {
     expect(msgsOf(alice, "slot")).toEqual([{ t: "slot", open: true }]);
     alice.send({ t: "slotPull" });
     await settle();
-    const kinds = alice.inbox.map((m) => m.t).filter((t) => t === "slot" || t === "chat");
-    expect(kinds).toEqual(["slot", "slot", "chat"]);
-    expect(msgsOf(alice, "slot")[1]).toEqual({ t: "slot", open: false });
+    const kinds = alice.inbox
+      .map((m) => m.t)
+      .filter((t) => t === "slot" || t === "slotResult" || t === "chat");
+    expect(kinds).toEqual(["slot", "slotResult", "chat"]);
+    expect(msgsOf(alice, "slotResult")).toEqual([{ t: "slotResult", reels: null, win: false }]);
     expect(lines(alice)).toEqual(["You don't have enough gold to play!"]);
     expect(a.char.gold).toBe(3);
+    expect(a.slot).toEqual({ spin: 0 });
+    expect(a.keyLock).toBe(true);
+    alice.send({ t: "slotClose" });
+    await settle();
     expect(a.keyLock).toBe(false);
   });
 

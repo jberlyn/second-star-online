@@ -41,7 +41,7 @@ import {
   USE_TEXT,
 } from "@secondstaronline/shared";
 
-import { type CasinoDeps, casinoTick } from "../casino/index.ts";
+import { type CasinoDeps, casinoMapChange, casinoTick } from "../casino/index.ts";
 import { slotTick, submitHighScore } from "../casino/slots.ts";
 import { hears } from "../chat/ignore.ts";
 import { hopTo } from "../combat/arena.ts";
@@ -683,18 +683,18 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
   // Death cannot bypass confinement. Revive at the jail arrival without restarting the sentence.
   if (isJailMap(p.map.name)) {
     const sentence = p.jailIn;
-    out.push(...warp(world, p, p.map, JAIL.x, JAIL.y));
+    out.push(...warp(world, p, p.map, JAIL.x, JAIL.y, deps.casino));
     p.jailIn = sentence;
     return out;
   }
   const stored = p.char.respawn;
   const storedMap = stored ? (deps.loadMapById?.(stored.mapId) ?? null) : null;
   if (stored && storedMap) {
-    out.push(...warp(world, p, storedMap, stored.x, stored.y));
+    out.push(...warp(world, p, storedMap, stored.x, stored.y, deps.casino));
     return out;
   }
   const rp = deps.respawnPoint ?? deps.startPoint;
-  out.push(...warp(world, p, deps.loadMap(rp.map) ?? p.map, rp.x, rp.y));
+  out.push(...warp(world, p, deps.loadMap(rp.map) ?? p.map, rp.x, rp.y, deps.casino));
   return out;
 }
 
@@ -710,10 +710,10 @@ function portal(world: World, deps: TickDeps, p: Player): Outgoing[] {
   const t = targets[deps.rng.random(targets.length) - 1];
   const map = t ? deps.loadMap(t.map) : null;
   if (t && map) {
-    return warp(world, p, map, t.x, t.y);
+    return warp(world, p, map, t.x, t.y, deps.casino);
   }
   const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y);
+  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
 }
 
 /**
@@ -750,10 +750,10 @@ function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit
   // A house's exit names its interior (`H1<mx>`).
   const map = e ? deps.loadMap(exitTarget(e)) : null;
   if (e && map) {
-    return warp(world, p, map, e.x, e.y);
+    return warp(world, p, map, e.x, e.y, deps.casino);
   }
   const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y);
+  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
 }
 
 /**
@@ -770,10 +770,10 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
   const nextName = neighbourMapName(from, o.dmx, o.dmy);
   const next = nextName ? deps.loadMap(nextName) : null;
   if (next) {
-    return warp(world, p, next, o.toX, o.toY);
+    return warp(world, p, next, o.toX, o.toY, deps.casino);
   }
   const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y);
+  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
 }
 
 /**
@@ -791,13 +791,23 @@ export function jailTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
     return [];
   }
   const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y);
+  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
 }
 
+const NOOP_CASINO: CasinoDeps = { graceTicks: 0, addGoldOffline: () => {} };
+
 /** Moves a player to a tile on a map, unchecked, and reloads the map for them. */
-export function warp(world: World, p: Player, map: WorldMap, x: number, y: number): Outgoing[] {
-  // A trade ends when a trader changes map.
+export function warp(
+  world: World,
+  p: Player,
+  map: WorldMap,
+  x: number,
+  y: number,
+  deps?: CasinoDeps,
+): Outgoing[] {
+  // A trade and any open casino game/panel end when a player changes map.
   const out = leaveTrade(world, p);
+  out.push(...casinoMapChange(world, p, deps ?? NOOP_CASINO));
   out.push(...leaveRoom(world, p));
   p.map = map;
   p.x = x;

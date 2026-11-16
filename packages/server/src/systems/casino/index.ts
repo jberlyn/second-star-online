@@ -1,13 +1,19 @@
 /** Entry points the gateway, the item clicks and the tick use for the casino tables. */
 import type { Outgoing, Player, World } from "../world/world.ts";
-import { bjDisconnect, bjReturn, bjTick, type CasinoDeps } from "./blackjack.ts";
-import { ckDisconnect } from "./checkers.ts";
+import { bjDisconnect, bjLeave, bjReturn, bjTick, type CasinoDeps } from "./blackjack.ts";
+import { ckClose, ckDisconnect } from "./checkers.ts";
+import { slotMapLeave } from "./slots.ts";
 
 export type { CasinoDeps } from "./blackjack.ts";
 
 /** `game.leave`: a drop, before the player leaves the world. */
 export function casinoLeave(world: World, p: Player, deps: CasinoDeps): Outgoing[] {
   return [...bjDisconnect(world, p, deps), ...ckDisconnect(world, p)];
+}
+
+/** A map change or editor entry closes any open slot panel, blackjack seat, or checkers seat. */
+export function casinoMapChange(world: World, p: Player, deps: CasinoDeps): Outgoing[] {
+  return [...slotMapLeave(p), ...bjLeave(world, p, deps), ...ckClose(world, p)];
 }
 
 /** `game.enter`: a resume or a login inside the grace takes the seat back. */

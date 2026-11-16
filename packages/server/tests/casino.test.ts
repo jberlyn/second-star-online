@@ -97,7 +97,7 @@ describe("opening the panel", () => {
     }
   });
 
-  test("kept bug: only an item named exactly 'Slot Machine' plays; 'Slot Machine 2' routes and says nothing", () => {
+  test("any item containing 'Slot Machine' opens and plays, including 'Slot Machine 2'", () => {
     const t = scene();
     t.map.ground.push({
       id: "sm2",
@@ -108,8 +108,8 @@ describe("opening the panel", () => {
       expiresAt: null,
     });
     const a = t.join("Alice", 8, 6, "N");
-    expect(t.click(a, "sm2")).toEqual([]);
-    expect(a.slot).toBeNull();
+    expect(ofType(t.click(a, "sm2"), "slot")).toEqual([{ t: "slot", open: true }]);
+    expect(a.slot).toEqual({ spin: 0 });
   });
 
   test("a second click or Ctrl with the panel open does nothing", () => {
@@ -148,7 +148,7 @@ describe("pulling", () => {
       { t: "slotResult", reels: [2, 3, 2], win: true },
     ]);
     expect(chat(result, "Alice")).toEqual(["You won!!!!"]);
-    expect(a.char.gold).toBe(100 - 5 + 80);
+    expect(a.char.gold).toBe(100 - 5 + 50);
     // One gold change per pull: the inventory goes out once, with the gold.
     expect(ofType(result, "inv")).toHaveLength(1);
     expect(a.slot).toEqual({ spin: 0 });
@@ -177,17 +177,17 @@ describe("pulling", () => {
     expect(a.char.gold).toBe(95);
   });
 
-  test("kept bug: a short slot pull closes the panel before the gold line", () => {
+  test("a short slot pull returns the lever and prints the gold line without closing the panel", () => {
     const t = scene();
     const a = t.join("Alice");
     a.char.gold = 3;
     t.click(a);
     const out = slotPull(t.room(), a);
-    expect(out.map((m) => m.msg.t)).toEqual(["slot", "chat"]);
-    expect(ofType(out, "slot")).toEqual([{ t: "slot", open: false }]);
+    expect(out.map((m) => m.msg.t)).toEqual(["slotResult", "chat"]);
+    expect(ofType(out, "slotResult")).toEqual([{ t: "slotResult", reels: null, win: false }]);
     expect(chat(out, "Alice")).toEqual(["You don't have enough gold to play!"]);
-    expect(a.slot).toBeNull();
-    expect(a.keyLock).toBe(false);
+    expect(a.slot).toEqual({ spin: 0 });
+    expect(a.keyLock).toBe(true);
     expect(t.room().fxQueue).toHaveLength(0);
     expect(a.char.gold).toBe(3);
   });
@@ -219,20 +219,43 @@ describe("pulling", () => {
     expect(a.slot).toEqual({ spin: 0 });
   });
 
-  test("kept bug: the slot panel stays open across a map change and pulls anywhere", () => {
+  test("the slot panel closes on a map change and a pull away from a machine closes it", () => {
     const t = scene([1, 1, 1]);
     const a = t.join("Alice");
     t.click(a);
-    warp(t.world, a, t.other, 3, 3);
-    expect(a.slot).toEqual({ spin: 0 });
-    a.keyLock = false; // `enterRoom` frees the key lock
-    a.loading = 0;
+    const wOut = warp(t.world, a, t.other, 3, 3);
+    expect(ofType(wOut, "slot")).toEqual([{ t: "slot", open: false }]);
+    expect(a.slot).toBeNull();
+    expect(a.keyLock).toBe(false);
     const room = t.world.rooms.get(t.other.name) as Room;
-    expect(ofType(slotPull(room, a), "slotSpin")).toHaveLength(1);
-    expect(room.fxQueue).toHaveLength(1);
+    expect(slotPull(room, a)).toEqual([]);
+    expect(room.fxQueue).toHaveLength(0);
+    // Moving away from the machine on the same map also closes the panel on pull.
+    const b = t.join("Bob");
+    t.click(b);
+    b.x = 1;
+    expect(ofType(slotPull(t.room(), b), "slot")).toEqual([{ t: "slot", open: false }]);
+    expect(b.slot).toBeNull();
+    expect(b.keyLock).toBe(false);
+  });
+
+  test("Slot Machine 2 opens and settles via slotPull", () => {
+    const t = scene([4, 4, 4]);
+    t.map.ground[0] = {
+      id: "sm",
+      item: "Slot Machine 2",
+      x: 5,
+      y: 5,
+      kind: "drop",
+      expiresAt: null,
+    };
+    const a = t.join("Alice");
+    t.click(a);
+    expect(a.slot).toEqual({ spin: 0 });
+    expect(ofType(slotPull(t.room(), a), "slotSpin")).toHaveLength(1);
     const out = t.run(30);
-    expect(ofType(out, "slotResult")).toEqual([{ t: "slotResult", reels: [1, 1, 1], win: true }]);
-    expect(a.char.gold).toBe(100 - 5 + 20);
+    expect(ofType(out, "slotResult")).toEqual([{ t: "slotResult", reels: [4, 4, 4], win: true }]);
+    expect(a.char.gold).toBe(100 - 5 + 80);
   });
 });
 

@@ -38,14 +38,9 @@ export type CheckersMove =
 
 const none: CheckersMove = { kind: "none" };
 
-/**
- * The board-click rule for one chosen piece and the click's direction: men go only forward (the
- * backward branches require an exact match for "Black" or "White"), your own piece next to it
- * blocks, an enemy there is jumped if the landing is empty and on the board (the captured piece
- * goes to −864, −864), else a one-square step if on the board. No multi-jump, no forced capture.
- * `dh` and `dv` are −1 or 1.
- */
-export function checkersMove(
+const DIRS = [-1, 1] as const;
+
+function rawMove(
   board: readonly Piece[],
   index: number,
   side: Side,
@@ -90,6 +85,63 @@ export function checkersMove(
   return inside(1) ? { kind: "step", board: moved(1) } : none;
 }
 
+/** Whether `index` has a legal jump on `board` for `side`. */
+export function pieceHasJump(board: readonly Piece[], index: number, side: Side): boolean {
+  for (const dh of DIRS) {
+    for (const dv of DIRS) {
+      if (rawMove(board, index, side, dh, dv).kind === "jump") {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Whether `side` has any legal jump on `board`. */
+export function sideHasJump(board: readonly Piece[], side: Side): boolean {
+  return board.some((_, i) => pieceHasJump(board, i, side));
+}
+
+/** Whether `side` has any legal move (step or jump) on `board`. */
+export function sideHasMove(board: readonly Piece[], side: Side): boolean {
+  for (let i = 0; i < board.length; i += 1) {
+    for (const dh of DIRS) {
+      for (const dv of DIRS) {
+        if (rawMove(board, i, side, dh, dv).kind !== "none") {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * The board-click rule for one chosen piece and the click's direction: enforces multi-jump
+ * continuation (`jumpFrom`) and forced capture when a jump is available. `dh` and `dv` are −1 or 1.
+ */
+export function checkersMove(
+  board: readonly Piece[],
+  index: number,
+  side: Side,
+  dh: number,
+  dv: number,
+  jumpFrom: number | null = null,
+): CheckersMove {
+  if (jumpFrom !== null && index !== jumpFrom) {
+    return none;
+  }
+  const move = rawMove(board, index, side, dh, dv);
+  if (move.kind === "step") {
+    const mustJump =
+      jumpFrom !== null ? pieceHasJump(board, jumpFrom, side) : sideHasJump(board, side);
+    if (mustJump) {
+      return none;
+    }
+  }
+  return move;
+}
+
 /** After every move: Black at V < 57 is a king, White at V > 270. */
 export function promote(board: readonly Piece[], index: number): Piece[] {
   return board.map((p, i) => {
@@ -103,11 +155,20 @@ export function promote(board: readonly Piece[], index: number): Piece[] {
   });
 }
 
-/** The side with no piece left on the board (V > 0) loses; no win by blocking. */
-export function loser(board: readonly Piece[]): Side | null {
+/** The side with no piece left on the board (V > 0) or no legal move loses. */
+export function loser(board: readonly Piece[], nextTurn?: Side): Side | null {
   const alive = (side: Side) => board.some((p) => p.v > 0 && ownedBy(side, p.m));
   if (!alive(1)) {
     return 1;
   }
-  return alive(2) ? null : 2;
+  if (!alive(2)) {
+    return 2;
+  }
+  if (nextTurn !== undefined) {
+    return sideHasMove(board, nextTurn) ? null : nextTurn;
+  }
+  if (!sideHasMove(board, 1)) {
+    return 1;
+  }
+  return sideHasMove(board, 2) ? null : 2;
 }

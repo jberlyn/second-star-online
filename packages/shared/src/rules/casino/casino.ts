@@ -1,11 +1,12 @@
 /**
  * The casino's slots and high scores. Pure rules over the generated `casinoData`.
  */
-import { casinoData } from "@secondstaronline/data";
+import { casinoData, socialData } from "@secondstaronline/data";
 
-import type { Rng } from "../core/lingo.ts";
+import { skillValue } from "../core/fighter.ts";
+import { lingoContains, type Rng } from "../core/lingo.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
-import { type AssassinTable, topTenBlock } from "../social/assassin.ts";
+import { type AssassinEntry, type AssassinTable, topTenBlock } from "../social/assassin.ts";
 import { bioScore } from "../social/bios.ts";
 
 const S = casinoData.slots;
@@ -23,6 +24,11 @@ export const SLOT_SPIN_FRAMES = S.spinFrames;
 export const SLOT_FX = S.fx;
 export const SLOT_FACES = S.faces;
 export const SLOT_CASH = S.cash;
+
+/** Any item whose name contains "Slot Machine" (ignoring case) opens and plays. */
+export function isSlotMachine(name: string): boolean {
+  return lingoContains(name, SLOT_ITEM);
+}
 
 /**
  * `SlotMachineClick`'s position test: facing N on the tile directly south of the machine. 1.6
@@ -72,9 +78,44 @@ export const SCORES_TEXT = H.text;
 export const SCORES_PAUSE = H.pause;
 export const SCORES_SIZE = H.tableSize;
 
-/** The high-score points are the bio sum, `bioScore`. */
+/** The high-score points: `bioScore` plus the 8 formerly dropped skills (`Lumberjacking`, `Archery`, `Blessing`, `Musicianship`, `Illusion`, `Punch`, `Fire`, `Wind`). */
 export function highScorePoints(skills: readonly number[], hpMax: number, spMax: number): number {
-  return bioScore(skills, hpMax, spMax);
+  return socialData.bios.score.lost.reduce(
+    (sum, name) => sum + skillValue(skills, name),
+    bioScore(skills, hpMax, spMax),
+  );
+}
+
+/**
+ * Ranks a high-score entry into the table: keeps a player's higher existing score, compacts
+ * remaining entries, and places ties right after the tied slot.
+ */
+export function rankHighScore(
+  table: AssassinTable,
+  entry: AssassinEntry,
+  size: number = SCORES_SIZE,
+): AssassinTable | null {
+  const existing = table.find((e) => e.id === entry.id);
+  if (existing && existing.points >= entry.points) {
+    return null;
+  }
+  const rest = table.filter((e) => e.id !== entry.id);
+  const slots: (AssassinEntry | null)[] = Array.from({ length: size }, (_, k) => rest[k] ?? null);
+  const at = slots.findIndex((s) => entry.points > (s?.points ?? 0));
+  if (at < 0) {
+    return null;
+  }
+  const out: AssassinEntry[] = [];
+  for (let k = 0; k < size; k += 1) {
+    if (k === at) {
+      out.push(entry);
+    }
+    const e = slots[k];
+    if (e) {
+      out.push(e);
+    }
+  }
+  return out.slice(0, size);
 }
 
 /** Immortals and five-digit scores send nothing. */

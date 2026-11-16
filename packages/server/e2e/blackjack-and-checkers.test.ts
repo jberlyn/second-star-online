@@ -32,11 +32,11 @@ const make = (name: string): CreateMsg => ({
   dex: 11,
 });
 
-// Blackjack cards are `random(10)`; a test queues the rolls (10 = crd60, a ten).
+// Blackjack cards are `random(13)`; a test queues the rolls (10..13 = crd60, a ten).
 const cardQueue: number[] = [];
 const rng: Rng = {
   random: (n) =>
-    n === 10 && cardQueue.length > 0 ? (cardQueue.shift() as number) : n >= 1 ? n : 0,
+    n === 13 && cardQueue.length > 0 ? (cardQueue.shift() as number) : n >= 1 ? n : 0,
 };
 
 const idOf = (db: Db, name: string) =>
@@ -233,7 +233,7 @@ describe("blackjack and checkers", () => {
     expect(server.game.world.casinoTables.size).toBe(0);
   });
 
-  test("checkers: the first player sees the start line twice; Black moves, White moves, Black jumps", async () => {
+  test("checkers: both players see the start line once; Black moves, White moves, Black jumps", async () => {
     stand("Alice", 9, 10);
     stand("Bob", 11, 10);
     alice.clear();
@@ -241,7 +241,7 @@ describe("blackjack and checkers", () => {
     await sit(alice, "Alice", "Checkers Table");
     await sit(bob, "Bob", "Checkers Table");
     const start = "*** The Checkers Game Has Started. It's Alice's (black) turn.";
-    expect(lines(alice)).toEqual([start, start]);
+    expect(lines(alice)).toEqual([start]);
     expect(lines(bob)).toEqual([start]);
     alice.clear();
     bob.clear();

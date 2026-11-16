@@ -33,6 +33,8 @@ import { hasFlag, npcData, npcFileNamed, setNpcFile } from "../src/systems/monst
 import type { Player, Room, World, WorldMap } from "../src/systems/world/world.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
+const casino = { graceTicks: 600, addGoldOffline: () => {} };
+
 const imm = (map: WorldMap, x = 6, y = 6) => {
   const p = player("imm", map, x, y);
   p.role = "immortal";
@@ -128,23 +130,23 @@ describe("the NPC file store (packages/data npcfiles)", () => {
 describe("opening the editor", () => {
   test("a player gets nothing; an immortal leaves the map; the World Editor opens from it without leaving again", () => {
     const { world, map, p, i } = scene();
-    expect(openNpcEditor(world, p)).toEqual([]);
-    const out = openNpcEditor(world, i);
+    expect(openNpcEditor(world, p, casino)).toEqual([]);
+    const out = openNpcEditor(world, i, casino);
     expect(out.some((o) => o.to === "p" && o.msg.t === "delta")).toBe(true);
     expect(out.some((o) => o.to === "imm" && o.msg.t === "npcEditor")).toBe(true);
     expect(i.editing).toBe("npc");
     expect(world.rooms.get(map.name)?.players).toEqual([p]);
-    const we = openEditor(world, i, () => map, { mx: 1000, my: 992 });
+    const we = openEditor(world, i, () => map, { mx: 1000, my: 992 }, casino);
     expect(we.map((o) => o.msg.t)).toEqual(["editor"]);
     expect(i.editing).toBe("world");
-    expect(openNpcEditor(world, i).map((o) => o.msg.t)).toEqual(["npcEditor"]);
+    expect(openNpcEditor(world, i, casino).map((o) => o.msg.t)).toEqual(["npcEditor"]);
   });
 });
 
 describe("LOAD", () => {
   test("the file with the shop's live stock and gold written in", () => {
     const { world, i } = scene();
-    openNpcEditor(world, i);
+    openNpcEditor(world, i, casino);
     const amber = npcFileNamed(world.npcs, "Amber");
     if (!amber) {
       throw new Error("Amber");
@@ -172,7 +174,7 @@ describe("LOAD", () => {
   test("a list name with no file loads empty; unlisted names, no name and players outside the editor get nothing", () => {
     const { world, p, i } = scene();
     expect(loadNpc(world, i, "Amber", ledgerOf(world))).toEqual([]); // not in the editor
-    openNpcEditor(world, i);
+    openNpcEditor(world, i, casino);
     expect(loadNpc(world, i, "Oraku", ledgerOf(world))[0]?.msg).toEqual({
       t: "npcScript",
       name: "Oraku",
@@ -187,7 +189,7 @@ describe("LOAD", () => {
 describe("SAVE", () => {
   test("a refused save says why and changes nothing", () => {
     const { world, i } = scene();
-    openNpcEditor(world, i);
+    openNpcEditor(world, i, casino);
     const r = saveNpc(world, i, "Amber", "SEL|Fire:5:10\n", ledgerOf(world));
     expect(r.save).toBeNull();
     expect(r.out[0]?.msg).toEqual({
@@ -203,7 +205,7 @@ describe("SAVE", () => {
     p.bio = { slot: 1, npc: "Amber" };
     p.keyLock = true;
     world.shops.set("Amber", { npc: "Amber", gold: 1, lines: [], dirty: true });
-    openNpcEditor(world, i);
+    openNpcEditor(world, i, casino);
     const text = [
       ...Array.from({ length: 20 }, () => "BIO|x"),
       "RND|Hello",
@@ -228,7 +230,7 @@ describe("SAVE", () => {
 
   test("a save applies at once: flags, drops, an empty file", () => {
     const { world, map, i } = scene();
-    openNpcEditor(world, i);
+    openNpcEditor(world, i, casino);
     const author = player("a", map, 1, 1);
     const slime = stand(map, 1, "Slime", 9, 9);
     expect(authorPath(world.npcs, slime, author, rngByN({ 10: [1] }))).not.toBeNull();
@@ -246,7 +248,7 @@ describe("SAVE", () => {
 
   test("gold given lands only on a GLD| line among the first 60", () => {
     const { world, map, p, i } = scene();
-    openNpcEditor(world, i);
+    openNpcEditor(world, i, casino);
     stand(map, 1, "Amber", 5, 4);
     const room = world.rooms.get(map.name) as Room;
     const ctx = (): ItemCtx => ({

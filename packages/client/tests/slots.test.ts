@@ -8,6 +8,7 @@ import { join } from "node:path";
 
 import type { AssetIndex } from "@secondstaronline/data";
 
+import { closeCasinoOnMapChange } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import { type Sfx, SOUND, spellSounds } from "../src/sfx.ts";
 import {
@@ -216,7 +217,7 @@ describe("the panel", () => {
     expect(state).toEqual({ locked: false, framed: false });
   });
 
-  test("kept bug: the panel stays open when the map changes: nothing but Close and the server close it", () => {
+  test("the panel closes via Close or show(false) (used by app.ts on map change)", () => {
     const { m, state } = machine();
     m.show(true);
     // A map load clears the keys and touches nothing else here.
@@ -245,5 +246,22 @@ describe("sounds", () => {
       return 1;
     });
     expect(calls).toEqual([2]);
+  });
+});
+
+describe("snapshot map-change cleanup", () => {
+  test("closes slots, blackjack, and checkers only when moving to a different map", () => {
+    const events: string[] = [];
+    const ui = {
+      slots: { show: (open: boolean) => events.push(`slots:${open}`) },
+      blackjack: { close: () => events.push("bj:close") },
+      checkers: { reset: () => events.push("ck:reset") },
+    };
+    closeCasinoOnMapChange(undefined, "x1000y992", ui);
+    closeCasinoOnMapChange("x1000y992", "x1000y992", ui);
+    expect(events).toEqual([]);
+
+    closeCasinoOnMapChange("x1000y992", "x1001y992", ui);
+    expect(events).toEqual(["slots:false", "bj:close", "ck:reset"]);
   });
 });

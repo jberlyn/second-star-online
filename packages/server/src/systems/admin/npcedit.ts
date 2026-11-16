@@ -21,17 +21,18 @@ import {
   npcEditorName,
 } from "@secondstaronline/shared";
 
+import type { CasinoDeps } from "../casino/index.ts";
 import type { ShopLedger } from "../economy/shop.ts";
 import { npcFileNamed, setNpcFile } from "../monsters/npcfiles.ts";
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { leaveForEditor } from "./worldedit.ts";
 
 /** Admin menu → NPC Editor. Anyone but an immortal gets nothing. */
-export function openNpcEditor(world: World, p: Player): Outgoing[] {
+export function openNpcEditor(world: World, p: Player, casino: CasinoDeps): Outgoing[] {
   if (p.role !== "immortal" || p.editing === "npc") {
     return [];
   }
-  const out = leaveForEditor(world, p, "npc");
+  const out = leaveForEditor(world, p, "npc", casino);
   out.push({ to: p.id, msg: { t: "npcEditor" } });
   return out;
 }

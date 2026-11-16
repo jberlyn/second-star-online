@@ -3,8 +3,7 @@
  *
  * 1.6 dealt and settled on the clients; here the server holds the table. A bid is held from the
  * purse when it locks; a hand is a forfeit to the opponent when you leave mid-hand or stay away
- * past the reconnect grace. The seat survives a map change: `p.casino` is only cleared by Leave or
- * a drop.
+ * past the reconnect grace. Leaving or changing map frees the seat.
  */
 import {
   BJ_HAND_SIZE,
@@ -42,8 +41,11 @@ export interface CasinoDeps {
 const idx = (side: 1 | 2): 0 | 1 => (side === 1 ? 0 : 1);
 
 function bjTableOf(world: World, p: Player): { table: BjTable; side: 1 | 2 } | null {
-  const t = p.casino ? world.casinoTables.get(p.casino.key) : undefined;
-  return p.casino && t?.game === "blackjack" ? { table: t, side: p.casino.side } : null;
+  if (!p.casino || !p.casino.key.startsWith(`${p.map.name}:`)) {
+    return null;
+  }
+  const t = world.casinoTables.get(p.casino.key);
+  return t?.game === "blackjack" ? { table: t, side: p.casino.side } : null;
 }
 
 const giveGold = (p: Player, n: number): void => {
@@ -99,8 +101,7 @@ export function bjSit(world: World, p: Player, g: GroundItem): Outgoing[] {
   }
   const side = casinoSide(p, g);
   if (side === null) {
-    // The wrong-spot text shows only until your first slot panel or table.
-    return p.casinoShown ? [] : [chat(p.id, BJ_TEXT.stand)];
+    return [chat(p.id, BJ_TEXT.stand)];
   }
   const key = tableKey(p.map.name, g.x, g.y);
   let table = world.casinoTables.get(key);
@@ -129,7 +130,6 @@ export function bjSit(world: World, p: Player, g: GroundItem): Outgoing[] {
   table.seats[idx(side)] = { id: p.id, name: p.name, awayIn: 0 };
   p.casino = { key, side };
   p.keyLock = true;
-  p.casinoShown = true;
   // The join resets the table; a lock in place is released and its hold returned.
   releaseHolds(world, table);
   resetTable(table);
@@ -270,8 +270,8 @@ export function bjStand(world: World, p: Player): Outgoing[] {
 }
 
 /**
- * Hit: a card into your first empty slot, followed by the running total; a total over 21 stands
- * you. A full hand fills nothing and prints nothing.
+ * Hit: a card into your first empty slot, followed by the running total; a total over 21 or a
+ * full five-card hand automatically stands you.
  */
 export function bjHit(world: World, p: Player, rng: Rng): Outgoing[] {
   const g = playGate(world, p);
@@ -283,10 +283,10 @@ export function bjHit(world: World, p: Player, rng: Rng): Outgoing[] {
     return [];
   }
   hand.push(drawCard(rng));
-  const out: Outgoing[] = [chat(p.id, fill(BJ_TEXT.holding, { N: handTotal(hand) }))];
   const total = handTotal(hand);
+  const out: Outgoing[] = [chat(p.id, fill(BJ_TEXT.holding, { N: total }))];
   out.push(...bjViews(world, g.table, ["deal"]));
-  if (total > 21) {
+  if (total > 21 || hand.length >= BJ_HAND_SIZE) {
     out.push(...stand(world, g.table, g.side));
   }
   return out;
@@ -401,7 +401,6 @@ export function bjReturn(world: World, p: Player): Outgoing[] {
         seat.name = p.name;
         p.casino = { key: table.key, side };
         p.keyLock = true;
-        p.casinoShown = true;
         // The loaded purse includes the hold; take it out again.
         giveGold(p, -Math.min(table.held[idx(side)], p.char.gold));
         const out: Outgoing[] = bjViews(world, table).filter((o) => o.to === p.id);

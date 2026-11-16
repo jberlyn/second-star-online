@@ -32,7 +32,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | Section | Kept bugs |
 |---|---|
 | [admin](#admin) | 0 |
-| [casino](#casino) | 14 |
+| [casino](#casino) | 0 |
 | [chat](#chat) | 10 |
 | [client](#client) | 18 |
 | [combat](#combat) | 28 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 1 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **329** |
+| **Total** | **315** |
 
 ## admin
 
@@ -57,89 +57,7 @@ No kept bugs (all nine former entries were fixed; see [admin differences](diverg
 
 ## casino
 
-### The slots row 2-3-2 pays 80
-- **What you notice:** three reels showing 2-3-2 pay 80, and 4-4-4 pays 50. Over all possible reels the machine gives back about 76.6 % of what is put in.
-- **In 1.6 and SSO:** the same payout table; SSO rolls the reels with the server's random numbers.
-- **In the code:** `packages/shared/src/rules/casino/casino.ts` (`slotPayout`, `slotReels`)
-- **Pinned by:** `2-3-2 pays 80 and 4-4-4 pays 50; RTP 245/64 over all 64 reels` (packages/shared/tests/casino/casino.test.ts)
-
-### Blackjack aces drop 10 each at once, then may add 11
-- **What you notice:** a hand's total can look odd with several aces: A-A shows 13, A-A-9 shows 11, A-A-A shows 14, A-5 shows 16 and 10-9-5 shows 24.
-- **In 1.6 and SSO:** aces count 11. If the total goes over 21, 10 is taken off for every ace at once, and then, still in that case, 11 is added back if the result is under 11. The server totals hands with the same routine.
-- **In the code:** `packages/shared/src/rules/casino/blackjack.ts` (`handTotal`)
-- **Pinned by:** `the Ace routine: A-A 13, A-A-9 11, A-A-A 14, A-5 16, 10-9-5 24` (packages/shared/tests/casino/blackjack.test.ts)
-
-### Both blackjack hands bust and the higher bust still wins
-- **What you notice:** if both players bust with different totals, the "draw" line prints once and the higher bust wins the stake anyway. Equal busts print the draw line twice and nobody wins; equal totals that did not bust print it once.
-- **In 1.6 and SSO:** the draw message is sent but the settlement carries on to compare the totals. SSO has the same order of outcomes and the same lines.
-- **In the code:** `packages/shared/src/rules/casino/blackjack.ts` (`outcome`); `packages/server/src/systems/casino/blackjack.ts` (`settle`)
-- **Pinned by:** `the outcome lines: 25 v 23 draw then P1, 24 v 24 two draws, 18 v 18 one draw, 22 v 17 P2, 17 v 19 P2` (packages/shared/tests/casino/blackjack.test.ts); `kept bug: both bust, different totals: one draw line then the higher bust wins the stake` and `kept bug: equal busts print the draw line twice and refund; an equal non-bust hand once` (packages/server/tests/blackjack.test.ts)
-
-### Blackjack cards are equally likely and the lower bid is the stake
-- **What you notice:** each card drawn is one of ten values with the same chance, so a 10 is no more common than an Ace. The game is played for the lower of the two bids, and a bid of 0 gives a free game.
-- **In 1.6 and SSO:** a card is a random pick of ten, the stake is the lower bid, and the server ignored amounts below 1. SSO does the same.
-- **In the code:** `packages/shared/src/rules/casino/blackjack.ts` (`drawCard`, `stake`, `bidCheck`)
-- **Pinned by:** `drawCard is random(10) + 50, crd51 = 11 and crd60 = 10` and `the stake is the lower bid; 0 is a free game` (packages/shared/tests/casino/blackjack.test.ts)
-
-### Checkers has no multi-jump and no forced capture
-- **What you notice:** a jump is one move and your turn then passes, even if another jump is available. You are never forced to capture. A side that still has pieces but no legal move cannot move, and play waits until someone closes the window; only having no piece left on the board loses.
-- **In 1.6 and SSO:** the original's move rules worked this way. SSO validates moves on the server with the same rules and the same win test.
-- **In the code:** `packages/shared/src/rules/casino/checkers.ts` (`checkersMove`, `loser`); `packages/server/src/systems/casino/checkers.ts` (`ckMove`)
-- **Pinned by:** `no multi-jump: a jump is one move, the turn passes after it` and `the loser is the side with no piece on the board; blocked sides do not lose` (packages/shared/tests/casino/checkers.test.ts); `kept bug: no multi-jump, no win by blocking: pieces left means play goes on` (packages/server/tests/checkers.test.ts)
-
-### The high score total leaves out eight skills and ties never rank
-- **What you notice:** the number that goes on the high score board adds up most of your skills but leaves out eight of them, and a score tying an existing one does not rank. A ranked score replaces your own entry even when it is lower.
-- **In 1.6 and SSO:** the total comes from a misspelt variable in the bio sum, and ranking needs a strictly higher score. SSO uses the same sum and ranking.
-- **In the code:** `packages/shared/src/rules/casino/casino.ts` (`highScorePoints`, `submitsScore`); `packages/shared/src/rules/social/bios.ts` (`bioScore`); `packages/shared/src/rules/social/assassin.ts` (`rankEntry`)
-- **Pinned by:** `the high score ranks with your own entry blanked, ties never rank, and your entry can drop` and `the points are the bio's sum, skipping the eight typo'd skills` (packages/shared/tests/casino/casino.test.ts); `kept bug: the score drops the eight skills of the misspelt-variable line` pins the sum itself (packages/shared/tests/social/friends-bios-medals.test.ts)
-
-### The blackjack "wrong spot" text goes quiet after your first table
-- **What you notice:** click a blackjack table from the wrong spot and you are told you must be standing beside it, but only the first time. Once you have opened any slot panel or blackjack table, that text never shows again until you log in again. Checkers always says it.
-- **In 1.6 and SSO:** a flag set by the first slot panel or blackjack table is never cleared until the client restarts, and the text only shows while it is unset. Checkers has no such flag. SSO does the same per login: the flag is cleared when the player is cleared on a login or a resume.
-- **In the code:** `packages/server/src/systems/casino/blackjack.ts` (`bjSit`, `casinoShown`)
-- **Pinned by:** `kept bug: the wrong-spot text shows once, then goes silent, also after a slot panel` (packages/server/tests/blackjack.test.ts)
-
-### A blackjack or checkers seat stays when you change map
-- **What you notice:** if you respawn or warp while seated at a blackjack or checkers table, the table is still up. You can walk around and still finish the hand from there.
-- **In 1.6 and SSO:** the table's screen is only hidden by Leave, and the game group is named by the table's position with no map in it. A map load frees your keys but not the screen. The checkers window is its own window, joined on the old map. SSO keeps the seat and the screen, frees walking, and lets play go on from anywhere.
-- **In the code:** `packages/server/src/systems/casino/blackjack.ts` (`bjTableOf`); `packages/server/src/systems/casino/checkers.ts` (`ckTableOf`)
-- **Pinned by:** `kept bug: the seat stays across a map change; walking is freed and the hand finishes` (packages/server/tests/blackjack.test.ts); `kept bug: the window stays across a map change and play goes on` (packages/server/tests/checkers.test.ts)
-
-### The first checkers player sees the start line twice
-- **What you notice:** when a second player sits down, the player who was already there reads "*** The Checkers Game Has Started. It's <Black>'s (black) turn." twice. The newcomer reads it once.
-- **In 1.6 and SSO:** the newcomer's join reply reaches the first player after both sides are known, and each copy prints the line. SSO does the same.
-- **In the code:** `packages/server/src/systems/casino/checkers.ts` (`ckSit`)
-- **Pinned by:** `kept bug: the first player sees the start line twice, the newcomer once` (packages/server/tests/checkers.test.ts)
-
-### The loser of a checkers game moves first in the next
-- **What you notice:** after a win the board resets and the loser is to move first, with no start line printed.
-- **In 1.6 and SSO:** the winning move's "your turn" message to the loser arrives after the board reset, and nothing sets the turn back to Black. SSO does the same.
-- **In the code:** `packages/server/src/systems/casino/checkers.ts` (`ckMove`)
-- **Pinned by:** `a capture, then a king, then the win line from the loser to the map` (packages/server/tests/checkers.test.ts)
-
-### A five-card blackjack hand can keep hitting to no effect
-- **What you notice:** with five cards in your hand you can keep pressing Hit. Nothing happens: no card, no text and no sound.
-- **In 1.6 and SSO:** a hit with five cards fills no card slot and the hand total is only worked out when a slot fills. SSO does the same: a sixth hit does nothing and draws no card.
-- **In the code:** `packages/server/src/systems/casino/blackjack.ts` (`bjHit`)
-- **Pinned by:** `kept bug: a five-card hand can keep hitting with nothing happening` (packages/server/tests/blackjack.test.ts)
-
-### A slot pull without 5 gold closes the panel, then complains
-- **What you notice:** pull the lever with under 5 gold and the slot panel closes first, and only then do you read "You don't have enough gold to play!".
-- **In 1.6 and SSO:** the client closes the panel when you are short, and the server's not-enough-gold line arrives after. SSO closes the panel and then prints that line.
-- **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotPull`)
-- **Pinned by:** `kept bug: a short slot pull closes the panel before the gold line` (packages/server/tests/casino.test.ts)
-
-### The slot panel stays open across a map change and pulls anywhere
-- **What you notice:** if you warp or respawn with the slot panel open, it is still up, you can walk with it open, and the lever still works wherever you are.
-- **In 1.6 and SSO:** the panel is a set of sprites that only Close hides, drawing a new map frees your keys, and the pull has no position test. SSO keeps the panel open across a map change, the map load frees walking, and a pull needs only an open, idle panel.
-- **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotPull`)
-- **Pinned by:** `kept bug: the slot panel stays open across a map change and pulls anywhere` (packages/server/tests/casino.test.ts); `kept bug: the panel stays open when the map changes: nothing but Close and the server close it` (packages/client/tests/slots.test.ts)
-
-### Only an item named exactly "Slot Machine" plays
-- **What you notice:** an item called "Slot Machine 2" does nothing when you click it or press Ctrl, though it counts as a slot machine for the click.
-- **In 1.6 and SSO:** the click sends any name containing "Slot Machine" on, but the game itself tests for the exact name. SSO does the same.
-- **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotOpen`)
-- **Pinned by:** `kept bug: only an item named exactly 'Slot Machine' plays; 'Slot Machine 2' routes and says nothing` (packages/server/tests/casino.test.ts)
+No kept bugs (all fourteen former entries were fixed; see [casino differences](divergences.md#casino)).
 
 ## chat
 

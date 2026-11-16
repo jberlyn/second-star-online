@@ -1,18 +1,17 @@
 /**
  * The Slot Machine and the High Score Statue's table.
  *
- * The panel is `p.slot`: `null` closed, `spin` the ticks until a pull settles (0 idle). It keeps
- * across a map change, as 1.6's puppet sprites did, so Pull checks only that the panel is open and
- * idle.
+ * The panel is `p.slot`: `null` closed, `spin` the ticks until a pull settles (0 idle). A map
+ * change closes the panel, and a pull requires standing in front of a slot machine on the map.
  */
 import {
   CHAT_COLOR,
   highScorePoints,
-  lingoEq,
-  rankEntry,
+  isSlotMachine,
+  rankHighScore,
   SCORES_SIZE,
+  SLOT_COST,
   SLOT_FX,
-  SLOT_ITEM,
   SLOT_SPIN_FRAMES,
   SLOT_TEXT,
   slotOpenCheck,
@@ -34,12 +33,12 @@ const chat = (to: Player, text: string): Outgoing => ({
 const closed = (p: Player): Outgoing => ({ to: p.id, msg: { t: "slot", open: false } });
 
 /**
- * The click or Ctrl on a machine: exits unless the name is exactly "Slot Machine" or while a casino
+ * The click or Ctrl on a machine: exits unless the name contains "Slot Machine" or while a casino
  * panel is up; a wrong spot prints the stand text; else the panel opens and the keys are locked
  * (1.6's client-side input lock).
  */
 export function slotOpen(p: Player, machine: GroundItem): Outgoing[] {
-  if (!lingoEq(machine.item, SLOT_ITEM) || p.slot !== null) {
+  if (!isSlotMachine(machine.item) || p.slot !== null) {
     return [];
   }
   if (slotOpenCheck(p, machine) === "stand") {
@@ -51,18 +50,27 @@ export function slotOpen(p: Player, machine: GroundItem): Outgoing[] {
 }
 
 /**
- * Pull: ignored unless the panel is open and idle (no position test, so it works on any map).
- * Short gold closes the panel and then prints the line; else the FX is queued at the player and the
- * 30-frame spin starts.
+ * Pull: ignored unless the panel is open and idle; closes the panel if not in front of a slot
+ * machine. Short gold returns the lever and prints the line without closing the panel; else the FX
+ * is queued at the player and the 30-frame spin starts.
  */
 export function slotPull(room: Room, p: Player): Outgoing[] {
   if (!p.slot || p.slot.spin > 0) {
     return [];
   }
-  if (p.char.gold < 5) {
+  const atMachine = room.map.ground.some(
+    (g) => isSlotMachine(g.item) && slotOpenCheck(p, g) === "open",
+  );
+  if (!atMachine) {
     p.slot = null;
     p.keyLock = false;
-    return [closed(p), chat(p, SLOT_TEXT.poor)];
+    return [closed(p)];
+  }
+  if (p.char.gold < SLOT_COST) {
+    return [
+      { to: p.id, msg: { t: "slotResult", reels: null, win: false } },
+      chat(p, SLOT_TEXT.poor),
+    ];
   }
   const me = playerLoc(p);
   queueCast(room, {
@@ -85,6 +93,16 @@ export function slotClose(p: Player): void {
     p.slot = null;
     p.keyLock = false;
   }
+}
+
+/** Closes an open slot panel on map change. */
+export function slotMapLeave(p: Player): Outgoing[] {
+  if (p.slot === null) {
+    return [];
+  }
+  p.slot = null;
+  p.keyLock = false;
+  return [closed(p)];
 }
 
 /**
@@ -125,7 +143,7 @@ export function submitHighScore(world: World, p: Player): void {
   if (!submitsScore(points, p.role === "immortal")) {
     return;
   }
-  const next = rankEntry(world.highScores, { id: p.id, name: p.name, points }, SCORES_SIZE);
+  const next = rankHighScore(world.highScores, { id: p.id, name: p.name, points }, SCORES_SIZE);
   if (next) {
     world.highScores = next;
     world.highScoresDirty = true;

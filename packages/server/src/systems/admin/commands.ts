@@ -31,6 +31,7 @@ import {
   warpscriptMatches,
 } from "@secondstaronline/shared";
 
+import type { CasinoDeps } from "../casino/index.ts";
 import { hears } from "../chat/ignore.ts";
 import { pardon } from "../social/murder.ts";
 import { warp } from "../world/tick.ts";
@@ -80,6 +81,7 @@ export interface AdminDeps {
   loadMap(name: string): WorldMap | null;
   /** The missing-map fallback. */
   startPoint(): { map: string; x: number; y: number };
+  casino: CasinoDeps;
 }
 
 type ChatLine = Extract<ServerMsg, { t: "chat" }>;
@@ -111,16 +113,16 @@ export function adminWarp(
   mapName: string,
   x: number,
   y: number,
-  deps: Pick<AdminDeps, "loadMap" | "startPoint">,
+  deps: Pick<AdminDeps, "loadMap" | "startPoint" | "casino">,
 ): Outgoing[] {
   const out = target.editing ? closeEditor(world, target) : [];
   const map = deps.loadMap(mapName);
   if (map) {
-    out.push(...warp(world, target, map, x, y));
+    out.push(...warp(world, target, map, x, y, deps.casino));
     return out;
   }
   const sp = deps.startPoint();
-  out.push(...warp(world, target, deps.loadMap(sp.map) ?? target.map, sp.x, sp.y));
+  out.push(...warp(world, target, deps.loadMap(sp.map) ?? target.map, sp.x, sp.y, deps.casino));
   return out;
 }
 
@@ -455,7 +457,7 @@ export function warpscriptOnBroadcast(
   world: World,
   speaker: Player,
   message: string,
-  deps: Pick<AdminDeps, "loadMap" | "startPoint">,
+  deps: Pick<AdminDeps, "loadMap" | "startPoint" | "casino">,
 ): Outgoing[] {
   for (const staff of world.players.values()) {
     // The check follows the ignore test: a staff member ignoring the speaker never reads the

@@ -45,7 +45,7 @@ export const casinoData: CasinoData = {
           4,
           4
         ],
-        "bonus": 40
+        "bonus": 70
       },
       {
         "faces": [
@@ -53,7 +53,7 @@ export const casinoData: CasinoData = {
           3,
           2
         ],
-        "bonus": 70
+        "bonus": 40
       },
       {
         "faces": [

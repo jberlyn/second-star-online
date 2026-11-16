@@ -457,17 +457,15 @@ export interface Player {
 
   // ---- the casino ---------------------------------------------------------------
   /**
-   * The slot panel: `null` = closed; `spin` counts the ticks until a pull settles (0 = idle). It
-   * survives a map change (1.6's puppet sprites only Close hides).
+   * The slot panel: `null` = closed; `spin` counts the ticks until a pull settles (0 = idle). A map
+   * change closes it.
    */
   slot: { spin: number } | null;
   /**
-   * The blackjack or checkers seat: `key` is the table's `world.casinoTables` key. It survives a
-   * map change and a dropped connection for the grace.
+   * The blackjack or checkers seat: `key` is the table's `world.casinoTables` key. A map change
+   * closes it; a mid-hand blackjack seat survives a dropped connection for the grace.
    */
   casino: { key: string; side: 1 | 2 } | null;
-  /** The player has joined a blackjack table: the blackjack wrong-spot text is silent now. */
-  casinoShown: boolean;
 
   // ---- mail and message boards -----------------------------------------------
   /** The mail list (sprite 362) is up: set when the list is built, cleared by the list's CLOSE. */
@@ -638,7 +636,6 @@ export function sessionCombatState(): Pick<
   | "guildScreen"
   | "slot"
   | "casino"
-  | "casinoShown"
   | "mailList"
   | "mailUi"
   | "board"
@@ -704,7 +701,6 @@ export function sessionCombatState(): Pick<
     guildScreen: false,
     slot: null,
     casino: null,
-    casinoShown: false,
     mailList: false,
     mailUi: false,
     board: null,
@@ -939,6 +935,8 @@ export interface CkTable {
   seats: [CasinoSeat | null, CasinoSeat | null];
   board: Piece[];
   turn: 0 | 1 | 2;
+  /** Piece index that must continue a multi-jump, or null. */
+  jumpFrom?: number | null;
 }
 
 export type CasinoTable = BjTable | CkTable;

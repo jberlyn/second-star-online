@@ -64,13 +64,13 @@ describe("sitting and the start", () => {
     expect(t.tbl().turn).toBe(0);
   });
 
-  test("kept bug: the first player sees the start line twice, the newcomer once", () => {
+  test("both players see the start line once", () => {
     const t = scene();
     const a = t.join("Alice", 9);
     const b = t.join("Bob", 11);
     ckSit(t.world, a, t.table);
     const out = ckSit(t.world, b, t.table);
-    expect(chat(out, "Alice")).toEqual([START, START]);
+    expect(chat(out, "Alice")).toEqual([START]);
     expect(chat(out, "Bob")).toEqual([START]);
     expect(t.tbl().turn).toBe(1);
     expect(views(out, "Bob")[0]?.names).toEqual(["Alice", "Bob"]);
@@ -117,15 +117,14 @@ describe("moves", () => {
     // Black jumps White: 105,118 -> 41,54 (a king there is checked after).
     const out = ckMove(t.world, a, 0, -1, -1);
     // White has no piece left: Bob (White) is the loser and says it to his map.
-    expect(chat(out, "Alice")).toEqual(["*** Alice has won the game!"]);
-    expect(chat(out, "Bob")).toEqual(["*** Alice has won the game!"]);
-    // The loser moves first, with no start line.
-    expect(t.tbl().turn).toBe(2);
+    expect(chat(out, "Alice")).toEqual(["*** Alice has won the game!", START]);
+    expect(chat(out, "Bob")).toEqual(["*** Alice has won the game!", START]);
+    // Black moves first on the reset board, with the start line printed.
+    expect(t.tbl().turn).toBe(1);
     expect(t.tbl().board).toEqual(startBoard());
-    expect(views(out, "Alice")[0]?.moved).toEqual({ turn: 2 });
-    expect(chat(out, "Alice")).not.toContain(START);
-    const next = ckMove(t.world, b, 20, 1, 1);
-    expect(views(next, "Bob")[0]?.moved).toEqual({ turn: 1 });
+    expect(views(out, "Alice")[0]?.moved).toEqual({ turn: 1 });
+    const next = ckMove(t.world, a, 8, 1, -1);
+    expect(views(next, "Bob")[0]?.moved).toEqual({ turn: 2 });
   });
 
   test("the win line is dropped for someone ignoring the loser", () => {
@@ -141,21 +140,89 @@ describe("moves", () => {
     tbl.board[12] = { h: 73, v: 86, m: "White" };
     const out = ckMove(t.world, a, 0, -1, -1);
     expect(chat(out, "Carol")).toEqual([]);
-    expect(chat(out, "Alice")).toHaveLength(1);
+    expect(chat(out, "Alice")).toEqual(["*** Alice has won the game!", START]);
   });
 
-  test("kept bug: no multi-jump, no win by blocking: pieces left means play goes on", () => {
+  test("multi-jump keeps the turn on the jumping piece; forced capture blocks steps; blocking a side wins", () => {
     const t = scene();
     const { a } = t.seated();
     const tbl = t.tbl();
     tbl.board = startBoard().map((p, i) =>
-      i === 0 || i === 12 || i === 13 ? p : { ...p, h: p.h - 864, v: p.v - 864 },
+      i === 0 || i === 1 || i === 12 || i === 13 ? p : { ...p, h: p.h - 864, v: p.v - 864 },
     );
     tbl.board[0] = { h: 169, v: 214, m: "Black" };
+    tbl.board[1] = { h: 201, v: 214, m: "Black" };
     tbl.board[12] = { h: 137, v: 182, m: "White" };
     tbl.board[13] = { h: 73, v: 118, m: "White" };
+    // Forced capture: piece 1 cannot step while piece 0 can jump.
+    expect(ckMove(t.world, a, 1, -1, -1)).toEqual([]);
     const out = ckMove(t.world, a, 0, -1, -1);
     expect(tbl.board[0]).toEqual({ h: 105, v: 150, m: "Black" });
+    expect(views(out, "Bob")[0]?.moved).toEqual({ turn: 1 });
+    expect(tbl.turn).toBe(1);
+    expect(tbl.jumpFrom).toBe(0);
+    // Second jump wins by capturing all White pieces.
+    const winOut = ckMove(t.world, a, 0, -1, -1);
+    expect(chat(winOut, "Alice")[0]).toBe("*** Alice has won the game!");
+    expect(tbl.jumpFrom).toBeNull();
+    // Blocking a side with pieces left also loses.
+    tbl.board = startBoard().map((p, i) =>
+      i === 0 || i === 12 ? p : { ...p, h: p.h - 864, v: p.v - 864 },
+    );
+    tbl.board[0] = { h: 105, v: 182, m: "Black" };
+    tbl.board[12] = { h: 265, v: 278, m: "White" }; // White is at bottom-right corner, cannot move forward
+    const blockWin = ckMove(t.world, a, 0, 1, -1);
+    expect(chat(blockWin, "Alice")[0]).toBe("*** Alice has won the game!");
+  });
+
+  test("multi-jump continues even if opponent is temporarily blocked after jump 1", () => {
+    const t = scene();
+    t.seated();
+    const a = t.world.players.get("Alice")!;
+    const tbl = t.tbl();
+    tbl.board = startBoard().map((p) => ({ ...p, h: p.h - 864, v: p.v - 864 }));
+    tbl.board[0] = { h: 73, v: 246, m: "Black" };
+    tbl.board[1] = { h: 73, v: 182, m: "Black" };
+    tbl.board[2] = { h: 41, v: 214, m: "Black" };
+    tbl.board[3] = { h: 169, v: 214, m: "Black" };
+    tbl.board[4] = { h: 169, v: 150, m: "Black" };
+    tbl.board[5] = { h: 201, v: 182, m: "Black" };
+    tbl.board[12] = { h: 105, v: 214, m: "White" };
+    tbl.board[13] = { h: 105, v: 150, m: "White" };
+    tbl.board[14] = { h: 137, v: 118, m: "White" };
+    tbl.turn = 1;
+    tbl.jumpFrom = null;
+
+    // Jump 1: Black 0 jumps (+1, -1) over White 12 to (137, 182). White 13 & 14 are both blocked.
+    const j1 = ckMove(t.world, a, 0, 1, -1);
+    expect(chat(j1, "Alice")).toEqual([]);
+    expect(t.tbl().turn).toBe(1);
+    expect(t.tbl().jumpFrom).toBe(0);
+
+    // Jump 2: Black 0 jumps (-1, -1) over White 13 to (73, 118), freeing White 14 to step to (105, 150).
+    const j2 = ckMove(t.world, a, 0, -1, -1);
+    expect(chat(j2, "Alice")).toEqual([]);
+    expect(t.tbl().turn).toBe(2);
+    expect(t.tbl().jumpFrom).toBeNull();
+  });
+
+  test("jump that promotes to King ends the turn even if a backward jump would be available as a King", () => {
+    const t = scene();
+    t.seated();
+    const a = t.world.players.get("Alice")!;
+    const tbl = t.tbl();
+    tbl.board = startBoard().map((p) => ({ ...p, h: p.h - 864, v: p.v - 864 }));
+    tbl.board[0] = { h: 105, v: 118, m: "Black" };
+    tbl.board[12] = { h: 137, v: 86, m: "White" };
+    tbl.board[13] = { h: 201, v: 86, m: "White" };
+    tbl.board[14] = { h: 41, v: 150, m: "White" };
+    tbl.turn = 1;
+    tbl.jumpFrom = null;
+
+    const out = ckMove(t.world, a, 0, 1, -1);
+    expect(t.tbl().board[0]).toEqual({ h: 169, v: 54, m: "BlackKing" });
+    expect(t.tbl().turn).toBe(2);
+    expect(t.tbl().jumpFrom).toBeNull();
     expect(views(out, "Bob")[0]?.moved).toEqual({ turn: 2 });
   });
 });
@@ -175,7 +242,7 @@ describe("leaving", () => {
     expect(t.tbl().turn).toBe(0);
     const c = t.join("Carol", 11);
     const join = ckSit(t.world, c, t.table);
-    expect(chat(join, "Alice")).toEqual([START, START]);
+    expect(chat(join, "Alice")).toEqual([START]);
     ckClose(t.world, a);
     ckClose(t.world, c);
     expect(t.world.casinoTables.size).toBe(0);
@@ -190,15 +257,16 @@ describe("leaving", () => {
     expect(a.casino).not.toBeNull();
   });
 
-  test("kept bug: the window stays across a map change and play goes on", () => {
+  test("a map change closes the checkers window and frees the seat", () => {
     const t = scene();
     const { a, b } = t.seated();
-    warp(t.world, a, t.other, 3, 3);
-    a.keyLock = false;
-    expect(a.casino).toEqual({ key: t.key, side: 1 });
-    const out = ckMove(t.world, a, 8, 1, -1);
-    expect(views(out, "Bob")[0]?.moved).toEqual({ turn: 2 });
-    expect(ckMove(t.world, b, 20, 1, 1).length).toBeGreaterThan(0);
+    const wOut = warp(t.world, a, t.other, 3, 3);
+    expect(wOut.some((m) => m.to === "Alice" && m.msg.t === "ck" && !m.msg.open)).toBe(true);
+    expect(views(wOut, "Bob")[0]?.names).toEqual(["", "Bob"]);
+    expect(a.casino).toBeNull();
+    expect(ckMove(t.world, a, 8, 1, -1)).toEqual([]);
+    expect(t.tbl().turn).toBe(0);
+    expect(b.casino).not.toBeNull();
   });
 });
 
