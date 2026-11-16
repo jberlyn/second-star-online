@@ -34,7 +34,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [admin](#admin) | 0 |
 | [casino](#casino) | 0 |
 | [chat](#chat) | 10 |
-| [client](#client) | 18 |
+| [client](#client) | 17 |
 | [combat](#combat) | 28 |
 | [crafting](#crafting) | 28 |
 | [economy](#economy) | 33 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 1 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **315** |
+| **Total** | **314** |
 
 ## admin
 
@@ -224,12 +224,6 @@ No kept bugs (all fourteen former entries were fixed; see [casino differences](d
 - **In 1.6 and SSO:** 1.6 read the colour straight from the screen. SSO reads the paint screen's art with the preview drawn over it.
 - **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
 - **Pinned by:** `the colour pick reads the paint screen's art, or the preview where it lies over it` (packages/client/tests/art-news.test.ts)
-
-### At 1 HP or SP the bar's number disappears off the right edge, and above 180 it spills left
-- **What you notice:** When your HP or SP drops to 1 (or single digits near it), the white number beside the bar disappears off the right edge of the window. Above ~180 HP or SP, the number spills left out of the bar cutout onto the wooden panel border.
-- **In 1.6 and SSO:** 1.6's bar loader caps the fill offset at 200 (`locH = 871 − min(value, 200)`) and puts the 34-px right-aligned number field at `locH − 102` on channels 318–319, above the panel and frame strips. At `1`, the field sits at `x = 768..802` so the right-aligned digit lands past the 800-px stage edge; at `200+`, it sits at `x = 569..603`, visible over the panel border. SSO places the bars and number fields in the same channels with only the 800×600 stage clipping them.
-- **In the code:** `packages/client/src/ui/bars.ts` (`createBars`), `packages/client/src/ui/shells.ts` (`createGameView`)
-- **Pinned by:** `kept bug: at 1 HP/SP the number sits past the 800-px stage edge; above 200 the fill caps and the number spills left` (packages/client/tests/combat.test.ts)
 
 ## combat
 

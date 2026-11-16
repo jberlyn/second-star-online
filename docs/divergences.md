@@ -24,7 +24,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [admin](#admin) | 29 |
 | [casino](#casino) | 20 |
 | [chat](#chat) | 7 |
-| [combat](#combat) | 10 |
+| [combat](#combat) | 11 |
 | [core](#core) | 34 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 2 |
 | [world](#world) | 8 |
-| **Total** | **205** |
+| **Total** | **206** |
 
 ## admin
 
@@ -552,6 +552,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **SSO:** The server counts ticks; an attack pressed a few ticks early can be latched for the next permitted attack.
 - **Why:** Client-controlled timing allowed speed and power hacks.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`), `packages/shared/src/rules/combat/combat.ts` (`tickAttackTimers`, `startSwing`)
+
+### HP and SP bars fill by percentage with hover text
+- **Kind:** Other
+- **What you notice:** Each HP and SP bar fills its wooden slot from left to right. Full HP or SP fills the slot even when the maximum is 20, and losing half the points leaves half the bar. Hovering a bar shows `current / max` centred on it; otherwise the bar has no number.
+- **1.6:** The bar loader slid fixed 205-px track and fill sprites leftward from the stage's right edge using the raw value, capped at 200. A character with 20 maximum HP showed only a short bar at full health, while one with 1000 maximum HP filled the slot. The right-aligned number also disappeared past the stage's right edge at 1 HP/SP and spilled left of the cutout above 200.
+- **SSO:** The HP and SP tracks stay in the 189-px transparent slot of Internal #186 (stage x 600-789) and the fills grow from its left edge by `value / max`, with no 200 cap; the original 205-px art is clipped to the slot. The text is a centred `current / max` field shown only while that bar is hovered, so it cannot leave the cutout. The power bar keeps 1.6's sliding behaviour.
+- **Why:** A bar's length should show how much of the stat remains, not how large the stat's maximum happens to be.
+- **In the code:** `packages/client/src/ui/bars.ts` (`createBars`, `setVitals`), `packages/client/src/styles.css` (`.bar-track`, `.bar-fill`, `.bar-hover`, `.bar-value`), `packages/client/src/ui/shells.ts` (`createGameView`)
+- **Pinned by:** `HP and SP fill the wooden slot left to right by percentage; the text reads current / max`; `a full bar is full at any maximum, and values above 200 are not capped`; `each bar's text field sits in that bar's own hover zone` (packages/client/tests/combat.test.ts)
 
 ### Server checks crystals before shots and casts
 - **Kind:** Exploit closed

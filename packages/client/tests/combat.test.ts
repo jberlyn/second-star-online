@@ -150,20 +150,47 @@ describe("monsters on the client", () => {
 });
 
 describe("bars", () => {
-  test("the fill sits at 871 − HP, the number rides its left end; the power bar slides 2 px a point", () => {
+  test("HP and SP fill the wooden slot left to right by percentage; the text reads current / max", () => {
     const b = createBars(fakeAssets);
     b.setVitals({ level: 1, hp: 15, hpMax: 20, sp: 20, spMax: 20, exp: 0, expNeeded: 30 });
-    const imgs = [...b.el.querySelectorAll("img")] as HTMLImageElement[];
-    const fill = imgs.find((i) => i.src.endsWith("internal-151.png"));
-    const track = imgs.find((i) => i.src.endsWith("internal-150.png"));
-    // Box origin x 590: fill locH 856, left 856 − 81 − 590 = 185.
-    expect(fill?.style.left).toBe("185px");
-    expect(track?.style.left).toBe("180px");
-    expect(b.el.querySelector(".hp-value")?.textContent).toBe("15");
+    const q = (sel: string) => b.el.querySelector(sel) as HTMLElement;
+    // The slot is stage x 600-789: 189 px wide, 10 px from the box origin.
+    expect(q(".hp-track").style.left).toBe("10px");
+    expect(q(".hp-track").style.width).toBe("189px");
+    expect(q(".hp-fill").style.left).toBe("10px");
+    // 15/20 = 75% of 189 = 141.75 px, measured from the slot's left edge.
+    expect(q(".hp-fill").style.width).toBe("141.75px");
+    expect(q(".sp-fill").style.width).toBe("189px");
+    expect(q(".hp-value").textContent).toBe("15 / 20");
+    expect(q(".sp-value").textContent).toBe("20 / 20");
     b.setPower(50, 474);
-    const power = imgs.find((i) => i.style.opacity === "0.5");
+    const power = [...b.el.querySelectorAll("img")].find((i) => i.style.opacity === "0.5");
     expect(power?.style.left).toBe(`${874 - 100 - 81 - 590}px`);
     expect(power?.src.endsWith("internal-474.png")).toBe(true);
+  });
+
+  test("a full bar is full at any maximum, and values above 200 are not capped", () => {
+    const b = createBars(fakeAssets);
+    const q = (sel: string) => b.el.querySelector(sel) as HTMLElement;
+    b.setVitals({ level: 1, hp: 20, hpMax: 20, sp: 1029, spMax: 1029, exp: 0, expNeeded: 30 });
+    expect(q(".hp-fill").style.width).toBe("189px");
+    expect(q(".sp-fill").style.width).toBe("189px");
+    b.setVitals({ level: 1, hp: 1, hpMax: 200, sp: 10, spMax: 1000, exp: 0, expNeeded: 30 });
+    expect(q(".hp-fill").style.width).toBe("0.95px");
+    expect(q(".sp-fill").style.width).toBe("1.89px");
+    expect(q(".hp-value").textContent).toBe("1 / 200");
+    expect(q(".sp-value").textContent).toBe("10 / 1000");
+  });
+
+  test("each bar's text field sits in that bar's own hover zone", () => {
+    const b = createBars(fakeAssets);
+    b.setVitals({ level: 1, hp: 15, hpMax: 20, sp: 20, spMax: 20, exp: 0, expNeeded: 30 });
+    const hpValue = b.el.querySelector(".hp-value") as HTMLElement;
+    const spValue = b.el.querySelector(".sp-value") as HTMLElement;
+    expect(b.el.querySelector(".hp-hover .hp-value")).toBe(hpValue);
+    expect(b.el.querySelector(".sp-hover .sp-value")).toBe(spValue);
+    expect(hpValue.getAttribute("aria-hidden")).toBe("true");
+    expect(spValue.getAttribute("aria-hidden")).toBe("true");
   });
 
   test("the desktop stage places the bars", () => {
@@ -199,24 +226,6 @@ describe("bars", () => {
     expect(edge.style.left).toBe("789px");
     expect(edge.style.width).toBe("11px");
     expect(edge.style.zIndex).toBe("320");
-  });
-
-  test("kept bug: at 1 HP/SP the number sits past the 800-px stage edge; above 200 the fill caps and the number spills left", () => {
-    const b = createBars(fakeAssets);
-    b.setVitals({ level: 1, hp: 1, hpMax: 200, sp: 1029, spMax: 1029, exp: 0, expNeeded: 30 });
-    const imgs = [...b.el.querySelectorAll("img")] as HTMLImageElement[];
-    const hpFill = imgs.find((i) => i.src.endsWith("internal-151.png"));
-    const spFill = imgs.find((i) => i.src.endsWith("internal-153.png"));
-    const hpVal = b.el.querySelector(".hp-value") as HTMLElement;
-    const spVal = b.el.querySelector(".sp-value") as HTMLElement;
-    // HP = 1: fill locH = 870 (left 870 - 81 - 590 = 199), number locH = 768 (left 178, right 802 > 800).
-    expect(hpFill?.style.left).toBe("199px");
-    expect(hpVal.style.left).toBe("178px");
-    expect(hpVal.style.zIndex).toBe("318");
-    // SP = 1029: capped at 200 -> fill locH = 671 (left 0), number locH = 569 (left -21, visible over the frame).
-    expect(spFill?.style.left).toBe("0px");
-    expect(spVal.style.left).toBe("-21px");
-    expect(spVal.style.zIndex).toBe("319");
   });
 });
 
