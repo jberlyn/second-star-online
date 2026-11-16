@@ -899,8 +899,8 @@ export function createWorldEditor(
     flags.noPvp = m.flags.canPvp === "O";
     flags.indoor = m.flags.isIndoors === "O";
     faction = factionBoxes(m.flags.fctSpwn);
-    exit1 = exitFieldsAfterLoad(exit1, m.exit1);
-    exit2 = exitFieldsAfterLoad(exit2, m.exit2);
+    exit1 = exitFieldsAfterLoad(m.exit1);
+    exit2 = exitFieldsAfterLoad(m.exit2);
     writeExitFields();
     fog = { ...m.fog };
     mobs = [...m.mobs];

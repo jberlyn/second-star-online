@@ -173,7 +173,7 @@ server {
 Roles live on the `accounts` table, not on character names:
 
 - **`player`**: standard gameplay.
-- **`moderator`**: can run `/location`, `/iplookup`, `/kick`, `/warp`, `/jail`, `/warptome`, and `/warpmeto`, and can read admin chat (`-text`). Cannot target immortals with `/kick`, `/iplookup`, `/jail`, `/warp`, or `/warptome`.
+- **`moderator`**: can run the original admin commands and `/unban`, and can read and post admin chat (`-text`). Cannot kick, ban, jail, warp, or look up the IP of an immortal. `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and settings windows remain immortal-only.
 - **`immortal`**: full command access, admin chat posting (`-text`), World Editor, NPC Editor, Settings, Newspaper editor, and Assassin's Game controls.
 
 ### Bootstrapping an immortal
@@ -207,7 +207,7 @@ SSO_DB=sso.sqlite bun run admin:audit 50
 
 Chat commands are parsed on the server. Most single-target commands read word 2 (space-delimited) as the target name, so character names containing spaces cannot be targeted by those commands; `/drop`, `/roster`, `/setclass`, and `/warp` parse further arguments as noted below.
 
-See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser details, house/muffle quirks, and admin chat (`-text`, which immortals post and moderators read).
+See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser details, house/muffle quirks, and admin chat (`-text`, which both staff roles can read and post).
 
 | Command | Min role | Target / arguments | Observable result |
 |---|---|---|---|
@@ -218,19 +218,19 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/jail <name>` | `moderator` | Online player (word 2) | Warps target to the seeded jail (`x0y0` at `4, 4`). Player escapes are blocked until timed release; administrators can warp prisoners out. |
 | `/warptome <name>` | `moderator` | Online player (word 2) | Warps target to your current map and tile (refuses if a moderator targets an immortal). |
 | `/warpmeto <name>` | `moderator` | Online player (word 2) | Warps you to the target's current map and tile. |
-| `/save` | `immortal` | None | Saves all online characters and dirty maps immediately. |
-| `/refresh` | `immortal` | None | Reloads settings overrides from the database and applies them to everyone online. |
-| `/cheatfile` | `immortal` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. |
-| `/inventory` | `immortal` | None | Prints your 15 bag lines as held by the server (`Name-qty`). |
-| `/banip <ip>` | `immortal` | IP address (word 2) | Adds `<ip>` to `ip_bans` and refuses future logins from that address. |
-| `/unbanip <ip>` | `immortal` | IP address (word 2) | Removes `<ip>` from `ip_bans`. |
-| `/ban <name>` | `immortal` | Character name (word 2) | Bans the target's account (cannot ban yourself) and kicks if online. |
-| `/unban <name>` | `immortal` | Character name (word 2) | Clears the ban on the target's account. (Said as local chat by non-immortals.) |
-| `/pardon <name>` | `immortal` | Online player (word 2) | Clears the target's murder/wanted flag and saves the character. |
-| `/warpscript <word\|OFF>` | `immortal` | Keyword (word 2) or `OFF` | Auto-warps any player whose broadcast contains `<word>` to you (`OFF` disables). |
+| `/save` | `moderator` | None | Saves all online characters and dirty maps immediately. |
+| `/refresh` | `moderator` | None | Reloads settings overrides from the database and applies them to everyone online. |
+| `/cheatfile` | `moderator` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. |
+| `/inventory` | `moderator` | None | Prints your 15 bag lines as held by the server (`Name-qty`). |
+| `/banip <ip>` | `moderator` | IP address (word 2) | Adds `<ip>` to `ip_bans` and refuses future logins from that address. |
+| `/unbanip <ip>` | `moderator` | IP address (word 2) | Removes `<ip>` from `ip_bans`. |
+| `/ban <name>` | `moderator` | Character name (word 2) | Bans the target's account (cannot ban yourself; moderators cannot ban immortals) and kicks if online. |
+| `/unban <name>` | `moderator` | Character name (word 2) | Clears the ban on the target's account. (Said as local chat by players.) |
+| `/pardon <name>` | `moderator` | Online player (word 2) | Clears the target's murder/wanted flag and saves the character. |
+| `/warpscript <word\|OFF>` | `moderator` | Keyword (word 2) or `OFF` | Matches `<word>` as a whole token in broadcast message content, ignoring case; the first matching staff member in login order warps the speaker (`OFF` disables). |
 | `/role <name> <role>` | `immortal` | Character name, `player` / `moderator` / `immortal` | Updates the account's role (cannot change your own) and applies immediately if online. (Local chat for non-immortals.) |
 | `/setclass <name> <class>` | `immortal` | Character name, class name or number `1`–`26` | Changes the character's class in the database. (Local chat for non-immortals.) |
-| `/drop <item>` | `immortal` | `<n> gold`, item name, or `<n> <item>` (1–9999) | Places the pile on the tile you face; admin drops never decay. |
+| `/drop <item>` | `moderator` | `<n> gold`, item name, or `<n> <item>` (1–9999) | Places the pile on the tile you face; admin drops never decay. |
 | `/roster [slot species\|clear]` | `immortal` | None, or slot `1`–`4` + species name or `clear` | Lists the current map's 4 monster/NPC slots, or sets/clears a slot (saving the map). (Local chat for non-immortals.) |
 | `/spawn <1-4>` | `immortal` | Slot `1`–`4` | Immediately spawns the rostered creature in that slot on the tile you face. (Local chat for non-immortals.) |
 

@@ -138,13 +138,39 @@ describe("the World Editor screen (frames 262-288)", () => {
     });
   });
 
-  test("kept bug: a map with no exit keeps the last map's exit fields", () => {
+  test("loading a map with no exit resets the exit fields so saving does not recreate a stale exit", () => {
     const e = editor();
     const first = blankMap(1, 1);
     first.exit1 = { mx: 7, my: 8, x: 9, y: 10 };
     e.ed.show(first, true);
-    e.ed.show(blankMap(2, 2), false);
     expect(e.ed.current().exit1).toEqual({ mx: 7, my: 8, x: 9, y: 10 });
+    e.ed.show(blankMap(2, 2), false);
+    expect(e.ed.current().exit1).toBeNull();
+    expect(e.ed.current().exit2).toBeNull();
+  });
+
+  test("faction checkboxes W, M and A are mutually exclusive in the editor UI", () => {
+    const e = editor();
+    e.ed.show(blankMap(1, 1), false);
+    (e.root.querySelector('[aria-label="Faction W"]') as HTMLButtonElement).click();
+    expect(e.ed.current().flags.fctSpwn).toBe("W");
+    (e.root.querySelector('[aria-label="Faction A"]') as HTMLButtonElement).click();
+    expect(e.ed.current().flags.fctSpwn).toBe("A");
+    (e.root.querySelector('[aria-label="Faction W"]') as HTMLButtonElement).click();
+    expect(e.ed.current().flags.fctSpwn).toBe("W");
+    (e.root.querySelector('[aria-label="Faction W"]') as HTMLButtonElement).click();
+    expect(e.ed.current().flags.fctSpwn).toBe("X");
+  });
+
+  test("clicking lit layer S stays on layer S and keeps only S lit", () => {
+    const e = editor();
+    e.ed.show(blankMap(1, 1), false);
+    const sBtn = e.root.querySelector('[aria-label="Shadow layer"]') as HTMLButtonElement;
+    sBtn.click();
+    sBtn.click();
+    e.click(2, 2);
+    expect(at(e.ed.current().layers[3], 2, 2)).toBe("G1");
+    expect(at(e.ed.current().layers[2], 2, 2)).toBe("G3");
   });
 
   test("kept bug: the sign panel's background breaks exit 1's map X field", () => {

@@ -1,5 +1,5 @@
 /**
- * `/drop <item>` and `/drop <n> gold` for immortals: the original's command. 1.6 took `N gold` or
+ * `/drop <item>` and `/drop <n> gold` for staff: the original's command. 1.6 took `N gold` or
  * any member name of the Inventory cast; SSO takes the catalogue items that are Inventory members
  * (the ones with an icon) and the cast's fixture members, plus a count (SSO's own addition). The
  * item lands on the faced tile and never decays (SSO's own rule).
@@ -91,7 +91,7 @@ export function dropText(g: { item: string; qty?: number }): string {
 
 export function handleDrop(ctx: ItemCtx, room: Room, p: Player, item: string): Outgoing[] {
   const io = new ItemOut(room);
-  if (item === "" || p.role !== "immortal") {
+  if (item === "" || (p.role !== "immortal" && p.role !== "moderator")) {
     return io.out;
   }
   // a positive integer followed by the word "gold", or a known name.

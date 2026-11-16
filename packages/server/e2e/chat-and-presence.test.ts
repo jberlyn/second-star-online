@@ -7,7 +7,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import type { CreateMsg, ServerMsg } from "@secondstaronline/shared";
+import { ADMIN_TEXT, type CreateMsg, type ServerMsg } from "@secondstaronline/shared";
 
 import { setRole } from "../src/persistence/accounts.ts";
 import type { Db } from "../src/persistence/database.ts";
@@ -189,12 +189,14 @@ describe("chat, help, who, pushing and presence", () => {
     });
   });
 
-  test("commands not built yet are dropped, never said", async () => {
+  test("unbuilt commands are dropped and unauthorized admin chat gives a private refusal", async () => {
     clearAll();
     await tick(60);
     await say(alice, "/rpg hi");
-    await say(alice, "-admins only");
     expect(chatTexts(alice)).toEqual([]);
+    await say(alice, "-admins only");
+    expect(chatTexts(alice)).toEqual([ADMIN_TEXT.adminChatDenied]);
+    expect(alice.inbox.some((m) => m.t === "restore")).toBe(false);
     expect(chatTexts(bob)).toEqual([]);
   });
 

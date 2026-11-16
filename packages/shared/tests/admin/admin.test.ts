@@ -4,7 +4,6 @@ import { describe, expect, test } from "bun:test";
 import {
   ADMIN_ROLES,
   ADMIN_TEXT,
-  adminChatRefusedInHouse,
   cheatFileLines,
   cheatLine,
   findClass,
@@ -18,14 +17,34 @@ import {
 } from "../../src/index.ts";
 
 describe("the moderator/immortal table", () => {
-  test("kept bug: moderators may kick, warp, jail, look up IPs and see their location, nothing else", () => {
+  test("moderators can use all 1.6 admin commands and /unban; /role and /setclass stay immortal-only", () => {
     const mod = Object.entries(ADMIN_ROLES)
       .filter(([, roles]) => roles.includes("moderator"))
       .map(([c]) => c)
       .sort();
     expect(mod).toEqual(
-      ["iplookup", "jail", "kick", "location", "warp", "warpmeto", "warptome"].sort(),
+      [
+        "ban",
+        "banip",
+        "cheatfile",
+        "inventory",
+        "iplookup",
+        "jail",
+        "kick",
+        "location",
+        "pardon",
+        "refresh",
+        "save",
+        "unban",
+        "unbanip",
+        "warp",
+        "warpmeto",
+        "warpscript",
+        "warptome",
+      ].sort(),
     );
+    expect(mayRun("role", "moderator")).toBe(false);
+    expect(mayRun("setclass", "moderator")).toBe(false);
     for (const cmd of Object.keys(ADMIN_ROLES)) {
       expect(mayRun(cmd as keyof typeof ADMIN_ROLES, "immortal")).toBe(true);
       expect(mayRun(cmd as keyof typeof ADMIN_ROLES, "player")).toBe(false);
@@ -58,12 +77,6 @@ describe("admin chat", () => {
     expect(formatAdminChat("Bob", "-   hi")).toBe('<... Bob tells the admins "hi"');
     expect(formatAdminChat("Bob", "-")).toBe('<... Bob tells the admins ""');
   });
-
-  test("in a house map the sender must be at y ≤ 7", () => {
-    expect(adminChatRefusedInHouse("x5H1y2", 8)).toBe(true);
-    expect(adminChatRefusedInHouse("x5H1y2", 7)).toBe(false);
-    expect(adminChatRefusedInHouse("x5y2", 12)).toBe(false);
-  });
 });
 
 describe("warp lines", () => {
@@ -90,22 +103,23 @@ describe("warp lines", () => {
 });
 
 describe("/warpscript", () => {
-  const line = 'Slim broadcasts "help me"';
-  test("contains, ignoring case, on the whole server line", () => {
-    expect(warpscriptMatches("HELP", line)).toBe(true);
-    expect(warpscriptMatches("hel", line)).toBe(true);
-    expect(warpscriptMatches("orc", line)).toBe(false);
+  const message = "help me, please!";
+  test("matches whole keyword tokens ignoring case in the broadcast message content", () => {
+    expect(warpscriptMatches("HELP", message)).toBe(true);
+    expect(warpscriptMatches("please", message)).toBe(true);
+    expect(warpscriptMatches("orc", message)).toBe(false);
   });
 
-  test("kept bug: the speaker's name and the word 'broadcasts' match too", () => {
-    expect(warpscriptMatches("slim", line)).toBe(true);
-    expect(warpscriptMatches("broad", 'Ann broadcasts "hi"')).toBe(true);
+  test("prevents accidental substring triggers", () => {
+    expect(warpscriptMatches("hel", message)).toBe(false);
+    expect(warpscriptMatches("help", "I am helpless")).toBe(false);
+    expect(warpscriptMatches("help", "whelp")).toBe(false);
   });
 
-  test("unset or empty is inactive; OFF stores a word no one types", () => {
-    expect(warpscriptMatches(null, line)).toBe(false);
-    expect(warpscriptMatches("", line)).toBe(false);
-    expect(warpscriptMatches(WARPSCRIPT_OFF, line)).toBe(false);
+  test("unset, empty, or OFF is inactive", () => {
+    expect(warpscriptMatches(null, message)).toBe(false);
+    expect(warpscriptMatches("", message)).toBe(false);
+    expect(warpscriptMatches(WARPSCRIPT_OFF, message)).toBe(false);
   });
 });
 

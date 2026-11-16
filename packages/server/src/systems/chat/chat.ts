@@ -273,9 +273,9 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       const out: Outgoing[] = [...world.players.values()]
         .filter((o) => hears(o, p.name))
         .map((o) => ({ to: o.id, msg: line(text, CHAT_COLOR.broadcast) }));
-      // Every immortal's `/warpscript` reads the broadcast after it arrives.
+      // Staff `/warpscript` checks the broadcast message content (not the speaker name or wrapper).
       if (deps.admin) {
-        out.push(...warpscriptOnBroadcast(world, p, text, deps.admin));
+        out.push(...warpscriptOnBroadcast(world, p, cmd.text, deps.admin));
       }
       return out;
     }

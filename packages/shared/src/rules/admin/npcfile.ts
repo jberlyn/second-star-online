@@ -197,24 +197,12 @@ export function parseNpcFile(name: string, text: string): NpcFile {
 }
 
 /**
- * What LOAD's display routine does to the file text: lines 1-100 only; a non-empty line whose
- * first character is not T, P, B, S, R, G, F or I (comparison ignores case) loses that character,
- * which strips the LF a CRLF file leaves and turns `OWN|` into `WN|`; empty lines are dropped.
- * Returns the field text, each line ending in RETURN (a 1.6 quirk kept).
+ * What LOAD's display routine does to the file text: lossless display preserving all lines
+ * (including `OWN|`, empty lines, lines past `NPC_MAX_LINES`, and every first character). Returns
+ * CR-delimited text, preserving whether the file has a trailing line ending.
  */
 export function showNpcScript(text: string): string {
-  const lines = text.split("\r");
-  let out = "";
-  for (let x = 1; x <= NPC_MAX_LINES; x++) {
-    let l = lines[x - 1] ?? "";
-    if (l !== "" && !"TPBSRGFI".includes(l.charAt(0).toUpperCase())) {
-      l = l.slice(1);
-    }
-    if (l !== "") {
-      out += `${l}\r`;
-    }
-  }
-  return out;
+  return npcLines(text).join("\r");
 }
 
 /** A shop ledger's lines, as the economy keeps them (keyed by file line). */

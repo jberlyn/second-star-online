@@ -21,7 +21,7 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Code folder | Entries |
 |---|---:|
-| [admin](#admin) | 20 |
+| [admin](#admin) | 29 |
 | [casino](#casino) | 6 |
 | [chat](#chat) | 7 |
 | [combat](#combat) | 10 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 2 |
 | [world](#world) | 8 |
-| **Total** | **182** |
+| **Total** | **191** |
 
 ## admin
 
@@ -68,9 +68,9 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Admin channel membership enforced
 - **Kind:** Exploit closed
-- **What you notice:** Immortals can read and post admin chat; moderators can read it. Its lines appear white like local chat.
-- **1.6:** Any client could request membership in the administrators' group, although the intended roles were the same as in SSO.
-- **SSO:** The server chooses who receives and can post to admin chat.
+- **What you notice:** Immortals and moderators can read and post admin chat (`-text`) in a dedicated colour; ordinary players cannot.
+- **1.6:** Any client could request membership in the administrators' group, and only immortals could post.
+- **SSO:** The server chooses who receives and can post to admin chat (both staff roles), and delivers it in `CHAT_COLOR.admin`.
 - **Why:** Other players could otherwise listen to staff conversations.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`)
 
@@ -143,15 +143,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Architecture
 - **What you notice:** An administrator receives a useful refusal when a command cannot act, after the original command echo.
 - **1.6:** The client printed its echo and sent the request whether or not the target was online; malformed warp lines were sent unchanged and the administrator heard nothing further.
-- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “Only an immortal can kick an immortal.” or “Only an immortal can do that to an immortal.” A moderator cannot kick an immortal, nor use IP lookup, jail, warp or warptome on one; warpmeto still moves the moderator.
+- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “Only an immortal can kick an immortal.” or “Only an immortal can do that to an immortal.” A moderator cannot kick an immortal, nor use IP lookup, jail, warp, warptome or ban on one; warpmeto still moves the moderator.
 - **Why:** The server can report failed actions, and an immortal's address and editor session should not be controlled by a moderator.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
 ### Role and unban chat commands
 - **Kind:** Architecture
-- **What you notice:** An immortal can change another account's role with `/role <name> player|moderator|immortal` and unban with `/unban <name>`.
+- **What you notice:** An immortal can change another account's role with `/role <name> player|moderator|immortal`, and immortals or moderators can unban with `/unban <name>`.
 - **1.6:** Roles were lines in an immortals file edited with the File Editor; unbanning meant removing a prefix from the character file.
-- **SSO:** A role change takes effect immediately in the admin menu, chat and role table; changing one's own role is refused. For anyone else both commands are local chat, as in 1.6. `bun run admin:role` remains available to create the first immortal.
+- **SSO:** A role change takes effect immediately in the admin menu, chat and role table; changing one's own role is refused. For anyone else `/role` is local chat, as in 1.6. `bun run admin:role` remains available to create the first immortal.
 - **Why:** Roles now live on accounts and the File Editor is gone.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
@@ -196,13 +196,94 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Operators needed a way to place shopkeepers and bankers before the NPC editor existed.
 - **In the code:** `packages/server/src/systems/admin/spawn.ts` (`handleSpawn`)
 
-### Immortal /drop takes a count
+### Staff /drop takes a count
 - **Kind:** World content
-- **What you notice:** An immortal can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
+- **What you notice:** An immortal or moderator can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
 - **1.6:** `/drop` put one name on the ground. Gold and crystal piles carried a count; another pile gave one item. A bare dropped crystal name parsed into a useless quantity and item name.
 - **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several still puts the whole count on one line under one ID (bug ledger). A bare crystal name is a pile of one; the World Editor shows and saves the count.
 - **Why:** Operators can stock the world without dropping items one at a time, and bare crystal piles work.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`parseDrop`, `handleDrop`)
+
+### /warpscript matches whole keywords in broadcast content only
+- **Kind:** Bug fixed
+- **What you notice:** `/warpscript` triggers only on whole-word/token matches inside the broadcast message itself, and at most one matching staff member warps the speaker.
+- **1.6:** Tested substring inclusion against `<name> broadcasts "<text>"`, so speaker names, `"broadcasts"`, and partial words matched, and every matching immortal warped in login order.
+- **SSO:** `warpscriptMatches` performs case-insensitive whole-token matching on the broadcast message content only, and `warpscriptOnBroadcast` stops after the first matching online non-editing staff member in login order.
+- **Why:** Prevents accidental warps from names, protocol text, or substrings, and avoids multiple warps on one broadcast.
+- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`warpscriptMatches`), `packages/server/src/systems/admin/commands.ts` (`warpscriptOnBroadcast`), `packages/server/src/systems/chat/chat.ts` (`handleChat`)
+- **Pinned by:** `matches whole keyword tokens ignoring case in the broadcast message content`, `prevents accidental substring triggers` (packages/shared/tests/admin/admin.test.ts); `speaker name, protocol wrapper, and substrings do not trigger /warpscript`, `multiple matching staff: deterministic single winner (first in login order)` (packages/server/tests/admin.test.ts)
+
+### Moderators share the original admin commands and admin chat
+- **Kind:** Bug fixed
+- **What you notice:** Moderators can use `/ban`, `/unban`, `/BanIP`, `/unbanip`, `/pardon`, `/drop`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` admin chat, in addition to kick, warp, jail, IP lookup, and location. `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
+- **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
+- **SSO:** `ADMIN_ROLES`, `handleDrop`, `readsAdminChat`, and `warpscriptOnBroadcast` grant moderators the full original command set and admin chat while keeping server authority and player denials.
+- **Why:** Completes the moderator moderation toolkit without expanding editor or role-management access.
+- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `readsAdminChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `adminChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`)
+- **Pinned by:** `moderators can use all 1.6 admin commands and /unban; /role and /setclass stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run all 1.6 admin commands and /unban, but not /role or /setclass` (packages/server/tests/admin.test.ts)
+
+### World editor Fat brush reaches the full 17 × 12 map
+- **Kind:** Bug fixed
+- **What you notice:** The World Editor's Fat brush paints all four arms of its plus shape up to the full 17 × 12 map edges.
+- **1.6:** Right and lower arms were bounded by an older 12 × 9 map size.
+- **SSO:** `paint` bounds all four arms by `MAP_WIDTH` and `MAP_HEIGHT`.
+- **Why:** Fixes incomplete painting near the right and bottom edges of the map.
+- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`paint`)
+- **Pinned by:** `the Fat brush bounds all four arms by the full 17 × 12 map dimensions` (packages/shared/tests/admin/worldedit.test.ts)
+
+### World editor faction checkboxes are mutually exclusive
+- **Kind:** Bug fixed
+- **What you notice:** Ticking W, M, or A in the World Editor clears the other two boxes.
+- **1.6:** Ticking A cleared M twice and left W ticked.
+- **SSO:** `clickFaction` clears the other two boxes on every faction toggle.
+- **Why:** Prevents ambiguous multi-faction checkbox states.
+- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickFaction`)
+- **Pinned by:** `W, M and A are mutually exclusive` (packages/shared/tests/admin/worldedit.test.ts); `faction checkboxes W, M and A are mutually exclusive in the editor UI` (packages/client/tests/worldeditor.test.ts)
+
+### World editor lit S layer button stays on layer S
+- **Kind:** Bug fixed
+- **What you notice:** Clicking the already-lit S layer button in the World Editor keeps layer S selected and only S lit.
+- **1.6:** Clicking lit S switched to layer 3 and lit 3 without unlighting S.
+- **SSO:** `clickLayer` is a no-op when any already-lit layer button is clicked.
+- **Why:** Makes all four layer buttons behave consistently.
+- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickLayer`)
+- **Pinned by:** `layer buttons select their layer; clicking any lit layer button (including S) is stable` (packages/shared/tests/admin/worldedit.test.ts); `clicking lit layer S stays on layer S and keeps only S lit` (packages/client/tests/worldeditor.test.ts)
+
+### World editor resets exit fields when loading a map without exits
+- **Kind:** Bug fixed
+- **What you notice:** Loading a map that has no exit clears the World Editor's exit fields instead of keeping the previous map's exits.
+- **1.6:** Absent exits left the previous map's exit fields populated, so saving wrote stale exits into the new map.
+- **SSO:** `exitFieldsAfterLoad` resets to `EMPTY_EXIT_FIELDS` when an exit is `null`.
+- **Why:** Prevents accidentally copying exits from an earlier map onto a new map on save.
+- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`exitFieldsAfterLoad`)
+- **Pinned by:** `loading a map without an exit resets the exit fields so saving does not recreate a stale exit` (packages/shared/tests/admin/worldedit.test.ts); `loading a map with no exit resets the exit fields so saving does not recreate a stale exit` (packages/client/tests/worldeditor.test.ts)
+
+### NPC editor LOAD displays complete script text losslessly
+- **Kind:** Bug fixed
+- **What you notice:** Loading an NPC in the NPC Editor displays every line losslessly, including `OWN|`, empty lines, lines past 100, and all first characters; save validation and limits still apply on save.
+- **1.6:** LOAD dropped empty lines, truncated at 100 lines, and stripped any leading character other than `T P B S R G F I` (turning `OWN|` into `WN|`).
+- **SSO:** `showNpcScript` returns all lines losslessly without truncation or character stripping.
+- **Why:** Prevents silent data loss when inspecting and re-saving NPC scripts.
+- **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`)
+- **Pinned by:** `lossless display: preserves OWN|, all first characters, empty lines, and >100 lines` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines` (packages/client/tests/npceditor.test.ts)
+
+### Unauthorized admin chat and /warpscript show a refusal and clear input
+- **Kind:** Bug fixed
+- **What you notice:** When a player types `-text` or `/warpscript`, they see an explicit refusal in chat and the chat input clears.
+- **1.6:** Both commands exited without sending and left the typed text stuck in the input box.
+- **SSO:** `adminChat` and `handleAdmin` reply with `ADMIN_TEXT.adminChatDenied` or `ADMIN_TEXT.warpscriptDenied` and do not send `restore`.
+- **Why:** Gives clear feedback and avoids leaving failed commands stuck in the input field.
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`, `handleAdmin`)
+- **Pinned by:** `a player's - line gets an explicit denial and clears input (no restore)` and `a player gets an explicit denial and cleared input (no restore); moderators can set it` (packages/server/tests/admin.test.ts)
+
+### Admin chat uses a dedicated channel without muffling or ignore filtering
+- **Kind:** Bug fixed
+- **What you notice:** Admin chat (`-text`) renders in a distinct green colour (`CHAT_COLOR.admin`), reaches only staff (immortals and moderators), works from anywhere inside houses, and is never muffled or dropped by ignore lists.
+- **1.6:** Admin chat used an ordinary local-chat `sqa` message, so it appeared white, failed below row 7 in houses, muffled below row 10, and was dropped by ignore lists.
+- **SSO:** `adminChat` sends directly to all online staff in `CHAT_COLOR.admin` without house restrictions, `heardSqa`, or `hears`.
+- **Why:** Staff communication should be visually distinct and reliable regardless of position or ignore lists.
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`), `packages/shared/src/rules/chat/chat.ts` (`CHAT_COLOR`)
+- **Pinned by:** `both immortals and moderators post to staff in CHAT_COLOR.admin; players excluded` and `admin chat has no house sender restriction, no muffling, and no ignore filtering` (packages/server/tests/admin.test.ts)
 
 ## casino
 

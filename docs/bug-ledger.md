@@ -31,7 +31,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 
 | Section | Kept bugs |
 |---|---|
-| [admin](#admin) | 9 |
+| [admin](#admin) | 0 |
 | [casino](#casino) | 14 |
 | [chat](#chat) | 10 |
 | [client](#client) | 18 |
@@ -49,63 +49,11 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 1 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **338** |
+| **Total** | **329** |
 
 ## admin
 
-### An immortal's warp keyword catches any broadcast containing it
-- **What you notice:** when an immortal sets a `/warpscript` keyword, any player whose broadcast contains it is warped to the immortal.
-- **In 1.6 and SSO:** the match is a plain substring test on every broadcast. SSO does the same, on the server's whole broadcast line, `<name> broadcasts "<text>"`, so the speaker's name and the word "broadcasts" match too: `/warpscript broad` warps every broadcaster. Every online immortal's keyword is checked, in login order, and the last warp wins.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`warpscriptOnBroadcast`), `packages/shared/src/rules/admin/admin.ts` (`warpscriptMatches`)
-- **Pinned by:** `contains, ignoring case, on the whole server line` and `kept bug: the speaker's name and the word 'broadcasts' match too` (packages/shared/tests/admin/admin.test.ts); `a broadcast containing the keyword warps the speaker to the immortal` (packages/server/tests/admin.test.ts)
-
-### Moderators get only part of the admin commands
-- **What you notice:** moderators can use `/kick`, `/warp`, `/warptome`, `/warpmeto`, `/jail`, `/IPlookup` and `/Location`, but not `/ban`, `/drop`, `/BanIP`, `/Pardon` or `-chat`.
-- **In 1.6 and SSO:** that is the original's split. SSO reproduces it with a role table, and the denials keep their texts, including the "Only immortals can warp players." on `/warp` and `/warpmeto` that moderators never see.
-- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`)
-- **Pinned by:** `kept bug: moderators may kick, warp, jail, look up IPs and see their location, nothing else` (packages/shared/tests/admin/admin.test.ts); `a moderator may warp, jail, kick, look up and locate, but not ban` (packages/server/tests/admin.test.ts)
-
-### The World Editor's Fat brush stops short of the right and lower edges
-- **What you notice:** in the World Editor, the Fat brush paints its plus shape fully, except that the right arm is missing in column 13 and beyond, and the lower arm in row 10 and beyond. The left and upper arms reach the edge.
-- **In 1.6 and SSO:** the brush only checks the right and lower arms against the bounds of an older, smaller map (12 columns by 9 rows). SSO does the same.
-- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`paint`)
-- **Pinned by:** `kept bug: the Fat brush stops at column 12 and row 9 (the right and lower neighbours are bounded by 13 and 10)` (packages/shared/tests/admin/worldedit.test.ts)
-
-### The World Editor's A faction box doesn't clear W
-- **What you notice:** in the World Editor, ticking A leaves W ticked, so both can be on at once. Ticking W or M clears the other two boxes.
-- **In 1.6 and SSO:** A's branch clears M twice and never W. Saving writes the last ticked of W, M and A, so A wins. SSO does the same.
-- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickFaction`, `factionFlag`)
-- **Pinned by:** `W and M clear the others; kept bug: A does not clear W` (packages/shared/tests/admin/worldedit.test.ts); `the flag boxes write field 12; SAFE AREA loads from item 1` (packages/client/tests/worldeditor.test.ts)
-
-### The World Editor's lit S button jumps to layer 3
-- **What you notice:** in the World Editor, clicking the S layer button when it is already lit selects layer 3 and lights it, without unlighting S. Clicking a lit 1, 2 or 3 does nothing.
-- **In 1.6 and SSO:** only the unlit layer buttons have scripts, except the lit S one, which selects layer 3. SSO does the same.
-- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickLayer`)
-- **Pinned by:** `kept bug: the lit S button selects layer 3 and stays lit` (packages/shared/tests/admin/worldedit.test.ts)
-
-### The World Editor's exit panels keep the last map's exits
-- **What you notice:** in the World Editor, loading a map with no exit leaves the exit panel showing the previous map's values, and saving writes them into the new map.
-- **In 1.6 and SSO:** loading fills the exit fields only when the map has that exit. SSO does the same, in the editor screen.
-- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`exitFieldsAfterLoad`)
-- **Pinned by:** `kept bug: exit panels keep the last map's exits (a map without an exit leaves the panel as it was)` (packages/shared/tests/admin/worldedit.test.ts); `kept bug: a map with no exit keeps the last map's exit fields` (packages/client/tests/worldeditor.test.ts)
-
-### The NPC editor's LOAD drops lines and first characters
-- **What you notice:** in the NPC editor, LOAD shows only the file's first 100 lines, leaves out empty lines, and drops the first character of any line that doesn't start with T, P, B, S, R, G, F or I. A player shop's `OWN|` line comes back as `WN|`. Saving writes back what the box holds, so a LOAD and SAVE renumbers the file's lines and cuts it at 100.
-- **In 1.6 and SSO:** the loader strips what it takes for a leftover line-feed from each line, but it also removes real first characters. SSO does the same, in the editor screen. The editor's lists hold no player shop, and SSO refuses a save with `WN|` as an unknown tag, so a typed `OWN|` line shows as `WN|` and must be retyped to save again.
-- **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`)
-- **Pinned by:** `kept bug: LOAD drops a first character other than T P B S R G F I; OWN| becomes WN|` and `kept bug: LOAD drops empty lines and shows lines 1-100 only` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply goes through the NPC-show script` (packages/client/tests/npceditor.test.ts)
-
-### A `-` line or `/warpscript` from a non-immortal stays in the chat box
-- **What you notice:** if you type a line starting with `-`, such as "- hello" or "-)", or a `/warpscript` command, and you are not an immortal, nothing is sent and the line stays in the chat box.
-- **In 1.6 and SSO:** the chat send leaves without clearing the box for anyone but an immortal. SSO does the same: the server answers with a restore message that puts the line back in the chat input.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`, `handleAdmin`)
-- **Pinned by:** `kept bug: anyone else's - line sends nothing and stays typed` and `kept bug: anyone else's line stays typed` (packages/server/tests/admin.test.ts)
-
-### Admin chat looks like ordinary chat
-- **What you notice:** an immortal's message to the admins shows up white, like local chat, not in a special colour, and a reader inside a house, below its tenth row, reads "You hear a muffled voice." instead. A sender in a house must be at row 7 or above. Readers who ignore the sender don't see it.
-- **In 1.6 and SSO:** admin chat is sent as an ordinary line, so it is coloured, muffled and filtered like one. SSO does the same, the reader's ignore list included.
-- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`formatAdminChat`, `adminChatRefusedInHouse`)
-- **Pinned by:** `an immortal's line reaches immortals and moderators in white, the sender included` and `kept bug: a reader in a house at y > 10 hears a muffled voice; the sender must be at y ≤ 7` and `kept bug: admin chat is a sqa, so a reader ignoring the sender misses it` (packages/server/tests/admin.test.ts)
+No kept bugs (all nine former entries were fixed; see [admin differences](divergences.md#admin)).
 
 ## casino
 

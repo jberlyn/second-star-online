@@ -62,7 +62,8 @@ export type ChatCommand =
   | { kind: "drop"; item: string }
   /**
    * `-text`: `typed` is the line after its one leading space; the server strips the `-` and spaces
-   * (`formatAdminChat`). Anyone but an immortal: nothing, and the line stays typed.
+   * (`formatAdminChat`). Staff (`immortal` and `moderator`) post to the admin channel; players
+   * receive an explicit refusal and their input clears.
    */
   | { kind: "adminChat"; typed: string }
   /**
@@ -377,8 +378,8 @@ export function pushLines(pusher: string, tooWeak: boolean): string[] {
     : [shove];
 }
 
-/** Chat line colours: palette indices as the original set `foreColor`. */
-export const CHAT_COLOR = { normal: 0, broadcast: 4, death: 8 } as const;
+/** Chat line colours: palette indices as the original set `foreColor` (plus `admin` for SSO's staff channel). */
+export const CHAT_COLOR = { normal: 0, broadcast: 4, death: 8, admin: 5 } as const;
 
 /**
  * Whether the login news prints: only when it differs from the last news kept on this

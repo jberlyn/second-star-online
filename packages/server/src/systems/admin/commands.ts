@@ -12,13 +12,10 @@
 import {
   ADMIN_TEXT,
   type AdminCmd,
-  adminChatRefusedInHouse,
   CHAT_COLOR,
-  CHAT_TEXT,
   cheatFileLines,
   findClass,
   formatAdminChat,
-  heardSqa,
   inventoryLines,
   JAIL,
   lingoEq,
@@ -326,11 +323,10 @@ export function handleAdmin(
       return [...out, ...adminWarp(world, p, t.map.name, t.x, t.y, deps)];
     }
 
-    // ---- immortal only --------------------------------------------------------------------
+    // ---- staff commands and immortal-only account tools ------------------------------------
     case "warpscript": {
-      // Anyone else exits without clearing the field.
       if (!allowed) {
-        return [{ to: p.id, msg: { t: "restore", text: typed } }];
+        return tell(p, ADMIN_TEXT.warpscriptDenied);
       }
       p.warpscript = lingoEq(w2, "OFF") ? WARPSCRIPT_OFF : w2;
       audit(null, null, p.warpscript);
@@ -351,6 +347,9 @@ export function handleAdmin(
       }
       if (c.accountId === p.accountId) {
         return [...out, ...tell(p, ADMIN_TEXT.banSelf)];
+      }
+      if (c.role === "immortal" && p.role !== "immortal") {
+        return [...out, ...tell(p, ADMIN_TEXT.immortalTarget)];
       }
       deps.setBan(c.accountId, p.accountId);
       audit(c.name, c.bannedAt, "banned");
@@ -395,7 +394,7 @@ export function handleAdmin(
       const t = world.players.get(c.characterId);
       if (t) {
         t.role = role as Role;
-        if (role !== "immortal") {
+        if (!mayRun("warpscript", t.role)) {
           t.warpscript = null;
         }
         out.push({ to: t.id, msg: { t: "role", role: t.role } });
@@ -428,54 +427,52 @@ export function handleAdmin(
 }
 
 /**
- * `-text`: immortals post; anyone else's line stays typed and nothing is sent, as in 1.6. The line
- * is a `sqa` to `@Admins`, which immortals and moderators join, so it shows in the normal chat
- * colour and a reader in a house at y > 10 hears "You hear a muffled voice.", a 1.6 bug kept. The
- * sender reads their own line (an assumption: the archive does not say, and SMUS echoes to the
- * sender).
+ * `-text`: both staff roles (immortals and moderators) post to the dedicated admin channel
+ * (`CHAT_COLOR.admin`), with no house sender restriction, no muffling, and no ignore filtering.
+ * Non-staff receive an explicit denial and their input clears.
  */
 export function adminChat(world: World, p: Player, typed: string): Outgoing[] {
-  if (p.role !== "immortal") {
-    return [{ to: p.id, msg: { t: "restore", text: typed } }];
-  }
-  if (adminChatRefusedInHouse(p.map.name, p.y)) {
-    return tell(p, CHAT_TEXT.houseRefused);
+  if (!readsAdminChat(p.role)) {
+    return tell(p, ADMIN_TEXT.adminChatDenied);
   }
   const text = formatAdminChat(p.name, typed);
   const out: Outgoing[] = [];
   for (const o of world.players.values()) {
-    // An ordinary `sqa`, so the reader's ignore list drops it.
-    if (readsAdminChat(o.role) && hears(o, p.name)) {
-      out.push({ to: o.id, msg: line(heardSqa(text, o.map.name, o.y)) });
+    if (readsAdminChat(o.role)) {
+      out.push({ to: o.id, msg: { t: "chat", text, color: CHAT_COLOR.admin } });
     }
   }
   return out;
 }
 
 /**
- * `/warpscript` on a broadcast: every online immortal whose keyword the server's broadcast line
- * contains warps the speaker to their own map and tile and reads "*** Warping <name>...". Immortals
- * are checked in login order, so with two matches the last warp wins. An immortal in an editor is
- * off the map and warps no one.
+ * `/warpscript` on a broadcast: checks the broadcast message content (never speaker name or
+ * protocol wrapper) against online non-editing staff who can run `/warpscript` and are not
+ * ignoring the speaker. Deterministic single winner: the first matching staff member in login
+ * order warps the speaker and receives `"*** Warping <name>..."`.
  */
 export function warpscriptOnBroadcast(
   world: World,
   speaker: Player,
-  broadcastLine: string,
+  message: string,
   deps: Pick<AdminDeps, "loadMap" | "startPoint">,
 ): Outgoing[] {
-  const out: Outgoing[] = [];
-  for (const imm of [...world.players.values()]) {
-    // The check follows the ignore test: an immortal ignoring the speaker never reads the
+  for (const staff of world.players.values()) {
+    // The check follows the ignore test: a staff member ignoring the speaker never reads the
     // broadcast, so never warps them.
-    if (imm.role !== "immortal" || imm.editing || !hears(imm, speaker.name)) {
+    if (!mayRun("warpscript", staff.role) || staff.editing || !hears(staff, speaker.name)) {
       continue;
     }
-    if (!warpscriptMatches(imm.warpscript, broadcastLine)) {
+    if (speaker.role === "immortal" && staff.role !== "immortal") {
       continue;
     }
-    out.push(...adminWarp(world, speaker, imm.map.name, imm.x, imm.y, deps));
-    out.push(...tell(imm, ADMIN_TEXT.warping(speaker.name)));
+    if (!warpscriptMatches(staff.warpscript, message)) {
+      continue;
+    }
+    return [
+      ...adminWarp(world, speaker, staff.map.name, staff.x, staff.y, deps),
+      ...tell(staff, ADMIN_TEXT.warping(speaker.name)),
+    ];
   }
-  return out;
+  return [];
 }

@@ -103,43 +103,48 @@ describe("painting", () => {
     }
     expect(r.join(" ").split("S3").length - 1).toBe(5);
   });
-  test("kept bug: the Fat brush stops at column 12 and row 9 (the right and lower neighbours are bounded by 13 and 10)", () => {
-    const right = paint(rows("G1"), "fat", "S3", 12, 5);
-    expect(at(right, 13, 5)).toBe("G1");
-    expect(at(paint(rows("G1"), "fat", "S3", 11, 5), 12, 5)).toBe("S3");
-    const down = paint(rows("G1"), "fat", "S3", 5, 9);
-    expect(at(down, 5, 10)).toBe("G1");
-    expect(at(paint(rows("G1"), "fat", "S3", 5, 8), 5, 9)).toBe("S3");
-    // The left and upper arms stop only at the edge.
-    const corner = paint(rows("G1"), "fat", "S3", 1, 1);
-    expect(corner.join(" ").split("S3").length - 1).toBe(3);
+  test("the Fat brush bounds all four arms by the full 17 × 12 map dimensions", () => {
+    const right = paint(rows("G1"), "fat", "S3", 16, 5);
+    expect(at(right, 17, 5)).toBe("S3");
+    expect(right.join(" ").split("S3").length - 1).toBe(5);
+    expect(paint(rows("G1"), "fat", "S3", 17, 5).join(" ").split("S3").length - 1).toBe(4);
+
+    const down = paint(rows("G1"), "fat", "S3", 5, 11);
+    expect(at(down, 5, 12)).toBe("S3");
+    expect(down.join(" ").split("S3").length - 1).toBe(5);
+    expect(paint(rows("G1"), "fat", "S3", 5, 12).join(" ").split("S3").length - 1).toBe(4);
+
+    const topLeft = paint(rows("G1"), "fat", "S3", 1, 1);
+    expect(topLeft.join(" ").split("S3").length - 1).toBe(3);
+    const bottomRight = paint(rows("G1"), "fat", "S3", 17, 12);
+    expect(bottomRight.join(" ").split("S3").length - 1).toBe(3);
   });
 });
 
 describe("toggles", () => {
-  test("W and M clear the others; kept bug: A does not clear W", () => {
+  test("W, M and A are mutually exclusive", () => {
     const w = clickFaction({ w: false, m: false, a: false }, "w");
     expect(w).toEqual({ w: true, m: false, a: false });
-    expect(clickFaction(w, "m")).toEqual({ w: false, m: true, a: false });
-    const wa = clickFaction(w, "a");
-    expect(wa).toEqual({ w: true, m: false, a: true });
+    const m = clickFaction(w, "m");
+    expect(m).toEqual({ w: false, m: true, a: false });
+    const a = clickFaction(w, "a");
+    expect(a).toEqual({ w: false, m: false, a: true });
+    expect(clickFaction(a, "m")).toEqual({ w: false, m: true, a: false });
+    expect(clickFaction(a, "a")).toEqual({ w: false, m: false, a: false });
   });
-  test("the save writes the last ticked of W, M, A", () => {
-    expect(factionFlag({ w: true, m: false, a: true })).toBe("A");
+  test("the save writes the ticked faction or X", () => {
+    expect(factionFlag({ w: false, m: false, a: true })).toBe("A");
     expect(factionFlag({ w: false, m: false, a: false })).toBe("X");
     expect(factionBoxes("M")).toEqual({ w: false, m: true, a: false });
   });
-  test("layer buttons select their layer; a lit 1, 2 or 3 does nothing (no script on l1on-l3on)", () => {
-    const l2 = clickLayer(START_LAYERS, "l2");
-    expect(l2.layer).toBe(2);
-    expect(clickLayer(l2, "l2")).toBe(l2);
-    expect(clickLayer(START_LAYERS, "s").layer).toBe(4);
-  });
-  test("kept bug: the lit S button selects layer 3 and stays lit", () => {
+  test("layer buttons select their layer; clicking any lit layer button (including S) is stable", () => {
+    for (const btn of ["l1", "l2", "l3", "s"] as const) {
+      const selected = clickLayer(START_LAYERS, btn);
+      expect(clickLayer(selected, btn)).toEqual(selected);
+    }
     const s = clickLayer(START_LAYERS, "s");
-    const after = clickLayer(s, "s");
-    expect(after.layer).toBe(3);
-    expect(after.lit).toEqual({ s: true, l3: true, l2: false, l1: false });
+    expect(s).toEqual({ layer: 4, lit: { s: true, l3: false, l2: false, l1: false } });
+    expect(clickLayer(s, "s")).toBe(s);
   });
 });
 
@@ -153,11 +158,12 @@ describe("LOAD and SAVE", () => {
     expect(m.layers[3]).toEqual(rows("5A"));
     expect(m.flags).toEqual({ canFight: "O", fctSpwn: "O", isIndoors: "X", canPvp: "X" });
   });
-  test("kept bug: exit panels keep the last map's exits (a map without an exit leaves the panel as it was)", () => {
-    const prev = exitFieldsAfterLoad(EMPTY_EXIT_FIELDS, { mx: 3, my: 4, x: 5, y: 6 });
+  test("loading a map without an exit resets the exit fields so saving does not recreate a stale exit", () => {
+    const prev = exitFieldsAfterLoad({ mx: 3, my: 4, x: 5, y: 6 });
     expect(prev).toEqual(["3", "4", "5", "6"]);
-    expect(exitFieldsAfterLoad(prev, null)).toEqual(["3", "4", "5", "6"]);
-    expect(exitFromFields(["", " ", "", ""])).toBeNull();
+    const cleared = exitFieldsAfterLoad(null);
+    expect(cleared).toEqual(EMPTY_EXIT_FIELDS);
+    expect(exitFromFields(cleared)).toBeNull();
     expect(exitFromFields(prev)).toEqual({ mx: 3, my: 4, x: 5, y: 6 });
   });
   test("the save is checked: palette codes, 12 rows of 17, listed monsters, ≤ 20 items, fog", () => {

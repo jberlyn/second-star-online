@@ -107,10 +107,13 @@ describe("the NPC editor screen (frame 311)", () => {
     expect(e.saves).toEqual([["Cril", "GLD|5\n"]]);
   });
 
-  test("LOAD's reply goes through the NPC-show script", () => {
+  test("LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines", () => {
     const e = editor();
     e.ed.showScript("BIO|Name: Cril\r\rOWN|king\r\nSEL|Knife:5:7");
-    expect(e.ed.text).toBe("BIO|Name: Cril\nWN|king\nSEL|Knife:5:7\n");
+    expect(e.ed.text).toBe("BIO|Name: Cril\n\nOWN|king\nSEL|Knife:5:7");
+    const long = Array.from({ length: 105 }, (_, i) => `BIO|${i + 1}`).join("\r");
+    e.ed.showScript(long);
+    expect(e.ed.text.split("\n")).toHaveLength(105);
   });
 });
 
@@ -171,14 +174,14 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     const field = root.querySelector(".npced-script") as HTMLTextAreaElement;
     expect(field).not.toBeNull();
     c.onMessage({ t: "npcScript", name: "Cril", text: "GLD|10" });
-    expect(field.value).toBe("GLD|10\n");
+    expect(field.value).toBe("GLD|10");
     expect(root.querySelector(".menu-bar")?.isConnected).toBe(true);
     // Return To Game, then back: the same field, the same text (a cast member keeps it).
     menuClick(root, "Admin", "Return To Game");
     expect(c.sent).toContainEqual({ t: "editClose" });
     c.onMessage({ t: "editor", editing: false });
     c.onMessage({ t: "npcEditor" });
-    expect((root.querySelector(".npced-script") as HTMLTextAreaElement).value).toBe("GLD|10\n");
+    expect((root.querySelector(".npced-script") as HTMLTextAreaElement).value).toBe("GLD|10");
     app.stop();
   });
 

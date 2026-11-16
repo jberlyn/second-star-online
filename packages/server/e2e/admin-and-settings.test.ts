@@ -1,15 +1,20 @@
 /**
- * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; Mo reads her `-` line but his
- * own stays typed. Mo warps Bob. Alice uses the seeded jail map x0y0 to jail Bob
+ * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; both staff roles read and post `-` lines in green. Mo warps Bob. Alice uses the seeded jail map x0y0 to jail Bob
  * for the `jailFrames` she sets in Settings: his shout fails, and when the sentence ends he is on
  * the start point. Her `/warpscript` pulls Bob over when he broadcasts the keyword. `/warpmeto`,
  * `/Location`, `/IPlookup`, a counted `/drop`, a forged editor save that lands in `/CheatFile`, and
  * `/setclass`. She kicks Bob, bans him (his login is refused), unbans him, bans his IP and unbans
- * it; Mo's `/ban` is refused. Every admin action is in the audit log.
+ * it; Mo cannot ban an immortal. Every admin action is in the audit log.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { ADMIN_TEXT, type CreateMsg, type ServerMsg, TEXT } from "@secondstaronline/shared";
+import {
+  ADMIN_TEXT,
+  CHAT_COLOR,
+  type CreateMsg,
+  type ServerMsg,
+  TEXT,
+} from "@secondstaronline/shared";
 
 import { recentAudit } from "../src/persistence/admin.ts";
 import type { Rng } from "../src/rng.ts";
@@ -87,32 +92,47 @@ describe("admin commands, roles, bans and settings", () => {
     await server.stop();
   });
 
-  test("/role makes Mo a moderator at once; he reads admin chat but his own line stays typed", async () => {
+  test("/role makes Mo a moderator at once; both staff roles post and read admin chat in CHAT_COLOR.admin", async () => {
     await say(alice, "/role mo moderator");
     expect(lines(alice)).toContain("Mo is now a moderator.");
     await mo.waitFor((m) => m.t === "role" && m.role === "moderator");
     bob.clear();
     await say(alice, "-  meeting at noon");
     await mo.waitFor(
-      (m) => m.t === "chat" && m.text === '<... Alice tells the admins "meeting at noon"',
+      (m) =>
+        m.t === "chat" &&
+        m.text === '<... Alice tells the admins "meeting at noon"' &&
+        m.color === CHAT_COLOR.admin,
     );
     expect(lines(bob)).toEqual([]);
+    alice.clear();
     mo.clear();
     await say(mo, "-hi all");
-    expect(mo.inbox.filter((m) => m.t === "restore" || m.t === "chat")).toEqual([
-      { t: "restore", text: "-hi all" },
-    ]);
-    expect(alice.inbox.some((m) => m.t === "chat" && m.text.includes("hi all"))).toBe(false);
+    await alice.waitFor(
+      (m) =>
+        m.t === "chat" &&
+        m.text === '<... Mo tells the admins "hi all"' &&
+        m.color === CHAT_COLOR.admin,
+    );
+    expect(lines(bob)).toEqual([]);
   });
 
-  test("Mo warps Bob; Mo's /ban is refused", async () => {
+  test("Mo warps Bob; Mo cannot ban Alice; Bob's /ban and -chat are denied", async () => {
     bob.clear();
     await say(mo, "/warp Bob x1000y992 12 8");
     await bob.waitFor(isSnapshot);
     expect(where(bob)).toEqual(["x1000y992", 12, 8]);
     mo.clear();
-    await say(mo, "/ban Bob");
-    expect(lines(mo)).toEqual([ADMIN_TEXT.banDenied]);
+    await say(mo, "/ban Alice");
+    expect(lines(mo)).toEqual(["*** banning Alice...", ADMIN_TEXT.immortalTarget]);
+    bob.clear();
+    await say(bob, "/ban Alice");
+    expect(lines(bob)).toEqual([ADMIN_TEXT.banDenied]);
+    bob.clear();
+    await say(bob, "-sneak");
+    expect(bob.inbox.filter((m) => m.t === "restore" || m.t === "chat")).toEqual([
+      { t: "chat", text: ADMIN_TEXT.adminChatDenied, color: CHAT_COLOR.normal },
+    ]);
   });
 
   test("Settings: Alice sets jailFrames; the window shows it", async () => {

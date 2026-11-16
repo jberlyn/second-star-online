@@ -59,16 +59,26 @@ describe("the readers' line windows (parseNpcFile)", () => {
 });
 
 describe("LOAD's ShowNPCScript", () => {
-  test("kept bug: LOAD drops a first character other than T P B S R G F I; OWN| becomes WN|", () => {
-    expect(showNpcScript("OWN|king\rbio|lower\r\nSEL|Knife:5:7")).toBe(
-      "WN|king\rbio|lower\rSEL|Knife:5:7\r",
+  test("lossless display: preserves OWN|, all first characters, empty lines, and >100 lines", () => {
+    expect(showNpcScript("")).toBe("");
+    expect(showNpcScript("OWN|king\r\rbio|lower\r\nSEL|Knife:5:7")).toBe(
+      "OWN|king\r\rbio|lower\rSEL|Knife:5:7",
     );
-  });
-  test("kept bug: LOAD drops empty lines and shows lines 1-100 only", () => {
-    expect(showNpcScript("BIO|a\r\rBIO|b")).toBe("BIO|a\rBIO|b\r");
     const long = Array.from({ length: 105 }, (_, i) => `BIO|${i + 1}`).join("\r");
     const shown = showNpcScript(long).split("\r");
-    expect(shown.at(-2)).toBe("BIO|100");
+    expect(shown).toHaveLength(105);
+    expect(shown.at(-1)).toBe("BIO|105");
+    expect(checkNpcFile(editorLines(showNpcScript(long))).error).toBe(
+      "An NPC file holds at most 100 lines.",
+    );
+  });
+
+  test("repeated LOAD preserves trailing line endings without adding blank lines", () => {
+    for (const text of ["", "OWN|king", "BIO|hello\r\r", "BIO|hello\r\n\r\nOWN|king\n"]) {
+      const normalized = text.replace(/\r\n|\r|\n/g, "\r");
+      expect(showNpcScript(text)).toBe(normalized);
+      expect(showNpcScript(showNpcScript(text))).toBe(normalized);
+    }
   });
 });
 

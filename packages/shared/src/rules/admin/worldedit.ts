@@ -233,11 +233,8 @@ export type Brush = "pencil" | "bucket" | "fat";
 
 /**
  * One paint at tile (x, y) of a layer: returns the new rows. brush 2 fills the whole layer
- * first, 3 paints the plus shape; then the tile itself is always put.
- *
- * Kept bug (1.6 did it): the Fat brush stops at column 12 and row 9. The Fat brush paints the right
- * neighbour only when its column is below 13 and the one below only when its row is below 10: the
- * 12 × 9 bounds of an older map size. The left and upper ones stop at the edge.
+ * first, 3 paints the plus shape bounded by the map dimensions (`MAP_WIDTH` × `MAP_HEIGHT`); then
+ * the tile itself is always put.
  */
 export function paint(
   rows: readonly string[],
@@ -262,16 +259,16 @@ export function paint(
   }
   if (brush === "fat") {
     put(x, y);
-    if (x + 1 < 13) {
+    if (x + 1 <= MAP_WIDTH) {
       put(x + 1, y);
     }
-    if (x - 1 > 0) {
+    if (x - 1 >= 1) {
       put(x - 1, y);
     }
-    if (y - 1 > 0) {
+    if (y - 1 >= 1) {
       put(x, y - 1);
     }
-    if (y + 1 < 10) {
+    if (y + 1 <= MAP_HEIGHT) {
       put(x, y + 1);
     }
   }
@@ -287,8 +284,8 @@ export interface FactionBoxes {
 }
 
 /**
- * A click on a faction box: W and M clear the other two, then toggle themselves. Kept bug (1.6
- * did it): A's branch clears M twice and never W, so W and A can both be ticked.
+ * A click on a faction box: W, M and A are mutually exclusive, clearing the other two and toggling
+ * themselves.
  */
 export function clickFaction(b: FactionBoxes, which: "w" | "m" | "a"): FactionBoxes {
   if (which === "w") {
@@ -297,7 +294,7 @@ export function clickFaction(b: FactionBoxes, which: "w" | "m" | "a"): FactionBo
   if (which === "m") {
     return { w: false, m: !b.m, a: false };
   }
-  return { w: b.w, m: false, a: !b.a };
+  return { w: false, m: false, a: !b.a };
 }
 
 /** Item 2 from the boxes: the last ticked of W, M, A wins, else "X". */
@@ -326,16 +323,12 @@ export const START_LAYERS: LayerButtons = {
 };
 
 /**
- * A click on a layer button. Only the "off" members have scripts, so clicking a lit button does
- * nothing, except the lit S button (`l4on`): kept bug (1.6 did it), it selects layer 3 and lights 3
- * without unlighting S.
+ * A click on a layer button: clicking a lit button does nothing (keeps that single layer selected),
+ * and clicking an unlit button selects and lights only that layer.
  */
 export function clickLayer(b: LayerButtons, button: "s" | "l3" | "l2" | "l1"): LayerButtons {
   if (b.lit[button]) {
-    if (button !== "s") {
-      return b;
-    }
-    return { layer: 3, lit: { s: true, l3: true, l2: false, l1: false } };
+    return b;
   }
   const layer = button === "s" ? 4 : button === "l3" ? 3 : button === "l2" ? 2 : 1;
   return {
@@ -462,13 +455,12 @@ export type ExitFields = [string, string, string, string];
 export const EMPTY_EXIT_FIELDS: ExitFields = ["", "", "", ""];
 
 /**
- * The exit panel's fields after LOAD. The map renderer writes them only when the map has that exit, so a
- * map without one keeps the last map's values (kept bug: 1.6 did it), and
- * SAVE writes them into this map.
+ * The exit panel's fields after LOAD: resets to empty fields when the map has no exit so a save
+ * never recreates a stale exit from an earlier map.
  */
-export function exitFieldsAfterLoad(prev: ExitFields, e: MapExit | null): ExitFields {
+export function exitFieldsAfterLoad(e: MapExit | null): ExitFields {
   if (!e) {
-    return prev;
+    return [...EMPTY_EXIT_FIELDS];
   }
   const h = e.house ? `H${e.house}` : "";
   return [`${h}${e.mx}`, `${h}${e.my}`, String(e.x), String(e.y)];

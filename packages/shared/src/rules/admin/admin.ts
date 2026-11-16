@@ -32,30 +32,29 @@ export type AdminCmd =
   | "setclass";
 
 /**
- * Who may run each command: the client checks of 1.6.
- * Moderators may kick, warp, jail, look up IPs and see their location; everything else is
- * the immortal's flag. `/ban` also tests a guide flag, which nothing sets, so it is
- * immortal-only. SSO's three additions are immortal-only.
+ * Who may run each command.
+ * Moderators and immortals share the 1.6 admin commands and `/unban`; `/role` and `/setclass`
+ * remain immortal-only.
  */
 export const ADMIN_ROLES: Readonly<Record<AdminCmd, readonly Role[]>> = {
-  save: ["immortal"],
-  refresh: ["immortal"],
-  cheatfile: ["immortal"],
-  unbanip: ["immortal"],
-  inventory: ["immortal"],
-  banip: ["immortal"],
+  save: ["immortal", "moderator"],
+  refresh: ["immortal", "moderator"],
+  cheatfile: ["immortal", "moderator"],
+  unbanip: ["immortal", "moderator"],
+  inventory: ["immortal", "moderator"],
+  banip: ["immortal", "moderator"],
   location: ["immortal", "moderator"],
   iplookup: ["immortal", "moderator"],
   kick: ["immortal", "moderator"],
-  warpscript: ["immortal"],
-  ban: ["immortal"],
+  warpscript: ["immortal", "moderator"],
+  ban: ["immortal", "moderator"],
   warp: ["immortal", "moderator"],
   jail: ["immortal", "moderator"],
-  pardon: ["immortal"],
+  pardon: ["immortal", "moderator"],
   warptome: ["immortal", "moderator"],
   warpmeto: ["immortal", "moderator"],
   role: ["immortal"], // SSO
-  unban: ["immortal"], // SSO
+  unban: ["immortal", "moderator"], // SSO
   setclass: ["immortal"], // SSO
 };
 
@@ -67,8 +66,8 @@ export function mayRun(cmd: AdminCmd, role: Role): boolean {
 export const SSO_ADMIN_CMDS: readonly AdminCmd[] = ["role", "unban", "setclass"];
 
 /**
- * Who may post to the admin channel (`-text`): immortals only. Moderators join `@Admins` and so
- * read it.
+ * Who may read and post to the admin channel (`-text`): both staff roles (immortals and
+ * moderators).
  */
 export function readsAdminChat(role: Role): boolean {
   return role === "immortal" || role === "moderator";
@@ -82,6 +81,8 @@ export const ADMIN_TEXT = {
   warpDenied: "Only immortals can warp players.",
   /** (`/warptome`). */
   warpToMeDenied: "Only immortals/guides can warp players.",
+  warpscriptDenied: "Only staff can use /warpscript.",
+  adminChatDenied: "Only staff can use admin chat.",
   kicking: (name: string) => `*** kicking ${name}...`,
   /** The kicked player's chat line before the alert. */
   beingKicked: "*** You are being kicked.",
@@ -162,14 +163,17 @@ export function parseWarpLine(line: string): { map: string; x: number; y: number
 }
 
 /**
- * Whether a broadcast warps its speaker to an immortal with this `/warpscript` keyword (the warp
- * script check): case-insensitive substring matching against the whole line the server built,
- * `<name> broadcasts "<text>"`, so the speaker's name and the word "broadcasts" match too (a 1.6
- * quirk kept). An unset keyword is inactive (`contains VOID` is FALSE), and so is an empty one
- * (`/warpscript` with no word; the same reading).
+ * Whether a broadcast message warps its speaker to a staff member with this `/warpscript` keyword:
+ * case-insensitive whole-word/token matching against the broadcast message content only (never
+ * the speaker's name or `"broadcasts"` wrapper), preventing accidental substring triggers.
+ * An unset, empty, or `WARPSCRIPT_OFF` keyword is inactive.
  */
-export function warpscriptMatches(keyword: string | null, broadcastLine: string): boolean {
-  return keyword !== null && keyword !== "" && lingoContains(broadcastLine, keyword);
+export function warpscriptMatches(keyword: string | null, message: string): boolean {
+  if (keyword === null || keyword === "" || keyword === WARPSCRIPT_OFF) {
+    return false;
+  }
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^A-Za-z0-9_])${escaped}(?:$|[^A-Za-z0-9_])`, "i").test(message);
 }
 
 /** `/warpscript OFF` stores this keyword, which no one is likely to type. */
@@ -186,11 +190,6 @@ export function formatAdminChat(name: string, typed: string): string {
     t = t.slice(1);
   }
   return `<... ${name} tells the admins "${t}"`;
-}
-
-/** In a house you must be at y ≤ 7 to post to the admins. */
-export function adminChatRefusedInHouse(mapName: string, y: number): boolean {
-  return y > 7 && lingoContains(mapName, "H");
 }
 
 /**

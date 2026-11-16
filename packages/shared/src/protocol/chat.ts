@@ -70,8 +70,7 @@ export type ChatServerMsg =
   /** Logon (`on`) or logoff, sent to everyone. Prints nothing. */
   | { t: "presence"; on: boolean; name: string }
   /**
-   * A refused line goes back in the chat input with no chat line: `-text` or `/warpscript` from
-   * anyone but an immortal exits `ChatSend` without clearing the field.
+   * A refused line goes back in the chat input with no chat line (e.g. an IM or room error).
    */
   | { t: "restore"; text: string; restoreTo?: RestoreTarget }
   /**

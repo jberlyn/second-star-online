@@ -707,14 +707,18 @@ describe("the death gold drop", () => {
 });
 
 describe("/drop", () => {
-  test("immortals drop catalogue items on the faced tile; others do nothing", () => {
+  test("immortals and moderators drop catalogue items on the faced tile; players do nothing", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
     expect(handleDrop(s.ctx(), s.room(), a, "Long Sword")).toEqual([]);
+    a.role = "moderator";
+    handleDrop(s.ctx(), s.room(), a, "Apple");
+    expect(groundAt(s.map, 6, 5)).toEqual(["Apple"]);
+    a.facing = "S";
     a.role = "immortal";
     handleDrop(s.ctx(), s.room(), a, "Long Sword");
-    expect(groundAt(s.map, 6, 5)).toEqual(["Long Sword"]);
+    expect(groundAt(s.map, 5, 6)).toEqual(["Long Sword"]);
     expect(handleDrop(s.ctx(), s.room(), a, "Sword of Bob")).toEqual([
       { to: "A", msg: { t: "alert", text: NO_SUCH_ITEM } },
     ]);

@@ -3,7 +3,7 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
-import { ADMIN_TEXT, type ServerMsg, TEXT } from "@secondstaronline/shared";
+import { ADMIN_TEXT, CHAT_COLOR, type ServerMsg, TEXT } from "@secondstaronline/shared";
 
 import { createGame, helpLines } from "../src/game.ts";
 import { setRole } from "../src/persistence/accounts.ts";
@@ -110,52 +110,97 @@ describe("the role table (moderator command set)", () => {
     }
   });
 
-  test("a moderator may warp, jail, kick, look up and locate, but not ban", () => {
-    const { mod, say, bob } = scene();
+  test("a moderator may run all 1.6 admin commands and /unban, but not /role or /setclass", () => {
+    const { mod, say, bob, bans, ipBans, audits } = scene();
     expect(texts(say(mod, "/Location"), "Mod")).toEqual([
       "You are at map: x1000y992 at position: 6-5",
     ]);
-    expect(texts(say(mod, "/ban Bob"), "Mod")).toEqual([ADMIN_TEXT.banDenied]);
     expect(texts(say(mod, "/IPlookup bob"), "Mod")).toEqual([
       "Looking up IP address for bob...",
       "The IP is: 127.0.0.1",
     ]);
     say(mod, "/warp Bob x1000y992 9 9");
     expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 9, 9]);
+    bob.char.wanted = true;
+    expect(texts(say(mod, "/Pardon Bob"), "Mod")).toEqual(["Pardoning Bob..."]);
+    expect(bob.char.wanted).toBe(false);
+    expect(texts(say(mod, "/BanIP 1.2.3.4"), "Mod")).toEqual(["Banning 1.2.3.4..."]);
+    expect(ipBans.has("1.2.3.4")).toBe(true);
+    expect(texts(say(mod, "/unbanip 1.2.3.4"), "Mod")).toEqual(["Unbanning 1.2.3.4..."]);
+    expect(ipBans.has("1.2.3.4")).toBe(false);
+    expect(texts(say(mod, "/ban Bob"), "Mod")).toEqual(["*** banning Bob..."]);
+    expect(bans.get("Bob")).toBe("Mod");
+    expect(texts(say(mod, "/unban Bob"), "Mod")).toEqual(["Bob is no longer banned."]);
+    expect(bans.get("Bob")).toBeNull();
+    expect(texts(say(mod, "/CheatFile"), "Mod")[0]).toBe("* Cheater Log:");
+    expect(texts(say(mod, "/Inventory"), "Mod")).toHaveLength(15);
+    say(mod, "/save");
+    say(mod, "/Refresh");
+    expect(audits).toContain("saved");
+    expect(audits).toContain("reloaded");
   });
 
-  test("SSO's /role, /unban and /setclass are said as local chat by anyone but an immortal", () => {
+  test("SSO's /role and /setclass are said as local chat by anyone but an immortal", () => {
     const { mod, say } = scene();
     expect(texts(say(mod, "/role Bob immortal"), "Mod")).toEqual(['Mod says "/role Bob immortal"']);
+    expect(texts(say(mod, "/setclass Bob Ninja"), "Mod")).toEqual([
+      'Mod says "/setclass Bob Ninja"',
+    ]);
   });
 });
 
 describe("the admin channel", () => {
-  test("kept bug: anyone else's - line sends nothing and stays typed", () => {
-    const { mod, bob, say } = scene();
-    expect(say(mod, "-hi")).toEqual([{ to: "Mod", msg: { t: "restore", text: "-hi" } }]);
-    expect(say(bob, "- smile")).toEqual([{ to: "Bob", msg: { t: "restore", text: "- smile" } }]);
-  });
-
-  test("an immortal's line reaches immortals and moderators in white, the sender included", () => {
-    const { imm, say } = scene();
-    const out = say(imm, "-  hello");
-    const line = { t: "chat" as const, text: '<... Imm tells the admins "hello"', color: 0 };
-    expect(out).toEqual([
-      { to: "Imm", msg: line },
-      { to: "Mod", msg: line },
+  test("a player's - line gets an explicit denial and clears input (no restore)", () => {
+    const { bob, say } = scene();
+    expect(say(bob, "- smile")).toEqual([
+      { to: "Bob", msg: { t: "chat", text: ADMIN_TEXT.adminChatDenied, color: CHAT_COLOR.normal } },
     ]);
   });
 
-  test("kept bug: a reader in a house at y > 10 hears a muffled voice; the sender must be at y ≤ 7", () => {
+  test("both immortals and moderators post to staff in CHAT_COLOR.admin; players excluded", () => {
+    const { imm, mod, say } = scene();
+    const immOut = say(imm, "-  hello");
+    const immLine = {
+      t: "chat" as const,
+      text: '<... Imm tells the admins "hello"',
+      color: CHAT_COLOR.admin,
+    };
+    expect(immOut).toEqual([
+      { to: "Imm", msg: immLine },
+      { to: "Mod", msg: immLine },
+    ]);
+
+    const modOut = say(mod, "-copy that");
+    const modLine = {
+      t: "chat" as const,
+      text: '<... Mod tells the admins "copy that"',
+      color: CHAT_COLOR.admin,
+    };
+    expect(modOut).toEqual([
+      { to: "Imm", msg: modLine },
+      { to: "Mod", msg: modLine },
+    ]);
+    expect(texts(modOut, "Bob")).toEqual([]);
+  });
+
+  test("admin chat has no house sender restriction, no muffling, and no ignore filtering", () => {
     const { imm, mod, say } = scene();
     const house = testMap("x5H1y2");
-    mod.map = house;
-    mod.y = 11;
-    expect(texts(say(imm, "-hi"), "Mod")).toEqual(["You hear a muffled voice."]);
     imm.map = house;
     imm.y = 8;
-    expect(texts(say(imm, "-hi"), "Imm")).toEqual(["You need to enter this building to talk"]);
+    mod.map = house;
+    mod.y = 11;
+    mod.ignore = ["imm"];
+    const out = say(imm, "-hi");
+    const expected = {
+      t: "chat" as const,
+      text: '<... Imm tells the admins "hi"',
+      color: CHAT_COLOR.admin,
+    };
+    expect(out).toEqual([
+      { to: "Imm", msg: expected },
+      { to: "Mod", msg: expected },
+    ]);
   });
 });
 
@@ -286,14 +331,18 @@ describe("the jail", () => {
 });
 
 describe("/warpscript", () => {
-  test("kept bug: anyone else's line stays typed", () => {
-    const { mod, say } = scene();
-    expect(say(mod, "/warpscript help")).toEqual([
-      { to: "Mod", msg: { t: "restore", text: "/warpscript help" } },
+  test("a player gets an explicit denial and cleared input (no restore); moderators can set it", () => {
+    const { bob, mod, say } = scene();
+    expect(say(bob, "/warpscript help")).toEqual([
+      {
+        to: "Bob",
+        msg: { t: "chat", text: ADMIN_TEXT.warpscriptDenied, color: CHAT_COLOR.normal },
+      },
     ]);
+    expect(texts(say(mod, "/warpscript help"), "Mod")).toEqual(["Warpscript set to: help"]);
   });
 
-  test("a broadcast containing the keyword warps the speaker to the immortal", () => {
+  test("a broadcast containing the whole keyword warps the speaker to the staff member", () => {
     const { imm, bob, say } = scene();
     expect(texts(say(imm, "/warpscript HELP"), "Imm")).toEqual(["Warpscript set to: HELP"]);
     const out = say(bob, "'please help me");
@@ -301,7 +350,42 @@ describe("/warpscript", () => {
     expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 5, 5]);
   });
 
-  test("OFF prints the word it stores", () => {
+  test("speaker name, protocol wrapper, and substrings do not trigger /warpscript", () => {
+    const { imm, bob, say } = scene();
+    say(imm, "/warpscript bob");
+    say(bob, "'hi there");
+    expect(bob.map.name).toBe("x1001y992");
+
+    say(imm, "/warpscript broadcasts");
+    say(bob, "'hi there");
+    expect(bob.map.name).toBe("x1001y992");
+
+    say(imm, "/warpscript help");
+    say(bob, "'I am helpless");
+    expect(bob.map.name).toBe("x1001y992");
+  });
+
+  test("multiple matching staff: deterministic single winner (first in login order)", () => {
+    const { imm, mod, bob, say } = scene();
+    say(imm, "/warpscript help");
+    say(mod, "/warpscript help");
+    const out = say(bob, "'help!");
+    expect(texts(out, "Imm")).toContain("*** Warping Bob...");
+    expect(texts(out, "Mod")).not.toContain("*** Warping Bob...");
+    expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 5, 5]);
+  });
+
+  test("a moderator's warp keyword moves players but cannot warp an immortal", () => {
+    const { imm, mod, bob, say } = scene();
+    say(mod, "/warpscript help");
+    say(bob, "'help");
+    expect([bob.map.name, bob.x, bob.y]).toEqual([mod.map.name, mod.x, mod.y]);
+    const out = say(imm, "'help");
+    expect([imm.x, imm.y]).toEqual([5, 5]);
+    expect(texts(out, "Mod")).not.toContain("*** Warping Imm...");
+  });
+
+  test("OFF prints the word it stores and disables matching", () => {
     const { imm, bob, say } = scene();
     expect(texts(say(imm, "/warpscript off"), "Imm")).toEqual([
       "Warpscript set to: iasdfji23j4ihfih23io4haklsq",
@@ -311,15 +395,7 @@ describe("/warpscript", () => {
   });
 });
 
-describe("ignore and the admin lines", () => {
-  test("kept bug: admin chat is a sqa, so a reader ignoring the sender misses it", () => {
-    const { imm, mod, say } = scene();
-    mod.ignore = ["imm"];
-    const out = say(imm, "-hello");
-    expect(texts(out, "Imm")).toEqual(['<... Imm tells the admins "hello"']);
-    expect(texts(out, "Mod")).toEqual([]);
-  });
-
+describe("ignore and /warpscript", () => {
   test("an immortal ignoring the speaker never reads the broadcast, so never warps them", () => {
     const { imm, bob, say } = scene();
     say(imm, "/warpscript HELP");
@@ -339,13 +415,18 @@ describe("kicks, bans, roles and classes", () => {
     expect(kicks).toEqual([{ id: "Bob", text: TEXT.kicked }]);
   });
 
-  test("SSO: a moderator cannot kick an immortal", () => {
-    const { mod, say, kicks } = scene();
+  test("SSO: a moderator cannot kick or ban an immortal", () => {
+    const { mod, say, kicks, bans } = scene();
     expect(texts(say(mod, "/kick Imm"), "Mod")).toEqual([
       "*** kicking Imm...",
       ADMIN_TEXT.kickImmortal,
     ]);
     expect(kicks).toEqual([]);
+    expect(texts(say(mod, "/ban Imm"), "Mod")).toEqual([
+      "*** banning Imm...",
+      ADMIN_TEXT.immortalTarget,
+    ]);
+    expect(bans.size).toBe(0);
   });
 
   test("SSO: a moderator cannot look up, jail or warp an immortal", () => {
