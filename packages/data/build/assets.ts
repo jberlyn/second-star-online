@@ -29,6 +29,7 @@ import type { AssetIndex, AtlasGroup, AtlasIndex, AtlasSprite, UiFile } from "..
 import { addedSoundFile, listAdded } from "./assets-lib/added.ts";
 import { applyKey, GREEN, type KeyRule, ruleForUsage } from "./assets-lib/key.ts";
 import { pack } from "./assets-lib/pack.ts";
+import { derivePanelTabs } from "./assets-lib/panel-tabs.ts";
 import { blit, createRgba, decodePng, encodePng, type Rgba } from "./assets-lib/png.ts";
 import {
   GROUP_CAST,
@@ -45,7 +46,7 @@ import {
 export const ASSETS_DIR = join(import.meta.dir, "..", "assets");
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
 /** Bump when the build's output format or rules change, so the cache is invalidated. */
-const BUILD_VERSION = 12;
+const BUILD_VERSION = 14;
 
 const MAIN_ROOT = "assets/original/main";
 const rootOf = (b: ManifestBitmap) => b.root ?? MAIN_ROOT;
@@ -202,9 +203,11 @@ function inputHash(
     "assets-lib/added.ts",
     "assets-lib/key.ts",
     "assets-lib/pack.ts",
+    "assets-lib/panel-tabs.ts",
     "assets-lib/png.ts",
     "assets-lib/select.ts",
     "assets.ts",
+    "../src/panel-tabs.ts",
   ]) {
     h.update(readFileSync(join(import.meta.dir, f)));
   }
@@ -331,10 +334,19 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
   }
 
   const ui: Record<string, UiFile> = {};
+  const uiImages = new Map<string, Rgba>();
   for (const b of selection.ui) {
     const img = load(b)();
     applyKey(img, ruleForUsage(b.scoreUsage, b.keyHint));
+    uiImages.set(`${b.cast.toLowerCase()}:${b.member}`, img);
+  }
+  // The panel's tab icons are matted out of their wood and the four baked copies are
+  // erased from Internal #186 (see assets-lib/panel-tabs.ts).
+  const derived = derivePanelTabs(uiImages);
+  for (const b of selection.ui) {
     const id = `${b.cast.toLowerCase()}:${b.member}`;
+    const derivedImg = b.cast.toLowerCase() === "internal" ? derived.get(b.member) : undefined;
+    const img = derivedImg ?? (uiImages.get(id) as Rgba);
     const file = uiFile(b);
     write(file, encodePng(img));
     ui[id] = { file, w: img.width, h: img.height, regX: b.regX, regY: b.regY };

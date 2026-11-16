@@ -54,8 +54,8 @@ export interface GameView {
   /** The frame's current scale; windows scale with it. */
   scale: number;
   /**
-   * Frame 72 (the Guild Center): the tab icons (channels 30-33) and every tab's contents are off
-   * it, so the panel shows only its background and the bars.
+   * Frame 72 (the Guild Center): the panel's tab icons and every tab's contents are off it, so
+   * the panel shows only its background and the bars.
    */
   setFrame72(on: boolean): void;
   /**
@@ -65,22 +65,16 @@ export interface GameView {
   setChatBlocked(on: boolean): void;
 }
 
-/** Frame 63's frame pieces (assets/original/main/layout/frame-63.json), by score channel. */
+/**
+ * Frame 63's frame pieces (assets/original/main/layout/frame-63.json), by score channel. The
+ * four tab icons are not frame art: the build erases the copies baked into #186 and the panel
+ * draws them on one row (ui/panel.ts).
+ */
 function frameArt(a: Assets): StageItem[] {
   const m = (n: number) => artImg(a.ui("internal", n));
-  // The tab icons span frames 51-71 only (spans 30-33): frame 72 has none.
-  const tab = (n: number) => {
-    const img = m(n);
-    img.classList.add("tab-art");
-    return img;
-  };
   return [
     { el: m(188), x: 597, y: 53, w: 204, h: 271, z: 3, art: true },
     { el: m(186), x: 566, y: 0, w: 234, h: 600, z: 4, art: true },
-    { el: tab(130), x: 617, y: 21, w: 32, h: 30, z: 30, art: true },
-    { el: tab(131), x: 659, y: 22, w: 37, h: 24, z: 31, art: true },
-    { el: tab(132), x: 706, y: 22, w: 29, h: 22, z: 32, art: true },
-    { el: tab(133), x: 748, y: 17, w: 30, h: 27, z: 33, art: true },
     { el: m(187), x: 1, y: 0, w: 565, h: 41, z: 256, art: true },
     { el: m(190), x: 1, y: 41, w: 33, h: 559, z: 257, art: true },
     { el: m(191), x: 34, y: 404, w: 532, h: 196, z: 258, art: true },

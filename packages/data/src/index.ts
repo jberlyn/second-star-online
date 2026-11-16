@@ -60,3 +60,4 @@ export {
   spellsData,
   tilesData,
 } from "./generated/index.ts";
+export { type PanelTab, TAB_ART, TAB_HIT, TAB_ROW_Y, type TabArt } from "./panel-tabs.ts";

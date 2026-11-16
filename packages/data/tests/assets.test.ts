@@ -16,6 +16,7 @@ import { applyKey, ruleForUsage } from "../build/assets-lib/key.ts";
 import { pack } from "../build/assets-lib/pack.ts";
 import { createRgba, decodePng, encodePng } from "../build/assets-lib/png.ts";
 import type { AssetIndex } from "../src/assets.ts";
+import { TAB_ART } from "../src/panel-tabs.ts";
 
 const tmp = mkdtempSync(join(tmpdir(), "sso-assets-"));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -113,6 +114,46 @@ describe("asset build", () => {
     expect(index.atlases.paperdoll.sprites["head11-f1-w"]).toBeDefined();
     expect(index.atlases.bodies.sprites["sp112-f2-s"]).toBeUndefined(); // scratch members skipped
     expect(index.ui["internal:186"]).toMatchObject({ w: 234, h: 600 });
+    // The tab bitmaps are matted to their glyphs and the baked copies are gone from #186.
+    const alpha = (img: { width: number; data: Uint8Array }, x: number, y: number) =>
+      img.data[(y * img.width + x) * 4 + 3];
+    for (const tab of TAB_ART) {
+      for (const [member, source, crop] of [
+        [tab.member, tab.source, tab.crop],
+        [tab.selected, tab.selectedSource, tab.selectedCrop],
+      ] as const) {
+        const img = decodePng(
+          new Uint8Array(readFileSync(join(a, "ui", `internal-${member}.png`))),
+        );
+        expect([img.width, img.height]).toEqual([...source]);
+        expect(alpha(img, 0, 0)).toBe(0); // outside the matte
+        expect(
+          alpha(img, crop[0] + Math.floor(crop[2] / 2), crop[1] + Math.floor(crop[3] / 2)),
+        ).toBe(255);
+        expect(alpha(img, crop[0] + crop[2], crop[1])).toBe(0); // just past the crop
+      }
+    }
+    const panel = decodePng(new Uint8Array(readFileSync(join(a, "ui", "internal-186.png"))));
+    const original = decodePng(
+      new Uint8Array(
+        readFileSync(
+          join(import.meta.dir, "../../../assets/original/main/bitmaps/362527_Gui_test.png"),
+        ),
+      ),
+    );
+    let erased = 0;
+    for (const tab of TAB_ART) {
+      const [, h] = tab.source;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < tab.source[0]; x++) {
+          const p = ((tab.original[1] + y) * panel.width + tab.original[0] - 566 + x) * 4;
+          if (panel.data[p] !== original.data[p] || panel.data[p + 1] !== original.data[p + 1]) {
+            erased += 1;
+          }
+        }
+      }
+    }
+    expect(erased).toBeGreaterThan(500);
     // The 37 sounds some 1.6 script plays: the bell is the MP3, not its
     // 44-byte WAV stub; the 13 unused ones are not built.
     expect(Object.keys(index.sounds)).toHaveLength(37);

@@ -24,7 +24,7 @@
  *   Arial 12) at (736, 117), one per line. The arrows #162 (up, loc (609, 122)) and #161 (down,
  *   (609, 274)) move both columns 32 px on mouse-down with no limit either way.
  */
-import { type AtlasGroup, classesData } from "@secondstaronline/data";
+import { type AtlasGroup, classesData, TAB_ART, TAB_HIT, TAB_ROW_Y } from "@secondstaronline/data";
 import {
   bagPicture,
   displayName,
@@ -231,32 +231,52 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   el.append(bg);
 
   // ---- tabs (Internal #130-133; highlights #206-#209 at their tab) ----------------------
-  const highlight: Record<Tab, HTMLImageElement> = {
-    stats: uiAt(a, "internal", 206, 632, 36),
-    inventory: uiAt(a, "internal", 207, 677, 34),
-    skills: uiAt(a, "internal", 208, 720, 31),
-    spellbook: uiAt(a, "internal", 209, 758, 26),
+  // The build mattes each bitmap's wood off and erases the four copies baked into #186, so
+  // each crop can sit on the common row without dragging a rectangle of wood with it. The
+  // selected version is the same tab's larger bitmap, centred on the same point.
+  const tabCrop = (
+    tab: (typeof TAB_ART)[number],
+    selected: boolean,
+    visible: boolean,
+  ): HTMLDivElement => {
+    const [cx, cy, cw, ch] = selected ? tab.selectedCrop : tab.crop;
+    const [sw, sh] = selected ? tab.selectedSource : tab.source;
+    const wrap = document.createElement("div");
+    wrap.className = selected ? "tab-on" : "tab-icon";
+    wrap.hidden = !visible;
+    at(wrap, Math.round(tab.x - cw / 2), Math.round(TAB_ROW_Y - ch / 2), cw, ch);
+    const img = artImg(a.ui("internal", selected ? tab.selected : tab.member));
+    img.style.position = "absolute";
+    img.style.left = `${-cx}px`;
+    img.style.top = `${-cy}px`;
+    img.style.width = `${sw}px`;
+    img.style.height = `${sh}px`;
+    wrap.append(img);
+    return wrap;
   };
-  for (const img of Object.values(highlight)) {
-    img.classList.add("tab-on");
-  }
-  const tabs: [Tab, number, number, number, number, string][] = [
-    ["stats", 617, 21, 32, 30, "Stats"],
-    ["inventory", 659, 22, 37, 24, "Inventory"],
-    ["skills", 706, 22, 29, 22, "Skills"],
-    ["spellbook", 748, 17, 30, 27, "Spellbook"],
-  ];
-  for (const [t, x, y, w, h, label] of tabs) {
-    // The frame draws the icons; these are the click targets over them.
-    const icon = artImg(a.ui("internal", 130 + tabs.findIndex((r) => r[0] === t)));
-    at(icon, x, y, w, h);
-    icon.classList.add("tab-icon");
+  const highlight = {} as Record<Tab, HTMLElement>;
+  const tabLabels: Record<Tab, string> = {
+    stats: "Stats",
+    inventory: "Inventory",
+    skills: "Skills",
+    spellbook: "Spellbook",
+  };
+  for (const tab of TAB_ART) {
+    const t = tab.tab;
+    highlight[t] = tabCrop(tab, true, t === "stats");
+    const icon = tabCrop(tab, false, true);
     // Each tab has its own script.
     const b = tagAction(document.createElement("button"), `panel-tab-${t}`);
     b.type = "button";
     b.className = "tab-hit";
-    b.setAttribute("aria-label", label);
-    at(b, x, y, w, h);
+    b.setAttribute("aria-label", tabLabels[t]);
+    at(
+      b,
+      Math.round(tab.x - TAB_HIT.w / 2),
+      Math.round(TAB_ROW_Y - TAB_HIT.h / 2),
+      TAB_HIT.w,
+      TAB_HIT.h,
+    );
     b.addEventListener("click", () => {
       // Every click, the open tab's too.
       act.sound(SOUND.tab);

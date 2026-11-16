@@ -606,9 +606,14 @@ body {
   transform-origin: 0 0;
   overflow: visible;
 }
-.panel-page .panel-bg,
-.panel-page .tab-icon {
+.panel-page .panel-bg {
   display: none;
+}
+/* Each tab wrapper clips its bitmap to the glyph; the wood around it is transparent. */
+.panel-page .tab-icon,
+.panel-page .tab-on {
+  overflow: hidden;
+  pointer-events: none;
 }
 .panel-page .sprite,
 .panel-page .art {
@@ -1339,7 +1344,6 @@ body {
   color: #fff;
 }
 /* Frame 72 hides the tab icons and every tab's contents. */
-.game.f72 .tab-art,
 .game.f72 .panel-page .tab-icon,
 .game.f72 .panel-page .tab-on,
 .game.f72 .panel-page .tab-hit,

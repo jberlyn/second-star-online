@@ -25,7 +25,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
-| [core](#core) | 35 |
+| [core](#core) | 36 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
 | [housing](#housing) | 7 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **218** |
+| **Total** | **219** |
 
 ## admin
 
@@ -893,6 +893,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** The user requested the icons centered with their text and evenly spaced. The strip's baked-in spacing did not match the 30-pixel text grid, so each icon drifted a little further from its label down the column.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
 - **Pinned by:** `the six stat icons are centred on the rows and evenly spaced` (packages/client/tests/panel.test.ts)
+
+### The four panel tabs share one row and an even pitch
+- **Kind:** Platform
+- **What you notice:** The Stats, Inventory, Skills and Spellbook icons sit on one horizontal row with equal gaps, and the larger icon for the open tab centres on the same point as its small icon.
+- **1.6:** The four bitmaps include their wooden background and were drawn at their own stage rects: small-icon centres near (634.5, 36), (678.5, 34), (720, 33) and (763, 30.5), so the row sagged upward to the right. The larger open-tab icons at #206-#209 were separate opaque crops with their own centres, and the small glyphs were also baked into the panel bitmap Internal #186.
+- **SSO:** The build mats the wood off each tab bitmap, keeping the glyph's matte box, and erases the four baked copies from #186. The small and large versions of each tab are centred at y 34 on x 634, 677, 720 and 763 (a 43-pixel pitch), and every click target is a 40×40 box on that centre.
+- **Why:** The user requested the tab icons aligned like the stats icons. Because the source bitmaps were opaque crops, moving them without keying the wood would have dragged rectangular patches along and left the old baked glyphs showing.
+- **In the code:** `packages/data/src/panel-tabs.ts` (the row and each icon's matte box); `packages/data/build/assets-lib/panel-tabs.ts` (the matte and the #186 fill); `packages/client/src/ui/panel.ts` (`createPanel`); `packages/client/src/ui/shells.ts` (`frameArt`)
+- **Pinned by:** `the four tab icons share a row and an even pitch` (packages/client/tests/panel.test.ts); `building twice gives identical bytes` (packages/data/tests/assets.test.ts)
 
 ### /logchat becomes a browser download
 - **Kind:** Platform

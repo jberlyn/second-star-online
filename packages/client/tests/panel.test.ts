@@ -4,7 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { type AssetIndex, classesData } from "@secondstaronline/data";
+import { type AssetIndex, classesData, TAB_ART, TAB_ROW_Y } from "@secondstaronline/data";
 import { type EquipView, emptyBag, NO_EQUIPMENT } from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";
@@ -68,6 +68,45 @@ describe("the right panel (frames 50-65)", () => {
     expect(panel.el.querySelector<HTMLElement>(".page-inventory")?.hidden).toBe(false);
     expect(panel.el.querySelector<HTMLElement>(".page-stats")?.hidden).toBe(true);
   });
+  test("the four tab icons share a row and an even pitch", () => {
+    const { panel } = panelWith([]);
+    const icons = [...panel.el.querySelectorAll<HTMLElement>(".tab-icon")];
+    expect(icons).toHaveLength(4);
+    const middle = (el: HTMLElement): [number, number] => [
+      Number.parseFloat(el.style.left) + Number.parseFloat(el.style.width) / 2,
+      Number.parseFloat(el.style.top) + Number.parseFloat(el.style.height) / 2,
+    ];
+    const centres = icons.map(middle);
+    for (const [i, tab] of TAB_ART.entries()) {
+      // Wrapper coordinates are panel-local; the panel starts at stage x 566.
+      expect(Math.abs((centres[i]?.[0] ?? 0) + 566 - tab.x)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs((centres[i]?.[1] ?? 0) - TAB_ROW_Y)).toBeLessThanOrEqual(0.5);
+      const img = icons[i]?.querySelector("img");
+      expect(img?.getAttribute("src")).toBe(`/assets/ui/internal-${tab.member}.png`);
+      // The wrapper clips the member to its matte box; the bitmap keeps its own size.
+      expect([img?.style.left, img?.style.top]).toEqual([`${-tab.crop[0]}px`, `${-tab.crop[1]}px`]);
+      expect([img?.style.width, img?.style.height]).toEqual([
+        `${tab.source[0]}px`,
+        `${tab.source[1]}px`,
+      ]);
+    }
+    for (let i = 1; i < centres.length; i++) {
+      expect(
+        Math.abs((centres[i]?.[0] ?? 0) - (centres[i - 1]?.[0] ?? 0) - 43),
+      ).toBeLessThanOrEqual(1);
+    }
+    // The selected versions centre on the same points as their small icons.
+    const selected = [...panel.el.querySelectorAll<HTMLElement>(".tab-on")];
+    expect(selected).toHaveLength(4);
+    for (const [i, el] of selected.entries()) {
+      const [x, y] = middle(el);
+      expect(Math.abs(x - (centres[i]?.[0] ?? 0))).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(y - TAB_ROW_Y)).toBeLessThanOrEqual(0.5);
+      expect(el.querySelector("img")?.getAttribute("src")).toBe(
+        `/assets/ui/internal-${TAB_ART[i]?.selected}.png`,
+      );
+    }
+  });
   test("only the open tab shows its large icon, #206-#209", async () => {
     const style = document.createElement("style");
     style.textContent = await Bun.file(new URL("../src/styles.css", import.meta.url)).text();
@@ -75,10 +114,9 @@ describe("the right panel (frames 50-65)", () => {
     const { panel } = panelWith([]);
     document.body.append(panel.el);
     const shown = () =>
-      [206, 207, 208, 209].filter((n) => {
-        const img = panel.el.querySelector(`img[src$="internal-${n}.png"]`);
-        return img !== null && getComputedStyle(img).display !== "none";
-      });
+      [...panel.el.querySelectorAll<HTMLElement>(".tab-on")]
+        .filter((el) => !el.hidden)
+        .map((el) => Number(el.querySelector("img")?.src.match(/internal-(\d+)\.png$/)?.[1]));
     try {
       expect(shown()).toEqual([206]);
       panel.el.querySelector<HTMLButtonElement>('[aria-label="Skills"]')?.click();
