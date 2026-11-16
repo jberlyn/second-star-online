@@ -25,7 +25,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
-| [core](#core) | 36 |
+| [core](#core) | 37 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
 | [housing](#housing) | 7 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **219** |
+| **Total** | **220** |
 
 ## admin
 
@@ -902,6 +902,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** The user requested the tab icons aligned like the stats icons. Because the source bitmaps were opaque crops, moving them without keying the wood would have dragged rectangular patches along and left the old baked glyphs showing.
 - **In the code:** `packages/data/src/panel-tabs.ts` (the row and each icon's matte box); `packages/data/build/assets-lib/panel-tabs.ts` (the matte and the #186 fill); `packages/client/src/ui/panel.ts` (`createPanel`); `packages/client/src/ui/shells.ts` (`frameArt`)
 - **Pinned by:** `the four tab icons share a row and an even pitch` (packages/client/tests/panel.test.ts); `building twice gives identical bytes` (packages/data/tests/assets.test.ts)
+
+### World Editor sign panel text and OK align inside its frame
+- **Kind:** Platform
+- **What you notice:** The sign text field sits inside the World Editor sign frame, and the panel shows one crisp OK.
+- **1.6:** The score put the editable `SignText` field at (26,20) inside the sign panel, 228×54, and the 31×19 Internal #91 bitmap's top-left at (228,69) over the OK baked into Internal #10.
+- **SSO:** The textarea starts at (24,24) with a 13px line height, clear of the frame's top border. Internal #91 is drawn at its natural 31×19 size at (233,72), exactly over the baked OK, inside the same 39×29 hit area.
+- **Why:** A browser textarea starts its text at the top of its box, unlike Director's field inset, so the score's rect put text against the top border. Stretching the OK bitmap to the sprite's 39×29 box offset its glyph and left the baked OK showing beside it.
+- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`), `packages/client/src/styles.css` (`.we-sign`)
+- **Pinned by:** `the sign panel's text field and OK patch line up with Internal #10` (packages/client/tests/worldeditor.test.ts)
 
 ### /logchat becomes a browser download
 - **Kind:** Platform

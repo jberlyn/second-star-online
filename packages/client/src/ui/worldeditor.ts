@@ -618,10 +618,17 @@ export function createWorldEditor(
     }
     signPanel.hidden = true;
   });
-  signOk.append(artImg(assets.ui("internal", 91), "OK"));
+  // Internal #91 is a #202020 patch with the same OK glyph baked into Internal #10's bottom-right.
+  // It belongs exactly over that glyph; stretching it to the sprite's 39×29 box offsets the glyph
+  // and leaves the background's OK showing beside it. Keep it at its natural 31×19 size.
+  const signOkImg = artImg(assets.ui("internal", 91), "OK");
+  signOkImg.style.cssText = "position:absolute;left:5px;top:3px;width:31px;height:19px";
+  signOk.append(signOkImg);
   signBg.style.cssText = "position:absolute;left:0;top:0;width:285px;height:113px";
-  signText.style.cssText = "position:absolute;left:26px;top:20px;width:228px;height:54px";
-  signOk.style.cssText = "position:absolute;left:224px;top:64px;width:39px;height:29px";
+  // The field starts at the same inset as the in-play sign (24, 24), clear of Internal #10's top
+  // border; its 13px line height keeps four lines above the baked-in OK glyph.
+  signText.style.cssText = "position:absolute;left:24px;top:24px;width:228px;height:54px";
+  signOk.style.cssText = "position:absolute;left:228px;top:69px;width:39px;height:29px";
   signPanel.append(signBg, signText, signOk);
   add(signPanel, { x: 72, y: 138, w: 285, h: 113 }, 9995);
   const showSign = (n: 1 | 2 | 3) => {

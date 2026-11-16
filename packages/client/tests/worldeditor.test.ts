@@ -122,6 +122,43 @@ describe("the World Editor screen (frames 262-288)", () => {
     expect(e.ed.current().items).toEqual([]);
   });
 
+  test("the sign panel's text field and OK patch line up with Internal #10", () => {
+    const e = editor();
+    e.ed.show(blankMap(1, 1), false);
+    e.pickList("Items", "Sign 1");
+    e.click(2, 2);
+    const panel = e.root.querySelector(".we-panel:not([hidden])") as HTMLElement;
+    const text = panel.querySelector(".we-sign") as HTMLTextAreaElement;
+    const ok = panel.querySelector('[data-action="editor-sign-save"]') as HTMLButtonElement;
+    const okArt = ok.querySelector("img") as HTMLImageElement;
+    const n = (v: string) => Number.parseInt(v, 10);
+    // The field is below the 22px top border and inside the 285×113 sign background.
+    expect([text.style.left, text.style.top, text.style.width, text.style.height]).toEqual([
+      "24px",
+      "24px",
+      "228px",
+      "54px",
+    ]);
+    expect(n(text.style.top)).toBeGreaterThanOrEqual(22);
+    expect(n(text.style.left) + n(text.style.width)).toBeLessThanOrEqual(263);
+    expect(n(text.style.top) + n(text.style.height)).toBeLessThanOrEqual(92);
+    // Internal #91's 31×19 patch sits over the OK baked into Internal #10 at local (233, 72).
+    expect([ok.style.left, ok.style.top, ok.style.width, ok.style.height]).toEqual([
+      "228px",
+      "69px",
+      "39px",
+      "29px",
+    ]);
+    expect([okArt.style.left, okArt.style.top, okArt.style.width, okArt.style.height]).toEqual([
+      "5px",
+      "3px",
+      "31px",
+      "19px",
+    ]);
+    expect(n(ok.style.left) + n(okArt.style.left)).toBe(233);
+    expect(n(ok.style.top) + n(okArt.style.top)).toBe(72);
+  });
+
   test("the flag boxes write field 12; SAFE AREA loads from item 1", () => {
     const e = editor();
     e.ed.show(blankMap(1, 1), false);

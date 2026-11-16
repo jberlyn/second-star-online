@@ -1090,7 +1090,9 @@ body {
   display: none;
 }
 .we-sign {
+  box-sizing: border-box;
   color: #fff;
+  line-height: 13px;
   resize: none;
   white-space: pre-wrap;
 }
