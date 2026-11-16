@@ -8,6 +8,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import "../tests/helpers/sqlite-tmpdir.ts";
+
 import type {
   ClientMsg,
   CreateMsg,
