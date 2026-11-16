@@ -78,6 +78,13 @@ describe("the classic layout at every size", () => {
       "544px",
     ]);
     expect([p.chatLog.style.left, p.chatLog.style.top]).toEqual(["20px", "456px"]);
+    // The entry fills the frame's lower well, not the score's 756×20 text rect.
+    expect([
+      p.chatInput.style.left,
+      p.chatInput.style.top,
+      p.chatInput.style.width,
+      p.chatInput.style.height,
+    ]).toEqual(["21px", "556px", "760px", "20px"]);
     expect(view.root.querySelector(".turn-btn")).toBeNull();
   });
 });

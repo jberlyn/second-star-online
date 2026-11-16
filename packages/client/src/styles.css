@@ -174,7 +174,9 @@ body {
   color: #fff;
   background: transparent;
   border: 0;
-  padding: 1px;
+  /* Browsers add about 3 px at the inline start of a text input; the 3 px right inset matches it,
+     so the text has the same margin on both sides of the chat frame. */
+  padding: 1px 3px 1px 1px;
   outline: none;
 }
 

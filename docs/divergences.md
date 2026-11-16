@@ -25,7 +25,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
-| [core](#core) | 37 |
+| [core](#core) | 38 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
 | [housing](#housing) | 7 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **220** |
+| **Total** | **221** |
 
 ## admin
 
@@ -867,6 +867,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Browser scrolling already supports the wheel, and its bar belongs where the original frame leaves room.
 - **In the code:** `packages/client/src/ui/stage.ts` (`DIRECTOR_BAR_W`), `packages/client/src/ui/spellbook.ts` (`createSpellbook`)
 - **Pinned by:** `the list box leaves the field 164 px of text and room for the bar at x 775-790` (packages/client/tests/spells.test.ts)
+
+### The chat entry sits in the chat frame's lower well
+- **Kind:** Platform
+- **What you notice:** The chat input's text sits inside the frame's lower field with equal padding on both sides and a little extra room from the left frame edge.
+- **1.6:** The score put `sendchat` at (20, 560) as a 756×20 field, and Director drew its text from the field's top margin.
+- **SSO:** The input box spans x 21–781 and y 556–576 inside the lower well of Internal #191/#186 (its interior is x 18–780, y 554–573). A browser input centres its single line and adds about 3 px at its inline start, so a matching 3 px right inset keeps the text margin equal on both sides; a 3 px extra left inset gives the text more room from the frame. The box starts 2 px below the well's top so the glyphs sit optically level in the field.
+- **Why:** Using the score's text rect put the browser's centred line below the well and its padding to the right, so the entry text did not line up with the frame. The user requested the alignment, then the 2 px downward nudge, equal side insets, and a little more left margin.
+- **In the code:** `packages/client/src/ui/shells.ts` (`createGameView`)
+- **Pinned by:** `the stage puts the playfield and chat at their rects (frame 63)` (packages/client/tests/shells.test.ts)
 
 ### Chat opens with Enter
 - **Kind:** Platform

@@ -2,6 +2,8 @@
  * Chat UI, windows and the Enter-to-chat keyboard, in happy-dom.
  */
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import type { AssetIndex } from "@secondstaronline/data";
 import { type ClientMsg, NO_EQUIPMENT, NO_FOG, type ServerMsg } from "@secondstaronline/shared";
@@ -9,7 +11,7 @@ import { type ClientMsg, NO_EQUIPMENT, NO_FOG, type ServerMsg } from "@secondsta
 import { type App, runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
-import { createChatLog } from "../src/ui/chat.ts";
+import { createChatInput, createChatLog } from "../src/ui/chat.ts";
 import { createWhoWindow } from "../src/ui/who.ts";
 import { createWindowLayer } from "../src/ui/window.ts";
 
@@ -22,6 +24,21 @@ const fakeAssets: Assets = {
 };
 
 const lines = (log: HTMLElement) => [...log.children].map((l) => l.textContent);
+
+describe("chat input", () => {
+  test("the left and right insets match inside the frame", () => {
+    const style = document.createElement("style");
+    style.textContent = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    document.body.append(style);
+    const input = createChatInput();
+    document.body.append(input);
+    // The browser adds about 3 px at the inline start; the right inset matches it.
+    expect([getComputedStyle(input).paddingLeft, getComputedStyle(input).paddingRight]).toEqual([
+      "1px",
+      "3px",
+    ]);
+  });
+});
 
 describe("chat log", () => {
   test("lines take their palette colour: 0 white, 4 yellow", () => {

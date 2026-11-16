@@ -109,7 +109,12 @@ export function createGameView(a: Assets, parts: GameParts): GameView {
     // The box runs on past the 742 px field so the browser's bar sits where Director's
     // was, x 765-780 (`.director-scroll`).
     { el: parts.chatLog, x: 20, y: 456, w: 742 + DIRECTOR_BAR_W, h: 88, z: 300 },
-    { el: parts.chatInput, x: 20, y: 560, w: 756, h: 20, z: 301 },
+    // The entry fills the lower well of Internal #191/#186 (interior x 18-780, y 554-573), not
+    // the score's 756×20 text rect: a browser centres a single-line input and gives it its own
+    // inline start padding, so the box itself must be the well for the text to land on Director's
+    // 1 px margin. It starts 3 px into the well for a little more left margin, and sits 2 px below
+    // the well's top because browser centring leaves the glyphs high in the field.
+    { el: parts.chatInput, x: 21, y: 556, w: 760, h: 20, z: 301 },
     { el: parts.playfield, x: 30, y: 31, w: PLAYFIELD_W, h: PLAYFIELD_H, z: 110 },
     // Score channels 36-64 (bars, above panel art 4 and below strips 256+) and 318-319 (numbers,
     // above strips 256+ and playfield 110). No z on the wrapper so each child keeps its own
