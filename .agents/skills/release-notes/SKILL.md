@@ -1,0 +1,75 @@
+---
+name: release-notes
+description: Draft GitHub release notes for Second Star Online covering every change since the latest tag, written for server operators, and recommend a patch or minor version. Use when preparing a release, tagging a version, or asked for release notes or a changelog.
+---
+
+# Release notes
+
+The release notes go on the GitHub release for each `v*` tag. They are written for **server operators**: people who host the game and need to know what changed, what they must do to upgrade, and what their players will notice. Git history is the changelog; there is no `CHANGELOG.md`.
+
+## 1. Gather the changes
+
+1. Find the previous release: `git describe --tags --abbrev=0`, and `gh release list` to confirm it is published.
+2. Read every commit since it, bodies included: `git log <tag>..HEAD --format='%h %s%n%b'`. Commit bodies often list several user-facing fixes; read them all.
+3. Look for things operators must act on. Check each of these over the range (`git diff <tag>..HEAD -- <path>`):
+   - `packages/server/migrations/`: new migrations. Say what they do to existing data.
+   - The settings and command tables in `docs/running-a-server.md`: settings added, removed or renamed, new commands, and roles gaining or losing commands.
+   - `docker-compose.yml`, `Dockerfile` and environment variables: renamed services or volumes, and new or changed variables.
+   - Changes to content data (`packages/data/content/`) that shift the economy, such as payouts or prices.
+4. New headings in `docs/divergences.md` (`git diff <tag>..HEAD -- docs/divergences.md | grep '^+### '`) give a reliable list of behaviour changes and fixed bugs.
+5. Leave out changes that affect neither operators nor players: tests, internal refactors, documentation-only commits and repository images.
+
+## 2. Choose the version
+
+Versions follow semantic versioning.
+
+- **Patch** (`x.y.Z`): only bug fixes. No new commands or settings, no migrations, and nothing an operator has to do.
+- **Minor** (`x.Y.0`): any new feature, command or setting; any migration; any setting removed or renamed; any change to staff permissions; or anything listed under Upgrade Notes.
+- **Major** (`X.0.0`): an upgrade that cannot be done in place (for example, it needs a manual data migration or a fresh world). Confirm with the maintainer before choosing it.
+
+State the recommended version and the reason in one or two sentences.
+
+## 3. Write the notes
+
+Use this template. Leave out any section with nothing in it. A patch release often has only Highlights and Fixed.
+
+```markdown
+## Highlights
+One to three sentences on what this release is about, for readers who stop here.
+
+## ⚠️ Upgrade Notes
+- **Short label.** What changed and exactly what the operator must do.
+
+## New
+- **Area:** Something operators, staff or players can now do.
+
+## Changed
+- **Area:** Existing behaviour that now works differently.
+
+## Fixed
+- **Area:** A bug that no longer happens.
+
+## Removed
+- **Area:** Something taken out, and what replaces it.
+
+**Full Changelog:** https://github.com/jberlyn/second-star-online/compare/<previous>...<new>
+```
+
+Writing rules:
+
+- Describe the effect, not the code. "Bows fire only with arrows and a crystal" rather than "derive the shot from attackPower".
+- Start each bullet with a bold area label: Combat, Moderation, Casino, Chat & Messaging, Admin & World Tools, Interface, Hosting, and so on.
+- Put every migration, removed or renamed setting, permission change and configuration change under Upgrade Notes, even if it also appears in another section. Tell the operator to back up before any release with a migration.
+- Name commands, settings and tables in backticks exactly as they appear in the code.
+- Group many small fixes in one area into a single bullet. Summarise rather than copying the bug ledger.
+- Use links that work from the release page: full GitHub URLs, not relative paths.
+
+## 4. Publish
+
+1. Show the maintainer the draft notes and the recommended version, then wait for approval.
+2. Pushing a `v*` tag publishes the container image (`.github/workflows/publish-image.yml`), so only tag once approved:
+   ```sh
+   git tag <version> && git push origin <version>
+   gh release create <version> --title <version> --notes-file <notes.md>
+   ```
+3. To rewrite an existing release, save its current notes first (`gh release view <tag> --json body -q .body`), then run `gh release edit <tag> --notes-file <notes.md>`.

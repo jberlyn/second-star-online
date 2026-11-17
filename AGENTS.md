@@ -7,3 +7,5 @@ Use Bun: `bun run dev`, `bun run build`, `bun run test`, and `bun run gate`. Kee
 Edit game data in `packages/data/content/`, validate it against the schemas, and regenerate committed modules with `bun run data:build`. Build atlases with `bun run assets:build`; do not edit generated atlases. Preserve retained art geometry and annotate interactive DOM controls with semantic actions.
 
 Add meaningful regression tests for behavior changes. Explain kept gameplay bugs in the [bug ledger](docs/bug-ledger.md) and deliberate differences in [divergences](docs/divergences.md), alongside their code and pinning tests. Check relevant interactions in a browser when changing the interface.
+
+Project skills live in `.agents/skills/` (linked from `.claude/skills/`). When preparing a release or writing release notes, follow [release-notes](.agents/skills/release-notes/SKILL.md).
