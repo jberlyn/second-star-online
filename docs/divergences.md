@@ -1670,10 +1670,10 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Bug fixed
 - **What you notice:** While you craft you stay in place: walking and turning are refused until it finishes. Another player can still push you a tile as usual, and being pushed off the spot ends the craft with "You stop what you were making." Nothing has been taken, so nothing is lost.
 - **1.6:** Starting a craft locked the keys, and the shove skipped players whose keys were locked, so a crafter could not be pushed.
-- **SSO:** The shove ignores a lock held only by a craft (a window holding the keys still stops it). A shove that moves the crafter ends every running craft and frees the keys, as a map change does.
+- **SSO:** The shove ignores a lock held only by a craft (a window holding the keys still stops it). A shove that moves the crafter ends every running craft and frees the keys, as a map change does. A running craft holds the player in its own right: walking, turning, swinging and starting a second craft are refused while it runs, even if a window close with no window open (a shop Cancel, a board close, a guild Leave) clears the key lock.
 - **Why:** Crafting should not make a player immovable, and a craft should need you to stay at the station.
 - **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`); `packages/server/src/systems/crafting/craft.ts` (`isCrafting`, `stopCraftsOnMove`)
-- **Pinned by:** `bug fixed: a crafter can be shoved, which ends the craft and frees the keys`; `a crafter cannot walk or turn away: the craft's key lock holds them in place`; `a window's key lock still stops a shove` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `bug fixed: a crafter can be shoved, which ends the craft and frees the keys`; `a crafter cannot walk or turn away: the craft's key lock holds them in place`; `a stray Cancel or board close mid-craft frees nothing: no walking, swinging or second craft`; `one craft at a time: a second is refused even with the keys cleared`; `a window's key lock still stops a shove` (packages/server/tests/craft.test.ts)
 
 ### Regrowth runs at one rate on every map
 - **Kind:** Bug fixed

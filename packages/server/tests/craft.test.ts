@@ -13,9 +13,12 @@ import { openDatabase } from "../src/persistence/database.ts";
 import { loadInventory } from "../src/persistence/inventory.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { applySave, editorMap } from "../src/systems/admin/worldedit.ts";
+import { setAttackHeld } from "../src/systems/combat/melee.ts";
 import { craftIntent } from "../src/systems/crafting/craft.ts";
 import { storageIntent, withdrawContainer } from "../src/systems/economy/containers.ts";
+import { shopCancelIntent } from "../src/systems/economy/intents.ts";
 import { actionIntent, dropIntent, type ItemCtx } from "../src/systems/inventory/items.ts";
+import { boardCloseIntent } from "../src/systems/mail/boards.ts";
 import { setHeld } from "../src/systems/movement/movement.ts";
 import { pushOnMe } from "../src/systems/movement/push.ts";
 import {
@@ -176,7 +179,7 @@ describe("crafts in the frame script", () => {
     expect(lines(enterRoom(k.world, k.a), "a")).toEqual([]);
   });
 
-  test("two crafts ending on one frame resolve Smith before Cook", () => {
+  test("one craft at a time: a second is refused even with the keys cleared", () => {
     const k = bench("Anvil");
     k.map.ground.push({ id: "s2", item: "Stove", x: 5, y: 5, kind: "admin", expiresAt: null });
     setSkill(k.a, "Cooking", 1);
@@ -186,12 +189,33 @@ describe("crafts in the frame script", () => {
     k.a.char.bag[2] = { item: "Trout", qty: 1 };
     k.craft(1);
     k.run(300);
-    k.a.keyLock = false; // as a finished craft would
-    k.craft(3);
-    expect(lines(k.run(200), "a")).toEqual([
-      "Your Long Sword is ready!",
-      "Your Trout Fillet is ready!",
-    ]);
+    k.a.keyLock = false; // as a stray window close would
+    expect(k.craft(3)).toEqual([]);
+    expect(lines(k.run(200), "a")).toEqual(["Your Long Sword is ready!"]);
+    expect(k.a.char.bag[2]).toEqual({ item: "Trout", qty: 1 });
+  });
+
+  test("a stray Cancel or board close mid-craft frees nothing: no walking, swinging or second craft", () => {
+    const k = bench("Stove");
+    setSkill(k.a, "Cooking", 1);
+    setSkill(k.a, "Carpentry", 1);
+    k.a.char.bag[0] = { item: "Trout", qty: 1 };
+    k.a.char.bag[1] = { item: "Logs", qty: 1 };
+    k.a.char.equip.offHand = "Saw";
+    k.craft(1);
+    shopCancelIntent(k.a); // a shop CANCEL with no shop open clears the key lock
+    boardCloseIntent(k.a); // and so does a board close with no board open
+    expect(k.a.keyLock).toBe(false);
+    expect(lines(k.craft(2), "a")).toEqual([]);
+    setHeld(k.a, "D", false);
+    setAttackHeld(k.a, true);
+    const out = k.run(20);
+    setHeld(k.a, null, false);
+    setAttackHeld(k.a, false);
+    expect([k.a.x, k.a.y, k.a.facing]).toEqual([5, 6, "N"]);
+    expect(events(out, "a").filter((e) => e.e === "swing")).toEqual([]);
+    expect(lines(k.run(200), "a")).toEqual(["Your Trout Fillet is ready!"]);
+    expect(k.a.char.bag[1]).toEqual({ item: "Logs", qty: 1 });
   });
 
   test("bug fixed: a crafter can be shoved, which ends the craft and frees the keys", () => {

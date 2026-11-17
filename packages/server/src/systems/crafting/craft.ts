@@ -125,7 +125,8 @@ function facing(room: Room, p: Player, station: string): boolean {
  * menu did, and checks it in the original order.
  */
 export function craftIntent(room: Room, p: Player, slot: number, _ctx: CraftCtx): Outgoing[] {
-  if (p.deadLock > 0 || p.loading > 0) {
+  // One craft at a time: a running craft refuses another even if its key lock was cleared.
+  if (p.deadLock > 0 || p.loading > 0 || isCrafting(p)) {
     return [];
   }
   const r = startCraft(

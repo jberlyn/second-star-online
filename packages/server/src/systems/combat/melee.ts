@@ -45,6 +45,7 @@ import {
   xpGained,
 } from "@secondstaronline/shared";
 
+import { isCrafting } from "../crafting/craft.ts";
 import { type GatherCtx, type GatherEvents, preSwing, toolSwing } from "../crafting/gather.ts";
 import { addGround, ItemOut } from "../inventory/items.ts";
 import { DODGE_COLOR, fighterOf, HIT_COLOR } from "../monsters/attack.ts";
@@ -124,8 +125,8 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
   if (press !== null) {
     p.attackPress = press + 1 > ATTACK_LATCH_TICKS ? null : press + 1;
   }
-  // The attack key is polled only while 1.6's client-side input lock is off.
-  if (p.deadLock > 0 || p.loading > 0 || p.keyLock) {
+  // The attack key is polled only while 1.6's client-side input lock is off and no craft runs.
+  if (p.deadLock > 0 || p.loading > 0 || p.keyLock || isCrafting(p)) {
     return ev;
   }
   const held = p.attackHeld || press !== null;

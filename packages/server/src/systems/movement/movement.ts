@@ -30,6 +30,7 @@ import {
 } from "@secondstaronline/shared";
 
 import type { Rng } from "../../rng.ts";
+import { isCrafting } from "../crafting/craft.ts";
 import { groundBlocks } from "../inventory/items.ts";
 import { bodyOf } from "../monsters/slots.ts";
 import { type Outgoing, PENDING_MAX_TICKS, type Player, type Room } from "../world/world.ts";
@@ -86,7 +87,8 @@ export function scheduleStep(p: Player, msg: StepMsg): void {
   p.held = null;
   p.pending = null;
   // Only this request is refused; the ones already queued are still checked in turn.
-  if (p.loading > 0 || p.keyLock || p.walkQueue.length >= 4) {
+  // A running craft holds the player even if a stray window close cleared the key lock.
+  if (p.loading > 0 || p.keyLock || isCrafting(p) || p.walkQueue.length >= 4) {
     refuseScheduled(p, msg.seq);
     return;
   }
@@ -204,8 +206,9 @@ export function tickLoading(p: Player): void {
  * `ctx.emit`; an edge crossing goes to `ctx.crossings`.
  */
 export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
-  // 1.6's client-side input lock: map loading, or a window holding the keys.
-  if (p.loading > 0 || p.keyLock) {
+  // 1.6's client-side input lock: map loading, or a window holding the keys; a running craft holds
+  // the player too, whatever the key lock says.
+  if (p.loading > 0 || p.keyLock || isCrafting(p)) {
     p.pending = null;
     // Every queued request was predicted without the lock: refuse them all at once.
     const last = p.walkQueue?.at(-1);
