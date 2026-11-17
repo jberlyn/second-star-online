@@ -46,7 +46,7 @@ import {
 export const ASSETS_DIR = join(import.meta.dir, "..", "assets");
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
 /** Bump when the build's output format or rules change, so the cache is invalidated. */
-const BUILD_VERSION = 14;
+const BUILD_VERSION = 15;
 
 const MAIN_ROOT = "assets/original/main";
 const rootOf = (b: ManifestBitmap) => b.root ?? MAIN_ROOT;
@@ -203,6 +203,7 @@ function inputHash(
     "assets-lib/added.ts",
     "assets-lib/key.ts",
     "assets-lib/pack.ts",
+    "assets-lib/panel-tab-masks.ts",
     "assets-lib/panel-tabs.ts",
     "assets-lib/png.ts",
     "assets-lib/select.ts",

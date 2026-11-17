@@ -943,10 +943,10 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Platform
 - **What you notice:** The Stats, Inventory, Skills and Spellbook icons sit on one horizontal row with equal gaps, and the larger icon for the open tab centres on the same point as its small icon.
 - **1.6:** The four bitmaps include their wooden background and were drawn at their own stage rects: small-icon centres near (634.5, 36), (678.5, 34), (720, 33) and (763, 30.5), so the row sagged upward to the right. The larger open-tab icons at #206-#209 were separate opaque crops with their own centres, and the small glyphs were also baked into the panel bitmap Internal #186.
-- **SSO:** The build mats the wood off each tab bitmap, keeping the glyph's matte box, and erases the four baked copies from #186. The small and large versions of each tab are centred at y 34 on x 634, 677, 720 and 763 (a 43-pixel pitch), and every click target is a 40×40 box on that centre.
+- **SSO:** The build cuts each tab bitmap out of its wood with a hand-drawn mask traced along the glyph's outline, and erases the four baked copies from #186. The small and large versions of each tab are centred at y 34 on x 634, 677, 720 and 763 (a 43-pixel pitch), and every click target is a 40×40 box on that centre.
 - **Why:** The user requested the tab icons aligned like the stats icons. Because the source bitmaps were opaque crops, moving them without keying the wood would have dragged rectangular patches along and left the old baked glyphs showing.
-- **In the code:** `packages/data/src/panel-tabs.ts` (the row and each icon's matte box); `packages/data/build/assets-lib/panel-tabs.ts` (the matte and the #186 fill); `packages/client/src/ui/panel.ts` (`createPanel`); `packages/client/src/ui/shells.ts` (`frameArt`)
-- **Pinned by:** `the four tab icons share a row and an even pitch` (packages/client/tests/panel.test.ts); `building twice gives identical bytes` (packages/data/tests/assets.test.ts)
+- **In the code:** `packages/data/src/panel-tabs.ts` (the row and each icon's crop box); `packages/data/build/assets-lib/panel-tab-masks.ts` (the masks); `packages/data/build/assets-lib/panel-tabs.ts` (applying them and the #186 fill); `packages/client/src/ui/panel.ts` (`createPanel`); `packages/client/src/ui/shells.ts` (`frameArt`)
+- **Pinned by:** `the four tab icons share a row and an even pitch` (packages/client/tests/panel.test.ts); `building twice gives identical bytes` and `every tab icon has a mask that covers its crop box` (packages/data/tests/assets.test.ts)
 
 ### World Editor sign panel text and OK align inside its frame
 - **Kind:** Platform

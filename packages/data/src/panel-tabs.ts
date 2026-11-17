@@ -1,8 +1,8 @@
 /**
- * The right panel's four tab icons: their matte boxes and the row they sit on.
+ * The right panel's four tab icons: their crop boxes and the row they sit on.
  *
  * The original bitmaps are opaque crops of the panel wood with the glyph baked in. The asset
- * build keys the wood out from each bitmap (see `build/assets-lib/panel-tabs.ts`), using the
+ * build cuts each bitmap out of its wood with a hand-drawn mask (`build/assets-lib/`), using the
  * `crop` boxes here as the visible bounds, and erases the copies baked into Internal #186. The
  * client then draws each visible crop centred on `TAB_ROW_Y` and on its original x.
  *

@@ -233,7 +233,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   el.append(bg);
 
   // ---- tabs (Internal #130-133; highlights #206-#209 at their tab) ----------------------
-  // The build mattes each bitmap's wood off and erases the four copies baked into #186, so
+  // The build cuts each bitmap out of its wood with a mask and erases the four copies baked into #186, so
   // each crop can sit on the common row without dragging a rectangle of wood with it. The
   // selected version is the same tab's larger bitmap, centred on the same point.
   const tabCrop = (

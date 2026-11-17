@@ -14,6 +14,8 @@ import { join } from "node:path";
 import { buildAssets, renderUsage, USAGE_PATH } from "../build/assets.ts";
 import { applyKey, ruleForUsage } from "../build/assets-lib/key.ts";
 import { pack } from "../build/assets-lib/pack.ts";
+import { TAB_MASKS } from "../build/assets-lib/panel-tab-masks.ts";
+import { applyTabMask } from "../build/assets-lib/panel-tabs.ts";
 import { createRgba, decodePng, encodePng } from "../build/assets-lib/png.ts";
 import type { AssetIndex } from "../src/assets.ts";
 import { TAB_ART } from "../src/panel-tabs.ts";
@@ -38,6 +40,41 @@ describe("PNG codec (Bun only)", () => {
     );
     expect([g1.width, g1.height]).toEqual([32, 32]);
     expect([...g1.data.subarray(0, 4)]).toEqual([17, 102, 61, 255]);
+  });
+});
+
+describe("panel tab masks", () => {
+  test("every tab icon has a mask that covers its crop box", () => {
+    for (const tab of TAB_ART) {
+      for (const [member, crop] of [
+        [tab.member, tab.crop],
+        [tab.selected, tab.selectedCrop],
+      ] as const) {
+        const mask = TAB_MASKS[member] as readonly string[];
+        expect(mask).toHaveLength(crop[3]);
+        for (const row of mask) {
+          expect(row).toMatch(new RegExp(`^[#.]{${crop[2]}}$`));
+        }
+        // The glyph is centred in its crop, so the centre is always kept.
+        expect(mask[Math.floor(crop[3] / 2)]?.[Math.floor(crop[2] / 2)]).toBe("#");
+      }
+    }
+    expect(Object.keys(TAB_MASKS).map(Number).sort()).toEqual(
+      TAB_ART.flatMap((t) => [t.member, t.selected]).sort(),
+    );
+  });
+
+  test("keeps only the masked pixels inside the crop", () => {
+    const src = createRgba(4, 3);
+    src.data.fill(200);
+    const out = applyTabMask(src, ["#.", ".#"], [1, 1, 2, 2]);
+    const alphas = [];
+    for (let i = 3; i < out.data.length; i += 4) {
+      alphas.push(out.data[i]);
+    }
+    expect(alphas).toEqual([0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0]);
+    expect([...out.data.subarray(20, 24)]).toEqual([200, 200, 200, 255]);
+    expect(() => applyTabMask(src, ["#."], [1, 1, 2, 2])).toThrow();
   });
 });
 
@@ -114,7 +151,7 @@ describe("asset build", () => {
     expect(index.atlases.paperdoll.sprites["head11-f1-w"]).toBeDefined();
     expect(index.atlases.bodies.sprites["sp112-f2-s"]).toBeUndefined(); // scratch members skipped
     expect(index.ui["internal:186"]).toMatchObject({ w: 234, h: 600 });
-    // The tab bitmaps are matted to their glyphs and the baked copies are gone from #186.
+    // The tab bitmaps are cut out by their masks and the baked copies are gone from #186.
     const alpha = (img: { width: number; data: Uint8Array }, x: number, y: number) =>
       img.data[(y * img.width + x) * 4 + 3];
     for (const tab of TAB_ART) {
@@ -126,11 +163,14 @@ describe("asset build", () => {
           new Uint8Array(readFileSync(join(a, "ui", `internal-${member}.png`))),
         );
         expect([img.width, img.height]).toEqual([...source]);
-        expect(alpha(img, 0, 0)).toBe(0); // outside the matte
-        expect(
-          alpha(img, crop[0] + Math.floor(crop[2] / 2), crop[1] + Math.floor(crop[3] / 2)),
-        ).toBe(255);
-        expect(alpha(img, crop[0] + crop[2], crop[1])).toBe(0); // just past the crop
+        // Opaque exactly where the hand-drawn mask says, transparent everywhere else.
+        const mask = TAB_MASKS[member] as readonly string[];
+        for (let y = 0; y < img.height; y++) {
+          for (let x = 0; x < img.width; x++) {
+            const inMask = mask[y - crop[1]]?.[x - crop[0]] === "#";
+            expect(alpha(img, x, y)).toBe(inMask ? 255 : 0);
+          }
+        }
       }
     }
     const panel = decodePng(new Uint8Array(readFileSync(join(a, "ui", "internal-186.png"))));
