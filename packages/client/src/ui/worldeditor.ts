@@ -437,12 +437,14 @@ export function createWorldEditor(
     monSel = l;
     clickType = "monster";
   });
-  add(monList.box, { x: 120, y: 513, w: 95, h: 60 }, 69);
+  // The Monsters and Items channels (69, 72) stop 15-16px short of their frames' inner right
+  // edges (x 230 and 352 in member 1); widening them puts each scrollbar against the frame.
+  add(monList.box, { x: 120, y: 513, w: 111, h: 60 }, 69);
   const itemList = list("Items", editorAction("Items"), EDITOR_ITEMS, (l) => {
     itemSel = l;
     clickType = "item";
   });
-  add(itemList.box, { x: 243, y: 513, w: 94, h: 60 }, 72);
+  add(itemList.box, { x: 243, y: 513, w: 110, h: 60 }, 72);
   let fog = { tex: "NoTex", blend: 0, r: 255, g: 255, b: 255 };
   const fogList = list("Fog texture", editorAction("Fog texture"), FOG_TEXTURES, (l) => {
     // The fog texture is set by name; NoTex clears the preview but keeps the blend.

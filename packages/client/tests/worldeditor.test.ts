@@ -48,6 +48,16 @@ function editor() {
 const at = (rows: string[], x: number, y: number) => rows[y - 1]?.split(" ")[x - 1];
 
 describe("the World Editor screen (frames 262-288)", () => {
+  test("the NPC, Monsters and Items lists reach their frames' inner right edges", () => {
+    const e = editor();
+    // Member 1 draws each frame's right border at x 108, 231 and 353.
+    const right = (label: string) => {
+      const it = e.ed.screen.items.find((i) => i.el === e.byLabel(label));
+      return it ? it.x + it.w : NaN;
+    };
+    expect([right("NPCs"), right("Monsters"), right("Items")]).toEqual([108, 231, 353]);
+  });
+
   test("entering: Pencil, layer 1, tile G1; LOAD reads X and Y", () => {
     const e = editor();
     e.ed.show(blankMap(1000, 992), false);
