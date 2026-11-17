@@ -17,7 +17,7 @@
  */
 import { attemptMove, type Dir, pushLines } from "@secondstaronline/shared";
 
-import { isCrafting } from "../crafting/craft.ts";
+import { isCrafting, stopCraftsOnMove } from "../crafting/craft.ts";
 import type { Player, Room } from "../world/world.ts";
 import { carryOut, type MoveCtx, standingPlayersAt, walkWorld } from "./movement.ts";
 
@@ -51,8 +51,20 @@ export function pushOnMe(room: Room, victim: Player, dir: Dir, pusher: Player, c
   for (const line of pushLines(pusher.name, pusher.char.stats.str < victim.char.stats.str)) {
     ctx.tell(victim, line);
   }
+  const from = { x: victim.x, y: victim.y, step: victim.stepFrames };
   const o = attemptMove(victim, dir, victim.heldTurn, walkWorld(room, victim));
   carryOut(room, victim, dir, o, ctx);
+  // A crafter shoved off the spot stops crafting, as walking away would.
+  const moved = victim.x !== from.x || victim.y !== from.y || victim.stepFrames !== from.step;
+  if (moved) {
+    for (const out of stopCraftsOnMove(victim)) {
+      if (out.msg.t === "chat") {
+        ctx.tell(victim, out.msg.text);
+      } else {
+        ctx.send?.(out);
+      }
+    }
+  }
 }
 
 /** The input lock: map loading, or a window holding the keys. A craft's lock does not stop a shove. */

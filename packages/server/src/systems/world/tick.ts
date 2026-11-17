@@ -352,6 +352,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       emit: (actor, ev) => events.push({ except: actor.id, ev }),
       tell: (to, text) => tell(to, text),
       crossings,
+      send: (o) => out.push(o),
     };
     // The world ticks: one regrowth frame per map, however many players are on it.
     out.push(

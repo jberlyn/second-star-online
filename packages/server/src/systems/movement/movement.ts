@@ -32,7 +32,7 @@ import {
 import type { Rng } from "../../rng.ts";
 import { groundBlocks } from "../inventory/items.ts";
 import { bodyOf } from "../monsters/slots.ts";
-import { PENDING_MAX_TICKS, type Player, type Room } from "../world/world.ts";
+import { type Outgoing, PENDING_MAX_TICKS, type Player, type Room } from "../world/world.ts";
 import { rollPushes } from "./push.ts";
 
 /** A walk off the edge of the screen. */
@@ -50,6 +50,8 @@ export interface MoveCtx {
   tell(to: Player, text: string): void;
   /** Map changes to carry out after the room loop. */
   crossings: EdgeCrossing[];
+  /** Any other message for a player (a shoved crafter's key unlock). */
+  send?(o: Outgoing): void;
 }
 
 /** Records a `move` intent: the held arrow and the Turn modifier. */

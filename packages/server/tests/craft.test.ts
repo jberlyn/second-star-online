@@ -16,6 +16,7 @@ import { applySave, editorMap } from "../src/systems/admin/worldedit.ts";
 import { craftIntent } from "../src/systems/crafting/craft.ts";
 import { storageIntent, withdrawContainer } from "../src/systems/economy/containers.ts";
 import { actionIntent, dropIntent, type ItemCtx } from "../src/systems/inventory/items.ts";
+import { setHeld } from "../src/systems/movement/movement.ts";
 import { pushOnMe } from "../src/systems/movement/push.ts";
 import {
   enterRoom,
@@ -193,21 +194,41 @@ describe("crafts in the frame script", () => {
     ]);
   });
 
-  test("bug fixed: a crafter can be shoved, and the craft carries on", () => {
+  test("bug fixed: a crafter can be shoved, which ends the craft and frees the keys", () => {
     const k = bench(null);
     setSkill(k.a, "Carpentry", 1);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
     k.a.char.equip.offHand = "Saw";
     k.craft(1);
     expect(k.a.keyLock).toBe(true);
+    const told: string[] = [];
+    const sent: Out = [];
     pushOnMe(k.room, k.a, "U", k.b, {
       rng: rngByN({ 25: [1] }),
       emit: () => {},
-      tell: () => {},
+      tell: (_to, text) => told.push(text),
       crossings: [],
+      send: (o) => sent.push(o),
     });
     expect(k.a.stepFrames).toBeGreaterThan(0);
-    expect(k.a.craft.timers.Build).toBeDefined();
+    expect(k.a.craft.timers).toEqual({});
+    expect(k.a.keyLock).toBe(false);
+    expect(told.at(-1)).toBe(CRAFT_TEXT.interrupted);
+    expect(locks(sent, "a")).toEqual([false]);
+    expect(k.a.char.bag[0]).toEqual({ item: "Logs", qty: 1 }); // nothing was taken
+    expect(lines(k.run(200), "a")).toEqual([]);
+  });
+
+  test("a crafter cannot walk or turn away: the craft's key lock holds them in place", () => {
+    const k = bench("Stove");
+    setSkill(k.a, "Cooking", 1);
+    k.a.char.bag[0] = { item: "Trout", qty: 1 };
+    k.craft(1);
+    setHeld(k.a, "D", false);
+    k.run(20);
+    setHeld(k.a, null, false);
+    expect([k.a.x, k.a.y, k.a.facing]).toEqual([5, 6, "N"]);
+    expect(lines(k.run(200), "a")).toEqual(["Your Trout Fillet is ready!"]);
   });
 
   test("a window's key lock still stops a shove", () => {

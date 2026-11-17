@@ -57,6 +57,19 @@ export function cancelCrafts(p: Player): Outgoing[] {
   return [tell(p, CRAFT_TEXT.interrupted)];
 }
 
+/**
+ * Being moved off the station (a shove) ends every running craft, as a map change does: the keys
+ * are freed and the crafter is told. Nothing has been taken, so nothing is lost.
+ */
+export function stopCraftsOnMove(p: Player): Outgoing[] {
+  if (!isCrafting(p)) {
+    return [];
+  }
+  p.craft.timers = {};
+  p.keyLock = false;
+  return [lock(p, false), tell(p, CRAFT_TEXT.interrupted)];
+}
+
 export interface CraftCtx {
   world: World;
   rng: Rng;
