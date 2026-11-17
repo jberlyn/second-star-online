@@ -74,6 +74,61 @@ export function cleanPanel(panel: Rgba): Rgba {
 }
 
 /**
+ * The wood below the page area of #186 was pasted together from strips, and two of the joins
+ * are a pixel out: below the page hole (rows 279-439), columns 71 onwards sit 1 px lower than
+ * column 70, and on rows 392-439 columns 60 onwards also sit 1 px higher than column 59. Each
+ * grain line steps at x 70|71 (stage x 636|637) and, lower down, at 59|60.
+ */
+export const PANEL_SEAM = {
+  /** The strip between the two joins. */
+  x0: 60,
+  x1: 70,
+  /** Rows where the 70|71 join is a pixel out. */
+  y0: 279,
+  y1: 439,
+  /** The first row where the 59|60 join is a pixel out too. */
+  both: 392,
+} as const;
+
+/** Linear blend of column `x` sampled at fractional row `y` (clamped to the image). */
+function sampleColumn(img: Rgba, x: number, y: number, c: number): number {
+  const ya = Math.max(0, Math.min(img.height - 1, Math.floor(y)));
+  const yb = Math.min(img.height - 1, ya + 1);
+  const t = y - Math.floor(y);
+  return (
+    (img.data[at(img, x, ya) + c] as number) * (1 - t) +
+    (img.data[at(img, x, yb) + c] as number) * t
+  );
+}
+
+/**
+ * Mends the strip seam in #186 (see `PANEL_SEAM`) by shifting the strip's columns down. Where
+ * only the 70|71 join is out, the 1 px is spread across the strip, a twelfth more per column,
+ * so no single column steps; where both joins are out, the whole strip moves down 1 px, which
+ * closes both. The shift eases in and out over a few rows so no grain line breaks vertically.
+ */
+export function mendPanelSeam(panel: Rgba): Rgba {
+  const out = copy(panel);
+  const { x0, x1, y0, y1, both } = PANEL_SEAM;
+  const ease = 8;
+  for (let y = y0; y <= y1 + ease; y++) {
+    // 0 → 1 as the rows enter the both-joins span, and 1 → 0 after the seam ends.
+    const full = Math.max(0, Math.min(1, (y - (both - ease)) / ease));
+    const fade = y <= y1 ? 1 : 1 - (y - y1) / (ease + 1);
+    for (let x = x0; x <= x1; x++) {
+      const ramp = (x - x0 + 1) / (x1 - x0 + 2);
+      const d = (ramp + (1 - ramp) * full) * fade;
+      const px = at(out, x, y);
+      for (let c = 0; c < 3; c++) {
+        // Row y0 is the hole's edge: nothing above it is wood.
+        out.data[px + c] = Math.round(sampleColumn(panel, x, Math.max(y0, y - d), c));
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Keeps the pixels its hand-drawn mask marks inside `crop`; everything else becomes
  * transparent. The mask must cover the crop exactly.
  */
@@ -124,7 +179,7 @@ export function derivePanelTabs(ui: ReadonlyMap<string, Rgba>): Map<number, Rgba
   if (!panel) {
     return out;
   }
-  const wood = cleanPanel(panel);
+  const wood = mendPanelSeam(cleanPanel(panel));
   out.set(PANEL_MEMBER, wood);
   for (const tab of TAB_ART) {
     const small = ui.get(id(tab.member));

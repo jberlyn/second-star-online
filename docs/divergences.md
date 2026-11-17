@@ -25,7 +25,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
-| [core](#core) | 54 |
+| [core](#core) | 55 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
 | [housing](#housing) | 7 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **241** |
+| **Total** | **242** |
 
 ## admin
 
@@ -947,6 +947,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** The user requested the tab icons aligned like the stats icons. Because the source bitmaps were opaque crops, moving them without keying the wood would have dragged rectangular patches along and left the old baked glyphs showing.
 - **In the code:** `packages/data/src/panel-tabs.ts` (the row and each icon's crop box); `packages/data/build/assets-lib/panel-tab-masks.ts` (the masks); `packages/data/build/assets-lib/panel-tabs.ts` (applying them and the #186 fill); `packages/client/src/ui/panel.ts` (`createPanel`); `packages/client/src/ui/shells.ts` (`frameArt`)
 - **Pinned by:** `the four tab icons share a row and an even pitch` (packages/client/tests/panel.test.ts); `building twice gives identical bytes` and `every tab icon has a mask that covers its crop box` (packages/data/tests/assets.test.ts)
+
+### The panel wood below the page has no strip seam
+- **Kind:** Platform
+- **What you notice:** The grain in the wood under the Stats, Inventory and Skills pages runs straight across, with no step in its lines.
+- **1.6:** Internal #186's wood was pasted together from strips, and two joins were a pixel out: below the page area (rows 279-439 of the bitmap, stage y 279-439), every grain line stepped down 1 px at stage x 636|637, and on rows 392-439 also stepped up at x 625|626.
+- **SSO:** The build shifts the 11 columns between the joins (stage x 626-636) down. Where only the right join was out, the 1 px is spread across them, a twelfth per column; where both were out, the strip moves a whole pixel. The shift eases out over the rows below.
+- **Why:** The user reported the steps as misaligned wood under the right panel.
+- **In the code:** `packages/data/build/assets-lib/panel-tabs.ts` (`mendPanelSeam`, `PANEL_SEAM`)
+- **Pinned by:** `the mended wood lines up across the strip` (packages/data/tests/assets.test.ts)
 
 ### World Editor sign panel text and OK align inside its frame
 - **Kind:** Platform

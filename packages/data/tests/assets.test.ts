@@ -15,7 +15,7 @@ import { buildAssets, renderUsage, USAGE_PATH } from "../build/assets.ts";
 import { applyKey, ruleForUsage } from "../build/assets-lib/key.ts";
 import { pack } from "../build/assets-lib/pack.ts";
 import { TAB_MASKS } from "../build/assets-lib/panel-tab-masks.ts";
-import { applyTabMask } from "../build/assets-lib/panel-tabs.ts";
+import { applyTabMask, mendPanelSeam, PANEL_SEAM } from "../build/assets-lib/panel-tabs.ts";
 import { createRgba, decodePng, encodePng } from "../build/assets-lib/png.ts";
 import type { AssetIndex } from "../src/assets.ts";
 import { TAB_ART } from "../src/panel-tabs.ts";
@@ -75,6 +75,56 @@ describe("panel tab masks", () => {
     expect(alphas).toEqual([0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0]);
     expect([...out.data.subarray(20, 24)]).toEqual([200, 200, 200, 255]);
     expect(() => applyTabMask(src, ["#."], [1, 1, 2, 2])).toThrow();
+  });
+});
+
+describe("panel seam (Internal #186)", () => {
+  const original = decodePng(
+    new Uint8Array(
+      readFileSync(
+        join(import.meta.dir, "../../../assets/original/main/bitmaps/362527_Gui_test.png"),
+      ),
+    ),
+  );
+  const lum = (img: ReturnType<typeof createRgba>, x: number, y: number) => {
+    const p = (y * img.width + x) * 4;
+    return (img.data[p] as number) + (img.data[p + 1] as number) + (img.data[p + 2] as number);
+  };
+  /** The vertical offset (-2..2) that best lines column `x + 1` up with column `x`. */
+  const bestShift = (img: ReturnType<typeof createRgba>, x: number, y0: number, y1: number) => {
+    let best = 0;
+    let cost = Number.POSITIVE_INFINITY;
+    for (const d of [0, -1, 1, -2, 2]) {
+      let s = 0;
+      for (let y = y0; y <= y1; y++) {
+        s += Math.abs(lum(img, x, y) - lum(img, x + 1, y + d));
+      }
+      if (s < cost) {
+        cost = s;
+        best = d;
+      }
+    }
+    return best;
+  };
+  const { x0, x1, y0, y1, both } = PANEL_SEAM;
+
+  test("the original's grain steps a pixel at both strip joins", () => {
+    expect(bestShift(original, x1, y0, y1)).toBe(1);
+    expect(bestShift(original, x0 - 1, both, y1)).toBe(-1);
+  });
+
+  test("the mended wood lines up across the strip", () => {
+    const mended = mendPanelSeam(original);
+    for (let x = x0 - 1; x <= x1; x++) {
+      expect([x, bestShift(mended, x, y0, y1)]).toEqual([x, 0]);
+      expect([x, bestShift(mended, x, both, y1)]).toEqual([x, 0]);
+    }
+    // Only the strip changes.
+    for (let y = 0; y < original.height; y++) {
+      for (const x of [x0 - 1, x1 + 1]) {
+        expect(lum(mended, x, y)).toBe(lum(original, x, y));
+      }
+    }
   });
 });
 
