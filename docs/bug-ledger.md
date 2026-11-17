@@ -34,7 +34,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [admin](#admin) | 0 |
 | [casino](#casino) | 0 |
 | [chat](#chat) | 0 |
-| [client](#client) | 17 |
+| [client](#client) | 0 |
 | [combat](#combat) | 29 |
 | [crafting](#crafting) | 28 |
 | [economy](#economy) | 33 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **304** |
+| **Total** | **287** |
 
 ## admin
 
@@ -65,107 +65,7 @@ No kept bugs (all ten former entries were fixed; see [chat differences](divergen
 
 ## client
 
-### The World Editor's sign panel hides the exit panel's map X field
-- **What you notice:** in the World Editor, clicking the sign panel while exit panel 1 is open hides exit 1's map X field (and two neighbouring fields), and the map X field stays hidden until you leave the editor. Its text is kept and still saved.
-- **In 1.6 and SSO:** the sign panel's background has a script that swaps one of those fields' sprites to a blank picture and hides them. SSO does the same, in the editor screen.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`exitXGone`)
-- **Pinned by:** `kept bug: the sign panel's background breaks exit 1's map X field` (packages/client/tests/worldeditor.test.ts)
-
-### A monster's hit on you shows just a number
-- **What you notice:** when a monster hits you, a number floats up but there is no splat picture and no hit sound, unlike a player's hit.
-- **In 1.6 and SSO:** the message for a monster hit is one field short of the player-hit message, so the floating text reads the wrong fields and only the number shows. In SSO the hit event for a monster hit carries the number in colour 6, and the client draws no splat and plays no sound.
-- **In the code:** `packages/client/src/model.ts` (`applyDelta`)
-- **Pinned by:** `kept bug: a monster's hit on you shows the number in colour 6 with no splat and no sound` (packages/client/tests/combat.test.ts)
-
-### The sell OK button stays on top of the buy list
-- **What you notice:** open a shop's sell list and then its buy list, and the sell OK button stays shown over the buy list. Press it on a buy line and the server answers "Error in trying to sell!" unless the shopkeeper buys that item at that same price.
-- **In 1.6 and SSO:** the buy list shows one OK button and the sell list another drawn above it, and neither hides the other; only CANCEL hides both. SSO has the same buttons: the sell request names the selected line, and the server checks the shopkeeper's buy line for that item and price as 1.6 did.
-- **In the code:** `packages/client/src/ui/shop.ts` (`createShopWindow`); `packages/server/src/systems/economy/shop.ts` (`npcSell`)
-- **Pinned by:** `kept bug: after a sell list the sell OK stays shown over the buy list` (packages/client/tests/npcs.test.ts); `the refusals in order: errsel, too few, none` (packages/server/tests/economy.test.ts)
-
-### The × by an empty Ring box still clicks
-- **What you notice:** on the Inventory tab, clicking the × beside an empty equipment box does nothing and makes no sound, except beside the Ring box, which plays the click and still does nothing.
-- **In 1.6 and SSO:** the other five boxes check for an empty slot before their click; the Ring box clicks first and checks after. SSO does the same.
-- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
-- **Pinned by:** `kept bug: the empty Ring × clicks, sending nothing` (packages/client/tests/panel.test.ts)
-
-### Item menu buttons click before they check anything
-- **What you notice:** Use, Equip, Drop and the swapped Cook, Mix, Build, Smith and Open buttons always play the click, even when the action is then refused or locked out. Give is silent.
-- **In 1.6 and SSO:** each of those handlers plays the click as its first statement, before the key lock, the item pause and every refusal. SSO does the same: a refused or locked action still clicks, the Cook, Mix, Build, Smith and Open buttons that are not yet built click too, and Give is silent.
-- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
-- **Pinned by:** `kept bug: the item menu clicks before its locks and refusals; Give is silent` (packages/client/tests/panel.test.ts)
-
-### Buying and selling in a shop make no cash sound
-- **What you notice:** a purchase or a sale is heard only as the OK button's click; the cash sound never plays.
-- **In 1.6 and SSO:** the cash sound was only wired to messages the server never sent, or to a handler nothing called because the message is handled on the spot. SSO also plays no cash sound for a shop purchase or sale.
-- **In the code:** `packages/client/src/ui/shop.ts` (`createShopWindow`)
-- **Pinned by:** `kept bug: a buy and a sale play only the OK click, never cash` (packages/client/tests/npcs.test.ts)
-
-### Slot machine sounds can cut off other sounds
-- **What you notice:** the slot machine sound plays on a random one of four sound channels, so it can cut off a spell, a monster hit or the church bell that was playing there.
-- **In 1.6 and SSO:** the pull picks its channel at random. SSO does the same for the slot machine. Rain is not built, since no map could have rain in 1.6.
-- **In the code:** `packages/client/src/sfx.ts` (`spellSounds`)
-- **Pinned by:** `kept bug: the Slot Machine sound picks random(4) before the BSmith roll` (packages/client/tests/slots.test.ts)
-
-### Closing the mail list with a draft open breaks the Use button
-- **What you notice:** Close the mail list while the compose pane is open and the Use button in your bag does nothing at all, until you close the compose pane or enter the game again.
-- **In 1.6 and SSO:** 1.6's list CLOSE left the compose pane's flag on, and the Use button quietly exits while that flag is on. SSO does the same: the flag outlives the list and the app's Use handler exits while it is set.
-- **In the code:** `packages/client/src/ui/mail.ts` (`composeUp`), `packages/client/src/app.ts` (`createPanel`)
-- **Pinned by:** `an unsent draft survives WRITE, and list CLOSE with the compose up leaves Use dead; reopen shows it` (packages/client/tests/mail-boards.test.ts)
-
-### A draft or read pane reappears when you next open the mailbox
-- **What you notice:** Close the mail list with the compose or read pane open, and the next time you open a mailbox that pane is back, with your draft or the old message still in it.
-- **In 1.6 and SSO:** 1.6's panes exist only on the mail screen, so closing the list took them off the stage but kept their flag. SSO draws a pane only while its flag is on and the mail screen is up.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `an unsent draft survives WRITE, and list CLOSE with the compose up leaves Use dead; reopen shows it` (packages/client/tests/mail-boards.test.ts)
-
-### Deleting a message leaves it on screen, so a second Delete removes the next
-- **What you notice:** Press DELETE and the message is removed from the list, but the read pane still shows it and the selection stays on the same line number. Press DELETE again and the next message goes too.
-- **In 1.6 and SSO:** 1.6 removed the selected item and rebuilt the list without clearing the selection or the read pane. SSO does the same and sends the message's own id with each delete.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `DELETE twice removes the next message with the read pane unchanged` (packages/client/tests/mail-boards.test.ts)
-
-### An unsent mail draft is kept
-- **What you notice:** Press WRITE and the compose pane shows whatever you left in the three fields. Only a send clears them.
-- **In 1.6 and SSO:** 1.6 never cleared the fields except on a send. SSO does the same. A send the server refuses, such as the chat wait, also keeps the draft.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `an unsent draft survives WRITE, and list CLOSE with the compose up leaves Use dead; reopen shows it` and `kept bug: a refused send (no mailSent) keeps the draft with the compose open` (packages/client/tests/mail-boards.test.ts)
-
-### The read pane shows the sender on the TO: line
-- **What you notice:** When you read a message, the line labelled TO: holds the name of whoever sent it.
-- **In 1.6 and SSO:** 1.6 reused the compose pane's art for reading, with the sender in its TO field. SSO does the same.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `READ with nothing selected does nothing; with a line it fills the read pane` (packages/client/tests/mail-boards.test.ts)
-
-### The mail list has no scroll bar
-- **What you notice:** The From and Subject columns are fixed boxes. Only the lines that fit are shown, and you cannot scroll to the rest.
-- **In 1.6 and SSO:** 1.6 used fixed-size boxes with no scroll bar. SSO does the same: about 20 lines show. The box holds at most 50 messages, so the rest can be reached by deleting the ones above.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `kept bug: the list columns are fixed 271-px boxes with no scroll bar` (packages/client/tests/mail-boards.test.ts)
-
-### Opening the mail list covers the chat entry
-- **What you notice:** With the mail list up, you cannot click into the chat entry box, because a blocker sits over it.
-- **In 1.6 and SSO:** 1.6 showed a blocker over the chat entry along with the list. SSO does the same.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `the chat blocker follows the list; CLOSE unlocks, leaves frame 72 and tells the server` (packages/client/tests/mail-boards.test.ts); `the stage places the mail and board at their rects; the blocker covers the chat entry only while the list is up` (packages/client/tests/shells.test.ts)
-
-### A new photo overwrites a cancelled painting
-- **What you notice:** Cancel a painting, then take a photo, and the photo's crop replaces the picture you cancelled.
-- **In 1.6 and SSO:** 1.6 wrote the photo into the same image a cancelled canvas keeps. SSO does the same: the crop overwrites the client's one shared picture.
-- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`), `packages/shared/src/rules/mail/paint.ts` (`photoCrop`)
-- **Pinned by:** `a good shot hides the lens, redraws, crops 64×64 around the tap and saves a photo` (packages/client/tests/art-news.test.ts)
-
-### You can paint on a painting you are viewing
-- **What you notice:** Open someone's painting in the viewer, hold the mouse down on it and your current tool paints on the picture.
-- **In 1.6 and SSO:** 1.6 left the paint behaviour on the viewer's picture. SSO does the same, on your own client's copy only.
-- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
-- **Pinned by:** `kept bug: a pointer down on the viewed image paints on it at (mouse − top-left) / 4` (packages/client/tests/art-news.test.ts)
-
-### The colour picker picks up whatever is on screen under it
-- **What you notice:** Hold the picker over any part of the paint screen and it takes that pixel's colour, whatever is drawn there.
-- **In 1.6 and SSO:** 1.6 read the colour straight from the screen. SSO reads the paint screen's art with the preview drawn over it.
-- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
-- **Pinned by:** `the colour pick reads the paint screen's art, or the preview where it lies over it` (packages/client/tests/art-news.test.ts)
+No kept bugs (all seventeen former entries were fixed; see [core differences](divergences.md#core)).
 
 ## combat
 

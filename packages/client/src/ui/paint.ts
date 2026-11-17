@@ -4,9 +4,12 @@
  * The paint screen is the paint screen's art (member 12, 414×293) at stage (91, 72), drawn in place
  * (hit tests are in GUI coordinates). The painting is the shared
  * 64×64 image (member "Painting", Internal #505): the paint screen shows it 4× (sprite 398) and
- * 1:1 in the preview (397), the viewer shows it 1:1, and a photo crop overwrites it, so a
- * cancelled canvas, a viewed painting and a photo all land in the same image (kept bugs: 1.6 did
- * this). The tools are the pure rules in `@secondstaronline/shared` (`paintAt`).
+ * 1:1 in the preview (397), and the viewer shows it 1:1, so a cancelled canvas and a viewed
+ * painting land in the same image (kept bug: 1.6 did this). A photo is cropped into an image of
+ * its own (1.6 wrote it over a cancelled painting too). The viewed image cannot be painted on, and
+ * the colour picker reads only the palette strip and the painting (1.6 painted on the viewer and
+ * picked any pixel on screen). The tools are the pure rules in `@secondstaronline/shared`
+ * (`paintAt`).
  */
 import {
   ART_TEXT,
@@ -41,6 +44,8 @@ export const PAINT_RECTS = {
   gui: R(91, 72, 505, 365),
   swatch: R(103, 328, 126, 353),
   preview: R(136, 254, 200, 318),
+  /** The colour strip inside its border, black edges included: the picker reads only here. */
+  palette: R(132, 328, 230, 355),
   image: R(242, 81, 498, 337),
   /** The eight tool buttons (37×36), by tool. */
   tools: [
@@ -177,6 +182,8 @@ function toImageData(ctx: CanvasRenderingContext2D, img: PaintImage): ImageData 
 
 export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = {}): PaintUi {
   const image = blankPaint();
+  /** The last photo's crop, apart from the painting. */
+  const photo = blankPaint();
   let tool: PaintTool = 1;
   let colour: [number, number, number] = [0, 0, 0];
   const rnd = { random: hooks.random ?? ((n: number) => 1 + Math.floor(Math.random() * n)) };
@@ -248,11 +255,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
   viewer.setAttribute("aria-label", "Painting viewer");
   const viewerBg = put(artImg(a.ui("paintings", 23), "Painting"), V, V);
   viewerBg.classList.add("paint-viewer-bg");
-  const viewerImage = put(
-    action(makeCanvas("paint-viewer-image"), "paint-draw"),
-    PAINT_RECTS.viewerImage,
-    V,
-  );
+  const viewerImage = put(makeCanvas("paint-viewer-image"), PAINT_RECTS.viewerImage, V);
   const author = put(document.createElement("div"), PAINT_RECTS.author, V);
   author.className = "paint-author";
   viewer.append(viewerBg, viewerImage, author);
@@ -274,7 +277,6 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
 
   // ---- holding a tool or the picker -----------------------------------------------------
   let held: "tool" | "pick" | null = null;
-  let heldOn: "paint" | "viewer" = "paint";
   let pointer = { x: 0, y: 0 };
   let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -315,27 +317,27 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
     });
 
   const applyTool = () => {
-    if (heldOn === "paint") {
-      const p = paintPoint(pointer, { x: PAINT_RECTS.image.x, y: PAINT_RECTS.image.y });
-      paintAt(image, tool, p.x, p.y, colour, rnd);
-    } else {
-      const p = paintPoint(pointer, {
-        x: PAINT_RECTS.viewerImage.x,
-        y: PAINT_RECTS.viewerImage.y,
-      });
-      paintAt(image, tool, p.x, p.y, colour, rnd);
-    }
+    const p = paintPoint(pointer, { x: PAINT_RECTS.image.x, y: PAINT_RECTS.image.y });
+    paintAt(image, tool, p.x, p.y, colour, rnd);
     render();
   };
-  /** The composite pixel under the pointer (the art with the preview over it). */
+  const within = (r: Rect, x: number, y: number) =>
+    x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+  /**
+   * The colour under the held picker: the palette strip's art, the preview's pixel, or the 4×
+   * image's pixel. Anywhere else the colour stays as it was.
+   */
   const pickColour = () => {
-    const pv = PAINT_RECTS.preview;
+    const { preview: pv, palette, image: big } = PAINT_RECTS;
     const px = Math.trunc(pointer.x);
     const py = Math.trunc(pointer.y);
     let rgb: [number, number, number] | null = null;
-    if (px >= pv.x && px < pv.x + pv.w && py >= pv.y && py < pv.y + pv.h) {
+    if (within(pv, px, py)) {
       rgb = getPaintPixel(image, px - pv.x, py - pv.y);
-    } else {
+    } else if (within(big, px, py)) {
+      const p = paintPoint(pointer, { x: big.x, y: big.y });
+      rgb = getPaintPixel(image, p.x, p.y);
+    } else if (within(palette, px, py)) {
       rgb = guiPixel(px - G.x, py - G.y);
     }
     if (rgb) {
@@ -357,9 +359,8 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
       timer = null;
     }
   };
-  const hold = (what: "tool" | "pick", on: "paint" | "viewer") => {
+  const hold = (what: "tool" | "pick") => {
     held = what;
-    heldOn = on;
     tick();
     if (timer === null) {
       timer = setInterval(tick, PAINT_TICK_MS);
@@ -374,7 +375,6 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
     el: HTMLElement,
     e: PointerEvent,
     what: "tool" | "pick",
-    on: "paint" | "viewer",
     point: (ev: PointerEvent) => { x: number; y: number },
   ) => {
     pointer = point(e);
@@ -391,13 +391,13 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
-    hold(what, on);
+    hold(what);
   };
 
   // ---- hiding and showing -----------------------------------------------------------------
   const hidePaint = () => {
     paint.hidden = true;
-    if (held !== null && heldOn === "paint") {
+    if (held !== null) {
       release();
     }
   };
@@ -432,7 +432,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
         showTool();
         return;
       case "pick":
-        startHold(hitLayer, e, "pick", "paint", (ev) => stagePoint(ev, hitLayer, G));
+        startHold(hitLayer, e, "pick", (ev) => stagePoint(ev, hitLayer, G));
         return;
       default:
         return;
@@ -441,14 +441,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
   // The image's own mouseDown, on sprite 398.
   big.addEventListener("pointerdown", (e) => {
     e.stopPropagation();
-    startHold(big, e, "tool", "paint", (ev) => stagePoint(ev, hitLayer, G));
-  });
-  // The viewed image is still sprite 398 with its paint script (kept bug: 1.6 did it, so the
-  // viewer can be painted on): the tool paints at `(mouse − the image's top-left) / 4` on a 1:1
-  // image.
-  viewerImage.addEventListener("pointerdown", (e) => {
-    e.stopPropagation();
-    startHold(viewerImage, e, "tool", "viewer", (ev) => stagePoint(ev, viewerBg, V));
+    startHold(big, e, "tool", (ev) => stagePoint(ev, hitLayer, G));
   });
   // Any mouseUp on the page closes the viewer and unlocks the keys. A catcher larger than the
   // page sits under the viewer's pieces and every piece's release bubbles to the viewer.
@@ -471,7 +464,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
       return;
     }
     act.say(kind === "painting" ? ART_TEXT.paintSaving : ART_TEXT.photoSaving);
-    const png = encode(image);
+    const png = encode(kind === "photo" ? photo : image);
     if (png) {
       act.save(kind, png);
     }
@@ -556,9 +549,8 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
       if (!px) {
         return;
       }
-      // Overwrites the shared image, a cancelled painting included.
-      setPaintPixels(image, px, 4);
-      render();
+      // The photo's own image: a cancelled painting is left alone.
+      setPaintPixels(photo, px, 4);
       save("photo");
     },
     cancelLens() {
@@ -570,6 +562,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
     reset() {
       release();
       image.data.fill(0);
+      photo.data.fill(0);
       tool = 1;
       colour = [0, 0, 0];
       paint.hidden = true;

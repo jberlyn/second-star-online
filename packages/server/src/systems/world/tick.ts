@@ -266,7 +266,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
             }
             const o = r.outcome;
             if (o) {
-              all({ e: "phit", id: o.victim.id, text: o.text, color: o.color });
+              all({ e: "phit", id: o.victim.id, text: o.text, color: o.color, splat: o.splat });
               for (const line of o.lines) {
                 tell(o.victim, line);
               }
@@ -491,7 +491,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       }
       out.push(...swing.out);
       for (const hit of swing.pvp) {
-        // PvP floaties carry the splat and `hitsound`, unlike monster hits.
+        // Damage floaties carry the splat and `hitsound`, from a player or a monster.
         all({ e: "phit", id: hit.victim.id, text: hit.text, color: hit.color, splat: hit.splat });
         for (const line of hit.lines) {
           tell(hit.victim, line);

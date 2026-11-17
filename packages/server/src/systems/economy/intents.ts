@@ -77,7 +77,10 @@ function keep(ctx: ItemCtx, shop: ShopLedger): void {
   ctx.world.shops.set(shop.npc, shop);
 }
 
-const processed = (p: Player): Outgoing => ({ to: p.id, msg: { t: "processed" } });
+const processed = (p: Player, ok = false): Outgoing => ({
+  to: p.id,
+  msg: ok ? { t: "processed", ok } : { t: "processed" },
+});
 
 /** The buy OK. */
 export function buyIntent(ctx: ItemCtx, p: Player, line: number, count: number): Outgoing[] {
@@ -93,7 +96,7 @@ export function buyIntent(ctx: ItemCtx, p: Player, line: number, count: number):
   p.char.gold = r.buyer.gold;
   p.char.bag = r.buyer.bag;
   p.invDirty = true;
-  return [...r.texts.map((t) => tell(p, t)), processed(p)];
+  return [...r.texts.map((t) => tell(p, t)), processed(p, true)];
 }
 
 /** The sell OK. */
@@ -110,7 +113,7 @@ export function sellIntent(ctx: ItemCtx, p: Player, line: number, count: number)
   p.char.gold = r.buyer.gold;
   p.char.bag = r.buyer.bag;
   p.invDirty = true;
-  return [...r.texts.map((t) => tell(p, t)), processed(p)];
+  return [...r.texts.map((t) => tell(p, t)), processed(p, true)];
 }
 
 /**

@@ -89,19 +89,13 @@ describe("the classic layout at every size", () => {
   });
 });
 
-describe("the mail screen's windows and chat blocker", () => {
-  test("the stage places the mail and board at their rects; the blocker covers the chat entry only while the list is up", () => {
+describe("the mail screen's windows", () => {
+  test("divergence: the stage places the mail and board at their rects, and nothing blocks the chat entry", () => {
     const p = parts();
     const view = createGameView(fakeAssets, p);
     const at = (el: HTMLElement) => [el.style.left, el.style.top, el.style.width, el.style.height];
     expect(at(p.mail)).toEqual(["154px", "28px", "350px", "350px"]);
     expect(at(p.board)).toEqual(["185px", "14px", "350px", "303px"]);
-    const blocker = view.root.querySelector<HTMLElement>(".chat-blocker");
-    expect(at(blocker as HTMLElement)).toEqual(["17px", "554px", "766px", "22px"]);
-    expect(blocker?.hidden).toBe(true);
-    view.setChatBlocked(true);
-    expect(blocker?.hidden).toBe(false);
-    view.setChatBlocked(false);
-    expect(blocker?.hidden).toBe(true);
+    expect(view.root.querySelector(".chat-blocker")).toBeNull();
   });
 });

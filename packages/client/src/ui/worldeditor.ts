@@ -182,8 +182,6 @@ export function createWorldEditor(
   let exit2: ExitFields = [...EMPTY_EXIT_FIELDS];
   let whichSign: 1 | 2 | 3 = 1;
   let chatOpen = false;
-  /** Sprite 292 swapped to a blank member by the sign panel's background until editor exit. */
-  let exitXGone = false;
   let mobs: (EditorMob | null)[] = [null, null, null, null];
   let placed: (EditorItem | null)[] = Array(EDITOR_ITEM_SLOTS).fill(null);
   let fogTex: HTMLCanvasElement | null = null;
@@ -582,33 +580,17 @@ export function createWorldEditor(
   const showExitPanel = (n: 1 | 2) => {
     const p = n === 1 ? panel1 : panel2;
     p.el.hidden = false;
-    if (n === 1) {
-      // Showing the exit panel makes 290-295 visible again; 292 keeps its blank member once
-      // swapped.
-      (panel1.inputs[0] as HTMLInputElement).hidden = exitXGone;
-      (panel1.inputs[1] as HTMLInputElement).hidden = false;
-      (panel1.inputs[2] as HTMLInputElement).hidden = false;
-    }
   };
 
   // ---- sign panel (286-288; Internal 91 saves it, Internal 10 is its background) -----
   const signPanel = document.createElement("div");
   signPanel.className = "we-panel";
   signPanel.hidden = true;
-  const signBg = action(document.createElement("div"), "editor-sign-background");
+  // 1.6's background script blanked and hid exit 1's map X field and its neighbours; SSO's
+  // background is plain art.
+  const signBg = document.createElement("div");
   signBg.className = "we-sign-bg";
   signBg.append(artImg(assets.ui("internal", 10)));
-  signBg.addEventListener("click", () => {
-    // With exit panel 1 open, its map X field (sprite 292) becomes
-    // blank and 292-294 hide (kept bug: 1.6 did it, so the sign panel breaks the
-    // exit panel's map X field).
-    if (!panel1.el.hidden && !(panel1.inputs[0] as HTMLInputElement).hidden) {
-      exitXGone = true;
-      (panel1.inputs[0] as HTMLInputElement).hidden = true;
-      (panel1.inputs[1] as HTMLInputElement).hidden = true;
-      (panel1.inputs[2] as HTMLInputElement).hidden = true;
-    }
-  });
   const signText = action(document.createElement("textarea"), "editor-sign-text");
   signText.className = "field we-sign";
   signText.setAttribute("aria-label", "Sign text");

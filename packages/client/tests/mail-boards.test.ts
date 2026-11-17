@@ -30,7 +30,7 @@ const MSGS: MailMessage[] = [
 function mailScreen() {
   const log: unknown[] = [];
   const sounds: Sfx[] = [];
-  const state = { locked: false, framed: false, blocked: false };
+  const state = { locked: false, framed: false };
   const m = createMailScreen(fakeAssets, {
     ui: (act) => log.push(["ui", act]),
     send: (to, subject, body) => log.push(["send", to, subject, body]),
@@ -41,9 +41,6 @@ function mailScreen() {
     },
     frame: (on) => {
       state.framed = on;
-    },
-    blocker: (on) => {
-      state.blocked = on;
     },
     sound: (s) => sounds.push(s),
   });
@@ -83,18 +80,31 @@ describe("placement", () => {
       ["readSubject", 16],
       ["listArt", 362],
       ["subjectList", 364],
-      ["blocker", 366],
       ["fromList", 368],
     ];
     for (const [key, ch] of pairs) {
       expect({ key, rect: asRect(MAIL_RECTS[key]) }).toEqual({ key, rect: rectOf(ch) as number[] });
     }
   });
-  test("kept bug: the list columns are fixed 271-px boxes with no scroll bar", () => {
+  test("divergence: the 271-px list columns scroll, the From column following the Subject bar", () => {
     const { m } = mailScreen();
-    for (const cls of [".mail-from", ".mail-subject"]) {
-      expect((m.el.querySelector(cls) as HTMLElement).style.height).toBe("271px");
+    const from = m.el.querySelector(".mail-from") as HTMLElement;
+    const subject = m.el.querySelector(".mail-subject") as HTMLElement;
+    for (const box of [from, subject]) {
+      expect(box.style.height).toBe("271px");
     }
+    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    expect(css).toMatch(/\.mail-screen \.mail-lines \{[^}]*overflow-y: auto;/);
+    expect(css).toMatch(/\.mail-screen \.mail-from \{\s*scrollbar-width: none;/);
+    m.show(
+      Array.from({ length: 50 }, (_, i) => ({ id: i + 1, from: `P${i}`, subject: "s", body: "b" })),
+    );
+    subject.scrollTop = 120;
+    subject.dispatchEvent(new Event("scroll"));
+    expect(from.scrollTop).toBe(120);
+    from.scrollTop = 40;
+    from.dispatchEvent(new Event("scroll"));
+    expect(subject.scrollTop).toBe(40);
   });
   test("a layer's empty area passes clicks through, so an open pane never covers the list's buttons", () => {
     const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
@@ -129,29 +139,35 @@ describe("the list", () => {
     btn("Read message").click();
     const read = m.el.querySelector<HTMLElement>(".mail-read") as HTMLElement;
     expect(read.hidden).toBe(false);
-    // The sender sits under TO: (a kept bug: 1.6 did the same).
+    // divergence: the sender sits under FROM:, which covers the compose art's TO:.
+    expect(read.querySelector(".mail-read-label")?.textContent).toBe("FROM:");
+    expect(MAIL_RECTS.readFromLabel).toEqual({ x: 221, y: 92, w: 38, h: 9 });
     expect(read.querySelector(".mail-read-to")?.textContent).toBe("Bob");
     expect(read.querySelector(".mail-read-subject")?.textContent).toBe("Hello");
     expect(read.querySelector(".mail-read-body")?.textContent).toBe("First body");
   });
 
-  test("DELETE twice removes the next message with the read pane unchanged", () => {
+  test("divergence: DELETE clears the selection and closes the read pane showing that message", () => {
     const { m, btn, rows, log } = mailScreen();
     m.show(MSGS);
     rows(".mail-from")[0]?.click();
     btn("Read message").click();
     btn("Delete message").click();
     btn("Delete message").click();
+    expect(log).toEqual([["del", 11]]);
+    expect(rows(".mail-from").map((r) => r.textContent)).toEqual(["Carol", "Dave"]);
+    expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
+    // Deleting another message leaves an open read pane alone.
+    rows(".mail-from")[0]?.click();
+    btn("Read message").click();
+    rows(".mail-from")[1]?.click();
+    btn("Delete message").click();
     expect(log).toEqual([
       ["del", 11],
-      ["del", 12],
+      ["del", 13],
     ]);
-    expect(rows(".mail-from").map((r) => r.textContent)).toEqual(["Dave"]);
-    expect(m.el.querySelector(".mail-read-to")?.textContent).toBe("Bob");
-    // A line past the end deletes nothing.
-    btn("Delete message").click();
-    btn("Delete message").click();
-    expect(log.filter((l) => (l as unknown[])[0] === "del")).toHaveLength(3);
+    expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(false);
+    expect(m.el.querySelector(".mail-read-to")?.textContent).toBe("Carol");
   });
 
   test("a click below the last line selects no mail, so READ does nothing", () => {
@@ -163,13 +179,13 @@ describe("the list", () => {
     expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
   });
 
-  test("the chat blocker follows the list; CLOSE unlocks, leaves frame 72 and tells the server", () => {
+  test("CLOSE unlocks, leaves frame 72 and tells the server", () => {
     const { m, btn, state, log } = mailScreen();
     m.show(MSGS);
-    expect(state).toMatchObject({ framed: true, blocked: true });
+    expect(state).toMatchObject({ framed: true });
     state.locked = true;
     btn("Close mailbox").click();
-    expect(state).toEqual({ locked: false, framed: false, blocked: false });
+    expect(state).toEqual({ locked: false, framed: false });
     expect(m.el.hidden).toBe(true);
     expect(m.listUp).toBe(false);
     expect(log).toContainEqual(["ui", "close"]);
@@ -264,7 +280,7 @@ describe("compose, reply and send", () => {
     expect(m.composeUp).toBe(true);
   });
 
-  test("kept bug: a refused send (no mailSent) keeps the draft with the compose open", () => {
+  test("a refused send (no mailSent) keeps the draft with the compose open", () => {
     const { m, btn, input } = mailScreen();
     m.show(MSGS);
     btn("Write message").click();
@@ -275,28 +291,47 @@ describe("compose, reply and send", () => {
     expect((m.el.querySelector(".mail-body") as HTMLTextAreaElement).value).toBe("draft");
   });
 
-  test("an unsent draft survives WRITE, and list CLOSE with the compose up leaves Use dead; reopen shows it", () => {
-    const { m, btn, input } = mailScreen();
+  test("divergence: list CLOSE closes both panes and drops the draft; reopen shows the list alone", () => {
+    const { m, btn, rows, input } = mailScreen();
     m.show(MSGS);
+    rows(".mail-from")[0]?.click();
+    btn("Read message").click();
     btn("Write message").click();
     input("To").value = "Bob";
     btn("Close mailbox").click();
     expect(m.el.hidden).toBe(true);
-    expect(m.composeUp).toBe(true);
+    expect(m.composeUp).toBe(false);
     m.show(MSGS);
-    expect(m.el.querySelector<HTMLElement>(".mail-compose")?.hidden).toBe(false);
+    expect(m.el.querySelector<HTMLElement>(".mail-compose")?.hidden).toBe(true);
+    expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
+    btn("Write message").click();
+    expect(input("To").value).toBe("");
+  });
+
+  test("divergence: WRITE starts an empty draft; a second WRITE keeps the open one", () => {
+    const { m, btn, input } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    input("To").value = "Bob";
+    input("Subject").value = "Hi";
+    (m.el.querySelector(".mail-body") as HTMLTextAreaElement).value = "draft";
+    btn("Write message").click();
     expect(input("To").value).toBe("Bob");
+    btn("Close", ".mail-compose").click();
+    btn("Write message").click();
+    expect(input("To").value).toBe("");
+    expect(input("Subject").value).toBe("");
+    expect((m.el.querySelector(".mail-body") as HTMLTextAreaElement).value).toBe("");
   });
 
   test("game entry clears every flag", () => {
-    const { m, btn, state } = mailScreen();
+    const { m, btn } = mailScreen();
     m.show(MSGS);
     btn("Write message").click();
     m.reset();
     expect(m.composeUp).toBe(false);
     expect(m.listUp).toBe(false);
     expect(m.el.hidden).toBe(true);
-    expect(state.blocked).toBe(false);
   });
 });
 

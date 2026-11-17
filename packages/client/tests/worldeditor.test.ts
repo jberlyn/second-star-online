@@ -210,7 +210,7 @@ describe("the World Editor screen (frames 262-288)", () => {
     expect(at(e.ed.current().layers[2], 2, 2)).toBe("G3");
   });
 
-  test("kept bug: the sign panel's background breaks exit 1's map X field", () => {
+  test("divergence: the sign panel's background leaves exit 1's map X field alone", () => {
     const e = editor();
     e.ed.show(blankMap(1, 1), false);
     e.pickList("Items", "Exit");
@@ -219,7 +219,8 @@ describe("the World Editor screen (frames 262-288)", () => {
     e.click(9, 6);
     (e.root.querySelector(".we-sign-bg") as HTMLElement).click();
     const mapX = e.root.querySelector('[aria-label="Exit map X"]') as HTMLInputElement;
-    expect(mapX.hidden).toBe(true);
+    expect(mapX.hidden).toBe(false);
+    expect(mapX.closest(".we-panel")?.hasAttribute("hidden")).toBe(false);
   });
 
   test("with the chat open the brush paints nothing", () => {

@@ -378,7 +378,7 @@ describe("monster attacks and death", () => {
     (map.slots[0] as MonsterSlot).pause = 10_000;
     const msgs = run(2);
     const hits = events(msgs, "a").filter((e) => e.e === "phit");
-    expect(hits).toEqual([{ e: "phit", id: "a", text: "4", color: 6 }]);
+    expect(hits).toEqual([{ e: "phit", id: "a", text: "4", color: 6, splat: true }]);
     expect(a.char.vitals.hp).toBe(16);
     // 40 set in pass 1 of tick 1, then 3 more calls (pass 2, then tick 2) count it down
     expect(a.flicker).toBe(37);

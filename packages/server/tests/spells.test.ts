@@ -540,7 +540,7 @@ describe("the Holy Shield", () => {
     live(map, 2, "Holy Shield", 6, 6);
     const out = run(1);
     const hits = events(out, "Ann").filter((e) => e.e === "phit" && e.id === "Ann");
-    expect(hits).toContainEqual({ e: "phit", id: "Ann", text: "Shield", color: 6 });
+    expect(hits).toContainEqual({ e: "phit", id: "Ann", text: "Shield", color: 6, splat: false });
     expect(a.char.vitals.hp).toBe(20);
   });
 });

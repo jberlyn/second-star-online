@@ -114,14 +114,15 @@ describe("NPCs, shops, bank and trade", () => {
     expect(bio).toMatchObject({ t: "bio", name: "Amber", buy: true, sell: true });
   });
 
-  test("buying three Apples from Amber, then selling one back", async () => {
+  test("buying three Apples from Amber, then selling one back, each answered processed ok", async () => {
     const apples = bagHas(alice, "Apple");
     alice.clear();
     alice.send({ t: "shopList", mode: "buy" });
     const list = await alice.waitFor((m) => m.t === "shop");
     expect(list.t === "shop" && list.rows[0]).toEqual({ line: 4, item: "Apple", price: 10 });
     alice.send({ t: "buy", line: 4, count: 3 });
-    await alice.waitFor((m) => m.t === "processed");
+    // A completed deal says so, and the client plays the cash sound for it.
+    expect(await alice.waitFor((m) => m.t === "processed")).toEqual({ t: "processed", ok: true });
     await settle();
     expect(lastInv(alice)?.gold).toBe(970);
     expect(bagHas(alice, "Apple")).toBe(apples + 3);
@@ -134,7 +135,7 @@ describe("NPCs, shops, bank and trade", () => {
     await alice.waitFor((m) => m.t === "shop" && m.mode === "sell");
     alice.clear();
     alice.send({ t: "sell", line: 5, count: 1 });
-    await alice.waitFor((m) => m.t === "processed");
+    expect(await alice.waitFor((m) => m.t === "processed")).toEqual({ t: "processed", ok: true });
     await settle();
     expect(chatTexts(alice)).toEqual(["Thanks for the business!"]);
     expect(lastInv(alice)?.gold).toBe(975);

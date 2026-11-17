@@ -13,9 +13,10 @@
  * buy OK shows, there is no quantity field, and OK sends the row's line (the shop's price-0 refusal
  * does not apply: a free class is allowed).
  *
- * Which OK shows is the only mode: a buy list shows 211, a sell list 212, and neither hides the
- * other, so after a sell list the sell OK stays on top (kept bug: 1.6 did it). The vault shows 211
- * and the list 219. Only CANCEL closes the window.
+ * Which OK shows is the only mode: a buy or train list shows 211, a sell list 212, and each hides
+ * the other (1.6 hid neither, so a sell OK stayed on top of a later buy list). The vault shows 211
+ * and the list 219. Only CANCEL closes the window. A buy or sale the server completes plays `cash`
+ * (1.6 never played it).
  */
 import type { ShopRow } from "@secondstaronline/shared";
 
@@ -48,6 +49,8 @@ export interface ShopWindow {
   showVault(items: readonly string[]): void;
   /** Hides the PROCESSING box (a reply, an `inx`, a bag click). */
   clearBusy(): void;
+  /** The server's reply to an OK: hides the PROCESSING box, and a completed deal plays `cash`. */
+  processed(ok: boolean): void;
   readonly isOpen: boolean;
   readonly isBusy: boolean;
   close(): void;
@@ -258,11 +261,8 @@ export function createShopWindow(a: Assets, act: ShopActions): ShopWindow {
       count.hidden = trainMode;
       // The quantity field is set to "1".
       count.value = "1";
-      if (mode === "sell") {
-        sellOk.hidden = false;
-      } else {
-        buyOk.hidden = false;
-      }
+      sellOk.hidden = mode !== "sell";
+      buyOk.hidden = mode === "sell";
       el.hidden = false;
     },
     showVault(items) {
@@ -276,10 +276,17 @@ export function createShopWindow(a: Assets, act: ShopActions): ShopWindow {
       vault.hidden = false;
       list.hidden = true;
       buyOk.hidden = false;
+      sellOk.hidden = true;
       el.hidden = false;
     },
     clearBusy() {
       busy.hidden = true;
+    },
+    processed(ok) {
+      busy.hidden = true;
+      if (ok) {
+        act.sound(SOUND.cash);
+      }
     },
     close() {
       el.hidden = true;

@@ -687,21 +687,7 @@
     "events": ["click"],
     "hidden": false,
     "changed": false,
-    "calls": [
-      {
-        "action": "canModify",
-        "args": []
-      },
-      {
-        "action": "sound",
-        "args": [
-          {
-            "name": "Clicksound2",
-            "ch": 3
-          }
-        ]
-      }
-    ],
+    "calls": [],
     "errors": []
   },
   {
@@ -787,6 +773,18 @@
     "changed": false,
     "calls": [
       {
+        "action": "canUse",
+        "args": []
+      },
+      {
+        "action": "canModify",
+        "args": []
+      },
+      {
+        "action": "use",
+        "args": [7]
+      },
+      {
         "action": "sound",
         "args": [
           {
@@ -794,10 +792,6 @@
             "ch": 3
           }
         ]
-      },
-      {
-        "action": "use",
-        "args": [7]
       }
     ],
     "errors": []
@@ -810,6 +804,14 @@
     "changed": false,
     "calls": [
       {
+        "action": "canModify",
+        "args": []
+      },
+      {
+        "action": "equip",
+        "args": [7]
+      },
+      {
         "action": "sound",
         "args": [
           {
@@ -817,10 +819,6 @@
             "ch": 3
           }
         ]
-      },
-      {
-        "action": "equip",
-        "args": [7]
       }
     ],
     "errors": []
@@ -833,6 +831,14 @@
     "changed": false,
     "calls": [
       {
+        "action": "canModify",
+        "args": []
+      },
+      {
+        "action": "crystals",
+        "args": [7, "blue"]
+      },
+      {
         "action": "sound",
         "args": [
           {
@@ -840,10 +846,6 @@
             "ch": 3
           }
         ]
-      },
-      {
-        "action": "crystals",
-        "args": [7, "blue"]
       }
     ],
     "errors": []
@@ -856,8 +858,21 @@
     "changed": false,
     "calls": [
       {
+        "action": "canModify",
+        "args": []
+      },
+      {
         "action": "crystals",
         "args": [7, "blue"]
+      },
+      {
+        "action": "sound",
+        "args": [
+          {
+            "name": "Clicksound2",
+            "ch": 3
+          }
+        ]
       }
     ],
     "errors": []
@@ -3578,15 +3593,6 @@
     "errors": []
   },
   {
-    "action": "editor-sign-background",
-    "tag": "DIV",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
     "action": "editor-sign-text",
     "tag": "TEXTAREA",
     "events": [],
@@ -4401,15 +4407,6 @@
     "tag": "DIV",
     "events": ["pointerup"],
     "hidden": true,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "paint-draw",
-    "tag": "CANVAS",
-    "events": ["pointerdown"],
-    "hidden": false,
     "changed": false,
     "calls": [],
     "errors": []

@@ -303,12 +303,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   };
   const amount = createAmountDialog(assets);
   const panel = createPanel(assets, {
-    // The Use button exits silently while the compose pane's flag is on, seen or not.
-    use: (slot) => {
-      if (!mail.composeUp) {
-        send({ t: "use", slot });
-      }
-    },
+    use: (slot) => send({ t: "use", slot }),
+    // The Use button exits silently while the compose pane is up.
+    canUse: () => !mail.composeUp,
     equip: (slot) => send({ t: "equip", slot }),
     drop: (slot) => send({ t: "drop", slot }),
     give: (slot) => send({ t: "give", slot }),
@@ -469,7 +466,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         leaveFrame72();
       }
     },
-    blocker: (on) => game?.setChatBlocked(on),
     sound,
   });
   const board = createBoardWindow(assets, {
@@ -845,7 +841,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         shop.showList(msg.mode, msg.rows);
         return;
       case "processed":
-        shop.clearBusy();
+        shop.processed(msg.ok === true);
         return;
       case "vault":
         if (msg.open) {

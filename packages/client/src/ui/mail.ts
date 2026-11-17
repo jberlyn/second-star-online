@@ -5,10 +5,14 @@
  *
  * Three layers, each with the flag 1.6 kept as the sprites' `visible` bit: the list (362-368),
  * the read pane (12-17) and the compose pane (6-11). A layer draws only while its flag is on
- * **and** the mail screen holds frame 72 (from the original's mail sort until the list's CLOSE):
- * the panes exist on frame 72 only (spans [72, 72]), so closing the list takes an open pane with it
- * while its flag stays set, which leaves the Use button dead and brings the pane back at the next
- * open (1.6 did the same). Stacking: compose over read over list.
+ * **and** the mail screen holds frame 72 (from the original's mail sort until the list's CLOSE).
+ * Stacking: compose over read over list.
+ *
+ * SSO fixes 1.6's mail screen bugs: the list's CLOSE clears both panes' flags and the draft (1.6
+ * kept them, which left the Use button dead and brought the pane back at the next open); WRITE
+ * starts an empty draft; DELETE clears the selection and closes a read pane showing the deleted
+ * message; the read pane labels the sender FROM:; the columns scroll together; and no blocker
+ * covers the chat entry.
  */
 import { MAIL_TEXT, mailRecipients, replySubject, stripMailTo } from "@secondstaronline/shared";
 
@@ -45,8 +49,8 @@ export const MAIL_RECTS = {
   readSubject: R(266, 115, 440, 128),
   /** The member box 214×119, not the stored 16-px rect: the sprite is not stretched. */
   readBody: R(225, 140, 439, 259),
-  /** The chat blocker, Internal #203 stretched over the chat entry (channel 366, locZ 9366). */
-  blocker: R(17, 554, 783, 576),
+  /** A patch of the pane's purple over the compose art's TO: glyph, holding FROM:. */
+  readFromLabel: R(221, 92, 259, 101),
   /** The list's four hotspots on sprite 362 (exclusive bounds, so x 277-325 is `276 < x < 326`). */
   close: R(277, 342, 326, 370),
   del: R(330, 339, 386, 368),
@@ -67,8 +71,6 @@ export interface MailActions {
   lock(on: boolean): void;
   /** The mail sort's move to frame 71 (→ 72) and the list CLOSE's move to frame 55. */
   frame(on: boolean): void;
-  /** The blocker over the chat entry. */
-  blocker(on: boolean): void;
   sound(s: Sfx): void;
 }
 
@@ -83,7 +85,7 @@ export interface MailScreen {
   el: HTMLElement;
   /** Whether the mail list is open. */
   readonly listUp: boolean;
-  /** The compose pane's flag, set whether or not it can be seen. */
+  /** Whether the compose pane is up. */
   readonly composeUp: boolean;
   /** The list, the 362-368 flags on, the screen on frame 72. */
   show(messages: readonly MailMessage[]): void;
@@ -173,6 +175,15 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
   subjectBox.className = "mail-field mail-lines mail-subject";
   subjectBox.setAttribute("role", "listbox");
   subjectBox.setAttribute("aria-label", "Mail subject");
+  // The Subject column carries the scroll bar; the From column follows it line for line (1.6's
+  // boxes had none, so lines past about the 20th could not be reached).
+  const follow = (from: HTMLElement, to: HTMLElement) => () => {
+    if (to.scrollTop !== from.scrollTop) {
+      to.scrollTop = from.scrollTop;
+    }
+  };
+  subjectBox.addEventListener("scroll", follow(subjectBox, fromBox));
+  fromBox.addEventListener("scroll", follow(fromBox, subjectBox));
   // The list's four hotspots: transparent buttons over the list art, exclusive bounds.
   const hot = (r: Rect, label: string, on: () => void) =>
     button(listLayer, 0, semantic(label), label, r, 2, on);
@@ -180,6 +191,9 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
   // ---- the read pane (12-17), locZ 9700+ -----------------------------------------------------
   const readLayer = layer("mail-read", 9700);
   art(readLayer, 1, MAIL_RECTS.readArt, 1);
+  // The read pane reuses the compose art; FROM: covers its TO: so the sender is labelled as such.
+  const fromLabel = field(readLayer, "mail-read-label", MAIL_RECTS.readFromLabel, 2);
+  fromLabel.textContent = "FROM:";
   const readTo = field(readLayer, "mail-read-to", MAIL_RECTS.readTo, 4);
   const readSubject = field(readLayer, "mail-read-subject", MAIL_RECTS.readSubject, 5);
   const readBody = field(readLayer, "mail-read-body", MAIL_RECTS.readBody, 6);
@@ -240,6 +254,8 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
   let mailNum = 0;
   /** The highlighted line (the highlight survives an empty click). */
   let hilite = 0;
+  /** The id of the message in the read pane. */
+  let readId = 0;
   let sendingFirst = false;
 
   const draw = () => {
@@ -294,29 +310,46 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
   fromBox.addEventListener("click", select(fromBox));
   subjectBox.addEventListener("click", select(subjectBox));
 
-  // CLOSE unlocks, takes the list down and leaves frame 72. An open pane's flag stays.
+  const clearDraft = () => {
+    toIn.value = "";
+    subjectIn.value = "";
+    bodyIn.value = "";
+    bodyFit = "";
+  };
+  // CLOSE unlocks, takes the list and both panes down, discards the draft and leaves frame 72.
   hot(MAIL_RECTS.close, "Close mailbox", () => {
     act.lock(false);
     listFlag = false;
+    readFlag = false;
+    composeFlag = false;
+    clearDraft();
     framed = false;
-    act.blocker(false);
     act.frame(false);
     draw();
     act.ui("close");
   });
-  // Delete: delete the selected message, rebuild, upload. The selection and the read pane stay.
+  // Delete: delete the selected message, rebuild, upload. The selection clears, and a read pane
+  // showing that message closes.
   hot(MAIL_RECTS.del, "Delete message", () => {
     if (mailNum < 1) {
       return;
     }
     const gone = messages.splice(mailNum - 1, 1)[0];
+    mailNum = 0;
     rebuild();
     if (gone) {
+      if (readFlag && readId === gone.id) {
+        readFlag = false;
+        draw();
+      }
       act.del(gone.id);
     }
   });
-  // The compose pane, the old draft kept, no lock.
+  // The compose pane with an empty draft, no lock; an open compose pane keeps its draft.
   hot(MAIL_RECTS.write, "Write message", () => {
+    if (!composeFlag) {
+      clearDraft();
+    }
     composeFlag = true;
     draw();
   });
@@ -326,6 +359,7 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
     if (!m) {
       return;
     }
+    readId = m.id;
     readTo.textContent = m.from;
     readSubject.textContent = m.subject;
     readBody.textContent = m.body;
@@ -379,7 +413,6 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
       rebuild();
       listFlag = true;
       framed = true;
-      act.blocker(true);
       act.frame(true);
       draw();
     },
@@ -390,10 +423,7 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
       sendingFirst = false;
       act.lock(false);
       composeFlag = false;
-      toIn.value = "";
-      subjectIn.value = "";
-      bodyIn.value = "";
-      bodyFit = "";
+      clearDraft();
       draw();
     },
     reset() {
@@ -404,9 +434,10 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
       framed = false;
       mailNum = 0;
       hilite = 0;
+      readId = 0;
       messages = [];
       sendingFirst = false;
-      act.blocker(false);
+      clearDraft();
       if (wasFramed) {
         act.frame(false);
       }

@@ -286,13 +286,14 @@ describe("panel sounds", () => {
     }
     expect(sounds).toEqual(Array(4).fill({ name: "Clicksound", ch: 3 }));
   });
-  test("kept bug: the item menu clicks before its locks and refusals; Give is silent", () => {
-    const { panel, sounds } = panelWith(
+  test("divergence: the item menu clicks only past its locks and the client's refusals; Give too", () => {
+    let locked = true;
+    const { panel, sent, sounds } = panelWith(
       [
         { item: "Knife", qty: 1 },
         { item: "Potion Bottle", qty: 1 },
       ],
-      { locked: () => true },
+      { locked: () => locked },
     );
     const slots = panel.el.querySelectorAll<HTMLButtonElement>(".bag-slot");
     const press = (slot: number, label: string) => {
@@ -302,10 +303,39 @@ describe("panel sounds", () => {
     press(0, "Use");
     press(0, "Equip");
     press(0, "Drop");
-    press(1, "Mix"); // its click is the first statement, before every refusal
-    expect(sounds).toEqual(Array(4).fill(CLICK));
     press(0, "Give");
+    expect(sounds).toEqual([]);
+    expect(sent).toEqual(["use 1", "equip 1", "drop 1", "give 1"]); // the server makes the same test
+    locked = false;
+    press(0, "Use");
+    press(0, "Equip");
+    press(0, "Drop");
+    press(0, "Give");
+    expect(sounds).toEqual(Array(4).fill(CLICK));
+    press(1, "Mix"); // no craft handler: nothing goes, so no click
     expect(sounds).toHaveLength(4);
+  });
+  test("divergence: a Use the client refuses makes no click", () => {
+    const sounds: Sfx[] = [];
+    const panel = createPanel(fakeAssets, {
+      use: () => sounds.push({ name: "used", ch: 0 }),
+      canUse: () => false,
+      equip: () => {},
+      drop: () => {},
+      give: () => {},
+      unequip: () => {},
+      crystals: () => {},
+      gold: () => {},
+      sound: (x) => sounds.push(x),
+      canModify: () => true,
+      say: () => {},
+    });
+    const b = emptyBag();
+    b[0] = { item: "Apple", qty: 1 };
+    panel.setInventory({ gold: 0, bag: b, equip: NO_EQUIPMENT }, 1);
+    panel.el.querySelector<HTMLButtonElement>(".bag-slot")?.click();
+    panel.menu.querySelector<HTMLButtonElement>('[aria-label="Use"]')?.click();
+    expect(sounds).toEqual([]);
   });
   test("unequip clicks after its locks and its empty-slot exit", () => {
     let locked = true;
@@ -321,16 +351,11 @@ describe("panel sounds", () => {
     panel.el.querySelector<HTMLButtonElement>('[aria-label="Head: empty"]')?.click();
     expect(sounds).toHaveLength(1);
   });
-  test("kept bug: the empty Ring × clicks, sending nothing", () => {
-    let locked = false;
-    const { panel, sent, sounds } = panelWith([], { locked: () => locked });
-    const ring = () => panel.el.querySelector<HTMLButtonElement>('[aria-label="Ring: empty"]');
-    ring()?.click();
-    expect(sounds).toEqual([CLICK]);
+  test("divergence: the empty Ring × is silent like the other boxes, sending nothing", () => {
+    const { panel, sent, sounds } = panelWith([]);
+    panel.el.querySelector<HTMLButtonElement>('[aria-label="Ring: empty"]')?.click();
+    expect(sounds).toEqual([]);
     expect(sent).toEqual([]);
-    locked = true; // the lock exits come before it
-    ring()?.click();
-    expect(sounds).toHaveLength(1);
   });
 });
 

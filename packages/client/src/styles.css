@@ -1585,10 +1585,6 @@ body {
   width: 100%;
   height: 100%;
 }
-/* The click blocker over the chat entry, taking its clicks while the list is up. */
-.chat-blocker {
-  pointer-events: auto !important;
-}
 /* Fields: the list columns and the read pane are Arial bold 10 (body 12), white on the art,
    the compose fields Helvetica. */
 .mail-screen .mail-field,
@@ -1629,6 +1625,33 @@ body {
 .mail-screen .mail-row {
   cursor: default;
   min-height: 13px;
+}
+/* The list columns scroll together: Subject shows the bar, From follows it without one. */
+.mail-screen .mail-lines {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.mail-screen .mail-subject {
+  scrollbar-width: thin;
+  scrollbar-color: #b384e9 #101010;
+}
+.mail-screen .mail-from {
+  scrollbar-width: none;
+}
+.mail-screen .mail-from::-webkit-scrollbar {
+  display: none;
+}
+/* FROM: on a patch of the pane's purple, over the compose art's TO:, in its white outlined caps. */
+.mail-screen .mail-read-label {
+  background: rgb(179, 132, 233);
+  font-size: 9px;
+  line-height: 9px;
+  text-align: right;
+  text-shadow:
+    1px 0 #000,
+    -1px 0 #000,
+    0 1px #000,
+    0 -1px #000;
 }
 .mail-screen .mail-row.on {
   background: #000080;

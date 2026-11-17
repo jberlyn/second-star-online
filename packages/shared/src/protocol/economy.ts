@@ -130,8 +130,11 @@ export type EconomyServerMsg =
    * carry their file line, which the OK sends back.
    */
   | { t: "shop"; mode: "buy" | "sell" | "train"; rows: ShopRow[] }
-  /** A buy or sell was handled: the PROCESSING box goes (sprite 370). */
-  | { t: "processed" }
+  /**
+   * A buy or sell was handled: the PROCESSING box goes (sprite 370). `ok` marks a buy or sale that
+   * went through, which plays the cash sound.
+   */
+  | { t: "processed"; ok?: boolean }
   /** The personal vault's lines. */
   | { t: "vault"; items: string[]; open: boolean }
   /** The trade window's state for you. */

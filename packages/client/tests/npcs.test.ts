@@ -82,31 +82,43 @@ describe("the shop and vault window (channels 210-219)", () => {
     expect(parseCount("2.5")).toBeNull();
   });
 
-  test("kept bug: after a sell list the sell OK stays shown over the buy list", () => {
+  test("divergence: each list shows only its own OK, so a buy list after a sell list buys", () => {
     const s = shop();
     s.w.showList("sell", [{ line: 5, item: "Apple", price: 5 }]);
-    s.w.showList("buy", [{ line: 4, item: "Apple", price: 10 }]);
     expect(s.q<HTMLButtonElement>(".shop-sell-ok").hidden).toBe(false);
+    expect(s.q<HTMLButtonElement>(".shop-buy-ok").hidden).toBe(true);
+    s.w.showList("buy", [{ line: 4, item: "Apple", price: 10 }]);
+    expect(s.q<HTMLButtonElement>(".shop-sell-ok").hidden).toBe(true);
     expect(s.q<HTMLButtonElement>(".shop-buy-ok").hidden).toBe(false);
     s.rows()[0]?.click();
-    s.q<HTMLButtonElement>(".shop-sell-ok").click();
-    expect(s.calls).toEqual([["sell", 4, 1]]);
+    s.q<HTMLButtonElement>(".shop-buy-ok").click();
+    expect(s.calls).toEqual([["buy", 4, 1]]);
+    s.w.processed(false);
+    s.w.showVault(["Apple"]);
+    expect(s.q<HTMLButtonElement>(".shop-sell-ok").hidden).toBe(true);
+    expect(s.q<HTMLButtonElement>(".shop-buy-ok").hidden).toBe(false);
   });
 
-  test("kept bug: a buy and a sale play only the OK click, never cash", () => {
+  test("divergence: a completed buy and sale play cash; a refused one only the OK click", () => {
     const s = shop();
     s.w.showList("buy", [{ line: 4, item: "Apple", price: 10 }]);
     s.rows()[0]?.click();
     s.q<HTMLButtonElement>(".shop-buy-ok").click();
-    s.w.clearBusy(); // the reply
+    s.w.processed(true); // the reply
+    expect(s.w.isBusy).toBe(false);
     s.w.showList("sell", [{ line: 5, item: "Apple", price: 5 }]);
     s.rows()[0]?.click();
     s.q<HTMLButtonElement>(".shop-sell-ok").click();
-    s.w.clearBusy();
+    s.w.processed(true);
+    s.q<HTMLButtonElement>(".shop-sell-ok").click();
+    s.w.processed(false);
     expect(s.sounds.map((x) => x.name)).toEqual([
       "Clicksound2",
       "Clicksound2",
+      "cash",
       "Clicksound2",
+      "Clicksound2",
+      "cash",
       "Clicksound2",
     ]);
   });

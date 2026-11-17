@@ -32,8 +32,10 @@ export const SOUND = {
   monsterKill: { name: "fx", ch: 1 },
   /** A damage number carrying `hitsound` in item 6: PvP damage. */
   floatieHit: { name: "hitsound", ch: 5 },
-  /** A slot win. */
+  /** A slot win, a shop purchase or a sale. */
   cash: { name: "cash", ch: 4 },
+  /** A slot pull, on a channel nothing else uses. */
+  slotMachine: { name: "SlotMachine", ch: 6 },
   /** A blackjack table reset. */
   cardShuffle: { name: "CardShuffle", ch: 1 },
   /** A card that fills a slot. */
@@ -58,9 +60,6 @@ const has = (a: string, b: string) => a.toLowerCase().includes(b.toLowerCase());
  */
 export function spellSounds(name: string, random: (n: number) => number = lingoRandom): Sfx[] {
   const out: Sfx[] = [];
-  // A slot pull's `random(4)` channel is drawn first, before the `random(2)` that
-  // follows it in the chain (kept bug: 1.6 picked a random channel for slot machine sounds).
-  const slotChannel = eq(name, "Slot Machine") ? random(4) : 0;
   // `random(2)` is drawn for every spell cast, whatever the spell; only BSmith uses it.
   const smithRoll = random(2);
   const on4 = (sound: string) => out.push({ name: sound, ch: 4 });
@@ -75,9 +74,10 @@ export function spellSounds(name: string, random: (n: number) => number = lingoR
   if (eq(name, "Fishing")) {
     on4("splash");
   }
-  // The Slot Machine's pull plays on a random channel 1-4, cutting off whatever was there.
+  // The Slot Machine's pull has a channel of its own, so it cuts off nothing else (1.6 drew a
+  // random channel 1-4 for it, cutting off a spell, a hit or the church bell).
   if (eq(name, "Slot Machine")) {
-    out.push({ name: "SlotMachine", ch: slotChannel });
+    out.push(SOUND.slotMachine);
   }
   // A smith at work: every client, the smith's own too, plays Swordhit2 on a 1, else Swordhit1.
   if (eq(name, "BSmith")) {

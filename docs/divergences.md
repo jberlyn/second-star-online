@@ -25,7 +25,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
-| [core](#core) | 38 |
+| [core](#core) | 54 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
 | [housing](#housing) | 7 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **225** |
+| **Total** | **241** |
 
 ## admin
 
@@ -1066,6 +1066,150 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Promotions need a trainer, and the original never had a working one.
 - **In the code:** `packages/client/src/ui/bio.ts` (`createBioWindow`), `packages/server/src/systems/economy/intents.ts` (`trainIntent`)
 - **Pinned by:** `divergence: the Train button shows only with train: true, never in a player's bio` and `divergence: the Train click asks for the train list and closes the window` and `divergence: the train list has no quantity field; OK sends the row's line, even at price 0` (packages/client/tests/npcs.test.ts)
+
+### The World Editor's sign panel leaves the exit fields alone
+- **Kind:** Bug fixed
+- **What you notice:** Clicking the sign panel while exit panel 1 is open no longer hides exit 1's map X field or its neighbours.
+- **1.6:** The sign panel's background had a script that swapped exit 1's map X sprite to a blank picture and hid it and two neighbouring fields until you left the editor.
+- **SSO:** The sign panel's background is plain art with no click.
+- **Why:** The exit fields should stay editable while signs are edited.
+- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
+- **Pinned by:** `divergence: the sign panel's background leaves exit 1's map X field alone` (packages/client/tests/worldeditor.test.ts)
+
+### A monster's hit on you shows the splat and plays the hit sound
+- **Kind:** Bug fixed
+- **What you notice:** When a monster hits you, the number floats up over a splat and the hit sound plays, as for a player's hit. Shield, Parry and Block stay silent.
+- **1.6:** The monster-hit message was one field short of the player-hit message, so the floating text read the wrong fields and only the number showed.
+- **SSO:** A monster's damage floatie carries the splat flag, so the client draws the splat and plays `hitsound` on channel 5.
+- **Why:** Monster damage should be as visible and audible as player damage.
+- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`), `packages/server/src/systems/world/tick.ts` (`tick`), `packages/client/src/model.ts` (`applyDelta`)
+- **Pinned by:** `divergence: a monster's hit on you shows the number with the splat and hitsound` and `a Parry, Block or Shield floatie has no splat and no sound` (packages/client/tests/combat.test.ts); `a Slime next to you hits on random(10) = 1` (packages/server/tests/monsters.test.ts)
+
+### A shop shows only the OK for the open list
+- **Kind:** Bug fixed
+- **What you notice:** After a sell list, a buy list shows the buy OK alone, so pressing OK buys.
+- **1.6:** The buy and sell lists each showed their own OK and neither hid the other, so a sell OK stayed drawn over a later buy list and answered "Error in trying to sell!".
+- **SSO:** A buy or train list shows the buy OK and hides the sell OK; a sell list does the reverse; the vault hides the sell OK.
+- **Why:** The OK on screen should act on the list on screen.
+- **In the code:** `packages/client/src/ui/shop.ts` (`createShopWindow`)
+- **Pinned by:** `divergence: each list shows only its own OK, so a buy list after a sell list buys` (packages/client/tests/npcs.test.ts)
+
+### The × beside an empty Ring box is silent
+- **Kind:** Bug fixed
+- **What you notice:** Clicking the × beside any empty equipment box, the Ring box included, makes no sound.
+- **1.6:** The Ring box's × played the click before testing for an empty slot; the other five tested first.
+- **SSO:** Every × exits silently on an empty slot, then clicks after its locks.
+- **Why:** The six boxes should behave alike.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
+- **Pinned by:** `divergence: the empty Ring × is silent like the other boxes, sending nothing` (packages/client/tests/panel.test.ts)
+
+### Item menu buttons click only when the action goes ahead
+- **Kind:** Bug fixed
+- **What you notice:** Use, Equip, Drop, Give and the Cook, Mix, Build, Smith and Storage buttons click when their action goes ahead. They are silent under the key lock or the item pause, for Use while the mail compose pane is up, and for a craft button with nothing behind it. Give now clicks like the others.
+- **1.6:** Each handler played the click as its first statement, before the key lock, the item pause and every refusal; Give never clicked.
+- **SSO:** A button checks the client's own refusal first, then sends the action, and clicks only when the key lock and the item pause allow it. The server still makes its own checks.
+- **Why:** The click should confirm an action, not a refusal.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`), `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `divergence: the item menu clicks only past its locks and the client's refusals; Give too` and `divergence: a Use the client refuses makes no click` (packages/client/tests/panel.test.ts)
+
+### Buying and selling in a shop play the cash sound
+- **Kind:** Bug fixed
+- **What you notice:** A completed purchase or sale plays the cash sound after the OK's click. A refused one plays only the click.
+- **1.6:** The cash sound was wired only to messages the server never sent, or to a handler nothing called.
+- **SSO:** The server's `processed` reply carries `ok` for a completed buy or sale, and the shop window plays `cash` on channel 4 for it.
+- **Why:** A completed deal should be heard.
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`buyIntent`, `sellIntent`), `packages/client/src/ui/shop.ts` (`createShopWindow`)
+- **Pinned by:** `divergence: a completed buy and sale play cash; a refused one only the OK click` (packages/client/tests/npcs.test.ts); `buying three Apples from Amber, then selling one back, each answered processed ok` (packages/server/e2e/npcs-shops-trade.test.ts)
+
+### The slot machine sound has a channel of its own
+- **Kind:** Bug fixed
+- **What you notice:** Pulling a slot machine no longer cuts off a spell, a monster hit or the church bell.
+- **1.6:** The pull's sound played on a random one of channels 1-4, cutting off whatever was playing there.
+- **SSO:** The pull's sound plays on channel 6, which nothing else uses.
+- **Why:** A slot machine should not silence other sounds.
+- **In the code:** `packages/client/src/sfx.ts` (`spellSounds`)
+- **Pinned by:** `divergence: the Slot Machine sound plays on its own channel 6 and rolls only random(2)` (packages/client/tests/slots.test.ts)
+
+### Closing the mail list closes its panes
+- **Kind:** Bug fixed
+- **What you notice:** Closing the mail list with the compose or read pane open closes those panes too. The Use button keeps working, and the next mailbox opens on the list alone.
+- **1.6:** The list's CLOSE kept the panes' flags on. The Use button quietly exited while the compose flag was on, and the panes came back at the next open.
+- **SSO:** The list's CLOSE clears both panes' flags and the draft.
+- **Why:** A closed mailbox should leave nothing behind.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `divergence: list CLOSE closes both panes and drops the draft; reopen shows the list alone` (packages/client/tests/mail-boards.test.ts)
+
+### Deleting a message clears the selection and its read pane
+- **Kind:** Bug fixed
+- **What you notice:** After DELETE, no line is selected, so a second DELETE removes nothing until you pick another message. A read pane showing the deleted message closes.
+- **1.6:** DELETE rebuilt the list without clearing the selection or the read pane, so a second DELETE removed the next message.
+- **SSO:** DELETE clears the selection, and closes the read pane when it shows the deleted message. A read pane showing another message stays.
+- **Why:** One DELETE should remove one message.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `divergence: DELETE clears the selection and closes the read pane showing that message` (packages/client/tests/mail-boards.test.ts)
+
+### WRITE starts an empty draft
+- **Kind:** Bug fixed
+- **What you notice:** Pressing WRITE opens an empty compose pane. While the pane is already open, WRITE keeps what is in it, and a send the server refuses also keeps it.
+- **1.6:** The three fields were cleared only by a send, so WRITE showed whatever was left from before.
+- **SSO:** WRITE clears the fields when the compose pane is not already up. Closing the list also drops the draft.
+- **Why:** A new message should start blank.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `divergence: WRITE starts an empty draft; a second WRITE keeps the open one` and `a refused send (no mailSent) keeps the draft with the compose open` (packages/client/tests/mail-boards.test.ts)
+
+### The read pane labels the sender FROM:
+- **Kind:** Bug fixed
+- **What you notice:** When you read a message, the sender's name sits on a line labelled FROM:.
+- **1.6:** The read pane reused the compose pane's art, so the sender sat under its TO: label.
+- **SSO:** A patch of the pane's purple with FROM: in white outlined capitals covers the art's TO:.
+- **Why:** The label should name what the line shows.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/styles.css` (`.mail-read-label`)
+- **Pinned by:** `READ with nothing selected does nothing; with a line it fills the read pane` (packages/client/tests/mail-boards.test.ts)
+
+### The mail list scrolls
+- **Kind:** Bug fixed
+- **What you notice:** The Subject column has a scroll bar and the From column scrolls with it, so all of a full mailbox can be reached.
+- **1.6:** The columns were fixed boxes with no scroll bar, so only about 20 of up to 50 messages could be seen.
+- **SSO:** Both 271-pixel columns scroll; Subject shows a thin bar and From follows it line for line.
+- **Why:** Every stored message should be reachable without deleting the ones above it.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/styles.css` (`.mail-lines`)
+- **Pinned by:** `divergence: the 271-px list columns scroll, the From column following the Subject bar` (packages/client/tests/mail-boards.test.ts)
+
+### The mail list leaves the chat entry usable
+- **Kind:** Bug fixed
+- **What you notice:** With the mail list up you can still click into the chat entry box.
+- **1.6:** A blocker (Internal #203, channel 366) covered the chat entry while the list was up.
+- **SSO:** No blocker is drawn.
+- **Why:** Reading mail should not stop you chatting.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/ui/shells.ts` (`createGameView`)
+- **Pinned by:** `CLOSE unlocks, leaves frame 72 and tells the server` (packages/client/tests/mail-boards.test.ts); `divergence: the stage places the mail and board at their rects, and nothing blocks the chat entry` (packages/client/tests/shells.test.ts)
+
+### A photo leaves a cancelled painting alone
+- **Kind:** Bug fixed
+- **What you notice:** Cancel a painting, take a photo, and the next Canvas still reopens your painting.
+- **1.6:** The photo was written into the same image a cancelled canvas keeps.
+- **SSO:** A photo is cropped into an image of its own and saved from there. A viewed painting still shares the canvas's image (see the bug ledger's mail section).
+- **Why:** Taking a photo should not destroy unrelated work.
+- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
+- **Pinned by:** `divergence: a photo leaves a cancelled painting alone` and `a good shot hides the lens, redraws, crops 64×64 around the tap and saves a photo` (packages/client/tests/art-news.test.ts)
+
+### A painting in the viewer cannot be painted on
+- **Kind:** Bug fixed
+- **What you notice:** Holding the mouse down on a painting you are viewing does nothing to it.
+- **1.6:** The viewer's picture kept the paint screen's paint behaviour, so the current tool painted on it.
+- **SSO:** The viewer's picture takes no pointer input; a mouse release anywhere still closes the viewer.
+- **Why:** Viewing should not change the picture.
+- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
+- **Pinned by:** `divergence: a pointer down on the viewed image paints nothing` (packages/client/tests/art-news.test.ts)
+
+### The colour picker reads only the palette and the painting
+- **Kind:** Bug fixed
+- **What you notice:** The held picker takes a colour from the palette strip, the preview or the large painting. Dragged over the tools, the frame or anything else, it keeps the current colour.
+- **1.6:** The picker read the colour straight from the screen, wherever the pointer was.
+- **SSO:** The picker reads the art inside the palette strip's border (stage 132-230 × 328-355), or the painting's pixel under the preview or the 4× image, and nothing else.
+- **Why:** Picking a colour should not pick up the screen's decoration.
+- **In the code:** `packages/client/src/ui/paint.ts` (`PAINT_RECTS`, `createPaintUi`)
+- **Pinned by:** `divergence: the colour pick reads only the palette strip, the preview and the 4× image` (packages/client/tests/art-news.test.ts)
 
 ## crafting
 

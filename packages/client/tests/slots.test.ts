@@ -228,15 +228,14 @@ describe("the panel", () => {
 });
 
 describe("sounds", () => {
-  test("kept bug: the Slot Machine sound picks random(4) before the BSmith roll", () => {
+  test("divergence: the Slot Machine sound plays on its own channel 6 and rolls only random(2)", () => {
     const calls: number[] = [];
-    const rolls = [3, 1];
     const out = spellSounds("Slot Machine", (n) => {
       calls.push(n);
-      return rolls[calls.length - 1] ?? 1;
+      return 1;
     });
-    expect(calls).toEqual([4, 2]);
-    expect(out).toEqual([{ name: "SlotMachine", ch: 3 }]);
+    expect(calls).toEqual([2]);
+    expect(out).toEqual([{ name: "SlotMachine", ch: 6 }]);
   });
 
   test("another spell draws only the random(2) roll", () => {

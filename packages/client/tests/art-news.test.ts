@@ -60,6 +60,7 @@ function paintScene(opts: { bagFull?: boolean } = {}) {
   const log: unknown[] = [];
   const state = { locked: false, bagFull: opts.bagFull ?? false };
   const grabs: unknown[] = [];
+  const encoded: number[][] = [];
   const ui = createPaintUi(
     fakeAssets,
     {
@@ -79,7 +80,10 @@ function paintScene(opts: { bagFull?: boolean } = {}) {
     },
     {
       guiPixel: (x, y) => (x === 7 && y === 9 ? [10, 20, 30] : [1, 2, 3]),
-      encode: () => "PNGDATA",
+      encode: (img) => {
+        encoded.push([...img.data]);
+        return "PNGDATA";
+      },
       decode: async () => flat(255, 0, 0),
       random: () => 4,
     },
@@ -110,6 +114,7 @@ function paintScene(opts: { bagFull?: boolean } = {}) {
     log,
     state,
     grabs,
+    encoded,
     G,
     V,
     hit,
@@ -218,16 +223,32 @@ describe("the paint screen", () => {
     s.down(227, 85);
     expect(getPaintPixel(s.ui.image, 63, 63)).toEqual([quantise(1), quantise(2), quantise(3)]);
   });
-  test("the colour pick reads the paint screen's art, or the preview where it lies over it", () => {
+  test("divergence: the colour pick reads only the palette strip, the preview and the 4× image", () => {
     const s = paintScene();
     s.ui.openPaint(false);
+    s.ui.image.data.set([90, 80, 70], (56 * 64 + 4) * 3);
+    s.ui.image.data.set([60, 50, 40], (10 * 64 + 20) * 3);
     s.down(98 + 0, 100); // a tool click first, to prove the pick is separate
-    s.down(131 + 1, 307); // GUI-local (41, 235)
-    expect(s.ui.colour).toEqual([1, 2, 3]);
+    // The pick region's art outside the strip (GUI-local (41, 235)) takes nothing.
+    s.down(131 + 1, 307);
+    expect(s.ui.colour).toEqual([0, 0, 0]);
     s.release(s.hit);
-    // The preview (136,254,200,318) lies over the pick region's lower part: it shows the image.
-    s.down(140, 310);
-    expect(s.ui.colour).toEqual(getPaintPixel(s.ui.image, 4, 56) as [number, number, number]);
+    // The strip (132,328,230,355) gives the art's pixel there.
+    s.down(140, 340);
+    expect(s.ui.colour).toEqual([1, 2, 3]);
+    // Dragged over the tools or the frame, the colour stays.
+    s.fire(s.hit, "pointermove", 130, 190, s.G);
+    s.ui.tick();
+    expect(s.ui.colour).toEqual([1, 2, 3]);
+    // Over the preview (136,254,200,318) it is the painting's pixel.
+    s.fire(s.hit, "pointermove", 140, 310, s.G);
+    s.ui.tick();
+    expect(s.ui.colour).toEqual([90, 80, 70]);
+    // Over the 4× image it is the painting's pixel at (mouse − top-left) / 4.
+    s.fire(s.hit, "pointermove", 242 + 20 * 4 + 1, 81 + 10 * 4 + 2, s.G);
+    s.ui.tick();
+    expect(s.ui.colour).toEqual([60, 50, 40]);
+    s.release(s.hit);
   });
   test("Save: the bag test first ('too much'), else 'Saving painting...' and the PNG; the screen stays until artSaved", () => {
     const s = paintScene({ bagFull: true });
@@ -305,14 +326,14 @@ describe("the viewer", () => {
     expect(s.log).toContainEqual(["viewClose"]);
     expect(s.state.locked).toBe(false);
   });
-  test("kept bug: a pointer down on the viewed image paints on it at (mouse − top-left) / 4", async () => {
+  test("divergence: a pointer down on the viewed image paints nothing", async () => {
     const s = paintScene();
     await s.ui.showArt("Bob", "x");
-    // Tool 1 black on red: blend 150 of black darkens the red, at pixel (8/4, 8/4) = (2, 2).
     const V = PAINT_RECTS.viewerImage;
     s.fire(s.viewerImage, "pointerdown", V.x + 8, V.y + 8, s.V);
-    expect((getPaintPixel(s.ui.image, 2, 2) as number[])[0]).toBeLessThan(255);
-    expect(getPaintPixel(s.ui.image, 8, 8)).toEqual([255, 0, 0]);
+    s.ui.tick();
+    expect(getPaintPixel(s.ui.image, 2, 2)).toEqual([255, 0, 0]);
+    expect(s.viewerImage.dataset.action).toBeUndefined();
   });
   test("kept bug: a cancelled canvas reopens showing a viewed painting, which Save keeps as yours", async () => {
     const s = paintScene();
@@ -357,8 +378,22 @@ describe("the lens", () => {
       ["say", "Saving Photo, please wait..."],
       ["save", "photo", "PNGDATA"],
     ]);
-    // The crop overwrites the shared image (a cancelled painting included), on the 5-bit grid.
-    expect(getPaintPixel(s.ui.image, 0, 0)).toEqual([quantise(200), quantise(100), quantise(50)]);
+    // The crop is saved, on the 5-bit grid.
+    expect(s.encoded[0]?.slice(0, 3)).toEqual([quantise(200), quantise(100), quantise(50)]);
+  });
+  test("divergence: a photo leaves a cancelled painting alone", () => {
+    const s = paintScene();
+    s.ui.openPaint(false);
+    s.press(242 + 40, 81 + 40);
+    s.release();
+    s.down(420, 352); // cancel
+    const before = [...s.ui.image.data];
+    s.ui.showLens();
+    s.ui.takePhoto(200, 150);
+    expect(s.log).toContainEqual(["save", "photo", "PNGDATA"]);
+    expect([...s.ui.image.data]).toEqual(before);
+    s.ui.openPaint(true);
+    expect([...s.ui.image.data]).toEqual(before);
   });
   test("kept bug: a full bag after the shot says so and the film is lost", () => {
     const s = paintScene({ bagFull: true });

@@ -95,10 +95,18 @@ describe("monsters on the client", () => {
     expect(m.floaties).toEqual([]);
   });
 
-  test("kept bug: a monster's hit on you shows the number in colour 6 with no splat and no sound", () => {
+  test("divergence: a monster's hit on you shows the number with the splat and hitsound", () => {
     const { m } = setup();
-    applyDelta(m, [{ e: "phit", id: "me", text: "4", color: 6 }]);
+    applyDelta(m, [{ e: "phit", id: "me", text: "4", color: 6, splat: true }]);
     expect(m.floaties).toMatchObject([{ text: "4", color: 6 }]);
+    expect(m.effects).toMatchObject([{ kind: "splat" }]);
+    expect(m.sounds).toEqual([{ name: "hitsound", ch: 5 }]);
+  });
+
+  test("a Parry, Block or Shield floatie has no splat and no sound", () => {
+    const { m } = setup();
+    applyDelta(m, [{ e: "phit", id: "me", text: "Parry", color: 103, splat: false }]);
+    expect(m.floaties).toMatchObject([{ text: "Parry", color: 103 }]);
     expect(m.effects).toEqual([]);
     expect(m.sounds).toEqual([]);
   });

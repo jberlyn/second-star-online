@@ -454,7 +454,7 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
         if (who) {
           const frames = "stepFrames" in who ? who.stepFrames : who.frames;
           const { px, py } = walkerPixel(who.x, who.y, who.facing, frames, lenOf(who.body));
-          // PvP damage has the splat and `hitsound`; monster hits do not.
+          // Damage has the splat and `hitsound`; Shield, Parry, Block and spell floaties do not.
           if (ev.splat) {
             m.effects.push({ kind: "splat", px, py, age: 0 });
             m.sounds.push(SOUND.floatieHit);

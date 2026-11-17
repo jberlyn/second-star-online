@@ -47,6 +47,8 @@ export type Tab = "stats" | "inventory" | "skills" | "spellbook";
 
 export interface PanelActions {
   use(slot: number): void;
+  /** False while the client refuses Use itself (the mail compose pane is up). */
+  canUse?(): boolean;
   equip(slot: number): void;
   drop(slot: number): void;
   give(slot: number): void;
@@ -62,7 +64,7 @@ export interface PanelActions {
   /** Plays a sound. */
   sound(s: Sfx): void;
   /**
-   * The unequip × markers' own exits before their click: the key lock and Ctrl's
+   * The unequip × markers' and item menu's exits before their click: the key lock and Ctrl's
    * action pause. SSO has no wait for the server's reply.
    */
   canModify(): boolean;
@@ -328,20 +330,17 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     hit.type = "button";
     hit.className = "equip-x";
     at(hit, left, top, MARK_W, MARK_H);
-    // Each × clicks after its locks and its empty-slot exit; Ring tests the slot after the
-    // click, so an empty Ring × clicks too (kept bug: 1.6 did it).
+    // Each × exits silently on an empty slot, then clicks after its locks (1.6's Ring × clicked
+    // before its empty-slot test).
     hit.addEventListener("click", () => {
       const item = equipNow?.[box.field] ?? "NOTHING";
-      const empty = item === "NOTHING";
-      if (empty && box.slot !== "Ring") {
+      if (item === "NOTHING") {
         return;
       }
       if (act.canModify()) {
         act.sound(SOUND.click);
       }
-      if (!empty) {
-        act.unequip(box.slot);
-      }
+      act.unequip(box.slot);
     });
     marks.set(box.slot, hit);
     invPage.append(mark, hit);
@@ -525,7 +524,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       w: number,
       h: number,
       go: () => void,
-      click = true,
+      ready: () => boolean = () => true,
     ) => {
       // Each button is its member's own script, swapped onto sprites 97-100.
       const b = tagAction(
@@ -538,18 +537,33 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       b.append(art);
       place(b, rx, ry, w, h);
       b.addEventListener("click", () => {
-        // The click is each handler's first statement, before any lock or refusal
-        // (the item menu's buttons); Give has none.
-        if (click) {
+        menu.hidden = true; // every button hides the menu first
+        // Every button clicks only when its action goes ahead: not refused by the client, and
+        // past the key lock and the item pause (1.6 clicked first, before every check, and Give
+        // never clicked).
+        if (!ready()) {
+          return;
+        }
+        const locked = !act.canModify();
+        go();
+        if (!locked) {
           act.sound(SOUND.click);
         }
-        menu.hidden = true; // every button hides the menu first
-        go();
       });
     };
     const isCrystal = lingoContains(name, "Crystals");
     const colour = name.split(" ")[0]?.toLowerCase() ?? "";
-    button("Use", 51, artImg(a.ui("inventory", 51)), 54, 5, 28, 11, () => act.use(menuSlot));
+    button(
+      "Use",
+      51,
+      artImg(a.ui("inventory", 51)),
+      54,
+      5,
+      28,
+      11,
+      () => act.use(menuSlot),
+      () => act.canUse?.() !== false,
+    );
     const action = menuAction(name);
     const art = ACTION_ART[action] ?? { group: "ui", name: 52 };
     if (art.group === "ui") {
@@ -562,13 +576,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         f?.regY ?? 5,
         f?.w ?? 39,
         f?.h ?? 14,
-        () => {
-          if (action === "Equip") {
-            act.equip(menuSlot);
-          } else {
-            act.craft?.(menuSlot); // Cook
-          }
-        },
+        () => (action === "Equip" ? act.equip(menuSlot) : act.craft?.(menuSlot)), // or Cook
+        () => action === "Equip" || act.craft !== undefined,
       );
     } else {
       const s = a.sprite(art.group, art.name as string);
@@ -584,21 +593,14 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         s?.[3] ?? 0,
         s?.[4] ?? 0,
         () => (action === "Storage" ? act.storage?.(menuSlot) : act.craft?.(menuSlot)),
+        () => (action === "Storage" ? act.storage : act.craft) !== undefined,
       );
     }
     button("Drop", 53, artImg(a.ui("inventory", 53)), -20, 5, 36, 13, () =>
       isCrystal ? act.crystals(menuSlot, colour) : act.drop(menuSlot),
     );
-    button(
-      "Give",
-      56,
-      artImg(a.ui("inventory", 56)),
-      -57,
-      5,
-      31,
-      11,
-      () => (isCrystal ? act.crystals(menuSlot, colour) : act.give(menuSlot)),
-      false,
+    button("Give", 56, artImg(a.ui("inventory", 56)), -57, 5, 31, 11, () =>
+      isCrystal ? act.crystals(menuSlot, colour) : act.give(menuSlot),
     );
     menu.hidden = false;
   };

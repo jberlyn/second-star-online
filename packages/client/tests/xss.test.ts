@@ -80,7 +80,6 @@ describe("player text is shown as text", () => {
       say: () => {},
       lock: () => {},
       frame: () => {},
-      blocker: () => {},
       sound: () => {},
     });
     document.body.replaceChildren(m.el);

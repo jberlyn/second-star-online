@@ -58,11 +58,6 @@ export interface GameView {
    * the panel shows only its background and the bars.
    */
   setFrame72(on: boolean): void;
-  /**
-   * The chat blocker (channel 366, Internal #203 over the chat entry): while the mail list is up
-   * the chat entry cannot be clicked.
-   */
-  setChatBlocked(on: boolean): void;
 }
 
 /**
@@ -88,10 +83,6 @@ export function createGameView(a: Assets, parts: GameParts): GameView {
   const root = document.createElement("div");
   root.className = "game";
   root.dataset.shell = "desktop";
-  // The chat blocker: Internal #203 stretched to 17,554-783,576, locZ 9366.
-  const blocker = artImg(a.ui("internal", 203));
-  blocker.classList.add("chat-blocker");
-  blocker.hidden = true;
   // Wooden bar-slot cutouts of Internal #186: drawn above the bar tracks/fills (36-64) so the
   // bars sit inside the 5 px transparent slots without overlapping the bevels, and the right 11 px
   // edge (x 789-800) drawn above the numbers (318-319) so 1 HP/SP hides behind the wooden edge.
@@ -143,7 +134,6 @@ export function createGameView(a: Assets, parts: GameParts): GameView {
     // Frame 72's mail sprites (locZ 9000-9817), and the board's 193-198 (locZ 5004-5009), in place
     // on the stage.
     { el: parts.mail, x: 154, y: 28, w: 350, h: 350, z: 9000 },
-    { el: blocker, x: 17, y: 554, w: 766, h: 22, z: 9366 },
     { el: parts.board, x: 185, y: 14, w: 350, h: 303, z: 5004 },
     // Paintings: sprites 395-399 at locZ ch+9900; the viewer's 395 at 3889 and
     // its author field at 9988, above the panel and the guild screen.
@@ -163,9 +153,6 @@ export function createGameView(a: Assets, parts: GameParts): GameView {
     scale: 1,
     setFrame72(on) {
       root.classList.toggle("f72", on);
-    },
-    setChatBlocked(on) {
-      blocker.hidden = !on;
     },
     fit(w, h, sharpPixels) {
       const s = fitScale(w, h, sharpPixels, MENU_BAR_H);

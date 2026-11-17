@@ -37,6 +37,8 @@ export interface AttackOutcome {
   /** The floatie: a number, "Parry" or "Block". */
   text: string;
   color: number;
+  /** A damage number carries the splat and `hitsound`, as a player's hit does. */
+  splat: boolean;
   /** Skill-gain lines for the victim. */
   lines: string[];
 }
@@ -137,7 +139,7 @@ function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutc
   if (hit.kind === "shield") {
     // "6:Shield", then the Parry skill gain.
     gainParry();
-    return { victim: p, slot, text: "Shield", color: HIT_COLOR, lines };
+    return { victim: p, slot, text: "Shield", color: HIT_COLOR, splat: false, lines };
   }
   if (hit.kind === "parry" || hit.kind === "block") {
     if (hit.kind === "parry") {
@@ -150,6 +152,7 @@ function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutc
       slot,
       text: hit.kind === "parry" ? "Parry" : "Block",
       color: DODGE_COLOR,
+      splat: false,
       lines,
     };
   }
@@ -176,7 +179,7 @@ function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutc
   const shown = monsterHitShown(hit.lost, p.char.equip, lastToHitMe, ctx.rng);
   gainParry();
   gainBlock();
-  return { victim: p, slot, text: String(shown), color: HIT_COLOR, lines };
+  return { victim: p, slot, text: String(shown), color: HIT_COLOR, splat: true, lines };
 }
 
 /** The rules' view of a player. */
