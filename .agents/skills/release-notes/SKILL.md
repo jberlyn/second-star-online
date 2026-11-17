@@ -9,6 +9,8 @@ The release notes go on the GitHub release for each `v*` tag. They are written f
 
 ## 1. Gather the changes
 
+Base every claim on the code as it was **at the tag being described**, not the working tree. Later commits can reverse a change, for example a permission granted in one release and taken back in the next. Read code with `git show <tag>:<path>` and compare with `git diff <previous>..<tag> -- <path>`. Use commit messages and docs only to find changes, then confirm each one in the code. When writing notes for an unreleased version, `<tag>` is `HEAD`.
+
 1. Find the previous release: `git describe --tags --abbrev=0`, and `gh release list` to confirm it is published.
 2. Read every commit since it, bodies included: `git log <tag>..HEAD --format='%h %s%n%b'`. Commit bodies often list several user-facing fixes; read them all.
 3. Look for things operators must act on. Check each of these over the range (`git diff <tag>..HEAD -- <path>`):
@@ -57,12 +59,13 @@ One to three sentences on what this release is about, for readers who stop here.
 
 Writing rules:
 
+- Check names and numbers in the code: settings, defaults, payouts, limits and what labels such as "SP" mean in the game.
 - Describe the effect, not the code. "Bows fire only with arrows and a crystal" rather than "derive the shot from attackPower".
 - Start each bullet with a bold area label: Combat, Moderation, Casino, Chat & Messaging, Admin & World Tools, Interface, Hosting, and so on.
 - Put every migration, removed or renamed setting, permission change and configuration change under Upgrade Notes, even if it also appears in another section. Tell the operator to back up before any release with a migration.
 - Name commands, settings and tables in backticks exactly as they appear in the code.
 - Group many small fixes in one area into a single bullet. Summarise rather than copying the bug ledger.
-- Use links that work from the release page: full GitHub URLs, not relative paths.
+- Use links that work from the release page: full GitHub URLs, not relative paths. Link to docs at the tag (`/blob/<tag>/docs/...`).
 
 ## 4. Publish
 

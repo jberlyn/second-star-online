@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-test("README files use their conventional name, other Markdown files use lowercase hyphenated names, and Compose uses the default filename", () => {
+test("README and agent skill files use their conventional names, other Markdown files use lowercase hyphenated names, and Compose uses the default filename", () => {
   const bad: string[] = [];
   const walk = (dir: string) => {
     for (const name of readdirSync(dir)) {
@@ -19,7 +19,7 @@ test("README files use their conventional name, other Markdown files use lowerca
         bad.push(path);
       } else if (
         name.endsWith(".md") &&
-        !["AGENTS.md", "CLAUDE.md", "README.md"].includes(name) &&
+        !["AGENTS.md", "CLAUDE.md", "README.md", "SKILL.md"].includes(name) &&
         (name !== name.toLowerCase() || name.includes("_"))
       ) {
         bad.push(path);
