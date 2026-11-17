@@ -241,14 +241,14 @@ describe("gathering and crafting", () => {
     server?.stop();
   });
 
-  test("17 axe swings fell the tree; everyone sees the stump and hears the chops", async () => {
+  test("18 axe swings fell the tree; everyone sees the stump and hears the chops", async () => {
     alice.clear();
     bob.clear();
     wins[3] = 1; // the logs roll (hunger's random(3) takes 1s too)
     wins[12] = 1; // LumberjackImp
-    await swing(alice, 17);
+    await swing(alice, 18);
     const aliceSwings = deltas(bob).filter((e) => e.e === "swing");
-    expect(aliceSwings).toHaveLength(17);
+    expect(aliceSwings).toHaveLength(18);
     expect(aliceSwings.every((e) => e.e === "swing" && e.sound === "treechop")).toBe(true);
     expect(tileEvents(bob)).toContainEqual({ e: "tile", layer: 2, x: 5, y: 5, code: "P3" });
     expect(added(bob)).toContainEqual(["Logs", 5, 5]);
@@ -272,7 +272,7 @@ describe("gathering and crafting", () => {
 
   test("Cara tills, plants, waters, and the corn grows Corn", async () => {
     cara.clear();
-    await swing(cara, 17);
+    await swing(cara, 18);
     expect(tileEvents(cara)).toContainEqual({ e: "tile", layer: 2, x: 13, y: 5, code: "SL" });
     expect(sounds(cara)).toContain("shoveling:2");
     cara.send({ t: "use", slot: 1 });
@@ -283,7 +283,7 @@ describe("gathering and crafting", () => {
     await tick(1);
     cara.send({ t: "equip", slot: 2 });
     await tick(1);
-    await swing(cara, 17);
+    await swing(cara, 18);
     expect(tileEvents(cara)).toContainEqual({ e: "tile", layer: 2, x: 13, y: 5, code: "XL" });
     // A produce roll on (13, 5): random(600) = 9 runs only `CheckHoles` and `DoVeg`.
     cara.clear();
@@ -326,9 +326,9 @@ describe("gathering and crafting", () => {
     expect(lines(alice)).toContain("You begin to build something...");
     expect(sounds(alice)).toContain("sawbbb:3");
     expect(lockOn(alice)).toEqual([true]);
-    expect(bagItems(alice)[0]).toBe(""); // the Logs go at the start
+    expect(bagItems(alice)[0]).toBe("Logs-1"); // the Logs go at completion
     await tick(200);
-    expect(lines(alice)).toContain("Your built a Chair!");
+    expect(lines(alice)).toContain("You built a Chair!");
     expect(lockOn(alice)).toEqual([true, false]);
     expect(bagItems(alice)[0]).toBe("Chair-1");
   });
@@ -343,16 +343,18 @@ describe("gathering and crafting", () => {
     expect(bagItems(dave)[0]).toBe("Trout Fillet-1");
   });
 
-  test("Erin mixes a Red Potion; the crystal and bottle go at the start, the sand stays", async () => {
+  test("Erin mixes a Red Potion; the crystal and bottle go at completion, the sand stays", async () => {
     erin.clear();
     erin.send({ t: "craft", slot: 1 });
     await tick(1);
     expect(lines(erin)).toContain("You begin to mix the potion.");
     expect(sounds(erin)).toContain("PotionMix:3");
-    expect(bagItems(erin).slice(0, 2)).toEqual(["", "Red Crystals-1"]);
+    expect(erin.inbox.some((m) => m.t === "inv")).toBe(false); // nothing taken yet
     await tick(200);
     expect(lines(erin)).toContain("Your potion is ready!");
     expect(bagItems(erin)).toContain("Red Potion-1");
+    expect(bagItems(erin)).toContain("Red Crystals-1");
+    expect(bagItems(erin)).not.toContain("Potion Bottle-1");
   });
 
   test("Finn smiths the sword at the Anvil; Bob sees the BSmith FX", async () => {
@@ -367,7 +369,7 @@ describe("gathering and crafting", () => {
     delete wins[30];
     expect(deltas(bob)).toContainEqual(expect.objectContaining({ e: "fx", name: "BSmith" }));
     expect(deltas(finn)).toContainEqual(expect.objectContaining({ e: "fx", name: "BSmith" }));
-    await tick(300);
+    await tick(500);
     expect(lines(finn)).toContain("Your Long Sword is ready!");
     expect(bagItems(finn)[0]).toBe("Long Sword-1");
   });

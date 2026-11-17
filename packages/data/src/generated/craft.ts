@@ -16,7 +16,7 @@ export const craftData: CraftData = {
     "failure": {
       "rows": [
         {
-          "lt": 10,
+          "lt": 11,
           "value": 3
         },
         {
@@ -58,7 +58,7 @@ export const craftData: CraftData = {
       "tool": "Blacksmith Hammer",
       "maxOccupied": 14,
       "timer": {
-        "default": 300,
+        "default": 500,
         "rows": [
           {
             "gt": 10,
@@ -182,6 +182,10 @@ export const craftData: CraftData = {
         },
         {
           "item": "Damaged Hammer, Thor's",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Sword, Knight's",
           "chunk": "Chunk of Steel"
         }
       ],
@@ -317,6 +321,10 @@ export const craftData: CraftData = {
         {
           "input": "Damaged Sword, Short",
           "output": "Short Sword"
+        },
+        {
+          "input": "Damaged Sword, Knight's",
+          "output": "Knight's Sword"
         }
       ],
       "masterworkPool": {
@@ -368,10 +376,6 @@ export const craftData: CraftData = {
             {
               "roll": 1,
               "result": "Chain Helm +1"
-            },
-            {
-              "roll": 2,
-              "result": "Chain Helm +1"
             }
           ]
         },
@@ -380,10 +384,6 @@ export const craftData: CraftData = {
           "outcomes": [
             {
               "roll": 1,
-              "result": "Steel Shield +1"
-            },
-            {
-              "roll": 2,
               "result": "Steel Shield +1"
             }
           ]
@@ -411,15 +411,6 @@ export const craftData: CraftData = {
             {
               "roll": 1,
               "result": "Small Shield +1"
-            }
-          ]
-        },
-        {
-          "item": "Leather Armor",
-          "outcomes": [
-            {
-              "roll": 1,
-              "result": "Leather Armor +1"
             }
           ]
         },
@@ -547,74 +538,6 @@ export const craftData: CraftData = {
           }
         ]
       },
-      "clickFoods": [
-        {
-          "item": "Cyclops Meat",
-          "food": "Cyclops Burger"
-        },
-        {
-          "item": "Pig",
-          "food": "Cooked Pig"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Burger"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Pot Pie"
-        },
-        {
-          "item": "Raw Fish",
-          "food": "Fish Sticks"
-        },
-        {
-          "item": "Yeti Meat",
-          "food": "Yeti Burger"
-        }
-      ],
-      "doneFoods": [
-        {
-          "item": "Cyclops Meat",
-          "food": "Cyclops Burger"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Burger"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Pot Pie"
-        },
-        {
-          "item": "Raw Fish",
-          "food": "Fish Sticks"
-        },
-        {
-          "item": "Trout",
-          "food": "Trout Fillet"
-        },
-        {
-          "item": "Catfish",
-          "food": "Catfish Sandwich"
-        },
-        {
-          "item": "Swordfish",
-          "food": "Swordfish Steak"
-        },
-        {
-          "item": "Squid",
-          "food": "Squid Platter"
-        },
-        {
-          "item": "Yeti Meat",
-          "food": "Yeti Burger"
-        },
-        {
-          "item": "Pig",
-          "food": "Cooked Pig"
-        }
-      ],
       "recipes": [
         {
           "input": "Cyclops Meat",
@@ -642,7 +565,7 @@ export const craftData: CraftData = {
         },
         {
           "input": "Yeti Meat",
-          "output": "Yeti Meat"
+          "output": "Yeti Burger"
         },
         {
           "input": "Squid",
@@ -656,7 +579,6 @@ export const craftData: CraftData = {
     },
     "mix": {
       "station": "Alchemy Lab",
-      "sandMatch": " Sand",
       "timer": {
         "default": 200,
         "rows": [
@@ -739,6 +661,7 @@ export const craftData: CraftData = {
     },
     "build": {
       "tool": "Saw",
+      "minSkill": 1,
       "timer": {
         "default": 200,
         "rows": [
@@ -983,7 +906,7 @@ export const craftData: CraftData = {
         },
         {
           "requires": [
-            "Magic Shield Spell Book",
+            "Magic Shield Book",
             "Small Shield"
           ],
           "result": "Magic Shield"
@@ -1005,7 +928,7 @@ export const craftData: CraftData = {
         {
           "requires": [
             "White Robe",
-            "Magic Shield Spell Book"
+            "Magic Shield Book"
           ],
           "result": "Wizard's Robe"
         }
@@ -1024,6 +947,9 @@ export const craftData: CraftData = {
       "needChunk": {
         "text": "You need a {} to repair this!"
       },
+      "cantRepair": {
+        "text": "You don't know how to repair that."
+      },
       "smithBegin": {
         "text": "You begin to smith the {}..."
       },
@@ -1035,6 +961,9 @@ export const craftData: CraftData = {
       },
       "cookBegin": {
         "text": "You begin to cook the {}."
+      },
+      "cantCook": {
+        "text": "You don't know how to cook that."
       },
       "burned": {
         "text": "Your food is rea....wait a minute, you burned it! You need more practice!"
@@ -1057,6 +986,9 @@ export const craftData: CraftData = {
       "noSaw": {
         "text": "You need a carpentry tool equipped to build with!"
       },
+      "unskilledBuild": {
+        "text": "You aren't skilled in carpentry, you'd just ruin the logs"
+      },
       "buildBegin": {
         "text": "You begin to build something..."
       },
@@ -1064,7 +996,7 @@ export const craftData: CraftData = {
         "text": "You built a...a...you messed it all up!! You need more practice in carpentry"
       },
       "built": {
-        "text": "Your built a {}!"
+        "text": "You built a {}!"
       },
       "ready": {
         "text": "Your {} is ready!"
@@ -1077,6 +1009,9 @@ export const craftData: CraftData = {
       },
       "puff": {
         "text": "The cauldron bubbles...and with a huge puff of smoke, a new item appears inside."
+      },
+      "interrupted": {
+        "text": "You stop what you were making."
       }
     }
   }

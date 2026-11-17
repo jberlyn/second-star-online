@@ -12,7 +12,7 @@
     "failure": {
       "rows": [
         {
-          "lt": 10,
+          "lt": 11,
           "value": 3
         },
         {
@@ -54,7 +54,7 @@
       "tool": "Blacksmith Hammer",
       "maxOccupied": 14,
       "timer": {
-        "default": 300,
+        "default": 500,
         "rows": [
           {
             "gt": 10,
@@ -178,6 +178,10 @@
         },
         {
           "item": "Damaged Hammer, Thor's",
+          "chunk": "Chunk of Steel"
+        },
+        {
+          "item": "Damaged Sword, Knight's",
           "chunk": "Chunk of Steel"
         }
       ],
@@ -313,6 +317,10 @@
         {
           "input": "Damaged Sword, Short",
           "output": "Short Sword"
+        },
+        {
+          "input": "Damaged Sword, Knight's",
+          "output": "Knight's Sword"
         }
       ],
       "masterworkPool": {
@@ -364,10 +372,6 @@
             {
               "roll": 1,
               "result": "Chain Helm +1"
-            },
-            {
-              "roll": 2,
-              "result": "Chain Helm +1"
             }
           ]
         },
@@ -376,10 +380,6 @@
           "outcomes": [
             {
               "roll": 1,
-              "result": "Steel Shield +1"
-            },
-            {
-              "roll": 2,
               "result": "Steel Shield +1"
             }
           ]
@@ -407,15 +407,6 @@
             {
               "roll": 1,
               "result": "Small Shield +1"
-            }
-          ]
-        },
-        {
-          "item": "Leather Armor",
-          "outcomes": [
-            {
-              "roll": 1,
-              "result": "Leather Armor +1"
             }
           ]
         },
@@ -543,74 +534,6 @@
           }
         ]
       },
-      "clickFoods": [
-        {
-          "item": "Cyclops Meat",
-          "food": "Cyclops Burger"
-        },
-        {
-          "item": "Pig",
-          "food": "Cooked Pig"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Burger"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Pot Pie"
-        },
-        {
-          "item": "Raw Fish",
-          "food": "Fish Sticks"
-        },
-        {
-          "item": "Yeti Meat",
-          "food": "Yeti Burger"
-        }
-      ],
-      "doneFoods": [
-        {
-          "item": "Cyclops Meat",
-          "food": "Cyclops Burger"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Burger"
-        },
-        {
-          "item": "Orc Meat",
-          "food": "Orc Pot Pie"
-        },
-        {
-          "item": "Raw Fish",
-          "food": "Fish Sticks"
-        },
-        {
-          "item": "Trout",
-          "food": "Trout Fillet"
-        },
-        {
-          "item": "Catfish",
-          "food": "Catfish Sandwich"
-        },
-        {
-          "item": "Swordfish",
-          "food": "Swordfish Steak"
-        },
-        {
-          "item": "Squid",
-          "food": "Squid Platter"
-        },
-        {
-          "item": "Yeti Meat",
-          "food": "Yeti Burger"
-        },
-        {
-          "item": "Pig",
-          "food": "Cooked Pig"
-        }
-      ],
       "recipes": [
         {
           "input": "Cyclops Meat",
@@ -638,7 +561,7 @@
         },
         {
           "input": "Yeti Meat",
-          "output": "Yeti Meat"
+          "output": "Yeti Burger"
         },
         {
           "input": "Squid",
@@ -652,7 +575,6 @@
     },
     "mix": {
       "station": "Alchemy Lab",
-      "sandMatch": " Sand",
       "timer": {
         "default": 200,
         "rows": [
@@ -735,6 +657,7 @@
     },
     "build": {
       "tool": "Saw",
+      "minSkill": 1,
       "timer": {
         "default": 200,
         "rows": [
@@ -979,7 +902,7 @@
         },
         {
           "requires": [
-            "Magic Shield Spell Book",
+            "Magic Shield Book",
             "Small Shield"
           ],
           "result": "Magic Shield"
@@ -1001,7 +924,7 @@
         {
           "requires": [
             "White Robe",
-            "Magic Shield Spell Book"
+            "Magic Shield Book"
           ],
           "result": "Wizard's Robe"
         }
@@ -1020,6 +943,9 @@
       "needChunk": {
         "text": "You need a {} to repair this!"
       },
+      "cantRepair": {
+        "text": "You don't know how to repair that."
+      },
       "smithBegin": {
         "text": "You begin to smith the {}..."
       },
@@ -1031,6 +957,9 @@
       },
       "cookBegin": {
         "text": "You begin to cook the {}."
+      },
+      "cantCook": {
+        "text": "You don't know how to cook that."
       },
       "burned": {
         "text": "Your food is rea....wait a minute, you burned it! You need more practice!"
@@ -1053,6 +982,9 @@
       "noSaw": {
         "text": "You need a carpentry tool equipped to build with!"
       },
+      "unskilledBuild": {
+        "text": "You aren't skilled in carpentry, you'd just ruin the logs"
+      },
       "buildBegin": {
         "text": "You begin to build something..."
       },
@@ -1060,7 +992,7 @@
         "text": "You built a...a...you messed it all up!! You need more practice in carpentry"
       },
       "built": {
-        "text": "Your built a {}!"
+        "text": "You built a {}!"
       },
       "ready": {
         "text": "Your {} is ready!"
@@ -1073,6 +1005,9 @@
       },
       "puff": {
         "text": "The cauldron bubbles...and with a huge puff of smoke, a new item appears inside."
+      },
+      "interrupted": {
+        "text": "You stop what you were making."
       }
     }
   }

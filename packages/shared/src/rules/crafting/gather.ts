@@ -85,21 +85,15 @@ export function ltCascade(rows: readonly LtRow[], skill: number): number | null 
   return v;
 }
 
-/**
- * Tests whether the draw is one. An unset bound consumes one draw and the test returns false.
- */
-function one(rng: Rng, n: number | null): boolean {
-  return rng.random(n ?? 0) === 1;
-}
-
 // ---- tools and counters -----------------------------------------------------------------------
 
 export type CounterName = GatherTool["counter"];
-export type GatherCounters = Record<CounterName, number>;
+/** Hits left per tool, by the tool's name (each hammer has its own); a missing tool starts fresh. */
+export type GatherCounters = Record<string, number>;
 
-/** The client globals start unset, which the `< 1` test reloads. */
+/** No tool has been swung yet: each one's first hit loads its count. */
 export function newGatherCounters(): GatherCounters {
-  return { Chop: 0, Dig: 0, Farm: 0, Watering: 0, Mine: 0 };
+  return {};
 }
 
 /** The tool a swing's weapon is: names containing "Axe", exact matches for the rest. */
@@ -113,59 +107,61 @@ export function gatherTool(weapon: string): GatherTool | null {
 }
 
 /**
- * One hit on the tool's counter: reload from the skill table when below 1, take one, and succeed
- * when it is exactly 1. One table serves every counter.
+ * One hit on a tool's counter: an empty counter loads the skill table's count, each hit takes one,
+ * and the hit that empties it succeeds. Every success takes exactly the table's number of hits.
+ * Each tool keeps its own count; one table serves them all.
  */
-export function hitCounter(counters: GatherCounters, name: CounterName, skill: number): boolean {
-  let c = counters[name];
+export function hitCounter(counters: GatherCounters, tool: string, skill: number): boolean {
+  let c = counters[tool] ?? 0;
   if (c < 1) {
-    c = gtCascade(G.counterTable, skill, c) ?? c;
+    c = gtCascade(G.counterTable, skill, 1) ?? 1;
   }
   c -= 1;
-  counters[name] = c;
-  return c === 1;
+  counters[tool] = c;
+  return c === 0;
 }
 
 /**
- * The shovel's layer-1 test: column X of row Y of the one-line map data. For y ≥ 2 that line is
- * EMPTY, which the test contains; for y = 1 it is the whole map, so words 1-16 are row 1 and word
- * 17 spans the `#` join into row 2 and never matches.
+ * The shovel's ground test: the layer-1 tile under the dug tile must be one of the diggable
+ * grounds (`*G1*H1*O1`), on every row. Off the map nothing is diggable.
  */
 export function shovelLayer1Ok(layer1: readonly string[], x: number, y: number): boolean {
-  if (y !== 1) {
-    return true;
-  }
-  const word =
-    x >= 1 && x <= 16
-      ? lingoWord(layer1[0] ?? "", x)
-      : `${lingoWord(layer1[0] ?? "", 17)}#${lingoWord(layer1[1] ?? "", 1)}`;
-  return lingoContains(G.shovelLayer1.test, word);
+  const code = tileAt(layer1, x, y);
+  return code !== "" && G.shovelLayer1.test.split("*").some((c) => c !== "" && lingoEq(c, code));
 }
 
 // ---- drops ----------------------------------------------------------------------------------
 
-/** Logs: `random(3) = 1` on every fell, dropped only when Lumberjacking > 0. */
-export function rollLogs(skill: number, rng: Rng): string | null {
-  const hit = rng.random(G.logs.chance) === 1;
-  return hit && skill > 0 ? G.logs.item : null;
+/** Logs: `random(3) = 1` on every fell, at any Lumberjacking. */
+export function rollLogs(_skill: number, rng: Rng): string | null {
+  return rng.random(G.logs.chance) === 1 ? G.logs.item : null;
+}
+
+/**
+ * The Iron pool for a Mining skill: the first (tightest) "below N" row the skill is under, so the
+ * odds improve as the skill rises; from the last row's bound up, the last row's pool.
+ */
+export function orePool(skill: number): number {
+  const rows = G.mining.ore.base;
+  const hit = rows.find((r) => skill < r.lt) ?? rows[rows.length - 1];
+  return hit?.value ?? 0;
 }
 
 /**
  * A broken rock, in the original's roll order: the crystal count and the colour, each a cascade
  * whose every true line draws (the last draw kept), then the three ore rolls (each overriding the
- * last; at Mining ≥ 97 the base pool is unset and treated as zero when adding 30 or 130, so
- * Iron is impossible, Steel is 1/30 and Star is 1/130), then the one-in-five find. Returns the
- * item to drop, or null; Mining 0 rolls and drops nothing.
+ * last: Iron from the skill's pool, Steel from it plus 30, Star from that plus 100), then the
+ * one-in-five find. Returns the item to drop, or null. Works at any Mining skill.
  */
 export function rollMiningFind(skill: number, rng: Rng): string | null {
   const m = G.mining;
   const count = gtRoll(m.count, skill, m.countDefault, rng);
   const roll = gtRoll(m.colourPool, skill, m.colourDefault, rng);
   let item = `${count} ${m.colours[roll - 1] ?? "Blue"} Crystals`;
-  const base = ltCascade(m.ore.base, skill);
-  const steel = (base ?? 0) + m.ore.steelAdd; // the Steel pool: the base pool plus 30
+  const base = orePool(skill);
+  const steel = base + m.ore.steelAdd; // the Steel pool: the base pool plus 30
   const star = steel + m.ore.starAdd; // the Star pool: the Steel pool plus 100
-  if (rng.random(base ?? 0) === 1) {
+  if (rng.random(base) === 1) {
     item = m.ore.items[0];
   }
   if (rng.random(steel) === 1) {
@@ -174,18 +170,16 @@ export function rollMiningFind(skill: number, rng: Rng): string | null {
   if (rng.random(star) === 1) {
     item = m.ore.items[2];
   }
-  const found = rng.random(m.findChance) === 1;
-  return found && skill > 0 ? item : null;
+  return rng.random(m.findChance) === 1 ? item : null;
 }
 
-/** The Ice and Fire Hammers: their chunk on `random(130) = 1`, with Mining > 0. */
-export function rollChunk(tool: string, skill: number, rng: Rng): string | null {
+/** The Ice and Fire Hammers: their chunk on `random(130) = 1`, at any Mining skill. */
+export function rollChunk(tool: string, _skill: number, rng: Rng): string | null {
   const c = G.mining.chunks.find((k) => lingoEq(k.tool, tool));
   if (!c) {
     return null;
   }
-  const hit = rng.random(c.chance) === 1;
-  return hit && skill > 0 ? c.item : null;
+  return rng.random(c.chance) === 1 ? c.item : null;
 }
 
 // ---- fishing ---------------------------------------------------------------------------------
@@ -195,10 +189,13 @@ export function isFishingPole(weapon: string): boolean {
   return lingoContains(weapon, G.fishing.tool);
 }
 
-/** The faced tile of the layer-1 field is water: W1, N1, D2 or I2. */
+/** A tile code is fishing water: W1, N1, D2 or I2. */
 export function isFishingWater(code: string): boolean {
   return G.fishing.waterTiles.some((w) => lingoEq(w, code));
 }
+
+/** The map layers fishing reads: water drawn on any of them can be fished. */
+export const FISHING_LAYERS: readonly (1 | 2)[] = G.fishing.layers;
 
 export const FISHING_AT_DELAY = G.fishing.atDelay;
 
@@ -221,31 +218,30 @@ export function fishFor(skill: number): string | null {
   return fish;
 }
 
+/** The bite chance for a Fishing skill: `random(n) = 1`; skill 0 uses the first row's odds. */
+export function fishCheck(skill: number): number {
+  const rows = G.fishing.fishCheck;
+  return gtCascade(rows, skill, rows[0]?.value ?? 1) ?? 1;
+}
+
 /**
  * The fish-drop routine and its fishing helper. Returns the fish caught (or null) and whether the
- * skill rose; spends the anti-macro counter on each, in the original order.
+ * skill rose. Only a catch spends the anti-macro counter, and the skill roll runs while it lasts.
+ * A cast mid-step catches like any other.
  */
 export function castLine(
   skill: number,
   antiMacro: number,
-  midStep: boolean,
   rng: Rng,
 ): { fish: string | null; gained: boolean; antiMacro: number } {
-  const check = gtCascade(G.fishing.fishCheck, skill, null);
-  const bite = one(rng, check);
+  const bite = rng.random(fishCheck(skill)) === 1;
   let left = antiMacro;
   let fish: string | null = null;
-  if (left > 0 && bite && !midStep) {
+  if (left > 0 && bite) {
     fish = fishFor(skill);
     left -= 1;
   }
-  let gained = false;
-  if (left > 0) {
-    gained = rollSkillGain("Fishing", skill, rng);
-    if (gained) {
-      left -= 1;
-    }
-  }
+  const gained = left > 0 && rollSkillGain("Fishing", skill, rng);
   return { fish, gained, antiMacro: left };
 }
 
@@ -256,9 +252,9 @@ export function seedTile(item: string): string | null {
   return G.farming.seeds.find((s) => lingoEq(s.item, item))?.plants ?? null;
 }
 
-/** `"*SL*" contains <tile>`: an off-map EMPTY tile passes. */
+/** The faced tile is tilled soil (`SL`); off the map nothing can be planted. */
 export function canPlant(code: string): boolean {
-  return lingoContains(G.farming.seedTest, code);
+  return code !== "" && G.farming.seedTest.split("*").some((c) => c !== "" && lingoEq(c, code));
 }
 
 export const SEED_PAUSE = G.farming.seedPause;
@@ -295,16 +291,15 @@ export interface RegrowthHooks {
 }
 
 /**
- * One client's frame of world ticks: `random(600)`, then each check whose threshold it is above
- * samples one tile (`random(17)`, `random(12)`). The six `Check*` handlers stop while the roller's
- * the post-death respawn timer runs; `DoVeg` does not. Each check reads the tile once, so it makes
- * at most one change.
+ * One map's frame of world ticks: `random(600)`, then each check whose threshold it is above
+ * samples one tile (`random(17)`, `random(12)`). Each check reads the tile once, so it makes at
+ * most one change. The server runs one frame per map per tick, however many players are there.
  */
-export function regrowthFrame(stopped: boolean, hooks: RegrowthHooks, rng: Rng): void {
+export function regrowthFrame(hooks: RegrowthHooks, rng: Rng): void {
   const R = G.regrowth;
   const r = rng.random(R.roll);
   for (const c of R.checks) {
-    if (r >= c.below || (c.deathGated && stopped)) {
+    if (r >= c.below) {
       continue;
     }
     const x = rng.random(R.tileRoll[0]);
@@ -324,8 +319,11 @@ export function regrowthFrame(stopped: boolean, hooks: RegrowthHooks, rng: Rng):
   }
 }
 
-/** The post-death respawn timer is 400: set by a death and an exit warp. */
-export const REGROWTH_STOP_FRAMES = 400;
+/**
+ * The most frames of regrowth an empty map catches up on when someone arrives: one hour at 20
+ * frames a second.
+ */
+export const REGROWTH_CATCH_UP_FRAMES = 72_000;
 
 // ---- treasure --------------------------------------------------------------------------------
 
@@ -349,14 +347,14 @@ export function buildTreasure(
 }
 
 /**
- * The chat line asks about treasure (the original's treasure-text check): word 1 is "treasure", or
- * the line contains "any treasure", "treasure anywhere" or "rumor". The test for the first word
- * being "the treasure" can never match: the first word is a single word, while "the treasure" has
- * two words.
+ * The chat line asks about treasure: it starts with the word "treasure" or the words "the
+ * treasure", or it contains "any treasure", "treasure anywhere" or "rumor".
  */
 export function asksAboutTreasure(text: string): boolean {
+  const first = lingoWord(text, 1);
   return (
-    lingoEq(lingoWord(text, 1), "treasure") ||
+    lingoEq(first, "treasure") ||
+    (lingoEq(first, "the") && lingoEq(lingoWord(text, 2), "treasure")) ||
     ["any treasure", "treasure anywhere", "rumor"].some((k) => lingoContains(text, k))
   );
 }
@@ -381,8 +379,8 @@ export function skillGainRule(skill: string): SkillGainRule | null {
 }
 
 /**
- * One handler's roll: only while `min <= skill < below` (so a skill at 0 never rises), then
- * `random(chance) = 1`. The caller adds the point and prints `rule.text`.
+ * One handler's roll: only while `min <= skill < below` (0 to 99), then `random(chance) = 1`. The
+ * caller adds the point and prints `rule.text`.
  */
 export function rollSkillGain(skill: string, value: number, rng: Rng): boolean {
   const r = skillGainRule(skill);

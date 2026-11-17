@@ -189,11 +189,14 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   if (paused(p) || !line) {
     return io.out;
   }
-  // Seeds are planted on the faced tile and used up wherever they land.
+  // Seeds are planted on the faced tile, and used up only when they take.
   if (seedTile(line.item)) {
-    io.out.push(...plantSeeds(ctx.world, room, p, line.item));
-    invDelSlot(p.char.bag, slot - 1, 1);
-    changed(p);
+    const r = plantSeeds(ctx.world, room, p, line.item);
+    io.out.push(...r.out);
+    if (r.planted) {
+      invDelSlot(p.char.bag, slot - 1, 1);
+      changed(p);
+    }
     return io.out;
   }
   // The Airship Deed builds on the faced landing pad.

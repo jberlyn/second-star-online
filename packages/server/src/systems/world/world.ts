@@ -51,7 +51,7 @@ import {
   withTile,
 } from "@secondstaronline/shared";
 
-import { type CraftState, newCraftState } from "../crafting/craft.ts";
+import { type CraftState, cancelCrafts, newCraftState } from "../crafting/craft.ts";
 import type { ShopLedger } from "../economy/shop.ts";
 import { archiveNpcStore, type NpcStore } from "../monsters/npcfiles.ts";
 import { type MonsterSlot, monsterView } from "../monsters/slots.ts";
@@ -86,6 +86,8 @@ export interface WorldMap {
   signs: [string, string, string];
   /** Field 12 items 6-10. */
   fog: MapFog;
+  /** The server tick its regrowth last ran on; an empty map catches up from here. */
+  regrowthTick?: number;
 }
 
 /** A ground item: an original `Name:px-py` entry with a server id. */
@@ -409,11 +411,6 @@ export interface Player {
    * read by the blocking check.
    */
   shownNames: (string | null)[];
-  /**
-   * The respawn-stop timer: 400 frames after a death or an exit warp, during which this player's
-   * frames regrow nothing; produce still drops.
-   */
-  regrowthStop: number;
 
   // ---- crafting stations and containers --------------------------------------
   /** The running crafts and the session's last action, next food and next potion. */
@@ -631,7 +628,6 @@ export function sessionCombatState(): Pick<
   | "gather"
   | "antiMacro"
   | "shownNames"
-  | "regrowthStop"
   | "craft"
   | "container"
   | "placing"
@@ -697,7 +693,6 @@ export function sessionCombatState(): Pick<
     gather: newGatherCounters(),
     antiMacro: ANTI_MACRO_START,
     shownNames: [null, null, null, null],
-    regrowthStop: 0,
     craft: newCraftState(),
     container: null,
     placing: null,
@@ -1082,9 +1077,9 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   // Loading the map hides sprite 112 and drawing its items shows it; the counter keeps running
   // from there.
   p.hidden = false;
-  // Drawing the map's items clears the input lock: a craft keeps running with the keys free, and a
-  // sandwich brew's lock ends.
+  // Drawing the map's items clears the input lock, and a map change ends any running craft.
   p.keyLock = false;
+  const stopped = cancelCrafts(p);
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;
   // Drawing an O-O-O map (no fighting, indoors, no PvP) saves the respawn point, except in jail.
@@ -1113,6 +1108,7 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
       ground: p.map.ground.map(groundView),
     },
   });
+  out.push(...stopped);
   return out;
 }
 

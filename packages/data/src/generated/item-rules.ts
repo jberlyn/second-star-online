@@ -2644,7 +2644,7 @@ export const itemRulesData: ItemRulesData = {
       {
         "match": "contains",
         "pattern": "Knight's Sword",
-        "damaged": "Damaged Sword, Knight's"
+        "damaged": "Damaged Sword, Knight"
       },
       {
         "match": "contains",

@@ -1498,7 +1498,7 @@
     ],
     [
       "3",
-      "6298f352123c1fe7"
+      "7cec761d2ba950ef"
     ],
     [
       "4",
@@ -1510,75 +1510,7 @@
     ],
     [
       "6",
-      "5e6a3716607b9690"
-    ]
-  ],
-  "craft.json#/stations/cook/clickFoods": [
-    [
-      "Cyclops Meat",
-      "0ab86756b5d45506"
-    ],
-    [
-      "Pig",
-      "3505f02946c7a9be"
-    ],
-    [
-      "Orc Meat",
-      "af8d4d088a5886e0"
-    ],
-    [
-      "Orc Meat",
-      "f6a4797876385821"
-    ],
-    [
-      "Raw Fish",
-      "fbcc01fd0e098be1"
-    ],
-    [
-      "Yeti Meat",
-      "f53e75c6fa144702"
-    ]
-  ],
-  "craft.json#/stations/cook/doneFoods": [
-    [
-      "Cyclops Meat",
-      "0ab86756b5d45506"
-    ],
-    [
-      "Orc Meat",
-      "af8d4d088a5886e0"
-    ],
-    [
-      "Orc Meat",
-      "f6a4797876385821"
-    ],
-    [
-      "Raw Fish",
-      "fbcc01fd0e098be1"
-    ],
-    [
-      "Trout",
-      "808cf27a14b2a4c0"
-    ],
-    [
-      "Catfish",
-      "bfdcccaf0a8c7f59"
-    ],
-    [
-      "Swordfish",
-      "a1bd973be0067c13"
-    ],
-    [
-      "Squid",
-      "60cd39832827d316"
-    ],
-    [
-      "Yeti Meat",
-      "f53e75c6fa144702"
-    ],
-    [
-      "Pig",
-      "3505f02946c7a9be"
+      "9383cb139d3ba642"
     ]
   ],
   "craft.json#/stations/cook/recipes": [
@@ -1608,7 +1540,7 @@
     ],
     [
       "6",
-      "dfab0bcd86eeb484"
+      "52f349a9e4d67268"
     ],
     [
       "7",
@@ -1670,7 +1602,7 @@
   "craft.json#/stations/failure/rows": [
     [
       "0",
-      "7ddbfb9b179a6993"
+      "30626c215bd3fc00"
     ],
     [
       "1",
@@ -1876,11 +1808,11 @@
     ],
     [
       "Chain Helm",
-      "0a127f0efc90c546"
+      "08187612cf9d677e"
     ],
     [
       "Steel Shield",
-      "84fade6f009f513b"
+      "647d407b2cfb2b28"
     ],
     [
       "War Helm",
@@ -1889,10 +1821,6 @@
     [
       "Small Shield",
       "9dbd80828c45bfd2"
-    ],
-    [
-      "Leather Armor",
-      "473a5c7221049b1e"
     ],
     [
       "Ice Helm",
@@ -2626,31 +2554,31 @@
   "gather.json#/gathering/regrowth/checks": [
     [
       "CheckTrees",
-      "aa3a4d1f86ee49c1"
+      "fc7441b0383155f0"
     ],
     [
       "CheckRock",
-      "39857b122aa3c4b3"
+      "ef8997e1975041b5"
     ],
     [
       "CheckIce",
-      "a6d3150b21145529"
+      "615d3ee5a17a155f"
     ],
     [
       "CheckFire",
-      "58691d61a482f31e"
+      "b89cfa6be05b2499"
     ],
     [
       "CheckHoles",
-      "b3adad26c499864a"
+      "c67397126781dcb3"
     ],
     [
       "CheckVeg",
-      "2c311a00f0d743af"
+      "35bdfebf9966028a"
     ],
     [
       "DoVeg",
-      "93fd2a79914ed00d"
+      "1a0655cd59d70cd9"
     ]
   ],
   "gather.json#/gathering/regrowth/tileRoll": [
@@ -2952,39 +2880,39 @@
   "gather.json#/skillGain": [
     [
       "Lumberjacking",
-      "3769c8eec5f44484"
+      "7db40b4a5935640a"
     ],
     [
       "Shoveling",
-      "9206feb81589b9be"
+      "3eaf8ce9904878f7"
     ],
     [
       "Farming",
-      "cbaed937490bf3bd"
+      "d5badc107f7c0b72"
     ],
     [
       "Mining",
-      "6f37be89fb49e2eb"
+      "edd0e79c3637e4d0"
     ],
     [
       "Fishing",
-      "a3d2aec4a568d47a"
+      "c3d164f868379278"
     ],
     [
       "Cooking",
-      "7be50821b6c8a0f2"
+      "1b1f3f76e689ef25"
     ],
     [
       "Blacksmithing",
-      "d6ca632a012b58ae"
+      "e30d7d3af290c560"
     ],
     [
       "Alchemy",
-      "b29ff992b4350d23"
+      "511971116f51fcf0"
     ],
     [
       "Carpentry",
-      "ea5cb52b0ebf416f"
+      "79030d20da170635"
     ]
   ],
   "help.json#/topics": [
@@ -4072,7 +4000,7 @@
     ],
     [
       "Knight's Sword",
-      "27e6adea2f62467e"
+      "bb8616b730b448f1"
     ],
     [
       "Star Sword",

@@ -33,7 +33,6 @@ import {
   JAIL,
   lingoEq,
   neighbourMapName,
-  REGROWTH_STOP_FRAMES,
   type Rng,
   STEPFRAMES_PER_FRAME,
   tickAttackTimers,
@@ -354,6 +353,14 @@ export function tick(world: World, deps: TickDeps): TickResult {
       tell: (to, text) => tell(to, text),
       crossings,
     };
+    // The world ticks: one regrowth frame per map, however many players are on it.
+    out.push(
+      ...regrowthStep(
+        room,
+        { world, rng, now: itemCtx.now, lootDecayMinutes: deps.lootDecayMinutes ?? 30 },
+        world.tickNo,
+      ),
+    );
     for (const p of players) {
       const spells: CollideOut = { events: [], out: [], portals: [], slotsChanged: false };
       smokeBombStep(room, p, spells);
@@ -366,10 +373,6 @@ export function tick(world: World, deps: TickDeps): TickResult {
         if (!portals.includes(q)) {
           portals.push(q);
         }
-      }
-      // The respawn-stop timer: regrowth waits it out.
-      if (p.regrowthStop > 0) {
-        p.regrowthStop -= 1;
       }
       // The faction-drop run while `Fctcnt > 0`.
       const loyalty = loyaltyFrame(world, p);
@@ -415,15 +418,6 @@ export function tick(world: World, deps: TickDeps): TickResult {
       // The crafting counters: Smith, Cook, Build, Mix.
       out.push(...craftStep(room, p, { world, rng }, itemCtx.now));
       tickAttackTimers(p.timers);
-      // The world ticks after the attack delay: one regrowth roll per player on the map.
-      out.push(
-        ...regrowthStep(room, p, {
-          world,
-          rng,
-          now: itemCtx.now,
-          lootDecayMinutes: deps.lootDecayMinutes ?? 30,
-        }),
-      );
       // Rest regen in a house.
       restRegen(p, rng);
       // The buff counters: Hold and Stone Skin, the attack counter (Argon's Fist, the Purple
@@ -510,7 +504,6 @@ export function tick(world: World, deps: TickDeps): TickResult {
       // `Exit`/`Exit2` item on foot warps you, and no step starts this frame.
       const exit = exitUnder(p);
       if (exit) {
-        p.regrowthStop = REGROWTH_STOP_FRAMES;
         exits.push({ player: p, exit });
       } else {
         movePlayer(room, p, ctx);

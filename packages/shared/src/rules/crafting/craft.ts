@@ -6,9 +6,9 @@
  */
 import { type CraftData, craftData } from "@secondstaronline/data";
 
-import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
+import { lingoEq, type Rng } from "../core/lingo.ts";
 import { menuAction } from "../inventory/equip.ts";
-import { type AddResult, BAG_SLOTS, type Bag, bagText, invAdd } from "../inventory/inventory.ts";
+import { type AddResult, type Bag, invAdd } from "../inventory/inventory.ts";
 import { crystalLine } from "../spells/spells.ts";
 
 const ST: CraftData["stations"] = craftData.stations;
@@ -42,6 +42,7 @@ export const CRAFT_TEXT = {
   smithBegin: (item: string) => fill("smithBegin", item),
   noStove: t("noStove"),
   unskilled: t("unskilled"), // no full stop
+  cantCook: t("cantCook"),
   cookBegin: (item: string) => fill("cookBegin", item),
   burned: t("burned"),
   noLab: t("noLab"),
@@ -50,10 +51,13 @@ export const CRAFT_TEXT = {
   potionOff: t("potionOff"),
   potionReady: t("potionReady"),
   noSaw: t("noSaw"),
+  unskilledBuild: t("unskilledBuild"), // no full stop, like cooking's
   buildBegin: t("buildBegin"),
   buildFailed: t("buildFailed"),
-  built: (name: string) => fill("built", name), // (sic)
+  built: (name: string) => fill("built", name),
   ready: (item: string) => fill("ready", item),
+  cantRepair: t("cantRepair"),
+  interrupted: t("interrupted"),
   fizzle: t("fizzle"),
   puff: t("puff"),
 } as const;
@@ -98,7 +102,7 @@ export function craftTimer(kind: CraftKind, skill: number, campfire = false): nu
   return kind === "Cook" && campfire ? v * 2 : v;
 }
 
-/** The failure pool for a skill, or null at exactly 10, which no row matches. */
+/** The failure pool for a skill: 1 in 3 up to 10, then 1 in 5 above 10, and so on. */
 export function failurePool(skill: number): number | null {
   let n: number | null = null;
   for (const r of ST.failure.rows) {
@@ -112,7 +116,7 @@ export function failurePool(skill: number): number | null {
 /**
  * The failure roll: every true row draws its own `random(n)` in order and the last draw decides
  * (a roll of 1), so Carpentry 55 draws `random(5)`, `random(7)`, `random(9)`, `random(11)`. Same
- * odds as one draw from `failurePool`; nothing is drawn at exactly 10.
+ * odds as one draw from `failurePool`.
  */
 export function rollFailure(skill: number, rng: Rng): boolean {
   let roll: number | null = null;
@@ -124,38 +128,24 @@ export function rollFailure(skill: number, rng: Rng): boolean {
   return roll === 1;
 }
 
-// ---- the bag, as 1.6's substring searches read it --------------------------------------------
+// ---- the bag ---------------------------------------------------------------------------------
 
-/** The text of one bag line, `Name-qty`, or "". */
-const lineText = (bag: Bag, i: number): string => {
-  const l = bag[i];
-  return l ? `${l.item}-${l.qty}` : "";
-};
-
-/** The first slot (0-based) whose text contains `<name>-`, or -1. */
-export function firstSlotContaining(bag: Bag, name: string): number {
-  for (let i = 0; i < BAG_SLOTS; i++) {
-    if (lineText(bag, i) !== "" && lingoContains(lineText(bag, i), `${name}-`)) {
-      return i;
-    }
-  }
-  return -1;
+/** The first slot (0-based) holding exactly `name`, or -1. */
+export function firstSlotNamed(bag: Bag, name: string): number {
+  return bag.findIndex((l) => l !== null && lingoEq(l.item, name));
 }
 
-/**
- * the original's bag-delete routine called for one item, as 1.6 wrote it: take one from the first
- * slot containing `<name>-` and write the line back as `<name>-<rest>`, so a match on "Cooked
- * Pig-3" for "Pig" becomes "Pig-2" (a kept bug: cooking a Pig can turn a Cooked Pig back into a
- * Pig). False (and nothing changed) when no slot matches.
- */
+/** Takes one `name` from the first slot holding exactly that item; false when there is none. */
 export function takeByName(bag: Bag, name: string): boolean {
-  const i = firstSlotContaining(bag, name);
+  const i = firstSlotNamed(bag, name);
   const line = bag[i];
   if (i < 0 || !line) {
     return false;
   }
-  const rest = line.qty - 1;
-  bag[i] = rest > 0 ? { item: name, qty: rest } : null;
+  line.qty -= 1;
+  if (line.qty <= 0) {
+    bag[i] = null;
+  }
   return true;
 }
 
@@ -177,30 +167,22 @@ export interface CraftView {
   facing: (station: string) => boolean;
   keyLock: boolean;
   itemPause: number;
-  /**
-   * The chosen food, the chosen potion and the last action (client globals; per character in SSO).
-   */
-  lastFood: string | null;
-  lastPotion: string | null;
 }
 
-/** A started craft's job, carried until its counter reaches 1. */
+/**
+ * A started craft's job, carried until its counter reaches 1. Nothing is taken at the start: the
+ * materials named here are taken when the craft finishes.
+ */
 export type CraftJob =
   | { kind: "Smith"; item: string; chunk: string }
   | { kind: "Cook"; raw: string }
-  | { kind: "Mix" }
-  | { kind: "Build" };
+  | { kind: "Mix"; bottle: string; crystal: string; potion: string }
+  | { kind: "Build"; logs: string };
 
 export interface CraftStarted {
   kind: CraftKind;
   job: CraftJob;
   frames: number;
-  /** Bag changes made at the start (Mix's crystal and bottle, Build's Logs): done on `bag`. */
-  bagChanged: boolean;
-  /** The last action when the button writes it (Cook, Mix). */
-  lact?: string;
-  lastFood?: string | null;
-  lastPotion?: string | null;
 }
 
 export interface CraftStartResult {
@@ -212,14 +194,14 @@ const none = (lines: string[] = []): CraftStartResult => ({ lines, started: null
 
 /**
  * A crafting button on bag slot `slot` (1-based), with every check in the original's order. The
- * button is the one the menu would show for the slot's item. Removals at the start are made on
- * `v.bag` in place. The click and the menu hide happen first, on the client.
+ * button is the one the menu would show for the slot's item. Nothing is taken from the bag. The
+ * click and the menu hide happen first, on the client.
  */
-export function startCraft(v: CraftView, slot: number, rng: Rng): CraftStartResult {
+export function startCraft(v: CraftView, slot: number): CraftStartResult {
   const line = v.bag[slot - 1] ?? null;
   const kind = line ? craftKind(line.item) : null;
   // Every button starts with the same two checks: the key lock-out, then the pause between item
-  // actions. Mix also tests the modify flag, which is 0 exactly while a pause runs.
+  // actions.
   if (!kind || v.keyLock || v.itemPause > 0 || !line) {
     return none();
   }
@@ -228,15 +210,15 @@ export function startCraft(v: CraftView, slot: number, rng: Rng): CraftStartResu
     case "Smith":
       return startSmith(v, item);
     case "Cook":
-      return startCook(v, item, rng);
+      return startCook(v, item);
     case "Mix":
-      return startMix(v, slot, item, rng);
+      return startMix(v, item);
     case "Build":
-      return startBuild(v, slot, item);
+      return startBuild(v, item);
   }
 }
 
-/** The chunk a damaged item needs: Iron by default, 20 named rows. */
+/** The chunk a damaged item needs: Iron by default, 21 named rows. */
 export function smithChunk(item: string): string {
   let chunk = ST.smith.chunkDefault;
   for (const r of ST.smith.chunks) {
@@ -257,6 +239,9 @@ function startSmith(v: CraftView, item: string): CraftStartResult {
   if (!lingoEq(v.leftHand, ST.smith.tool)) {
     return none([CRAFT_TEXT.noHammer]);
   }
+  if (repairResult(item) === null) {
+    return none([CRAFT_TEXT.cantRepair]);
+  }
   const chunk = smithChunk(item);
   // Any bag line whose icon is the chunk's member: an exact name.
   if (!v.bag.some((l) => l !== null && lingoEq(l.item, chunk))) {
@@ -268,21 +253,11 @@ function startSmith(v: CraftView, item: string): CraftStartResult {
       kind: "Smith",
       job: { kind: "Smith", item, chunk },
       frames: craftTimer("Smith", v.skill("Blacksmithing")),
-      bagChanged: false,
     },
   };
 }
 
-/** Cooking's food choice for a name in `rows` (Orc Meat has two rows, picked by `waka`). */
-function foodFor(rows: readonly { item: string; food: string }[], name: string, waka: number) {
-  const hits = rows.filter((r) => lingoEq(r.item, name));
-  if (hits.length === 0) {
-    return null;
-  }
-  return (hits.length > 1 && waka !== 1 ? hits[1] : hits[0])?.food ?? null;
-}
-
-function startCook(v: CraftView, item: string, rng: Rng): CraftStartResult {
+function startCook(v: CraftView, item: string): CraftStartResult {
   // The station list in the crafting data is the only copy: every station except the Campfire (the
   // `doubles` entry, tested below) is a stove.
   const stove = ST.cook.stations.some((st) => !lingoEq(st, ST.cook.doubles) && v.facing(st));
@@ -294,15 +269,8 @@ function startCook(v: CraftView, item: string, rng: Rng): CraftStartResult {
   if (cooking < ST.cook.minSkill) {
     return none([CRAFT_TEXT.unskilled]);
   }
-  // The chosen food: five names write it, and any click's failed roll writes "Bad Food".
-  const waka = rng.random(2);
-  let lastFood = v.lastFood;
-  const food = foodFor(ST.cook.clickFoods, item, waka);
-  if (food !== null) {
-    lastFood = food;
-  }
-  if (rollFailure(cooking, rng)) {
-    lastFood = "Bad Food";
+  if (cookResult(item) === null) {
+    return none([CRAFT_TEXT.cantCook]);
   }
   return {
     lines: [CRAFT_TEXT.cookBegin(item)],
@@ -311,163 +279,90 @@ function startCook(v: CraftView, item: string, rng: Rng): CraftStartResult {
       job: { kind: "Cook", raw: item },
       // A Campfire on the faced tile doubles it, even with a Stove there too.
       frames: craftTimer("Cook", cooking, campfire),
-      bagChanged: false,
-      lact: item,
-      lastFood,
     },
   };
 }
 
-function startMix(v: CraftView, slot: number, item: string, rng: Rng): CraftStartResult {
+function startMix(v: CraftView, item: string): CraftStartResult {
   if (!v.facing(ST.mix.station)) {
     return none([CRAFT_TEXT.noLab]);
   }
-  if (!lingoContains(v.rightHand, ST.mix.sandMatch)) {
+  // The held sand is the alchemist's tool, like the Hammer and the Saw: one of the six sands
+  // exactly, never used up. It picks the potion and the crystal it needs.
+  const sand = ST.mix.sands.find((s) => lingoEq(v.rightHand, s.sand));
+  if (!sand) {
     return none([CRAFT_TEXT.noSand]);
   }
-  // The six exact sands each need their crystal, taken at once (the crystal-removal routine).
-  const sand = ST.mix.sands.find((s) => lingoEq(v.rightHand, s.sand));
-  if (sand) {
-    const colour = sand.crystal.split(" ")[0] ?? "";
-    // The crystal loader reads the last line containing "<Colour> Cry", with its own count.
-    const c = crystalLine(v.bag, colour);
-    if (c < 0 || (v.bag[c]?.qty ?? 0) <= 0) {
-      return none([sand.need]);
-    }
-    // The server: the client's slot must contain "<Colour> Crystals-", then the bag-delete routine
-    // takes from the first slot that does.
-    const text = bagText(v.bag).split(":")[c] ?? "";
-    if (lingoContains(text, `${sand.crystal}-`)) {
-      takeByName(v.bag, sand.crystal);
-    }
-  }
-  // The item-removal message `"<item>:<slot>"`: the slot must contain "<item>-", then the first
-  // match goes.
-  const bottleText = bagText(v.bag).split(":")[slot - 1] ?? "";
-  if (lingoContains(bottleText, `${item}-`)) {
-    takeByName(v.bag, item);
-  }
-  let lastPotion = v.lastPotion;
-  if (sand) {
-    lastPotion = sand.potion;
-  }
-  if (rollFailure(v.skill("Alchemy"), rng)) {
-    lastPotion = "Bad Potion";
+  const colour = sand.crystal.split(" ")[0] ?? "";
+  const c = crystalLine(v.bag, colour);
+  if (c < 0 || (v.bag[c]?.qty ?? 0) <= 0 || firstSlotNamed(v.bag, sand.crystal) < 0) {
+    return none([sand.need]);
   }
   return {
     lines: [CRAFT_TEXT.mixBegin],
     started: {
       kind: "Mix",
-      job: { kind: "Mix" },
+      job: { kind: "Mix", bottle: item, crystal: sand.crystal, potion: sand.potion },
       frames: craftTimer("Mix", v.skill("Alchemy")),
-      bagChanged: true,
-      lact: v.rightHand,
-      lastPotion,
     },
   };
 }
 
-function startBuild(v: CraftView, slot: number, item: string): CraftStartResult {
+function startBuild(v: CraftView, item: string): CraftStartResult {
   if (!lingoEq(v.rightHand, ST.build.tool)) {
     return none([CRAFT_TEXT.noSaw]);
   }
-  const text = bagText(v.bag).split(":")[slot - 1] ?? "";
-  if (lingoContains(text, `${item}-`)) {
-    takeByName(v.bag, item);
+  const carpentry = v.skill("Carpentry");
+  if (carpentry < ST.build.minSkill) {
+    return none([CRAFT_TEXT.unskilledBuild]);
   }
-  // The click-time pick and roll are overwritten by the item-built step: not drawn.
   return {
     lines: [CRAFT_TEXT.buildBegin],
     started: {
       kind: "Build",
-      job: { kind: "Build" },
-      frames: craftTimer("Build", v.skill("Carpentry")),
-      bagChanged: true,
+      job: { kind: "Build", logs: item },
+      frames: craftTimer("Build", carpentry),
     },
   };
 }
 
 // ---- completion ------------------------------------------------------------------------------
 
-/** What a completion asks the server to do. */
-export interface CraftDone {
-  /** Lines printed on the client before anything is sent (burns, "Your potion is ready!"). */
-  lines: string[];
-  /** `snx38` (Cook, Smith) or `itremovv` (Mix, Build). */
-  send:
-    | { kind: "snx38"; item: string; chunk: string; skill: number; which: "C" | "S" }
-    | { kind: "itremovv"; item: string }
-    | null;
-  /** The completion frees the keys; the sandwich brew with no potion yet does not. */
-  unlock: boolean;
-  /** The client's skill handler run after the send (AlchemyImp, CarpentryImp). */
-  imp: "Alchemy" | "Carpentry" | null;
+/** The last matching row of `rows` for `item`, or null. */
+function recipeFor(rows: readonly { input: string; output: string }[], item: string) {
+  let out: string | null = null;
+  for (const r of rows) {
+    if (lingoEq(item, r.input)) {
+      out = r.output;
+    }
+  }
+  return out;
 }
 
-/**
- * The food-cooked step: the food is re-derived from the last action; any other name keeps the
- * session's chosen food, so after a failed click Raw Meat burns. The burn rolled here decides; a
- * burn sends nothing, so the raw item stays.
- */
-export function cookDone(
-  raw: string,
-  lact: string | null,
-  lastFood: string | null,
-  cooking: number,
-  rng: Rng,
-): CraftDone {
-  const waka = rng.random(2);
-  let food = (lact !== null ? foodFor(ST.cook.doneFoods, lact, waka) : null) ?? lastFood;
-  if (rollFailure(cooking, rng)) {
-    food = "Bad Food";
-  }
-  if (food !== null && lingoEq(food, "Bad Food")) {
-    return { lines: [CRAFT_TEXT.burned], send: null, unlock: true, imp: null };
-  }
-  return {
-    lines: [],
-    send: { kind: "snx38", item: raw, chunk: "", skill: cooking, which: "C" },
-    unlock: true,
-    imp: null,
-  };
+/** What a damaged item repairs into, or null when it cannot be repaired. */
+export function repairResult(item: string): string | null {
+  return recipeFor(ST.smith.repairs, item);
 }
 
-/**
- * The potion-mixed step: an exact sand picks its potion; anything else (the Catfish Sandwich) keeps
- * the session's chosen potion. "Your potion is ready!" prints before the server acts. With no
- * potion at all nothing prints, nothing is sent and the keys stay locked.
- */
-export function mixDone(
-  lact: string | null,
-  lastPotion: string | null,
-  alchemy: number,
-  rng: Rng,
-): CraftDone {
-  let potion = lastPotion;
-  const sand = lact !== null ? ST.mix.sands.find((s) => lingoEq(lact, s.sand)) : undefined;
-  if (sand) {
-    potion = sand.potion;
-  }
-  if (rollFailure(alchemy, rng)) {
-    potion = "Bad Potion";
-  }
-  if (potion !== null && lingoEq(potion, "Bad Potion")) {
-    return { lines: [CRAFT_TEXT.potionOff], send: null, unlock: true, imp: null };
-  }
-  if (potion !== null && lingoContains(potion, "Potion")) {
-    return {
-      lines: [CRAFT_TEXT.potionReady],
-      send: { kind: "itremovv", item: potion },
-      unlock: true,
-      imp: "Alchemy",
-    };
-  }
-  return { lines: [], send: null, unlock: false, imp: null };
+/** What a raw food cooks into, or null when it cannot be cooked. */
+export function cookResult(item: string): string | null {
+  return recipeFor(ST.cook.recipes, item);
+}
+
+/** The masterwork pool by skill: 250, then 100 (>50) … 35 (>98). */
+export function masterworkPool(skill: number): number {
+  return cascade(ST.smith.masterworkPool, skill);
+}
+
+/** A repaired item's `+N` from a roll of its pool. */
+export function masterwork(item: string, roll: number): string {
+  const row = ST.smith.masterwork.find((m) => lingoEq(m.item, item));
+  return row?.outcomes.find((o) => o.roll === roll)?.result ?? item;
 }
 
 /**
  * The item-built step's pick: each band below `lt` overwrites the last, drawing its own
- * `random(pool)` as 1.6 did. Crates and Cabinets come back bare: `invAdd` mints their id.
+ * `random(pool)` as 1.6 did. Crates and Cabinets come back bare: the server mints their id.
  */
 export function carpentryResult(carpentry: number, rng: Rng): string {
   let result = "";
@@ -485,123 +380,122 @@ export function carpentryResult(carpentry: number, rng: Rng): string {
   return result;
 }
 
-/** The item-built step: the pick, then the failure roll; "Your built a <name>!" (sic). */
-export function buildDone(carpentry: number, rng: Rng): CraftDone {
-  const result = carpentryResult(carpentry, rng);
-  if (rollFailure(carpentry, rng)) {
-    return { lines: [CRAFT_TEXT.buildFailed], send: null, unlock: true, imp: null };
-  }
-  return {
-    lines: [CRAFT_TEXT.built(result)],
-    send: { kind: "itremovv", item: result },
-    unlock: true,
-    imp: "Carpentry",
-  };
-}
-
-/** Finishing a smith prints nothing and sends `snx38 "<item>:<chunk>:<skill>:S"`. */
-export function smithDone(item: string, chunk: string, smithing: number): CraftDone {
-  return {
-    lines: [],
-    send: { kind: "snx38", item, chunk, skill: smithing, which: "S" },
-    unlock: true,
-    imp: null,
-  };
-}
-
-// ---- the server's side -----------------------------------------------------------------------
-
-/** The server's result names: the 33 repairs, then the nine dishes. */
-export function snx38Result(item: string): string | null {
-  let out: string | null = null;
-  for (const r of [...ST.smith.repairs, ...ST.cook.recipes]) {
-    if (lingoEq(item, r.input)) {
-      out = r.output;
-    }
-  }
-  return out;
-}
-
-/** The masterwork pool by skill: 250, then 100 (>50) … 35 (>98). */
-export function masterworkPool(skill: number): number {
-  return cascade(ST.smith.masterworkPool, skill);
-}
-
-/** A repaired item's `+N` from a roll of its pool. */
-export function masterwork(item: string, roll: number): string {
-  const row = ST.smith.masterwork.find((m) => lingoEq(m.item, item));
-  return row?.outcomes.find((o) => o.roll === roll)?.result ?? item;
-}
-
-export interface Snx38Result {
-  /** False when 1.6's server exited silently: nothing changes and nothing is sent. */
+/** A finished craft. */
+export interface CraftFinish {
+  /** False when a material is gone at completion: nothing changes and nothing is said. */
   reached: boolean;
-  /** The item added, or null (no recipe, or the bag full): the inputs then stay. */
+  lines: string[];
+  /** The item added, or null (a failure, or no room in the bag). */
   added: AddResult | null;
-  /** "Your <item> is ready!" ("Your  is ready!" with no recipe). */
-  line: string;
+  /** The craft made something, so the skill handler rolls. */
+  gain: boolean;
+}
+
+/** The materials a job takes when it finishes. */
+function materials(job: CraftJob): string[] {
+  switch (job.kind) {
+    case "Smith":
+      return [job.item, job.chunk];
+    case "Cook":
+      return [job.raw];
+    case "Mix":
+      return [job.bottle, job.crystal];
+    case "Build":
+      return [job.logs];
+  }
 }
 
 /**
- * `snx38` on `inv` in place. Takes one of the item and of the chunk by 1.6's substring rule, maps
- * the name, rolls the masterwork on the **server's** skill, then adds the result. 1.6 decremented
- * in memory and wrote only through `InvAdd`, so with no recipe or a full bag nothing is written and
- * the inputs stay; the skill roll and the line still come. A chunk missing at completion ends it
- * silently (1.6 reused the item's slot).
+ * A craft's completion on `inv` in place. The materials are taken now, by exact name; if any is
+ * gone the craft ends silently and nothing changes. Cooking, alchemy and carpentry then roll their
+ * failure: a failure uses the materials up and makes nothing. A success makes the result (a
+ * repair rolls its masterwork on the server's skill); if the bag has no room for it, nothing is
+ * taken, nothing is made and the crafter is told the bag is too crowded. `addName` lets the server
+ * mint a built container's id.
  */
-export function snx38(
+export function finishCraft(
   inv: { bag: Bag; gold: number },
-  item: string,
-  chunk: string,
-  which: "C" | "S",
+  job: CraftJob,
   skill: number,
   rng: Rng,
   addName: (name: string) => string = (n) => n,
-): Snx38Result {
+): CraftFinish {
   const bag: Bag = inv.bag.map((l) => (l ? { ...l } : null));
-  if (!takeByName(bag, item)) {
-    return { reached: false, added: null, line: "" };
+  if (!materials(job).every((m) => takeByName(bag, m))) {
+    return { reached: false, lines: [], added: null, gain: false };
   }
-  if (chunk !== "" && !takeByName(bag, chunk)) {
-    return { reached: false, added: null, line: "" };
-  }
-  let result = snx38Result(item);
-  let roll = rng.random(250);
-  if (which === "S") {
-    const pool = masterworkPool(skill);
-    if (pool !== 250) {
-      roll = rng.random(pool);
+  const commit = () => {
+    inv.bag.splice(0, inv.bag.length, ...bag);
+  };
+  let result: string | null;
+  let failed: string | null = null;
+  switch (job.kind) {
+    case "Smith": {
+      result = repairResult(job.item);
+      const pool = masterworkPool(skill);
+      const roll = rng.random(pool);
+      if (result !== null) {
+        result = masterwork(result, roll);
+      }
+      break;
     }
-    if (result !== null) {
-      result = masterwork(result, roll);
-    }
+    case "Cook":
+      result = cookResult(job.raw);
+      failed = CRAFT_TEXT.burned;
+      break;
+    case "Mix":
+      result = job.potion;
+      failed = CRAFT_TEXT.potionOff;
+      break;
+    case "Build":
+      result = carpentryResult(skill, rng);
+      failed = CRAFT_TEXT.buildFailed;
+      break;
   }
-  if (result === null) {
-    return { reached: true, added: null, line: CRAFT_TEXT.ready("") };
+  if (failed !== null && rollFailure(skill, rng)) {
+    commit();
+    return { reached: true, lines: [failed], added: null, gain: false };
+  }
+  if (result === null || result === "") {
+    return { reached: false, lines: [], added: null, gain: false };
   }
   const trial = { bag, gold: inv.gold };
   const added = invAdd(trial, addName(result), 1, rng);
   if (added.kind === "full") {
-    return { reached: true, added: null, line: CRAFT_TEXT.ready(result) };
+    return { reached: true, lines: [CRAFT_TEXT.crowded], added: null, gain: false };
   }
-  inv.bag.splice(0, inv.bag.length, ...trial.bag);
+  commit();
   inv.gold = trial.gold;
-  return { reached: true, added, line: CRAFT_TEXT.ready(result) };
+  const line =
+    job.kind === "Mix"
+      ? CRAFT_TEXT.potionReady
+      : job.kind === "Build"
+        ? CRAFT_TEXT.built(result)
+        : CRAFT_TEXT.ready(result);
+  return { reached: true, lines: [line], added, gain: true };
 }
 
 /**
- * The Cauldron's recipes on its whole text: `contains` both ingredients, the last matching recipe
- * wins. Null is a fizzle.
+ * The Cauldron's recipes on its contents: the first recipe whose two ingredients are both there,
+ * each by its exact name. A brew takes one of each ingredient, adds the result and leaves the rest
+ * of the contents alone. Null is a fizzle.
  */
-export function cauldronBrew(lines: readonly string[]): string | null {
-  const text = lines.join("\n");
-  let out: string | null = null;
+export function cauldronBrew(lines: readonly string[]): string[] | null {
   for (const r of ST.cauldron.recipes) {
-    if (lingoContains(text, r.requires[0]) && lingoContains(text, r.requires[1])) {
-      out = r.result;
+    const next = [...lines];
+    const ok = r.requires.every((need) => {
+      const i = next.findIndex((l) => lingoEq(l, need));
+      if (i < 0) {
+        return false;
+      }
+      next.splice(i, 1);
+      return true;
+    });
+    if (ok) {
+      return [...next, r.result];
     }
   }
-  return out;
+  return null;
 }
 
 /** The Cauldron's name test on Drop (name contains "Cauldron#") and capacity. */

@@ -1464,10 +1464,10 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Regrowth rolls run on the server
 - **Kind:** Architecture
-- **What you notice:** Gathering sites regrow at a rate affected by how many players are on the map.
+- **What you notice:** Gathering sites and farm produce regrow on the server's clock.
 - **1.6:** Each client on the map drew a number from 1 to 600 each frame, except while a map was loading, to decide which regrowth and produce checks to run, then edited tiles.
-- **SSO:** The server makes the same draw once per player on the map per frame, skipping players whose maps are loading.
-- **Why:** The server owns tile changes while preserving the population-dependent rate.
+- **SSO:** The server makes the draw itself, once per map per frame, and sends the tile changes (see "Regrowth runs at one rate on every map").
+- **Why:** The server owns tile changes.
 - **In the code:** `packages/server/src/systems/crafting/gather.ts` (`regrowthStep`)
 
 ### Built containers get server ids
@@ -1480,9 +1480,9 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Crafts end at logout
 - **Kind:** Architecture
-- **What you notice:** A craft continues across map changes and death but ends on logout. Inputs already taken are not returned.
+- **What you notice:** A craft ends on logout. Nothing has been taken yet, so nothing is lost.
 - **1.6:** Crafting counters lived on the client. Quitting stopped them; cooking and smithing had taken nothing yet, while alchemy and carpentry inputs were already gone.
-- **SSO:** The server runs the craft during the session and ends it at logout, keeping inputs already taken.
+- **SSO:** The server runs the craft during the session and ends it at logout. Every craft takes its materials when it finishes (see "Every craft takes its materials when it finishes"), so an ended craft loses nothing.
 - **Why:** Craft state is not kept across sessions in the saved character.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftStep`), `packages/server/src/systems/world/world.ts` (`removePlayer`)
 - **Pinned by:** `divergence: a craft ends at logout; a new session starts with none` (packages/server/tests/craft.test.ts)
@@ -1494,6 +1494,258 @@ An entry uses this shape; `Pinned by` is optional:
 - **SSO:** A placed or crafted Cauldron receives a unique minted ID. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed and crafted ones are guaranteed unique. A purchase of several puts the whole count on one line under one random ID, so those Cauldrons share storage, and the random ID can collide with another container or an orphaned one (bug ledger).
 - **Why:** Container ownership needs a separate container for each placed or crafted Cauldron.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`)
+
+### A tool's first success takes the full number of hits
+- **Kind:** Bug fixed
+- **What you notice:** Gathering takes the number of hits per success that the skill table gives, the first time too. Each tool keeps its own count, so swapping hammers does not finish another hammer's count.
+- **1.6:** There was one counter per tool family. It was reloaded only when it dropped below 1, and success came at exactly 1, so the first success came one hit early. All three hammers shared one mining counter.
+- **SSO:** The count is loaded when it is empty, each hit takes one, and the hit that empties it succeeds. Counts are kept per tool name and start empty at each login.
+- **Why:** Every success should cost what the table says, and one tool's work should not carry over to another.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`hitCounter`, `newGatherCounters`)
+- **Pinned by:** `bug fixed: every success takes exactly the table's number of hits, the first too`; `bug fixed: each hammer keeps its own count` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: 18 swings fell a tree, as the table says: the stump, treefalling, logs and the skill line` (packages/server/tests/gather.test.ts)
+
+### Gathering at skill 0 drops items
+- **Kind:** Bug fixed
+- **What you notice:** With Lumberjacking at 0 a felled tree can drop Logs, and with Mining at 0 a broken rock can drop crystals, ore or a chunk.
+- **1.6:** The drop rolls were made, but each drop was guarded by "skill above 0".
+- **SSO:** The guard is gone; a skill of 0 uses the lowest row of each table.
+- **Why:** New gatherers should get something for their work.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`rollLogs`, `rollMiningFind`, `rollChunk`)
+- **Pinned by:** `bug fixed: Lumberjacking 0 drops logs like any other skill`; `bug fixed: Mining 0 finds crystals, ore and chunks` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: Lumberjacking 0 fells trees, drops logs and can rise` (packages/server/tests/gather.test.ts)
+
+### Ore odds improve with Mining
+- **Kind:** Bug fixed
+- **What you notice:** The chance of Iron, Steel or Star ore rises with Mining skill, from Iron 1 in 100 at skill 0 to 1 in 25 from 90 up. At 97 and above the odds stay at their best instead of dropping Iron.
+- **1.6:** The odds were a cascade of "skill below N" tests in which the last true one won, so every skill below 97 got the same odds (Iron 1 in 25, Steel 1 in 55, Star 1 in 155). At 97 and above the pool was left unset, so Iron never dropped while Steel became 1 in 30 and Star 1 in 130.
+- **SSO:** The tightest "below N" row the skill is under sets the Iron pool; Steel adds 30 and Star adds 100 more. From 97 up the last row (25) applies.
+- **Why:** Mining skill should matter, and should never make an ore impossible.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`orePool`, `rollMiningFind`)
+- **Pinned by:** `bug fixed: ore odds improve as Mining rises, and never get worse at 97` (packages/shared/tests/crafting/gather.test.ts)
+
+### Fishing at skill 0 can catch fish
+- **Kind:** Bug fixed
+- **What you notice:** With Fishing at 0 you catch Raw Fish at the same odds as Fishing 1, and the skill can rise.
+- **1.6:** The fishing check was only set up above 0, so the catch roll could never succeed at 0, and the skill-raising helper also needed the skill above 0.
+- **SSO:** Skill 0 uses the first row of the catch table (1 in 30).
+- **Why:** A new fisher should be able to start.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`fishCheck`, `castLine`)
+- **Pinned by:** `bug fixed: Fishing 0 catches at the lowest skill's odds and can rise` (packages/shared/tests/crafting/gather.test.ts)
+
+### Seeds are kept when they cannot be planted
+- **Kind:** Bug fixed
+- **What you notice:** Using seeds on a tile that cannot grow them, or facing off the edge of the map, reads "…isn't going to grow anything here!" and keeps the seed.
+- **1.6:** The planting routine exited on the wrong tile but the item removal was sent anyway. Off the map the tile read as empty, which passed the test, so it printed "You plant the seeds." while the server refused the change.
+- **SSO:** A seed is used up only when the tilled soil (`SL`) actually changes. Anything else, including off the map, gives the wrong-ground line.
+- **Why:** Players should not lose seeds to a planting that did nothing.
+- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`plantSeeds`); `packages/shared/src/rules/crafting/gather.ts` (`canPlant`); `packages/server/src/systems/inventory/items.ts` (`useIntent`)
+- **Pinned by:** `bug fixed: seeds plant only on SL; off the map nothing can be planted` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: seeds are kept on a wrong tile or off the map; they plant on SL` (packages/server/tests/gather.test.ts)
+
+### The shovel checks the ground under every tile
+- **Kind:** Bug fixed
+- **What you notice:** The shovel digs only where the first-layer ground under the tile is grass or earth (`G1`, `H1` or `O1`), on every row of the map. It no longer digs holes over water, and the top-right tile of the top row can be dug.
+- **1.6:** The shovel read a word of the one-line map data, which was empty below row 1, and empty text passed the test. So the check applied only on the top row, where column 17 straddled the `#` joining two layers and never matched.
+- **SSO:** The shovel reads the first-layer tile at the dug position and tests it against the same three codes. Off the map nothing can be dug.
+- **Why:** The ground restriction was meant to apply everywhere.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`shovelLayer1Ok`)
+- **Pinned by:** `bug fixed: the shovel checks the ground under every tile, on every row` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: the shovel will not dig G3 over water on any row` (packages/server/tests/gather.test.ts)
+
+### Crafting at skill 10 can fail
+- **Kind:** Bug fixed
+- **What you notice:** A craft at skill exactly 10 can fail, with the same 1 in 3 chance as lower skills.
+- **1.6:** The failure table had a "below 10" row and an "above 10" row, so 10 matched neither and never failed.
+- **SSO:** The first row covers skills up to and including 10.
+- **Why:** No single skill value should be immune to failure.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`failurePool`, `rollFailure`)
+- **Pinned by:** `bug fixed: crafting skill exactly 10 can fail, at the odds of the skills below it` (packages/shared/tests/crafting/craft.test.ts)
+
+### Blacksmithing only gets faster with skill
+- **Kind:** Bug fixed
+- **What you notice:** Smithing takes 500 frames at skill 10 or less, then 460, 400 and so on down to 12, so a higher skill never waits longer.
+- **1.6:** The smithing timer was 300 frames, then 460 above 10 and 400 above 20, so smiths with skill 11 to 30 waited longer than beginners.
+- **SSO:** The base timer is 500, so the table only ever decreases.
+- **Why:** Practice should never make smithing slower.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`craftTimer`)
+- **Pinned by:** `bug fixed: Blacksmithing only ever gets faster as the skill rises` (packages/shared/tests/crafting/craft.test.ts); `starts with the line, the lock and Swordhit3; done on the 500th frame` (packages/server/tests/craft.test.ts)
+
+### Every craft takes its materials when it finishes
+- **Kind:** Bug fixed
+- **What you notice:** Starting a craft takes nothing. When it finishes, it takes its materials: the damaged item and chunk, the raw food, the Potion Bottle and crystal, or the Logs. A failure (a burned meal, a bad potion, a ruined build) uses them up and makes nothing.
+- **1.6:** Cooking and smithing took their inputs at completion, and a burn exited before the raw food was taken, so a burned meal kept its food. Alchemy and carpentry took their inputs at the start, so their failures lost them.
+- **SSO:** `finishCraft` takes every material by exact name at completion. Failures use them up the same way for cooking, alchemy and carpentry. If a material is gone by then, the craft ends silently, as a repair with no chunk already did.
+- **Why:** Failures should cost the same in every craft, and crafts that end early should lose nothing.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`, `startCraft`)
+- **Pinned by:** `bug fixed: a burned meal uses up its raw food, like failed brews and builds`; `a failed brew uses up the bottle and the crystal`; `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand`; `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id` (packages/server/tests/craft.test.ts)
+
+### Yeti Meat cooks into a Yeti Burger
+- **Kind:** Bug fixed
+- **What you notice:** Cooking Yeti Meat makes a Yeti Burger.
+- **1.6:** The server's recipe table mapped Yeti Meat to itself.
+- **SSO:** The recipe gives the existing Yeti Burger item.
+- **Why:** Cooking should change the food.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`cookResult`)
+- **Pinned by:** `bug fixed: Yeti Meat cooks into a Yeti Burger` (packages/shared/tests/crafting/craft.test.ts)
+
+### Masterwork rolls are even and the Knight's Sword repairs
+- **Kind:** Bug fixed
+- **What you notice:** A repaired Chain Helm or Steel Shield gets its +1 on one roll, like every other single-bonus item. A broken Knight's Sword becomes "Damaged Sword, Knight", which repairs into a Knight's Sword with a Chunk of Steel; an old "Damaged Sword, Knight's" in a bag repairs too. Starting a repair on an item with no repair says "You don't know how to repair that."
+- **1.6:** Chain Helm and Steel Shield gave +1 on two rolls. The table had a Leather Armor +1 row, but Leather Armor never breaks, so it could never come up. A Knight's Sword broke into "Damaged Sword, Knight's", but the repair looked for "Damaged Sword, Knight", so it ended with "Your  is ready!" and kept its inputs.
+- **SSO:** Each masterwork bonus has one roll, and the dead Leather Armor row is gone. The armour break uses the "Damaged Sword, Knight" name that has art, and the old name has its own chunk and repair rows. The Smith button refuses an item with no repair.
+- **Why:** Every masterwork row should be reachable, and every damaged item that breaks should be repairable.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`masterwork`, `repairResult`, `smithChunk`)
+- **Pinned by:** `bug fixed: each masterwork bonus has one roll, and every row can come up`; `bug fixed: a broken Knight's Sword repairs, under either damaged name`; `an item with no repair cannot be started` (packages/shared/tests/crafting/craft.test.ts)
+
+### Only alchemy sand mixes a potion
+- **Kind:** Bug fixed
+- **What you notice:** Mixing needs one of the six sands held in the right hand. Holding anything else, such as a Catfish Sandwich, gives "You must be holding some alchemist sand in your hand to mix the potion!" and keeps your keys free.
+- **1.6:** The gate only checked that the held item's name contained " Sand", so a Catfish Sandwich passed with no crystal. The brew then reused the session's last potion, or a Bad Potion after a failed start, and before any brew it printed nothing and left the keys locked until the next map load.
+- **SSO:** The held item must equal one of the six sands, which also picks the potion and the crystal. No last potion is kept.
+- **Why:** A sandwich should not brew free potions or lock the player's keys.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startMix`)
+- **Pinned by:** `bug fixed: only a real sand mixes; a Catfish Sandwich is refused` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: a Catfish Sandwich cannot stand in for sand; the keys stay free` (packages/server/tests/craft.test.ts)
+
+### Building furniture needs Carpentry 1
+- **Kind:** Bug fixed
+- **What you notice:** With Carpentry below 1 the Build button reads "You aren't skilled in carpentry, you'd just ruin the logs". New characters start at 1. Building still needs no station: a workbench is tracked as a feature in [issue #4](https://github.com/jberlyn/second-star-online/issues/4).
+- **1.6:** Build checked only the Saw, so any Carpentry skill could build.
+- **SSO:** Carpentry follows cooking's rule: the skill must be at least `minSkill` (1).
+- **Why:** Carpentry should need the skill, like the other crafts.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startBuild`)
+- **Pinned by:** `bug fixed: carpentry needs the Saw and Carpentry 1, like cooking's skill rule` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: carpentry needs Carpentry 1` (packages/server/tests/craft.test.ts)
+
+### The cauldron matches exact ingredients and keeps the rest
+- **Kind:** Bug fixed
+- **What you notice:** A cauldron brews when it holds both ingredients of a recipe, each by its exact name: an Axe works, a Gold Axe does not. The brew swaps the two ingredients for the result and leaves everything else inside. The two recipes that need a Magic Shield Book now work. Anyone with that cauldron open sees the new contents at once.
+- **1.6:** The recipes were "contains" tests over all the stored text, the last matching recipe won, and a success overwrote everything inside with the result. Two recipes needed a "Magic Shield Spell Book" that no one could get. The open window was not refreshed, so after a brew its old lines took nothing.
+- **SSO:** `cauldronBrew` checks recipes in order by exact name, the first match wins, and it removes one of each ingredient. A brew refreshes the list of every player with that cauldron open.
+- **Why:** Players should not lose unrelated items to a brew, and every recipe should be possible.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`); `packages/server/src/systems/economy/containers.ts` (`depositContainer`)
+- **Pinned by:** `a brew needs both ingredients and swaps them for the result`; `bug fixed: ingredients match by exact name; the Magic Shield Book recipes work` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: a hit says so to the depositor only and keeps the other contents`; `bug fixed: a brew refreshes the list of anyone with the Cauldron open`; `bug fixed: the Magic Shield Book recipes brew, and 'Axe' means an Axe` (packages/server/tests/craft.test.ts)
+
+### Crafts take exactly the named item
+- **Kind:** Bug fixed
+- **What you notice:** Cooking a Pig takes the Pig and never touches a Cooked Pig stack elsewhere in your bag.
+- **1.6:** The removal took from the first bag slot whose text contained the item name and a dash, then wrote the line back under the shorter name, so "Cooked Pig-3" could become "Pig-2".
+- **SSO:** Every crafting removal matches the whole item name.
+- **Why:** Crafting should not rename other items.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`takeByName`, `firstSlotNamed`)
+- **Pinned by:** `bug fixed: cooking a Pig takes the Pig, never a Cooked Pig` (packages/shared/tests/crafting/craft.test.ts)
+
+### A full bag stops the craft from finishing
+- **Kind:** Bug fixed
+- **What you notice:** If a finished craft's result has nowhere to go, you read "Your inventory is too crowded!", nothing is taken, nothing is made and there is no skill roll.
+- **1.6:** Cooking and smithing printed "Your <item> is ready!" and rolled the skill even though nothing was added. Alchemy and carpentry had already taken their inputs, so the result was simply lost.
+- **SSO:** `finishCraft` tries the whole change on a copy of the bag and keeps it only if the result fits.
+- **Why:** The game should not report a craft that made nothing, or destroy materials for it.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`)
+- **Pinned by:** `bug fixed: a full bag says so, makes nothing and keeps the raw stack`; `bug fixed: a full bag keeps the Logs and makes nothing` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: a full bag says so, with no skill roll and no 'is ready!'; the inputs stay` (packages/server/tests/craft.test.ts)
+
+### Each cook rolls its own burn, and Raw Meat cannot be cooked
+- **Kind:** Bug fixed
+- **What you notice:** Whether a meal burns depends only on that cook's own roll. Raw Meat, which has no recipe, is refused at the start with "You don't know how to cook that."
+- **1.6:** The food chosen for a cook was kept for the session, and a failed start set it to "Bad Food". Any name without its own food row, such as Raw Meat, kept it, so Raw Meat burned every time after one failure. With no earlier cook it read "Your  is ready!" with a blank name.
+- **SSO:** The failure roll happens once, at completion, and the Cook button refuses an item with no recipe.
+- **Why:** One failure should not doom later cooks, and an uncookable item should say so.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startCraft`, `cookResult`)
+- **Pinned by:** `bug fixed: each cook rolls its own burn; Raw Meat cannot be cooked at all` (packages/shared/tests/crafting/craft.test.ts)
+
+### Building says "You built a ..."
+- **Kind:** Bug fixed
+- **What you notice:** A finished build reads "You built a Chair!".
+- **1.6:** The message read "Your built a Chair!".
+- **SSO:** The text is corrected in the crafting data.
+- **Why:** Typo.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`CRAFT_TEXT`)
+- **Pinned by:** `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts)
+
+### A map change ends a craft
+- **Kind:** Bug fixed
+- **What you notice:** If you change map while smithing, cooking, mixing or building, whether by a warp, an exit or a death, the craft stops and you read "You stop what you were making." Nothing has been taken, so nothing is lost.
+- **1.6:** Nothing reset the crafting counters on a map change, death or warp, and loading a map freed the keys, so you could walk around while the craft ran and it finished wherever you were.
+- **SSO:** `enterRoom` ends any running craft with `cancelCrafts`.
+- **Why:** A craft should need you to stay at the station.
+- **In the code:** `packages/server/src/systems/crafting/craft.ts` (`cancelCrafts`); `packages/server/src/systems/world/world.ts` (`enterRoom`)
+- **Pinned by:** `bug fixed: a map change ends the craft, says so, and loses nothing`; `a map change with no craft running says nothing` (packages/server/tests/craft.test.ts)
+
+### A crafter can be shoved
+- **Kind:** Bug fixed
+- **What you notice:** While you craft, another player can push you a tile as usual. The craft carries on.
+- **1.6:** Starting a craft locked the keys, and the shove skipped players whose keys were locked.
+- **SSO:** The shove ignores a lock held only by a craft; a window holding the keys still stops it.
+- **Why:** Crafting should not make a player immovable.
+- **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`); `packages/server/src/systems/crafting/craft.ts` (`isCrafting`)
+- **Pinned by:** `bug fixed: a crafter can be shoved, and the craft carries on`; `a window's key lock still stops a shove` (packages/server/tests/craft.test.ts)
+
+### Regrowth runs at one rate on every map
+- **Kind:** Bug fixed
+- **What you notice:** Trees, rock, ice, holes and farm produce grow back at the same rate however many players are on the map. A map nobody visited catches up, up to an hour's worth, when someone arrives. Regrowth no longer pauses after a death or an exit warp.
+- **1.6:** Every client on the map rolled the regrowth checks each frame, so more players meant faster regrowth and an empty map never regrew. The six regrowth checks also waited out a 400-frame timer after the roller's death or exit warp.
+- **SSO:** The server rolls once per map per frame, the rate one player gave in 1.6. A map whose room was unloaded runs the frames it missed, up to 72,000, when it next ticks. The death and warp timer is gone.
+- **Why:** Regrowth should not depend on crowding a map or on who died.
+- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`regrowthStep`); `packages/shared/src/rules/crafting/gather.ts` (`regrowthFrame`, `REGROWTH_CATCH_UP_FRAMES`)
+- **Pinned by:** `bug fixed: one random(600) per map per frame, however many players are there`; `bug fixed: an empty map catches up on the frames it missed, up to an hour`; `bug fixed: a stump regrows on a roll under 6, even right after a death or exit warp` (packages/server/tests/gather.test.ts)
+
+### Gathering and crafting skills rise from 0
+- **Kind:** Bug fixed
+- **What you notice:** A gathering or crafting skill at 0 can rise through use.
+- **1.6:** All nine skill-raising handlers required the skill to be above 0, and nothing else raised these skills from 0.
+- **SSO:** The handlers roll from 0 to 99.
+- **Why:** A skill at 0 should be trainable.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`skillGainRule`, `rollSkillGain`)
+- **Pinned by:** `bug fixed: a skill at 0 can rise; 100 is the cap` (packages/shared/tests/crafting/gather.test.ts); `the skill line follows 'is ready!'; a skill of 0 can rise` (packages/server/tests/craft.test.ts)
+
+### The Watering Bucket counts only useful swings
+- **Kind:** Bug fixed
+- **What you notice:** Only a swing at a seeded tile counts toward watering it. Swings at grass, or off the map, count nothing.
+- **1.6:** The bucket counted every swing before looking at the tile, so a success could land on an unseeded tile and be wasted.
+- **SSO:** The swing counts only when the faced tile can be watered.
+- **Why:** Watering should not waste progress.
+- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
+- **Pinned by:** `bug fixed: the Watering Bucket counts only swings at a seeded tile` (packages/server/tests/gather.test.ts)
+
+### Gathering mid-step drops its item
+- **Kind:** Bug fixed
+- **What you notice:** Swinging a tool or casting a line while mid-step drops the logs, find or fish on the changed tile, as standing still does.
+- **1.6:** The swing worked from the destination tile, but the drop needed you to be standing still, so the tile changed and the skill could rise with nothing dropped.
+- **SSO:** The drop no longer checks the step.
+- **Why:** A successful swing should give its item.
+- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`); `packages/shared/src/rules/crafting/gather.ts` (`castLine`)
+- **Pinned by:** `bug fixed: a fell mid-step drops its logs on the felled tile`; `bug fixed: a cast mid-step catches like any other` (packages/server/tests/gather.test.ts)
+
+### Water on either layer can be fished
+- **Kind:** Bug fixed
+- **What you notice:** Water drawn on the first or the second layer can be fished, so D2 water works.
+- **1.6:** Fishing read the first layer only, so water that exists only on layer 2 (D2) never gave a fish.
+- **SSO:** Fishing tests the faced tile on both layers against the water codes.
+- **Why:** Water that looks the same should fish the same.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`isFishingWater`, `FISHING_LAYERS`); `packages/server/src/systems/crafting/gather.ts` (`preSwing`)
+- **Pinned by:** `bug fixed: W1, N1, D2 and I2 are water on either layer; the offsets of the cast` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: water drawn only on layer 2 (D2) can be fished` (packages/server/tests/gather.test.ts)
+
+### Fishing skill-ups do not use the anti-macro allowance
+- **Kind:** Bug fixed
+- **What you notice:** The allowance of casts without moving is spent only by catches, so earning Fishing skill does not run it down.
+- **1.6:** A skill-up took one from the allowance, as a catch did.
+- **SSO:** Only a catch spends it. The skill roll still runs only while the allowance lasts.
+- **Why:** Getting better at fishing should not cut fishing short.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`castLine`, `ANTI_MACRO_START`)
+- **Pinned by:** `bug fixed: only a catch spends the anti-macro counter; the Imp rolls every cast` (packages/shared/tests/crafting/gather.test.ts)
+
+### Asking about "the treasure" gets an answer
+- **Kind:** Bug fixed
+- **What you notice:** A line starting with "the treasure" triggers the treasure rumour, like "treasure" and "any treasure".
+- **1.6:** The trigger compared the first word with the two words "the treasure", so it could never be true.
+- **SSO:** The test checks the first two words.
+- **Why:** The trigger was meant to work.
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`asksAboutTreasure`)
+- **Pinned by:** `bug fixed: the keywords, including a line starting "the treasure"` (packages/shared/tests/crafting/gather.test.ts)
+
+### Alchemy sand is a tool and is never used up
+- **Kind:** Other
+- **What you notice:** You mix a potion and the sand is still in your hand afterwards. The Potion Bottle and the crystal are used up.
+- **1.6:** The same: the sand only had to be held.
+- **SSO:** The same, on purpose. Every craft uses up its materials and keeps its tool: the Blacksmith Hammer, the Saw, and for alchemy the held sand. Shops price sand at 100 to 150 gold against 23 to 35 for a potion, which fits a tool rather than a material. Operators can change those prices. This was listed in the bug ledger until it was reclassified as intended.
+- **Why:** Using up the sand on every mix would make alchemy cost far more than it earns.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startMix`, `finishCraft`)
+- **Pinned by:** `completion takes the bottle and the crystal; the held sand is a tool` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand` (packages/server/tests/craft.test.ts)
 
 ## economy
 

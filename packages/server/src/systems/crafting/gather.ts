@@ -9,6 +9,7 @@ import {
   castLine,
   EDITOR_MONSTERS,
   FACING_DELTA,
+  FISHING_LAYERS,
   fishingOffset,
   GATHER_TEXT,
   gatherTool,
@@ -17,6 +18,7 @@ import {
   isFishingWater,
   lingoContains,
   lingoEq,
+  REGROWTH_CATCH_UP_FRAMES,
   type Rng,
   RUMOUR_NPCS,
   regrowthFrame,
@@ -114,8 +116,8 @@ const sound = (p: Player, name: string, ch: number): Outgoing => ({
 
 /**
  * The attack routine's tool casts, before the attack power: the Watering Bucket's `sprinkle` on
- * every swing not facing north, and the Fishing Pole facing layer-1 water (the `Fishing` FX,
- * an attack delay of 20, less the Ring of Quickness's speed-up, and the fish drop). Returns the
+ * every swing not facing north, and the Fishing Pole facing water on either layer (the `Fishing`
+ * FX, an attack delay of 20, less the Ring of Quickness's speed-up, and the fish drop). Returns the
  * attack delay the swing leaves, or null.
  */
 export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents): number | null {
@@ -143,7 +145,8 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
   }
   const t = faced(p);
   const io = new ItemOut(room);
-  if (isFishingWater(tileAt(room.map.layers[0], t.x, t.y))) {
+  const layers = room.map.layers;
+  if (FISHING_LAYERS.some((l) => isFishingWater(tileAt(layers[l - 1] ?? [], t.x, t.y)))) {
     const off = fishingOffset(p.facing);
     queueCast(room, {
       owner: p.name,
@@ -155,7 +158,7 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
       v: me.v + off[1],
       power: 1,
     });
-    const r = castLine(skillOf(p, "Fishing"), p.antiMacro, p.stepFrames > 0, ctx.rng);
+    const r = castLine(skillOf(p, "Fishing"), p.antiMacro, ctx.rng);
     p.antiMacro = r.antiMacro;
     if (r.fish) {
       drop(ctx, room, io, r.fish, t.x, t.y);
@@ -173,7 +176,8 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
 /**
  * The tool block of 1.6's attack routine, for the attacker: the tool's tile in front, its counter,
  * the tile change, the drop, the sounds and the skill handler. Any other tile does nothing (the
- * swing stays an ordinary attack). The Watering Bucket counts every swing.
+ * swing stays an ordinary attack). The Watering Bucket counts only swings at a seeded tile. A
+ * success mid-step drops on the changed tile like any other.
  */
 export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents): void {
   const tool = gatherTool(p.char.equip.weapon);
@@ -185,14 +189,11 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
   const code = tileAt(layer2, t.x, t.y);
   const skill = skillOf(p, tool.skill);
   const io = new ItemOut(room);
-  const midStep = p.stepFrames > 0;
   if (tool.counter === "Watering") {
-    // No tile test before counting; a success on an unseeded tile is wasted.
-    if (hitCounter(p.gather, "Watering", skill)) {
-      const next = wateredTile(code);
-      if (next) {
-        change(ctx, room, io, 2, t.x, t.y, next);
-      }
+    // Only a seeded tile takes water, so only a swing at one counts.
+    const next = wateredTile(code);
+    if (next && hitCounter(p.gather, tool.tool, skill)) {
+      change(ctx, room, io, 2, t.x, t.y, next);
     }
     ev.out.push(...io.out);
     return;
@@ -206,7 +207,7 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
   if (tool.hitSound) {
     ev.sound = tool.hitSound.name;
   }
-  if (!hitCounter(p.gather, tool.counter, skill)) {
+  if (!hitCounter(p.gather, tool.tool, skill)) {
     return;
   }
   change(ctx, room, io, 2, t.x, t.y, tool.tiles.to);
@@ -218,8 +219,7 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
       ? rollMiningFind(skill, ctx.rng)
       : rollChunk(tool.tool, skill, ctx.rng);
   }
-  // Only while standing: a success mid-step loses its drop.
-  if (found && !midStep) {
+  if (found) {
     drop(ctx, room, io, found, t.x, t.y);
   }
   if (tool.counter === "Dig") {
@@ -304,50 +304,53 @@ export function resetTreasure(world: World, maps: readonly string[], rng: Rng): 
 }
 
 /**
- * Using seeds: the faced tile from your tile and facing; `"*SL*" contains` it (an off-map EMPTY
- * tile passes) → "You plant the seeds." and the seeded tile; else the wrong-tile line. The caller
- * uses up the seed either way. The 425-frame item-action pause after it only waited for the
- * server's `inx` reply in 1.6, so it is not kept.
+ * Using seeds: the faced tile from your tile and facing must be tilled soil (`SL`) → "You plant
+ * the seeds." and the seeded tile, and `planted` tells the caller to use up one seed. Any other
+ * tile, or off the map, gives the wrong-tile line and keeps the seed. The 425-frame item-action
+ * pause after it only waited for the server's `inx` reply in 1.6, so it is not kept.
  */
-export function plantSeeds(world: World, room: Room, p: Player, item: string): Outgoing[] {
+export function plantSeeds(
+  world: World,
+  room: Room,
+  p: Player,
+  item: string,
+): { out: Outgoing[]; planted: boolean } {
   const io = new ItemOut(room);
   const plants = seedTile(item);
   if (!plants) {
-    return io.out;
+    return { out: io.out, planted: false };
   }
   const t = faced(p);
   const code = tileAt(room.map.layers[1], t.x, t.y);
-  if (!canPlant(code)) {
+  const ev = canPlant(code) ? setTile(world, room.map, 2, t.x, t.y, plants) : null;
+  if (!ev) {
     io.tell(p, GATHER_TEXT.plantWrong);
-    return io.out;
+    return { out: io.out, planted: false };
   }
   io.tell(p, GATHER_TEXT.plant);
-  // Off the map the server's word test refuses the change.
-  const ev = setTile(world, room.map, 2, t.x, t.y, plants);
-  if (ev) {
-    io.all(ev);
-  }
-  return io.out;
+  io.all(ev);
+  return { out: io.out, planted: true };
 }
 
 /**
- * One player's frame of world ticks (as in 1.6, one roll per player on the map): skipped while the
- * player is loading; the six checks wait out the player's death-respawn pause (`regrowthStop`).
+ * A map's world ticks: one regrowth frame per server tick, however many players are on it. A map
+ * left empty (its room unloaded) catches up on the frames it missed, up to an hour's worth, when
+ * the room next ticks.
  */
-export function regrowthStep(room: Room, p: Player, ctx: GatherCtx): Outgoing[] {
+export function regrowthStep(room: Room, ctx: GatherCtx, tickNo: number): Outgoing[] {
   const io = new ItemOut(room);
-  if (p.loading > 0) {
-    return io.out;
+  const map = room.map;
+  const last = map.regrowthTick ?? tickNo - 1;
+  const frames = Math.min(Math.max(tickNo - last, 0), REGROWTH_CATCH_UP_FRAMES);
+  map.regrowthTick = tickNo;
+  const hooks = {
+    layer2: () => map.layers[1],
+    hasGround: (x: number, y: number) => map.ground.some((g) => g.x === x && g.y === y),
+    setTile: (x: number, y: number, code: string) => change(ctx, room, io, 2, x, y, code),
+    produce: (x: number, y: number, item: string) => drop(ctx, room, io, item, x, y),
+  };
+  for (let i = 0; i < frames; i++) {
+    regrowthFrame(hooks, ctx.rng);
   }
-  regrowthFrame(
-    p.regrowthStop > 0,
-    {
-      layer2: () => room.map.layers[1],
-      hasGround: (x, y) => room.map.ground.some((g) => g.x === x && g.y === y),
-      setTile: (x, y, code) => change(ctx, room, io, 2, x, y, code),
-      produce: (x, y, item) => drop(ctx, room, io, item, x, y),
-    },
-    ctx.rng,
-  );
   return io.out;
 }

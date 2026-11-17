@@ -4,8 +4,7 @@
  *
  * A `gt` row applies when the skill is greater than `gt`; an `lt` row when it is less than
  * `lt`. Each table checks every row in order; each match overwrites the previous one, so the last
- * row wins, and a value no row matches keeps the default (or, for the failure table, rolls
- * nothing: skill exactly 10 never fails).
+ * row wins, and a value no row matches keeps the default.
  *
  */
 import { z } from "zod";
@@ -16,7 +15,6 @@ const skillRow = z.union([
   z.strictObject({ lt: z.number().int(), value: z.number().int() }),
 ]);
 const timer = z.strictObject({ default: z.number().int().positive(), rows: z.array(gtRow).min(1) });
-const pair = z.strictObject({ item: z.string().min(1), food: z.string().min(1) });
 const recipe = z.strictObject({ input: z.string().min(1), output: z.string().min(1) });
 
 export const craftDataSchema = z.strictObject({
@@ -54,18 +52,13 @@ export const craftDataSchema = z.strictObject({
       doubles: z.string(),
       minSkill: z.number().int(),
       timer,
-      /** Click names that select the raw food to cook. */
-      clickFoods: z.array(pair).min(1),
-      /** Cooked food names on completion: any other falls back to the selected food. */
-      doneFoods: z.array(pair).min(1),
-      /** The server's cooking recipes. */
+      /** The cooking recipes: an item with none cannot be cooked. */
       recipes: z.array(recipe).min(1),
     }),
     mix: z.strictObject({
       station: z.string(),
-      /** RightHand `contains` this. */
-      sandMatch: z.string(),
       timer,
+      /** The RightHand must be one of these sands exactly; it is a tool and is never used up. */
       sands: z
         .array(
           z.strictObject({
@@ -80,6 +73,8 @@ export const craftDataSchema = z.strictObject({
     build: z.strictObject({
       /** RightHand, exactly. */
       tool: z.string(),
+      /** Carpentry below this cannot build. */
+      minSkill: z.number().int(),
       timer,
       /** Carpentry skill bands in script order; every true `lt` band overwrites the last. */
       bands: z
@@ -113,6 +108,7 @@ export const craftDataSchema = z.strictObject({
       match: z.string(),
       capacity: z.number().int().positive(),
       recipes: z
+        /** Both ingredients by exact name; the first matching recipe wins. */
         .array(z.strictObject({ requires: z.tuple([z.string(), z.string()]), result: z.string() }))
         .min(1),
     }),

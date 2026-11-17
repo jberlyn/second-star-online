@@ -1,28 +1,23 @@
 /**
  * The crafting stations on the server: the Cook, Mix, Build and Smith buttons, their per-character
- * timers in the frame script, and the completions with the server's own side (`snx38`, `itremovv`).
+ * timers in the frame script, and their completions, which take the materials and make the result.
  * The rules are in shared/rules/crafting/craft.ts; this applies them to the player.
  */
 import {
-  buildDone,
   CRAFT_ORDER,
   CRAFT_SOUND,
-  type CraftDone,
+  CRAFT_TEXT,
   type CraftJob,
   type CraftKind,
-  cookDone,
   FACING_DELTA,
+  finishCraft,
   ID_CONTAINERS,
-  invAdd,
   lingoEq,
-  mixDone,
   type Rng,
   rollSkillGain,
   SMITH_FX_CHANCE,
   skillGainRule,
   skillIndex,
-  smithDone,
-  snx38,
   startCraft,
 } from "@secondstaronline/shared";
 
@@ -39,16 +34,27 @@ export interface CraftTimer {
 /** A player's crafting state; client globals in 1.6, so fresh at every login. */
 export interface CraftState {
   timers: Partial<Record<CraftKind, CraftTimer>>;
-  /** The last Cook or Mix action, shared by both. */
-  lact: string | null;
-  /** The last food cooked: read by a Raw Meat completion. */
-  lastFood: string | null;
-  /** The last potion mixed: read by a sandwich brew. */
-  lastPotion: string | null;
 }
 
 export function newCraftState(): CraftState {
-  return { timers: {}, lact: null, lastFood: null, lastPotion: null };
+  return { timers: {} };
+}
+
+/** True while any craft is running. */
+export function isCrafting(p: Player): boolean {
+  return Object.keys(p.craft.timers).length > 0;
+}
+
+/**
+ * A map change ends every running craft: nothing has been taken yet, so nothing is lost. The keys
+ * are already free (the map load frees them). Returns the line for the crafter, if a craft ran.
+ */
+export function cancelCrafts(p: Player): Outgoing[] {
+  if (!isCrafting(p)) {
+    return [];
+  }
+  p.craft.timers = {};
+  return [tell(p, CRAFT_TEXT.interrupted)];
 }
 
 export interface CraftCtx {
@@ -105,11 +111,10 @@ function facing(room: Room, p: Player, station: string): boolean {
  * Cook, Mix, Build or Smith on bag slot `slot`. The server takes the button from the item, as the
  * menu did, and checks it in the original order.
  */
-export function craftIntent(room: Room, p: Player, slot: number, ctx: CraftCtx): Outgoing[] {
+export function craftIntent(room: Room, p: Player, slot: number, _ctx: CraftCtx): Outgoing[] {
   if (p.deadLock > 0 || p.loading > 0) {
     return [];
   }
-  const c = p.craft;
   const r = startCraft(
     {
       bag: p.char.bag,
@@ -119,11 +124,8 @@ export function craftIntent(room: Room, p: Player, slot: number, ctx: CraftCtx):
       facing: (station) => facing(room, p, station),
       keyLock: p.keyLock,
       itemPause: p.itemPause,
-      lastFood: c.lastFood,
-      lastPotion: c.lastPotion,
     },
     slot,
-    ctx.rng,
   );
   const out = r.lines.map((l) => tell(p, l));
   const s = r.started;
@@ -131,19 +133,7 @@ export function craftIntent(room: Room, p: Player, slot: number, ctx: CraftCtx):
     return out;
   }
   // The same kind restarts its counter and overwrites its job.
-  c.timers[s.kind] = { counter: s.frames, job: s.job };
-  if (s.lact !== undefined) {
-    c.lact = s.lact;
-  }
-  if (s.lastFood !== undefined) {
-    c.lastFood = s.lastFood;
-  }
-  if (s.lastPotion !== undefined) {
-    c.lastPotion = s.lastPotion;
-  }
-  if (s.bagChanged) {
-    p.invDirty = true;
-  }
+  p.craft.timers[s.kind] = { counter: s.frames, job: s.job };
   // 1.6 locked the keys here (its client-side input lock). The start's pause between item actions only
   // waited for the server and is not kept.
   p.keyLock = true;
@@ -155,67 +145,40 @@ export function craftIntent(room: Room, p: Player, slot: number, ctx: CraftCtx):
   return out;
 }
 
-/** The server's `itremovv`: `InvAdd` of one; a full bag adds nothing, silently. */
-function itremovv(p: Player, item: string, ctx: CraftCtx, now: number): void {
-  let name = item;
-  if (ID_CONTAINERS.some((k) => lingoEq(name, k))) {
-    name = `${name}#${mintContainerId(ctx.world, now)}`;
-  }
-  const added = invAdd(p.char, name, 1, ctx.rng);
-  if (added.kind !== "full") {
-    p.invDirty = true;
-  }
+/** A built Crate, Cabinet, Wind Cabinet or Cauldron gets a minted id as it enters the bag. */
+function withId(ctx: CraftCtx, now: number) {
+  return (name: string) =>
+    ID_CONTAINERS.some((k) => lingoEq(name, k))
+      ? `${name}#${mintContainerId(ctx.world, now)}`
+      : name;
 }
 
-/** A completion's client side, then what the server does with what it sent. */
-function complete(p: Player, kind: CraftKind, d: CraftDone, ctx: CraftCtx, now: number) {
-  const out: Outgoing[] = d.lines.map((l) => tell(p, l));
-  if (d.unlock) {
-    p.keyLock = false;
-    out.push(lock(p, false));
+/**
+ * A craft's completion: the keys are freed, the materials are taken and the result made (or the
+ * failure line), then the skill handler rolls when something was made.
+ */
+function finish(p: Player, kind: CraftKind, job: CraftJob, ctx: CraftCtx, now: number) {
+  const out: Outgoing[] = [];
+  p.keyLock = false;
+  out.push(lock(p, false));
+  const skill = skillOf(p, SKILL[kind]);
+  const r = finishCraft(p.char, job, skill, ctx.rng, withId(ctx, now));
+  if (!r.reached) {
+    return out;
   }
-  const send = d.send;
-  if (send?.kind === "itremovv") {
-    itremovv(p, send.item, ctx, now);
-  }
-  if (send?.kind === "snx38") {
-    // The masterwork reads the server's skill, not the client's.
-    const r = snx38(p.char, send.item, send.chunk, send.which, skillOf(p, SKILL[kind]), ctx.rng);
-    if (r.reached) {
-      if (r.added) {
-        p.invDirty = true;
-      }
-      // `InvAdd`, then `x391100`/`x9371100` (SmithImp, CookImp), then the line.
-      gain(p, kind, ctx.rng, out);
-      out.push(tell(p, r.line));
-    }
-  }
-  if (d.imp) {
+  // A failure uses up the materials even though nothing is added.
+  p.invDirty = true;
+  out.push(...r.lines.map((l) => tell(p, l)));
+  if (r.gain) {
     gain(p, kind, ctx.rng, out);
   }
   return out;
 }
 
-function finish(p: Player, kind: CraftKind, job: CraftJob, ctx: CraftCtx, now: number) {
-  const c = p.craft;
-  const skill = skillOf(p, SKILL[kind]);
-  switch (job.kind) {
-    case "Smith":
-      return complete(p, kind, smithDone(job.item, job.chunk, skill), ctx, now);
-    case "Cook":
-      return complete(p, kind, cookDone(job.raw, c.lact, c.lastFood, skill, ctx.rng), ctx, now);
-    case "Mix":
-      return complete(p, kind, mixDone(c.lact, c.lastPotion, skill, ctx.rng), ctx, now);
-    case "Build":
-      return complete(p, kind, buildDone(skill, ctx.rng), ctx, now);
-  }
-}
-
 /**
  * The four counters at their place in the frame script, after the item-action pause: Smith (whose FX
  * roll comes before its completion test), Cook, Build, Mix. Each fires on the frame it reads 1,
- * then counts down. Nothing cancels a craft: walking, map changes and death leave it running, as
- * in 1.6.
+ * then counts down. A map change (a warp, an exit, a death's respawn) ends them (`cancelCrafts`).
  */
 export function craftStep(room: Room, p: Player, ctx: CraftCtx, now: number): Outgoing[] {
   const out: Outgoing[] = [];

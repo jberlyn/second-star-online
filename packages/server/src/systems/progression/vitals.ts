@@ -15,7 +15,6 @@ import {
   lingoEq,
   NO_FACTION,
   pickArenaExit,
-  REGROWTH_STOP_FRAMES,
   type Rng,
   regenTarget,
   regenTick,
@@ -83,8 +82,6 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   if ((v.hp >= 1 && !lightningHit) || p.dontHitMeAgain) {
     return { kind: "none" };
   }
-  // A 400-frame respawn timer, arena deaths too.
-  p.regrowthStop = REGROWTH_STOP_FRAMES;
   if (onArenaTile(room, p.x, p.y)) {
     v.hp = 1;
     v.sp = 1;

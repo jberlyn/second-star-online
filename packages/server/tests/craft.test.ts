@@ -1,6 +1,6 @@
 /**
  * Crafting stations and containers in the sim: the four buttons, their timers in the frame
- * script, the BSmith FX, crafts across map changes, the Cauldron, the Storage button, the World
+ * script, the BSmith FX, crafts ended by map changes, the Cauldron, the Storage button, the World
  * Editor's Cauldron ids, and the container rows (real SQL on in-memory SQLite).
  */
 import { describe, expect, test } from "bun:test";
@@ -40,6 +40,7 @@ const locks = (out: Out, to: string): boolean[] =>
 const setSkill = (p: Player, name: string, v: number) => {
   p.char.skills[skillIndex(name)] = v;
 };
+const skill = (p: Player, name: string) => p.char.skills[skillIndex(name)] ?? 0;
 
 /** A crafter at (5, 6) facing north at (5, 5), with `station` there; a watcher at (8, 8). */
 function bench(station: string | null, rng = rngByN()) {
@@ -59,7 +60,7 @@ function bench(station: string | null, rng = rngByN()) {
 }
 
 describe("smithing", () => {
-  test("starts with the line, the lock and Swordhit3; done on the 300th frame", () => {
+  test("starts with the line, the lock and Swordhit3; done on the 500th frame", () => {
     const k = bench("Anvil");
     k.a.char.equip.weapon = "Blacksmith Hammer";
     k.a.char.bag[0] = { item: "Damaged Sword, Long", qty: 1 };
@@ -69,7 +70,7 @@ describe("smithing", () => {
     expect(locks(out, "a")).toEqual([true]);
     expect(sounds(out, "a")).toEqual(["Swordhit3:3"]);
     expect(k.a.keyLock).toBe(true);
-    expect(lines(k.run(299), "a")).toEqual([]);
+    expect(lines(k.run(499), "a")).toEqual([]);
     const done = k.run(1);
     expect(lines(done, "a")).toEqual(["Your Long Sword is ready!"]);
     expect(locks(done, "a")).toEqual([false]);
@@ -93,7 +94,7 @@ describe("smithing", () => {
     }
   });
 
-  test("kept bug: the skill line and 'is ready!' come with a full bag; the inputs stay", () => {
+  test("bug fixed: a full bag says so, with no skill roll and no 'is ready!'; the inputs stay", () => {
     const k = bench("Anvil", rngByN({ 9: [1] }));
     setSkill(k.a, "Blacksmithing", 1);
     k.a.char.equip.weapon = "Blacksmith Hammer";
@@ -104,13 +105,26 @@ describe("smithing", () => {
     k.a.char.bag[1] = { item: "Chunk of Iron", qty: 2 };
     k.craft(1);
     k.a.char.bag[14] = { item: "Pie", qty: 1 }; // full by completion
-    const out = k.run(300);
-    expect(lines(out, "a")).toEqual([
-      "You have advanced in the art of Blacksmithing!",
-      "Your Long Sword is ready!",
-    ]);
+    const out = k.run(500);
+    expect(lines(out, "a")).toEqual(["Your inventory is too crowded!"]);
+    expect(locks(out, "a")).toEqual([false]);
+    expect(skill(k.a, "Blacksmithing")).toBe(1);
     expect(k.a.char.bag[0]).toEqual({ item: "Damaged Sword, Long", qty: 2 });
     expect(k.a.char.bag[1]).toEqual({ item: "Chunk of Iron", qty: 2 });
+  });
+
+  test("the skill line follows 'is ready!'; a skill of 0 can rise", () => {
+    const k = bench("Anvil", rngByN({ 9: [1] }));
+    setSkill(k.a, "Blacksmithing", 0);
+    k.a.char.equip.weapon = "Blacksmith Hammer";
+    k.a.char.bag[0] = { item: "Damaged Sword, Long", qty: 1 };
+    k.a.char.bag[1] = { item: "Chunk of Iron", qty: 1 };
+    k.craft(1);
+    expect(lines(k.run(500), "a")).toEqual([
+      "Your Long Sword is ready!",
+      "You have advanced in the art of Blacksmithing!",
+    ]);
+    expect(skill(k.a, "Blacksmithing")).toBe(1);
   });
 
   test("divergence: a chunk dropped mid-craft repairs nothing and says nothing", () => {
@@ -120,7 +134,7 @@ describe("smithing", () => {
     k.a.char.bag[1] = { item: "Chunk of Iron", qty: 1 };
     k.craft(1);
     k.a.char.bag[1] = null;
-    expect(lines(k.run(300), "a")).toEqual([]);
+    expect(lines(k.run(500), "a")).toEqual([]);
     expect(k.a.char.bag[0]).toEqual({ item: "Damaged Sword, Long", qty: 3 });
     expect(k.a.keyLock).toBe(false);
   });
@@ -135,20 +149,30 @@ describe("smithing", () => {
 });
 
 describe("crafts in the frame script", () => {
-  test("kept bug: crafts survive map changes; a map load frees the keys", () => {
-    const k = bench("Stove");
-    setSkill(k.a, "Cooking", 1);
-    k.a.char.bag[0] = { item: "Trout", qty: 1 };
+  test("bug fixed: a map change ends the craft, says so, and loses nothing", () => {
+    const k = bench("Alchemy Lab");
+    setSkill(k.a, "Alchemy", 1);
+    k.a.char.equip.offHand = "Red Sand";
+    k.a.char.bag[0] = { item: "Potion Bottle", qty: 1 };
+    k.a.char.bag[1] = { item: "Red Crystals", qty: 1 };
     k.craft(1);
     k.run(50);
     leaveRoom(k.world, k.a);
     k.a.map = testMap("x1001y992");
     const out = enterRoom(k.world, k.a);
-    expect(out.length).toBeGreaterThan(0);
+    expect(lines(out, "a")).toEqual([CRAFT_TEXT.interrupted]);
     k.a.loading = 0;
     expect(k.a.keyLock).toBe(false);
-    expect(lines(k.run(150), "a")).toEqual(["Your Trout Fillet is ready!"]);
-    expect(k.a.char.bag[0]).toEqual({ item: "Trout Fillet", qty: 1 });
+    expect(k.a.craft.timers).toEqual({});
+    expect(lines(k.run(200), "a")).toEqual([]);
+    expect(k.a.char.bag[0]).toEqual({ item: "Potion Bottle", qty: 1 });
+    expect(k.a.char.bag[1]).toEqual({ item: "Red Crystals", qty: 1 });
+  });
+
+  test("a map change with no craft running says nothing", () => {
+    const k = bench(null);
+    leaveRoom(k.world, k.a);
+    expect(lines(enterRoom(k.world, k.a), "a")).toEqual([]);
   });
 
   test("two crafts ending on one frame resolve Smith before Cook", () => {
@@ -160,8 +184,8 @@ describe("crafts in the frame script", () => {
     k.a.char.bag[1] = { item: "Chunk of Iron", qty: 1 };
     k.a.char.bag[2] = { item: "Trout", qty: 1 };
     k.craft(1);
-    k.run(100);
-    k.a.keyLock = false; // as a map load would
+    k.run(300);
+    k.a.keyLock = false; // as a finished craft would
     k.craft(3);
     expect(lines(k.run(200), "a")).toEqual([
       "Your Long Sword is ready!",
@@ -169,59 +193,81 @@ describe("crafts in the frame script", () => {
     ]);
   });
 
-  test("kept bug: a crafter cannot be shoved", () => {
+  test("bug fixed: a crafter can be shoved, and the craft carries on", () => {
     const k = bench(null);
+    setSkill(k.a, "Carpentry", 1);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
     k.a.char.equip.offHand = "Saw";
     k.craft(1);
+    expect(k.a.keyLock).toBe(true);
     pushOnMe(k.room, k.a, "U", k.b, {
       rng: rngByN({ 25: [1] }),
       emit: () => {},
       tell: () => {},
       crossings: [],
     });
-    expect([k.a.x, k.a.y]).toEqual([5, 6]);
+    expect(k.a.stepFrames).toBeGreaterThan(0);
+    expect(k.a.craft.timers.Build).toBeDefined();
+  });
+
+  test("a window's key lock still stops a shove", () => {
+    const k = bench(null);
+    k.a.keyLock = true; // a vault or a shop holds the keys
+    pushOnMe(k.room, k.a, "U", k.b, {
+      rng: rngByN({ 25: [1] }),
+      emit: () => {},
+      tell: () => {},
+      crossings: [],
+    });
     expect(k.a.stepFrames).toBe(0);
   });
 
-  test("kept bug: sandwich alchemy before any brew keeps the keys until a map load", () => {
+  test("bug fixed: a Catfish Sandwich cannot stand in for sand; the keys stay free", () => {
     const k = bench("Alchemy Lab");
     k.a.char.equip.offHand = "Catfish Sandwich";
     k.a.char.bag[0] = { item: "Potion Bottle", qty: 1 };
-    expect(lines(k.craft(1), "a")).toEqual(["You begin to mix the potion."]);
-    expect(k.a.char.bag[0]).toBeNull();
-    const out = k.run(200);
-    expect(lines(out, "a")).toEqual([]);
-    expect(locks(out, "a")).toEqual([]);
-    expect(k.a.keyLock).toBe(true);
-    leaveRoom(k.world, k.a);
-    enterRoom(k.world, k.a);
+    expect(lines(k.craft(1), "a")).toEqual([CRAFT_TEXT.noSand]);
+    expect(k.a.char.bag[0]).toEqual({ item: "Potion Bottle", qty: 1 });
     expect(k.a.keyLock).toBe(false);
   });
 
-  test("kept bug: a failed brew makes the next sandwich brew fail", () => {
-    const k = bench("Alchemy Lab", rngByN({ 3: [1] }));
+  test("alchemy: the bottle and crystal are taken at completion; the sand stays in hand", () => {
+    const k = bench("Alchemy Lab", rngByN({ 15: [1] }));
+    setSkill(k.a, "Alchemy", 1);
     k.a.char.equip.offHand = "Red Sand";
     k.a.char.bag[0] = { item: "Potion Bottle", qty: 2 };
     k.a.char.bag[1] = { item: "Red Crystals", qty: 1 };
-    k.craft(1); // the start roll fails: the next potion is "Bad Potion"
-    expect(lines(k.run(200), "a")).toEqual(["Your potion is ready!"]); // the sand re-picks
-    k.a.char.equip.offHand = "Catfish Sandwich";
     k.craft(1);
-    expect(lines(k.run(200), "a")).toEqual([CRAFT_TEXT.potionOff]);
+    expect(k.a.char.bag[0]).toEqual({ item: "Potion Bottle", qty: 2 });
+    expect(lines(k.run(200), "a")).toEqual([
+      "Your potion is ready!",
+      "You have advanced in the art of Alchemy!",
+    ]);
+    expect(k.a.char.bag[0]).toEqual({ item: "Potion Bottle", qty: 1 });
+    expect(k.a.char.bag[1]).toEqual({ item: "Red Potion", qty: 1 });
+    expect(k.a.char.equip.offHand).toBe("Red Sand");
   });
 
   test("divergence: a craft ends at logout; a new session starts with none", () => {
     const k = bench(null);
+    setSkill(k.a, "Carpentry", 1);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
     k.a.char.equip.offHand = "Saw";
     k.craft(1);
     const again = player("a", k.map, 5, 6);
     expect(again.craft.timers).toEqual({});
-    expect(again.craft.lastPotion).toBeNull();
   });
 
-  test("carpentry: Logs taken at the start, the result minted an id", () => {
+  test("bug fixed: carpentry needs Carpentry 1", () => {
+    const k = bench(null);
+    setSkill(k.a, "Carpentry", 0);
+    k.a.char.bag[0] = { item: "Logs", qty: 1 };
+    k.a.char.equip.offHand = "Saw";
+    expect(lines(k.craft(1), "a")).toEqual([CRAFT_TEXT.unskilledBuild]);
+    expect(k.a.keyLock).toBe(false);
+  });
+
+  test("carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id", () => {
     const k = bench(null, rngByN({ 4: [1] }));
     setSkill(k.a, "Carpentry", 40);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
@@ -229,8 +275,8 @@ describe("crafts in the frame script", () => {
     const out = k.craft(1);
     expect(lines(out, "a")).toEqual(["You begin to build something..."]);
     expect(sounds(out, "a")).toEqual(["sawbbb:3"]);
-    expect(k.a.char.bag[0]).toBeNull();
-    expect(lines(k.run(160), "a")).toEqual(["Your built a Crate!"]); // 160 frames at > 30
+    expect(k.a.char.bag[0]).toEqual({ item: "Logs", qty: 1 });
+    expect(lines(k.run(160), "a")).toEqual(["You built a Crate!"]); // 160 frames at > 30
     expect(k.a.char.bag[0]?.item).toMatch(/^Crate#\d+$/);
   });
 });
@@ -260,7 +306,7 @@ describe("the Cauldron", () => {
     expect(c.a.char.bag[0]).toEqual({ item: "Chunk of Star", qty: 1 });
   });
 
-  test("a hit says so to the depositor only and overwrites everything", () => {
+  test("bug fixed: a hit says so to the depositor only and keeps the other contents", () => {
     const c = cauldron();
     c.world.containers.set("Cauldron#7", ["Pie", "Chunk of Star"]);
     c.a.char.bag[0] = { item: "Silver Crown", qty: 1 };
@@ -270,7 +316,31 @@ describe("the Cauldron", () => {
       CRAFT_TEXT.puff,
     ]);
     expect(lines(out, "b")).toEqual([]);
-    expect(c.world.containers.get("Cauldron#7")).toEqual(["Gold Crown"]);
+    expect(c.world.containers.get("Cauldron#7")).toEqual(["Pie", "Gold Crown"]);
+  });
+
+  test("bug fixed: a brew refreshes the list of anyone with the Cauldron open", () => {
+    const c = cauldron();
+    c.world.containers.set("Cauldron#7", ["Pie", "Chunk of Star"]);
+    c.b.container = { name: "Cauldron#7", shown: ["Pie", "Chunk of Star"] };
+    c.a.char.bag[0] = { item: "Silver Crown", qty: 1 };
+    const out = c.drop(1);
+    const vault = out.find((o) => o.to === "b" && o.msg.t === "vault");
+    expect(vault?.msg).toEqual({ t: "vault", items: ["Pie", "Gold Crown"], open: false });
+    // A withdraw now takes the line it shows.
+    withdrawContainer(c.world, c.b, 2, c.ictx.rng);
+    expect(c.b.char.bag[0]).toEqual({ item: "Gold Crown", qty: 1 });
+  });
+
+  test("bug fixed: the Magic Shield Book recipes brew, and 'Axe' means an Axe", () => {
+    const c = cauldron();
+    c.world.containers.set("Cauldron#7", ["Small Shield"]);
+    c.a.char.bag[0] = { item: "Magic Shield Book", qty: 1 };
+    expect(lines(c.drop(1), "a")).toContain(CRAFT_TEXT.puff);
+    expect(c.world.containers.get("Cauldron#7")).toEqual(["Magic Shield"]);
+    c.world.containers.set("Cauldron#7", ["Gold Axe"]);
+    c.a.char.bag[1] = { item: "Chunk of Star", qty: 1 };
+    expect(lines(c.drop(2), "a")).toContain(CRAFT_TEXT.fizzle);
   });
 
   test("containers are refused; a full one says so after the drop line", () => {
@@ -347,7 +417,7 @@ describe("the Cauldron", () => {
     expect(c.world.containers.get("Crate#4242")).toEqual([]);
   });
 
-  test("Ctrl opens it; the window is not refreshed; a withdraw takes the line by name", () => {
+  test("Ctrl opens it; a withdraw takes the line by name", () => {
     const c = cauldron();
     c.world.containers.set("Cauldron#7", ["Pie", "Chunk of Star"]);
     const open = actionIntent(c.ictx, c.room, c.a);
@@ -359,7 +429,7 @@ describe("the Cauldron", () => {
     });
     expect(c.a.keyLock).toBe(true);
     expect(c.a.itemPause).toBe(0); // closing the vault clears Ctrl's pause
-    // Someone brews while it is open: the list still shows the old lines.
+    // The contents change behind the window (not by a deposit): a stale line gives nothing.
     c.world.containers.set("Cauldron#7", ["Gold Crown"]);
     const w = withdrawContainer(c.world, c.a, 1, c.ictx.rng);
     expect(w[0]?.msg).toEqual({ t: "vault", items: ["Chunk of Star"], open: false });

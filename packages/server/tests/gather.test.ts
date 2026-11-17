@@ -1,6 +1,6 @@
 /**
  * Gathering in the tick: the swing's tool block, fishing, the Watering Bucket, seeds, regrowth
- * per player and treasure; and the tile changes written to the map row (real SQL on in-memory
+ * per map and treasure; and the tile changes written to the map row (real SQL on in-memory
  * SQLite).
  */
 import { describe, expect, test } from "bun:test";
@@ -71,12 +71,12 @@ function swinger(tool: string, rng = rngByN()) {
 }
 
 describe("the axe", () => {
-  test("17 swings fell a tree: the stump for everyone, treefalling, logs and the skill line", () => {
+  test("bug fixed: 18 swings fell a tree, as the table says: the stump, treefalling, logs and the skill line", () => {
     const g = swinger("Axe", rngByN({ 3: ones(), 12: [1] }));
     setSkill(g.a, "Lumberjacking", 5);
     const b = player("b", g.map, 9, 9);
     g.join(b);
-    const first = g.swings(16);
+    const first = g.swings(17);
     expect(
       events(first, "a")
         .filter((e) => e.e === "swing")
@@ -103,26 +103,27 @@ describe("the axe", () => {
         .filter((e) => e.e === "swing")
         .map((e) => e.e === "swing" && e.sound),
     ).toEqual(["swordswing", "swordswing", "swordswing"]);
-    expect(g.a.gather.Chop).toBe(0);
+    expect(g.a.gather.Axe).toBeUndefined();
   });
 
-  test("kept bug: Lumberjacking 0 fells trees but never drops logs and never rises", () => {
+  test("bug fixed: Lumberjacking 0 fells trees, drops logs and can rise", () => {
     const g = swinger("Axe", rngByN({ 3: ones(), 12: [1] }));
     setSkill(g.a, "Lumberjacking", 0);
-    const out = g.swings(17);
+    const out = g.swings(18);
     expect(tileAt(g.map.layers[1], 5, 5)).toBe("P3");
-    expect(g.map.ground).toEqual([]);
-    expect(lines(out, "a")).toEqual([]);
+    expect(g.map.ground.map((x) => x.item)).toEqual(["Logs"]);
+    expect(lines(out, "a")).toEqual(["You have advanced in the art of Lumberjacking!"]);
+    expect(skill(g.a, "Lumberjacking")).toBe(1);
   });
 
-  test("kept bug: a fell mid-step changes the tile and rolls the skill but drops nothing", () => {
+  test("bug fixed: a fell mid-step drops its logs on the felled tile", () => {
     const g = swinger("Axe", rngByN({ 3: ones(), 12: [1] }));
     setSkill(g.a, "Lumberjacking", 5);
-    g.a.gather.Chop = 2; // the next hit succeeds
+    g.a.gather.Axe = 1; // the next hit succeeds
     g.a.stepFrames = 5; // mid-step: the faced tile is from the destination tile already
     const out = g.swings(1);
     expect(tileAt(g.map.layers[1], 5, 5)).toBe("P3");
-    expect(g.map.ground).toEqual([]);
+    expect(g.map.ground.map((x) => [x.item, x.x, x.y])).toEqual([["Logs", 5, 5]]);
     expect(lines(out, "a")).toEqual(["You have advanced in the art of Lumberjacking!"]);
   });
 });
@@ -132,7 +133,7 @@ describe("mining", () => {
     const g = swinger("Mining Hammer", rngByN({ 5: [1] }));
     setLayer(g.map, 1, 5, 5, "B8");
     setSkill(g.a, "Mining", 5);
-    g.a.gather.Mine = 2;
+    g.a.gather["Mining Hammer"] = 1;
     const out = g.swings(1);
     expect(events(out, "a").find((e) => e.e === "swing")).toMatchObject({ sound: "swordhit2" });
     expect(tileAt(g.map.layers[1], 5, 5)).toBe("O8");
@@ -175,15 +176,24 @@ describe("fishing", () => {
     expect(f.a.timers.atDelay).toBe(16);
   });
 
-  test("kept bug: D2 is water only on layer 2, which fishing never reads", () => {
+  test("bug fixed: water drawn only on layer 2 (D2) can be fished", () => {
     const f = fisher(rngByN({ 28: [1] }));
     setLayer(f.map, 0, 5, 5, "G1");
     setLayer(f.map, 1, 5, 5, "D2");
     setSkill(f.a, "Fishing", 20);
     setAttackHeld(f.a, true);
-    f.run(2);
-    expect(f.map.ground).toEqual([]);
-    expect(f.a.antiMacro).toBe(5);
+    f.run(1);
+    expect(f.map.ground.map((x) => [x.item, x.x, x.y])).toEqual([["Trout", 5, 5]]);
+    expect(f.a.antiMacro).toBe(4);
+  });
+
+  test("bug fixed: a cast mid-step catches like any other", () => {
+    const f = fisher(rngByN({ 28: [1] }));
+    setSkill(f.a, "Fishing", 20);
+    f.a.stepFrames = 5;
+    setAttackHeld(f.a, true);
+    f.run(1);
+    expect(f.map.ground.map((x) => x.item)).toEqual(["Trout"]);
   });
 
   test("kept bug: a step into a wall refreshes the allowance", () => {
@@ -207,10 +217,10 @@ describe("fishing", () => {
 });
 
 describe("farming", () => {
-  test("kept bug: the Watering Bucket counts every swing, and its success on grass is wasted", () => {
+  test("bug fixed: the Watering Bucket counts only swings at a seeded tile", () => {
     const g = swinger("Watering Bucket");
-    const out = g.swings(17);
-    expect(g.a.gather.Watering).toBe(1);
+    const out = g.swings(20);
+    expect(g.a.gather["Watering Bucket"]).toBeUndefined();
     expect(events(out, "a").filter((e) => e.e === "tile")).toEqual([]);
     expect(
       events(out, "a")
@@ -223,7 +233,7 @@ describe("farming", () => {
     const g = swinger("Watering Bucket");
     g.a.facing = "E";
     setLayer(g.map, 1, 6, 6, "UL");
-    g.a.gather.Watering = 2;
+    g.a.gather["Watering Bucket"] = 1;
     const out = [...g.swings(1), ...g.run(1)];
     expect(tileAt(g.map.layers[1], 6, 6)).toBe("XL");
     expect(events(out, "a").find((e) => e.e === "fx")).toMatchObject({ name: "sprinkle" });
@@ -232,13 +242,13 @@ describe("farming", () => {
   test("the hoe tills TL into SL with Shoveling on channel 2", () => {
     const g = swinger("Hoe");
     setLayer(g.map, 1, 5, 5, "TL");
-    g.a.gather.Farm = 2;
+    g.a.gather.Hoe = 1;
     const out = g.swings(1);
     expect(tileAt(g.map.layers[1], 5, 5)).toBe("SL");
     expect(sounds(out, "a")).toEqual(["shoveling:2"]);
   });
 
-  test("kept bug: seeds are used on a wrong tile or off the map; they plant on SL", () => {
+  test("bug fixed: seeds are kept on a wrong tile or off the map; they plant on SL", () => {
     const g = swinger("NOTHING");
     const ctx = (): ItemCtx => ({ world: g.world, rng: rngByN(), now: 0 });
     const room = g.world.rooms.get(g.map.name);
@@ -250,45 +260,65 @@ describe("farming", () => {
     let out = useIntent(ctx(), room, g.a, 1);
     expect(lines(out, "a")).toEqual(["You plant the seeds."]);
     expect(tileAt(g.map.layers[1], 5, 5)).toBe("UL");
+    expect(g.a.char.bag[0]).toEqual({ item: "Seeds", qty: 2 });
+    const wrong =
+      "You plant the seeds into the ground but realize this isn't going to grow anything here!";
     out = useIntent(ctx(), room, g.a, 1);
-    expect(lines(out, "a")).toEqual([
-      "You plant the seeds into the ground but realize this isn't going to grow anything here!",
-    ]);
-    g.a.y = 1; // facing north off the map: EMPTY passes the test
+    expect(lines(out, "a")).toEqual([wrong]);
+    expect(g.a.char.bag[0]).toEqual({ item: "Seeds", qty: 2 });
+    g.a.y = 1; // facing north off the map
     out = useIntent(ctx(), room, g.a, 1);
-    expect(lines(out, "a")).toEqual(["You plant the seeds."]);
-    expect(g.a.char.bag[0]).toBeNull();
+    expect(lines(out, "a")).toEqual([wrong]);
+    expect(g.a.char.bag[0]).toEqual({ item: "Seeds", qty: 2 });
   });
 });
 
 describe("regrowth", () => {
-  test("one random(600) per player on the map per frame; none on an empty map", () => {
+  test("bug fixed: one random(600) per map per frame, however many players are there", () => {
     const rng = rngByN();
     const map = testMap("x1000y992");
     const s = setup([map], undefined, rng);
     s.join(player("a", map, 2, 2));
     s.join(player("b", map, 3, 3));
     s.join(player("c", map, 4, 4));
+    rng.calls.length = 0;
     s.run(1);
-    expect(rng.calls.filter((n) => n === 600)).toHaveLength(3);
-    for (const id of ["a", "b", "c"]) {
-      removePlayer(s.world, id);
-    }
+    expect(rng.calls.filter((n) => n === 600)).toHaveLength(1);
     rng.calls.length = 0;
     s.run(5);
-    expect(rng.calls.filter((n) => n === 600)).toHaveLength(0);
+    expect(rng.calls.filter((n) => n === 600)).toHaveLength(5);
   });
 
-  test("a stump regrows on a roll under 6, and not while the death respawn timer runs", () => {
+  test("bug fixed: an empty map catches up on the frames it missed, up to an hour", () => {
+    const rng = rngByN();
     const map = testMap("x1000y992");
-    setLayer(map, 1, 3, 4, "P3");
-    const rng = rngByN({ 600: [5, 5], 17: [3, 3], 12: [4, 4] });
     const s = setup([map], undefined, rng);
-    const a = player("a", map, 9, 9);
-    a.regrowthStop = 2;
+    const a = player("a", map, 2, 2);
     s.join(a);
     s.run(1);
-    expect(tileAt(map.layers[1], 3, 4)).toBe("P3");
+    removePlayer(s.world, "a");
+    s.run(40); // nobody there: the room is unloaded
+    rng.calls.length = 0;
+    const b = player("b", map, 3, 3);
+    s.join(b);
+    s.run(1);
+    expect(rng.calls.filter((n) => n === 600)).toHaveLength(41);
+    // A long absence catches up at most an hour of frames.
+    removePlayer(s.world, "b");
+    map.regrowthTick = s.world.tickNo - 1_000_000;
+    rng.calls.length = 0;
+    s.join(player("c", map, 4, 4));
+    s.run(1);
+    expect(rng.calls.filter((n) => n === 600)).toHaveLength(72_000);
+  });
+
+  test("bug fixed: a stump regrows on a roll under 6, even right after a death or exit warp", () => {
+    const map = testMap("x1000y992");
+    setLayer(map, 1, 3, 4, "P3");
+    const rng = rngByN({ 600: [5], 17: [3], 12: [4] });
+    const s = setup([map], undefined, rng);
+    const a = player("a", map, 9, 9);
+    s.join(a);
     const out = s.run(1);
     expect(tileAt(map.layers[1], 3, 4)).toBe("S3");
     expect(events(out, "a")).toContainEqual({ e: "tile", layer: 2, x: 3, y: 4, code: "S3" });
@@ -311,7 +341,7 @@ describe("treasure", () => {
     g.world.treasureMaps = ["x1000y992"];
     g.world.treasure = { map: "x1000y992", item: "300 Gold" };
     setLayer(g.map, 1, 5, 5, "G3");
-    g.a.gather.Dig = 2;
+    g.a.gather.Shovel = 1;
     const out = g.swings(1);
     expect(tileAt(g.map.layers[1], 5, 5)).toBe("1K");
     expect(g.map.ground.map((x) => [x.item, x.x, x.y])).toEqual([["300 Gold", 5, 5]]);
@@ -319,12 +349,22 @@ describe("treasure", () => {
     expect(g.world.treasure).toEqual({ map: "x1000y992", item: "Steel Shield" });
   });
 
+  test("bug fixed: the shovel will not dig G3 over water on any row", () => {
+    const g = swinger("Shovel");
+    setLayer(g.map, 0, 5, 5, "N1");
+    setLayer(g.map, 1, 5, 5, "G3");
+    g.a.gather.Shovel = 1;
+    g.swings(1);
+    expect(tileAt(g.map.layers[1], 5, 5)).toBe("G3");
+    expect(g.a.gather.Shovel).toBe(1); // the swing counted nothing
+  });
+
   test("another map never finds it, and no list means no treasure", () => {
     const g = swinger("Shovel", rngByN({ 5: [1] }));
     resetTreasure(g.world, [], rngByN());
     setLayer(g.map, 1, 5, 5, "G3");
     expect(g.world.treasure).toBeNull();
-    g.a.gather.Dig = 2;
+    g.a.gather.Shovel = 1;
     g.swings(1);
     expect(g.map.ground).toEqual([]);
   });
@@ -439,7 +479,7 @@ describe("tile persistence", () => {
     const ty = p.y + dy;
     p.map.layers[1] = withTile(p.map.layers[1], tx, ty, "S3") ?? p.map.layers[1];
     p.char.equip.weapon = "Axe";
-    p.gather.Chop = 2;
+    p.gather.Axe = 1;
     g.intent(l.characterId, { t: "attack", seq: 1, held: true });
     g.tick();
     expect(tileAt(p.map.layers[1], tx, ty)).toBe("P3");

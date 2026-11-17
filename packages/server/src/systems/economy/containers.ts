@@ -129,7 +129,8 @@ export function storageIntent(world: World, p: Player, slot: number): Outgoing[]
 /**
  * Drop while facing a `Cauldron#`: a container is refused, the drop line prints before the
  * server's tests, a full one says so, one unit goes in; then a Cauldron runs its recipes, whose
- * lines go to the depositor only. The open list is not refreshed.
+ * lines go to the depositor only. A brew swaps its two ingredients for the result and refreshes
+ * the list of anyone who has that Cauldron open.
  */
 export function depositContainer(world: World, p: Player, slot: number, name: string): Outgoing[] {
   const line = p.char.bag[slot - 1];
@@ -157,18 +158,30 @@ export function depositContainer(world: World, p: Player, slot: number, name: st
   p.invDirty = true;
   const next = [...lines, item];
   if (lingoContains(name, "Cauldron")) {
-    const result = cauldronBrew(next);
-    if (result === null) {
+    const brewed = cauldronBrew(next);
+    if (brewed === null) {
       write(world, name, next);
       out.push(tell(p, CRAFT_TEXT.fizzle));
       return out;
     }
-    // A hit overwrites the whole container with the one result.
-    write(world, name, [result]);
+    write(world, name, brewed);
     out.push(tell(p, CRAFT_TEXT.puff));
+    out.push(...refreshViewers(world, name));
     return out;
   }
   write(world, name, next);
+  return out;
+}
+
+/** Everyone with `name` open sees its current contents. */
+function refreshViewers(world: World, name: string): Outgoing[] {
+  const out: Outgoing[] = [];
+  for (const o of world.players.values()) {
+    if (o.container && lingoEq(o.container.name, name)) {
+      o.container.shown = [...linesOf(world, name)];
+      out.push({ to: o.id, msg: { t: "vault", items: [...o.container.shown], open: false } });
+    }
+  }
   return out;
 }
 

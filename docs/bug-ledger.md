@@ -36,7 +36,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [chat](#chat) | 0 |
 | [client](#client) | 0 |
 | [combat](#combat) | 0 |
-| [crafting](#crafting) | 28 |
+| [crafting](#crafting) | 0 |
 | [economy](#economy) | 33 |
 | [housing](#housing) | 20 |
 | [inventory](#inventory) | 33 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **258** |
+| **Total** | **230** |
 
 ## admin
 
@@ -73,173 +73,7 @@ No kept bugs (all twenty-nine former entries were fixed; see [combat differences
 
 ## crafting
 
-### A tool's hit counter carries over, so the first success comes a hit early
-- **What you notice:** gathering takes a set number of hits per success. The first success comes one hit sooner than the table says, and later ones take the full number. All hammers share one mining counter.
-- **In 1.6 and SSO:** there is one counter per tool family, reloaded only when it drops below 1, and success happens at exactly 1. SSO uses the same arithmetic but keeps the counters per character, starting at 0 at each login as the client's globals did.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`hitCounter`, `newGatherCounters`)
-- **Pinned by:** `kept bug: the first success takes table − 1 hits, later ones the table`; `kept bug: one Mine counter serves all three hammers` (packages/shared/tests/crafting/gather.test.ts)
-
-### Lumberjacking at 0 fells trees but never drops logs
-- **What you notice:** with Lumberjacking at 0 you swing and fell trees, but no logs ever drop. Mining at 0 likewise never drops crystals or chunks.
-- **In 1.6 and SSO:** the drop roll is made on every fell, but the log drop is guarded by "skill above 0". Mining at 0 is guarded the same way. SSO does the same.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`rollLogs`, `rollMiningFind`, `rollChunk`)
-- **Pinned by:** `kept bug: Lumberjacking 0 rolls random(3) but never drops logs`; `Mining 0 rolls the ores and the find but drops nothing` (packages/shared/tests/crafting/gather.test.ts); `kept bug: Lumberjacking 0 fells trees but never drops logs and never rises` (packages/server/tests/gather.test.ts)
-
-### Ore odds do not improve with Mining skill, and 97 changes them
-- **What you notice:** at any Mining skill below 97 your chance of Iron, Steel or Star ore stays the same. At 97 and above you never find Iron, but Steel and Star become likelier than before.
-- **In 1.6 and SSO:** the odds are a cascade of "skill below N" tests where the last true one wins: Iron 1 in 25, Steel 1 in 55, Star 1 in 155. At 97 and above the base value is left undefined, which the Director 8.5 player treats as 0 when adding 30. Iron then rolls against an undefined range and never hits, Steel is 1 in 30 and Star 1 in 130. SSO does the same: Iron draws from range 0 and never drops.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`rollMiningFind`)
-- **Pinned by:** `kept bug: ore odds are constant, Star overrides Steel overrides Iron`; `kept bug: at Mining 97 and above the unset pool counts as zero, giving Steel 1/30 and Star 1/130 but no Iron` (packages/shared/tests/crafting/gather.test.ts)
-
-### A fisher at skill 0 never catches anything
-- **What you notice:** with Fishing at 0 you cast and cast and never catch a fish, and the skill never rises.
-- **In 1.6 and SSO:** the fishing check is only set up when the skill is above 0, and the skill-raising helper also needs it above 0. The catch roll is left undefined, and Director 8.5 returns a random 32-bit number that is never 1, so it draws once and never succeeds. SSO does the same.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`fishFor`, `castLine`)
-- **Pinned by:** `kept bug: Fishing 0 never catches nor rises; the unset chance still consumes one draw` (packages/shared/tests/crafting/gather.test.ts)
-
-### Planting seeds on the wrong ground still uses the seed up
-- **What you notice:** you plant a seed on a tile that cannot grow it and read "…isn't going to grow anything here!", but the seed is still gone. Off the edge of the map you read "You plant the seeds." and the map does not change.
-- **In 1.6 and SSO:** the planting routine exits on a tile that is not seed ground, but the item removal is sent anyway. Off the map the tile reads as empty, which passes the test, but the server refuses the change. SSO consumes one seed, leaves the tile unchanged and prints the same lines.
-- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`plantSeeds`)
-- **Pinned by:** `kept bug: seeds are used on a wrong tile or off the map; they plant on SL` (packages/server/tests/gather.test.ts)
-
-### The shovel only checks the ground layer on the top row
-- **What you notice:** the shovel's restriction to certain ground is real only on the top row of the map. On every lower row the check does not apply, and one tile on the top row (column 17) can never be dug.
-- **In 1.6 and SSO:** the shovel reads a word of the one-line map data, which is empty below row 1, and an empty text passes the test. On row 1 the word at column 17 straddles the "#" that joins two layers, so it never matches. SSO reads the top row the same way; on rows 2 to 12 it tests only the second layer's `G3` ground.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`shovelLayer1Ok`)
-- **Pinned by:** `kept bug: the shovel's layer-1 test is real only on row 1, and (17, 1) never digs` (packages/shared/tests/crafting/gather.test.ts)
-
-### Crafting at skill exactly 10 never fails
-- **What you notice:** a craft at skill exactly 10 never fails, while lower and higher skills can.
-- **In 1.6 and SSO:** the failure cascade has only a "below 10" and an "above 10" branch, so 10 falls through. SSO uses the same table and draws no random number there.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`failurePool`, `rollFailure`)
-- **Pinned by:** `kept bug: crafting skill exactly 10 never fails, and draws nothing` (packages/shared/tests/crafting/craft.test.ts)
-
-### Blacksmithing at 11-20 takes longer than at 10 or less
-- **What you notice:** a smith with skill 11 to 20 waits longer for each item than a smith at 10 or below.
-- **In 1.6 and SSO:** the smithing timer is 300 frames, then 460 once the skill is above 10, and the table is not reduced again until later. SSO uses the same table of frame counts.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`craftTimer`)
-- **Pinned by:** `kept bug: Blacksmithing 11-20 is slower than 10 and below` (packages/shared/tests/crafting/craft.test.ts)
-
-### A burned meal keeps its raw food; failed brews and builds lose theirs
-- **What you notice:** when cooking burns, you keep the raw food. When alchemy or carpentry fails, the ingredients are already gone.
-- **In 1.6 and SSO:** a burn exits before the raw item is taken, while alchemy and carpentry take their inputs at the start. SSO consumes at the same moments.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`cookDone`, `mixDone`, `buildDone`)
-- **Pinned by:** `the burn that counts is rolled at completion; a burn sends nothing`; `checks the lab, the sand, the crystal; takes crystal and bottle at the start`; `kept bug: carpentry needs no station and no skill; the Saw before the selection` (packages/shared/tests/crafting/craft.test.ts)
-
-### Cooking Yeti Meat gives Yeti Meat
-- **What you notice:** cooking Yeti Meat produces another Yeti Meat, so nothing improves.
-- **In 1.6 and SSO:** the original recipe table maps it to itself. SSO uses the same recipe table.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`cookDone`)
-- **Pinned by:** `kept bug: Yeti Meat cooks into Yeti Meat` (packages/shared/tests/crafting/craft.test.ts)
-
-### Masterwork rolls are uneven and the Knight's Sword cannot be repaired
-- **What you notice:** a Chain Helm or Steel Shield gets its +1 bonus on two different rolls, and a Leather Armor +1 can never come up. A broken Knight's Sword becomes "Damaged Sword, Knight's", but the repair looks for "Damaged Sword, Knight", so it cannot be repaired.
-- **In 1.6 and SSO:** the masterwork table and the repair names disagree in this way. SSO uses the same tables and names.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`masterwork`, `masterworkPool`, `snx38Result`)
-- **Pinned by:** `kept bug: Chain Helm and Steel Shield give +1 on two rolls`; `a damaged name with no repair keeps its inputs, says 'Your  is ready!'` (packages/shared/tests/crafting/craft.test.ts)
-
-### Mixing a potion never uses up the sand
-- **What you notice:** you mix a potion and the sand is still in your hand afterwards. The crystal and the chosen item are used up.
-- **In 1.6 and SSO:** the sand only has to be held, and only the crystal and the selected item are taken. The Mix button only exists for exactly "Potion Bottle", so in play the item is always a bottle. SSO does the same.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`mixDone`, `startCraft`)
-- **Pinned by:** `kept bug: the sand is never consumed` (packages/shared/tests/crafting/craft.test.ts)
-
-### A held Catfish Sandwich can stand in for alchemy sand
-- **What you notice:** holding a Catfish Sandwich lets you brew your last potion again with no crystal. If the previous brew failed, the next sandwich brew fails too. Before you have brewed anything this session, nothing is printed and your keys stay locked until the next map load.
-- **In 1.6 and SSO:** the gate only checks that the held item contains " Sand", but the crystal checks and the potion choice test exact sand names. A failed start leaves the next potion as "Bad Potion", and with no earlier brew it is undefined. SSO keeps the last potion per character, reset at login, with the same Bad Potion carry-over and key lock.
-- **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftIntent`, `lastPotion`); `packages/shared/src/rules/crafting/craft.ts` (`mixDone`)
-- **Pinned by:** `kept bug: sandwich alchemy brews the last potion, or a Bad Potion after a failed start`; `kept bug: sandwich alchemy before any brew prints nothing and keeps the keys locked` (packages/shared/tests/crafting/craft.test.ts); `kept bug: sandwich alchemy before any brew keeps the keys until a map load`; `kept bug: a failed brew makes the next sandwich brew fail` (packages/server/tests/craft.test.ts)
-
-### Building furniture needs no workbench and no Carpentry skill
-- **What you notice:** if you hold a Saw you can build with Logs anywhere, whatever your Carpentry skill. One Logs is used at the start.
-- **In 1.6 and SSO:** Build checks only the Saw. The Build button only exists for exactly "Logs", so in play the item is always Logs. SSO does the same.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startCraft`, `buildDone`)
-- **Pinned by:** `kept bug: carpentry needs no station and no skill; the Saw before the selection` (packages/shared/tests/crafting/craft.test.ts)
-
-### The cauldron matches recipes loosely and the last match wins
-- **What you notice:** the cauldron looks for recipe words anywhere in what it holds. "Axe" matches a Gold Axe, a successful brew replaces everything inside, and two recipes need a "Magic Shield Spell Book" that does not exist.
-- **In 1.6 and SSO:** the match is a "contains" test over the whole stored text, the last matching recipe wins, and success overwrites all contents. SSO runs the same check on each deposit. The open list is not refreshed, and a withdrawal takes the first line equal to the name the window shows, so after a brew the old lines give nothing.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`); `packages/server/src/systems/economy/containers.ts` (`depositContainer`, `withdrawContainer`)
-- **Pinned by:** `contains on the whole text, the last recipe wins`; `kept bug: 'Axe' matches Gold Axe; the two 'Magic Shield Spell Book' recipes never fire` (packages/shared/tests/crafting/craft.test.ts); `a hit says so to the depositor only and overwrites everything`; `Ctrl opens it; the window is not refreshed; a withdraw takes the line by name` (packages/server/tests/craft.test.ts)
-
-### Cooking a Pig can turn a Cooked Pig back into a Pig
-- **What you notice:** with a stack such as "Cooked Pig" earlier in your bag, cooking a Pig turns that stack into Pig and adds a Cooked Pig.
-- **In 1.6 and SSO:** the removal takes from the first bag slot whose text contains the item name and a dash, then writes the line back with the rest unchanged. SSO uses the same substring rule for cook and smith completions, the only name-addressed removals it keeps.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`snx38`, `firstSlotContaining`, `takeByName`)
-- **Pinned by:** `kept bug: cooking a Pig can turn a Cooked Pig back into a Pig` (packages/shared/tests/crafting/craft.test.ts)
-
-### A full bag still reports the craft as ready
-- **What you notice:** you finish smithing or cooking with a full bag and read "Your <item> is ready!" even though nothing was added, and you keep the inputs. This happens only when the result has no matching stack to join and the input is a stack of 2 or more.
-- **In 1.6 and SSO:** the completion subtracts in memory, writes only through the add step, which adds nothing to a full bag, then sends the skill roll and the "is ready" line regardless. Alchemy and carpentry inputs are taken at the start, and removing from a full bag adds nothing. SSO does the same.
-- **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftStep`); `packages/shared/src/rules/crafting/craft.ts` (`snx38`)
-- **Pinned by:** `kept bug: a full bag still says 'is ready!' and keeps the raw stack` (packages/shared/tests/crafting/craft.test.ts); `kept bug: the skill line and 'is ready!' come with a full bag; the inputs stay` (packages/server/tests/craft.test.ts)
-
-### Raw Meat burns after any failed cook until another food resets it
-- **What you notice:** after one failed start, cooking Raw Meat burns it every time, until you click a Cyclops Meat, Pig, Orc Meat, Raw Fish or Yeti Meat. If you have never cooked, you read "Your  is ready!" with a blank name.
-- **In 1.6 and SSO:** the result is worked out afresh only for nine food names. Any other name keeps the session's last chosen food, which any failed start sets to "Bad Food". SSO keeps a last-food value per character, cleared at login.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`cookDone`); `packages/server/src/systems/crafting/craft.ts` (`craftIntent`, `lastFood`)
-- **Pinned by:** `kept bug: Raw Meat burns while the session's chosen food is 'Bad Food'` (packages/shared/tests/crafting/craft.test.ts)
-
-### Building furniture says "Your built a ..."
-- **What you notice:** a finished build reads "Your built a Chair!", with the stray "Your".
-- **In 1.6 and SSO:** that is the message as written, printed before the Logs are removed. SSO uses the same text.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`CRAFT_TEXT`, `buildDone`)
-- **Pinned by:** `kept bug: 'Your built a Chair!'; a failure says so` (packages/shared/tests/crafting/craft.test.ts)
-
-### A craft keeps running through map changes
-- **What you notice:** you start smithing or cooking, change map, and the craft still finishes. A map load frees your keys, so you can walk around while it runs.
-- **In 1.6 and SSO:** nothing resets the crafting counter on walking, a map change, death or a warp, and the finish rechecks nothing. A map load clears the key lock. SSO does the same, except that logging out ends a craft.
-- **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftStep`)
-- **Pinned by:** `kept bug: crafts survive map changes; a map load frees the keys` (packages/server/tests/craft.test.ts)
-
-### A crafter can't be shoved
-- **What you notice:** while you are crafting, other players can't push you.
-- **In 1.6 and SSO:** starting a craft locks the player's keys, and the shove skips players whose keys are locked. SSO does the same.
-- **In the code:** `packages/server/src/systems/crafting/craft.ts` (`keyLock`), `packages/server/src/systems/movement/push.ts` (`pushOnMe`)
-- **Pinned by:** `kept bug: a crafter cannot be shoved` (packages/server/tests/craft.test.ts)
-
-### Regrowth and farm produce speed up with more players on the map
-- **What you notice:** trees, rock, ice, holes and farm produce grow back faster the more players are on the map, and an empty map never regrows. For a while after you die or leave by a warp, regrowth waits for you, except farm vegetables.
-- **In 1.6 and SSO:** every client rolls a random number out of 600 each frame, with a threshold per kind of thing (for example trees and rock 5, holes 29, produce 9), then 1 in 204 per tile. The six checks wait out a 400-frame timer after a death or exit warp; the vegetable check does not. SSO rolls once per player on the map per frame on the server, with the same gates.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`regrowthFrame`, `REGROWTH_STOP_FRAMES`); `packages/server/src/systems/crafting/gather.ts` (`regrowthStep`)
-- **Pinned by:** `one random(600) per player on the map per frame; none on an empty map`; `a stump regrows on a roll under 6, and not while the death respawn timer runs` (packages/server/tests/gather.test.ts); `the checks wait out the post-death respawn timer; DoVeg does not` (packages/shared/tests/crafting/gather.test.ts)
-
-### A gathering or crafting skill at 0 never goes up
-- **What you notice:** a skill at 0 never rises through use, even for Smith, Mix and Build, which need no skill to use.
-- **In 1.6 and SSO:** all nine skill-raising handlers require the skill to be above 0 and below 100, and nothing else raises these skills from 0. SSO does the same.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`skillGainRule`, `rollSkillGain`)
-- **Pinned by:** `kept bug: a skill at 0 never rises, and 100 is the cap` (packages/shared/tests/crafting/gather.test.ts)
-
-### The Watering Bucket counts every swing, wasted or not
-- **What you notice:** swinging the bucket at anything, even off the map, counts toward its success, and a success on a tile that is not seeded is wasted.
-- **In 1.6 and SSO:** the bucket reads the faced tile but tests nothing before counting its swing. SSO does the same.
-- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`preSwing`)
-- **Pinned by:** `kept bug: the Watering Bucket counts every swing, and its success on grass is wasted` (packages/server/tests/gather.test.ts)
-
-### Gathering mid-step changes the tile but drops nothing
-- **What you notice:** if you swing a tool while you are mid-step, the tile can change and your skill can roll, but no item drops.
-- **In 1.6 and SSO:** the swing works from the destination tile, but the drop requires you to be standing still. SSO does the same.
-- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`); `packages/shared/src/rules/crafting/gather.ts` (`castLine`)
-- **Pinned by:** `kept bug: a fell mid-step changes the tile and rolls the skill but drops nothing` (packages/server/tests/gather.test.ts); `kept bug: a cast mid-step catches nothing` (packages/shared/tests/crafting/gather.test.ts)
-
-### Only water drawn on the first layer can be fished
-- **What you notice:** you can fish in some water tiles but never in others that look the same. Water drawn only on the second layer never gives a fish.
-- **In 1.6 and SSO:** fishing reads the first layer only, so W1 (on that layer in 54 maps) and N1 can be fished, and D2, which exists only on layer 2, cannot. SSO does the same.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`isFishingWater`); `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
-- **Pinned by:** `kept bug: D2 is water only on layer 2, which fishing never reads` (packages/server/tests/gather.test.ts)
-
-### Fishing skill-ups use up the anti-macro allowance too
-- **What you notice:** each skill-up you earn from fishing counts against the same allowance as a catch, so it runs out sooner.
-- **In 1.6 and SSO:** the skill-raising roll runs on every cast into water while the allowance is above 0, and a skill-up takes one from it, as a catch does. SSO does the same.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`castLine`, `ANTI_MACRO_START`)
-- **Pinned by:** `a catch and a skill-up each spend the anti-macro counter; the Imp rolls every cast` (packages/shared/tests/crafting/gather.test.ts)
-
-### Asking about "the treasure" gets no answer
-- **What you notice:** Say a line that starts with the words "the treasure" and the treasure-hint keyword does not trigger, though similar phrasings do.
-- **In 1.6 and SSO:** One of the original's trigger tests could never be true, because it compared the first word to two words. SSO keeps the same trigger list, including the dead one.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`asksAboutTreasure`)
-- **Pinned by:** `the keywords; kept bug: the first word can never match "the treasure"` (packages/shared/tests/crafting/gather.test.ts)
+No kept bugs (twenty-seven former entries were fixed, and the alchemy sand entry was reclassified as intended; see [crafting differences](divergences.md#crafting)).
 
 ## economy
 

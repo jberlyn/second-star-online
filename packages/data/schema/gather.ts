@@ -38,7 +38,7 @@ export const skillGainSchema = z.strictObject({
   skill: z.string().min(1),
   /** `random(chance) = 1`. */
   chance: z.number().int().positive(),
-  /** Rolls only while min <= skill < below (above 0 and below 100). */
+  /** Rolls only while min <= skill < below (0 to 99). */
   min: z.number().int(),
   below: z.number().int(),
   text: z.string().min(1),
@@ -76,7 +76,8 @@ export const gatherDataSchema = z.strictObject({
     fishing: z.strictObject({
       tool: z.string(),
       match: z.literal("contains"),
-      layer: z.literal(1),
+      /** Water on any of these layers can be fished. */
+      layers: z.array(z.union([z.literal(1), z.literal(2)])).min(1),
       waterTiles: z.array(z.string().length(2)).min(1),
       atDelay: z.number().int().positive(),
       fxOffsets: z.record(z.enum(["E", "W", "N", "S"]), offset),
@@ -105,8 +106,6 @@ export const gatherDataSchema = z.strictObject({
             handler: z.string(),
             /** Runs when the frame's roll is below this. */
             below: z.number().int(),
-            /** Skipped while the roller's death lock runs. */
-            deathGated: z.boolean(),
             /** Tested in order against one cached tile: at most one change per call. */
             tiles: z.array(tilePair),
           }),

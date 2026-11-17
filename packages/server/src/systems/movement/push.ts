@@ -17,6 +17,7 @@
  */
 import { attemptMove, type Dir, pushLines } from "@secondstaronline/shared";
 
+import { isCrafting } from "../crafting/craft.ts";
 import type { Player, Room } from "../world/world.ts";
 import { carryOut, type MoveCtx, standingPlayersAt, walkWorld } from "./movement.ts";
 
@@ -54,7 +55,7 @@ export function pushOnMe(room: Room, victim: Player, dir: Dir, pusher: Player, c
   carryOut(room, victim, dir, o, ctx);
 }
 
-/** The input lock: map loading, or a window holding the keys. */
+/** The input lock: map loading, or a window holding the keys. A craft's lock does not stop a shove. */
 function isKeyLocked(p: Player): boolean {
-  return p.loading > 0 || p.keyLock;
+  return p.loading > 0 || (p.keyLock && !isCrafting(p));
 }

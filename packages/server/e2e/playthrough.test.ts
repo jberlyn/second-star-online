@@ -840,7 +840,7 @@ describe("the playthrough", () => {
     clearAll();
     rng.fix(3, 1); // the logs roll (hunger's random(3) takes the 1 too)
     rng.fix(12, 1); // LumberjackImp
-    await swing(alice, 17);
+    await swing(alice, 18);
     rng.fix(3, null);
     rng.fix(12, null);
     expect(grounded(bob)).toContainEqual(["Logs", 3, 3]);
@@ -885,7 +885,7 @@ describe("the playthrough", () => {
     await t(1);
     expect(lastInv(carol)?.equip.weapon).toBe("Hoe");
     clearAll();
-    await swing(carol, 17);
+    await swing(carol, 18);
     expect(tiles(carol)).toContainEqual({ e: "tile", layer: 2, x: 13, y: 5, code: "SL" });
     carol.send({ t: "use", slot: slotOf(carol, "Seeds") });
     await t(1);
@@ -895,7 +895,7 @@ describe("the playthrough", () => {
     await t(1);
     carol.send({ t: "equip", slot: slotOf(carol, "Watering Bucket") });
     await t(1);
-    await swing(carol, 17);
+    await swing(carol, 18);
     expect(tiles(carol)).toContainEqual({ e: "tile", layer: 2, x: 13, y: 5, code: "XL" });
     // A produce roll on (13,5): random(600) = 9 runs only `CheckHoles` and `DoVeg`.
     carol.clear();
@@ -965,7 +965,7 @@ describe("the playthrough", () => {
     expect(slotOf(bob, "Gold Crown")).toBeGreaterThan(0);
     bob.send({ t: "shopCancel" });
     await t(200);
-    expect(chats(alice)).toContain("Your built a Chair!");
+    expect(chats(alice)).toContain("You built a Chair!");
     expect(chats(carol)).toContain("Your Trout Fillet is ready!");
     expect(chats(dave)).toContain("Your potion is ready!");
     expect(slotOf(alice, "Chair")).toBeGreaterThan(0);
@@ -987,7 +987,7 @@ describe("the playthrough", () => {
     expect(chats(alice)).toContain("You begin to smith the Damaged Sword, Long...");
     await t(3);
     rng.fix(30, null);
-    await t(300);
+    await t(500);
     expect(chats(alice)).toContain("Your Long Sword is ready!");
     expect(slotOf(alice, "Long Sword")).toBeGreaterThan(0);
     kept.push({

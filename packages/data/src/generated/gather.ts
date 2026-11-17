@@ -359,7 +359,10 @@ export const gatherData: GatherData = {
     "fishing": {
       "tool": "Fishing",
       "match": "contains",
-      "layer": 1,
+      "layers": [
+        1,
+        2
+      ],
       "waterTiles": [
         "W1",
         "N1",
@@ -549,7 +552,6 @@ export const gatherData: GatherData = {
         {
           "handler": "CheckTrees",
           "below": 6,
-          "deathGated": true,
           "tiles": [
             {
               "from": "P3",
@@ -560,7 +562,6 @@ export const gatherData: GatherData = {
         {
           "handler": "CheckRock",
           "below": 6,
-          "deathGated": true,
           "tiles": [
             {
               "from": "O8",
@@ -571,7 +572,6 @@ export const gatherData: GatherData = {
         {
           "handler": "CheckIce",
           "below": 3,
-          "deathGated": true,
           "tiles": [
             {
               "from": "0Z",
@@ -582,7 +582,6 @@ export const gatherData: GatherData = {
         {
           "handler": "CheckFire",
           "below": 3,
-          "deathGated": true,
           "tiles": [
             {
               "from": "6N",
@@ -593,7 +592,6 @@ export const gatherData: GatherData = {
         {
           "handler": "CheckHoles",
           "below": 30,
-          "deathGated": true,
           "tiles": [
             {
               "from": "1K",
@@ -604,7 +602,6 @@ export const gatherData: GatherData = {
         {
           "handler": "CheckVeg",
           "below": 3,
-          "deathGated": true,
           "tiles": [
             {
               "from": "XL",
@@ -651,7 +648,6 @@ export const gatherData: GatherData = {
         {
           "handler": "DoVeg",
           "below": 10,
-          "deathGated": false,
           "tiles": []
         }
       ]
@@ -732,7 +728,7 @@ export const gatherData: GatherData = {
       "handler": "LumberjackImp",
       "skill": "Lumberjacking",
       "chance": 12,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Lumberjacking!"
     },
@@ -740,7 +736,7 @@ export const gatherData: GatherData = {
       "handler": "ShovelingImp",
       "skill": "Shoveling",
       "chance": 12,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Shoveling!"
     },
@@ -748,7 +744,7 @@ export const gatherData: GatherData = {
       "handler": "FarmingImp",
       "skill": "Farming",
       "chance": 12,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Farming!"
     },
@@ -756,7 +752,7 @@ export const gatherData: GatherData = {
       "handler": "MiningImp",
       "skill": "Mining",
       "chance": 22,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Mining!"
     },
@@ -764,7 +760,7 @@ export const gatherData: GatherData = {
       "handler": "FishingImp",
       "skill": "Fishing",
       "chance": 16,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Fishing!"
     },
@@ -772,7 +768,7 @@ export const gatherData: GatherData = {
       "handler": "CookImp",
       "skill": "Cooking",
       "chance": 8,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Cooking!"
     },
@@ -780,7 +776,7 @@ export const gatherData: GatherData = {
       "handler": "SmithImp",
       "skill": "Blacksmithing",
       "chance": 9,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Blacksmithing!"
     },
@@ -788,7 +784,7 @@ export const gatherData: GatherData = {
       "handler": "AlchemyImp",
       "skill": "Alchemy",
       "chance": 15,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Alchemy!"
     },
@@ -796,7 +792,7 @@ export const gatherData: GatherData = {
       "handler": "CarpentryImp",
       "skill": "Carpentry",
       "chance": 9,
-      "min": 1,
+      "min": 0,
       "below": 100,
       "text": "You have advanced in the art of Carpentry!"
     }
