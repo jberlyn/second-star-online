@@ -98,7 +98,7 @@ describe("admin commands, roles, bans and settings", () => {
     await server.stop();
   });
 
-  test("/role makes Mo a moderator at once; both staff roles post and read admin chat in CHAT_COLOR.admin", async () => {
+  test("/role makes Mo a moderator at once; both staff roles post and read staff chat in CHAT_COLOR.staff", async () => {
     await say(alice, "/role mo moderator");
     expect(lines(alice)).toContain("Mo is now a moderator.");
     await mo.waitFor((m) => m.t === "role" && m.role === "moderator");
@@ -107,8 +107,8 @@ describe("admin commands, roles, bans and settings", () => {
     await mo.waitFor(
       (m) =>
         m.t === "chat" &&
-        m.text === '<... Alice tells the admins "meeting at noon"' &&
-        m.color === CHAT_COLOR.admin,
+        m.text === '<... Alice tells the staff "meeting at noon"' &&
+        m.color === CHAT_COLOR.staff,
     );
     expect(lines(bob)).toEqual([]);
     alice.clear();
@@ -117,8 +117,8 @@ describe("admin commands, roles, bans and settings", () => {
     await alice.waitFor(
       (m) =>
         m.t === "chat" &&
-        m.text === '<... Mo tells the admins "hi all"' &&
-        m.color === CHAT_COLOR.admin,
+        m.text === '<... Mo tells the staff "hi all"' &&
+        m.color === CHAT_COLOR.staff,
     );
     expect(lines(bob)).toEqual([]);
   });
@@ -137,7 +137,7 @@ describe("admin commands, roles, bans and settings", () => {
     bob.clear();
     await say(bob, "-sneak");
     expect(bob.inbox.filter((m) => m.t === "restore" || m.t === "chat")).toEqual([
-      { t: "chat", text: ADMIN_TEXT.adminChatDenied, color: CHAT_COLOR.normal },
+      { t: "chat", text: ADMIN_TEXT.staffChatDenied, color: CHAT_COLOR.normal },
     ]);
   });
 

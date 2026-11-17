@@ -62,10 +62,10 @@ export type ChatCommand =
   | { kind: "drop"; item: string }
   /**
    * `-text`: `typed` is the line after its one leading space; the server strips the `-` and spaces
-   * (`formatAdminChat`). Staff (`immortal` and `moderator`) post to the admin channel; players
+   * (`formatStaffChat`). Staff (`immortal` and `moderator`) post to staff chat; players
    * receive an explicit refusal and their input clears.
    */
-  | { kind: "adminChat"; typed: string }
+  | { kind: "staffChat"; typed: string }
   /**
    * An admin command: `line` is the whole line after its one leading space (`/warp` sends it all);
    * `w2` is word 2, the name or IP most of them take.
@@ -227,7 +227,7 @@ export function parseChatLine(raw: string): ChatCommand | null {
     return { kind: "admin", cmd: admin, w2: lingoWord(text, 2), line: text };
   }
   if (text.startsWith("-")) {
-    return { kind: "adminChat", typed: text };
+    return { kind: "staffChat", typed: text };
   }
   if (lingoEq(w1, "accept") || lingoEq(w1, "reject")) {
     return {
@@ -373,8 +373,8 @@ export function pushLines(pusher: string, tooWeak: boolean): string[] {
     : [shove];
 }
 
-/** Chat line colours: palette indices as the original set `foreColor` (plus `admin` for SSO's staff channel). */
-export const CHAT_COLOR = { normal: 0, broadcast: 4, death: 8, admin: 5 } as const;
+/** Chat line colours: palette indices as the original set `foreColor` (plus `staff` for SSO's staff chat). */
+export const CHAT_COLOR = { normal: 0, broadcast: 4, death: 8, staff: 5 } as const;
 
 /**
  * Whether the login news prints: only when it differs from the last news kept on this

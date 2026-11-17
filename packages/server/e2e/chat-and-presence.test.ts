@@ -201,13 +201,13 @@ describe("chat, help, who, pushing and presence", () => {
     });
   });
 
-  test("unbuilt commands are dropped and unauthorized admin chat gives a private refusal", async () => {
+  test("unbuilt commands are dropped and unauthorized staff chat gives a private refusal", async () => {
     clearAll();
     await tick(60);
     await say(alice, "/rpg hi");
     expect(chatTexts(alice)).toEqual([]);
     await say(alice, "-admins only");
-    expect(chatTexts(alice)).toEqual([ADMIN_TEXT.adminChatDenied]);
+    expect(chatTexts(alice)).toEqual([ADMIN_TEXT.staffChatDenied]);
     expect(alice.inbox.some((m) => m.t === "restore")).toBe(false);
     expect(chatTexts(bob)).toEqual([]);
   });

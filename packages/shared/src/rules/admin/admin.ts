@@ -77,10 +77,10 @@ export const SSO_ADMIN_CMDS: readonly AdminCmd[] = [
 ];
 
 /**
- * Who may read and post to the admin channel (`-text`): both staff roles (immortals and
+ * Who may read and post to staff chat (`-text`): both staff roles (immortals and
  * moderators).
  */
-export function readsAdminChat(role: Role): boolean {
+export function usesStaffChat(role: Role): boolean {
   return role === "immortal" || role === "moderator";
 }
 
@@ -93,7 +93,7 @@ export const ADMIN_TEXT = {
   /** (`/warptome`). */
   warpToMeDenied: "Only immortals/guides can warp players.",
   warpscriptDenied: "Only staff can use /warpscript.",
-  adminChatDenied: "Only staff can use admin chat.",
+  staffChatDenied: "Only immortals and moderators can use staff chat.",
   kicking: (name: string) => `*** kicking ${name}...`,
   /** The kicked player's chat line before the alert. */
   beingKicked: "*** You are being kicked.",
@@ -191,16 +191,16 @@ export function warpscriptMatches(keyword: string | null, message: string): bool
 export const WARPSCRIPT_OFF = "iasdfji23j4ihfih23io4haklsq";
 
 /**
- * The `-text` line as it goes out to the admins: the `-` and up to two spaces deleted, then up to
- * 98 more leading spaces, then `<... <name> tells the admins "<text>"`. An empty line still sends
+ * The `-text` line as it goes out to the staff: the `-` and up to two spaces deleted, then up to
+ * 98 more leading spaces, then `<... <name> tells the staff "<text>"`. An empty line still sends
  * `""`.
  */
-export function formatAdminChat(name: string, typed: string): string {
+export function formatStaffChat(name: string, typed: string): string {
   let t = typed.startsWith("-") ? typed.slice(1) : typed;
   for (let i = 0; i < 2 + 98 && t.startsWith(" "); i++) {
     t = t.slice(1);
   }
-  return `<... ${name} tells the admins "${t}"`;
+  return `<... ${name} tells the staff "${t}"`;
 }
 
 /**

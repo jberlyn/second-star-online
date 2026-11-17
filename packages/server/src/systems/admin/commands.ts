@@ -1,5 +1,5 @@
 /**
- * Admin chat commands.
+ * Admin commands typed in chat, and staff chat (`-text`).
  *
  * 1.6 parsed these in the client (`ChatSend`) and checked the sender's role there; most server
  * subjects checked nothing. SSO parses the same lines on the server, checks the account role
@@ -21,7 +21,7 @@ import {
   cheatFileLines,
   expiryOf,
   findClass,
-  formatAdminChat,
+  formatStaffChat,
   formatUtc,
   historyLine,
   type IpBanRecord,
@@ -45,9 +45,9 @@ import {
   parseModerationArgs,
   parseWarpLine,
   type Role,
-  readsAdminChat,
   type ServerMsg,
   TEXT,
+  usesStaffChat,
   WARPSCRIPT_OFF,
   warpscriptMatches,
 } from "@secondstaronline/shared";
@@ -860,19 +860,19 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
 }
 
 /**
- * `-text`: both staff roles (immortals and moderators) post to the dedicated admin channel
- * (`CHAT_COLOR.admin`), with no house sender restriction, no muffling, and no ignore filtering.
+ * `-text`: both staff roles (immortals and moderators) post to staff chat, a dedicated channel
+ * (`CHAT_COLOR.staff`), with no house sender restriction, no muffling, and no ignore filtering.
  * Non-staff receive an explicit denial and their input clears.
  */
-export function adminChat(world: World, p: Player, typed: string): Outgoing[] {
-  if (!readsAdminChat(p.role)) {
-    return tell(p, ADMIN_TEXT.adminChatDenied);
+export function staffChat(world: World, p: Player, typed: string): Outgoing[] {
+  if (!usesStaffChat(p.role)) {
+    return tell(p, ADMIN_TEXT.staffChatDenied);
   }
-  const text = formatAdminChat(p.name, typed);
+  const text = formatStaffChat(p.name, typed);
   const out: Outgoing[] = [];
   for (const o of world.players.values()) {
-    if (readsAdminChat(o.role)) {
-      out.push({ to: o.id, msg: { t: "chat", text, color: CHAT_COLOR.admin } });
+    if (usesStaffChat(o.role)) {
+      out.push({ to: o.id, msg: { t: "chat", text, color: CHAT_COLOR.staff } });
     }
   }
   return out;

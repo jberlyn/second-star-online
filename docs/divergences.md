@@ -66,13 +66,13 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Limits hinder password guessing, mass account creation and exhausting memory with password hashes.
 - **In the code:** `packages/server/src/systems/admin/login-limits.ts` (`allowLoginFromIp`, `allowLoginToAccount`, `allowCreate`)
 
-### Admin channel membership enforced
+### Staff chat membership enforced
 - **Kind:** Exploit closed
-- **What you notice:** Immortals and moderators can read and post admin chat (`-text`) in a dedicated colour; ordinary players cannot.
+- **What you notice:** Immortals and moderators can read and post staff chat (`-text`) in a dedicated colour; ordinary players cannot.
 - **1.6:** Any client could request membership in the administrators' group, and only immortals could post.
-- **SSO:** The server chooses who receives and can post to admin chat (both staff roles), and delivers it in `CHAT_COLOR.admin`.
+- **SSO:** The server chooses who receives and can post to staff chat (both staff roles), and delivers it in `CHAT_COLOR.staff`.
 - **Why:** Other players could otherwise listen to staff conversations.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`)
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`)
 
 ### World editor exits and texts are checked
 - **Kind:** Exploit closed
@@ -213,13 +213,13 @@ An entry uses this shape; `Pinned by` is optional:
 - **In the code:** `packages/shared/src/rules/admin/admin.ts` (`warpscriptMatches`), `packages/server/src/systems/admin/commands.ts` (`warpscriptOnBroadcast`), `packages/server/src/systems/chat/chat.ts` (`handleChat`)
 - **Pinned by:** `matches whole keyword tokens ignoring case in the broadcast message content`, `prevents accidental substring triggers` (packages/shared/tests/admin/admin.test.ts); `speaker name, protocol wrapper, and substrings do not trigger /warpscript`, `multiple matching staff: deterministic single winner (first in login order)` (packages/server/tests/admin.test.ts)
 
-### Moderators share the original moderation commands and admin chat
+### Moderators share the original moderation commands and staff chat
 - **Kind:** Bug fixed
-- **What you notice:** Moderators can use `/ban`, `/unban`, `/unjail` and `/pardon` on players, `/banlist`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` admin chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
+- **What you notice:** Moderators can use `/ban`, `/unban`, `/unjail` and `/pardon` on players, `/banlist`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` staff chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
 - **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
-- **SSO:** `ADMIN_ROLES`, `readsAdminChat`, and `warpscriptOnBroadcast` grant moderators the original moderation command set and admin chat while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: `handleDrop` and `ADMIN_ROLES` keep them immortal-only, and `/unban` lifts only a ban the moderator made (`mayChange`).
+- **SSO:** `ADMIN_ROLES`, `usesStaffChat`, and `warpscriptOnBroadcast` grant moderators the original moderation command set and staff chat while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: `handleDrop` and `ADMIN_ROLES` keep them immortal-only, and `/unban` lifts only a ban the moderator made (`mayChange`).
 - **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an immortal's ban.
-- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `readsAdminChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `adminChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
+- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `usesStaffChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `staffChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
 - **Pinned by:** `moderators keep the moderation commands; IP bans, /role and /setclass stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
 
 ### World editor Fat brush reaches the full 17 × 12 map
@@ -267,23 +267,23 @@ An entry uses this shape; `Pinned by` is optional:
 - **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`); `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`)
 - **Pinned by:** `lossless display: preserves OWN|, all first characters, empty lines, and >100 lines` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines` (packages/client/tests/npceditor.test.ts); `SSO: a file over the save limit loads in full with a warning that SAVE will refuse it` (packages/server/tests/npcedit.test.ts)
 
-### Unauthorized admin chat and /warpscript show a refusal and clear input
+### Unauthorized staff chat and /warpscript show a refusal and clear input
 - **Kind:** Bug fixed
 - **What you notice:** When a player types `-text` or `/warpscript`, they see an explicit refusal in chat and the chat input clears.
 - **1.6:** Both commands exited without sending and left the typed text stuck in the input box.
-- **SSO:** `adminChat` and `handleAdmin` reply with `ADMIN_TEXT.adminChatDenied` or `ADMIN_TEXT.warpscriptDenied` and do not send `restore`.
+- **SSO:** `staffChat` and `handleAdmin` reply with `ADMIN_TEXT.staffChatDenied` or `ADMIN_TEXT.warpscriptDenied` and do not send `restore`.
 - **Why:** Gives clear feedback and avoids leaving failed commands stuck in the input field.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`, `handleAdmin`)
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`, `handleAdmin`)
 - **Pinned by:** `a player's - line gets an explicit denial and clears input (no restore)` and `a player gets an explicit denial and cleared input (no restore); moderators can set it` (packages/server/tests/admin.test.ts)
 
-### Admin chat uses a dedicated channel without muffling or ignore filtering
+### Staff chat uses a dedicated channel without muffling or ignore filtering
 - **Kind:** Bug fixed
-- **What you notice:** Admin chat (`-text`) renders in a distinct green colour (`CHAT_COLOR.admin`), reaches only staff (immortals and moderators), works from anywhere inside houses, and is never muffled or dropped by ignore lists.
-- **1.6:** Admin chat used an ordinary local-chat `sqa` message, so it appeared white, failed below row 7 in houses, muffled below row 10, and was dropped by ignore lists.
-- **SSO:** `adminChat` sends directly to all online staff in `CHAT_COLOR.admin` without house restrictions, `heardSqa`, or `hears`.
+- **What you notice:** Staff chat (`-text`) renders in a distinct green colour (`CHAT_COLOR.staff`) as `<... Name tells the staff "text"`, reaches only staff (immortals and moderators), works from anywhere inside houses, and is never muffled or dropped by ignore lists.
+- **1.6:** The channel was called admin chat and its lines read `<... Name tells the admins "text"`. It used an ordinary local-chat `sqa` message, so it appeared white, failed below row 7 in houses, muffled below row 10, and was dropped by ignore lists.
+- **SSO:** `staffChat` sends directly to all online staff in `CHAT_COLOR.staff` without house restrictions, `heardSqa`, or `hears`. It is called staff chat, and its lines say "tells the staff", because moderators use it as well as immortals and "Admin Chat" names the immortals-only Game menu room.
 - **Why:** Staff communication should be visually distinct and reliable regardless of position or ignore lists.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`), `packages/shared/src/rules/chat/chat.ts` (`CHAT_COLOR`)
-- **Pinned by:** `both immortals and moderators post to staff in CHAT_COLOR.admin; players excluded` and `admin chat has no house sender restriction, no muffling, and no ignore filtering` (packages/server/tests/admin.test.ts)
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`), `packages/shared/src/rules/chat/chat.ts` (`CHAT_COLOR`)
+- **Pinned by:** `both immortals and moderators post to staff in CHAT_COLOR.staff; players excluded` and `staff chat has no house sender restriction, no muffling, and no ignore filtering` (packages/server/tests/admin.test.ts)
 
 ### Bans and jails carry a reason, a length and the maker's rank
 - **Kind:** Exploit closed

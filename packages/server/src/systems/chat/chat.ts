@@ -7,7 +7,7 @@
  * the cooldown counters count down in the tick.
  *
  * Handled here: local say, `/me`, broadcast, `/help`, `who`, the bank (`/balance`, `/deposit`,
- * `/withdraw`), the operators' `/spawn`, the `-` admin channel and the admin commands
+ * `/withdraw`), the operators' `/spawn`, `-` staff chat and the admin commands
  * (systems/admin/commands.ts), `/g`, `/invite`, ACCEPT and REJECT (systems/social/guilds.ts),
  * `/msg` (im.ts), `/ignore`, `/unignore`, `/ignorelist` (ignore.ts) and the ignore filter on say,
  * `/me` and broadcasts; the client saves `/logchat` itself. Every other command of the original
@@ -39,8 +39,8 @@ import {
 
 import {
   type AdminDeps,
-  adminChat,
   handleAdmin,
+  staffChat,
   warpscriptOnBroadcast,
 } from "../admin/commands.ts";
 import { dropText, handleDrop } from "../admin/drop.ts";
@@ -110,8 +110,8 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
     return [];
   }
   let cmd = parsed;
-  if (cmd.kind === "adminChat") {
-    return adminChat(world, p, cmd.typed);
+  if (cmd.kind === "staffChat") {
+    return staffChat(world, p, cmd.typed);
   }
   if (cmd.kind === "admin") {
     if (SSO_ADMIN_CMDS.includes(cmd.cmd) && !mayRun(cmd.cmd, p.role)) {

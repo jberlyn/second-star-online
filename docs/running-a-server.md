@@ -173,8 +173,8 @@ server {
 Roles live on the `accounts` table, not on character names:
 
 - **`player`**: standard gameplay.
-- **`moderator`**: can run the original moderation commands, `/unban`, `/unjail` and `/banlist`, and can read and post admin chat (`-text`). Bans, jails and pardons reach players only, never another moderator or an immortal; a moderator also cannot kick, warp, or look up the IP of an immortal. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and settings windows remain immortal-only.
-- **`immortal`**: full command access, admin chat posting (`-text`), World Editor, NPC Editor, Settings, Newspaper editor, and Assassin's Game controls. An immortal can ban or jail anyone but themselves and change or lift any ban, IP ban or jail, and IP bans never stop an immortal's login.
+- **`moderator`**: can run the original moderation commands, `/unban`, `/unjail` and `/banlist`, and can read and post staff chat (`-text`). Bans, jails and pardons reach players only, never another moderator or an immortal; a moderator also cannot kick, warp, or look up the IP of an immortal. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and settings windows remain immortal-only.
+- **`immortal`**: full command access, staff chat (`-text`), the immortals-only Admin Chat room, World Editor, NPC Editor, Settings, Newspaper editor, and Assassin's Game controls. An immortal can ban or jail anyone but themselves and change or lift any ban, IP ban or jail, and IP bans never stop an immortal's login.
 
 ### Bootstrapping an immortal
 
@@ -219,7 +219,7 @@ SSO_DB=sso.sqlite bun run admin:audit 50
 
 Chat commands are parsed on the server. Most single-target commands read word 2 (space-delimited) as the target name, so character names containing spaces cannot be targeted by those commands; `/drop`, `/roster`, `/setclass`, and `/warp` parse further arguments as noted below.
 
-See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser details, house/muffle quirks, and admin chat (`-text`, which both staff roles can read and post).
+See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser details, house/muffle quirks, and staff chat (`-text`, which both staff roles can read and post).
 
 | Command | Min role | Target / arguments | Observable result |
 |---|---|---|---|

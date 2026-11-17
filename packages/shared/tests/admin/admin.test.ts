@@ -7,7 +7,7 @@ import {
   cheatFileLines,
   cheatLine,
   findClass,
-  formatAdminChat,
+  formatStaffChat,
   inventoryLines,
   mayRun,
   parseChatLine,
@@ -68,16 +68,16 @@ describe("parsing a chat line", () => {
     expect(parseChatLine("/warping")?.kind).toBe("say");
   });
 
-  test("a line starting with - is the admin channel, whatever follows", () => {
-    expect(parseChatLine("-hi")).toEqual({ kind: "adminChat", typed: "-hi" });
-    expect(parseChatLine(" --- hello")).toEqual({ kind: "adminChat", typed: "--- hello" });
+  test("a line starting with - is staff chat, whatever follows", () => {
+    expect(parseChatLine("-hi")).toEqual({ kind: "staffChat", typed: "-hi" });
+    expect(parseChatLine(" --- hello")).toEqual({ kind: "staffChat", typed: "--- hello" });
   });
 });
 
-describe("admin chat", () => {
-  test('the - and the leading spaces go: <... Bob tells the admins "hi"', () => {
-    expect(formatAdminChat("Bob", "-   hi")).toBe('<... Bob tells the admins "hi"');
-    expect(formatAdminChat("Bob", "-")).toBe('<... Bob tells the admins ""');
+describe("staff chat", () => {
+  test('the - and the leading spaces go: <... Bob tells the staff "hi"', () => {
+    expect(formatStaffChat("Bob", "-   hi")).toBe('<... Bob tells the staff "hi"');
+    expect(formatStaffChat("Bob", "-")).toBe('<... Bob tells the staff ""');
   });
 });
 

@@ -1,5 +1,5 @@
 /**
- * Admin commands, the jail and the admin channel.
+ * Admin commands, the jail and staff chat.
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
@@ -210,21 +210,21 @@ describe("the role table (moderator command set)", () => {
   });
 });
 
-describe("the admin channel", () => {
+describe("staff chat", () => {
   test("a player's - line gets an explicit denial and clears input (no restore)", () => {
     const { bob, say } = scene();
     expect(say(bob, "- smile")).toEqual([
-      { to: "Bob", msg: { t: "chat", text: ADMIN_TEXT.adminChatDenied, color: CHAT_COLOR.normal } },
+      { to: "Bob", msg: { t: "chat", text: ADMIN_TEXT.staffChatDenied, color: CHAT_COLOR.normal } },
     ]);
   });
 
-  test("both immortals and moderators post to staff in CHAT_COLOR.admin; players excluded", () => {
+  test("both immortals and moderators post to staff in CHAT_COLOR.staff; players excluded", () => {
     const { imm, mod, say } = scene();
     const immOut = say(imm, "-  hello");
     const immLine = {
       t: "chat" as const,
-      text: '<... Imm tells the admins "hello"',
-      color: CHAT_COLOR.admin,
+      text: '<... Imm tells the staff "hello"',
+      color: CHAT_COLOR.staff,
     };
     expect(immOut).toEqual([
       { to: "Imm", msg: immLine },
@@ -234,8 +234,8 @@ describe("the admin channel", () => {
     const modOut = say(mod, "-copy that");
     const modLine = {
       t: "chat" as const,
-      text: '<... Mod tells the admins "copy that"',
-      color: CHAT_COLOR.admin,
+      text: '<... Mod tells the staff "copy that"',
+      color: CHAT_COLOR.staff,
     };
     expect(modOut).toEqual([
       { to: "Imm", msg: modLine },
@@ -244,7 +244,7 @@ describe("the admin channel", () => {
     expect(texts(modOut, "Bob")).toEqual([]);
   });
 
-  test("admin chat has no house sender restriction, no muffling, and no ignore filtering", () => {
+  test("staff chat has no house sender restriction, no muffling, and no ignore filtering", () => {
     const { imm, mod, say } = scene();
     const house = testMap("x5H1y2");
     imm.map = house;
@@ -255,8 +255,8 @@ describe("the admin channel", () => {
     const out = say(imm, "-hi");
     const expected = {
       t: "chat" as const,
-      text: '<... Imm tells the admins "hi"',
-      color: CHAT_COLOR.admin,
+      text: '<... Imm tells the staff "hi"',
+      color: CHAT_COLOR.staff,
     };
     expect(out).toEqual([
       { to: "Imm", msg: expected },
