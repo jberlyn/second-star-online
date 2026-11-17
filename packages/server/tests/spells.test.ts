@@ -534,11 +534,13 @@ describe("monster spells", () => {
 });
 
 describe("the Holy Shield", () => {
-  test("kept bug: an innocent on a Holy Shield's exact spot gets Shield after the parry and block draws", () => {
-    const { a, map, run } = scene(rngByN({ 10: [1] }));
+  test("bug fixed: an innocent on a Holy Shield's exact spot gets Shield before any parry or block draw", () => {
+    const rng = rngByN({ 10: [1] });
+    const { a, map, run } = scene(rng);
     live(map, 1, "Slime", 6, 5);
     live(map, 2, "Holy Shield", 6, 6);
     const out = run(1);
+    expect(rng.calls.filter((n) => n === 90 || n === 3000)).toEqual([]);
     const hits = events(out, "Ann").filter((e) => e.e === "phit" && e.id === "Ann");
     expect(hits).toContainEqual({ e: "phit", id: "Ann", text: "Shield", color: 6, splat: false });
     expect(a.char.vitals.hp).toBe(20);

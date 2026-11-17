@@ -292,6 +292,12 @@ export interface Player {
   attackHeld: boolean;
   /** Ticks since an attack press not yet acted on, or null; kept for `ATTACK_LATCH_TICKS`. */
   attackPress: number | null;
+  /**
+   * The refusal line already said while the attack key has been held ("You cannot fight here!",
+   * a bow's missing arrows or crystal), so it is said once per press, not every tick. Cleared on
+   * release.
+   */
+  attackRefused: string | null;
   /** The flicker counter: i-frames. */
   flicker: number;
   /**
@@ -590,6 +596,7 @@ export function sessionCombatState(): Pick<
   | "timers"
   | "attackHeld"
   | "attackPress"
+  | "attackRefused"
   | "flicker"
   | "hidden"
   | "defenseBonus"
@@ -654,6 +661,7 @@ export function sessionCombatState(): Pick<
     timers: newAttackTimers(),
     attackHeld: false,
     attackPress: null,
+    attackRefused: null,
     // Login starts the i-frames.
     flicker: 40,
     hidden: false,

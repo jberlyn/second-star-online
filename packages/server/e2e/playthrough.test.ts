@@ -795,7 +795,7 @@ describe("the playthrough", () => {
     const start = swings();
     bot.send({ t: "attack", seq: ++seq, held: true });
     await settle(10);
-    for (let i = 0; i < 400 && swings() - start < n; i++) {
+    for (let i = 0; i < 800 && swings() - start < n; i++) {
       server.clock.advance(50);
       server.tickNow(1);
       await settle(2);

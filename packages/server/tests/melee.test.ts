@@ -60,7 +60,7 @@ describe("the attack poll", () => {
     expect(s.poll(a).swing).not.toBeNull();
   });
 
-  test("kept bug: Hold stops walking but not attacking: the key is polled before the Hold gate", () => {
+  test("bug fixed: Hold stops attacking as well as walking", () => {
     const s = scene();
     const a = s.add("Ann", 5, 5);
     a.spell.hold = 100;
@@ -68,38 +68,76 @@ describe("the attack poll", () => {
     s.run(2);
     expect([a.x, a.y]).toEqual([5, 5]);
     setAttackHeld(a, true);
-    const out = s.run(1);
-    const swings = out.flatMap((o) =>
-      o.to === "Ann" && o.msg.t === "delta" ? o.msg.events.filter((e) => e.e === "swing") : [],
-    );
-    expect(swings).toHaveLength(1);
-    expect(a.timers.atDelay).toBeGreaterThan(0);
+    const swingsIn = (out: ReturnType<typeof s.run>) =>
+      out.flatMap((o) =>
+        o.to === "Ann" && o.msg.t === "delta" ? o.msg.events.filter((e) => e.e === "swing") : [],
+      );
+    expect(swingsIn(s.run(1))).toHaveLength(0);
+    expect(a.timers.atDelay).toBe(0);
+    // When the Hold runs out the held key swings.
+    a.spell.hold = 0;
+    expect(swingsIn(s.run(1))).toHaveLength(1);
+  });
+
+  test("bug fixed: a bow with no arrows is refused once per press, with no cooldown", () => {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    a.char.equip.weapon = "Wooden Bow";
+    a.char.equip.offHand = "NOTHING";
+    a.timers.canAttack = true;
+    setAttackHeld(a, true);
+    const lines: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const ev = s.poll(a);
+      expect(ev.swing).toBeNull();
+      lines.push(...ev.lines);
+    }
+    expect(lines).toEqual(["You don't have any arrows!"]);
+    expect([a.timers.atDelay, a.timers.actionDelay, a.timers.canAttack]).toEqual([0, 0, true]);
+    // A new press says it again.
+    setAttackHeld(a, false);
+    setAttackHeld(a, true);
+    expect(s.poll(a).lines).toEqual(["You don't have any arrows!"]);
+  });
+
+  test("bug fixed: a bow with arrows but no crystal is refused before the swing, keeping the bar", () => {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    a.char.equip.weapon = "Wooden Bow";
+    a.char.equip.offHand = "Red Arrows";
+    a.timers.canAttack = true;
+    a.timers.bar = 80;
+    a.timers.barMember = 475;
+    setAttackHeld(a, true);
+    const ev = s.poll(a);
+    expect(ev.swing).toBeNull();
+    expect(ev.lines).toEqual(["You don't have any red crystals left!"]);
+    expect([a.timers.bar, a.timers.barMember, a.timers.atDelay]).toEqual([80, 475, 0]);
   });
 });
 
 describe("PvP melee", () => {
-  test("kept bug: the victim's old-tile test uses the old Y twice: a victim stepping from (9,4) is hit by a swing at (4,4)", () => {
-    const s = scene();
-    const a = s.add("Ann", 4, 5); // faces north: the faced tile is (4, 4)
-    const b = s.add("Bob", 9, 5);
-    b.char.skills = Array(38).fill(0);
-    // Bob is mid-step south from (9, 4): his old Y is 4, compared with both 4 and 4.
-    b.facing = "S";
-    b.stepFrames = 8;
-    a.timers.canAttack = true;
-    setAttackHeld(a, true);
-    const ev = s.poll(a);
-    expect(ev.pvp.map((h) => h.victim.name)).toEqual(["Bob"]);
-    expect(b.lastToHitMe).toBe("Ann");
-  });
-
-  test("kept bug: a victim who has just left the faced tile is missed when its old Y is not the faced X", () => {
+  test("bug fixed: a victim part-way through a step is hit on the tile it is leaving", () => {
     const s = scene();
     const a = s.add("Ann", 4, 6); // faces north: the faced tile is (4, 5)
     const b = s.add("Bob", 5, 5);
     b.char.skills = Array(38).fill(0);
-    // Bob is mid-step east from (4, 5), the faced tile; his old Y 5 is not 4.
+    // Bob is mid-step east from (4, 5), the faced tile.
     b.facing = "E";
+    b.stepFrames = 8;
+    a.timers.canAttack = true;
+    setAttackHeld(a, true);
+    expect(s.poll(a).pvp.map((h) => h.victim.name)).toEqual(["Bob"]);
+    expect(b.lastToHitMe).toBe("Ann");
+  });
+
+  test("bug fixed: a swing at (4,4) no longer hits a victim stepping from (9,4)", () => {
+    const s = scene();
+    const a = s.add("Ann", 4, 5); // faces north: the faced tile is (4, 4)
+    const b = s.add("Bob", 9, 5);
+    b.char.skills = Array(38).fill(0);
+    // Bob is mid-step south from (9, 4), nowhere near the faced tile.
+    b.facing = "S";
     b.stepFrames = 8;
     a.timers.canAttack = true;
     setAttackHeld(a, true);
@@ -107,9 +145,9 @@ describe("PvP melee", () => {
   });
 
   test('a PvP block can raise Block: "You have advanced in the art of Block!" at Parry > 50', () => {
-    // Parry 55: random(90) ×3, 85, 80, 70, then random(60) = 2, no parry. Block 5: random(90)
-    // = 1, a block. The skill-gain roll: random(5) = 1.
-    const s = scene({ 90: [9, 9, 9, 1], 60: [2], 5: [1] });
+    // Parry 55: random(90) ×3, 85, 80, 70, then random(60) = 2, no parry. Block 5: the base
+    // random(90), then random(90) = 1, a block. The skill-gain roll: random(5) = 1.
+    const s = scene({ 90: [9, 9, 9, 9, 1], 60: [2], 5: [1] });
     const a = s.add("Ann", 5, 5);
     const b = s.add("Bob", 5, 4);
     b.char.skills = Array(38).fill(0);
@@ -227,10 +265,11 @@ describe("bow shots", () => {
     expect(hp).toBe(1000);
   });
 
-  test('SSO: an off-hand that only contains "Arrows" melees the faced monster and spends no crystal', () => {
+  test('an off-hand that only contains "Arrows" counts as no arrows: refused, no melee, no crystal', () => {
     const { a, hp, fx } = archer("Rusty Arrows");
     expect(fx.some((n) => n.includes("Arrows"))).toBe(false);
     expect(a.char.bag[0]).toMatchObject({ item: "Blue Crystals", qty: 5 });
-    expect(hp).toBeLessThan(1000);
+    expect(hp).toBe(1000);
+    expect(a.timers.atDelay).toBe(0);
   });
 });

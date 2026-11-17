@@ -1,10 +1,11 @@
 /**
  * The player's melee swing.
  *
- * - The key poll: on a fight map a held key swings when the player may attack; on a no-fight map
- *   only from a `6P` tile, and then without that check, so holding attack on an arena tile swings
- *   every 14 frames and repeats the bar tier (a kept 1.6 bug); anywhere else on it, "You cannot
- *   fight here!" every frame.
+ * - The key poll: a held key swings when the player may attack, on a fight map or from a `6P` tile
+ *   of a no-fight map (a bug fixed: 1.6 skipped that check on an arena tile, so it swung every 14
+ *   frames and repeated the bar tier). Anywhere else on a no-fight map, "You cannot fight here!"
+ *   once per press (a bug fixed: 1.6 said it every frame). Hold stops the swing as it stops a step
+ *   (a bug fixed: 1.6 polled the key before the Hold gate).
  * - The swing itself, the hit test on monsters and the monster hit.
  */
 import { itemRulesData, monstersData } from "@secondstaronline/data";
@@ -13,6 +14,7 @@ import {
   ATTACK_LATCH_TICKS,
   advancedText,
   attackPower,
+  bowRefusal,
   type CrystalColour,
   checkLevelUp,
   crystalSlotIn,
@@ -24,10 +26,10 @@ import {
   isArenaTile,
   LEVEL_UP_TEXT,
   lingoContains,
-  lingoEq,
   meleeDamageVsMonster,
   meleeKillXp,
   meleeReaches,
+  monsterDrawnTile,
   pvpHit,
   type Rng,
   rollBlockGain,
@@ -56,19 +58,18 @@ import type { Outgoing, Player, Room, World } from "../world/world.ts";
 // Shared so the client can predict the same attack lock.
 export { ATTACK_ANIM_FRAMES, ATTACK_LATCH_TICKS } from "@secondstaronline/shared";
 
-/** Records an `attack{held}` change. A press starts the latch. */
+/** Records an `attack{held}` change. A press starts the latch; a new press may refuse again. */
 export function setAttackHeld(p: Player, held: boolean): void {
   if (held && !p.attackHeld) {
     p.attackPress = 0;
   }
+  if (held !== p.attackHeld) {
+    p.attackRefused = null;
+  }
   p.attackHeld = held;
 }
 
-/**
- * The `6P` arena test reads column X of the map record's field Y, which is a
- * layer-1 row only for Y = 1..9 (`recordTile`), so rows 10-12 give a normal death, not an arena one
- * (a kept 1.6 bug).
- */
+/** Standing on a `6P` tile of layer 1. */
 export function onArenaTile(room: Room, x: number, y: number): boolean {
   return isArenaTile(room.map.layers[0], x, y);
 }
@@ -87,7 +88,7 @@ export interface SwingEvents {
   lines: string[];
   /** A line for everyone online (the Overlord kill). */
   broadcast: string | null;
-  /** "You cannot fight here!" this tick. */
+  /** "You cannot fight here!" this tick (once per press). */
   cannotFight: boolean;
   /** PvP outcomes: the victim's floatie and their own chat lines. */
   pvp: { victim: Player; text: string; color: number; splat: boolean; lines: string[] }[];
@@ -131,18 +132,29 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
   if (!held) {
     return ev;
   }
-  const noFight = room.map.flags.canFight === "O";
-  if (!noFight && p.timers.canAttack) {
+  if (p.spell.hold > 0) {
+    return ev;
+  }
+  if (room.map.flags.canFight === "O" && !onArenaTile(room, p.x, p.y)) {
+    ev.cannotFight = refuseOnce(p, CANNOT_FIGHT);
+    return ev;
+  }
+  if (p.timers.canAttack) {
     workAttack(room, p, ctx, ev);
   }
-  if (noFight) {
-    if (onArenaTile(room, p.x, p.y)) {
-      workAttack(room, p, ctx, ev);
-    } else {
-      ev.cannotFight = true;
-    }
-  }
   return ev;
+}
+
+/** The no-fight map's refusal, as `attackRefused` records it. */
+const CANNOT_FIGHT = "cannotFight";
+
+/** True the first time `line` is refused during this hold of the attack key. */
+function refuseOnce(p: Player, line: string): boolean {
+  if (p.attackRefused === line) {
+    return false;
+  }
+  p.attackRefused = line;
+  return true;
 }
 
 /**
@@ -164,6 +176,15 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
   if (swingBlocked(t)) {
     return;
   }
+  // A bow with no arrows, or no crystal for them, is refused before the swing starts.
+  const refusal = bowRefusal(p.char.equip, p.char.bag);
+  if (refusal) {
+    p.attackPress = null;
+    if (refuseOnce(p, refusal)) {
+      ev.lines.push(refusal);
+    }
+    return;
+  }
   const bonus = startSwing(t, p.char.equip, p.char.skills);
   // The Fire Staff's and Firesword's fireballs come between the bar reset and the cooldowns;
   // neither of those draws, so after `startSwing` keeps the original draw order.
@@ -181,10 +202,6 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
   const f = fighterOf(p);
   const ap = attackPower(f, ctx.rng, (c) => crystalSlot(p, c) >= 0);
   p.attackPress = null;
-  if (ap.outOfCrystals) {
-    ev.lines.push(ap.outOfCrystals);
-    return;
-  }
   if (ap.crystal) {
     // One crystal is removed before the shot.
     invDelSlot(p.char.bag, crystalSlot(p, ap.crystal), 1);
@@ -221,7 +238,6 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
   for (const o of room.players) {
     o.lastWeaponSeen = weapon; // every client sees it, the attacker's own too
   }
-  let hitMonster = false;
   for (const slot of room.map.slots) {
     const m = slot.live;
     if (!m) {
@@ -240,15 +256,14 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
     if (arrowing) {
       continue;
     }
-    hitMonster = true;
     smash(room, p, slot, dmg, ctx, ev);
   }
   if (arrowing) {
     gainOnShot(p, ctx, ev);
   }
-  // A swing that hit a monster carries its damage, which receivers read as an arrow letter, so it
-  // hurts no player (a kept 1.6 bug).
-  if (!hitMonster && !arrowing) {
+  // A melee swing hurts players too, even when it also hit a monster (a bug fixed: 1.6's Attack
+  // message then carried the monster damage, which other players read as an arrow shot).
+  if (!arrowing) {
     pvpSwing(room, p, power, weapon, ctx, ev);
   }
 }
@@ -285,6 +300,8 @@ function gainOnShot(p: Player, ctx: MeleeCtx, ev: SwingEvents): void {
 /**
  * Every other player's reaction to the swing, and the hit on them. The attacker must be allowed to
  * swing (already checked); the victim's map must allow PvP or the victim stand on a `6P` tile.
+ * Immortals are never hurt, as monsters never hurt them (a bug fixed: 1.6's player hit had no
+ * immortal check).
  */
 function pvpSwing(
   room: Room,
@@ -299,7 +316,14 @@ function pvpSwing(
   const fy = p.y + dy;
   for (const v of room.players) {
     // A rider is never hit by a swing: the victim's sprite name contains "57-".
-    if (v === p || v.vehicle || v.deadLock > 0 || v.loading > 0 || v.flicker > 0) {
+    if (
+      v === p ||
+      v.vehicle ||
+      v.deadLock > 0 ||
+      v.loading > 0 ||
+      v.flicker > 0 ||
+      v.role === "immortal"
+    ) {
       continue;
     }
     const pvpOff = room.map.flags.canPvp === "O" && !onArenaTile(room, v.x, v.y);
@@ -308,10 +332,10 @@ function pvpSwing(
     }
     let hit = (p.x === v.x && p.y === v.y) || (fx === v.x && fy === v.y);
     if (!hit && v.stepFrames > 0) {
-      // 1.6 reads the second coordinate of the victim's old tile twice, so the old Y is compared
-      // with both coordinates (a kept 1.6 bug).
-      const oldY = v.y - (FACING_DELTA[v.facing][1] ?? 0);
-      hit = fx === oldY && fy === oldY;
+      // A victim part-way through a step is also hit on the tile it is leaving (a bug fixed: 1.6
+      // compared the old Y with both coordinates of the faced tile).
+      const [vdx, vdy] = FACING_DELTA[v.facing];
+      hit = fx === v.x - vdx && fy === v.y - vdy;
     }
     if (!hit) {
       continue;
@@ -423,15 +447,16 @@ function smash(
   for (const o of room.players) {
     o.piggie = PIG_CNCL_FRAMES;
   }
-  // The monster's loot drops on its logical tile.
+  // The monster's loot drops on the tile it is drawn nearest.
   const loot = rollLoot(npcFileNamed(room.npcs, m.name)?.loot ?? null, ctx.rng);
   if (loot && ctx.world) {
     const io = new ItemOut(room);
     const decayMs = (ctx.lootDecayMinutes ?? 30) * 60_000;
+    const at = monsterDrawnTile(m.x, m.y, m.fromX, m.fromY, m.anim);
     addGround({ world: ctx.world, rng: ctx.rng, now: ctx.now ?? 0 }, room, io, {
       item: loot,
-      x: m.x,
-      y: m.y,
+      x: at.x,
+      y: at.y,
       kind: "loot",
       expiresAt: (ctx.now ?? 0) + decayMs,
     });

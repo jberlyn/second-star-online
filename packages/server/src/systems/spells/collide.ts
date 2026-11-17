@@ -15,6 +15,7 @@ import {
   inxitionText,
   lingoContains,
   meleeKillXp,
+  monsterDrawnTile,
   morphBody,
   morphCounterFor,
   playerSpellAmount,
@@ -360,14 +361,15 @@ function checkForDead(
   for (const o of room.players) {
     o.piggie = PIG_CNCL_FRAMES;
   }
-  // The loot drops on the logical tile, then the XP.
+  // The loot drops on the tile the monster is drawn nearest, then the XP.
   const loot = rollLoot(npcFileNamed(room.npcs, m.name)?.loot ?? null, ctx.rng);
   if (loot) {
+    const at = monsterDrawnTile(m.x, m.y, m.fromX, m.fromY, m.anim);
     const io = new ItemOut(room);
     addGround(ctx.item, room, io, {
       item: loot,
-      x: m.x,
-      y: m.y,
+      x: at.x,
+      y: at.y,
       kind: "loot",
       expiresAt: ctx.item.now + ctx.lootDecayMinutes * 60_000,
     });

@@ -6,7 +6,6 @@ import {
   isDock,
   layer1Tile,
   ownerName,
-  recordTile,
   unboardCheck,
   VEHICLE_TEXT,
   vehicleOfBody,
@@ -53,7 +52,6 @@ describe("airship drop checks", () => {
   test("a J2 pad on rows 10-12 counts for building and unboarding", () => {
     for (const y of [10, 11, 12]) {
       const layer1 = pad(5, y);
-      expect(recordTile(layer1, 5, y)).toBe("");
       expect(layer1Tile(layer1, 5, y)).toBe("J2");
       expect(isDock(layer1, 5, y)).toBe(true);
       expect(deedCheck({ ...base, layer1, faced: { x: 5, y } })).toEqual({ kind: "build" });

@@ -560,16 +560,27 @@ describe("loot and decay", () => {
     expect(events(later, "A")).toContainEqual({ e: "gdel", id: g.id });
     expect(s.map.ground).toEqual([]);
   });
-  test("kept bug: loot lands on the tile the monster was walking into", () => {
-    const s = scene({ 4: [1] });
-    const a = s.join("A", 5, 5);
-    slime(s, 5, 4);
-    const m = (s.map.slots[0] as MonsterSlot).live!;
-    m.fromX = 4;
-    m.anim = 10; // mid-step from (4,4) into (5,4)
-    setAttackHeld(a, true);
-    s.run(2);
-    expect(groundAt(s.map, 5, 4)).toEqual(["2 Gold"]);
+  test("bug fixed: loot lands on the tile the monster is drawn nearest", () => {
+    const killMidStep = (anim: number) => {
+      const s = scene({ 4: [1] });
+      const a = s.join("A", 5, 5);
+      slime(s, 5, 4);
+      const slot = s.map.slots[0] as MonsterSlot;
+      slot.pause = 10_000;
+      const m = slot.live!;
+      m.hp = 0;
+      m.fromX = 4;
+      m.anim = anim; // mid-step from (4,4) into (5,4)
+      setAttackHeld(a, true);
+      s.run(1);
+      return s.map;
+    };
+    // Just set off: still drawn on (4,4).
+    const early = killMidStep(16);
+    expect(groundAt(early, 4, 4)).toEqual(["2 Gold"]);
+    expect(groundAt(early, 5, 4)).toEqual([]);
+    // Most of the way there: drawn on (5,4).
+    expect(groundAt(killMidStep(4), 5, 4)).toEqual(["2 Gold"]);
   });
 });
 
@@ -597,7 +608,7 @@ describe("PvP melee", () => {
     s.run(1);
     expect(b.char.vitals.hp).toBe(20);
   });
-  test("kept bug: a swing that also hits a monster deals no PvP damage", () => {
+  test("bug fixed: a swing that also hits a monster still hurts a player on the tile", () => {
     const s = scene({ 90: [2] });
     const a = s.join("A", 5, 5);
     const b = s.join("B", 5, 4);
@@ -615,20 +626,22 @@ describe("PvP melee", () => {
       queue: [],
       hitCountb: 0,
     };
+    b.char.skills = Array(38).fill(0);
     setAttackHeld(a, true);
     s.run(1);
     expect(slot.live?.hp).toBeLessThan(50);
-    expect(b.char.vitals.hp).toBe(20);
+    expect(b.char.vitals.hp).toBeLessThan(20);
   });
-  test("kept bug: immortals take PvP damage", () => {
+  test("bug fixed: immortals take no PvP damage", () => {
     const s = scene({ 90: [2] });
     const a = s.join("A", 5, 5);
     const b = s.join("B", 5, 4);
     b.role = "immortal";
     b.char.skills = Array(38).fill(0);
     setAttackHeld(a, true);
-    s.run(1);
-    expect(b.char.vitals.hp).toBeLessThan(20);
+    const out = s.run(1);
+    expect(b.char.vitals.hp).toBe(20);
+    expect(events(out, "B").some((e) => e.e === "phit")).toBe(false);
   });
 });
 

@@ -8,7 +8,7 @@
  * - The monster hit test: own tile, faced tile, 3x2 footprint, damage.
  * - The monster reach test; HitMe2; the parry and block gains; the hit flicker.
  */
-import { itemRulesData, monstersData } from "@secondstaronline/data";
+import { gatherData, itemRulesData, monstersData } from "@secondstaronline/data";
 
 import { type Equipment, type Fighter, skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
@@ -93,11 +93,14 @@ export function tickSpriteTimers(t: AttackTimers): void {
 }
 
 /**
- * The frame script's attack block: re-arm and grow the bar while the attack delay is 0, then count
- * it down. Runs before the key poll, so a held key attacks every delay + 1 frames (a
- * kept bug: a held attack re-arms one frame late).
+ * The frame script's attack block: count the attack delay down, then re-arm and grow the bar while
+ * it is 0. Counting down first lets a held key swing every `atDelay` frames, as the cooldown says
+ * (a bug fixed: 1.6 re-armed before the countdown, one frame late).
  */
 export function tickAttackTimers(t: AttackTimers): void {
+  if (t.atDelay > 0) {
+    t.atDelay -= 1;
+  }
   if (t.atDelay === 0) {
     t.canAttack = true;
     if (t.bar < 100) {
@@ -108,21 +111,53 @@ export function tickAttackTimers(t: AttackTimers): void {
       t.barMember = barMemberFor(t.bar) ?? t.barMember;
     }
   }
-  if (t.atDelay > 0) {
-    t.atDelay -= 1;
-  }
+}
+
+/** The axe ladder: the first step whose skill bound is above your Axe Fighting sets the delay. */
+const AXE_LADDER: readonly (readonly [number, number])[] = [
+  [10, 25],
+  [20, 22],
+  [30, 21],
+  [40, 20],
+  [50, 19],
+  [60, 18],
+  [70, 17],
+  [80, 16],
+  [90, 15],
+];
+
+/** The Mining Hammer ladder: 15 below Mining 10, one frame faster per 10 skill, 7 from 80 on. */
+const MINING_LADDER: readonly (readonly [number, number])[] = [
+  [10, 15],
+  [20, 14],
+  [30, 13],
+  [40, 12],
+  [50, 11],
+  [60, 10],
+  [70, 9],
+  [80, 8],
+  [Number.POSITIVE_INFINITY, 7],
+];
+
+/** The first ladder step whose bound is above `skill`, or null when none is. */
+function ladderStep(ladder: readonly (readonly [number, number])[], skill: number): number | null {
+  return ladder.find(([lt]) => skill < lt)?.[1] ?? null;
 }
 
 /**
- * The cooldowns a swing sets: 14/14, Ring of Quickness 10/10, the axe and mining cascades (the last
- * true `<` wins: 15 and 7 below skill 90), fishing 20 after the ring.
+ * The cooldowns a swing sets: 14/14, Ring of Quickness 10/10. An axe below Axe Fighting 90 and a
+ * Mining Hammer use their skill ladders, the lowest matching step winning (bugs fixed: 1.6 let the
+ * last step win, so every skill below 90 got 15 for an axe and 7 for a hammer, and a hammer at 90+
+ * fell back to 14). A Fishing Pole waits 20, less the Ring of Quickness's speed-up (a bug fixed: 1.6
+ * set 20 after the ring and so ignored it).
  */
 export function swingCooldowns(
   equip: Equipment,
   skills: readonly number[],
 ): { atDelay: number; actionDelay: number } {
-  let atDelay = 14;
-  let actionDelay = 14;
+  const BASE = 14;
+  let atDelay = BASE;
+  let actionDelay = BASE;
   // `swing.cooldowns`: each matching row sets both delays, so the last one wins (Ring of
   // Quickness 10/10).
   for (const row of itemRulesData.swing.cooldowns) {
@@ -131,38 +166,21 @@ export function swingCooldowns(
       actionDelay = row.actionDelay;
     }
   }
+  const quickness = BASE - atDelay;
   if (lingoContains(equip.weapon, "Axe")) {
-    const axe = skillValue(skills, "AxeFighting");
-    const cascade: [number, number][] = [
-      [10, 25],
-      [20, 22],
-      [30, 21],
-      [40, 20],
-      [50, 19],
-      [60, 18],
-      [70, 17],
-      [80, 16],
-      [90, 15],
-    ];
-    for (const [lt, d] of cascade) {
-      if (axe < lt) {
-        atDelay = d;
-      }
-    }
+    atDelay = ladderStep(AXE_LADDER, skillValue(skills, "AxeFighting")) ?? atDelay;
   }
   if (lingoContains(equip.weapon, "Mining")) {
-    const mining = skillValue(skills, "Mining");
-    for (let i = 0; i < 9; i++) {
-      if (mining < 10 * (i + 1)) {
-        atDelay = 15 - i;
-      }
-    }
+    atDelay = ladderStep(MINING_LADDER, skillValue(skills, "Mining")) ?? atDelay;
   }
   if (lingoContains(equip.weapon, "Fishing")) {
-    atDelay = 20;
+    atDelay = FISHING_POLE_AT_DELAY - quickness;
   }
   return { atDelay, actionDelay };
 }
+
+/** A Fishing Pole's attack delay without the Ring of Quickness. */
+const FISHING_POLE_AT_DELAY = gatherData.gathering.fishing.atDelay;
 
 /**
  * The attack handler's early gates. The frame-number gates always pass in play, and the Airship's refusal
@@ -198,9 +216,9 @@ export const FOOTPRINT_CELLS: readonly (readonly [number, number])[] = [
 ];
 
 /**
- * The monster hit test's tile check: the monster's tile is my tile or my faced tile; for a
- * footprint monster the faced tile is also tested against the five extra cells (never my own tile:
- * a kept bug, the 3x2 footprint counts only on the faced tile).
+ * The monster hit test's tile check: any tile of the monster (its main tile, plus the five extra
+ * cells of a footprint monster) is my tile or my faced tile (a bug fixed: 1.6 tested the extra
+ * cells against the faced tile only).
  */
 export function meleeReaches(
   me: { x: number; y: number; facing: Facing },
@@ -209,16 +227,14 @@ export function meleeReaches(
   const [dx, dy] = FACING_DELTA[me.facing];
   const fx = me.x + dx;
   const fy = me.y + dy;
-  if (mon.x === me.x && mon.y === me.y) {
-    return true;
-  }
-  if (mon.x === fx && mon.y === fy) {
-    return true;
-  }
-  if (mon.footprint) {
-    return FOOTPRINT_CELLS.some(([cx, cy]) => mon.x + cx === fx && mon.y + cy === fy);
-  }
-  return false;
+  const cells: readonly (readonly [number, number])[] = mon.footprint
+    ? [[0, 0], ...FOOTPRINT_CELLS]
+    : [[0, 0]];
+  return cells.some(([cx, cy]) => {
+    const x = mon.x + cx;
+    const y = mon.y + cy;
+    return (x === me.x && y === me.y) || (x === fx && y === fy);
+  });
 }
 
 /**
@@ -280,9 +296,12 @@ export function monsterReaches(
   });
 }
 
-/** The parry/block ladder: `random(3000)` until the skill is over 10. */
+/**
+ * The parry/block ladder: `random(90)` until the skill is over 20, as against players (a bug fixed:
+ * 1.6 drew `random(3000)` until the skill was over 10, so a new character almost never parried).
+ */
 function dodgeRoll(skill: number, factionAdventurer: boolean, rng: Rng): number {
-  let n = rng.random(3000);
+  let n = rng.random(90);
   const ladder: [number, number][] = [
     [10, 90],
     [20, 85],
@@ -312,14 +331,17 @@ function dodgeRoll(skill: number, factionAdventurer: boolean, rng: Rng): number 
 export type MonsterHit =
   | { kind: "none" }
   | { kind: "parry" | "block" | "shield" }
-  /** `lost` comes off HP; the number shown is `monsterHitShown` after the break draws. */
+  /** `lost` comes off HP, and is the number shown. */
   | { kind: "hit"; lost: number };
 
 /**
  * HitMe2 from the attack value onward, for a player who is not immortal and not in i-frames: the
- * armour rows (`hitMe2` column), `+N`, faction, then `+ random(3)`, the defense bonus, `< 2 →
- * random(3)`, then the parry and block ladders. `shielded`: an innocent on a Holy Shield's exact
- * sprite position gets "Shield" after those draws.
+ * armour rows (`hitMe2` column), `+N`, the elemental rows against `attacker` ("a Yeti"), faction,
+ * then `+ random(3)`, the defense bonus, `< 2 → random(3)`, then the parry and block ladders.
+ * `shielded`: an innocent on a Holy Shield's exact sprite position gets "Shield" before any draw
+ * (a bug fixed: 1.6 rolled the parry and block dice first and threw them away). The elemental rows
+ * change the hit points lost, not only the number shown (a bug fixed: 1.6 applied them after the
+ * hit point loss).
  */
 export function monsterHitsPlayer(
   attack: number,
@@ -327,13 +349,13 @@ export function monsterHitsPlayer(
   defenseBonus: number,
   rng: Rng,
   shielded = false,
+  attacker = "",
 ): MonsterHit {
-  const r = monsterDodge(attack, f, defenseBonus, rng);
-  return shielded ? { kind: "shield" } : r;
-}
-
-function monsterDodge(attack: number, f: Fighter, defenseBonus: number, rng: Rng): MonsterHit {
+  if (shielded) {
+    return { kind: "shield" };
+  }
   let power = armourRows(attack, f.equip, "HitMe2");
+  power = elementalRows(power, f.equip, "HitMe2", attacker);
   power = factionRows(power, f);
   power = randomAndDefense(power, defenseBonus, rng);
   const adventurer = f.faction.id === 3;
@@ -344,24 +366,6 @@ function monsterDodge(attack: number, f: Fighter, defenseBonus: number, rng: Rng
     return { kind: "block" };
   }
   return { kind: "hit", lost: power };
-}
-
-/**
- * The number a monster hit shows: after the HP loss and the armour break draws, the
- * elemental rows against `LastToHitMe` ("a Yeti"), then `< 1 → random(3)` (a kept bug: elemental
- * armour against monsters is applied after the HP loss).
- */
-export function monsterHitShown(
-  lost: number,
-  equip: Equipment,
-  lastToHitMe: string,
-  rng: Rng,
-): number {
-  let shown = elementalRows(lost, equip, "HitMe2", lastToHitMe);
-  if (shown < 1) {
-    shown = rng.random(3);
-  }
-  return shown;
 }
 
 /** The parry gain: `random(Parry) = 1` and 0 < Parry < 100. */

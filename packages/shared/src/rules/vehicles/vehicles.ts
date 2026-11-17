@@ -33,18 +33,6 @@ export const VEHICLE_TEXT = {
   sky: "You can't drop this from the sky!",
 } as const;
 
-/**
- * Word `x` of the map record's field `y` (where `#` separates fields), which is a layer-1 row only
- * for y = 1..9 (a kept 1.6 bug for arena checks: an arena on rows 10-12 reads another field).
- * Returns "" outside rows 1-9.
- */
-export function recordTile(layer1: readonly string[], x: number, y: number): string {
-  if (y < 1 || y > 9) {
-    return "";
-  }
-  return lingoWord(layer1[y - 1] ?? "", x);
-}
-
 /** Word `x` of layer 1's row `y` (1-based, 1..MAP_HEIGHT). Returns "" outside 1..MAP_HEIGHT. */
 export function layer1Tile(layer1: readonly string[], x: number, y: number): string {
   if (y < 1 || y > MAP_HEIGHT) {

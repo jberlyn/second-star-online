@@ -11,7 +11,6 @@ import {
   EQUIP_FIELD,
   type Fighter,
   FLICKER_FRAMES,
-  monsterHitShown,
   monsterHitsPlayer,
   monsterReaches,
   type Rng,
@@ -104,7 +103,7 @@ export function monsterAttack(
 function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutcome | null {
   const m = slot.live as NonNullable<MonsterSlot["live"]>;
   if (ctx.immortal(p)) {
-    return null; // 1.6's player-versus-player hit ignores immortals; only the monster hit checks
+    return null; // immortals take no damage, from monsters or players
   }
   // Holy Shield never hits an innocent.
   if (!p.char.wanted && anyMatch(monstersData.rules.sparesInnocent, m.name)) {
@@ -118,7 +117,14 @@ function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutc
   const f = fighterOf(p);
   const map = p.map;
   const shielded = onHolyShield(p, map.slots);
-  const hit = monsterHitsPlayer(monsterAttackValue(m.name), f, p.defenseBonus, ctx.rng, shielded);
+  const hit = monsterHitsPlayer(
+    monsterAttackValue(m.name),
+    f,
+    p.defenseBonus,
+    ctx.rng,
+    shielded,
+    p.lastToHitMe,
+  );
   const lines: string[] = [];
   const parry = skillIndex("Parry");
   const block = skillIndex("Block");
@@ -160,7 +166,7 @@ function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutc
     return null;
   }
   p.char.vitals.hp = Math.max(0, p.char.vitals.hp - hit.lost);
-  // The armour break roll against the last attacker comes between the HP loss and the shown number.
+  // The armour break roll against the last attacker; the number shown is the hit points lost.
   const lastToHitMe = p.lastToHitMe ?? "";
   const broken = rollArmourBreak(
     p.char.equip,
@@ -176,10 +182,9 @@ function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutc
     p.invDirty = true;
     p.lookDirty = true;
   }
-  const shown = monsterHitShown(hit.lost, p.char.equip, lastToHitMe, ctx.rng);
   gainParry();
   gainBlock();
-  return { victim: p, slot, text: String(shown), color: HIT_COLOR, splat: true, lines };
+  return { victim: p, slot, text: String(hit.lost), color: HIT_COLOR, splat: true, lines };
 }
 
 /** The rules' view of a player. */

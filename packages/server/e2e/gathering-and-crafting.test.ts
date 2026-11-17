@@ -148,7 +148,7 @@ describe("gathering and crafting", () => {
     const start = swings();
     bot.send({ t: "attack", seq: 1, held: true });
     await settle(10);
-    for (let i = 0; i < 400 && swings() - start < n; i++) {
+    for (let i = 0; i < 800 && swings() - start < n; i++) {
       server.tickNow(1);
       await settle(2);
     }

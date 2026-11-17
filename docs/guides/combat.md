@@ -30,15 +30,13 @@ A lethal hit passes credit and consequences to the relevant monster or player li
 
 ### From input to damage
 
-On a fight map a held attack swings when its cooldown permits. On a no-fight map an arena tile permits attacks; elsewhere holding the key repeats the refusal. The attack bar and the equipped weapon affect the swing's power and timing. Shared gear and attack-power rules read the fighter's equipment and skills, while server melee uses the player's actual position and facing to find targets.
+On a fight map, or on an arena tile of a no-fight map, a held attack swings when its cooldown permits; elsewhere on a no-fight map the refusal is said once per press. Hold stops swings as well as steps, and a bow with no arrows or no matching crystal is refused before the swing starts. The attack bar and the equipped weapon affect the swing's power and timing. Shared gear and attack-power rules read the fighter's equipment and skills, while server melee uses the player's actual position and facing to find targets.
 
-The monster and PvP paths differ. Against another player, the shared mitigation path can produce parry, block or shield outcomes before damage; armour, elemental and faction modifiers and a random defence roll contribute. Equipment break rolls are made by the server. Invulnerability and the target's state affect whether a hit is accepted. A hit on a monster passes damage and kill processing to the monster system; player deaths, murder consequences, spell effects and progression have their own handlers. This distinction matters when a swing reaches both a monster and a player: the kept rule gives the monster path precedence.
+The monster and PvP paths differ. Against another player, the shared mitigation path can produce parry, block or shield outcomes before damage; armour, elemental and faction modifiers and a random defence roll contribute. Equipment break rolls are made by the server. Invulnerability and the target's state affect whether a hit is accepted. A hit on a monster passes damage and kill processing to the monster system; player deaths, murder consequences, spell effects and progression have their own handlers. A swing that reaches both a monster and a player hits both. Immortals take no damage from either path.
 
-Arena challenge and quit are chat-triggered actions. Shared checks determine whether the challenge can proceed, search for an arena tile and select an exit; the server moves the players. The server's arena exit selection avoids hanging if an exit cannot be found.
+Arena challenge and quit are chat-triggered actions. Shared checks determine whether the challenge can proceed, pick a free arena tile and select an exit; the server moves the players and never puts one on a tile another player, a monster or a blocking item holds. Hold and the wait after death refuse both words. The server's arena exit selection avoids hanging if an exit cannot be found.
 
 ## Kept bugs and differences
 
-A swing that hits a monster does not also hurt a player. Holding attack can repeatedly display the refusal to fight on a protected map; the server still owns the hit calculation.
-
-See the [combat kept bugs](../bug-ledger.md#combat) and [combat differences](../divergences.md#combat) for the specific player-visible cases.
+Combat has no kept bugs: every former entry was fixed. See the [combat differences](../divergences.md#combat) for the specific player-visible cases.
 

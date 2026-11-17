@@ -3,9 +3,10 @@
  * driven by the rows in `attPowerData`, in source order. Every
  * `random` the original draws is drawn here in the same order, so seeded replays match.
  *
- * Names use case-insensitive substring and exact matches.
- * Quirks kept as written (kept bugs): "Bo" matches books and bows,
- * the "Minng Hammer" typo, the Archery cascade, Gold Sword's HeavyArms block twice.
+ * Names use case-insensitive substring and exact matches; each base row says which. Bugs fixed in
+ * the data (see divergences): the Bo's row matches the Bo exactly rather than books and bows, the
+ * Mining Hammer's row is spelled right, the Archery tiers are steps rather than a cascade with a
+ * gap at 30, and the Gold Sword's HeavyArms block runs once.
  */
 import { type AttPowerTier, attPowerData } from "@secondstaronline/data";
 
@@ -35,19 +36,31 @@ export function crystalSlotIn(
   return slot;
 }
 
+/** The line for a bow with no arrows in the off hand. */
+export const NO_ARROWS_TEXT = "You don't have any arrows!";
+
+/** The line for a bow whose arrows have no crystal of their colour left. */
+export function outOfCrystalsText(colour: CrystalColour): string {
+  return `You don't have any ${colour.toLowerCase()} crystals left!`;
+}
+
 /**
- * A bow with arrows and no crystal of their colour: `attackPower`'s `outOfCrystals`. The swing's
- * cooldowns still start, but there is no attack animation, so no movement lock.
+ * Why a bow cannot shoot, or null: no arrows in the off hand, or no crystal of the arrows' colour.
+ * The swing is refused before it starts, so no cooldown, bar reset or animation (bugs fixed: 1.6
+ * meleed for 1 with no arrows and wasted the swing with no crystal).
  */
-export function bowOutOfCrystals(
+export function bowRefusal(
   equip: { weapon: string; offHand: string },
   bag: readonly ({ item: string; qty: number } | null)[],
-): boolean {
+): string | null {
   if (!lingoContains(equip.weapon, "bow")) {
-    return false;
+    return null;
   }
   const colour = ARROW_COLOURS.find((c) => lingoEq(equip.offHand, `${c} Arrows`));
-  return colour !== undefined && crystalSlotIn(bag, colour) < 0;
+  if (colour === undefined) {
+    return NO_ARROWS_TEXT;
+  }
+  return crystalSlotIn(bag, colour) < 0 ? outOfCrystalsText(colour) : null;
 }
 export type CrystalColour = (typeof ARROW_COLOURS)[number];
 
@@ -133,7 +146,7 @@ export function attackPower(
   let power = 1;
   // Base rows by `contains`; every match re-rolls, the last one wins.
   for (const row of AP.base) {
-    if (lingoContains(w, row.pattern)) {
+    if (row.match === "exact" ? lingoEq(w, row.pattern) : lingoContains(w, row.pattern)) {
       power = row.flat + (row.randomN === null ? 0 : rng.random(row.randomN));
       if (row.extra) {
         power += lingoDiv(rng.random(f.str), 2); // Gold Axe
@@ -174,9 +187,7 @@ export function attackPower(
     if (hasCrystal(colour)) {
       crystal = colour;
     } else {
-      // "geen" as written (a kept 1.6 typo for green).
-      const shown = colour === "Green" ? "geen" : colour.toLowerCase();
-      outOfCrystals = `You don't have any ${shown} crystals left!`;
+      outOfCrystals = outOfCrystalsText(colour); // 1.6 spelt green "geen" (a typo fixed)
     }
   }
   if (f.attackBonus > 0) {

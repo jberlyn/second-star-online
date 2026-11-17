@@ -21,7 +21,7 @@ import {
   attemptMove,
   blockPCCheck,
   blocksPlayer,
-  bowOutOfCrystals,
+  bowRefusal,
   type DeltaEvent,
   type Dir,
   type EquipView,
@@ -795,18 +795,22 @@ function predictSwing(m: Model, s: Self, intent: Intent): void {
   if (m.map.noFight && !isArenaTile(m.map.layers[0], s.x, s.y)) {
     return;
   }
+  // Hold stops the swing as it stops a step; the server agrees.
+  if (s.server.hold) {
+    return;
+  }
+  const equip = m.inv?.equip ?? NO_EQUIPMENT;
+  // A bow with no arrows or crystal is refused before the swing starts; the server agrees.
+  if (bowRefusal(equip, m.inv?.bag ?? []) !== null) {
+    return;
+  }
   // `startSwing`: the bar resets and the cooldowns start. They depend on skills only for axes and
   // mining hammers, which the client does not have; the server's `swing` corrects them.
-  const equip = m.inv?.equip ?? NO_EQUIPMENT;
   const cd = swingCooldowns(equip, []);
   intent.attackPress = null;
   t.bar = 0;
   t.atDelay = cd.atDelay;
   t.actionDelay = cd.actionDelay;
-  // A bow out of crystals wastes the swing: no animation (so no lock) and no `swing` event.
-  if (bowOutOfCrystals(equip, m.inv?.bag ?? [])) {
-    return;
-  }
   t.canAttack = false;
   t.atkAnim = ATTACK_ANIM_FRAMES;
   s.swingPredictedAt = m.tick;

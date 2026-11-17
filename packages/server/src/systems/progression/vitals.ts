@@ -23,6 +23,7 @@ import {
   rollDeathPenalty,
 } from "@secondstaronline/shared";
 
+import { arenaTileTaken } from "../combat/arena.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import { vehicleDeath } from "../vehicles/airship.ts";
@@ -59,6 +60,11 @@ export interface DeathDropCtx {
   item: ItemCtx;
   dropOnDeath: boolean;
   immortal: boolean;
+  /**
+   * A Lightning Assassin game is running: every death is penalty-free, whatever caused it (a bug
+   * fixed: 1.6 spared only deaths from a Lightning melee hit).
+   */
+  lightningGame?: boolean;
 }
 
 /**
@@ -71,9 +77,10 @@ export interface DeathDropCtx {
 export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx): DeathOutcome {
   const v = p.char.vitals;
   // A Lightning hit runs `RunDeathScript2`, which has no `HP > 0` exit.
-  const lightning = p.lightningDeath;
+  const lightningHit = p.lightningDeath;
   p.lightningDeath = false;
-  if ((v.hp >= 1 && !lightning) || p.dontHitMeAgain) {
+  const lightning = lightningHit || (drop?.lightningGame ?? false);
+  if ((v.hp >= 1 && !lightningHit) || p.dontHitMeAgain) {
     return { kind: "none" };
   }
   // A 400-frame respawn timer, arena deaths too.
@@ -87,6 +94,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
       room.map.layers[0],
       p.vehicle === "Airship" ? room.map.walkAir : room.map.walk,
       rng,
+      arenaTileTaken(room, p),
     );
     const text = ARENA_TEXT.defeated(p.name, p.lastToHitMe ?? "");
     return { kind: "arena", tile, text };

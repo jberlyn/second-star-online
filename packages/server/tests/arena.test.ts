@@ -78,8 +78,9 @@ describe("Challenge and quit", () => {
   });
 
   test("quit: '<name> has stopped fighting.' to the map and the hop to a passing tile", () => {
-    // Exits are row by row; the first passing tile is (1,1).
-    const s = scene({ rng: rngByN({ 203: [1] }) });
+    // Exits are row by row; the first passing tile is (1,1). 201 = 204 less the 6P tile and the
+    // tiles Ann and Cat stand on.
+    const s = scene({ rng: rngByN({ 201: [1] }) });
     s.bob.x = 4;
     s.bob.y = 4;
     const out = s.say(s.bob, "quit");
@@ -120,11 +121,23 @@ describe("Challenge and quit", () => {
     expect(s.bob.char.vitals.hp).toBe(1);
   });
 
-  test("kept bug: nothing checks who stands on the arena tile", () => {
-    const s = scene({ rng: rngByN({ 17: [4], 12: [4] }) });
+  test("bug fixed: a challenge never puts you on a tile a player or a blocking item holds", () => {
+    const s = scene({
+      arena: [
+        [4, 4],
+        [6, 4],
+      ],
+      rng: rngByN({ 2: [1] }),
+    });
     s.ann.x = 4;
     s.ann.y = 4;
-    s.map.ground.push({
+    s.say(s.bob, "Challenge");
+    // Ann's tile is skipped: the one free tile is picked with one roll.
+    expect([s.bob.x, s.bob.y]).toEqual([6, 4]);
+    expect(s.rng.calls).toEqual([1]);
+
+    const full = scene({});
+    full.map.ground.push({
       id: "g1",
       item: "Wooden Chest",
       x: 4,
@@ -132,9 +145,22 @@ describe("Challenge and quit", () => {
       kind: "admin",
       expiresAt: null,
     });
-    s.say(s.bob, "Challenge");
-    expect([s.bob.x, s.bob.y]).toEqual([4, 4]);
-    expect([s.ann.x, s.ann.y]).toEqual([4, 4]);
+    expect(chats(full.say(full.bob, "Challenge"), "Bob")).toEqual([
+      "There is no room in the arena!",
+    ]);
+    expect([full.bob.x, full.bob.y]).toEqual([8, 8]);
+  });
+
+  test("bug fixed: quit never puts you on another player's tile", () => {
+    const s = scene({ rng: rngByN({ 201: [1] }) });
+    s.ann.x = 1;
+    s.ann.y = 1;
+    s.cat.x = 2;
+    s.cat.y = 1;
+    s.bob.x = 4;
+    s.bob.y = 4;
+    s.say(s.bob, "quit");
+    expect([s.bob.x, s.bob.y]).toEqual([3, 1]);
   });
 
   test("kept bug: a rider challenges and quits still flying", () => {
@@ -158,7 +184,7 @@ describe("Challenge and quit", () => {
     expect(walker.say(walker.bob, "quit")).toEqual([]);
     expect([walker.bob.x, walker.bob.y]).toEqual([4, 4]);
 
-    const rider = scene({ arena: [[4, 4]], everyTreeButArena: true, rng: rngByN({ 203: [1] }) });
+    const rider = scene({ arena: [[4, 4]], everyTreeButArena: true, rng: rngByN({ 201: [1] }) });
     rider.bob.x = 4;
     rider.bob.y = 4;
     rider.bob.vehicle = "Airship";
@@ -167,7 +193,7 @@ describe("Challenge and quit", () => {
   });
 
   test("an arena death aboard exits on the Airship grid", () => {
-    const s = scene({ arena: [[4, 4]], everyTreeButArena: true, rng: rngByN({ 203: [2] }) });
+    const s = scene({ arena: [[4, 4]], everyTreeButArena: true, rng: rngByN({ 201: [2] }) });
     s.bob.x = 4;
     s.bob.y = 4;
     s.bob.vehicle = "Airship";
@@ -202,18 +228,26 @@ describe("Challenge and quit", () => {
     expect(out.some((m) => m.msg.t === "death")).toBe(false);
   });
 
-  test("kept bug: Hold and the death wait don't stop the arena words", () => {
-    const held = scene({ rng: rngByN({ 203: [1] }) });
+  test("bug fixed: Hold and the death wait stop the arena words", () => {
+    const held = scene({});
     held.bob.x = 4;
     held.bob.y = 4;
     held.bob.spell.hold = 40;
-    held.say(held.bob, "quit");
-    expect([held.bob.x, held.bob.y]).toEqual([1, 1]);
+    expect(chats(held.say(held.bob, "quit"), "Bob")).toEqual([
+      "You cannot do that while you are held.",
+    ]);
+    expect([held.bob.x, held.bob.y]).toEqual([4, 4]);
+    held.bob.x = 8;
+    held.bob.y = 8;
+    expect(chats(held.say(held.bob, "Challenge"), "Bob")).toEqual([
+      "You cannot do that while you are held.",
+    ]);
+    expect([held.bob.x, held.bob.y]).toEqual([8, 8]);
 
-    const dead = scene({ rng: rngByN({ 17: [4], 12: [4] }) });
+    const dead = scene({});
     dead.bob.deadLock = 60;
-    dead.say(dead.bob, "Challenge");
-    expect([dead.bob.x, dead.bob.y]).toEqual([4, 4]);
+    expect(dead.say(dead.bob, "Challenge")).toEqual([]);
+    expect([dead.bob.x, dead.bob.y]).toEqual([8, 8]);
   });
 
   test("divergence: with no passing tile quit says nothing and stays put", () => {
@@ -241,7 +275,7 @@ describe("Challenge and quit", () => {
   test("the words say nothing aloud and charge no chat cooldown", () => {
     const s = scene({});
     const out = s.say(s.bob, "Challenge");
-    expect(chats(out, "Ann")).toEqual([]); // the default Rng misses all 799 rolls: silent
+    expect(chats(out, "Ann")).toEqual(["Bob has entered the arena!"]);
     expect(chats(out, "Ann").some((t) => t.includes("says"))).toBe(false);
     // A said line right after is not refused by a cooldown.
     expect(chats(s.say(s.bob, "hello"), "Ann")).toEqual(['Bob says "hello"']);

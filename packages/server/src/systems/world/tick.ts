@@ -441,6 +441,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
         item: itemCtx,
         dropOnDeath: deps.dropOnDeath ?? true,
         immortal: isImmortal(p),
+        lightningGame: lightningOn(world),
       });
       if (death.kind === "death") {
         deaths.add(p);

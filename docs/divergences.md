@@ -24,7 +24,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [admin](#admin) | 33 |
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
-| [combat](#combat) | 11 |
+| [combat](#combat) | 34 |
 | [core](#core) | 55 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 18 |
@@ -741,10 +741,217 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Bug fixed
 - **What you notice:** If an arena map has no suitable exit tile, quitting does nothing; an arena death leaves you in place at 1 HP and SP and shows the defeated line.
 - **1.6:** Quitting or arena death repeatedly rolled until it found 799 tiles that were neither arena nor blocked and used the last. With no qualifying tile the client looped forever.
-- **SSO:** The server lists qualifying walkable tiles using the original rows-1–9 arena test and picks one with the seeded RNG, preserving the odds. With none, it handles quit and death as described above.
+- **SSO:** The server lists qualifying walkable tiles that are not arena tiles and not taken by a player, monster or blocking item, and picks one with the seeded RNG. With none, it handles quit and death as described above.
 - **Why:** A shared server cannot keep a hang; direct selection also avoids the former capped roll loop returning an invalid tile.
 - **In the code:** `packages/shared/src/rules/combat/arena.ts` (`arenaExits`, `pickArenaExit`), `packages/server/src/systems/combat/arena.ts` (`quitArena`)
 - **Pinned by:** `divergence: with no passing tile quit says nothing and stays put`; `divergence: an arena death with no passing tile keeps the player in place, at HP and SP 1, and says the line` (packages/server/tests/arena.test.ts); `divergence: no passing tile → null, where 1.6's exit loop never ended` (packages/shared/tests/combat/arena.test.ts)
+
+### "You cannot fight here!" is said once per press
+- **Kind:** Bug fixed
+- **What you notice:** Holding attack on a map where fighting is not allowed says "You cannot fight here!" once. Releasing and pressing again says it again.
+- **1.6:** The line was sent on every frame the key was held, so SSO's chat showed one line with a climbing ×N count.
+- **SSO:** `pollAttack` records the refusal in `attackRefused` and says it only once until the key is released or pressed again (`setAttackHeld`).
+- **Why:** A message repeated thirty times a second is noise, not information.
+- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`, `setAttackHeld`)
+- **Pinned by:** `bug fixed: off an arena tile on a no-fight map, a held key says it once per press` (packages/server/tests/monsters.test.ts)
+
+### Hold stops attacks as well as steps
+- **Kind:** Bug fixed
+- **What you notice:** While a Hold spell roots you, you can neither walk nor swing. A key held through the Hold swings once the Hold ends.
+- **1.6:** The attack key was polled before the Hold gate, so a held player could still swing.
+- **SSO:** `pollAttack` returns before the swing while the Hold counter runs, and the browser's swing prediction agrees.
+- **Why:** Hold is meant to pin the target in place; swinging freely undid most of its point.
+- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`); `packages/client/src/model.ts` (`predictSwing`)
+- **Pinned by:** `bug fixed: Hold stops attacking as well as walking` (packages/server/tests/melee.test.ts)
+
+### Axe and Mining Hammer speeds follow their skill ladders
+- **Kind:** Bug fixed
+- **What you notice:** An axe swings slowly at low Axe Fighting and speeds up as it rises: 25 frames below 10, 22 at 10-19, and so on to 15 at 80-89, then the normal 14 (10 with the Ring of Quickness) from 90. A Mining Hammer swings every 15 frames below Mining 10 and one frame faster per 10 skill, down to 7 frames from Mining 80 on.
+- **1.6:** Both ladders were tested from low to high with the last matching step winning, so every axe user below 90 got 15 frames and every hammer user below 90 got 7, and a hammer at 90 and above fell back to the normal 14.
+- **SSO:** `swingCooldowns` takes the first matching step of each ladder, and the hammer keeps its fastest step from Mining 80 on.
+- **Why:** The ladders were plainly written to reward skill; the order made the skill irrelevant and slowed the best miners down.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`, `ladderStep`)
+- **Pinned by:** `bug fixed: the axe ladder slows low Axe Fighting, 25 frames at 0 down to 15 at 80-89`; `bug fixed: a Mining Hammer speeds up with Mining, 15 frames at 0 down to 7 from 80`; `Ring of Quickness sets 10/10 before the axe ladder` (packages/shared/tests/combat/combat.test.ts)
+
+### The Ring of Quickness speeds up a fishing pole
+- **Kind:** Bug fixed
+- **What you notice:** A Fishing Pole waits 20 frames between casts, or 16 with the Ring of Quickness.
+- **1.6:** The pole's 20 frames were set after the ring's speed-up and overwrote it.
+- **SSO:** `swingCooldowns` takes the ring's 4-frame speed-up off the pole's 20, and the cast in `preSwing` uses that delay.
+- **Why:** The ring promises quicker swings with any weapon.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`); `packages/server/src/systems/crafting/gather.ts` (`preSwing`)
+- **Pinned by:** `bug fixed: the Ring of Quickness shortens a fishing pole's 20 frames to 16` (packages/shared/tests/combat/combat.test.ts); `bug fixed: the Ring of Quickness shortens a cast's AtDelay from 20 to 16` (packages/server/tests/gather.test.ts)
+
+### A held attack swings at the cooldown's own pace
+- **Kind:** Bug fixed
+- **What you notice:** Holding attack swings every 14 frames by default (10 with the Ring of Quickness), matching the cooldown. The power bar's tiers also arrive a frame sooner.
+- **1.6:** The frame script re-armed the attack before counting the delay down, so a held key swung every cooldown plus one frames.
+- **SSO:** `tickAttackTimers` counts the delay down first and re-arms on the frame it reaches 0. The browser runs the same function.
+- **Why:** The cooldown number should be the actual wait.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`tickAttackTimers`)
+- **Pinned by:** `bug fixed: holding attack swings every AtDelay = 14 frames, not 15`; `tiers come from the member windows: +0 until t+38, +3, +5 from t+63, +7 from t+88` (packages/shared/tests/combat/combat.test.ts)
+
+### Big monsters can be hit on any of their tiles
+- **Kind:** Bug fixed
+- **What you notice:** The Overlord and the Mutant Worm can be hit on any of their six tiles, including one under your own feet.
+- **1.6:** The extra tiles were tested against the faced tile only, so a big monster whose extra tile was under you was missed.
+- **SSO:** `meleeReaches` tests every tile of the footprint against both your tile and the faced tile.
+- **Why:** If you are standing in the monster, your swing should reach it.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`meleeReaches`, `FOOTPRINT_CELLS`)
+- **Pinned by:** `bug fixed: the 3x2 footprint is tested on my own tile as well as the faced tile` (packages/shared/tests/combat/combat.test.ts)
+
+### A bow without arrows or crystals refuses the shot
+- **Kind:** Bug fixed
+- **What you notice:** Swinging a bow with no arrows says "You don't have any arrows!"; with arrows but no crystal of their colour it says "You don't have any <colour> crystals left!". Either way nothing else happens: no swing, no cooldown, and your power bar keeps its charge. The line is said once per press.
+- **1.6:** With no arrows the bow meleed for 1. With no crystal the swing was wasted: the cooldown ran, the power bar reset and you left combat.
+- **SSO:** `bowRefusal` is checked in `workAttack` before `startSwing`; the browser's prediction makes the same check.
+- **Why:** Running out of ammunition should stop the shot, not cost you a swing or turn the bow into a stick.
+- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`bowRefusal`, `NO_ARROWS_TEXT`); `packages/server/src/systems/combat/melee.ts` (`workAttack`); `packages/client/src/model.ts` (`predictSwing`)
+- **Pinned by:** `bug fixed: a bow with no arrows, or no crystal for them, is refused before the swing` (packages/shared/tests/combat/combat.test.ts); `bug fixed: a bow with no arrows is refused once per press, with no cooldown`; `bug fixed: a bow with arrows but no crystal is refused before the swing, keeping the bar`; `an off-hand that only contains "Arrows" counts as no arrows` (packages/server/tests/melee.test.ts)
+
+### A stepping player is hit on the tile they are leaving
+- **Kind:** Bug fixed
+- **What you notice:** A player part-way through a step can be hit on the tile they just left, and a swing never hits a player who is nowhere near it.
+- **1.6:** The old-tile test read the victim's old Y twice and compared it with both coordinates of the faced tile.
+- **SSO:** `pvpSwing` compares the faced tile with the victim's real previous tile.
+- **Why:** The test was meant to catch a victim still visibly on their old tile.
+- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pvpSwing`)
+- **Pinned by:** `bug fixed: a victim part-way through a step is hit on the tile it is leaving`; `bug fixed: a swing at (4,4) no longer hits a victim stepping from (9,4)` (packages/server/tests/melee.test.ts)
+
+### Parry and block work from the first skill point
+- **Kind:** Bug fixed
+- **What you notice:** Against monsters, a new character parries or blocks about 1 hit in 90 until the skill passes 20, as against players. Against players, Block 0 can block, and the Adventurer's bonus raises the odds against players as much as against monsters. This is a large PvP balance shift: an Adventurer with Parry and Block above 96 avoids about 57% of player hits, against about 9% in 1.6.
+- **1.6:** Against monsters the draws were out of 3000 until the skill was over 10. Against players Block had no starting draw, so Block 0 never blocked, and the Adventurer's subtraction re-rolled a result below 1 as a fresh draw out of 90 instead of clamping it to 1.
+- **SSO:** `dodgeRoll` starts from `random(90)`. `pvpDodgeRoll` gives parry and block the same starting draw and clamps the Adventurer's result to 1.
+- **Why:** The ladders were meant to start from a small chance, not none, and the faction bonus was meant to help in both fights.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`dodgeRoll`); `packages/shared/src/rules/combat/armour.ts` (`pvpDodgeRoll`)
+- **Pinned by:** `bug fixed: parry and block start from random(90), not random(3000)` (packages/shared/tests/combat/combat.test.ts); `bug fixed: the faction-3 parry/block bonus clamps a draw pushed below 1 to 1 in PvP, as against monsters`; `bug fixed: PvP Block 0 can block`; `PvP parry: base random(90), then one draw per threshold passed` (packages/shared/tests/inventory/inventory.test.ts)
+
+### A swing that hits a monster also hits players
+- **Kind:** Bug fixed
+- **What you notice:** A melee swing hurts a player on the tile even if it also hits a monster.
+- **1.6:** The monster damage added to the Attack message left a field other players read as an arrow shot, so they skipped the player-hit check.
+- **SSO:** `workAttack` always runs `pvpSwing` for a melee swing.
+- **Why:** The message format, not a game rule, decided the outcome.
+- **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`, `pvpSwing`)
+- **Pinned by:** `bug fixed: a swing that also hits a monster still hurts a player on the tile` (packages/server/tests/inventory.test.ts)
+
+### Holy Shield decides before the dodge rolls
+- **Kind:** Bug fixed
+- **What you notice:** An innocent standing on a Holy Shield gets "Shield" straight away; no parry or block dice are thrown away first.
+- **1.6:** The shield check came after the parry and block draws in both hit handlers.
+- **SSO:** `pvpHit` and `monsterHitsPlayer` return "Shield" before any draw.
+- **Why:** Spent draws changed the luck of every later roll for nothing.
+- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`pvpHit`); `packages/shared/src/rules/combat/combat.ts` (`monsterHitsPlayer`)
+- **Pinned by:** `bug fixed: an innocent on a Holy Shield gets Shield before any draw` (packages/shared/tests/combat/combat.test.ts); `bug fixed: a Holy Shield gives Shield in PvP before any draw` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: an innocent on a Holy Shield's exact spot gets Shield before any parry or block draw` (packages/server/tests/spells.test.ts)
+
+### The green crystal message is spelt right
+- **Kind:** Bug fixed
+- **What you notice:** A bow with Green Arrows and no green crystal says "You don't have any green crystals left!"
+- **1.6:** The text said "geen".
+- **SSO:** `outOfCrystalsText` spells every colour from its name.
+- **Why:** A typo.
+- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`outOfCrystalsText`)
+- **Pinned by:** `bug fixed: "green crystals", not "geen"` (packages/shared/tests/inventory/inventory.test.ts)
+
+### A negative defense bonus adds damage
+- **Kind:** Bug fixed
+- **What you notice:** A negative defense bonus makes you take more damage.
+- **1.6:** A negative bonus was added to the attack power, which made it smaller.
+- **SSO:** `randomAndDefense` subtracts the bonus whatever its sign.
+- **Why:** The sign should mean what it says.
+- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`randomAndDefense`)
+- **Pinned by:** `bug fixed: a negative DefenseBonus adds damage` (packages/shared/tests/combat/combat.test.ts)
+
+### Ice and fire armour change the hit points you lose
+- **Kind:** Bug fixed
+- **What you notice:** Elemental armour against the Yeti, Snow Serpent, Snow Demon or Fire Demon changes the hit points you lose, and the floating number shows that amount.
+- **1.6:** The hit points were taken off first; the Ice and Fire modifiers only changed the number shown.
+- **SSO:** `monsterHitsPlayer` applies the elemental rows after the armour rows, as the player hit does, before the loss.
+- **Why:** The armour was meant to protect, and the number shown should be the damage taken.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`monsterHitsPlayer`); `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`)
+- **Pinned by:** `bug fixed: ice armour against a Yeti cuts the hit points lost` (packages/shared/tests/combat/combat.test.ts)
+
+### The armour-break exclusions work
+- **Kind:** Bug fixed
+- **What you notice:** The Slime, Wolf, Imp, Cow, Pig, Shark, Squid, Dragon Snake and Fire Demon never break your armour.
+- **1.6:** The exclusion list held bare names but was handed "a <name>", so nothing ever matched.
+- **SSO:** `rollArmourBreak` drops the "a " before testing the list.
+- **Why:** The list was written so these monsters would not break armour; it had no effect only because of the name mismatch.
+- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`rollArmourBreak`)
+- **Pinned by:** `bug fixed: the armour exclusion list matches "a <name>"` (packages/shared/tests/inventory/inventory.test.ts)
+
+### Immortals take no damage from players
+- **Kind:** Bug fixed
+- **What you notice:** Another player's swing does nothing to an immortal, just as monsters do nothing.
+- **1.6:** The monster hit handler exited for immortals; the player-versus-player one had no such check.
+- **SSO:** `pvpSwing` skips immortal victims.
+- **Why:** Immortality should be the same against everyone.
+- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pvpSwing`)
+- **Pinned by:** `bug fixed: immortals take no PvP damage` (packages/server/tests/inventory.test.ts); `immortals take no monster damage` (packages/server/tests/monsters.test.ts)
+
+### Weapon attack power matches the right weapons
+- **Kind:** Bug fixed
+- **What you notice:** A book no longer hits like a Bo, a Mining Hammer hits for its own 2 to 5 base, Archery below 30 sets the bow's power by your own step (and 30 gets the +1 that 31 used to), and the Gold Sword's Heavy Arms bonus is counted once (+6 at 100).
+- **1.6:** The Bo's row matched any name containing "Bo", the hammer's row was spelt "Minng Hammer", the three Archery resets all applied below 10 (the last winning) with nothing at exactly 30, and the Gold Sword had two Heavy Arms blocks.
+- **SSO:** The Bo's base row is an exact match, which `attackPower` honours; the hammer's row is spelt right; the Archery tiers are ranges with the first add at 30; the duplicate Gold Sword block is gone.
+- **Why:** Each was a slip in the table, not a design.
+- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`attackPower`, `tierApplies`); `packages/data/content/attpower.json`
+- **Pinned by:** `bug fixed: the "Bo" row matches only the Bo, not books and bows`; `bug fixed: a Mining Hammer rolls its base row 2 + random(3)`; `bug fixed: the Archery tiers are steps, and Archery 30 gets its +1`; `bug fixed: Gold Sword's HeavyArms block runs once: +6 at HeavyArms 100` (packages/shared/tests/combat/combat.test.ts)
+
+### Arena tiles wait for the re-arm like any swing
+- **Kind:** Bug fixed
+- **What you notice:** On a no-fight map, holding attack on an arena tile swings at the same pace as on a fight map, and the power bar resets after each swing.
+- **1.6:** The arena-tile branch swung without checking that you were ready, on the frame the cooldown reached 0 and before the bar block ran, so every swing repeated the last bar tier.
+- **SSO:** `pollAttack` requires the attack to be armed on an arena tile too.
+- **Why:** An arena should not let a held key keep a full power bar.
+- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`, `onArenaTile`)
+- **Pinned by:** `bug fixed: on a no-fight map an arena tile waits for the re-arm like any swing` (packages/server/tests/monsters.test.ts)
+
+### An arena is any map with a 6P tile on layer 1
+- **Kind:** Bug fixed
+- **What you notice:** A map counts as an arena when it has an arena tile anywhere on layer 1, including the first and last columns and rows 10 to 12. Standing on such a tile is an arena tile, and a death there is an arena death. A `6P` on another layer, or "6P" written in a sign or the title, does not make an arena.
+- **1.6:** The challenge searched the raw map record for " 6P " with spaces around it, which missed a tile at either end of a row and accepted one on another layer, in a sign or in the title, which the challenge could then never find. The tile test read another field of the map record for rows 10 to 12, so those were never arena tiles.
+- **SSO:** `hasArena` and `isArenaTile` read layer 1's 12 rows with `layer1Tile`.
+- **Why:** The check and the search must agree on what an arena tile is.
+- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`hasArena`, `isArenaTile`, `arenaTiles`)
+- **Pinned by:** `bug fixed: a 6P only in column 1 or 17 is an arena`; `bug fixed: a 6P on another layer, or 6P in a sign or title, is not an arena`; `bug fixed: arena tiles on rows 10-12 are arena tiles` (packages/shared/tests/combat/arena.test.ts); `bug fixed: arena tiles on rows 10-12 are arena tiles` (packages/server/tests/monsters.test.ts)
+
+### A challenge always lands on a free arena tile or says why not
+- **Kind:** Bug fixed
+- **What you notice:** A challenge on an arena always puts you on one of its tiles, never one another player, a monster or a blocking item already holds. If every arena tile is taken it says "There is no room in the arena!". Quitting, or dying in the arena, never puts you on another player's tile either.
+- **1.6:** The challenge made 799 random tries over the whole 17 × 12 record and gave up silently when none landed on an arena tile (about 2% of the time with one tile). Neither the challenge nor the exit checked who stood on the tile.
+- **SSO:** `findArenaTile` picks uniformly among the free arena tiles with one roll; `pickArenaExit` skips taken tiles. `arenaTileTaken` answers for players, monsters and blocking ground items.
+- **Why:** A silent failure looks like a broken command, and two players on one tile is not a fair fight.
+- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`findArenaTile`, `pickArenaExit`); `packages/server/src/systems/combat/arena.ts` (`challenge`, `quitArena`, `arenaTileTaken`); `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
+- **Pinned by:** `bug fixed: one uniform roll over the 6P tiles, never a silent miss`; `bug fixed: a taken tile is never picked; every tile taken gives null` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a challenge never puts you on a tile a player or a blocking item holds`; `bug fixed: quit never puts you on another player's tile` (packages/server/tests/arena.test.ts)
+
+### Hold and the death wait stop the arena words
+- **Kind:** Bug fixed
+- **What you notice:** A Held player who types `Challenge` or `quit` is told "You cannot do that while you are held." A player waiting to respawn is ignored.
+- **1.6:** The arena commands tested only whether you were mid-step, so a Held player could quit out of the Hold and a dead one could challenge.
+- **SSO:** `challengeCheck` and `quitCheck` refuse while Held or dead.
+- **Why:** Typing a word should not escape a Hold or a death.
+- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`challengeCheck`, `quitCheck`); `packages/server/src/systems/combat/arena.ts` (`challenge`, `quitArena`)
+- **Pinned by:** `bug fixed: Hold and the death wait stop the arena words` (packages/shared/tests/combat/arena.test.ts); `bug fixed: Hold and the death wait stop the arena words` (packages/server/tests/arena.test.ts)
+
+### A monster's loot drops where it is drawn
+- **Kind:** Bug fixed
+- **What you notice:** A monster killed while stepping drops its loot on the tile it is drawn nearest: the tile it is leaving for the first half of the step, the one it is entering after that.
+- **1.6:** The drop used the step's destination from the moment the step began.
+- **SSO:** `monsterDrawnTile` picks the tile for melee and spell kills.
+- **Why:** Loot should appear where you saw the monster die.
+- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`monsterDrawnTile`); `packages/server/src/systems/combat/melee.ts` (`smash`); `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
+- **Pinned by:** `bug fixed: loot lands on the tile the monster is drawn nearest` (packages/server/tests/inventory.test.ts)
+
+### Every death in a Lightning game is penalty-free
+- **Kind:** Bug fixed
+- **What you notice:** During a Lightning game no death takes the drop, the head, the stat penalty or exile, whether it came from a melee hit, an arrow, a spell or a monster.
+- **1.6:** Only the melee hit checked for a Lightning game.
+- **SSO:** `checkDeath` runs the penalty-free death for any death while `lightningGame` is set.
+- **Why:** The game announces that all death penalties are off.
+- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`); `packages/server/src/systems/world/tick.ts`
+- **Pinned by:** `bug fixed: during a Lightning game every death is penalty-free, not only a melee hit`; `outside a Lightning game the same death takes every penalty` (packages/server/tests/assassin.test.ts)
 
 ## core
 
@@ -2041,7 +2248,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Bug fixed
 - **What you notice:** You can build and unboard an Airship on `J2` landing pads on rows 10 to 12 of a map, just as on rows 1 to 9.
 - **1.6:** The dock check read fields 1–12 of the `#`-delimited map record, where fields 10–12 held non-tile data instead of layer-1 rows, so `J2` pads on rows 10–12 were never recognised.
-- **SSO:** `isDock` reads layer 1 via `layer1Tile` across all 12 map rows (`1..MAP_HEIGHT`). (`isArenaTile` still uses `recordTile` to preserve the separate arena rows 10–12 bug.)
+- **SSO:** `isDock` reads layer 1 via `layer1Tile` across all 12 map rows (`1..MAP_HEIGHT`), as `isArenaTile` does for arena tiles.
 - **Why:** Allows landing pads placed on the bottom three rows of a map to work for building and parking airships.
 - **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`layer1Tile`, `isDock`)
 - **Pinned by:** `a J2 pad on rows 10-12 counts for building and unboarding` (packages/shared/tests/vehicles/vehicles.test.ts); `a pad on row 10 counts for building` (packages/server/tests/vehicles.test.ts); `a pad on row 10 lets you off` (packages/server/tests/vehicles.test.ts)

@@ -139,7 +139,7 @@ describe("monsters, melee and XP", () => {
     expect(deltas(gm).some((e) => e.e === "mspawn")).toBe(true);
   });
 
-  test("the bar charged while waiting gives +5 once; then holding swings every 15 frames for 2; the 14 HP Slime dies on the 5th hit for 23 XP", async () => {
+  test("the bar charged while waiting gives +5 once; then holding swings every 14 frames for 2; the 14 HP Slime dies on the 5th hit for 23 XP", async () => {
     fighter.clear();
     gm.clear();
     fighter.send({ t: "attack", seq: 1, held: true });
@@ -148,7 +148,7 @@ describe("monsters, melee and XP", () => {
     await tick(1);
     const swings = deltas(fighter).filter((e) => e.e === "swing");
     const hits = deltas(fighter).filter((e) => e.e === "mhit");
-    expect(swings.length).toBe(8);
+    expect(swings.length).toBe(9); // every 14 frames over 120 frames
     // 51 frames since login: the bar sits in the 50-53 window, member 474 = +5.
     expect(swings[0]).toMatchObject({ bonus: 5, sound: "swordswing", atDelay: 14 });
     expect(swings.slice(1).every((s) => s.e === "swing" && s.bonus === 0)).toBe(true);
@@ -175,7 +175,7 @@ describe("monsters, melee and XP", () => {
     queue(4, 3);
     await tick(1);
     expect(deltas(victim).some((e) => e.e === "mspawn")).toBe(true);
-    // Hits of 1 + 3 = 4 (parry and block random(3000) = 3000), 40 frames of i-frames apart.
+    // Hits of 1 + 3 = 4 (parry and block draws at their maximum), 40 frames of i-frames apart.
     // The monster rolls random(10) once per player, in login order: Gm, Fighter, Victim.
     // Regen gives 1 HP back 148 frames after login, so the sixth hit kills: 20 → 0.
     for (let i = 0; i < 6; i++) {

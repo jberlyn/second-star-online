@@ -132,10 +132,29 @@ describe("Lightning", () => {
     expect(s.bob.char.vitals.hp).toBeGreaterThan(0);
   });
 
-  test("kept bug: a death that is not a Lightning melee hit takes every penalty", () => {
+  test("bug fixed: during a Lightning game every death is penalty-free, not only a melee hit", () => {
     const s = scene({ 5: [1, 1, 1] });
     setAssassinMode(s.world, "LIGHTNING", s.game);
     // An arrow, a spell or starvation: HP reaches 0 with the last hitter on record.
+    s.bob.char.vitals.hp = 0;
+    s.bob.lastToHitMe = "Alice";
+    s.bob.lastToHitId = s.alice.id;
+    const gold = s.bob.char.gold;
+    const bag = JSON.stringify(s.bob.char.bag);
+    const msgs = s.run(1);
+    expect(chat(msgs, "Bob")).not.toContain(
+      "*** Your downfall in battle has caused you to become weakened.",
+    );
+    expect(s.bob.char.vitals.hpMax).toBe(90);
+    expect(s.bob.char.gold).toBe(gold);
+    expect(JSON.stringify(s.bob.char.bag)).toBe(bag);
+    expect(s.bob.deadLock).toBeGreaterThan(0);
+    // The points are still Lightning's 10.
+    expect(chat(s.run(40), "Alice")).toContain("*** Alice just received 10 assassin points!");
+  });
+
+  test("outside a Lightning game the same death takes every penalty", () => {
+    const s = scene({ 5: [1, 1, 1] });
     s.bob.char.vitals.hp = 0;
     s.bob.lastToHitMe = "Alice";
     s.bob.lastToHitId = s.alice.id;
@@ -144,8 +163,6 @@ describe("Lightning", () => {
       "*** Your downfall in battle has caused you to become weakened.",
     );
     expect(s.bob.char.vitals.hpMax).toBe(89);
-    // The points are still Lightning's 10.
-    expect(chat(s.run(40), "Alice")).toContain("*** Alice just received 10 assassin points!");
   });
 
   test("an arena Lightning death takes the arena exit: no flag, no points", () => {

@@ -245,10 +245,10 @@ describe("kept bugs in the monster tables", () => {
     a.flicker = 0;
     a.char.skills[skillIndex("Parry")] = 60;
     a.char.skills[skillIndex("Block")] = 5;
-    // Parry: random(60) = 2, no parry. Block 5: random(3000) = 1, a block; the skill-gain
-    // random(5) = 1.
+    // Parry: random(90) twice, then random(60) = 2, no parry. Block 5: random(90) = 1, a block;
+    // the skill-gain random(5) = 1.
     const r = monsterAttack(map, map.slots[0] as MonsterSlot, a, {
-      rng: rngByN({ 10: [1], 60: [2], 3000: [5, 1], 5: [1] }),
+      rng: rngByN({ 10: [1], 60: [2], 90: [5, 5, 1], 5: [1] }),
       npcs: ARCHIVE_NPCS,
       immortal: () => false,
     });
@@ -258,11 +258,16 @@ describe("kept bugs in the monster tables", () => {
     ]);
     expect(a.char.skills[skillIndex("Block")]).toBe(6);
   });
-  test("kept bug: arena rows 10-12 are not arena tiles: the test reads map fields 10-12", () => {
+  test("bug fixed: arena tiles on rows 10-12 are arena tiles", () => {
     const map = testMap("x1", [], () => "6P");
     const room = { map, npcs: ARCHIVE_NPCS, players: [], fx: [], fxQueue: [], doorLock: 0 };
     expect(onArenaTile(room, 5, 9)).toBe(true);
-    expect(onArenaTile(room, 5, 10)).toBe(false);
+    for (const y of [10, 11, 12]) {
+      expect(onArenaTile(room, 5, y)).toBe(true);
+    }
+    const plain = testMap("x2", [], (_x, y) => (y === 11 ? "G1" : "6P"));
+    const plainRoom = { ...room, map: plain };
+    expect(onArenaTile(plainRoom, 5, 11)).toBe(false);
   });
   test("kept bug: an unprovoked Passive monster's random(10) = 1 skips its walk tick", () => {
     const map = testMap("x1000y992");
@@ -336,33 +341,37 @@ describe("melee", () => {
     expect(chat(msgs, "a")).toContain("You have become more powerful!");
   });
 
-  test("kept bug: on a no-fight map an arena tile swings every 14 frames and repeats the tier", () => {
+  test("bug fixed: on a no-fight map an arena tile waits for the re-arm like any swing", () => {
     const map = testMap("x1", [], (x, y) => (x === 5 && y === 5 ? "6P" : "G1"));
     map.flags.canFight = "O";
     const { join, run } = setup([map], undefined, rngByN());
     const a = player("a", map, 5, 5);
     join(a);
-    // Waited for +7, then re-armed by the countdown: the 6P branch swings on the frame AtDelay
-    // reaches 0, before the bar block can run, so the member never changes.
+    // Waited for +7, then held: the re-arm resets the bar's member before the swing, so a held
+    // key swings at +0 every 14 frames, as on a fight map.
     a.timers.barMember = 475;
     a.timers.atDelay = 1;
     setAttackHeld(a, true);
     const msgs = run(60);
     const swings = msgs
-      .flatMap((m, i) => (m.msg.t === "delta" ? m.msg.events.map((e) => ({ e, i })) : []))
-      .filter((x) => x.e.e === "swing");
-    expect(swings.every((s) => s.e.e === "swing" && s.e.bonus === 7)).toBe(true);
+      .flatMap((m) => (m.msg.t === "delta" && m.to === "a" ? m.msg.events : []))
+      .filter((e) => e.e === "swing");
+    expect(swings.every((e) => e.e === "swing" && e.bonus === 0)).toBe(true);
     expect(swings.length).toBe(Math.floor(60 / 14) + 1);
   });
 
-  test("kept bug: off an arena tile on a no-fight map, every held frame says it", () => {
+  test("bug fixed: off an arena tile on a no-fight map, a held key says it once per press", () => {
     const map = testMap("x1");
     map.flags.canFight = "O";
     const { join, run } = setup([map], undefined, rngByN());
     const a = player("a", map, 5, 5);
     join(a);
     setAttackHeld(a, true);
-    expect(chat(run(5), "a")).toEqual(Array(5).fill("You cannot fight here!"));
+    expect(chat(run(5), "a")).toEqual(["You cannot fight here!"]);
+    setAttackHeld(a, false);
+    run(1);
+    setAttackHeld(a, true);
+    expect(chat(run(5), "a")).toEqual(["You cannot fight here!"]);
   });
 });
 

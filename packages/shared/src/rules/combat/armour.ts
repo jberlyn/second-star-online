@@ -94,15 +94,13 @@ export function factionRows(power: number, f: Fighter): number {
   return p;
 }
 
-/** `+ random(3)`, then the defense bonus either way, then `< 2 → random(3)`. */
+/**
+ * `+ random(3)`, then the defense bonus, then `< 2 → random(3)`. A negative bonus adds damage (a
+ * bug fixed: 1.6 added a negative bonus to the power, so it cut damage as well).
+ */
 export function randomAndDefense(power: number, defenseBonus: number, rng: Rng): number {
   let p = power + rng.random(3);
-  if (defenseBonus > 0) {
-    p -= defenseBonus;
-  }
-  if (defenseBonus < 0) {
-    p += defenseBonus; // kept bug: a negative defense bonus also reduces damage
-  }
+  p -= defenseBonus;
   if (p < 2) {
     p = rng.random(3);
   }
@@ -127,10 +125,9 @@ export type PvpHit = { kind: "parry" | "block" | "shield" } | { kind: "hit"; dmg
 
 /**
  * `HitMe` from the armour rows on for a victim already hit by the tile tests, not in i-frames.
- * `lastWeaponSeen` is the attacker's weapon. Every draw is made in the original order. `shielded`:
- * an innocent victim's sprite is exactly on a Holy Shield's (`"99-"`), which turns the outcome into
- * "Shield" after the parry and block draws (a kept 1.6 quirk: the Holy Shield overrides after the
- * parry and block draws).
+ * `lastWeaponSeen` is the attacker's weapon. `shielded`: an innocent victim's sprite is exactly on
+ * a Holy Shield's (`"99-"`), which gives "Shield" before any draw (a bug fixed: 1.6 made the parry
+ * and block draws first and threw them away).
  */
 export function pvpHit(
   attackPower: number,
@@ -140,8 +137,10 @@ export function pvpHit(
   rng: Rng,
   shielded = false,
 ): PvpHit {
-  const r = pvpDodge(attackPower, victim, lastWeaponSeen, defenseBonus, rng);
-  return shielded ? { kind: "shield" } : r;
+  if (shielded) {
+    return { kind: "shield" };
+  }
+  return pvpDodge(attackPower, victim, lastWeaponSeen, defenseBonus, rng);
 }
 
 function pvpDodge(
@@ -156,42 +155,30 @@ function pvpDodge(
   p = factionRows(p, victim);
   p = randomAndDefense(p, defenseBonus, rng);
   const adventurer = victim.faction.id === 3;
-  // Parry: a base draw, then one per threshold passed.
+  if (pvpDodgeRoll(skillValue(victim.skills, "Parry"), adventurer ? 4 : 0, rng) === 1) {
+    return { kind: "parry" };
+  }
+  if (pvpDodgeRoll(skillValue(victim.skills, "Block"), adventurer ? 10 : 0, rng) === 1) {
+    return { kind: "block" };
+  }
+  return { kind: "hit", dmg: p };
+}
+
+/**
+ * One PvP parry or block draw: a base `random(90)`, then one draw per threshold passed, less the
+ * Adventurer's bonus, clamped to 1. Bugs fixed: 1.6 gave Block no base draw, so Block 0 never
+ * blocked, and re-rolled a bonus-pushed draw below 1 as `random(90)` instead of clamping it, so the
+ * Adventurer's bonus barely helped.
+ */
+function pvpDodgeRoll(skill: number, bonus: number, rng: Rng): number {
   let dodge = rng.random(90);
-  const parry = skillValue(victim.skills, "Parry");
   for (const [gt, n] of PVP_LADDER) {
-    if (parry > gt) {
+    if (skill > gt) {
       dodge = rng.random(n);
     }
   }
-  if (adventurer) {
-    dodge -= 4;
-    if (dodge < 1) {
-      dodge = rng.random(90); // the re-roll (kept bug: the Faction-3 bonus is nearly void in PvP)
-    }
-  }
-  if (dodge === 1) {
-    return { kind: "parry" };
-  }
-  // Block: no base draw (kept bug: PvP Block 0 never blocks).
-  if (dodge > 1) {
-    const block = skillValue(victim.skills, "Block");
-    for (const [gt, n] of PVP_LADDER) {
-      if (block > gt) {
-        dodge = rng.random(n);
-      }
-    }
-    if (adventurer) {
-      dodge -= 10;
-      if (dodge < 1) {
-        dodge = rng.random(90);
-      }
-    }
-    if (dodge === 1) {
-      return { kind: "block" };
-    }
-  }
-  return { kind: "hit", dmg: p };
+  dodge -= bonus;
+  return Math.max(1, dodge);
 }
 
 // ---- breaks --------------------------------------------------------------------------------
@@ -217,10 +204,11 @@ export function breakOdds(sta: number, hunger: number, base: 600 | 500): number 
 const ARMOUR_PICK: SlotVar[] = ["BodyE", "HeadE", "RightHandE"];
 
 /**
- * The armour-break check after a monster hit landed. The exclusion list is tested against the
- * monster name prefixed by "a " and never matches (kept bug). Draw from the computed break pool; on
- * a 1, make up to four three-way slot picks while the picked slot holds nothing on the exact list.
- * Returns the equip slot that breaks, or null.
+ * The armour-break check after a monster hit landed. `lastToHitMe` is "a <name>"; the exclusion
+ * list holds bare names, so the "a " is dropped before the test (a bug fixed: 1.6 compared "a
+ * <name>" with the bare names, so no monster was ever excluded). Draw from the computed break
+ * pool; on a 1, make up to four three-way slot picks while the picked slot holds nothing on the
+ * exact list. Returns the equip slot that breaks, or null.
  */
 export function rollArmourBreak(
   e: Equipment,
@@ -229,7 +217,8 @@ export function rollArmourBreak(
   lastToHitMe: string,
   rng: Rng,
 ): "Body" | "Head" | "RightHand" | null {
-  if (R.breaks.armour.excludedMonsters.some((m) => lingoEq(lastToHitMe, m))) {
+  const monster = lastToHitMe.replace(/^a /i, "");
+  if (R.breaks.armour.excludedMonsters.some((m) => lingoEq(monster, m))) {
     return null;
   }
   if (rng.random(breakOdds(sta, hunger, 600)) > 1) {

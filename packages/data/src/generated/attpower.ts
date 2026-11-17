@@ -85,7 +85,7 @@ export const attPowerData: AttPowerData = {
         "randomN": 4
       },
       {
-        "match": "contains",
+        "match": "exact",
         "pattern": "Bo",
         "expr": "5 + random(8)",
         "flat": 5,
@@ -191,7 +191,7 @@ export const attPowerData: AttPowerData = {
       },
       {
         "match": "contains",
-        "pattern": "Minng Hammer",
+        "pattern": "Mining Hammer",
         "expr": "2 + random(3)",
         "flat": 2,
         "randomN": 3
@@ -324,6 +324,7 @@ export const attPowerData: AttPowerData = {
           {
             "subWeapon": null,
             "when": [
+              "Archery > 9",
               "Archery < 20"
             ],
             "op": "set",
@@ -332,6 +333,7 @@ export const attPowerData: AttPowerData = {
           {
             "subWeapon": null,
             "when": [
+              "Archery > 19",
               "Archery < 30"
             ],
             "op": "set",
@@ -340,7 +342,7 @@ export const attPowerData: AttPowerData = {
           {
             "subWeapon": null,
             "when": [
-              "Archery > 30"
+              "Archery > 29"
             ],
             "op": "add",
             "value": 1
@@ -1060,52 +1062,6 @@ export const attPowerData: AttPowerData = {
             "subWeapon": null,
             "when": [
               "HeavyArms > 60"
-            ],
-            "op": "add",
-            "value": 1
-          },
-          {
-            "subWeapon": null,
-            "when": [
-              "HeavyArms > 70"
-            ],
-            "op": "add",
-            "value": 1
-          },
-          {
-            "subWeapon": null,
-            "when": [
-              "HeavyArms > 90"
-            ],
-            "op": "add",
-            "value": 1
-          },
-          {
-            "subWeapon": null,
-            "when": [
-              "HeavyArms > 98"
-            ],
-            "op": "add",
-            "value": 1
-          }
-        ]
-      },
-      {
-        "weaponMatch": "exact",
-        "pattern": "Gold Sword",
-        "tiers": [
-          {
-            "subWeapon": null,
-            "when": [
-              "HeavyArms > 10"
-            ],
-            "op": "add",
-            "value": 1
-          },
-          {
-            "subWeapon": null,
-            "when": [
-              "HeavyArms > 20"
             ],
             "op": "add",
             "value": 1

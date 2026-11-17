@@ -35,7 +35,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [casino](#casino) | 0 |
 | [chat](#chat) | 0 |
 | [client](#client) | 0 |
-| [combat](#combat) | 29 |
+| [combat](#combat) | 0 |
 | [crafting](#crafting) | 28 |
 | [economy](#economy) | 33 |
 | [housing](#housing) | 20 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **287** |
+| **Total** | **258** |
 
 ## admin
 
@@ -69,180 +69,7 @@ No kept bugs (all seventeen former entries were fixed; see [core differences](di
 
 ## combat
 
-### "You cannot fight here!" repeats while attack is held
-- **What you notice:** on a map where fighting is not allowed, holding the attack key sends "You cannot fight here!" over and over rather than once. In SSO's chat you see one line with a growing ×N count, because identical lines are collapsed.
-- **In 1.6 and SSO:** the message is sent every frame the key is held. SSO sends it on every rejected tick; the chat window collapses identical consecutive lines.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`)
-- **Pinned by:** `kept bug: off an arena tile on a no-fight map, every held frame says it` (packages/server/tests/monsters.test.ts)
-
-### Hold stops walking but not attacking
-- **What you notice:** while a Hold spell has you rooted, you can't walk or turn, but you can still swing.
-- **In 1.6 and SSO:** the attack key is checked before the Hold gate on movement. SSO does the same: the Hold counter gates steps and turns only, and the attack poll runs regardless.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`)
-- **Pinned by:** `kept bug: Hold stops walking but not attacking: the key is polled before the Hold gate` (packages/server/tests/melee.test.ts)
-
-### Axes wait 15 frames between swings below Axe Fighting 90
-- **What you notice:** with an axe, every swing is followed by a wait of 15 frames instead of the normal 14 until your Axe Fighting reaches 90. At 90 and above you get the normal wait (10 with the Ring of Quickness).
-- **In 1.6 and SSO:** the axe skill steps are checked from low to high, from 25 frames at the lowest skills down to 15, and the last step that matches wins. So every skill below 90 ends on 15. SSO runs the same ladder in the same order.
-- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`)
-- **Pinned by:** `kept bug: axe cascade gives AtDelay 15 below AxeFighting 90, so 16 frames` (packages/shared/tests/combat/combat.test.ts)
-
-### Mining Hammers swing every 8 frames below Mining 90, then slow to 15
-
-- **What you notice:** a Mining Hammer swings every 8 frames at any Mining skill below 90, then jumps to the normal 15 frames at 90 and above. The skill ladder is written to speed up from AtDelay 15 to 7, but the fastest step applies from the first swing.
-- **In 1.6 and SSO:** the mining skill steps are checked from low to high, from AtDelay 15 at the lowest skills down to 7, and the last step that matches wins. So every skill below 90 ends on 7; at 90 and above none match and the base AtDelay 14 applies. SSO runs the same ladder in the same order.
-- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`)
-- **Pinned by:** `kept bug: Mining Hammer swings every 8 frames below Mining 90, then 15 at 90+` (packages/shared/tests/combat/combat.test.ts)
-
-### A fishing pole swings slowly even with the Ring of Quickness
-- **What you notice:** a Fishing Pole always makes you wait 20 frames between swings, and the Ring of Quickness does not shorten it.
-- **In 1.6 and SSO:** the pole's wait is set after the ring's speed-up has been applied, so it overwrites it. SSO sets them in the same order.
-- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`)
-- **Pinned by:** `kept bug: fishing pole ignores the Ring of Quickness, 21 frames` (packages/shared/tests/combat/combat.test.ts)
-
-### Holding the attack key swings one frame slower than the cooldown
-- **What you notice:** if you hold Tab, you swing once every 15 frames by default, one more than the 14-frame cooldown.
-- **In 1.6 and SSO:** the game only marks you as ready to attack at the start of a frame where the cooldown has already reached 0, which is after the previous frame's countdown and before it checks the key. So a held key attacks every cooldown plus one frames. SSO's server runs its steps in the same order and checks whether the key is held on every tick.
-- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`tickAttackTimers`); `packages/server/src/systems/combat/melee.ts` (`pollAttack`)
-- **Pinned by:** `kept bug: holding attack swings every AtDelay + 1 = 15 frames` (packages/shared/tests/combat/combat.test.ts)
-
-### Big monsters can only be hit through the tile you face
-- **What you notice:** the Overlord and the Mutant Worm are wider than one tile, but you can only hit their extra tiles when you are facing them. A big monster whose extra tiles sit under your own feet is missed.
-- **In 1.6 and SSO:** the extra tiles are tested only against the tile you face. The test against your own tile uses the monster's main tile only. SSO does the same tests on the server's positions.
-- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`meleeReaches`, `FOOTPRINT_CELLS`)
-- **Pinned by:** `kept bug: the 3x2 footprint is tested only on the faced tile` (packages/shared/tests/combat/combat.test.ts)
-
-### A bow with no arrows melees for 1; with no crystals it wastes the swing
-- **What you notice:** swing a bow with no arrows and you simply hit for 1 as in melee. With arrows but no crystal of the right colour, the swing is lost: you wait the cooldown, your attack bar resets and you leave combat.
-- **In 1.6 and SSO:** the attack power is set to 1 and the swing carries on as a normal melee hit when there are no arrows. With arrows but no crystal, the swing ends after the cooldown and bar reset. SSO does the same.
-- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`attackPower`)
-- **Pinned by:** `bow without arrows melees for 1` (packages/shared/tests/combat/combat.test.ts); `bow with arrows and no crystal wastes the swing` (packages/shared/tests/combat/combat.test.ts)
-
-### A player who just stepped away is hit by a swing at the wrong tile
-- **What you notice:** if a player is part-way through a step, your swing can hit them on a tile they are not near, and can miss them on the tile they just left.
-- **In 1.6 and SSO:** the check for the victim's old tile reads the old Y coordinate twice and compares it with both the X and the Y of the tile you face. SSO does the same while the victim is mid-step, with the same rule for comparing text and numbers as the original had.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pvpSwing`)
-- **Pinned by:** `kept bug: the victim's old-tile test uses the old Y twice: a victim stepping from (9,4) is hit by a swing at (4,4)`; `kept bug: a victim who has just left the faced tile is missed when its old Y is not the faced X` (packages/server/tests/melee.test.ts)
-
-### Parry and Block rolls start out almost never succeeding
-- **What you notice:** at very low Parry or Block skill, monsters almost never get parried or blocked. Against players the odds start from a draw out of 90 for any skill.
-- **In 1.6 and SSO:** against monsters the Parry and Block draws are out of 3000 until the skill is above 10, then step down through the skill ladder. Against players Parry starts from a draw out of 90 whatever the skill. SSO ports both ladders.
-- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`dodgeRoll`); `packages/shared/src/rules/combat/armour.ts` (`pvpDodge`)
-- **Pinned by:** `kept bug: parry and block are random(3000) until the skill is over 10` (packages/shared/tests/combat/combat.test.ts). `PvP parry: base random(90), then one draw per threshold passed` (packages/shared/tests/inventory/inventory.test.ts).
-
-### A swing that also hits a monster never hurts a player
-- **What you notice:** if one swing hits a monster, no player takes damage from it, even if one stands on the same tile.
-- **In 1.6 and SSO:** the monster damage added to the Attack message leaves a field that other players read as an arrow shot, so they skip the player-hit check. SSO does the same: a swing that damages any monster hits no player.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`)
-- **Pinned by:** `kept bug: a swing that also hits a monster deals no PvP damage` (packages/server/tests/inventory.test.ts)
-
-### With Block at 0, players never block each other's hits
-- **What you notice:** a player with no Block skill can never block a player's hit. Only Faction 3 players can block at 0.
-- **In 1.6 and SSO:** the player-versus-player block roll has no starting draw, so at Block 0 it keeps the value left over from the parry roll, which is at least 2. Faction 3's subtraction and re-roll is the only way it can come out as a block. SSO ports it literally.
-- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`pvpDodge`)
-- **Pinned by:** `kept bug: PvP Block 0 never blocks` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Holy Shield wins only after the dodge rolls have been spent
-- **What you notice:** a player or monster who hits an innocent standing on a Holy Shield gets "Shield" as the result, but the parry and block dice were rolled first and used up.
-- **In 1.6 and SSO:** the shield check comes after the parry and block draws in both the player and the monster hit handlers. The draws are consumed and then the Shield outcome wins. SSO draws in the same order.
-- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`pvpHit`); `packages/shared/src/rules/combat/combat.ts` (`monsterHitsPlayer`)
-- **Pinned by:** `kept bug: an innocent on a Holy Shield's exact spot gets Shield after the parry and block draws` (packages/server/tests/spells.test.ts)
-
-### The message about a missing green crystal says "geen"
-- **What you notice:** a bow with Green Arrows and no green crystal prints "You don't have any geen crystals left!"
-- **In 1.6 and SSO:** the original text has this typo, and SSO prints the same text.
-- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`attackPower`)
-- **Pinned by:** `kept bug: "geen crystals"` (packages/shared/tests/inventory/inventory.test.ts)
-
-### The Adventurer's parry and block bonus hardly helps against players
-- **What you notice:** Faction 3 players get a parry and block bonus, but against other players it barely changes anything. Against monsters it helps a lot.
-- **In 1.6 and SSO:** the bonus subtracts 4 (parry) or 10 (block) from the draw, and a result below 1 is re-rolled from a draw out of 90 rather than clamped to 1. A chance of 1 in N only rises to about 1.04 in N for parry or 1.11 in N for block. Against monsters the same subtraction clamps to 1, which gives about 11 in N. SSO ports both literally.
-- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`pvpDodge`); `packages/shared/src/rules/combat/combat.ts` (`dodgeRoll`)
-- **Pinned by:** `kept bug: faction-3 parry/block bonus nearly void in PvP: a draw pushed below 1 is re-rolled as random(90), not clamped to 1 as against monsters` (packages/shared/tests/inventory/inventory.test.ts)
-
-### A negative defense bonus cuts damage you take
-- **What you notice:** a negative defense bonus does not make you take more damage; it lowers the damage as well.
-- **In 1.6 and SSO:** when the bonus is below 0 it is added to the attack power, which makes it smaller, the opposite of what the sign suggests. SSO does the same.
-- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`randomAndDefense`)
-- **Pinned by:** `kept bug: negative DefenseBonus also reduces damage` (packages/shared/tests/combat/combat.test.ts)
-
-### Ice and fire armour change the shown damage, not what you lose
-- **What you notice:** wearing elemental armour against the Yeti, Snow Serpent, Snow Demon or Fire Demon changes the floating number you see, but you lose the full amount of hit points anyway.
-- **In 1.6 and SSO:** the hit points are taken off before the Ice and Fire modifiers are worked out, and those only change the number shown. SSO subtracts first, then computes the displayed number with the modifiers.
-- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`monsterHitShown`)
-- **Pinned by:** `monster hit shown after the HP loss: elemental vs "a Yeti"` (packages/shared/tests/inventory/inventory.test.ts)
-
-### No monster is protected from armour-breaking
-- **What you notice:** every monster can break your armour, including the ones the game meant to exclude.
-- **In 1.6 and SSO:** the exclusion list holds bare monster names, but the check is handed the name with "a " in front, so nothing ever matches. SSO lets every monster break armour.
-- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`rollArmourBreak`)
-- **Pinned by:** `kept bug: the armour exclusion list never matches "a <name>"` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Immortals take damage from players but not from monsters
-- **What you notice:** an immortal player is untouched by monsters, but another player's swing still hurts them.
-- **In 1.6 and SSO:** the monster hit handler exits for immortals, and the player-versus-player one has no such check. SSO does the same: immortals take PvP melee damage, not monster damage.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pvpSwing`); `packages/server/src/systems/monsters/attack.ts` (`hitMe2`)
-- **Pinned by:** `immortals take no monster damage` (packages/server/tests/monsters.test.ts). `kept bug: immortals take PvP damage` (packages/server/tests/inventory.test.ts).
-
-### Weapon name matching gives odd attack power for some items
-- **What you notice:** a few items get the wrong attack power. A book is treated like a bow, a Mining Hammer gets no base power and stays at 1, Archery skill 30 gets no bonus at all, and the Gold Sword's Heavy Arms bonus is added twice.
-- **In 1.6 and SSO:** the attack power code matches names loosely ("Bo" matches books and bows), has a typo ("Minng Hammer"), resets power for Archery below 30 and has a gap at exactly 30, and runs the Gold Sword's Heavy Arms block twice. SSO ports the original's attack power table literally.
-- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`attackPower`, `tierApplies`)
-- **Pinned by:** `kept bug: "Bo" matches books and bows: a book rolls the Bo row 5 + random(8)`; `kept bug: the "Minng Hammer" typo: a Mining Hammer gets no base row and stays at 1`; `kept bug: Archery < 30 resets the bow's power, and Archery = 30 gets no tier at all`; `kept bug: Gold Sword's HeavyArms block runs twice: +11 at HeavyArms 100` (packages/shared/tests/combat/combat.test.ts)
-
-### Holding attack on an arena tile swings every 14 frames
-- **What you notice:** on a no-fight map, holding attack on an arena tile swings every 14 frames (10 with the Ring of Quickness), and every swing repeats the last bar tier instead of resetting it.
-- **In 1.6 and SSO:** on a no-fight map the arena tile branch swings without checking that you are ready to attack, so it swings on the frame the cooldown reaches 0, before the bar block runs. The swing never resets the bar's picture. SSO polls the key the same way on the server.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`, `onArenaTile`)
-- **Pinned by:** `kept bug: on a no-fight map an arena tile swings every 14 frames and repeats the tier` (packages/server/tests/monsters.test.ts)
-
-### Arena tiles at the ends of a row do not make an arena
-- **What you notice:** a map whose arena tiles sit only in the first or last column answers a challenge with "This is not an arena!".
-- **In 1.6 and SSO:** the arena test needs a space on both sides of the tile marker, and a layer row has none at either end. So a marker only in column 1 or 17 never matches. SSO runs the same test on the pieces of the map record: the 48 layer rows, the three signs and the title.
-- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`recordHasArena`)
-- **Pinned by:** `kept bug: a 6P only in column 1 or 17 is not an arena` (packages/shared/tests/combat/arena.test.ts)
-
-### A challenge on some arenas always fails without a word
-- **What you notice:** you challenge on a map the game accepts as an arena, but nothing happens and nothing is said.
-- **In 1.6 and SSO:** the arena check accepts a marker on layers 2 and up, on rows 10-12, or in a sign or the title. But the search for the tile reads only layer 1, rows 1-9, so all 799 tries miss and there is no message. SSO does the same.
-- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`findArenaTile`, `recordHasArena`)
-- **Pinned by:** `kept bug: an arena only on layers 2-S or rows 10-12 passes check 3 and is never found` (packages/shared/tests/combat/arena.test.ts)
-
-### A challenge sometimes fails silently by chance
-- **What you notice:** now and then a challenge does nothing and says nothing, even on a good arena. With a single arena tile it happens about 2% of the time.
-- **In 1.6 and SSO:** the game makes 799 random tries over the 204 cells of the map record (17 by 12) and gives up quietly if none lands on an arena tile. SSO makes the same tries with its seeded random source.
-- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`findArenaTile`)
-- **Pinned by:** `kept bug: one 6P tile fails about 2% of the time` (packages/shared/tests/combat/arena.test.ts)
-
-### Nothing stops two players sharing one arena tile
-- **What you notice:** a challenge or a quit can put you on a tile where a player, a monster or a blocking ground item already is.
-- **In 1.6 and SSO:** neither the challenge nor the exit tests for anyone or anything on the tile. SSO does the same, so two players can stand on one tile.
-- **In the code:** `packages/server/src/systems/combat/arena.ts` (`challenge`, `hopTo`)
-- **Pinned by:** `kept bug: nothing checks who stands on the arena tile` (packages/server/tests/arena.test.ts)
-
-### Being held or waiting to respawn does not stop the arena commands
-- **What you notice:** a Held player can type quit and leave the Hold, and a player in the wait after death can Challenge. The respawn still warps them when the wait ends.
-- **In 1.6 and SSO:** the challenge and quit commands test only whether you are mid-animation. SSO does the same.
-- **In the code:** `packages/server/src/systems/combat/arena.ts` (`challenge`, `quitArena`)
-- **Pinned by:** `kept bug: Hold and the death wait don't stop the arena words` (packages/server/tests/arena.test.ts)
-
-### Arena tiles on map rows 10 to 12 are never recognised
-- **What you notice:** an arena drawn with tiles on rows 10 to 12 of a map does not count as an arena, and a death there is a normal death.
-- **In 1.6 and SSO:** the arena test reads the wrong field of the map record for those rows (fields 10 to 12). SSO copies the lookup, which matters only if someone draws an arena on those rows.
-- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`isArenaTile`)
-- **Pinned by:** `kept bug: arena rows 10-12 are not arena tiles: the test reads map fields 10-12` (packages/server/tests/monsters.test.ts)
-
-### A monster's loot drops on the tile it was heading for
-- **What you notice:** a killed monster's loot appears on the tile it was walking into, not the tile it was drawn on.
-- **In 1.6 and SSO:** the drop uses the monster's recorded position, which is set to the step's destination when the step starts. SSO drops the loot on the monster's logical tile, which is the same tile.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`rollLoot`, `addGround`); `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
-- **Pinned by:** `kept bug: loot lands on the tile the monster was walking into` (packages/server/tests/inventory.test.ts)
-
-### Only melee kills are spared the death penalties in a Lightning game
-- **What you notice:** During a Lightning game, a kill by arrow, spell or monster still takes the drop, head, stat penalty and exile, even though the game says all death penalties are off.
-- **In 1.6 and SSO:** Only the melee hit in 1.6 checks for a Lightning game; a bow with no arrows swings as melee. SSO does the same.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`lightning`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
-- **Pinned by:** `kept bug: a death that is not a Lightning melee hit takes every penalty` (packages/server/tests/assassin.test.ts)
+No kept bugs (all twenty-nine former entries were fixed; see [combat differences](divergences.md#combat)).
 
 ## crafting
 

@@ -165,6 +165,16 @@ describe("fishing", () => {
     expect(fx).toMatchObject({ name: "Fishing", h: 5 * 32 + 14 - 5, v: 6 * 32 - 3 - 17 });
   });
 
+  test("bug fixed: the Ring of Quickness shortens a cast's AtDelay from 20 to 16", () => {
+    const f = fisher(rngByN({ 28: [1] }));
+    f.a.char.equip.ring = "Ring of Quickness";
+    setSkill(f.a, "Fishing", 20);
+    setAttackHeld(f.a, true);
+    const swing = f.run(1);
+    expect(events(swing, "a").find((e) => e.e === "swing")).toMatchObject({ atDelay: 16 });
+    expect(f.a.timers.atDelay).toBe(16);
+  });
+
   test("kept bug: D2 is water only on layer 2, which fishing never reads", () => {
     const f = fisher(rngByN({ 28: [1] }));
     setLayer(f.map, 0, 5, 5, "G1");

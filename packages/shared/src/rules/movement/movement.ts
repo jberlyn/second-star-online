@@ -40,6 +40,21 @@ export function isFootprint(name: string): boolean {
 }
 
 /**
+ * The tile a monster's sprite is drawn nearest: its start tile for the first half of a step, its
+ * logical tile (the step's destination) after that. Its loot drops here (a bug fixed: 1.6 dropped
+ * it on the destination tile from the moment the step began).
+ */
+export function monsterDrawnTile(
+  x: number,
+  y: number,
+  fromX: number,
+  fromY: number,
+  framesLeft: number,
+): { x: number; y: number } {
+  return framesLeft * 2 > MONSTER_STEP_FRAMES ? { x: fromX, y: fromY } : { x, y };
+}
+
+/**
  * The tile a monster's sprite stands on when a player's arrow is tested: its tile while standing,
  * its start tile on the tick a step begins (`framesLeft` = 16), nowhere in between. Null when
  * between tiles.

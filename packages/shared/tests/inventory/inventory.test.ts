@@ -14,8 +14,8 @@ import {
   rollWeaponBreak,
   shattersText,
 } from "../../src/rules/combat/armour.ts";
-import { attackPower } from "../../src/rules/combat/attpower.ts";
-import { monsterHitShown, monsterHitsPlayer } from "../../src/rules/combat/combat.ts";
+import { attackPower, bowRefusal } from "../../src/rules/combat/attpower.ts";
+import { monsterHitsPlayer } from "../../src/rules/combat/combat.ts";
 import {
   type Equipment,
   type Fighter,
@@ -266,39 +266,42 @@ describe("armour and PvP", () => {
   test("PvP parry: base random(90), then one draw per threshold passed", () => {
     const rng = scripted([2, 2, 2, 2, 2]);
     pvpHit(10, fighter({ skills: zeroSkills() }), "Knife", 0, rng);
-    // random(3) for the attack, then one parry draw at Parry 0, no block draw at Block 0.
-    expect(rng.calls).toEqual([3, 90]);
+    // random(3) for the attack, then one parry draw and one block draw at skill 0.
+    expect(rng.calls).toEqual([3, 90, 90]);
     const skills = zeroSkills();
     skills[skillIndex("Parry")] = 15;
     const at15 = scripted([2]);
     pvpHit(10, fighter({ skills }), "Knife", 0, at15);
-    expect(at15.calls).toEqual([3, 90, 90, 90]);
+    expect(at15.calls).toEqual([3, 90, 90, 90, 90]);
   });
-  test("kept bug: faction-3 parry/block bonus nearly void in PvP: a draw pushed below 1 is re-rolled as random(90), not clamped to 1 as against monsters", () => {
+  test("bug fixed: the faction-3 parry/block bonus clamps a draw pushed below 1 to 1 in PvP, as against monsters", () => {
     const adventurer = fighter({ skills: zeroSkills(), faction: { ...NO_FACTION, id: 3 } });
-    // PvP: random(3) = 2; parry draw 3 − 4 < 1 → random(90) = 5, no parry; block 5 − 10 < 1 →
-    // random(90) = 7, no block: a hit.
-    const pvp = scripted([2, 3, 5, 7]);
-    expect(pvpHit(10, adventurer, "Knife", 0, pvp).kind).toBe("hit");
-    expect(pvp.calls).toEqual([3, 90, 90, 90]);
-    // Only a re-roll of exactly 1 parries.
-    expect(pvpHit(10, adventurer, "Knife", 0, scripted([2, 3, 1]))).toEqual({ kind: "parry" });
-    // Against a monster the same low draw clamps to 1: random(3000) = 8 − 10 → 1, a parry.
+    // PvP: random(3) = 2; parry draw 3 − 4 < 1 → 1, a parry.
+    const pvp = scripted([2, 3]);
+    expect(pvpHit(10, adventurer, "Knife", 0, pvp)).toEqual({ kind: "parry" });
+    expect(pvp.calls).toEqual([3, 90]);
+    // Parry 9 − 4 = 5 misses; block 7 − 10 → 1, a block.
+    expect(pvpHit(10, adventurer, "Knife", 0, scripted([2, 9, 7]))).toEqual({ kind: "block" });
+    // Against a monster the same low draw clamps to 1: random(90) = 8 − 10 → 1, a parry.
     expect(monsterHitsPlayer(10, adventurer, 0, scripted([2, 8]))).toEqual({ kind: "parry" });
   });
-  test("kept bug: PvP Block 0 never blocks", () => {
-    const rng = scripted([3, 1]);
+  test("bug fixed: PvP Block 0 can block", () => {
+    // random(3) = 3, parry random(90) = 2, block random(90) = 1.
+    const rng = scripted([3, 2, 1]);
     expect(pvpHit(10, fighter({ skills: zeroSkills() }), "Knife", 0, rng)).toEqual({
-      kind: "parry",
+      kind: "block",
     });
     expect(pvpHit(10, fighter({ skills: zeroSkills() }), "Knife", 0, scripted([3, 2]))).toEqual({
       kind: "hit",
       dmg: 13,
     });
   });
-  test('monster hit shown after the HP loss: elemental vs "a Yeti"', () => {
-    expect(monsterHitShown(10, gear({ body: "Ice Armor" }), "a Yeti", scripted([1]))).toBe(3);
-    expect(monsterHitShown(5, gear({ body: "Ice Armor" }), "a Yeti", scripted([2]))).toBe(2);
+  test("bug fixed: a Holy Shield gives Shield in PvP before any draw", () => {
+    const rng = scripted([1]);
+    expect(pvpHit(10, fighter({ skills: zeroSkills() }), "Knife", 0, rng, true)).toEqual({
+      kind: "shield",
+    });
+    expect(rng.calls).toEqual([]);
   });
   test("HitMe2 runs the armour rows before random(3)", () => {
     const f = fighter({ equip: gear({ body: "Leather Armor" }), skills: zeroSkills() });
@@ -314,14 +317,17 @@ describe("breaks", () => {
   test("armour: draw the break chance first, then up to four three-way slot picks", () => {
     const e = gear({ head: "Plate Helm" });
     const rng = scripted([1, 1, 3, 1, 2]);
-    expect(rollArmourBreak(e, 10, 1000, "a Slime", rng)).toBe("Head");
+    expect(rollArmourBreak(e, 10, 1000, "a Goblin", rng)).toBe("Head");
     expect(rng.calls).toEqual([631, 3, 3, 3, 3]);
     const none = scripted([1, 1]);
-    expect(rollArmourBreak(gear({}), 10, 1000, "a Slime", none)).toBeNull();
+    expect(rollArmourBreak(gear({}), 10, 1000, "a Goblin", none)).toBeNull();
     expect(none.calls).toEqual([631, 3, 3, 3, 3]);
   });
-  test('kept bug: the armour exclusion list never matches "a <name>"', () => {
-    expect(rollArmourBreak(gear({ body: "Chain Armor" }), 1, 0, "a Slime", scripted([1, 1]))).toBe(
+  test('bug fixed: the armour exclusion list matches "a <name>"', () => {
+    const slime = scripted([1, 1]);
+    expect(rollArmourBreak(gear({ body: "Chain Armor" }), 1, 0, "a Slime", slime)).toBeNull();
+    expect(slime.calls).toEqual([]);
+    expect(rollArmourBreak(gear({ body: "Chain Armor" }), 1, 0, "a Goblin", scripted([1, 1]))).toBe(
       "Body",
     );
   });
@@ -341,11 +347,12 @@ describe("breaks", () => {
 });
 
 describe("arrows and crystals", () => {
-  test('kept bug: "geen crystals"', () => {
+  test('bug fixed: "green crystals", not "geen"', () => {
     const f = fighter({ equip: gear({ weapon: "Wooden Bow", offHand: "Green Arrows" }) });
     expect(attackPower(f, scripted([1]), () => false).outOfCrystals).toBe(
-      "You don't have any geen crystals left!",
+      "You don't have any green crystals left!",
     );
+    expect(bowRefusal(f.equip, [])).toBe("You don't have any green crystals left!");
   });
 });
 

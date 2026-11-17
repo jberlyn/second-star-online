@@ -9,7 +9,6 @@ import {
   castLine,
   EDITOR_MONSTERS,
   FACING_DELTA,
-  FISHING_AT_DELAY,
   fishingOffset,
   GATHER_TEXT,
   gatherTool,
@@ -33,6 +32,7 @@ import {
   skillGainRule,
   skillIndex,
   sprinkleOffset,
+  swingCooldowns,
   TREASURE,
   tileAt,
   wateredTile,
@@ -115,7 +115,8 @@ const sound = (p: Player, name: string, ch: number): Outgoing => ({
 /**
  * The attack routine's tool casts, before the attack power: the Watering Bucket's `sprinkle` on
  * every swing not facing north, and the Fishing Pole facing layer-1 water (the `Fishing` FX,
- * an attack delay of 20, and the fish drop). Returns the attack delay the swing leaves, or null.
+ * an attack delay of 20, less the Ring of Quickness's speed-up, and the fish drop). Returns the
+ * attack delay the swing leaves, or null.
  */
 export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents): number | null {
   const weapon = p.char.equip.weapon;
@@ -165,7 +166,8 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
     }
   }
   ev.out.push(...io.out);
-  return FISHING_AT_DELAY;
+  // The Ring of Quickness shortens the cast (`swingCooldowns`).
+  return swingCooldowns(p.char.equip, p.char.skills).atDelay;
 }
 
 /**

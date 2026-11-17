@@ -1,8 +1,8 @@
 /**
  * The arena challenge: `Challenge` and `quit` typed as chat lines, and the hop they share with the
- * arena death. The checks and rolls are in shared/rules/combat/arena.ts. Neither command tests the
- * Airship, Hold, the death wait or HP, so Hold and the death wait don't stop the arena words (a
- * kept 1.6 bug).
+ * arena death. The checks and rolls are in shared/rules/combat/arena.ts. Hold and the death wait
+ * refuse both commands, and neither puts you on a tile someone or something already holds (bugs
+ * fixed; 1.6 tested only for a step in progress).
  */
 import {
   ARENA_TEXT,
@@ -14,10 +14,48 @@ import {
   pickArenaExit,
   quitCheck,
   type Rng,
+  type TileTaken,
 } from "@secondstaronline/shared";
 
+import { groundBlocks } from "../inventory/items.ts";
+import { isFootprint } from "../monsters/slots.ts";
 import { aqsToMap } from "../social/factions.ts";
-import { type Outgoing, type Player, playerView, type World } from "../world/world.ts";
+import { type Outgoing, type Player, playerView, type Room, type World } from "../world/world.ts";
+
+const FOOTPRINT_TILES: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [0, -1],
+  [1, -1],
+  [2, -1],
+];
+
+/**
+ * A tile already holding another player, a live monster (any tile of an Overlord's or Mutant
+ * Worm's footprint) or a ground item that blocks walking.
+ */
+export function arenaTileTaken(room: Room | undefined, self: Player): TileTaken {
+  if (!room) {
+    return () => false;
+  }
+  return (x, y) =>
+    room.players.some((o) => o !== self && o.x === x && o.y === y) ||
+    room.map.slots.some((s) => {
+      const m = s.live;
+      if (!m) {
+        return false;
+      }
+      const cells = isFootprint(m.name) ? FOOTPRINT_TILES : FOOTPRINT_TILES.slice(0, 1);
+      return cells.some(([cx, cy]) => m.x + cx === x && m.y + cy === y);
+    }) ||
+    groundBlocks(room, self, x, y);
+}
+
+/** Hold, or the wait after death, as the arena checks see them. */
+function arenaState(p: Player): { held: boolean; dead: boolean } {
+  return { held: p.spell.hold > 0, dead: p.deadLock > 0 || p.dontHitMeAgain };
+}
 
 /**
  * The hop (the `3` message): a teleport with no walk. The mover's own client is told through
@@ -53,31 +91,39 @@ function checkText(p: Player, r: ArenaCheck): Outgoing[] | null {
 export function challenge(world: World, p: Player, rng: Rng): Outgoing[] {
   const r = challengeCheck({
     stepFrames: p.stepFrames,
+    ...arenaState(p),
     layer1: p.map.layers[0],
     x: p.x,
     y: p.y,
-    record: { layers: p.map.layers, signs: p.map.signs, title: p.map.title },
   });
   const early = checkText(p, r);
   if (early) {
     return early;
   }
-  const tile = findArenaTile(p.map.layers[0], rng);
+  const room = world.rooms.get(p.map.name);
+  const tile = findArenaTile(p.map.layers[0], rng, arenaTileTaken(room, p));
   if (!tile) {
-    return []; // 799 misses: silent
+    return checkText(p, { kind: "text", text: ARENA_TEXT.full }) ?? [];
   }
   return [...aqsToMap(world, p, ARENA_TEXT.entered(p.name)), ...hopOut(world, p, tile.x, tile.y)];
 }
 
 /** The `quit` command. */
 export function quitArena(world: World, p: Player, rng: Rng): Outgoing[] {
-  const r = quitCheck({ stepFrames: p.stepFrames, layer1: p.map.layers[0], x: p.x, y: p.y });
+  const r = quitCheck({
+    stepFrames: p.stepFrames,
+    ...arenaState(p),
+    layer1: p.map.layers[0],
+    x: p.x,
+    y: p.y,
+  });
   const early = checkText(p, r);
   if (early) {
     return early;
   }
   const grid = p.vehicle === "Airship" ? p.map.walkAir : p.map.walk;
-  const tile = pickArenaExit(p.map.layers[0], grid, rng);
+  const room = world.rooms.get(p.map.name);
+  const tile = pickArenaExit(p.map.layers[0], grid, rng, arenaTileTaken(room, p));
   if (!tile) {
     return [];
   }

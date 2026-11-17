@@ -72,7 +72,7 @@
     ],
     [
       "Bo",
-      "c824531162c94472"
+      "bef02037b42a7ccf"
     ],
     [
       "Fire Sword",
@@ -131,8 +131,8 @@
       "1a215f99ac09d626"
     ],
     [
-      "Minng Hammer",
-      "36d9c55ed029aada"
+      "Mining Hammer",
+      "7847a295eb56f729"
     ],
     [
       "Fishing Pole",
@@ -186,7 +186,7 @@
   "attpower.json#/attPower/skillBlocks": [
     [
       "bow",
-      "c08692ca73d13cb0"
+      "4cd2870b14005a72"
     ],
     [
       "nothing",
@@ -207,10 +207,6 @@
     [
       "Long Sword",
       "46854cd23c059579"
-    ],
-    [
-      "Gold Sword",
-      "d1a9ac1f55bf34ab"
     ],
     [
       "katana",
@@ -261,7 +257,7 @@
       "364917251eec5984"
     ],
     [
-      "19",
+      "18",
       "3bbcf4a1a06df3c1"
     ]
   ],

@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { classesData } from "@secondstaronline/data";
 
 import { STEPFRAMES_PER_FRAME } from "../../src/constants.ts";
-import { attackPower, evalValue } from "../../src/rules/combat/attpower.ts";
+import { attackPower, bowRefusal, evalValue } from "../../src/rules/combat/attpower.ts";
 import {
   type AttackTimers,
   meleeDamageVsMonster,
@@ -81,36 +81,43 @@ function heldCadence(equip: Equipment, skills: number[]): number[] {
 
 describe("attack cadence", () => {
   const skills = fighter().skills;
-  test("kept bug: holding attack swings every AtDelay + 1 = 15 frames", () => {
-    expect(heldCadence(NO_EQUIPMENT, skills)).toEqual([15, 15, 15, 15]);
+  const withSkill = (skill: string, value: number) => {
+    const s = [...skills];
+    s[skillIndex(skill)] = value;
+    return s;
+  };
+  test("bug fixed: holding attack swings every AtDelay = 14 frames, not 15", () => {
+    expect(heldCadence(NO_EQUIPMENT, skills)).toEqual([14, 14, 14, 14]);
   });
-  test("Ring of Quickness: 11 frames", () => {
+  test("Ring of Quickness: 10 frames", () => {
     expect(heldCadence({ ...NO_EQUIPMENT, ring: "Ring of Quickness" }, skills)).toEqual([
-      11, 11, 11, 11,
+      10, 10, 10, 10,
     ]);
   });
-  test("kept bug: axe cascade gives AtDelay 15 below AxeFighting 90, so 16 frames", () => {
-    expect(heldCadence({ ...NO_EQUIPMENT, weapon: "Axe" }, skills)).toEqual([16, 16, 16, 16]);
+  test("bug fixed: the axe ladder slows low Axe Fighting, 25 frames at 0 down to 15 at 80-89", () => {
+    const axe = { ...NO_EQUIPMENT, weapon: "Axe" };
+    expect(heldCadence(axe, withSkill("AxeFighting", 0))).toEqual([25, 25, 25, 25]);
+    expect(heldCadence(axe, withSkill("AxeFighting", 15))).toEqual([22, 22, 22, 22]);
+    expect(heldCadence(axe, withSkill("AxeFighting", 55))).toEqual([18, 18, 18, 18]);
+    expect(heldCadence(axe, withSkill("AxeFighting", 89))).toEqual([15, 15, 15, 15]);
+    expect(heldCadence(axe, withSkill("AxeFighting", 90))).toEqual([14, 14, 14, 14]);
   });
-  test("kept bug: fishing pole ignores the Ring of Quickness, 21 frames", () => {
+  test("bug fixed: the Ring of Quickness shortens a fishing pole's 20 frames to 16", () => {
+    expect(heldCadence({ ...NO_EQUIPMENT, weapon: "Fishing Pole" }, skills)).toEqual([
+      20, 20, 20, 20,
+    ]);
     expect(
       heldCadence({ ...NO_EQUIPMENT, weapon: "Fishing Pole", ring: "Ring of Quickness" }, skills),
-    ).toEqual([21, 21, 21, 21]);
+    ).toEqual([16, 16, 16, 16]);
   });
-  test("kept bug: Mining Hammer swings every 8 frames below Mining 90, then 15 at 90+", () => {
-    const withMining = (mining: number) => {
-      const s = [...skills];
-      s[skillIndex("Mining")] = mining;
-      return s;
-    };
-    for (const mining of [0, 50, 89]) {
-      expect(heldCadence({ ...NO_EQUIPMENT, weapon: "Mining Hammer" }, withMining(mining))).toEqual(
-        [8, 8, 8, 8],
-      );
-    }
-    expect(heldCadence({ ...NO_EQUIPMENT, weapon: "Mining Hammer" }, withMining(90))).toEqual([
-      15, 15, 15, 15,
-    ]);
+  test("bug fixed: a Mining Hammer speeds up with Mining, 15 frames at 0 down to 7 from 80", () => {
+    const hammer = { ...NO_EQUIPMENT, weapon: "Mining Hammer" };
+    expect(heldCadence(hammer, withSkill("Mining", 0))).toEqual([15, 15, 15, 15]);
+    expect(heldCadence(hammer, withSkill("Mining", 25))).toEqual([13, 13, 13, 13]);
+    // AtDelay 9 at 60-69; the action delay (14 step calls, 7 frames) does not bind.
+    expect(heldCadence(hammer, withSkill("Mining", 65))).toEqual([9, 9, 9, 9]);
+    expect(heldCadence(hammer, withSkill("Mining", 85))).toEqual([7, 7, 7, 7]);
+    expect(heldCadence(hammer, withSkill("Mining", 100))).toEqual([7, 7, 7, 7]);
   });
 });
 
@@ -124,13 +131,13 @@ describe("power bar", () => {
     }
     return startSwing(t, NO_EQUIPMENT, fighter().skills);
   }
-  test("kept bug: tiers come from the member windows: +0 until t+39, +3, +5 from t+64, +7 from t+89", () => {
+  test("tiers come from the member windows: +0 until t+38, +3, +5 from t+63, +7 from t+88", () => {
     expect(bonusAfterWait(15)).toBe(0);
-    expect(bonusAfterWait(38)).toBe(0);
-    expect(bonusAfterWait(39)).toBe(3);
-    expect(bonusAfterWait(63)).toBe(3);
-    expect(bonusAfterWait(64)).toBe(5);
-    expect(bonusAfterWait(89)).toBe(7);
+    expect(bonusAfterWait(37)).toBe(0);
+    expect(bonusAfterWait(38)).toBe(3);
+    expect(bonusAfterWait(62)).toBe(3);
+    expect(bonusAfterWait(63)).toBe(5);
+    expect(bonusAfterWait(88)).toBe(7);
     expect(bonusAfterWait(400)).toBe(7);
   });
   test("the bar value resets on a swing, its member does not", () => {
@@ -160,15 +167,19 @@ describe("AttPower", () => {
     expect(evalValue("random(4)", maxRng)).toBe(4);
     expect(evalValue("2 + random(3)", maxRng)).toBe(5);
   });
-  test("bow without arrows melees for 1", () => {
-    const f = fighter({ str: 20, equip: { ...NO_EQUIPMENT, weapon: "Wooden Bow" } });
-    expect(attackPower(f, minRng)).toEqual({ power: 1, outOfCrystals: null, crystal: null });
+  test("bug fixed: a bow with no arrows, or no crystal for them, is refused before the swing", () => {
+    const bow = { weapon: "Wooden Bow", offHand: "NOTHING" };
+    expect(bowRefusal(bow, [])).toBe("You don't have any arrows!");
+    const arrows = { weapon: "Wooden Bow", offHand: "Blue Arrows" };
+    expect(bowRefusal(arrows, [])).toBe("You don't have any blue crystals left!");
+    expect(bowRefusal(arrows, [{ item: "Blue Crystal", qty: 1 }])).toBeNull();
+    // Anything that is not a bow is never refused.
+    expect(bowRefusal({ weapon: "Knife", offHand: "NOTHING" }, [])).toBeNull();
   });
-  test("bow with arrows and no crystal wastes the swing", () => {
+  test("bow with arrows spends a crystal of their colour", () => {
     const f = fighter({
       equip: { ...NO_EQUIPMENT, weapon: "Wooden Bow", offHand: "Blue Arrows" },
     });
-    expect(attackPower(f, minRng).outOfCrystals).toBe("You don't have any blue crystals left!");
     expect(attackPower(f, minRng, () => true).crystal).toBe("Blue");
   });
 });
@@ -182,40 +193,43 @@ describe("AttPower string-matching quirks", () => {
     }
     return fighter({ skills, equip: { ...NO_EQUIPMENT, weapon, offHand } });
   };
-  test('kept bug: "Bo" matches books and bows: a book rolls the Bo row 5 + random(8)', () => {
+  test('bug fixed: the "Bo" row matches only the Bo, not books and bows', () => {
     const rng = scripted([1]);
-    expect(attackPower(armed("Book of Fire"), rng).power).toBe(6);
+    expect(attackPower(armed("Bo"), rng).power).toBe(6);
     expect(rng.calls).toEqual([8]);
+    const book = scripted([1]);
+    expect(attackPower(armed("Book of Fire"), book).power).toBe(1);
+    expect(book.calls).toEqual([]);
     const bow = scripted([1]);
     attackPower(armed("Wooden Bow", {}, "Blue Arrows"), bow, () => true);
-    expect(bow.calls[0]).toBe(8);
+    expect(bow.calls[0]).not.toBe(8);
   });
-  test('kept bug: the "Minng Hammer" typo: a Mining Hammer gets no base row and stays at 1', () => {
+  test("bug fixed: a Mining Hammer rolls its base row 2 + random(3)", () => {
     const rng = scripted([1]);
-    expect(attackPower(armed("Mining Hammer"), rng).power).toBe(1);
-    expect(rng.calls).toEqual([]);
-    expect(attackPower(armed("Minng Hammer"), scripted([1])).power).toBe(3);
+    expect(attackPower(armed("Mining Hammer"), rng).power).toBe(3);
+    expect(rng.calls).toEqual([3]);
   });
-  test("kept bug: Archery < 30 resets the bow's power, and Archery = 30 gets no tier at all", () => {
+  test("bug fixed: the Archery tiers are steps, and Archery 30 gets its +1", () => {
     const shot = (archery: number) =>
       attackPower(
         armed("Wooden Bow", { Archery: archery }, "Blue Arrows"),
         scripted([1]),
         () => true,
       ).power;
-    // Below 10 all three resets run, the last (3 + random(4)) winning; 29 still resets.
-    expect(shot(5)).toBe(4);
+    // Below 30 the power is set by the step you are on, each step drawing its own roll.
+    expect(shot(5)).toBe(2);
+    expect(shot(15)).toBe(3);
     expect(shot(29)).toBe(4);
-    // 30 is neither < 30 nor > 30: the bow keeps what it had, less than at 29.
-    expect(shot(30)).toBe(2);
-    expect(shot(31)).toBe(3);
+    // From 30 the bow keeps its power (Wooden Bow 1 + Blue Arrows 1) and gains +1 per step.
+    expect(shot(30)).toBe(3);
+    expect(shot(41)).toBe(4);
   });
-  test("kept bug: Gold Sword's HeavyArms block runs twice: +11 at HeavyArms 100", () => {
+  test("bug fixed: Gold Sword's HeavyArms block runs once: +6 at HeavyArms 100", () => {
     const at = (heavy: number) =>
       attackPower(armed("Gold Sword", { HeavyArms: heavy }), scripted([1])).power;
-    expect(at(100) - at(0)).toBe(5 + 6);
-    // HeavyArms 65: > 10, > 20 in the first block; > 10, > 20, > 60 in the second.
-    expect(at(65) - at(0)).toBe(2 + 3);
+    expect(at(100) - at(0)).toBe(6);
+    // HeavyArms 65: > 10, > 20, > 60.
+    expect(at(65) - at(0)).toBe(3);
   });
 });
 
@@ -236,9 +250,11 @@ describe("melee vs monsters", () => {
     expect(meleeReaches(me, { x: 6, y: 5, footprint: false })).toBe(true);
     expect(meleeReaches(me, { x: 5, y: 6, footprint: false })).toBe(false);
   });
-  test("kept bug: the 3x2 footprint is tested only on the faced tile", () => {
-    // Overlord anchored at (4,6): its (5,5) cell is my own tile, which the footprint misses.
-    expect(meleeReaches({ x: 5, y: 5, facing: "N" }, { x: 4, y: 6, footprint: true })).toBe(false);
+  test("bug fixed: the 3x2 footprint is tested on my own tile as well as the faced tile", () => {
+    // Overlord anchored at (4,6): its (5,5) cell is my own tile.
+    expect(meleeReaches({ x: 5, y: 5, facing: "N" }, { x: 4, y: 6, footprint: true })).toBe(true);
+    // Facing away from it, with no cell under me, it is missed.
+    expect(meleeReaches({ x: 8, y: 5, facing: "E" }, { x: 4, y: 6, footprint: true })).toBe(false);
     // Facing east, the faced tile (6,5) is the (+2,−1) cell.
     expect(meleeReaches({ x: 5, y: 5, facing: "E" }, { x: 4, y: 6, footprint: true })).toBe(true);
   });
@@ -251,24 +267,45 @@ describe("monsters hitting players", () => {
     expect(monsterReaches({ x: 6, y: 6, footprint: false }, { x: 5, y: 5 })).toBe(false);
   });
   test("Slime hit: attack 1 + random(3), below 2 re-rolled as random(3)", () => {
-    // random(3) = 1 → 2; then parry random(3000) = 2, block random(3000) = 2.
+    // random(3) = 1 → 2; then parry random(90) = 2, block random(90) = 2.
     expect(monsterHitsPlayer(1, fighter(), 0, scripted([1, 2, 2]))).toEqual({
       kind: "hit",
       lost: 2,
     });
   });
-  test("kept bug: parry and block are random(3000) until the skill is over 10", () => {
+  test("bug fixed: parry and block start from random(90), not random(3000)", () => {
+    const zero = fighter({ skills: Array(38).fill(0) as number[] });
     const rng = scripted([3, 1]);
-    expect(monsterHitsPlayer(1, fighter(), 0, rng)).toEqual({ kind: "parry" });
-    expect(rng.calls).toEqual([3, 3000]);
+    expect(monsterHitsPlayer(1, zero, 0, rng)).toEqual({ kind: "parry" });
+    expect(rng.calls).toEqual([3, 90]);
   });
-  test("kept bug: negative DefenseBonus also reduces damage", () => {
-    expect(monsterHitsPlayer(35, fighter(), -5, scripted([3, 2, 2]))).toMatchObject({ lost: 33 });
+  test("bug fixed: a negative DefenseBonus adds damage", () => {
+    // 35 + random(3) = 38, then 38 − (−5) = 43.
+    expect(monsterHitsPlayer(35, fighter(), -5, scripted([3, 2, 2]))).toMatchObject({ lost: 43 });
+    expect(monsterHitsPlayer(35, fighter(), 5, scripted([3, 2, 2]))).toMatchObject({ lost: 33 });
+  });
+  test("bug fixed: an innocent on a Holy Shield gets Shield before any draw", () => {
+    const rng = scripted([1]);
+    expect(monsterHitsPlayer(35, fighter(), 0, rng, true)).toEqual({ kind: "shield" });
+    expect(rng.calls).toEqual([]);
+  });
+  test("bug fixed: ice armour against a Yeti cuts the hit points lost", () => {
+    const iced = fighter({ equip: { ...NO_EQUIPMENT, body: "Ice Armor" } });
+    // Against a Slime: 20, less Ice Armor's own armour row, + random(3) = 1 → 17.
+    expect(monsterHitsPlayer(20, iced, 0, scripted([1, 2, 2]), false, "a Slime")).toEqual({
+      kind: "hit",
+      lost: 17,
+    });
+    // Against a Yeti the elemental row takes 7 more off the hit points lost.
+    expect(monsterHitsPlayer(20, iced, 0, scripted([1, 2, 2]), false, "a Yeti")).toEqual({
+      kind: "hit",
+      lost: 10,
+    });
   });
 });
 
 describe("swing cooldowns by worn item", () => {
-  test("Ring of Quickness sets 10/10 before the axe cascade", () => {
+  test("Ring of Quickness sets 10/10 before the axe ladder", () => {
     const sk = Array(38).fill(0) as number[];
     const wear = (e: Partial<Equipment>) => ({ ...NO_EQUIPMENT, ...e });
     expect(swingCooldowns(wear({}), sk)).toEqual({ atDelay: 14, actionDelay: 14 });
@@ -276,10 +313,10 @@ describe("swing cooldowns by worn item", () => {
       atDelay: 10,
       actionDelay: 10,
     });
-    // The axe cascade comes after: at Axe Fighting 0 the last true `<` row sets 15, and the
-    // action delay stays 10.
+    // The axe ladder comes after: at Axe Fighting 0 its first step sets 25, and the action delay
+    // stays 10.
     expect(swingCooldowns(wear({ ring: "ring of quickness", weapon: "Axe" }), sk)).toEqual({
-      atDelay: 15,
+      atDelay: 25,
       actionDelay: 10,
     });
   });
