@@ -10,7 +10,7 @@
  * client can test (more than 4 characters, a "-", outside 1..9999); the server checks the rest.
  */
 import type { Assets } from "../assets.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import { artImg } from "./stage.ts";
 
 export interface AmountDialog {
@@ -52,7 +52,7 @@ export function createAmountDialog(a: Assets): AmountDialog {
   const title = document.createElement("div");
   title.className = "field amount-title";
   put(title, 245, 197, 191, 32);
-  const input = action(document.createElement("input"), "amount-input");
+  const input = gameInput("amount-input");
   input.className = "field amount-input";
   input.inputMode = "numeric";
   input.setAttribute("aria-label", "Amount");

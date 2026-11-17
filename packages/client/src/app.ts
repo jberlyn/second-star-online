@@ -697,7 +697,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       focused.focus();
     }
   };
+  /**
+   * Blurs a focused field the next screen will remove. A password manager anchors its autofill
+   * menu to the focused field and, when that field is detached without a blur, strands the menu
+   * at the window's top-left.
+   */
+  const releaseFocus = () => {
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && container.contains(focused)) {
+      focused.blur();
+    }
+  };
   const show = (s: Screen) => {
+    releaseFocus();
     game = null;
     screen = s;
     renderScreen(true);
@@ -736,6 +748,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     );
 
   const enterGame = () => {
+    releaseFocus();
     screen = null;
     // Game entry clears every mail flag and hides the board.
     mail.reset();

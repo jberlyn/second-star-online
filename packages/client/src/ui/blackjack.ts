@@ -15,7 +15,7 @@
  */
 import type { Assets } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import { artImg, type Rect } from "./stage.ts";
 
 export const BJ_ORIGIN = { x: 153, y: 54 } as const;
@@ -125,7 +125,7 @@ export function createBlackjack(a: Assets, act: BjActions): BlackjackTable {
     return s;
   });
   const fields = [0, 1].map((i) => {
-    const f = action(document.createElement("input"), "blackjack-bid");
+    const f = gameInput("blackjack-bid");
     put(f, BJ_RECTS.bids[i] as Rect, 2);
     f.type = "text";
     f.maxLength = 16;

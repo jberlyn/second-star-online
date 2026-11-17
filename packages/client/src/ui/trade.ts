@@ -15,7 +15,7 @@
 import type { InventoryView, TradeView } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import type { GameWindow, WindowLayer } from "./window.ts";
 
 export const TRADE_STAGE = { w: 556, h: 421 } as const;
@@ -79,7 +79,7 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
       n.className = "trade-name";
       n.style.setProperty("--x", `${nameX}px`);
       n.style.setProperty("--y", `${y}px`);
-      const q = action(document.createElement("input"), `${cls}-amount`);
+      const q = gameInput(`${cls}-amount`);
       q.className = "field trade-amount";
       q.inputMode = "numeric";
       q.style.setProperty("--x", `${amountX}px`);

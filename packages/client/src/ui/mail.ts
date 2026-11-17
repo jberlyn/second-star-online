@@ -18,7 +18,7 @@ import { MAIL_TEXT, mailRecipients, replySubject, stripMailTo } from "@secondsta
 
 import type { Assets } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import { artImg, type Rect } from "./stage.ts";
 
 export const MAIL_ORIGIN = { x: 154, y: 28 } as const;
@@ -208,7 +208,7 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
     closePane(),
   );
   const input = (name: string, _member: number, r: Rect, z: number, label: string) => {
-    const i = put(composeLayer, action(document.createElement("input"), `mail-${name}`), r, z);
+    const i = put(composeLayer, gameInput(`mail-${name}`), r, z);
     i.className = `mail-input ${name}`;
     i.type = "text";
     i.spellcheck = false;

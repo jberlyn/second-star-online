@@ -22,7 +22,7 @@ import type { ShopRow } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import { artImg } from "./stage.ts";
 
 /** The window's top-left on the stage. */
@@ -102,7 +102,7 @@ export function createShopWindow(a: Assets, act: ShopActions): ShopWindow {
   vault.setAttribute("aria-label", "Vault");
   put(vault, 226, 109, 155, 198);
 
-  const count = action(document.createElement("input"), "shop-quantity");
+  const count = gameInput("shop-quantity");
   count.className = "field shop-count";
   count.inputMode = "numeric";
   count.value = "1";

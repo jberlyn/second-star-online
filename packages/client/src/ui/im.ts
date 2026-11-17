@@ -26,7 +26,7 @@ import {
 } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import type { GameWindow, WindowLayer } from "./window.ts";
 
 export interface Rect {
@@ -132,11 +132,7 @@ export function createImWindows(
   const sendStage = document.createElement("div");
   sendStage.className = "im-stage";
   const sendArt = place(artImg(a, "IMsend", 1, "im-art"), IMSEND_RECTS.art, "im-abs");
-  const toField = place(
-    action(document.createElement("input"), "message-recipient"),
-    IMSEND_RECTS.to,
-    "im-abs",
-  );
+  const toField = place(gameInput("message-recipient"), IMSEND_RECTS.to, "im-abs");
   toField.classList.add("im-to");
   toField.type = "text";
   toField.autocomplete = "off";

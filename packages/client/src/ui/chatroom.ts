@@ -17,7 +17,7 @@
 import { CHAT_SOCIAL_TEXT, lingoEq, parseRoomLine } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
-import { action } from "./action.ts";
+import { gameInput } from "./action.ts";
 import { artImg, place, type Rect } from "./im.ts";
 import type { GameWindow, WindowLayer } from "./window.ts";
 
@@ -73,11 +73,7 @@ export function createChatRoomWindow(
   const userList = place(document.createElement("div"), ROOM_RECTS.users, "im-abs");
   userList.classList.add("room-text", "room-users");
   userList.setAttribute("aria-label", "In this room");
-  const input = place(
-    action(document.createElement("input"), "room-chat-input"),
-    ROOM_RECTS.input,
-    "im-abs",
-  );
+  const input = place(gameInput("room-chat-input"), ROOM_RECTS.input, "im-abs");
   input.classList.add("room-input");
   input.type = "text";
   input.autocomplete = "off";

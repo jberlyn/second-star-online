@@ -20,7 +20,7 @@ import { GUILD_DEFAULT_NAME } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import { artImg, type Rect } from "./stage.ts";
 
 export const GUILD_ORIGIN = { x: 151, y: 29 } as const;
@@ -168,11 +168,7 @@ export function createGuildCenter(a: Assets, act: GuildCenterActions): GuildCent
   };
   // The guild name field: editable, one line, and a `limit` box: typing stops when the 210-px box
   // is full.
-  const nameInput = put(
-    action(document.createElement("input"), "guild-name"),
-    GUILD_RECTS.nameField,
-    9997,
-  );
+  const nameInput = put(gameInput("guild-name"), GUILD_RECTS.nameField, 9997);
   nameInput.className = "gc-input";
   nameInput.type = "text";
   nameInput.spellcheck = false;

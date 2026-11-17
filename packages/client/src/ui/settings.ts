@@ -17,7 +17,7 @@
  */
 import { prizeLineOk, type SettingRow } from "@secondstaronline/shared";
 
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import type { GameWindow, WindowLayer } from "./window.ts";
 
 export const SETTINGS_SIZE = { w: 560, h: 460 } as const;
@@ -348,7 +348,7 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
   });
 
   const input = (type: string, cls: string, label: string) => {
-    const el = action(document.createElement("input"), "settings-value");
+    const el = gameInput("settings-value");
     el.type = type;
     el.className = cls;
     el.setAttribute("aria-label", label);

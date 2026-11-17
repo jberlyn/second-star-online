@@ -10,7 +10,7 @@
  */
 import { PALETTE_RGB, REPEATING_LINES } from "@secondstaronline/shared";
 
-import { action } from "./action.ts";
+import { gameInput } from "./action.ts";
 
 /** Lines kept in the log. Not from the original (its field just grew); keeps the DOM small. */
 export const CHAT_LOG_LINES = 200;
@@ -85,7 +85,7 @@ export function createChatLog(): ChatLog {
 
 export function createChatInput(): HTMLInputElement {
   // The chat line is the editable field sendchat (Internal #48, channel 106).
-  const input = action(document.createElement("input"), "chat-input");
+  const input = gameInput("chat-input");
   input.className = "chat-input";
   input.type = "text";
   input.maxLength = 200;

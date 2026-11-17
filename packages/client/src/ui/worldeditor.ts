@@ -54,7 +54,7 @@ import {
 
 import { type Assets, drawSprite } from "../assets.ts";
 import { drawFog, fogLayer } from "../fog.ts";
-import { action } from "./action.ts";
+import { action, gameInput } from "./action.ts";
 import type { Screen } from "./screens.ts";
 import { artImg, type Rect, type StageItem } from "./stage.ts";
 
@@ -104,7 +104,7 @@ function hitButton(label: string, origin: string, onClick: (e: MouseEvent) => vo
 }
 
 function textField(label: string, origin: string, cls: string): HTMLInputElement {
-  const i = action(document.createElement("input"), origin);
+  const i = gameInput(origin);
   i.type = "text";
   i.className = `field ${cls}`;
   i.spellcheck = false;

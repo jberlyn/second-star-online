@@ -9,7 +9,7 @@
 import { NEWS_DEFAULTS, NEWS_TEXT } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
-import { action } from "./action.ts";
+import { action, gameInput, noAutofill } from "./action.ts";
 import { artImg, type Rect } from "./stage.ts";
 import type { GameWindow, WindowLayer } from "./window.ts";
 
@@ -120,7 +120,7 @@ export function createNewspaper(a: Assets, layer: WindowLayer, act: NewspaperAct
     const single = i < 2;
     const f = place(
       action(
-        single ? document.createElement("input") : document.createElement("textarea"),
+        single ? noAutofill(document.createElement("input")) : document.createElement("textarea"),
         "newspaper-text",
       ),
       r,
@@ -150,7 +150,7 @@ export function createNewspaper(a: Assets, layer: WindowLayer, act: NewspaperAct
     return f;
   });
   const ePhotos = EDITOR_PHOTO_FIELDS.map((r, i) => {
-    const f = place(action(document.createElement("input"), "newspaper-photo"), r);
+    const f = place(gameInput("newspaper-photo"), r);
     f.type = "text";
     f.maxLength = NEWS_LIMITS.photo;
     f.classList.add("news-field", "news-edit", "news-photo-name");
