@@ -11,6 +11,8 @@
  */
 import {
   type AmountPath,
+  ATTACK_ANIM_FRAMES,
+  ATTACK_LATCH_TICKS,
   type AttackTimers,
   advanceStep,
   airshipWalkGrid,
@@ -19,6 +21,7 @@ import {
   attemptMove,
   blockPCCheck,
   blocksPlayer,
+  bowOutOfCrystals,
   type DeltaEvent,
   type Dir,
   type EquipView,
@@ -28,6 +31,7 @@ import {
   footWalkGrid,
   type GroundView,
   type InventoryView,
+  isArenaTile,
   isWalkable,
   isWebBody,
   type MapView,
@@ -44,6 +48,8 @@ import {
   stepFx,
   stepLengthFor,
   stepOffsetPx,
+  swingBlocked,
+  swingCooldowns,
   tickAttackTimers,
   tickSpriteTimers,
   type VitalsView,
@@ -145,6 +151,8 @@ export interface Self {
   body: number | null;
   /** Frames left of your own sprite's spell animation. */
   spellAnim: number;
+  /** Tick of a swing predicted from the attack key, not yet matched by the server's `swing`. */
+  swingPredictedAt: number | null;
 }
 
 export interface Model {
@@ -202,6 +210,13 @@ export interface Model {
   tileChanges: { x: number; y: number }[];
   /** House placement's ghost (sprite 360; ui/placement.ts), or null outside placement mode. */
   ghost: Ghost | null;
+  /** Sequence number of the last scheduled step request sent. */
+  stepSeq: number;
+  /**
+   * Refusals of requests up to this sequence number are already corrected: the last correction
+   * discarded every prediction sent by then.
+   */
+  staleRejectsThrough: number;
 }
 
 /** How long a predicted step may go unconfirmed before the client gives up on it. */
@@ -236,6 +251,8 @@ export function createModel(): Model {
     tileChanges: [],
     fxRect: null,
     ghost: null,
+    stepSeq: 0,
+    staleRejectsThrough: 0,
   };
 }
 
@@ -313,7 +330,10 @@ export function applySnapshot(
     timers,
     body: snap.you.body ?? null,
     spellAnim: 0,
+    swingPredictedAt: null,
   };
+  // Requests from the old map are refused; the snapshot already corrected them.
+  m.staleRejectsThrough = m.stepSeq;
   m.fx = [];
   m.peers = new Map(snap.players.map((p) => [p.id, toPeer(p)]));
   m.monsters = new Map(snap.monsters.map((v) => [v.slot, toMonster(v)]));
@@ -398,13 +418,26 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
       }
       case "swing": {
         if (m.self && ev.id === m.self.id) {
-          // Snap the predicted bar to the server's swing.
-          const t = m.self.timers;
-          t.bar = 0;
-          t.canAttack = false;
-          t.atkAnim = 5;
-          t.atDelay = ev.atDelay;
-          t.actionDelay = ev.actionDelay;
+          const s = m.self;
+          const t = s.timers;
+          if (s.swingPredictedAt !== null) {
+            // The swing the key poll predicted: keep its lock, which already counts down, and
+            // age the server's cooldowns by the ticks since then. The attack delay counts once a
+            // tick; the action delay once an actor pass, starting with the passes after the
+            // swing's key poll.
+            const ticks = m.tick - s.swingPredictedAt;
+            s.swingPredictedAt = null;
+            t.atDelay = Math.max(0, ev.atDelay - ticks);
+            const passes = STEPFRAMES_PER_FRAME - 1 + ticks * STEPFRAMES_PER_FRAME;
+            t.actionDelay = Math.max(0, ev.actionDelay - passes);
+          } else {
+            // Snap the predicted bar to the server's swing.
+            t.bar = 0;
+            t.canAttack = false;
+            t.atkAnim = ATTACK_ANIM_FRAMES;
+            t.atDelay = ev.atDelay;
+            t.actionDelay = ev.actionDelay;
+          }
         } else {
           const p = m.peers.get(ev.id);
           if (p) {
@@ -547,6 +580,15 @@ function snapToServer(s: Self, st: SelfState): void {
   s.unconfirmedSince = null;
 }
 
+/**
+ * Snaps to the server and writes off every request already sent: they were predicted from the
+ * discarded position, so their refusals need no further correction.
+ */
+function resync(m: Model, s: Self, st: SelfState): void {
+  snapToServer(s, st);
+  m.staleRejectsThrough = m.stepSeq;
+}
+
 /** `{ t: "death" }`: the next playfield draw is the black frame. */
 export function onDeath(m: Model): void {
   m.deathStage = "black";
@@ -563,19 +605,20 @@ export function applyYou(m: Model, st: SelfState): void {
   if (!s) {
     return;
   }
-  const rejected = st.moveRejected !== undefined && st.moveRejected !== s.server.moveRejected;
+  // A refusal of a request sent before the last correction was already corrected.
+  const rejected = st.moveRejected !== undefined && st.moveRejected > m.staleRejectsThrough;
   s.server = st;
   if (rejected) {
-    snapToServer(s, st);
+    resync(m, s, st);
     return;
   }
   if (st.n > s.n) {
-    snapToServer(s, st);
+    resync(m, s, st);
     return;
   } // the server stepped where we did not
   if (st.n === s.n) {
     if (s.x !== st.x || s.y !== st.y) {
-      snapToServer(s, st);
+      resync(m, s, st);
       return;
     }
     // Same tile: the server owns facing (turns, blocked steps).
@@ -590,7 +633,7 @@ export function applyYou(m: Model, st: SelfState): void {
   // we were after its step count; otherwise our history is wrong.
   const mine = s.predicted.get(st.n);
   if (!mine || mine.x !== st.x || mine.y !== st.y) {
-    snapToServer(s, st);
+    resync(m, s, st);
     return;
   }
   // Keep the acknowledged tile while ahead: another update at the same count may follow.
@@ -608,6 +651,10 @@ export interface Intent {
   turn: boolean;
   /** A press not yet acted on. */
   pending: { dir: Dir; turn: boolean; age: number } | null;
+  /** The attack key is held (`attack{held}`). */
+  attackHeld?: boolean;
+  /** Ticks since an attack press, kept for `ATTACK_LATCH_TICKS` as the server does. */
+  attackPress?: number | null;
 }
 
 /** Fixtures on the ground block your step; the server has the skills. */
@@ -700,15 +747,14 @@ export type ScheduledStep = {
   at: { map: string; n: number; x: number; y: number; blocked?: boolean };
 };
 
+/** Sends a scheduled step; a numeric return is the request's sequence number. */
+export type SendStep = (step: ScheduledStep) => unknown;
+
 /**
  * One client tick: frame counters, actor pass 1, key poll, actor pass 2.
  * Commit the chosen direction through sendStep; edges wait for the server's snapshot.
  */
-export function clientTick(
-  m: Model,
-  intent: Intent,
-  sendStep?: (step: ScheduledStep) => void,
-): void {
+export function clientTick(m: Model, intent: Intent, sendStep?: SendStep): void {
   m.tick += 1;
   if (m.itemPause > 0) {
     m.itemPause -= 1;
@@ -723,15 +769,59 @@ export function clientTick(
   }
 }
 
+/**
+ * The server's attack poll, which runs just before its key poll: a swing it will make starts the
+ * attack lock now, so no step is sent that the server would refuse. Only the lock and the
+ * cooldowns that gate the next swing are predicted; the server's `swing` corrects them.
+ */
+function predictSwing(m: Model, s: Self, intent: Intent): void {
+  const press = intent.attackPress ?? null;
+  if (press !== null) {
+    intent.attackPress = press + 1 > ATTACK_LATCH_TICKS ? null : press + 1;
+  }
+  if (s.swingPredictedAt !== null && m.tick - s.swingPredictedAt > PREDICTION_TIMEOUT_TICKS) {
+    s.swingPredictedAt = null; // the server never swung (e.g. out of crystals)
+  }
+  if (m.loading || m.keyLock || m.deathStage !== "none" || !m.map) {
+    return;
+  }
+  if (!intent.attackHeld && press === null) {
+    return;
+  }
+  const t = s.timers;
+  if (!t.canAttack || swingBlocked(t) || vehicleOfBody(s.body) !== null) {
+    return;
+  }
+  if (m.map.noFight && !isArenaTile(m.map.layers[0], s.x, s.y)) {
+    return;
+  }
+  // `startSwing`: the bar resets and the cooldowns start. They depend on skills only for axes and
+  // mining hammers, which the client does not have; the server's `swing` corrects them.
+  const equip = m.inv?.equip ?? NO_EQUIPMENT;
+  const cd = swingCooldowns(equip, []);
+  intent.attackPress = null;
+  t.bar = 0;
+  t.atDelay = cd.atDelay;
+  t.actionDelay = cd.actionDelay;
+  // A bow out of crystals wastes the swing: no animation (so no lock) and no `swing` event.
+  if (bowOutOfCrystals(equip, m.inv?.bag ?? [])) {
+    return;
+  }
+  t.canAttack = false;
+  t.atkAnim = ATTACK_ANIM_FRAMES;
+  s.swingPredictedAt = m.tick;
+}
+
 /** The key poll: starts a predicted step from the held or pending arrow. */
-function keyPoll(m: Model, intent: Intent, sendStep?: (step: ScheduledStep) => void): void {
+function keyPoll(m: Model, intent: Intent, sendStep?: SendStep): void {
   const s = m.self;
   if (!s) {
     return;
   }
   if (s.unconfirmedSince !== null && m.tick - s.unconfirmedSince > PREDICTION_TIMEOUT_TICKS) {
-    snapToServer(s, s.server);
+    resync(m, s, s.server);
   }
+  predictSwing(m, s, intent);
   if (m.loading) {
     intent.pending = null;
     return;
@@ -763,7 +853,7 @@ function keyPoll(m: Model, intent: Intent, sendStep?: (step: ScheduledStep) => v
   }
   intent.pending = null;
   if (m.map) {
-    sendStep?.({
+    const seq = sendStep?.({
       dir,
       turn,
       at: {
@@ -774,6 +864,9 @@ function keyPoll(m: Model, intent: Intent, sendStep?: (step: ScheduledStep) => v
         ...(o.kind === "blocked" || o.kind === "web" ? { blocked: true } : {}),
       },
     });
+    if (typeof seq === "number") {
+      m.stepSeq = seq;
+    }
   }
   if (o.kind === "edge") {
     s.facing = o.facing; // the server sends the new map

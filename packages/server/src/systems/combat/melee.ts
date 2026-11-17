@@ -9,10 +9,13 @@
  */
 import { itemRulesData, monstersData } from "@secondstaronline/data";
 import {
+  ATTACK_ANIM_FRAMES,
+  ATTACK_LATCH_TICKS,
   advancedText,
   attackPower,
   type CrystalColour,
   checkLevelUp,
+  crystalSlotIn,
   damagedForm,
   FACING_DELTA,
   FLICKER_FRAMES,
@@ -50,14 +53,8 @@ import { shootArrow, swingFireballs } from "../spells/cast.ts";
 import { onHolyShield } from "../spells/geometry.ts";
 import type { Outgoing, Player, Room, World } from "../world/world.ts";
 
-/**
- * A press is kept this many ticks before the player re-arms, so a tap that arrives slightly early
- * is not lost (SSO's own rule, a divergence: 1.6 polled the key).
- */
-export const ATTACK_LATCH_TICKS = 2;
-
-/** Frames the attack animation runs. */
-export const ATTACK_ANIM_FRAMES = 5;
+// Shared so the client can predict the same attack lock.
+export { ATTACK_ANIM_FRAMES, ATTACK_LATCH_TICKS } from "@secondstaronline/shared";
 
 /** Records an `attack{held}` change. A press starts the latch. */
 export function setAttackHeld(p: Player, held: boolean): void {
@@ -153,13 +150,7 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
  * -1.
  */
 export function crystalSlot(p: Player, colour: CrystalColour): number {
-  let slot = -1;
-  p.char.bag.forEach((l, i) => {
-    if (l && lingoContains(l.item, `${colour} Cry`) && l.qty > 0) {
-      slot = i;
-    }
-  });
-  return slot;
+  return crystalSlotIn(p.char.bag, colour);
 }
 
 /** The swing and the hits it makes. */

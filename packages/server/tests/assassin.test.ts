@@ -17,7 +17,7 @@ import {
   type Room,
   type World,
 } from "../src/systems/world/world.ts";
-import { player, rngByN, testMap } from "./helpers/sim.ts";
+import { NO_CASINO, player, rngByN, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
 const chat = (msgs: Out, to: string) =>
@@ -42,6 +42,7 @@ function scene(rngQueues: Record<number, number[]> = {}) {
   const deps = {
     loadMap: () => map,
     startPoint: { map: map.name, x: 6, y: 4 },
+    casino: NO_CASINO,
     saveIntervalTicks: 600,
     stepFrames: 16,
     rng,
@@ -166,6 +167,7 @@ describe("Lightning", () => {
     const deps = {
       loadMap: () => map,
       startPoint: { map: map.name, x: 6, y: 4 },
+      casino: NO_CASINO,
       saveIntervalTicks: 600,
       stepFrames: 16,
       rng: s.rng,

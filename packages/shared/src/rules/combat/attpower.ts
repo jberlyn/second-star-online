@@ -17,6 +17,38 @@ const AP = attPowerData.attPower;
 
 /** The six arrow colours, by arrow number. */
 export const ARROW_COLOURS = ["Blue", "Red", "Green", "Yellow", "Purple", "White"] as const;
+
+/**
+ * The crystal a bow shot spends: the last bag line containing "<Colour> Cry" with some left, as a
+ * 0-based slot, or -1.
+ */
+export function crystalSlotIn(
+  bag: readonly ({ item: string; qty: number } | null)[],
+  colour: (typeof ARROW_COLOURS)[number],
+): number {
+  let slot = -1;
+  bag.forEach((l, i) => {
+    if (l && lingoContains(l.item, `${colour} Cry`) && l.qty > 0) {
+      slot = i;
+    }
+  });
+  return slot;
+}
+
+/**
+ * A bow with arrows and no crystal of their colour: `attackPower`'s `outOfCrystals`. The swing's
+ * cooldowns still start, but there is no attack animation, so no movement lock.
+ */
+export function bowOutOfCrystals(
+  equip: { weapon: string; offHand: string },
+  bag: readonly ({ item: string; qty: number } | null)[],
+): boolean {
+  if (!lingoContains(equip.weapon, "bow")) {
+    return false;
+  }
+  const colour = ARROW_COLOURS.find((c) => lingoEq(equip.offHand, `${c} Arrows`));
+  return colour !== undefined && crystalSlotIn(bag, colour) < 0;
+}
 export type CrystalColour = (typeof ARROW_COLOURS)[number];
 
 export interface AttackPowerResult {

@@ -186,6 +186,26 @@ describe("LOAD", () => {
   });
 });
 
+describe("LOAD of a long file", () => {
+  test("SSO: a file over the save limit loads in full with a warning that SAVE will refuse it", () => {
+    const { world, i } = scene();
+    openNpcEditor(world, i, casino);
+    const text = Array.from({ length: 103 }, (_, n) => `BIO|Line ${n + 1}`).join("\r");
+    setNpcFile(world.npcs, "Amber", text);
+    const out = loadNpc(world, i, "Amber", ledgerOf(world));
+    expect(out.map((o) => o.msg)).toEqual([
+      { t: "npcScript", name: "Amber", text },
+      {
+        t: "alert",
+        text: "This file has 103 lines. An NPC file holds at most 100 lines, so remove 3 before saving.",
+      },
+    ]);
+    // At the limit there is no warning.
+    setNpcFile(world.npcs, "Amber", text.split("\r").slice(0, 100).join("\r"));
+    expect(loadNpc(world, i, "Amber", ledgerOf(world)).map((o) => o.msg.t)).toEqual(["npcScript"]);
+  });
+});
+
 describe("SAVE", () => {
   test("a refused save says why and changes nothing", () => {
     const { world, i } = scene();

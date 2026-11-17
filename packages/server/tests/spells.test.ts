@@ -31,7 +31,7 @@ import {
   type Room,
   type WorldMap,
 } from "../src/systems/world/world.ts";
-import { ARCHIVE_NPCS, player, rngByN, setup, testMap } from "./helpers/sim.ts";
+import { ARCHIVE_NPCS, NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
 const events = (msgs: Out, to: string) =>
@@ -706,6 +706,7 @@ describe("Portal", () => {
     const deps = {
       loadMap: (n: string) => maps.get(n) ?? null,
       startPoint: { map: "x1000y992", x: 6, y: 4 },
+      casino: NO_CASINO,
       saveIntervalTicks: 600,
       stepFrames: 16,
       rng,

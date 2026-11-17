@@ -21,7 +21,7 @@ import { npcFileNamed } from "../src/systems/monsters/npcfiles.ts";
 import { placeMonster } from "../src/systems/monsters/spawn.ts";
 import { tick } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld, type Player, type Room } from "../src/systems/world/world.ts";
-import { player, rngByN, testMap } from "./helpers/sim.ts";
+import { NO_CASINO, player, rngByN, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
 const chat = (out: Out, to: string) =>
@@ -179,6 +179,7 @@ describe("clicking a monster or NPC", () => {
     tick(s.world, {
       loadMap: () => s.map,
       startPoint: { map: s.map.name, x: 6, y: 4 },
+      casino: NO_CASINO,
       saveIntervalTicks: 600,
       rng: s.rng,
     });

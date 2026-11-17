@@ -9,7 +9,7 @@ import { slotClose, slotPull } from "../src/systems/casino/slots.ts";
 import { actionIntent, type ItemCtx, pickupIntent } from "../src/systems/inventory/items.ts";
 import { tick, warp } from "../src/systems/world/tick.ts";
 import type { GroundItem, Player, Room } from "../src/systems/world/world.ts";
-import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
+import { NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
 const chat = (msgs: Out, to: string) =>
@@ -54,6 +54,7 @@ function scene(reels: number[] = [1, 2, 3]) {
   const deps = {
     loadMap: (n: string) => (n === other.name ? other : map),
     startPoint: { map: map.name, x: 6, y: 4 },
+    casino: NO_CASINO,
     saveIntervalTicks: 600,
     rng,
   };
@@ -223,7 +224,7 @@ describe("pulling", () => {
     const t = scene([1, 1, 1]);
     const a = t.join("Alice");
     t.click(a);
-    const wOut = warp(t.world, a, t.other, 3, 3);
+    const wOut = warp(t.world, a, t.other, 3, 3, NO_CASINO);
     expect(ofType(wOut, "slot")).toEqual([{ t: "slot", open: false }]);
     expect(a.slot).toBeNull();
     expect(a.keyLock).toBe(false);

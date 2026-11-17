@@ -4,6 +4,7 @@
 import type { ServerMsg } from "@secondstaronline/shared";
 
 import { type Rng, scriptedRng } from "../../src/rng.ts";
+import type { CasinoDeps } from "../../src/systems/casino/index.ts";
 import { archiveNpcStore } from "../../src/systems/monsters/npcfiles.ts";
 import { tick } from "../../src/systems/world/tick.ts";
 import {
@@ -16,6 +17,9 @@ import {
   type World,
   type WorldMap,
 } from "../../src/systems/world/world.ts";
+
+/** Casino deps for a warp in a test with no casino game: no grace and no offline payouts. */
+export const NO_CASINO: CasinoDeps = { graceTicks: 0, addGoldOffline: () => {} };
 
 /**
  * Answers `random(n)` from per-size queues; a size with no queue (or an empty one) gets `n`,
@@ -110,6 +114,7 @@ export function setup(
     startPoint,
     saveIntervalTicks: 600,
     rng,
+    casino: NO_CASINO,
   };
   const join = (p: Player) => {
     addPlayer(world, p);

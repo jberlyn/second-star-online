@@ -71,6 +71,15 @@ export function barBonus(m: BarMember): number {
 }
 
 /**
+ * A press is kept this many ticks before the player re-arms, so a tap that arrives slightly early
+ * is not lost (SSO's own rule, a divergence: 1.6 polled the key).
+ */
+export const ATTACK_LATCH_TICKS = 2;
+
+/** Frames the attack animation runs. No step starts while it runs. */
+export const ATTACK_ANIM_FRAMES = 5;
+
+/**
  * The player sprite's per-frame countdowns. Runs before the frame script, so a lock set at frame t
  * first counts down at t+1.
  */

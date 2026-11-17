@@ -9,7 +9,7 @@ import { ckClose, ckDisconnect, ckMove, ckSit } from "../src/systems/casino/chec
 import { actionIntent, pickupIntent } from "../src/systems/inventory/items.ts";
 import { warp } from "../src/systems/world/tick.ts";
 import type { CkTable, GroundItem, Player } from "../src/systems/world/world.ts";
-import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
+import { NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
 const chat = (msgs: Out, to: string) =>
@@ -260,7 +260,7 @@ describe("leaving", () => {
   test("a map change closes the checkers window and frees the seat", () => {
     const t = scene();
     const { a, b } = t.seated();
-    const wOut = warp(t.world, a, t.other, 3, 3);
+    const wOut = warp(t.world, a, t.other, 3, 3, NO_CASINO);
     expect(wOut.some((m) => m.to === "Alice" && m.msg.t === "ck" && !m.msg.open)).toBe(true);
     expect(views(wOut, "Bob")[0]?.names).toEqual(["", "Bob"]);
     expect(a.casino).toBeNull();

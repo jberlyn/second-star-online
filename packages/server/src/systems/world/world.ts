@@ -1040,6 +1040,7 @@ export function mapView(m: WorldMap): MapView {
     layers: m.layers,
     signs: [...m.signs],
     fog: { ...m.fog },
+    ...(m.flags.canFight === "O" ? { noFight: true as const } : {}),
   };
 }
 

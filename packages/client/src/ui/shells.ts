@@ -116,8 +116,8 @@ export function createGameView(a: Assets, parts: GameParts): GameView {
     // the well's top because browser centring leaves the glyphs high in the field.
     { el: parts.chatInput, x: 21, y: 556, w: 760, h: 20, z: 301 },
     { el: parts.playfield, x: 30, y: 31, w: PLAYFIELD_W, h: PLAYFIELD_H, z: 110 },
-    // Score channels 36-64 (bars, above panel art 4 and below strips 256+) and 318-319 (numbers,
-    // above strips 256+ and playfield 110). No z on the wrapper so each child keeps its own
+    // Score channels 36-64 (bars, above panel art 4 and below strips 256+); the current/max
+    // numbers live in hover zones at z 321 (bars.ts), above strips 256+ and playfield 110. No z on the wrapper so each child keeps its own
     // channel on the stage, and high numbers spill left of x 590 over the frame.
     { el: parts.bars, ...BARS_RECT },
     { el: barsCutout, x: 566, y: BARS_RECT.y, w: 234, h: BARS_RECT.h, z: 65 },

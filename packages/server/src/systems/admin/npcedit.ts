@@ -18,6 +18,7 @@ import {
   lingoEq,
   liveNpcText,
   NPC_EDIT_TEXT,
+  NPC_MAX_LINES,
   npcEditorName,
 } from "@secondstaronline/shared";
 
@@ -54,9 +55,14 @@ export function loadNpc(world: World, p: Player, name: string, ledgerOf: LedgerO
   if (!inEditor(p) || !listed) {
     return [];
   }
-  return [
-    { to: p.id, msg: { t: "npcScript", name: listed, text: npcFileNow(world, listed, ledgerOf) } },
-  ];
+  const text = npcFileNow(world, listed, ledgerOf);
+  const out: Outgoing[] = [{ to: p.id, msg: { t: "npcScript", name: listed, text } }];
+  // LOAD shows every line, but SAVE refuses more than NPC_MAX_LINES: say so before the edit.
+  const lines = editorLines(text).length;
+  if (lines > NPC_MAX_LINES) {
+    out.push({ to: p.id, msg: { t: "alert", text: NPC_EDIT_TEXT.tooLong(lines) } });
+  }
+  return out;
 }
 
 /**

@@ -285,6 +285,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       intent.pending = { dir, turn, age: 0 };
     },
     attack(held: boolean) {
+      // Mirrors the server's `setAttackHeld`, so the key poll can predict the attack lock.
+      if (held && !intent.attackHeld) {
+        intent.attackPress = 0;
+      }
+      intent.attackHeld = held;
       if (game) {
         send({ t: "attack", seq: ++seq, held });
       }
@@ -1242,7 +1247,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     while (acc >= TICK_MS) {
       acc -= TICK_MS;
       if (game) {
-        clientTick(model, intent, (step) => send({ t: "step", seq: ++seq, ...step }));
+        clientTick(model, intent, (step) => {
+          send({ t: "step", seq: ++seq, ...step });
+          return seq;
+        });
       }
     }
     if (game) {

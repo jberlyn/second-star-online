@@ -83,17 +83,30 @@ export function scheduleStep(p: Player, msg: StepMsg): void {
   p.walkQueue ??= [];
   p.held = null;
   p.pending = null;
+  // Only this request is refused; the ones already queued are still checked in turn.
   if (p.loading > 0 || p.keyLock || p.walkQueue.length >= 4) {
-    rejectScheduled(p, msg.seq);
+    refuseScheduled(p, msg.seq);
     return;
   }
   p.walkQueue.push({ seq: msg.seq, dir: msg.dir, turn: msg.turn, at: msg.at });
 }
 
-function rejectScheduled(p: Player, seq: number): void {
-  p.moveRejected = Math.max(seq, p.walkQueue?.at(-1)?.seq ?? seq);
-  p.walkQueue = [];
+/**
+ * Reports a refused request by its sequence number. Only that request is refused: requests behind
+ * it are checked on their own, so the client can tell a refusal of a request it sent after its last
+ * correction (which needs another correction) from one it sent before (already corrected).
+ */
+function refuseScheduled(p: Player, seq: number): void {
+  p.moveRejected = Math.max(p.moveRejected ?? 0, seq);
   p.forceYou = true;
+}
+
+/** Refuses the request at the head of the queue. */
+function refuseHead(p: Player): void {
+  const queued = p.walkQueue?.shift();
+  if (queued) {
+    refuseScheduled(p, queued.seq);
+  }
 }
 
 export function walkWorld(room: Room, self: Player): WalkWorld {
@@ -192,9 +205,11 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
   // 1.6's client-side input lock: map loading, or a window holding the keys.
   if (p.loading > 0 || p.keyLock) {
     p.pending = null;
-    const queued = p.walkQueue?.[0];
-    if (queued) {
-      rejectScheduled(p, queued.seq);
+    // Every queued request was predicted without the lock: refuse them all at once.
+    const last = p.walkQueue?.at(-1);
+    if (last) {
+      p.walkQueue = [];
+      refuseScheduled(p, last.seq);
     }
     return;
   }
@@ -206,10 +221,12 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
   // No step starts during the attack animation, while held (the hold counter) or in the death
   // lock.
   if (p.timers.atkAnim > 0 || p.spell.hold > 0 || p.deadLock > 0) {
-    // A committed prediction cannot wait through a combat lock and move after it timed out.
-    const queued = p.walkQueue?.[0];
-    if (queued) {
-      rejectScheduled(p, queued.seq);
+    // A scheduled request waits out the attack animation (a few ticks), as it waits for the step
+    // cadence: the attack key is sent when pressed and steps on client ticks, so a step the client
+    // sent just before attacking can reach the same server tick as the swing. A hold or the death
+    // lock can last much longer, so a request then is refused.
+    if (p.spell.hold > 0 || p.deadLock > 0) {
+      refuseHead(p);
     }
     if (pending) {
       pending.age += 1;
@@ -227,7 +244,7 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
       queued.at.x !== p.x ||
       queued.at.y !== p.y)
   ) {
-    rejectScheduled(p, queued.seq);
+    refuseHead(p);
     return;
   }
   const dir = queued ? queued.dir : pending ? pending.dir : p.held;
@@ -249,7 +266,7 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
   if (queued) {
     p.walkQueue?.shift();
     if (!queued.at.blocked && (o.kind === "blocked" || o.kind === "web")) {
-      rejectScheduled(p, queued.seq);
+      refuseScheduled(p, queued.seq);
     }
   }
   p.pending = null;

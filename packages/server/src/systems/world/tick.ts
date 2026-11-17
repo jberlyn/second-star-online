@@ -121,8 +121,11 @@ export interface TickDeps {
   portalTargets?: readonly { map: string; x: number; y: number }[];
   /** The Server Spirit's map (setting `hazardMap`), or null. */
   hazardMap?: string | null;
-  /** The blackjack reset and reconnect grace; absent in tests that need neither. */
-  casino?: CasinoDeps;
+  /**
+   * The blackjack reset and reconnect grace. Required: every warp needs it to pay out a stake
+   * forfeited by leaving mid-hand (tests with no casino pass `NO_CASINO`).
+   */
+  casino: CasinoDeps;
   /**
    * The perf tick probe: called after each stretch of the tick ("rooms": every map's pass and its
    * delta messages; "world": portals to jail; "players": the per-player flush). Absent in normal
@@ -555,9 +558,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
     saves.add(p);
   }
   // The Blackjack Table's 40-frame reset and reconnect grace.
-  if (deps.casino) {
-    out.push(...casinoTick(world, deps.casino));
-  }
+  out.push(...casinoTick(world, deps.casino));
   for (const p of [...world.players.values()]) {
     const released = jailTick(world, deps, p);
     if (released.length > 0) {
@@ -794,20 +795,21 @@ export function jailTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
   return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
 }
 
-const NOOP_CASINO: CasinoDeps = { graceTicks: 0, addGoldOffline: () => {} };
-
-/** Moves a player to a tile on a map, unchecked, and reloads the map for them. */
+/**
+ * Moves a player to a tile on a map, unchecked, and reloads the map for them. `casino` is required:
+ * leaving mid-hand forfeits a stake, which may be owed to an opponent who is offline.
+ */
 export function warp(
   world: World,
   p: Player,
   map: WorldMap,
   x: number,
   y: number,
-  deps?: CasinoDeps,
+  casino: CasinoDeps,
 ): Outgoing[] {
   // A trade and any open casino game/panel end when a player changes map.
   const out = leaveTrade(world, p);
-  out.push(...casinoMapChange(world, p, deps ?? NOOP_CASINO));
+  out.push(...casinoMapChange(world, p, casino));
   out.push(...leaveRoom(world, p));
   p.map = map;
   p.x = x;

@@ -1,4 +1,0 @@
-# Ensure SQLite uses os.tmpdir() (/tmp) instead of falling back to /var/tmp
-# when TMPDIR is unset (e.g. sandboxed test runners).
-[test]
-preload = ["./tests/helpers/sqlite-tmpdir.ts"]

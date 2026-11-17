@@ -35,7 +35,7 @@ import {
   type World,
   type WorldMap,
 } from "../src/systems/world/world.ts";
-import { player, rngByN, testMap } from "./helpers/sim.ts";
+import { NO_CASINO, player, rngByN, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
 const chat = (out: Out, to: string) =>
@@ -66,6 +66,7 @@ function scene(
   const deps = {
     loadMap: () => map,
     startPoint: { map: map.name, x: 6, y: 4 },
+    casino: NO_CASINO,
     saveIntervalTicks: 600,
     stepFrames: 16,
     rng,

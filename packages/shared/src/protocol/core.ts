@@ -163,6 +163,11 @@ export interface MapView {
   signs: [string, string, string];
   /** Map field 12 items 6-10: the fog over the playfield. */
   fog: MapFog;
+  /**
+   * The map's "can fight" flag is off: a swing happens only on an arena tile. The client reads it
+   * to predict the attack lock.
+   */
+  noFight?: true;
 }
 
 /** Your own authoritative state. `n` counts your steps since the last snapshot. */
@@ -174,7 +179,10 @@ export interface SelfState {
   frames: number;
   /** While the hold counter runs, no step starts, so the client does not predict one. */
   hold?: boolean;
-  /** Sequence of the last refused scheduled movement request. */
+  /**
+   * Sequence of the highest refused scheduled movement request. Each refusal names one request;
+   * a client ignores refusals of requests it sent before its last correction.
+   */
   moveRejected?: number;
   /**
    * Your own sprite is hidden this frame: the hit blink's flips. Only you get it; peers never see a

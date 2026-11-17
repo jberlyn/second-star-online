@@ -29,7 +29,7 @@ import { defaultSettings, resolveSettings, SETTING_GROUPS, settingRows } from ".
 import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
 import { tick, warp } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld } from "../src/systems/world/world.ts";
-import { NEVER_PUSH, player, rngByN, setup, testMap } from "./helpers/sim.ts";
+import { NEVER_PUSH, NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
 const NOW = "2026-11-04T00:00:00.000Z";
 let db: Db;
@@ -529,10 +529,10 @@ describe("the respawn point", () => {
     const p = player("Al", seed, 6, 4);
     join(p);
     expect(p.char.respawn).toBeNull();
-    warp(world, p, inn, 3, 7);
+    warp(world, p, inn, 3, 7, NO_CASINO);
     expect(p.char.respawn).toEqual({ mapId: inn.id, x: 3, y: 7 });
     // A map that is not O-O-O leaves it.
-    warp(world, p, seed, 6, 4);
+    warp(world, p, seed, 6, 4, NO_CASINO);
     expect(p.char.respawn).toEqual({ mapId: inn.id, x: 3, y: 7 });
     // No client message can name it: the death-map write has no schema.
     expect(inGameSchema.safeParse({ t: "writeDeathMap", map: "x1y1" }).success).toBe(false);
@@ -557,6 +557,7 @@ describe("the respawn point", () => {
     const deps = {
       loadMap: (n: string) => byName.get(n) ?? null,
       startPoint: { map: "x1000y992", x: 6, y: 4 },
+      casino: NO_CASINO,
       respawnPoint: defaultSettings().respawnPoint,
       saveIntervalTicks: 600,
       rng: rngByN({ 5: [1] }),

@@ -9,7 +9,7 @@ import { queueCast } from "../src/systems/spells/fx.ts";
 import { playerLoc } from "../src/systems/spells/geometry.ts";
 import { crossMapEdge, tick } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld, toWorldMap } from "../src/systems/world/world.ts";
-import { player, rngByN, testMap } from "./helpers/sim.ts";
+import { NO_CASINO, player, rngByN, testMap } from "./helpers/sim.ts";
 
 test("the seeded jail encloses every walkable area and has no exits or landing pads", () => {
   const db = openDatabase();
@@ -62,6 +62,7 @@ function scene() {
     loadMap: (name: string) => (name === jail.name ? jail : home),
     loadMapById: () => home,
     startPoint: { map: home.name, x: 6, y: 4 },
+    casino: NO_CASINO,
     saveIntervalTicks: 600,
     rng: rngByN(),
     portalTargets: [{ map: home.name, x: 5, y: 5 }],

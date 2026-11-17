@@ -450,4 +450,7 @@ export const NPC_EDIT_TEXT = {
   saved: "NPC has been successfully saved.",
   /** SSO: a refused save. */
   refused: (why: string) => `The NPC was not saved. ${why}`,
+  /** SSO: LOAD of a file the save check would refuse for its length. */
+  tooLong: (lines: number) =>
+    `This file has ${lines} lines. An NPC file holds at most ${NPC_MAX_LINES} lines, so remove ${lines - NPC_MAX_LINES} before saving.`,
 } as const;

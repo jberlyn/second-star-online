@@ -724,7 +724,7 @@ No kept bugs (all ten former entries were fixed; see [chat differences](divergen
 
 ### Boat and Battleship Deeds do nothing when used
 - **What you notice:** Using a Boat Deed or a Battleship Deed does nothing.
-- **In 1.6 and SSO:** 1.6's deed handler simply exits for both, and the boat-building routine was never called from anywhere, so no boat could be built. SSO does the same.
+- **In 1.6 and SSO:** 1.6's deed handler exits for both before it selects a deed or calls the boat-building routine, so no boat could be built. The client still contains the boat builder and the boarding, unboarding and movement routines, and the server accepts a dropped `'s Boat` or `'s Battleship`; only the deed branch is missing. SSO does the same.
 - **In the code:** `packages/shared/src/rules/housing/houses.ts` (`deedUse`)
 - **Pinned by:** `Boat and Battleship Deeds do nothing` (packages/shared/tests/housing/houses.test.ts)
 
@@ -1722,6 +1722,6 @@ No kept bugs (the former entry was fixed; see [vehicle differences](divergences.
 
 These were built into 1.6 but could never be reached in play, so SSO does the same and does not build them.
 
-- **The boat tile-collision bypass was never reachable.** 1.6 had code that let a boat skip tile collision, but no boat could be had: the deeds exit when used, no NPC sells one and the art for them is missing. SSO does the same and does not build boats.
+- **The boat tile-collision bypass was never reachable.** 1.6 had a complete boat flow (building, boarding, movement and unboarding) and the server accepted a dropped `'s Boat` or `'s Battleship`, but the deed handler exited before it called the boat builder, no NPC sold either deed, and the character cast had no body-55 or body-56 frames. Staging a boat by hand shows the ground `BoatPic` and lets its owner click it, but boarding raises a Script Error after the server has already removed the boat from the map. SSO does the same and does not build boats.
 - **The elemental orb war never worked.** 1.6 was designed so that an orb dropped on an elemental platform shifted the balance of power between the four mage classes, but nothing connected it: no platform existed, nothing saved the balance and no monster dropped an orb, so an orb dropped as an ordinary item. SSO does the same and does not build the war; it is a candidate to build after release.
 - **Pinned by:** `orb drop: a Water Orb lands on the floor like any item`; `orb drop: an orb goes into a container on the faced tile`; `orb drop: aboard an Airship "You can't drop this from the sky!"` (packages/server/tests/pigs-orbs-webs.test.ts)

@@ -262,10 +262,10 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Bug fixed
 - **What you notice:** Loading an NPC in the NPC Editor displays every line losslessly, including `OWN|`, empty lines, lines past 100, and all first characters; save validation and limits still apply on save.
 - **1.6:** LOAD dropped empty lines, truncated at 100 lines, and stripped any leading character other than `T P B S R G F I` (turning `OWN|` into `WN|`).
-- **SSO:** `showNpcScript` returns all lines losslessly without truncation or character stripping.
+- **SSO:** `showNpcScript` returns all lines losslessly without truncation or character stripping. A file over 100 lines also brings an alert that SAVE refuses more than 100 and how many lines to remove.
 - **Why:** Prevents silent data loss when inspecting and re-saving NPC scripts.
-- **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`)
-- **Pinned by:** `lossless display: preserves OWN|, all first characters, empty lines, and >100 lines` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines` (packages/client/tests/npceditor.test.ts)
+- **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`); `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`)
+- **Pinned by:** `lossless display: preserves OWN|, all first characters, empty lines, and >100 lines` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines` (packages/client/tests/npceditor.test.ts); `SSO: a file over the save limit loads in full with a warning that SAVE will refuse it` (packages/server/tests/npcedit.test.ts)
 
 ### Unauthorized admin chat and /warpscript show a refusal and clear input
 - **Kind:** Bug fixed
@@ -405,7 +405,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Bug fixed
 - **What you notice:** Warping, respawning, or opening an editor closes any open slot panel, blackjack seat, or checkers seat.
 - **1.6:** Casino windows and seats stayed active across map changes and could be played from another map.
-- **SSO:** Closes slot panels and leaves blackjack/checkers seats on map change or editor entry, and rejects table actions off-map.
+- **SSO:** Closes slot panels and leaves blackjack/checkers seats on map change or editor entry, and rejects table actions off-map. Leaving mid-hand this way, including by dying and respawning, forfeits the blackjack stake to the opponent (credited offline if they are in the reconnect grace).
 - **Why:** Prevents playing or holding seats from other maps.
 - **In the code:** `packages/server/src/systems/casino/index.ts` (`casinoMapChange`); `packages/server/src/systems/casino/blackjack.ts` (`bjTableOf`); `packages/server/src/systems/casino/checkers.ts` (`ckTableOf`, `ckClose`); `packages/server/src/systems/casino/slots.ts` (`slotMapLeave`, `slotPull`); `packages/server/src/systems/world/tick.ts` (`warp`); `packages/server/src/systems/admin/worldedit.ts` (`leaveForEditor`); `packages/client/src/app.ts`
 - **Pinned by:** `the slot panel closes on a map change and a pull away from a machine closes it` (packages/server/tests/casino.test.ts); `a map change leaves the blackjack seat, closes the window, and forfeits a mid-hand stake` (packages/server/tests/blackjack.test.ts); `a map change closes the checkers window and frees the seat` (packages/server/tests/checkers.test.ts)
@@ -1638,9 +1638,9 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Murder flag and pardons are server-only
 - **Kind:** Exploit closed
-- **What you notice:** A credited killer can become wanted; an immortal can pardon an online player.
+- **What you notice:** A credited killer can become wanted; a moderator or immortal can pardon an online player.
 - **1.6:** Any client could send wanted or pardon messages to any player. A message to an absent killer was lost.
-- **SSO:** At the end of the victim's death lock the server credits the recorded last player to hit them by player ID and applies the flag, even if another cause killed them later. A player who has logged off is not flagged. An immortal's `/Pardon` says “<name> is not online.” if the named player is absent.
+- **SSO:** At the end of the victim's death lock the server credits the recorded last player to hit them by player ID and applies the flag, even if another cause killed them later. A player who has logged off is not flagged. A staff `/Pardon` says “<name> is not online.” if the named player is absent.
 - **Why:** Forged messages could frame an innocent player or pardon oneself.
 - **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`, `pardon`)
 
