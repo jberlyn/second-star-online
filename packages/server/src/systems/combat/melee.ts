@@ -200,9 +200,11 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
     actionDelay: t.actionDelay,
     sound: swingSound(weapon),
   };
-  // Shooting arrows: a bow with anything containing "Arrows". An arrow's monster damage is never
-  // sent: it flies as a spell FX (spells/cast.ts).
-  const arrowing = lingoContains(weapon, "Bow") && lingoContains(f.equip.offHand, "Arrows");
+  // Shooting arrows: a bow with one of the six `<Colour> Arrows` and a crystal of that colour, the
+  // same test `attackPower` makes (one without the crystal has already returned). Any other
+  // off-hand melees. An arrow's monster damage is never sent: it flies as a spell FX
+  // (spells/cast.ts).
+  const arrowing = ap.crystal !== null;
   // The tool's own tile (the tool blocks of 1.6's swing handler) comes before the monster hits; the
   // swing stays an ordinary attack.
   if (gctx) {
@@ -211,10 +213,9 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
       ev.swing.sound = gev.sound;
     }
   }
-  // The Attack message carries a colour letter only for the six exact arrow names; peers treat any
-  // other swing as melee.
-  const arrowLetter = arrowing && ap.crystal !== null;
-  if (arrowLetter && ap.crystal) {
+  // The Attack message carries a colour letter only for an arrow shot; peers treat any other swing
+  // as melee.
+  if (ap.crystal !== null) {
     shootArrow(room, p, ap.crystal, power);
   }
   for (const o of room.players) {
@@ -247,7 +248,7 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
   }
   // A swing that hit a monster carries its damage, which receivers read as an arrow letter, so it
   // hurts no player (a kept 1.6 bug).
-  if (!hitMonster && !arrowLetter) {
+  if (!hitMonster && !arrowing) {
     pvpSwing(room, p, power, weapon, ctx, ev);
   }
 }

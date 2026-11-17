@@ -189,3 +189,48 @@ describe("the swing sound", () => {
     expect(ev.broadcast).toBe("*** ** * All hail Ann who has rid the world of an evil overlord!");
   });
 });
+
+describe("bow shots", () => {
+  /** Ann facing an Overlord at (6, 5) with 1000 HP, holding a bow and `offHand`. */
+  function archer(offHand: string) {
+    const s = scene();
+    const a = s.add("Ann", 5, 5);
+    a.facing = "E";
+    a.timers.canAttack = true;
+    a.char.equip = { ...a.char.equip, weapon: "Wooden Bow", offHand };
+    a.char.bag[0] = { item: "Blue Crystals", qty: 5 };
+    const slot = s.map.slots[0];
+    if (!slot) {
+      throw new Error("no monster slot");
+    }
+    slot.live = {
+      name: "Overlord",
+      hp: 1000,
+      x: 6,
+      y: 5,
+      facing: "W",
+      anim: 0,
+      fromX: 6,
+      fromY: 5,
+      queue: [],
+      hitCountb: 0,
+    };
+    setAttackHeld(a, true);
+    s.poll(a);
+    return { a, s, hp: slot.live?.hp, fx: s.room().fxQueue.map((c) => c.name) };
+  }
+
+  test("a bow with Blue Arrows and a crystal shoots an arrow and spends the crystal, hitting nothing in melee", () => {
+    const { a, hp, fx } = archer("Blue Arrows");
+    expect(fx).toContain("Blue ArrowsR");
+    expect(a.char.bag[0]).toMatchObject({ item: "Blue Crystals", qty: 4 });
+    expect(hp).toBe(1000);
+  });
+
+  test('SSO: an off-hand that only contains "Arrows" melees the faced monster and spends no crystal', () => {
+    const { a, hp, fx } = archer("Rusty Arrows");
+    expect(fx.some((n) => n.includes("Arrows"))).toBe(false);
+    expect(a.char.bag[0]).toMatchObject({ item: "Blue Crystals", qty: 5 });
+    expect(hp).toBeLessThan(1000);
+  });
+});
