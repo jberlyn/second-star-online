@@ -1,17 +1,21 @@
 /**
- * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; both staff roles read and post `-` lines in green. Mo warps Bob. Alice uses the seeded jail map x0y0 to jail Bob
- * for the `jailFrames` she sets in Settings: his shout fails, and when the sentence ends he is on
- * the start point. Her `/warpscript` pulls Bob over when he broadcasts the keyword. `/warpmeto`,
+ * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; both staff roles read and post
+ * `-` lines in green. Mo warps Bob. Alice sets `jailMinutes` in Settings and jails Bob in the seeded
+ * jail map x0y0: his shout fails, and when the wall clock passes his sentence he is on the start
+ * point. Her `/warpscript` pulls Bob over when he broadcasts the keyword. `/warpmeto`,
  * `/Location`, `/IPlookup`, a counted `/drop`, a forged editor save that lands in `/CheatFile`, and
- * `/setclass`. She kicks Bob, bans him (his login is refused), unbans him, bans his IP and unbans
- * it; Mo cannot ban an immortal. Every admin action is in the audit log.
+ * `/setclass`. She kicks Bob, bans him for a day (his login is refused with the end, never the
+ * reason), unbans him, bans his IP (which disconnects Mo, on the same address) and unbans it; Mo
+ * cannot ban an immortal. Every admin action is in the audit log.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import {
   ADMIN_TEXT,
+  banNotice,
   CHAT_COLOR,
   type CreateMsg,
+  MODERATION_TEXT,
   type ServerMsg,
   TEXT,
 } from "@secondstaronline/shared";
@@ -46,6 +50,8 @@ describe("admin commands, roles, bans and settings", () => {
   let alice: Bot;
   let bob: Bot;
   let mo: Bot;
+  /** The wall clock: the jail sentence and ban ends read it. */
+  let wall = Date.parse("2026-11-04T00:00:00.000Z");
 
   const tick = async (n: number) => {
     await settle();
@@ -70,7 +76,7 @@ describe("admin commands, roles, bans and settings", () => {
   };
 
   beforeAll(async () => {
-    server = startTestServer({ rng });
+    server = startTestServer({ rng, isoNow: () => new Date(wall).toISOString() });
     const bot = await connectBot(server.wsUrl);
     for (const name of ["Alice", "Bob", "Mo"]) {
       bot.send(make(name));
@@ -124,7 +130,7 @@ describe("admin commands, roles, bans and settings", () => {
     expect(where(bob)).toEqual(["x1000y992", 12, 8]);
     mo.clear();
     await say(mo, "/ban Alice");
-    expect(lines(mo)).toEqual(["*** banning Alice...", ADMIN_TEXT.immortalTarget]);
+    expect(lines(mo)).toEqual(["*** banning Alice...", MODERATION_TEXT.staffTarget]);
     bob.clear();
     await say(bob, "/ban Alice");
     expect(lines(bob)).toEqual([ADMIN_TEXT.banDenied]);
@@ -135,23 +141,24 @@ describe("admin commands, roles, bans and settings", () => {
     ]);
   });
 
-  test("Settings: Alice sets jailFrames; the window shows it", async () => {
+  test("Settings: Alice sets jailMinutes; the window shows it", async () => {
     alice.clear();
     alice.send({ t: "settingsOpen" });
     const rows = await alice.waitFor((m) => m.t === "settings");
-    expect(rows.t === "settings" && rows.rows.find((r) => r.key === "jailFrames")?.value).toBe(
-      8000,
-    );
-    alice.send({ t: "settingsSave", values: { jailFrames: 40, broadcastCooldownFrames: 0 } });
+    expect(rows.t === "settings" && rows.rows.find((r) => r.key === "jailMinutes")?.value).toBe(10);
+    alice.send({ t: "settingsSave", values: { jailMinutes: 2, broadcastCooldownFrames: 0 } });
     await alice.waitFor((m) => m.t === "settingsResult" && m.ok);
-    expect(server.game.settings.jailFrames).toBe(40);
+    expect(server.game.settings.jailMinutes).toBe(2);
   });
 
   test("the seeded jail confines Bob until his sentence ends", async () => {
     bob.clear();
     alice.clear();
     await say(alice, "/jail bob");
-    expect(lines(alice)).toEqual(["*** Jailing bob..."]);
+    expect(lines(alice)).toEqual([
+      "*** Jailing bob...",
+      "Bob is jailed until 2026-11-04 00:02 UTC.",
+    ]);
     await bob.waitFor(isSnapshot);
     bob.send({ t: "mapReady" });
     expect(where(bob)).toEqual(["x0y0", 4, 4]);
@@ -159,9 +166,11 @@ describe("admin commands, roles, bans and settings", () => {
     await say(bob, "'let me out");
     expect(lines(bob)).toEqual(["You shout but no one can hear you!"]);
     bob.clear();
-    await tick(39);
+    wall += 119_000;
+    await tick(40);
     expect(bob.inbox.some(isSnapshot)).toBe(false);
-    await tick(1);
+    wall += 1000;
+    await tick(20);
     await bob.waitFor(isSnapshot);
     expect(where(bob)).toEqual(["x1000y992", 6, 4]);
     bob.send({ t: "mapReady" });
@@ -232,17 +241,14 @@ describe("admin commands, roles, bans and settings", () => {
     expect((await bob.closed).code).toBe(4005);
 
     bob = await login("Bob");
-    await say(alice, "/ban bob");
-    expect(await bob.waitFor((m) => m.t === "kicked")).toEqual({
-      t: "kicked",
-      text: ADMIN_TEXT.banned,
-    });
+    const notice = banNotice(ADMIN_TEXT.banned, new Date(wall + 86_400_000).toISOString());
+    await say(alice, "/ban bob 1d being a rude person");
+    const kick = await bob.waitFor((m) => m.t === "kicked");
+    expect(kick).toEqual({ t: "kicked", text: notice });
+    expect(JSON.stringify(kick)).not.toContain("rude");
     const again = await connectBot(server.wsUrl);
     again.send({ t: "login", name: "Bob", password: "secret" });
-    expect(await again.waitFor((m) => m.t === "denied")).toEqual({
-      t: "denied",
-      text: ADMIN_TEXT.banned,
-    });
+    expect(await again.waitFor((m) => m.t === "denied")).toEqual({ t: "denied", text: notice });
     alice.clear();
     await say(alice, "/unban Bob");
     expect(lines(alice)).toEqual(["Bob is no longer banned."]);
@@ -253,18 +259,19 @@ describe("admin commands, roles, bans and settings", () => {
     await settle();
   });
 
-  test("/BanIP refuses a login from that address; /unbanIP lets it in", async () => {
+  test("/BanIP disconnects and refuses that address, except an immortal; /unbanIP lets it in", async () => {
     alice.clear();
     await say(alice, "/IPlookup Mo");
     const ip = lines(alice)[1]?.replace("The IP is: ", "") ?? "";
     await say(alice, `/BanIP ${ip}`);
     expect(lines(alice)).toContain(`Banning ${ip}...`);
+    // Every bot shares the address: Mo is disconnected, Alice (an immortal) is not.
+    const notice = banNotice(ADMIN_TEXT.ipBanned, new Date(wall + 30 * 86_400_000).toISOString());
+    expect(await mo.waitFor((m) => m.t === "kicked")).toEqual({ t: "kicked", text: notice });
+    expect(alice.inbox.some((m) => m.t === "kicked")).toBe(false);
     const c = await connectBot(server.wsUrl);
     c.send({ t: "login", name: "Bob", password: "secret" });
-    expect(await c.waitFor((m) => m.t === "denied")).toEqual({
-      t: "denied",
-      text: ADMIN_TEXT.ipBanned,
-    });
+    expect(await c.waitFor((m) => m.t === "denied")).toEqual({ t: "denied", text: notice });
     await say(alice, `/unbanIP ${ip}`);
     c.clear();
     c.send({ t: "login", name: "Bob", password: "secret" });

@@ -57,8 +57,11 @@ function scene() {
   bob.char.respawn = { mapId: home.id, x: 5, y: 5 };
   addPlayer(world, bob);
   bob.loading = 0;
-  bob.jailIn = 100;
+  // A wall clock moving one second a tick, and a sentence of 100 seconds.
+  const clock = { ms: Date.parse("2026-11-17T09:00:00.000Z") };
+  bob.jailUntil = clock.ms + 100_000;
   const deps = {
+    now: () => clock.ms,
     loadMap: (name: string) => (name === jail.name ? jail : home),
     loadMapById: () => home,
     startPoint: { map: home.name, x: 6, y: 4 },
@@ -68,11 +71,17 @@ function scene() {
     portalTargets: [{ map: home.name, x: 5, y: 5 }],
   };
   db.close();
-  return { world, bob, jail, home, deps };
+  const step = (n = 1) => {
+    for (let i = 0; i < n; i++) {
+      clock.ms += 1000;
+      tick(world, deps);
+    }
+  };
+  return { world, bob, jail, home, deps, step, sentence: bob.jailUntil };
 }
 
 test("jail blocks Portal and exits while keeping the sentence and normal respawn point", () => {
-  const { world, bob, jail, home, deps } = scene();
+  const { world, bob, jail, home, step, sentence } = scene();
   expect(bob.char.respawn?.mapId).toBe(home.id);
   const room = world.rooms.get(jail.name)!;
   const loc = playerLoc(bob);
@@ -86,32 +95,29 @@ test("jail blocks Portal and exits while keeping the sentence and normal respawn
     v: loc.v,
     power: 1,
   });
-  for (let i = 0; i < 20; i++) {
-    tick(world, deps);
-  }
+  step(20);
   expect(bob.map.name).toBe(jail.name);
-  expect(bob.jailIn).toBe(80);
+  expect(bob.jailUntil).toBe(sentence);
   jail.exit1 = { mx: 1000, my: 992, x: 5, y: 5 };
   jail.ground.push({ id: "exit", item: "Exit", x: 4, y: 4, kind: "admin", expiresAt: null });
-  tick(world, deps);
+  step();
   expect(bob.map.name).toBe(jail.name);
-  expect(bob.jailIn).toBe(79);
+  expect(bob.jailUntil).toBe(sentence);
 });
 
 test("death revives a prisoner in jail without restarting the sentence; expiry still releases", () => {
-  const { world, bob, jail, home, deps } = scene();
+  const { bob, jail, home, step, sentence } = scene();
   bob.deadLock = 1;
-  tick(world, deps);
-  expect([bob.map.name, bob.x, bob.y, bob.jailIn]).toEqual([jail.name, 4, 4, 99]);
+  step();
+  expect([bob.map.name, bob.x, bob.y, bob.jailUntil]).toEqual([jail.name, 4, 4, sentence]);
   expect(bob.char.respawn?.mapId).toBe(home.id);
-  for (let i = 0; i < 99; i++) {
-    tick(world, deps);
-  }
-  expect([bob.map.name, bob.x, bob.y, bob.jailIn]).toEqual([home.name, 6, 4, 0]);
+  // The sentence is checked once a second (every 20 ticks): it ends by the 120th tick.
+  step(119);
+  expect([bob.map.name, bob.x, bob.y, bob.jailUntil]).toEqual([home.name, 6, 4, null]);
 });
 
 test("every jail edge refuses a map crossing, even for an arriving airship rider", () => {
-  const { world, bob, jail, deps } = scene();
+  const { world, bob, jail, deps, sentence } = scene();
   bob.vehicle = "Airship";
   for (const [dmx, dmy] of [
     [-1, 0],
@@ -125,6 +131,6 @@ test("every jail edge refuses a map crossing, even for an arriving airship rider
     });
     expect(out).toEqual([]);
     expect(bob.map.name).toBe(jail.name);
-    expect(bob.jailIn).toBe(100);
+    expect(bob.jailUntil).toBe(sentence);
   }
 });

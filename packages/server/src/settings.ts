@@ -317,17 +317,48 @@ export const SETTINGS = {
     tooltip: "How long after a dropped connection a player can reconnect without logging in again.",
     source: "SSO addition (resumed sessions); the same 30 s grace as blackjack.",
   }),
-  jailFrames: def({
+  jailMinutes: def({
     group: "Moderation and security",
     label: "Jail sentence",
-    unit: "frames",
-    form: { kind: "int", min: 1, max: 1_728_000 },
-    schema: z.number().int().min(1).max(1_728_000),
-    default: 8000,
+    unit: "minutes",
+    form: { kind: "int", min: 1, max: 5_256_000 },
+    schema: z.number().int().min(1).max(5_256_000),
+    default: 10,
     tooltip:
-      "Frames (1/20 s) a jailed player stays on the jail map x0y0 before being sent to the start point. 8000 = 6 min 40 s. It starts again each time they enter the jail map, logging in included.",
+      "Minutes a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to the start point.",
     source:
-      '1.6\'s server settings file: "Jail Sentence Time (1800 = 1 minute):8000". The label assumed 30 frames a second; 1.6 ran at 20, so 8000 was 400 s.',
+      '1.6\'s server settings file had "Jail Sentence Time (1800 = 1 minute):8000" in frames, counted only while online and restarted on every entry. SSO stores sentences and counts them in minutes.',
+  }),
+  banMinutes: def({
+    group: "Moderation and security",
+    label: "Ban length",
+    unit: "minutes",
+    form: { kind: "int", min: 0, max: 5_256_000 },
+    schema: z.number().int().min(0).max(5_256_000),
+    default: 0,
+    tooltip: "Minutes a /ban without a duration lasts. 0 makes it permanent until /unban.",
+    source: "SSO addition. 1.6's bans were permanent.",
+  }),
+  ipBanMinutes: def({
+    group: "Moderation and security",
+    label: "IP ban length",
+    unit: "minutes",
+    form: { kind: "int", min: 0, max: 5_256_000 },
+    schema: z.number().int().min(0).max(5_256_000),
+    default: 43_200,
+    tooltip:
+      "Minutes a /banip without a duration lasts (43200 = 30 days). 0 makes it permanent. Addresses are reassigned over time, so a permanent IP ban can lock out someone else later.",
+    source: "SSO addition. 1.6's IP bans were permanent (and never checked).",
+  }),
+  addressHistoryDays: def({
+    group: "Moderation and security",
+    label: "Keep login addresses",
+    form: { kind: "int", min: 0, max: 3650 },
+    schema: z.number().int().min(0).max(3650),
+    default: 180,
+    tooltip:
+      "Days an account's login addresses are kept for /banip <name> and /banlist after it last used them. 0 keeps them forever.",
+    source: "SSO addition: /banip <name> needs the addresses an account has used.",
   }),
   loginFailsPerIp: def({
     group: "Moderation and security",

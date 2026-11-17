@@ -9,6 +9,7 @@ export {
 } from "./constants.ts";
 export * from "./protocol/index.ts";
 export * from "./rules/admin/admin.ts";
+export * from "./rules/admin/moderation.ts";
 export * from "./rules/admin/npcfile.ts";
 export * from "./rules/admin/worldedit.ts";
 export * from "./rules/casino/blackjack.ts";

@@ -106,6 +106,8 @@ export function setup(
   maps: WorldMap[],
   startPoint = { map: "x1000y992", x: 6, y: 4 },
   rng: Rng = NEVER_PUSH,
+  /** A wall clock (ms) for the tick, such as jail sentences; none by default. */
+  now?: () => number,
 ) {
   const byName = new Map(maps.map((m) => [m.name, m]));
   const world: World = createWorld();
@@ -115,6 +117,7 @@ export function setup(
     saveIntervalTicks: 600,
     rng,
     casino: NO_CASINO,
+    ...(now ? { now } : {}),
   };
   const join = (p: Player) => {
     addPlayer(world, p);

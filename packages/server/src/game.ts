@@ -10,6 +10,7 @@ import { helpData } from "@secondstaronline/data";
 import {
   ADMIN_TEXT,
   AIRSHIP_BODY,
+  banNotice,
   type CreateMsg,
   cheatLine,
   creationError,
@@ -17,11 +18,16 @@ import {
   factionIdOf,
   type InGameMsg,
   invAdd,
+  ipKey,
+  isActive,
+  isJailMap,
+  JAIL,
   mapName,
   NO_FOG,
   PASSWORD_TEXT,
   parseHouseMapName,
   parseMapName,
+  type Role,
   type ServerMsg,
   savedSpellbook,
   sortFaction,
@@ -41,15 +47,10 @@ import {
   verifyPassword,
 } from "./persistence/accounts.ts";
 import {
-  addIpBan,
   findCharacterAccount,
   insertAudit,
   insertCheat,
-  isAccountBanned,
-  isIpBanned,
   recentCheats,
-  removeIpBan,
-  setAccountBan,
   setClassCode,
 } from "./persistence/admin.ts";
 import { addArt, loadArt } from "./persistence/art.ts";
@@ -100,6 +101,22 @@ import {
   saveMapLayers,
   saveMapTitle,
 } from "./persistence/maps.ts";
+import {
+  accountAddresses,
+  accountBan,
+  activeBans,
+  activeIpBans,
+  activeJails,
+  characterJail,
+  charactersAt,
+  ipBan,
+  ipBansFrom,
+  moderationHistory,
+  normalizeIpBans,
+  noteAddress,
+  pruneModeration,
+  recordModeration,
+} from "./persistence/moderation.ts";
 import { loadSlots, saveSlots } from "./persistence/monsters.ts";
 import { loadNewspaper, saveNewspaper } from "./persistence/newspapers.ts";
 import { insertNpcFileVersion, loadNpcFiles, saveNpcFile } from "./persistence/npcfiles.ts";
@@ -403,7 +420,9 @@ export function createGame(deps: GameDeps): Game {
     setNpcFile(npcs, npcFileNamed(npcs, f.npc)?.name ?? f.npc, f.text);
   }
   const world = createWorld(npcs);
-  world.jailFrames = settings.jailFrames;
+  // IP bans from before keys get their standard form; lapsed bans and old addresses go.
+  normalizeIpBans(db, isoNow());
+  pruneModeration(db, isoNow(), settings.addressHistoryDays);
   // Named containers: the Cauldrons and carried crates and cabinets.
   world.containers = loadContainers(db);
   // The house blueprints and list.
@@ -883,7 +902,6 @@ export function createGame(deps: GameDeps): Game {
       announcePresence: settings.announcePresence,
       presenceChatLines: settings.presenceChatLines,
     });
-    world.jailFrames = settings.jailFrames;
     if (JSON.stringify(settings.treasureMaps) !== JSON.stringify(world.treasureMaps)) {
       resetTreasure(world, settings.treasureMaps, rng);
     }
@@ -925,9 +943,23 @@ export function createGame(deps: GameDeps): Game {
   const adminDeps: AdminDeps = {
     findCharacter: (name) => findCharacterAccount(db, name),
     setRole: (accountId, role) => setRole(db, accountId, role, isoNow()),
-    setBan: (accountId, by) => setAccountBan(db, accountId, by, isoNow()),
-    addIpBan: (ip, by) => addIpBan(db, ip, by, isoNow()),
-    removeIpBan: (ip) => removeIpBan(db, ip),
+    moderation: {
+      accountBan: (accountId) => accountBan(db, accountId),
+      jail: (characterId) => characterJail(db, characterId),
+      ipBan: (key) => ipBan(db, key),
+      ipBansFrom: (accountId) => ipBansFrom(db, accountId),
+      record: (e) => {
+        recordModeration(db, e);
+      },
+      addresses: (accountId) => accountAddresses(db, accountId),
+      charactersAt: (key) => charactersAt(db, key),
+      activeBans: (now) => activeBans(db, now),
+      activeJails: (now) => activeJails(db, now),
+      activeIpBans: (now) => activeIpBans(db, now),
+      history: (accountId, limit) => moderationHistory(db, accountId, limit),
+    },
+    now: isoNow,
+    durations: () => settings,
     setClass: (characterId, code) => {
       setClassCode(db, characterId, code, isoNow());
       // An online target's promotions read the live class.
@@ -1309,6 +1341,23 @@ export function createGame(deps: GameDeps): Game {
     }
   };
 
+  /** The IP ban notice for an address in force, or null. */
+  const ipBanRefusal = (ip: string): string | null => {
+    if (ip === "") {
+      return null;
+    }
+    const b = ipBan(db, ipKey(ip));
+    return isActive(b, isoNow()) ? banNotice(ADMIN_TEXT.ipBanned, b?.expiresAt ?? null) : null;
+  };
+  /** Why an account may not play: its ban, or its address's (never for an immortal). */
+  const banRefusal = (accountId: string, role: Role, ip: string): string | null => {
+    const b = accountBan(db, accountId);
+    if (isActive(b, isoNow())) {
+      return banNotice(ADMIN_TEXT.banned, b?.expiresAt ?? null);
+    }
+    return role === "immortal" ? null : ipBanRefusal(ip);
+  };
+
   const core: Game = {
     world,
     get settings() {
@@ -1316,11 +1365,6 @@ export function createGame(deps: GameDeps): Game {
     },
 
     async login(name, password, ip = "") {
-      // An IP ban refuses the connection before the password (1.6 checked the IP on connect with
-      // its address lookup and sort routines; the reply did nothing).
-      if (ip !== "" && isIpBanned(db, ip)) {
-        return { ok: false, text: ADMIN_TEXT.ipBanned };
-      }
       const account = findAccountByUsername(db, name);
       // SSO's login limits: a moderator or immortal is never refused by the per-address count (an
       // operator behind a shared address must still get in).
@@ -1346,9 +1390,11 @@ export function createGame(deps: GameDeps): Game {
         return { ok: false, text: TEXT.noSuchName };
       }
       // The server checked the password first and the client refused the banned file it got
-      // back.
-      if (isAccountBanned(db, account.id)) {
-        return { ok: false, text: ADMIN_TEXT.banned };
+      // back. An IP ban is checked after the password too, so that it never stops an immortal
+      // (1.6 checked the address on connect; the reply did nothing).
+      const refused = banRefusal(account.id, account.role, ip);
+      if (refused) {
+        return { ok: false, text: refused };
       }
       return { ok: true, accountId: account.id, characterId: character.id, name: character.name };
     },
@@ -1371,6 +1417,10 @@ export function createGame(deps: GameDeps): Game {
       }
       if (findAccountByUsername(db, msg.name)) {
         return { ok: false, text: TEXT.nameTaken };
+      }
+      const ipRefused = ipBanRefusal(ip);
+      if (ipRefused) {
+        return { ok: false, text: ipRefused };
       }
       if (!allowCreate(limits, ip, nowMs(), settings.createsPerIp)) {
         return { ok: false, text: TEXT.tooManyCreates };
@@ -1417,11 +1467,9 @@ export function createGame(deps: GameDeps): Game {
     },
 
     refusal(characterId, ip) {
-      if (isIpBanned(db, ip)) {
-        return ADMIN_TEXT.ipBanned;
-      }
       const c = findCharacterById(db, characterId);
-      return c && isAccountBanned(db, c.accountId) ? ADMIN_TEXT.banned : null;
+      const account = c ? findAccountById(db, c.accountId) : null;
+      return account ? banRefusal(account.id, account.role, ip) : ipBanRefusal(ip);
     },
 
     cheat(characterId, ip, reason) {
@@ -1450,6 +1498,30 @@ export function createGame(deps: GameDeps): Game {
         y = sp.y;
         if (!map) {
           return false;
+        }
+      }
+      // A sentence in force puts the prisoner in jail wherever they were saved; a player on the
+      // jail map without one (it ended while they were away) goes to the start point.
+      const now = isoNow();
+      noteAddress(db, account.id, ip, now, settings.addressHistoryDays);
+      const sentence = characterJail(db, c.id);
+      const jailUntil = isActive(sentence, now)
+        ? sentence?.expiresAt
+          ? Date.parse(sentence.expiresAt)
+          : Number.POSITIVE_INFINITY
+        : null;
+      const jailMap = jailUntil !== null && !isJailMap(map.name) ? loadMap(JAIL.map) : null;
+      if (jailMap) {
+        map = jailMap;
+        x = JAIL.x;
+        y = JAIL.y;
+      } else if (jailUntil === null && isJailMap(map.name) && account.role === "player") {
+        const sp = settings.startPoint;
+        const start = loadMap(sp.map);
+        if (start) {
+          map = start;
+          x = sp.x;
+          y = sp.y;
         }
       }
       const p: Player = {
@@ -1502,6 +1574,7 @@ export function createGame(deps: GameDeps): Game {
         ip,
         spell: { ...newSpellState(loadSpellbook(db, c.id)), body: c.vehicle ? AIRSHIP_BODY : null },
       };
+      p.jailUntil = jailUntil;
       p.ignore = loadIgnores(db, c.accountId);
       p.buddies = loadBuddies(db, c.accountId);
       const kept = keptSocial.get(c.id);
@@ -1513,7 +1586,7 @@ export function createGame(deps: GameDeps): Game {
       keptSocial.delete(c.id);
       factionLogin(p); // `@Faction` at load
       send(p.id, { t: "role", role: p.role });
-      deliver(addPlayer(world, p, !resumed));
+      deliver(addPlayer(world, p));
       // The guild loads with the character; a resumed session greets nobody.
       deliver(guildLogin(world, p, loadCharacterGuild(db, c.id), resumed));
       if (resumed) {

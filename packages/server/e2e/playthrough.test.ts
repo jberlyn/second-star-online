@@ -29,6 +29,7 @@ import { join } from "node:path";
 
 import {
   ADMIN_TEXT,
+  banNotice,
   CAST_TEXT,
   type EditorMap,
   LEVEL_UP_TEXT,
@@ -259,10 +260,10 @@ describe("the playthrough", () => {
     king.clear();
     king.send({ t: "settingsOpen" });
     await king.waitFor((m) => m.t === "settings");
-    king.send({ t: "settingsSave", values: { jailFrames: 40 } });
+    king.send({ t: "settingsSave", values: { jailMinutes: 40 } });
     await king.waitFor((m) => m.t === "settingsResult" && m.ok);
     king.send({ t: "settingsClose" });
-    expect(server.game.settings.jailFrames).toBe(40);
+    expect(server.game.settings.jailMinutes).toBe(40);
 
     // The NPCs, in front of King at the start tile.
     await say(king, "/roster 1 Amber");
@@ -1885,13 +1886,13 @@ describe("the playthrough", () => {
     await say(king, "/ban Dave");
     expect(await dave.waitFor((m) => m.t === "kicked")).toEqual({
       t: "kicked",
-      text: ADMIN_TEXT.banned,
+      text: banNotice(ADMIN_TEXT.banned, null),
     });
     const refused = await connectBot(server.wsUrl);
     refused.send({ t: "login", name: "Dave", password: "newpass" });
     expect(await refused.waitFor((m) => m.t === "denied")).toEqual({
       t: "denied",
-      text: ADMIN_TEXT.banned,
+      text: banNotice(ADMIN_TEXT.banned, null),
     });
     refused.close();
     king.clear();

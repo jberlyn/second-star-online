@@ -128,9 +128,9 @@ describe("settings", () => {
     const groups = rows.map((r) => r.group).filter((g, i, all) => all.indexOf(g) === i);
     expect(groups).toEqual([...SETTING_GROUPS]);
     expect(rows.every((r) => r.tooltip !== "")).toBe(true);
-    expect(rows.find((r) => r.key === "jailFrames")).toMatchObject({
+    expect(rows.find((r) => r.key === "jailMinutes")).toMatchObject({
       group: "Moderation and security",
-      unit: "frames",
+      unit: "minutes",
     });
   });
 });

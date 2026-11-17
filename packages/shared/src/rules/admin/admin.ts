@@ -8,7 +8,8 @@ import { lingoContains, lingoEq } from "../core/lingo.ts";
 export type Role = "player" | "moderator" | "immortal";
 
 /**
- * The admin commands of 1.6's `ChatSend` grammar, plus SSO's `/role`, `/unban` and `/setclass`.
+ * The admin commands of 1.6's `ChatSend` grammar, plus SSO's `/role`, `/unban`, `/setclass`,
+ * `/unjail` and `/banlist`.
  */
 export type AdminCmd =
   | "save"
@@ -29,12 +30,14 @@ export type AdminCmd =
   | "warpmeto"
   | "role"
   | "unban"
-  | "setclass";
+  | "setclass"
+  | "unjail"
+  | "banlist";
 
 /**
  * Who may run each command.
- * Moderators share most of the 1.6 admin commands and `/unban`; IP bans, `/role` and `/setclass`
- * remain immortal-only. Item creation (`/drop`) is immortal-only too, checked in `handleDrop`.
+ * Moderators share most of the 1.6 admin commands, `/unban`, `/unjail` and `/banlist`; IP bans,
+ * `/role` and `/setclass` remain immortal-only. Item creation (`/drop`) is immortal-only too, checked in `handleDrop`.
  */
 export const ADMIN_ROLES: Readonly<Record<AdminCmd, readonly Role[]>> = {
   save: ["immortal", "moderator"],
@@ -56,6 +59,8 @@ export const ADMIN_ROLES: Readonly<Record<AdminCmd, readonly Role[]>> = {
   role: ["immortal"], // SSO
   unban: ["immortal", "moderator"], // SSO
   setclass: ["immortal"], // SSO
+  unjail: ["immortal", "moderator"], // SSO
+  banlist: ["immortal", "moderator"], // SSO
 };
 
 export function mayRun(cmd: AdminCmd, role: Role): boolean {
@@ -63,7 +68,13 @@ export function mayRun(cmd: AdminCmd, role: Role): boolean {
 }
 
 /** The SSO additions: for anyone not allowed, the line is said as local chat, as 1.6 would have. */
-export const SSO_ADMIN_CMDS: readonly AdminCmd[] = ["role", "unban", "setclass"];
+export const SSO_ADMIN_CMDS: readonly AdminCmd[] = [
+  "role",
+  "unban",
+  "setclass",
+  "unjail",
+  "banlist",
+];
 
 /**
  * Who may read and post to the admin channel (`-text`): both staff roles (immortals and
@@ -121,8 +132,6 @@ export const ADMIN_TEXT = {
   kickImmortal: "Only an immortal can kick an immortal.",
   /** `/iplookup`, `/jail`, `/warp`, `/warptome` by a moderator on an immortal. */
   immortalTarget: "Only an immortal can do that to an immortal.",
-  /** `/unban` by a moderator of an account an immortal banned. */
-  immortalBan: "Only an immortal can lift an immortal's ban.",
   setClassUsage: "Usage: /setclass <name> <class name or number 1-26>",
   noSuchClass: (cls: string) => `There is no class called ${cls}.`,
   classSet: (name: string, cls: string) => `${name} is now a ${cls}.`,

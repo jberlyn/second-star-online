@@ -107,7 +107,7 @@ function candidates(f: Z, c: Ctx): unknown[] {
     case "object":
       return [build(f, c)];
     case "record":
-      return [{}, { jailFrames: 40 }, { constructor: 1 }];
+      return [{}, { jailMinutes: 40 }, { constructor: 1 }];
     case "union":
       return def.options.flatMap((o: Z) => candidates(o, c));
     default:

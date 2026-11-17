@@ -88,7 +88,7 @@ export type ChatCommand =
    */
   | { kind: "friends"; friends: FriendsCommand };
 
-/** The admin commands by their word 1, and SSO's `/role`, `/unban` and `/setclass`. */
+/** The admin commands by their word 1, and SSO's `/role`, `/unban`, `/setclass`, `/unjail` and `/banlist`. */
 const ADMIN_WORD1: Readonly<Record<string, AdminCmd>> = {
   "/save": "save",
   "/refresh": "refresh",
@@ -109,6 +109,8 @@ const ADMIN_WORD1: Readonly<Record<string, AdminCmd>> = {
   "/role": "role",
   "/unban": "unban",
   "/setclass": "setclass",
+  "/unjail": "unjail",
+  "/banlist": "banlist",
 };
 
 /**

@@ -1,5 +1,5 @@
 /**
- * Admin rows: account bans, IP bans, the audit log and the cheat log. Plain functions taking the
+ * Admin rows: character lookups, the audit log and the cheat log (bans: moderation.ts). Plain functions taking the
  * `Db` first.
  */
 import type { Role } from "./accounts.ts";
@@ -12,32 +12,17 @@ export interface CharacterAccount {
   name: string;
   role: Role;
   classCode: number;
-  bannedAt: string | null;
-  /** The account that made the current ban, and its role now. */
-  bannedBy: string | null;
-  bannedByRole: Role | null;
 }
 
 export function findCharacterAccount(db: Db, name: string): CharacterAccount | null {
   const row = db
     .query<
-      {
-        character_id: string;
-        account_id: string;
-        name: string;
-        role: Role;
-        class_code: number;
-        banned_at: string | null;
-        banned_by: string | null;
-        banned_by_role: Role | null;
-      },
+      { character_id: string; account_id: string; name: string; role: Role; class_code: number },
       [string]
     >(
-      `SELECT c.id AS character_id, a.id AS account_id, c.name, a.role, c.class_code, a.banned_at,
-              a.banned_by, banner.role AS banned_by_role
+      `SELECT c.id AS character_id, a.id AS account_id, c.name, a.role, c.class_code
        FROM characters c
        JOIN accounts a ON a.id = c.account_id
-       LEFT JOIN accounts banner ON banner.id = a.banned_by
        WHERE c.name = ? LIMIT 1`,
     )
     .get(name);
@@ -48,42 +33,8 @@ export function findCharacterAccount(db: Db, name: string): CharacterAccount | n
         name: row.name,
         role: row.role,
         classCode: row.class_code,
-        bannedAt: row.banned_at,
-        bannedBy: row.banned_by,
-        bannedByRole: row.banned_by_role,
       }
     : null;
-}
-
-export function isAccountBanned(db: Db, accountId: string): boolean {
-  const row = db
-    .query<{ banned_at: string | null }, [string]>("SELECT banned_at FROM accounts WHERE id = ?")
-    .get(accountId);
-  return !!row?.banned_at;
-}
-
-/** Bans (`by` an account id) or, with `by` null, unbans an account. */
-export function setAccountBan(db: Db, accountId: string, by: string | null, now: string): void {
-  db.query("UPDATE accounts SET banned_at = ?, banned_by = ?, updated_at = ? WHERE id = ?").run(
-    by ? now : null,
-    by,
-    now,
-    accountId,
-  );
-}
-
-export function addIpBan(db: Db, ip: string, by: string, now: string): void {
-  db.query(
-    "INSERT INTO ip_bans (ip, banned_by, created_at) VALUES (?, ?, ?) ON CONFLICT(ip) DO NOTHING",
-  ).run(ip, by, now);
-}
-
-export function removeIpBan(db: Db, ip: string): void {
-  db.query("DELETE FROM ip_bans WHERE ip = ?").run(ip);
-}
-
-export function isIpBanned(db: Db, ip: string): boolean {
-  return !!db.query<{ ip: string }, [string]>("SELECT ip FROM ip_bans WHERE ip = ?").get(ip);
 }
 
 export function setClassCode(db: Db, characterId: string, code: number, now: string): void {

@@ -70,10 +70,10 @@ const ROWS: SettingRow[] = [
     default: true,
   },
   {
-    key: "jailFrames",
+    key: "broadcastCooldownFrames",
     group: "Moderation and security",
-    label: "Jail",
-    tooltip: "Jail.",
+    label: "Broadcast",
+    tooltip: "Broadcast.",
     kind: "int",
     value: 8000,
     default: 8000,
@@ -134,10 +134,10 @@ describe("the Settings window", () => {
 
   test("frames show as time, live as you type (20 frames a second)", () => {
     const { row, type } = win();
-    const jail = row("jailFrames");
-    expect(jail.querySelector(".settings-unit")?.textContent).toBe("frames = 6 min 40 s");
-    type(jail.querySelector("input") as HTMLInputElement, "1000");
-    expect(jail.querySelector(".settings-unit")?.textContent).toBe("frames = 50 s");
+    const wait = row("broadcastCooldownFrames");
+    expect(wait.querySelector(".settings-unit")?.textContent).toBe("frames = 6 min 40 s");
+    type(wait.querySelector("input") as HTMLInputElement, "1000");
+    expect(wait.querySelector(".settings-unit")?.textContent).toBe("frames = 50 s");
     expect(durationText(0.8)).toBe("0.8 s");
     expect(durationText(7_200)).toBe("2 h");
   });
@@ -154,13 +154,13 @@ describe("the Settings window", () => {
     reset.click();
     expect(walk.classList.contains("settings-changed")).toBe(true);
     expect(reset.hidden).toBe(true);
-    type(row("jailFrames").querySelector("input") as HTMLInputElement, "100");
+    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "100");
     expect(status()).toBe("2 unsaved changes");
   });
 
   test("Save sends every value from its control; Revert asks again", () => {
     const { row, el, saves, loads, type } = win();
-    type(row("jailFrames").querySelector("input") as HTMLInputElement, "100");
+    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "100");
     type(
       row("portalTargets").querySelector("textarea") as HTMLTextAreaElement,
       "x1y1 2 3\nx5y5 6 7",
@@ -175,7 +175,7 @@ describe("the Settings window", () => {
           { map: "x5y5", x: 6, y: 7 },
         ],
         dropOnDeath: true,
-        jailFrames: 100,
+        broadcastCooldownFrames: 100,
         saveIntervalTicks: 600,
       },
     ]);
@@ -185,15 +185,15 @@ describe("the Settings window", () => {
 
   test("a bad value is shown on its row and nothing is sent", () => {
     const { row, el, saves, status, type } = win();
-    type(row("jailFrames").querySelector("input") as HTMLInputElement, "0");
+    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "0");
     (el.querySelector(".settings-save") as HTMLButtonElement).click();
     expect(saves).toEqual([]);
-    const err = row("jailFrames").querySelector(".settings-error") as HTMLElement;
+    const err = row("broadcastCooldownFrames").querySelector(".settings-error") as HTMLElement;
     expect(err.hidden).toBe(false);
     expect(err.textContent).toBe("Enter a number from 1 to 9,000.");
-    expect(status()).toBe("Check Jail before saving.");
+    expect(status()).toBe("Check Broadcast before saving.");
     // Typing again clears it.
-    type(row("jailFrames").querySelector("input") as HTMLInputElement, "5");
+    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "5");
     expect(err.hidden).toBe(true);
   });
 

@@ -21,7 +21,7 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Code folder | Entries |
 |---|---:|
-| [admin](#admin) | 29 |
+| [admin](#admin) | 33 |
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 11 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **221** |
+| **Total** | **225** |
 
 ## admin
 
@@ -110,7 +110,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** IP lookups are available only to authorized staff.
 - **1.6:** The server address lookup was open to everyone and `/IPlookup` was gated only by the client.
-- **SSO:** Addresses stay server-side and lookup is restricted to staff.
+- **SSO:** Addresses stay server-side and lookup is restricted to staff. The login addresses the server keeps for IP bans are shown only to immortals.
 - **Why:** Players' network addresses are private.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
@@ -143,13 +143,13 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Architecture
 - **What you notice:** An administrator receives a useful refusal when a command cannot act, after the original command echo.
 - **1.6:** The client printed its echo and sent the request whether or not the target was online; malformed warp lines were sent unchanged and the administrator heard nothing further.
-- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “Only an immortal can kick an immortal.” or “Only an immortal can do that to an immortal.” A moderator cannot kick an immortal, nor use IP lookup, jail, warp, warptome or ban on one; warpmeto still moves the moderator. IP bans are immortal-only, and a moderator cannot lift a ban an immortal made.
+- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “Only an immortal can kick an immortal.”, “Only an immortal can do that to an immortal.” or “Only an immortal can do that to staff.” A moderator cannot kick an immortal, nor use IP lookup, warp or warptome on one, and can ban, jail or pardon players only; warpmeto still moves the moderator. `/ban` and `/jail` work on offline characters. IP bans are immortal-only, and only the staff member who made a ban or jail, or an immortal, can change or lift it.
 - **Why:** The server can report failed actions, and an immortal's address and editor session should not be controlled by a moderator.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
 ### Role and unban chat commands
 - **Kind:** Architecture
-- **What you notice:** An immortal can change another account's role with `/role <name> player|moderator|immortal`, and immortals or moderators can unban with `/unban <name>`, though a moderator cannot lift a ban an immortal made.
+- **What you notice:** An immortal can change another account's role with `/role <name> player|moderator|immortal`, and immortals or moderators can unban with `/unban <name> [reason]`, though only the staff member who made a ban, or an immortal, can lift it.
 - **1.6:** Roles were lines in an immortals file edited with the File Editor; unbanning meant removing a prefix from the character file.
 - **SSO:** A role change takes effect immediately in the admin menu, chat and role table; changing one's own role is refused. For anyone else `/role` is local chat, as in 1.6. `bun run admin:role` remains available to create the first immortal.
 - **Why:** Roles now live on accounts and the File Editor is gone.
@@ -157,10 +157,10 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Banned players are told at once
 - **Kind:** Architecture
-- **What you notice:** A player banned while online is disconnected with “YOU ARE BANNED FROM PLAYING HERE ON THIS ACCOUNT!!”, and sees the same alert on later login attempts.
+- **What you notice:** A player banned while online is disconnected with “YOU ARE BANNED FROM PLAYING HERE ON THIS ACCOUNT!!” followed by when the ban ends (“Banned until 2026-11-20 14:00 UTC.” or “This ban is permanent.”), and sees the same alert on later login attempts. The reason a moderator gave is never shown to the player.
 - **1.6:** Ban kicked the player to the title without text; the next login showed that alert. The server checked the password before the client's ban response.
-- **SSO:** The account is flagged, an online player is disconnected with the alert, and later logins are refused with it after the password check.
-- **Why:** The server kick is reliable and the alert explains it.
+- **SSO:** The account is flagged, an online player is disconnected with the alert, and later logins are refused with it after the password check. A timed ban lifts itself when it ends.
+- **Why:** The server kick is reliable and the alert explains it; the end tells the player when to come back, while the reason stays an internal staff record.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/game.ts` (`login`)
 
 ### World editor saves keep loot and player drops
@@ -173,9 +173,9 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Seeded jail and enforced confinement
 - **Kind:** World content and server authority
-- **What you notice:** `/jail` works on a fresh server. The stone jail at x0y0 has barred cells, an enclosed perimeter, no exits, and no landing pads. Prisoners arrive at tile 4,4 and remain until their sentence ends or an administrator warps them out.
+- **What you notice:** `/jail` works on a fresh server. The stone jail at x0y0 has barred cells, an enclosed perimeter, no exits, and no landing pads. Prisoners arrive at tile 4,4 and remain until their sentence ends or staff use `/unjail`.
 - **1.6:** Used the archived Jail map. Portal and death respawn could bypass the sentence.
-- **SSO:** A migration adds a validated jail landscape if x0y0 is absent, preserving operator-authored jails. Portal, map exits and edge crossings cannot leave x0y0. Death revives prisoners at 4,4 without restarting their sentence. The jail does not overwrite a character's ordinary respawn point. Administrator warps and timed release remain available. A deleted jail still produces the missing-map refusal.
+- **SSO:** A migration adds a validated jail landscape if x0y0 is absent, preserving operator-authored jails. Portal, map exits and edge crossings cannot leave x0y0. Death revives prisoners at 4,4 and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal.
 - **Why:** A fresh server needs a working jail, and confinement must not depend on a prisoner's spells or inventory.
 - **In the code:** `packages/data/content/jail-map.json`, `packages/server/src/persistence/seed-map.ts` (`jailMapSql`), `packages/server/src/systems/world/tick.ts` (`portal`, `takeExit`, `crossMapEdge`, `respawn`), `packages/server/src/systems/world/world.ts` (`enterRoom`)
 - **Pinned by:** `the seeded jail encloses every walkable area and has no exits or landing pads`; `jail blocks Portal and exits while keeping the sentence and normal respawn point`; `death revives a prisoner in jail without restarting the sentence; expiry still releases`; `every jail edge refuses a map crossing, even for an arriving airship rider` (packages/server/tests/jail.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
@@ -215,11 +215,11 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Moderators share the original moderation commands and admin chat
 - **Kind:** Bug fixed
-- **What you notice:** Moderators can use `/ban`, `/unban` (except a ban an immortal made), `/pardon`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` admin chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
+- **What you notice:** Moderators can use `/ban`, `/unban`, `/unjail` and `/pardon` on players, `/banlist`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` admin chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
 - **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
-- **SSO:** `ADMIN_ROLES`, `readsAdminChat`, and `warpscriptOnBroadcast` grant moderators the original moderation command set and admin chat while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: `handleDrop` and `ADMIN_ROLES` keep them immortal-only, and `/unban` refuses a ban whose stored `banned_by` account is an immortal.
+- **SSO:** `ADMIN_ROLES`, `readsAdminChat`, and `warpscriptOnBroadcast` grant moderators the original moderation command set and admin chat while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: `handleDrop` and `ADMIN_ROLES` keep them immortal-only, and `/unban` lifts only a ban the moderator made (`mayChange`).
 - **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an immortal's ban.
-- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `readsAdminChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `adminChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/server/src/persistence/admin.ts` (`findCharacterAccount`)
+- **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `readsAdminChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `adminChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
 - **Pinned by:** `moderators keep the moderation commands; IP bans, /role and /setclass stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
 
 ### World editor Fat brush reaches the full 17 × 12 map
@@ -284,6 +284,42 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Staff communication should be visually distinct and reliable regardless of position or ignore lists.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminChat`), `packages/shared/src/rules/chat/chat.ts` (`CHAT_COLOR`)
 - **Pinned by:** `both immortals and moderators post to staff in CHAT_COLOR.admin; players excluded` and `admin chat has no house sender restriction, no muffling, and no ignore filtering` (packages/server/tests/admin.test.ts)
+
+### Bans and jails carry a reason, a length and the maker's rank
+- **Kind:** Exploit closed
+- **What you notice:** `/ban`, `/jail` and `/banip` take an optional duration (`30m`, `12h`, `7d`, `2w`, `perm`) and reason after the name, such as `/ban Berlyn 3d being a rude person`; without a duration the server settings decide. Bans, jails and pardons by a moderator reach players only. Only the staff member who made a ban or jail, or an immortal, can change its length or lift it.
+- **1.6:** A ban was a prefix on the character file with no reason, end or author; any administrator could add or remove it.
+- **SSO:** Each action stores its maker's account, name and rank at that moment, the reason and the end. A re-ban by its maker or an immortal replaces the length; anyone else is refused with “Bob was banned by Alice; ask Alice or an immortal.” A lapsed ban or jail stops nobody.
+- **Why:** Moderators could otherwise overwrite an immortal's ban with their own and then lift it, and changes of role later would change who may lift an old ban. Staff with different views settle them together rather than overriding each other.
+- **In the code:** `packages/shared/src/rules/admin/moderation.ts` (`mayTarget`, `mayChange`, `parseModerationArgs`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/persistence/moderation.ts` (`recordModeration`)
+- **Pinned by:** `regression: a moderator's /ban cannot overwrite an immortal's ban to lift it`, `a moderator changes only their own ban; an immortal changes any`, `a moderator may not ban, jail or pardon another moderator` (packages/server/tests/admin.test.ts); `a ban keeps its maker's rank at the time: a demoted immortal's ban stays theirs` (packages/server/tests/moderation-db.test.ts)
+
+### Moderation history and /banlist
+- **Kind:** Architecture
+- **What you notice:** `/banlist` lists the bans and jails in force (and, for immortals, IP bans); `/banlist <name>` shows a character's standing, last ten moderation actions with their reasons and, for immortals, their login addresses; `/banlist <address>` (immortals) shows an address's ban and who has played from it.
+- **1.6:** The bans lived in character files and a bans file, with no history and no in-game list.
+- **SSO:** Every ban, unban, IP ban, jail, release and pardon is a row in `moderation_log`, kept after the action ends.
+- **Why:** Staff need to see why someone was banned and by whom before changing it.
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/persistence/moderation.ts` (`moderationHistory`)
+- **Pinned by:** `moderators see bans and jails; immortals also see IP bans`, `/banlist <name>: standing, history and (immortals) addresses` (packages/server/tests/admin.test.ts)
+
+### IP bans are checked, cover an IPv6 /64 and act at once
+- **Kind:** Exploit closed
+- **What you notice:** `/banip` accepts a character name (their last login address, or every address with `all`) or a valid address, and refuses anything else. Sessions from the address are disconnected immediately, and it cannot log in or create characters until the ban ends (30 days by default). Immortals are never stopped by an IP ban.
+- **1.6:** `/BanIP` wrote any text to the bans file and the ban was never enforced.
+- **SSO:** Addresses are stored in their standard form; an IPv6 ban covers the /64, matching the login limits. The server keeps each account's login addresses for `addressHistoryDays`. The check runs after the password, so that an immortal behind a banned address can still log in.
+- **Why:** Unvalidated text could ban nothing or an unintended address, an IPv6 user could step to a neighbouring address, and an operator must not lock themselves out.
+- **In the code:** `packages/shared/src/rules/admin/moderation.ts` (`canonicalIp`, `ipKey`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/game.ts` (`login`, `create`, `refusal`), `packages/server/src/persistence/moderation.ts` (`noteAddress`)
+- **Pinned by:** `an IP ban disconnects every session from that address except an immortal's`, `/banip <name> bans the latest address, or all of them; an immortal is never IP banned`, `divergence: an IP ban refuses a login from that address after the password` (packages/server/tests/admin.test.ts); `IP bans cover the IPv6 /64, refuse creation and resume, and never stop an immortal` (packages/server/tests/moderation-db.test.ts)
+
+### Jail sentences are stored and run in real time
+- **Kind:** Bug fixed
+- **What you notice:** A jail sentence lasts the given minutes, hours or days (10 minutes by default) of real time, whether or not the prisoner stays online, and relogging does not restart it. `/jail` works on an offline character, who arrives in jail at their next login. `/unjail` ends a sentence early; staff warps cannot take a prisoner out or put a player in.
+- **1.6:** The sentence was a frame counter (8000 frames by default) in the client that restarted on every arrival in the jail, counted only while online, started at 10000 on a login, and kept counting after an administrator warped the prisoner out.
+- **SSO:** Each sentence is stored with its end. A prisoner online when it ends goes to the start point; one offline goes there at their next login. The setting is `jailMinutes`.
+- **Why:** A sentence that restarts on every login, or that pauses offline, cannot be timed by staff, and a warp-out left the timer meaningless.
+- **In the code:** `packages/server/src/systems/world/tick.ts` (`jailTick`, `releaseFromJail`), `packages/server/src/game.ts` (`enter`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `divergence: the sentence is stored and ends at its time, then releases to the start point`, `divergence: staff warps neither take a prisoner out nor put a player in; /unjail releases` (packages/server/tests/admin.test.ts); `a sentence survives logout and restart, and one that ends offline releases at login` (packages/server/tests/moderation-db.test.ts)
 
 ## casino
 

@@ -126,9 +126,9 @@ describe("walk speed is not a setting", () => {
       all.filter((m) => !mine.includes(m)),
     );
     saveSettingOverride(db, "stepFrames", 8, "2026-11-08T00:00:00Z");
-    saveSettingOverride(db, "jailFrames", 100, "2026-11-08T00:00:00Z");
+    saveSettingOverride(db, "chatMaxChars", 150, "2026-11-08T00:00:00Z");
     expect(loadSettingOverrides(db).has("stepFrames")).toBe(true);
     runMigrations(db, mine);
-    expect([...loadSettingOverrides(db).keys()]).toEqual(["jailFrames"]);
+    expect([...loadSettingOverrides(db).keys()]).toEqual(["chatMaxChars"]);
   });
 });

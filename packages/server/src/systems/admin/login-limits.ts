@@ -4,33 +4,15 @@
  * A count of 0 in the setting turns that limit off.
  */
 
+import { ipKey } from "@secondstaronline/shared";
+
 /** Failed logins are counted over 5 minutes. */
 export const LOGIN_WINDOW_MS = 5 * 60_000;
 /** Creations are counted over an hour. */
 export const CREATE_WINDOW_MS = 60 * 60_000;
 
-/**
- * The key an address is limited by: IPv4 as is, IPv6 expanded and cut to its first four groups
- * (a /64, so one subscriber's whole block counts as one address).
- */
-export function ipKey(ip: string): string {
-  const bare = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
-  if (!bare.includes(":")) {
-    return bare;
-  }
-  const noZone = bare.split("%")[0] ?? bare;
-  const [head, tail] = noZone.split("::");
-  const h = head ? head.split(":") : [];
-  const t = tail === undefined ? [] : tail ? tail.split(":") : [];
-  const groups =
-    tail === undefined
-      ? h
-      : [...h, ...Array<string>(Math.max(0, 8 - h.length - t.length)).fill("0"), ...t];
-  return groups
-    .slice(0, 4)
-    .map((g) => Number.parseInt(g || "0", 16).toString(16))
-    .join(":");
-}
+/** The key an address is limited by (an IPv6 /64): shared with the IP bans. */
+export { ipKey };
 
 export interface LoginLimits {
   /** Failure times per address key. */

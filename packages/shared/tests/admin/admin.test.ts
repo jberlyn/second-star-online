@@ -25,6 +25,7 @@ describe("the moderator/immortal table", () => {
     expect(mod).toEqual(
       [
         "ban",
+        "banlist",
         "cheatfile",
         "inventory",
         "iplookup",
@@ -35,6 +36,7 @@ describe("the moderator/immortal table", () => {
         "refresh",
         "save",
         "unban",
+        "unjail",
         "warp",
         "warpmeto",
         "warpscript",

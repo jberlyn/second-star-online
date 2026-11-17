@@ -681,11 +681,9 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
   out.push(...scoreKill(world, p));
   finishDeath(p);
   p.vitalsDirty = true;
-  // Death cannot bypass confinement. Revive at the jail arrival without restarting the sentence.
+  // Death cannot bypass confinement. Revive at the jail arrival; the sentence runs on.
   if (isJailMap(p.map.name)) {
-    const sentence = p.jailIn;
     out.push(...warp(world, p, p.map, JAIL.x, JAIL.y, deps.casino));
-    p.jailIn = sentence;
     return out;
   }
   const stored = p.char.respawn;
@@ -778,17 +776,28 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
 }
 
 /**
- * The jail sentence counts down once a frame on any map; when it reaches 0 on the jail map x0y0 the
- * 1.6 client warped itself to `x1000y992 5 5`, which SSO reads as the start point. It is not
- * counted in an editor, whose frames do not run the frame script. A sentence that ends while you
- * are dead still releases you: 1.6 never set its dead-player flag to 1.
+ * A stored sentence ends at its wall-clock time, checked once a second (every 20 ticks), in an
+ * editor or dead too. A prisoner on the jail map goes to the start
+ * point. 1.6 counted frames only while online and restarted the count on every entry to the jail.
  */
 export function jailTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
-  if (p.jailIn <= 0 || p.editing) {
+  if (p.jailUntil === null || !deps.now || world.tickNo % 20 !== 0) {
     return [];
   }
-  p.jailIn -= 1;
-  if (p.jailIn > 0 || !isJailMap(p.map.name)) {
+  if (deps.now() < p.jailUntil) {
+    return [];
+  }
+  return releaseFromJail(world, p, deps);
+}
+
+/** Ends `p`'s sentence; on the jail map they go to the start point (an editor is closed first). */
+export function releaseFromJail(
+  world: World,
+  p: Player,
+  deps: Pick<TickDeps, "loadMap" | "startPoint" | "casino">,
+): Outgoing[] {
+  p.jailUntil = null;
+  if (!isJailMap(p.map.name) || p.editing) {
     return [];
   }
   const sp = deps.startPoint;

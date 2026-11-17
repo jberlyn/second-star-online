@@ -382,10 +382,10 @@ export interface Player {
   /** The connection's IP address (`/IPlookup`, the cheat log); set by the gateway at login. */
   ip: string;
   /**
-   * Frames left of the jail sentence, set to the `jailFrames` setting on every entry to the jail
-   * map x0y0.
+   * When the jail sentence ends (wall-clock ms; `Infinity` for a permanent one), or null.
+   * Loaded from the stored sentence at login and set by `/jail`; `jailTick` releases at the time.
    */
-  jailIn: number;
+  jailUntil: number | null;
   /** An immortal's `/warpscript` keyword, or null until set. */
   warpscript: string | null;
 
@@ -619,7 +619,7 @@ export function sessionCombatState(): Pick<
   | "trade"
   | "spell"
   | "editing"
-  | "jailIn"
+  | "jailUntil"
   | "warpscript"
   | "gather"
   | "antiMacro"
@@ -684,7 +684,7 @@ export function sessionCombatState(): Pick<
     trade: null,
     spell: newSpellState(),
     editing: null,
-    jailIn: 0,
+    jailUntil: null,
     warpscript: null,
     gather: newGatherCounters(),
     antiMacro: ANTI_MACRO_START,
@@ -807,8 +807,6 @@ export interface World {
   timeouts: number;
   /** The church bell's counter. */
   npcAct: number;
-  /** The `jailFrames` setting, which every entry to the jail map starts. */
-  jailFrames: number;
   /** Maps whose tiles changed since the last write. */
   tileLog: Set<WorldMap>;
   /** The one treasure, or null while the `treasureMaps` setting is empty. */
@@ -964,7 +962,6 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     timeouts: 0,
     // The church bell's counter starts at 1 at server start.
     npcAct: 1,
-    jailFrames: 8000,
     tileLog: new Set(),
     treasure: null,
     treasureMaps: [],
@@ -1080,11 +1077,6 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   // Drawing the map's items clears the input lock: a craft keeps running with the keys free, and a
   // sandwich brew's lock ends.
   p.keyLock = false;
-  // Entering the jail map starts the sentence again, a login included: as in 1.6 (a kept
-  // bug: relogging in jail starts the sentence over).
-  if (isJailMap(p.map.name)) {
-    p.jailIn = world.jailFrames;
-  }
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;
   // Drawing an O-O-O map (no fighting, indoors, no PvP) saves the respawn point, except in jail.
@@ -1130,21 +1122,10 @@ export function leaveRoom(world: World, p: Player): Outgoing[] {
   return room.players.map((o) => ({ to: o.id, msg: { t: "delta", events: [leave] } }));
 }
 
-/**
- * The jail length before the server's System setting arrives: the login setup sets 10000 and the
- * map draw starts the sentence from it before the server's System.txt value lands. Measured on the
- * running 1.6: a login into jail lasted 10000 frames whatever System.txt said.
- */
-export const LOGIN_JAIL_FRAMES = 10000;
-
-/** A player joins the world; `login` (not a resumed session) starts a jail term at 10000. */
-export function addPlayer(world: World, p: Player, login = true): Outgoing[] {
+/** A player joins the world, at a login or a resumed session. */
+export function addPlayer(world: World, p: Player): Outgoing[] {
   world.players.set(p.id, p);
-  const out = enterRoom(world, p);
-  if (login && isJailMap(p.map.name)) {
-    p.jailIn = LOGIN_JAIL_FRAMES;
-  }
-  return out;
+  return enterRoom(world, p);
 }
 
 export function removePlayer(world: World, id: string): { player: Player; out: Outgoing[] } | null {

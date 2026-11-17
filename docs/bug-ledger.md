@@ -1648,12 +1648,6 @@ No kept bugs (the former entry was fixed; see [vehicle differences](divergences.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
 - **Pinned by:** `kept bug: walking off an edge with no neighbour lands on the start point` (packages/server/tests/world.test.ts); `kept bug: walking off an edge with no map beyond lands on the start point` (packages/server/e2e/login-and-walk.test.ts)
 
-### An administrator warp out of jail leaves its timer counting
-- **What you notice:** The jail sentence is 8000 frames (6 minutes 40 seconds) and restarts on each entry to the jail map. An administrator can warp a prisoner out early; the remaining timer counts down elsewhere without a second release. A prisoner dead when the timer expires is still released.
-- **In 1.6 and SSO:** The timer counts on any map but releases only on x0y0. SSO keeps this timer behavior and permits administrator warps, but blocks player escapes through Portal, exits, edges and death respawn; see [enforced confinement](divergences.md#seeded-jail-and-enforced-confinement). Release uses the configured start point. Editing pauses the timer.
-- **In the code:** `packages/server/src/systems/world/tick.ts` (`jailTick`)
-- **Pinned by:** `kept bug: the sentence is jailFrames from every entry, counted anywhere, and releases only on x0y0 to the start point`; `kept bug: leaving the jail any other way ends it: the sentence runs out off x0y0 and releases nobody; going back in restarts it`; `a prisoner dead when the sentence ends is still released: the dead flag never stops the self-warp` (packages/server/tests/admin.test.ts)
-
 ### After a hit your own sprite vanishes for a second instead of blinking
 - **What you notice:** after a monster hits you, your own character disappears from your screen for about a second (1.0 s measured on the running 1.6) or never blinks at all, instead of blinking. Other players never see it.
 - **In 1.6 and SSO:** each call for the player sprite while the hit blink is running flips its visibility and counts it down by 1, showing it again at 0. The game makes two such calls per frame, so the flips cancel: a hit that leaves an odd number of calls in its frame hides the sprite for the whole 20 frames, and one that leaves an even number never shows a blink. In SSO the player's hidden flag flips where the blink counts down, goes only to its owner, and the client does not draw the local player while it is set. A map load and a body revert show the sprite again.
@@ -1665,12 +1659,6 @@ No kept bugs (the former entry was fixed; see [vehicle differences](divergences.
 - **In 1.6 and SSO:** a respawn point is saved only when you draw a map flagged as no fighting, indoors and no PvP (written O-O-O), and none of the 27 original maps is flagged that way. SSO uses the same rule on the server, respawning at the operator's setting (by default the map x1000y992, tile 5,5; 1.6 used x0y102) unless the character has a saved O-O-O point.
 - **In the code:** `packages/server/src/systems/world/world.ts` (`respawn`); `packages/server/src/systems/world/tick.ts` (`respawnPoint`)
 - **Pinned by:** `kept bug: the seed map and new-map defaults do not save a respawn point; death without one uses the configured fallback` (packages/server/tests/world.test.ts)
-
-### The jail sentence restarts every time you arrive in jail
-- **What you notice:** Logging back in while jailed restarts your sentence, and a login into jail starts it at 10000 frames rather than the configured length.
-- **In 1.6 and SSO:** 1.6 resets the timer on every entry to the jail map. SSO does the same, a login included. A login (not a resumed session) uses 10000, the value 1.6 had before its system settings loaded, rather than the jailFrames setting.
-- **In the code:** `packages/server/src/systems/world/world.ts` (`enterRoom`, `addPlayer`, `LOGIN_JAIL_FRAMES`)
-- **Pinned by:** `kept bug: the sentence is jailFrames from every entry, counted anywhere, and releases only on x0y0 to the start point`; `a login onto x0y0 starts the sentence at 10000 whatever jailFrames says; a resumed session keeps the entry rule` (packages/server/tests/admin.test.ts)
 
 ## Not in SSO
 
