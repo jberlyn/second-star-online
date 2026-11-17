@@ -165,6 +165,9 @@ describe("bars", () => {
     // The slot is stage x 600-789: 189 px wide, 10 px from the box origin.
     expect(q(".hp-track").style.left).toBe("10px");
     expect(q(".hp-track").style.width).toBe("189px");
+    // The depleted part of each slot is a plain black track, not 1.6's darker track sprite.
+    expect(q(".hp-track").querySelector("img")).toBeNull();
+    expect(q(".sp-track").querySelector("img")).toBeNull();
     expect(q(".hp-fill").style.left).toBe("10px");
     // 15/20 = 75% of 189 = 141.75 px, measured from the slot's left edge.
     expect(q(".hp-fill").style.width).toBe("141.75px");

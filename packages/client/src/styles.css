@@ -566,7 +566,9 @@ body {
   overflow: hidden;
   pointer-events: none;
 }
-.bar-track img,
+.bar-track {
+  background: #000;
+}
 .bar-fill img {
   display: block;
   width: 205px;

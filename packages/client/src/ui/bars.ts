@@ -4,7 +4,8 @@
  * The wooden slots of Internal #186 are stage x 600-789, five pixels tall: HP at y 70-74 and SP
  * at y 85-89. SSO keeps that slot geometry but fills each HP and SP slot from its left edge by
  * the percentage of the maximum, so full HP or SP fills the slot whether the maximum is 20 or
- * 1000. The track and fill sprites are still the original 205 px art, clipped to the 189 px slot.
+ * 1000. The fill sprites are still the original 205 px art, clipped to the 189 px slot; the
+ * depleted part of the slot is plain black rather than 1.6's darker track sprites.
  * The hover field shows `current / max` centred on the bar.
  *
  * The power bar keeps 1.6's loader: sprite 63 starts at horizontal position 874 and moves 2 px
@@ -63,18 +64,15 @@ export function createBars(a: Assets): Bars {
   el.setAttribute("aria-label", "Hit points, spell points and attack power");
   const img = (n: number) => artImg(a.ui("internal", n));
   // Score channels: 36 power track, 38/39 tracks, 62/63/64 fills, 318/319 numbers.
-  const hpTrack = img(150);
   const hpFill = img(151);
-  const spTrack = img(152);
   const spFill = img(153);
   const powerTrack = img(169);
   const power = img(473);
   power.style.opacity = "0.5";
-  const track = (cls: string, art: HTMLImageElement, y: number, h: number, z: number) => {
+  const track = (cls: string, y: number, h: number, z: number) => {
     const b = document.createElement("div");
     b.className = `bar-track ${cls}`;
     box(b, SLOT_X, y, SLOT_W, h, z);
-    b.append(art);
     return b;
   };
   const fill = (cls: string, art: HTMLImageElement, y: number, h: number, z: number) => {
@@ -102,8 +100,8 @@ export function createBars(a: Assets): Bars {
   };
   const hpText = field("hp-value");
   const spText = field("sp-value");
-  const hpTrackBox = track("hp-track", hpTrack, HP_TRACK_Y, 8, 38);
-  const spTrackBox = track("sp-track", spTrack, SP_TRACK_Y, 9, 39);
+  const hpTrackBox = track("hp-track", HP_TRACK_Y, 8, 38);
+  const spTrackBox = track("sp-track", SP_TRACK_Y, 9, 39);
   const hpFillBox = fill("hp-fill", hpFill, HP_TRACK_Y, 8, 62);
   const spFillBox = fill("sp-fill", spFill, SP_TRACK_Y, 9, 64);
   at(powerTrack, 677 - 81, 101 - 2, 36);
