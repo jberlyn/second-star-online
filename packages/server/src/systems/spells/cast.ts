@@ -41,6 +41,8 @@ import { playerLoc, playerRect, type Rect } from "./geometry.ts";
 
 export interface CastCtx {
   rng: Rng;
+  /** Whether Portal has a destination whose map exists (`portalOpen`); absent: it has. */
+  portalOpen?: () => boolean;
   /** Frames per player step (setting `stepFrames`). */
 }
 
@@ -107,6 +109,12 @@ export function castIntent(
   }
   const sp = spCost(spell, p.char.equip.body);
   if (sp === 0) {
+    return res;
+  }
+  // A Portal with nowhere to send anyone is refused before anything is spent (a bug fixed: 1.6's
+  // empty warp sent its users to the start point).
+  if (lingoEq(effect, "Portal") && ctx.portalOpen && !ctx.portalOpen()) {
+    res.out.push(tell(p, CAST_TEXT.portalClosed));
     return res;
   }
   const vit = p.char.vitals;

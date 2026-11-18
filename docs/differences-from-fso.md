@@ -29,18 +29,18 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 50 |
-| [Fixed bugs](#fixed-bugs) | 236 |
+| [Design changes](#design-changes) | 51 |
+| [Fixed bugs](#fixed-bugs) | 239 |
 | [Kept on purpose](#kept-on-purpose) | 3 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **460** |
+| **Total** | **464** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [11](#admin) | [18](#server-side-admin) |
+| admin | [12](#admin) | [18](#server-side-admin) |
 | casino | [16](#casino) | [4](#server-side-casino) |
 | chat | [12](#chat) | [5](#server-side-chat) |
 | combat | [24](#combat) | [7](#server-side-combat) |
@@ -54,9 +54,9 @@ By system (the code folder that holds the change):
 | movement | [7](#movement) | [4](#server-side-movement) |
 | progression | 0 | [4](#server-side-progression) |
 | social | [4](#social) | [9](#server-side-social) |
-| spells | 0 | [9](#server-side-spells) |
+| spells | [1](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
-| world | 0 | [6](#server-side-world) |
+| world | [1](#world) | [6](#server-side-world) |
 
 ## Design changes
 
@@ -503,11 +503,29 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startMix`, `finishCraft`)
 - **Pinned by:** `completion takes the bottle and the crystal; the held sand is a tool` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand` (packages/server/tests/craft.test.ts)
 
+#### Displaced characters go to their respawn point first
+- **Kind:** Other
+- **What you notice:** When your place is gone you reappear at your own respawn point (the one a map's respawn flag gave you), not at the start point: logging in when your saved map has been deleted, being saved inside a house that decays, or the end of a jail sentence. With no respawn point of your own you go to the server's respawn point, and only if that map is missing too to the start point.
+- **1.6:** A missing map sent you to the start map's (5,5), and the jail's end sent you to the start point.
+- **SSO:** One fallback order everywhere: your respawn point, then the `respawnPoint` setting, then the `startPoint` setting, the first whose map exists. Death uses the same order. Travel someone chooses (an exit, an edge, `/warp`, a Portal) never falls back: it is refused. Operators can list exits and setting points that lead nowhere with `bun run maps:check`.
+- **Why:** Players set their respawn point on purpose (operators build respawn maps for it), so it is where a displaced player expects to be; the start point is only for new characters and the last resort.
+- **In the code:** `packages/server/src/systems/world/tick.ts` (`fallbackPoint`, `releaseFromJail`), `packages/server/src/game.ts` (`deleteInterior`), `packages/server/src/cli/map-check.ts` (`mapCheck`)
+- **Pinned by:** `SSO: the fallback point is your respawn point, then the operator's, then the start point` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to their respawn point, else the operator's` (packages/server/tests/houses-db.test.ts); `death revives a prisoner in jail without restarting the sentence; expiry still releases` (packages/server/tests/jail.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
+
 ## Fixed bugs
 
 1.6 gameplay bugs that SSO fixes, by system.
 
 ### admin
+
+#### /warp refuses a map that does not exist
+- **Kind:** Bug fixed
+- **What you notice:** `/warp Bob x77y77 2 2` to a map that is not there replies "There is no map x77y77." and Bob stays where he is.
+- **1.6:** The warp went ahead and the missing map sent Bob to the start point.
+- **SSO:** The map is checked before anything moves.
+- **Why:** A typo in a staff command should not move a player somewhere unrelated.
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `adminWarp`)
+- **Pinned by:** `bug fixed: /warp to a map that does not exist is refused and moves no one` (packages/server/tests/admin.test.ts)
 
 #### /warpscript matches whole keywords in broadcast content only
 - **Kind:** Bug fixed
@@ -594,7 +612,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A jail sentence lasts the given minutes, hours or days (10 minutes by default) of real time, whether or not the prisoner stays online, and relogging does not restart it. `/jail` works on an offline character, who arrives in jail at their next login. `/unjail` ends a sentence early; staff warps cannot take a prisoner out or put a player in.
 - **1.6:** The sentence was a frame counter (8000 frames by default) in the client that restarted on every arrival in the jail, counted only while online, started at 10000 on a login, and kept counting after an administrator warped the prisoner out.
-- **SSO:** Each sentence is stored with its end. A prisoner online when it ends goes to the start point; one offline goes there at their next login. The setting is `jailMinutes`.
+- **SSO:** Each sentence is stored with its end. A prisoner online when it ends goes to their fallback point (see [Displaced characters go to their respawn point first](#displaced-characters-go-to-their-respawn-point-first)); one offline goes there at their next login. The setting is `jailMinutes`.
 - **Why:** A sentence that restarts on every login, or that pauses offline, cannot be timed by staff, and a warp-out left the timer meaningless.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`jailTick`, `releaseFromJail`), `packages/server/src/game.ts` (`enter`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 - **Pinned by:** `divergence: the sentence is stored and ends at its time, then releases to the start point`, `divergence: staff warps neither take a prisoner out nor put a player in; /unjail releases` (packages/server/tests/admin.test.ts); `a sentence survives logout and restart, and one that ends offline releases at login` (packages/server/tests/moderation-db.test.ts)
@@ -2643,6 +2661,17 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A game with no scorer should not award an empty-name win.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`endGame`)
 
+### spells
+
+#### Portal with nowhere to go cannot be cast
+- **Kind:** Bug fixed
+- **What you notice:** When the server has no Portal destination whose map exists, casting Portal says "The portal will not open." and costs neither SP nor crystals. A portal already open whose destinations have all gone moves no one.
+- **1.6:** Portal always opened; with no valid destination its warp sent everyone who stepped in to the start point. 1.6's only destination, `xbrinkybrink`, was not a map, so Portal always did.
+- **SSO:** The cast checks the `portalTargets` setting first, and a portal picks only among destinations whose maps exist.
+- **Why:** A spell that silently sends players to the start point is a broken destination, not a feature.
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`), `packages/server/src/systems/world/tick.ts` (`portalOpen`)
+- **Pinned by:** `bug fixed: Portal with no destination is refused before SP and crystals are spent`; `bug fixed: a portal whose targets' maps are all missing moves no one` (packages/server/tests/spells.test.ts)
+
 ### vehicles
 
 #### Airship landing pads work on map rows 10–12
@@ -2653,6 +2682,17 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Allows landing pads placed on the bottom three rows of a map to work for building and parking airships.
 - **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`layer1Tile`, `isDock`)
 - **Pinned by:** `a J2 pad on rows 10-12 counts for building and unboarding` (packages/shared/tests/vehicles/vehicles.test.ts); `a pad on row 10 counts for building` (packages/server/tests/vehicles.test.ts); `a pad on row 10 lets you off` (packages/server/tests/vehicles.test.ts)
+
+### world
+
+#### An exit to a missing map leaves you where you are
+- **Kind:** Bug fixed
+- **What you notice:** Stepping on an exit whose map is not there (or that has no destination set) leaves you on it and says "You cannot go that way." once, as a blocked edge does.
+- **1.6:** A missing map sent you to the start map's (5,5) and reloaded the whole map.
+- **SSO:** The exit is refused; nothing is saved or reloaded.
+- **Why:** An unfinished or broken exit should not teleport players across the world.
+- **In the code:** `packages/server/src/systems/world/tick.ts` (`takeExit`)
+- **Pinned by:** `bug fixed: an exit with no target, or to a missing map, leaves you on it and says so once` (packages/server/tests/worldedit.test.ts)
 
 ## Kept on purpose
 
@@ -3283,7 +3323,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** A demolished house's lost interior and vault are removed; if someone is inside, its interior is deleted when they leave.
 - **1.6:** Decay removed the house record and reverted the outdoor tiles, but the now-unreachable interior map and vault file stayed on disk. A missing map returned a character to the start point.
-- **SSO:** The sweep also deletes the interior, its items and the house vault contents. An occupied interior waits until its occupant leaves, while a logged-out character saved there moves to the start point.
+- **SSO:** The sweep also deletes the interior, its items and the house vault contents. An occupied interior waits until its occupant leaves, while a logged-out character saved there moves to their fallback point (see [Displaced characters go to their respawn point first](#displaced-characters-go-to-their-respawn-point-first)).
 - **Why:** The contents were unreachable either way; the server need not keep unreachable rows forever.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`demolish`)
 

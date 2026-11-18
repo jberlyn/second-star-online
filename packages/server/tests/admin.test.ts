@@ -288,10 +288,14 @@ describe("warps", () => {
     expect(say(imm, "/warp")).toEqual([]);
   });
 
-  test("a map that does not exist takes the missing-map fallback to the start point", () => {
+  test("bug fixed: /warp to a map that does not exist is refused and moves no one", () => {
     const { imm, bob, say } = scene();
-    say(imm, "/warp Bob x77y77 2 2");
-    expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 6, 4]);
+    const before = [bob.map.name, bob.x, bob.y];
+    expect(texts(say(imm, "/warp Bob x77y77 2 2"), "Imm")).toEqual([
+      "*** Warping Bob...",
+      ADMIN_TEXT.noMap("x77y77"),
+    ]);
+    expect([bob.map.name, bob.x, bob.y]).toEqual(before);
   });
 
   test("a dead target is moved: the death does not stop /warp or /warpmeto", () => {

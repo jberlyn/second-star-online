@@ -12,6 +12,7 @@
     "content:report": "bun packages/server/src/cli/content-report.ts",
     "admin:role": "bun packages/server/src/cli/set-role.ts",
     "admin:audit": "bun packages/server/src/cli/admin-audit.ts",
+    "maps:check": "bun packages/server/src/cli/map-check.ts",
     "build": "bun run assets:build && bun run build:client",
     "build:client": "bun build packages/client/index.html --outdir dist/client --minify",
     "assets:build": "bun packages/data/build/assets.ts",

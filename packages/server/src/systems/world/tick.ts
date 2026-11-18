@@ -122,7 +122,7 @@ export interface TickDeps {
   npcChatterSeconds?: number;
   /** "Chars Drop Items On Death" (setting `dropOnDeath`, default on). */
   dropOnDeath?: boolean;
-  /** Where Portal sends players (setting `portalTargets`); empty: the start point. */
+  /** Where Portal sends players (setting `portalTargets`); with none, a Portal cast is refused. */
   portalTargets?: readonly { map: string; x: number; y: number }[];
   /** The Server Spirit's map (setting `hazardMap`), or null. */
   hazardMap?: string | null;
@@ -526,12 +526,19 @@ export function tick(world: World, deps: TickDeps): TickResult {
 
   deps.phase?.("rooms");
   for (const p of portals) {
+    const from = p.map;
     out.push(...portal(world, deps, p));
-    saves.add(p);
+    if (p.map !== from) {
+      saves.add(p);
+    }
   }
   for (const { player: p, exit } of exits) {
+    const from = p.map;
     out.push(...takeExit(world, deps, p, exit));
-    saves.add(p);
+    // A refused exit changes nothing worth saving.
+    if (p.map !== from) {
+      saves.add(p);
+    }
   }
   out.push(...serverTimer(world, deps.hazardMap ?? null, rng));
 
@@ -678,33 +685,67 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
     out.push(...warp(world, p, p.map, JAIL.x, JAIL.y, deps.casino));
     return out;
   }
-  const stored = p.char.respawn;
-  const storedMap = stored ? (deps.loadMapById?.(stored.mapId) ?? null) : null;
-  if (stored && storedMap) {
-    out.push(...warp(world, p, storedMap, stored.x, stored.y, deps.casino));
-    return out;
-  }
-  const rp = deps.respawnPoint ?? deps.startPoint;
-  out.push(...warp(world, p, deps.loadMap(rp.map) ?? p.map, rp.x, rp.y, deps.casino));
+  const to = fallbackPoint(p.char.respawn, deps);
+  out.push(...warp(world, p, to?.map ?? p.map, to?.x ?? p.x, to?.y ?? p.y, deps.casino));
   return out;
 }
 
+/** What `fallbackPoint` reads. */
+export type FallbackDeps = Pick<
+  TickDeps,
+  "loadMap" | "loadMapById" | "startPoint" | "respawnPoint"
+>;
+
 /**
- * The portal exit: `random(n)` of the operator's portal targets. With none,
- * `random(0)` draws once, matches no line, and the empty warp falls back to the start point.
+ * Where a player goes when the place they were is gone or they are released: their own respawn
+ * point, then the operator's respawn point, then the start point, the first whose map exists.
+ * Null only when none does. Travel someone chooses (an exit, an edge, `/warp`, a Portal) never
+ * falls back: it is refused.
+ */
+export function fallbackPoint(
+  respawn: { mapId: string; x: number; y: number } | null,
+  deps: FallbackDeps,
+): { map: WorldMap; x: number; y: number } | null {
+  const own = respawn ? (deps.loadMapById?.(respawn.mapId) ?? null) : null;
+  if (respawn && own) {
+    return { map: own, x: respawn.x, y: respawn.y };
+  }
+  for (const pt of [deps.respawnPoint, deps.startPoint]) {
+    const map = pt ? deps.loadMap(pt.map) : null;
+    if (pt && map) {
+      return { map, x: pt.x, y: pt.y };
+    }
+  }
+  return null;
+}
+
+/**
+ * The portal exit: `random(n)` of the operator's portal targets whose maps exist. With none, the
+ * portal does nothing (a bug fixed: 1.6's empty warp fell back to the start point); the cast is
+ * refused before then (`portalOpen`), so this only happens when a map went missing meanwhile.
  */
 function portal(world: World, deps: TickDeps, p: Player): Outgoing[] {
   if (isJailMap(p.map.name)) {
     return [];
   }
-  const targets = deps.portalTargets ?? [];
-  const t = targets[deps.rng.random(targets.length) - 1];
-  const map = t ? deps.loadMap(t.map) : null;
-  if (t && map) {
-    return warp(world, p, map, t.x, t.y, deps.casino);
-  }
-  const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
+  const open = openPortalTargets(deps);
+  const t = open[deps.rng.random(open.length) - 1];
+  return t ? warp(world, p, t.map, t.x, t.y, deps.casino) : [];
+}
+
+/** The operator's portal targets whose maps exist. */
+function openPortalTargets(
+  deps: Pick<TickDeps, "loadMap" | "portalTargets">,
+): { map: WorldMap; x: number; y: number }[] {
+  return (deps.portalTargets ?? []).flatMap((t) => {
+    const map = deps.loadMap(t.map);
+    return map ? [{ map, x: t.x, y: t.y }] : [];
+  });
+}
+
+/** Whether a Portal cast has anywhere to send players. */
+export function portalOpen(deps: Pick<TickDeps, "loadMap" | "portalTargets">): boolean {
+  return openPortalTargets(deps).length > 0;
 }
 
 /**
@@ -730,8 +771,9 @@ export function exitUnder(p: Player): "Exit" | "Exit2" | null {
 }
 
 /**
- * A warp to `x<MX>y<MY> <LX> <LY>` with map field 13 (Exit) or 18 (Exit2). The target is
- * unchecked: no exit, or no map there, takes the missing-map fallback to the start point.
+ * A warp to `x<MX>y<MY> <LX> <LY>` with map field 13 (Exit) or 18 (Exit2). An exit with no target,
+ * or whose map is missing, leaves you standing on it and says so once (a bug fixed: 1.6's missing
+ * map sent you to the start point).
  */
 function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit2"): Outgoing[] {
   if (isJailMap(p.map.name)) {
@@ -743,8 +785,16 @@ function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit
   if (e && map) {
     return warp(world, p, map, e.x, e.y, deps.casino);
   }
-  const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
+  return refuseTravel(p);
+}
+
+/** SSO's refusal of travel to a map that is not there: the blocked line, once a press. */
+function refuseTravel(p: Player): Outgoing[] {
+  const out: Outgoing[] = [];
+  tellOnce(p, EDGE_BLOCKED_TEXT, (text) =>
+    out.push({ to: p.id, msg: { t: "chat", text, color: CHAT_COLOR.normal } }),
+  );
+  return out;
 }
 
 /**
@@ -765,11 +815,7 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
   // for an edge and waits for the snapshot, so a refusal needs no correction; the player reads
   // why once a press (SSO's own line).
   if (!next || !isWalkable(p.vehicle ? next.walkAir : next.walk, o.toX, o.toY)) {
-    const out: Outgoing[] = [];
-    tellOnce(p, EDGE_BLOCKED_TEXT, (text) =>
-      out.push({ to: p.id, msg: { t: "chat", text, color: CHAT_COLOR.normal } }),
-    );
-    return out;
+    return refuseTravel(p);
   }
   return warp(world, p, next, o.toX, o.toY, deps.casino);
 }
@@ -789,18 +835,21 @@ export function jailTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
   return releaseFromJail(world, p, deps);
 }
 
-/** Ends `p`'s sentence; on the jail map they go to the start point (an editor is closed first). */
+/**
+ * Ends `p`'s sentence; on the jail map they go to their fallback point (`fallbackPoint`: their
+ * respawn point, then the operator's, then the start point). An editor is closed first.
+ */
 export function releaseFromJail(
   world: World,
   p: Player,
-  deps: Pick<TickDeps, "loadMap" | "startPoint" | "casino">,
+  deps: FallbackDeps & Pick<TickDeps, "casino">,
 ): Outgoing[] {
   p.jailUntil = null;
   if (!isJailMap(p.map.name) || p.editing) {
     return [];
   }
-  const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
+  const to = fallbackPoint(p.char.respawn, deps);
+  return to ? warp(world, p, to.map, to.x, to.y, deps.casino) : [];
 }
 
 /**

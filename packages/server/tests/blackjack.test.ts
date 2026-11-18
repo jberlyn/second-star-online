@@ -448,7 +448,6 @@ describe("a dropped connection", () => {
     t.world.players.delete("Bob");
     const out = adminWarp(t.world, a, t.other.name, 3, 3, {
       loadMap: (n) => (n === t.other.name ? t.other : t.map),
-      startPoint: () => ({ map: t.map.name, x: 5, y: 5 }),
       casino: t.deps,
     });
     expect(out.some((m) => m.to === "Alice" && m.msg.t === "bj" && !m.msg.open)).toBe(true);

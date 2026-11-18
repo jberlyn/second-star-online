@@ -104,6 +104,8 @@ export const CAST_TEXT = {
   sp: (n: number) => `You need ${n} spell points to cast this!`,
   crystals: (spell: string) => `You don't have the required crystals to cast ${spell}!`,
   portal: "You cannot cast this close to another person.",
+  /** SSO: Portal with no destination whose map exists. */
+  portalClosed: "The portal will not open.",
   summon: "You cannot summon here!",
 } as const;
 

@@ -547,6 +547,39 @@ describe("house faults", () => {
     expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
   });
 
+  test("SSO: offline characters saved in a deleted interior go to their respawn point, else the operator's", async () => {
+    const g = game();
+    const id = await makeChar(g, "Bob");
+    const carl = await makeChar(g, "Carl");
+    enterWithDeed(g, id);
+    place(g, id, 10, 4);
+    g.leave(id);
+    const seed = findMapByCoords(db, 1000, 992);
+    const interior = findMapByCoords(db, 1000, 992, 1);
+    // Bob was saved inside with no respawn point; Carl inside with his own on the seed map.
+    db.run("UPDATE characters SET map_id = ?, x = 9, y = 10 WHERE id IN (?, ?)", [
+      interior?.id ?? "",
+      id,
+      carl,
+    ]);
+    db.run("UPDATE characters SET respawn_map_id = ?, respawn_x = 3, respawn_y = 3 WHERE id = ?", [
+      seed?.id ?? "",
+      carl,
+    ]);
+    db.run("DELETE FROM houses");
+    db.run("DELETE FROM house_list");
+    game();
+    expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
+    const at = (who: string) =>
+      db.query("SELECT map_id, x, y FROM characters WHERE id = ?").get(who) as {
+        map_id: string;
+        x: number;
+        y: number;
+      };
+    expect(at(carl)).toEqual({ map_id: seed?.id ?? "", x: 3, y: 3 });
+    expect(at(id)).toEqual({ map_id: seed?.id ?? "", x: 5, y: 5 });
+  });
+
   /** A game that throws at `label` once the demolition has run */
   const crashing = (label: string, queues: Record<number, number[]>, faults: string[]) => {
     let boom = true;

@@ -26,8 +26,8 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [progression](#progression) | 10 |
 | [social](#social) | 18 |
 | [spells](#spells) | 25 |
-| [world](#world) | 2 |
-| **Total** | **55** |
+| [world](#world) | 1 |
+| **Total** | **54** |
 
 ## progression
 
@@ -355,12 +355,6 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 - **Pinned by:** `kept bug: the church bell leaves channel 5 at volume 200, sound on or off` (packages/client/tests/spells.test.ts); `the church bell rings at the 20th run to x999y999, Churchy:5:200` (packages/server/tests/spells.test.ts)
 
 ## world
-
-### A bad exit sends you to the start point
-- **What you notice:** take an exit whose map isn't there, and you land on the start tile of the starting map, and the whole map reloads.
-- **In 1.6 and SSO:** a missing map warps to the start point. In SSO that point is whatever the operator has configured, and the old Test map is not shipped. The whole map reloads, as the original's warp did. (Walking off an edge with no map beyond is fixed: see [differences](differences-from-fso.md#walking-off-the-screens-edge-is-stopped-by-a-wall-or-a-missing-map).)
-- **In the code:** `packages/server/src/systems/world/tick.ts` (`takeExit`)
-- **Pinned by:** `an exit with no target takes the missing-map fallback to the start point` (packages/server/tests/worldedit.test.ts)
 
 ### The seed map and new-map defaults do not save a respawn point
 - **What you notice:** until you visit a map that saves a respawn point, death sends you to the server's configured fallback. The seed map and new World Editor maps with their default flags do not save a point. Entering a no-fight, indoor, no-PvP map, such as a Small Farm, Small Shop or guild-hall interior, saves a point that later deaths use, including deaths outdoors. An operator can also set those flags in the World Editor.

@@ -28,7 +28,7 @@ import { migrate } from "../src/persistence/migrations.ts";
 import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/settings.ts";
 import { defaultSettings, resolveSettings, SETTING_GROUPS, settingRows } from "../src/settings.ts";
 import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
-import { tick, warp } from "../src/systems/world/tick.ts";
+import { fallbackPoint, tick, warp } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld } from "../src/systems/world/world.ts";
 import { NEVER_PUSH, NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
@@ -428,6 +428,28 @@ describe("movement sim", () => {
     const out = run(1);
     expect([a.map.name, a.x, a.y, a.facing]).toEqual(["x1000y992", 1, 9, "W"]);
     expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(false);
+  });
+
+  test("SSO: the fallback point is your respawn point, then the operator's, then the start point", () => {
+    const seed = testMap("x1000y992");
+    const east = testMap(mapName(1001, 992));
+    const byName = new Map([seed, east].map((m) => [m.name, m]));
+    const deps = {
+      loadMap: (n: string) => byName.get(n) ?? null,
+      loadMapById: (id: string) => [seed, east].find((m) => m.id === id) ?? null,
+      startPoint: { map: seed.name, x: 6, y: 4 },
+      respawnPoint: { map: east.name, x: 5, y: 5 },
+    };
+    const where = (r: Parameters<typeof fallbackPoint>[0], d = deps) => {
+      const to = fallbackPoint(r, d);
+      return to ? [to.map.name, to.x, to.y] : null;
+    };
+    expect(where({ mapId: seed.id, x: 2, y: 3 })).toEqual([seed.name, 2, 3]);
+    expect(where({ mapId: "gone", x: 2, y: 3 })).toEqual([east.name, 5, 5]);
+    expect(where(null)).toEqual([east.name, 5, 5]);
+    const noRespawnMap = { ...deps, respawnPoint: { map: "x9y9", x: 5, y: 5 } };
+    expect(where(null, noRespawnMap)).toEqual([seed.name, 6, 4]);
+    expect(where(null, { ...noRespawnMap, startPoint: { map: "x8y8", x: 1, y: 1 } })).toBeNull();
   });
 
   test("SSO: a refused edge says why, once a press", () => {

@@ -113,7 +113,8 @@ test("death revives a prisoner in jail without restarting the sentence; expiry s
   expect(bob.char.respawn?.mapId).toBe(home.id);
   // The sentence is checked once a second (every 20 ticks): it ends by the 120th tick.
   step(119);
-  expect([bob.map.name, bob.x, bob.y, bob.jailUntil]).toEqual([home.name, 6, 4, null]);
+  // Released to his own respawn point (5, 5), not the start point.
+  expect([bob.map.name, bob.x, bob.y, bob.jailUntil]).toEqual([home.name, 5, 5, null]);
 });
 
 test("every jail edge refuses a map crossing, even for an arriving airship rider", () => {

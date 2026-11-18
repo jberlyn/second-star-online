@@ -122,6 +122,7 @@ export const ADMIN_TEXT = {
   noSuchCharacter: (name: string) => `There is no character called ${name}.`,
   noJail: "There is no jail map: save a map at X 0, Y 0 in the World Editor first.",
   warpUsage: "Usage: /warp <name> <map> <x> <y>, for example /warp Slim x1000y992 5 5",
+  noMap: (map: string) => `There is no map ${map}.`,
   roleUsage: "Usage: /role <name> player, moderator or immortal",
   roleSelf: "You cannot change your own role.",
   roleSet: (name: string, role: Role) =>

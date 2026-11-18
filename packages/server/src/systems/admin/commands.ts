@@ -120,8 +120,11 @@ export interface AdminDeps {
   /** `/Refresh`: the settings read again from the database and applied. */
   reloadSettings(): void;
   loadMap(name: string): WorldMap | null;
-  /** The missing-map fallback. */
+  loadMapById?(id: string): WorldMap | null;
+  /** The last resort of `fallbackPoint`. */
   startPoint(): { map: string; x: number; y: number };
+  /** The operator's respawn point, before the start point in `fallbackPoint`. */
+  respawnPoint?(): { map: string; x: number; y: number };
   casino: CasinoDeps;
 }
 
@@ -145,8 +148,8 @@ export function onlineByName(world: World, name: string): Player | null {
 /**
  * Moves `target` as the server's warp message did, dead or alive: 1.6's message handler had an
  * exit for a dead player that never ran, since nothing ever set the dead-player flag to 1 (only to
- * 0). A target in an editor is put back in the game first. A map that does not exist takes the
- * missing-map fallback to the start point.
+ * 0). A target in an editor is put back in the game first. The caller checks that the map exists
+ * (`/warp` refuses a missing one); a missing map here leaves the target where they are.
  */
 export function adminWarp(
   world: World,
@@ -154,16 +157,14 @@ export function adminWarp(
   mapName: string,
   x: number,
   y: number,
-  deps: Pick<AdminDeps, "loadMap" | "startPoint" | "casino">,
+  deps: Pick<AdminDeps, "loadMap" | "casino">,
 ): Outgoing[] {
-  const out = target.editing ? closeEditor(world, target) : [];
   const map = deps.loadMap(mapName);
-  if (map) {
-    out.push(...warp(world, target, map, x, y, deps.casino));
-    return out;
+  if (!map) {
+    return [];
   }
-  const sp = deps.startPoint();
-  out.push(...warp(world, target, deps.loadMap(sp.map) ?? target.map, sp.x, sp.y, deps.casino));
+  const out = target.editing ? closeEditor(world, target) : [];
+  out.push(...warp(world, target, map, x, y, deps.casino));
   return out;
 }
 
@@ -273,6 +274,10 @@ export function handleAdmin(
       const stop = jailWarpRefusal(t, to.map);
       if (stop) {
         return [...out, ...tell(p, stop)];
+      }
+      // A bug fixed: 1.6 sent the target to the start point when the map was missing.
+      if (!deps.loadMap(to.map)) {
+        return [...out, ...tell(p, ADMIN_TEXT.noMap(to.map))];
       }
       audit(t.name, null, to);
       return [...out, ...adminWarp(world, t, to.map, to.x, to.y, deps)];
@@ -628,7 +633,9 @@ function unjail(world: World, p: Player, w2: string, typed: string, deps: AdminD
     out.push(
       ...releaseFromJail(world, t, {
         loadMap: deps.loadMap,
+        loadMapById: deps.loadMapById,
         startPoint: deps.startPoint(),
+        respawnPoint: deps.respawnPoint?.(),
         casino: deps.casino,
       }),
     );
@@ -888,7 +895,7 @@ export function warpscriptOnBroadcast(
   world: World,
   speaker: Player,
   message: string,
-  deps: Pick<AdminDeps, "loadMap" | "startPoint" | "casino">,
+  deps: Pick<AdminDeps, "loadMap" | "casino">,
 ): Outgoing[] {
   for (const staff of world.players.values()) {
     // The check follows the ignore test: a staff member ignoring the speaker never reads the

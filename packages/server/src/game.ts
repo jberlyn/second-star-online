@@ -252,7 +252,13 @@ import {
 } from "./systems/social/guilds.ts";
 import { presenceOut } from "./systems/social/presence.ts";
 import { castIntent } from "./systems/spells/cast.ts";
-import { flushInventory, type TickDeps, tick } from "./systems/world/tick.ts";
+import {
+  fallbackPoint,
+  flushInventory,
+  portalOpen,
+  type TickDeps,
+  tick,
+} from "./systems/world/tick.ts";
 import {
   addPlayer,
   createWorld,
@@ -983,7 +989,9 @@ export function createGame(deps: GameDeps): Game {
     savePlayer: (t) => save(t),
     reloadSettings: () => applySettings(resolveSettings(loadSettingOverrides(db))),
     loadMap,
+    loadMapById,
     startPoint: () => settings.startPoint,
+    respawnPoint: () => settings.respawnPoint,
     casino: casinoDeps,
   };
   chatDeps.admin = adminDeps;
@@ -1182,7 +1190,8 @@ export function createGame(deps: GameDeps): Game {
 
   /**
    * Deletes a demolished interior, or leaves it queued while someone stands in it. Offline
-   * characters saved there go to the start point, as 1.6's missing map sent them.
+   * characters saved there go to their fallback point: their respawn point, then the operator's,
+   * then the start point (1.6's missing map sent them to the start point).
    */
   function deleteInterior(name: string): boolean {
     const room = world.rooms.get(name);
@@ -1193,15 +1202,26 @@ export function createGame(deps: GameDeps): Game {
     const c = parseHouseMapName(name);
     const rec = c ? findMapByCoords(db, c.mx, c.my, c.slot) : null;
     if (rec) {
-      const sp = settings.startPoint;
-      const start = findMapByCoords(db, ...startCoords(sp.map));
-      if (start) {
-        db.query("UPDATE characters SET map_id = ?, x = ?, y = ? WHERE map_id = ?").run(
-          start.id,
-          sp.x,
-          sp.y,
-          rec.id,
-        );
+      // A respawn point inside the interior goes with it.
+      db.query("UPDATE characters SET respawn_map_id = NULL WHERE respawn_map_id = ?").run(rec.id);
+      const inside = db
+        .query("SELECT id, respawn_map_id, respawn_x, respawn_y FROM characters WHERE map_id = ?")
+        .all(rec.id) as {
+        id: string;
+        respawn_map_id: string | null;
+        respawn_x: number | null;
+        respawn_y: number | null;
+      }[];
+      const move = db.query("UPDATE characters SET map_id = ?, x = ?, y = ? WHERE id = ?");
+      for (const ch of inside) {
+        const own =
+          ch.respawn_map_id !== null && ch.respawn_x !== null && ch.respawn_y !== null
+            ? { mapId: ch.respawn_map_id, x: ch.respawn_x, y: ch.respawn_y }
+            : null;
+        const to = fallbackPoint(own, tickDeps);
+        if (to) {
+          move.run(to.map.id, to.x, to.y, ch.id);
+        }
       }
       deleteMap(db, rec.id);
     }
@@ -1211,11 +1231,6 @@ export function createGame(deps: GameDeps): Game {
     mapCache.delete(name);
     return true;
   }
-  const startCoords = (name: string): [number, number] => {
-    const c = parseMapName(name);
-    return c ? [c.mx, c.my] : [Number.NaN, Number.NaN];
-  };
-
   /** The queued interiors nobody is in any more. */
   const flushInteriorDeletes = () => {
     if (world.interiorsToDelete.size === 0) {
@@ -1503,17 +1518,17 @@ export function createGame(deps: GameDeps): Game {
       const stored = findMapById(db, c.position.mapId);
       let map = stored ? loadMap(stored.name) : null;
       let { x, y } = c.position;
+      // A saved map that is gone: the fallback point (their respawn point, then the operator's,
+      // then the start point).
       if (!map) {
-        const sp = settings.startPoint;
-        map = loadMap(sp.map);
-        x = sp.x;
-        y = sp.y;
-        if (!map) {
+        const to = fallbackPoint(c.respawn, tickDeps);
+        if (!to) {
           return false;
         }
+        ({ map, x, y } = to);
       }
       // A sentence in force puts the prisoner in jail wherever they were saved; a player on the
-      // jail map without one (it ended while they were away) goes to the start point.
+      // jail map without one (it ended while they were away) goes to their fallback point.
       const now = isoNow();
       noteAddress(db, account.id, ip, now, settings.addressHistoryDays);
       const sentence = characterJail(db, c.id);
@@ -1528,12 +1543,9 @@ export function createGame(deps: GameDeps): Game {
         x = JAIL.x;
         y = JAIL.y;
       } else if (jailUntil === null && isJailMap(map.name) && account.role === "player") {
-        const sp = settings.startPoint;
-        const start = loadMap(sp.map);
-        if (start) {
-          map = start;
-          x = sp.x;
-          y = sp.y;
+        const to = fallbackPoint(c.respawn, tickDeps);
+        if (to) {
+          ({ map, x, y } = to);
         }
       }
       const p: Player = {
@@ -2000,7 +2012,10 @@ export function createGame(deps: GameDeps): Game {
           if (!room) {
             return;
           }
-          const r = castIntent(room, p, msg.spell, msg.x, msg.y, { rng });
+          const r = castIntent(room, p, msg.spell, msg.x, msg.y, {
+            rng,
+            portalOpen: () => portalOpen(tickDeps),
+          });
           deliver(r.out);
           if (p.vitalsDirty) {
             p.vitalsDirty = false;

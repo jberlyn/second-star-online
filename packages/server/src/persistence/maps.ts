@@ -82,6 +82,14 @@ export function findMapByCoords(
   return row ? toRecord(row) : null;
 }
 
+/** Every map, in coordinate order. */
+export function listMaps(db: Db): MapRecord[] {
+  return db
+    .query<MapRow, []>(`SELECT ${COLUMNS} FROM maps ORDER BY mx, my, slot`)
+    .all()
+    .map(toRecord);
+}
+
 export function findMapById(db: Db, id: string): MapRecord | null {
   const row = db.query<MapRow, [string]>(`SELECT ${COLUMNS} FROM maps WHERE id = ?`).get(id);
   return row ? toRecord(row) : null;

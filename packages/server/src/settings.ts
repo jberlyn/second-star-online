@@ -85,9 +85,9 @@ export const SETTINGS = {
     schema: point,
     default: { map: "x1000y992", x: 6, y: 4 },
     tooltip:
-      "Where new characters appear. Walking off an edge with no map beyond it also lands here.",
+      "Where new characters appear, and the last resort when a character's place is gone: after their own respawn point and the Respawn point setting.",
     source:
-      "SSO setting. Replaces the creation position x1000y992 6-4 that 1.6 hard-coded, and the fallback for a missing map.",
+      "SSO setting. Replaces the creation position x1000y992 6-4 that 1.6 hard-coded. 1.6 also sent travel to a missing map here; SSO refuses that travel instead.",
   }),
   respawnPoint: def({
     group: "World",
@@ -95,7 +95,8 @@ export const SETTINGS = {
     form: { kind: "point" },
     schema: point,
     default: { map: "x1000y992", x: 5, y: 5 },
-    tooltip: "Where characters reappear after dying, unless a map's respawn flag says otherwise.",
+    tooltip:
+      "Where characters reappear after dying, unless a map's respawn flag gave them their own. Also where they go when their place is gone (a deleted map, a decayed house, the end of a jail sentence), before the start point.",
     source:
       "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), keeping its tile on the seed map.",
   }),
@@ -250,7 +251,7 @@ export const SETTINGS = {
     schema: z.array(point).max(30),
     default: [] as MapPoint[],
     tooltip:
-      "Where a Portal spell can send players: one is picked at random each time. With none, Portal sends players to the start point.",
+      "Where a Portal spell can send players: one whose map exists is picked at random each time. With none, Portal cannot be cast.",
     source:
       "1.6's Portal file, read by the server's Portal handler: random(n) of its first 30 items. Its only entry, xbrinkybrink, is not a map, so in 1.6 Portal always ended on the fallback x1000y992 5-5.",
   }),
@@ -337,7 +338,7 @@ export const SETTINGS = {
     schema: z.number().int().min(1).max(5_256_000),
     default: 10,
     tooltip:
-      "Minutes a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to the start point.",
+      "Minutes a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to their respawn point (else the Respawn point, else the start point).",
     source:
       '1.6\'s server settings file had "Jail Sentence Time (1800 = 1 minute):8000" in frames, counted only while online and restarted on every entry. SSO stores sentences and counts them in minutes.',
   }),

@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { blankMap, NO_FOG } from "@secondstaronline/shared";
+import { blankMap, EDGE_BLOCKED_TEXT, NO_FOG } from "@secondstaronline/shared";
 
 import { openDatabase } from "../src/persistence/database.ts";
 import {
@@ -60,14 +60,19 @@ describe("exits", () => {
     expect(exitUnder(p)).toBe("Exit");
   });
 
-  test("an exit with no target takes the missing-map fallback to the start point", () => {
-    const a = testMap("x1000y992");
-    a.ground.push({ id: "e1", item: "Exit", x: 2, y: 2, kind: "admin", expiresAt: null });
-    const { join, run } = setup([a], { map: "x1000y992", x: 6, y: 4 });
-    const p = player("p", a, 2, 2);
-    join(p);
-    run(1);
-    expect([p.x, p.y]).toEqual([6, 4]);
+  test("bug fixed: an exit with no target, or to a missing map, leaves you on it and says so once", () => {
+    for (const exit1 of [null, { mx: 77, my: 77, x: 5, y: 5 }]) {
+      const a = testMap("x1000y992");
+      a.exit1 = exit1;
+      a.ground.push({ id: "e1", item: "Exit", x: 2, y: 2, kind: "admin", expiresAt: null });
+      const { join, run } = setup([a], { map: "x1000y992", x: 6, y: 4 });
+      const p = player("p", a, 2, 2);
+      join(p);
+      const out = run(3);
+      expect([p.map.name, p.x, p.y]).toEqual(["x1000y992", 2, 2]);
+      const lines = out.flatMap((o) => (o.to === "p" && o.msg.t === "chat" ? [o.msg.text] : []));
+      expect(lines).toEqual([EDGE_BLOCKED_TEXT]);
+    }
   });
 });
 

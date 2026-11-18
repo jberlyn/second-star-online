@@ -165,6 +165,18 @@ describe("the cast", () => {
     expect(a.char.bag.some((l) => l?.item === "White Crystals")).toBe(false);
     expect(room.fxQueue).toHaveLength(0);
   });
+
+  test("bug fixed: Portal with no destination is refused before SP and crystals are spent", () => {
+    const { a, room } = scene();
+    a.spell.book = ["Portal"];
+    give(a, "White Crystals", 10);
+    const t = at(9, 9);
+    const r = castIntent(room, a, "Portal", t.h, t.v, { rng: rngByN(), portalOpen: () => false });
+    expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.portalClosed, color: 0 });
+    expect(a.char.vitals.sp).toBe(200);
+    expect(a.char.bag.some((l) => l?.item === "White Crystals")).toBe(true);
+    expect(room.fxQueue).toHaveLength(0);
+  });
 });
 
 describe("FX and monsters", () => {
@@ -737,10 +749,12 @@ describe("Portal", () => {
     expect([s.bob.map.name, s.bob.x, s.bob.y]).toEqual(["x3y4", 7, 8]);
   });
 
-  test("with no targets, random(0) matches no line and the empty warp lands on the start point", () => {
-    const s = portalScene([]);
-    s.run(6);
-    expect([s.bob.map.name, s.bob.x, s.bob.y]).toEqual(["x1000y992", 6, 4]);
+  test("bug fixed: a portal whose targets' maps are all missing moves no one", () => {
+    for (const targets of [[], [{ map: "x77y77", x: 2, y: 2 }]]) {
+      const s = portalScene(targets);
+      s.run(6);
+      expect([s.bob.map.name, s.bob.x, s.bob.y]).toEqual(["x1000y992", 9, 6]);
+    }
   });
 
   test("Cow, Pig, Spikes, Web and Holy Shield never cast: contains, so Illusionary Spikes too", () => {
