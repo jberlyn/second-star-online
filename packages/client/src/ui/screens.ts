@@ -3,10 +3,9 @@
  * Rects are top-left = loc − regpoint, from assets/original/main/layout/
  * score-spans.jsonl (frames 8-10 title, 31 login, 26 creation).
  *
- * Title (frame 8): only Load Character (→ frame 30) and New
- * Character lead anywhere in a browser. Game Setup (prefs) arrives with its settings,
- * Server Editor and Exit belonged to the Windows projector, and the frame-10 advert popup
- * (Internal #106, #234-236) pointed at a dead website; their art is shown, inert.
+ * Title: a remade screen rather than the frame-8 art. Only Load Character (→ frame 30) and New
+ * Character lead anywhere in a browser: Game Setup, Server Editor and Exit belonged to the Windows
+ * projector, and the frame-10 advert popup (Internal #106, #234-236) pointed at a dead website.
  */
 import {
   CREATION_POINTS,
@@ -21,7 +20,7 @@ import {
 import { type Assets, drawSprite } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
 import { action } from "./action.ts";
-import { artImg, type Rect, type StageItem } from "./stage.ts";
+import { artImg, type StageItem } from "./stage.ts";
 
 export interface Screen {
   items: StageItem[];
@@ -59,65 +58,71 @@ function label(cls: string, text: string): HTMLDivElement {
   return d;
 }
 
-/** Internal #250: `unFun Games 1999-2003` / `http://www.unfungames.com` / `v1.6`. */
+/** The title footer that stands where the original's unFun Games credits (Internal #250) were. */
 function credits(): HTMLElement {
   const d = document.createElement("div");
   d.className = "title-credits";
-  for (const text of ["unFun Games 1999-2003", "http://www.unfungames.com", "v1.6"]) {
+  for (const text of ["A remake of First Star Online 1.6", "originally by unFun Games"]) {
     d.append(label("title-credit", text));
   }
   return d;
 }
 
+/**
+ * A title menu choice: a button drawn by its art (`.title-option.<variant>`, title/title-*.webp), with a
+ * hover image that fades in on hover and keyboard focus.
+ */
+function titleOption(
+  text: string,
+  variant: "load" | "new",
+  actionId: string,
+  onClick: () => void,
+): HTMLButtonElement {
+  const b = hit(text, actionId, onClick);
+  b.classList.add("title-option", variant);
+  return b;
+}
+
 const ui = (a: Assets, m: number) => a.ui("internal", m);
 
+/**
+ * The remade title: a full-stage red-curtain backdrop with the Second Star Online logo
+ * (`title/title-backdrop.webp`, drawn by `.title-backdrop`), the two working choices as art, and a footer
+ * crediting the original. The original's Game Setup, Server Editor and Exit art is not shown.
+ */
 export function titleScreen(
-  a: Assets,
+  _a: Assets,
   go: { load(): void; create(): void; sound(s: Sfx): void },
 ): Screen {
+  const backdrop = document.createElement("div");
+  backdrop.className = "title-backdrop";
+  backdrop.setAttribute("role", "img");
+  backdrop.setAttribute("aria-label", "Second Star Online");
   const items: StageItem[] = [
+    { el: backdrop, x: 0, y: 0, w: 800, h: 600, z: 1 },
     {
-      el: artImg(ui(a, 105), "First Star Online"),
-      x: 194,
-      y: -19,
-      w: 409,
-      h: 526,
-      z: 2,
-      art: true,
-    },
-    { el: artImg(ui(a, 39)), x: 253, y: 288, w: 308, h: 46, z: 10, art: true },
-    { el: artImg(ui(a, 38)), x: 259, y: 329, w: 284, h: 39, z: 9, art: true },
-    { el: artImg(ui(a, 103)), x: 269, y: 366, w: 263, h: 36, z: 12, art: true },
-    { el: artImg(ui(a, 127)), x: 262, y: 406, w: 281, h: 28, z: 3, art: true },
-    { el: artImg(ui(a, 104)), x: 308, y: 440, w: 172, h: 36, z: 13, art: true },
-    // Load Character clicks on channel 3; New Character on channel 1, its behaviour shadowing the
-    // cast script.
-    {
-      el: hit("Load Character", "title-load-character", () => {
+      el: titleOption("Load Character", "load", "title-load-character", () => {
         go.sound(SOUND.click);
         go.load();
       }),
-      x: 253,
-      y: 288,
-      w: 308,
+      x: 240,
+      y: 341.5,
+      w: 320,
       h: 46,
       z: 20,
     },
     {
-      el: hit("New Character", "title-new-character", () => {
+      el: titleOption("New Character", "new", "title-new-character", () => {
         go.sound(SOUND.newCharacter);
         go.create();
       }),
-      x: 259,
-      y: 329,
-      w: 284,
-      h: 39,
+      x: 240,
+      y: 394,
+      w: 320,
+      h: 46,
       z: 20,
     },
-    // The credits text (Internal #250, a text member on channel 1 of frames 7-10), loc (259, 533),
-    // 293 wide: three centred lines, #EFEFEF on the black title. Plain text: its cast script's
-    // mouseUp is empty.
-    { el: credits(), x: 259, y: 533, w: 293, h: 46, z: 1 },
+    { el: credits(), x: 200, y: 540, w: 400, h: 40, z: 2 },
   ];
   return {
     items,

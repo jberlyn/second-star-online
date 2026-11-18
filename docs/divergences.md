@@ -1064,11 +1064,11 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Title and login screens in a browser
 - **Kind:** Platform
-- **What you notice:** The original title art appears in the browser; Load Character and New Character work, and login and creation messages appear in an in-page box with OK.
+- **What you notice:** The title screen is a remade red-curtain backdrop with a Second Star Online logo, offering only Load Character and New Character, with a footer naming the original First Star Online 1.6 by unFun Games; those two choices work, and login and creation messages appear in an in-page box with OK.
 - **1.6:** Exit quit the Windows projector, Server Editor opened a server-address entry and Game Setup opened local preferences; frame 10 showed an advert for the original website. Login and creation messages were Windows alerts with an OS beep. Credits were unreachable; the post-creation frames referenced a missing Story member and showed nothing before returning to the title.
-- **SSO:** Only Load Character and New Character respond on the title screen; Game Setup art remains inert, while Exit, Server Editor and the advert are not offered. Sound is controlled in the in-game menu. A page connects to the server that served it, so the server picker has no screen. Messages use the original text in an in-page OK box without the alert beep. The unreachable credits, unavailable post-creation movie and unreachable later frames are omitted.
-- **Why:** A browser page cannot quit or launch local tools, the advertised site no longer exists, and native browser alerts block the page and vary by browser.
-- **In the code:** `packages/client/src/ui/alert.ts` (`showAlert`), `packages/client/src/app.ts` (`runApp`)
+- **SSO:** The title shows only Load Character and New Character; Game Setup, Exit, Server Editor and the advert are not offered, and the unFun Games credits and version line are replaced by a footer crediting the original. Sound is controlled in the in-game menu. A page connects to the server that served it, so the server picker has no screen. Messages use the original text in an in-page OK box without the alert beep. The unreachable credits, unavailable post-creation movie and unreachable later frames are omitted.
+- **Why:** A browser page cannot quit or launch local tools, the advertised site no longer exists, the remake carries its own name while crediting the game it recreates, and native browser alerts block the page and vary by browser.
+- **In the code:** `packages/client/src/ui/screens.ts` (`titleScreen`), `packages/client/src/ui/alert.ts` (`showAlert`), `packages/client/src/app.ts` (`runApp`)
 
 ### In-game sound effects switch
 - **Kind:** Platform

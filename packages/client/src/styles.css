@@ -1932,27 +1932,56 @@ body {
   pointer-events: none;
 }
 
-/* Title credits: three centred bold Arial lines, 10, 14 and 12 px. */
+/* Remade title: curtain-and-logo backdrop, serif menu text, and a footer crediting the original. */
+.title-backdrop {
+  background: #000 url("./ui/title/title-backdrop.webp") center / 100% 100% no-repeat;
+}
+/* Menu choices are 2× art (640×92 drawn at 320×46); the hover art sits on top and fades in. */
+.title-option {
+  background: center / 100% 100% no-repeat;
+}
+.title-option::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: center / 100% 100% no-repeat;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.title-option.load {
+  background-image: url("./ui/title/title-load.webp");
+}
+.title-option.load::after {
+  background-image: url("./ui/title/title-load-hover.webp");
+}
+.title-option.new {
+  background-image: url("./ui/title/title-new.webp");
+}
+.title-option.new::after {
+  background-image: url("./ui/title/title-new-hover.webp");
+}
+.title-option:hover::after,
+.title-option:focus-visible::after {
+  opacity: 1;
+}
+.title-option:focus-visible {
+  outline: none;
+}
 .title-credits {
   text-align: center;
-  color: #efefef;
+  color: #9a8f8c;
   pointer-events: none;
   user-select: none;
+  font:
+    italic 13px "Palatino Linotype",
+    "Book Antiqua",
+    Palatino,
+    "URW Palladio L",
+    Georgia,
+    serif;
+  line-height: 18px;
+  letter-spacing: 0.03em;
 }
 .title-credits .title-credit {
-  font-family: Arial, sans-serif;
-  font-weight: bold;
   white-space: nowrap;
-}
-.title-credits .title-credit:nth-child(1) {
-  font-size: 10px;
-  line-height: 14px;
-}
-.title-credits .title-credit:nth-child(2) {
-  font-size: 14px;
-  line-height: 17px;
-}
-.title-credits .title-credit:nth-child(3) {
-  font-size: 12px;
-  line-height: 14px;
 }

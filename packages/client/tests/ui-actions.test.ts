@@ -373,4 +373,17 @@ describe("UI action annotations", () => {
     elements.find((el) => el.dataset.action === "title-new-character")!.click();
     expect(calls).toEqual(["load", "create"]);
   });
+  test("the title offers only its two choices and credits the original instead of unFun Games", () => {
+    const screen = titleScreen(fakeAssets, noop);
+    const elements = screen.items.map((item) => item.el);
+    const choices = elements.filter((el) => el.dataset.action);
+    expect(choices.map((el) => el.getAttribute("aria-label"))).toEqual([
+      "Load Character",
+      "New Character",
+    ]);
+    const footer = elements.find((el) => el.classList.contains("title-credits"))!;
+    expect(footer.textContent).toContain("A remake of First Star Online 1.6");
+    expect(footer.textContent).toContain("originally by unFun Games");
+    expect(footer.textContent).not.toContain("unfungames.com");
+  });
 });
