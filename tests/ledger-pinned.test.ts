@@ -1,5 +1,5 @@
 /**
- * Every test a ledger entry names must exist. A `Pinned by:` line in the divergences document or
+ * Every test a ledger entry names must exist. A `Pinned by:` line in the differences document or
  * the bug ledger lists test names (a title or the start of one) followed by the test file in
  * parentheses; each name must be inside a describe, test or it title of that file.
  */
@@ -66,10 +66,10 @@ function checkPinnedBy(ledger: string): void {
   expect(bad.length, `${bad.length} stale names:\n  ${bad.slice(0, 40).join("\n  ")}`).toBe(0);
 }
 
-test("every test named in a divergence entry's `Pinned by:` is a title in the file named after it", () => {
-  checkPinnedBy("docs/divergences.md");
+test("every test named in a differences entry's `Pinned by:` is a title in the file named after it", () => {
+  checkPinnedBy("docs/differences-from-fso.md");
 });
 
-test("every test named in a kept bug's `Pinned by:` is a title in the file named after it", () => {
+test("every test named in a bug-ledger entry's `Pinned by:` is a title in the file named after it", () => {
   checkPinnedBy("docs/bug-ledger.md");
 });

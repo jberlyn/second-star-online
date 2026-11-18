@@ -18,7 +18,7 @@ Base every claim on the code as it was **at the tag being described**, not the w
    - The settings and command tables in `docs/running-a-server.md`: settings added, removed or renamed, new commands, and roles gaining or losing commands.
    - `docker-compose.yml`, `Dockerfile` and environment variables: renamed services or volumes, and new or changed variables.
    - Changes to content data (`packages/data/content/`) that shift the economy, such as payouts or prices.
-4. New headings in `docs/divergences.md` (`git diff <tag>..HEAD -- docs/divergences.md | grep '^+### '`) give a reliable list of behaviour changes and fixed bugs.
+4. New entry headings in `docs/differences-from-fso.md` give a reliable list of behaviour changes and fixed bugs. Entries are `####` headings (`###` under Kept on purpose). Compare heading lists rather than the diff, because entries move between sections: `comm -13 <(git show <tag>:docs/differences-from-fso.md | grep -E '^#{3,4} ' | sort) <(grep -E '^#{3,4} ' docs/differences-from-fso.md | sort)`. Before the file existed it was `docs/divergences.md`, with `###` entry headings; use that path for the tag side when it is older.
 5. Leave out changes that affect neither operators nor players: tests, internal refactors, documentation-only commits and repository images.
 
 ## 2. Choose the version

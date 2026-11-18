@@ -48,7 +48,6 @@ Login attempts are counted over five minutes and account creations over an hour;
 
 An immortal entering an editor leaves the map until returning. A world save checks map fields, exits, text and item names, replaces its editor-managed items and roster, and refreshes players on the map; other ground drops and loot are preserved. The Fat brush covers the full 17 × 12 map, faction checkboxes (W/M/A) are mutually exclusive, clicking a lit layer button (including S) keeps that layer selected, and loading a map without an exit resets the exit fields. NPC loading combines the file with live shop stock and gold and displays the complete text losslessly. Saving validates the selected NPC and its lines, replaces its file and resets its shop ledger; open shop and bio windows for it close. The editor lists and validations are in the shared files listed above.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-All nine former admin kept bugs have been fixed and are recorded in [admin differences](../divergences.md#admin). See also [admin kept bugs](../bug-ledger.md#admin).
-
+Admin has no unfixed 1.6 bugs. See the [admin bugs fixed](../differences-from-fso.md#admin) and [server-side admin changes](../differences-from-fso.md#server-side-admin).

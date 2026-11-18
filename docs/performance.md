@@ -43,7 +43,7 @@ Tick time is the whole `game.tick()`: the sim, encoding and sending every messag
 ## What an operator sees
 
 - **A log line when the server falls behind.** At most once a minute, only when the last minute dropped a tick or had a tick over 25 ms: `tick lag in the last minute: p99 4.1 ms, worst 31.2 ms, 3 ticks dropped, 87 online`. Silence means the server kept up. There is no admin command and no setting.
-- **A player on a bad connection is reconnected.** When more than about 1 MB of updates waits to be sent to one connection, the server closes it (code 4007, "fell behind") and the client resumes with a fresh view of the map. Bun keeps the unsent bytes in the server, but the operating system's socket buffers (megabytes on Linux) fill first, so on a fast host a stalled phone takes minutes to reach the limit. See [divergences.md](divergences.md#a-connection-that-falls-far-behind-is-reconnected).
+- **A player on a bad connection is reconnected.** When more than about 1 MB of updates waits to be sent to one connection, the server closes it (code 4007, "fell behind") and the client resumes with a fresh view of the map. Bun keeps the unsent bytes in the server, but the operating system's socket buffers (megabytes on Linux) fill first, so on a fast host a stalled phone takes minutes to reach the limit. See [differences from 1.6](differences-from-fso.md#a-connection-that-falls-far-behind-is-reconnected).
 - **`SSO_PERF_OUT=<file>`** makes the server append one JSON line a second: tick times (raw, total and by phase), traffic, backlog, memory, database and WAL size and rows written. The perf rig sets it; set it by hand to watch a live server. Without it nothing is timed or written.
 
 ## Running it

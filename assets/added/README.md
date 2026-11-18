@@ -55,6 +55,6 @@ Sound (nothing else is allowed; the channel belongs to the content row that play
 - **UI art** (window pictures, house ghosts) is not added here. A UI picture is placed by
   coordinates written in client code, so new UI art comes with the code that draws it.
 
-New art or sound that changes what players see or hear gets a `docs/divergences.md` entry.
+New art or sound that changes what players see or hear gets a `docs/differences-from-fso.md` entry.
 
 The original art is in `../original/`, listed in `../original/usage.md`. Worked examples are in [the modding guide](../../docs/modding.md). The sidecar schema is `packages/data/schema/added-asset.ts`.

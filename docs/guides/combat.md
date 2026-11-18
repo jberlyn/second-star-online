@@ -36,7 +36,6 @@ The monster and PvP paths differ. Against another player, the shared mitigation 
 
 Arena challenge and quit are chat-triggered actions. Shared checks determine whether the challenge can proceed, pick a free arena tile and select an exit; the server moves the players and never puts one on a tile another player, a monster or a blocking item holds. Hold and the wait after death refuse both words. The server's arena exit selection avoids hanging if an exit cannot be found.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-Combat has no kept bugs: every former entry was fixed. See the [combat differences](../divergences.md#combat) for the specific player-visible cases.
-
+Combat has no unfixed 1.6 bugs. See the [combat bugs fixed](../differences-from-fso.md#combat) and [server-side combat changes](../differences-from-fso.md#server-side-combat).

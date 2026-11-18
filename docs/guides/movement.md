@@ -23,7 +23,6 @@ Each refusal names one request by its sequence number (`moveRejected`); the requ
 
 A turn does not start while already stepping. A step checks player and monster footprints first, then items, then a web on the current tile. An off-map step becomes an edge crossing; otherwise the destination must be walkable. An edge crossing wraps to the neighboring map without checking the destination walk grid. The world tick handles crossings, exits and warps and sends room changes. The same movement checks apply to pushes, including chains of pushes; rolls are collected before the resulting shoves. A vehicle uses its own step length and does not push players.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-Webs on the current tile repeatedly refuse movement. Moving players between tiles do not block one another, and a Web or Holy Shield can clear an earlier blocking result. A weak push can still shove its target, and some movement attempts refresh the fishing allowance even when blocked. The server controls movement and immediately reports a changed facing to other players. See [movement kept bugs](../bug-ledger.md#movement) and [movement differences](../divergences.md#movement).
-
+Webs on the current tile repeatedly refuse movement. Moving players between tiles do not block one another, and a Web or Holy Shield can clear an earlier blocking result. A weak push can still shove its target, and some movement attempts refresh the fishing allowance even when blocked. The server controls movement and immediately reports a changed facing to other players. See the [unfixed movement bugs](../bug-ledger.md#movement) and [server-side movement changes](../differences-from-fso.md#server-side-movement).

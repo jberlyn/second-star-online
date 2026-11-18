@@ -1,10 +1,10 @@
 # Bug ledger
 
-Gameplay bugs in First Star Online 1.6 that Second Star Online **keeps on purpose**. The policy is to keep every gameplay bug and to close only the exploits that harm the server or other players. Each entry says what a player notices, what 1.6 did, where the behaviour lives in the code, and which tests pin it. At the end, "Not in SSO" lists what 1.6 did that cannot happen under server authority, and what 1.6 never reached.
+Gameplay bugs in First Star Online 1.6 that Second Star Online has not fixed yet. SSO fixes bugs the original never intended (see the [policy](differences-from-fso.md#policy)), so this ledger is a backlog: each entry says what a player notices, what 1.6 did, where the behaviour lives in the code, and which tests pin it until it is resolved.
 
-- Exploits that were closed live in [`docs/divergences.md`](divergences.md), not here.
+When an entry is resolved, remove it here in the same change and record it in [differences-from-fso.md](differences-from-fso.md): as **Bug fixed** when it is fixed, or under [Kept on purpose](differences-from-fso.md#kept-on-purpose), with the reason, when fixing it would be a design change. Rename its pinning tests from `kept bug: …` to `bug fixed: …` or `kept on purpose: …`. Once the ledger is empty it is deleted.
 
-**Entry shape.** A kept bug:
+**Entry shape.**
 
 ```
 ### A weaker player still shoves you
@@ -17,79 +17,19 @@ Gameplay bugs in First Star Online 1.6 that Second Star Online **keeps on purpos
 - **Pinned by:** `kept bug: a weaker pusher is 'too weak' and still shoves` (packages/server/tests/push.test.ts); `walking into a standing player can push them` (packages/server/e2e/chat-and-presence.test.ts)
 ```
 
-And an item under "Not in SSO":
-
-```
-- **The airship picture lingered after death.** 1.6 left a dead rider drawn as the airship until each
-  viewer's screen happened to reset it (a 1-in-50 roll per frame). SSO's server resets it for everyone
-  at the moment of death (`packages/server/src/systems/vehicles/airship.ts`, `vehicleDeath`).
-```
-
-The `In the code:` paths and identifiers are checked by the gate (`tests/doc-paths.test.ts`). Every kept bug should name the tests that pin it.
+The `In the code:` paths and identifiers are checked by the gate (`tests/doc-paths.test.ts`). Every entry should name the tests that pin it.
 
 ## Index
 
-| Section | Kept bugs |
+| Section | Unfixed bugs |
 |---|---|
-| [admin](#admin) | 0 |
-| [casino](#casino) | 0 |
-| [chat](#chat) | 0 |
-| [client](#client) | 0 |
-| [combat](#combat) | 0 |
-| [crafting](#crafting) | 0 |
-| [economy](#economy) | 0 |
-| [housing](#housing) | 0 |
-| [inventory](#inventory) | 0 |
-| [mail](#mail) | 0 |
 | [monsters](#monsters) | 21 |
 | [movement](#movement) | 7 |
-| [progression](#progression) | 11 |
+| [progression](#progression) | 10 |
 | [social](#social) | 18 |
 | [spells](#spells) | 25 |
-| [vehicles](#vehicles) | 0 |
-| [world](#world) | 5 |
-| [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **128** |
-
-## admin
-
-No kept bugs (all nine former entries were fixed; see [admin differences](divergences.md#admin)).
-
-## casino
-
-No kept bugs (all fourteen former entries were fixed; see [casino differences](divergences.md#casino)).
-
-## chat
-
-No kept bugs (all ten former entries were fixed; see [chat differences](divergences.md#chat)).
-
-## client
-
-No kept bugs (all seventeen former entries were fixed; see [core differences](divergences.md#core)).
-
-## combat
-
-No kept bugs (all twenty-nine former entries were fixed; see [combat differences](divergences.md#combat)).
-
-## crafting
-
-No kept bugs (twenty-seven former entries were fixed, and the alchemy sand entry was reclassified as intended; see [crafting differences](divergences.md#crafting)).
-
-## economy
-
-No kept bugs (all thirty-three former entries were fixed; see [economy differences](divergences.md#economy)).
-
-## housing
-
-No kept bugs (all twenty former entries were fixed; see [housing differences](divergences.md#housing)).
-
-## inventory
-
-No kept bugs (all thirty-three former entries were fixed; see [inventory differences](divergences.md#inventory)).
-
-## mail
-
-No kept bugs (all sixteen former entries were fixed; see [mail differences](divergences.md#mail)).
+| [world](#world) | 3 |
+| **Total** | **84** |
 
 ## monsters
 
@@ -277,12 +217,6 @@ No kept bugs (all sixteen former entries were fixed; see [mail differences](dive
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
 - **Pinned by:** `kept bug: an arena death keeps the airship` (packages/server/tests/vehicles.test.ts); `kept bug: a rider challenges and quits still flying` and `a rider's exit is drawn from the Airship grid` (packages/server/tests/arena.test.ts)
 
-### Every new character starts with 20 hit points and 20 spell points
-- **What you notice:** the character you build always begins at HP 20/20 and SP 20/20, whatever the class, including Fighters, whose creation screen showed 0 SP.
-- **In 1.6 and SSO:** the rolled values are thrown away and the saved record gets the fixed numbers 20, 20, 20, 20. SSO writes the same.
-- **In the code:** `packages/shared/src/rules/progression/creation.ts` (`startingCharacter`)
-- **Pinned by:** `kept bug: vitals are the literal 20/20/20/20 for every class, Fighter included` (packages/shared/tests/progression/creation.test.ts)
-
 ### A level-up wastes spare XP and never raises more than one level
 - **What you notice:** when a kill pushes you past the XP you need, the extra is lost, you gain a single level however large the kill, and you are not healed.
 - **In 1.6 and SSO:** at level-up the XP counter is reset to 0, and the check is a single test rather than a loop. SSO does the same.
@@ -311,6 +245,7 @@ No kept bugs (all sixteen former entries were fixed; see [mail differences](dive
 - **What you notice:** a death outside the arena costs 1 off both your maximum HP and maximum SP one time in five, with the weakened message.
 - **In 1.6 and SSO:** the code sets the death penalty to "X" just before testing it, which forces the roll for everyone. The intended chance was one in one, for some players. A maximum is only lowered while it is above 2. SSO does the same.
 - **In the code:** `packages/shared/src/rules/progression/progression.ts` (`rollDeathPenalty`)
+- **Under review:** permanent stat loss is harsh on PvE players; [issue #12](https://github.com/jberlyn/second-star-online/issues/12) will decide what replaces it.
 - **Pinned by:** `kept bug: DeathPenalty is forced, random(5) = 1 → HPmax and SPmax −1 above 2` (packages/shared/tests/progression/progression.test.ts)
 
 ### Mage skill caps higher from casting than from killing
@@ -412,7 +347,7 @@ No kept bugs (all sixteen former entries were fixed; see [mail differences](dive
 - **Pinned by:** `kept bug: a Warrior who joins at 50-59 HP is exiled on the next death` (packages/shared/tests/social/factions.test.ts)
 
 ### Faction leader and quest lines lack their closing quote
-- **What you notice:** The three lines a faction leader says end without the closing quote mark, and a quest giver's "Sorry but I don't need anything right now" has no full stop. (The quest giver's "Bring me a…" line now closes its quote; see [economy differences](divergences.md#economy).)
+- **What you notice:** The three lines a faction leader says end without the closing quote mark, and a quest giver's "Sorry but I don't need anything right now" has no full stop. (The quest giver's "Bring me a…" line now closes its quote; see [economy bugs fixed](differences-from-fso.md#economy).)
 - **In 1.6 and SSO:** 1.6 left these texts that way. SSO uses the same texts.
 - **In the code:** `packages/shared/src/rules/social/factions.ts` (`sayFaction`), `packages/shared/src/rules/economy/quests.ts` (`sayQuest`)
 - **Pinned by:** `kept bug: faction leader lines lack their closing quote`; `bug fixed: every quest reply is heard by the map and closes its quote` (packages/shared/tests/social/factions.test.ts)
@@ -475,7 +410,7 @@ No kept bugs (all sixteen former entries were fixed; see [mail differences](dive
 
 ### Hold roots players even where PvP is off
 - **What you notice:** a Hold spell roots a player on a map where player fighting is off.
-- **In 1.6 and SSO:** the Hold branch checks only for a vehicle and for the caster. On safe maps SSO differs: Hold cannot target players there (see the divergence list).
+- **In 1.6 and SSO:** the Hold branch checks only for a vehicle and for the caster. On safe maps SSO differs: Hold cannot target players there (see [Hold cannot target players on safe maps](differences-from-fso.md#hold-cannot-target-players-on-safe-maps)).
 - **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
 - **Pinned by:** `kept bug: Hold ignores PvP flags: it roots a player where PvP is off` (packages/server/tests/spells.test.ts)
 
@@ -593,10 +528,6 @@ No kept bugs (all sixteen former entries were fixed; see [mail differences](dive
 - **In the code:** `packages/server/src/systems/spells/hazards.ts` (`serverTimer`), `packages/client/src/audio.ts` (`playAll`)
 - **Pinned by:** `kept bug: the church bell leaves channel 5 at volume 200, sound on or off` (packages/client/tests/spells.test.ts); `the church bell rings at the 20th run to x999y999, Churchy:5:200` (packages/server/tests/spells.test.ts)
 
-## vehicles
-
-No kept bugs (the former entry was fixed; see [vehicle differences](divergences.md#vehicles)).
-
 ## world
 
 ### A map that isn't there sends you to the start point
@@ -616,57 +547,3 @@ No kept bugs (the former entry was fixed; see [vehicle differences](divergences.
 - **In 1.6 and SSO:** a respawn point is saved only when you draw a map flagged as no fighting, indoors and no PvP (written O-O-O), and none of the 27 original maps is flagged that way. SSO uses the same rule on the server, respawning at the operator's setting (by default the map x1000y992, tile 5,5; 1.6 used x0y102) unless the character has a saved O-O-O point.
 - **In the code:** `packages/server/src/systems/world/world.ts` (`respawn`); `packages/server/src/systems/world/tick.ts` (`respawnPoint`)
 - **Pinned by:** `kept bug: the seed map and new-map defaults do not save a respawn point; death without one uses the configured fallback` (packages/server/tests/world.test.ts)
-
-## Not in SSO
-
-### Leftovers of peer-to-peer play
-
-1.6 ran each player's game on their own computer, so it had quirks that cannot exist when the server is in charge. SSO has nothing to keep for these.
-
-- **The airship picture lingered after death.** 1.6 left a dead rider drawn as the airship until each viewer's screen happened to reset it, a 1-in-50 roll per frame. SSO's server resets it for everyone at the moment of death (`packages/server/src/systems/vehicles/airship.ts`, `vehicleDeath`).
-- **Other players' steps were batched through a relay queue.** 1.6 sent a step directly only when exactly one other player was present; with two or more it relayed steps in 350 ms batches, duplicating some and dropping others when the queue was long. SSO's server broadcasts each step in the tick it happens, so nothing is needed.
-- **Sprite-slot miscounts in the player and monster lists.** 1.6 counted players, blocked tiles and clicked names by reading fixed sprite slots, and a few slots were miscounted or wired to the wrong name field. SSO has no sprite slots, so nothing is needed.
-- **The warp's input lock sat in a local variable.** 1.6 set its keyboard lock for a warp in a variable that did nothing outside that one routine; it was harmless because the hidden playfield blocked moves anyway. SSO's server holds a loading lock while you change map, so nothing is needed.
-- **Several admin commands misbehaved in small ways.** 1.6 warped an admin twice for some flag pairs, showed location and IP lookups twice to someone flagged both immortal and moderator, needed an extra server access level to kick, overwrote the admin's own IP during a lookup, left a kick reply with no handler, stacked the banned prefix on repeated bans, made a file for a ban on a name that does not exist, and left stray `**` gaps in the IP ban list. SSO has a single role check and the server does the kicking and banning, so none of this exists.
-- **Each screen kept its own monster hit points.** 1.6 had every client apply melee damage and roll spell damage to its own copy of a monster's hit points, so the copies drifted apart and two players could each be awarded the kill. SSO has one authoritative monster, one roll and one killer.
-- **Each client rolled monster attacks against itself.** 1.6 had every client roll monster attacks and spells against its own player. SSO's server rolls once per monster and player pair, with the same probabilities.
-- **A twelfth spell effect cancelled an older one.** 1.6 had eleven spell-effect sprite slots; with all busy, a new spell reused the first and cancelled the old effect. SSO has [no such cap on effects](divergences.md#no-11-spell-fx-cap).
-- **Monster-hit floating numbers vanished in a crowd.** With two or more other players on screen, 1.6 routed the floating hit number through the relay queue without the map prefix, so the queue misfiled it and nobody saw it. SSO sends floating numbers as server events to the whole map, so they always show.
-- **Spell damage differed between screens.** 1.6 had every client roll spell effects on monsters on its own, so monster hit points differed between players. SSO keeps one server value.
-- **A duplicate monster spawner gave 10-XP kills.** 1.6 recorded a monster's name for the kill check before checking whether the slot was taken, and compared some slots to another monster's name, so after a duplicate spawn a later kill failed the name check and gave only 10 XP. SSO has one spawner and no duplicates, and drops the name check.
-- **A stale monster save file brought dead monsters back.** 1.6 saved monsters at random moments, so the file could predate kills and the dead came back after a restart. SSO writes monster state on every spawn and death (`packages/server/src/systems/monsters/spawn.ts`, `spawnPass`).
-- **The client banned itself on odd values.** 1.6 had the client ban its own player when hit points, level, skill or experience looked too high, and quit on a suspected speed hack. SSO does not need this because the server owns those values.
-- **Client-side gold and item grants were overwritten.** 1.6 let some client-side routines add gold or items locally, and the next inventory update from the server overwrote them. SSO's client draws only what the server says, so nothing is needed.
-- **A drop blanked the bag line and some replies kept the lock.** 1.6 blanked a whole bag line on screen after a drop until the next inventory update, and some replies, including refusals, sent nothing that cleared the item-action wait. SSO's client shows only server state and refusals answer at once.
-- **Arriving viewers did not see gloves.** 1.6's arrival messages carried body, head, feet, both hands and head number but no ring slot, so a player arriving on a map saw no gloves until the wearer next changed equipment. SSO's look always carries all six slots, so nothing is needed.
-- **The item action lock waited on the server.** 1.6 blocked further item actions on the client after equip, drop, use, planting or crafting until an inventory update arrived, and any chat line from anyone could clear it early. Only after a burned meal did it outlast the craft. SSO has one pending item action per character, cleared when processed, and crafting sets no extra pause.
-- **Ground sprites and giving were drawn by peer messages.** 1.6 drew and removed ground sprites through room chat messages, and a give waited a fixed number of ticks before grabbing. SSO's server broadcasts ground changes and times the give-grab itself, so nothing is needed.
-- **Gathering ran on every client.** 1.6 ran each gathering swing on all clients and passed tile changes to others with a message that had a substring-matching bug. SSO's server applies and broadcasts tile changes, so nothing is needed.
-- **The trade window scrambled text and misjudged who was nearby.** 1.6 scrambled vowels in trade lists and names, which also lowercased capital vowels so a traded "Apple" arrived as "apple", and its test for the partner being on screen read the wrong sprite slot, so with one other player on screen Accept always said "<name> is no longer in your area, you cannot trade." SSO's server holds the session, names keep their case, and Accept checks the partner is on your map (`packages/server/src/systems/economy/trade.ts`, `acceptTrade`).
-- **Relocking a door was sent once per player in the room.** 1.6 had every client in the room count down and send its own door-relock message. SSO has one server timer per map, so nothing is needed.
-- **A guild exile dropped late joiners.** 1.6 rebuilt the whole guild file from the leader's open screen, so anyone who joined since was dropped, and other members' copies went stale. SSO changes guild rows one member at a time on the server (`packages/server/src/systems/social/guilds.ts`, `guildAction`).
-- **Some guild names broke their file.** 1.6's name cleaner left one of two adjacent special characters, and a colon then cut the name at the server while the others made an illegal file path. SSO stores guilds as rows, so such a name is stored and works (`packages/server/src/systems/social/guilds.ts`, `guildCreate`).
-- **The slot machine panel could stick.** In 1.6, if your gold went away between starting a pull and its result, the server exited silently and the panel could be neither pulled nor closed until the client restarted; three result handlers also set a misspelled flag that had no effect. SSO does not build either: the result always answers (`packages/server/src/systems/casino/slots.ts`, `slotTick`).
-- **Blackjack tables on different maps could share a game.** 1.6 named a table's group by its screen position without the map, so tables at the same position on different maps joined one game. SSO's table instance includes the map (`packages/server/src/systems/casino/tables.ts`, `tableKey`).
-- **A checkers move hid another player's sprite.** 1.6 moved one main-stage sprite off screen on every checkers move, which was the sprite of the fifth other player nearby, who vanished until they moved. SSO has no sprite slots, so nothing is needed.
-- **Two players could take one seat, or three sit at a table.** 1.6 did nothing to stop two players taking the same side or a third joining, so each screen showed a different pairing and a newcomer's name landed in the wrong field. SSO's server holds the seats and a taken side says "That seat is taken." (`packages/server/src/systems/casino/blackjack.ts`, `bjSit`).
-- **A blackjack bid reset on leaving never ran.** 1.6 blanked the leaver's name and then compared against that blank name before resetting the bid, so the reset never ran. SSO's server blanks the leaver's seat and field itself, so nothing is needed.
-- **One client settled blackjack.** 1.6 had only the first player's client total the hands and send the result. SSO's server settles the hand (`packages/server/src/systems/casino/blackjack.ts`, `settle`).
-- **The player who stayed could move alone in checkers.** 1.6 blanked the quitter's name and reset the board but not the stayer's turn, so the stayer could make one move alone. SSO's board waits for a new opponent and nobody moves until one sits.
-- **Text containing a semicolon was silently dropped.** 1.6's server split routed text at semicolons and dropped it unless the first item was the sender's name, a sender check built on a text protocol. SSO authenticates the sender per session, so the check does not exist and text containing a semicolon is delivered.
-- **Mail delete could hit the wrong message.** 1.6 mixed up the raw mail list with the filtered display when deleting, and re-uploaded the whole mailbox, so a delete could erase newer mail. SSO deletes message rows by id (`packages/server/src/systems/mail/mail.ts`, `mailDelete`).
-- **Painting ids could collide.** 1.6 gave each painting a random id from a large range, so two could collide and one overwrote the other. SSO issues unique ids (`packages/server/src/systems/mail/art.ts`, `artSaveIntent`).
-- **An ignored chat line still unlocked the bag.** 1.6 ended the client's wait for a server reply before checking whether the speaker was ignored, so an ignored player's line still unlocked it. SSO's server holds no such wait, and an ignored line is simply not sent.
-- **The Friends window trusted any online notice.** 1.6 added a name to your Friends window when any client said it was online, unchecked, and skipped a buddy whose name was part of one already shown, so a listed "JimBob" hid a buddy "Bob". SSO's server keeps the window's lines from its own sessions, and an online buddy shows once, by exact name (`packages/server/src/systems/social/friends.ts`, `friendsPresence`).
-- **Buddies deep in the online list never matched.** 1.6 cleaned quotes and brackets from only the first 800 characters of the online-users reply, so buddies listed further in never matched. SSO's server fills the window from its own roster and reads the first 200 names online, as 1.6 did (`packages/server/src/systems/social/friends.ts`, `friendsEntry`).
-- **Closing a player's bio freed the keys.** 1.6 cleared the keyboard lock on every close of the bio window, so closing a player's bio ended a craft's lock or a death lock on that client. SSO's server holds every lock, so closing a player's bio frees nothing (an NPC's bio still ends its own lock) (`packages/server/src/systems/monsters/npc.ts`, `closeBio`).
-- **Mail and post text lost or split characters.** 1.6 stripped asterisks from a body when sending, let a bar split a message into phantom list lines, and cut the rest of a mail or board at a backtick. SSO stores messages as rows, so every character is kept.
-- **A backtick in a newspaper field shifted later fields.** 1.6 joined the nine newspaper fields with backticks and split them again on reading, so a backtick typed in a field moved every later item, and a semicolon made the server drop the save. SSO sends the fields as separate values, so every character is kept (`packages/server/src/systems/mail/newspapers.ts`, `newspaperSaveIntent`).
-
-### Features 1.6 never reached
-
-These were built into 1.6 but could never be reached in play, so SSO does the same and does not build them.
-
-- **The boat tile-collision bypass was never reachable.** 1.6 had a complete boat flow (building, boarding, movement and unboarding) and the server accepted a dropped `'s Boat` or `'s Battleship`, but the deed handler exited before it called the boat builder, no NPC sold either deed, and the character cast had no body-55 or body-56 frames. Staging a boat by hand shows the ground `BoatPic` and lets its owner click it, but boarding raises a Script Error after the server has already removed the boat from the map. SSO does the same and does not build boats.
-- **The elemental orb war never worked.** 1.6 was designed so that an orb dropped on an elemental platform shifted the balance of power between the four mage classes, but nothing connected it: no platform existed, nothing saved the balance and no monster dropped an orb, so an orb dropped as an ordinary item. SSO does the same and does not build the war; it is a candidate to build after release.
-- **Pinned by:** `orb drop: a Water Orb lands on the floor like any item`; `orb drop: an orb goes into a container on the faced tile`; `orb drop: aboard an Airship "You can't drop this from the sky!"` (packages/server/tests/pigs-orbs-webs.test.ts)

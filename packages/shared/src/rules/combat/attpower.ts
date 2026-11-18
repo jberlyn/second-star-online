@@ -4,7 +4,7 @@
  * `random` the original draws is drawn here in the same order, so seeded replays match.
  *
  * Names use case-insensitive substring and exact matches; each base row says which. Bugs fixed in
- * the data (see divergences): the Bo's row matches the Bo exactly rather than books and bows, the
+ * the data (see docs/differences-from-fso.md): the Bo's row matches the Bo exactly rather than books and bows, the
  * Mining Hammer's row is spelled right, the Archery tiers are steps rather than a cascade with a
  * gap at 30, and the Gold Sword's HeavyArms block runs once.
  */

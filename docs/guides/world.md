@@ -17,7 +17,6 @@ The world keeps players and rooms; each occupied room has a map, players and tra
 
 Each tick collects outgoing messages and work to save. For each room it advances loading, places queued spells and runs counters and collision work. Its actor pass advances regeneration, player sprite timers, monster spawning and actions, and spell effects. After the first actor pass the key poll handles attack before movement; an exit under a player is checked before starting a step. Further actor passes then run. Room events are sent to their recipients, and queued portals, exits, edge crossings and respawns are processed after the room loop. The tick gathers changed state and save requests; the server's persistence wiring performs the actual writes.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-Map entry retains original effects such as restarting a jail sentence. The server holds a loading lock until the client is ready or the timeout expires, and runs exactly two actor passes per frame, without the original's occasional extra passes. See [world kept bugs](../bug-ledger.md#world), [world differences](../divergences.md#world), [movement kept bugs](../bug-ledger.md#movement) and [movement differences](../divergences.md#movement).
-
+Jail sentences run in real time and survive map changes and logouts. The server holds a loading lock until the client is ready or the timeout expires, and runs exactly two actor passes per frame, without the original's occasional extra passes. See the [unfixed world bugs](../bug-ledger.md#world), [server-side world changes](../differences-from-fso.md#server-side-world), [unfixed movement bugs](../bug-ledger.md#movement) and [server-side movement changes](../differences-from-fso.md#server-side-movement).

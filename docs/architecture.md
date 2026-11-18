@@ -1,6 +1,6 @@
 # Architecture
 
-Second Star Online is a server-authoritative browser remake of First Star Online 1.6. It keeps gameplay quirks and closes harmful exploits. The [system guides](guides/README.md) describe the implemented behavior; deliberate differences and kept bugs are documented in the [divergence ledger](divergences.md) and [bug ledger](bug-ledger.md).
+Second Star Online is a server-authoritative browser remake of First Star Online 1.6 that fixes its exploits and bugs but keeps the feel of the original. The [system guides](guides/README.md) describe the implemented behavior; deliberate differences, fixed bugs and bugs kept on purpose are documented in [differences from 1.6](differences-from-fso.md), and bugs not yet fixed in the [bug ledger](bug-ledger.md).
 
 ## Packages and boundaries
 
@@ -40,6 +40,6 @@ The client uses a 544×384 logical canvas for the playfield and DOM components f
 
 ## Tests and dependencies
 
-`bun run gate` runs type checking, lint, tests and generated-data checks. The suite includes rule tests, seeded simulation replays, real in-memory SQLite tests, happy-dom client tests and bot end-to-end tests against a server. Kept bugs and deliberate differences have named pinning tests linked from their ledgers. Changes to the interface should also be checked in a browser.
+`bun run gate` runs type checking, lint, tests and generated-data checks. The suite includes rule tests, seeded simulation replays, real in-memory SQLite tests, happy-dom client tests and bot end-to-end tests against a server. Differences from 1.6 and unfixed bugs have named pinning tests linked from their documents. Changes to the interface should also be checked in a browser.
 
 Prefer web-platform and Bun built-ins. Zod is the runtime validation dependency; TypeScript, Biome, Bun types and happy-dom are development dependencies. Add a dependency only with its reason documented here.

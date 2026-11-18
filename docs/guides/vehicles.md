@@ -17,7 +17,6 @@ Building checks whether the player is moving, whether the faced position is on t
 
 An Airship uses its own walk grid while ridden, flies over players, monsters, items and exits, and takes a shorter step than a walker. Riders cannot cast or swing; monster melee does not hit them, although projectiles and damage spells can. To unboard, the rider must be stationary on a J2 pad without a ground item. Parking restores the ground item and the player's normal body. The server marks the relevant ground, inventory and vehicle state for persistence together. A normal death aboard removes the vehicle rather than parking it; an arena defeat keeps the rider aboard. Boats are not implemented. Ctrl aboard always tries to unboard; ordinary item drops are refused, but a Pig can be dropped, and gold and crystals can still be dropped.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-Landing pad checks read layer 1 across all 12 rows (fixing the original's row 10–12 map-record lookup bug). Airships are converted by the server and the original ground item cap is removed. See the [vehicle kept bugs](../bug-ledger.md#vehicles), [movement kept bugs](../bug-ledger.md#movement), and [vehicle differences](../divergences.md#vehicles).
-
+Vehicles have no unfixed 1.6 bugs. Landing pad checks read layer 1 across all 12 rows, fixing the original's row 10–12 lookup. Airships are converted by the server and the original ground item cap is removed. See the [vehicle bugs fixed](../differences-from-fso.md#vehicles), [server-side vehicle changes](../differences-from-fso.md#server-side-vehicles) and [unfixed movement bugs](../bug-ledger.md#movement).

@@ -33,9 +33,6 @@ A swing passes through common action timing and then selects a tool rule. Axe, s
 
 A craft is selected from the bag and started only when its station, tool, skill and recipe allow it; starting takes nothing. The server maintains per-player timers and advances the jobs in their defined order. At completion `finishCraft` takes the materials by exact name, rolls the failure (cooking, alchemy, carpentry), and adds the result only if it fits in the bag; a failure uses up the materials. The held tool (Blacksmith Hammer, Saw, alchemy sand) is never used up. Masterwork changes an eligible item according to its roll. Cauldrons use the contents of a container, and built containers receive server IDs. The recipe and tool values live in the editable content files linked above; the code handles the order and effects. A crafter cannot walk or turn while a craft runs; logging out, a map change or being shoved off the spot ends it.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-Crafting has no kept bugs. The former ones are fixed and listed with the other differences from 1.6.
-
-See the [crafting kept bugs](../bug-ledger.md#crafting) and [crafting differences](../divergences.md#crafting) for the specific player-visible cases.
-
+Crafting has no unfixed 1.6 bugs. See the [crafting bugs fixed](../differences-from-fso.md#crafting) and [server-side crafting changes](../differences-from-fso.md#server-side-crafting).

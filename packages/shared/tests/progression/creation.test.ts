@@ -80,7 +80,7 @@ describe("heads (the head arrows)", () => {
 });
 
 describe("starting record", () => {
-  test("kept bug: vitals are the literal 20/20/20/20 for every class, Fighter included", () => {
+  test("kept on purpose: vitals are the literal 20/20/20/20 for every class, Fighter included", () => {
     for (const classCode of [1, 2, 3] as const) {
       const c = startingCharacter({ ...base, classCode });
       expect([c.hp, c.hpMax, c.sp, c.spMax, c.exp, c.expNeeded, c.level]).toEqual([

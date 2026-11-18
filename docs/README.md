@@ -10,9 +10,9 @@ Current instructions for running, configuring, and extending the game:
 - [System and client guides](guides/README.md): gameplay behaviour and where each system lives in the codebase.
 - [Performance](performance.md): measured capacity, tick timing, and running load tests.
 
-## Architecture and behaviour ledgers
+## Architecture and differences from 1.6
 
 - [Architecture specification](architecture.md): package boundaries, protocol design, and engineering principles.
-- [Divergences](divergences.md): deliberate gameplay differences from First Star Online 1.6.
-- [Bug ledger](bug-ledger.md): original 1.6 gameplay bugs kept on purpose.
+- [Differences from 1.6](differences-from-fso.md): the remake's policy and every deliberate difference from First Star Online 1.6, including fixed bugs and bugs kept on purpose.
+- [Bug ledger](bug-ledger.md): 1.6 gameplay bugs not yet fixed.
 

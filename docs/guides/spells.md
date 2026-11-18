@@ -25,7 +25,6 @@ Books can teach spells; casting checks the caster and spell requirements, includ
 
 Buffs and transformations use timers and server state. A summon uses the first free monster roster slot; monster spells are chosen in the mover pass for an emulated player. The hazard timer uses the configured hazard map and also sends the bell. The client draws and plays sounds for received effects, but the server decides outcomes. Spell content is maintained in [the editable data](../../packages/data/content/).
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-A Portal blocked by a player consumes its cost, and a failed cast can still start the delay, and Fireball and Wind Wave do not receive their school bonus. The server authors spells and checks their collision; Hold is refused on protected maps. See [spell kept bugs](../bug-ledger.md#spells) and [spell differences](../divergences.md#spells) for original quirks and server-side changes.
-
+A Portal blocked by a player consumes its cost, a failed cast can still start the delay, and Fireball and Wind Wave do not receive their school bonus. The server authors spells and checks their collision; Hold is refused on protected maps. See the [unfixed spell bugs](../bug-ledger.md#spells) and [server-side spell changes](../differences-from-fso.md#server-side-spells).

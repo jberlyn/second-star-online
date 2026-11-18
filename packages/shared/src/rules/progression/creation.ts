@@ -161,9 +161,9 @@ export function padStartingSkills(values: readonly number[], count: number): num
 /**
  * The starting record.
  *
- * Kept bug: the written vitals are the literals `20:20:20:20` for every class, so a Fighter starts
- * with SP 20/20 although the screen computed SP 0. HP and SP rolls are computed and discarded, so
- * nothing is rolled here.
+ * Kept on purpose: the written vitals are the literals `20:20:20:20` for every class, so a Fighter
+ * starts with SP 20/20 although the screen computed SP 0. 1.6 computed HP and SP rolls and discarded
+ * them; rolling would reward remaking a character until it rolled well, so nothing is rolled here.
  */
 export function startingCharacter(c: CreationChoice): StartingCharacter {
   const other = classesData.creation.otherFields;

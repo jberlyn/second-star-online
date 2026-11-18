@@ -36,9 +36,8 @@ At a blackjack table, a seat is tied to the table's map and tile. Joining resets
 
 For checkers, the server stores the pieces, turn, and multi-jump continuation (`jumpFrom`) while the client keeps its own selection and turn marker. A move must belong to the moving side and pass the shared move rules (enforcing forced capture, multi-jump continuation, and win by blocking). Closing, disconnecting, or changing map frees a checkers seat; on a win, the board resets with Black moving first. The high-score statue computes points on the server from `bioScore` plus the 8 formerly dropped skills and stores tie-ranked entries through [high-score persistence](../../packages/server/src/persistence/highscores.ts).
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-All 14 former kept casino bugs have been fixed: `4-4-4` pays 80 and `2-3-2` pays 50; blackjack uses a 13-rank shoe, positive bids, single-Ace reduction, draw on double bust, automatic stand on 5 cards, and persistent wrong-spot text; checkers enforces forced capture, multi-jump, win by blocking, single start line, and Black first on rematch; slots allow `"Slot Machine"` variants, keep the panel open on short gold, and require standing at a machine; and map changes close all casino panels and seats.
+Casino has no unfixed 1.6 bugs. Fixes include `4-4-4` paying 80 and `2-3-2` paying 50; blackjack's 13-rank shoe, positive bids, single-Ace reduction, draw on double bust, automatic stand on 5 cards and persistent wrong-spot text; checkers' forced capture, multi-jump, win by blocking, single start line and Black first on rematch; slots accepting `"Slot Machine"` variants, keeping the panel open on short gold and requiring you to stand at a machine; and map changes closing every casino panel and seat.
 
-See the [casino kept bugs](../bug-ledger.md#casino) and [casino differences](../divergences.md#casino) for the specific player-visible cases.
-
+See the [casino bugs fixed](../differences-from-fso.md#casino) and [server-side casino changes](../differences-from-fso.md#server-side-casino).

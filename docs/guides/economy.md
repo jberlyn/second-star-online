@@ -43,9 +43,8 @@ After a buy or sale, the [game dispatcher](../../packages/server/src/game.ts) fl
 
 The initiator opens a trade, sends an offer, and thereby opens the recipient's window. Each submitted offer is locked; the recipient's submission is consent, and the initiator can then accept. The server checks the partner is still on the same map, verifies both offers against current holdings and tests whether the resulting bags fit before applying the transfer. Cancel, departure or a map change ends the session. Quest hand-ins use the NPC on the map and server quest rows, then give a reward or response through the quest rules.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-The economy keeps no 1.6 bugs: the former kept bugs (free goods, unpaid sales, the line-17 deed, locked trade offers, lossy storage and player-shop rewrites, substring quest matching and more) are fixed and recorded as "Bug fixed" entries. Server checks prevent a third player taking over a trade.
+The economy has no unfixed 1.6 bugs: free goods, unpaid sales, the line-17 deed, locked trade offers, lossy storage and player-shop rewrites, substring quest matching and more are fixed. Server checks prevent a third player taking over a trade.
 
-See the [economy differences](../divergences.md#economy) for the specific player-visible cases.
-
+See the [economy bugs fixed](../differences-from-fso.md#economy) and [server-side economy changes](../differences-from-fso.md#server-side-economy).

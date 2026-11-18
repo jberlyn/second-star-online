@@ -3,7 +3,7 @@
  *
  * Pure rules over a ledger (the NPC file's `GLD|`, `SEL|` and `BUY|` lines) and a buyer's gold and
  * bag. The order of checks and the texts follow the 1.6 server's NPC buy and sell handlers, with its
- * bugs fixed (see the economy entries in docs/divergences.md); the client's price, item name and
+ * bugs fixed (see the economy entries in docs/differences-from-fso.md); the client's price, item name and
  * file name are replaced by a line the server owns, so items are bought and sold by line.
  */
 import {

@@ -23,7 +23,6 @@ Opening a mailbox checks position and ownership, loads stored messages and locks
 
 Boards, newspaper stands and paintings or photos on the ground open only from the tile in front of them, facing them (`standingInFront`). A board locks movement, and a guild hall board opens only for that guild's members. Posts go to the open board, which reloads with the post; a refused post leaves the board open, locked, with its text, and a map change closes it. Newspaper handlers load and save the writer's own paper, which their stand shows; any player can open the editor from the Game menu, and a reader sees only existing photo IDs. Using a canvas or film arms one save without using it up; film requires a camera in the right hand, and photos crop the playfield. Paint tools, white included, operate on a 64-by-64 image on the client; the viewer keeps a separate image. A save takes one Canvas or Film from the bag; a full bag refuses the save and keeps it. Art handlers manage viewing and saving; image bytes are stored separately from the transient view state. Upload validation checks the PNG signature, dimensions, supported format, chunk boundaries and checksums. Books pass to the [spells guide](spells.md), and help text is returned through chat. The original event panel had no reachable sender and is not built.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-Mail keeps no 1.6 gameplay bugs. The server stores mail and validates image uploads. See [mail kept bugs](../bug-ledger.md#mail) and [mail differences](../divergences.md#mail).
-
+Mail has no unfixed 1.6 bugs. The server stores mail and validates image uploads. See the [mail bugs fixed](../differences-from-fso.md#mail) and [server-side mail changes](../differences-from-fso.md#server-side-mail).

@@ -22,7 +22,6 @@ Creation validates the name, class and stat choices before producing the startin
 
 The world tick advances hunger and checks for death before the first actor pass advances regeneration. Regeneration uses a session counter that resets on login; hunger warnings can repeat while the counter remains at the warning value. An arena defeat restores one health and spell point and chooses an exit on the same map without the normal death penalty. Normal death handles its messages, possible penalties and drops and passes faction and murder consequences to the relevant systems. Respawn restores the character at the selected point after the death sequence. Character attributes, skills and vitals are persisted; timers and counters used to advance the current session are distinct from that stored state.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-A level-up discards spare experience and raises at most one level; promotion does not grant the intended skills. The server calculates character growth and runs vitals. More details are in [progression kept bugs](../bug-ledger.md#progression) and [progression differences](../divergences.md#progression). See also [social](social.md) for faction and medal context.
-
+A level-up discards spare experience and raises at most one level; promotion does not grant the intended skills; a normal death can permanently lower maximum HP and SP, which [issue #12](https://github.com/jberlyn/second-star-online/issues/12) will revisit. Every new character starts at 20 HP and 20 SP whatever the class, which is [kept on purpose](../differences-from-fso.md#every-new-character-starts-with-20-hit-points-and-20-spell-points). The server calculates character growth and runs vitals. See the [unfixed progression bugs](../bug-ledger.md#progression) and [server-side progression changes](../differences-from-fso.md#server-side-progression), and [social](social.md) for faction and medal context.

@@ -17,7 +17,7 @@ Open source and ready to host, Second Star Online gives you the tools to create 
 - **Find your people.** Join guilds and factions, exchange messages, or take a break with casino games and checkers.
 - **Build your world.** Shape maps and NPCs with in-game editors, tune server settings, and create a place for your community to call home.
 
-The remake preserves the original's distinctive gameplay quirks while moving authority to the server to close harmful exploits. Read about the [kept quirks](docs/bug-ledger.md) and [deliberate differences](docs/divergences.md).
+The remake fixes the original's exploits and bugs but keeps its feel, with a server that owns the game state. Read how it [differs from the original](docs/differences-from-fso.md).
 
 ## Start your own server
 

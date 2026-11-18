@@ -63,7 +63,6 @@ The input layer resolves multiple held arrows left, right, up, then down. A new 
 
 The stage, panel, placement, window and shell modules arrange screens. Assets use retained layout metadata and sprite images. Audio uses eight channels; a new sound replaces the sound on its channel, and each channel has its own volume. Muting stops all channels. A pointer or key gesture unlocks playback; a sound requested before unlock or before its buffer loads is skipped rather than played late.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-The church bell leaves channel 5 at its new volume for the rest of the session, even when sound is off. SSO’s sound switch silences every sound. See the [bell volume kept bug](../bug-ledger.md#after-the-church-bell-channel-5-stays-loud), [sound switch difference](../divergences.md#sound-off-silences-everything), [input kept bugs](../bug-ledger.md#movement), and [movement differences](../divergences.md#movement).
-
+The church bell leaves channel 5 at its new volume for the rest of the session, even when sound is off; this is still in the [bug ledger](../bug-ledger.md#after-the-church-bell-channel-5-stays-loud). SSO’s sound switch silences every sound. See the [sound switch difference](../differences-from-fso.md#sound-off-silences-everything), the [core bugs fixed](../differences-from-fso.md#core), the [browser platform changes](../differences-from-fso.md#browser-platform), the [unfixed movement bugs](../bug-ledger.md#movement) and the [server-side movement changes](../differences-from-fso.md#server-side-movement).

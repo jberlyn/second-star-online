@@ -25,7 +25,6 @@ Opening a Guild Center requires standing still directly in front of it; opening 
 
 Buddy commands change the account's list; entry and login/logout presence notify appropriate online players. Bio requests build a view from the target's state and profile. Death can invoke murder and faction consequences; arena defeat does not mark a killer. An immortal can pardon a wanted player. A jail sentence runs on the server and restarts on entering the jail map. Chat commands route to these handlers; [chat](chat.md) covers ignore and instant messages, and [progression](progression.md) covers medal checks.
 
-## Kept bugs and differences
+## Unfixed bugs and differences
 
-Guild lines that do not begin with a letter lose their first character, and the abdicating leader’s confirmation names the guild instead of the new leader. All three factions share an announcement channel; unavailable original controls are not revived. See [social kept bugs](../bug-ledger.md#social) and [social differences](../divergences.md#social).
-
+Guild lines that do not begin with a letter lose their first character, and the abdicating leader’s confirmation names the guild instead of the new leader. All three factions share an announcement channel; unavailable original controls are not revived. See the [unfixed social bugs](../bug-ledger.md#social), the [social bugs fixed](../differences-from-fso.md#social) and the [server-side social changes](../differences-from-fso.md#server-side-social).
