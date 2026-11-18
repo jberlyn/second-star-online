@@ -427,6 +427,22 @@ describe("original assets (assets/original/)", () => {
     expect(usage === renderUsage()).toBe(true);
   });
 
+  test("every frame of the default body has bare feet to cover its painted shoes", () => {
+    const frames = readFileSync(
+      join(repo, "assets/original/main/layout/cast-manifest.jsonl"),
+      "utf8",
+    )
+      .split("\n")
+      .filter((l) => l.trim() !== "")
+      .map((l) => (JSON.parse(l) as { name?: string }).name ?? "")
+      .filter((n) => n.startsWith("DEFBOD-"));
+    expect(frames.length).toBe(15);
+    for (const n of frames) {
+      const bare = n.replace("DEFBOD-", "Bare Feet-");
+      expect(existsSync(join(repo, "assets/added/paperdoll", `${bare}.png`))).toBe(true);
+    }
+  });
+
   test("every copied file is listed, and every listed file exists", () => {
     const listed = new Set(
       rows.flatMap((r) =>

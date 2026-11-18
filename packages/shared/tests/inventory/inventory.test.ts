@@ -504,10 +504,11 @@ describe("loot and the death drop", () => {
 });
 
 describe("paperdoll", () => {
-  test("bare character: BIM, DEFBOD, head", () => {
+  test("bare character: BIM, DEFBOD, bare feet, head", () => {
     expect(paperdollLayers({ head: 3, equip: gear({}) }, "F1", "S")).toEqual([
       "BIM",
       "DEFBOD-F1-S",
+      "Bare Feet-F1-S",
       "Head3-F1-S",
     ]);
   });
@@ -516,11 +517,13 @@ describe("paperdoll", () => {
       "BIM",
       "Dagger-F2-W",
       "DEFBOD-F2-W",
+      "Bare Feet-F2-W",
       "Head1-F2-W",
     ]);
     expect(paperdollLayers({ head: 1, equip: gear({ weapon: "Knife" }) }, "F2", "E")).toEqual([
       "BIM",
       "DEFBOD-F2-E",
+      "Bare Feet-F2-E",
       "Head1-F2-E",
       "Dagger-F2-E",
     ]);
@@ -535,7 +538,7 @@ describe("paperdoll", () => {
         "F1",
         "E",
       ),
-    ).toEqual(["BIM", "Chain Armor-F1-E", "Plate Helm-F1-E"]);
+    ).toEqual(["BIM", "Chain Armor-F1-E", "Bare Feet-F1-E", "Plate Helm-F1-E"]);
   });
   test("bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot", () => {
     const layers = paperdollLayers(
@@ -552,12 +555,23 @@ describe("paperdoll", () => {
     ]);
     expect(
       paperdollLayers({ head: 1, equip: gear({ ring: "Ruby Ring" }) }, "F1", "S"),
-    ).toHaveLength(3);
+    ).toHaveLength(4);
+  });
+  test("SSO: with no boots the feet are bare, over whatever shoes the body paints", () => {
+    const plate = (feet: string) =>
+      paperdollLayers({ head: 1, equip: gear({ body: "Plate Armor", feet }) }, "F2", "N");
+    expect(plate("")).toEqual(["BIM", "Plate Armor-F2-N", "Bare Feet-F2-N", "Head1-F2-N"]);
+    expect(plate("Gold Boots")).toEqual([
+      "BIM",
+      "Plate Armor-F2-N",
+      "Gold Boots-F2-N",
+      "Head1-F2-N",
+    ]);
   });
   test("shields are never drawn facing E", () => {
     expect(
       paperdollLayers({ head: 1, equip: gear({ offHand: "Steel Shield" }) }, "F1", "E"),
-    ).toEqual(["BIM", "DEFBOD-F1-E", "Head1-F1-E"]);
+    ).toEqual(["BIM", "DEFBOD-F1-E", "Bare Feet-F1-E", "Head1-F1-E"]);
   });
 });
 

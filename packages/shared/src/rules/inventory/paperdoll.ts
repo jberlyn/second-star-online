@@ -7,7 +7,8 @@
  *
  * The render data string is `<headNo>:<Body>:<Head>:<Feet>:<LeftHand>:<RightHand>:<Ring>`. Boots
  * are drawn over the body from the Feet slot (1.6 never drew them; SSO's boot layers are authored
- * art); gloves are worn in the Ring slot. A layer member that does not exist is skipped.
+ * art), and with nothing on the feet the authored `Bare Feet` layer covers the shoes every body
+ * paints; gloves are worn in the Ring slot. A layer member that does not exist is skipped.
  */
 import { itemRulesData } from "@secondstaronline/data";
 
@@ -47,6 +48,9 @@ function strip(name: string): string {
 }
 
 const NOTHING = "NOTHING";
+
+/** Drawn over the body's painted shoes when the Feet slot is empty. */
+export const BARE_FEET = "Bare Feet";
 
 /** The layer names after the character renderer's normalisation. */
 export function normaliseLook(e: Equipment): {
@@ -92,7 +96,7 @@ export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): s
   const head = `Head${look.head}`;
   const f = (name: string) => `${name}-${frame}-${facing}`;
   if (!e) {
-    return ["BIM", f("DEFBOD"), f(head)];
+    return ["BIM", f("DEFBOD"), f(BARE_FEET), f(head)];
   }
   const n = normaliseLook(e);
   const out = ["BIM"];
@@ -110,9 +114,7 @@ export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): s
   if (!isNothing(n.body)) {
     out.push(f(n.body));
   }
-  if (!isNothing(n.boots)) {
-    out.push(f(n.boots));
-  }
+  out.push(f(isNothing(n.boots) ? BARE_FEET : n.boots));
   if (!isNothing(n.gloves)) {
     out.push(f(n.gloves));
   }

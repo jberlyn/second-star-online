@@ -130,7 +130,12 @@ describe("map names", () => {
 });
 
 describe("bare paperdoll (the original's character render)", () => {
-  test("BIM, then DEFBOD, then the head", () => {
-    expect(paperdollLayers({ head: 7 }, "F3", "W")).toEqual(["BIM", "DEFBOD-F3-W", "Head7-F3-W"]);
+  test("BIM, then DEFBOD, bare feet, then the head", () => {
+    expect(paperdollLayers({ head: 7 }, "F3", "W")).toEqual([
+      "BIM",
+      "DEFBOD-F3-W",
+      "Bare Feet-F3-W",
+      "Head7-F3-W",
+    ]);
   });
 });

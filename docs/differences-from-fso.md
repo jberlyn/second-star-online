@@ -2136,12 +2136,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Boots are drawn on your character
 - **Kind:** Bug fixed
-- **What you notice:** Leather, Chain, Plate and Gold Boots show on your character's feet, for you and for everyone who sees you.
-- **1.6:** The character was drawn from every equipment slot except the feet, and the game had no boot art.
-- **SSO:** The paperdoll draws the Feet slot over the body. The boot layers are new art in `assets/added/paperdoll/`, made from the default body's feet in each boot's colours; facing north or south a pair has a dark seam between the feet and a lighter cuff. Gloves are worn in the Ring slot and drawn from it, as before.
+- **What you notice:** Leather, Chain, Plate and Gold Boots show on your character's feet, for you and for everyone who sees you. With nothing on your feet you walk barefoot, in the same skin colour as your hands.
+- **1.6:** The character was drawn from every equipment slot except the feet, and the game had no boot art; every body, the default one and each armour, painted dark shoes on the feet.
+- **SSO:** The paperdoll draws the Feet slot over the body. The boot layers are new art in `assets/added/paperdoll/`, made from the default body's feet in each boot's colours; facing north or south a pair has a dark seam between the feet and a lighter cuff. An empty Feet slot draws the `Bare Feet` layer, the same silhouette in the body's skin colours, over the painted shoes. Gloves are worn in the Ring slot and drawn from it, as before.
 - **Why:** Worn boots should be seen.
 - **In the code:** `packages/shared/src/rules/inventory/paperdoll.ts` (`normaliseLook`, `paperdollLayers`)
-- **Pinned by:** `bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot` (packages/shared/tests/inventory/inventory.test.ts)
+- **Pinned by:** `bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot` and `SSO: with no boots the feet are bare, over whatever shoes the body paints` (packages/shared/tests/inventory/inventory.test.ts); `every frame of the default body has bare feet to cover its painted shoes` (packages/data/tests/assets.test.ts)
 
 #### Crystals are dropped or given by the button you chose
 - **Kind:** Bug fixed
