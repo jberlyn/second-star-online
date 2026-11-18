@@ -75,7 +75,6 @@ export function handleRoster(world: World, p: Player, args: string): RosterResul
   }
   slot.species = name;
   slot.home = null; // no editor tile
-  slot.lastHp = null;
   slot.pause = 0;
   slot.dirty = true;
   out.push(tell(name ? ROSTER_TEXT.set(n, name) : ROSTER_TEXT.cleared(n)));

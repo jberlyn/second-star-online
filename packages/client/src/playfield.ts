@@ -304,8 +304,7 @@ export function createPlayfield(assets: Assets): Playfield {
           ? drawCharacter(ctx, head, equip, frame, facing, px, py)
           : drawSprite(ctx, assets, "bodies", `${body}-${frame}-${facing}`, px, py);
       const self = model.self;
-      // Your own sprite vanishes on the hit blink's flips.
-      if (self && !self.server.hidden) {
+      if (self) {
         const len = lenOf(self.body);
         const { px, py } = walkerPixel(self.x, self.y, self.facing, self.stepFrames, len);
         const frame =

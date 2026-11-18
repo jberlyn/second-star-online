@@ -118,7 +118,7 @@ const say = (g: Game, id: string, text: string) => {
 };
 
 describe("the shopkeeper", () => {
-  test("a Small Shop's build writes its shopkeeper: file, owner and roster slot 1 at (10, 4) with 128 HP", async () => {
+  test("a Small Shop's build writes its shopkeeper: file, owner and roster slot 1 at (10, 4) with 1 HP", async () => {
     const g = game();
     const carol = await buildShop(g);
     const shops = loadPlayerShops(db);
@@ -130,7 +130,7 @@ describe("the shopkeeper", () => {
     expect(interior?.title).toBe("Carol's Shop");
     expect(loadSlots(db, interior?.id ?? "")[0]).toMatchObject({
       species: "Zumu",
-      live: { name: "Zumu", hp: 128, x: 10, y: 4 },
+      live: { name: "Zumu", hp: 1, x: 10, y: 4 },
     });
   });
 

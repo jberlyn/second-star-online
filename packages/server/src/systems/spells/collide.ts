@@ -29,7 +29,7 @@ import {
 
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
-import { chatterOut, PIG_CNCL_FRAMES } from "../monsters/npc.ts";
+import { chatterOut } from "../monsters/npc.ts";
 import { npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, type MonsterSlot, species } from "../monsters/slots.ts";
 import type { Outgoing, Player, Room, SpellFx } from "../world/world.ts";
@@ -269,10 +269,6 @@ export function setBody(p: Player, body: number | null, res: { events: DeltaEven
     p.spell.morph = morphCounterFor(body, p.spell.morph);
   }
   p.spell.body = body;
-  if (body === null) {
-    // A revert shows sprite 112.
-    p.hidden = false;
-  }
   res.events.push({ e: "body", id: p.id, body });
 }
 
@@ -351,15 +347,11 @@ function checkForDead(
     return false;
   }
   slot.live = null;
-  slot.lastHp = m.hp;
   slot.dirty = true;
   res.slotsChanged = true;
   const owner = fx.ownerId ? room.players.find((o) => o.id === fx.ownerId) : undefined;
   if (!owner) {
     return true;
-  }
-  for (const o of room.players) {
-    o.piggie = PIG_CNCL_FRAMES;
   }
   // The loot drops on the tile the monster is drawn nearest, then the XP.
   const loot = rollLoot(npcFileNamed(room.npcs, m.name)?.loot ?? null, ctx.rng);

@@ -221,6 +221,18 @@ export const SETTINGS = {
     source:
       "SSO addition. The original never removed ground items; its 20 slots per map were the only limit.",
   }),
+  npcChatterSeconds: def({
+    group: "World",
+    label: "NPC chatter every",
+    unit: "seconds",
+    form: { kind: "int", min: 10, max: 3600 },
+    schema: z.number().int().min(10).max(3600),
+    default: 150,
+    tooltip:
+      "Seconds between an NPC's random lines (RND| lines in its NPC file), such as a God's. Everyone on the map sees them.",
+    source:
+      "1.6 rolled per player against a ladder that never scaled; 150 s was its average with one player on the map.",
+  }),
   dropOnDeath: def({
     group: "Items",
     label: "Drop an item on death",
@@ -228,7 +240,7 @@ export const SETTINGS = {
     schema: z.boolean(),
     default: true,
     tooltip:
-      "When a character dies, they may drop one item from the first eight bag lines on the spot where they died. Immortals always do.",
+      "When a character dies, they may drop one random item from their bag (never crystals) on the spot where they died. Immortals always do.",
     source: '1.6\'s server settings file: "Chars Drop Items On Death: ON".',
   }),
   portalTargets: def({

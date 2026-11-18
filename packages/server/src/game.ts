@@ -513,7 +513,6 @@ export function createGame(deps: GameDeps): Game {
         ? { ...r.live, anim: 0, fromX: r.live.x, fromY: r.live.y, queue: [], hitCountb: 0 }
         : null,
       pause: 0,
-      lastHp: r.lastHp,
       dirty: false,
       home: r.home ?? null,
     }));
@@ -533,7 +532,6 @@ export function createGame(deps: GameDeps): Game {
           y: s.live.y,
           facing: s.live.facing,
         },
-        lastHp: s.lastHp,
         home: s.home ?? null,
       })),
       isoNow(),
@@ -570,6 +568,7 @@ export function createGame(deps: GameDeps): Game {
     minute,
     now: nowMs,
     lootDecayMinutes: settings.lootDecayMinutes,
+    npcChatterSeconds: settings.npcChatterSeconds,
     dropOnDeath: settings.dropOnDeath,
     portalTargets: settings.portalTargets,
     hazardMap: settings.hazardMap,
@@ -884,6 +883,7 @@ export function createGame(deps: GameDeps): Game {
       startPoint: settings.startPoint,
       respawnPoint: settings.respawnPoint,
       lootDecayMinutes: settings.lootDecayMinutes,
+      npcChatterSeconds: settings.npcChatterSeconds,
       dropOnDeath: settings.dropOnDeath,
       portalTargets: settings.portalTargets,
       hazardMap: settings.hazardMap,

@@ -4,21 +4,21 @@
  */
 import { monstersData } from "@secondstaronline/data";
 import {
+  addSlotFor,
   anyMatch,
-  bagText,
   type DeltaEvent,
   FACING_DELTA,
-  filledLines,
   heardSqa,
   invAdd,
   lingoContains,
+  type NpcFile,
   type Rng,
 } from "@secondstaronline/shared";
 
 import { hears } from "../chat/ignore.ts";
 import type { Outgoing, Player, Room } from "../world/world.ts";
 import { type NpcStore, npcData } from "./npcfiles.ts";
-import { bodyOf, leansToward, type MonsterSlot } from "./slots.ts";
+import { BODY, bodyOf, type MonsterSlot } from "./slots.ts";
 
 export const NPC_TEXT = {
   /** Faction members and Strippers. */
@@ -30,13 +30,25 @@ export const NPC_TEXT = {
   thanksGold: (name: string) => `${name} says "Thanks for the gold!"`,
 } as const;
 
-/** The pig countdown after a grab and after any `M<k>Cncl` arrives. */
+/** The pig countdown after a grab. */
 export const PIG_GRAB_FRAMES = 500;
-export const PIG_CNCL_FRAMES = 20;
 
-/** The body's member-name prefix test (the frame name contains `91-`). */
-const bodyHas = (s: MonsterSlot, prefix: string) =>
-  lingoContains(`${s.live ? bodyOf(s.live.name) : 0}-`, prefix);
+/**
+ * The slot's monster has this body (a bug fixed: 1.6 asked whether the body's member name
+ * contained `"91-"` and the like, so the Snow Demon's 891 ran the Pig's click).
+ */
+const bodyIs = (s: MonsterSlot, body: number) => s.live !== null && bodyOf(s.live.name) === body;
+
+/** The file has something for the Bio window to show: lines, or a shop or trainer. */
+export function hasBio(f: NpcFile): boolean {
+  return (
+    f.bio.length > 0 ||
+    f.profile.length > 0 ||
+    f.sells.length > 0 ||
+    f.buys.length > 0 ||
+    f.trains.length > 0
+  );
+}
 
 /** The tile `n` steps ahead of `p`. */
 function ahead(p: Player, n: number): { x: number; y: number } {
@@ -77,47 +89,40 @@ function toRoom(room: Room, ev: DeltaEvent): Outgoing[] {
 }
 
 /**
- * A monster leaves its slot without a kill (`M<k>Cncl`): every client on the map hides it and sets
- * starts its pig countdown at 20. Also called on a kill.
+ * A monster leaves its slot without a kill (`M<k>Cncl`): every client on the map hides it. Also
+ * called on a kill. Nobody's pig countdown changes (a bug fixed: 1.6 set every player's to 20,
+ * which cut short the 500 after a grab).
  */
 export function cancelSlot(room: Room, slot: MonsterSlot): Outgoing[] {
   slot.live = null;
   slot.dirty = true;
-  for (const o of room.players) {
-    o.piggie = PIG_CNCL_FRAMES;
-  }
   return toRoom(room, { e: "mgone", slot: slot.slot });
 }
 
 /**
- * Grabs a pig: the cooldown is set before the bag test; a bag whose text contains "Pig" (even
- * "Cooked Pig") skips the 15-line test. The monster leaves (no kill, no XP, no loot) and the
- * server's `itremovv "Pig"` adds a Pig.
+ * Grabs a Pig into the bag: refused while the countdown runs, or with no Pig stack and no free
+ * line; the countdown starts only when the grab goes through (bugs fixed: 1.6 started it before
+ * the bag test, and a bag whose text contained "Pig", even "Cooked Pig", skipped that test). The
+ * Pig leaves (no kill, no XP, no loot).
  */
 export function grabPig(room: Room, p: Player, slot: MonsterSlot, rng: Rng): NpcOut {
   if (p.piggie > 0) {
     return { out: [], slotsChanged: false };
   }
-  p.piggie = PIG_GRAB_FRAMES;
-  const text = bagText(p.char.bag);
-  if (!lingoContains(text, "Pig") && filledLines(p.char.bag) > 14) {
+  if (addSlotFor(p.char.bag, "Pig") < 0) {
     return { out: [say(p, NPC_TEXT.pigFull)], slotsChanged: false };
   }
+  p.piggie = PIG_GRAB_FRAMES;
   const out = cancelSlot(room, slot);
-  // When the bag has no room 1.6's go-ahead flag stays unset (the archive does not say; the
-  // client's pre-check is taken to govern) and the add then adds nothing; the pig is gone all the
-  // same.
-  const r = invAdd(p.char, "Pig", 1, rng);
-  if (r.kind !== "full") {
-    p.invDirty = true;
-  }
+  invAdd(p.char, "Pig", 1, rng);
+  p.invDirty = true;
   return { out, slotsChanged: true };
 }
 
-/** Ctrl/Action on the faced tile: a Pig or Snow Demon body only. */
+/** Ctrl/Action on the faced tile: a Pig only. */
 export function ctrlPig(room: Room, p: Player, rng: Rng): NpcOut | null {
   const s = slotAt(room, p, 1);
-  if (!s || !bodyHas(s, "91-")) {
+  if (!s || !bodyIs(s, BODY.pig)) {
     return null;
   }
   return grabPig(room, p, s, rng);
@@ -129,10 +134,12 @@ export function keyLocked(p: Player): boolean {
 }
 
 /**
- * A click on a monster or NPC, in order: the input lock; a click on any Pig or Snow Demon body
- * grabs whatever stands on your faced tile (a kept 1.6 bug); Faction members and Strippers name
- * themselves; Spikes, Pig, Web and Holy Shield bodies do nothing; EMPTY NPC data does nothing; else
- * the Bio window opens, with no range check, and holds the keys until it closes.
+ * A click on a monster or NPC, in order: the input lock; a click on a Pig standing on your faced
+ * tile grabs that Pig (a bug fixed: 1.6 grabbed whatever stood there, whichever Pig you clicked);
+ * Faction members and Strippers name themselves; Spikes, Pig, Web and Holy Shield bodies do
+ * nothing; NPC data with nothing for a Bio (EMPTY, or only loot lines like a Slime's) does nothing
+ * (a bug fixed: 1.6 opened an empty window); else the Bio window opens, from anywhere on the
+ * screen (kept on purpose: NPCs walk), and holds the keys until it closes.
  */
 export function clickNpc(room: Room, p: Player, slotNo: number, rng: Rng): NpcOut {
   const none = { out: [], slotsChanged: false };
@@ -141,20 +148,17 @@ export function clickNpc(room: Room, p: Player, slotNo: number, rng: Rng): NpcOu
   if (!slot || !m || keyLocked(p)) {
     return none;
   }
-  if (bodyHas(slot, "91-")) {
-    const target = slotAt(room, p, 1);
-    if (target) {
-      return grabPig(room, p, target, rng);
-    }
+  if (bodyIs(slot, BODY.pig) && slotAt(room, p, 1) === slot) {
+    return grabPig(room, p, slot, rng);
   }
   if (anyMatch(monstersData.rules.namesSelf, m.name)) {
     return { out: [say(p, NPC_TEXT.thisIs(m.name))], slotsChanged: false };
   }
-  if (["90-", "91-", "92-", "99-"].some((b) => bodyHas(slot, b))) {
+  if (Object.values(BODY).some((b) => bodyIs(slot, b))) {
     return none;
   }
   const data = npcData(room.npcs, m.name);
-  if (!data) {
+  if (!data || !hasBio(data)) {
     return none;
   }
   p.bio = { slot: slotNo, npc: m.name };
@@ -197,36 +201,35 @@ export function goldTarget(room: Room, p: Player): MonsterSlot | null {
 
 /** The `MONSTER` field `contains` the name. */
 export function inMonsterList(name: string): boolean {
-  return leansToward(name);
+  return lingoContains(monstersData.editorLists.worldEditor.monsters.join("\r"), name);
 }
 
 /**
- * RND chatter, one client's roll for one slot on stage: `random(15) = 1` for any slot whose data
- * is loaded (EMPTY is not VOID), then, when the data has `RND|` lines among lines 1-20, the
- * user-list ladder. Its unqualified user-list field is castLib 1's copy, which nothing
- * in play writes ("King" and a return), so all six draws are taken and the last, `random(400)`,
- * decides, whatever the player count (a kept 1.6 bug). A hit picks a line with
- * `random(RNDCNT)`. Returns the line, or null.
+ * RND chatter, once per tick for a live monster: a monster whose data has `RND|` lines among lines
+ * 1-20 says one of them, at random, every `intervalTicks` (a bug fixed: 1.6 rolled on each
+ * player's client against a player-count ladder that read a list nothing wrote, so the rate was
+ * neither steady nor scaled). The countdown starts at a spawn and runs while players are on the
+ * map. Returns the line, or null.
  */
-export function chatterRoll(npcs: NpcStore, slot: MonsterSlot, rng: Rng): string | null {
+export function chatterTick(
+  npcs: NpcStore,
+  slot: MonsterSlot,
+  intervalTicks: number,
+  rng: Rng,
+): string | null {
   const m = slot.live;
   if (!m) {
-    return null;
-  }
-  if (rng.random(15) !== 1) {
     return null;
   }
   const lines = npcData(npcs, m.name)?.chatter ?? [];
   if (lines.length === 0) {
     return null;
   }
-  let r = 0;
-  for (const n of [12000, 12000, 6000, 3000, 900, 400]) {
-    r = rng.random(n);
-  }
-  if (r !== 1) {
+  m.chatIn = (m.chatIn ?? intervalTicks) - 1;
+  if (m.chatIn > 0) {
     return null;
   }
+  m.chatIn = intervalTicks;
   const line = lines[rng.random(lines.length) - 1] ?? "";
   return `${m.name} says "${line}"`;
 }

@@ -16,7 +16,7 @@ import {
   settle,
 } from "../src/systems/economy/trade.ts";
 import { actionIntent, goldIntent, type ItemCtx } from "../src/systems/inventory/items.ts";
-import { chatterRoll, clickNpc, closeBio } from "../src/systems/monsters/npc.ts";
+import { cancelSlot, chatterTick, clickNpc, closeBio } from "../src/systems/monsters/npc.ts";
 import { npcFileNamed } from "../src/systems/monsters/npcfiles.ts";
 import { placeMonster } from "../src/systems/monsters/spawn.ts";
 import { tick } from "../src/systems/world/tick.ts";
@@ -59,17 +59,17 @@ function scene(queues: Record<number, number[]> = {}) {
       throw new Error("slot");
     }
     s.species = species;
-    s.live = placeMonster(s, species, x, y, rng);
+    s.live = placeMonster(species, x, y, rng);
     return s;
   };
   return { map, world, rng, ctx, join, room, put };
 }
 
 describe("clicking a monster or NPC", () => {
-  test("an NPC with data opens its Bio, with no range check, and holds the keys until it closes", () => {
+  test("an NPC with data opens its Bio and holds the keys until it closes", () => {
     const s = scene();
-    const p = s.join("Al", 1, 12);
-    s.put(1, "Akadius", 16, 1);
+    const p = s.join("Al", 6, 6);
+    s.put(1, "Akadius", 8, 4); // two tiles each way: across a counter
     const r = clickNpc(s.room(), p, 1, s.rng);
     expect(r.out[0]?.msg).toMatchObject({
       t: "bio",
@@ -82,10 +82,21 @@ describe("clicking a monster or NPC", () => {
     expect(p.keyLock).toBe(false);
   });
 
-  test("Buy opens the list and the keys stay locked until CANCEL", () => {
+  test("kept on purpose: an NPC's Bio opens from anywhere on the screen", () => {
     const s = scene();
     const p = s.join("Al", 1, 12);
-    s.put(1, "Akadius", 16, 1);
+    s.put(1, "Akadius", 16, 1); // the far corner
+    expect(clickNpc(s.room(), p, 1, s.rng).out[0]?.msg).toMatchObject({
+      t: "bio",
+      name: "Akadius",
+    });
+    expect(p.keyLock).toBe(true);
+  });
+
+  test("Buy opens the list and the keys stay locked until CANCEL", () => {
+    const s = scene();
+    const p = s.join("Al", 6, 4);
+    s.put(1, "Akadius", 7, 3);
     clickNpc(s.room(), p, 1, s.rng);
     const out = shopListIntent(s.ctx(), p, "buy");
     expect(out[0]?.msg).toMatchObject({ t: "shop", mode: "buy" });
@@ -95,21 +106,12 @@ describe("clicking a monster or NPC", () => {
     expect(p.keyLock).toBe(false);
   });
 
-  test("kept bug: a Slime's loot-only file opens an empty Bio and locks you", () => {
+  test("bug fixed: a Slime's loot-only file opens no window and leaves the keys free", () => {
     const s = scene();
     const p = s.join("Al", 6, 4);
-    s.put(1, "Slime", 9, 9);
-    const r = clickNpc(s.room(), p, 1, s.rng);
-    expect(r.out[0]?.msg).toEqual({
-      t: "bio",
-      name: "Slime",
-      bio: [],
-      profile: [],
-      buy: false,
-      sell: false,
-      train: false,
-    });
-    expect(p.keyLock).toBe(true);
+    s.put(1, "Slime", 7, 5);
+    expect(clickNpc(s.room(), p, 1, s.rng).out).toEqual([]);
+    expect([p.keyLock, p.bio]).toEqual([false, null]);
   });
 
   test("no data (Pig, a 0-byte file) does nothing; Faction members name themselves", () => {
@@ -125,51 +127,65 @@ describe("clicking a monster or NPC", () => {
     expect(clickNpc(s.room(), p, 2, s.rng).out).toEqual([]);
   });
 
-  test("kept bug: clicking any Pig grabs whatever stands on your faced tile, here Cril; any Cncl sets everyone's pig countdown to 20", () => {
+  test("bug fixed: clicking a Pig grabs only that Pig, on your faced tile; a removal leaves pig countdowns alone", () => {
     const s = scene();
     const p = s.join("Al", 6, 4); // faces north
     const q = s.join("Bo", 2, 2);
-    s.put(1, "Pig", 12, 9);
+    q.piggie = 300;
+    const far = s.put(1, "Pig", 12, 9);
     const cril = s.put(2, "Cril", 6, 3);
-    const r = clickNpc(s.room(), p, 1, s.rng);
-    expect(r.slotsChanged).toBe(true);
-    expect(cril.live).toBeNull();
+    // A Pig across the screen: nothing, and Cril on the faced tile stays.
+    expect(clickNpc(s.room(), p, 1, s.rng)).toEqual({ out: [], slotsChanged: false });
+    expect([far.live?.name, cril.live?.name]).toEqual(["Pig", "Cril"]);
+    expect(p.char.bag[0]).toBeNull();
+    cril.live = null;
+    const pig = s.put(3, "Pig", 6, 3);
+    expect(clickNpc(s.room(), p, 3, s.rng).slotsChanged).toBe(true);
+    expect(pig.live).toBeNull();
     expect(p.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
-    expect(p.piggie).toBe(20);
-    expect(q.piggie).toBe(20);
+    expect(p.piggie).toBe(500);
+    expect(q.piggie).toBe(300);
   });
 
-  test('kept bug: Snow Demon runs the pig grab: its body 891 contains "91-", so a click on it grabs what you face, and Ctrl grabs a faced Snow Demon as a Pig', () => {
+  test("bug fixed: a monster leaving its slot leaves everyone's pig countdown alone", () => {
+    const s = scene();
+    const p = s.join("Al", 6, 4);
+    p.piggie = 450;
+    const slime = s.put(1, "Slime", 6, 3);
+    if (slime.live) {
+      slime.live.hp = -1;
+    }
+    expect(cancelSlot(s.room(), slime)).toHaveLength(1);
+    expect(p.piggie).toBe(450);
+  });
+
+  test("bug fixed: a Snow Demon is no Pig: a click opens nothing and Ctrl grabs nothing", () => {
     const s = scene();
     const p = s.join("Al", 6, 4); // faces north
-    s.put(1, "Snow Demon", 12, 9);
-    const cril = s.put(2, "Cril", 6, 3);
-    expect(clickNpc(s.room(), p, 1, s.rng).slotsChanged).toBe(true);
-    expect(cril.live).toBeNull();
-    expect(p.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
-    // Ctrl on the faced tile tests the faced monster's own body: a Snow Demon passes.
-    p.piggie = 0;
-    const demon = s.put(3, "Snow Demon", 6, 3);
-    expect(actionIntent(s.ctx(), s.room(), p)).not.toEqual([]);
-    expect(demon.live).toBeNull();
-    expect(p.char.bag[0]).toEqual({ item: "Pig", qty: 2 });
+    const demon = s.put(1, "Snow Demon", 6, 3);
+    const cril = s.put(2, "Cril", 6, 2);
+    expect(clickNpc(s.room(), p, 1, s.rng).slotsChanged).toBe(false);
+    expect([demon.live?.name, cril.live?.name]).toEqual(["Snow Demon", "Cril"]);
+    actionIntent(s.ctx(), s.room(), p);
+    expect(demon.live?.name).toBe("Snow Demon");
+    expect(p.char.bag[0]).toBeNull();
   });
 
-  test("the grab's cooldown is set before the bag test; 'Pig' in the bag text skips it", () => {
+  test("bug fixed: a full bag refuses the grab without starting the countdown; a Pig stack takes it", () => {
     const s = scene();
     const p = s.join("Al", 6, 4);
     p.char.bag = Array.from({ length: 15 }, (_, i) => ({ item: `Rock${i}`, qty: 1 }));
-    s.put(1, "Pig", 6, 3);
+    p.char.bag[4] = { item: "Cooked Pig", qty: 1 };
+    const pig = s.put(1, "Pig", 6, 3);
     expect(chat(clickNpc(s.room(), p, 1, s.rng).out, "Al")).toEqual([
       "You are carrying too much to pick up the pig!",
     ]);
-    expect(p.piggie).toBe(500);
-    p.piggie = 0;
-    p.char.bag[4] = { item: "Cooked Pig", qty: 1 };
+    expect([p.piggie, pig.live?.name]).toEqual([0, "Pig"]);
+    p.char.bag[4] = { item: "Pig", qty: 2 };
     clickNpc(s.room(), p, 1, s.rng);
-    // InvAdd finds no room, so no Pig; the pig is gone all the same (an assumption: the
-    // archive does not say).
-    expect(s.map.slots[0]?.live).toBeNull();
+    expect(pig.live).toBeNull();
+    expect(p.char.bag[4]).toEqual({ item: "Pig", qty: 3 });
+    expect(p.piggie).toBe(500);
   });
 
   test("the tick counts the pig countdown down", () => {
@@ -188,22 +204,55 @@ describe("clicking a monster or NPC", () => {
 });
 
 describe("RND chatter", () => {
-  test("random(15), then all six UserList draws with the last, random(400), deciding; then the line (bug ledger)", () => {
-    const s = scene({ 15: [1], 400: [1], 2: [2] });
-    s.join("Al", 6, 4);
+  test("bug fixed: a talking NPC speaks once per interval, whatever the crowd; then the line", () => {
+    const s = scene({ 2: [2] });
     const god = s.put(1, "Fire God", 9, 9);
-    expect(chatterRoll(s.world.npcs, god, s.rng)).toBe(
+    s.rng.calls.length = 0;
+    for (let i = 0; i < 99; i++) {
+      expect(chatterTick(s.world.npcs, god, 100, s.rng)).toBeNull();
+    }
+    expect(s.rng.calls).toEqual([]);
+    expect(chatterTick(s.world.npcs, god, 100, s.rng)).toBe(
       'Fire God says "Fire does not effect us in the slightest."',
     );
-    expect(s.rng.calls).toEqual([4, 15, 12000, 12000, 6000, 3000, 900, 400, 2]);
+    expect(s.rng.calls).toEqual([2]); // the line, of two
+    // The countdown starts again.
+    expect(chatterTick(s.world.npcs, god, 100, s.rng)).toBeNull();
+    expect(god.live?.chatIn).toBe(99);
   });
 
-  test("a monster with data but no RND lines draws only random(15)", () => {
-    const s = scene({ 15: [1] });
+  test("bug fixed: the tick says it once to the whole map, however many players are on it", () => {
+    const s = scene();
+    const al = s.join("Al", 6, 4);
+    const bo = s.join("Bo", 2, 2);
+    const cy = s.join("Cy", 12, 9);
+    s.put(1, "Fire God", 9, 9);
+    const deps = {
+      loadMap: () => s.map,
+      startPoint: { map: s.map.name, x: 6, y: 4 },
+      casino: NO_CASINO,
+      saveIntervalTicks: 10_000,
+      npcChatterSeconds: 10, // 200 ticks
+      rng: s.rng,
+    };
+    const heard: string[][] = [[], [], []];
+    for (let i = 0; i < 400; i++) {
+      const out = tick(s.world, deps).out;
+      [al, bo, cy].forEach((p, k) => {
+        heard[k]?.push(...chat(out, p.id).filter((l) => l.includes("Fire God says")));
+      });
+    }
+    expect(heard.map((h) => h.length)).toEqual([2, 2, 2]);
+  });
+
+  test("a monster with data but no RND lines never speaks", () => {
+    const s = scene();
     const slime = s.put(1, "Slime", 9, 9);
     s.rng.calls.length = 0;
-    expect(chatterRoll(s.world.npcs, slime, s.rng)).toBeNull();
-    expect(s.rng.calls).toEqual([15]);
+    for (let i = 0; i < 5; i++) {
+      expect(chatterTick(s.world.npcs, slime, 2, s.rng)).toBeNull();
+    }
+    expect(s.rng.calls).toEqual([]);
   });
 });
 

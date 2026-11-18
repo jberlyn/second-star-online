@@ -35,6 +35,7 @@ import {
   neighbourMapName,
   type Rng,
   STEPFRAMES_PER_FRAME,
+  TICK_HZ,
   tickAttackTimers,
   tickSpriteTimers,
   USE_TEXT,
@@ -54,7 +55,7 @@ import { houseClockStep, restRegen } from "../housing/houses.ts";
 import { decayLoot, dueGives, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import { moverPass, tickPauses, walkTick } from "../monsters/ai.ts";
 import { monsterAttack } from "../monsters/attack.ts";
-import { chatterOut, chatterRoll } from "../monsters/npc.ts";
+import { chatterOut, chatterTick } from "../monsters/npc.ts";
 import { monsterView } from "../monsters/slots.ts";
 import { spawnPass } from "../monsters/spawn.ts";
 import {
@@ -114,6 +115,8 @@ export interface TickDeps {
   now?(): number;
   /** Minutes before monster loot decays (setting `lootDecayMinutes`, default 30). */
   lootDecayMinutes?: number;
+  /** Seconds between a talking NPC's RND lines (setting `npcChatterSeconds`, default 150). */
+  npcChatterSeconds?: number;
   /** "Chars Drop Items On Death" (setting `dropOnDeath`, default on). */
   dropOnDeath?: boolean;
   /** Where Portal sends players (setting `portalTargets`); empty: the start point. */
@@ -218,12 +221,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       // 2. The player sprite.
       for (const p of players) {
         if (p.flicker > 0) {
-          // Each call flips the sprite, and the counter's end shows it.
-          p.hidden = !p.hidden;
           p.flicker -= 1;
-          if (p.flicker === 0) {
-            p.hidden = false;
-          }
         }
         tickSpriteTimers(p.timers);
         advancePlayer(p);
@@ -240,51 +238,35 @@ export function tick(world: World, deps: TickDeps): TickResult {
       }
       for (const slot of map.slots) {
         if (slot.live) {
-          // RND chatter comes first in the slot's `stepFrame`, one roll per emulated client.
-          for (const _ of rollers) {
-            const said = chatterRoll(room.npcs, slot, rng);
-            if (said) {
-              out.push(...chatterOut(room, said));
-            }
-          }
           // The spell-hit lockout counts down in the slot's script.
           if (slot.live.hitCountb > 0) {
             slot.live.hitCountb -= 1;
           }
-          let stall = false;
-          players.forEach((p, i) => {
-            const r = monsterAttack(map, slot, p, {
+          for (const p of players) {
+            const o = monsterAttack(map, slot, p, {
               rng,
               npcs: room.npcs,
               immortal: isImmortal,
             });
-            // A Passive monster's early exit skips its walk tick; the server keeps one copy, so the
-            // first player's roll decides.
-            if (i === 0 && r.stall) {
-              stall = true;
-            }
-            const o = r.outcome;
             if (o) {
               all({ e: "phit", id: o.victim.id, text: o.text, color: o.color, splat: o.splat });
               for (const line of o.lines) {
                 tell(o.victim, line);
               }
             }
-          });
-          if (!stall) {
-            const step = walkTick(map, slot);
-            if (step && slot.live) {
-              const m = slot.live;
-              all({
-                e: "mmove",
-                slot: slot.slot,
-                fromX: step.fromX,
-                fromY: step.fromY,
-                toX: m.x,
-                toY: m.y,
-                facing: m.facing,
-              });
-            }
+          }
+          const step = walkTick(map, slot, { players: room.players, rng });
+          if (step && slot.live) {
+            const m = slot.live;
+            all({
+              e: "mmove",
+              slot: slot.slot,
+              fromX: step.fromX,
+              fromY: step.fromY,
+              toX: m.x,
+              toY: m.y,
+              facing: m.facing,
+            });
           }
         }
         if (slot.slot === 1) {
@@ -304,7 +286,9 @@ export function tick(world: World, deps: TickDeps): TickResult {
             if (p.deadLock > 0 || p.loading > 0) {
               continue;
             }
-            const step = moverPass(room.npcs, map, p, n, rng, () => monsterSpells(room, p, rng));
+            const step = moverPass(room.npcs, map, p, n, rng, room.players, () =>
+              monsterSpells(room, p, rng),
+            );
             if (step?.slot.live) {
               const m = step.slot.live;
               all({
@@ -338,6 +322,13 @@ export function tick(world: World, deps: TickDeps): TickResult {
       tell(l.to, l.text);
     }
     tickPauses(map);
+    // RND chatter: each talking monster speaks on its own fixed interval, heard by the whole map.
+    for (const slot of map.slots) {
+      const said = chatterTick(room.npcs, slot, (deps.npcChatterSeconds ?? 150) * TICK_HZ, rng);
+      if (said) {
+        out.push(...chatterOut(room, said));
+      }
+    }
     // The door-lock countdown: one timer per map, the earliest client's; at 0 the open coloured and
     // switch doors close.
     const relock = new ItemOut(room);
@@ -585,8 +576,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       last.x !== s.x ||
       last.y !== s.y ||
       last.facing !== s.facing ||
-      last.hold !== s.hold ||
-      last.hidden !== s.hidden;
+      last.hold !== s.hold;
     if (changed || p.forceYou) {
       out.push({ to: p.id, msg: { t: "you", self: s } });
       p.lastSent = s;

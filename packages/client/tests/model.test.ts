@@ -86,7 +86,7 @@ describe("client prediction", () => {
     }
     const update = self({ n: 1, x: 6, facing: "E", frames: 1 });
     applyYou(m, update);
-    applyYou(m, { ...update, hidden: true });
+    applyYou(m, { ...update });
     expect(m.self).toMatchObject({ x: 7, n: 2, stepFrames: 15 });
     expect(m.self?.predicted.get(1)).toEqual({ x: 6, y: 5 });
   });

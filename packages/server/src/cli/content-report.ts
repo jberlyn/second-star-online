@@ -236,9 +236,15 @@ export const TABLES: Record<string, TableInfo> = {
     wins: "any",
   },
   // meleeKillXp, smash in combat/melee.ts, the anyMatch callers in monsters/ and economy/
-  "monsters.json rules.seaSpawn": { decides: "species that spawn only on sea tiles", wins: "any" },
-  "monsters.json rules.seaMove": { decides: "species that move only on sea tiles", wins: "any" },
+  "monsters.json rules.sea": {
+    decides: "species that spawn and move only on sea tiles",
+    wins: "any",
+  },
   "monsters.json rules.footprint": { decides: "3x2 wide monsters", wins: "any" },
+  "monsters.json rules.hostile": {
+    decides: "species off the World Editor's monster list that walk toward players",
+    wins: "any",
+  },
   "monsters.json rules.officer": {
     decides: "attacks wanted players on no-fight maps",
     wins: "any",
@@ -447,7 +453,7 @@ export function contentReport(name: string): string[] {
   const lists: [string, string[]][] = [
     ["monsters.json monsters (inMonsterList)", monsterText],
     [
-      "monsters.json editorLists.worldEditor.monsters (leansToward)",
+      "monsters.json editorLists.worldEditor.monsters (inMonsterList; leansToward by whole entry)",
       monstersData.editorLists.worldEditor.monsters,
     ],
     ["monsters.json editorLists.npcEditor.npcs (isNpced)", monstersData.editorLists.npcEditor.npcs],

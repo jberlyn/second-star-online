@@ -189,9 +189,9 @@ With no other added tiles in `catalogue`, `Z9` appears on World Editor **palette
 
 | Table (`monsters.json`) | Decides | Wins | Result and default |
 |---|---|---|---|
-| `rules.seaSpawn` | Species that spawn only on `sea` tiles | Any | Default land spawn rules |
-| `rules.seaMove` | Species that move only on `sea` tiles | Any | Default land move rules |
+| `rules.sea` | Species that spawn and move only on `sea` tiles | Any | Default land rules |
 | `rules.footprint` | 3×2 wide monsters | Any | Default 1×1 |
+| `rules.hostile` | Species off `editorLists.worldEditor.monsters` that walk toward players | Any | Default wanders |
 | `rules.officer` | Attacks wanted players on no-fight maps | Any | Default skips no-fight maps |
 | `rules.sparesInnocent` | Never hits an innocent player | Any | Default attacks anyone |
 | `rules.clearsBlock` | Clears earlier roster slots' `blockPCCheck` (an unfixed 1.6 bug in the [bug ledger](bug-ledger.md#movement)) | Any | |
@@ -201,9 +201,11 @@ With no other added tiles in `catalogue`, `Z9` appears on World Editor **palette
 | `rules.noQuests` | Gives no quests in `askForQuest` | Any | Default checks quest lines |
 | `casting.neverCasts` | Never casts monster spells (`contains`) | Any | Default casts its `SPL|` tags |
 
-Two lists in `editorLists` also drive gameplay via `contains`:
-- `worldEditor.monsters`: leans toward players, gets no quests, and gives no treasure rumours. Because it uses `contains`, a short name like `"Dragon Hatchling"` does not catch `"Dragon"`, while `"Dragon"` would catch longer names.
+Two lists in `editorLists` also drive gameplay:
+- `worldEditor.monsters`: a whole entry (ignoring case) walks toward players; add species that should chase but stay off the editor list to `rules.hostile`. A name the list contains as text (`contains`) gets no quests and gives no treasure rumours, so `"Dragon"` is caught there through `"Dragon Hatchling"`.
 - `npcEditor.npcs`: spawns only when `random(60) <= 2`.
+
+Every species row needs an `hp`. Its `attack` may be `null`: the species never melees.
 
 ### Adding a monster or NPC
 
@@ -215,16 +217,16 @@ Two lists in `editorLists` also drive gameplay via `contains`:
 
 ### Body-number traps
 
-The engine tests a monster's `body` number as `"<body>-"` using substring matching (`contains`), not exact equality:
+These body numbers have rules of their own, tested by equality: `90` (Spikes) and `99` (Holy Shield) never move and are not clickable, `91` is the Pig (a click or Ctrl on the faced tile grabs it), and `92` (Web) never moves, is not clickable and never attacks.
 
-- `"90-"` (Spikes): never moves, not clickable, dispelled by Dispel Illusions
-- `"91-"`: pig grab
-- `"92-"` (Web): never moves, not clickable, never attacks (`body === 92`)
-- `"99-"` (Holy Shield): never moves, not clickable
+The spell code still tests a monster's `body` number as `"<body>-"` using substring matching (`contains`), not exact equality:
+
+- `"90-"`: dispelled by Dispel Illusions
+- `"99-"`: a Holy Shield's protection
 - `"61-"`: Minor Heal hurts instead of healing
 - `"36-"`, `"45-"`, `"47-"`: spells heal instead of hurting
 
-Because `"<body>-"` is a substring check, numbers ending in those digits (such as `190`, `445`, or `891`) also match. Choose a new body number that does not end in any of those digits unless you want that effect.
+Because `"<body>-"` is a substring check there, numbers ending in those digits (such as `190` or `445`) also match. Choose a new body number that does not end in any of those digits unless you want that effect.
 
 ### Example: Frost Wolf
 

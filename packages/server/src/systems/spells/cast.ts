@@ -293,7 +293,7 @@ function placeSummon(
   if (!slot) {
     return none;
   }
-  slot.live = placeMonster(slot, monster, at.x, at.y, rng);
+  slot.live = placeMonster(monster, at.x, at.y, rng);
   slot.dirty = true;
   const out: Outgoing[] = room.players.map((o) => ({
     to: o.id,

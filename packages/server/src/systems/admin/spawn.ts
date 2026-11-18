@@ -51,7 +51,7 @@ export function handleSpawn(
   if (x < 1 || x > MAP_WIDTH || y < 1 || y > MAP_HEIGHT) {
     return { out: [tell(SPAWN_TEXT.offMap)], changed: null };
   }
-  slot.live = placeMonster(slot, slot.species, x, y, rng);
+  slot.live = placeMonster(slot.species, x, y, rng);
   slot.pause = 30;
   slot.dirty = true;
   const out: Outgoing[] = (world.rooms.get(p.map.name)?.players ?? []).map((o) => ({

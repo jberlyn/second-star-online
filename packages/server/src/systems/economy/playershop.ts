@@ -37,7 +37,7 @@ const tell = (p: Player, text: string): Outgoing => ({
 
 /**
  * The shopkeeper of a new Small Shop: a name rolled until it is free, its file, and roster slot 1
- * of the interior holding it live at (10, 4) with 128 HP. The caller writes the file, the slot and
+ * of the interior holding it live at (10, 4) with 1 HP. The caller writes the file, the slot and
  * the shop in the build's transaction. Null when no free name came up.
  */
 export function createShopkeeper(
@@ -71,7 +71,6 @@ export function createShopkeeper(
     hitCountb: 0,
   };
   slot.home = null;
-  slot.lastHp = null;
   slot.pause = 0;
   slot.dirty = true;
   const shop: PlayerShop = { npc: name, ownerId: owner.id, interior: interior.name };

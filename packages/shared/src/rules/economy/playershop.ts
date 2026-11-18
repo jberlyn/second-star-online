@@ -65,8 +65,8 @@ export function rollShopkeeperName(
   return null;
 }
 
-/** Where the NPC creator puts the shopkeeper: roster slot 1, (10, 4), 128 HP. */
-export const SHOPKEEPER = { slot: 1, x: 10, y: 4, hp: 128 } as const;
+/** Where the NPC creator puts the shopkeeper: roster slot 1, (10, 4), 1 HP (1.6 gave 128). */
+export const SHOPKEEPER = { slot: 1, x: 10, y: 4, hp: 1 } as const;
 
 /** The NPC creator's NPC file, its lines joined by RETURN with none after the last. */
 export function shopkeeperFile(owner: string, name: string): string {

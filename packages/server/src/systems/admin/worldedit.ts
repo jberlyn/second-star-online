@@ -28,7 +28,7 @@ import {
 import { type CasinoDeps, casinoMapChange } from "../casino/index.ts";
 import { mintContainerId } from "../crafting/craft.ts";
 import { leaveTrade } from "../economy/trade.ts";
-import { species } from "../monsters/slots.ts";
+import { spawnHp } from "../monsters/spawn.ts";
 import {
   enterRoom,
   type GroundItem,
@@ -198,13 +198,12 @@ export function applySave(
     s.home = placed ? { x: placed.x, y: placed.y } : null;
     s.pause = 0;
     s.dirty = true;
-    // `name:HP:x:y` with the species' HP; a species with none inherits the slot's last HP as a
-    // spawn does.
+    // `name:HP:x:y` with the species' HP, as a spawn takes it.
     s.live =
       name && placed
         ? {
             name,
-            hp: species(name)?.hp ?? s.lastHp ?? 0,
+            hp: spawnHp(name),
             x: placed.x,
             y: placed.y,
             facing: "S",

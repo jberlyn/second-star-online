@@ -19,38 +19,26 @@ export function spawnLadder(players: number): number {
 const FACING_ROLL = ["N", "S", "W", "E"] as const;
 
 /**
- * True when the tile is refused. Land species fail on a blocked tile; then a tile with x > 12 or
- * y > 9 is accepted before the footprint test, so the footprint check is skipped there (a kept 1.6
- * bug). Only Squid, Shark and Mizella use the water test, so five other sea creatures spawn by land
- * rules (also kept). Players, monsters and items on the tile do not matter.
+ * True when the tile is refused. Sea creatures (`rules.sea`, the list their movement uses) need
+ * water; the rest need a walkable tile. A 3×2 monster also needs every footprint cell on the map
+ * to be walkable, wherever its anchor is (bugs fixed: 1.6 checked only Squid, Shark and Mizella for
+ * water, and skipped the footprint test past column 12 or row 9). Players, monsters and items on
+ * the tile do not matter.
  */
 export function refusesTile(map: WorldMap, name: string, x: number, y: number): boolean {
-  const seaSpawn = anyMatch(monstersData.rules.seaSpawn, name);
-  let refused = false;
-  if (seaSpawn) {
-    if (!isWater(map, x, y)) {
-      refused = true;
-    }
-  } else {
-    if (!isWalkable(map.walk, x, y)) {
-      refused = true;
-    }
-    if (x > 12 || x < 1 || y > 9 || y < 1) {
-      return refused;
-    }
+  if (anyMatch(monstersData.rules.sea, name) ? !isWater(map, x, y) : !isWalkable(map.walk, x, y)) {
+    return true;
   }
-  if (isFootprint(name)) {
-    // A cell off the screen is never in the NPC blocked tiles, so it never refuses.
-    for (const [cx, cy] of FOOT_CELLS) {
-      const tx = x + cx;
-      const ty = y + cy;
-      const onMap = tx >= 1 && tx <= MAP_WIDTH && ty >= 1 && ty <= MAP_HEIGHT;
-      if (onMap && !isWalkable(map.walk, tx, ty)) {
-        refused = true;
-      }
-    }
+  if (!isFootprint(name)) {
+    return false;
   }
-  return refused;
+  // A cell off the screen is never in the NPC blocked tiles, so it never refuses.
+  return FOOT_CELLS.some(([cx, cy]) => {
+    const tx = x + cx;
+    const ty = y + cy;
+    const onMap = tx >= 1 && tx <= MAP_WIDTH && ty >= 1 && ty <= MAP_HEIGHT;
+    return onMap && !isWalkable(map.walk, tx, ty);
+  });
 }
 
 export interface SpawnCtx {
@@ -75,21 +63,25 @@ function passRoster(map: WorldMap, rng: Rng): (string | null)[] {
   return mon;
 }
 
-/** A new live monster in a slot. */
-export function placeMonster(
-  slot: MonsterSlot,
-  name: string,
-  x: number,
-  y: number,
-  rng: Rng,
-): LiveMonster {
+/** The hit points of a name not in the data. */
+export const DEFAULT_HP = 1;
+
+/**
+ * A species' starting hit points; a name not in the data starts with `DEFAULT_HP` (a bug fixed:
+ * 1.6 left the slot's old value for any species its HP table did not list, which in SSO was the
+ * last occupant's HP at death).
+ */
+export function spawnHp(name: string): number {
+  return species(name)?.hp ?? DEFAULT_HP;
+}
+
+/** A new live monster. */
+export function placeMonster(name: string, x: number, y: number, rng: Rng): LiveMonster {
   const sp = species(name);
   const facing = FACING_ROLL[rng.random(4) - 1] ?? "N";
-  // A name with no hit-point entry keeps the slot's old HP.
-  const hp = sp?.hp ?? slot.lastHp ?? 0;
   return {
     name: sp?.name ?? name,
-    hp,
+    hp: spawnHp(name),
     x,
     y,
     facing,
@@ -129,15 +121,15 @@ export function spawnPass(map: WorldMap, ctx: SpawnCtx): MonsterSlot[] {
     if (slot.pause !== 0 || drop !== 1) {
       continue;
     }
-    // An NPCed roll that fails ends the whole pass (bug ledger "NPCed roll failure aborts").
+    // An NPC's extra roll; a failure skips only this slot (a bug fixed: 1.6 ended the whole pass).
     if (isNpced(name) && rng.random(60) > 2) {
-      return spawned;
+      continue;
     }
     const sp = species(name);
     if (sp?.spawnMinute && !(ctx.minute > sp.spawnMinute.gt && ctx.minute < sp.spawnMinute.lt)) {
       continue;
     }
-    slot.live = placeMonster(slot, name, x, y, rng);
+    slot.live = placeMonster(name, x, y, rng);
     slot.pause = 30;
     slot.dirty = true;
     spawned.push(slot);

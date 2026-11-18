@@ -631,15 +631,15 @@ describe("ground items block by name", () => {
       kind: "admin",
       expiresAt: null,
     });
-    expect(nextStep(s.map, slot)).toBeNull();
+    expect(nextStep(s.map, slot, { players: [], rng: s.rng })).toBeNull();
     expect(slot.live.queue).toEqual([]);
     // Bug fixed: Holy Water stops a monster as it stops a player.
     s.map.ground[0]!.item = "Holy Water";
     slot.live.queue = ["R"];
-    expect(nextStep(s.map, slot)).toBeNull();
+    expect(nextStep(s.map, slot, { players: [], rng: s.rng })).toBeNull();
     s.map.ground[0]!.item = "Apple";
     slot.live.queue = ["R"];
-    expect(nextStep(s.map, slot)).not.toBeNull();
+    expect(nextStep(s.map, slot, { players: [], rng: s.rng })).not.toBeNull();
   });
 });
 

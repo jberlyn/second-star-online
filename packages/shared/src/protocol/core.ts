@@ -184,11 +184,6 @@ export interface SelfState {
    * a client ignores refusals of requests it sent before its last correction.
    */
   moveRejected?: number;
-  /**
-   * Your own sprite is hidden this frame: the hit blink's flips. Only you get it; peers never see a
-   * blink.
-   */
-  hidden?: boolean;
 }
 
 /**

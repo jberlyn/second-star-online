@@ -119,7 +119,7 @@ export interface SettingRow {
   min?: number;
   max?: number;
   /** What an `int` counts: frames (1/20 s), milliseconds or minutes; the window shows it as time. */
-  unit?: "frames" | "ms" | "minutes";
+  unit?: "frames" | "ms" | "seconds" | "minutes";
 }
 
 export type AdminServerMsg =

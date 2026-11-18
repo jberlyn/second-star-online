@@ -332,7 +332,7 @@ describe("what an Airship cannot do", () => {
     s.map.flags.canFight = "X";
     rng.calls.length = 0;
     const r = monsterAttack(s.map, slot, s.ann, { rng, npcs: ARCHIVE_NPCS, immortal: () => false });
-    expect(r.outcome).toBeNull();
+    expect(r).toBeNull();
     expect(rng.calls[0]).toBe(10);
   });
   test("Morph and Hold do nothing to a rider; Dispel keeps the airship", () => {

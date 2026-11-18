@@ -1,12 +1,13 @@
 /**
  * Monster roster slots.
  *
- * Each map has four roster slots (sprites 180-183; 1.6's fifth slot never spawned, a kept bug). A
- * slot holds at most one live monster. The state lives on the map and is saved to `map_slots`, so
- * monsters survive a restart and stay frozen while nobody is there.
+ * Each map has four roster slots (sprites 180-183; 1.6's fifth slot never spawned, kept on
+ * purpose). A slot holds at most one live monster. The state lives on the map and is saved to
+ * `map_slots`, so monsters survive a restart and stay frozen while nobody is there.
  */
 import { type Monster, monstersData } from "@secondstaronline/data";
 import {
+  anyMatch,
   type Dir,
   type Facing,
   inMonsterList,
@@ -29,8 +30,15 @@ export interface LiveMonster {
   /** Where the current step started. */
   fromX: number;
   fromY: number;
-  /** `M<k>Que`: the rest of the authored path. */
+  /** `M<k>Que`: the rest of a random walk. */
   queue: Dir[];
+  /**
+   * A hostile walk: the player it chases and the steps left. Each step's direction is picked when
+   * the step starts, from where that player stands then.
+   */
+  chase?: { id: string; steps: number } | null;
+  /** Ticks until its next RND chatter line; unset until it first counts. */
+  chatIn?: number;
   /**
    * The spell-hit lockout: frames before a spell can hit it again; set to 16 by each spell hit, counted down
    * in its script, 0 when placed.
@@ -45,8 +53,6 @@ export interface MonsterSlot {
   live: LiveMonster | null;
   /** `M<k>Pause`, counted down once per frame. */
   pause: number;
-  /** HP the last occupant had when it died; a species without an HP entry inherits it. */
-  lastHp: number | null;
   /** Changed since the last save. */
   dirty: boolean;
   /** The tile the World Editor placed the roster entry on, shown again on LOAD. */
@@ -76,9 +82,15 @@ export function defenseOf(name: string): number {
 
 export { isFootprint, MONSTER_STEP_FRAMES };
 
-/** The hostile (lean) test: the monster list contains the name. */
+const HOSTILE = new Set(monstersData.editorLists.worldEditor.monsters.map((n) => n.toLowerCase()));
+
+/**
+ * The hostile (lean) test: the name is an entry of the World Editor's monster list, or matches
+ * `rules.hostile` (a bug fixed: 1.6 asked whether the list's text contained the name, so "Dragon"
+ * leaned through "Dragon Hatchling" and the Overlord, on no list, wandered).
+ */
 export function leansToward(name: string): boolean {
-  return lingoContains(monstersData.editorLists.worldEditor.monsters.join("\r"), name);
+  return HOSTILE.has(name.toLowerCase()) || anyMatch(monstersData.rules.hostile, name);
 }
 
 /** The NPC list contains the name. */
@@ -86,10 +98,12 @@ export function isNpced(name: string): boolean {
   return lingoContains(monstersData.editorLists.npcEditor.npcs.join("\r"), name);
 }
 
-/** Bodies that never move: Spikes 90-, Web 92-, Holy Shield 99-. */
+/** Spikes (body 90), Pig (91), Web (92) and Holy Shield (99). */
+export const BODY = { spikes: 90, pig: 91, web: 92, holyShield: 99 } as const;
+
+/** Bodies that never move: Spikes, Web and Holy Shield. */
 export function neverMoves(body: number): boolean {
-  const s = `${body}-`;
-  return lingoContains(s, "90-") || isWebBody(body) || lingoContains(s, "99-");
+  return body === BODY.spikes || isWebBody(body) || body === BODY.holyShield;
 }
 
 export function monsterView(s: MonsterSlot): MonsterView {

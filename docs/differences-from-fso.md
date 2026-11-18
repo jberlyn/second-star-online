@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 49 |
-| [Fixed bugs](#fixed-bugs) | 211 |
-| [Kept on purpose](#kept-on-purpose) | 1 |
+| [Design changes](#design-changes) | 50 |
+| [Fixed bugs](#fixed-bugs) | 229 |
+| [Kept on purpose](#kept-on-purpose) | 3 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **432** |
+| **Total** | **453** |
 
 By system (the code folder that holds the change):
 
@@ -50,7 +50,7 @@ By system (the code folder that holds the change):
 | housing | [19](#housing) | [6](#server-side-housing) |
 | inventory | [30](#inventory) | [11](#server-side-inventory) |
 | mail | [16](#mail) | [11](#server-side-mail) |
-| monsters | 0 | [3](#server-side-monsters) |
+| monsters | [18](#monsters) | [3](#server-side-monsters) |
 | movement | 0 | [4](#server-side-movement) |
 | progression | 0 | [4](#server-side-progression) |
 | social | [4](#social) | [9](#server-side-social) |
@@ -449,6 +449,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Pinned by:** `death: the dying player gets { t: "death" } after the tick's vitals, once, and nobody else does` (packages/server/tests/monsters.test.ts); `death: black for one draw, then frozen until the respawn map is drawn` (packages/client/tests/death-stage.test.ts)
 
 ### Other design changes
+
+#### No hit blink
+- **Kind:** Other
+- **What you notice:** After a hit your character stays drawn; the damage number shows the hit. For about 2 seconds (40 calls) further monster hits are still ignored.
+- **1.6:** Each call for the player sprite while the hit counter ran flipped its visibility on your own screen. With two calls a frame the flips mostly cancelled, so a hit either hid your character for the whole second or showed no blink at all.
+- **SSO:** The counter still gives the same immunity, but nothing hides your sprite, and the `you` message no longer carries a hidden flag.
+- **Why:** The blink was distracting and, as 1.6 drew it, unreliable; the damage numbers already show the hit.
+- **In the code:** `packages/server/src/systems/world/tick.ts` (`tick`), `packages/client/src/playfield.ts` (`createPlayfield`)
+- **Pinned by:** `design change: a monster hit starts 40 calls of i-frames and never hides your sprite` (packages/server/tests/monsters.test.ts); `a melee hit starts the victim's i-frames; no sprite is hidden on anyone's screen` (packages/server/tests/melee.test.ts); `design change: the local player is always drawn; no hit blink hides it` (packages/client/tests/death-stage.test.ts)
 
 #### HP and SP bars fill by percentage with hover text
 - **Kind:** Other
@@ -2370,6 +2379,170 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`newspaperLoadIntent`, `newspaperSaveIntent`), `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
 - **Pinned by:** `bug fixed: a player saves to their own paper, loads it, and their stand shows it` (packages/server/tests/art-news.test.ts); `menu 500's Game and Edit items: Clear Chat Text, Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms` (packages/client/tests/npceditor.test.ts)
 
+### monsters
+
+#### A monster with only loot lines opens no window
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a monster such as a Slime does nothing, and your keys stay free.
+- **1.6:** The click only checked that the monster had an NPC file, and a Slime's loot lines counted, so it opened an empty window titled with its name, with no buttons, that held your keys until you closed it.
+- **SSO:** The Bio opens only when the file has bio or profile lines, or a shop or trainer.
+- **Why:** The empty window had nothing in it and only locked the player in place.
+- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `hasBio`)
+- **Pinned by:** `bug fixed: a Slime's loot-only file opens no window and leaves the keys free` (packages/server/tests/npcs-trade.test.ts)
+
+#### Every roster slot waits after planning a walk
+- **Kind:** Bug fixed
+- **What you notice:** The monster in the second roster slot waits a moment after each walk is planned, like the others.
+- **1.6:** After a walk was planned, slots 1, 3 and 4 waited 30 frames before they could be picked again and slot 2 waited 0. It showed when no step of the walk could start, or a step stopped on an item.
+- **SSO:** Every slot waits 30 frames.
+- **Why:** One slot moving more often than the others was a slip in a per-slot copy of the same code.
+- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`moverPass`)
+- **Pinned by:** `bug fixed: every slot waits 30 after authoring when no step can start` (packages/server/tests/monsters.test.ts)
+
+#### Every sea creature spawns at sea
+- **Kind:** Bug fixed
+- **What you notice:** Merius, Krommie, Jelstar, Mellanie and Minmaye appear in the sea and swim, like the Squid, Shark and Mizella.
+- **1.6:** A misspelt name in the spawn check made those five use the land spawn rules, while their movement treated them as sea creatures, so they appeared on dry land and never took a step.
+- **SSO:** Spawning and movement read one list, `rules.sea` in `monsters.json`, so a sea creature needs water for both.
+- **Why:** A sea creature stranded on land was a typo, not a design.
+- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`refusesTile`), `packages/server/src/systems/monsters/ai.ts` (`nextStep`)
+- **Pinned by:** `bug fixed: every sea creature spawns only on water` (packages/server/tests/monsters.test.ts)
+
+#### Big monsters never spawn inside walls
+- **Kind:** Bug fixed
+- **What you notice:** An Overlord or Mutant Worm near the right or bottom edge of a screen no longer appears overlapping a wall.
+- **1.6:** When the chosen tile was past column 12 or row 9, the spawn check said "fine" before it checked the 3 by 2 tiles a big monster covers.
+- **SSO:** The footprint is checked wherever the monster lands. A footprint cell off the screen still never refuses, as when it walks.
+- **Why:** The early exit skipped a check the code plainly meant to make.
+- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`refusesTile`)
+- **Pinned by:** `bug fixed: the footprint test runs wherever the anchor is` (packages/server/tests/monsters.test.ts)
+
+#### A failed roll for an NPC skips only its own slot
+- **Kind:** Bug fixed
+- **What you notice:** When a screen's spawner rolls for an NPC and the extra roll fails, the other empty slots still get their turn.
+- **1.6:** A failed roll for a monster on the NPC list left the spawn routine altogether, skipping the later slots that frame.
+- **SSO:** The failed slot is skipped and the pass goes on.
+- **Why:** The extra roll was meant to make NPCs rare, not to hold back every other monster.
+- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`)
+- **Pinned by:** `bug fixed: a failed NPC roll skips only its own slot` (packages/server/tests/monsters.test.ts)
+
+#### Every species has hit points
+- **Kind:** Bug fixed
+- **What you notice:** Shopkeepers, Gods and the other NPCs that 1.6 gave no hit points arrive with 1, so any hit that lands kills them, as it usually did in 1.6.
+- **1.6:** The spawn code's hit point table listed only the monsters and a few NPCs (the Officer, Angela, Trianus and Corin among them); any other species kept what the slot held before. In SSO that was the hit points the slot's last monster died with (below zero), or 0, so the first hit killed them.
+- **SSO:** Every species row in `monsters.json` must have an `hp`; the rows 1.6's table missed have 1. A name not in the data at all starts with 1 too (`DEFAULT_HP`), and so does a player shop's new shopkeeper, which 1.6's NPC creator gave 128. The slot no longer keeps the last occupant's hit points, and the `last_hp` column is dropped.
+- **Why:** A monster that arrives already below zero, or with a dead monster's leftovers, was never meant.
+- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnHp`, `DEFAULT_HP`), `packages/shared/src/rules/economy/playershop.ts` (`SHOPKEEPER`), `packages/server/migrations/20261118_31_drop_last_hp.sql`
+- **Pinned by:** `bug fixed: every species has hit points; 1.6's unlisted ones and unknown names get 1` (packages/server/tests/monsters.test.ts)
+
+#### Hostile monsters are listed by name
+- **Kind:** Bug fixed
+- **What you notice:** A Dragon still walks toward players, and now so does the Overlord.
+- **1.6:** The check asked whether the hostile list contained the monster's name as text, not whether the name was an entry: a Dragon walked toward players because "Dragon" is inside "Dragon Hatchling", while the Overlord, on no list, just wandered.
+- **SSO:** A monster leans toward players when its name is a whole entry of the World Editor's monster list, ignoring case, or matches the new `rules.hostile` list in `monsters.json`, which holds Dragon and Overlord. The other uses of that list (quests, treasure rumours, shop names) still test by text, as before.
+- **Why:** Hostility decided by an accident of spelling left the Overlord, the evil a kill broadcast celebrates, wandering harmlessly.
+- **In the code:** `packages/server/src/systems/monsters/slots.ts` (`leansToward`)
+- **Pinned by:** `bug fixed: the hostile list is matched by whole entries; Dragon and Overlord lean by rule` (packages/server/tests/monsters.test.ts)
+
+#### Crowded screens keep the monsters' pauses
+- **Kind:** Bug fixed
+- **What you notice:** On a screen with nine or more players monsters still stop between walks, as they do with eight.
+- **1.6:** The chance that a monster was picked to plan a walk got steadily rarer from 1 to 8 players (a pick every 30 to 600 frames), then at the 9th player jumped back to one every 50 frames, so on a crowded screen monsters moved almost all the time.
+- **SSO:** From the 8th player on it stays at one in 600 for each player's roll.
+- **Why:** The ladder exists to keep a screen's total movement steady as players join; the drop at the 9th was a missing rung.
+- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`moveLadder`)
+- **Pinned by:** `bug fixed: ladders: spawn 80…1300 by players, move 30…600 and 600 from the 8th on` (packages/server/tests/monsters.test.ts)
+
+#### A hostile monster follows the player it chases
+- **Kind:** Bug fixed
+- **What you notice:** A hostile monster walking toward you turns to follow when you move, instead of heading for where you stood when it set off.
+- **1.6:** The whole path was worked out when the walk was planned, aimed at where the player whose game started it stood at that moment.
+- **SSO:** The walk records the player and the number of steps; each step leans toward where that player stands as the step starts. If they leave the map the walk ends.
+- **Why:** A chase that ignores its target's moves only looked like a chase while the player stood still.
+- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`authorPath`, `leanDir`, `nextStep`)
+- **Pinned by:** `bug fixed: each chase step aims at where its player stands now`, `a hostile walk leans toward the author by pixel position`, `a chase ends when its player leaves the map` (packages/server/tests/monsters.test.ts)
+
+#### A monster with no attack entry never melees
+- **Kind:** Bug fixed
+- **What you notice:** Shopkeepers, Gods and other NPCs with no attack value of their own no longer hit you for 35 on a map where fighting is allowed.
+- **1.6:** The attack table started every monster at 35 and then set the value for each name it listed. Every NPC it missed, Angela, Trianus and Corin included, hit for 35, more than most monsters. The Officer is listed at 35 on purpose.
+- **SSO:** A species whose `attack` is `null` in `monsters.json` (the names 1.6's attack table did not list), or a name not in the data at all, never melees. Every listed monster keeps its value, the Officer's 35 included.
+- **Why:** The default made bystanders the hardest hitters on a fight map.
+- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttackValue`, `monsterAttack`)
+- **Pinned by:** `bug fixed: a name with no attack entry never melees` (packages/server/tests/monsters.test.ts)
+
+#### The Snared Loah hits for 18
+- **Kind:** Bug fixed
+- **What you notice:** The Snared Loah hits as hard as its table row says, 18, not 35.
+- **1.6:** The attack table spelled the name "Snared Load", so the Snared Loah never matched its row and got the default 35.
+- **SSO:** The Snared Loah's `attack` in `monsters.json` is 18.
+- **Why:** A typo, not a balance choice.
+- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttackValue`)
+- **Pinned by:** `bug fixed: the Snared Loah hits for its own 18` (packages/server/tests/monsters.test.ts)
+
+#### Only a Pig's body is grabbed as a Pig
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a Snow Demon, or pressing Ctrl facing one, does nothing pig-like.
+- **1.6:** The click looked for "91-" anywhere in a monster's picture name, and the Snow Demon's picture 891 contains it, so it ran the Pig grab, and Ctrl grabbed a faced Snow Demon into your bag as a Pig.
+- **SSO:** The Pig, Spikes, Web and Holy Shield click rules, and the never-moves rule for Spikes, Web and Holy Shield, test the body number for equality.
+- **Why:** The text test caught a body number it was never written for.
+- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `ctrlPig`), `packages/server/src/systems/monsters/slots.ts` (`neverMoves`, `BODY`)
+- **Pinned by:** `bug fixed: a Snow Demon is no Pig: a click opens nothing and Ctrl grabs nothing` (packages/server/tests/npcs-trade.test.ts)
+
+#### Clicking a Pig grabs that Pig
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a Pig on the tile you face puts it in your bag; clicking one elsewhere does nothing. A full bag says so without starting the wait before your next grab, and a bag with a Pig stack takes another. Killing or removing a monster no longer changes anyone's wait.
+- **1.6:** Clicking any Pig, however far away, grabbed whatever stood on your faced tile, even a Dragon or a shopkeeper, which left with no XP or loot. The 500-frame wait started before the bag test, a bag whose text contained "Pig" (even "Cooked Pig") skipped that test, and every monster removed or killed set every player's wait on the map to 20.
+- **SSO:** The click grabs only the clicked Pig, and only when it stands on your faced tile. The bag test asks whether a Pig fits (a Pig stack or a free line); the wait starts when the grab goes through. Removals leave the wait alone.
+- **Why:** The grab took the wrong creature and let a player clear any monster or shopkeeper for free; the bag test and the waits misfired.
+- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `grabPig`, `cancelSlot`, `PIG_GRAB_FRAMES`)
+- **Pinned by:** `bug fixed: clicking a Pig grabs only that Pig, on your faced tile; a removal leaves pig countdowns alone`, `bug fixed: a monster leaving its slot leaves everyone's pig countdown alone`, `bug fixed: a full bag refuses the grab without starting the countdown; a Pig stack takes it` (packages/server/tests/npcs-trade.test.ts)
+
+#### NPC chatter comes on a steady interval
+- **Kind:** Bug fixed
+- **What you notice:** A God speaks one of its lines every 150 seconds while players are on its map, whether one player is there or twenty. Everyone on the map sees the line.
+- **1.6:** Each player's game rolled the chatter separately, on a ladder meant to make each roll rarer as players joined. It read the player list from the wrong copy of a text member, which held only "King" and a return, so every roll was 1 in 400 (1 in 6,000 frames with its first roll) and a crowded screen heard a line from every player's roll.
+- **SSO:** Each talking NPC counts down once per tick and speaks when it reaches 0. The interval is the operator setting `npcChatterSeconds` (default 150, 1.6's average with one player).
+- **Why:** The ladder never worked, and a steady rate is what it was trying to give.
+- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`chatterTick`), `packages/server/src/systems/world/tick.ts` (`tick`)
+- **Pinned by:** `bug fixed: a talking NPC speaks once per interval, whatever the crowd; then the line`, `bug fixed: the tick says it once to the whole map, however many players are on it` (packages/server/tests/npcs-trade.test.ts)
+
+#### Players and monsters block monsters
+- **Kind:** Bug fixed
+- **What you notice:** A monster no longer walks through you, another monster or a static NPC. A hostile monster that reaches you stops beside you. Airship riders block nothing, as they block no player.
+- **1.6:** A monster's step checked only blocked tiles, the screen edge and water, so monsters passed through players and each other and could share a tile.
+- **SSO:** A step onto a tile where a player stands, or that another monster covers (all six tiles of an Overlord or Mutant Worm), is skipped like a step into a wall; a big monster's own footprint is tested too.
+- **Why:** Walking through solid things broke the picture the rest of the game draws, where players cannot walk through monsters.
+- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`nextStep`, `occupied`, `monsterCells`)
+- **Pinned by:** `bug fixed: players and other monsters block a monster's step`, `bug fixed: a 3×2 monster's footprint blocks and is blocked` (packages/server/tests/monsters.test.ts)
+
+#### A calm monster keeps walking
+- **Kind:** Bug fixed
+- **What you notice:** A Passive monster that has not been provoked no longer freezes for a beat now and then on a map where fighting is allowed.
+- **1.6:** Its attack roll was a 1-in-10 draw, and on a 1 its whole step routine ended early, skipping that frame's walk tick.
+- **SSO:** An attack roll never touches the monster's walk.
+- **Why:** The stall came from an early exit placed before the walk code, not from any rule about calm monsters.
+- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`), `packages/server/src/systems/world/tick.ts` (`tick`)
+- **Pinned by:** `bug fixed: an unprovoked Passive monster's random(10) = 1 does not hold up its walk` (packages/server/tests/monsters.test.ts)
+
+#### Death blames the monster that last hurt you
+- **Kind:** Bug fixed
+- **What you notice:** "*** Bob was just killed by a Slime." names a monster whose hit counted, never one whose hit was ignored while you blinked.
+- **1.6:** The monster hit handler recorded the attacker's name before the blink check exited.
+- **SSO:** The name is recorded only once the blink check has passed.
+- **Why:** An ignored hit should leave no trace.
+- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`)
+- **Pinned by:** `bug fixed: a roll ignored while you blink names no one` (packages/server/tests/monsters.test.ts)
+
+#### A death drop is a random item from your bag
+- **Kind:** Bug fixed
+- **What you notice:** When you die and drop an item, it is one of the items in your bag at random, from any line. Crystals never drop; an item that only has the word in its name, such as a Crystal Axe, can.
+- **1.6:** The game counted the filled lines among 1 to 8 and picked a line number up to that count, so with gaps in your bag the pick could land on an empty line and nothing dropped, and lines 9 to 15 never dropped. A crystal stack picked dropped nothing, by an explicit check.
+- **SSO:** The pick is one of the bag's lines other than the six colours of crystal (matched by whole name, not by "contains"), every line counting, with the same single draw; one unit of it drops.
+- **Why:** The count was meant to pick among the items you carry. The crystal check was deliberate and stays, but a crystal stack no longer uses up the drop.
+- **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`, `isCrystal`)
+- **Pinned by:** `bug fixed: the death drop picks one of the bag's items at random; crystals never` (packages/shared/tests/inventory/inventory.test.ts)
+
 ### social
 
 #### Guild names lose ; ` and '
@@ -2428,6 +2601,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Rolled vitals would reward deleting and remaking a character until it rolled the best health. If starting vitals change, each class would get fixed values as a balance change, never a roll.
 - **In the code:** `packages/shared/src/rules/progression/creation.ts` (`startingCharacter`)
 - **Pinned by:** `kept on purpose: vitals are the literal 20/20/20/20 for every class, Fighter included` (packages/shared/tests/progression/creation.test.ts)
+
+### A map holds four monsters
+- **Kind:** Kept on purpose
+- **What you notice:** Nothing: a map's roster has four slots, so no screen ever holds more than four spawned monsters.
+- **1.6:** Spells and arrows looped over five monster sprites but melee over four, and code for a fifth roster slot sat switched off. No map ever filled a fifth slot and it never spawned.
+- **SSO:** Each map has exactly four roster slots (sprites 180-183), in the World Editor, the protocol and the database.
+- **Why:** Four monsters a map is the game as it was played and designed; the fifth slot's code was a leftover, not an intended feature, so it is not added. The bug ledger listed this twice (the fifth slot, and four monsters a screen); this entry resolves both.
+- **In the code:** `packages/server/src/systems/monsters/slots.ts` (`MonsterSlot`)
+- **Pinned by:** `kept on purpose: slot 5 never spawns: a roster has four slots` (packages/server/tests/monsters.test.ts)
+
+### NPC windows open from anywhere on the screen
+- **Kind:** Kept on purpose
+- **What you notice:** Clicking an NPC anywhere on your screen opens its window, however far away it stands.
+- **1.6:** The click had no range check.
+- **SSO:** The same: no range check.
+- **Why:** NPCs walk, so a range would make a shopkeeper's window come and go as it wanders; clicking across the screen is how the game was played.
+- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`)
+- **Pinned by:** `kept on purpose: an NPC's Bio opens from anywhere on the screen` (packages/server/tests/npcs-trade.test.ts)
 
 ## Server authority and exploits
 
@@ -3511,7 +3702,7 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Exactly two actor passes per frame
 - **Kind:** Architecture
-- **What you notice:** On occasional frames, walking, monster steps, attack rolls, hit immunity and regeneration run one or more calls slower than they could in 1.6; brief extra hit-blink flashes are absent.
+- **What you notice:** On occasional frames, walking, monster steps, attack rolls, hit immunity and regeneration run one or more calls slower than they could in 1.6.
 - **1.6:** Director 8.5 ran an actor pass for each frame transition or stage update. The play frame normally triggered two passes, but redraw, exit and death handlers could add passes. A measured run had 452 frames with two passes, 28 with three, one with four and two with five.
 - **SSO:** Every frame runs exactly two passes in the original order: frame counters, first pass, key poll and second pass. Extra passes are not modeled.
 - **Why:** The extra calls depended on client display redraws; reproducing them would tie server timing to the original display plumbing.

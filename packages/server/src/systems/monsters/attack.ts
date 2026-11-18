@@ -42,9 +42,12 @@ export interface AttackOutcome {
   lines: string[];
 }
 
-/** The attack table value: a name with no entry hits for 35, as in 1.6. */
-export function monsterAttackValue(name: string): number {
-  return species(name)?.attack ?? 35;
+/**
+ * The attack table value, or null for a name with no entry, which never melees (a bug fixed: 1.6
+ * hit for 35 with any name its table did not list, such as a shopkeeper's).
+ */
+export function monsterAttackValue(name: string): number | null {
+  return species(name)?.attack ?? null;
 }
 
 export interface MonsterAttackCtx {
@@ -57,50 +60,56 @@ export interface MonsterAttackCtx {
 }
 
 /**
- * One monster's attack block for one victim. Returns the outcome when the monster acted, and
- * `stall` when a Passive monster's roll left its `stepFrame` early (the walk tick is skipped).
+ * One monster's attack block for one victim. Returns the outcome when the monster acted, else
+ * null. It never holds up the monster's walk (a bug fixed: in 1.6 an unprovoked Passive monster's
+ * roll of 1 left its `stepFrame` early and skipped that frame's walk tick).
  */
 export function monsterAttack(
   map: WorldMap,
   slot: MonsterSlot,
   p: Player,
   ctx: MonsterAttackCtx,
-): { outcome: AttackOutcome | null; stall: boolean } {
+): AttackOutcome | null {
   const m = slot.live;
-  const none = { outcome: null, stall: false };
   if (!m || p.loading > 0 || p.deadLock > 0) {
-    return none;
+    return null;
   }
   const sp = species(m.name);
   // Officers also fight a wanted player on a no-fight map.
   const canFight =
     map.flags.canFight === "X" || (anyMatch(monstersData.rules.officer, m.name) && p.char.wanted);
-  // Webs never attack (body 92).
-  if (p.dontHitMeAgain || !canFight || sp?.body === 92) {
-    return none;
+  // Webs never attack (body 92), nor does a name with no attack entry.
+  const attack = monsterAttackValue(m.name);
+  if (p.dontHitMeAgain || !canFight || sp?.body === 92 || attack === null) {
+    return null;
   }
   if (ctx.rng.random(10) !== 1) {
-    return none;
+    return null;
   }
   if (hasFlag(ctx.npcs, m.name, "Passive") && !p.npcAttackFlag) {
-    return { outcome: null, stall: true };
+    return null;
   }
   // A monster never melees an Airship rider, after the `random(10)` draw and the Passive gate, so
   // the RNG order is unchanged.
   if (p.vehicle) {
-    return none;
+    return null;
   }
   if (p.deathPause >= 1) {
-    return none;
+    return null;
   }
   if (!monsterReaches({ x: m.x, y: m.y, footprint: isFootprint(m.name) }, p)) {
-    return none;
+    return null;
   }
-  return { outcome: hitMe2(slot, p, ctx), stall: false };
+  return hitMe2(slot, p, attack, ctx);
 }
 
 /** The monster's hit on a player. */
-function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutcome | null {
+function hitMe2(
+  slot: MonsterSlot,
+  p: Player,
+  attack: number,
+  ctx: MonsterAttackCtx,
+): AttackOutcome | null {
   const m = slot.live as NonNullable<MonsterSlot["live"]>;
   if (ctx.immortal(p)) {
     return null; // immortals take no damage, from monsters or players
@@ -109,22 +118,16 @@ function hitMe2(slot: MonsterSlot, p: Player, ctx: MonsterAttackCtx): AttackOutc
   if (!p.char.wanted && anyMatch(monstersData.rules.sparesInnocent, m.name)) {
     return null;
   }
-  p.lastToHitMe = `a ${m.name}`; // before the i-frame test
-  p.lastToHitId = null;
+  // A roll ignored while you blink names no one (a bug fixed: 1.6 recorded the attacker first).
   if (p.flicker > 0) {
     return null;
   }
+  p.lastToHitMe = `a ${m.name}`;
+  p.lastToHitId = null;
   const f = fighterOf(p);
   const map = p.map;
   const shielded = onHolyShield(p, map.slots);
-  const hit = monsterHitsPlayer(
-    monsterAttackValue(m.name),
-    f,
-    p.defenseBonus,
-    ctx.rng,
-    shielded,
-    p.lastToHitMe,
-  );
+  const hit = monsterHitsPlayer(attack, f, p.defenseBonus, ctx.rng, shielded, p.lastToHitMe);
   const lines: string[] = [];
   const parry = skillIndex("Parry");
   const block = skillIndex("Block");

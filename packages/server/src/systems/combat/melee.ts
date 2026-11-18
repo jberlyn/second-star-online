@@ -49,7 +49,6 @@ import { isCrafting } from "../crafting/craft.ts";
 import { type GatherCtx, type GatherEvents, preSwing, toolSwing } from "../crafting/gather.ts";
 import { addGround, ItemOut } from "../inventory/items.ts";
 import { DODGE_COLOR, fighterOf, HIT_COLOR } from "../monsters/attack.ts";
-import { PIG_CNCL_FRAMES } from "../monsters/npc.ts";
 import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, isFootprint, type MonsterSlot, species } from "../monsters/slots.ts";
 import { shootArrow, swingFireballs } from "../spells/cast.ts";
@@ -442,12 +441,7 @@ function smash(
   // Death is HP < 0. The kill block does not exit, but the sprite has already been moved off the
   // stage, so the splat and floatie land off-screen.
   slot.live = null;
-  slot.lastHp = m.hp;
   ev.hits.push({ slot, dmg, kill: true });
-  // Every client that receives the kill's `M<k>Cncl` starts its pig countdown at 20.
-  for (const o of room.players) {
-    o.piggie = PIG_CNCL_FRAMES;
-  }
   // The monster's loot drops on the tile it is drawn nearest.
   const loot = rollLoot(npcFileNamed(room.npcs, m.name)?.loot ?? null, ctx.rng);
   if (loot && ctx.world) {

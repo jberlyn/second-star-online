@@ -42,9 +42,13 @@ describe("content report (lists every name rule a name matches)", () => {
   });
 
   test("Wolf is inside the World Editor's monster list text", () => {
-    // `leansToward`: `MonsterList contains MonsterName`, reverse contains.
-    expect(text("Wolf")).toContain("editorLists.worldEditor.monsters (leansToward): yes");
-    expect(text("Moonblade")).toContain("editorLists.worldEditor.monsters (leansToward): no");
+    // `inMonsterList`: `MonsterList contains MonsterName`, reverse contains.
+    expect(text("Wolf")).toContain(
+      "editorLists.worldEditor.monsters (inMonsterList; leansToward by whole entry): yes",
+    );
+    expect(text("Moonblade")).toContain(
+      "editorLists.worldEditor.monsters (inMonsterList; leansToward by whole entry): no",
+    );
   });
 
   test("Firebolt Book: the spells book table's last match is Firebolt, not Bolt", () => {

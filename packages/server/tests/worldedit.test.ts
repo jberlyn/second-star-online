@@ -184,12 +184,7 @@ describe("persistence (real SQL)", () => {
     const db = openDatabase();
     migrate(db);
     const id = findMapByCoords(db, 1000, 992)?.id as string;
-    saveSlots(
-      db,
-      id,
-      [{ slot: 1, species: "Slime", live: null, lastHp: null, home: { x: 4, y: 7 } }],
-      "now",
-    );
+    saveSlots(db, id, [{ slot: 1, species: "Slime", live: null, home: { x: 4, y: 7 } }], "now");
     expect(loadSlots(db, id)[0]?.home).toEqual({ x: 4, y: 7 });
     expect(loadSlots(db, id)[1]?.home).toBeNull();
   });

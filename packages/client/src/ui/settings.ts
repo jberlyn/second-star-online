@@ -131,6 +131,8 @@ export function unitSeconds(n: number, unit: NonNullable<SettingRow["unit"]>): n
       return n / 20;
     case "ms":
       return n / 1000;
+    case "seconds":
+      return n;
     case "minutes":
       return n * 60;
   }
@@ -139,6 +141,7 @@ export function unitSeconds(n: number, unit: NonNullable<SettingRow["unit"]>): n
 const UNIT_WORD: Record<NonNullable<SettingRow["unit"]>, string> = {
   frames: "frames",
   ms: "ms",
+  seconds: "s",
   minutes: "min",
 };
 

@@ -51,7 +51,7 @@ import {
   pileToItem,
 } from "../../src/rules/inventory/inventory.ts";
 import { normaliseLook, paperdollLayers } from "../../src/rules/inventory/paperdoll.ts";
-import { rollDeathDrop, rollLoot } from "../../src/rules/monsters/loot.ts";
+import { isCrystal, rollDeathDrop, rollLoot } from "../../src/rules/monsters/loot.ts";
 
 /** Ctrl by a player of middling Strength away from their own premises. */
 const STRANGER = { str: 50, mine: false };
@@ -474,21 +474,34 @@ describe("loot and the death drop", () => {
     });
     expect(rng.calls).toEqual([2]);
   });
-  test("kept bug: the death drop picks lines 1 to the filled count", () => {
+  test("bug fixed: the death drop picks one of the bag's items at random; crystals never", () => {
     const bag = emptyBag();
     bag[0] = { item: "Apple", qty: 2 };
+    bag[3] = { item: "Blue Crystals", qty: 5 };
     bag[5] = { item: "Knife", qty: 1 };
-    // Two filled lines: random(2) = 2 picks line 2, which is empty: nothing drops.
-    expect(
-      rollDeathDrop({ bag, gold: 0, wanted: false, inVehicle: false }, true, scripted([2])),
-    ).toEqual({
-      kind: "none",
-    });
-    expect(
-      rollDeathDrop({ bag, gold: 0, wanted: false, inVehicle: false }, true, scripted([1])),
-    ).toEqual({
+    bag[13] = { item: "Bread", qty: 1 }; // line 14 counts too
+    const who = { bag, gold: 0, wanted: false, inVehicle: false };
+    // Three items (the crystals are skipped): random(3) picks among Apple, Knife and Bread.
+    const rng = scripted([3]);
+    expect(rollDeathDrop(who, true, rng)).toEqual({ kind: "item", slot: 13 });
+    expect(rng.calls).toEqual([3]);
+    expect(rollDeathDrop(who, true, scripted([2]))).toEqual({ kind: "item", slot: 5 });
+    expect(rollDeathDrop(who, true, scripted([1]))).toEqual({ kind: "item", slot: 0 });
+    // Only whole crystal names count: a "Crystal Axe" can drop.
+    expect(isCrystal("Blue Crystal")).toBe(true);
+    expect(isCrystal("red crystals")).toBe(true);
+    expect(isCrystal("Crystal Axe")).toBe(false);
+    const axe = emptyBag();
+    axe[0] = { item: "Crystal Axe", qty: 1 };
+    expect(rollDeathDrop({ ...who, bag: axe }, true, scripted([1]))).toEqual({
       kind: "item",
       slot: 0,
+    });
+    // Only crystals: nothing drops.
+    const crystals = emptyBag();
+    crystals[0] = { item: "Red Crystals", qty: 9 };
+    expect(rollDeathDrop({ ...who, bag: crystals }, true, scripted([1]))).toEqual({
+      kind: "none",
     });
   });
   test("gold branch draws random(gold), random(200) over 200, again when wanted", () => {

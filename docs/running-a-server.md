@@ -264,6 +264,7 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 | `hazardMap` | Server Spirit map | `null` | Map `x<mx>y<my>` or empty | Map where the Server Spirit throws fireballs and lightning bolts every 0.35 s. |
 | `treasureMaps` | Treasure maps | `[]` | Up to 100 map names (`x<mx>y<my>`) | Maps where buried treasure can spawn for a Shovel; empty disables buried treasure. |
 | `houseDecayTimeZone` | House decay time zone | `UTC` | Valid IANA time zone | Calendar time zone used for monthly house-decay checks. |
+| `npcChatterSeconds` | NPC chatter every | `150` | `10`–`3600` seconds | How often an NPC with `RND\|` lines in its NPC file, such as a God, says one of them; everyone on the map sees it. |
 
 ### Chat
 
@@ -286,7 +287,7 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `lootDecayMinutes` | Loot lasts | `30` | `1`–`10080` minutes | Minutes before monster loot disappears from the ground (player drops and `/drop` items never decay). |
-| `dropOnDeath` | Drop an item on death | `true` | `true` / `false` | Whether dying characters may drop one item from their first 8 bag slots (immortals always drop). |
+| `dropOnDeath` | Drop an item on death | `true` | `true` / `false` | Whether dying characters may drop one random item from their bag, never crystals (immortals always drop). |
 | `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–3rd place prizes when an Assassin's Game ends (4th line is preserved but never awarded). |
 
 ### Server

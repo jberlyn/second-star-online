@@ -57,12 +57,12 @@ describe("monster blocking", () => {
       rng,
       prepare: (db) => {
         db.run(
-          `INSERT OR REPLACE INTO map_slots (map_id, slot, species, live_name, hp, x, y, facing, last_hp, home_x, home_y, updated_at)
-           SELECT id, 1, 'Illusionary Spikes', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-08T00:00:00.000Z' FROM maps WHERE mx = 1000 AND my = 992 AND slot = 0`,
+          `INSERT OR REPLACE INTO map_slots (map_id, slot, species, live_name, hp, x, y, facing, home_x, home_y, updated_at)
+           SELECT id, 1, 'Illusionary Spikes', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-08T00:00:00.000Z' FROM maps WHERE mx = 1000 AND my = 992 AND slot = 0`,
         );
         db.run(
-          `INSERT OR REPLACE INTO map_slots (map_id, slot, species, live_name, hp, x, y, facing, last_hp, home_x, home_y, updated_at)
-           SELECT id, 2, 'Web', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-08T00:00:00.000Z' FROM maps WHERE mx = 1000 AND my = 992 AND slot = 0`,
+          `INSERT OR REPLACE INTO map_slots (map_id, slot, species, live_name, hp, x, y, facing, home_x, home_y, updated_at)
+           SELECT id, 2, 'Web', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-08T00:00:00.000Z' FROM maps WHERE mx = 1000 AND my = 992 AND slot = 0`,
         );
       },
     });

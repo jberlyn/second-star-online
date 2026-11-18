@@ -108,13 +108,14 @@ describe("the playfield on the death frame", () => {
     expect(calls.some((c) => c.name === "drawImage")).toBe(true);
   });
 
-  test("the local player is not drawn while self.hidden", () => {
+  test("design change: the local player is always drawn; no hit blink hides it", () => {
     const shown = stage(false);
     shown.pf.draw(shown.m);
-    const hidden = stage(true);
-    hidden.pf.draw(hidden.m);
+    // An old server's hidden flag is ignored.
+    const flagged = stage(true);
+    flagged.pf.draw(flagged.m);
     const bodiesOf = (l: string[]) => l.filter((n) => !n.startsWith("items/"));
     expect(bodiesOf(shown.looked).length).toBeGreaterThan(0);
-    expect(bodiesOf(hidden.looked)).toEqual([]);
+    expect(bodiesOf(flagged.looked)).toEqual(bodiesOf(shown.looked));
   });
 });

@@ -12,12 +12,12 @@ export const monsterSchema = z.strictObject({
   body: int,
   /** False for the bodies with no `Chars` bitmap (hidden from the editor). */
   bodyInMainChars: z.boolean(),
-  /** Species hit points, or null when the name has no entry (inherits the previous monster's HP, a kept bug). */
-  hp: int.nullable(),
+  /** Species hit points; every species has them. */
+  hp: int,
   /** Death-check HP cap after spell effects (default 200). */
   healCap: int,
-  /** Monster attack table value (default 35). */
-  attack: int,
+  /** Monster attack table value, or null when the name has no entry (it never melees). */
+  attack: int.nullable(),
   /** Cast line 3: subtracted from melee AttPower. */
   defense: int,
   /** Base XP, melee kill table and spell kill table. */
@@ -71,9 +71,11 @@ export const monstersDataSchema = z.strictObject({
     }),
   }),
   rules: z.strictObject({
-    seaSpawn: z.array(patternEntry),
-    seaMove: z.array(patternEntry),
+    /** Sea creatures: they spawn and move only on `sea` tiles. */
+    sea: z.array(patternEntry),
     footprint: z.array(patternEntry),
+    /** Species off `editorLists.worldEditor.monsters` that still walk toward players. */
+    hostile: z.array(patternEntry),
     officer: z.array(patternEntry),
     sparesInnocent: z.array(patternEntry),
     clearsBlock: z.array(patternEntry),

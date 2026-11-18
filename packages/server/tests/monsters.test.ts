@@ -10,6 +10,7 @@ import { seededRng } from "../src/rng.ts";
 import { onArenaTile, setAttackHeld } from "../src/systems/combat/melee.ts";
 import { authorPath, moveLadder, moverPass, nextStep } from "../src/systems/monsters/ai.ts";
 import { monsterAttack, monsterAttackValue } from "../src/systems/monsters/attack.ts";
+import { setNpcFile } from "../src/systems/monsters/npcfiles.ts";
 import {
   type LiveMonster,
   leansToward,
@@ -58,11 +59,11 @@ const chat = (msgs: { to: string; msg: ServerMsg }[], to: string) =>
   msgs.flatMap((m) => (m.to === to && m.msg.t === "chat" ? [m.msg.text] : []));
 
 describe("spawning", () => {
-  test("ladders: spawn 80…1300 by players, move 30…600 then 50 at the 9th", () => {
+  test("bug fixed: ladders: spawn 80…1300 by players, move 30…600 and 600 from the 8th on", () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8].map(spawnLadder)).toEqual([
       80, 120, 230, 400, 600, 900, 1300, 1300,
     ]);
-    expect([1, 2, 8, 9, 15].map(moveLadder)).toEqual([30, 50, 600, 50, 50]);
+    expect([1, 2, 8, 9, 15].map(moveLadder)).toEqual([30, 50, 600, 600, 600]);
   });
 
   test("gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30", () => {
@@ -84,16 +85,17 @@ describe("spawning", () => {
     expect(rng.calls).toEqual([80, 17, 12, 5]);
   });
 
-  test("kept bug: slot 5 never spawns: a roster has four slots", () => {
+  test("kept on purpose: slot 5 never spawns: a roster has four slots", () => {
     expect(testMap("x1").slots.map((s) => s.slot)).toEqual([1, 2, 3, 4]);
   });
 
-  test("kept bug: a failed NPCed roll ends the whole pass", () => {
+  test("bug fixed: a failed NPC roll skips only its own slot", () => {
     const map = withRoster(testMap("x1"), "Trimble", "Slime");
-    const rng = rngByN({ 80: [1], 5: [1, 1], 60: [3] });
-    expect(spawnPass(map, { rng, players: 1, minute: 0 })).toEqual([]);
-    expect(map.slots[1]?.live).toBeNull();
-    expect(rng.calls.filter((n) => n === 17)).toHaveLength(1);
+    const rng = rngByN({ 80: [1], 17: [4, 7], 12: [4, 3], 5: [1, 1], 60: [3] });
+    const spawned = spawnPass(map, { rng, players: 1, minute: 0 });
+    expect(spawned.map((s) => s.slot)).toEqual([2]);
+    expect(map.slots[0]?.live).toBeNull();
+    expect(map.slots[1]?.live).toMatchObject({ name: "Slime", x: 7, y: 3 });
   });
 
   test("Zombies spawn only in server minutes 36-48", () => {
@@ -109,26 +111,41 @@ describe("spawning", () => {
     expect(at(49)).toBe(0);
   });
 
-  test("kept bug: a species with no HP entry inherits the slot's last HP", () => {
-    const map = testMap("x1");
-    const slot = map.slots[0] as MonsterSlot;
-    slot.lastHp = -3;
-    expect(placeMonster(slot, "Trimble", 4, 4, rngByN()).hp).toBe(-3);
-    expect(placeMonster(slot, "Slime", 4, 4, rngByN()).hp).toBe(14);
+  test("bug fixed: every species has hit points; 1.6's unlisted ones and unknown names get 1", () => {
+    expect(species("Trimble")?.hp).toBe(1); // no row in 1.6's HP table
+    expect(placeMonster("Trimble", 4, 4, rngByN()).hp).toBe(1);
+    expect(placeMonster("Slime", 4, 4, rngByN()).hp).toBe(14);
+    expect(placeMonster("Angela", 4, 4, rngByN()).hp).toBe(389);
+    expect(placeMonster("Not In The Data", 4, 4, rngByN()).hp).toBe(1);
   });
 
-  test("kept bug: the footprint test is skipped at x > 12 or y > 9", () => {
+  test("bug fixed: the footprint test runs wherever the anchor is", () => {
     const map = testMap("x1", [[14, 3]]);
-    expect(refusesTile(map, "Overlord", 13, 4)).toBe(false); // (14,3) is a tree
+    expect(refusesTile(map, "Overlord", 13, 4)).toBe(true); // (14,3) is the (+1,−1) cell
     expect(refusesTile(map, "Overlord", 12, 4)).toBe(true); // (14,3) is the (+2,−1) cell
+    expect(refusesTile(map, "Overlord", 10, 4)).toBe(false);
+    const low = testMap("x2", [[16, 10]]);
+    expect(refusesTile(low, "Mutant Worm", 14, 11)).toBe(true); // (16,10) is the (+2,−1) cell
+    // A cell off the screen never refuses.
+    expect(refusesTile(low, "Mutant Worm", 17, 11)).toBe(false);
   });
 
-  test("kept bug: five sea creatures spawn on land; Squid needs water", () => {
+  test("bug fixed: every sea creature spawns only on water", () => {
     const map = testMap("x1", [], (x) => (x === 3 ? "W1" : "G1"));
-    expect(refusesTile(map, "Krommie", 5, 5)).toBe(false);
-    expect(refusesTile(map, "Squid", 5, 5)).toBe(true);
-    // W1 is not on the on-foot whitelist, so Krommie can never spawn on water.
-    expect(refusesTile(map, "Squid", 3, 5)).toBe(false);
+    for (const name of [
+      "Squid",
+      "Shark",
+      "Mizella",
+      "Krommie",
+      "Jelstar",
+      "Merius",
+      "Mellanie",
+      "Minmaye",
+    ]) {
+      expect([name, refusesTile(map, name, 5, 5)]).toEqual([name, true]);
+      expect([name, refusesTile(map, name, 3, 5)]).toEqual([name, false]);
+    }
+    expect(refusesTile(map, "Slime", 3, 5)).toBe(true);
   });
 
   test("a client takes no spawn rolls for 44 frames after entering a map: the 45-frame spawn countdown runs before actor pass 1", () => {
@@ -144,12 +161,51 @@ describe("spawning", () => {
 });
 
 describe("monster movement", () => {
-  test("a hostile path leans toward the author by pixel position", () => {
+  test("a hostile walk leans toward the author by pixel position", () => {
     const map = testMap("x1");
     const m = live(map, 1, "Slime", 5, 5);
     const a = player("a", map, 5, 9); // below, same column: L, R or D
-    const path = authorPath(ARCHIVE_NPCS, m, a, rngByN({ 10: [4], 3: [1, 2, 3, 3] }));
-    expect(path).toEqual(["L", "R", "D", "D"]);
+    const plan = authorPath(ARCHIVE_NPCS, m, a, rngByN({ 10: [4] }));
+    expect(plan).toEqual({ queue: [], chase: { id: "a", steps: 4 } });
+    m.chase = plan?.chase;
+    const rng = rngByN({ 3: [3] });
+    expect(nextStep(map, map.slots[0] as MonsterSlot, { players: [a], rng })).not.toBeNull();
+    expect([m.x, m.y, m.facing]).toEqual([5, 6, "S"]);
+    expect(m.chase).toEqual({ id: "a", steps: 3 });
+  });
+
+  test("bug fixed: each chase step aims at where its player stands now", () => {
+    const map = testMap("x1");
+    const m = live(map, 1, "Slime", 5, 5);
+    const a = player("a", map, 5, 9);
+    m.chase = { id: "a", steps: 2 };
+    const ctx = { players: [a], rng: rngByN({ 3: [3, 2] }) };
+    nextStep(map, map.slots[0] as MonsterSlot, ctx); // D, toward a below
+    expect([m.x, m.y]).toEqual([5, 6]);
+    // a walks off to the right: the next step's choices are D, R and U, not L, R and D.
+    a.x = 12;
+    a.y = 6;
+    m.anim = 0;
+    nextStep(map, map.slots[0] as MonsterSlot, ctx);
+    expect([m.x, m.y, m.facing]).toEqual([6, 6, "E"]);
+    expect(m.chase).toBeNull();
+  });
+
+  test("a chase ends when its player leaves the map", () => {
+    const map = testMap("x1");
+    const m = live(map, 1, "Slime", 5, 5);
+    m.chase = { id: "gone", steps: 5 };
+    expect(nextStep(map, map.slots[0] as MonsterSlot, { players: [], rng: rngByN() })).toBeNull();
+    expect([m.x, m.y]).toEqual([5, 5]);
+    expect(m.chase).toBeNull();
+  });
+
+  test("a random walk is drawn whole at authoring", () => {
+    const map = testMap("x1");
+    const m = live(map, 1, "Kin", 5, 5); // not on the hostile list
+    const a = player("a", map, 5, 9);
+    const plan = authorPath(ARCHIVE_NPCS, m, a, rngByN({ 10: [3], 4: [1, 2, 3] }));
+    expect(plan).toEqual({ queue: ["U", "D", "L"], chase: null });
   });
 
   test("Still or file-less species never move", () => {
@@ -166,14 +222,14 @@ describe("monster movement", () => {
     const map = testMap("x1", [[5, 4]]);
     const m = live(map, 1, "Slime", 5, 5);
     m.queue = ["U", "U", "R"];
-    const step = nextStep(map, map.slots[0] as MonsterSlot);
+    const step = nextStep(map, map.slots[0] as MonsterSlot, { players: [], rng: rngByN() });
     expect(step).toMatchObject({ fromX: 5, fromY: 5 });
     expect([m.x, m.y, m.facing, m.anim]).toEqual([6, 5, "E", 16]);
     expect(map.slots[0]?.pause).toBe(90);
     expect(m.queue).toEqual([]);
   });
 
-  test("kept bug: slot 2's pause after authoring is 0 when no step can start", () => {
+  test("bug fixed: every slot waits 30 after authoring when no step can start", () => {
     const map = testMap("x1", [
       [4, 5],
       [6, 5],
@@ -183,41 +239,95 @@ describe("monster movement", () => {
     live(map, 1, "Slime", 2, 2);
     live(map, 2, "Slime", 5, 5); // boxed in by trees
     const a = player("a", map, 10, 10);
-    moverPass(ARCHIVE_NPCS, map, a, 1, rngByN({ 30: [2], 10: [3] }));
-    expect(map.slots[1]?.pause).toBe(0);
-    moverPass(ARCHIVE_NPCS, map, a, 1, rngByN({ 30: [1], 10: [3] }));
+    moverPass(ARCHIVE_NPCS, map, a, 1, rngByN({ 30: [2], 10: [3] }), [a]);
+    expect(map.slots[1]?.pause).toBe(30);
+    moverPass(ARCHIVE_NPCS, map, a, 1, rngByN({ 30: [1], 10: [3] }), [a]);
     expect(map.slots[0]?.pause).toBe(90);
   });
 
-  test("steps follow back to back, 16 calls = 8 frames each, and players never block them", () => {
+  test("steps follow back to back, 16 calls = 8 frames each", () => {
     const map = testMap("x1000y992");
-    const m = live(map, 1, "Slime", 5, 5);
+    const m = live(map, 1, "Cow", 5, 5);
     const { join, run, world } = setup([map], undefined, rngByN());
-    const a = player("a", map, 6, 5);
+    const a = player("a", map, 12, 8);
     join(a);
     m.queue = ["R", "R"];
-    nextStep(map, map.slots[0] as MonsterSlot);
-    expect([m.x, m.y]).toEqual([6, 5]); // onto the player's tile
+    nextStep(map, map.slots[0] as MonsterSlot, { players: [a], rng: rngByN() });
+    expect([m.x, m.y]).toEqual([6, 5]);
     run(8);
     expect([m.x, m.y]).toEqual([7, 5]);
     expect(m.anim).toBe(16);
     expect(world.tickNo).toBe(8);
   });
+
+  test("bug fixed: players and other monsters block a monster's step", () => {
+    const map = testMap("x1");
+    const m = live(map, 1, "Slime", 5, 5);
+    live(map, 2, "Orc", 5, 4);
+    const a = player("a", map, 6, 5);
+    const ctx = { players: [a], rng: rngByN() };
+    m.queue = ["R", "U", "D"]; // R onto a, U onto the Orc: both skipped
+    expect(nextStep(map, map.slots[0] as MonsterSlot, ctx)).toMatchObject({ fromX: 5, fromY: 5 });
+    expect([m.x, m.y]).toEqual([5, 6]);
+    // An Airship rider blocks no one.
+    a.vehicle = "Airship";
+    m.anim = 0;
+    m.queue = ["R"];
+    nextStep(map, map.slots[0] as MonsterSlot, ctx);
+    expect([m.x, m.y]).toEqual([6, 6]);
+  });
+
+  test("bug fixed: a 3×2 monster's footprint blocks and is blocked", () => {
+    const map = testMap("x1");
+    const worm = live(map, 1, "Mutant Worm", 5, 5); // covers (5-7, 4-5)
+    const m = live(map, 2, "Slime", 8, 4);
+    m.queue = ["L", "D"]; // L onto (7,4), a footprint cell: skipped
+    nextStep(map, map.slots[1] as MonsterSlot, { players: [], rng: rngByN() });
+    expect([m.x, m.y]).toEqual([8, 5]);
+    // The worm's step R would cover (8,5), where the Slime now stands.
+    worm.queue = ["R"];
+    expect(nextStep(map, map.slots[0] as MonsterSlot, { players: [], rng: rngByN() })).toBeNull();
+  });
 });
 
 describe("kept bugs in the monster tables", () => {
-  test("kept bug: the hostile list is matched by contains: Dragon leans via Dragon Hatchling, Overlord wanders", () => {
-    expect(leansToward("Dragon")).toBe(true);
-    expect(leansToward("Overlord")).toBe(false);
+  test("bug fixed: the hostile list is matched by whole entries; Dragon and Overlord lean by rule", () => {
     expect(leansToward("Slime")).toBe(true);
+    expect(leansToward("slime")).toBe(true);
+    expect(leansToward("Dragon")).toBe(true);
+    expect(leansToward("Overlord")).toBe(true);
+    // Parts of entries no longer match.
+    expect(leansToward("Hatchling")).toBe(false);
+    expect(leansToward("Snow")).toBe(false);
+    expect(leansToward("Trimble")).toBe(false);
   });
-  test("kept bug: a name with no attack entry hits for 35", () => {
-    expect(monsterAttackValue("Trimble")).toBe(35);
+  test("bug fixed: a name with no attack entry never melees", () => {
+    expect(monsterAttackValue("Trimble")).toBeNull();
+    // Angela, Trianus and Corin have 1.6 HP rows but no attack row; the Officer has both.
+    for (const name of ["Angela", "Trianus", "Corin"]) {
+      expect([name, monsterAttackValue(name)]).toEqual([name, null]);
+    }
+    expect(monsterAttackValue("Officer")).toBe(35);
+    expect(monsterAttackValue("Not A Monster")).toBeNull();
     expect(monsterAttackValue("Slime")).toBe(1);
+    const map = testMap("x1000y992");
+    live(map, 1, "Trimble", 5, 6);
+    const a = player("a", map, 5, 5);
+    a.flicker = 0;
+    const rng = rngByN({ 10: [1] });
+    expect(
+      monsterAttack(map, map.slots[0] as MonsterSlot, a, {
+        rng,
+        npcs: ARCHIVE_NPCS,
+        immortal: () => false,
+      }),
+    ).toBeNull();
+    expect(rng.calls).toEqual([]);
+    expect(a.char.vitals.hp).toBe(20);
   });
-  test('kept bug: the "Snared Load" typo in the attack table misses the Snared Loah, which hits for the default 35, not 18', () => {
-    expect(species("Snared Loah")?.attack).toBe(35);
-    expect(monsterAttackValue("Snared Loah")).toBe(35);
+  test("bug fixed: the Snared Loah hits for its own 18", () => {
+    expect(species("Snared Loah")?.attack).toBe(18);
+    expect(monsterAttackValue("Snared Loah")).toBe(18);
   });
   test('a parried monster hit can raise Parry: "You have advanced in the art of Parry!"', () => {
     const map = testMap("x1000y992");
@@ -232,10 +342,7 @@ describe("kept bugs in the monster tables", () => {
       npcs: ARCHIVE_NPCS,
       immortal: () => false,
     });
-    expect([r.outcome?.text, r.outcome?.lines]).toEqual([
-      "Parry",
-      ["You have advanced in the art of Parry!"],
-    ]);
+    expect([r?.text, r?.lines]).toEqual(["Parry", ["You have advanced in the art of Parry!"]]);
     expect(a.char.skills[skillIndex("Parry")]).toBe(61);
   });
   test('a blocked monster hit can raise Block at Parry > 50: "You have advanced in the art of Block!"', () => {
@@ -252,10 +359,7 @@ describe("kept bugs in the monster tables", () => {
       npcs: ARCHIVE_NPCS,
       immortal: () => false,
     });
-    expect([r.outcome?.text, r.outcome?.lines]).toEqual([
-      "Block",
-      ["You have advanced in the art of Block!"],
-    ]);
+    expect([r?.text, r?.lines]).toEqual(["Block", ["You have advanced in the art of Block!"]]);
     expect(a.char.skills[skillIndex("Block")]).toBe(6);
   });
   test("bug fixed: arena tiles on rows 10-12 are arena tiles", () => {
@@ -269,37 +373,40 @@ describe("kept bugs in the monster tables", () => {
     const plainRoom = { ...room, map: plain };
     expect(onArenaTile(plainRoom, 5, 11)).toBe(false);
   });
-  test("kept bug: an unprovoked Passive monster's random(10) = 1 skips its walk tick", () => {
+  test("bug fixed: an unprovoked Passive monster's random(10) = 1 does not hold up its walk", () => {
     const map = testMap("x1000y992");
-    const m = live(map, 1, "Kin", 5, 5);
+    const m = live(map, 1, "Orc", 5, 5);
     m.anim = 10;
-    const a = player("a", map, 9, 9);
-    const r = monsterAttack(map, map.slots[0] as MonsterSlot, a, {
-      rng: rngByN({ 10: [1] }),
-      npcs: ARCHIVE_NPCS,
-      immortal: () => false,
-    });
-    expect(r).toEqual({ outcome: null, stall: true });
-    a.npcAttackFlag = true;
-    const provoked = monsterAttack(map, map.slots[0] as MonsterSlot, a, {
-      rng: rngByN({ 10: [1] }),
-      npcs: ARCHIVE_NPCS,
-      immortal: () => false,
-    });
-    expect(provoked.stall).toBe(false);
+    (map.slots[0] as MonsterSlot).pause = 10_000;
+    const { join, run, world } = setup([map], undefined, rngByN({ 10: [1, 1, 1, 1] }));
+    setNpcFile(world.npcs, "Orc", "FLG|Passive");
+    const a = player("a", map, 12, 9);
+    join(a);
+    a.loading = 0;
+    run(1);
+    // Both actor passes walk it, whatever the attack roll.
+    expect(m.anim).toBe(8);
   });
-  test("kept bug: the last monster to roll against you is blamed, even during i-frames", () => {
+  test("bug fixed: a roll ignored while you blink names no one", () => {
     const map = testMap("x1000y992");
     live(map, 1, "Orc", 5, 6);
     const a = player("a", map, 5, 5);
     a.flicker = 20;
+    a.lastToHitMe = "a Slime";
+    monsterAttack(map, map.slots[0] as MonsterSlot, a, {
+      rng: rngByN({ 10: [1] }),
+      npcs: ARCHIVE_NPCS,
+      immortal: () => false,
+    });
+    expect(a.lastToHitMe).toBe("a Slime");
+    expect(a.char.vitals.hp).toBe(20);
+    a.flicker = 0;
     monsterAttack(map, map.slots[0] as MonsterSlot, a, {
       rng: rngByN({ 10: [1] }),
       npcs: ARCHIVE_NPCS,
       immortal: () => false,
     });
     expect(a.lastToHitMe).toBe("a Orc");
-    expect(a.char.vitals.hp).toBe(20);
   });
 });
 
@@ -320,7 +427,6 @@ describe("melee", () => {
     expect(hits.map((h) => (h.e === "mhit" ? h.dmg : 0))).toEqual([4, 4, 4, 4]);
     expect(hits.at(-1)).toMatchObject({ kill: true });
     expect(map.slots[0]?.live).toBeNull();
-    expect(map.slots[0]?.lastHp).toBe(-2);
     expect(a.char.vitals.exp).toBe(23);
   });
 
@@ -394,65 +500,41 @@ describe("monster attacks and death", () => {
     expect(a.lastToHitMe).toBe("a Slime");
   });
 
-  /** A Slime beside `a` hits in the actor pass that draws random(10) = 1 (`first` rolls before). */
-  function blinkScene(first: number) {
+  test("design change: a monster hit starts 40 calls of i-frames and never hides your sprite", () => {
     const map = testMap("x1000y992");
-    const rolls = [...Array(first).fill(2), 1];
-    const { join, run } = setup([map], undefined, rngByN({ 10: rolls, 3: [3, 3, 3, 3] }));
+    const { join, run } = setup([map], undefined, rngByN({ 10: [1], 3: [3, 3, 3, 3] }));
     const a = player("a", map, 5, 5);
     a.flicker = 0;
     join(a);
     live(map, 1, "Slime", 5, 6);
     (map.slots[0] as MonsterSlot).pause = 10_000;
-    /** `hidden` at the end of each of `n` ticks. */
-    const hiddenAtTickEnds = (n: number) => {
-      const seen: boolean[] = [];
-      for (let i = 0; i < n; i++) {
-        run(1);
-        seen.push(a.hidden);
-      }
-      return seen;
-    };
-    return { a, run, hiddenAtTickEnds };
-  }
-
-  test("kept bug: a monster hit in pass 1 hides your sprite for the whole 20 frames, not a blink", () => {
-    const { a, hiddenAtTickEnds } = blinkScene(0);
-    // The hit lands in pass 1 of tick 1, after the player sprite's call: 40 calls are left, the
-    // first in pass 2, so every tick ends with the flip count odd (hidden) until the last call.
-    const seen = hiddenAtTickEnds(22);
-    expect(seen.slice(0, 20)).toEqual(Array(20).fill(true));
-    expect(seen.slice(20)).toEqual([false, false]);
+    const out = run(1);
+    // Hit in pass 1, then one call in pass 2.
+    expect(a.flicker).toBe(39);
+    out.push(...run(20));
     expect(a.flicker).toBe(0);
+    const selves = out.flatMap((o) => (o.to === "a" && o.msg.t === "you" ? [o.msg.self] : []));
+    expect(selves.every((y) => !("hidden" in y))).toBe(true);
   });
 
-  test("a monster hit in pass 2 leaves your sprite drawn (an even count of flips per frame)", () => {
-    const { a, hiddenAtTickEnds } = blinkScene(1);
-    const seen = hiddenAtTickEnds(22);
-    expect(seen.every((h) => !h)).toBe(true);
-    expect(a.flicker).toBe(0);
-  });
-
-  test("login: the counter starts at 40 with the sprite shown", () => {
+  test("login: the i-frame counter starts at 40", () => {
     const map = testMap("x1000y992");
     const { join } = setup([map], undefined, rngByN());
     const a = player("a", map, 5, 5);
     join(a);
-    expect([a.flicker, a.hidden]).toEqual([40, false]);
+    expect(a.flicker).toBe(40);
   });
 
-  test("a map load shows the sprite again; the counter keeps running", () => {
+  test("a map load keeps the i-frame counter running", () => {
     const map = testMap("x1000y992");
     const { join, run, world } = setup([map], undefined, rngByN());
     const a = player("a", map, 5, 5);
     join(a);
     run(1);
-    expect([a.hidden, a.flicker]).toEqual([false, 38]);
-    a.hidden = true; // mid-blink
+    expect(a.flicker).toBe(38);
     leaveRoom(world, a);
     enterRoom(world, a);
-    expect(a.hidden).toBe(false);
-    expect(a.flicker).toBeGreaterThan(0);
+    expect(a.flicker).toBe(38);
   });
 
   test('death: the dying player gets { t: "death" } after the tick\'s vitals, once, and nobody else does', () => {
@@ -547,7 +629,7 @@ describe("monster attacks and death", () => {
         queue: ["R"],
         hitCountb: 0,
       };
-      expect(nextStep(land, slot)).toBeNull();
+      expect(nextStep(land, slot, { players: [], rng: rngByN() })).toBeNull();
       const water = testMap("x1000y992", [], () => "W1");
       const wSlot = water.slots[0] as MonsterSlot;
       wSlot.live = {
@@ -562,7 +644,7 @@ describe("monster attacks and death", () => {
         queue: ["R"],
         hitCountb: 0,
       };
-      expect(nextStep(water, wSlot)).not.toBeNull();
+      expect(nextStep(water, wSlot, { players: [], rng: rngByN() })).not.toBeNull();
     }
   });
 

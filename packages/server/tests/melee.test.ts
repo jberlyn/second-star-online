@@ -163,31 +163,27 @@ describe("PvP melee", () => {
   });
 });
 
-describe("the hit blink on the victim's screen only", () => {
-  test("a melee hit (key poll) hides the victim's sprite for 20 frames; the attacker's screen shows no blink on the victim", () => {
+describe("the hit's i-frames", () => {
+  test("a melee hit starts the victim's i-frames; no sprite is hidden on anyone's screen", () => {
     const s = scene();
     const a = s.add("Ann", 5, 5);
     const b = s.add("Bob", 5, 4);
     b.char.skills = Array(38).fill(0);
     a.timers.canAttack = true;
     setAttackHeld(a, true);
-    // The key poll runs between the tick's two actor passes (tick.ts), so one player-sprite
-    // call is left this tick and the flips never cancel: Bob is hidden at every tick end.
-    const out = s.run(1);
+    // The key poll runs between the tick's two actor passes (tick.ts), so one counter call is
+    // left this tick, then two a tick: 40 calls run out in 20 more ticks.
+    const out = [...s.run(1)];
     setAttackHeld(a, false);
     expect(b.flicker).toBe(39);
-    const ticks = [b.hidden];
     for (let i = 0; i < 19; i++) {
-      s.run(1);
-      ticks.push(b.hidden);
+      out.push(...s.run(1));
     }
-    expect(ticks.slice(0, 20).every((h) => h)).toBe(true);
-    s.run(1);
-    expect(b.hidden).toBe(false);
-    const youOf = (to: string) =>
-      out.flatMap((o) => (o.to === to && o.msg.t === "you" ? [o.msg.self] : []));
-    expect(youOf("Bob").some((y) => y.hidden)).toBe(true);
-    expect(youOf("Ann").every((y) => !y.hidden)).toBe(true);
+    expect(b.flicker).toBe(1);
+    out.push(...s.run(1));
+    expect(b.flicker).toBe(0);
+    const selves = out.flatMap((o) => (o.msg.t === "you" ? [o.msg.self] : []));
+    expect(selves.every((y) => !("hidden" in y))).toBe(true);
   });
 });
 

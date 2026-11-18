@@ -193,7 +193,6 @@ export function emptySlots(): MonsterSlot[] {
     species: null,
     live: null,
     pause: 0,
-    lastHp: null,
     dirty: false,
   }));
 }
@@ -302,13 +301,11 @@ export interface Player {
    * release.
    */
   attackRefused: string | null;
-  /** The flicker counter: i-frames. */
-  flicker: number;
   /**
-   * Sprite 112 is hidden on the owner's own screen: each player-sprite call with a counter left
-   * flips it, and the counter's end shows it. Only the player's own client sees it.
+   * The i-frame counter after a hit: monster hits are ignored while it runs. Your sprite stays
+   * drawn (a design change: 1.6 flipped its visibility on every call, so it vanished or blinked).
    */
-  hidden: boolean;
+  flicker: number;
   /** The defense bonus (spells). */
   defenseBonus: number;
   /** No spawn rolls for 45 frames after a map entry. */
@@ -597,7 +594,6 @@ export function sessionCombatState(): Pick<
   | "attackPress"
   | "attackRefused"
   | "flicker"
-  | "hidden"
   | "defenseBonus"
   | "monDropIn"
   | "deathPause"
@@ -662,7 +658,6 @@ export function sessionCombatState(): Pick<
     attackRefused: null,
     // Login starts the i-frames.
     flicker: 40,
-    hidden: false,
     defenseBonus: 0,
     monDropIn: 0,
     deathPause: 0,
@@ -1029,9 +1024,6 @@ export function selfState(p: Player): SelfState {
   if (p.moveRejected !== undefined) {
     s.moveRejected = p.moveRejected;
   }
-  if (p.hidden) {
-    s.hidden = true;
-  }
   if (p.spell.hold > 0) {
     s.hold = true;
   }
@@ -1088,9 +1080,6 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   // Each map entry: 45 frames without spawn rolls, and the monster-attack flag cleared on map draw.
   p.monDropIn = 45;
   p.npcAttackFlag = false;
-  // Loading the map hides sprite 112 and drawing its items shows it; the counter keeps running
-  // from there.
-  p.hidden = false;
   // Drawing the map's items clears the input lock, and a map change ends any running craft and
   // closes an open vault, container or message board (its window closes on the client too).
   p.keyLock = false;

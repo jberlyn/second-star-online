@@ -23,141 +23,12 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 
 | Section | Unfixed bugs |
 |---|---|
-| [monsters](#monsters) | 21 |
 | [movement](#movement) | 7 |
 | [progression](#progression) | 10 |
 | [social](#social) | 18 |
 | [spells](#spells) | 25 |
-| [world](#world) | 3 |
-| **Total** | **84** |
-
-## monsters
-
-### NPC windows open from any distance
-- **What you notice:** clicking an NPC anywhere on the screen opens its shop window, however far away it stands.
-- **In 1.6 and SSO:** the click has no range check. SSO has none either.
-- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`)
-- **Pinned by:** `an NPC with data opens its Bio, with no range check, and holds the keys until it closes` (packages/server/tests/npcs-trade.test.ts)
-
-### A monster with only a loot file opens an empty window
-- **What you notice:** clicking a monster such as a Slime opens a window titled with its name that has empty fields and no buttons, and your keys stay locked until you close it.
-- **In 1.6 and SSO:** the click only checks that the monster has some NPC file, and a Slime's loot lines count. SSO does the same.
-- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`)
-- **Pinned by:** `kept bug: a Slime's loot-only file opens an empty Bio and locks you` (packages/server/tests/npcs-trade.test.ts)
-
-### A map's fifth monster slot never existed
-- **What you notice:** nothing. A map holds at most four monsters from its roster.
-- **In 1.6 and SSO:** melee only looped over four of the five monster sprites that spells and arrows loop over, and the fifth slot never spawned anything. SSO has no sprite slots, so nothing shows; a map's roster simply has four slots. It is recorded here so the omission is deliberate.
-- **In the code:** `packages/server/src/systems/monsters/slots.ts` (`MonsterSlot`)
-- **Pinned by:** `kept bug: slot 5 never spawns: a roster has four slots` (packages/server/tests/monsters.test.ts)
-
-### Only four monsters can ever stand on a screen
-- **What you notice:** no screen ever holds more than four spawned monsters, however the map was set up.
-- **In 1.6 and SSO:** 1.6 meant to have a fifth roster slot, but never filled it in and switched off the message that would have shown it, so it never spawned. SSO gives each map exactly four slots.
-- **In the code:** `packages/server/src/systems/monsters/slots.ts` (`MonsterSlot`)
-- **Pinned by:** `kept bug: slot 5 never spawns: a roster has four slots` (packages/server/tests/monsters.test.ts)
-
-### The second monster slot waits no time after planning a walk
-- **What you notice:** the monster in the second roster slot can be picked to walk again straight away, while the other slots wait a moment after each pick.
-- **In 1.6 and SSO:** after a new walk is planned, slots 1, 3 and 4 wait 30 frames before they can be picked again and slot 2 waits 0. The 90-frame pause after each step still applies, so you only see the difference when a planned walk has no step that can start, or when a step stops on an item. SSO does the same.
-- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`moverPass`)
-- **Pinned by:** `kept bug: slot 2's pause after authoring is 0 when no step can start` (packages/server/tests/monsters.test.ts)
-
-### Five sea creatures turn up stranded on land
-- **What you notice:** Merius, Krommie, Jelstar, Mellanie and Minmaye appear on dry land instead of at sea, and then cannot take a single step.
-- **In 1.6 and SSO:** a misspelt name in the spawn check makes these five use the land spawn rules, while the movement code correctly treats them as sea creatures and refuses every land step. Only Squid, Shark and Mizella spawn in water. SSO uses the same two tests and the same species lists.
-- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`refusesTile`)
-- **Pinned by:** `kept bug: five sea creatures spawn on land; Squid needs water` (packages/server/tests/monsters.test.ts)
-
-### Big monsters can spawn half inside walls on the right and bottom
-- **What you notice:** Overlord and Mutant Worm sometimes appear overlapping walls near the right or bottom edge of a screen.
-- **In 1.6 and SSO:** when the chosen tile is past column 12 or row 9, the spawn check says "fine" before it checks the 3 by 2 tiles a big monster covers. SSO copies that early exit.
-- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`refusesTile`)
-- **Pinned by:** `kept bug: the footprint test is skipped at x > 12 or y > 9` (packages/server/tests/monsters.test.ts)
-
-### One failed roll for a special monster ends the whole spawn pass
-- **What you notice:** when a screen's spawner picks a monster from the NPC list and its extra roll fails, the other empty slots do not get their turn that time round.
-- **In 1.6 and SSO:** a failed roll for such a monster leaves the spawn routine altogether, skipping the later slots in that frame. SSO does the same within one player's pass.
-- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`)
-- **Pinned by:** `kept bug: a failed NPCed roll ends the whole pass` (packages/server/tests/monsters.test.ts)
-
-### A species with no hit point entry spawns with the last monster's HP
-- **What you notice:** a monster whose species has no hit point value can arrive with a strange amount, such as a negative one, or none at all.
-- **In 1.6 and SSO:** the spawn code sets hit points only for the species it lists, so any other species keeps what the roster slot had before. In SSO that is the hit points the slot's previous monster had when it died (below zero, since that is what death means), or 0 if the slot never held one.
-- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`placeMonster`); `packages/server/src/systems/monsters/slots.ts` (`MonsterSlot`)
-- **Pinned by:** `kept bug: a species with no HP entry inherits the slot's last HP` (packages/server/tests/monsters.test.ts)
-
-### Which monsters walk toward you is decided by a substring match
-- **What you notice:** a Dragon walks toward players because its name is found inside "Dragon Hatchling", while the Overlord, whose name is not on the list, just wanders.
-- **In 1.6 and SSO:** the check asks whether the hostile list contains the monster's name as text, not whether the name is an entry. SSO runs the same test against the same list.
-- **In the code:** `packages/server/src/systems/monsters/slots.ts` (`leansToward`)
-- **Pinned by:** `kept bug: the hostile list is matched by contains: Dragon leans via Dragon Hatchling, Overlord wanders` (packages/server/tests/monsters.test.ts)
-
-### With nine or more players on a screen monsters nearly never stop walking
-- **What you notice:** on a crowded screen the monsters move almost continuously.
-- **In 1.6 and SSO:** the chance that a monster is picked to plan a walk gets steadily better from 1 to 8 players (a pick every 30 to 600 frames), then, at the 9th player, drops back to one every 50 frames. SSO uses the same ladder for each player, up to 15 players.
-- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`moveLadder`)
-- **Pinned by:** `ladders: spawn 80…1300 by players, move 30…600 then 50 at the 9th` (packages/server/tests/monsters.test.ts)
-
-### A hostile monster aims at where the triggering player stood
-- **What you notice:** when a monster plans a path toward a player, it aims at the spot where that one player was at that moment, not at wherever they go next.
-- **In 1.6 and SSO:** the path leans toward the player whose own game started the walk, using positions at planning time. In SSO the player whose roll fired is the one it leans toward, and the whole path is worked out at that tick.
-- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`authorPath`)
-- **Pinned by:** `a hostile path leans toward the author by pixel position` (packages/server/tests/monsters.test.ts)
-
-### A monster with no attack entry hits for 35
-- **What you notice:** a hostile monster that has no attack value of its own hits you for 35 on a map where fighting is allowed.
-- **In 1.6 and SSO:** the attack table falls back to 35 for any name it does not list. Monsters marked Passive do not attack. SSO keeps the same table and default.
-- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttackValue`)
-- **Pinned by:** `kept bug: a name with no attack entry hits for 35` (packages/server/tests/monsters.test.ts)
-
-### The Snared Loah hits for 35 instead of 18
-- **What you notice:** the Snared Loah hits harder than its table row says.
-- **In 1.6 and SSO:** the attack table spells the name "Snared Load", so the Snared Loah never matches its row of 18 and gets the default 35. SSO's monster data simply gives the Snared Loah an attack of 35.
-- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttackValue`)
-- **Pinned by:** `kept bug: the "Snared Load" typo in the attack table misses the Snared Loah, which hits for the default 35, not 18` (packages/server/tests/monsters.test.ts)
-
-### Clicking a Snow Demon tries to grab a pig
-- **What you notice:** clicking a Snow Demon does what clicking a Pig does: you grab whatever you are facing, and Ctrl grabs a faced Snow Demon as if it were a Pig.
-- **In 1.6 and SSO:** the click handler looks for "91-" anywhere in a monster's picture name, and the Snow Demon's picture 891 contains it. SSO keeps the same text test on the picture name.
-- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `bodyHas`)
-- **Pinned by:** `kept bug: Snow Demon runs the pig grab: its body 891 contains "91-", so a click on it grabs what you face, and Ctrl grabs a faced Snow Demon as a Pig` (packages/server/tests/npcs-trade.test.ts)
-
-### Clicking any pig grabs whatever you are facing
-- **What you notice:** click a Pig, even one far across the screen, and you grab whatever stands on the tile you face, such as a Dragon or a shopkeeper, and a Pig goes into your bag. The grabbed creature leaves with no XP and no loot.
-- **In 1.6 and SSO:** the click grabs the first roster monster standing exactly on your faced tile without checking what it is. The grab starts its 500-frame cooldown before the bag test, and a bag whose text contains "Pig" (even "Cooked Pig") skips the 15-line check. Whenever a monster is removed or killed, every player on the map has their pig cooldown set to 20. Ctrl does check each candidate's own picture. SSO does the same.
-- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `grabPig`, `ctrlPig`, `PIG_GRAB_FRAMES`, `PIG_CNCL_FRAMES`)
-- **Pinned by:** `kept bug: clicking any Pig grabs whatever stands on your faced tile, here Cril; any Cncl sets everyone's pig countdown to 20`; `the grab's cooldown is set before the bag test; 'Pig' in the bag text skips it` (packages/server/tests/npcs-trade.test.ts)
-
-### Monster chatter almost never speaks, and ignores how crowded the screen is
-- **What you notice:** the four Gods are the only NPCs with speech lines, and they speak very rarely: about once in 6,000 frames for each player who has them on screen.
-- **In 1.6 and SSO:** the chatter roll reads the list of players from the wrong copy of a text member, which holds only "King" and a return. Its second line is therefore always empty, so all six draws are taken and the last, a 1-in-400 roll, decides. SSO makes the same draws, once per player on the map.
-- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`chatterRoll`)
-- **Pinned by:** `random(15), then all six UserList draws with the last, random(400), deciding; then the line (bug ledger)` (packages/server/tests/npcs-trade.test.ts)
-
-### Monsters walk through players, monsters and static NPCs
-- **What you notice:** monsters pass through players and other monsters, and a static NPC's tile never stops them, while a blocking item on the ground ends their walk.
-- **In 1.6 and SSO:** a step checks only the blocked tiles, the screen edge and water. If an item that blocks lies on the way, the rest of the path is dropped. SSO follows the same rules, so monsters can share a tile.
-- **In the code:** `packages/server/src/systems/monsters/ai.ts` (`nextStep`)
-- **Pinned by:** `steps follow back to back, 16 calls = 8 frames each, and players never block them` (packages/server/tests/monsters.test.ts).
-
-### A calm monster loses a walking tick when its attack roll comes up
-- **What you notice:** a Passive monster that has not been provoked, on a map where fighting is allowed, now and then freezes for a beat instead of walking on, even though it never attacks.
-- **In 1.6 and SSO:** its attack roll is a 1-in-10 draw, and on a 1 the monster's whole step routine ends early, skipping that frame's walk tick. In 1.6 each player's game did this separately, with steps of about 17.8 frames. SSO has one copy of the monster, so the first player's roll each tick decides the stall.
-- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`)
-- **Pinned by:** `kept bug: an unprovoked Passive monster's random(10) = 1 skips its walk tick` (packages/server/tests/monsters.test.ts)
-
-### Death blames the last monster whose roll was ignored
-- **What you notice:** if you die, the line "*** Bob was just killed by a Slime." can name a monster whose hit was ignored because you were blinking, as long as it was the last to roll against you.
-- **In 1.6 and SSO:** the monster hit handler records the attacker's name before the blink check exits. SSO does the same.
-- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`hitMe2`)
-- **Pinned by:** `kept bug: the last monster to roll against you is blamed, even during i-frames` (packages/server/tests/monsters.test.ts)
-
-### A death drop picks among the first lines, even when some are empty
-- **What you notice:** when you die and drop an item, the pick can land on an empty line of your bag, so nothing drops. A stack of crystals never drops either.
-- **In 1.6 and SSO:** the game counts the non-empty lines among 1 to 8 and picks a line number up to that count, not among the filled lines. With gaps in your bag the pick can be empty. SSO does the same.
-- **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`)
-- **Pinned by:** `kept bug: the death drop picks lines 1 to the filled count` (packages/shared/tests/inventory/inventory.test.ts)
+| [world](#world) | 2 |
+| **Total** | **62** |
 
 ## movement
 
@@ -535,12 +406,6 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 - **In 1.6 and SSO:** a missing map warps to the start point. In SSO that point is whatever the operator has configured, and the old Test map is not shipped. The whole map reloads, as the original's warp did.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
 - **Pinned by:** `kept bug: walking off an edge with no neighbour lands on the start point` (packages/server/tests/world.test.ts); `kept bug: walking off an edge with no map beyond lands on the start point` (packages/server/e2e/login-and-walk.test.ts)
-
-### After a hit your own sprite vanishes for a second instead of blinking
-- **What you notice:** after a monster hits you, your own character disappears from your screen for about a second (1.0 s measured on the running 1.6) or never blinks at all, instead of blinking. Other players never see it.
-- **In 1.6 and SSO:** each call for the player sprite while the hit blink is running flips its visibility and counts it down by 1, showing it again at 0. The game makes two such calls per frame, so the flips cancel: a hit that leaves an odd number of calls in its frame hides the sprite for the whole 20 frames, and one that leaves an even number never shows a blink. In SSO the player's hidden flag flips where the blink counts down, goes only to its owner, and the client does not draw the local player while it is set. A map load and a body revert show the sprite again.
-- **In the code:** `packages/server/src/systems/world/tick.ts` (`actorPass`); `packages/client/src/playfield.ts` (`createPlayfield`)
-- **Pinned by:** `kept bug: a monster hit in pass 1 hides your sprite for the whole 20 frames, not a blink` (packages/server/tests/monsters.test.ts)
 
 ### The seed map and new-map defaults do not save a respawn point
 - **What you notice:** until you visit a map that saves a respawn point, death sends you to the server's configured fallback. The seed map and new World Editor maps with their default flags do not save a point. Entering a no-fight, indoor, no-PvP map, such as a Small Farm, Small Shop or guild-hall interior, saves a point that later deaths use, including deaths outdoors. An operator can also set those flags in the World Editor.

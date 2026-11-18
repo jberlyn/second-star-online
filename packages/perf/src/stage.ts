@@ -78,8 +78,8 @@ export async function stage(options: StageOptions): Promise<void> {
         [id, Number(m[1]), Number(m[2])],
       );
       db.run(
-        `INSERT INTO map_slots (map_id, slot, species, live_name, hp, x, y, facing, last_hp, updated_at, home_x, home_y)
-         SELECT ?, slot, species, live_name, hp, x, y, facing, last_hp, updated_at, home_x, home_y
+        `INSERT INTO map_slots (map_id, slot, species, live_name, hp, x, y, facing, updated_at, home_x, home_y)
+         SELECT ?, slot, species, live_name, hp, x, y, facing, updated_at, home_x, home_y
          FROM map_slots WHERE map_id = (SELECT id FROM maps WHERE mx = 1000 AND my = 992)`,
         [id],
       );
