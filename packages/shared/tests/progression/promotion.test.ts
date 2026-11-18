@@ -4,12 +4,14 @@ import { describe, expect, test } from "bun:test";
 import { classesData } from "@secondstaronline/data";
 
 import { findClass } from "../../src/rules/admin/admin.ts";
+import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
   PROMOTION_TEXT,
   type PromotionState,
   parseTrn,
   promoteClass,
 } from "../../src/rules/progression/promotion.ts";
+import { classStatBonus, effectiveStats } from "../../src/rules/progression/stats.ts";
 
 const skillIndex = (name: string) => classesData.skills.find((s) => s.skill === name)?.index ?? 0;
 
@@ -29,30 +31,31 @@ function state(
     hpMax: 20,
     spMax: 20,
     skills: values,
-    stats: { str: 10, sta: 10, agi: 1, dex: 10, int: 10, wis: 10, spd: 1 },
     ...over,
   };
 }
 
 const NPC = "Fire God";
+/** Every roll is its highest: a grant of `random(10)` rolls 10. */
+const rng: Rng = { random: (n) => n };
 
 describe("the checks, in 1.6's order", () => {
   test("learned all: your own class, as typed, with or without a branch", () => {
-    const r = promoteClass(state("Mage"), "fire mage", 0, NPC);
+    const r = promoteClass(state("Mage"), "fire mage", 0, NPC, rng);
     expect(r.result).toBeNull();
-    expect(promoteClass(state("Fire Mage"), "fire mage", 0, NPC)).toEqual({
+    expect(promoteClass(state("Fire Mage"), "fire mage", 0, NPC, rng)).toEqual({
       texts: [`${NPC}: You have learned all there is to the art of the fire mage.`],
       sound: false,
       result: null,
     });
-    expect(promoteClass(state("Immortal"), "Immortal", 5, NPC).texts).toEqual([
+    expect(promoteClass(state("Immortal"), "Immortal", 5, NPC, rng).texts).toEqual([
       PROMOTION_TEXT.learnedAll(NPC, "Immortal"),
     ]);
   });
 
   test("no branch: nothing, no text, no charge (the if-chain falls through)", () => {
     for (const typed of ["Ninja", "Fire Mge", "Swordsman", "Immortal", ""]) {
-      expect(promoteClass(state("Fighter"), typed, 5, NPC)).toEqual({
+      expect(promoteClass(state("Fighter"), typed, 5, NPC, rng)).toEqual({
         texts: [],
         sound: false,
         result: null,
@@ -61,7 +64,7 @@ describe("the checks, in 1.6's order", () => {
   });
 
   test("cantDoIt: the current class is not in the list", () => {
-    expect(promoteClass(state("Fighter", {}, { Magery: 99 }), "Fire Mage", 100, NPC)).toEqual({
+    expect(promoteClass(state("Fighter", {}, { Magery: 99 }), "Fire Mage", 100, NPC, rng)).toEqual({
       texts: ["Fire God: It is impossible for a Fighter to learn this."],
       sound: false,
       result: null,
@@ -69,26 +72,26 @@ describe("the checks, in 1.6's order", () => {
   });
 
   test("focused: min - 1 refuses, min passes", () => {
-    const low = promoteClass(state("Fighter", {}, { Slash: 29 }), "Grunt", 0, "Trainer");
+    const low = promoteClass(state("Fighter", {}, { Slash: 29 }), "Grunt", 0, "Trainer", rng);
     expect(low.texts).toEqual([
       "Trainer: You are focused properly, but still need more experience as a Fighter.",
     ]);
     expect(low.result).toBeNull();
     expect(
-      promoteClass(state("Fighter", {}, { Slash: 30 }), "Grunt", 0, "Trainer").result,
+      promoteClass(state("Fighter", {}, { Slash: 30 }), "Grunt", 0, "Trainer", rng).result,
     ).not.toBeNull();
   });
 
   test("noFunds: price = gold + 1 refuses, price = gold passes", () => {
     const s = state("Fighter", { gold: 100 }, { Slash: 30 });
-    expect(promoteClass(s, "Grunt", 101, NPC).texts).toEqual([PROMOTION_TEXT.noFunds(NPC)]);
-    expect(promoteClass(s, "Grunt", 101, NPC).result).toBeNull();
-    const ok = promoteClass(s, "Grunt", 100, NPC);
+    expect(promoteClass(s, "Grunt", 101, NPC, rng).texts).toEqual([PROMOTION_TEXT.noFunds(NPC)]);
+    expect(promoteClass(s, "Grunt", 101, NPC, rng).result).toBeNull();
+    const ok = promoteClass(s, "Grunt", 100, NPC, rng);
     expect(ok.result?.gold).toBe(0);
   });
 
   test("success: gold - price, the new class, the congratulation, heal2", () => {
-    const r = promoteClass(state("Fighter", { gold: 150 }, { Slash: 30 }), "grunt", 100, NPC);
+    const r = promoteClass(state("Fighter", { gold: 150 }, { Slash: 30 }), "grunt", 100, NPC, rng);
     expect(r.texts).toEqual(["Fire God: Congratulations, you are now a Grunt!"]);
     expect(r.sound).toBe(true);
     expect(r.result).toMatchObject({ classCode: 4, gold: 50, spMax: 20 });
@@ -96,7 +99,7 @@ describe("the checks, in 1.6's order", () => {
 
   test("a free line (price 0) trains; a missing price reads as 0", () => {
     expect(
-      promoteClass(state("Fighter", { gold: 0 }, { Slash: 30 }), "Grunt", 0, NPC).result?.gold,
+      promoteClass(state("Fighter", { gold: 0 }, { Slash: 30 }), "Grunt", 0, NPC, rng).result?.gold,
     ).toBe(0);
     expect(parseTrn("Bard")).toEqual({ cls: "Bard", price: 0 });
   });
@@ -150,54 +153,104 @@ describe("the 16 branches against classes.json", () => {
           }
           return state(f, { gold: 10, ...vitals }, skills);
         };
-        expect(promoteClass(at(min), name, 10, NPC).result?.classCode).toBe(code);
-        expect(promoteClass(at(min - 1), name, 10, NPC).texts[0]).toContain("focused properly");
+        expect(promoteClass(at(min), name, 10, NPC, rng).result?.classCode).toBe(code);
+        expect(promoteClass(at(min - 1), name, 10, NPC, rng).texts[0]).toContain(
+          "focused properly",
+        );
       }
     },
   );
 });
 
-describe("stat changes", () => {
-  test("Druid +3 Dex/Wis/Int", () => {
-    const r = promoteClass(state("Illusionist", { spMax: 30 }), "Druid", 0, NPC).result;
-    expect(r?.stats).toMatchObject({ dex: 13, wis: 13, int: 13, str: 10 });
+describe("class stat points", () => {
+  const base = { str: 10, sta: 10, agi: 1, dex: 10, int: 10, wis: 10, spd: 1 };
+  const code = (name: string) => findClass(name)?.code ?? 0;
+  test("Druid +3 Dex/Wis/Int, Bard +1 Wis, Barbarian +1 Str; other classes none", () => {
+    expect(classStatBonus(code("Druid"))).toEqual({ dex: 3, wis: 3, int: 3 });
+    expect(classStatBonus(code("Bard"))).toEqual({ wis: 1 });
+    expect(classStatBonus(code("Barbarian"))).toEqual({ str: 1 });
+    for (const c of classesData.classes) {
+      if (!["Druid", "Bard", "Barbarian"].includes(c.name)) {
+        expect([c.name, classStatBonus(c.code)]).toEqual([c.name, {}]);
+      }
+    }
   });
-  test("Bard Wis +1", () => {
-    const r = promoteClass(state("Priest", { hpMax: 35 }), "Bard", 0, NPC).result;
-    expect(r?.stats.wis).toBe(11);
-  });
-  test("Barbarian Str +1", () => {
-    const r = promoteClass(state("Grunt", {}, { Slash: 60 }), "Barbarian", 0, NPC).result;
-    expect(r?.stats.str).toBe(11);
+  test("calculated from the current class: a promotion stores no stat points", () => {
+    const r = promoteClass(state("Illusionist", { spMax: 30 }), "Druid", 0, NPC, rng).result;
+    expect(r && "stats" in r).toBe(false);
+    expect(effectiveStats(base, r?.classCode ?? 0, [])).toEqual({
+      ...base,
+      dex: 13,
+      wis: 13,
+      int: 13,
+    });
+    // Leaving the class (an operator's /class) takes its points away.
+    expect(effectiveStats(base, code("Illusionist"), [])).toEqual(base);
   });
   test("Paladin SPmax raised to 1 when below, left alone at 5", () => {
     expect(
-      promoteClass(state("Ninja", { spMax: 0 }, { MartialArts: 35 }), "Paladin", 0, NPC).result
+      promoteClass(state("Ninja", { spMax: 0 }, { MartialArts: 35 }), "Paladin", 0, NPC, rng).result
         ?.spMax,
     ).toBe(1);
     expect(
-      promoteClass(state("Ninja", { spMax: 5 }, { MartialArts: 35 }), "Paladin", 0, NPC).result
+      promoteClass(state("Ninja", { spMax: 5 }, { MartialArts: 35 }), "Paladin", 0, NPC, rng).result
         ?.spMax,
     ).toBe(5);
   });
 });
 
-describe("kept bug", () => {
-  test("kept bug: Promotion skill grants are undone: no promotion returns a skill", () => {
-    const cases: [string, string, Record<string, number>][] = [
-      ["Fighter", "Grunt", { Slash: 30 }],
-      ["Ranger", "Archer", {}],
-      ["Ninja", "Paladin", { MartialArts: 35 }],
-      ["Swordsman", "Dragoon", { Swordsmanship: 40 }],
-      ["Paladin", "Fire Mage", { Magery: 70 }],
+describe("skill grants", () => {
+  test("bug fixed: each promotion raises its skills to a roll of 1-10", () => {
+    const cases: [string, string, Record<string, number>, string[]][] = [
+      ["Fighter", "Grunt", { Slash: 30 }, ["Thrust"]],
+      ["Mage", "Illusionist", { Magery: 30 }, ["Illusion"]],
+      ["Priest", "Wizard", { Blessing: 30 }, ["Wizardry"]],
+      ["Ninja", "Sorcerer", {}, ["Sorcery"]],
+      ["Ninja", "Paladin", { MartialArts: 35 }, ["Fencing", "Magery"]],
+      ["Swordsman", "Dragoon", { Swordsmanship: 40 }, ["Block", "Fencing"]],
+      ["Mage", "Priest", { Magery: 30 }, ["Blessing"]],
+      ["Warlock", "Necromancer", {}, ["BlackArts"]],
+      ["Priest", "Bard", {}, ["Musicianship"]],
+      ["Grunt", "Barbarian", { Slash: 60 }, ["HammerWielding"]],
+      ["Paladin", "Fire Mage", { Magery: 70 }, ["fire"]],
+      ["Paladin", "Water Mage", { Magery: 70 }, ["Water"]],
+      ["Paladin", "Wind Mage", { Magery: 70 }, ["wind"]],
+      ["Paladin", "Earth Mage", { Magery: 70 }, ["Earth"]],
+      ["Ranger", "Archer", {}, ["Archery"]],
     ];
-    for (const [from, to, skills] of cases) {
-      const s = state(from, { hpMax: 40 }, skills);
-      const r = promoteClass(s, to, 0, NPC);
-      expect([to, r.result !== null]).toEqual([to, true]);
-      // The result carries no skills at all: the server keeps the live values.
-      expect(Object.keys(r.result ?? {}).sort()).toEqual(["classCode", "gold", "spMax", "stats"]);
+    for (const [from, to, skills, granted] of cases) {
+      const s = state(from, { hpMax: 60, spMax: 60 }, skills);
+      const r = promoteClass(s, to, 0, NPC, rng).result;
+      const changed = classesData.skills
+        .filter((k) => r?.skills[k.index - 1] !== s.skills[k.index - 1])
+        .map((k) => k.skill);
+      expect([to, changed.sort()]).toEqual([to, [...granted].sort()]);
+      for (const g of granted) {
+        expect(r?.skills[skillIndex(g) - 1]).toBe(10);
+      }
     }
+  });
+  test("Druid grants no skill", () => {
+    const s = state("Illusionist", { spMax: 30 });
+    expect(promoteClass(s, "Druid", 0, NPC, rng).result?.skills).toEqual([...s.skills]);
+  });
+  test("a grant never lowers a skill already above the roll", () => {
+    const low: Rng = { random: () => 3 };
+    const s = state("Fighter", {}, { Slash: 30, Thrust: 25 });
+    expect(promoteClass(s, "Grunt", 0, NPC, low).result?.skills[skillIndex("Thrust") - 1]).toBe(25);
+    const t = state("Fighter", {}, { Slash: 30, Thrust: 1 });
+    expect(promoteClass(t, "Grunt", 0, NPC, low).result?.skills[skillIndex("Thrust") - 1]).toBe(3);
+  });
+  test("a refused promotion rolls nothing", () => {
+    const calls: number[] = [];
+    const spy: Rng = {
+      random: (n) => {
+        calls.push(n);
+        return n;
+      },
+    };
+    promoteClass(state("Fighter", {}, { Slash: 29 }), "Grunt", 0, NPC, spy);
+    expect(calls).toEqual([]);
   });
 });
 

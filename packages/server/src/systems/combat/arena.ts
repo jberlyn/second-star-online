@@ -2,7 +2,8 @@
  * The arena challenge: `Challenge` and `quit` typed as chat lines, and the hop they share with the
  * arena death. The checks and rolls are in shared/rules/combat/arena.ts. Hold and the death wait
  * refuse both commands, and neither puts you on a tile someone or something already holds (bugs
- * fixed; 1.6 tested only for a step in progress).
+ * fixed; 1.6 tested only for a step in progress). A rider cannot challenge (a bug fixed); one who
+ * flew onto an arena tile can still quit, on the Airship grid.
  */
 import {
   ARENA_TEXT,
@@ -92,6 +93,7 @@ export function challenge(world: World, p: Player, rng: Rng): Outgoing[] {
   const r = challengeCheck({
     stepFrames: p.stepFrames,
     ...arenaState(p),
+    riding: p.vehicle !== null,
     layer1: p.map.layers[0],
     x: p.x,
     y: p.y,

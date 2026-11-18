@@ -3,9 +3,9 @@
  * (`TRN|Grunt:100`, `TRN|Fire Mage:10000`, `TRN|Ninja:5`; /roster takes only the `mlists` species,
  * so the trainer wears Amber's name). Alice, an immortal, puts it on the map. Bob (a Fighter with
  * 150 gold and Slash 30) clicks it: the Bio has Train; the train list has the three lines; Fire
- * Mage is refused for a Fighter, Ninja does nothing, Grunt promotes (class, gold, `heal2`); a
- * second Grunt says "learned all"; after a reconnect the class and gold hold and Thrust is as it
- * was (a kept bug: promotion skill grants are undone).
+ * Mage is refused for a Fighter, Ninja does nothing, Grunt promotes (class, gold, `heal2`, and
+ * Thrust raised from 1 to the grant's roll); a second Grunt says "learned all"; after a reconnect
+ * the class, gold and Thrust hold (a bug fixed: 1.6 undid promotion skill grants).
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -90,6 +90,9 @@ describe("promotions at a trainer", () => {
     server.db.run(
       "UPDATE character_skills SET value = 30 WHERE skill = 1 AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
     );
+    server.db.run(
+      "UPDATE character_skills SET value = 1 WHERE skill = 2 AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
+    );
   });
   afterAll(async () => {
     await server.stop();
@@ -147,7 +150,7 @@ describe("promotions at a trainer", () => {
     expect(chats(bob)).toEqual(["Amber: You have learned all there is to the art of the Grunt."]);
   });
 
-  test("after a reconnect the class and gold hold, and Thrust is as it was", async () => {
+  test("bug fixed: after a reconnect the class, gold and granted Thrust hold", async () => {
     bob.close();
     await settle();
     bob = await login("Bob");
@@ -157,7 +160,8 @@ describe("promotions at a trainer", () => {
       )
       .get();
     expect(row).toEqual({ class_code: 4, gold: 50 });
-    expect(thrustBefore).toBe(20);
-    expect(thrust()).toBe(thrustBefore);
+    expect(thrustBefore).toBe(1);
+    // The grant rolls random(10); this server's rng rolls its highest.
+    expect(thrust()).toBe(10);
   });
 });

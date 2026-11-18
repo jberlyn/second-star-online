@@ -4,8 +4,8 @@
  * In 1.6 the victim's client sent `IWMD` to the player who last hit it after its death lock, and
  * the killer's client set its murder flag and printed the line. SSO does both on the server,
  * crediting the player by id: a monster never flags, and a player named like a monster flags like
- * anyone. The credit is whoever last hit, however long ago, so a starvation death flags them. An
- * arena death never reaches here.
+ * anyone. The credit is whoever last hit, if that hit landed within `KILL_CREDIT_TICKS` of the death
+ * (a bug fixed: 1.6 credited the last hit however long ago). An arena death never reaches here.
  */
 import { CHAT_COLOR, pardonedLine, wantedLine } from "@secondstaronline/shared";
 

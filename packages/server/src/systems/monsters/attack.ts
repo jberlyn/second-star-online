@@ -22,7 +22,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { onHolyShield } from "../spells/geometry.ts";
-import type { Player, WorldMap } from "../world/world.ts";
+import { type Player, statsOf, type WorldMap } from "../world/world.ts";
 import { hasFlag, type NpcStore } from "./npcfiles.ts";
 import { isFootprint, type MonsterSlot, species } from "./slots.ts";
 
@@ -124,6 +124,7 @@ function hitMe2(
   }
   p.lastToHitMe = `a ${m.name}`;
   p.lastToHitId = null;
+  p.hitAge = 0;
   const f = fighterOf(p);
   const map = p.map;
   const shielded = onHolyShield(p, map.slots);
@@ -171,13 +172,7 @@ function hitMe2(
   p.char.vitals.hp = Math.max(0, p.char.vitals.hp - hit.lost);
   // The armour break roll against the last attacker; the number shown is the hit points lost.
   const lastToHitMe = p.lastToHitMe ?? "";
-  const broken = rollArmourBreak(
-    p.char.equip,
-    p.char.stats.sta,
-    p.char.hunger,
-    lastToHitMe,
-    ctx.rng,
-  );
+  const broken = rollArmourBreak(p.char.equip, statsOf(p).sta, p.char.hunger, lastToHitMe, ctx.rng);
   if (broken) {
     const field = EQUIP_FIELD[broken];
     lines.push(shattersText(p.char.equip[field]));
@@ -192,7 +187,7 @@ function hitMe2(
 
 /** The rules' view of a player. */
 export function fighterOf(p: Player): Fighter {
-  const s = p.char.stats;
+  const s = statsOf(p);
   return {
     level: p.char.vitals.level,
     str: s.str,

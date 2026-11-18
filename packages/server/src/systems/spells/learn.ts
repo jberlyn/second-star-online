@@ -12,7 +12,7 @@ import {
   runBook,
 } from "@secondstaronline/shared";
 
-import type { Player } from "../world/world.ts";
+import { type Player, statsOf } from "../world/world.ts";
 
 /** Book items with a member in cast Inventory; without one the use exits silently. */
 const HAS_ICON = new Set(
@@ -32,7 +32,7 @@ export function readBook(p: Player, slot: number, rng: Rng): string[] {
   if (!HAS_ICON.has(name.toLowerCase())) {
     return []; // 1.6 looks the icon up in its inventory art and gets no member
   }
-  if (bookDex(name) > p.char.stats.dex) {
+  if (bookDex(name) > statsOf(p).dex) {
     return [BOOK_TEXT.dex];
   }
   const lines: string[] = [BOOK_TEXT.read];

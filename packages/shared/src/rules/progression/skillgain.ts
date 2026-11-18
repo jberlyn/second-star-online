@@ -5,7 +5,7 @@
  */
 import { classesData, monstersData } from "@secondstaronline/data";
 
-import { type Fighter, skillIndex } from "../core/fighter.ts";
+import { type Faction, type Fighter, skillIndex } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 
 /** The skills the weapon trains: the last matching row wins. */
@@ -21,14 +21,23 @@ export function weaponSkillList(weapon: string): readonly string[] {
   return out;
 }
 
+/**
+ * The Mage skill cap, for kills and casts alike: 30, or for the Mage faction 50/60/70/90/100 by
+ * faction bonus < 1/1/2/3/> 3. A bug fixed: 1.6's kill path used 80 at bonus 3 and its cast path 90.
+ */
+export function mageSkillCap(f: Faction): number {
+  if (f.id !== 1) {
+    return 30;
+  }
+  const b = f.f1Bonus;
+  return b < 1 ? 50 : b === 1 ? 60 : b === 2 ? 70 : b === 3 ? 90 : 100;
+}
+
 /** The skill caps by faction (kill path). */
 export function skillCaps(f: Fighter): { max: number; mage: number } {
   let max = 50;
-  let mage = 30;
-  const { id, f1Bonus, f2Bonus, f3Bonus } = f.faction;
-  if (id === 1) {
-    mage = f1Bonus < 1 ? 50 : f1Bonus === 1 ? 60 : f1Bonus === 2 ? 70 : f1Bonus === 3 ? 80 : 100;
-  }
+  const mage = mageSkillCap(f.faction);
+  const { id, f2Bonus, f3Bonus } = f.faction;
   if (id === 2) {
     max = [55, 60, 70, 80, 90][Math.max(0, Math.min(f2Bonus, 4))] ?? 100;
     if (f2Bonus > 4) {

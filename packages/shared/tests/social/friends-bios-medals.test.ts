@@ -12,14 +12,18 @@ import {
   buddyAdd,
   buddyRemove,
   buddyString,
-  checkForAwards,
   drawProfile,
+  effectiveStats,
   friendsAtEntry,
   friendsDelete,
   friendsLogoff,
   friendsLogon,
   giveBio,
+  heldMedals,
+  medalBonus,
+  medalField,
   medalStrip,
+  newMedalLines,
   parseFriends,
   saveProfile,
   skillIndex,
@@ -297,34 +301,43 @@ describe("SaveProfile", () => {
   });
 });
 
-describe("CheckForAwards", () => {
-  test("every medal, each at exactly 90, with its line and stats", () => {
+describe("calculated medals", () => {
+  test("every medal at 90: its id in the field and its points in the bonus", () => {
     for (const a of socialData.medals.awards) {
-      const r = checkForAwards(skills({ [a.skill]: 90 }), "");
-      expect(r.medals).toBe(`${a.id}-`);
-      expect(r.lines).toEqual([a.text]);
-      expect(r.stats).toEqual(a.stats);
+      const sk = skills({ [a.skill]: 90 });
+      expect(medalField(sk)).toBe(`${a.id}-`);
+      expect(medalBonus(sk)).toEqual(a.stats);
     }
   });
 
-  test("the cook's and the smith's lines and points", () => {
-    expect(checkForAwards(skills({ Cooking: 90 }), "")).toEqual({
-      medals: "39-",
-      lines: ["You have been awarded the silver spatula for being a master chef!"],
-      stats: { sta: 1 },
-    });
-    expect(checkForAwards(skills({ Blacksmithing: 90 }), "").stats).toEqual({ str: 2, sta: 2 });
+  test("90 or more holds a medal, 89 does not", () => {
+    expect(medalField(skills({ Cooking: 100 }))).toBe("39-");
+    expect(medalField(skills({ Cooking: 91 }))).toBe("39-");
+    expect(medalField(skills({ Cooking: 89 }))).toBe("");
+    expect(medalBonus(skills({ Cooking: 89 }))).toEqual({});
   });
 
-  test("kept bug: 89 or 91 earns nothing; a medal already held is not given again", () => {
-    expect(checkForAwards(skills({ Cooking: 91 }), "").lines).toEqual([]);
-    expect(checkForAwards(skills({ Cooking: 89 }), "").lines).toEqual([]);
-    expect(checkForAwards(skills({ Cooking: 90 }), "39-").lines).toEqual([]);
+  test("several at once, in the table's order, their points summed", () => {
+    const sk = skills({ Slash: 90, Cooking: 90, Blacksmithing: 95 });
+    expect(heldMedals(sk).map((a) => a.id)).toEqual([39, 95, 92]);
+    expect(medalField(sk)).toBe("39-95-92-");
+    expect(medalBonus(sk)).toEqual({ sta: 3, str: 3 });
   });
 
-  test("several at once, in the script's order", () => {
-    const r = checkForAwards(skills({ Slash: 90, Cooking: 90 }), "");
-    expect(r.medals).toBe("39-95-");
-    expect(r.stats).toEqual({ sta: 1, str: 1 });
+  test("the stats played with are the allocated stats plus the bonus; the input is untouched", () => {
+    const stats = { str: 20, sta: 10, agi: 1, dex: 5, int: 5, wis: 5, spd: 1 };
+    const sk = skills({ Blacksmithing: 90 });
+    // Class 1 (Fighter) has no points of its own.
+    expect(effectiveStats(stats, 1, sk)).toEqual({ ...stats, str: 22, sta: 12 });
+    expect(stats.str).toBe(20);
+    expect(effectiveStats(stats, 1, skills({ Blacksmithing: 89 }))).toEqual(stats);
+  });
+
+  test("a line prints only for a medal newly held", () => {
+    expect(newMedalLines(skills({ Cooking: 89 }), skills({ Cooking: 90 }))).toEqual([
+      "You have been awarded the silver spatula for being a master chef!",
+    ]);
+    expect(newMedalLines(skills({ Cooking: 90 }), skills({ Cooking: 95 }))).toEqual([]);
+    expect(newMedalLines(skills({ Cooking: 95 }), skills({ Cooking: 50 }))).toEqual([]);
   });
 });

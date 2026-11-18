@@ -18,6 +18,8 @@ export const ARENA_TEXT = {
   notAnArena: "This is not an arena!",
   full: "There is no room in the arena!",
   held: "You cannot do that while you are held.",
+  /** SSO's own line: a rider cannot challenge. */
+  landFirst: "You must land your airship before making a challenge.",
   entered: (name: string) => `${name} has entered the arena!`,
   stopped: (name: string) => `${name} has stopped fighting.`,
   defeated: (name: string, killer: string) => `${name} was defeated by ${killer}.`,
@@ -122,6 +124,8 @@ export function challengeCheck(a: {
   stepFrames: number;
   held: boolean;
   dead: boolean;
+  /** Aboard a vehicle. */
+  riding: boolean;
   layer1: readonly string[];
   x: number;
   y: number;
@@ -134,6 +138,11 @@ export function challengeCheck(a: {
   }
   if (a.stepFrames > 0) {
     return { kind: "text", text: ARENA_TEXT.standStillChallenge };
+  }
+  if (a.riding) {
+    // A bug fixed: 1.6 sent a rider into the arena still flying, where it could not swing or cast
+    // and monster melee could not reach it.
+    return { kind: "text", text: ARENA_TEXT.landFirst };
   }
   if (isArenaTile(a.layer1, a.x, a.y)) {
     return { kind: "text", text: ARENA_TEXT.alreadyInBattle };

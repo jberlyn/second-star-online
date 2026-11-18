@@ -888,8 +888,7 @@ describe("friends, bios and medals", () => {
 
   test("a skill reaching 90 awards its medal, shown in her bio", async () => {
     await tick(1);
-    // 1.6's admin `/Skill Cooking:90` saved the skills, which ran
-    // `CheckForAwards`; SSO has no such command, so the skill is set on the server's player.
+    // The skill is set on the server's player, as an operator's change would set it.
     who("Alice").char.skills[skillIndex("Cooking")] = 90;
     alice.clear();
     await tick(1);
@@ -899,8 +898,11 @@ describe("friends, bios and medals", () => {
     alice.send({ t: "bioRequest", id: idOf(server.db, "Alice") });
     await settle();
     expect(bios(alice)[0]).toMatchObject({ medals: ["39"], own: true });
-    expect(server.db.query("SELECT medals FROM characters WHERE name = ?").get("Alice")).toEqual({
-      medals: "39-",
-    });
+    // Calculated from the skill: dropping below 90 takes the medal off the bio again.
+    who("Alice").char.skills[skillIndex("Cooking")] = 89;
+    alice.clear();
+    alice.send({ t: "bioRequest", id: idOf(server.db, "Alice") });
+    await settle();
+    expect(bios(alice)[0]).toMatchObject({ medals: [], own: true });
   });
 });

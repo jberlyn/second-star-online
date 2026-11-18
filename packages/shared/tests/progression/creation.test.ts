@@ -108,7 +108,6 @@ describe("starting record", () => {
       hunger: 50000,
       breakCount: 100,
       profile: "I have not edited my profile yet",
-      medals: "",
       stats: { agi: 1, spd: 1, aim: 1 },
     });
     expect(c.bag).toEqual([

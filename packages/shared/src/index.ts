@@ -64,6 +64,7 @@ export * from "./rules/progression/medals.ts";
 export * from "./rules/progression/progression.ts";
 export * from "./rules/progression/promotion.ts";
 export * from "./rules/progression/skillgain.ts";
+export * from "./rules/progression/stats.ts";
 export * from "./rules/social/assassin.ts";
 export * from "./rules/social/bios.ts";
 export * from "./rules/social/buddies.ts";

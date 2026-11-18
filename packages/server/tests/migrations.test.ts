@@ -178,4 +178,77 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     ).toThrow();
     expect(db.query("PRAGMA foreign_key_check").all()).toEqual([]);
   });
+
+  test("calculated_medals takes each held medal's points off the stored stats and drops the field", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261118_32"),
+    );
+    const map = db.query("SELECT id FROM maps LIMIT 1").get() as { id: string };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    const insert = (id: string, name: string, medals: string, str: number, sta: number) =>
+      db.run(
+        `INSERT INTO characters (id, account_id, name, sex, head, class_code, level, hp, hp_max, sp,
+          sp_max, exp, exp_needed, str, sta, agi, dex, int, wis, spd, aim, gold, profile, medals,
+          hunger, break_count, map_id, x, y, facing, created_at, updated_at)
+         VALUES (?, 'a1', ?, 1, 1, 1, 1, 20, 20, 20, 20, 0, 30, ?, ?, 1, 5, 5, 5, 1, 1, 0, '', ?,
+          40000, 0, ?, 5, 5, 'S', 'now', 'now')`,
+        [id, name, str, sta, medals, map.id],
+      );
+    // Slash (95: +1 Str) and Blacksmithing (92: +2 Str, +2 Sta); 1 cannot drop below 1.
+    insert("c1", "Ann", "95-92-", 20, 12);
+    insert("c2", "Bob", "", 20, 12);
+    insert("c3", "Cat", "92-", 1, 1);
+    runMigrations(db, all);
+    const rows = db.query("SELECT name, str, sta FROM characters ORDER BY name").all() as {
+      name: string;
+      str: number;
+      sta: number;
+    }[];
+    expect(rows).toEqual([
+      { name: "Ann", str: 17, sta: 10 },
+      { name: "Bob", str: 20, sta: 12 },
+      { name: "Cat", str: 1, sta: 1 },
+    ]);
+    const cols = db.query("PRAGMA table_info(characters)").all() as { name: string }[];
+    expect(cols.some((c) => c.name === "medals")).toBe(false);
+  });
+
+  test("calculated_class_stats takes the current class's promotion points off the stored stats", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261118_33"),
+    );
+    const map = db.query("SELECT id FROM maps LIMIT 1").get() as { id: string };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    const insert = (id: string, name: string, cls: number, str: number, dex: number) =>
+      db.run(
+        `INSERT INTO characters (id, account_id, name, sex, head, class_code, level, hp, hp_max, sp,
+          sp_max, exp, exp_needed, str, sta, agi, dex, int, wis, spd, aim, gold, profile,
+          hunger, break_count, map_id, x, y, facing, created_at, updated_at)
+         VALUES (?, 'a1', ?, 1, 1, ?, 1, 20, 20, 20, 20, 0, 30, ?, 10, 1, ?, 10, 10, 1, 1, 0, '',
+          40000, 0, ?, 5, 5, 'S', 'now', 'now')`,
+        [id, name, cls, str, dex, map.id],
+      );
+    insert("c1", "Ann", 11, 10, 13); // Druid: +3 Dex, Int, Wis
+    insert("c2", "Bob", 20, 11, 10); // Barbarian: +1 Str
+    insert("c3", "Cat", 4, 10, 10); // Grunt: none
+    runMigrations(db, all);
+    const rows = db
+      .query("SELECT name, str, dex, int, wis FROM characters ORDER BY name")
+      .all() as { name: string; str: number; dex: number; int: number; wis: number }[];
+    expect(rows).toEqual([
+      { name: "Ann", str: 10, dex: 10, int: 7, wis: 7 },
+      { name: "Bob", str: 10, dex: 10, int: 10, wis: 10 },
+      { name: "Cat", str: 10, dex: 10, int: 10, wis: 10 },
+    ]);
+  });
 });

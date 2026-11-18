@@ -112,10 +112,9 @@ describe("buddies, profiles and medals (persistence)", () => {
     expect(bio && "profile" in bio ? bio.profile : null).toBe("Hello Fish please");
   });
 
-  test("new characters start with no medals; a medal, its point and the skill are saved", async () => {
+  test("a medal and its point come from the saved skill; the stored stats stay as allocated", async () => {
     const { game, make } = await gameWith();
     const a = await make("Alice");
-    expect(findCharacterById(db, a.characterId)?.medals).toBe("");
     game.enter(a.characterId, false);
     game.tick(); // the session's first tick records the skills
     const p = game.world.players.get(a.characterId);
@@ -128,13 +127,14 @@ describe("buddies, profiles and medals (persistence)", () => {
     expect(texts(a.characterId)).toContain(
       "You have been awarded the silver spatula for being a master chef!",
     );
-    const row = findCharacterById(db, a.characterId);
-    expect(row?.medals).toBe("39-");
-    expect(row?.stats.sta).toBe(sta + 1);
-    expect(loadSkills(db, a.characterId)[skillIndex("Cooking")]).toBe(90);
-    // The next login reads them back, and the bio shows the medal.
+    // Leaving saves the skill; the stored stat stays as allocated.
     game.leave(a.characterId);
+    const row = findCharacterById(db, a.characterId);
+    expect(row?.stats.sta).toBe(sta);
+    expect(loadSkills(db, a.characterId)[skillIndex("Cooking")]).toBe(90);
+    // The next login reads the skill back: the medal shows and its point is added.
     game.enter(a.characterId, false);
+    expect(game.world.players.get(a.characterId)?.char.stats.sta).toBe(sta);
     sent.length = 0;
     game.intent(a.characterId, { t: "bioRequest", id: a.characterId });
     const bio = sent.find((o) => o.msg.t === "playerBio")?.msg;

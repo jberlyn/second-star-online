@@ -48,19 +48,21 @@ export interface Vitals {
 export const LEVEL_UP_TEXT = "You have become more powerful!";
 
 /**
- * The original's level check after a kill, after the XP is added: at most one level, the overflow
- * is lost, HPmax and SPmax +1, no heal. Returns true on a level-up.
+ * The level check after a kill, after the XP is added: one level for each `expNeeded` the XP
+ * reaches, carrying what is left over, with HPmax and SPmax +1 each; no heal. Returns the number of
+ * levels gained (a bug fixed: 1.6 reset the XP to 0 and gained at most one level a kill).
  */
-export function checkLevelUp(v: Vitals): boolean {
-  if (v.exp < v.expNeeded) {
-    return false;
+export function checkLevelUp(v: Vitals): number {
+  let levels = 0;
+  while (v.exp >= v.expNeeded && v.expNeeded > 0) {
+    v.exp -= v.expNeeded;
+    v.level += 1;
+    v.expNeeded = v.level === 2 ? 400 : 400 + v.level + v.level;
+    v.hpMax += 1;
+    v.spMax += 1;
+    levels += 1;
   }
-  v.exp = 0;
-  v.level += 1;
-  v.expNeeded = v.level === 2 ? 400 : 400 + v.level + v.level;
-  v.hpMax += 1;
-  v.spMax += 1;
-  return true;
+  return levels;
 }
 
 // ---- regen -----------------------------------------------------------------------------
@@ -78,21 +80,21 @@ export function regenTarget(speed: number, adventurerBonus: number | null): numb
 }
 
 /**
- * One frame of the regen timer. The counter starts at 1 at login, is raised first, and acts only on
- * exact equality with the target, so with speed 1 regen fires every 148 frames. For 50 ≤ Hunger ≤
- * 500 nothing resets it and regen stalls until the next login (a kept bug: 1.6 did this). Mutates
- * `v` and returns the new counter.
+ * One frame of the regen timer. The counter starts at 1 at login and is raised first; when it
+ * reaches the target it acts and starts again from 1, so with speed 1 regen fires every 148 frames.
+ * Hunger above 500 regenerates 1 HP and SP, below 50 starves 1 of each (floor 1), and in between the
+ * period passes with no change (a bug fixed: 1.6 reset the counter only on a regen or a starve and
+ * tested for exact equality, so it stalled until the next login). Mutates `v` and returns the new
+ * counter.
  */
 export function regenTick(counter: number, target: number, hunger: number, v: Vitals): number {
   const c = counter + 1;
-  if (c !== target) {
+  if (c < target) {
     return c;
   }
-  let next = c;
   if (hunger > 500) {
     v.hp = Math.min(v.hp + 1, v.hpMax);
     v.sp = Math.min(v.sp + 1, v.spMax);
-    next = 1;
   }
   if (hunger < 50) {
     if (v.hp > 1) {
@@ -101,9 +103,8 @@ export function regenTick(counter: number, target: number, hunger: number, v: Vi
     if (v.sp > 1) {
       v.sp -= 1;
     }
-    next = 1;
   }
-  return next;
+  return 1;
 }
 
 // ---- hunger ----------------------------------------------------------------------------
@@ -116,8 +117,9 @@ export const HUNGER_WARNINGS: Readonly<Record<number, string>> = {
 };
 
 /**
- * One frame of hunger: unless immortal, `random(3) = 1` and Hunger > 0 takes 1; below 2000 the
- * exact-value warnings print, every frame Hunger sits on the value (a kept bug: 1.6 repeated them).
+ * One frame of hunger: unless immortal, `random(3) = 1` and Hunger > 0 takes 1; a warning prints on
+ * the frame Hunger drops onto its value (a bug fixed: 1.6 printed it on every frame Hunger sat on
+ * the value, about three times).
  */
 export function hungerTick(
   hunger: number,
@@ -131,7 +133,7 @@ export function hungerTick(
   if (rng.random(3) === 1 && h > 0) {
     h -= 1;
   }
-  const warning = h < 2000 ? (HUNGER_WARNINGS[h] ?? null) : null;
+  const warning = h !== hunger && h < 2000 ? (HUNGER_WARNINGS[h] ?? null) : null;
   return { hunger: h, warning };
 }
 
@@ -143,12 +145,13 @@ export const DEATH_HUNGER = 40000;
 export const DEATH_PENALTY_TEXT = "*** Your downfall in battle has caused you to become weakened.";
 
 /**
- * The forced death penalty: `DeathPenalty = "X"` is forced, so every non-arena death rolls
- * `random(5) = 1` (wanted: `random(1)`) for HPmax −1 and SPmax −1, each only if above 2. Returns
- * true when the penalty text prints.
+ * The death penalty, on a map whose PvP flag is X only: `random(5) = 1` (wanted: `random(1)`) for
+ * HPmax −1 and SPmax −1, each only if above 2. Returns true when the penalty text prints. 1.6 forced
+ * its `DeathPenalty` flag to X just before the test, so every non-arena death rolled; the flag holds
+ * the map's PvP setting everywhere else (a bug fixed).
  */
-export function rollDeathPenalty(v: Vitals, wanted: boolean, rng: Rng): boolean {
-  if (rng.random(wanted ? 1 : 5) !== 1) {
+export function rollDeathPenalty(v: Vitals, wanted: boolean, pvpMap: boolean, rng: Rng): boolean {
+  if (!pvpMap || rng.random(wanted ? 1 : 5) !== 1) {
     return false;
   }
   if (v.hpMax > 2) {

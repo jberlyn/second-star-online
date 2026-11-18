@@ -142,7 +142,6 @@ export interface StartingCharacter {
   skills: number[];
   gold: number;
   profile: string;
-  medals: string;
   hunger: number;
   breakCount: number;
   /** Bag lines: item name and quantity. */
@@ -186,8 +185,6 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     ),
     gold: other.gold,
     profile: other.profile,
-    // Item 10 is written EMPTY; the "0:0:0:0:0:0" the original wrote there is item 8, `gnL`.
-    medals: "",
     hunger: other.hunger,
     breakCount: other.breakCount,
     bag: [

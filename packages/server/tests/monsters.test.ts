@@ -430,21 +430,28 @@ describe("melee", () => {
     expect(a.char.vitals.exp).toBe(23);
   });
 
-  test("kept bug: XP overflow is lost and one level comes per kill", () => {
+  test("bug fixed: XP overflow carries over and a kill can raise several levels", () => {
     const map = testMap("x1000y992");
     const { join, run } = setup([map], undefined, rngByN());
     const a = player("a", map, 5, 5);
     a.facing = "E";
     a.char.stats.str = 20;
+    // 29 + the Slime's 23 = 52: level 2 at 30 with 22 over. Then 400 + 406 more reach level 4.
     a.char.vitals.exp = 29;
     join(a);
     const m = live(map, 1, "Slime", 6, 5);
     m.hp = 0;
     (map.slots[0] as MonsterSlot).pause = 10_000;
     setAttackHeld(a, true);
-    const msgs = run(2);
-    expect(a.char.vitals).toMatchObject({ level: 2, exp: 0, expNeeded: 400, hpMax: 21 });
-    expect(chat(msgs, "a")).toContain("You have become more powerful!");
+    let msgs = run(2);
+    expect(a.char.vitals).toMatchObject({ level: 2, exp: 22, expNeeded: 400, hpMax: 21 });
+    expect(chat(msgs, "a").filter((t) => t === "You have become more powerful!")).toHaveLength(1);
+    a.char.vitals.exp = 806 - 22; // a Slime gives 22 at level 2
+    const m2 = live(map, 1, "Slime", 6, 5);
+    m2.hp = 0;
+    msgs = run(30);
+    expect(a.char.vitals).toMatchObject({ level: 4, exp: 0, expNeeded: 408, hpMax: 23 });
+    expect(chat(msgs, "a").filter((t) => t === "You have become more powerful!")).toHaveLength(2);
   });
 
   test("bug fixed: on a no-fight map an arena tile waits for the re-arm like any swing", () => {

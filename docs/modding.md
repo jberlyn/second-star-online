@@ -324,7 +324,9 @@ Reusing an existing `effect` is data-only. Creating a brand-new effect requires 
 
 - Shorter `startingSkills` arrays are padded to `skills.length` with `NEW_SKILL_VALUE` (`1`).
 - Existing characters saved with fewer skill rows load `1` for any newly added skill and persist it on their next save.
-- Kill-gain and cast-gain rules live in code (`packages/shared/src/rules/progression/skillgain.ts` and `packages/shared/src/rules/spells/spells.ts`); an added skill rises only via an `item-rules.json` `use.skillBooks` row or code.
+- Kill-gain and cast-gain rules live in code (`packages/shared/src/rules/progression/skillgain.ts` and `packages/shared/src/rules/spells/spells.ts`); an added skill rises only via an `item-rules.json` `use.skillBooks` row, a promotion's `skillGrants`, or code.
+- A class's `statBonus` (for example `{ "dex": 3 }`) is added to the stats of every character in that class while they are in it; change it and every such character follows.
+- A class's `promotion.skillGrants` lists skills (by `skill` name) that the promotion raises to a roll of 1 to 10; a skill already higher keeps its value. `data:build` refuses a name not in `skills`.
 
 ### Example: Swimming
 

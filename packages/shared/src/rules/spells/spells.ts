@@ -23,6 +23,7 @@ import { type Equipment, type Faction, skillIndex } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { firstMatch, lastMatch } from "../core/patterns.ts";
 import type { Facing } from "../movement/movement.ts";
+import { mageSkillCap } from "../progression/skillgain.ts";
 
 export interface SpellTable {
   byName(name: string): Spell | null;
@@ -499,16 +500,9 @@ const IMP_EXITS = [
   "Smith",
 ];
 
-/**
- * The Mage skill cap in the cast skill gain: 30, or for the Mage faction 50/60/70/90/100 by
- * faction bonus < 1/1/2/3/> 3 (the kill path's cap uses 80 at 3, skillgain.ts).
- */
+/** The Mage skill cap in the cast skill gain: the same table as the kill path (`mageSkillCap`). */
 export function castMageCap(f: Faction): number {
-  if (f.id !== 1) {
-    return 30;
-  }
-  const b = f.f1Bonus;
-  return b < 1 ? 50 : b === 1 ? 60 : b === 2 ? 70 : b === 3 ? 90 : 100;
+  return mageSkillCap(f);
 }
 
 /**

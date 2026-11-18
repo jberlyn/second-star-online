@@ -7,7 +7,13 @@
  * error, ignored); a dead one answers, as 1.6's dead-player gate never closed and let it (nothing
  * set the flag to 1).
  */
-import { type BioSource, drawProfile, giveBio, saveProfile } from "@secondstaronline/shared";
+import {
+  type BioSource,
+  drawProfile,
+  giveBio,
+  medalField,
+  saveProfile,
+} from "@secondstaronline/shared";
 
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { guildOf } from "./guilds.ts";
@@ -24,7 +30,7 @@ export function bioSource(world: World, t: Player): BioSource {
     sex: t.char.sex,
     level: t.char.vitals.level,
     profile: t.char.profile,
-    medals: t.char.medals,
+    medals: medalField(t.char.skills),
     skills: t.char.skills,
     hpMax: t.char.vitals.hpMax,
     spMax: t.char.vitals.spMax,

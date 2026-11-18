@@ -218,7 +218,6 @@ describe("saving skills (open skill count)", () => {
         faction: rec.faction,
         wanted: rec.wanted,
         stats,
-        medals: rec.medals,
         vehicle: rec.vehicle,
       },
     };

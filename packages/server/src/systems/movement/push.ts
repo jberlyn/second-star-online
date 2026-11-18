@@ -19,7 +19,7 @@
 import { attemptMove, type Dir, pushLines } from "@secondstaronline/shared";
 
 import { isCrafting, stopCraftsOnMove } from "../crafting/craft.ts";
-import type { Player, Room } from "../world/world.ts";
+import { type Player, type Room, statsOf } from "../world/world.ts";
 import { carryOut, type MoveCtx, standingPlayersAt, walkWorld } from "./movement.ts";
 
 /**
@@ -49,7 +49,7 @@ export function pushOnMe(room: Room, victim: Player, dir: Dir, pusher: Player, c
   if (ctx.crossings.some((c) => c.player === victim)) {
     return;
   }
-  const tooWeak = pusher.char.stats.str < victim.char.stats.str;
+  const tooWeak = statsOf(pusher).str < statsOf(victim).str;
   for (const line of pushLines(pusher.name, tooWeak)) {
     ctx.tell(victim, line);
   }

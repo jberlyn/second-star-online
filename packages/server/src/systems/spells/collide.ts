@@ -92,6 +92,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     p.lastToHitMe = fx.owner;
     // A monster's spell has no owner id.
     p.lastToHitId = fx.ownerId ?? null;
+    p.hitAge = 0;
     p.flicker = FLICKER_FRAMES; // the hit flicker starts
     p.vitalsDirty = true;
     res.events.push({ e: "phit", id: p.id, text: String(dmg), color: SPELL_HIT_COLOR });
@@ -374,7 +375,8 @@ function checkForDead(
   const xp = meleeKillXp(sp?.xpSpell ?? 30, m.name, owner.char.equip.ring);
   v.exp += xpGained(xp, v.level);
   owner.vitalsDirty = true;
-  if (checkLevelUp(v)) {
+  // One line for each level gained.
+  for (let n = checkLevelUp(v); n > 0; n--) {
     tell(res.out, owner, SPELL_LEVEL_UP_TEXT);
   }
   return true;

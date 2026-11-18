@@ -16,6 +16,7 @@ import {
   type DeltaEvent,
   type Dir,
   type Equipment,
+  effectiveStats,
   emptyAssassinState,
   emptyBag,
   FACING_DELTA,
@@ -197,11 +198,19 @@ export function emptySlots(): MonsterSlot[] {
   }));
 }
 
+/** The stats `p` plays with: the allocated stats plus its class's and held medals' points. */
+export function statsOf(p: {
+  char: Pick<CharacterState, "stats" | "skills" | "classCode">;
+}): CharacterState["stats"] {
+  return effectiveStats(p.char.stats, p.char.classCode, p.char.skills);
+}
+
 /** Server-owned character state the combat and progression rules read and change. */
 export interface CharacterState {
   /** The class code; a promotion or `/setclass` changes it. */
   classCode: number;
   vitals: Vitals;
+  /** The allocated stats; the rules read `statsOf`, which adds the class's and medals' points. */
   stats: {
     str: number;
     sta: number;
@@ -236,8 +245,6 @@ export interface CharacterState {
   sex: number;
   /** The profile (sheet item 6), shown in your bio and edited only there. */
   profile: string;
-  /** The `Medals` field, `id-id-…` (sheet item 10). */
-  medals: string;
 }
 
 export interface Player {
@@ -325,9 +332,12 @@ export interface Player {
   lastToHitMe: string | null;
   /**
    * The player behind `lastToHitMe`, by id, or null for a monster (the flag and points go to a
-   * player id, never to a name). Cleared only at death and login.
+   * player id, never to a name). Cleared at death and login, and by a death that comes more than
+   * `KILL_CREDIT_TICKS` after the last hit.
    */
   lastToHitId: string | null;
+  /** Ticks since the hit that set `lastToHitMe` landed. */
+  hitAge: number;
   /**
    * In the shared `@Faction` channel: joined at login as a member and on joining; left by
    * the loyalty kick, but not by a death exile.
@@ -513,10 +523,10 @@ export interface Player {
   /** The Friends window's lines: online buddies in the server's spelling (BUD). */
   friends: string[];
   /**
-   * The skills the award check last saw: a change runs it, as each 1.6 skill save did. Null until
-   * the session's first tick records them (a login awards nothing).
+   * The skills the medal line check last saw, to print a medal's line when a skill reaches 90 in
+   * play. Null until the session's first tick records them.
    */
-  awardSkills: string | null;
+  awardSkills: number[] | null;
 }
 
 /**
@@ -607,6 +617,7 @@ export function sessionCombatState(): Pick<
   | "npcAttackFlag"
   | "lastToHitMe"
   | "lastToHitId"
+  | "hitAge"
   | "factionChannel"
   | "deadLock"
   | "vitalsDirty"
@@ -672,6 +683,7 @@ export function sessionCombatState(): Pick<
     npcAttackFlag: false,
     lastToHitMe: null,
     lastToHitId: null,
+    hitAge: 0,
     factionChannel: false,
     deadLock: 0,
     vitalsDirty: true,
@@ -743,7 +755,6 @@ export function defaultCharacter(): CharacterState {
     storeDirty: false,
     sex: 1,
     profile: "I have not edited my profile yet",
-    medals: "",
   };
 }
 

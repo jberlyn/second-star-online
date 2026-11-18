@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 51 |
-| [Fixed bugs](#fixed-bugs) | 239 |
-| [Kept on purpose](#kept-on-purpose) | 3 |
+| [Design changes](#design-changes) | 53 |
+| [Fixed bugs](#fixed-bugs) | 247 |
+| [Kept on purpose](#kept-on-purpose) | 4 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **464** |
+| **Total** | **475** |
 
 By system (the code folder that holds the change):
 
@@ -52,7 +52,7 @@ By system (the code folder that holds the change):
 | mail | [16](#mail) | [11](#server-side-mail) |
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
 | movement | [7](#movement) | [4](#server-side-movement) |
-| progression | 0 | [4](#server-side-progression) |
+| progression | [8](#progression) | [4](#server-side-progression) |
 | social | [4](#social) | [9](#server-side-social) |
 | spells | [1](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
@@ -511,6 +511,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Players set their respawn point on purpose (operators build respawn maps for it), so it is where a displaced player expects to be; the start point is only for new characters and the last resort.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`fallbackPoint`, `releaseFromJail`), `packages/server/src/game.ts` (`deleteInterior`), `packages/server/src/cli/map-check.ts` (`mapCheck`)
 - **Pinned by:** `SSO: the fallback point is your respawn point, then the operator's, then the start point` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to their respawn point, else the operator's` (packages/server/tests/houses-db.test.ts); `death revives a prisoner in jail without restarting the sentence; expiry still releases` (packages/server/tests/jail.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
+
+#### Class stat points come from your current class
+- **Kind:** Other
+- **What you notice:** A Druid plays with +3 Dexterity, Wisdom and Intelligence, a Bard +1 Wisdom and a Barbarian +1 Strength, for as long as they are in that class. If an operator changes your class, its points go and the new class's come.
+- **1.6:** A promotion added its stat points to the stored stats once, and they stayed whatever happened to the class later.
+- **SSO:** Each class's points are its `statBonus` in `classes.json`, added to your allocated stats (with any medals' points) wherever stats are used, and never stored. The upgrade takes the shipped points of each character's current class back off the stored stats, so promoted characters keep the stats they had.
+- **Why:** Calculated points let operators rebalance classes and have every character follow; see [issue #15](https://github.com/jberlyn/second-star-online/issues/15).
+- **In the code:** `packages/shared/src/rules/progression/stats.ts` (`classStatBonus`, `effectiveStats`), `packages/server/src/systems/world/world.ts` (`statsOf`), `packages/shared/src/rules/progression/promotion.ts` (`promoteClass`)
+- **Pinned by:** `Druid +3 Dex/Wis/Int, Bard +1 Wis, Barbarian +1 Str; other classes none`; `calculated from the current class: a promotion stores no stat points` (packages/shared/tests/progression/promotion.test.ts); `a Druid plays with +3 Dex, Wis and Int and a Blacksmithing medal's points; neither is stored` (packages/server/tests/friends.test.ts); `calculated_class_stats takes the current class's promotion points off the stored stats` (packages/server/tests/migrations.test.ts)
+
+#### Medals and their stat points come from your skills
+- **Kind:** Other
+- **What you notice:** Every skill at 90 or more shows its medal on your bio and adds its medal's points to your stats; for example, Blacksmithing at 90 gives +2 Strength and +2 Stamina. If the skill drops below 90, the medal and the points go. A skill set past 90, even by an operator, counts at once. Reaching 90 in play still prints the medal's line. Medals show in the medal table's order.
+- **1.6:** A medal was granted once, when a skill was saved at exactly 90: its id was added to the character's `Medals` field and its points to the stored stats for good. A skill that skipped 90, or one already at its maximum, never earned it.
+- **SSO:** Nothing is granted or stored. Your stored stats are the points you allocated; the rules, the Stats tab and the bio use those plus your class's points and the points of every medal your skills hold. The upgrade takes each held medal's points back off the stored stats and drops the `Medals` field, so a character keeps the same stats while its skills stay at 90 or more.
+- **Why:** A medal marks mastery of a skill, so it should follow the skill; a calculated bonus cannot be missed, duplicated or left behind.
+- **In the code:** `packages/shared/src/rules/progression/medals.ts` (`heldMedals`, `medalField`, `newMedalLines`), `packages/shared/src/rules/progression/stats.ts` (`effectiveStats`), `packages/server/src/systems/world/world.ts` (`statsOf`), `packages/server/src/systems/progression/medals.ts` (`medalCheck`), `packages/server/src/systems/social/bios.ts` (`bioSource`)
+- **Pinned by:** `90 or more holds a medal, 89 does not`; `the stats played with are the allocated stats plus the bonus; the input is untouched` (packages/shared/tests/social/friends-bios-medals.test.ts); `a skill lowered below 90 loses its medal and its point; back at 90 it returns`; `a skill already at 90 or more at login holds its medal and point without a line` (packages/server/tests/friends.test.ts); `a medal and its point come from the saved skill; the stored stats stay as allocated` (packages/server/tests/buddies-db.test.ts); `calculated_medals takes each held medal's points off the stored stats and drops the field` (packages/server/tests/migrations.test.ts)
 
 ## Fixed bugs
 
@@ -2626,6 +2644,80 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/movement/movement.ts` (`walkWorld`), `packages/client/src/model.ts` (`walkWorld`)
 - **Pinned by:** `bug fixed: a player mid-step blocks the tile it steps onto; two never end on one tile`; `the tile a moving player leaves is free at once` (packages/server/tests/world.test.ts); `bug fixed: a moving player blocks the tile it steps onto` (packages/server/e2e/login-and-walk.test.ts)
 
+### progression
+
+#### A rider must land before challenging
+- **Kind:** Bug fixed
+- **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are. If you fly onto an arena tile and are defeated there, or type quit, you leave the arena still flying, with your airship.
+- **1.6:** Challenge never looked at vehicles, so a rider entered the arena still flying, where it could not swing or cast and monster melee could not reach it.
+- **SSO:** The challenge is refused aboard; the line is SSO's own. An arena defeat stays penalty-free, so it keeps the airship as it keeps everything else, and the exit is drawn from the tiles an Airship may stand on.
+- **Why:** An arena fight is meant to be on foot; the arena exit running before the vehicle was cleared is right for a penalty-free defeat.
+- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`challengeCheck`), `packages/server/src/systems/combat/arena.ts` (`challenge`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
+- **Pinned by:** `bug fixed: a rider must land before making a challenge` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a rider cannot challenge; one who flew onto the arena quits still flying`; `a rider's exit is drawn from the Airship grid` (packages/server/tests/arena.test.ts); `an arena death keeps the airship, as it keeps everything` (packages/server/tests/vehicles.test.ts)
+
+#### Spare XP carries over a level-up
+- **Kind:** Bug fixed
+- **What you notice:** XP past what a level needs counts toward the next one, and a kill big enough for several levels gives them all, with "You have become more powerful!" once for each. A level-up still does not heal you.
+- **1.6:** The level check reset XP to 0 and was a single test, so the overflow was lost and a kill gave at most one level.
+- **SSO:** The check repeats while XP reaches the amount needed, taking that amount off each time; each level adds 1 to maximum HP and SP as before.
+- **Why:** Throwing away earned XP was a shortcut in the level check, not a rule.
+- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`checkLevelUp`), `packages/server/src/systems/combat/melee.ts` (`smash`), `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
+- **Pinned by:** `bug fixed: the overflow carries over and a big kill can raise several levels; no heal`; `short of the XP needed, nothing changes` (packages/shared/tests/progression/progression.test.ts); `bug fixed: XP overflow carries over and a kill can raise several levels` (packages/server/tests/monsters.test.ts)
+
+#### Class promotions give their skills
+- **Kind:** Bug fixed
+- **What you notice:** A promotion raises the skills its class was meant to start with to a roll of 1 to 10: Grunt Thrust, Illusionist Illusion, Wizard Wizardry, Sorcerer Sorcery, Paladin Fencing and Magery, Dragoon Block and Fencing, Priest Blessing, Necromancer Black Arts, Bard Musicianship, Barbarian Hammer Wielding, the four elemental Mages their element, and Archer Archery. Druid has none. A skill already above the roll keeps its value.
+- **1.6:** Each promotion set its skill to `random(10)`, but the character refresh then reloaded every skill from the saved field, so no promotion ever gave a skill. The grant also overwrote the skill, so it could have lowered one.
+- **SSO:** The grants are in `classes.json` (`skillGrants`); the server applies them and saves the class, gold and skills in one write. The anti-cheat ban a changed roll could trigger in 1.6 does not exist in SSO.
+- **Why:** The grant code is plainly meant to run; the reload that undid it was an accident of order. How classes and promotions should work and balance is open in [issue #15](https://github.com/jberlyn/second-star-online/issues/15).
+- **In the code:** `packages/shared/src/rules/progression/promotion.ts` (`promoteClass`), `packages/server/src/systems/economy/intents.ts` (`trainIntent`), `packages/server/src/persistence/characters.ts` (`savePromotion`)
+- **Pinned by:** `bug fixed: each promotion raises its skills to a roll of 1-10`; `a grant never lowers a skill already above the roll`; `Druid grants no skill` (packages/shared/tests/progression/promotion.test.ts); `bug fixed: after a reconnect the class, gold and granted Thrust hold` (packages/server/e2e/promotions.test.ts)
+
+#### Regeneration never stalls
+- **Kind:** Bug fixed
+- **What you notice:** Hit and spell points regenerate every period while Hunger is above 500, whatever your hunger did before. With Hunger from 50 to 500 a period passes with no change, and starving below 50 still takes 1 of each down to 1.
+- **1.6:** The counter reset only when it exactly equalled its target and a regen (Hunger above 500) or starvation (below 50) happened. A period with Hunger in between, or a target lowered below the counter, left it climbing past the target, so regen and starvation stopped until the next login.
+- **SSO:** The counter resets every time it reaches the target, whatever the hunger. It still starts at 1 at login and is raised first, so regen fires every 148 frames at speed 1.
+- **Why:** The reset was meant to start each period; tying it to the effect was an oversight.
+- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`regenTick`), `packages/server/src/systems/progression/vitals.ts` (`regenStep`)
+- **Pinned by:** `bug fixed: a period with 50 <= Hunger <= 500 passes with no change and regen goes on`; `bug fixed: a counter already past a lowered target fires on the next frame` (packages/shared/tests/progression/progression.test.ts)
+
+#### Each hunger warning prints once
+- **Kind:** Bug fixed
+- **What you notice:** "You are very hungry.", "You are extremely hungry, you need to eat." and "You are starving!" each appear once as hunger drops past them.
+- **1.6:** The check ran every frame and printed whenever hunger equalled a warning value, while hunger drops on only about a third of frames, so each warning printed about three times.
+- **SSO:** A warning prints on the frame hunger drops onto its value.
+- **Why:** The warnings were meant to mark the moment hunger reaches each level.
+- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`hungerTick`, `HUNGER_WARNINGS`)
+- **Pinned by:** `bug fixed: a warning prints once, on the frame hunger drops onto the value`; `bug fixed: over many frames each warning prints exactly once` (packages/shared/tests/progression/progression.test.ts)
+
+#### The death penalty applies only on PvP maps
+- **Kind:** Bug fixed
+- **What you notice:** A death on a map where players can fight each other still has a one in five chance (always, if you are wanted) of costing 1 off maximum HP and SP, with "*** Your downfall in battle has caused you to become weakened." Elsewhere a death never weakens you.
+- **1.6:** The death routine set its `DeathPenalty` flag to X just before testing it. Everywhere else that flag holds the map's PvP setting, so the roll was meant for PvP maps only but ran on every non-arena death.
+- **SSO:** The penalty is rolled only when the map's PvP flag is X, the same test that drops a faction head. A maximum is still only lowered while above 2, and faction exile is still checked on every death.
+- **Why:** Overwriting the flag just before the test was a leftover; the flag's meaning shows the intent. Whether permanent stat loss should stay at all, even on PvP maps, is still open in [issue #12](https://github.com/jberlyn/second-star-online/issues/12).
+- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`rollDeathPenalty`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
+- **Pinned by:** `bug fixed: off a PvP map there is no penalty and no roll, wanted or not`; `on a PvP map, random(5) = 1 → HPmax and SPmax −1 above 2; wanted always` (packages/shared/tests/progression/progression.test.ts)
+
+#### Mage skills cap the same from kills and casts
+- **Kind:** Bug fixed
+- **What you notice:** A Mage faction member with a bonus of 3 can raise Mage skills to 90 by killing as well as by casting.
+- **1.6:** The kill path capped Mage skills at 80 at that bonus and the cast path at 90; the tables agreed at every other bonus (30 outside the faction, then 50, 60, 70 and 100).
+- **SSO:** Both paths use one table, with 90 at bonus 3.
+- **Why:** Two copies of one table drifted apart. SSO takes the higher value so no character ends up above its cap.
+- **In the code:** `packages/shared/src/rules/progression/skillgain.ts` (`mageSkillCap`, `skillCaps`), `packages/shared/src/rules/spells/spells.ts` (`castMageCap`)
+- **Pinned by:** `bug fixed: a Mage faction bonus of 3 caps Mage skill at 90 from kills and casts alike` (packages/shared/tests/spells/spells.test.ts)
+
+#### A death long after the last hit credits no one
+- **Kind:** Bug fixed
+- **What you notice:** A death that comes more than 2 seconds after the last hit names no killer ("… was just killed.") and flags no one, however recently someone hit you before that.
+- **1.6:** The last attacker was cleared only at death and login, so a death nobody caused named and flagged whoever had hit you last, however long ago.
+- **SSO:** Every hit restarts a short window (`KILL_CREDIT_TICKS`, 40 ticks); a death after it has passed forgets the last attacker before the death line, the murder flag and the Assassin points. In SSO starving stops at 1 HP, as in 1.6, so this guards any death no hit caused.
+- **Why:** A kill should be credited to the hit that caused it.
+- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`, `ageLastHit`, `KILL_CREDIT_TICKS`), `packages/server/src/systems/social/murder.ts` (`flagKiller`)
+- **Pinned by:** `bug fixed: a death long after the last hit credits no one`; `a death within the credit window still credits the hit` (packages/server/tests/factions.test.ts)
+
 ### social
 
 #### Guild names lose ; ` and '
@@ -2724,6 +2816,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** NPCs walk, so a range would make a shopkeeper's window come and go as it wanders; clicking across the screen is how the game was played.
 - **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`)
 - **Pinned by:** `kept on purpose: an NPC's Bio opens from anywhere on the screen` (packages/server/tests/npcs-trade.test.ts)
+
+### Dying aboard an airship loses it
+- **Kind:** Kept on purpose
+- **What you notice:** If you die while riding an airship, the airship is gone and no deed comes back. Your bag and gold stay with you. A faction head still drops on a PvP map. An arena defeat keeps the airship.
+- **1.6:** Death cleared the vehicle and switched the item and gold drop off. The body reverted to the walker late on each player's screen.
+- **SSO:** The same, except the body reverts at once for everyone, on the server.
+- **Why:** Flying an airship through a PvP area, or past monsters that cast spells, is a risk the rider takes; losing it is the price of dying there.
+- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts` (`vehicleDeath`)
+- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `a Lightning death clears it too`; `an arena death keeps the airship, as it keeps everything` (packages/server/tests/vehicles.test.ts)
 
 ## Server authority and exploits
 
@@ -3607,10 +3708,10 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** A modified client could skip penalties, regenerate at will or avoid starvation.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`regenStep`, `hungerStep`, `checkDeath`)
 
-#### Regen stall resets on relog instead of client restart
+#### The regen counter restarts at login, not on a resumed connection
 - **Kind:** Architecture
-- **What you notice:** The regeneration stall counter resets at login, but not when a dropped connection resumes the same session.
-- **1.6:** The stalled counter reset when its timer sprite restarted, such as after a client restart or relogin.
+- **What you notice:** The regeneration counter starts again at login, but not when a dropped connection resumes the same session.
+- **1.6:** The counter restarted with its timer sprite, such as after a client restart or relogin.
 - **SSO:** The counter belongs to the play session and resets at login, not a resumed session.
 - **Why:** There is no timer sprite on the server; login is the equivalent boundary.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`regenStep`), `packages/server/src/systems/world/world.ts` (`sessionCombatState`)

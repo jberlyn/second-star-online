@@ -60,20 +60,24 @@ describe("kill XP", () => {
 });
 
 describe("level-up", () => {
-  test("kept bug: overflow is lost, one level per kill, no heal", () => {
+  test("bug fixed: the overflow carries over and a big kill can raise several levels; no heal", () => {
     const v = vitals();
     v.hp = 5;
     v.exp = 46;
-    expect(checkLevelUp(v)).toBe(true);
-    expect(v).toEqual({ level: 2, hp: 5, hpMax: 21, sp: 20, spMax: 21, exp: 0, expNeeded: 400 });
+    expect(checkLevelUp(v)).toBe(1);
+    expect(v).toEqual({ level: 2, hp: 5, hpMax: 21, sp: 20, spMax: 21, exp: 16, expNeeded: 400 });
     v.exp = 2000;
-    checkLevelUp(v);
-    expect(v.level).toBe(3);
-    expect(v.expNeeded).toBe(406);
-    expect(v.exp).toBe(0);
+    // 2000 − 400 (to 3) − 406 (to 4) − 408 (to 5) − 410 (to 6) = 376, short of the 412 for 7.
+    expect(checkLevelUp(v)).toBe(4);
+    expect(v).toMatchObject({ level: 6, exp: 376, expNeeded: 412, hpMax: 25, spMax: 25, hp: 5 });
+  });
+  test("short of the XP needed, nothing changes", () => {
+    const v = { ...vitals(), exp: 29 };
+    expect(checkLevelUp(v)).toBe(0);
+    expect(v).toEqual({ ...vitals(), exp: 29 });
   });
   test("ExpNeeded = 400 + 2·level after level 2", () => {
-    const v = { ...vitals(), level: 9, exp: 999, expNeeded: 418 };
+    const v = { ...vitals(), level: 9, exp: 418, expNeeded: 418 };
     checkLevelUp(v);
     expect(v.expNeeded).toBe(420);
   });
@@ -97,17 +101,24 @@ describe("regen", () => {
     }
     expect(fired).toEqual([148, 296]);
   });
-  test("kept bug: regen stalls for 50 <= Hunger <= 500 and never fires again", () => {
+  test("bug fixed: a period with 50 <= Hunger <= 500 passes with no change and regen goes on", () => {
     const v = { ...vitals(), hp: 10 };
     let c = 1;
     for (let f = 1; f <= 147; f++) {
       c = regenTick(c, 149, 50000, v);
     }
-    c = regenTick(c, 149, 300, v); // frame 148 on the target with hunger 300: no reset
-    for (let f = 0; f < 2000; f++) {
+    c = regenTick(c, 149, 300, v); // frame 148 on the target with hunger 300: no change, a reset
+    expect(c).toBe(1);
+    expect(v.hp).toBe(10);
+    for (let f = 0; f < 148; f++) {
       c = regenTick(c, 149, 50000, v);
     }
-    expect(v.hp).toBe(10);
+    expect(v.hp).toBe(11);
+  });
+  test("bug fixed: a counter already past a lowered target fires on the next frame", () => {
+    const v = { ...vitals(), hp: 10 };
+    expect(regenTick(140, 120, 50000, v)).toBe(1);
+    expect(v.hp).toBe(11);
   });
   test("starving takes 1 HP and SP per period, floor 1", () => {
     const v = { ...vitals(), hp: 2, sp: 1 };
@@ -123,25 +134,60 @@ describe("hunger", () => {
     expect(hungerTick(100, false, maxRng).hunger).toBe(100);
     expect(hungerTick(100, true, minRng).hunger).toBe(100);
   });
-  test("kept bug: a warning prints on every frame hunger sits on the value", () => {
+  test("bug fixed: a warning prints once, on the frame hunger drops onto the value", () => {
     expect(hungerTick(1501, false, minRng).warning).toBe("You are very hungry.");
-    expect(hungerTick(1500, false, maxRng).warning).toBe("You are very hungry.");
+    expect(hungerTick(1500, false, maxRng).warning).toBeNull();
+    expect(hungerTick(1500, false, minRng).warning).toBeNull();
     expect(hungerTick(1001, false, minRng).warning).toBe(
       "You are extremely hungry, you need to eat.",
     );
     expect(hungerTick(501, false, minRng).warning).toBe("You are starving!");
   });
+  test("bug fixed: over many frames each warning prints exactly once", () => {
+    let rolls = 0;
+    const third: Rng = { random: () => (rolls++ % 3 === 0 ? 1 : 2) };
+    let h = 1600;
+    const lines: string[] = [];
+    while (h > 400) {
+      const r = hungerTick(h, false, third);
+      h = r.hunger;
+      if (r.warning) {
+        lines.push(r.warning);
+      }
+    }
+    expect(lines).toEqual([
+      "You are very hungry.",
+      "You are extremely hungry, you need to eat.",
+      "You are starving!",
+    ]);
+  });
 });
 
 describe("death", () => {
-  test("kept bug: DeathPenalty is forced, random(5) = 1 → HPmax and SPmax −1 above 2", () => {
+  test("on a PvP map, random(5) = 1 → HPmax and SPmax −1 above 2; wanted always", () => {
     const v = vitals();
-    expect(rollDeathPenalty(v, false, minRng)).toBe(true);
+    expect(rollDeathPenalty(v, false, true, minRng)).toBe(true);
     expect([v.hpMax, v.spMax]).toEqual([19, 19]);
-    expect(rollDeathPenalty(v, false, maxRng)).toBe(false);
+    expect(rollDeathPenalty(v, false, true, maxRng)).toBe(false);
+    expect(rollDeathPenalty(v, true, true, maxRng)).toBe(true);
+    expect([v.hpMax, v.spMax]).toEqual([18, 18]);
     const low = { ...vitals(), hpMax: 2, spMax: 2 };
-    expect(rollDeathPenalty(low, false, minRng)).toBe(true);
+    expect(rollDeathPenalty(low, false, true, minRng)).toBe(true);
     expect([low.hpMax, low.spMax]).toEqual([2, 2]);
+  });
+  test("bug fixed: off a PvP map there is no penalty and no roll, wanted or not", () => {
+    const calls: number[] = [];
+    const spy: Rng = {
+      random: (n) => {
+        calls.push(n);
+        return 1;
+      },
+    };
+    const v = vitals();
+    expect(rollDeathPenalty(v, false, false, spy)).toBe(false);
+    expect(rollDeathPenalty(v, true, false, spy)).toBe(false);
+    expect([v.hpMax, v.spMax]).toEqual([20, 20]);
+    expect(calls).toEqual([]);
   });
   test("the death message line", () => {
     expect(deathText("Bob", "a Slime")).toBe("*** Bob was just killed by a Slime.");

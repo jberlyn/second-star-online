@@ -62,8 +62,6 @@ export interface CharacterRecord {
   wanted: boolean;
   /** Sheet item 6. */
   profile: string;
-  /** Sheet item 10, `id-id-…`. */
-  medals: string;
   /** What the character is riding. */
   vehicle: Vehicle | null;
 }
@@ -108,14 +106,13 @@ interface CharacterRow {
   faction_count: number;
   wanted: number;
   profile: string;
-  medals: string;
   vehicle: Vehicle | null;
 }
 
 const COLUMNS =
   "id, account_id, name, sex, head, class_code, level, hp, hp_max, sp, sp_max, exp, exp_needed, " +
   "str, sta, agi, dex, int, wis, spd, aim, hunger, map_id, x, y, facing, respawn_map_id, respawn_x, respawn_y, " +
-  "faction, faction_count, wanted, profile, medals, vehicle";
+  "faction, faction_count, wanted, profile, vehicle";
 
 /**
  * Inserts a new character with one row per skill and starting bag. Synchronous: wrap it in the
@@ -129,9 +126,9 @@ export function insertCharacter(
   const id = Bun.randomUUIDv7();
   db.query(
     `INSERT INTO characters (id, account_id, name, sex, head, class_code, level, hp, hp_max, sp, sp_max,
-      exp, exp_needed, str, sta, agi, dex, int, wis, spd, aim, gold, profile, medals, hunger, break_count,
+      exp, exp_needed, str, sta, agi, dex, int, wis, spd, aim, gold, profile, hunger, break_count,
       map_id, x, y, facing, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.accountId,
@@ -156,7 +153,6 @@ export function insertCharacter(
     c.stats.aim,
     c.gold,
     c.profile,
-    c.medals,
     c.hunger,
     c.breakCount,
     p.mapId,
@@ -205,7 +201,7 @@ export function savePosition(db: Db, id: string, p: Position, now: string): void
 
 /**
  * What a session changes: position, vitals, hunger, skills, the respawn point, faction and flag,
- * and the stats and medals (the award check's points).
+ * and the allocated stats.
  */
 export interface CharacterProgress {
   position: Position;
@@ -216,7 +212,6 @@ export interface CharacterProgress {
   faction: StoredFaction;
   wanted: boolean;
   stats: Omit<StoredStats, "aim">;
-  medals: string;
   vehicle: Vehicle | null;
 }
 
@@ -227,7 +222,7 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     `UPDATE characters SET map_id = ?, x = ?, y = ?, facing = ?, level = ?, hp = ?, hp_max = ?,
       sp = ?, sp_max = ?, exp = ?, exp_needed = ?, hunger = ?, respawn_map_id = ?, respawn_x = ?,
       respawn_y = ?, faction = ?, faction_count = ?, wanted = ?, str = ?, sta = ?, agi = ?, dex = ?,
-      int = ?, wis = ?, spd = ?, medals = ?, vehicle = ?, updated_at = ? WHERE id = ?`,
+      int = ?, wis = ?, spd = ?, vehicle = ?, updated_at = ? WHERE id = ?`,
   ).run(
     p.mapId,
     p.x,
@@ -254,7 +249,6 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     c.stats.int,
     c.stats.wis,
     c.stats.spd,
-    c.medals,
     c.vehicle,
     now,
     id,
@@ -272,9 +266,8 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
 }
 
 /**
- * A promotion: the class, the gold and the stat changes in one write, so a crash never leaves the
- * class without its charge. Skills are never touched: 1.6 undid a promotion's skill grants, so a
- * promotion changes only the class, the gold and the stat changes.
+ * A promotion: the class, the gold, the SPmax floor and the granted skills in one write, so a crash
+ * never leaves the class without its charge. The class's stat points are calculated, not stored.
  */
 export function savePromotion(
   db: Db,
@@ -283,27 +276,23 @@ export function savePromotion(
     classCode: number;
     gold: number;
     spMax: number;
-    stats: Omit<StoredStats, "aim">;
+    skills: readonly number[];
   },
   now: string,
 ): void {
-  db.query(
-    `UPDATE characters SET class_code = ?, gold = ?, sp_max = ?, str = ?, sta = ?, agi = ?,
-      dex = ?, int = ?, wis = ?, spd = ?, updated_at = ? WHERE id = ?`,
-  ).run(
-    r.classCode,
-    r.gold,
-    r.spMax,
-    r.stats.str,
-    r.stats.sta,
-    r.stats.agi,
-    r.stats.dex,
-    r.stats.int,
-    r.stats.wis,
-    r.stats.spd,
-    now,
-    id,
-  );
+  db.transaction(() => {
+    db.query(
+      "UPDATE characters SET class_code = ?, gold = ?, sp_max = ?, updated_at = ? WHERE id = ?",
+    ).run(r.classCode, r.gold, r.spMax, now, id);
+    const skill = db.prepare(
+      `INSERT INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)
+       ON CONFLICT (character_id, skill) DO UPDATE SET value = excluded.value
+       WHERE character_skills.value <> excluded.value`,
+    );
+    for (const [i, value] of r.skills.entries()) {
+      skill.run(id, i + 1, value);
+    }
+  })();
 }
 
 /**
@@ -391,7 +380,6 @@ function toRecord(row: CharacterRow): CharacterRecord {
     faction: { id: row.faction, count: row.faction_count },
     wanted: row.wanted === 1,
     profile: row.profile,
-    medals: row.medals,
     vehicle: row.vehicle,
   };
 }

@@ -26,14 +26,14 @@ import { arenaTileTaken } from "../combat/arena.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import { vehicleDeath } from "../vehicles/airship.ts";
-import type { Outgoing, Player, Room } from "../world/world.ts";
+import { type Outgoing, type Player, type Room, statsOf } from "../world/world.ts";
 
 /** The timer sprite (channel 4) for one player: the HP and SP regeneration counter. */
 export function regenStep(p: Player): void {
   const v = p.char.vitals;
   const before = `${v.hp}/${v.sp}`;
   const adventurer = p.char.faction.id === 3 ? p.char.faction.f3Bonus : null;
-  const target = regenTarget(p.char.stats.spd, adventurer);
+  const target = regenTarget(statsOf(p).spd, adventurer);
   p.regenCounter = regenTick(p.regenCounter, target, p.char.hunger, v);
   if (`${v.hp}/${v.sp}` !== before) {
     p.vitalsDirty = true;
@@ -45,6 +45,17 @@ export function hungerStep(p: Player, immortal: boolean, rng: Rng): string | nul
   const r = hungerTick(p.char.hunger, immortal, rng);
   p.char.hunger = r.hunger;
   return r.warning;
+}
+
+/**
+ * A death more than this many ticks (2 s) after the last hit credits no one: the hit did not kill
+ * you (a bug fixed: 1.6 kept the last attacker until death or login, however long ago).
+ */
+export const KILL_CREDIT_TICKS = 40;
+
+/** Once a tick: the last hit grows older. */
+export function ageLastHit(p: Player): void {
+  p.hitAge += 1;
 }
 
 export type DeathOutcome =
@@ -68,10 +79,11 @@ export interface DeathDropCtx {
 
 /**
  * The frame script's `HP < 1 → RunDeathScript`. The guard is a separate don't-hit-again flag, not
- * the i-frames. After the arena exit, in 1.6's order: the drop's draws, a faction member's head on
- * a map whose PvP flag is X (whatever killed it, created from nothing), the item or gold, the stat
- * penalty, then exile on the new HPmax (no channel leave, as in 1.6). The wanted flag waits for the
- * end of the lock (`respawn`).
+ * the i-frames. A stale last hit is forgotten first, so it names no killer. After the arena exit,
+ * in 1.6's order: the drop's draws, a faction member's head on a map whose PvP flag is X (whatever
+ * killed it, created from nothing), the item or gold, the stat penalty (on a PvP-X map only), then
+ * exile on the new HPmax (no channel leave, as in 1.6). Dying aboard loses the airship and drops
+ * nothing but the head (kept on purpose). The wanted flag waits for the end of the lock (`respawn`).
  */
 export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx): DeathOutcome {
   const v = p.char.vitals;
@@ -81,6 +93,10 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   const lightning = lightningHit || (drop?.lightningGame ?? false);
   if ((v.hp >= 1 && !lightningHit) || p.dontHitMeAgain) {
     return { kind: "none" };
+  }
+  if (p.hitAge > KILL_CREDIT_TICKS) {
+    p.lastToHitMe = null;
+    p.lastToHitId = null;
   }
   if (onArenaTile(room, p.x, p.y)) {
     v.hp = 1;
@@ -103,7 +119,10 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   p.attackPress = null;
   const lines: string[] = [];
   const out: Outgoing[] = [];
-  // Dying aboard loses the airship, after the arena exit above; the Lightning death clears it too.
+  const pvpMap = lingoEq(room.map.flags.canPvp, "X");
+  // Dying aboard loses the airship, after the arena exit above (an arena death keeps it, as it
+  // keeps everything); the Lightning death clears it too. Kept on purpose: flying into danger is a
+  // risk the rider takes.
   const aboard = p.vehicle !== null;
   if (aboard) {
     out.push(...vehicleDeath(room, p));
@@ -126,7 +145,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
       rng,
     );
     // The faction head goes down first, even in a vehicle or with drops off.
-    const head = deathHead(p.char.faction.id, lingoEq(room.map.flags.canPvp, "X"));
+    const head = deathHead(p.char.faction.id, pvpMap);
     if (head) {
       const io = new ItemOut(room);
       addGround(drop.item, room, io, { item: head, x: p.x, y: p.y, kind: "drop", expiresAt: null });
@@ -164,7 +183,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
       out.push(...io.out);
     }
   }
-  if (rollDeathPenalty(v, p.char.wanted, rng)) {
+  if (rollDeathPenalty(v, p.char.wanted, pvpMap, rng)) {
     lines.push(DEATH_PENALTY_TEXT);
   }
   const exile = exileAtDeath({ id: p.char.faction.id, count: p.char.factionCount }, v.hpMax);

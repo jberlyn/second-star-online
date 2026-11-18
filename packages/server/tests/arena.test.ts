@@ -163,13 +163,16 @@ describe("Challenge and quit", () => {
     expect([s.bob.x, s.bob.y]).toEqual([3, 1]);
   });
 
-  test("kept bug: a rider challenges and quits still flying", () => {
+  test("bug fixed: a rider cannot challenge; one who flew onto the arena quits still flying", () => {
     const s = scene({ rng: rngByN({ 17: [4], 12: [4] }) });
     s.bob.vehicle = "Airship";
     s.bob.spell.body = 57;
-    s.say(s.bob, "Challenge");
-    expect([s.bob.x, s.bob.y]).toEqual([4, 4]);
-    expect(s.bob.vehicle).toBe("Airship");
+    expect(chats(s.say(s.bob, "Challenge"), "Bob")).toEqual([
+      "You must land your airship before making a challenge.",
+    ]);
+    expect([s.bob.x, s.bob.y]).toEqual([8, 8]);
+    s.bob.x = 4;
+    s.bob.y = 4;
     s.say(s.bob, "quit");
     expect(s.bob.vehicle).toBe("Airship");
     expect(s.bob.spell.body).toBe(57);

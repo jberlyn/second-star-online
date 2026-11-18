@@ -80,6 +80,7 @@ describe("is it an arena", () => {
         stepFrames: 0,
         held: false,
         dead: false,
+        riding: false,
         layer1: l[0] as string[],
         x: 8,
         y: 8,
@@ -97,7 +98,7 @@ describe("is it an arena", () => {
 
 describe("the challenge checks", () => {
   const l = layers(at([[4, 4]]));
-  const base = { layer1: l[0] as string[], x: 8, y: 8, held: false, dead: false };
+  const base = { layer1: l[0] as string[], x: 8, y: 8, held: false, dead: false, riding: false };
 
   test("the challenge checks in order: stand still, already in battle, not an arena", () => {
     expect(challengeCheck({ ...base, stepFrames: 3, x: 4, y: 4 })).toEqual({
@@ -118,6 +119,20 @@ describe("the challenge checks", () => {
     expect(ARENA_TEXT.entered("Bob")).toBe("Bob has entered the arena!");
     expect(ARENA_TEXT.stopped("Bob")).toBe("Bob has stopped fighting.");
     expect(ARENA_TEXT.defeated("Bob", "Ann")).toBe("Bob was defeated by Ann.");
+  });
+
+  test("bug fixed: a rider must land before making a challenge", () => {
+    expect(challengeCheck({ ...base, stepFrames: 0, riding: true })).toEqual({
+      kind: "text",
+      text: "You must land your airship before making a challenge.",
+    });
+    // Moving is still said first, and the death wait stays silent.
+    expect(challengeCheck({ ...base, stepFrames: 2, riding: true })).toMatchObject({
+      text: "You should stand still before making a challenge.",
+    });
+    expect(challengeCheck({ ...base, stepFrames: 0, riding: true, dead: true })).toEqual({
+      kind: "silent",
+    });
   });
 
   test("quit is silent off a 6P tile, and its stand-still text comes first", () => {

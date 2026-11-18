@@ -69,7 +69,13 @@ import {
   tickLoading,
 } from "../movement/movement.ts";
 import { medalCheck } from "../progression/medals.ts";
-import { checkDeath, finishDeath, hungerStep, regenStep } from "../progression/vitals.ts";
+import {
+  ageLastHit,
+  checkDeath,
+  finishDeath,
+  hungerStep,
+  regenStep,
+} from "../progression/vitals.ts";
 import { lightningOn, scoreKill } from "../social/assassin.ts";
 import { aqsToMap, loyaltyFrame } from "../social/factions.ts";
 import { flagKiller } from "../social/murder.ts";
@@ -97,6 +103,7 @@ import {
   type Player,
   type Room,
   selfState,
+  statsOf,
   type World,
   type WorldMap,
 } from "./world.ts";
@@ -215,6 +222,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
     let slotEvent = false;
     for (const p of players) {
       tickLoading(p);
+      ageLastHit(p);
     }
     const actorPass = () => {
       // 1. The timer sprite.
@@ -576,12 +584,8 @@ export function tick(world: World, deps: TickDeps): TickResult {
     if (p.chatIn > 0) {
       p.chatIn -= 1;
     }
-    // The award check runs after this tick's skill saves, before the sheet is sent.
-    const medals = medalCheck(p);
-    if (medals.save) {
-      out.push(...medals.out);
-      saves.add(p);
-    }
+    // The award line follows this tick's skill changes, before the sheet is sent.
+    out.push(...medalCheck(p));
     const s = selfState(p);
     const last = p.lastSent;
     const changed =
@@ -605,13 +609,12 @@ export function tick(world: World, deps: TickDeps): TickResult {
       // After this tick's you/vitals, so the client holds the death frame when it goes black.
       out.push({ to: p.id, msg: { t: "death" } });
     }
-    const sheet = JSON.stringify([p.char.stats, p.char.skills]);
+    // The sheet shows the stats played with: allocated plus the held medals' points.
+    const stats = statsOf(p);
+    const sheet = JSON.stringify([stats, p.char.skills]);
     if (sheet !== p.lastSheet) {
       p.lastSheet = sheet;
-      out.push({
-        to: p.id,
-        msg: { t: "sheet", stats: { ...p.char.stats }, skills: [...p.char.skills] },
-      });
+      out.push({ to: p.id, msg: { t: "sheet", stats, skills: [...p.char.skills] } });
     }
     if (p.invSaveDue) {
       p.invSaveDue = false;

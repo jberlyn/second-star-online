@@ -1084,7 +1084,7 @@
     }
   },
   "medals": {
-    "rule": "After every skill save, each skill exactly at 90 whose id is not in the Medals field (contains \"<id>-\") appends \"<id>-\", prints its line, adds its stats (Regged is always 1) and saves; in this table's order.",
+    "rule": "Each skill at 90 or more holds its medal: the medal shows on the bio, in this table's order, and its stats are added to the allocated stats. Below 90 both are gone. Reaching 90 in play prints its line.",
     "at": 90,
     "awards": [
       {

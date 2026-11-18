@@ -9,7 +9,7 @@ import { type ChatDeps, handleChat } from "../src/systems/chat/chat.ts";
 import { bioRequest, profileSave } from "../src/systems/social/bios.ts";
 import { friendsCommand, friendsEntry } from "../src/systems/social/friends.ts";
 import { presenceOut } from "../src/systems/social/presence.ts";
-import { addPlayer, type Player, removePlayer } from "../src/systems/world/world.ts";
+import { addPlayer, type Player, removePlayer, statsOf } from "../src/systems/world/world.ts";
 import { player, setup, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
@@ -135,9 +135,8 @@ describe("/friends and the Friends window", () => {
 describe("bios", () => {
   test("the requester sees the target's bio drawn; own is false for someone else", () => {
     const { world, alice, bob } = scene();
-    bob.char.skills[skillIndex("Cooking")] = 41;
+    bob.char.skills[skillIndex("Cooking")] = 90; // holds the spatula, id 39
     bob.char.profile = "Fishing is life";
-    bob.char.medals = "39-";
     bob.char.wanted = true;
     bob.char.faction = { ...bob.char.faction, id: 2 };
     bob.guild = "Knights";
@@ -164,7 +163,7 @@ describe("bios", () => {
             "Name: Bob Star",
             "Class: Novice Cook",
             "Sex: Male",
-            `Score: ${41 + 1 * 24 + 20 + 20}`,
+            `Score: ${90 + 1 * 24 + 20 + 20}`,
             "Leader of the Knights",
             "Loyal to the Warriors",
             "Vile Murderer",
@@ -227,39 +226,90 @@ describe("saving the profile on closing your own bio", () => {
 });
 
 describe("medals", () => {
-  test("seeded tick replay: Cooking reaching 90 awards the spatula once, with its point, after the gain", () => {
+  test("Cooking reaching 90 in play prints the spatula's line once and adds its point", () => {
     const { alice, run } = scene();
     alice.char.skills[skillIndex("Cooking")] = 89;
-    run(1); // the first tick only records the skills (a login awards nothing)
-    alice.char.skills[skillIndex("Cooking")] = 90;
+    run(1); // the first tick records the skills
     const sta = alice.char.stats.sta;
+    alice.char.skills[skillIndex("Cooking")] = 90;
     const out = run(1);
     expect(texts(out, "Alice")).toEqual([
       "You have been awarded the silver spatula for being a master chef!",
     ]);
-    expect(alice.char.medals).toBe("39-");
-    expect(alice.char.stats.sta).toBe(sta + 1);
+    // The allocated stat is untouched; the sheet and the rules see the point.
+    expect(alice.char.stats.sta).toBe(sta);
+    expect(statsOf(alice).sta).toBe(sta + 1);
     expect(of(out, "Alice", "sheet")[0]?.stats.sta).toBe(sta + 1);
     alice.char.skills[skillIndex("Cooking")] = 91;
-    alice.char.skills[skillIndex("Cooking")] = 90;
     expect(texts(run(3), "Alice")).toEqual([]);
   });
 
-  test("a skill sitting at 90 at login earns nothing until a skill changes", () => {
+  test("a skill already at 90 or more at login holds its medal and point without a line", () => {
     const { alice, run } = scene();
-    alice.char.skills[skillIndex("Slash")] = 90;
+    const str = alice.char.stats.str;
+    alice.char.skills[skillIndex("Slash")] = 100;
+    alice.char.skills[skillIndex("Mining")] = 90;
     expect(texts(run(2), "Alice")).toEqual([]);
-    alice.char.skills[skillIndex("Parry")] = 2;
-    expect(texts(run(1), "Alice")).toEqual([
-      "You have been awarded the Medal of Weaponry for being a master at slash!",
-    ]);
+    expect(statsOf(alice).str).toBe(str + 2);
   });
 
-  test("kept bug: a skill set past 90 never earns it", () => {
+  test("a skill set past 90 in play prints its line once", () => {
     const { alice, run } = scene();
     run(1);
     alice.char.skills[skillIndex("Mining")] = 95;
+    expect(texts(run(1), "Alice")).toEqual([
+      "You have been awarded the Medal of Stone for being a master at mining!",
+    ]);
+    alice.char.skills[skillIndex("Mining")] = 96;
     expect(texts(run(1), "Alice")).toEqual([]);
-    expect(alice.char.medals).toBe("");
+  });
+
+  test("a skill lowered below 90 loses its medal and its point; back at 90 it returns", () => {
+    const { world, alice, bob, run } = scene();
+    const str = bob.char.stats.str;
+    run(1);
+    bob.char.skills[skillIndex("Blacksmithing")] = 90;
+    run(1);
+    expect(statsOf(bob)).toMatchObject({ str: str + 2 });
+    expect(of(bioRequest(world, alice, { id: "Bob" }), "Alice", "playerBio")[0]?.medals).toEqual([
+      "92",
+    ]);
+    bob.char.skills[skillIndex("Blacksmithing")] = 70;
+    const out = run(1);
+    expect(texts(out, "Bob")).toEqual([]);
+    expect(statsOf(bob).str).toBe(str);
+    expect(of(out, "Bob", "sheet")[0]?.stats.str).toBe(str);
+    expect(of(bioRequest(world, alice, { id: "Bob" }), "Alice", "playerBio")[0]?.medals).toEqual(
+      [],
+    );
+    bob.char.skills[skillIndex("Blacksmithing")] = 90;
+    expect(texts(run(1), "Bob")).toEqual([
+      "You have been awarded the gold medal for being a master at blacksmithing!",
+    ]);
+    expect(statsOf(bob).str).toBe(str + 2);
+  });
+});
+
+describe("calculated stats", () => {
+  test("a Druid plays with +3 Dex, Wis and Int and a Blacksmithing medal's points; neither is stored", () => {
+    const { bob, run } = scene();
+    const base = { ...bob.char.stats };
+    bob.char.classCode = 11; // Druid
+    bob.char.skills[skillIndex("Blacksmithing")] = 90;
+    const out = run(1);
+    const expected = {
+      ...base,
+      dex: base.dex + 3,
+      wis: base.wis + 3,
+      int: base.int + 3,
+      str: base.str + 2,
+      sta: base.sta + 2,
+    };
+    expect(statsOf(bob)).toEqual(expected);
+    expect(of(out, "Bob", "sheet").at(-1)?.stats).toEqual(expected);
+    expect(bob.char.stats).toEqual(base);
+    // A class change takes the class's points with it.
+    bob.char.classCode = 1;
+    expect(statsOf(bob)).toEqual({ ...base, str: base.str + 2, sta: base.sta + 2 });
   });
 });

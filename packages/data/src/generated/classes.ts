@@ -30,7 +30,10 @@ export const classesData: ClassesData = {
           "stat": "Slash",
           "min": 30
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Thrust"
+        ]
       }
     },
     {
@@ -54,7 +57,10 @@ export const classesData: ClassesData = {
           "stat": "Magery",
           "min": 30
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Illusion"
+        ]
       }
     },
     {
@@ -68,7 +74,10 @@ export const classesData: ClassesData = {
           "stat": "Blessing",
           "min": 30
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Wizardry"
+        ]
       }
     },
     {
@@ -83,7 +92,10 @@ export const classesData: ClassesData = {
           "stat": "HPmax",
           "min": 59
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Sorcery"
+        ]
       }
     },
     {
@@ -102,12 +114,21 @@ export const classesData: ClassesData = {
             "stat": "SPmax",
             "atLeast": 1
           }
+        ],
+        "skillGrants": [
+          "Fencing",
+          "Magery"
         ]
       }
     },
     {
       "code": 11,
       "name": "Druid",
+      "statBonus": {
+        "dex": 3,
+        "wis": 3,
+        "int": 3
+      },
       "promotion": {
         "from": [
           "Illusionist"
@@ -116,20 +137,8 @@ export const classesData: ClassesData = {
           "stat": "SPmax",
           "min": 30
         },
-        "statChanges": [
-          {
-            "stat": "Dexterity",
-            "delta": 3
-          },
-          {
-            "stat": "Wisdom",
-            "delta": 3
-          },
-          {
-            "stat": "Intelligence",
-            "delta": 3
-          }
-        ]
+        "statChanges": [],
+        "skillGrants": []
       }
     },
     {
@@ -153,7 +162,11 @@ export const classesData: ClassesData = {
           "stat": "Swordsmanship",
           "min": 40
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Block",
+          "Fencing"
+        ]
       }
     },
     {
@@ -168,7 +181,10 @@ export const classesData: ClassesData = {
           "stat": "Magery",
           "min": 30
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Blessing"
+        ]
       }
     },
     {
@@ -182,7 +198,10 @@ export const classesData: ClassesData = {
           "stat": "SPmax",
           "min": 50
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "BlackArts"
+        ]
       }
     },
     {
@@ -198,6 +217,9 @@ export const classesData: ClassesData = {
     {
       "code": 19,
       "name": "Bard",
+      "statBonus": {
+        "wis": 1
+      },
       "promotion": {
         "from": [
           "Swordsman",
@@ -208,17 +230,18 @@ export const classesData: ClassesData = {
           "stat": "HPmax",
           "min": 35
         },
-        "statChanges": [
-          {
-            "stat": "Wisdom",
-            "delta": 1
-          }
+        "statChanges": [],
+        "skillGrants": [
+          "Musicianship"
         ]
       }
     },
     {
       "code": 20,
       "name": "Barbarian",
+      "statBonus": {
+        "str": 1
+      },
       "promotion": {
         "from": [
           "Grunt",
@@ -228,11 +251,9 @@ export const classesData: ClassesData = {
           "stat": "Slash",
           "min": 60
         },
-        "statChanges": [
-          {
-            "stat": "strength",
-            "delta": 1
-          }
+        "statChanges": [],
+        "skillGrants": [
+          "HammerWielding"
         ]
       }
     },
@@ -249,7 +270,10 @@ export const classesData: ClassesData = {
           "stat": "Magery",
           "min": 70
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "fire"
+        ]
       }
     },
     {
@@ -265,7 +289,10 @@ export const classesData: ClassesData = {
           "stat": "Magery",
           "min": 70
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Water"
+        ]
       }
     },
     {
@@ -281,7 +308,10 @@ export const classesData: ClassesData = {
           "stat": "Magery",
           "min": 70
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "wind"
+        ]
       }
     },
     {
@@ -297,7 +327,10 @@ export const classesData: ClassesData = {
           "stat": "Magery",
           "min": 70
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Earth"
+        ]
       }
     },
     {
@@ -316,7 +349,10 @@ export const classesData: ClassesData = {
           "stat": "HPmax",
           "min": 40
         },
-        "statChanges": []
+        "statChanges": [],
+        "skillGrants": [
+          "Archery"
+        ]
       }
     }
   ],

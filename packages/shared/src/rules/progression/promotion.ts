@@ -2,14 +2,15 @@
  * Class promotions at a trainer: the buy and go routines and the four texts of the trainer script,
  * with the checks in 1.6's order.
  *
- * What SSO keeps: the order of checks, the texts, the `< min` test, the stat changes. What it does
- * not: the `random(10)` skill grants, which 1.6's character refresh and skill re-sort undo at
- * once, and the client-side gold charge, which the server now makes.
+ * What SSO keeps: the order of checks, the texts, the `< min` test, Paladin's SPmax floor and the
+ * `random(10)` skill grants. A bug fixed: 1.6's character refresh and skill re-sort undid the
+ * grants at once, so no promotion ever gave its skill; SSO applies them, and never lowers a skill
+ * (1.6's grant overwrote the skill with the roll). The gold charge is made by the server.
  */
 import { classesData } from "@secondstaronline/data";
 
 import { className } from "../admin/admin.ts";
-import { lingoEq, lingoInteger } from "../core/lingo.ts";
+import { lingoEq, lingoInteger, type Rng } from "../core/lingo.ts";
 
 /** The five texts; `npc` is the speaker. */
 export const PROMOTION_TEXT = {
@@ -30,17 +31,6 @@ export function parseTrn(data: string): { cls: string; price: number } {
   return { cls: parts[0] ?? "", price: lingoInteger(parts[1] ?? "") ?? 0 };
 }
 
-/** The character stats a promotion can change (lower-case keys of the stat block). */
-export interface PromotionStats {
-  str: number;
-  sta: number;
-  agi: number;
-  dex: number;
-  int: number;
-  wis: number;
-  spd: number;
-}
-
 /** What `promoteClass` reads. `skills` is every skill value in the classes data's order. */
 export interface PromotionState {
   classCode: number;
@@ -48,7 +38,6 @@ export interface PromotionState {
   hpMax: number;
   spMax: number;
   skills: readonly number[];
-  stats: PromotionStats;
 }
 
 export interface PromotionResult {
@@ -56,20 +45,17 @@ export interface PromotionResult {
   texts: string[];
   /** `heal2` on channel 3 follows the congratulation (and each branch). */
   sound: boolean;
-  /** The new class, gold and stats, or null when nothing changed. */
-  result: { classCode: number; gold: number; spMax: number; stats: PromotionStats } | null;
+  /**
+   * The new class, gold, SPmax and skills (every value), or null when nothing changed. The class's
+   * stat points are not here: they are calculated from the class (`classStatBonus`).
+   */
+  result: {
+    classCode: number;
+    gold: number;
+    spMax: number;
+    skills: number[];
+  } | null;
 }
-
-/** 1.6's stat variable names to the stat block's keys. */
-const STAT_KEY: Record<string, keyof PromotionStats> = {
-  strength: "str",
-  Stamina: "sta",
-  Agility: "agi",
-  Dexterity: "dex",
-  Intelligence: "int",
-  Wisdom: "wis",
-  speed: "spd",
-};
 
 /** A requirement's current value: a vital, or a skill by its name in the classes data. */
 function statValue(s: PromotionState, stat: string): number {
@@ -89,13 +75,16 @@ function statValue(s: PromotionState, stat: string): number {
  * text and no charge (the original's if-chain on the typed class falls through); (3) the current
  * class not in the branch's `from` list -> `cantDoIt`; (4) the requirement below its minimum ->
  * `focused`; (5) price over gold -> `noFunds`; (6) gold -= price, the new class, the
- * congratulation, the stat changes.
+ * congratulation, the SPmax floor, then each granted skill raised to `random(10)` if below it. The
+ * new class's stat points come with the class (`classStatBonus`); a promotion stores none (a design
+ * change: 1.6 added them to the stored stats).
  */
 export function promoteClass(
   s: PromotionState,
   typed: string,
   price: number,
   npc: string,
+  rng: Rng,
 ): PromotionResult {
   const nothing: PromotionResult = { texts: [], sound: false, result: null };
   const current = className(s.classCode) ?? "";
@@ -116,21 +105,21 @@ export function promoteClass(
   if (price > s.gold) {
     return { texts: [PROMOTION_TEXT.noFunds(npc)], sound: false, result: null };
   }
-  const stats = { ...s.stats };
   let spMax = s.spMax;
   for (const change of rule.statChanges) {
-    if ("atLeast" in change) {
-      spMax = spMax < change.atLeast ? change.atLeast : spMax;
-    } else {
-      const key = STAT_KEY[change.stat];
-      if (key) {
-        stats[key] += change.delta;
-      }
+    spMax = Math.max(spMax, change.atLeast);
+  }
+  const skills = [...s.skills];
+  for (const name of rule.skillGrants) {
+    const skill = classesData.skills.find((k) => k.skill === name);
+    if (skill) {
+      const i = skill.index - 1;
+      skills[i] = Math.max(skills[i] ?? 0, rng.random(10));
     }
   }
   return {
     texts: [PROMOTION_TEXT.congrats(npc, branch.name)],
     sound: true,
-    result: { classCode: branch.code, gold: s.gold - price, spMax, stats },
+    result: { classCode: branch.code, gold: s.gold - price, spMax, skills },
   };
 }

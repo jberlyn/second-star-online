@@ -8,6 +8,7 @@ import type { ServerMsg } from "@secondstaronline/shared";
 
 import { askForQuest, questGive } from "../src/systems/economy/quests.ts";
 import { type MonsterSlot, species } from "../src/systems/monsters/slots.ts";
+import { KILL_CREDIT_TICKS } from "../src/systems/progression/vitals.ts";
 import { askFactionPower, factionLogin } from "../src/systems/social/factions.ts";
 import type { WorldMap } from "../src/systems/world/world.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
@@ -89,13 +90,24 @@ describe("the murder flag", () => {
     expect(b.char.wanted).toBe(true);
   });
 
-  test("kept bug: a starvation death credits the last attacker, however long ago", () => {
+  test("bug fixed: a death long after the last hit credits no one", () => {
     const { a, b, run } = murderScene();
     a.char.vitals.hp = 20;
-    run(200); // Bob hit Alice long ago; nothing has cleared it
-    a.char.vitals.hp = 0; // hunger takes the last of it
-    run(28);
+    run(200); // Bob hit Alice long ago
+    a.char.vitals.hp = 0; // something else takes the last of it
+    const msgs = run(28);
+    expect(b.char.wanted).toBe(false);
+    expect(chat(msgs, "Bob")).toEqual(["Alice was just killed."]);
+  });
+
+  test("a death within the credit window still credits the hit", () => {
+    const { a, b, run } = murderScene();
+    a.char.vitals.hp = 20;
+    run(KILL_CREDIT_TICKS - 2);
+    a.char.vitals.hp = 0;
+    const msgs = run(28);
     expect(b.char.wanted).toBe(true);
+    expect(chat(msgs, "Bob")).toContain("*** Alice was just killed by Bob.");
   });
 
   test("an arena death never flags", () => {

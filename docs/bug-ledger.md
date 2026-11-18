@@ -23,74 +23,10 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 
 | Section | Unfixed bugs |
 |---|---|
-| [progression](#progression) | 10 |
 | [social](#social) | 18 |
 | [spells](#spells) | 25 |
 | [world](#world) | 1 |
-| **Total** | **54** |
-
-## progression
-
-### Dying on an airship loses it and drops nothing
-- **What you notice:** if you die while riding an airship, your bag and gold stay with you instead of dropping, the airship is gone, and no deed comes back. The faction head still drops.
-- **In 1.6 and SSO:** death clears the vehicle and switches drops off. SSO does the same. The body reverts to the walker at once for everyone, on the server, where 1.6 delayed it on each player's screen.
-- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts` (`vehicleDeath`)
-- **Pinned by:** `kept bug: dying aboard an airship loses it and drops nothing; the faction head still drops` (packages/server/tests/vehicles.test.ts); `a Lightning death clears it too` (packages/server/tests/vehicles.test.ts)
-
-### Airship riders stay aboard through the arena
-- **What you notice:** if you are killed on an arena tile while flying, you are moved out of the arena still flying, with your airship. Challenging and quitting an arena fight also leave you flying.
-- **In 1.6 and SSO:** the arena exit runs before the vehicle is cleared, and neither challenge nor quit looks at vehicles. SSO does the same: the death check tests the arena first and returns before the vehicle is cleared, and the exit is drawn from the tiles an Airship may stand on.
-- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
-- **Pinned by:** `kept bug: an arena death keeps the airship` (packages/server/tests/vehicles.test.ts); `kept bug: a rider challenges and quits still flying` and `a rider's exit is drawn from the Airship grid` (packages/server/tests/arena.test.ts)
-
-### A level-up wastes spare XP and never raises more than one level
-- **What you notice:** when a kill pushes you past the XP you need, the extra is lost, you gain a single level however large the kill, and you are not healed.
-- **In 1.6 and SSO:** at level-up the XP counter is reset to 0, and the check is a single test rather than a loop. SSO does the same.
-- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`checkLevelUp`)
-- **Pinned by:** `kept bug: overflow is lost, one level per kill, no heal` (packages/shared/tests/progression/progression.test.ts); `kept bug: XP overflow is lost and one level comes per kill` (packages/server/tests/monsters.test.ts)
-
-### A class promotion never gives the skills it was meant to
-- **What you notice:** promoting to a new class changes your class, gold and stats, but none of the skill points each promotion was supposed to grant.
-- **In 1.6 and SSO:** each promotion sets its skill to a random number from 1 to 10, but the game then reloads every skill from the saved field before saving, which undoes it. A changed roll could also have triggered the anti-cheat ban, which SSO does not have, so there is no ban.
-- **In the code:** `packages/shared/src/rules/progression/promotion.ts` (`promoteClass`)
-- **Pinned by:** `kept bug: Promotion skill grants are undone: no promotion returns a skill` (packages/shared/tests/progression/promotion.test.ts)
-
-### Hit and spell point regeneration can stop until you log in again
-- **What you notice:** when your hunger sits between 50 and 500, regeneration stops for the rest of the session, and starvation damage stops with it.
-- **In 1.6 and SSO:** the regen counter resets only when it exactly equals the target, and that happens only on a regen (Hunger above 500) or starvation (below 50) event. In between, or after the target drops below the counter, it never matches again until you log in. SSO keeps a counter per session, resets it only at login, and tests for exact equality every tick. The counter starts at 1 and is raised before the test, so regen fires every 148 frames at speed 1.
-- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`regenTick`); `packages/server/src/systems/progression/vitals.ts` (`regenStep`)
-- **Pinned by:** `kept bug: regen stalls for 50 <= Hunger <= 500 and never fires again` (packages/shared/tests/progression/progression.test.ts); `kept bug: a resumed session keeps the regen counter; a login resets it` (packages/server/tests/monsters-db.test.ts)
-
-### The same hunger warning prints several times
-- **What you notice:** each hunger warning appears about three times in a row instead of once.
-- **In 1.6 and SSO:** the check runs every frame below 2000 and prints whenever hunger exactly equals a warning value, while hunger drops on only about a third of frames, so it sits on each value for several frames. SSO runs the same check every tick.
-- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`hungerTick`, `HUNGER_WARNINGS`)
-- **Pinned by:** `kept bug: a warning prints on every frame hunger sits on the value` (packages/shared/tests/progression/progression.test.ts)
-
-### Every normal death has a one in five chance of weakening you
-- **What you notice:** a death outside the arena costs 1 off both your maximum HP and maximum SP one time in five, with the weakened message.
-- **In 1.6 and SSO:** the code sets the death penalty to "X" just before testing it, which forces the roll for everyone. The intended chance was one in one, for some players. A maximum is only lowered while it is above 2. SSO does the same.
-- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`rollDeathPenalty`)
-- **Under review:** permanent stat loss is harsh on PvE players; [issue #12](https://github.com/jberlyn/second-star-online/issues/12) will decide what replaces it.
-- **Pinned by:** `kept bug: DeathPenalty is forced, random(5) = 1 → HPmax and SPmax −1 above 2` (packages/shared/tests/progression/progression.test.ts)
-
-### Mage skill caps higher from casting than from killing
-- **What you notice:** a Mage faction member with a bonus of 3 can raise the Mage skill to 90 by casting, but only to 80 by killing.
-- **In 1.6 and SSO:** the kill path and the cast path each have their own cap table, and they disagree at that bonus. SSO keeps both tables.
-- **In the code:** `packages/shared/src/rules/progression/skillgain.ts` (`skillCaps`); `packages/shared/src/rules/spells/spells.ts` (`castMageCap`)
-- **Pinned by:** `kept bug: a Mage faction bonus of 3 caps Mage skill at 80 from kills but 90 from casts` (packages/shared/tests/spells/spells.test.ts)
-
-### A death from hunger credits whoever hit you last
-- **What you notice:** If you starve, whoever hit you last, however long ago, is named and flagged as your killer.
-- **In 1.6 and SSO:** 1.6 clears the last attacker only at death and login, so a death nobody caused still credits them. SSO does the same, keeping the attacker by player.
-- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`hungerStep`, `finishDeath`)
-- **Pinned by:** `kept bug: a starvation death credits the last attacker, however long ago` (packages/server/tests/factions.test.ts)
-
-### A medal needs the skill at exactly 90
-- **What you notice:** A skill that jumps past 90 without being saved at 90, such as an admin setting it to 95, never earns its medal.
-- **In 1.6 and SSO:** 1.6 tests each skill for equal to 90. SSO does the same, checking whenever a player's skills change.
-- **In the code:** `packages/shared/src/rules/progression/medals.ts` (`checkForAwards`)
-- **Pinned by:** `kept bug: 89 or 91 earns nothing; a medal already held is not given again` (packages/shared/tests/social/friends-bios-medals.test.ts); `kept bug: a skill set past 90 never earns it` (packages/server/tests/friends.test.ts)
+| **Total** | **44** |
 
 ## social
 

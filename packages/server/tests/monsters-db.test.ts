@@ -179,7 +179,7 @@ describe("progress saves", () => {
     expect(again.world.players.get(id)?.char.skills[28]).toBe(5);
   });
 
-  test("kept bug: a resumed session keeps the regen counter; a login resets it", async () => {
+  test("a resumed session keeps the regen counter; a login resets it", async () => {
     const g = game();
     const id = await makeChar(g, "Dee");
     g.enter(id, false);
@@ -187,10 +187,10 @@ describe("progress saves", () => {
     if (!p) {
       throw new Error("not in world");
     }
-    p.regenCounter = 500; // stalled
+    p.regenCounter = 100;
     g.leave(id);
     g.enter(id, true);
-    expect(g.world.players.get(id)?.regenCounter).toBe(500);
+    expect(g.world.players.get(id)?.regenCounter).toBe(100);
     g.leave(id);
     g.enter(id, false);
     expect(g.world.players.get(id)?.regenCounter).toBe(1);

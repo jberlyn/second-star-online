@@ -165,7 +165,8 @@ export function sellIntent(ctx: ItemCtx, p: Player, line: number, count: number)
 /**
  * The train OK: the list's NPC must still be in the map's roster and the file line a `TRN|` line,
  * else nothing is sent (no line) or just `processed`. `promoteClass` has 1.6's checks and texts; a
- * promotion changes the class, gold and stats and plays `heal2` on channel 3 to the buyer.
+ * promotion changes the class (and with it the class's stat points), gold and granted skills and
+ * plays `heal2` on channel 3 to the buyer.
  */
 export function trainIntent(
   ctx: ItemCtx,
@@ -188,18 +189,18 @@ export function trainIntent(
       hpMax: c.vitals.hpMax,
       spMax: c.vitals.spMax,
       skills: c.skills,
-      stats: c.stats,
     },
     train.cls,
     train.price,
     s.npc,
+    ctx.rng,
   );
   const out: Outgoing[] = r.texts.map((t) => tell(p, t));
   if (r.result) {
     c.classCode = r.result.classCode;
     c.gold = r.result.gold;
     c.vitals.spMax = r.result.spMax;
-    c.stats = { ...r.result.stats };
+    c.skills = [...r.result.skills];
     p.invDirty = true;
     p.vitalsDirty = true;
   }

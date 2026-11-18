@@ -484,13 +484,14 @@ describe("death", () => {
     const rng = rngByN({ 2: [1], 3: [2] });
     return checkDeath(s.room, s.ann, rng, { item: s.ctx(), dropOnDeath: true, immortal: false });
   };
-  test("kept bug: dying aboard an airship loses it and drops nothing; the faction head still drops", () => {
+  test("kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops", () => {
     const s = aboard();
     const r = dies(s);
     expect(r.kind).toBe("death");
     expect(s.ann.vehicle).toBeNull();
     expect(s.ann.spell.body).toBeNull();
     expect(airshipAt(s.map, 6, 5)).toBeUndefined();
+    expect(s.ann.char.bag.some((l) => l?.item === "Airship Deed")).toBe(false);
     expect(s.ann.char.bag.some((l) => l?.item === "Apple")).toBe(true);
     expect(s.map.ground.some((g) => g.item.includes("Head"))).toBe(true);
     expect(s.map.ground.some((g) => g.item === "Apple")).toBe(false);
@@ -507,7 +508,7 @@ describe("death", () => {
     expect(r.kind).toBe("death");
     expect(s.ann.vehicle).toBeNull();
   });
-  test("kept bug: an arena death keeps the airship", () => {
+  test("an arena death keeps the airship, as it keeps everything", () => {
     const s = aboard();
     const row = (s.map.layers[0][4] ?? "").split(" ");
     row[5] = "6P";

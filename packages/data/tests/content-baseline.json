@@ -420,7 +420,7 @@
     ],
     [
       "Grunt",
-      "4e2d7e7698c66ae3"
+      "e3b643301e9e7917"
     ],
     [
       "Swordsman",
@@ -432,23 +432,23 @@
     ],
     [
       "Illusionist",
-      "dee4bece8cea9beb"
+      "3dc0c5bfaf4e8a43"
     ],
     [
       "Wizard",
-      "c27ad32dc33a29fc"
+      "e923149da5a9346c"
     ],
     [
       "Sorcerer",
-      "ce450a7a6141fc6b"
+      "a81c46fe1fa8ffc0"
     ],
     [
       "Paladin",
-      "888bbd282a8ade80"
+      "6996923e9f703858"
     ],
     [
       "Druid",
-      "7ae1aee04b3f56ae"
+      "de411410bfbcee21"
     ],
     [
       "Ninja",
@@ -460,15 +460,15 @@
     ],
     [
       "Dragoon",
-      "bc40511d36626267"
+      "b3d4e62ceb8cf368"
     ],
     [
       "Priest",
-      "fb0736af14e32b54"
+      "52d5b9e20a1ca4db"
     ],
     [
       "Necromancer",
-      "b6026f05985a48ec"
+      "4be22ffe30083314"
     ],
     [
       "Death Knight",
@@ -480,27 +480,27 @@
     ],
     [
       "Bard",
-      "9ec497cf73991ffe"
+      "298358e9c13a9a25"
     ],
     [
       "Barbarian",
-      "d3cc7078ba209171"
+      "61a478eb95e0873a"
     ],
     [
       "Fire Mage",
-      "d8a57d8511432eba"
+      "9068159f9640f9cc"
     ],
     [
       "Water Mage",
-      "7123ccc161a9eab1"
+      "c67ff6cd8ddc5947"
     ],
     [
       "Wind Mage",
-      "26955689a12466b3"
+      "3db7d4575069a19a"
     ],
     [
       "Earth Mage",
-      "10bf580776a5c96e"
+      "1deb047fa6aba214"
     ],
     [
       "Gladiator",
@@ -508,7 +508,7 @@
     ],
     [
       "Archer",
-      "957b0ea5f4de57ba"
+      "c3112a3008b7ccfd"
     ]
   ],
   "classes.json#/creation/startingSkills/1/values": [

@@ -71,23 +71,35 @@ export const skillGainSchema = z.object({
  * One of the 26 class codes and its name: read by
  * the set-class tool, and, for the 16 classes the original's class-change script
  * handles, its promotion rule: the classes it can be
- * entered from, the requirement (`stat < min` refuses) and the stat changes. The skill grants
- * are not emitted: 1.6 undoes them when reloading and sorting the character's skills.
+ * entered from, the requirement (`stat < min` refuses), the SPmax floor and the skills it grants
+ * (each raised to a roll of 1-10 if below it). A class's stat points are its `statBonus`.
  */
 export const promotionSchema = z.strictObject({
   from: z.array(z.string().min(1)).min(1),
   requirement: z.strictObject({ stat: z.string().min(1), min: z.number().int() }),
-  statChanges: z.array(
-    z.union([
-      z.strictObject({ stat: z.string().min(1), delta: z.number().int() }),
-      z.strictObject({ stat: z.literal("SPmax"), atLeast: z.number().int() }),
-    ]),
-  ),
+  /** Raises SPmax to at least `atLeast` (Paladin). Stat points are the class's `statBonus`. */
+  statChanges: z.array(z.strictObject({ stat: z.literal("SPmax"), atLeast: z.number().int() })),
+  skillGrants: z.array(z.string().min(1)),
+});
+
+/**
+ * Stat points a class adds to the allocated stats while a character is in it. Calculated, never
+ * stored, so a class can be rebalanced at any time.
+ */
+export const statBonusSchema = z.strictObject({
+  str: z.number().int().optional(),
+  sta: z.number().int().optional(),
+  agi: z.number().int().optional(),
+  dex: z.number().int().optional(),
+  int: z.number().int().optional(),
+  wis: z.number().int().optional(),
+  spd: z.number().int().optional(),
 });
 
 export const classSchema = z.strictObject({
   code: z.number().int().min(1),
   name: z.string().min(1),
+  statBonus: statBonusSchema.optional(),
   promotion: promotionSchema.nullable(),
 });
 
@@ -111,6 +123,18 @@ export const classesDataSchema = z
           message: `skill ${row.index} is not in skills (${count})`,
         });
       }
+    });
+    const names = new Set(data.skills.map((s) => s.skill));
+    data.classes.forEach((c, i) => {
+      c.promotion?.skillGrants.forEach((skill, j) => {
+        if (!names.has(skill)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["classes", i, "promotion", "skillGrants", j],
+            message: `${skill} is not in skills`,
+          });
+        }
+      });
     });
     for (const cls of ["1", "2", "3"] as const) {
       const values = data.creation.startingSkills[cls].values;

@@ -53,7 +53,7 @@ import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, isFootprint, type MonsterSlot, species } from "../monsters/slots.ts";
 import { shootArrow, swingFireballs } from "../spells/cast.ts";
 import { onHolyShield } from "../spells/geometry.ts";
-import type { Outgoing, Player, Room, World } from "../world/world.ts";
+import { type Outgoing, type Player, type Room, statsOf, type World } from "../world/world.ts";
 
 // Shared so the client can predict the same attack lock.
 export { ATTACK_ANIM_FRAMES, ATTACK_LATCH_TICKS } from "@secondstaronline/shared";
@@ -342,6 +342,7 @@ function pvpSwing(
     }
     v.lastToHitMe = p.name;
     v.lastToHitId = p.id;
+    v.hitAge = 0;
     const shielded = onHolyShield(v, room.map.slots);
     const r = pvpHit(power, fighterOf(v), weapon, v.defenseBonus, ctx.rng, shielded);
     v.flicker = FLICKER_FRAMES;
@@ -420,7 +421,7 @@ function smash(
   const sp = species(m.name);
   // The hitter's weapon break roll comes first.
   const e = p.char.equip;
-  if (rollWeaponBreak(e, p.char.stats.sta, p.char.hunger, m.name, ctx.rng)) {
+  if (rollWeaponBreak(e, statsOf(p).sta, p.char.hunger, m.name, ctx.rng)) {
     ev.lines.push(shattersText(e.weapon));
     e.weapon = damagedForm(e.weapon);
     p.invDirty = true;
@@ -474,7 +475,8 @@ function smash(
   for (const s of rollKillSkillGain(f, sp?.body ?? 0, ctx.rng)) {
     ev.lines.push(advancedText(s));
   }
-  if (checkLevelUp(v)) {
+  // One line for each level gained.
+  for (let n = checkLevelUp(v); n > 0; n--) {
     ev.lines.push(LEVEL_UP_TEXT);
   }
 }

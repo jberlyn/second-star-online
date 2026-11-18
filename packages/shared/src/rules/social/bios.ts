@@ -65,7 +65,7 @@ export interface BioSource {
   sex: number;
   level: number;
   profile: string;
-  /** The `Medals` field, `id-id-…`. */
+  /** The held medals, `id-id-…`, from the skills (`medalField`). */
   medals: string;
   skills: readonly number[];
   hpMax: number;

@@ -81,6 +81,7 @@ import {
   type Outgoing,
   type Player,
   type Room,
+  statsOf,
   type World,
   type WorldMap,
 } from "../world/world.ts";
@@ -302,7 +303,7 @@ export function equipIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): 
     return io.out;
   }
   const c = checkEquip(line.item, {
-    str: p.char.stats.str,
+    str: statsOf(p).str,
     wanted: p.char.wanted,
     equip: p.char.equip,
   });
@@ -922,7 +923,7 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     return io.out;
   }
   const gate = ctrlGate(g.item, {
-    str: p.char.stats.str,
+    str: statsOf(p).str,
     mine: headDrop(p.map.title, p.name, p.guild) === 0,
   });
   // The airship click on the faced Airship.

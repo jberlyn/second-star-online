@@ -165,7 +165,7 @@ describe("SpellImp", () => {
     expect(castMageCap({ ...NO_FACTION, id: 1, f1Bonus: 3 })).toBe(90);
     expect(castMageCap({ ...NO_FACTION, id: 1, f1Bonus: 4 })).toBe(100);
   });
-  test("kept bug: a Mage faction bonus of 3 caps Mage skill at 80 from kills but 90 from casts", () => {
+  test("bug fixed: a Mage faction bonus of 3 caps Mage skill at 90 from kills and casts alike", () => {
     const faction: Faction = { ...NO_FACTION, id: 1, f1Bonus: 3 };
     const mage: Fighter = {
       level: 1,
@@ -180,8 +180,12 @@ describe("SpellImp", () => {
       attackBonus: 0,
       wanted: false,
     };
-    expect(skillCaps(mage).mage).toBe(80);
+    expect(skillCaps(mage).mage).toBe(90);
     expect(castMageCap(faction)).toBe(90);
+    for (const f1Bonus of [0, 1, 2, 3, 4, 9]) {
+      const f = { ...faction, f1Bonus };
+      expect(skillCaps({ ...mage, faction: f }).mage).toBe(castMageCap(f));
+    }
   });
 });
 
