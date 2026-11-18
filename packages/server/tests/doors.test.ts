@@ -399,13 +399,13 @@ describe("placed containers", () => {
     expect(s.world.containers.get("Crate#77")).toEqual(["Apple"]);
   });
 
-  test("Drop routes: the five chests by name take items; a Wind Chest or a bare Crate is crowded", () => {
+  test("bug fixed: Drop routes: the six chests by name take items, the Wind Chest too; a bare Crate is crowded", () => {
     const s = scene();
     const p = s.join("Alice", 5, 5);
     for (const [chest, ok] of [
       ["Dark Chest", true],
       ["Water Chest", true],
-      ["Wind Chest", false],
+      ["Wind Chest", true],
       ["Crate", false],
     ] as const) {
       s.map.ground = [];
@@ -419,7 +419,7 @@ describe("placed containers", () => {
       ]);
     }
     expect(s.world.containers.get("Dark Chest")).toEqual(["Apple"]);
-    expect(s.world.containers.get("Wind Chest")).toBeUndefined();
+    expect(s.world.containers.get("Wind Chest")).toEqual(["Apple"]);
   });
 
   test("capacity: a placed Crate holds 3", () => {
@@ -429,13 +429,11 @@ describe("placed containers", () => {
     s.world.containers.set("Crate#5", ["A", "B", "C"]);
     give(p, 1, "Apple");
     const out = dropIntent(s.ctx(), s.room(), p, 1);
-    expect(chat(out, "Alice")).toEqual([
-      "You drop a Apple into the container.",
-      "This is too full to store anything else!",
-    ]);
+    expect(chat(out, "Alice")).toEqual(["This is too full to store anything else!"]);
+    expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
   });
 
-  test("the remote withdraw stays after the first OK", async () => {
+  test("bug fixed: a take keeps the keys locked, so you cannot walk off with the window open", async () => {
     const { withdrawContainer } = await import("../src/systems/economy/containers.ts");
     const s = scene();
     const p = s.join("Alice", 5, 9);
@@ -443,9 +441,11 @@ describe("placed containers", () => {
     s.world.containers.set("Alice's House Vault", ["Apple", "Pie"]);
     pickupIntent(s.ctx(), s.room(), p, v.id);
     withdrawContainer(s.world, p, 1, s.rng);
-    p.x = 12;
+    expect(p.keyLock).toBe(true);
     withdrawContainer(s.world, p, 1, s.rng);
     expect(s.world.containers.get("Alice's House Vault")).toEqual([]);
+    expect(p.keyLock).toBe(true);
+    expect(p.container?.name).toBe("Alice's House Vault");
   });
 
   test("Storage on a chest stays silent: a chest can never be carried", () => {
@@ -457,7 +457,7 @@ describe("placed containers", () => {
 });
 
 describe("quest chests", () => {
-  test("after 400 frames a 1-in-350 save rolls 1 in 4000; the refill overwrites the chest", () => {
+  test("bug fixed: after 400 frames a 1-in-350 save rolls 1 in 4000; the refill is added to the chest", () => {
     const s = scene({ 350: [1], 4000: [1], 6: [1], 3: [3] });
     const p = s.join("Alice", 5, 5);
     s.world.containers.set("Gold Chest", ["Old Sword", "Apple"]);
@@ -468,8 +468,18 @@ describe("quest chests", () => {
     saveClockStep(s.world, p, s.rng); // block now 0: no roll this frame
     saveClockStep(s.world, p, s.rng);
     expect(s.rng.calls).toEqual([350, 4000, 6, 3]);
-    expect(s.world.containers.get("Gold Chest")).toEqual(["Fire Staff"]);
+    expect(s.world.containers.get("Gold Chest")).toEqual(["Old Sword", "Apple", "Fire Staff"]);
     expect(p.saveBlock).toBe(400);
+  });
+
+  test("bug fixed: a full quest chest keeps what it holds", () => {
+    const s = scene({ 350: [1], 4000: [1], 6: [1], 3: [3] });
+    const p = s.join("Alice", 5, 5);
+    p.saveBlock = 0;
+    const full = Array.from({ length: 15 }, (_, i) => `Item${i}`);
+    s.world.containers.set("Gold Chest", full);
+    saveClockStep(s.world, p, s.rng);
+    expect(s.world.containers.get("Gold Chest")).toEqual(full);
   });
 
   test("no save, or a chest with no source: nothing changes", () => {

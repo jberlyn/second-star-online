@@ -483,6 +483,7 @@ export function startBot(options: BotOptions): Bot {
     trade: {
       mine: { gold: number } | null;
       theirs: { gold: number } | null;
+      mineAccepted: boolean;
     } | null,
   ) => {
     if (!trade) {
@@ -491,7 +492,8 @@ export function startBot(options: BotOptions): Bot {
     }
     if (!trade.mine) {
       send({ t: "tradeOffer", gold: options.name < (options.partner ?? "") ? 1 : 0, items: [] });
-    } else if (trade.theirs && options.name < (options.partner ?? "")) {
+    } else if (trade.theirs && !trade.mineAccepted) {
+      // Both sides accept; the second acceptance settles the trade.
       send({ t: "tradeAccept" });
     }
   };

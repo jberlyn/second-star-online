@@ -192,8 +192,8 @@ export function periodicSave(rng: Rng): boolean {
 
 /**
  * `QuestChest` after a save: `random(4000)`, then `random(6)` picks the chest; with no source
- * nothing happens; otherwise `random(lines)` picks the line that **overwrites** the chest (the
- * source lines trimmed).
+ * nothing happens; otherwise `random(lines)` picks the line the chest gets (the source lines
+ * trimmed). The server adds it when the chest has room (1.6 overwrote the chest with it).
  */
 export function questChestRefill(rng: Rng): { chest: string; item: string } | null {
   if (rng.random(QC.odds) !== 1) {

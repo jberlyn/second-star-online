@@ -198,6 +198,8 @@ export interface Model {
    * withdraw and on CANCEL. The bag and the unequip × buttons do nothing while it is set.
    */
   keyLock: boolean;
+  /** A vault or container window is open: the keys are locked but the bag can still Drop into it. */
+  storageOpen: boolean;
   /** The monster name under the mouse and where the mouse is, in playfield pixels. */
   nameTag: { text: string; x: number; y: number } | null;
   /** Your spellbook's lines, as the server last sent them. */
@@ -245,6 +247,7 @@ export function createModel(): Model {
     itemPause: 0,
     ground: new Map(),
     keyLock: false,
+    storageOpen: false,
     nameTag: null,
     spellbook: [],
     fx: [],

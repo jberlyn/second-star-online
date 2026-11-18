@@ -944,6 +944,11 @@
     "hidden": 0,
     "disabled": 0
   },
+  "trade-accept-b": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
   "trade-cancel-a": {
     "count": 2,
     "hidden": 0,

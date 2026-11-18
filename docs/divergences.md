@@ -21,13 +21,13 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Code folder | Entries |
 |---|---:|
-| [admin](#admin) | 33 |
+| [admin](#admin) | 34 |
 | [casino](#casino) | 20 |
 | [chat](#chat) | 17 |
 | [combat](#combat) | 34 |
 | [core](#core) | 55 |
 | [crafting](#crafting) | 8 |
-| [economy](#economy) | 18 |
+| [economy](#economy) | 49 |
 | [housing](#housing) | 7 |
 | [inventory](#inventory) | 13 |
 | [mail](#mail) | 11 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **242** |
+| **Total** | **274** |
 
 ## admin
 
@@ -86,7 +86,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** An immortal selects a listed NPC in the editor; invalid files are refused with a reason, and a successful save warns about lines that have no effect in play.
 - **1.6:** Anyone could load a file by an unchecked NPC name. Save was gated by the client and an immortals-name lookup, and wrote arbitrary field content under the supplied name. Saving or loading before selecting a name used a leftover or empty name. A backtick truncated text and `*` or `^` broke the NPC bundle; item names, numbers and tags were unchecked.
-- **SSO:** Load and save require an immortal in the editor and a name on its monster or NPC list; selecting no name sends nothing. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After “NPC has been successfully saved.”, warnings identify lines beyond the windows that read them (`SEL|` and `INV|` after 80, `GLD|` after 60 or 80, `RND|` after 20), non-crystal `SEL|` lines from line 17, inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
+- **SSO:** Load and save require an immortal in the editor and a name on its monster or NPC list; selecting no name sends nothing. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After “NPC has been successfully saved.”, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
 - **Why:** Server validation prevents arbitrary file access and invalid data; warnings make silent original rules visible to operators.
 - **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`, `saveNpc`), `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
 
@@ -321,6 +321,15 @@ An entry uses this shape; `Pinned by` is optional:
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`jailTick`, `releaseFromJail`), `packages/server/src/game.ts` (`enter`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 - **Pinned by:** `divergence: the sentence is stored and ends at its time, then releases to the start point`, `divergence: staff warps neither take a prisoner out nor put a player in; /unjail releases` (packages/server/tests/admin.test.ts); `a sentence survives logout and restart, and one that ends offline releases at login` (packages/server/tests/moderation-db.test.ts)
 
+### NPC files are read in full
+- **Kind:** Bug fixed
+- **What you notice:** Every line of an NPC file counts: a monster can drop any `INV|` item listed in its file, an NPC can say any `RND|` chatter line, and the Bio shows every `BIO|` and `PRO|` line. The NPC editor no longer warns about where a line sits. A file is still at most 100 lines.
+- **1.6:** Each reader looked at its own window of the file: monster drops at lines 1-80, chatter at lines 1-20 and the Bio at lines 1-100 (and the shop at 1-80, gold gifts at 1-60). A line past its window did nothing. No archived file reached a window's end; the longest has 21 lines.
+- **SSO:** The parser reads the whole file for every tag. The 100-line cap on saved files stays, to bound storage.
+- **Why:** The windows were 1.6 reader limits with no gameplay purpose, and only surprised operators writing long files.
+- **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`parseNpcFile`, `checkNpcFile`, `NPC_MAX_LINES`); `packages/shared/src/rules/monsters/loot.ts` (`rollLoot`)
+- **Pinned by:** `bug fixed: INV| counts on any line, past line 80 too`; `bug fixed: RND| counts on any line, past line 20 too`; `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts); `bug fixed: a chatter line past line 20 saves with no warning, and is said` (packages/server/e2e/npc-editor.test.ts)
+
 ## casino
 
 ### Blackjack dealt, escrowed and settled by the server
@@ -514,10 +523,10 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** Repeated chat, IM, room, mail and board actions may be refused temporarily, with remaining time shown and the original input retained where applicable.
 - **1.6:** Broadcasting had no cooldown because registration was forced on, and there was no flood control. A refused broadcast remained typed.
-- **SSO:** Everyone uses the original unregistered broadcast cooldown of 1,000 frames (50 seconds) and its refusal. Local chat, `/me`, guild chat, IM, room lines, mail sends and board posts share a new 60-frame (3-second) cooldown. A refusal says “You cannot chat yet - N seconds remaining.” with seconds rounded up. Refused chat, IM and room text returns to its input; refused mail and board text stays open. A player-shop command still runs under the local cooldown and is not put back, so Enter cannot run it twice. Away replies do not use the cooldown. Lines are capped at 200 characters, there is no profanity filter, and all limits are operator settings.
+- **SSO:** Everyone uses the original unregistered broadcast cooldown of 1,000 frames (50 seconds) and its refusal. Local chat, `/me`, guild chat, IM, room lines, mail sends and board posts share a new 60-frame (3-second) cooldown. A refusal says “You cannot chat yet - N seconds remaining.” with seconds rounded up. Refused chat, IM and room text returns to its input; refused mail and board text stays open. A player-shop command is never said aloud, so it costs no cooldown and runs under one. Away replies do not use the cooldown. Lines are capped at 200 characters, there is no profanity filter, and all limits are operator settings.
 - **Why:** Spam harms players and the server.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/chat/im.ts` (`imIntent`)
-- **Pinned by:** `divergence: under the chat cooldown the command runs and the line is not put back` (packages/server/tests/playershop-db.test.ts); `divergence: it shares the chat cooldown` (packages/server/tests/guilds.test.ts); `divergence: it shares the chat cooldown; a refused line goes back` and `divergence: room lines share the chat cooldown, refused back into the room's input` (packages/server/tests/im.test.ts)
+- **Pinned by:** `bug fixed: a command costs no chat cooldown and runs under one` (packages/server/tests/playershop-db.test.ts); `divergence: it shares the chat cooldown` (packages/server/tests/guilds.test.ts); `divergence: it shares the chat cooldown; a refused line goes back` and `divergence: room lines share the chat cooldown, refused back into the room's input` (packages/server/tests/im.test.ts)
 
 ### Rooms check membership on the server
 - **Kind:** Exploit closed
@@ -1785,7 +1794,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** You can open and use a personal, house or guild vault only when its rules allow you; a refused house or guild vault says “You can't open a vault that's not yours!”
 - **1.6:** Chest and vault requests had no ownership or position check. A house door was its only protection.
-- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, so a later guild created under the same name inherits the old vault's contents (bug ledger). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. For a forbidden house or guild vault the original standing-in-front line appears before the SSO refusal, modeled on the mailbox's ownership line. A forbidden deposit is refused before the drop line and takes nothing. The original remote withdrawal after the initial successful opening remains.
+- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, so a later guild created under the same name inherits the old vault's contents (bug ledger). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. For a forbidden house or guild vault the original standing-in-front line appears before the SSO refusal, modeled on the mailbox's ownership line. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
 - **Why:** Anyone could otherwise read and loot any vault.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `openContainer`, `depositContainer`, `withdrawContainer`), `packages/server/src/systems/economy/vault.ts` (`openVault`)
 
@@ -1793,7 +1802,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** A trade exchanges both offers together after both players agree.
 - **1.6:** The accepting client supplied both player names and both lists, and the server checked neither identity nor consent.
-- **SSO:** The server holds a trade between two players on the same map and keeps each submitted offer within what that player holds. As in the original flow, the recipient presses Trade and the initiator presses Accept. One transaction moves both sides or neither.
+- **SSO:** The server holds a trade between two players on the same map and keeps each submitted offer within what that player holds. Both players press Accept once both offers are in (see "Both traders accept, and may change their offers"). One transaction moves both sides or neither.
 - **Why:** A forged trade could steal gold or move items without the other player's consent.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`offerTrade`, `acceptTrade`, `settle`)
 
@@ -1813,14 +1822,6 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Forged ownership and malformed prices or tills allowed system merchant takeovers and gold creation.
 - **In the code:** `packages/server/src/systems/economy/playershop.ts` (`createShopkeeper`, `shopCommand`)
 - **Pinned by:** `a taken name or a monster-list name is rolled again`, `with no GLD line Register refuses; 1.6 paid from nothing` (packages/shared/tests/economy/playershop.test.ts); `owned by id: a character whose name is inside the owner's is no owner` (packages/server/tests/playershop-db.test.ts)
-
-### Stall-free handling of the deep-SEL-line buy
-- **Kind:** Exploit closed
-- **What you notice:** Trying to buy an affected non-crystal item from a deep sale line produces the original refusal without freezing the server.
-- **1.6:** Buying a non-crystal `SEL|` line at file line 17 or later spun the single-threaded server for up to the stock count; one deed had 300,000 stock.
-- **SSO:** The same refusal is computed directly.
-- **Why:** Repeating a request that stalls the server harms every player, even though the gameplay outcome is kept.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
 
 ### Vault and mailbox access needs adjacency and ownership as designed
 - **Kind:** Exploit closed
@@ -1846,13 +1847,13 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** A trade held by the server cannot outlive one of its traders.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`leaveTrade`, `cancelTrade`)
 
-### Shop and bank presence is the map's roster
+### Shop presence is the map's roster
 - **Kind:** Architecture
-- **What you notice:** A bank is available if a banker is in the map roster. A shop purchase works while the NPC whose Bio you opened is in that roster, whether or not it is alive.
-- **1.6:** Banking checked the NPC data for the map's four roster slots. Shop OK checked whether the clicked slot's data had changed; after a map change it did nothing until a map loaded data into that slot, then traded with the old NPC by name.
-- **SSO:** The bank keeps the original roster check. Shop OK does nothing unless the originally opened NPC remains in the current map's roster.
+- **What you notice:** A shop purchase works while the NPC whose Bio you opened is in the map's roster, whether or not it is alive. (The bank needs a living banker; see "The bank needs a living banker".)
+- **1.6:** Shop OK checked whether the clicked slot's data had changed; after a map change it did nothing until a map loaded data into that slot, then traded with the old NPC by name.
+- **SSO:** Shop OK does nothing unless the originally opened NPC remains in the current map's roster.
 - **Why:** A line-based purchase needs that NPC; another map's stale client slot was a peer-to-peer artefact.
-- **In the code:** `packages/server/src/systems/economy/intents.ts` (`inRoster`, `canBank`, `buyIntent`)
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`inRoster`, `buyIntent`)
 
 ### Quest chests refill on the server's save clock
 - **Kind:** Architecture
@@ -1894,6 +1895,294 @@ An entry uses this shape; `Pinned by` is optional:
 - **SSO:** That line is used only if the partner is no longer on the map; in practice a map change ends the trade first.
 - **Why:** The client-slot check made one-on-one trades impossible.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`acceptTrade`, `leaveTrade`)
+
+### Quest chests add their refill, and a Wind Chest takes drops
+- **Kind:** Bug fixed
+- **What you notice:** Now and then a quest chest gains an item; whatever was already in it stays. Dropping an item while facing a Wind Chest stores it, as with the other chests. Like every placed chest, a quest chest is one container that anyone facing it can use.
+- **1.6:** The refill (1 in 4000 per save) overwrote the chest with its one item, wiping what players had left there. The client had no drop route for the Wind Chest, so a drop read "the floor is too crowded".
+- **SSO:** The refill item is added when the chest has room and skipped when it is full. The Wind Chest is on the drop routes by exact name. The roll and its odds are unchanged.
+- **Why:** A random roll should not destroy what players stored, and one of six chests should not refuse deposits.
+- **In the code:** `packages/server/src/systems/economy/containers.ts` (`saveClockStep`, `dropRoute`); `packages/shared/src/rules/housing/doors.ts` (`questChestRefill`)
+- **Pinned by:** `bug fixed: after 400 frames a 1-in-350 save rolls 1 in 4000; the refill is added to the chest`; `bug fixed: a full quest chest keeps what it holds`; `bug fixed: Drop routes: the six chests by name take items, the Wind Chest too; a bare Crate is crowded` (packages/server/tests/doors.test.ts)
+
+### A container with something in it cannot be sold
+- **Kind:** Bug fixed
+- **What you notice:** Selling a Crate, Cabinet or Wind Cabinet that still holds items is refused: the shopkeeper says "Empty that out before you sell it to me." An empty one sells as before, and if you carry several of that kind the empty one goes first.
+- **1.6:** The sale removed the bag line but never cleared the stored contents, which stayed unreachable unless a later container happened to roll the same id.
+- **SSO:** The sale checks the container's storage first. An empty container's storage row is deleted with the sale.
+- **Why:** Selling should never silently destroy what a player stored.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`, `sellName`); `packages/server/src/systems/economy/intents.ts` (`sellIntent`)
+- **Pinned by:** `bug fixed: a container with something stored in it is refused, and an empty one is sold first` (packages/server/tests/economy.test.ts); `bug fixed: a container with contents is refused; an empty one sells and its storage row goes` (packages/server/tests/economy-db.test.ts)
+
+### Every bought container gets its own id
+- **Kind:** Bug fixed
+- **What you notice:** Buying several Crates, Cabinets, Wind Cabinets or Cauldrons at once gives one bag line per container, each with its own storage. You need an empty bag line for each.
+- **1.6:** The purchase added the whole count in one call, so the line got one random id; giving one away left two players sharing the same storage.
+- **SSO:** Each container is added on its own line with a fresh id, rolled again if that id is already in storage, in an online bag or earlier in the same purchase.
+- **Why:** Separate containers should have separate contents.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`); `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`, `isUniqueContainer`); `packages/server/src/systems/economy/intents.ts` (`buyIntent`)
+- **Pinned by:** `bug fixed: each bought container gets its own line and its own unused id` (packages/server/tests/economy.test.ts)
+
+### A shopkeeper's till starts at 0 without a gold line, and counts anywhere in the file
+- **Kind:** Bug fixed
+- **What you notice:** The Fire, Water and Wind God books and Merius' Damaged Armor cost their listed price, and the gold goes into the shopkeeper's till. Selling to a shopkeeper pays from its till; one whose till is empty says "<Name> says "I'm sorry but I can't afford to buy that."" and you keep the item. Gold handed to a shopkeeper always goes into its till.
+- **1.6:** Only a shopkeeper with a `GLD|` line among its first 80 lines charged or paid: one without gave goods away (after checking you could afford them) and took sold items for nothing. A gift counted only with a `GLD|` line among the first 60 lines.
+- **SSO:** No `GLD|` line means a till of 0. Purchases fill it, sales pay from it, and gifts add to it. Once it holds gold, the file the NPC editor loads (and a player shop's rewrite) shows a `GLD|` line. The `GLD|` line counts wherever it is, so the NPC editor no longer warns about its position.
+- **Why:** A listed price should be charged, a sale should never take an item for nothing, and the line limits were 1.6 reader windows with no gameplay purpose.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`ledgerFromTemplate`, `npcBuy`, `npcSell`); `packages/server/src/systems/economy/intents.ts` (`giveGoldToNpc`); `packages/shared/src/rules/admin/npcfile.ts` (`liveNpcText`, `checkNpcFile`)
+- **Pinned by:** `bug fixed: a shopkeeper with no GLD line charges the price into a till that starts at 0`; `bug fixed: a shopkeeper with no GLD line pays from its till, refusing while it is empty` (packages/server/tests/economy.test.ts); `bug fixed: ledgers: GLD| counts wherever it is, and no GLD| is a till of 0`; `bug fixed: gold given goes into the till wherever GLD| is, or into a till from 0 without one` (packages/server/tests/npcedit.test.ts); `bug fixed: a till filled without a GLD| line shows as one in the live file` (packages/shared/tests/admin/npcfile.test.ts); `bug fixed: the Fire God's book costs its 100 gold, though he keeps no gold line` (packages/server/e2e/npcs-shops-trade.test.ts)
+
+### Any listed item can be bought, the Fortress Guild Hall Deed included
+- **Kind:** Bug fixed
+- **What you notice:** The Smithy sells the Fortress Guild Hall Deed. Any item on a shop list can be bought, whatever line of the shop's file it sits on, and buying one item never takes another's stock.
+- **1.6:** The buy routine shared one counter between two nested loops, so a non-crystal sale line at file line 17 or later always answered "out of stock" (and stalled the server for up to its stock count), and lines past 80 could not be bought. A match below line 17 jumped ahead, which also stopped a prefix match from taking Trout Fillet's stock.
+- **SSO:** The purchase uses the chosen line alone: its price, its stock and its item. The NPC editor no longer warns about sale lines from line 17 or after line 80.
+- **Why:** Items a shop lists should be for sale.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`); `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
+- **Pinned by:** `bug fixed: the Fortress Guild Hall Deed (Smithy line 17) can be bought`; `buying Trout takes only Trout's stock, not Trout Fillet's` (packages/server/tests/economy.test.ts); `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts)
+
+### Every purchase and sale is thanked
+- **Kind:** Bug fixed
+- **What you notice:** Each purchase and each sale gets one "<Name> says "Thanks for the business!"", whether or not the shopkeeper also sells the item.
+- **1.6:** The thanks was sent only while walking the shopkeeper's own sale lines, so a sale of an item the shop did not stock got none, and a purchase was never confirmed except by the bag changing.
+- **SSO:** One thanks, by name, for every completed purchase or sale.
+- **Why:** A trade that went through should say so.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`, `npcSell`, `SHOP_TEXT`)
+- **Pinned by:** `bug fixed: a sale to a shopkeeper who does not stock the item is thanked too`; `price × count from the line, charged from GLD into the NPC's gold` (packages/server/tests/economy.test.ts)
+
+### Selling Trout restocks only Trout
+- **Kind:** Bug fixed
+- **What you notice:** Selling Trout or Catfish to Akadius, or Swordfish or Squid to Krista or Lir, restocks only that item, with one thanks.
+- **1.6:** Every sale line that merely started with the sold item's name was restocked and thanked, so Trout Fillet, Catfish Sandwich, Swordfish Steak and Squid Platter gained stock and the thanks printed twice.
+- **SSO:** The sale line for exactly that item is restocked.
+- **Why:** Selling one item should not create stock of another.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`)
+- **Pinned by:** `bug fixed: selling Trout restocks only Trout and thanks once` (packages/server/tests/economy.test.ts)
+
+### Shopkeeper refusals name the shopkeeper
+- **Kind:** Bug fixed
+- **What you notice:** "Sorry but I'm out of that particular item." and "I'm sorry but I can't afford to buy that." start with the shopkeeper's name.
+- **1.6:** The name came from an on-screen sprite that was empty in every game screen, so each line began with a blank.
+- **SSO:** The server names the shop's NPC.
+- **Why:** A line that starts with a gap reads as broken.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`SHOP_TEXT`, `npcBuy`, `npcSell`)
+- **Pinned by:** `bug fixed: count over stock names the shopkeeper`; `bug fixed: an NPC whose gold would go negative names itself` (packages/server/tests/economy.test.ts)
+
+### A full bag has no room for a Pie because it holds an Orc Pot Pie
+- **Kind:** Bug fixed
+- **What you notice:** Buying an item into a full bag works only when the bag holds a stack of exactly that item; otherwise you read "You don't have enough room in your inventory!" and nothing changes.
+- **1.6:** The room test passed when the bag text merely contained the item's name, but the add stacked only on an exact name, so Amber took the stock and the gold went nowhere while no Pie arrived.
+- **SSO:** The room test uses the same exact-name rule as the add.
+- **Why:** A purchase should either deliver the item or not happen.
+- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
+- **Pinned by:** `bug fixed: a full bag holding 'Orc Pot Pie' has no room for a 'Pie'; nothing changes` (packages/server/tests/economy.test.ts)
+
+### The bank says what it did, and why it refused
+- **Kind:** Bug fixed
+- **What you notice:** A deposit reads "You deposit N gold. You now have M gold in the bank." and a withdrawal "You withdraw N gold. You now have M gold in the bank." Asking for more than you have says "You don't have that much gold to deposit." or "You don't have that much gold in the bank.", and a missing amount shows how to type the command.
+- **1.6:** Both failures and a missing amount were silent, and a withdrawal answered with the deposit's line; the withdrawal messages were never sent.
+- **SSO:** Each outcome has its own line.
+- **Why:** Silence after a command looks like lag or a lost message.
+- **In the code:** `packages/server/src/systems/economy/bank.ts` (`runBank`, `BANK_TEXT`); `packages/server/src/systems/economy/intents.ts` (`bankChat`)
+- **Pinned by:** `bug fixed: a deposit and a withdrawal each say what they did, and every failure says why` (packages/server/tests/economy.test.ts)
+
+### The bank needs a living banker
+- **Kind:** Bug fixed
+- **What you notice:** The bank commands work only while Cril, Andero or another banker is alive on your map; otherwise "You cannot bank here!"
+- **1.6:** The check read the roster loaded with the map, which a death did not clear, so the bank worked with the banker dead or never spawned.
+- **SSO:** A banker counts while its roster slot has a live NPC.
+- **Why:** A dead banker should not keep the bank open.
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`canBank`, `bankChat`)
+- **Pinned by:** `bug fixed: the bank needs a living banker on the map; else 'You cannot bank here!'` (packages/server/tests/economy.test.ts); `bug fixed: the bank needs a living banker: off the roster, or rostered but not spawned, 'You cannot bank here!'` (packages/server/e2e/npcs-shops-trade.test.ts)
+
+### Gold given to an NPC reads correctly
+- **Kind:** Bug fixed
+- **What you notice:** Handing gold to an NPC shows "*** Offering the <n> gold to <Name>." and then `<Name> says "Thanks for the gold!"` with its closing quote.
+- **1.6:** The offer line had a double space before "to", and the reply was missing its closing quote.
+- **SSO:** Both lines are written as intended.
+- **Why:** Typo fixes.
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`giveGoldToNpc`); `packages/server/src/systems/monsters/npc.ts` (`NPC_TEXT`)
+- **Pinned by:** `bug fixed: the offer line, then 'Thanks for the gold!' with its closing quote; the NPC's GLD grows` (packages/server/tests/npcs-trade.test.ts)
+
+### Both traders accept, and may change their offers
+- **Kind:** Bug fixed
+- **What you notice:** Your offer stays editable after you press Trade; press Trade again to change it. Once both offers are in, both players get an Accept button (the partner's sits left of their Trade button). The trade goes through when both have accepted, and both read "The trade is complete." Changing an offer clears both acceptances and tells the partner. Whoever cancels reads "You cancel the trade."
+- **1.6:** An offer locked once sent and its Trade button hid. Only the starter had Accept, and the partner agreed only by sending an offer. A completed trade printed nothing, and a partner who cancelled was told nothing.
+- **SSO:** The server keeps each side's acceptance, cleared by any change of either offer, and settles on the second. The partner's Accept reuses the original Accept art.
+- **Why:** Both players should agree to the final offers, and should be able to fix a mistake without cancelling.
+- **In the code:** `packages/server/src/systems/economy/trade.ts` (`offerTrade`, `acceptTrade`, `cancelTrade`); `packages/client/src/ui/trade.ts` (`createTradeWindow`)
+- **Pinned by:** `bug fixed: A offers, B offers, both accept: one move, and both are told it is complete`; `bug fixed: either side can change its offer, which clears both acceptances`; `bug fixed: Cancel: whoever cancels hears 'You cancel the trade.', the partner 'Trade cancelled.'` (packages/server/tests/npcs-trade.test.ts); `bug fixed: B has an Accept of its own once both offers are in` (packages/client/tests/npcs.test.ts)
+
+### Withdrawing into a full bag is refused instead of destroying the item
+- **Kind:** Bug fixed
+- **What you notice:** Taking a Pie out of storage into a full bag that holds an "Orc Pot Pie" reads "You are carrying too much to withdraw this item." and the Pie stays where it was.
+- **1.6:** The room test passed on any bag text containing the item's name, but the add needed an exact name, so nothing arrived and the line was still deleted.
+- **SSO:** Withdrawal uses the exact-name room rule, and the stored line is removed only once the item is in the bag.
+- **Why:** Storage should never destroy an item.
+- **In the code:** `packages/server/src/systems/economy/vault.ts` (`withdrawVault`); `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
+- **Pinned by:** `bug fixed: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' is refused and keeps the Pie` (packages/server/tests/economy.test.ts)
+
+### A vault stays where you opened it
+- **Kind:** Bug fixed
+- **What you notice:** An open vault or container keeps your keys locked until you press Cancel, so you stay in front of it. While it is open you can Drop items from your bag straight into it, and its list updates. Each take says "You take a <item> out of the container.", and the drop line appears only when the item went in. Changing map closes the window.
+- **1.6:** Opening locked the keys and the bag ignored clicks, so nothing could be stored through the window; the first take freed the keys and you could walk off and keep withdrawing from afar. A take printed nothing, and the drop line printed before the capacity check, even when the item was refused.
+- **SSO:** Takes leave the window open and the keys locked, so you cannot walk or be shoved; Drop with a window open deposits into it; the server closes the window on a map change. The list is refreshed for everyone viewing it after any deposit or take.
+- **Why:** A storage window should work like one, and should not be usable from across the map.
+- **In the code:** `packages/server/src/systems/economy/vault.ts` (`openVault`, `withdrawVault`, `depositVault`); `packages/server/src/systems/economy/containers.ts` (`depositContainer`, `withdrawContainer`); `packages/server/src/systems/inventory/items.ts` (`dropIntent`); `packages/client/src/app.ts` (`startApp`)
+- **Pinned by:** `bug fixed: a withdrawal keeps the window open and the keys locked, says so, and stacks on an exact name`; `bug fixed: deposit checks the capacity before the drop line; containers refused; an open list is refreshed` (packages/server/tests/economy.test.ts); `bug fixed: with a container open, Drop stores into it and everyone with it open sees the item` (packages/server/tests/craft.test.ts); `bug fixed: a take keeps the keys locked, so you cannot walk off with the window open` (packages/server/tests/doors.test.ts); `an open container holds you in place: after a take you still cannot be shoved` (packages/server/tests/craft.test.ts)
+
+### Removing a player-shop item removes only that item
+- **Kind:** Bug fixed
+- **What you notice:** "<Shopkeeper> remove Apple" removes the Apple's sale and buy lines and nothing else: Apple Pie, the profile and the gold line stay. A name that is not for sale, such as a single letter, is refused.
+- **1.6:** Every non-empty line among the first 30 containing the name was dropped, whatever its kind, and empty lines and lines past 30 were lost. Another item's stock could block the removal.
+- **SSO:** The item is matched by its exact name; only its stock decides whether it can go.
+- **Why:** One command should change one item.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`removeItem`)
+- **Pinned by:** `RemoveItem: not selling, in stock, removed`; `bug fixed: removing Apple leaves Apple Pie and every other line` (packages/shared/tests/economy/playershop.test.ts)
+
+### Pricing a player-shop item changes only that item
+- **Kind:** Bug fixed
+- **What you notice:** Setting a price updates that item where it stands in the list, keeping its stock; a new item is added at the end. Setting "Fish" leaves "Fish Sticks" alone, and an owner called Alex can sell Ale.
+- **1.6:** Lines 1-30 were rebuilt without every line containing the item's name (the owner line included), the last matching sale line's stock moved to the new line, empty lines and lines past 30 were lost, and a re-priced item moved to the end.
+- **SSO:** The item's own sale and buy lines are rewritten in place; every other line stays.
+- **Why:** One command should change one item.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`setPrices`)
+- **Pinned by:** `bug fixed: SetPrices touches only the item's own lines; Alex keeps his OWN| line`; `bug fixed: setting Fish leaves Fish Sticks, its stock and its place alone`; `bug fixed: re-pricing keeps the item's stock and its place in the list`; `bug fixed: empty lines and lines past 30 are kept` (packages/shared/tests/economy/playershop.test.ts)
+
+### A player shop's ten-item limit counts every item
+- **Kind:** Bug fixed
+- **What you notice:** A player shop sells at most ten items, counted over its whole file; re-pricing an item it already sells is always allowed.
+- **1.6:** Only sale lines among the first 30 lines counted, and any sale line starting with the name counted as the same item.
+- **SSO:** Every sale line counts, and "already for sale" means exactly that name.
+- **Why:** The limit should not depend on where lines sit.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`setPrices`, `SHOP_MAX_ITEMS`)
+- **Pinned by:** `bug fixed: max 10 counts every SEL line in the file; a re-priced item is not new` (packages/shared/tests/economy/playershop.test.ts)
+
+### The seventh player-shop item can be bought
+- **Kind:** Bug fixed
+- **What you notice:** All of a player shop's items can be bought, the seventh and later included.
+- **1.6:** A new shop's seventh sale line fell on file line 18, past the NPC buy routine's line-17 limit, so it always answered out of stock.
+- **SSO:** Purchases use the chosen line wherever it is (see "Any listed item can be bought").
+- **Why:** A shop should sell what it lists.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`setPrices`); `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
+- **Pinned by:** `the seventh item lands on line 18, where it can be bought` (packages/shared/tests/economy/playershop.test.ts); `bug fixed: the seventh item, on line 18, can be bought` (packages/server/tests/playershop-db.test.ts)
+
+### Shop commands are not said aloud
+- **Kind:** Bug fixed
+- **What you notice:** A shop command (set, remove, register, inventory, profile, title) is answered by the shopkeeper without your line being said to the room, and costs no chat cooldown. Like talk, it works only where you can speak in a house (y 10 or less).
+- **1.6:** The line was said to the room as ordinary chat first, and the command still ran deeper in the house where talking was refused.
+- **SSO:** A recognised command is handled before the line would be said; the house rule applies first.
+- **Why:** Running your shop should not broadcast your prices or tills, and should follow the house's talk rule.
+- **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`); `packages/server/src/systems/economy/playershop.ts` (`shopCommand`)
+- **Pinned by:** `bug fixed: a command is answered without being said aloud; at y > 10 it is refused like talk`; `bug fixed: a command costs no chat cooldown and runs under one` (packages/server/tests/playershop-db.test.ts)
+
+### A player shop's stock list goes to the owner only
+- **Kind:** Bug fixed
+- **What you notice:** The inventory command tells the till and each item's stock to the owner alone.
+- **1.6:** The stock lines were sent so the owner's client repeated them to the room.
+- **SSO:** All the lines go to the owner.
+- **Why:** The stock is the owner's business.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`shopStockLines`); `packages/server/src/systems/economy/playershop.ts` (`shopCommand`)
+- **Pinned by:** `bug fixed: Inventory tells the till and the stock to the owner alone` (packages/server/tests/playershop-db.test.ts)
+
+### Player-shop register and stock lines read correctly
+- **Kind:** Bug fixed
+- **What you notice:** The till line is `<N> says "I have <g> gold in the register..."` with its closing quote, and each stock line reads `<N> says "I have 3 Chunk of Iron in stock."`.
+- **1.6:** The till line had no closing quote, and a plain "s" was added to every name unless the stock was 1 ("Chunk of Irons", "Fishs").
+- **SSO:** The lines close their quote and name each item as it is.
+- **Why:** Typo and grammar fixes.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`SHOP_TEXT`)
+- **Pinned by:** `bug fixed: the till line has its closing quote; the stock lines name each item as it is` (packages/shared/tests/economy/playershop.test.ts)
+
+### The cauldron no longer fizzles on every deposit
+- **Kind:** Bug fixed
+- **What you notice:** Putting an ingredient in a cauldron that completes nothing just shows the drop line; a completed recipe still says so.
+- **1.6:** Every deposit that completed no recipe, even the first ingredient, printed "The cauldron bubbles...but then fizzles out."
+- **SSO:** Only a brew prints a cauldron line.
+- **Why:** The fizzle read as a failure when nothing had gone wrong.
+- **In the code:** `packages/server/src/systems/economy/containers.ts` (`depositContainer`); `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`)
+- **Pinned by:** `bug fixed: a deposit that completes nothing does not fizzle` (packages/server/tests/craft.test.ts)
+
+### Storage on a carried container says what it opened
+- **Kind:** Bug fixed
+- **What you notice:** Pressing Storage on a carried Crate, Cabinet, Wind Cabinet or Cauldron prints "You open the <kind> to see what's inside...".
+- **1.6:** The button built its line only for a Cabinet or a Chest, so a Crate or Cauldron opened silently.
+- **SSO:** Every kind gets the line, with its id stripped.
+- **Why:** Consistent feedback.
+- **In the code:** `packages/server/src/systems/economy/containers.ts` (`storageIntent`)
+- **Pinned by:** `bug fixed: Storage on a Crate, Cabinet or Cauldron says what it opened` (packages/server/tests/craft.test.ts)
+
+### Player shops can stock crystals
+- **Kind:** Bug fixed
+- **What you notice:** "<Shopkeeper> set Blue Crystals=30,15" works for every crystal colour.
+- **1.6:** The shop's allow-list names crystals in the singular ("Blue Crystal"), but every bag and NPC holds "<colour> Crystals", so none was ever accepted.
+- **SSO:** The plural of a listed crystal is accepted too.
+- **Why:** The list clearly meant to allow crystals.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`onShopWhitelist`)
+- **Pinned by:** `set: the whitelist, case ignored, the name as typed` (packages/shared/tests/economy/playershop.test.ts)
+
+### Crystals come out of storage as themselves
+- **Kind:** Bug fixed
+- **What you notice:** Withdrawing Blue Crystals (or any colour) from a vault or container gives back Blue Crystals.
+- **1.6:** A line containing " Crystals" was split on spaces and words 2 and 3 joined, giving a worthless "Crystals " item.
+- **SSO:** The stored line is added unchanged.
+- **Why:** Storage should return what was stored.
+- **In the code:** `packages/server/src/systems/economy/vault.ts` (`withdrawVault`); `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
+- **Pinned by:** `bug fixed: a crystal line comes back as the same crystals` (packages/server/tests/economy.test.ts)
+
+### Quest replies are heard by the whole map
+- **Kind:** Bug fixed
+- **What you notice:** Asking for a quest, every NPC's "Bring me a…" reply is heard by everyone on the map, as your question was, and closes its quote.
+- **1.6:** Slot 1's reply went to the asker alone while slots 2-4 and slot 1's "Sorry…" went to the map, and "Bring me a…" had no closing quote.
+- **SSO:** Every reply goes to the map. An NPC answers only for quest lines that name it exactly.
+- **Why:** One rule for every NPC.
+- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`sayQuest`); `packages/server/src/systems/economy/quests.ts` (`askForQuest`)
+- **Pinned by:** `bug fixed: every quest reply is heard by the map and closes its quote` (packages/shared/tests/social/factions.test.ts); `bug fixed: SayQuest: every slot's reply is heard by the map, with its closing quote` (packages/server/tests/factions.test.ts)
+
+### Handing in a head takes the head you gave
+- **Kind:** Bug fixed
+- **What you notice:** Giving a faction leader a head takes it from the bag slot you chose.
+- **1.6:** The chosen slot only had to hold a head; one was taken from the first slot that contained one.
+- **SSO:** The head comes off the chosen slot.
+- **Why:** Players choose what they give.
+- **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`)
+- **Pinned by:** `bug fixed: turn-in takes the head you gave, not the first in the bag` (packages/server/tests/factions.test.ts)
+
+### Quest lines match exactly, and the first match wins
+- **Kind:** Bug fixed
+- **What you notice:** An NPC takes an item only for a quest line naming exactly that NPC and that item. Giving Stephie a Fish no longer pays her Fishle reward.
+- **1.6:** The last of the first 40 lines containing "<NPC>:<item>" won, so any line whose text contained yours could pay.
+- **SSO:** The NPC and item fields are compared exactly (case and surrounding spaces ignored), and the first matching line is used.
+- **Why:** Quests should want what they say.
+- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`questMatch`)
+- **Pinned by:** `bug fixed: quest lines match the NPC and item exactly, and the first match wins` (packages/shared/tests/social/factions.test.ts); `bug fixed: Fish given to Stephie is not her Fishle; nothing is taken` (packages/server/tests/factions.test.ts)
+
+### A quest hand-in leaves your stack names alone
+- **Kind:** Bug fixed
+- **What you notice:** The item comes off the slot you gave it from, and the reward stacks only on a stack of exactly its name, so no stack is renamed.
+- **1.6:** The given item came off the first slot containing its name and that slot was rewritten under the given name (a Gold Fish stack given as Fish became Fish); the reward did the same to the first slot containing its name.
+- **SSO:** Taking and stacking use the chosen slot and exact names.
+- **Why:** A hand-in should not change other items.
+- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`questTake`, `questReward`)
+- **Pinned by:** `bug fixed: the item comes off the slot you gave from, which keeps its name`; `bug fixed: the reward stacks on its exact name, keeping the stack's spelling, else the lowest empty slot` (packages/shared/tests/social/factions.test.ts)
+
+### A quest reward with no room stops the hand-in
+- **Kind:** Bug fixed
+- **What you notice:** With a full bag and nowhere for the reward, the NPC says `"You have no room in your bag for my reward."` and nothing is taken. Giving the last of a stack frees its slot for the reward.
+- **1.6:** The reward overwrote whatever was left of the stack you gave from.
+- **SSO:** Room is checked before anything is taken.
+- **Why:** A reward should never destroy items.
+- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`questRoom`, `questReward`); `packages/server/src/systems/economy/quests.ts` (`questGive`, `QUEST_TEXT`)
+- **Pinned by:** `bug fixed: a reward to a full bag has no room unless the given stack empties` (packages/shared/tests/social/factions.test.ts); `bug fixed: a reward with no room is refused and nothing is taken` (packages/server/tests/factions.test.ts)
+
+### Every new quest names an NPC
+- **Kind:** Bug fixed
+- **What you notice:** Every quest line has an NPC who will take it; the archive's nameless ":Steel Key:Trumpet" is replaced with a new quest when the server starts.
+- **1.6:** The NPC was picked by a 44-way roll in which roll 29 named nobody, writing a line starting with a bare colon that no NPC would answer. A wanted item could carry a trailing space ("Silver Token ").
+- **SSO:** The NPC is picked evenly among the 43 named NPCs and item names are trimmed. On load or first seeding, any stored line that names no NPC is rerolled and saved.
+- **Why:** A quest nobody can hand in is a dead line.
+- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`findNewQuest`, `questLineUnanswerable`); `packages/server/src/game.ts` (`createGame`)
+- **Pinned by:** `bug fixed: FindNewQuest always names an NPC, each named one equally likely` (packages/shared/tests/social/factions.test.ts); `a quest turn-in writes the bag and the rerolled line, which survive a restart` (packages/server/tests/factions-db.test.ts)
 
 ## housing
 

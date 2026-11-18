@@ -2,7 +2,7 @@
 
 ## What happens in play
 
-Two players can exchange offers, then the initiator accepts after both have sent them. The server checks the items and gold before settling.
+Two players exchange offers, which either can change until the trade is done; once both offers are in, both accept. The server checks the items and gold before settling.
 
 ## Where it lives
 
@@ -27,15 +27,15 @@ Entry points:
 
 ## How it works
 
-NPC shop transactions use server-held ledgers, validate stock and prices, and update the player's holdings. Some NPCs have no gold configuration; the resulting free purchase behaviour is documented in the kept-bug ledger and is separate from forged transaction exploits. Bank commands move gold between purse and bank. Vault and container operations check the relevant access and capacity; player shops have commands for their stock and prices.
+NPC shop transactions use server-held ledgers, validate stock and prices, and update the player's holdings. Every shopkeeper has a till: its `GLD|` line wherever it sits in the file, or 0 without one. Purchases and gifts fill it, and sales pay from it (an empty till refuses). Bank commands move gold between purse and bank. Vault and container operations check the relevant access and capacity; player shops have commands for their stock and prices.
 
-For player trades, each offer locks when sent. The second player's offer is consent; only the initiator accepts. Settlement checks both holdings and available bag space before applying the exchange; leaving or changing maps cancels the trade. Giving gold to an NPC and giving quest items use separate routes. Persistence for economy and containers lives in [economy persistence](../../packages/server/src/persistence/economy.ts) and [container persistence](../../packages/server/src/persistence/containers.ts).
+For player trades, either player may resend an offer, which clears both acceptances; the trade settles on the second Accept. Settlement checks both holdings and available bag space before applying the exchange; leaving or changing maps cancels the trade. Giving gold to an NPC and giving quest items use separate routes. Persistence for economy and containers lives in [economy persistence](../../packages/server/src/persistence/economy.ts) and [container persistence](../../packages/server/src/persistence/containers.ts).
 
 ### NPC shops and storage
 
 Opening a shop uses the NPC whose bio was opened and requires that NPC to remain on the map roster. A purchase or sale identifies a server-owned ledger line: the server takes its item, stock and price from that line, checks the player's holdings and updates both sides. The ledger starts from the NPC file's sale, buy and gold lines. Gold given to an NPC has a separate handler. A Small Shop creates a shopkeeper; the owner's spoken commands rewrite stock and prices while preserving its current till and stock. An NPC editor save resets the ledger from the edited file.
 
-Bank commands operate on the speaker's own character account and require a banker on the map roster. A personal vault holds 15 lines. House vaults are for their owner, guild vaults for guild members, carried containers for their carrier, and other placed containers for someone facing them. Quest chests are shared by type and refill on the save clock. Access and capacity checks occur when a player uses storage.
+Bank commands operate on the speaker's own character account and require a living banker on the map. A personal vault holds 15 lines. House vaults are for their owner, guild vaults for guild members, carried containers for their carrier, and other placed containers for someone facing them. Quest chests are shared by type and gain an item on the save clock when they have room. Access and capacity checks occur when a player uses storage; an open storage window holds the keys until Cancel, and Drop puts items into it.
 
 After a buy or sale, the [game dispatcher](../../packages/server/src/game.ts) flushes changed holdings immediately. Its persistence transaction writes changed player inventories and dirty banks and personal vaults together with dirty shop ledgers and named containers. Inventory writes use [inventory persistence](../../packages/server/src/persistence/inventory.ts). Sending a trade offer only changes the in-memory session; accepting a trade flushes both participants' changed holdings together after settlement.
 
@@ -45,7 +45,7 @@ The initiator opens a trade, sends an offer, and thereby opens the recipient's w
 
 ## Kept bugs and differences
 
-A shopkeeper without a gold line gives goods away free and pays nothing for sales. A trade offer locks after it is sent and only its initiator can accept; server checks prevent a third player taking it over.
+The economy keeps no 1.6 bugs: the former kept bugs (free goods, unpaid sales, the line-17 deed, locked trade offers, lossy storage and player-shop rewrites, substring quest matching and more) are fixed and recorded as "Bug fixed" entries. Server checks prevent a third player taking over a trade.
 
-See the [economy kept bugs](../bug-ledger.md#economy) and [economy differences](../divergences.md#economy) for the specific player-visible cases.
+See the [economy differences](../divergences.md#economy) for the specific player-visible cases.
 

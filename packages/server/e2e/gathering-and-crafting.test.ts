@@ -8,7 +8,7 @@
  * Part 2: Alice picks up the Logs and builds a Chair with her Saw. Each other crafter stands facing
  * their station, so the script needs no walking: Dave cooks a Trout at a Stove, Erin mixes a Red
  * Potion at an Alchemy Lab holding Red Sand, Finn smiths a Damaged sword at an Anvil while Bob
- * watches the BSmith FX, and Gail fizzles, then brews, in a Cauldron and takes the Gold Crown out.
+ * watches the BSmith FX, and Gail brews in a Cauldron and takes the Gold Crown out.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -374,14 +374,11 @@ describe("gathering and crafting", () => {
     expect(bagItems(finn)[0]).toBe("Long Sword-1");
   });
 
-  test("Gail's first ingredient fizzles, the second brews; she takes the Gold Crown out", async () => {
+  test("bug fixed: Gail's first ingredient goes in quietly, the second brews; she takes the Gold Crown out", async () => {
     gail.clear();
     gail.send({ t: "drop", slot: 1 });
     await tick(1);
-    expect(lines(gail)).toEqual([
-      "You drop a Chunk of Star into the container.",
-      "The cauldron bubbles...but then fizzles out.",
-    ]);
+    expect(lines(gail)).toEqual(["You drop a Chunk of Star into the container."]);
     gail.send({ t: "drop", slot: 2 });
     await tick(1);
     expect(lines(gail)).toContain(

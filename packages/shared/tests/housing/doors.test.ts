@@ -219,7 +219,7 @@ describe("quest chests", () => {
     expect(r.asked).toEqual([350]);
   });
 
-  test("a save refills 1 in 4000; random(6) picks the chest; a line overwrites it", () => {
+  test("a save refills 1 in 4000; random(6) picks the chest; random(lines) picks the item", () => {
     const r = queue(1, 1, 2);
     expect(questChestRefill(r)).toEqual({ chest: "Gold Chest", item: "Thor's Hammer" });
     expect(r.asked).toEqual([4000, 6, 3]);

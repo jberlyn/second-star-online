@@ -895,6 +895,9 @@ export interface Trade {
   /** A's offer once A pressed Trade, B's once B did. */
   aOffer: TradeOffer | null;
   bOffer: TradeOffer | null;
+  /** Each side's Accept since the last change of either offer. */
+  aAccepted: boolean;
+  bAccepted: boolean;
 }
 
 export interface TradeOffer {
@@ -1077,8 +1080,11 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   // Loading the map hides sprite 112 and drawing its items shows it; the counter keeps running
   // from there.
   p.hidden = false;
-  // Drawing the map's items clears the input lock, and a map change ends any running craft.
+  // Drawing the map's items clears the input lock, and a map change ends any running craft and
+  // closes an open vault or container (its window closes on the client too).
   p.keyLock = false;
+  p.vaultOpen = false;
+  p.container = null;
   const stopped = cancelCrafts(p);
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;

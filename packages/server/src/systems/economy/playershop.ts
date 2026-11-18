@@ -9,7 +9,6 @@
  */
 import {
   CHAT_COLOR,
-  heardSqa,
   lingoEq,
   liveNpcText,
   npcLines,
@@ -27,7 +26,6 @@ import {
 } from "@secondstaronline/shared";
 
 import { closeNpcWindows } from "../admin/npcedit.ts";
-import { hears } from "../chat/ignore.ts";
 import { npcFileNamed, setNpcFile } from "../monsters/npcfiles.ts";
 import type { Outgoing, Player, PlayerShop, World, WorldMap } from "../world/world.ts";
 import { ledgerFromTemplate, type ShopLedger } from "./shop.ts";
@@ -110,8 +108,9 @@ export interface ShopCommandResult {
 }
 
 /**
- * The shop command in a said line, after the line itself. `ledgerOf` gives the NPC's ledger (made
- * from its file on first use), so the file is read as the server holds it.
+ * The shop command in a typed line, before it would be said: a line that is a command is never said
+ * aloud (1.6 said it to the room first). `ledgerOf` gives the NPC's ledger (made from its file on
+ * first use), so the file is read as the server holds it.
  */
 export function shopCommand(
   world: World,
@@ -195,25 +194,9 @@ export function shopCommand(
       p.invDirty = true;
       return done([tell(p, r.text)], { file, gold: true, title: null });
     }
-    case "inventory": {
-      const r = shopStockLines(lines, owner, npc);
-      const out = r.owner.map((t) => tell(p, t));
-      // `aqs`: the owner's client says the list to the map as one `sqa`.
-      if (r.room.length > 0) {
-        const text = r.room.join("\r");
-        for (const o of world.rooms.get(p.map.name)?.players ?? [p]) {
-          // The owner's ignorers miss it.
-          if (!hears(o, p.name)) {
-            continue;
-          }
-          const heard = heardSqa(text, o.map.name, o.y);
-          for (const t of heard === text ? r.room : [heard]) {
-            out.push(tell(o, t));
-          }
-        }
-      }
-      return done(out);
-    }
+    case "inventory":
+      // The till and the stock go to the owner alone (1.6 said the stock to the room).
+      return done(shopStockLines(lines, owner, npc).map((t) => tell(p, t)));
     case "profile": {
       const r = profile(lines, owner, npc, cmd.text);
       if (!r?.lines) {

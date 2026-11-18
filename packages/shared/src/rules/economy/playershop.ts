@@ -5,9 +5,9 @@
  * (`ShopCommand`).
  *
  * The rules here work on the shop's file as lines. SSO reads a line's tag from its start (`SEL|`,
- * `GLD|`, `PRO|`), where 1.6 tested `contains`, and the owner by character id; the substring
- * removals, append order and texts are 1.6's (kept bugs: setting a shop price deletes every line
- * containing the item, and so does removing an item by name).
+ * `GLD|`, `PRO|`), where 1.6 tested `contains`, and the owner by character id. An item is matched
+ * by its exact name: setting a price or removing an item touches only that item's own lines (1.6
+ * dropped every line that contained the name, and lost empty lines and lines past 30).
  */
 import { itemsData, monstersData } from "@secondstaronline/data";
 
@@ -95,11 +95,10 @@ export const SHOP_TEXT = {
   steal: (n: string) => `${n} says "I don't think my boss would like you trying to steal from us."`,
   tooMuch: (n: string) => `${n} says "I don't have that much gold!"`,
   hereGold: (n: string) => `${n} says "Here's the gold."`,
-  /** No closing quote. */
-  till: (n: string, g: number) => `${n} says "I have ${g} gold in the register...`,
-  /** "s." unless the stock is 1, every name the same plain "s". */
-  stock: (n: string, k: string, item: string) =>
-    `${n} says "I have ${k} ${item}${k.trim() === "1" ? "" : "s"}."`,
+  /** 1.6 left off the closing quote. */
+  till: (n: string, g: number) => `${n} says "I have ${g} gold in the register..."`,
+  /** 1.6 added a plain "s" to every name ("Chunk of Irons", "Fishs"). */
+  stock: (n: string, k: string, item: string) => `${n} says "I have ${k} ${item} in stock."`,
   profile: (n: string) => `${n}'s profile has been updated.`,
   title: "Your shop title has been updated.",
   noTitle: "You can't change the title of this area!",
@@ -119,9 +118,15 @@ export type ShopCommand =
 
 const WHITELIST = itemsData.playerShopWhitelist;
 
-/** The item equals `<name>` for a whitelist line (ignoring case). */
+/**
+ * The item equals `<name>` for a whitelist line (ignoring case). The list names crystals in the
+ * singular ("Blue Crystal") while every bag holds "<colour> Crystals", so the plural is accepted
+ * too (1.6 had no alias, so no shop could stock crystals).
+ */
 export function onShopWhitelist(item: string): boolean {
-  return WHITELIST.some((w) => lingoEq(w, item));
+  return WHITELIST.some(
+    (w) => lingoEq(w, item) || (/ Crystal$/i.test(w) && lingoEq(`${w}s`, item)),
+  );
 }
 
 /**
@@ -216,16 +221,27 @@ export function parseShopCommand(
 
 // ---- the server's file rules (SV) -----------------------------------------------------------
 
-/**
- * The lines the set-prices, remove-item, inventory and profile commands read (the first 30 lines).
- */
+/** The lines the register and profile commands read (the first 30 lines). */
 export const SHOP_LINES = 30;
 
+/** Most items a player shop can sell. */
+export const SHOP_MAX_ITEMS = 10;
+
 const tag = (line: string, t: string) => line.toUpperCase().startsWith(`${t}|`);
-/** The nth colon-separated part of a `SEL|item:price:stock` line's data. */
+/** The nth colon-separated part of a `SEL|item:price:stock` or `BUY|item:price` line's data. */
 const selPart = (line: string, n: number) => (line.slice(4).split(":")[n - 1] ?? "").trim();
-const hasSel = (lines: readonly string[], item: string) =>
-  lines.some((l) => tag(l, "SEL") && lingoContains(l, `SEL|${item}`));
+/** The line is `<t>|<item>:…` for exactly this item (case ignored). */
+const isItemLine = (line: string, t: "SEL" | "BUY", item: string) =>
+  tag(line, t) && lingoEq(selPart(line, 1), item.trim());
+
+/** The lines without trailing empty ones, then `add`, then the closing RETURN. */
+function withTail(lines: readonly string[], ...add: string[]): string[] {
+  const out = [...lines];
+  while (out.length > 0 && out[out.length - 1] === "") {
+    out.pop();
+  }
+  return [...out, ...add, ""];
+}
 
 export interface ShopRewrite {
   /** The file's new lines, or null when nothing is written. */
@@ -235,11 +251,10 @@ export interface ShopRewrite {
 }
 
 /**
- * Setting prices. Not the owner: refused. A new item (no `SEL|<item>` in the file, a prefix match)
- * with ten `SEL|` lines among 1-30: refused. Then lines 1-30 are rebuilt: empty ones and every one
- * containing the item (any tag) are dropped, the last matching `SEL|` line's stock is kept, lines
- * past 30 are lost, and `SEL|<item>:<sell>:<stock>` and `BUY|<item>:<buy>` are appended with the
- * name as typed, each line ending in RETURN.
+ * Setting prices. Not the owner: refused. An item already for sale (a `SEL|` line for exactly its
+ * name) is re-priced where it stands, keeping its stock and its place in the list. A new item is
+ * refused once the shop sells ten items, else `SEL|<item>:<sell>:0` and `BUY|<item>:<buy>` are
+ * added at the end with the name as typed. No other line changes.
  */
 export function setPrices(
   lines: readonly string[],
@@ -252,34 +267,32 @@ export function setPrices(
   if (!owner) {
     return { lines: null, text: SHOP_TEXT.notEmployee(npc) };
   }
-  const head = lines.slice(0, SHOP_LINES);
-  const sales = head.filter((l) => tag(l, "SEL")).length;
-  if (!hasSel(lines, item) && sales > 9) {
-    return { lines: null, text: SHOP_TEXT.maxItems(npc) };
-  }
-  const out: string[] = [];
-  let stock = "0";
-  for (const l of head) {
-    if (l === "") {
-      continue;
+  const at = lines.findIndex((l) => isItemLine(l, "SEL", item));
+  if (at < 0) {
+    if (lines.filter((l) => tag(l, "SEL")).length >= SHOP_MAX_ITEMS) {
+      return { lines: null, text: SHOP_TEXT.maxItems(npc) };
     }
-    if (lingoContains(l, item)) {
-      if (tag(l, "SEL")) {
-        stock = selPart(l, 3);
-      }
-    } else {
-      out.push(l);
-    }
+    return {
+      lines: withTail(lines, `SEL|${item}:${sell}:0`, `BUY|${item}:${buy}`),
+      text: SHOP_TEXT.added(npc),
+    };
   }
-  out.push(`SEL|${item}:${sell}:${stock}`, `BUY|${item}:${buy}`, "");
+  const out = [...lines];
+  const old = out[at] ?? "";
+  const name = selPart(old, 1);
+  out[at] = `SEL|${name}:${sell}:${selPart(old, 3) || "0"}`;
+  const b = out.findIndex((l) => isItemLine(l, "BUY", name));
+  if (b >= 0) {
+    out[b] = `BUY|${name}:${buy}`;
+  } else {
+    out.splice(at + 1, 0, `BUY|${name}:${buy}`);
+  }
   return { lines: out, text: SHOP_TEXT.added(npc) };
 }
 
 /**
- * Removing an item. Not the owner, or no `SEL|<item>` in the file: refused. Over lines 1-30, every
- * non-empty line containing the item (any tag) is dropped; a matching `SEL|` line sets the stock,
- * and from then on any matching line with that stock above 0 refuses with nothing written. Lines
- * past 30 and empty lines are lost.
+ * Removing an item. Not the owner, or no `SEL|` line for exactly that item: refused. With stock
+ * left: refused. Otherwise its `SEL|` and `BUY|` lines go and every other line stays.
  */
 export function removeItem(
   lines: readonly string[],
@@ -290,28 +303,15 @@ export function removeItem(
   if (!owner) {
     return { lines: null, text: SHOP_TEXT.notEmployee(npc) };
   }
-  if (!hasSel(lines, item)) {
+  const sel = lines.find((l) => isItemLine(l, "SEL", item));
+  if (sel === undefined) {
     return { lines: null, text: SHOP_TEXT.notSelling(npc) };
   }
-  const out: string[] = [];
-  let stock = 0;
-  for (const l of lines.slice(0, SHOP_LINES)) {
-    if (l === "") {
-      continue;
-    }
-    if (lingoContains(l, item)) {
-      if (tag(l, "SEL")) {
-        stock = lingoInteger(selPart(l, 3)) ?? 0;
-      }
-      if (stock > 0) {
-        return { lines: null, text: SHOP_TEXT.inStock(npc) };
-      }
-    } else {
-      out.push(l);
-    }
+  if ((lingoInteger(selPart(sel, 3)) ?? 0) > 0) {
+    return { lines: null, text: SHOP_TEXT.inStock(npc) };
   }
-  out.push("");
-  return { lines: out, text: SHOP_TEXT.removed(npc) };
+  const out = lines.filter((l) => !isItemLine(l, "SEL", item) && !isItemLine(l, "BUY", item));
+  return { lines: withTail(out), text: SHOP_TEXT.removed(npc) };
 }
 
 /**
@@ -343,26 +343,22 @@ export function register(
 }
 
 /**
- * `Inventory`: nothing for anyone but the owner. The owner gets one till line per `GLD|` line among
- * 1-30; one line per `SEL|` among 1-30 goes as `aqs`, which the owner's client says to the map.
+ * `Inventory`: nothing for anyone but the owner, who gets one till line per `GLD|` line among 1-30
+ * and then one line per item for sale. Only the owner hears them (1.6 said the stock to the room).
  */
-export function shopStockLines(
-  lines: readonly string[],
-  owner: boolean,
-  npc: string,
-): { owner: string[]; room: string[] } {
+export function shopStockLines(lines: readonly string[], owner: boolean, npc: string): string[] {
   if (!owner) {
-    return { owner: [], room: [] };
+    return [];
   }
-  const head = lines.slice(0, SHOP_LINES);
-  return {
-    owner: head
+  return [
+    ...lines
+      .slice(0, SHOP_LINES)
       .filter((l) => tag(l, "GLD"))
       .map((l) => SHOP_TEXT.till(npc, lingoInteger(l.slice(4)) ?? 0)),
-    room: head
+    ...lines
       .filter((l) => tag(l, "SEL"))
       .map((l) => SHOP_TEXT.stock(npc, selPart(l, 3), selPart(l, 1))),
-  };
+  ];
 }
 
 /**

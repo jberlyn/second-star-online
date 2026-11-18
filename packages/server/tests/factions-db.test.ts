@@ -103,7 +103,11 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
   });
 
   test("a quest turn-in writes the bag and the rerolled line, which survive a restart", async () => {
-    let g = game({ 44: [5], 20: [3, 9] });
+    // The seed rerolls the archive's nameless ":Steel Key:Trumpet" first (43, 20, 20), then the
+    // turn-in rerolls Stephie's line.
+    let g = game({ 43: [1, 5], 20: [1, 1, 3, 9] });
+    expect(g.world.questLines[2]).toBe("Water God:Dragon Wing:Fire Key");
+    expect(loadQuestLines(db)?.[2]).toBe("Water God:Dragon Wing:Fire Key");
     const id = await makeChar(g, "Al");
     immortal(id);
     g.enter(id, false);

@@ -8,12 +8,22 @@
 import { lingoEq, lingoWord } from "@secondstaronline/shared";
 
 export const BANK_TEXT = {
-  /** No `BNK|` in the map's four NPC slots. */
+  /** No living banker (`BNK|`) on the map. */
   cannot: "You cannot bank here!",
   /** The reply to a balance request. */
   balance: (n: number) => `You have ${n} gold in the bank.`,
-  /** The reply to both a deposit and a withdraw. */
-  now: (n: number) => `You now have ${n} gold in the bank.`,
+  /** A deposit. */
+  deposited: (n: number, total: number) =>
+    `You deposit ${n} gold. You now have ${total} gold in the bank.`,
+  /** A withdrawal (1.6 answered it with the deposit's line). */
+  withdrew: (n: number, total: number) =>
+    `You withdraw ${n} gold. You now have ${total} gold in the bank.`,
+  /** A deposit beyond your gold (1.6 said nothing). */
+  shortGold: "You don't have that much gold to deposit.",
+  /** A withdrawal beyond your balance (1.6 said nothing). */
+  shortBank: "You don't have that much gold in the bank.",
+  /** No amount, or one that is not a whole number (1.6 said nothing). */
+  usage: (cmd: "deposit" | "withdraw") => `Type /${cmd} and an amount, such as /${cmd} 300.`,
 } as const;
 
 export type BankCommand =
@@ -52,17 +62,17 @@ export function parseBank(text: string): BankCommand | null {
 }
 
 export interface BankResult {
-  /** The line to show, or null for a silent failure. */
-  text: string | null;
+  /** The line to show. */
+  text: string;
   gold: number;
   /** The balance after, or null when no account was made. */
   bank: number | null;
 }
 
 /**
- * The server's handlers: a balance request makes a "0" account; a deposit beyond your gold and a
- * withdraw beyond your balance do nothing and say nothing (1.6 did the same); 0 is allowed and
- * replies with the balance.
+ * The server's handlers: a balance request makes a "0" account; a deposit beyond your gold, a
+ * withdraw beyond your balance and a missing amount change nothing and say why (1.6 was silent);
+ * a deposit and a withdrawal each say what they did. 0 is allowed.
  */
 export function runBank(cmd: BankCommand, gold: number, bank: number | null): BankResult {
   const have = bank ?? 0;
@@ -70,16 +80,18 @@ export function runBank(cmd: BankCommand, gold: number, bank: number | null): Ba
     return { text: BANK_TEXT.balance(have), gold, bank: have };
   }
   if (cmd.n === null) {
-    return { text: null, gold, bank };
+    return { text: BANK_TEXT.usage(cmd.kind), gold, bank };
   }
   if (cmd.kind === "deposit") {
     if (gold - cmd.n < 0) {
-      return { text: null, gold, bank };
+      return { text: BANK_TEXT.shortGold, gold, bank };
     }
-    return { text: BANK_TEXT.now(have + cmd.n), gold: gold - cmd.n, bank: have + cmd.n };
+    const total = have + cmd.n;
+    return { text: BANK_TEXT.deposited(cmd.n, total), gold: gold - cmd.n, bank: total };
   }
   if (have - cmd.n < 0) {
-    return { text: null, gold, bank };
+    return { text: BANK_TEXT.shortBank, gold, bank };
   }
-  return { text: BANK_TEXT.now(have - cmd.n), gold: gold + cmd.n, bank: have - cmd.n };
+  const total = have - cmd.n;
+  return { text: BANK_TEXT.withdrew(cmd.n, total), gold: gold + cmd.n, bank: total };
 }

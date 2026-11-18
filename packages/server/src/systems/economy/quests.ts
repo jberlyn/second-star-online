@@ -19,6 +19,7 @@ import {
   orakuLine,
   questMatch,
   questReward,
+  questRoom,
   questSorry,
   questTake,
   questThanks,
@@ -34,10 +35,17 @@ function inMonsterList(name: string): boolean {
   return lingoContains(EDITOR_MONSTERS.join("\r"), name);
 }
 
+/** The reply when a reward has nowhere to go: nothing is taken. */
+export const QUEST_TEXT = {
+  noRoom: (npc: string) => `${npc} says "You have no room in your bag for my reward."`,
+} as const;
+
 /**
  * `GiveNPC` → `QuestGive` for the item in bag slot `slot` (0-based) given to `npc`, one or two
  * tiles ahead. A name the World Editor's MONSTER list contains gets nothing (GiveNPC's exit). In
- * order: a head to a faction leader, Oraku's orb, then the quest lines.
+ * order: a head to a faction leader, Oraku's orb, then the quest lines. The item always comes from
+ * the slot you gave from, and a reward with no room in the bag stops the hand-in before anything is
+ * taken (1.6 took from the first slot containing the name and overwrote it with the reward).
  */
 export function questGive(
   world: World,
@@ -51,19 +59,18 @@ export function questGive(
     return [];
   }
   if (leaderFaction(npc) && lingoContains(given, " Head")) {
-    // The named slot must hold it; one comes off the first slot that does.
-    if (questTake(p.char.bag, given) < 0) {
+    if (questTake(p.char.bag, slot) < 0) {
       return [];
     }
     p.invDirty = true;
     return giveHead(world, p, npc, given)?.out ?? [];
   }
   if (isOrakuExchange(npc, given)) {
-    const from = questTake(p.char.bag, ORAKU.item);
-    if (from < 0) {
-      return [];
+    if (!questRoom(p.char.bag, slot, ORAKU.reward)) {
+      return [tellNoRoom(p, npc)];
     }
-    questReward(p.char.bag, ORAKU.reward, from);
+    questTake(p.char.bag, slot);
+    questReward(p.char.bag, ORAKU.reward);
     p.invDirty = true;
     return aqsToMap(world, p, orakuLine());
   }
@@ -81,11 +88,11 @@ export function questGive(
       },
     ];
   }
-  const from = questTake(p.char.bag, given);
-  if (from < 0) {
-    return [];
+  if (!questRoom(p.char.bag, slot, match.reward)) {
+    return [tellNoRoom(p, npc)];
   }
-  questReward(p.char.bag, match.reward, from);
+  questTake(p.char.bag, slot);
+  questReward(p.char.bag, match.reward);
   p.invDirty = true;
   const out = aqsToMap(world, p, questThanks(npc));
   // A leader's line is never rerolled, so it can be done again.
@@ -95,6 +102,15 @@ export function questGive(
   }
   return out;
 }
+
+const tellNoRoom = (p: Player, npc: string): Outgoing => ({
+  to: p.id,
+  msg: {
+    t: "chat",
+    text: heardSqa(QUEST_TEXT.noRoom(npc), p.map.name, p.y),
+    color: CHAT_COLOR.normal,
+  },
+});
 
 /**
  * The quest question to an NPC: the four slots' live monsters, less names the MONSTER list

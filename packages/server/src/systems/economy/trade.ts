@@ -1,13 +1,15 @@
 /**
- * Player-to-player trade.
+ * Player-to-player trade, held by the server: A picks Trade from B's menu and A's window opens;
+ * A's Trade sends A's offer and opens B's window; B's Trade sends B's. Either player may change
+ * their offer with Trade again until the trade is done, and any change clears both acceptances.
+ * Once both offers are in, each player presses Accept, and when both have accepted the server
+ * moves everything in one go and tells both "The trade is complete." Equipment is never listed.
  *
- * 1.6's flow, held by the server: A picks Trade from B's menu and A's window opens; A's Trade sends
- * A's offer and opens B's window; B's Trade sends B's; only A can Accept, and the server moves
- * everything in one go. An offer cannot change once sent. Equipment is never listed.
+ * 1.6 locked an offer once sent and gave only A an Accept button (B agreed by sending B's offer),
+ * printed nothing on success, and told a cancelling B nothing.
  *
- * SSO: both names come from the sessions and B's Trade press is B's consent; Accept checks B is
- * still on A's map instead of the sprite slot after B's; a trade ends when either player changes
- * map or leaves; a third player cannot take over or redirect an open trade.
+ * Both names come from the sessions; Accept checks the partner is still on the same map; a trade
+ * ends when either player changes map or leaves; a third player cannot take over an open trade.
  */
 import {
   addSlotFor,
@@ -23,8 +25,10 @@ export const TRADE_TEXT = {
   self: "You can't trade with yourself!",
   initiating: (a: string) => `${a} is initiating a trade with you.`,
   selected: (b: string) => `${b} has selected the items to trade. Accept or cancel the trade.`,
+  changed: (n: string) => `${n} has changed the offer. Check it before you accept.`,
   youAccept: "You accept the trade...",
   accepts: (a: string) => `${a} accepts the trade...`,
+  complete: "The trade is complete.",
   gone: (b: string) => `${b} is no longer in your area, you cannot trade.`, // TW 2:72-76
   youCancel: "You cancel the trade.",
   cancelled: "Trade cancelled.",
@@ -48,6 +52,8 @@ export function tradeView(t: Trade, p: Player, partner: string): TradeView {
     partner,
     mine: lines(isA ? t.aOffer : t.bOffer),
     theirs: lines(isA ? t.bOffer : t.aOffer),
+    mineAccepted: isA ? t.aAccepted : t.bAccepted,
+    theirsAccepted: isA ? t.bAccepted : t.aAccepted,
   };
 }
 
@@ -76,15 +82,24 @@ export function openTrade(world: World, p: Player, targetId: string): Outgoing[]
   if (!b || b.map !== p.map || p.trade) {
     return [];
   }
-  const t: Trade = { id: Bun.randomUUIDv7(), a: p.id, b: b.id, aOffer: null, bOffer: null };
+  const t: Trade = {
+    id: Bun.randomUUIDv7(),
+    a: p.id,
+    b: b.id,
+    aOffer: null,
+    bOffer: null,
+    aAccepted: false,
+    bAccepted: false,
+  };
   world.trades.set(t.id, t);
   p.trade = t.id;
   return [view(p, tradeView(t, p, b.name))];
 }
 
 /**
- * The window's Trade button: each amount is clamped to what you hold and lines of 0 are left out;
- * the offer is then locked.
+ * The window's Trade button: each amount is clamped to what you hold and lines of 0 are left out.
+ * A sends first; B can send once A has. Sending again replaces your offer and clears both
+ * acceptances, and your partner is told.
  */
 export function offerTrade(world: World, p: Player, msg: TradeOfferMsg): Outgoing[] {
   const t = p.trade ? world.trades.get(p.trade) : undefined;
@@ -96,9 +111,10 @@ export function offerTrade(world: World, p: Player, msg: TradeOfferMsg): Outgoin
   if (!other) {
     return cancelTrade(world, p);
   }
-  if (isA ? t.aOffer !== null : t.aOffer === null || t.bOffer !== null) {
+  if (!isA && t.aOffer === null) {
     return [];
   }
+  const resent = (isA ? t.aOffer : t.bOffer) !== null;
   const offer: TradeOffer = { gold: Math.min(msg.gold, p.char.gold), items: [] };
   const seen = new Set<number>();
   for (const it of msg.items) {
@@ -112,6 +128,20 @@ export function offerTrade(world: World, p: Player, msg: TradeOfferMsg): Outgoin
       offer.items.push({ slot: it.slot, item: line.item, qty });
     }
   }
+  t.aAccepted = false;
+  t.bAccepted = false;
+  const both = () => [
+    view(p, tradeView(t, p, other.name)),
+    view(other, tradeView(t, other, p.name)),
+  ];
+  if (resent) {
+    if (isA) {
+      t.aOffer = offer;
+    } else {
+      t.bOffer = offer;
+    }
+    return [...both(), tell(other, TRADE_TEXT.changed(p.name))];
+  }
   if (isA) {
     // B must not be in another trade: in 1.6 A's first send took B over (closed).
     if (other.trade !== null && other.trade !== t.id) {
@@ -120,18 +150,10 @@ export function offerTrade(world: World, p: Player, msg: TradeOfferMsg): Outgoin
     }
     t.aOffer = offer;
     other.trade = t.id;
-    return [
-      view(p, tradeView(t, p, other.name)),
-      view(other, tradeView(t, other, p.name)),
-      tell(other, TRADE_TEXT.initiating(p.name)),
-    ];
+    return [...both(), tell(other, TRADE_TEXT.initiating(p.name))];
   }
   t.bOffer = offer;
-  return [
-    view(p, tradeView(t, p, other.name)),
-    view(other, tradeView(t, other, p.name)),
-    tell(other, TRADE_TEXT.selected(p.name)),
-  ];
+  return [...both(), tell(other, TRADE_TEXT.selected(p.name))];
 }
 
 /** Cancel on either side. */
@@ -144,10 +166,8 @@ export function cancelTrade(world: World, p: Player): Outgoing[] {
   const isA = t.a === p.id;
   const other = world.players.get(isA ? t.b : t.a);
   end(world, t);
-  const out: Outgoing[] = [view(p, null)];
-  if (isA) {
-    out.push(tell(p, TRADE_TEXT.youCancel));
-  }
+  // Whoever cancels is told so (1.6 told only A).
+  const out: Outgoing[] = [view(p, null), tell(p, TRADE_TEXT.youCancel)];
   // The receiver resets only if its window is open: B's opens with A's offer.
   if (other && (!isA || t.aOffer !== null)) {
     out.push(view(other, null), tell(other, TRADE_TEXT.cancelled));
@@ -238,34 +258,58 @@ export function settle(
   return { a: na, b: nb };
 }
 
-/** Accept (A only). */
+/**
+ * Accept, from either side once both offers are in. The first acceptance is announced to both;
+ * when both have accepted, the trade settles and both are told it is complete (1.6 let only A
+ * accept and printed nothing on success).
+ */
 export function acceptTrade(world: World, p: Player): Outgoing[] {
   const t = p.trade ? world.trades.get(p.trade) : undefined;
-  if (!t || t.a !== p.id || !t.aOffer || !t.bOffer) {
+  if (!t || !t.aOffer || !t.bOffer) {
     return [];
   }
-  const b = world.players.get(t.b);
-  if (!b || b.map !== p.map) {
+  const isA = t.a === p.id;
+  const o = world.players.get(isA ? t.b : t.a);
+  if (!o || o.map !== p.map) {
     // The window stays open and the partner is told nothing (TW 2:72-76).
-    return [tell(p, TRADE_TEXT.gone(b?.name ?? ""))];
+    return [tell(p, TRADE_TEXT.gone(o?.name ?? ""))];
   }
+  if (isA ? t.aAccepted : t.bAccepted) {
+    return [];
+  }
+  if (isA) {
+    t.aAccepted = true;
+  } else {
+    t.bAccepted = true;
+  }
+  if (!t.aAccepted || !t.bAccepted) {
+    return [
+      view(p, tradeView(t, p, o.name)),
+      view(o, tradeView(t, o, p.name)),
+      tell(p, TRADE_TEXT.youAccept),
+      tell(o, TRADE_TEXT.accepts(p.name)),
+    ];
+  }
+  const a = isA ? p : o;
+  const b = isA ? o : p;
   end(world, t);
   const out: Outgoing[] = [
     view(p, null),
     tell(p, TRADE_TEXT.youAccept),
-    view(b, null),
-    tell(b, TRADE_TEXT.accepts(p.name)),
+    view(o, null),
+    tell(o, TRADE_TEXT.accepts(p.name)),
   ];
-  const r = settle(p.char, b.char, t.aOffer, t.bOffer);
+  const r = settle(a.char, b.char, t.aOffer, t.bOffer);
   if (!r) {
-    out.push(tell(p, TRADE_TEXT.problem), tell(b, TRADE_TEXT.problem));
+    out.push(tell(p, TRADE_TEXT.problem), tell(o, TRADE_TEXT.problem));
     return out;
   }
-  p.char.gold = r.a.gold;
-  p.char.bag = r.a.bag;
+  a.char.gold = r.a.gold;
+  a.char.bag = r.a.bag;
   b.char.gold = r.b.gold;
   b.char.bag = r.b.bag;
-  p.invDirty = true;
+  a.invDirty = true;
   b.invDirty = true;
+  out.push(tell(p, TRADE_TEXT.complete), tell(o, TRADE_TEXT.complete));
   return out;
 }

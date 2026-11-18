@@ -137,12 +137,12 @@ describe("NPCs, shops, bank and trade", () => {
     alice.send({ t: "sell", line: 5, count: 1 });
     expect(await alice.waitFor((m) => m.t === "processed")).toEqual({ t: "processed", ok: true });
     await settle();
-    expect(chatTexts(alice)).toEqual(["Thanks for the business!"]);
+    expect(chatTexts(alice)).toEqual(['Amber says "Thanks for the business!"']);
     expect(lastInv(alice)?.gold).toBe(975);
     alice.send({ t: "shopCancel" });
   });
 
-  test("kept bug: the Fire God's book costs nothing, but needs 100 gold in hand", async () => {
+  test("bug fixed: the Fire God's book costs its 100 gold, though he keeps no gold line", async () => {
     alice.send({ t: "npcClick", slot: 3 });
     await settle();
     alice.send({ t: "shopList", mode: "buy" });
@@ -151,7 +151,7 @@ describe("NPCs, shops, bank and trade", () => {
     await alice.waitFor((m) => m.t === "processed");
     await settle();
     expect(bagHas(alice, "Fireball Book")).toBe(1);
-    expect(lastInv(alice)?.gold).toBe(975);
+    expect(lastInv(alice)?.gold).toBe(875);
     alice.send({ t: "shopCancel" });
   });
 
@@ -160,13 +160,14 @@ describe("NPCs, shops, bank and trade", () => {
     await say(alice, "/balance");
     await say(alice, "/deposit 100");
     await say(alice, "/withdraw 30");
-    await say(alice, "/withdraw 500"); // silent
+    await say(alice, "/withdraw 500");
     expect(chatTexts(alice)).toEqual([
       "You have 0 gold in the bank.",
-      "You now have 100 gold in the bank.",
-      "You now have 70 gold in the bank.",
+      "You deposit 100 gold. You now have 100 gold in the bank.",
+      "You withdraw 30 gold. You now have 70 gold in the bank.",
+      "You don't have that much gold in the bank.",
     ]);
-    expect(lastInv(alice)?.gold).toBe(905);
+    expect(lastInv(alice)?.gold).toBe(805);
   });
 
   test("gold to Cril: the offer and 'Thanks for the gold!'", async () => {
@@ -175,10 +176,10 @@ describe("NPCs, shops, bank and trade", () => {
     alice.send({ t: "gold", n: 5 });
     await settle();
     expect(chatTexts(alice)).toEqual([
-      "*** Offering the 5 gold  to Cril.",
-      'Cril says "Thanks for the gold!',
+      "*** Offering the 5 gold to Cril.",
+      'Cril says "Thanks for the gold!"',
     ]);
-    expect(lastInv(alice)?.gold).toBe(900);
+    expect(lastInv(alice)?.gold).toBe(800);
   });
 
   test("the personal vault: a drop puts an Apple in; the window gives it back", async () => {
@@ -201,10 +202,11 @@ describe("NPCs, shops, bank and trade", () => {
     await alice.waitFor((m) => m.t === "vault");
     await settle();
     expect(bagHas(alice, "Apple")).toBe(before);
+    expect(chatTexts(alice)).toContain("You take a Apple out of the container.");
     alice.send({ t: "shopCancel" });
   });
 
-  test("Alice trades 50 gold for Bob's Apple; only she can accept", async () => {
+  test("bug fixed: Alice trades 50 gold for Bob's Apple; both accept and both hear it is done", async () => {
     bob = await login("Bob");
     await tick(1); // Bob's bag arrives
     const snap = bob.inbox.find((m) => m.t === "snapshot");
@@ -225,9 +227,15 @@ describe("NPCs, shops, bank and trade", () => {
     const bobApples = bagHas(bob, "Apple");
     bob.clear();
     alice.send({ t: "tradeAccept" });
+    await settle();
+    // Nothing moves until Bob accepts too.
+    expect(chatTexts(bob)).toEqual(["Alice accepts the trade..."]);
+    expect(bob.inbox.some((m) => m.t === "inv")).toBe(false);
+    alice.clear();
+    bob.send({ t: "tradeAccept" });
     await bob.waitFor((m) => m.t === "inv");
     await settle();
-    expect(chatTexts(bob)).toEqual(["Alice accepts the trade..."]);
+    expect(chatTexts(alice)).toEqual(["Bob accepts the trade...", "The trade is complete."]);
     expect(lastInv(bob)?.gold).toBe(50);
     expect(bagHas(bob, "Apple")).toBe(bobApples - 1);
     expect(lastInv(alice)?.gold).toBe(aliceGold - 50);
@@ -243,17 +251,22 @@ describe("NPCs, shops, bank and trade", () => {
     await alice.waitFor((m) => m.t === "chat" && m.text === "Trade cancelled.");
   });
 
-  test("with Cril out of the roster: 'You cannot bank here!'", async () => {
+  test("bug fixed: the bank needs a living banker: off the roster, or rostered but not spawned, 'You cannot bank here!'", async () => {
     await say(alice, "/roster 2 clear");
     alice.clear();
     await say(alice, "/balance");
     expect(chatTexts(alice)).toEqual(["You cannot bank here!"]);
     await say(alice, "/roster 2 Cril");
+    alice.clear();
+    await say(alice, "/balance");
+    expect(chatTexts(alice)).toEqual(["You cannot bank here!"]);
+    await turn(alice, "L");
+    await say(alice, "/spawn 2");
   });
 
   test("after a relog: gold, bag, bank, vault and Amber's stock persist", async () => {
-    // 1000 − 30 (Apples) + 5 (one sold) − 100 + 30 (bank) − 5 (Cril) − 50 (trade).
-    const gold = 850;
+    // 1000 − 30 (Apples) + 5 (one sold) − 100 (book) − 100 + 30 (bank) − 5 (Cril) − 50 (trade).
+    const gold = 750;
     alice.send({ t: "logout" });
     await alice.closed;
     await settle();

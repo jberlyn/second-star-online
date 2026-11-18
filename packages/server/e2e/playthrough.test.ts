@@ -666,7 +666,7 @@ describe("the playthrough", () => {
     bob.send({ t: "sell", line: sale?.line ?? 0, count: 1 });
     await bob.waitFor((m) => m.t === "processed");
     await settle();
-    expect(chats(bob)).toEqual(["Thanks for the business!"]);
+    expect(chats(bob)).toEqual(['Amber says "Thanks for the business!"']);
     expect(goldOf(bob)).toBe(g1 + (sale?.price ?? 0));
     bob.send({ t: "shopCancel" });
 
@@ -678,8 +678,8 @@ describe("the playthrough", () => {
     await say(bob, "/withdraw 10");
     expect(chats(bob)).toEqual([
       "You have 0 gold in the bank.",
-      "You now have 40 gold in the bank.",
-      "You now have 30 gold in the bank.",
+      "You deposit 40 gold. You now have 40 gold in the bank.",
+      "You withdraw 10 gold. You now have 30 gold in the bank.",
     ]);
     await t(1);
     expect(goldOf(bob)).toBe(purse - 30);
@@ -741,6 +741,8 @@ describe("the playthrough", () => {
     const slot = slotOf(carol, "Apple");
     carol.send({ t: "tradeOffer", gold: 0, items: [{ slot, qty: 1 }] });
     await bob.waitFor((m) => m.t === "trade" && m.trade?.theirs?.items[0]?.item === "Apple");
+    // Both accept; the second acceptance settles it.
+    carol.send({ t: "tradeAccept" });
     bob.send({ t: "tradeAccept" });
     await carol.waitFor((m) => m.t === "inv");
     await settle();
@@ -942,13 +944,10 @@ describe("the playthrough", () => {
     expect(chats(alice)).toContain("You begin to build something...");
     expect(chats(carol)).toContain("You begin to cook the Trout.");
     expect(chats(dave)).toContain("You begin to mix the potion.");
-    // The Cauldron: the first ingredient fizzles, the second brews a Gold Crown.
+    // The Cauldron: the first ingredient goes in quietly, the second brews a Gold Crown.
     bob.send({ t: "drop", slot: slotOf(bob, "Chunk of Star") });
     await t(1);
-    expect(chats(bob)).toEqual([
-      "You drop a Chunk of Star into the container.",
-      "The cauldron bubbles...but then fizzles out.",
-    ]);
+    expect(chats(bob)).toEqual(["You drop a Chunk of Star into the container."]);
     bob.send({ t: "drop", slot: slotOf(bob, "Silver Crown") });
     await t(1);
     expect(chats(bob)).toContain(
@@ -1106,7 +1105,7 @@ describe("the playthrough", () => {
     alice.clear();
     alice.send({ t: "gold", n: 100 });
     await settle();
-    expect(chats(alice).some((l) => l.includes("Thanks for the gold!"))).toBe(true);
+    expect(chats(alice).some((l) => l.includes('Thanks for the gold!"'))).toBe(true);
     await sayLater(alice, "Zumu set Fish=5,2");
     expect(chats(alice)).toContain(`Zumu says "OK boss, I've added the item!"`);
     const sell = (await shopRows(alice, 1, "sell")).find((r) => r.item === "Fish");

@@ -5,7 +5,7 @@
 import { questData, socialData } from "@secondstaronline/data";
 
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
-import type { Bag } from "../inventory/inventory.ts";
+import { addSlotFor, type Bag } from "../inventory/inventory.ts";
 
 /** The lines `QuestGive` and `SayQuest` read. */
 export const QUEST_LINES = socialData.questReplies.give.lines;
@@ -28,89 +28,86 @@ function item(line: string, n: number): string {
 }
 
 /**
- * The quest line `<npc>` wants `<given>` for: the **last** of lines 1-40 that contains
- * `<npc>:<given>`. A substring, so Fish matches `Stephie:Fishle` (a kept bug: quest lines match by
- * substring). Returns its index (0-based) and reward, or null.
+ * The quest line `<npc>` wants `<given>` for: the **first** of lines 1-40 whose NPC and wanted item
+ * are exactly those names (case and surrounding spaces ignored). 1.6 took the last line that merely
+ * contained `<npc>:<given>`, so Fish matched `Stephie:Fishle`. Returns its index (0-based) and
+ * reward, or null.
  */
 export function questMatch(
   lines: readonly string[],
   npc: string,
   given: string,
 ): { index: number; reward: string } | null {
-  const want = `${npc}:${given}`;
-  let hit: { index: number; reward: string } | null = null;
   for (let i = 0; i < QUEST_LINES; i++) {
     const line = lines[i] ?? "";
-    if (lingoContains(line, want)) {
-      hit = { index: i, reward: item(line, 3) };
+    if (
+      item(line, 1).trim() !== "" &&
+      lingoEq(item(line, 1).trim(), npc.trim()) &&
+      lingoEq(item(line, 2).trim(), given.trim())
+    ) {
+      return { index: i, reward: item(line, 3).trim() };
     }
   }
-  return hit;
+  return null;
 }
 
-/** A bag line as the server's item file holds it: `Name-qty`. */
-const fileItem = (bag: Bag, i: number): string => {
-  const l = bag[i];
-  return l ? `${l.item}-${l.qty}` : "";
-};
+/**
+ * Whether bag slot `slot` (0-based) can give one item and take `reward` in return: a stack of
+ * exactly the reward, an empty slot, or the given slot itself when its last unit goes.
+ */
+export function questRoom(bag: Bag, slot: number, reward: string): boolean {
+  return addSlotFor(bag, reward) >= 0 || bag[slot]?.qty === 1;
+}
 
 /**
- * Takes one `name` the way `QuestGive` does: the first slot 1-15 whose `Name-qty` **contains**
- * `name-`, rewritten as `name-(qty − 1)` (so a `Gold Fish` stack given as `Fish` becomes a `Fish`
- * stack), blank at 0. Returns the slot (0-based), or -1 when none.
+ * Takes one item from bag slot `slot` (0-based), the one you handed over, blank at 0. The stack
+ * keeps its name (1.6 took from the first slot whose text contained the name and renamed it, so a
+ * `Gold Fish` stack given as `Fish` became a `Fish` stack). Returns the slot, or -1 when it is
+ * empty.
  */
-export function questTake(bag: Bag, name: string): number {
-  const key = `${name}-`;
-  const slot = bag.findIndex((_l, i) => i < 15 && lingoContains(fileItem(bag, i), key));
-  if (slot < 0) {
-    return -1;
-  }
+export function questTake(bag: Bag, slot: number): number {
   const line = bag[slot];
   if (!line) {
     return -1;
   }
-  const left = line.qty - 1;
-  bag[slot] = left === 0 ? null : { item: name, qty: left };
+  bag[slot] = line.qty <= 1 ? null : { item: line.item, qty: line.qty - 1 };
   return slot;
 }
 
 /**
- * Adds one `reward` the way `QuestGive` does: onto the first slot whose `Name-qty` contains
- * `reward-` (renamed to `reward`, qty + 1), else the lowest empty slot, else `fallback`, the slot
- * the given item came from, which is overwritten (a kept bug: a quest reward to a full bag replaces
- * what you gave). Returns the slot (0-based).
+ * Adds one `reward`: onto a stack of exactly that name (which keeps its spelling), else the lowest
+ * empty slot. Returns the slot (0-based), or -1 with no room (the caller checks `questRoom` first;
+ * 1.6 overwrote the slot the given item came from).
  */
-export function questReward(bag: Bag, reward: string, fallback: number): number {
-  const key = `${reward}-`;
-  const stack = bag.findIndex((_l, i) => i < 15 && lingoContains(fileItem(bag, i), key));
-  if (stack >= 0) {
-    const qty = (bag[stack]?.qty ?? 0) + 1;
-    bag[stack] = { item: reward, qty };
-    return stack;
+export function questReward(bag: Bag, reward: string): number {
+  const slot = addSlotFor(bag, reward);
+  if (slot < 0) {
+    return -1;
   }
-  let slot = fallback;
-  for (let i = 14; i >= 0; i--) {
-    if (bag[i] === null || bag[i] === undefined) {
-      slot = i;
-    }
-  }
-  bag[slot] = { item: reward, qty: 1 };
+  const line = bag[slot];
+  bag[slot] = line ? { item: line.item, qty: line.qty + 1 } : { item: reward, qty: 1 };
   return slot;
 }
 
 /**
- * `FindNewQuest`: `random(44)` for the NPC (29 names none, so the line starts with ":"; 39 is
- * Kanta), `random(20)` for the wanted item, `random(20)` for the reward.
+ * `FindNewQuest`: the NPC is one of the pool's named NPCs, each equally likely; then `random(20)`
+ * for the wanted item and `random(20)` for the reward. (1.6 rolled `random(44)`, and roll 29 named
+ * nobody, writing a line no NPC would answer.)
  */
 export function findNewQuest(rng: Rng): string {
   const pools = questData.pools;
-  const n = rng.random(pools.npcs.length);
+  const names = pools.npcs.flatMap((p) => (p.npc ? [p.npc] : []));
+  const npc = names[rng.random(names.length) - 1] ?? names[0] ?? "";
   const w = rng.random(pools.wanted.length);
   const r = rng.random(pools.rewards.length);
-  const npc = pools.npcs.find((p) => p.roll === n)?.npc ?? "";
-  const wanted = pools.wanted.find((p) => p.roll === w)?.item ?? "";
-  const reward = pools.rewards.find((p) => p.roll === r)?.item ?? "";
+  const wanted = (pools.wanted.find((p) => p.roll === w)?.item ?? "").trim();
+  const reward = (pools.rewards.find((p) => p.roll === r)?.item ?? "").trim();
   return `${npc}:${wanted}:${reward}`;
+}
+
+/** A stored quest line that names no NPC, which no one can ever answer. */
+export function questLineUnanswerable(line: string): boolean {
+  return line !== "" && item(line, 1).trim() === "";
 }
 
 /** "Wow thanks…", `aqs`: the giver's map hears it. */
@@ -143,29 +140,28 @@ export interface QuestReply {
 
 /**
  * The quest-said routine → `SayQuest` for the names in slots 1-4 (`""` for an empty or filtered
- * slot): a name the quest text contains gets one "Bring me a…" per line among 1-40 containing it
- * (slot 1 to the asker, slots 2-4 to the map, a kept bug: the reply audience differs by NPC slot),
- * else "Sorry but I don't need anything right now" to the map. "Bring me a…" has no closing quote.
+ * slot): an NPC named by a quest line gets one "Bring me a…" per line among 1-40 it gives, else
+ * "Sorry but I don't need anything right now". Every reply is heard by the asker's map, as the
+ * question was (1.6 sent slot 1's "Bring me a…" to the asker alone and left off its closing quote).
  */
 export function sayQuest(lines: readonly string[], names: readonly string[]): QuestReply[] {
   const s = socialData.questReplies.say;
-  const all = lines.join("\r");
   const out: QuestReply[] = [];
-  names.forEach((name, slot) => {
+  for (const name of names) {
     if (name === "") {
-      return;
+      continue;
     }
-    if (!lingoContains(all, name)) {
+    const mine = lines
+      .slice(0, QUEST_LINES)
+      .filter((line) => lingoEq(item(line, 1).trim(), name.trim()));
+    if (mine.length === 0) {
       out.push({ text: fill(s.nothing, name), to: "map" });
-      return;
+      continue;
     }
-    for (let i = 0; i < QUEST_LINES; i++) {
-      const line = lines[i] ?? "";
-      if (lingoContains(line, name)) {
-        out.push({ text: fill(s.bring, name, item(line, 2)), to: slot === 0 ? "asker" : "map" });
-      }
+    for (const line of mine) {
+      out.push({ text: fill(s.bring, name, item(line, 2).trim()), to: "map" });
     }
-  });
+  }
   return out;
 }
 

@@ -9,8 +9,10 @@
  *   [105, 395, 151, 410]; right: Trade (79) [446, 394, 486, 413], Cancel (78) [490, 395, 536, 410].
  *
  * The initiator (A) is Trader1 and fills the left column from the gold and the bag; B sees
- * A's offer packed in the left column and fills the right. An offer is read-only
- * once sent. Only A gets Accept, once B's offer is in (the original's second-trade-back step).
+ * A's offer packed in the left column and fills the right. Trade sends your offer and can be
+ * pressed again to change it. Once both offers are in, each side has an Accept button (B's reuses
+ * member 2's art at [395, 394], left of B's Trade); it hides once you have accepted, and the trade
+ * goes through when both have. (1.6 locked an offer once sent and gave only A an Accept.)
  */
 import type { InventoryView, TradeView } from "@secondstaronline/shared";
 
@@ -110,6 +112,7 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
   };
   const tradeL = btn(4, "Trade", "trade-offer-a", 12, 394);
   const accept = btn(2, "Accept", "trade-accept", 54, 394);
+  const acceptR = btn(2, "Accept", "trade-accept-b", 395, 394);
   const cancelL = btn(3, "Cancel", "trade-cancel-a", 105, 395);
   const tradeR = btn(79, "Trade", "trade-offer-b", 446, 394);
   const cancelR = btn(78, "Cancel", "trade-cancel-b", 490, 395);
@@ -123,6 +126,7 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
     accept,
     cancelL,
     tradeR,
+    acceptR,
     cancelR,
   );
 
@@ -171,12 +175,6 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
       r.amount.readOnly = true;
     });
   };
-  const lockMine = () => {
-    for (const r of mine.rows) {
-      r.amount.readOnly = true;
-    }
-  };
-
   const sendOffer = () => {
     let gold = 0;
     const items: { slot: number; qty: number }[] = [];
@@ -194,6 +192,7 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
   tradeL.addEventListener("click", sendOffer);
   tradeR.addEventListener("click", sendOffer);
   accept.addEventListener("click", () => act.accept());
+  acceptR.addEventListener("click", () => act.accept());
   const cancel = () => {
     open = null;
     act.cancel();
@@ -220,15 +219,16 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
       if (!was || was.you !== v.you) {
         fillBag(mine, inv);
       }
-      if (v.mine) {
-        lockMine();
-      }
       fillOffer(theirs, v.theirs);
       theirs.el.hidden = isA && !v.theirs;
-      tradeL.hidden = !isA || v.mine !== null;
+      // Both offers in and yours not yet accepted: your Accept shows.
+      const canAccept = v.mine !== null && v.theirs !== null && !v.mineAccepted;
+      stage.dataset.theirsAccepted = String(v.theirsAccepted);
+      tradeL.hidden = !isA;
       cancelL.hidden = !isA;
-      accept.hidden = !isA || v.theirs === null;
-      tradeR.hidden = isA || v.mine !== null;
+      accept.hidden = !isA || !canAccept;
+      tradeR.hidden = isA;
+      acceptR.hidden = isA || !canAccept;
       cancelR.hidden = isA;
       win.open();
     },

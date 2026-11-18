@@ -3,7 +3,7 @@
  * server's handler, against server state. The NPC is the one whose Bio you opened, and it must
  * still be in your map's roster (SSO checks the map's roster, not what the client says).
  */
-import { lingoEq, NPC_WINDOW, promoteClass } from "@secondstaronline/shared";
+import { lingoEq, promoteClass } from "@secondstaronline/shared";
 
 import type { ItemCtx } from "../inventory/items.ts";
 import { goldTarget, inMonsterList, NPC_TEXT } from "../monsters/npc.ts";
@@ -82,13 +82,49 @@ const processed = (p: Player, ok = false): Outgoing => ({
   msg: ok ? { t: "processed", ok } : { t: "processed" },
 });
 
+/** A container's stored lines, matched by name ignoring case. */
+function storedLines(ctx: ItemCtx, name: string): string[] {
+  for (const [k, v] of ctx.world.containers) {
+    if (lingoEq(k, name)) {
+      return v;
+    }
+  }
+  return [];
+}
+
+/** A container id that already has storage or sits in an online player's bag. */
+function containerInUse(ctx: ItemCtx, name: string): boolean {
+  for (const k of ctx.world.containers.keys()) {
+    if (lingoEq(k, name)) {
+      return true;
+    }
+  }
+  for (const o of ctx.world.players.values()) {
+    if (o.char.bag.some((l) => l !== null && lingoEq(l.item, name))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function forgetContainer(ctx: ItemCtx, name: string): void {
+  for (const k of [...ctx.world.containers.keys()]) {
+    if (lingoEq(k, name)) {
+      ctx.world.containers.delete(k);
+      ctx.world.containersDirty.add(k);
+    }
+  }
+}
+
 /** The buy OK. */
 export function buyIntent(ctx: ItemCtx, p: Player, line: number, count: number): Outgoing[] {
   const shop = openShop(ctx, p, "buy");
   if (!shop) {
     return [];
   }
-  const r = npcBuy(shop, line, count, { gold: p.char.gold, bag: p.char.bag }, ctx.rng);
+  const r = npcBuy(shop, line, count, { gold: p.char.gold, bag: p.char.bag }, ctx.rng, (n) =>
+    containerInUse(ctx, n),
+  );
   if (!r.ok) {
     return [tell(p, r.text), processed(p)];
   }
@@ -105,11 +141,21 @@ export function sellIntent(ctx: ItemCtx, p: Player, line: number, count: number)
   if (!shop) {
     return [];
   }
-  const r = npcSell(shop, line, count, { gold: p.char.gold, bag: p.char.bag });
+  const r = npcSell(
+    shop,
+    line,
+    count,
+    { gold: p.char.gold, bag: p.char.bag },
+    (n) => storedLines(ctx, n).length,
+  );
   if (!r.ok) {
     return [tell(p, r.text), processed(p)];
   }
   keep(ctx, r.ledger);
+  if (r.soldContainer !== undefined) {
+    // An empty container sold: its storage row goes with it.
+    forgetContainer(ctx, r.soldContainer);
+  }
   p.char.gold = r.buyer.gold;
   p.char.bag = r.buyer.bag;
   p.invDirty = true;
@@ -175,9 +221,14 @@ export function shopCancelIntent(p: Player): void {
   p.container = null;
 }
 
-/** The map's roster has an NPC whose data contains `BNK|`. */
+/**
+ * A living banker (an NPC whose data contains `BNK|`) stands on the map. 1.6 read the roster loaded
+ * with the map, so a banker that had not spawned or had died still kept the bank open.
+ */
 export function canBank(npcs: NpcStore, map: WorldMap): boolean {
-  return map.slots.some((s) => s.species !== null && npcData(npcs, s.species)?.banker === true);
+  return map.slots.some(
+    (s) => s.species !== null && s.live !== null && npcData(npcs, s.species)?.banker === true,
+  );
 }
 
 /** `/balance`, `/deposit`, `/withdraw`. */
@@ -198,15 +249,14 @@ export function bankChat(npcs: NpcStore, p: Player, text: string): Outgoing[] {
   }
   p.char.gold = r.gold;
   p.char.bank = r.bank;
-  return r.text === null ? [] : [tell(p, r.text)];
+  return [tell(p, r.text)];
 }
 
 /**
  * The gold dialog's NPC branch. Returns null when no slot stands one or two tiles ahead (the drop
  * goes on). A name in the `MONSTER` list exits silently. Otherwise: the client's offer line; the
- * server takes the gold (silently refusing a short balance), says "Thanks for the gold!" without
- * its closing quote to you alone, and adds the gold to every `GLD|` line of the NPC's first 60
- * lines. The Stripper morph is omitted (it never worked in 1.6: no art, no NPC file, no map placed
+ * server takes the gold (silently refusing a short balance), says "Thanks for the gold!" to you
+ * alone, and adds the gold to the NPC's till. The Stripper morph is omitted (it never worked in 1.6: no art, no NPC file, no map placed
  * one).
  */
 export function giveGoldToNpc(ctx: ItemCtx, room: Room, p: Player, n: number): Outgoing[] | null {
@@ -226,9 +276,10 @@ export function giveGoldToNpc(ctx: ItemCtx, room: Room, p: Player, n: number): O
   p.invDirty = true;
   out.push(tell(p, NPC_TEXT.thanksGold(name)));
   const shop = npcFileNamed(ctx.world.npcs, name) ? (ctx.shop?.(name) ?? null) : null;
-  // Only a `GLD|` line among the first 60 takes the gift; further down it is lost.
-  if (shop && shop.gold !== null && (shop.goldLine ?? 0) <= NPC_WINDOW.giftGold) {
-    keep(ctx, { ...shop, gold: shop.gold + n, dirty: true });
+  // The gift goes into the NPC's till, which starts at 0 without a GLD| line (1.6 kept it only
+  // with a GLD| line among the first 60).
+  if (shop) {
+    keep(ctx, { ...shop, gold: (shop.gold ?? 0) + n, dirty: true });
   }
   return out;
 }

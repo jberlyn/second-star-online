@@ -227,19 +227,19 @@ describe("turn-ins", () => {
     expect(a.char.faction.id).toBe(0);
   });
 
-  test("kept bug: turn-in takes the first head in the bag, not the one given", () => {
+  test("bug fixed: turn-in takes the head you gave, not the first in the bag", () => {
     const { world, a } = npcScene();
     a.char.bag[0] = { item: "Mage's Head", qty: 2 };
     a.char.bag[5] = { item: "Mage's Head", qty: 1 };
     questGive(world, a, 5, "Trianus", rngByN());
-    expect(a.char.bag[0]).toEqual({ item: "Mage's Head", qty: 1 });
-    expect(a.char.bag[5]).toEqual({ item: "Mage's Head", qty: 1 });
+    expect(a.char.bag[0]).toEqual({ item: "Mage's Head", qty: 2 });
+    expect(a.char.bag[5]).toBeNull();
   });
 
   test("a quest item: the reward, thanks to the map, the line rerolled", () => {
     const { world, a, c } = npcScene();
     a.char.bag[2] = { item: "Fishle", qty: 1 };
-    const out = questGive(world, a, 2, "Stephie", rngByN({ 44: [5], 20: [3, 9] }));
+    const out = questGive(world, a, 2, "Stephie", rngByN({ 43: [5], 20: [3, 9] }));
     // The lowest empty slot takes the reward.
     expect(a.char.bag[0]).toEqual({ item: "Yellow Potion", qty: 1 });
     expect(a.char.bag[2]).toBeNull();
@@ -248,6 +248,32 @@ describe("turn-ins", () => {
     ]);
     expect(world.questLines[1]).toBe("Cril:Corn:Trumpet");
     expect([...world.questsDirty]).toEqual([1]);
+  });
+
+  test("bug fixed: Fish given to Stephie is not her Fishle; nothing is taken", () => {
+    const { world, a } = npcScene();
+    a.char.bag[0] = { item: "Fish", qty: 3 };
+    const out = questGive(world, a, 0, "Stephie", rngByN());
+    expect(chat(out, "Alice")).toEqual(["Stephie says \"I'm sorry but I don't need that.\""]);
+    expect(a.char.bag[0]).toEqual({ item: "Fish", qty: 3 });
+  });
+
+  test("bug fixed: a reward with no room is refused and nothing is taken", () => {
+    const { world, a } = npcScene();
+    for (let i = 0; i < 15; i++) {
+      a.char.bag[i] = { item: `Thing ${i}`, qty: 1 };
+    }
+    a.char.bag[2] = { item: "Fishle", qty: 2 };
+    const out = questGive(world, a, 2, "Stephie", rngByN());
+    expect(chat(out, "Alice")).toEqual([
+      'Stephie says "You have no room in your bag for my reward."',
+    ]);
+    expect(a.char.bag[2]).toEqual({ item: "Fishle", qty: 2 });
+    expect(world.questsDirty.size).toBe(0);
+    // Giving the last one frees its slot for the reward.
+    a.char.bag[2] = { item: "Fishle", qty: 1 };
+    questGive(world, a, 2, "Stephie", rngByN());
+    expect(a.char.bag[2]).toEqual({ item: "Yellow Potion", qty: 1 });
   });
 
   test("nothing wanted: 'I'm sorry' to the giver alone; a monster takes nothing", () => {
@@ -274,7 +300,7 @@ describe("turn-ins", () => {
 });
 
 describe("NPC keyword replies", () => {
-  test("SayQuest: slot 1 to the asker, others to the map", () => {
+  test("bug fixed: SayQuest: every slot's reply is heard by the map, with its closing quote", () => {
     const map = testMap("x1000y992");
     const s = setup([map]);
     const a = player("Alice", map, 5, 5);
@@ -284,13 +310,12 @@ describe("NPC keyword replies", () => {
     live(map, 1, "Stephie", 2, 2);
     live(map, 2, "Edwin", 3, 2);
     const out = askForQuest(s.world, a);
-    expect(chat(out, "Alice")).toEqual([
-      "Stephie says \"Bring me a Fishle quickly and I'll reward you.",
-      "Edwin says \"Bring me a scroll quickly and I'll reward you.",
-    ]);
-    expect(chat(out, "Carol")).toEqual([
-      "Edwin says \"Bring me a scroll quickly and I'll reward you.",
-    ]);
+    const both = [
+      'Stephie says "Bring me a Fishle quickly and I\'ll reward you."',
+      'Edwin says "Bring me a scroll quickly and I\'ll reward you."',
+    ];
+    expect(chat(out, "Alice")).toEqual(both);
+    expect(chat(out, "Carol")).toEqual(both);
   });
 
   test("SayFaction: each leader on the map, heard by the map", () => {

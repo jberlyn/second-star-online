@@ -1685,6 +1685,10 @@ export const houseData: HouseData = {
         "match": "exact"
       },
       {
+        "name": "Wind Chest",
+        "match": "exact"
+      },
+      {
         "name": "Vault",
         "match": "exact"
       }

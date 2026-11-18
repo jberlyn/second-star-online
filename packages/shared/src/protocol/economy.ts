@@ -109,6 +109,9 @@ export interface TradeView {
   partner: string;
   mine: { gold: number; items: TradeLineView[] } | null;
   theirs: { gold: number; items: TradeLineView[] } | null;
+  /** You, and your partner, have accepted the offers as they stand. */
+  mineAccepted: boolean;
+  theirsAccepted: boolean;
 }
 
 export type EconomyServerMsg =
@@ -135,7 +138,10 @@ export type EconomyServerMsg =
    * went through, which plays the cash sound.
    */
   | { t: "processed"; ok?: boolean }
-  /** The personal vault's lines. */
-  | { t: "vault"; items: string[]; open: boolean }
+  /**
+   * The open vault's or container's lines. `open` opens the window (and locks the keys); `closed`
+   * shuts it (access lost or the map changed), freeing the keys.
+   */
+  | { t: "vault"; items: string[]; open: boolean; closed?: boolean }
   /** The trade window's state for you. */
   | { t: "trade"; trade: TradeView | null };

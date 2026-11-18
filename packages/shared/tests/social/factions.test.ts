@@ -17,8 +17,10 @@ import {
   loyaltyStep,
   pardonedLine,
   pardoningLine,
+  questLineUnanswerable,
   questMatch,
   questReward,
+  questRoom,
   questTake,
   type Rng,
   sayFaction,
@@ -190,56 +192,77 @@ describe("quests", () => {
     ]);
   });
 
-  test("kept bug: quest lines match by substring, last match wins", () => {
+  test("bug fixed: quest lines match the NPC and item exactly, and the first match wins", () => {
     const lines = archivedQuestLines();
-    expect(questMatch(lines, "Stephie", "Fish")).toEqual({ index: 1, reward: "Yellow Potion" });
-    expect(questMatch(lines, "stephie", "fishle")?.reward).toBe("Yellow Potion");
+    expect(questMatch(lines, "Stephie", "Fish")).toBeNull();
+    expect(questMatch(lines, "stephie", "fishle")).toEqual({ index: 1, reward: "Yellow Potion" });
     expect(questMatch(lines, "Stephie", "Corn")).toBeNull();
+    // "Girl" is not "Missie"'s line, nor "James" a part of another name.
+    expect(questMatch(lines, "Gi", "trumpet")).toBeNull();
     const twice = [...lines];
     twice[9] = "Stephie:Fishle:Katana";
-    expect(questMatch(twice, "Stephie", "Fishle")).toEqual({ index: 9, reward: "Katana" });
+    expect(questMatch(twice, "Stephie", "Fishle")).toEqual({ index: 1, reward: "Yellow Potion" });
+    // The archive's nameless line answers to nobody.
+    expect(questMatch(lines, "", "Steel Key")).toBeNull();
   });
 
-  test("taking one renames the stack it came from", () => {
-    const b = bag(["Gold Fish", 3], ["Fish", 1]);
-    expect(questTake(b, "Fish")).toBe(0);
-    expect(b[0]).toEqual({ item: "Fish", qty: 2 });
+  test("bug fixed: the item comes off the slot you gave from, which keeps its name", () => {
+    const b = bag(["Gold Fish", 3], ["Fish", 2]);
+    expect(questTake(b, 1)).toBe(1);
+    expect(b[0]).toEqual({ item: "Gold Fish", qty: 3 });
     expect(b[1]).toEqual({ item: "Fish", qty: 1 });
     const c = bag(["Scroll", 1]);
-    expect(questTake(c, "scroll")).toBe(0);
+    expect(questTake(c, 0)).toBe(0);
     expect(c[0]).toBeNull();
-    expect(questTake(c, "scroll")).toBe(-1);
+    expect(questTake(c, 0)).toBe(-1);
   });
 
-  test("the reward stacks, else the lowest empty slot", () => {
-    const b = bag(["Apple", 1], ["Trumpet", 2]);
-    expect(questReward(b, "Trumpet", 0)).toBe(1);
-    expect(b[1]).toEqual({ item: "Trumpet", qty: 3 });
-    expect(questReward(b, "Katana", 0)).toBe(2);
-    expect(b[2]).toEqual({ item: "Katana", qty: 1 });
+  test("bug fixed: the reward stacks on its exact name, keeping the stack's spelling, else the lowest empty slot", () => {
+    const b = bag(["Apple", 1], ["Golden Trumpet", 1], ["trumpet", 2]);
+    expect(questReward(b, "Trumpet")).toBe(2);
+    expect(b[2]).toEqual({ item: "trumpet", qty: 3 });
+    expect(b[1]).toEqual({ item: "Golden Trumpet", qty: 1 });
+    expect(questReward(b, "Katana")).toBe(3);
+    expect(b[3]).toEqual({ item: "Katana", qty: 1 });
   });
 
-  test("kept bug: a quest reward to a full bag replaces what you gave from", () => {
+  test("bug fixed: a reward to a full bag has no room unless the given stack empties", () => {
     const b: Bag = Array.from({ length: 15 }, (_v, i) => ({ item: `Thing ${i}`, qty: 2 }));
-    expect(questTake(b, "Thing 4")).toBe(4);
-    expect(questReward(b, "Katana", 4)).toBe(4);
-    expect(b[4]).toEqual({ item: "Katana", qty: 1 });
+    expect(questRoom(b, 4, "Katana")).toBe(false);
+    expect(questRoom(b, 4, "Thing 9")).toBe(true);
+    b[4] = { item: "Thing 4", qty: 1 };
+    expect(questRoom(b, 4, "Katana")).toBe(true);
+    questTake(b, 4);
+    expect(questReward(b, "Katana")).toBe(4);
   });
 
-  test("FindNewQuest: random(44), random(20), random(20); roll 29 names nobody", () => {
+  test("bug fixed: FindNewQuest always names an NPC, each named one equally likely", () => {
     expect(findNewQuest(seq(1, 1, 1))).toBe("Water God:Dragon Wing:Fire Key");
-    expect(findNewQuest(seq(29, 13, 20))).toBe(":Scroll:Scimitar");
-    expect(findNewQuest(seq(39, 12, 9))).toBe("Kanta:Silver Token :Trumpet");
+    // random(43) over the named NPCs: 29 is the NPC after 1.6's empty roll 29.
+    expect(findNewQuest(seq(29, 13, 20))).toBe("Divela:Scroll:Scimitar");
+    expect(findNewQuest(seq(38, 12, 9))).toBe("Kanta:Silver Token:Trumpet");
+    const names = new Set<string>();
+    for (let n = 1; n <= 43; n++) {
+      const npc = findNewQuest(seq(n, 1, 1)).split(":")[0] ?? "";
+      expect(npc).not.toBe("");
+      names.add(npc);
+    }
+    expect(names.size).toBe(43);
+    expect(questLineUnanswerable(":Steel Key:Trumpet")).toBe(true);
+    expect(questLineUnanswerable("Edwin:scroll:Airship Deed")).toBe(false);
+    expect(questLineUnanswerable("")).toBe(false);
   });
 
-  test("kept bug: quest reply audience differs by NPC slot; no closing quote", () => {
+  test("bug fixed: every quest reply is heard by the map and closes its quote", () => {
     const lines = archivedQuestLines();
     expect(sayQuest(lines, ["Stephie", "", "Smithy", "Edwin"])).toEqual([
-      { text: "Stephie says \"Bring me a Fishle quickly and I'll reward you.", to: "asker" },
+      { text: 'Stephie says "Bring me a Fishle quickly and I\'ll reward you."', to: "map" },
       { text: 'Smithy says "Sorry but I don\'t need anything right now"', to: "map" },
-      { text: "Edwin says \"Bring me a scroll quickly and I'll reward you.", to: "map" },
+      { text: 'Edwin says "Bring me a scroll quickly and I\'ll reward you."', to: "map" },
     ]);
-    // Slot 1's "Sorry" goes to the map too.
-    expect(sayQuest(lines, ["Smithy", "", "", ""])[0]?.to).toBe("map");
+    // A name inside another's line text is not that NPC's quest.
+    expect(sayQuest(lines, ["Steel"])).toEqual([
+      { text: 'Steel says "Sorry but I don\'t need anything right now"', to: "map" },
+    ]);
   });
 });

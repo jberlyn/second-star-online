@@ -568,14 +568,12 @@ describe("player shops", () => {
     carol.clear();
     carol.send({ t: "gold", n: 100 });
     await settle();
-    expect(lines(carol)).toContain('Zumu says "Thanks for the gold!');
+    expect(lines(carol)).toContain('Zumu says "Thanks for the gold!"');
     expect(till()).toBe(100);
 
     await say(carol, "Zumu set Fish=5,2");
-    expect(lines(carol)).toEqual([
-      'Carol says "Zumu set Fish=5,2"',
-      `Zumu says "OK boss, I've added the item!"`,
-    ]);
+    // A command is answered, not said aloud.
+    expect(lines(carol)).toEqual([`Zumu says "OK boss, I've added the item!"`]);
 
     carol.send({ t: "npcClick", slot: 1 });
     await settle();
@@ -609,20 +607,15 @@ describe("player shops", () => {
     expect(who("Dave").char.gold).toBe(495);
   });
 
-  test("Carol's inventory: the till to her, the stock said to the room", async () => {
+  test("Carol's inventory: the till and the stock to her alone", async () => {
     dave.clear();
     await say(carol, "Zumu inventory");
     expect(lines(carol)).toEqual([
-      'Carol says "Zumu inventory"',
-      'Zumu says "I have 99 gold in the register...',
-      'Zumu says "I have 0 Apples."',
-      'Zumu says "I have 2 Fishs."',
+      'Zumu says "I have 99 gold in the register..."',
+      'Zumu says "I have 0 Apple in stock."',
+      'Zumu says "I have 2 Fish in stock."',
     ]);
-    expect(lines(dave)).toEqual([
-      'Carol says "Zumu inventory"',
-      'Zumu says "I have 0 Apples."',
-      'Zumu says "I have 2 Fishs."',
-    ]);
+    expect(lines(dave)).toEqual([]);
   });
 
   test("Carol registers the gold out", async () => {

@@ -15,7 +15,7 @@ export interface LootLine {
 }
 
 /**
- * The server's two draws on the killed species' `INV|` lines among file lines 1-80 (`NpcFile.loot`:
+ * The server's two draws on the killed species' `INV|` lines, anywhere in its file (`NpcFile.loot`:
  * the NPC editor can change them): a line uniformly, then `random(N) = 1`. No draw when the species
  * has no file or no `INV|` line. Returns the ground name ("15 Gold").
  */

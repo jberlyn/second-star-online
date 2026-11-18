@@ -21,16 +21,18 @@ import {
 /** `n` filler lines, then `line`, so `line` sits at file line n + 1. */
 const at = (n: number, line: string) => [...Array.from({ length: n }, () => "BIO|x"), line];
 
-describe("the readers' line windows (parseNpcFile)", () => {
-  test("INV| counts among lines 1-80 only", () => {
+describe("the readers read the whole file (parseNpcFile)", () => {
+  test("bug fixed: INV| counts on any line, past line 80 too", () => {
     expect(parseNpcFile("A", at(79, "INV|5 Gold:1").join("\r")).loot).toEqual([
       { item: "5 Gold", oneIn: 1 },
     ]);
-    expect(parseNpcFile("A", at(80, "INV|5 Gold:1").join("\r")).loot).toEqual([]);
+    expect(parseNpcFile("A", at(98, "INV|5 Gold:1").join("\r")).loot).toEqual([
+      { item: "5 Gold", oneIn: 1 },
+    ]);
   });
-  test("RND| counts among lines 1-20 only", () => {
+  test("bug fixed: RND| counts on any line, past line 20 too", () => {
     expect(parseNpcFile("A", at(19, "RND|hi").join("\r")).chatter).toEqual(["hi"]);
-    expect(parseNpcFile("A", at(20, "RND|hi").join("\r")).chatter).toEqual([]);
+    expect(parseNpcFile("A", at(50, "RND|hi").join("\r")).chatter).toEqual(["hi"]);
   });
   test("BIO| and PRO| among lines 1-100; FLG|, SPL| and BNK| anywhere; an empty file is EMPTY", () => {
     const f = parseNpcFile("A", "PRO|p\rFLG|Still\rSPL|Meteor\rBNK|");
@@ -139,26 +141,29 @@ describe("the editor's checks", () => {
       check("INV|5 Blue Crystals:1", "INV|Chain boots:40", "BNK|", "OWN|king").error,
     ).toBeNull();
   });
-  test("warned: lines outside their reader's window, the line-17 bug, inert tags", () => {
-    expect(check(...at(16, "SEL|Knife:5:10")).warnings).toEqual([
-      "Line 17: from line 17 on, a SEL| line is always out of stock.",
+  test("bug fixed: a till filled without a GLD| line shows as one in the live file", () => {
+    const f = parseNpcFile("Fire God", "BIO|Name: Fire God\rSEL|Fireball Book:100:98");
+    const ledger = {
+      gold: 100,
+      lines: [{ line: 2, kind: "SEL" as const, item: "Fireball Book", price: 100, stock: 97 }],
+    };
+    expect(liveNpcText(f, ledger).split("\r")).toEqual([
+      "BIO|Name: Fire God",
+      "SEL|Fireball Book:100:97",
+      "GLD|100",
     ]);
+    expect(liveNpcText(f, { ...ledger, gold: 0 }).split("\r")).toHaveLength(2);
+  });
+  test("warned: inert tags only; no line is outside a reader's window", () => {
+    expect(check(...at(16, "SEL|Knife:5:10")).warnings).toEqual([]);
     expect(check(...at(16, "SEL|Blue Crystals:5:10")).warnings).toEqual([]);
-    expect(check(...at(80, "SEL|Blue Crystals:5:10")).warnings).toEqual([
-      "Line 81: SEL| lines after line 80 can never be bought.",
-    ]);
-    expect(check(...at(60, "GLD|5")).warnings).toEqual([
-      "Line 61: GLD| after line 60: gold given is lost.",
-    ]);
-    expect(check(...at(80, "GLD|5")).warnings).toEqual([
-      "Line 81: GLD| after line 80: goods are free and sales are unpaid.",
-    ]);
-    expect(check(...at(80, "INV|5 Gold:1")).warnings).toEqual([
-      "Line 81: INV| lines after line 80 never drop.",
-    ]);
-    expect(check(...at(20, "RND|hi")).warnings).toEqual([
-      "Line 21: RND| lines after line 20 are never said.",
-    ]);
+    expect(check(...at(80, "SEL|Blue Crystals:5:10")).warnings).toEqual([]);
+    // GLD| counts wherever it is.
+    expect(check(...at(60, "GLD|5")).warnings).toEqual([]);
+    expect(check(...at(80, "GLD|5")).warnings).toEqual([]);
+    // Nor do INV| and RND|.
+    expect(check(...at(80, "INV|5 Gold:1")).warnings).toEqual([]);
+    expect(check(...at(20, "RND|hi")).warnings).toEqual([]);
     expect(check("FLG|Aggressive", "SPL|Teleport", "TRN|Ninja:5").warnings).toEqual([
       "Line 1: only FLG|Still and FLG|Passive do anything.",
       'Line 2: no monster casts "Teleport".',

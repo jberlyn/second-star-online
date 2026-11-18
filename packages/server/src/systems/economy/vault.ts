@@ -3,10 +3,11 @@
  * else's.
  */
 import {
-  bagText,
+  addSlotFor,
+  displayName,
   FACING_DELTA,
-  filledLines,
   invAdd,
+  isGoldName,
   lingoContains,
   type Rng,
 } from "@secondstaronline/shared";
@@ -20,7 +21,9 @@ export const VAULT_TEXT = {
   open: "You open your vault to see what's inside...",
   notInFront: "You see your vault, but you must be standing in front of it to use it.",
   container: "You cannot store a container!",
-  drop: (item: string) => `You drop a ${item} into the container.`,
+  drop: (item: string) => `You drop a ${displayName(item)} into the container.`,
+  /** A withdrawal (1.6 printed nothing). */
+  take: (item: string) => `You take a ${displayName(item)} out of the container.`,
   full: "This is too full to store anything else!",
   carrying: "You are carrying too much to withdraw this item.",
 } as const;
@@ -53,8 +56,9 @@ export function openVault(p: Player, g: GroundItem): Outgoing[] {
 }
 
 /**
- * Drop while facing the Vault: a container is refused; otherwise the client prints its line before
- * the server's capacity test, and one unit goes in. The open list is not refreshed.
+ * Drop while facing the Vault, or with the vault window open: a container is refused, a full
+ * vault says so, otherwise one unit goes in, the drop line prints and an open list shows it. (1.6
+ * printed the drop line before the capacity test and never refreshed the list.)
  */
 export function depositVault(p: Player, slot: number): Outgoing[] {
   const line = p.char.bag[slot - 1];
@@ -66,10 +70,8 @@ export function depositVault(p: Player, slot: number): Outgoing[] {
     // 1.6's 425-frame item-action pause and modify flag cleared were locals here: no lock.
     return [tell(p, VAULT_TEXT.container)];
   }
-  const out = [tell(p, VAULT_TEXT.drop(item))];
   if (p.char.vault.length >= VAULT_CAPACITY) {
-    out.push(tell(p, VAULT_TEXT.full));
-    return out;
+    return [tell(p, VAULT_TEXT.full)];
   }
   line.qty -= 1;
   if (line.qty <= 0) {
@@ -78,41 +80,37 @@ export function depositVault(p: Player, slot: number): Outgoing[] {
   p.char.vault.push(item);
   p.char.storeDirty = true;
   p.invDirty = true;
+  const out = [tell(p, VAULT_TEXT.drop(item))];
+  if (p.vaultOpen) {
+    out.push({ to: p.id, msg: { t: "vault", items: [...p.char.vault], open: false } });
+  }
   return out;
 }
 
 /**
- * The vault window's OK on a line:
- * - the first withdraw unlocks the keys, so you can walk off and keep taking;
- * - the client's bag test: more than 14 lines and no `<item>-` in the bag text;
- * - a ` Crystals` line is re-split into "Crystals " (a kept 1.6 bug: every colour merges into one
- *   worthless item);
- * - `InvAdd` stacks only on an exact name, so a bag whose only room is a substring match ("Orc Pot
- *   Pie" for "Pie") adds nothing, yet the line is still deleted (a kept 1.6 bug: withdrawing into
- *   a full bag can destroy the item). The window's list loses the line.
+ * The vault window's OK on a line: the window stays open and the keys stay locked until CANCEL (in
+ * 1.6 the first take freed the keys, so you could walk off and keep taking). The item needs a
+ * stack of exactly its name or an empty line, else "You are carrying too much…" and the line
+ * stays (1.6 let "Orc Pot Pie" pass for "Pie", added nothing and deleted the line). A crystal line
+ * comes back as itself (1.6 turned every colour into "Crystals ").
  */
 export function withdrawVault(p: Player, index: number, rng: Rng): Outgoing[] {
   if (!p.vaultOpen) {
     return [];
   }
-  p.keyLock = false;
   const item = p.char.vault[index - 1];
   if (item === undefined || item === "") {
     return [];
   }
-  if (filledLines(p.char.bag) > 14 && !lingoContains(bagText(p.char.bag), `${item}-`)) {
+  if (addSlotFor(p.char.bag, item) < 0 && !isGoldName(item)) {
     return [tell(p, VAULT_TEXT.carrying)];
   }
-  let add = item;
-  if (lingoContains(item, " Crystals")) {
-    const words = item.split(" ");
-    add = `${words[1] ?? ""} ${words[2] ?? ""}`;
-  }
-  const r = invAdd(p.char, add, 1, rng);
-  if (r.kind !== "full") {
-    p.invDirty = true;
-  }
-  p.char.vault.splice(p.char.vault.indexOf(item), 1);
+  invAdd(p.char, item, 1, rng);
+  p.invDirty = true;
+  p.char.vault.splice(index - 1, 1);
   p.char.storeDirty = true;
-  return [{ to: p.id, msg: { t: "vault", items: [...p.char.vault], open: false } }];
+  return [
+    { to: p.id, msg: { t: "vault", items: [...p.char.vault], open: false } },
+    tell(p, VAULT_TEXT.take(item)),
+  ];
 }

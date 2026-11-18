@@ -89,6 +89,7 @@ describe("economy persistence", () => {
     g.intent(id, { t: "chat", text: "/roster 1 Amber" });
     g.intent(id, { t: "chat", text: "/roster 2 Cril" });
     g.intent(id, { t: "chat", text: "/spawn 1" });
+    g.intent(id, { t: "chat", text: "/spawn 2" });
     g.intent(id, { t: "npcClick", slot: 1 });
     g.intent(id, { t: "shopList", mode: "buy" });
     g.intent(id, { t: "buy", line: 4, count: 3 });
@@ -98,7 +99,7 @@ describe("economy persistence", () => {
     expect(loadShop(db, "Amber")?.lines.find((l) => l.line === 4)?.stock).toBe(10028);
     expect(loadShop(db, "Amber")?.gold).toBe(107537424 + 30);
     g.intent(id, { t: "chat", text: "/deposit 100" });
-    expect(texts(id)).toContain("You now have 100 gold in the bank.");
+    expect(texts(id)).toContain("You deposit 100 gold. You now have 100 gold in the bank.");
     expect(loadBank(db, id)).toBe(100);
     expect(loadInventory(db, id).gold).toBe(870);
     // Face a Vault and drop an Apple in.
@@ -124,7 +125,7 @@ describe("economy persistence", () => {
 });
 
 describe("selling a container", () => {
-  test("kept bug: selling a container orphans its contents: the bag line goes, the container_items rows stay", async () => {
+  test("bug fixed: a container with contents is refused; an empty one sells and its storage row goes", async () => {
     saveContainer(db, "Crate#4242", ["Apple", "Pie"]);
     const g = game();
     const id = await makeChar(g, "Al");
@@ -143,10 +144,16 @@ describe("selling a container", () => {
     g.intent(id, { t: "npcClick", slot: 1 });
     g.intent(id, { t: "shopList", mode: "sell" });
     g.intent(id, { t: "sell", line: 11, count: 1 });
+    expect(texts(id)).toContain('Kanta says "Empty that out before you sell it to me."');
+    expect(loadInventory(db, id).bag[0]).toEqual({ item: "Crate#4242", qty: 1 });
+    expect(loadContainers(db).get("Crate#4242")).toEqual(["Apple", "Pie"]);
+    // Emptied, it sells, and nothing is left behind under its name.
+    g.world.containers.set("Crate#4242", []);
+    g.intent(id, { t: "sell", line: 11, count: 1 });
     const after = loadInventory(db, id);
     expect(after.bag.some((l) => l?.item.startsWith("Crate"))).toBe(false);
     expect(after.gold).toBe(inv.gold + 15);
-    expect(loadContainers(db).get("Crate#4242")).toEqual(["Apple", "Pie"]);
-    expect(g.world.containers.get("Crate#4242")).toEqual(["Apple", "Pie"]);
+    expect(loadContainers(db).get("Crate#4242")).toBeUndefined();
+    expect(g.world.containers.has("Crate#4242")).toBe(false);
   });
 });

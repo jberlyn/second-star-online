@@ -54,26 +54,41 @@ describe("NPC shops: buying", () => {
     expect(r.buyer.bag[0]).toEqual({ item: "Raw Fish", qty: 2 });
     expect(r.ledger.gold).toBe(294825 + 140);
     expect(stock(r.ledger, 4)).toBe(11537);
-    expect(r.texts).toEqual([]);
+    expect(r.texts).toEqual(['Akadius says "Thanks for the business!"']);
     // The shown ledger is unchanged until the caller keeps the result.
     expect(stock(s, 4)).toBe(11539);
   });
 
-  test("kept bug: a bought stack shares one id and one bag line", () => {
+  test("bug fixed: each bought container gets its own line and its own unused id", () => {
     const s: ShopLedger = {
       npc: "Test",
       gold: 1000,
       lines: [{ line: 1, kind: "SEL", item: "Crate", price: 15, stock: 10 }],
       dirty: false,
     };
-    const r = npcBuy(s, 1, 3, { gold: 100, bag: emptyBag() }, rngByN({ 999999: [4242] }));
+    // 4242 is taken by another container, and the second roll repeats the first crate's id.
+    const ids = rngByN({ 999999: [4242, 11, 11, 12] });
+    const r = npcBuy(s, 1, 3, { gold: 100, bag: emptyBag() }, ids, (n) => n === "Crate#4242");
     expect(r.ok).toBe(true);
     if (!r.ok) {
       return;
     }
-    expect(r.buyer.bag.filter((l) => l !== null)).toEqual([{ item: "Crate#4242", qty: 3 }]);
+    expect(r.buyer.bag.filter((l) => l !== null)).toEqual([
+      { item: "Crate#11", qty: 1 },
+      { item: "Crate#12", qty: 1 },
+      { item: expect.stringMatching(/^Crate#\d+$/), qty: 1 },
+    ]);
+    expect(new Set(r.buyer.bag.filter((l) => l !== null).map((l) => l?.item)).size).toBe(3);
     expect(r.buyer.gold).toBe(55);
     expect(stock(r.ledger, 1)).toBe(7);
+    // Three crates need three empty lines.
+    const two = full();
+    two[0] = null;
+    two[1] = null;
+    expect(npcBuy(s, 1, 3, { gold: 100, bag: two }, rng)).toEqual({
+      ok: false,
+      text: SHOP_TEXT.noRoom,
+    });
   });
 
   test("short of price × count: 'You don't have enough gold to buy this!'", () => {
@@ -83,55 +98,57 @@ describe("NPC shops: buying", () => {
     });
   });
 
-  test("a full bag is refused unless the bag text contains '<item>-'", () => {
+  test("a full bag is refused unless it holds a stack of exactly that item", () => {
     expect(npcBuy(shop("Amber"), 8, 1, { gold: 100, bag: full() }, rng)).toEqual({
       ok: false,
       text: SHOP_TEXT.noRoom,
     });
   });
 
-  test("kept bug: a full bag with 'Orc Pot Pie' passes for 'Pie'; InvAdd adds nothing and keeps the gold, but Amber's stock and gold change", () => {
+  test("bug fixed: a full bag holding 'Orc Pot Pie' has no room for a 'Pie'; nothing changes", () => {
     const b = full();
     b[3] = { item: "Orc Pot Pie", qty: 1 };
+    expect(npcBuy(shop("Amber"), 8, 1, { gold: 100, bag: b }, rng)).toEqual({
+      ok: false,
+      text: SHOP_TEXT.noRoom,
+    });
+    // A Pie stack is room.
+    b[4] = { item: "Pie", qty: 1 };
     const r = npcBuy(shop("Amber"), 8, 1, { gold: 100, bag: b }, rng);
-    expect(r.ok).toBe(true);
-    if (!r.ok) {
-      return;
-    }
-    expect(r.buyer.gold).toBe(100);
-    expect(r.buyer.bag).toEqual(b);
-    expect(stock(r.ledger, 8)).toBe(5770);
-    expect(r.ledger.gold).toBe(107537424 + 10);
+    expect(r.ok && r.buyer.bag[4]).toEqual({ item: "Pie", qty: 2 });
+    expect(r.ok && r.buyer.gold).toBe(90);
   });
 
-  test("count over stock: ' says \"Sorry but I'm out of that particular item.\"', blank name", () => {
+  test("bug fixed: count over stock names the shopkeeper", () => {
     expect(npcBuy(shop("Fire God"), 1, 99, { gold: 99999, bag: emptyBag() }, rng)).toEqual({
       ok: false,
-      text: ` says "Sorry but I'm out of that particular item."`,
+      text: `Fire God says "Sorry but I'm out of that particular item."`,
     });
   });
 
-  test("kept bug: no GLD line, nothing charged, but the gold test still needs price × count", () => {
-    const r = npcBuy(shop("Fire God"), 1, 1, { gold: 100, bag: emptyBag() }, rng);
-    expect(r.ok && r.buyer.gold).toBe(100);
+  test("bug fixed: a shopkeeper with no GLD line charges the price into a till that starts at 0", () => {
+    expect(shop("Fire God").gold).toBe(0);
+    const r = npcBuy(shop("Fire God"), 1, 1, { gold: 150, bag: emptyBag() }, rng);
+    expect(r.ok && r.buyer.gold).toBe(50);
     expect(r.ok && r.buyer.bag[0]).toEqual({ item: "Fireball Book", qty: 1 });
     expect(r.ok && stock(r.ledger, 1)).toBe(97);
+    expect(r.ok && r.ledger.gold).toBe(100);
     expect(npcBuy(shop("Fire God"), 1, 1, { gold: 99, bag: emptyBag() }, rng)).toEqual({
       ok: false,
       text: SHOP_TEXT.cannotAfford,
     });
   });
 
-  test("kept bug: the Fortress Guild Hall Deed (Smithy line 17) always answers NEI, nothing written", () => {
+  test("bug fixed: the Fortress Guild Hall Deed (Smithy line 17) can be bought", () => {
     const s = shop("Smithy");
-    expect(npcBuy(s, 17, 1, { gold: 200000, bag: emptyBag() }, rng)).toEqual({
-      ok: false,
-      text: SHOP_TEXT.outOfStock,
-    });
+    const r = npcBuy(s, 17, 1, { gold: 200000, bag: emptyBag() }, rng);
+    expect(r.ok && r.buyer.bag[0]).toEqual({ item: "Fortress Guild Hall Deed", qty: 1 });
+    expect(r.ok && r.buyer.gold).toBe(100000);
+    expect(r.ok && stock(r.ledger, 17)).toBe(299999);
     expect(stock(s, 17)).toBe(300000);
   });
 
-  test("crystals skip the inner loop, so Plone's line-17 White Crystals sell", () => {
+  test("Plone's line-17 White Crystals sell", () => {
     const r = npcBuy(shop("Plone"), 17, 3, { gold: 100, bag: emptyBag() }, rng);
     expect(r.ok && r.buyer.bag[0]).toEqual({ item: "White Crystals", qty: 3 });
     expect(r.ok && r.buyer.gold).toBe(100 - 78);
@@ -142,7 +159,7 @@ describe("NPC shops: buying", () => {
     expect(r.ok && r.buyer.bag[0]).toEqual({ item: "apple", qty: 3 });
   });
 
-  test("a match on line 16 buys normally: the inner loop leaves x at 16 and the outer goes on at 17", () => {
+  test("a match on line 16 buys normally", () => {
     const s = shop("Akadius");
     const at = s.lines.find((l) => l.line === 16);
     expect(at?.item).toBe("Fishing Pole");
@@ -151,7 +168,7 @@ describe("NPC shops: buying", () => {
     expect(r.ok && stock(r.ledger, 16)).toBe((at?.stock ?? 0) - 1);
   });
 
-  test("a match below line 17 skips to line 17, so Trout does not also take Trout Fillet's stock", () => {
+  test("buying Trout takes only Trout's stock, not Trout Fillet's", () => {
     const r = npcBuy(shop("Akadius"), 8, 1, { gold: 100, bag: emptyBag() }, rng);
     expect(r.ok && stock(r.ledger, 8)).toBe(12823);
     expect(r.ok && stock(r.ledger, 10)).toBe(15037);
@@ -173,7 +190,7 @@ describe("NPC shops: selling", () => {
     expect(r.buyer.bag[0]).toEqual({ item: "Raw Fish", qty: 1 });
     expect(stock(r.ledger, 4)).toBe(11541);
     expect(r.ledger.gold).toBe(294825 - 50);
-    expect(r.texts).toEqual(["Thanks for the business!"]);
+    expect(r.texts).toEqual(['Akadius says "Thanks for the business!"']);
   });
 
   test("selling to Picha1 from a Long Sword stack renames it long sword", () => {
@@ -181,18 +198,36 @@ describe("NPC shops: selling", () => {
     expect(r.ok && r.buyer.bag[0]).toEqual({ item: "long sword", qty: 2 });
   });
 
-  test("kept bug: selling Trout bumps Trout Fillet's stock too and thanks twice", () => {
+  test("bug fixed: selling Trout restocks only Trout and thanks once", () => {
     const r = npcSell(shop("Akadius"), 9, 1, { gold: 0, bag: bag(["Trout", 1]) });
-    expect(r.ok && r.texts).toEqual(["Thanks for the business!", "Thanks for the business!"]);
+    expect(r.ok && r.texts).toEqual(['Akadius says "Thanks for the business!"']);
     expect(r.ok && stock(r.ledger, 8)).toBe(12825);
-    expect(r.ok && stock(r.ledger, 10)).toBe(15038);
+    expect(r.ok && stock(r.ledger, 10)).toBe(15037);
     expect(r.ok && r.buyer.bag[0]).toBeNull();
   });
 
-  test("kept bug: BUY without SEL pays but says nothing", () => {
+  test("bug fixed: a sale to a shopkeeper who does not stock the item is thanked too", () => {
     const r = npcSell(shop("Kanta"), 11, 1, { gold: 0, bag: bag(["Crate#55", 1]) });
-    expect(r.ok && r.texts).toEqual([]);
+    expect(r.ok && r.texts).toEqual(['Kanta says "Thanks for the business!"']);
     expect(r.ok && r.buyer.gold).toBe(15);
+    expect(r.ok && r.soldContainer).toBe("Crate#55");
+  });
+
+  test("bug fixed: a container with something stored in it is refused, and an empty one is sold first", () => {
+    const stored = (n: string) => (n === "Crate#55" ? 2 : 0);
+    expect(npcSell(shop("Kanta"), 11, 1, { gold: 0, bag: bag(["Crate#55", 1]) }, stored)).toEqual({
+      ok: false,
+      text: 'Kanta says "Empty that out before you sell it to me."',
+    });
+    const r = npcSell(
+      shop("Kanta"),
+      11,
+      1,
+      { gold: 0, bag: bag(["Crate#55", 1], ["Crate#56", 1]) },
+      stored,
+    );
+    expect(r.ok && r.buyer.bag.slice(0, 2)).toEqual([{ item: "Crate#55", qty: 1 }, null]);
+    expect(r.ok && r.soldContainer).toBe("Crate#56");
   });
 
   test("the refusals in order: errsel, too few, none", () => {
@@ -212,36 +247,43 @@ describe("NPC shops: selling", () => {
     });
   });
 
-  test("an NPC whose gold would go negative: ' says \"I'm sorry but I can't afford to buy that.\"'", () => {
+  test("bug fixed: an NPC whose gold would go negative names itself", () => {
     const s = { ...shop("Akadius"), gold: 10 };
     expect(npcSell(s, 5, 1, { gold: 0, bag: bag(["Raw Fish", 1]) })).toEqual({
       ok: false,
-      text: ` says "I'm sorry but I can't afford to buy that."`,
+      text: `Akadius says "I'm sorry but I can't afford to buy that."`,
     });
   });
 
-  test("kept bug: no GLD line takes the item and pays nothing", () => {
-    const s = { ...shop("Akadius"), gold: null };
-    const r = npcSell(s, 5, 1, { gold: 7, bag: bag(["Raw Fish", 1]) });
-    expect(r.ok && r.buyer.gold).toBe(7);
-    expect(r.ok && r.buyer.bag[0]).toBeNull();
+  test("bug fixed: a shopkeeper with no GLD line pays from its till, refusing while it is empty", () => {
+    const s = { ...shop("Akadius"), gold: 0 };
+    expect(npcSell(s, 5, 1, { gold: 7, bag: bag(["Raw Fish", 1]) })).toEqual({
+      ok: false,
+      text: `Akadius says "I'm sorry but I can't afford to buy that."`,
+    });
+    // Once a purchase fills the till, it buys.
+    const filled = npcBuy(s, 4, 1, { gold: 100, bag: emptyBag() }, rng);
+    const r = filled.ok
+      ? npcSell(filled.ledger, 5, 1, { gold: 7, bag: bag(["Raw Fish", 1]) })
+      : null;
+    expect(r?.ok && r.buyer.gold).toBe(32);
+    expect(r?.ok && r.ledger.gold).toBe(45);
   });
 
-  test("the sell OK swaps a Crate or Cabinet line for the lowest Crate#/Cabinet# slot, one unit; 'Cabinet' finds a Wind Cabinet", () => {
+  test("the sell OK swaps a Crate or Cabinet line for a bag container of exactly that kind, one unit", () => {
     expect(sellName("Crate", 5, bag(["Apple", 1], ["Crate#9", 1], ["Crate#2", 1]))).toEqual({
       item: "Crate#9",
       count: 1,
     });
     expect(sellName("Cabinet", 1, bag(["Wind Cabinet#4", 1], ["Cabinet#7", 1]))).toEqual({
-      item: "Wind Cabinet#4",
+      item: "Cabinet#7",
       count: 1,
     });
-    // ...which Kanta's BUY|Cabinet does not match: errsel.
     const r = npcSell(shop("Kanta"), 12, 1, {
       gold: 0,
       bag: bag(["Wind Cabinet#4", 1], ["Cabinet#7", 1]),
     });
-    expect(r).toEqual({ ok: false, text: "Error in trying to sell!" });
+    expect(r.ok && r.buyer.bag.slice(0, 2)).toEqual([{ item: "Wind Cabinet#4", qty: 1 }, null]);
   });
 });
 
@@ -255,28 +297,43 @@ describe("the bank", () => {
     expect(parseBank("hello")).toBeNull();
   });
 
-  test("kept bug: the texts; failures are silent; withdraw says 'You now have' too", () => {
+  test("bug fixed: a deposit and a withdrawal each say what they did, and every failure says why", () => {
     expect(runBank({ kind: "balance" }, 10, null)).toEqual({
       text: "You have 0 gold in the bank.",
       gold: 10,
       bank: 0,
     });
     expect(runBank({ kind: "deposit", n: 10 }, 10, 5)).toEqual({
-      text: "You now have 15 gold in the bank.",
+      text: "You deposit 10 gold. You now have 15 gold in the bank.",
       gold: 0,
       bank: 15,
     });
-    expect(runBank({ kind: "deposit", n: 11 }, 10, 5)).toEqual({ text: null, gold: 10, bank: 5 });
+    expect(runBank({ kind: "deposit", n: 11 }, 10, 5)).toEqual({
+      text: "You don't have that much gold to deposit.",
+      gold: 10,
+      bank: 5,
+    });
     expect(runBank({ kind: "withdraw", n: 5 }, 0, 5)).toEqual({
-      text: BANK_TEXT.now(0),
+      text: "You withdraw 5 gold. You now have 0 gold in the bank.",
       gold: 5,
       bank: 0,
     });
-    expect(runBank({ kind: "withdraw", n: 6 }, 0, 5)).toEqual({ text: null, gold: 0, bank: 5 });
-    expect(runBank({ kind: "deposit", n: 0 }, 3, 4).text).toBe("You now have 4 gold in the bank.");
+    expect(runBank({ kind: "withdraw", n: 6 }, 0, 5)).toEqual({
+      text: BANK_TEXT.shortBank,
+      gold: 0,
+      bank: 5,
+    });
+    expect(runBank({ kind: "withdraw", n: null }, 0, 5)).toEqual({
+      text: "Type /withdraw and an amount, such as /withdraw 300.",
+      gold: 0,
+      bank: 5,
+    });
+    expect(runBank({ kind: "deposit", n: 0 }, 3, 4).text).toBe(
+      "You deposit 0 gold. You now have 4 gold in the bank.",
+    );
   });
 
-  test("kept bug: the banker only has to be in the map's roster, alive or not; else 'You cannot bank here!'", () => {
+  test("bug fixed: the bank needs a living banker on the map; else 'You cannot bank here!'", () => {
     const map = testMap("x1000y992");
     const p = player("Al", map, 6, 4);
     p.char.gold = 100;
@@ -284,14 +341,29 @@ describe("the bank", () => {
       { to: "Al", msg: { t: "chat", text: "You cannot bank here!", color: 0 } },
     ]);
     const slot3 = map.slots[2];
-    if (slot3) {
-      slot3.species = "Andero";
+    if (!slot3) {
+      throw new Error("slot");
     }
-    expect(canBank(ARCHIVE_NPCS, map)).toBe(true);
+    // On the roster but not spawned, or dead (no live entry): no bank.
+    slot3.species = "Andero";
+    expect(canBank(ARCHIVE_NPCS, map)).toBe(false);
     expect(inRoster(map, "andero")).toBe(true);
+    slot3.live = {
+      name: "Andero",
+      hp: 0, // NPCs have no HP; a living one has a live entry
+      x: 3,
+      y: 3,
+      facing: "S",
+      anim: 0,
+      fromX: 3,
+      fromY: 3,
+      queue: [],
+      hitCountb: 0,
+    };
+    expect(canBank(ARCHIVE_NPCS, map)).toBe(true);
     expect(bankChat(ARCHIVE_NPCS, p, "/deposit 40")[0]?.msg).toEqual({
       t: "chat",
-      text: "You now have 40 gold in the bank.",
+      text: "You deposit 40 gold. You now have 40 gold in the bank.",
       color: 0,
     });
     expect(p.char.gold).toBe(60);
@@ -323,8 +395,8 @@ describe("the personal vault", () => {
     expect(p.keyLock).toBe(true);
   });
 
-  test("deposit: the line is printed before the capacity test; containers refused", () => {
-    const { p } = scene();
+  test("bug fixed: deposit checks the capacity before the drop line; containers refused; an open list is refreshed", () => {
+    const { p, vault } = scene();
     p.char.bag = bag(["Apple", 2], ["Crate#3", 1]);
     expect(depositVault(p, 2).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
       "You cannot store a container!",
@@ -334,32 +406,46 @@ describe("the personal vault", () => {
     ]);
     expect(p.char.vault).toEqual(["Apple"]);
     expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
+    openVault(p, vault);
+    expect(depositVault(p, 1).map((o) => o.msg)).toEqual([
+      { t: "chat", text: "You drop a Apple into the container.", color: 0 },
+      { t: "vault", items: ["Apple", "Apple"], open: false },
+    ]);
+    p.char.bag[0] = { item: "Apple", qty: 1 };
     p.char.vault = Array.from({ length: 15 }, () => "Rock");
     expect(depositVault(p, 1).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
-      "You drop a Apple into the container.",
       "This is too full to store anything else!",
     ]);
+    expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
   });
 
-  test("withdraw ends the key lock and stacks on an exact name", () => {
+  test("bug fixed: a withdrawal keeps the window open and the keys locked, says so, and stacks on an exact name", () => {
     const { p, vault } = scene();
     p.char.vault = ["Apple", "Pie"];
     p.char.bag = bag(["Apple", 1]);
     openVault(p, vault);
     const out = withdrawVault(p, 1, rng);
-    expect(p.keyLock).toBe(false);
+    expect(p.keyLock).toBe(true);
+    expect(p.vaultOpen).toBe(true);
     expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
-    expect(out[0]?.msg).toEqual({ t: "vault", items: ["Pie"], open: false });
+    expect(out.map((o) => o.msg)).toEqual([
+      { t: "vault", items: ["Pie"], open: false },
+      { t: "chat", text: "You take a Apple out of the container.", color: 0 },
+    ]);
   });
 
-  test("kept bug: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' destroys it", () => {
+  test("bug fixed: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' is refused and keeps the Pie", () => {
     const { p, vault } = scene();
     p.char.vault = ["Pie"];
     p.char.bag = full();
     p.char.bag[0] = { item: "Orc Pot Pie", qty: 1 };
     openVault(p, vault);
-    withdrawVault(p, 1, rng);
-    expect(p.char.vault).toEqual([]);
+    expect(withdrawVault(p, 1, rng)[0]?.msg).toEqual({
+      t: "chat",
+      text: "You are carrying too much to withdraw this item.",
+      color: 0,
+    });
+    expect(p.char.vault).toEqual(["Pie"]);
     expect(p.char.bag[0]).toEqual({ item: "Orc Pot Pie", qty: 1 });
   });
 
@@ -376,11 +462,13 @@ describe("the personal vault", () => {
     expect(p.char.vault).toEqual(["Apple"]);
   });
 
-  test("kept bug: a crystal line comes back as 'Crystals '", () => {
+  test("bug fixed: a crystal line comes back as the same crystals", () => {
     const { p, vault } = scene();
     p.char.vault = ["Blue Crystals"];
+    p.char.bag = bag(["Blue Crystals", 4]);
     openVault(p, vault);
     withdrawVault(p, 1, rng);
-    expect(p.char.bag[0]).toEqual({ item: "Crystals ", qty: 1 });
+    expect(p.char.bag[0]).toEqual({ item: "Blue Crystals", qty: 5 });
+    expect(p.char.vault).toEqual([]);
   });
 });

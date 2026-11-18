@@ -260,7 +260,8 @@ describe("the trade window", () => {
       accept: () => offers.push("accept"),
       cancel: () => offers.push("cancel"),
     });
-    w.show({ you: "a", self: "Al", partner: "Bo", mine: null, theirs: null }, inv());
+    const none = { mineAccepted: false, theirsAccepted: false };
+    w.show({ you: "a", self: "Al", partner: "Bo", mine: null, theirs: null, ...none }, inv());
     const left = [...w.window.el.querySelectorAll<HTMLInputElement>(".trade-left .trade-amount")];
     const names = [...w.window.el.querySelectorAll(".trade-left .trade-name")].map(
       (n) => n.textContent,
@@ -279,20 +280,22 @@ describe("the trade window", () => {
     }
     w.window.el.querySelector<HTMLButtonElement>(".trade-offer-a")?.click();
     expect(offers).toEqual([{ gold: 20, items: [{ slot: 3, qty: 2 }] }]);
-    // B's offer arrives: Accept shows, the right column holds it packed.
-    w.show(
-      {
-        you: "a",
-        self: "Al",
-        partner: "Bo",
-        mine: { gold: 20, items: [{ item: "Apple", qty: 2 }] },
-        theirs: { gold: 0, items: [{ item: "Knife", qty: 1 }] },
-      },
-      inv(),
-    );
+    // Bug fixed: B's offer arrives: Accept shows, and Trade stays to change the offer.
+    const both = {
+      you: "a" as const,
+      self: "Al",
+      partner: "Bo",
+      mine: { gold: 20, items: [{ item: "Apple", qty: 2 }] },
+      theirs: { gold: 0, items: [{ item: "Knife", qty: 1 }] },
+    };
+    w.show({ ...both, ...none }, inv());
     expect(w.window.el.querySelector<HTMLElement>(".trade-accept")?.hidden).toBe(false);
-    expect(w.window.el.querySelector<HTMLElement>(".trade-offer-a")?.hidden).toBe(true);
-    expect(left[0]?.readOnly).toBe(true);
+    expect(w.window.el.querySelector<HTMLElement>(".trade-offer-a")?.hidden).toBe(false);
+    expect(left[0]?.readOnly).toBe(false);
+    expect(left[0]?.value).toBe("20");
+    // Once accepted, Accept hides until an offer changes.
+    w.show({ ...both, mineAccepted: true, theirsAccepted: false }, inv());
+    expect(w.window.el.querySelector<HTMLElement>(".trade-accept")?.hidden).toBe(true);
     const right = [...w.window.el.querySelectorAll(".trade-right .trade-name")].map(
       (n) => n.textContent,
     );
@@ -302,5 +305,33 @@ describe("the trade window", () => {
     expect(w.window.isOpen).toBe(false);
     expect(offers.at(-1)).toEqual({ gold: 20, items: [{ slot: 3, qty: 2 }] });
     expect(amountOf("x")).toBe(0);
+  });
+
+  test("bug fixed: B has an Accept of its own once both offers are in", () => {
+    const layer = createWindowLayer();
+    document.body.append(layer.el);
+    const sent: unknown[] = [];
+    const w = createTradeWindow(fakeAssets, layer, {
+      offer: (gold, items) => sent.push({ gold, items }),
+      accept: () => sent.push("accept"),
+      cancel: () => sent.push("cancel"),
+    });
+    const base = {
+      you: "b" as const,
+      self: "Bo",
+      partner: "Al",
+      theirs: { gold: 20, items: [] },
+      mineAccepted: false,
+      theirsAccepted: false,
+    };
+    w.show({ ...base, mine: null }, inv());
+    const acceptB = w.window.el.querySelector<HTMLButtonElement>(".trade-accept-b");
+    expect(acceptB?.hidden).toBe(true);
+    expect(w.window.el.querySelector<HTMLElement>(".trade-accept")?.hidden).toBe(true);
+    w.show({ ...base, mine: { gold: 0, items: [{ item: "Apple", qty: 1 }] } }, inv());
+    expect(acceptB?.hidden).toBe(false);
+    expect(w.window.el.querySelector<HTMLElement>(".trade-offer-b")?.hidden).toBe(false);
+    acceptB?.click();
+    expect(sent).toEqual(["accept"]);
   });
 });

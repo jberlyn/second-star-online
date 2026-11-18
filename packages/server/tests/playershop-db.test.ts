@@ -22,7 +22,7 @@ import { migrate } from "../src/persistence/migrations.ts";
 import { loadSlots } from "../src/persistence/monsters.ts";
 import { loadNpcFiles } from "../src/persistence/npcfiles.ts";
 import { loadPlayerShops } from "../src/persistence/playershops.ts";
-import { ledgerFromTemplate, npcBuy, SHOP_TEXT } from "../src/systems/economy/shop.ts";
+import { ledgerFromTemplate, npcBuy } from "../src/systems/economy/shop.ts";
 import { monsterView } from "../src/systems/monsters/slots.ts";
 import type { Player } from "../src/systems/world/world.ts";
 import { prepareScenarioMap } from "./helpers/scenario-map.ts";
@@ -164,27 +164,27 @@ describe("the shopkeeper", () => {
 });
 
 describe("commands", () => {
-  test("a command is said first, then answered; at y > 10 the line is refused and the command still runs", async () => {
+  test("bug fixed: a command is answered without being said aloud; at y > 10 it is refused like talk", async () => {
     const g = game();
     const carol = await buildShop(g);
     const p = walkIn(g, carol);
+    const dave = await makeChar(g, "Dave");
+    g.enter(dave, false);
+    g.intent(dave, { t: "mapReady" });
+    walkIn(g, dave).y = 9;
     expect(p.y).toBe(11);
     sent = [];
     say(g, carol, "Zumu set Fish=5,2");
-    expect(texts(carol)).toEqual([
-      "You need to enter this building to talk",
-      `Zumu says "OK boss, I've added the item!"`,
-    ]);
+    expect(texts(carol)).toEqual(["You need to enter this building to talk"]);
+    expect(loadNpcFiles(db).find((f) => f.npc === "Zumu")?.text).not.toContain("Fish");
     p.y = 9;
     sent = [];
     say(g, carol, "Zumu set Fish=6,2");
-    expect(texts(carol)).toEqual([
-      `Carol says "Zumu set Fish=6,2"`,
-      `Zumu says "OK boss, I've added the item!"`,
-    ]);
+    expect(texts(carol)).toEqual([`Zumu says "OK boss, I've added the item!"`]);
+    expect(texts(dave)).toEqual([]);
   });
 
-  test("divergence: under the chat cooldown the command runs and the line is not put back", async () => {
+  test("bug fixed: a command costs no chat cooldown and runs under one", async () => {
     const g = game();
     const carol = await buildShop(g);
     const p = walkIn(g, carol);
@@ -192,10 +192,7 @@ describe("commands", () => {
     say(g, carol, "hello");
     sent = [];
     g.intent(carol, { t: "chat", text: "Zumu set Fish=5,2" });
-    const got = chats(carol);
-    expect(got[0]?.text).toMatch(/^You cannot chat yet/);
-    expect(got[0]?.restore).toBeUndefined();
-    expect(got[1]?.text).toBe(`Zumu says "OK boss, I've added the item!"`);
+    expect(chats(carol).map((c) => c.text)).toEqual([`Zumu says "OK boss, I've added the item!"`]);
   });
 
   test("a command's file and ledger rewrite keeps the stock and till, and survives a restart", async () => {
@@ -252,7 +249,7 @@ describe("commands", () => {
     expect(loadInventory(db, carol).gold).toBe(pl(g, carol).char.gold);
   });
 
-  test("Inventory: the till to the owner; the stock said to the room, muffled at y > 10", async () => {
+  test("bug fixed: Inventory tells the till and the stock to the owner alone", async () => {
     const g = game();
     const carol = await buildShop(g);
     const pc = walkIn(g, carol);
@@ -260,19 +257,14 @@ describe("commands", () => {
     const dave = await makeChar(g, "Dave");
     g.enter(dave, false);
     g.intent(dave, { t: "mapReady" });
-    walkIn(g, dave); // (9, 11): outside, for chat
+    walkIn(g, dave).y = 9;
     sent = [];
     say(g, carol, "Zumu inventory");
     expect(texts(carol)).toEqual([
-      `Carol says "Zumu inventory"`,
-      `Zumu says "I have 0 gold in the register...`,
-      `Zumu says "I have 0 Apples."`,
+      `Zumu says "I have 0 gold in the register..."`,
+      `Zumu says "I have 0 Apple in stock."`,
     ]);
-    expect(texts(dave)).toEqual(["You hear a muffled voice.", "You hear a muffled voice."]);
-    pl(g, dave).y = 9;
-    sent = [];
-    say(g, carol, "Zumu inventory");
-    expect(texts(dave)).toEqual([`Carol says "Zumu inventory"`, `Zumu says "I have 0 Apples."`]);
+    expect(texts(dave)).toEqual([]);
   });
 
   test("someone else's commands: the employee and steal lines; inventory and profile say nothing", async () => {
@@ -290,7 +282,7 @@ describe("commands", () => {
     say(g, dave, "Zumu inventory");
     say(g, dave, "Zumu profile Robbed");
     say(g, dave, "Zumu title Dave's now");
-    expect(texts(dave).filter((t) => !t.startsWith("Dave says"))).toEqual([
+    expect(texts(dave)).toEqual([
       "Zumu is not your employee!",
       "Zumu is not your employee!",
       `Zumu says "I don't think my boss would like you trying to steal from us."`,
@@ -369,7 +361,7 @@ describe("decay", () => {
 });
 
 describe("buying from a player shop", () => {
-  test("kept bug: the seventh item, on line 18, answers out of stock", () => {
+  test("bug fixed: the seventh item, on line 18, can be bought", () => {
     let lines = npcLines(shopkeeperFile("Carol", "Zumu"));
     for (const it of ["Corn", "Fish", "Trout", "Squid", "Herb", "Ale"]) {
       lines = (setPrices(lines, true, "Zumu", it, 1, 1).lines ?? []).filter((l) => l !== "");
@@ -378,9 +370,7 @@ describe("buying from a player shop", () => {
     const shop = ledgerFromTemplate(parseNpcFile("Zumu", lines.join("\r")));
     const buyer = { gold: 100, bag: Array.from({ length: 15 }, () => null) };
     expect(npcBuy(shop, 16, 1, buyer, rngByN()).ok).toBe(true); // Herb, line 16
-    expect(npcBuy(shop, 18, 1, buyer, rngByN())).toEqual({
-      ok: false,
-      text: SHOP_TEXT.outOfStock,
-    });
+    const ale = npcBuy(shop, 18, 1, buyer, rngByN());
+    expect(ale.ok && ale.buyer.bag[0]).toEqual({ item: "Ale", qty: 1 });
   });
 });

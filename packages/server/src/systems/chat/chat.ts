@@ -222,17 +222,20 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       return friendsCommand(world, p, cmd.friends, (id, items) => deps.saveBuddies?.(id, items));
     case "say":
     case "emote": {
-      // 1.6 checked a plain line for a shop command after saying it, so a shop command runs after
-      // its line is said, and even when the house rule or SSO's cooldown refuses the line.
-      const shop = (): { ran: boolean; out: Outgoing[] } =>
-        cmd.kind === "say" && deps.shop ? deps.shop(p, typed) : { ran: false, out: [] };
+      // The house rule applies to plain talk, `/me` and shop commands alike: a shop is run from
+      // where you can talk to its keeper.
+      const houseRefused = sayRefusedInHouse(p.map.name, p.y);
+      // A shop command is handled before the line is said and is never said aloud, so it costs no
+      // chat cooldown (1.6 said it to the room first, and ran it even where talk was refused).
+      if (cmd.kind === "say" && deps.shop && !houseRefused) {
+        const s = deps.shop(p, typed);
+        if (s.ran) {
+          return s.out;
+        }
+      }
       const refused = chatRefusal(p.chatIn);
       if (refused) {
-        const s = shop();
-        // A command that ran does not go back into the input.
-        return s.ran
-          ? [{ to: p.id, msg: line(refused) }, ...s.out]
-          : [{ to: p.id, msg: { ...line(refused), restore: typed } }];
+        return [{ to: p.id, msg: { ...line(refused), restore: typed } }];
       }
       // A plain line asking for a quest, about treasure or about faction power also asks the NPCs
       // on screen, in that order and even when the house rule stops the line itself; `/me` never
@@ -249,13 +252,12 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
           ...(asksAboutFaction(typed) ? askFactionPower(world, p) : []),
         ];
       };
-      // The house rule applies to plain talk and `/me` alike.
-      if (sayRefusedInHouse(p.map.name, p.y)) {
-        return [{ to: p.id, msg: line(CHAT_TEXT.houseRefused) }, ...shop().out, ...rumours()];
+      if (houseRefused) {
+        return [{ to: p.id, msg: line(CHAT_TEXT.houseRefused) }, ...rumours()];
       }
       p.chatIn = deps.chatCooldownFrames;
       const text = cmd.kind === "say" ? formatSay(p.name, cmd.text) : formatEmote(p.name, cmd.text);
-      return [...toMap(world, p, text), ...shop().out, ...rumours()];
+      return [...toMap(world, p, text), ...rumours()];
     }
     case "broadcast": {
       const refused = broadcastRefusal(p.broadcastIn);

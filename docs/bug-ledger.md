@@ -37,7 +37,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [client](#client) | 0 |
 | [combat](#combat) | 0 |
 | [crafting](#crafting) | 0 |
-| [economy](#economy) | 33 |
+| [economy](#economy) | 0 |
 | [housing](#housing) | 20 |
 | [inventory](#inventory) | 33 |
 | [mail](#mail) | 16 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **230** |
+| **Total** | **197** |
 
 ## admin
 
@@ -77,203 +77,7 @@ No kept bugs (twenty-seven former entries were fixed, and the alchemy sand entry
 
 ## economy
 
-### Quest chests are shared by everyone, and a Wind Chest takes no drops
-- **What you notice:** the quest chests are the same for every player, and now and then a save refills one with a single random item, wiping what was inside. Dropping an item facing a Wind Chest gives "floor is too crowded".
-- **In 1.6 and SSO:** there is one stored chest per chest type for the whole world. The refill chance is 1 in 4000 per character save, and the new item overwrites the contents. 1.6's client has no way to drop into a Wind Chest. SSO keeps one shared container per chest type and rolls the refill at 1 in 4000 on each periodic save of every online character.
-- **In the code:** `packages/server/src/systems/economy/containers.ts` (`saveClockStep`, `dropRoute`); `packages/shared/src/rules/housing/doors.ts` (`questChestRefill`)
-- **Pinned by:** `a save refills 1 in 4000; random(6) picks the chest; a line overwrites it` (packages/shared/tests/housing/doors.test.ts); `after 400 frames a 1-in-350 save rolls 1 in 4000; the refill overwrites the chest` (packages/server/tests/doors.test.ts); `Drop routes: the five chests by name take items; a Wind Chest or a bare Crate is crowded` (packages/server/tests/doors.test.ts)
-
-### Selling a crate or cabinet leaves its contents locked away
-- **What you notice:** sell a Crate, Cabinet or Wind Cabinet to a shopkeeper and whatever you had stored in it is gone: the sale takes the bag line and nothing in the game lists or opens that container again. The stored items sit there, reachable only if another container later draws the same random name.
-- **In 1.6 and SSO:** the sale looks up the bag line for the container by its base name and removes that line, but the stored contents are never cleared. 1.6 left its vault file; SSO leaves the stored rows. Normally nothing points at them again, but a bare container's random `#` can collide with the sold name, and opening that new container reaches the old contents.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`, `sellName`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`)
-- **Pinned by:** `kept bug: selling a container orphans its contents: the bag line goes, the container_items rows stay` (packages/server/tests/economy-db.test.ts); `kept bug: two players holding the same container name share its storage` (packages/server/tests/craft.test.ts)
-
-### A bought stack of containers shares one ID
-- **What you notice:** buy two or more Crates, Cabinets, Wind Cabinets or Cauldrons from a shopkeeper who sells them and they arrive as one bag line, such as `Crate#4242-2`. Give or trade one from that line away and both players open the same storage, because a container is found by its whole name, ID included.
-- **In 1.6 and SSO:** the purchase adds the whole count in one `InvAdd` call, so the bare container gets a single random ID for the line rather than one per item. 1.6's server did the same for a Crate, Cabinet or Wind Cabinet; a carried Cauldron had no ID there and opened the shared Cauldron file, while SSO gives the line a random ID too. No seeded NPC file sells a container, loot and gifts add one at a time, and `/drop` and the World Editor refuse a container count, so in the seeded game only an NPC file an operator adds or edits reaches this through a shop.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`), `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `withdrawContainer`)
-- **Pinned by:** `kept bug: a bought stack shares one id and one bag line` (packages/server/tests/economy.test.ts); `kept bug: two players holding the same container name share its storage` (packages/server/tests/craft.test.ts)
-
-### A shopkeeper with no gold line gives goods away free
-- **What you notice:** a few shopkeepers charge nothing: the Fire God, Water God and Wind God books (98 in stock each) and Merius' Damaged Armor. Even so, you must hold enough gold to cover the price first, so a free 100-gold book needs 100 gold in your hand.
-- **In 1.6 and SSO:** the buyer is only charged by a shopkeeper who keeps a gold ledger, and these shopkeepers have none. The "can you afford it" test still runs before that. SSO does the same: no gold ledger means no charge, the stock still goes down and the gold test still runs.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
-- **Pinned by:** `kept bug: no GLD line, nothing charged, but the gold test still needs price × count` (packages/server/tests/economy.test.ts); `kept bug: the Fire God's book costs nothing, but needs 100 gold in hand` (packages/server/e2e/npcs-shops-trade.test.ts)
-
-### A shopkeeper with no gold line pays nothing for what you sell
-- **What you notice:** sell an item to a shopkeeper who keeps no gold ledger and the item is taken, but you are paid nothing.
-- **In 1.6 and SSO:** the payout only happens for a shopkeeper with a gold ledger; the item is removed either way. SSO does the same.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`)
-- **Pinned by:** `kept bug: no GLD line takes the item and pays nothing` (packages/server/tests/economy.test.ts)
-
-### The Fortress Guild Hall Deed always reads as out of stock
-- **What you notice:** try to buy the Fortress Guild Hall Deed from the Smithy and you only ever get "Sorry but I'm out of that particular item." Nothing changes hands. The same thing happens for any item (crystals aside) that sits on line 17 or later of a shopkeeper's list.
-- **In 1.6 and SSO:** the buy routine used one counter for two nested loops, so a match on line 17 or later was found again and again until the stock ran short, and it always ended in that refusal with nothing written. SSO answers that refusal at once without changing stock and never stalls. A match below line 17 skips ahead to line 17, so buying Trout does not also take Trout Fillet's stock.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
-- **Pinned by:** `kept bug: the Fortress Guild Hall Deed (Smithy line 17) always answers NEI, nothing written`; `crystals skip the inner loop, so Plone's line-17 White Crystals sell`; `a match below line 17 skips to line 17, so Trout does not also take Trout Fillet's stock` (packages/server/tests/economy.test.ts)
-
-### A sale is only thanked if the shopkeeper also sells that item
-- **What you notice:** sell something to a shopkeeper who does not stock it themselves and you get no "thank you" at all. Buying never gets a confirmation line either; you only see the item arrive in your bag.
-- **In 1.6 and SSO:** the sale confirmation is only sent while going through the shopkeeper's own stock lines, and the 2003 server never sent a purchase confirmation. SSO does the same. The thanks is a bare "Thanks for the business!" with no shopkeeper name, and a purchase is confirmed only through the inventory update.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`, `SHOP_TEXT`)
-- **Pinned by:** `kept bug: BUY without SEL pays but says nothing` (packages/server/tests/economy.test.ts)
-
-### Selling Trout also restocks Trout Fillet and thanks you twice
-- **What you notice:** sell Trout or Catfish to Akadius, Swordfish or Squid to Krista, or Squid to Lir, and the shop also restocks Trout Fillet, Catfish Sandwich, Swordfish Steak or Squid Platter. "Thanks for the business!" prints twice.
-- **In 1.6 and SSO:** after a sale, every stock line that merely starts with the sold item's name gets the count added and sends its own thanks. SSO matches the same way and prints the same two lines.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcSell`)
-- **Pinned by:** `kept bug: selling Trout bumps Trout Fillet's stock too and thanks twice` (packages/server/tests/economy.test.ts)
-
-### Shopkeeper refusals leave a blank where their name should be
-- **What you notice:** when a shopkeeper is out of stock or cannot afford what you sell, the line starts with a gap instead of their name: ` says "Sorry but I'm out of that particular item."` or ` says "I'm sorry but I can't afford to buy that."`
-- **In 1.6 and SSO:** 1.6 took the name from a spot on the shop screen that is empty in every game screen, so the name came out blank. SSO prints the same lines with no name.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`SHOP_TEXT`, `npcBuy`, `npcSell`)
-- **Pinned by:** `count over stock: ' says "Sorry but I'm out of that particular item."', blank name`; `an NPC whose gold would go negative: ' says "I'm sorry but I can't afford to buy that."'` (packages/server/tests/economy.test.ts)
-
-### A full bag lets you buy a Pie because it holds an Orc Pot Pie
-- **What you notice:** buy a Pie from Amber with a full bag that holds an "Orc Pot Pie" and the shop lets the purchase go through, yet you get no Pie. You keep your gold and your bag as they were, but Amber's stock drops by one and her gold goes up.
-- **In 1.6 and SSO:** the "is there room" test lets a full bag pass when its text merely contains the item's name, but adding to the bag only stacks on an exact name. So nothing is added and the buyer's file is not saved, while Amber's file is. SSO does the same.
-- **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
-- **Pinned by:** `kept bug: a full bag with 'Orc Pot Pie' passes for 'Pie'; InvAdd adds nothing and keeps the gold, but Amber's stock and gold change` (packages/server/tests/economy.test.ts)
-
-### A failed bank deposit or withdrawal says nothing
-- **What you notice:** trying to deposit or withdraw more than you have is met with silence. When it does work, both a deposit and a withdrawal reply "You now have N gold in the bank.", so a withdrawal reads like a deposit.
-- **In 1.6 and SSO:** the two failure cases exit with no message, and both success paths send the same deposit reply; the withdrawal messages were never sent. SSO has the same messages and the same silences.
-- **In the code:** `packages/server/src/systems/economy/bank.ts` (`runBank`, `BANK_TEXT`)
-- **Pinned by:** `kept bug: the texts; failures are silent; withdraw says 'You now have' too` (packages/server/tests/economy.test.ts)
-
-### The bank works with a banker on the map roster, dead or not
-- **What you notice:** on a map whose roster includes the banker Cril or Andero, the bank commands work whether or not the banker has spawned or is alive. On any other map you read "You cannot bank here!"
-- **In 1.6 and SSO:** the bank check looks at the data of the four roster NPCs loaded when you entered the map, and that data is not cleared by a death. SSO lets the bank work while a banker NPC is in your map's roster.
-- **In the code:** `packages/server/src/systems/economy/intents.ts` (`canBank`, `bankChat`)
-- **Pinned by:** `kept bug: the banker only has to be in the map's roster, alive or not; else 'You cannot bank here!'` (packages/server/tests/economy.test.ts)
-
-### The shopkeeper's gold thanks is missing its closing quote
-- **What you notice:** hand gold to an NPC and your chat shows "*** Offering the <n> gold  to <Name>." (two spaces before "to"), then `<Name> says "Thanks for the gold!` with no closing quote mark.
-- **In 1.6 and SSO:** the NPC's reply is built without the closing quote, after the client's offer line with its double space. SSO prints the same two lines.
-- **In the code:** `packages/server/src/systems/economy/intents.ts` (`giveGoldToNpc`); `packages/server/src/systems/monsters/npc.ts` (`NPC_TEXT`)
-- **Pinned by:** `the offer line, then 'Thanks for the gold!' with no closing quote; the NPC's GLD grows` (packages/server/tests/npcs-trade.test.ts)
-
-### A trade offer locks once sent, and only the starter can accept
-- **What you notice:** once you press Trade your amounts become read-only and the button hides. Only the player who started the trade has an Accept button, so the partner agrees by pressing their own Trade. A completed trade prints nothing, and if the partner cancels, nothing is printed for the partner.
-- **In 1.6 and SSO:** the trade window works this way in 1.6. SSO has the same flow, held by the server.
-- **In the code:** `packages/server/src/systems/economy/trade.ts` (`offerTrade`, `acceptTrade`, `cancelTrade`); `packages/client/src/ui/trade.ts` (`createTradeWindow`)
-- **Pinned by:** `A offers, B sees it and offers, A accepts: one move, no success text`; `Cancel: A hears 'You cancel the trade.', B 'Trade cancelled.'; B's Cancel is silent for B` (packages/server/tests/npcs-trade.test.ts)
-
-### Withdrawing into a full bag can destroy the item
-- **What you notice:** you withdraw a Pie from a chest into a full bag that holds an "Orc Pot Pie". The bag looks like it has room, the Pie is removed from the chest, and it never arrives.
-- **In 1.6 and SSO:** the room check treats any bag text containing the item name followed by a dash as having room, but adding only stacks on an exact name. So nothing is added, yet the line is still deleted from the chest. SSO does the same.
-- **In the code:** `packages/server/src/systems/economy/vault.ts` (`withdrawVault`); `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
-- **Pinned by:** `kept bug: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' destroys it` (packages/server/tests/economy.test.ts)
-
-### After one withdrawal you can walk away with the vault open
-- **What you notice:** you open your vault and your keys lock. While it is locked your bag ignores clicks, so you cannot deposit anything. One withdrawal frees you, and then you can walk away and keep withdrawing. A withdrawal prints nothing, while a deposit prints "You drop a <item> into the container." before the capacity check.
-- **In 1.6 and SSO:** opening sets the key lock, the window's OK clears it, and only CANCEL closes the window. SSO has the same lock, the same remote withdrawal from your personal vault and the same texts.
-- **In the code:** `packages/server/src/systems/economy/vault.ts` (`openVault`, `withdrawVault`, `depositVault`)
-- **Pinned by:** `withdraw ends the key lock and stacks on an exact name`KeyLockOut`withdraw ends the key lock and stacks on an exact name`; `deposit: the line is printed before the capacity test; containers refused` (packages/server/tests/economy.test.ts)
-
-### Removing a player shop item deletes every line that mentions it
-- **What you notice:** removing "Apple" from your shop also removes "Apple Pie", and any profile line that mentions apples. Typing a single letter such as "g" removes every line containing that letter, the gold line included. A line with stock refuses the whole removal.
-- **In 1.6 and SSO:** the removal rebuilds the first 30 lines without every non-empty line containing the name, whatever kind of line it is; empty lines and lines past 30 are lost. A matching stock line that still holds stock refuses everything. SSO does the same, reading stock only from the item lines; ownership is kept by id, so dropping the owner line costs the owner nothing.
-- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`removeItem`)
-- **Pinned by:** `RemoveItem: not selling, in stock, removed`; `kept bug: removing Apple takes Apple Pie with it` (packages/shared/tests/economy/playershop.test.ts)
-
-### Pricing a player shop item deletes every line that mentions it
-- **What you notice:** setting a price for an item deletes every other line in your shop that contains its name, whatever kind of line. Setting "Fish" also drops "Fish Sticks" and takes its stock, and an owner called "Alex" who sets "Ale" loses his own owner line. Empty lines and lines past 30 are lost too.
-- **In 1.6 and SSO:** the price command rebuilds the first 30 lines without every non-empty line containing the item and carries over the last matching stock line's stock. Then it adds a sell line and a buy line with the name as you typed it. SSO does the same, but ownership is kept by id, so Alex keeps his shop.
-- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`setPrices`)
-- **Pinned by:** `kept bug: SetPrices drops every line containing the item, OWN| included`; `kept bug: the last matching SEL line's stock moves to the new line`; `kept bug: empty lines and lines past 30 are lost` (packages/shared/tests/economy/playershop.test.ts)
-
-### A player shop's ten-item limit counts lines in the first 30 only
-- **What you notice:** a player shop refuses a new item once ten sell lines sit among its first 30 lines. Re-pricing an item already in the file is not new and still works.
-- **In 1.6 and SSO:** a new item is refused when ten of lines 1-30 are sell lines; an item whose name already starts a sell line counts as already there. SSO counts the same way.
-- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`setPrices`, `SHOP_LINES`)
-- **Pinned by:** `max 10: ten SEL lines refuse a new item, not a re-priced one` (packages/shared/tests/economy/playershop.test.ts)
-
-### The seventh item in a player shop can never be bought
-- **What you notice:** a player shop can only ever sell six items. The seventh is listed, but trying to buy it gives the out-of-stock line. Re-pricing an item also moves it to the end of the list.
-- **In 1.6 and SSO:** a new shop starts with the Apple on line 6 and each priced item adds two lines, so the seventh sell line is line 18, past the buy routine's line-17 limit. SSO does the same.
-- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`setPrices`); `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
-- **Pinned by:** `kept bug: the seventh item lands on line 18, past NPCBuy's line 17` (packages/shared/tests/economy/playershop.test.ts); `kept bug: the seventh item, on line 18, answers out of stock` (packages/server/tests/playershop-db.test.ts)
-
-### Shop commands are said aloud and also work outside the shop
-- **What you notice:** typing a shop command (setting a price, say) says it to the whole room as ordinary chat before the shopkeeper answers. Standing deeper in a house, where chat itself is refused, the command still runs.
-- **In 1.6 and SSO:** the command check runs after the line is sent as chat, on every plain line. SSO does the same, and it also runs the command when SSO's chat cooldown refuses the line.
-- **In the code:** `packages/server/src/systems/economy/playershop.ts` (`shopCommand`)
-- **Pinned by:** `a command is said first, then answered; at y > 10 the line is refused and the command still runs` (packages/server/tests/playershop-db.test.ts)
-
-### A player shop's stock list is said to everyone in the room
-- **What you notice:** when the owner asks for the stock, everyone in the shop reads the stock lines, quieted if they stand deeper in a house. The register line goes to the owner only.
-- **In 1.6 and SSO:** the stock lines are sent so that the owner's client repeats them to the room as one line of chat. SSO does the same.
-- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`shopStockLines`)
-- **Pinned by:** `Inventory: the till to the owner; the stock said to the room, muffled at y > 10` (packages/server/tests/playershop-db.test.ts)
-
-### The register line lacks a closing quote and every item gets an s
-- **What you notice:** the shopkeeper's register line `<N> says "I have <g> gold in the register...` has no closing quote. Each stock line adds a plain "s" to the item's name unless the stock is 1, so you read "Chunk of Irons" and "Fishs".
-- **In 1.6 and SSO:** the texts are built that way. SSO prints the same texts.
-- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`SHOP_TEXT`)
-- **Pinned by:** `kept bug: the till line has no closing quote; every item gets an s` (packages/shared/tests/economy/playershop.test.ts)
-
-### The cauldron fizzles on every deposit that makes nothing
-- **What you notice:** each time you put something in a cauldron that does not complete a recipe, even the first ingredient, you read "The cauldron bubbles...but then fizzles out." Nothing is lost.
-- **In 1.6 and SSO:** every deposit runs the recipe check and a miss sends that message. SSO does the same.
-- **In the code:** `packages/server/src/systems/economy/containers.ts` (`depositContainer`); `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`)
-- **Pinned by:** `kept bug: the cauldron fizzles on every deposit that completes nothing` (packages/server/tests/craft.test.ts)
-
-### Storage on a Crate or Cauldron opens with no message
-- **What you notice:** pressing Storage on a Crate or Cauldron opens the window without any line in chat, while a Cabinet or Chest says something.
-- **In 1.6 and SSO:** the button builds its text only for a Cabinet or a Chest, then prints the unset text anyway. SSO opens the window with no line.
-- **In the code:** `packages/server/src/systems/economy/containers.ts` (`storageIntent`)
-- **Pinned by:** `kept bug: Storage on a Crate or Cauldron prints nothing; a Cabinet says so` (packages/server/tests/craft.test.ts)
-
-### Player shops cannot stock crystals
-- **What you notice:** a player shop never accepts crystals for sale, whatever the colour.
-- **In 1.6 and SSO:** the shop's allow-list tests for exact singular names such as "Blue Crystal", but every bag and NPC item is the plural "<colour> Crystals", so none is ever accepted. SSO uses the same allow-list with no alias.
-- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`onShopWhitelist`)
-- **Pinned by:** `set: the whitelist, case ignored, the name as typed` (packages/shared/tests/economy/playershop.test.ts)
-
-### Crystals taken out of a vault turn into "Crystals "
-- **What you notice:** crystals you withdraw from a vault come back as a worthless item called "Crystals ", whatever their colour. The vault line is deleted.
-- **In 1.6 and SSO:** a vault line such as "Blue Crystals" contains " Crystals", so the withdrawal splits it on spaces and joins words 2 and 3, giving "Crystals ". SSO makes the same name change on withdrawal.
-- **In the code:** `packages/server/src/systems/economy/vault.ts` (`withdrawVault`); `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
-- **Pinned by:** `kept bug: a crystal line comes back as 'Crystals '` (packages/server/tests/economy.test.ts)
-
-### Quest replies are private for one NPC slot and public for the rest
-- **What you notice:** Ask for a quest and the NPCs answer: the first NPC's reply is heard only by you, while the replies from the other three slots are heard by everyone on the map. The first NPC's "Sorry..." line also goes to the whole map.
-- **In 1.6 and SSO:** 1.6 sent slot 1 as a private line and slots 2-4 to the room. SSO uses the same audiences, including the "Sorry..." line that reaches the map.
-- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`sayQuest`), `packages/server/src/systems/economy/quests.ts` (`askForQuest`)
-- **Pinned by:** `kept bug: quest reply audience differs by NPC slot; no closing quote` (packages/shared/tests/social/factions.test.ts)
-
-### Handing in a head takes the first head in your bag
-- **What you notice:** Give a leader a head and the one that goes is the first head in your bag, not necessarily the one you picked.
-- **In 1.6 and SSO:** 1.6 checks that the slot you named holds a head, then takes one from the first slot that contains it. SSO does the same.
-- **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`)
-- **Pinned by:** `kept bug: turn-in takes the first head in the bag, not the one given` (packages/server/tests/factions.test.ts)
-
-### A quest line matches by substring and the last match wins
-- **What you notice:** handing an NPC an item can pay the reward of a different quest line whose text happens to contain yours. Giving Stephie a Fish pays her Fishle reward.
-- **In 1.6 and SSO:** the quest giver takes the last of the first 40 quest lines that contains "<NPC>:<item>". SSO does the same over the server's quest lines.
-- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`questMatch`)
-- **Pinned by:** `kept bug: quest lines match by substring, last match wins` (packages/shared/tests/social/factions.test.ts)
-
-### Handing in a quest item renames the stack it came from
-- **What you notice:** a quest turn-in can change the name of a stack: a Gold Fish stack given as Fish becomes a Fish stack. The reward renames the stack it is added to in the same way.
-- **In 1.6 and SSO:** the given item comes off the first slot whose text contains the item's name, and the reward goes onto the first slot containing the reward's name. Each slot is rewritten under the name that was used. SSO does the same.
-- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`questTake`, `questReward`)
-- **Pinned by:** `taking one renames the stack it came from` (packages/shared/tests/social/factions.test.ts)
-
-### A quest reward to a full bag overwrites what you handed over
-- **What you notice:** with a full bag and no stack to add the reward to, the reward replaces what is left of the stack you just gave from.
-- **In 1.6 and SSO:** with no matching stack and no empty slot, the routine still holds the slot the given item came from, so the reward overwrites it. SSO does the same.
-- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`questReward`)
-- **Pinned by:** `kept bug: a quest reward to a full bag replaces what you gave from` (packages/shared/tests/social/factions.test.ts)
-
-### A new quest roll of 29 gives a quest that no NPC will answer
-- **What you notice:** now and then a new quest is assigned that no NPC will accept, for example the archived `:Steel Key:Trumpet`.
-- **In 1.6 and SSO:** the NPC is picked by a 44-way roll that has no NPC for 29 and picks the same NPC for two rolls, so a reroll can write a line that starts with a bare colon. SSO makes the same rolls.
-- **In the code:** `packages/shared/src/rules/economy/quests.ts` (`findNewQuest`)
-- **Pinned by:** `FindNewQuest: random(44), random(20), random(20); roll 29 names nobody` (packages/shared/tests/social/factions.test.ts)
+No kept bugs (all thirty-three former entries were fixed; see [economy differences](divergences.md#economy)).
 
 ## housing
 
@@ -1016,10 +820,10 @@ No kept bugs (twenty-seven former entries were fixed, and the alchemy sand entry
 - **Pinned by:** `kept bug: a Warrior who joins at 50-59 HP is exiled on the next death` (packages/shared/tests/social/factions.test.ts)
 
 ### Faction leader and quest lines lack their closing quote
-- **What you notice:** The three lines a faction leader says, and a quest giver's "Bring me a…" line, end without the closing quote mark, and "Sorry but I don't need anything right now" has no full stop.
+- **What you notice:** The three lines a faction leader says end without the closing quote mark, and a quest giver's "Sorry but I don't need anything right now" has no full stop. (The quest giver's "Bring me a…" line now closes its quote; see [economy differences](divergences.md#economy).)
 - **In 1.6 and SSO:** 1.6 left these texts that way. SSO uses the same texts.
 - **In the code:** `packages/shared/src/rules/social/factions.ts` (`sayFaction`), `packages/shared/src/rules/economy/quests.ts` (`sayQuest`)
-- **Pinned by:** `kept bug: faction leader lines lack their closing quote`; `kept bug: quest reply audience differs by NPC slot; no closing quote` (packages/shared/tests/social/factions.test.ts)
+- **Pinned by:** `kept bug: faction leader lines lack their closing quote`; `bug fixed: every quest reply is heard by the map and closes its quote` (packages/shared/tests/social/factions.test.ts)
 
 ### Closing your own bio strips its periods and semicolons
 - **What you notice:** Closing your own Bio window removes periods and semicolons from your profile text, even if you did not edit it. A colon or slash that remains refuses the save with "You can't have a : in your profile!" (or the same with a slash).

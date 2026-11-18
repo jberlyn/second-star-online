@@ -185,8 +185,8 @@
       "text": "{NPC} says \"I've been searching for one of my lost orbs forever. You have done well in finding it. These hold the true secrets of the ninja. Take this as a reward, and symbol of your loyalty to our cause.\""
     },
     "say": {
-      "rule": "SayQuest n1:n2:n3:n4 (on-screen slots 180-183, less names the MONSTER field contains, Pig and Cow): per name, if Quests.txt contains it, one 'bring' per line 1-40 containing it (slot 1 by sqa, slots 2-4 by aqs); else 'nothing' by aqs. 'bring' has no closing quote; 'nothing' no full stop.",
-      "bring": "{NPC} says \"Bring me a {ITEM} quickly and I'll reward you.",
+      "rule": "SayQuest n1:n2:n3:n4 (on-screen slots 180-183, less names the MONSTER field contains, Pig and Cow): per name, if Quests.txt contains it, one 'bring' per line 1-40 containing it (slot 1 by sqa, slots 2-4 by aqs); else 'nothing' by aqs. 'bring' has no closing quote; 'nothing' no full stop. SSO: one 'bring' per line naming the NPC exactly, every reply by aqs, and 'bring' closes its quote.",
+      "bring": "{NPC} says \"Bring me a {ITEM} quickly and I'll reward you.\"",
       "nothing": "{NPC} says \"Sorry but I don't need anything right now\""
     }
   },

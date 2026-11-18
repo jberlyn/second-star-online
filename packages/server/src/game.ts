@@ -16,6 +16,7 @@ import {
   creationError,
   type EditorMap,
   factionIdOf,
+  findNewQuest,
   type InGameMsg,
   invAdd,
   ipKey,
@@ -27,6 +28,7 @@ import {
   PASSWORD_TEXT,
   parseHouseMapName,
   parseMapName,
+  questLineUnanswerable,
   type Role,
   type ServerMsg,
   savedSpellbook,
@@ -444,13 +446,19 @@ export function createGame(deps: GameDeps): Game {
   const quests = loadQuestLines(db);
   if (quests) {
     world.questLines = quests;
-  } else {
-    db.transaction(() => {
-      for (const [i, text] of world.questLines.entries()) {
-        saveQuestLine(db, i + 1, text);
-      }
-    })();
   }
+  // A line that names no NPC (1.6's roll 29, or the archive's ":Steel Key:Trumpet") can never be
+  // answered: it is replaced by a new quest as the lines are loaded or seeded.
+  db.transaction(() => {
+    for (const [i, text] of world.questLines.entries()) {
+      if (questLineUnanswerable(text)) {
+        world.questLines[i] = findNewQuest(rng);
+      }
+      if (!quests || world.questLines[i] !== text) {
+        saveQuestLine(db, i + 1, world.questLines[i] ?? "");
+      }
+    }
+  })();
   // The Assassin's game: nothing seeded, the all-time table starts empty.
   world.assassin = loadAssassinState(db);
   // The High Score Statue: the archive's `highscore.txt` is empty, so it starts empty.
@@ -2057,7 +2065,8 @@ export function createGame(deps: GameDeps): Game {
           deliver(offerTrade(world, p, msg));
           return;
         case "tradeAccept": {
-          const partner = p.trade ? world.trades.get(p.trade)?.b : undefined;
+          const t = p.trade ? world.trades.get(p.trade) : undefined;
+          const partner = t ? (t.a === p.id ? t.b : t.a) : undefined;
           deliver(acceptTrade(world, p));
           const other = partner ? world.players.get(partner) : undefined;
           flushChanged(other ? [p, other] : [p]);

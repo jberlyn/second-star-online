@@ -137,6 +137,8 @@ describe("trade against other moves (conservation)", () => {
     s.as("A", { t: "tradeOpen", id: s.B });
     s.as("A", { t: "tradeOffer", gold: 100, items: [{ slot: 1, qty: 1 }] });
     s.as("B", { t: "tradeOffer", gold: 50, items: [{ slot: 2, qty: 1 }] });
+    // B accepts first, so A's accept is the one that settles.
+    s.as("B", { t: "tradeAccept" });
   };
 
   for (const [name, run] of orders) {
@@ -201,6 +203,7 @@ describe("trade against other moves (conservation)", () => {
     s.as("A", { t: "tradeOpen", id: s.B });
     s.as("A", { t: "tradeOffer", gold: 2 ** 31, items: [] });
     s.as("B", { t: "tradeOffer", gold: 0, items: [] });
+    s.as("B", { t: "tradeAccept" });
     s.as("A", { t: "tradeAccept" });
     await tick(s.server, 1);
     expectConserved(before, sqlTotals(s));
@@ -241,6 +244,7 @@ describe("one player on two connections", () => {
     s.as("A", { t: "tradeOpen", id: s.B });
     s.as("A", { t: "tradeOffer", gold: 100, items: [{ slot: 1, qty: 2 }] });
     s.as("B", { t: "tradeOffer", gold: 0, items: [] });
+    s.as("B", { t: "tradeAccept" });
     const second = await login(s.server, "Alice"); // replaces the first connection
     s.bots.push(second);
     s.as("A", { t: "tradeAccept" });
@@ -254,10 +258,11 @@ describe("the scene really trades", () => {
     s = await scene();
   });
 
-  test("a plain accept moves the gold and the item, and SQL agrees after a re-login", () => {
+  test("both accepting moves the gold and the item, and SQL agrees after a re-login", () => {
     s.as("A", { t: "tradeOpen", id: s.B });
     s.as("A", { t: "tradeOffer", gold: 100, items: [{ slot: 1, qty: 1 }] });
     s.as("B", { t: "tradeOffer", gold: 50, items: [] });
+    s.as("B", { t: "tradeAccept" });
     s.as("A", { t: "tradeAccept" });
     s.relog();
     const gold = (n: string) =>
@@ -387,6 +392,7 @@ describe("a mail send and a trade cut by a disconnect", () => {
         s.as("B", { t: "tradeOffer", gold: 5, items: [] });
       }
       if (step >= 3) {
+        s.as("B", { t: "tradeAccept" });
         s.as("A", { t: "tradeAccept" });
       }
       s.server.game.leave(s.B);

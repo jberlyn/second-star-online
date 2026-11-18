@@ -25,9 +25,9 @@ export const NPC_TEXT = {
   thisIs: (name: string) => `This is a ${name}.`,
   pigFull: "You are carrying too much to pick up the pig!",
   /** The offer line, as 1.6 words it: two spaces before "to". */
-  offerGold: (n: number, name: string) => `*** Offering the ${n} gold  to ${name}.`,
-  /** The thanks line, as 1.6 words it: the closing quote is missing. */
-  thanksGold: (name: string) => `${name} says "Thanks for the gold!`,
+  offerGold: (n: number, name: string) => `*** Offering the ${n} gold to ${name}.`,
+  /** The thanks line (1.6 left off the closing quote). */
+  thanksGold: (name: string) => `${name} says "Thanks for the gold!"`,
 } as const;
 
 /** The pig countdown after a grab and after any `M<k>Cncl` arrives. */

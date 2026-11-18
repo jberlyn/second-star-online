@@ -1,5 +1,6 @@
 /**
- * Golden tests for the player shop rules: each test pins one behaviour of 1.6.
+ * Golden tests for the player shop rules: each test pins one behaviour of 1.6, or a 1.6 bug SSO
+ * fixed ("bug fixed").
  */
 import { describe, expect, test } from "bun:test";
 
@@ -105,9 +106,15 @@ describe("the client's checks (SH)", () => {
     expect(parse("Tolam set Dragon=5,2")).toEqual({ kind: "refused", text: SHOP_TEXT.wrongItem });
     // A space before "=" is part of the name.
     expect(parse("Tolam set Fish =5,2")).toEqual({ kind: "refused", text: SHOP_TEXT.wrongItem });
-    // The singular crystals are listed; no bag item is called that.
+    // Bug fixed: the list names crystals in the singular, and the bag's plural is accepted too.
     expect(onShopWhitelist("Blue Crystal")).toBe(true);
-    expect(onShopWhitelist("Blue Crystals")).toBe(false);
+    expect(onShopWhitelist("Blue Crystals")).toBe(true);
+    expect(onShopWhitelist("white crystals")).toBe(true);
+    expect(parse("Tolam set Red Crystals=30,15")).toMatchObject({
+      kind: "set",
+      item: "Red Crystals",
+    });
+    expect(onShopWhitelist("Crystals")).toBe(false);
   });
 
   test("set: spaces leave the prices, a deleted one skipping the next", () => {
@@ -161,7 +168,7 @@ describe("the server's rules (SV)", () => {
     expect(register(FILE, false, "Tolam", 5).text).toBe(
       `Tolam says "I don't think my boss would like you trying to steal from us."`,
     );
-    expect(shopStockLines(FILE, false, "Tolam")).toEqual({ owner: [], room: [] });
+    expect(shopStockLines(FILE, false, "Tolam")).toEqual([]);
     expect(profile(FILE, false, "Tolam", "x")).toBeNull();
   });
 
@@ -171,28 +178,43 @@ describe("the server's rules (SV)", () => {
     expect(r.lines).toEqual([...FILE, "SEL|fish:5:0", "BUY|fish:2", ""]);
   });
 
-  test("kept bug: SetPrices drops every line containing the item, OWN| included", () => {
+  test("bug fixed: SetPrices touches only the item's own lines; Alex keeps his OWN| line", () => {
     const alex = npcLines(shopkeeperFile("Alex", "Tolam"));
     const r = setPrices(alex, true, "Tolam", "Ale", 5, 2);
-    expect(r.lines?.[0]).toBe("BIO|Name: Tolam");
-    expect(r.lines).not.toContain("OWN|Alex");
+    expect(r.lines).toEqual([...alex, "SEL|Ale:5:0", "BUY|Ale:2", ""]);
   });
 
-  test("kept bug: the last matching SEL line's stock moves to the new line", () => {
+  test("bug fixed: setting Fish leaves Fish Sticks, its stock and its place alone", () => {
     const lines = [...FILE, "SEL|Fish Sticks:9:4", "BUY|Fish Sticks:3"];
     const r = setPrices(lines, true, "Tolam", "Fish", 5, 2);
-    expect(r.lines?.slice(-3)).toEqual(["SEL|Fish:5:4", "BUY|Fish:2", ""]);
-    expect(r.lines?.join("\r")).not.toContain("Fish Sticks");
+    expect(r.lines).toEqual([...lines, "SEL|Fish:5:0", "BUY|Fish:2", ""]);
   });
 
-  test("kept bug: empty lines and lines past 30 are lost", () => {
+  test("bug fixed: re-pricing keeps the item's stock and its place in the list", () => {
+    const lines = [
+      ...FILE.slice(0, 5),
+      "SEL|Apple:2:7",
+      "BUY|Apple:1",
+      "SEL|Fish:5:1",
+      "BUY|Fish:2",
+    ];
+    const r = setPrices(lines, true, "Tolam", "apple", 9, 4);
+    expect(r.lines).toEqual([
+      ...FILE.slice(0, 5),
+      "SEL|Apple:9:7",
+      "BUY|Apple:4",
+      "SEL|Fish:5:1",
+      "BUY|Fish:2",
+    ]);
+  });
+
+  test("bug fixed: empty lines and lines past 30 are kept", () => {
     const lines = [...FILE, "", ...Array.from({ length: 25 }, (_, i) => `RND|line ${i}`)];
     const r = setPrices(lines, true, "Tolam", "Fish", 5, 2);
-    expect(r.lines).toHaveLength(29 + 3);
-    expect(r.lines).not.toContain("RND|line 24");
+    expect(r.lines).toEqual([...lines, "SEL|Fish:5:0", "BUY|Fish:2", ""]);
   });
 
-  test("max 10: ten SEL lines refuse a new item, not a re-priced one", () => {
+  test("bug fixed: max 10 counts every SEL line in the file; a re-priced item is not new", () => {
     const tenth = [...FILE];
     for (const it of ["Bread", "Fish", "Trout", "Carrot", "Corn", "Ale", "Wine", "Torch", "Rope"]) {
       tenth.push(`SEL|${it}:1:0`, `BUY|${it}:1`);
@@ -201,9 +223,17 @@ describe("the server's rules (SV)", () => {
       "Tolam is currently selling the maximum number of items allowed!",
     );
     expect(setPrices(tenth, true, "Tolam", "Bread", 5, 2).lines).not.toBeNull();
+    // Pushed past line 30 by other lines, the ten items still count.
+    const pushed = [...tenth.slice(0, 5), ...Array(30).fill("RND|x"), ...tenth.slice(5)];
+    expect(setPrices(pushed, true, "Tolam", "Shovel", 5, 2).lines).toBeNull();
+    // "Fish" already selling does not make "Fish Sticks" a re-price.
+    const nine = tenth.slice(0, -2);
+    expect(setPrices(nine, true, "Tolam", "Fish Sticks", 5, 2).lines).not.toBeNull();
+    const ten = setPrices(nine, true, "Tolam", "Fish Sticks", 5, 2).lines ?? [];
+    expect(setPrices(ten, true, "Tolam", "Fish Stick", 5, 2).lines).toBeNull();
   });
 
-  test("kept bug: the seventh item lands on line 18, past NPCBuy's line 17", () => {
+  test("the seventh item lands on line 18, where it can be bought", () => {
     let lines: string[] = [...FILE];
     for (const it of ["Bread", "Fish", "Trout", "Carrot", "Corn", "Ale"]) {
       lines = (setPrices(lines, true, "Tolam", it, 1, 1).lines ?? []).filter((l) => l !== "");
@@ -226,12 +256,19 @@ describe("the server's rules (SV)", () => {
     expect(r.lines).toEqual([...FILE.slice(0, 5), ""]);
   });
 
-  test("kept bug: removing Apple takes Apple Pie with it", () => {
-    const lines = [...FILE, "SEL|Apple Pie:4:0", "BUY|Apple Pie:2"];
-    expect(removeItem(lines, true, "Tolam", "Apple").lines).toEqual([...FILE.slice(0, 5), ""]);
-    // Apple Pie's stock stops it.
-    const pie = [...FILE, "SEL|Apple Pie:4:2", "BUY|Apple Pie:2"];
-    expect(removeItem(pie, true, "Tolam", "Apple").lines).toBeNull();
+  test("bug fixed: removing Apple leaves Apple Pie and every other line", () => {
+    const lines = [...FILE, "SEL|Apple Pie:4:2", "BUY|Apple Pie:2"];
+    expect(removeItem(lines, true, "Tolam", "Apple").lines).toEqual([
+      ...FILE.slice(0, 5),
+      "SEL|Apple Pie:4:2",
+      "BUY|Apple Pie:2",
+      "",
+    ]);
+    // A single letter matches no item, so nothing goes, the gold line included.
+    expect(removeItem(lines, true, "Tolam", "g")).toEqual({
+      lines: null,
+      text: `Tolam says "I'm not currently selling that item, boss!"`,
+    });
   });
 
   test("Register moves the till to the owner; below 0 refuses", () => {
@@ -254,16 +291,14 @@ describe("the server's rules (SV)", () => {
     expect(register(none, true, "Tolam", 5)).toMatchObject({ lines: null, paid: 0 });
   });
 
-  test("kept bug: the till line has no closing quote; every item gets an s", () => {
+  test("bug fixed: the till line has its closing quote; the stock lines name each item as it is", () => {
     const lines = [...FILE.slice(0, 5), "SEL|Chunk of Iron:9:3", "SEL|Fish:5:1", "SEL|Bread:2:0"];
-    expect(shopStockLines(lines, true, "Tolam")).toEqual({
-      owner: [`Tolam says "I have 0 gold in the register...`],
-      room: [
-        `Tolam says "I have 3 Chunk of Irons."`,
-        `Tolam says "I have 1 Fish."`,
-        `Tolam says "I have 0 Breads."`,
-      ],
-    });
+    expect(shopStockLines(lines, true, "Tolam")).toEqual([
+      `Tolam says "I have 0 gold in the register..."`,
+      `Tolam says "I have 3 Chunk of Iron in stock."`,
+      `Tolam says "I have 1 Fish in stock."`,
+      `Tolam says "I have 0 Bread in stock."`,
+    ]);
   });
 
   test("Profile rewrites PRO lines and answers even with none", () => {

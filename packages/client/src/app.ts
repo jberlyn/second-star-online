@@ -330,14 +330,17 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         send({ t: "gold", n });
       }),
     sound,
-    canModify: () => !model.loading && model.itemPause === 0 && !model.keyLock,
+    // An open vault or container holds the keys, but the bag still takes clicks so Drop can
+    // store an item in it.
+    canModify: () =>
+      !model.loading && model.itemPause === 0 && (!model.keyLock || model.storageOpen),
     slotClicked: () => {
       shop.clearBusy();
       // A bag click cancels the lens, the film lost.
       paintUi.cancelLens();
       // A bag click leaves placement.
       leavePlacement();
-      return !model.keyLock;
+      return !model.keyLock || model.storageOpen;
     },
     say: (text) => chat.add(text, 0),
   });
@@ -363,12 +366,12 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     sell: (line, count) => send({ t: "sell", line, count }),
     train: (line) => send({ t: "train", line }),
     take: (index) => {
-      // The vault's OK ends the key lock.
-      model.keyLock = false;
+      // The window stays open and the keys stay locked until CANCEL.
       send({ t: "vaultTake", index });
     },
     cancel: () => {
       model.keyLock = false;
+      model.storageOpen = false;
       send({ t: "shopCancel" });
     },
     sound,
@@ -819,6 +822,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         }
         applySnapshot(model, msg);
         closeCasinoOnMapChange(prevMap, msg.map.name, { slots, blackjack, checkers });
+        // A map change closes an open vault or container (the server closed it too).
+        if (model.storageOpen) {
+          shop.close();
+          model.storageOpen = false;
+        }
         // Drawing the map's items clears the key lock.
         model.keyLock = false;
         void playfield.setMap(msg.map).then(() => {
@@ -851,14 +859,22 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         bio.show(msg);
         return;
       case "shop":
+        model.storageOpen = false;
         shop.showList(msg.mode, msg.rows);
         return;
       case "processed":
         shop.processed(msg.ok === true);
         return;
       case "vault":
+        if (msg.closed) {
+          shop.close();
+          model.storageOpen = false;
+          model.keyLock = false;
+          return;
+        }
         if (msg.open) {
           model.keyLock = true; // opening the vault locks the keys
+          model.storageOpen = true;
         }
         shop.showVault(msg.items);
         return;
@@ -967,6 +983,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         shop.close();
         bio.window.close();
         model.keyLock = false;
+        model.storageOpen = false;
         return;
       case "guild":
         if (msg.screen) {
@@ -1135,6 +1152,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     shop.close();
     charMenu.close();
     model.keyLock = false;
+    model.storageOpen = false;
     model.nameTag = null;
     panel.spellbook.disarm();
     model.fx = [];

@@ -99,6 +99,11 @@ export function addSlotFor(bag: Bag, item: string): number {
   return bag.indexOf(null);
 }
 
+/** A bare Crate, Cabinet, Wind Cabinet or Cauldron, which `invAdd` gives its own `#id`. */
+export function isUniqueContainer(item: string): boolean {
+  return anyMatch(itemRulesData.containers.uniqueIds, item);
+}
+
 export type AddResult =
   | { kind: "gold"; amount: number }
   | { kind: "bag"; slot: number; item: string }
@@ -110,17 +115,22 @@ export type AddResult =
  * Gold" adds the first word parsed as an integer in gold, every other item stacks on an exact
  * (case-insensitive) name or takes the lowest empty line. `rng` draws only for containers. A stack
  * is rewritten as `<name>-<total>`, so it takes the incoming spelling: Cuchad's `long sword` turns
- * a `Long Sword` stack into `long sword`.
+ * a `Long Sword` stack into `long sword`. `taken` names a container id already in use: the id is
+ * rolled again while it is (a few tries), so a new container never opens another's storage.
  */
 export function invAdd(
   inv: { bag: Bag; gold: number },
   name: string,
   qty: number,
   rng: Rng,
+  taken?: (item: string) => boolean,
 ): AddResult {
   let item = name;
-  if (anyMatch(itemRulesData.containers.uniqueIds, item)) {
-    item = `${item}#${rng.random(999999)}`;
+  if (isUniqueContainer(item)) {
+    item = `${name}#${rng.random(999999)}`;
+    for (let i = 0; i < 20 && taken?.(item); i++) {
+      item = `${name}#${rng.random(999999)}`;
+    }
   }
   if (isGoldName(item)) {
     const amount = leadingInteger(item);

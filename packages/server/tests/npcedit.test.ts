@@ -119,11 +119,13 @@ describe("the NPC file store (packages/data npcfiles)", () => {
     }
   });
 
-  test("ledgers: GLD| below line 80 counts as no GLD| for buying and selling", () => {
+  test("bug fixed: ledgers: GLD| counts wherever it is, and no GLD| is a till of 0", () => {
     const store = setup([]).world.npcs;
     const lines = [...Array.from({ length: 80 }, () => "BIO|x"), "GLD|5", "SEL|Apple:10:3"];
     const f = setNpcFile(store, "Amber", lines.join("\r"));
-    expect(ledgerFromTemplate(f)).toMatchObject({ gold: null, goldLine: 81 });
+    expect(ledgerFromTemplate(f)).toMatchObject({ gold: 5, goldLine: 81 });
+    const none = setNpcFile(store, "Merius", "SEL|Damaged Armor:10:999");
+    expect(ledgerFromTemplate(none)).toMatchObject({ gold: 0, goldLine: null });
   });
 });
 
@@ -238,13 +240,13 @@ describe("SAVE", () => {
     expect(r.save?.text.split("\r")).toHaveLength(23);
     expect(r.save?.previous).toContain("GLD|1"); // LOAD's view of the old file, live gold
     expect(world.shops.has("Amber")).toBe(false);
-    expect(npcFileNamed(world.npcs, "Amber")).toMatchObject({ gold: 9, chatter: [] });
+    expect(npcFileNamed(world.npcs, "Amber")).toMatchObject({ gold: 9, chatter: ["Hello"] });
     expect(p.bio).toBeNull();
     expect(p.keyLock).toBe(false);
     expect(r.out).toContainEqual({ to: "p", msg: { t: "npcClosed" } });
     expect(r.out.at(-1)?.msg).toEqual({
       t: "alert",
-      text: "NPC has been successfully saved.\nLine 21: RND| lines after line 20 are never said.\nLine 22: from line 17 on, a SEL| line is always out of stock.",
+      text: "NPC has been successfully saved.",
     });
   });
 
@@ -266,7 +268,7 @@ describe("SAVE", () => {
     expect(npcData(world.npcs, "Oraku")?.bio).toEqual(["Name: Oraku"]);
   });
 
-  test("gold given lands only on a GLD| line among the first 60", () => {
+  test("bug fixed: gold given goes into the till wherever GLD| is, or into a till from 0 without one", () => {
     const { world, map, p, i } = scene();
     openNpcEditor(world, i, casino);
     stand(map, 1, "Amber", 5, 4);
@@ -297,7 +299,7 @@ describe("SAVE", () => {
       [...Array.from({ length: 60 }, () => "BIO|x"), "GLD|50"].join("\n"),
       ledgerOf(world),
     );
-    expect(give(p)).toBe(50);
+    expect(give(p)).toBe(60);
     saveNpc(
       world,
       i,
@@ -306,6 +308,8 @@ describe("SAVE", () => {
       ledgerOf(world),
     );
     expect(give(p)).toBe(60);
+    saveNpc(world, i, "Amber", "BIO|x", ledgerOf(world));
+    expect(give(p)).toBe(10);
   });
 });
 

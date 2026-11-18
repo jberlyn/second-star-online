@@ -208,15 +208,15 @@ describe("RND chatter", () => {
 });
 
 describe("gold to an NPC", () => {
-  test("the offer line, then 'Thanks for the gold!' with no closing quote; the NPC's GLD grows", () => {
+  test("bug fixed: the offer line, then 'Thanks for the gold!' with its closing quote; the NPC's GLD grows", () => {
     const s = scene();
     const p = s.join("Al", 6, 4);
     p.char.gold = 100;
     s.put(1, "Akadius", 6, 2); // two tiles ahead
     const out = goldIntent(s.ctx(), s.room(), p, 30);
     expect(chat(out, "Al")).toEqual([
-      "*** Offering the 30 gold  to Akadius.",
-      'Akadius says "Thanks for the gold!',
+      "*** Offering the 30 gold to Akadius.",
+      'Akadius says "Thanks for the gold!"',
     ]);
     expect(p.char.gold).toBe(70);
     expect(s.world.shops.get("Akadius")?.gold).toBe(294825 + 30);
@@ -245,7 +245,7 @@ describe("trade", () => {
     return { s, a, b };
   };
 
-  test("A offers, B sees it and offers, A accepts: one move, no success text", () => {
+  test("bug fixed: A offers, B offers, both accept: one move, and both are told it is complete", () => {
     const { s, a, b } = two();
     expect(chat(openTrade(s.world, a, "A"), "A")).toEqual(["You can't trade with yourself!"]);
     openTrade(s.world, a, "B");
@@ -264,17 +264,23 @@ describe("trade", () => {
         partner: "A",
         mine: null,
         theirs: { gold: 100, items: [{ item: "Apple", qty: 5 }] },
+        mineAccepted: false,
+        theirsAccepted: false,
       },
     });
     out = offerTrade(s.world, b, { t: "tradeOffer", gold: 0, items: [{ slot: 3, qty: 1 }] });
     expect(chat(out, "A")).toEqual([
       "B has selected the items to trade. Accept or cancel the trade.",
     ]);
-    // B cannot accept.
+    // B accepts first; nothing moves until A does too.
+    out = acceptTrade(s.world, b);
+    expect(chat(out, "B")).toEqual(["You accept the trade..."]);
+    expect(chat(out, "A")).toEqual(["B accepts the trade..."]);
+    expect(a.char.gold).toBe(100);
     expect(acceptTrade(s.world, b)).toEqual([]);
     out = acceptTrade(s.world, a);
-    expect(chat(out, "A")).toEqual(["You accept the trade..."]);
-    expect(chat(out, "B")).toEqual(["A accepts the trade..."]);
+    expect(chat(out, "A")).toEqual(["You accept the trade...", "The trade is complete."]);
+    expect(chat(out, "B")).toEqual(["A accepts the trade...", "The trade is complete."]);
     expect(a.char.gold).toBe(0);
     expect(b.char.gold).toBe(100);
     expect(a.char.bag[0]).toEqual({ item: "Knife", qty: 1 });
@@ -283,19 +289,41 @@ describe("trade", () => {
     expect(b.trade).toBeNull();
   });
 
+  test("bug fixed: either side can change its offer, which clears both acceptances", () => {
+    const { s, a, b } = two();
+    openTrade(s.world, a, "B");
+    offerTrade(s.world, a, { t: "tradeOffer", gold: 10, items: [] });
+    offerTrade(s.world, b, { t: "tradeOffer", gold: 0, items: [{ slot: 3, qty: 1 }] });
+    acceptTrade(s.world, b);
+    // A raises the offer: B's acceptance is cleared and B is told.
+    const out = offerTrade(s.world, a, { t: "tradeOffer", gold: 30, items: [] });
+    expect(chat(out, "B")).toEqual(["A has changed the offer. Check it before you accept."]);
+    expect(out.find((o) => o.to === "B" && o.msg.t === "trade")?.msg).toMatchObject({
+      trade: { theirs: { gold: 30 }, mineAccepted: false },
+    });
+    acceptTrade(s.world, a);
+    expect(a.char.gold).toBe(100);
+    acceptTrade(s.world, b);
+    expect(a.char.gold).toBe(70);
+    expect(b.char.gold).toBe(30);
+    expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 5 });
+    expect(a.char.bag[1]).toEqual({ item: "Knife", qty: 1 });
+  });
+
   test("a failed move changes nothing and tells both", () => {
     const { s, a, b } = two();
     openTrade(s.world, a, "B");
     offerTrade(s.world, a, { t: "tradeOffer", gold: 0, items: [{ slot: 1, qty: 1 }] });
     offerTrade(s.world, b, { t: "tradeOffer", gold: 0, items: [] });
     b.char.bag = Array.from({ length: 15 }, (_, i) => ({ item: `Rock${i}`, qty: 1 }));
+    acceptTrade(s.world, b);
     const out = acceptTrade(s.world, a);
     expect(chat(out, "B")).toContain("There was a problem with the transaction. Try again!");
     expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 5 });
     expect(settle(a.char, b.char, { gold: 101, items: [] }, { gold: 0, items: [] })).toBeNull();
   });
 
-  test("Cancel: A hears 'You cancel the trade.', B 'Trade cancelled.'; B's Cancel is silent for B", () => {
+  test("bug fixed: Cancel: whoever cancels hears 'You cancel the trade.', the partner 'Trade cancelled.'", () => {
     const { s, a, b } = two();
     openTrade(s.world, a, "B");
     offerTrade(s.world, a, { t: "tradeOffer", gold: 1, items: [] });
@@ -305,7 +333,7 @@ describe("trade", () => {
     openTrade(s.world, a, "B");
     offerTrade(s.world, a, { t: "tradeOffer", gold: 1, items: [] });
     out = cancelTrade(s.world, b);
-    expect(chat(out, "B")).toEqual([]);
+    expect(chat(out, "B")).toEqual(["You cancel the trade."]);
     expect(chat(out, "A")).toEqual(["Trade cancelled."]);
   });
 

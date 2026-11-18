@@ -2,30 +2,17 @@
  * NPC files (`DAT/NPC/<name>.txt`) as the 1.6 readers see them, and the NPC editor's rules ("NPC
  * editor").
  *
- * A file is lines of `TAG|data` separated by RETURN (the original reader split on CR only). Each
- * reader looks at its own window of lines:
- * - buying: `SEL|` and `GLD|` among lines 1-80 (the NPC buy handler); selling: `GLD|`
- *   among 1-80;
- * - gold given to an NPC: `GLD|` among 1-60 (giving gold to an NPC);
- * - monster drops: `INV|` among 1-80 (the monster loot routine);
- * - chatter: `RND|` among 1-20;
- * - the Bio window: `BIO|`/`PRO|` among 1-100;
- * - `FLG|`, `SPL|` and `BNK|`: the whole file (`contains`). An empty file reads EMPTY: the NPC
- *   never moves and opens no Bio.
+ * A file is lines of `TAG|data` separated by RETURN (the original reader split on CR only), at
+ * most `NPC_MAX_LINES` of them. Every reader reads the whole file. 1.6's readers each looked at a
+ * window of lines: buying and selling 1-80, gold given 1-60, monster drops (`INV|`) 1-80, chatter
+ * (`RND|`) 1-20 and the Bio 1-100, and a line past its window did nothing; SSO drops the windows.
+ * With no `GLD|` line the shopkeeper's till starts at 0. `FLG|`, `SPL|` and `BNK|` are found by
+ * `contains`. An empty file reads EMPTY: the NPC never moves and opens no Bio.
  */
 import { classesData, itemsData, monstersData } from "@secondstaronline/data";
 
 import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
 import { parseTrn } from "../progression/promotion.ts";
-
-/** The line windows above. */
-export const NPC_WINDOW = {
-  buy: 80,
-  giftGold: 60,
-  loot: 80,
-  chatter: 20,
-  bio: 100,
-} as const;
 
 /** The longest file the editor shows and saves (the NPC editor's display routine). */
 export const NPC_MAX_LINES = 100;
@@ -92,7 +79,7 @@ export interface NpcFile {
   flags: string[];
   /** `SPL|` lines, whole. */
   spells: string[];
-  /** `INV|` lines among 1-80, in file order (the quantity is part of the name). */
+  /** `INV|` lines, in file order (the quantity is part of the name). */
   loot: { item: string; oneIn: number }[];
   /** The file is empty: EMPTY NPC data. */
   empty: boolean;
@@ -135,9 +122,8 @@ export function parseNpcFile(name: string, text: string): NpcFile {
   };
   lines.forEach((l, i) => {
     const line = i + 1;
-    // The monster loot routine tests whether lines 1-80 contain "INV|" and reads the part after
-    // "|".
-    if (line <= NPC_WINDOW.loot && lingoContains(l, "INV|")) {
+    // The monster loot routine tests whether a line contains "INV|" and reads the part after "|".
+    if (lingoContains(l, "INV|")) {
       const parts = (l.split("|")[1] ?? "").split(":");
       f.loot.push({ item: parts[0] ?? "", oneIn: int(parts[1]) ?? 0 });
     }
@@ -150,19 +136,13 @@ export function parseNpcFile(name: string, text: string): NpcFile {
     const parts = data.split(":");
     switch (tag) {
       case "BIO":
-        if (line <= NPC_WINDOW.bio) {
-          f.bio.push(data);
-        }
+        f.bio.push(data);
         break;
       case "PRO":
-        if (line <= NPC_WINDOW.bio) {
-          f.profile.push(data);
-        }
+        f.profile.push(data);
         break;
       case "RND":
-        if (line <= NPC_WINDOW.chatter) {
-          f.chatter.push(data);
-        }
+        f.chatter.push(data);
         break;
       case "SEL":
         f.sells.push({
@@ -235,6 +215,12 @@ export function liveNpcText(f: NpcFile, ledger: LedgerView | null): string {
   }
   if (f.goldLine !== null && ledger.gold !== null && ledger.gold !== f.gold) {
     lines[f.goldLine - 1] = `GLD|${ledger.gold}`;
+  } else if (f.goldLine === null && ledger.gold !== null && ledger.gold !== 0) {
+    // A shopkeeper without a GLD| line has a till from 0; once it holds gold the file shows it.
+    while (lines.length > 0 && lines[lines.length - 1] === "") {
+      lines.pop();
+    }
+    lines.push(`GLD|${ledger.gold}`);
   }
   return lines.join("\r");
 }
@@ -365,11 +351,8 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (!count(p[1], 0) || !count(p[2], 0)) {
           return fail(n, "price and stock are whole numbers from 0.");
         }
-        if (n > NPC_WINDOW.buy) {
-          warnings.push(`Line ${n}: SEL| lines after line ${NPC_WINDOW.buy} can never be bought.`);
-        } else if (n >= 17 && !lingoContains(p[0] ?? "", "Crystal")) {
-          warnings.push(`Line ${n}: from line 17 on, a SEL| line is always out of stock.`);
-        }
+        // Every SEL| line can be bought, wherever it is (1.6 could not buy a non-crystal line
+        // from line 17, nor any line after 80).
         break;
       }
       case "BUY":
@@ -391,13 +374,6 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (!count(data, 0)) {
           return fail(n, "GLD|<gold>, a whole number from 0.");
         }
-        if (n > NPC_WINDOW.buy) {
-          warnings.push(
-            `Line ${n}: GLD| after line ${NPC_WINDOW.buy}: goods are free and sales are unpaid.`,
-          );
-        } else if (n > NPC_WINDOW.giftGold) {
-          warnings.push(`Line ${n}: GLD| after line ${NPC_WINDOW.giftGold}: gold given is lost.`);
-        }
         break;
       case "INV":
         if (p.length !== 2) {
@@ -409,9 +385,6 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (!count(p[1], 1)) {
           return fail(n, "the chance is a whole number from 1.");
         }
-        if (n > NPC_WINDOW.loot) {
-          warnings.push(`Line ${n}: INV| lines after line ${NPC_WINDOW.loot} never drop.`);
-        }
         break;
       case "TRN":
         if (p.length !== 2 || (p[0] ?? "") === "") {
@@ -422,11 +395,6 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         }
         if (!classesData.classes.some((c) => c.promotion && lingoEq(c.name, p[0] ?? ""))) {
           warnings.push(`Line ${n}: no class "${p[0]}" can be trained: 1.6 has no rule for it.`);
-        }
-        break;
-      case "RND":
-        if (n > NPC_WINDOW.chatter) {
-          warnings.push(`Line ${n}: RND| lines after line ${NPC_WINDOW.chatter} are never said.`);
         }
         break;
       case "FLG":

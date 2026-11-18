@@ -335,18 +335,12 @@ function cauldron(name = "Cauldron#7") {
 }
 
 describe("the Cauldron", () => {
-  test("kept bug: the cauldron fizzles on every deposit that completes nothing", () => {
+  test("bug fixed: a deposit that completes nothing does not fizzle", () => {
     const c = cauldron();
     c.a.char.bag[0] = { item: "Chunk of Star", qty: 2 };
     c.a.char.bag[1] = { item: "Pie", qty: 1 };
-    expect(lines(c.drop(1), "a")).toEqual([
-      "You drop a Chunk of Star into the container.",
-      CRAFT_TEXT.fizzle,
-    ]);
-    expect(lines(c.drop(2), "a")).toEqual([
-      "You drop a Pie into the container.",
-      CRAFT_TEXT.fizzle,
-    ]);
+    expect(lines(c.drop(1), "a")).toEqual(["You drop a Chunk of Star into the container."]);
+    expect(lines(c.drop(2), "a")).toEqual(["You drop a Pie into the container."]);
     expect(c.world.containers.get("Cauldron#7")).toEqual(["Chunk of Star", "Pie"]);
     expect(c.a.char.bag[0]).toEqual({ item: "Chunk of Star", qty: 1 });
   });
@@ -385,19 +379,17 @@ describe("the Cauldron", () => {
     expect(c.world.containers.get("Cauldron#7")).toEqual(["Magic Shield"]);
     c.world.containers.set("Cauldron#7", ["Gold Axe"]);
     c.a.char.bag[1] = { item: "Chunk of Star", qty: 1 };
-    expect(lines(c.drop(2), "a")).toContain(CRAFT_TEXT.fizzle);
+    expect(lines(c.drop(2), "a")).not.toContain(CRAFT_TEXT.puff);
+    expect(c.world.containers.get("Cauldron#7")).toEqual(["Gold Axe", "Chunk of Star"]);
   });
 
-  test("containers are refused; a full one says so after the drop line", () => {
+  test("containers are refused; a full one says so without the drop line", () => {
     const c = cauldron();
     c.a.char.bag[0] = { item: "Crate#3", qty: 1 };
     expect(lines(c.drop(1), "a")).toEqual(["You cannot store a container!"]);
     c.world.containers.set("Cauldron#7", Array(15).fill("Pie"));
     c.a.char.bag[1] = { item: "Apple", qty: 1 };
-    expect(lines(c.drop(2), "a")).toEqual([
-      "You drop a Apple into the container.",
-      "This is too full to store anything else!",
-    ]);
+    expect(lines(c.drop(2), "a")).toEqual(["This is too full to store anything else!"]);
     expect(c.a.char.bag[1]).toEqual({ item: "Apple", qty: 1 });
   });
 
@@ -420,7 +412,7 @@ describe("the Cauldron", () => {
     c.a.container = { name, shown: ["Gold Crown"] };
     c.a.guild = ""; // expelled while the window was open
     const w = withdrawContainer(c.world, c.a, 1, c.ictx.rng);
-    expect(w.map((o) => o.msg)).toEqual([{ t: "vault", items: [], open: false }]);
+    expect(w.map((o) => o.msg)).toEqual([{ t: "vault", items: [], open: false, closed: true }]);
     expect(c.a.container).toBeNull();
     expect(c.a.char.bag.every((l) => l === null)).toBe(true);
     expect(c.world.containers.get(name)).toEqual(["Gold Crown"]);
@@ -437,7 +429,7 @@ describe("the Cauldron", () => {
     // Given away (or traded, sold, dropped): the open window takes nothing more and closes.
     c.a.char.bag[0] = null;
     const w = withdrawContainer(c.world, c.a, 1, c.ictx.rng);
-    expect(w.map((o) => o.msg)).toEqual([{ t: "vault", items: [], open: false }]);
+    expect(w.map((o) => o.msg)).toEqual([{ t: "vault", items: [], open: false, closed: true }]);
     expect(c.a.container).toBeNull();
     expect(c.world.containers.get("Crate#5")).toEqual(["Pie"]);
     // A placed container opened by facing it keeps 1.6's remote withdraw.
@@ -447,7 +439,7 @@ describe("the Cauldron", () => {
     expect(c.world.containers.get("Crate#6")).toEqual([]);
   });
 
-  test("kept bug: two players holding the same container name share its storage", () => {
+  test("two bag lines with the same container name share its storage (a bought container gets a fresh id)", () => {
     const c = cauldron();
     c.world.containers.set("Crate#4242", ["Gold Crown", "Pie"]);
     c.a.char.bag[0] = { item: "Crate#4242", qty: 2 };
@@ -474,34 +466,91 @@ describe("the Cauldron", () => {
     });
     expect(c.a.keyLock).toBe(true);
     expect(c.a.itemPause).toBe(0); // closing the vault clears Ctrl's pause
-    // The contents change behind the window (not by a deposit): a stale line gives nothing.
+    // The contents change behind the window: a stale line gives nothing and the list catches up.
     c.world.containers.set("Cauldron#7", ["Gold Crown"]);
     const w = withdrawContainer(c.world, c.a, 1, c.ictx.rng);
-    expect(w[0]?.msg).toEqual({ t: "vault", items: ["Chunk of Star"], open: false });
-    expect(c.a.keyLock).toBe(false);
+    expect(w[0]?.msg).toEqual({ t: "vault", items: ["Gold Crown"], open: false });
+    expect(c.a.keyLock).toBe(true);
     expect(c.a.char.bag.every((l) => l === null)).toBe(true);
-    // A line that is there comes out, one unit.
-    c.a.container = { name: "Cauldron#7", shown: ["Gold Crown"] };
-    withdrawContainer(c.world, c.a, 1, c.ictx.rng);
+    // A line that is there comes out, one unit, and says so; the keys stay locked.
+    const take = withdrawContainer(c.world, c.a, 1, c.ictx.rng);
+    expect(lines(take, "a")).toEqual(["You take a Gold Crown out of the container."]);
     expect(c.a.char.bag[0]).toEqual({ item: "Gold Crown", qty: 1 });
     expect(c.world.containers.get("Cauldron#7")).toEqual([]);
+    expect(c.a.keyLock).toBe(true);
   });
 
-  test("kept bug: Storage on a Crate or Cauldron prints nothing; a Cabinet says so", () => {
+  test("bug fixed: Storage on a Crate, Cabinet or Cauldron says what it opened", () => {
     const c = cauldron();
     c.a.char.bag[0] = { item: "Crate#5", qty: 1 };
     c.a.char.bag[1] = { item: "Cabinet#6", qty: 1 };
+    c.a.char.bag[3] = { item: "Cauldron#8", qty: 1 };
     const crate = storageIntent(c.world, c.a, 1);
-    expect(lines(crate, "a")).toEqual([]);
+    expect(lines(crate, "a")).toEqual(["You open the Crate to see what's inside..."]);
     expect(crate[0]?.msg).toEqual({ t: "vault", items: [], open: true });
     expect(c.a.container?.name).toBe("Crate#5");
     c.a.keyLock = false;
     expect(lines(storageIntent(c.world, c.a, 2), "a")).toEqual([
-      "You open the cabinet to see what's inside...",
+      "You open the Cabinet to see what's inside...",
+    ]);
+    c.a.keyLock = false;
+    expect(lines(storageIntent(c.world, c.a, 4), "a")).toEqual([
+      "You open the Cauldron to see what's inside...",
     ]);
     c.a.keyLock = false;
     c.a.char.bag[2] = { item: "Pie", qty: 1 };
     expect(storageIntent(c.world, c.a, 3)).toEqual([]); // no Storage button for a Pie
+  });
+});
+
+describe("storage windows", () => {
+  test("bug fixed: with a container open, Drop stores into it and everyone with it open sees the item", () => {
+    const c = cauldron();
+    c.world.containers.set("Crate#5", []);
+    c.a.char.bag[0] = { item: "Crate#5", qty: 1 };
+    c.a.char.bag[1] = { item: "Pie", qty: 2 };
+    storageIntent(c.world, c.a, 1);
+    expect(c.a.keyLock).toBe(true);
+    const out = dropIntent(c.ictx, c.room, c.a, 2);
+    expect(lines(out, "a")).toEqual(["You drop a Pie into the container."]);
+    expect(out.find((o) => o.to === "a" && o.msg.t === "vault")?.msg).toEqual({
+      t: "vault",
+      items: ["Pie"],
+      open: false,
+    });
+    expect(c.world.containers.get("Crate#5")).toEqual(["Pie"]);
+    expect(c.a.char.bag[1]).toEqual({ item: "Pie", qty: 1 });
+    // A crate cannot go into itself.
+    expect(lines(dropIntent(c.ictx, c.room, c.a, 1), "a")).toEqual([
+      "You cannot store a container!",
+    ]);
+  });
+});
+
+describe("storage windows and shoves", () => {
+  test("an open container holds you in place: after a take you still cannot be shoved", () => {
+    const c = cauldron();
+    c.world.containers.set("Crate#5", ["Pie", "Gold Crown"]);
+    c.a.char.bag[0] = { item: "Crate#5", qty: 1 };
+    storageIntent(c.world, c.a, 1);
+    withdrawContainer(c.world, c.a, 1, c.ictx.rng);
+    expect(c.a.char.bag.some((l) => l?.item === "Pie")).toBe(true);
+    pushOnMe(c.room, c.a, "D", c.b, {
+      rng: rngByN({ 25: [1] }),
+      emit: () => {},
+      tell: () => {},
+      crossings: [],
+    });
+    expect(c.a.stepFrames).toBe(0);
+    // Cancel frees the keys, and then a shove works.
+    shopCancelIntent(c.a);
+    pushOnMe(c.room, c.a, "D", c.b, {
+      rng: rngByN({ 25: [1] }),
+      emit: () => {},
+      tell: () => {},
+      crossings: [],
+    });
+    expect(c.a.stepFrames).toBeGreaterThan(0);
   });
 });
 

@@ -187,14 +187,13 @@ describe("the NPC editor", () => {
     expect(drops.map((g) => [g.name, g.x, g.y])).toEqual([["5 Gold", 6, 5]]);
   });
 
-  test("a chatter line past line 20 saves with a warning under the alert", async () => {
+  test("bug fixed: a chatter line past line 20 saves with no warning, and is said", async () => {
     alice.clear();
     const lines = [...Array.from({ length: 20 }, () => "BIO|Name: Amber"), "RND|Hello"];
     alice.send({ t: "npcSave", name: "Amber", text: lines.join("\n") });
     const a = await alice.waitFor((m): m is Alert => m.t === "alert");
-    expect(a.text).toBe(
-      "NPC has been successfully saved.\nLine 21: RND| lines after line 20 are never said.",
-    );
+    expect(a.text).toBe("NPC has been successfully saved.");
+    expect(server.game.world.npcs.get("amber")?.chatter).toEqual(["Hello"]);
   });
 
   test("the World Editor opens from the NPC editor; Return To Game puts Alice back", async () => {

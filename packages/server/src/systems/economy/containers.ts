@@ -7,14 +7,14 @@
  */
 import { houseData, itemRulesData } from "@secondstaronline/data";
 import {
-  bagText,
+  addSlotFor,
   CAULDRON,
   CRAFT_TEXT,
   cauldronBrew,
   displayName,
   FACING_DELTA,
-  filledLines,
   invAdd,
+  isGoldName,
   lastMatch,
   lingoContains,
   lingoEq,
@@ -45,7 +45,6 @@ export const CONTAINER_TEXT = {
     lingoContains(name, "House")
       ? `You see ${name}, but you must be standing in front of it to use it.`
       : `You see the ${name}, but you must be standing in front of it to use it.`,
-  cabinet: "You open the cabinet to see what's inside...",
   /** SSO, after the mailbox's "You can't check mail that's not yours!" */
   notYours: "You can't open a vault that's not yours!",
 } as const;
@@ -107,9 +106,10 @@ export function openContainer(world: World, p: Player, g: GroundItem): Outgoing[
 
 /**
  * The item menu's Storage: exits while the keys are locked or an item action is pausing, no
- * selection test, the open container is the bag name with its `#id`, then the cabinet line; a Crate
- * or Cauldron prints nothing (1.6 printed a void chat line). A chest cannot be carried in 1.6 (no
- * item code; a click or Ctrl opens one), so its Storage path is never reached and stays silent.
+ * selection test, the open container is the bag name with its `#id`, then "You open the <kind> to
+ * see what's inside..." for every kind (1.6 built a line only for a Cabinet, so a Crate or Cauldron
+ * printed nothing). A chest cannot be carried in 1.6 (no item code; a click or Ctrl opens one), so
+ * its Storage path is never reached.
  */
 export function storageIntent(world: World, p: Player, slot: number): Outgoing[] {
   const line = p.char.bag[slot - 1];
@@ -119,18 +119,15 @@ export function storageIntent(world: World, p: Player, slot: number): Outgoing[]
   if (p.deadLock > 0 || p.loading > 0 || lingoContains(line.item, "Chest")) {
     return [];
   }
-  const out = [show(world, p, line.item, true)];
-  if (lingoContains(line.item, "Cabinet")) {
-    out.push(tell(p, CONTAINER_TEXT.cabinet));
-  }
-  return out;
+  return [show(world, p, line.item, true), tell(p, CONTAINER_TEXT.open(line.item))];
 }
 
 /**
- * Drop while facing a `Cauldron#`: a container is refused, the drop line prints before the
- * server's tests, a full one says so, one unit goes in; then a Cauldron runs its recipes, whose
- * lines go to the depositor only. A brew swaps its two ingredients for the result and refreshes
- * the list of anyone who has that Cauldron open.
+ * Drop while facing a container, or with its window open: a container is refused, a full one says
+ * so, else one unit goes in and the drop line prints (1.6 printed it before the capacity test).
+ * Then a Cauldron runs its recipes: a brew swaps its ingredients for the result and says so to the
+ * depositor; a deposit that completes nothing says nothing more (1.6 "fizzled" on every one). The
+ * list of anyone with the container open is refreshed.
  */
 export function depositContainer(world: World, p: Player, slot: number, name: string): Outgoing[] {
   const line = p.char.bag[slot - 1];
@@ -145,31 +142,23 @@ export function depositContainer(world: World, p: Player, slot: number, name: st
   if (["Cabinet", "Crate", "Cauldron"].some((c) => lingoContains(item, c))) {
     return [tell(p, VAULT_TEXT.container)];
   }
-  const out = [tell(p, VAULT_TEXT.drop(item))];
   const lines = linesOf(world, name);
   if (lines.length >= containerCapacity(name)) {
-    out.push(tell(p, VAULT_TEXT.full));
-    return out;
+    return [tell(p, VAULT_TEXT.full)];
   }
   line.qty -= 1;
   if (line.qty <= 0) {
     p.char.bag[slot - 1] = null;
   }
   p.invDirty = true;
+  const out = [tell(p, VAULT_TEXT.drop(item))];
   const next = [...lines, item];
-  if (lingoContains(name, "Cauldron")) {
-    const brewed = cauldronBrew(next);
-    if (brewed === null) {
-      write(world, name, next);
-      out.push(tell(p, CRAFT_TEXT.fizzle));
-      return out;
-    }
-    write(world, name, brewed);
+  const brewed = lingoContains(name, "Cauldron") ? cauldronBrew(next) : null;
+  write(world, name, brewed ?? next);
+  if (brewed !== null) {
     out.push(tell(p, CRAFT_TEXT.puff));
-    out.push(...refreshViewers(world, name));
-    return out;
   }
-  write(world, name, next);
+  out.push(...refreshViewers(world, name));
   return out;
 }
 
@@ -186,10 +175,11 @@ function refreshViewers(world: World, name: string): Outgoing[] {
 }
 
 /**
- * The window's OK on a container's line: the first withdraw frees the keys; the client reads the
- * line's name from the list it shows, and the server takes the first line **equal** to it, or
- * nothing; one unit; the client deletes the line from its own list, which is otherwise never
- * refreshed.
+ * The window's OK on a container's line: the window stays open and the keys locked until CANCEL
+ * (1.6 freed them on the first take). The client names the line by its place in the list it
+ * shows; the server takes the first stored line **equal** to it, or nothing; one unit, into a stack
+ * of exactly that name or an empty line, else "You are carrying too much…" and nothing moves. A
+ * crystal line comes back as itself. Everyone with the container open sees the new list.
  */
 export function withdrawContainer(world: World, p: Player, index: number, rng: Rng): Outgoing[] {
   const c = p.container;
@@ -204,36 +194,26 @@ export function withdrawContainer(world: World, p: Player, index: number, rng: R
   if (!stillCarried || !mayUseContainer(p, c.name)) {
     p.container = null;
     p.keyLock = false;
-    return [{ to: p.id, msg: { t: "vault", items: [], open: false } }];
+    return [{ to: p.id, msg: { t: "vault", items: [], open: false, closed: true } }];
   }
-  p.keyLock = false;
   const item = c.shown[index - 1];
   if (item === undefined || item === "") {
     return [];
   }
-  if (filledLines(p.char.bag) > 14 && !lingoContains(bagText(p.char.bag), `${item}-`)) {
-    return [tell(p, VAULT_TEXT.carrying)];
-  }
-  c.shown.splice(index - 1, 1);
-  const window: Outgoing = { to: p.id, msg: { t: "vault", items: [...c.shown], open: false } };
   const lines = [...linesOf(world, c.name)];
   const at = lines.findIndex((l) => lingoEq(l, item));
   if (at < 0) {
-    return [window];
+    c.shown = [...lines];
+    return [{ to: p.id, msg: { t: "vault", items: [...c.shown], open: false } }];
   }
-  let add = item;
-  if (lingoContains(item, " Crystals")) {
-    const words = item.split(" ");
-    // Kept bug: 1.6 re-split a withdrawn "Blue Crystals" and got a worthless "Crystals " item, so
-    // every colour merged into it.
-    add = `${words[1] ?? ""} ${words[2] ?? ""}`;
+  if (addSlotFor(p.char.bag, item) < 0 && !isGoldName(item)) {
+    return [tell(p, VAULT_TEXT.carrying)];
   }
-  if (invAdd(p.char, add, 1, rng).kind !== "full") {
-    p.invDirty = true;
-  }
+  invAdd(p.char, item, 1, rng);
+  p.invDirty = true;
   lines.splice(at, 1);
   write(world, c.name, lines);
-  return [window];
+  return [...refreshViewers(world, c.name), tell(p, VAULT_TEXT.take(item))];
 }
 
 /** Whether Drop facing this ground item deposits into it (its name contains "Cauldron#"). */
@@ -241,8 +221,9 @@ export const isDepositCauldron = (g: GroundItem) => lingoContains(g.item, CAULDR
 
 /**
  * The periodic save and its quest chest roll for one player: the save-block counter counts down;
- * once 0, `random(350) = 1` saves and resets it to 400; the save rolls the quest chest, which
- * **overwrites** the chest with one line (1.6 kept one global chest per type and did the same).
+ * once 0, `random(350) = 1` saves and resets it to 400; the save rolls the quest chest, which adds
+ * its one line to the chest when there is room (1.6 overwrote the chest, wiping what was in it).
+ * Like every placed chest, a quest chest is one container that anyone facing it can use.
  */
 export function saveClockStep(world: World, p: Player, rng: Rng): void {
   if (p.saveBlock > 0) {
@@ -255,7 +236,10 @@ export function saveClockStep(world: World, p: Player, rng: Rng): void {
   p.saveBlock = QUEST_SAVE_BLOCK;
   const refill = questChestRefill(rng);
   if (refill) {
-    write(world, refill.chest, [refill.item]);
+    const lines = linesOf(world, refill.chest);
+    if (lines.length < containerCapacity(refill.chest)) {
+      write(world, refill.chest, [...lines, refill.item]);
+    }
   }
 }
 

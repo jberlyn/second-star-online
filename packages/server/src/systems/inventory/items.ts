@@ -352,6 +352,18 @@ function pigDrop(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, slot: number)
 export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
+  // With a vault or container window open, Drop puts the item into it (in 1.6 the window's key
+  // lock made the bag ignore clicks, so nothing could be stored until a take freed the keys).
+  if (line && !busy(p) && !lingoContains(line.item, "Crystals")) {
+    if (p.vaultOpen) {
+      io.out.push(...depositVault(p, slot));
+      return io.out;
+    }
+    if (p.container) {
+      io.out.push(...depositContainer(ctx.world, p, slot, p.container.name));
+      return io.out;
+    }
+  }
   // The bag takes no click while a window holds the keys.
   if (busy(p) || p.keyLock || !line) {
     return io.out;
@@ -391,8 +403,9 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
   // The four orbs go to 1.6's orb routine, which never matches and falls through.
   const t = faced(p);
   // The first item on the faced tile decides (sprites 158-177 in order): a house or guild vault, a
-  // `Cabinet#`, `Crate#` or `Cauldron#`, the Gold, Steel, Water, Emerald or Dark Chest, or the
-  // Vault takes the item; a Wind Chest or a plain "Crate" falls to "the floor is too crowded".
+  // `Cabinet#`, `Crate#` or `Cauldron#`, the Gold, Steel, Water, Emerald, Dark or Wind Chest (1.6
+  // left the Wind Chest out), or the Vault takes the item; a plain "Crate" falls to "the floor is
+  // too crowded".
   const first = room.map.ground.find((g) => g.x === t.x && g.y === t.y);
   const route = first ? dropRoute(first) : null;
   if (route !== null && lingoEq(route, "Vault")) {

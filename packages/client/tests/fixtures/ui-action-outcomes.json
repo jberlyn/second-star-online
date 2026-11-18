@@ -2364,6 +2364,20 @@
     "errors": []
   },
   {
+    "action": "trade-accept-b",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "accept",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
     "action": "trade-cancel-b",
     "tag": "BUTTON",
     "events": ["click"],
@@ -5421,6 +5435,15 @@
   },
   {
     "action": "trade-offer-b",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "trade-accept-b",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,
