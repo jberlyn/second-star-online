@@ -111,6 +111,16 @@ describe("Director's sound channels", () => {
     expect(sources[1]?.gain?.gain.value).toBe(1);
   });
 
+  test("bug fixed: a sound's own volume plays that sound alone at it; the channel keeps its volume", async () => {
+    const { audio, sources } = fakeAudio();
+    audio.unlock();
+    await settle();
+    audio.play({ ...SOUND.floatieHit, volume: 200 });
+    audio.play(SOUND.floatieHit);
+    expect(sources[0]?.gain?.gain.value).toBeCloseTo(200 / 255);
+    expect(sources[1]?.gain?.gain.value).toBe(1);
+  });
+
   test("a sound not yet decoded, or not built, is skipped, never played late", () => {
     const { audio, sources } = fakeAudio();
     audio.unlock();

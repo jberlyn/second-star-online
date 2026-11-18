@@ -1067,10 +1067,7 @@ export function createGame(deps: GameDeps): Game {
     persistItems(changed);
   };
 
-  /**
-   * `loadspells` before each save rebuilds the list from what `savespells` kept, so a learned
-   * Identify (no save id) is gone after the next save.
-   */
+  /** Before each save, the list drops any line that names no spell, as the saved form does. */
   const normaliseSpellbook = (p: Player) => {
     const kept = savedSpellbook(p.spell.book);
     if (kept.length !== p.spell.book.length) {

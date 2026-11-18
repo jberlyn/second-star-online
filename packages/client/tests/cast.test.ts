@@ -116,13 +116,13 @@ describe("casting from the armed cursor", () => {
     }
   });
 
-  test("the point is checked against 1.6's cast bounds, 8 < H < 580, 5 < V < 420", () => {
+  test("bug fixed: the point must be on the playfield, not 1.6's wider 8 < H < 580, 5 < V < 420", () => {
     const s = game();
     s.arm();
-    // Stage H = 30 + clientX: −22 is H 8, refused; −21 is H 9, sent.
-    s.down("mouse", -22, 100);
-    expect(s.casts()).toEqual([]);
+    // Stage H = 30 + clientX: −21 is H 9, inside 1.6's bounds but off the playfield; 0 is H 30.
     s.down("mouse", -21, 100);
+    expect(s.casts()).toEqual([]);
+    s.down("mouse", 0, 100);
     expect(s.casts()).toHaveLength(1);
     // The playfield's bottom-right pixel, stage (573, 414), is inside.
     s.down("mouse", PLAYFIELD_W - 1, PLAYFIELD_H - 1);

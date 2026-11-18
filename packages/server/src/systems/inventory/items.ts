@@ -72,7 +72,8 @@ import { type NewspaperStore, readNewspaper } from "../mail/newspapers.ts";
 import { ctrlPig, goldTarget } from "../monsters/npc.ts";
 import { statueLines } from "../social/assassin.ts";
 import { guildCenterClick } from "../social/guilds.ts";
-import { blockedSubstring, summonPig } from "../spells/cast.ts";
+import { npcBlocked, summonPig } from "../spells/cast.ts";
+import { argonsFist } from "../spells/collide.ts";
 import { isBook, readBook } from "../spells/learn.ts";
 import { airshipClick, airshipDeed, unboardAirship } from "../vehicles/airship.ts";
 import {
@@ -281,8 +282,7 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   p.char.hunger = r.hunger;
   p.vitalsDirty = true;
   if (r.argon) {
-    p.attackBonus = 1;
-    p.timers.attackCounter += 400;
+    argonsFist(p);
   }
   invDelSlot(p.char.bag, slot - 1, 1);
   changed(p);
@@ -374,7 +374,7 @@ function pigDrop(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, slot: number)
     t.x < 1 ||
     t.y > MAP_HEIGHT ||
     t.y < 1 ||
-    blockedSubstring(room.map.walk, t.x, t.y)
+    npcBlocked(room.map.walk, t.x, t.y)
   ) {
     io.tell(p, PIG_TEXT.blocked);
     return io.out;

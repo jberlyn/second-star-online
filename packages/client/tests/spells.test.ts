@@ -45,12 +45,14 @@ describe("the Spellbook page (frame 67)", () => {
     expect(sounds).toEqual([SOUND.click]);
     expect(line(sb, 2).classList.contains("selected")).toBe(true);
   });
-  test("kept bug: a click reloads the list from the save first, so a learned Identify drops out", () => {
+  test("bug fixed: a click keeps the list as it is, a learned Identify included", () => {
     const { sb } = book();
     sb.setSpells(["Fireball", "Identify", "Hold"]);
-    line(sb, 1).click();
+    line(sb, 2).click();
+    expect(sb.selected).toBe("Identify");
     expect([...sb.page.querySelectorAll(".spell-line")].map((l) => l.textContent)).toEqual([
       "Fireball",
+      "Identify",
       "Hold",
     ]);
   });
@@ -191,14 +193,13 @@ describe("spell sounds", () => {
 });
 
 describe("the church bell", () => {
-  test("kept bug: the church bell leaves channel 5 at volume 200, sound on or off", () => {
+  test("bug fixed: the church bell plays at 200 and leaves channel 5's volume alone", () => {
     const calls: string[] = [];
     const audio = {
-      setVolume: (ch: number, v: number) => calls.push(`volume ${ch} ${v}`),
-      play: (s: Sfx) => calls.push(`play ${s.name} ${s.ch}`),
+      play: (s: Sfx) => calls.push(`play ${s.name} ${s.ch} ${s.volume ?? "channel"}`),
     };
     playAll(audio, [{ name: "churchy", ch: 5, volume: 200 }, SOUND.floatieHit]);
-    expect(calls).toEqual(["volume 5 200", "play churchy 5", "play hitsound 5"]);
+    expect(calls).toEqual(["play churchy 5 200", "play hitsound 5 channel"]);
   });
 });
 

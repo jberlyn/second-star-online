@@ -544,7 +544,7 @@ export interface GuildRow {
 
 /** A character's spell state: the spellbook and the frame-script counters. */
 export interface SpellState {
-  /** The spellbook field's lines; a learned Identify stays until the next save. */
+  /** The spellbook field's lines, saved in full. */
   book: string[];
   /** The book changed: send `spellbook` and write the saved form with the inventory. */
   bookDirty: boolean;
@@ -554,7 +554,7 @@ export interface SpellState {
   defenseCounter: number;
   /** The Firesword counter. */
   fireSword: number;
-  /** The Magic Shield counter: read only by 1.6's spell-defense lookup, which did nothing. */
+  /** The Magic Shield counter: while it runs, spell damage on you is 5 lower (`spellDefense`). */
   magicDef: number;
   /** The morph counter: the body reverts when it runs out. */
   morph: number;
@@ -593,6 +593,8 @@ export interface SpellFx extends FxSprite {
   owner: string;
   /** The casting player, when a player cast it (kill credit, own-spell tests). */
   ownerId: string | null;
+  /** The players this Radar has already reported on. */
+  radarSeen?: Set<string>;
 }
 
 /** Fresh per-session combat state for a character entering the world. */
@@ -784,6 +786,8 @@ export interface CastMessage {
   h: number;
   v: number;
   power: number;
+  /** False for a cast that trains no skill (the Fire Staff's and Firesword's free fireballs). */
+  train?: boolean;
 }
 
 export interface World {

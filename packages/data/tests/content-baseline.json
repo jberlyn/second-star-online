@@ -5305,8 +5305,8 @@
       "42fdc7358dbf6fc7"
     ],
     [
-      "Argon's First",
-      "d328172ec5edfaf5"
+      "Argon's Fist",
+      "dc90dff13ad957ac"
     ],
     [
       "Stone Skin",
@@ -5317,8 +5317,8 @@
       "ff670dd0681c6f9f"
     ],
     [
-      "Bolt Book",
-      "dc9059a04911a1d7"
+      "Bolt",
+      "755049158f508f6b"
     ],
     [
       "Firebolt",
@@ -9552,419 +9552,419 @@
   "monsters.json#/monsters": [
     [
       "Slime",
-      "164b240efbc504b1"
+      "ed97fb8d7ce6ec7a"
     ],
     [
       "Orc",
-      "e4028e7330ed4374"
+      "2e1cf2550389c6f9"
     ],
     [
       "Wolf",
-      "ecf9993d846952eb"
+      "e73cc93a507dd7db"
     ],
     [
       "Imp",
-      "d640e6ca1b7a393e"
+      "4f13d59085a869bd"
     ],
     [
       "Cyclops",
-      "7743f2826c54159f"
+      "902d9a8547d1f863"
     ],
     [
       "Dragon Hatchling",
-      "8724cf99005306d1"
+      "0a2a62f3c115c44a"
     ],
     [
       "Poison Frog",
-      "d1afc51595f75591"
+      "692efcd6f6ff2814"
     ],
     [
       "Mega Slime",
-      "3e52bd53b1d35429"
+      "9d9c6adc9f4d78e0"
     ],
     [
       "Gazer",
-      "979b55e5263e0354"
+      "5b8f4b3d5b7f4a17"
     ],
     [
       "Death",
-      "5662ecd0e0394509"
+      "4b95c9e3d2256cd1"
     ],
     [
       "Lizard Warrior",
-      "21ef8b498d300cda"
+      "55e5636be2352e2c"
     ],
     [
       "Demon",
-      "d73f09bb2026316d"
+      "73172fccefe5d71c"
     ],
     [
       "Illusionary Spikes",
-      "43fe9c3d90400dc3"
+      "cf03155f64fa9bf8"
     ],
     [
       "Ghoul",
-      "b32d9efc41c000ac"
+      "7e9828595ef4d0fe"
     ],
     [
       "Snared Loah",
-      "9b18c241ec7b4da8"
+      "fc09d3cc97a2dab3"
     ],
     [
       "Fire Demon",
-      "d04b206ef56f2795"
+      "9226b2ae1703fcf0"
     ],
     [
       "Elf",
-      "ef07928c3611b389"
+      "6a276eb200922aec"
     ],
     [
       "Pig",
-      "e5923b2efa0069b3"
+      "66e1d835db962ba7"
     ],
     [
       "Zombie",
-      "c89c845662407d35"
+      "47cc1cdf294f55e8"
     ],
     [
       "Dwarf",
-      "93be8e5e7178e34f"
+      "752c9f11836cffa6"
     ],
     [
       "Assasin",
-      "fd8313b022e083fd"
+      "18ff7db45d94a8af"
     ],
     [
       "Ogre",
-      "a4ac5617dafc9d85"
+      "6bd57f29d629bd9e"
     ],
     [
       "Stone Skull",
-      "03d4687b375027b5"
+      "276cae76d1fb7d63"
     ],
     [
       "Dragon",
-      "18acdc0adfc6b212"
+      "52fbfb51a3e1310d"
     ],
     [
       "Web",
-      "7198fd2f9839eb8a"
+      "8b17923db502d39b"
     ],
     [
       "Skeleton",
-      "9701c8e8980b439c"
+      "c956ef6d0d323cad"
     ],
     [
       "Yeti",
-      "682664b9390e9664"
+      "7925ae7d2580e1bc"
     ],
     [
       "Ghost",
-      "0a78bf1f1c69f439"
+      "ee812881ce6e18a1"
     ],
     [
       "Dragon Snake",
-      "90f3eac51513c30c"
+      "4f3348ead9543b16"
     ],
     [
       "Dark Fairy",
-      "26d5e7e60c6f7fcf"
+      "3521180249c0ae9a"
     ],
     [
       "Trimble",
-      "a625f5e5eb4be434"
+      "a58a63745e435b04"
     ],
     [
       "Water God",
-      "5e3e868498e523f6"
+      "6648c5627c71bc19"
     ],
     [
       "Fire God",
-      "8258b7ca64cb7f2d"
+      "3067271bfabe6dc1"
     ],
     [
       "Earth God",
-      "a3c82a615e5abe77"
+      "e2fe8fb1ba58a787"
     ],
     [
       "Wind God",
-      "b8a7c484a3301dc2"
+      "6df85efffcd5009c"
     ],
     [
       "Cril",
-      "39233a7f59c8f2e5"
+      "46fa847e0b55ce68"
     ],
     [
       "Akadius",
-      "a916c512ff1fd56b"
+      "ede149bce8c41ae4"
     ],
     [
       "Galor",
-      "57d43d6b77a1bd6e"
+      "1e2cb9c7c51b4e84"
     ],
     [
       "Qieros",
-      "9432702c8eab2f18"
+      "45823404909f7be7"
     ],
     [
       "Ratmas",
-      "c3696fdcc8c7b1e0"
+      "b9d70baff367f478"
     ],
     [
       "Wenslas",
-      "acec3716f0ba0892"
+      "5a1666ef83c77dfd"
     ],
     [
       "Krista",
-      "aeb0ac09f1907ff2"
+      "5718873f9bdcbb73"
     ],
     [
       "Roulan",
-      "15e45fb95245d078"
+      "eb7d6bfe19835302"
     ],
     [
       "Amber",
-      "599dd2900a2dddd8"
+      "2ab536aa612a4501"
     ],
     [
       "Teral",
-      "d17b4c57f6f65f9c"
+      "342a46879cee4a55"
     ],
     [
       "Vin",
-      "037814ac7482f88f"
+      "2471e19cbe694442"
     ],
     [
       "Helum",
-      "68a2d2183a8eae34"
+      "934ff6a914cfc05c"
     ],
     [
       "Lir",
-      "9b5f1e8720dedf13"
+      "8a625747e44073e8"
     ],
     [
       "Prestin",
-      "0480d30368742bcc"
+      "37c8b3484abbe4da"
     ],
     [
       "Miqa",
-      "3dbcb02016571b8e"
+      "30a0a4e71a6d52e0"
     ],
     [
       "Dantan",
-      "82891e967e9c39f4"
+      "9c8f8be8bba72b42"
     ],
     [
       "Tela",
-      "3a53767a47a26e00"
+      "bb8e4378a5d4b7e5"
     ],
     [
       "Mirra",
-      "b8df2996d6f30b0b"
+      "076add7e83e689a0"
     ],
     [
       "Wrel",
-      "aecf4fa6a9f80c2c"
+      "fcff58d87a6c0962"
     ],
     [
       "Andero",
-      "9270d88ff3dfe290"
+      "466397fea7e00ffb"
     ],
     [
       "Teli",
-      "66b958e6374fc5c3"
+      "d7ec37a39d8e43ec"
     ],
     [
       "Crushto",
-      "3c38f85f388c7d56"
+      "08a0eb027bb3cce1"
     ],
     [
       "Alex",
-      "4bb0405b0cb45ee3"
+      "07fe5db69e418ee3"
     ],
     [
       "Kin",
-      "1bd5e1dc45ab647e"
+      "b02f3128df3c8730"
     ],
     [
       "Barnum",
-      "8ed355b5f52c688c"
+      "a60fa2e5b41cac84"
     ],
     [
       "Beldros",
-      "39dfca51b520027f"
+      "d0f110da5ba136a4"
     ],
     [
       "Katks",
-      "0ebaf80157bb3329"
+      "6cf032757d92f791"
     ],
     [
       "Divela",
-      "94475e6653c4d10c"
+      "41a1c6433a6b9f57"
     ],
     [
       "Stephie",
-      "b6e36a10ad884a4c"
+      "e563725dc02651a9"
     ],
     [
       "Plone",
-      "f09a24e0294db35f"
+      "1a2160d92e912041"
     ],
     [
       "Agavar",
-      "b8046b2bea02634c"
+      "f90cf4084207907e"
     ],
     [
       "Jim",
-      "5c57ca1bf921e571"
+      "c6205f5d3ff9535c"
     ],
     [
       "Krist",
-      "cb3efbb0ab190966"
+      "5ccf2a7f69b23ecd"
     ],
     [
       "Benolio",
-      "87d126fc928e2c0d"
+      "28eaecf324be1ae1"
     ],
     [
       "Trixin",
-      "7685a828d6091532"
+      "a038297f5958e5d3"
     ],
     [
       "Missie",
-      "f55dc7ad2e85788a"
+      "ad1522fa5755bfac"
     ],
     [
       "Kanta",
-      "125a486cc13d57c7"
+      "1c776e6fcb7b3faf"
     ],
     [
       "Smithy",
-      "15c3fb5a91a4ca5a"
+      "bab4b848a7a3bbbf"
     ],
     [
       "Rutxon",
-      "eb877fce96fb62fd"
+      "eebe4df7045afe1d"
     ],
     [
       "Akiro",
-      "249efce1081be983"
+      "9d358287b9ab0621"
     ],
     [
       "Acrostia",
-      "a472c9464082b895"
+      "66a847f3021e58c8"
     ],
     [
       "Mutant Worm",
-      "fe1c082fbe11a635"
+      "bacc4307d51e9fb8"
     ],
     [
       "Angela",
-      "abc2d8527263d272"
+      "f85e3ac9fc73e571"
     ],
     [
       "Trianus",
-      "cdaf11c7ad0b9713"
+      "11fca7de52272394"
     ],
     [
       "Corin",
-      "7a0c9efb78712e95"
+      "7944a9cb2a49d39a"
     ],
     [
       "Warrior Faction Member",
-      "4ac605098fd8d888"
+      "709698235a5d1350"
     ],
     [
       "Mage Faction Member",
-      "99cc0b1197c1c8c8"
+      "7b9b444a120729eb"
     ],
     [
       "Adventurer Faction Member",
-      "de4562cd2a4ab91f"
+      "bd5618274d75702a"
     ],
     [
       "Officer",
-      "72e7b00453a4d228"
+      "8e0f71f8e5b82791"
     ],
     [
       "Cow",
-      "2615e2882297e8ef"
+      "57c0a03e4a15f6f8"
     ],
     [
       "Oraku",
-      "6cf8951593a2e716"
+      "db2a10c285297596"
     ],
     [
       "Orc Lord",
-      "20c586a10a1e9a68"
+      "b28bf4d8457fa4af"
     ],
     [
       "Squid",
-      "793a249ea8e8e235"
+      "b5a16d195752d9a4"
     ],
     [
       "Shark",
-      "ba8ddecd6976d297"
+      "5e9ffd67acf5c5fc"
     ],
     [
       "Stripper",
-      "98f872d21fed1979"
+      "558ab5053bb79af9"
     ],
     [
       "Somewhat Naked Stripper",
-      "5c68bb880747d571"
+      "9afe7fbac9b7e66b"
     ],
     [
       "Naked Stripper",
-      "d1ab9319c997c219"
+      "8e447cd56eae5236"
     ],
     [
       "Snow Serpent",
-      "37104abc95b8ee9e"
+      "9416c461d1b1f9b0"
     ],
     [
       "Snow Demon",
-      "72adc852ac3ce91e"
+      "ea764d26aebaefad"
     ],
     [
       "Overlord",
-      "5aa3b8283a598e4f"
+      "de5a489b7ead8f28"
     ],
     [
       "Holy Shield",
-      "d08f37d68601277c"
+      "41d091697898e792"
     ],
     [
       "Mizella",
-      "1b77eb9cec65e957"
+      "034553583e0b2e18"
     ],
     [
       "Krommie",
-      "d940ef284dd3badb"
+      "2b555207cebfe24d"
     ],
     [
       "Jelstar",
-      "dd5f2e7661b8df72"
+      "c36a4ee40f338253"
     ],
     [
       "Merius",
-      "47b9cea1e231d384"
+      "b36a2ca7d87b37e9"
     ],
     [
       "Mellanie",
-      "becacd522f448f4f"
+      "e8cfec2712a6c54b"
     ],
     [
       "Minmaye",
-      "47805af81d690203"
+      "4d82518de36b6149"
     ],
     [
       "Gryphon",
-      "36bcb4f1960e22a8"
+      "6483c12911d0aab9"
     ],
     [
       "Hellhound",
-      "b4a4ae328071e88d"
+      "1547757d2e3a6f1a"
     ]
   ],
   "monsters.json#/rules/clearsBlock": [
@@ -11724,7 +11724,7 @@
   "spells.json#/spells": [
     [
       "Smoke Bomb",
-      "5b3899a207ecd0e5"
+      "679b2f4c4a3e566d"
     ],
     [
       "Minor Heal",
@@ -11860,11 +11860,11 @@
     ],
     [
       "Radar",
-      "155204d608c589b9"
+      "86d56aea707dabc8"
     ],
     [
       "Haste",
-      "50a59b5095b09142"
+      "bcaf9cb73a7ce894"
     ]
   ],
   "tiles.json#/catalogue": [

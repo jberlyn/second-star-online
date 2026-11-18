@@ -205,6 +205,11 @@ export const TABLES: Record<string, TableInfo> = {
     wins: "adds",
     note: "the row's slot is the worn slot it tests",
   },
+  [`item-rules.json armour.spell.rows`]: {
+    decides: "spell damage a worn item adds or takes off",
+    wins: "adds",
+    note: "the row's slot is the worn slot it tests",
+  },
   [`item-rules.json armour.elemental`]: {
     decides: "elemental armour effects",
     wins: "adds",

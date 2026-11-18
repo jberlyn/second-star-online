@@ -44,6 +44,8 @@ export interface LiveMonster {
    * in its script, 0 when placed.
    */
   hitCountb: number;
+  /** The FX hit frame that last set the lockout (runtime only, never saved). */
+  lockedBy?: { fx: object; member: string } | null;
 }
 
 export interface MonsterSlot {

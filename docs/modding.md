@@ -94,7 +94,8 @@ Notes carried over from the code:
 
 - **`use.silent`:** `Map` stays although no item has `"Map"` in its name, so its Use text can never show. The Ocarina is not on the list: the server plays its tune.
 - **Platforms (`ground.platforms`):** the Experience Platform's step gate is level `21`, and its text says so. All four platforms' Ctrl text ends Ctrl's 40-frame pause (`unpause`), as does the Street Lamp's.
-- **Book table order:** the book table keeps the original typos (`"Smoke bomb"`, `"Argon's First"`) and its exact `Bolt Book` row.
+- **Book table order:** the book Dexterity table (`use.books`) is `contains` and the last match wins, so `"Firebolt"` comes after `"Bolt"`.
+- **Spell defense (`armour.spell`):** each row adds its `delta` to the spell damage a player wearing the item takes (positive for metal, negative for robes), and `magicShield` is added while Magic Shield runs.
 
 ### Adding an item
 
@@ -233,7 +234,7 @@ Because `"<body>-"` is a substring check there, numbers ending in those digits (
 1. Append a species row to `monsters.json` `monsters`:
 
    ```json
-   { "name": "Frost Wolf", "body": 2, "bodyInMainChars": true, "hp": 16, "healCap": 200, "attack": 4, "defense": 1, "xpMelee": 18, "xpSpell": 18, "spawnMinute": null }
+   { "name": "Frost Wolf", "body": 2, "bodyInMainChars": true, "hp": 16, "attack": 4, "defense": 1, "xpMelee": 18, "xpSpell": 18, "spawnMinute": null }
    ```
 
 2. Append `"Frost Wolf"` to `editorLists.worldEditor.monsters` and `editorLists.npcEditor.monsters` in `monsters.json`.
@@ -249,7 +250,7 @@ Remember that `npc-files.json` only seeds fresh databases; on an existing server
 
 Each entry in `packages/data/content/spells.json` defines one spell's data:
 
-- `name` (unique, case-insensitive) and `id` (unique non-null integer for persistence; `null` is lost on save like `Identify`).
+- `name` (unique, case-insensitive) and `id` (1.6's save id, or `null`; SSO saves spellbooks by name, so every spell is kept).
 - `effect`: the spell whose effect code this row runs (`"Firebolt"`, `"Fireball"`, etc.).
 - `sp`: base SP cost (`null` or `0` cannot be cast), plus optional `spByBody` (`{ match, pattern, sp }[]`, last match wins) for body-armour overrides (such as Smoke Bomb).
 - `crystals`: `{ colour, count }` (one of the six colours) or `null`.
@@ -313,7 +314,7 @@ Reusing an existing `effect` is data-only. Creating a brand-new effect requires 
 - [packages/data/schema/spells.ts](../packages/data/schema/spells.ts): add the new effect name to `IMPLEMENTED_SPELL_EFFECTS` (and update spell/FX schema tests).
 - `packages/shared/src/rules/spells/spells.ts`: `spellPower` (school bonus), `spellHitOnMonster` (monster hit), `playerSpellAmount` (player hit), `spellImp` (`IMP_EXITS`, `SCHOOL_ROWS`), and `directional` / `boltForm` / `fireballForm` if directional.
 - `packages/shared/src/rules/spells/spellfx.ts`: `AT_CLICK` / `FROM_CASTER` in `placeFx`, and `TRAILS` if the effect leaves a trail.
-- `packages/server/src/systems/spells/cast.ts`: `castIntent` (safe-map, directional, or Portal-style checks), and `summon` if it summons a creature.
+- `packages/server/src/systems/spells/cast.ts`: `castIntent` (safe-map, directional, or Portal-style checks), and `planSummon` if it summons a creature.
 - `packages/server/src/systems/spells/collide.ts`: `playerCollision` and `monsterHits`.
 - `packages/server/src/systems/spells/buffs.ts`: if the effect applies a timed buff or debuff.
 - `packages/client/src/playfield.ts`: draw-order or trail handling if special.

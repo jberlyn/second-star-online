@@ -7,6 +7,7 @@ import { describe, expect, test } from "bun:test";
 import {
   CAST_TEXT,
   EFFECT_TEXT,
+  LEVEL_UP_TEXT,
   type ServerMsg,
   skillIndex,
   summonFor,
@@ -16,8 +17,7 @@ import {
 import { npcFileNamed, setNpcFile } from "../src/systems/monsters/npcfiles.ts";
 import type { MonsterSlot } from "../src/systems/monsters/slots.ts";
 import { species } from "../src/systems/monsters/slots.ts";
-import { castIntent, npcBlockedSubstring, shootArrow } from "../src/systems/spells/cast.ts";
-import { SPELL_LEVEL_UP_TEXT } from "../src/systems/spells/collide.ts";
+import { castIntent, npcBlocked, shootArrow } from "../src/systems/spells/cast.ts";
 import { queueCast } from "../src/systems/spells/fx.ts";
 import { playerLoc } from "../src/systems/spells/geometry.ts";
 import { CHURCH_MAP, serverTimer, TIMEOUT_TICKS } from "../src/systems/spells/hazards.ts";
@@ -92,25 +92,67 @@ describe("the cast", () => {
     cast(a, "Fireball", 200, 100);
     expect(a.timers.actionDelay).toBe(0);
   });
-  test("kept bug: the delay is set before every later check; an empty selection costs it", () => {
-    const { a, cast } = scene();
+  test("bug fixed: only a cast that goes ahead sets the delay; a refused one costs nothing", () => {
+    const { a, map, cast } = scene();
     cast(a, "", 200, 100);
+    expect(a.timers.actionDelay).toBe(0);
+    a.spell.book = ["Minor Heal", "Fireball"];
+    cast(a, "Minor Heal", 200, 100); // no crystals
+    expect(a.timers.actionDelay).toBe(0);
+    map.flags.canFight = "O";
+    cast(a, "Fireball", 200, 100); // harmful here
+    expect(a.timers.actionDelay).toBe(0);
+    map.flags.canFight = "X";
+    give(a, "Blue Crystals", 10);
+    cast(a, "Minor Heal", 200, 100);
     expect(a.timers.actionDelay).toBe(20);
   });
-  test("kept bug: the spell click area is larger than the playfield [30,31,574,415]: the server takes 8 < H < 580, 5 < V < 420", () => {
+  test("bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]", () => {
     const { a, cast } = scene();
-    // The empty selection passes the book test and costs the delay once inside the bounds.
-    const delay = (h: number, v: number) => {
+    a.spell.book = ["Minor Heal"];
+    give(a, "Blue Crystals", 30);
+    const casts = (h: number, v: number) => {
       a.timers.actionDelay = 0;
-      cast(a, "", h, v);
-      return a.timers.actionDelay;
+      const before = a.char.vitals.sp;
+      cast(a, "Minor Heal", h, v);
+      return a.char.vitals.sp < before;
     };
-    expect(delay(9, 6)).toBe(20);
-    expect(delay(579, 419)).toBe(20);
-    expect(delay(8, 100)).toBe(0);
-    expect(delay(100, 5)).toBe(0);
-    expect(delay(580, 100)).toBe(0);
-    expect(delay(100, 420)).toBe(0);
+    expect(casts(30, 31)).toBe(true);
+    expect(casts(573, 414)).toBe(true);
+    // 1.6's margin around the playfield: 8 < H < 580, 5 < V < 420.
+    expect(casts(9, 6)).toBe(false);
+    expect(casts(579, 419)).toBe(false);
+    expect(casts(29, 100)).toBe(false);
+    expect(casts(100, 415)).toBe(false);
+  });
+  test("bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish and Holy Weapon are refused before anything is spent", () => {
+    const { a, room, cast } = scene();
+    a.spell.book = ["Bless", "Poison Dart"];
+    give(a, "Blue Crystals", 4);
+    for (const spell of ["Bless", "Poison Dart"]) {
+      const r = cast(a, spell, 200, 200);
+      expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.inert, color: 0 });
+    }
+    expect(a.char.vitals.sp).toBe(200);
+    expect(a.char.bag.some((l) => l?.item === "Blue Crystals")).toBe(true);
+    expect(a.timers.actionDelay).toBe(0);
+    expect(room.fxQueue).toEqual([]);
+  });
+  test("bug fixed: Fireball and Wind Wave cast with their school bonus", () => {
+    const { a, room, cast } = scene();
+    a.spell.book = ["Fireball", "Wind Wave"];
+    a.char.skills[skillIndex("Fire")] = 31;
+    a.char.skills[skillIndex("Wind")] = 11;
+    give(a, "Red Crystals", 10);
+    give(a, "Green Crystals", 10);
+    cast(a, "Fireball", 300, 100);
+    a.timers.actionDelay = 0;
+    cast(a, "Wind Wave", 300, 100);
+    // 1 + Fire's 2 + 1 + 1 + 1; 1 + Wind's 2 + 1.
+    expect(room.fxQueue.map((c) => [c.name, c.power])).toEqual([
+      ["FireballR", 6],
+      ["Wind waveR", 4],
+    ]);
   });
   test("ActionDelay > 0 exits, shared with melee", () => {
     const { a, cast } = scene();
@@ -152,18 +194,22 @@ describe("the cast", () => {
     const r = cast(a, "Hold", 200, 100);
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.harmful, color: 0 });
     expect(a.char.vitals.sp).toBe(200);
-    expect(a.timers.actionDelay).toBe(20);
+    expect(a.timers.actionDelay).toBe(0);
   });
-  test("kept bug: Portal is refused near any player, the caster too, after SP and crystals are spent", () => {
+  test("bug fixed: Portal is refused near another player before SP and crystals are spent, and opens on the caster", () => {
     const { a, room, cast } = scene();
     a.spell.book = ["Portal"];
-    give(a, "White Crystals", 10);
-    const me = at(6, 6);
-    const r = cast(a, "Portal", me.h, me.v);
+    give(a, "White Crystals", 20);
+    const bob = at(9, 6);
+    const r = cast(a, "Portal", bob.h, bob.v);
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.portal, color: 0 });
-    expect(a.char.vitals.sp).toBe(200 - 32);
-    expect(a.char.bag.some((l) => l?.item === "White Crystals")).toBe(false);
+    expect(a.char.vitals.sp).toBe(200);
+    expect(a.char.bag.some((l) => l?.item === "White Crystals" && l.qty === 20)).toBe(true);
     expect(room.fxQueue).toHaveLength(0);
+    const me = at(6, 6);
+    cast(a, "Portal", me.h, me.v);
+    expect(a.char.vitals.sp).toBe(200 - 32);
+    expect(room.fxQueue.map((c) => c.name)).toEqual(["Portal"]);
   });
 
   test("bug fixed: Portal with no destination is refused before SP and crystals are spent", () => {
@@ -196,19 +242,20 @@ describe("FX and monsters", () => {
       v: t.v,
       caster: "Ann",
     });
-    // The network message places it before actor pass 1, so the hit lands the same frame.
-    expect(m.hp).toBe(14 - (4 + 1 + 3));
+    // The network message places it before actor pass 1, so the hit lands the same frame. P = 1 +
+    // Fire's +2.
+    expect(m.hp).toBe(14 - (4 + 3 + 3));
     expect(events(first, "Bob")).toContainEqual({
       e: "mspell",
       slot: 1,
-      text: "8",
+      text: "10",
       color: 124,
       splat: true,
       kill: false,
     });
     expect(m.hitCountb).toBe(15); // 16 set in pass 1, counted down in pass 2
   });
-  test("a spell kill pays the spell XP table and its own level-up line", () => {
+  test("bug fixed: a spell kill pays the spell XP table and the melee level-up line", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Fireball"];
     give(a, "Red Crystals", 10);
@@ -219,7 +266,8 @@ describe("FX and monsters", () => {
     const out = run(2);
     expect(map.slots[0]?.live).toBeNull();
     expect(events(out, "Ann").some((e) => e.e === "mspell" && e.kill)).toBe(true);
-    expect(chat(out, "Ann")).toContain(SPELL_LEVEL_UP_TEXT);
+    expect(chat(out, "Ann")).toContain(LEVEL_UP_TEXT);
+    expect(LEVEL_UP_TEXT).toBe("You have become more powerful!");
   });
   test("minor heal heals a monster (cap 200) and hurts an undead 61- body", () => {
     const { a, map, run, cast } = scene();
@@ -235,8 +283,8 @@ describe("FX and monsters", () => {
   });
 });
 
-describe("monsters heal past their own hit points", () => {
-  test("kept bug: a spell heal lifts a Pig far above its 1 hit point and stops at the default cap of 200", () => {
+describe("monster heals", () => {
+  test("bug fixed: a spell heal stops at the monster's own hit points: a Pig stays at 1", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Minor Heal"];
     give(a, "Blue Crystals", 10);
@@ -244,14 +292,14 @@ describe("monsters heal past their own hit points", () => {
     const t = at(6, 4);
     cast(a, "Minor Heal", t.h, t.v);
     run(4);
-    // A Pig has 1 hit point, yet a spell heal takes it above that.
-    expect(pig.hp).toBeGreaterThan(1);
-    // Near the top the same heal stops at the default cap of 200.
-    pig.hp = 195;
+    expect(pig.hp).toBe(1);
+    const dragon = live(map, 2, "Dragon Hatchling", 9, 4, 320);
     run(30);
-    cast(a, "Minor Heal", t.h, t.v);
+    const d = at(9, 4);
+    a.timers.actionDelay = 0;
+    cast(a, "Minor Heal", d.h, d.v);
     run(4);
-    expect(pig.hp).toBe(200);
+    expect(dragon.hp).toBe(322);
   });
 });
 
@@ -298,7 +346,7 @@ describe("players", () => {
     run(1);
     expect(b.x).toBe(9);
   });
-  test("Stone Skin stacks: the defense bonus + 1 and its counter + P·30, then back to 0", () => {
+  test("Stone Skin: the defense bonus 1 and its counter P·30, then back to 0", () => {
     const { a, run, cast } = scene();
     a.spell.book = ["Stone Skin"];
     give(a, "Purple Crystals", 10);
@@ -312,7 +360,7 @@ describe("players", () => {
     expect(chat(ends, "Ann")).toContain(EFFECT_TEXT.stoneSkinEnds);
     expect(a.defenseBonus).toBe(0);
   });
-  test("kept bug: Whirlwind drains 1 SP a frame of overlap, no flicker", () => {
+  test("kept on purpose: Whirlwind drains 1 SP a frame of overlap, no flicker", () => {
     const { a, b, run, cast } = scene();
     a.spell.book = ["Whirlwind"];
     give(a, "Purple Crystals", 10);
@@ -323,7 +371,7 @@ describe("players", () => {
     expect(b.char.vitals.sp).toBe(189);
     expect(b.flicker).toBe(0);
   });
-  test("kept bug: your own harmful spell exits the whole collision, shielding you from later FX", () => {
+  test("bug fixed: your own harmful spell skips only itself; a later FX still lands on you", () => {
     const { a, b, run, cast, room } = scene();
     a.spell.book = ["Minor Heal", "Whirlwind"];
     b.spell.book = ["Minor Heal"];
@@ -335,7 +383,31 @@ describe("players", () => {
     // Placed before actor pass 1: the heal's last step is in frame 4.
     run(3);
     expect(room.fx.map((f) => f.slot)).toEqual([1, 2]);
-    expect(a.char.vitals.hp).toBe(20);
+    // 2 + P + random(2), P = 1 + Blessing's +2.
+    expect(a.char.vitals.hp).toBe(20 + 2 + 3 + 2);
+    expect(a.char.vitals.sp).toBe(200 - 13);
+  });
+  test("bug fixed: a buff cast again restarts its time and never adds: Stone Skin, Magic Shield, Argon's Fist", () => {
+    const { a, run, cast } = scene();
+    a.spell.book = ["Stone Skin", "Magic Shield", "Argon's Fist"];
+    give(a, "Purple Crystals", 10);
+    give(a, "Yellow Crystals", 10);
+    const me = at(6, 6);
+    const twice = (spell: string) => {
+      for (let i = 0; i < 2; i++) {
+        a.timers.actionDelay = 0;
+        cast(a, spell, me.h, me.v);
+        run(12);
+      }
+    };
+    twice("Stone Skin");
+    expect(a.defenseBonus).toBe(1);
+    expect(a.spell.defenseCounter).toBeLessThanOrEqual(3 * 30);
+    twice("Magic Shield");
+    // P = 1 + Wrath's +2.
+    expect(a.spell.magicDef).toBeLessThanOrEqual(3 * 70);
+    twice("Argon's Fist");
+    expect(a.timers.attackCounter).toBeLessThanOrEqual(400);
   });
   test("Morph changes the body for everyone; the morph counter 1300 then a revert", () => {
     const { a, run, cast } = scene(rngByN({ 5: [1] }));
@@ -364,8 +436,8 @@ describe("summons", () => {
     cast(a, "Summon Creature", t.h, t.v);
     expect(map.slots[1]?.live?.name).toBe("Cow");
   });
-  test("kept bug: with four live monsters the summon fails silently, paid for", () => {
-    const { a, map, cast } = scene();
+  test("bug fixed: with four live monsters a summon is refused before SP and crystals are spent", () => {
+    const { a, map, room, cast } = scene();
     for (const k of [1, 2, 3, 4]) {
       live(map, k, "Slime", k, 1);
     }
@@ -373,39 +445,56 @@ describe("summons", () => {
     give(a, "White Crystals", 10);
     const t = at(4, 4);
     const r = cast(a, "Summon Creature", t.h, t.v);
-    expect(r.out).toEqual([]);
-    expect(a.char.vitals.sp).toBe(200 - 13);
+    expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.summon, color: 0 });
+    expect(a.char.vitals.sp).toBe(200);
+    expect(a.char.bag.some((l) => l?.item === "White Crystals" && l.qty === 10)).toBe(true);
+    expect(room.fxQueue).toEqual([]);
   });
-  test("SSO: a summon on a tile off the 17×12 map fails silently, paid for", () => {
+  test("bug fixed: a summon on a blocked tile is refused before anything is spent", () => {
     const { a, map, cast } = scene();
+    map.walk[3]![3] = false; // x4y4
     a.spell.book = ["Summon Creature"];
     give(a, "White Crystals", 10);
-    // H 579 is inside the cast bounds and names tile (579 − 30) / 32 + 1 = 18.
-    const r = cast(a, "Summon Creature", 579, 200);
-    expect(r.out).toEqual([]);
+    const t = centre(4, 4);
+    const r = cast(a, "Summon Creature", t.h, t.v);
+    expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.summon, color: 0 });
     expect(map.slots.every((s) => !s.live)).toBe(true);
-    expect(a.char.vitals.sp).toBe(200 - 13);
-    a.timers.actionDelay = 0;
-    // V 419 names row (419 − 31) / 32 + 1 = 13.
-    cast(a, "Summon Creature", 200, 419);
-    expect(map.slots.every((s) => !s.live)).toBe(true);
+    expect(a.char.vitals.sp).toBe(200);
   });
-  test("kept bug: Summon Creature's blocked test matches part of the tile name: x1y1 is blocked by x1y10", () => {
+  test("bug fixed: the summons read a tile's own blocked entry: x1y1 is open when only x1y10 is blocked", () => {
     const map = testMap("x1", [[1, 10]]);
-    const room: Room = { map, npcs: ARCHIVE_NPCS, players: [], fx: [], fxQueue: [], doorLock: 0 };
-    expect(npcBlockedSubstring(room, 1, 1)).toBe(true);
-    expect(npcBlockedSubstring(room, 2, 1)).toBe(false);
+    expect(npcBlocked(map.walk, 1, 1)).toBe(false);
+    expect(npcBlocked(map.walk, 1, 10)).toBe(true);
   });
-  test("kept bug: Raise Dead raises the Zombie on the tile below a grave", () => {
+  test("kept on purpose: Raise Dead raises the Zombie on the tile below a grave, from the grave or the tile below", () => {
+    for (const click of [3, 4]) {
+      const { a, map, cast } = scene();
+      const row = map.layers[1][2]?.split(" ") ?? [];
+      row[4] = "Q8"; // a grave at (5, 3)
+      map.layers[1][2] = row.join(" ");
+      a.spell.book = ["Raise Dead"];
+      give(a, "Purple Crystals", 20);
+      const t = centre(5, click);
+      cast(a, "Raise Dead", t.h, t.v);
+      expect(map.slots[0]?.live).toMatchObject({ name: "Zombie", x: 5, y: 4 });
+    }
+  });
+  test("bug fixed: Raise Dead is refused where fighting is off; Summon Creature is not", () => {
     const { a, map, cast } = scene();
+    map.flags.canFight = "O";
     const row = map.layers[1][2]?.split(" ") ?? [];
-    row[4] = "Q8"; // a grave at (5, 3)
+    row[4] = "Q8";
     map.layers[1][2] = row.join(" ");
-    a.spell.book = ["Raise Dead"];
+    a.spell.book = ["Raise Dead", "Summon Creature"];
     give(a, "Purple Crystals", 20);
+    give(a, "White Crystals", 20);
     const grave = centre(5, 3);
-    cast(a, "Raise Dead", grave.h, grave.v);
-    expect(map.slots[0]?.live).toMatchObject({ name: "Zombie", x: 5, y: 4 });
+    const r = cast(a, "Raise Dead", grave.h, grave.v);
+    expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.summon, color: 0 });
+    expect(a.char.vitals.sp).toBe(200);
+    const t = centre(8, 8);
+    cast(a, "Summon Creature", t.h, t.v);
+    expect(map.slots[0]?.live?.name).toBe("Pig");
   });
 });
 
@@ -430,17 +519,17 @@ describe("books", () => {
     expect(p.char.bag[0]).toBeNull();
     expect(p.spell.book).toEqual(["Fireball"]);
   });
-  test("kept bug: reading a Bolt Book can use up an earlier Firebolt Book", () => {
+  test("bug fixed: reading a Bolt Book uses up that Bolt Book, not a Firebolt Book above it", () => {
     const p = player("Ann", testMap("x1"), 1, 1);
     p.char.stats.dex = 30;
     give(p, "Firebolt Book", 1);
     give(p, "Bolt Book", 1);
     readBook(p, 1, rngByN());
-    expect(p.char.bag[0]).toBeNull();
-    expect(p.char.bag[1]).toEqual({ item: "Bolt Book", qty: 1 });
+    expect(p.char.bag[0]).toEqual({ item: "Firebolt Book", qty: 1 });
+    expect(p.char.bag[1]).toBeNull();
     expect(p.spell.book).toEqual(["Bolt"]);
   });
-  test("kept bug: a book is used up when the spell is already known", () => {
+  test("bug fixed: a book is kept when the spell is already known", () => {
     const p = player("Ann", testMap("x1"), 1, 1);
     p.spell.book = ["Hold"];
     p.char.stats.dex = 20;
@@ -449,9 +538,9 @@ describe("books", () => {
       "You read the book...",
       "You already know this spell.",
     ]);
-    expect(p.char.bag[0]).toBeNull();
+    expect(p.char.bag[0]).toEqual({ item: "Hold Book", qty: 1 });
   });
-  test("kept bug: a skill book is used up when the skill is 77 or more and teaches nothing", () => {
+  test("bug fixed: a skill book is kept when the skill is 77 or more and it teaches nothing", () => {
     const p = player("Ann", testMap("x1"), 1, 1);
     p.char.stats.dex = 20;
     p.char.skills[skillIndex("Slash")] = 77;
@@ -460,13 +549,23 @@ describe("books", () => {
       "You read the book...",
       "There is nothing more you can learn from this book.",
     ]);
-    expect(p.char.bag[0]).toBeNull();
+    expect(p.char.bag[0]).toEqual({ item: "Slash Book", qty: 1 });
     expect(p.char.skills[skillIndex("Slash")]).toBe(77);
   });
-  test("kept bug: the Poison Dart Book has no Inventory member, so using it does nothing", () => {
+  test("bug fixed: the Poison Dart Book is read like any other book, though it has no picture", () => {
     const p = player("Ann", testMap("x1"), 1, 1);
     give(p, "Poison Dart Book", 1);
-    expect(readBook(p, 0, rngByN())).toEqual([]);
+    expect(readBook(p, 0, rngByN())).toEqual([
+      "You read the book...",
+      "You have learned the spell of Poison Dart.",
+    ]);
+    expect(p.char.bag[0]).toBeNull();
+  });
+  test("bug fixed: the Radar Book teaches Radar", () => {
+    const p = player("Ann", testMap("x1"), 1, 1);
+    give(p, "Radar Book", 1);
+    expect(readBook(p, 0, rngByN())).toContain("You have learned the spell of Radar.");
+    expect(p.spell.book).toEqual(["Radar"]);
   });
 });
 
@@ -513,7 +612,7 @@ describe("the server timer", () => {
 });
 
 describe("monster spells", () => {
-  test("kept bug: an unprovoked Passive Acrostia casts Major Heal at you", () => {
+  test("kept on purpose: an unprovoked Passive Acrostia casts Major Heal at you", () => {
     // Two players: Major Heal's user roll is 115.
     const { a, map, run, room } = scene(rngByN({ 115: [1] }));
     live(map, 1, "Acrostia", 3, 3);
@@ -527,15 +626,26 @@ describe("monster spells", () => {
     const cast = room.fx[0];
     expect(cast).toMatchObject({ name: "Major Heal", h: me.h, v: me.v, owner: "180", power: 23 });
   });
-  test("kept bug: the Snow Serpent's Whirlwind lands on you but drains nothing with PvP off", () => {
+  test("bug fixed: the Snow Serpent's Whirlwind drains you with PvP off too: the flag is for players' spells", () => {
     for (const pvp of ["O", "X"]) {
       const { a, map, run, room } = scene(rngByN({ 115: [1] }));
       map.flags.canPvp = pvp;
       live(map, 1, "Snow Serpent", 3, 3);
       run(12);
       expect(room.fx.some((f) => f.name === "Whirlwind" && f.owner === "180")).toBe(true);
-      expect(a.char.vitals.sp < 200).toBe(pvp === "X");
+      expect(a.char.vitals.sp).toBeLessThan(200);
     }
+  });
+  test("bug fixed: a player's harmful spell provokes a Passive monster for everyone here", () => {
+    const { a, b, map, run, cast } = scene();
+    a.spell.book = ["Fireball"];
+    give(a, "Red Crystals", 10);
+    live(map, 1, "Acrostia", 6, 5);
+    const t = at(6, 5);
+    cast(a, "Fireball", t.h, t.v);
+    run(1);
+    expect(a.npcAttackFlag).toBe(true);
+    expect(b.npcAttackFlag).toBe(true);
   });
   test("a monster's cast blocks everyone's monster spells for 30 frames: the caster name contains 18", () => {
     const { a, map, run } = scene(rngByN({ 115: [1] }));
@@ -560,6 +670,19 @@ describe("the Holy Shield", () => {
 });
 
 describe("arrows and the Fire Staff", () => {
+  test("bug fixed: a Fire Staff fireball trains no skill", () => {
+    const { a, room, run } = scene(rngByN({ 3: [3], 6: [6] }));
+    a.char.equip.weapon = "Fire Staff";
+    a.char.skills[skillIndex("StaffFighting")] = 30;
+    a.char.skills[skillIndex("Magery")] = 5;
+    a.char.skills[skillIndex("Fire")] = 5;
+    a.attackHeld = true;
+    a.timers.canAttack = true;
+    const out = run(2);
+    expect(room.fx.some((f) => f.name.startsWith("Fireball"))).toBe(true);
+    expect(chat(out, "Ann").filter((l) => l.includes("advanced"))).toEqual([]);
+    expect(a.char.skills[skillIndex("Magery")]).toBe(5);
+  });
   test("a Fire Staff fireball goes when random(SPower) + (StaffFighting = 100 ? 2 : 0) > 2", () => {
     const { a, room, run } = scene(rngByN({ 3: [3], 6: [6] }));
     a.char.equip.weapon = "Fire Staff";
@@ -571,22 +694,28 @@ describe("arrows and the Fire Staff", () => {
   });
 });
 
-describe("kept bugs on players and monsters", () => {
-  test("kept bug: the spell-defense lookup is a no-op, so armour never lowers spell damage", () => {
-    const hit = (body: string) => {
+describe("players and monsters", () => {
+  test("bug fixed: armour and Magic Shield change the spell damage you take", () => {
+    const hit = (body: string, shield = 0) => {
       const { a, b, run, cast } = scene();
       b.char.equip.body = body;
+      b.char.vitals.hp = 60;
+      b.spell.magicDef = shield;
       a.spell.book = ["Meteor"];
       give(a, "Green Crystals", 10);
       const t = at(9, 6);
       cast(a, "Meteor", t.h, t.v);
       run(23);
-      return 20 - b.char.vitals.hp;
+      return 60 - b.char.vitals.hp;
     };
-    expect(hit("Plate Armor")).toBe(hit("NOTHING"));
-    expect(hit("NOTHING")).toBeGreaterThan(0);
+    // 15 + P + random(3), P = 1 + Wrath's +2, then + random(3).
+    const bare = hit("NOTHING");
+    expect(bare).toBe(15 + 3 + 3 + 3);
+    expect(hit("Plate Armor")).toBe(bare + 4);
+    expect(hit("Necromancer's Robe")).toBe(bare - 4);
+    expect(hit("NOTHING", 500)).toBe(bare - 5);
   });
-  test("kept bug: Hold ignores PvP flags: it roots a player where PvP is off", () => {
+  test("bug fixed: Hold obeys the PvP flag: a player's Hold roots no one where PvP is off", () => {
     const { a, b, map, run, cast } = scene();
     map.flags.canPvp = "O";
     a.spell.book = ["Hold"];
@@ -594,31 +723,34 @@ describe("kept bugs on players and monsters", () => {
     const t = at(9, 6);
     cast(a, "Hold", t.h, t.v);
     run(4);
-    expect(b.spell.hold).toBeGreaterThan(0);
+    expect(b.spell.hold).toBe(0);
   });
-  test("kept bug: dead spells cost SP and crystals and show nothing: Bless", () => {
-    const { a, room, run, cast } = scene();
-    a.spell.book = ["Bless"];
-    give(a, "Blue Crystals", 4);
-    cast(a, "Bless", 200, 200);
-    run(2);
-    expect(a.char.vitals.sp).toBe(200 - 12);
-    expect(a.char.bag.some((l) => l?.item === "Blue Crystals")).toBe(false);
-    expect(room.fx).toEqual([]);
-  });
-  test("kept bug: Meteor's second hit frame (19) falls inside the first's 16-frame lockout", () => {
+  test("bug fixed: Meteor hits a monster on both its hit frames, 13 and 19", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Meteor"];
     give(a, "Green Crystals", 10);
-    // A Zombie at 60, under its heal cap of 67, which a hit also clamps to.
     const zombie = live(map, 1, "Zombie", 4, 4, 60);
     const t = at(4, 4);
     cast(a, "Meteor", t.h, t.v);
     run(24);
-    // One hit of 15 + P + random(3), P = 1 + Wrath's +2.
-    expect(zombie.hp).toBe(60 - (15 + 3 + 3));
+    // Two hits of 15 + P + random(3), P = 1 + Wrath's +2.
+    expect(zombie.hp).toBe(60 - 2 * (15 + 3 + 3));
   });
-  test("kept bug: Firesword without a sword: the warmth line, no counter; a recast refreshes P·40", () => {
+  test("a second Meteor inside the lockout still misses: only the FX that set it hits again", () => {
+    const { a, map, run, cast } = scene();
+    a.spell.book = ["Meteor"];
+    give(a, "Green Crystals", 20);
+    const zombie = live(map, 1, "Zombie", 4, 4, 67);
+    const t = at(4, 4);
+    cast(a, "Meteor", t.h, t.v);
+    run(10);
+    a.timers.actionDelay = 0;
+    cast(a, "Meteor", t.h, t.v);
+    run(30);
+    expect(zombie.hp).toBeLessThan(67);
+    expect((67 - zombie.hp) % (15 + 3 + 3)).toBe(0);
+  });
+  test("kept on purpose: Firesword without a sword: the warmth line, no counter; a recast refreshes P·40", () => {
     const { a, b, run, cast } = scene();
     a.spell.book = ["Firesword"];
     give(a, "Red Crystals", 30);
@@ -637,16 +769,16 @@ describe("kept bugs on players and monsters", () => {
     run(4);
     expect(b.spell.fireSword).toBe(first); // assigned, not added
   });
-  test("kept bug: Radar on a player sends a line every frame of overlap, up to 10; the FX flies twice as fast, so 5", () => {
+  test("bug fixed: Radar on a player sends one line", () => {
     const { a, run, cast } = scene();
     a.spell.book = ["Radar"];
     give(a, "Yellow Crystals", 10);
     const t = at(9, 6);
     cast(a, "Radar", t.h, t.v);
     const lines = chat(run(12), "Ann").filter((l) => l.startsWith("*** Bob"));
-    expect(lines).toHaveLength(5);
+    expect(lines).toHaveLength(1);
   });
-  test("kept bug: a monster's Fireball flies in a random(4) direction from it, not at you", () => {
+  test("kept on purpose: a monster's Fireball flies in a random(4) direction from it, not at you", () => {
     const { map, run, room } = scene(rngByN({ 115: [1], 4: [3] }));
     // A Fireball tag on a Slime, as an operator's NPC file could give it (the NPC editor).
     const slime = live(map, 1, "Slime", 3, 3);
@@ -667,14 +799,14 @@ describe("kept bugs on players and monsters", () => {
       expect.objectContaining({ e: "fx", name: "FireballU", h: loc.h, v: loc.v - 20 - 32 }),
     );
   });
-  test("kept bug: a player with 18 in the name blocks monster spells for 30 frames", () => {
+  test("bug fixed: a player with 18 in the name does not block monster spells", () => {
     const { a, b, run, cast } = scene();
     a.name = "Ann18";
     a.spell.book = ["Minor Heal"];
     give(a, "Blue Crystals", 10);
     cast(a, "Minor Heal", 100, 100);
     run(1);
-    expect(b.spell.npcSpellBlock).toBe(30);
+    expect(b.spell.npcSpellBlock).toBe(0);
   });
 });
 

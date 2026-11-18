@@ -10,7 +10,6 @@
  */
 import {
   type DeltaEvent,
-  lingoContains,
   newFx,
   placeFx,
   type Rng,
@@ -28,6 +27,14 @@ export function queueCast(room: Room, c: CastMessage): void {
 /** The monster-spell block, 30 frames. */
 export const NPC_SPELL_BLOCK_FRAMES = 30;
 
+/**
+ * A monster's cast: no player owns it and it is sent as its sprite, "180"-"183" or "a 180"-"a 183".
+ * 1.6 tested whether the name contained "18", so any caster with "18" in its name, a player too, set the block.
+ */
+export function isMonsterCaster(q: Pick<CastMessage, "owner" | "ownerId">): boolean {
+  return q.ownerId === null && /^(a )?18[0-3]$/.test(q.owner);
+}
+
 function freeSlot(room: Room): number {
   for (let k = 1; ; k += 1) {
     const at = room.fx.find((f) => f.slot === k);
@@ -44,9 +51,10 @@ export interface PlaceResult {
 }
 
 /**
- * The frame script's network message: each queued cast as every client ran it. A caster name
- * containing "18" blocks monster spells for everyone here; the caster's own client runs the cast skill gain
- * when the caster's loc is positive; then the FX takes the lowest free slot, unless the name places
+ * The frame script's network message: each queued cast as every client ran it. A monster's cast
+ * blocks monster spells for everyone here (a bug fixed: 1.6 blocked them for any caster whose name
+ * contained "18"); the caster's own client runs the cast skill gain when the caster's loc is
+ * positive and the cast trains; then the FX takes the lowest free slot, unless the name places
  * nothing.
  */
 export function placeQueued(room: Room, rng: Rng): PlaceResult {
@@ -59,12 +67,12 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
       if (p.loading > 0) {
         continue;
       }
-      if (lingoContains(q.owner, "18")) {
+      if (isMonsterCaster(q)) {
         p.spell.npcSpellBlock = NPC_SPELL_BLOCK_FRAMES;
       }
     }
     const caster = q.ownerId ? room.players.find((p) => p.id === q.ownerId) : undefined;
-    if (casterH > 0 && casterV > 0 && caster && caster.loading === 0) {
+    if (q.train !== false && casterH > 0 && casterV > 0 && caster && caster.loading === 0) {
       for (const text of spellImp(q.name, caster.char.skills, caster.char.faction, rng)) {
         res.lines.push({ to: caster, text });
       }

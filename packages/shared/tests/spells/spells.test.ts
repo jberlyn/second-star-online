@@ -15,6 +15,7 @@ import { skillCaps } from "../../src/rules/progression/skillgain.ts";
 import { newFx, placeFx, stepFx } from "../../src/rules/spells/spellfx.ts";
 import {
   BOOK_TEXT,
+  baseSpell,
   bookDex,
   type Caster,
   castMageCap,
@@ -24,12 +25,16 @@ import {
   inCastBounds,
   inxitionText,
   isHarmful,
+  isInert,
   morphBody,
   morphCounterFor,
   playerSpellAmount,
   runBook,
+  SKILL_BOOK_CAP,
+  type SpellTarget,
   savedSpellbook,
   spCost,
+  spellDefense,
   spellHitOnMonster,
   spellImp,
   spellPower,
@@ -62,12 +67,25 @@ const caster = (set: Record<string, number> = {}, body = "NOTHING"): Caster => (
 });
 
 describe("the cast checks", () => {
-  test("cast bounds 8 < H < 580, 5 < V < 420", () => {
-    expect(inCastBounds(9, 6)).toBe(true);
-    expect(inCastBounds(8, 100)).toBe(false);
-    expect(inCastBounds(579, 419)).toBe(true);
-    expect(inCastBounds(580, 100)).toBe(false);
-    expect(inCastBounds(100, 420)).toBe(false);
+  test("bug fixed: a cast click must be on the playfield [30, 31, 574, 415]", () => {
+    expect(inCastBounds(30, 31)).toBe(true);
+    expect(inCastBounds(573, 414)).toBe(true);
+    // 1.6's margin: 8 < H < 580, 5 < V < 420.
+    expect(inCastBounds(9, 6)).toBe(false);
+    expect(inCastBounds(29, 100)).toBe(false);
+    expect(inCastBounds(100, 30)).toBe(false);
+    expect(inCastBounds(574, 100)).toBe(false);
+    expect(inCastBounds(100, 415)).toBe(false);
+    expect(inCastBounds(579, 419)).toBe(false);
+  });
+  test("bug fixed: the spells 1.6 gave no effect are inert, by name or effect", () => {
+    for (const s of ["Bless", "weaken", "Haste", "Poison Dart", "Replenish", "Holy Weapon"]) {
+      expect(isInert(s)).toBe(true);
+    }
+    expect(isInert("Identify")).toBe(true);
+    for (const s of ["Minor Heal", "Radar", "Fireball", "Hold"]) {
+      expect(isInert(s)).toBe(false);
+    }
   });
   test("the harmful set has 11 spells and not Hold, Raise Dead or Summon Creature", () => {
     for (const s of ["Fireball", "WIND WAVE", "Holy Shield", "Web", "Bolt"]) {
@@ -85,8 +103,8 @@ describe("the cast checks", () => {
     expect(spCost("Identify", "NOTHING")).toBe(0);
     expect(spCost("minor heal", "NOTHING")).toBe(5);
   });
-  test('kept bug: Smoke Bomb costs 0 in a body named exactly "Ninja", so it cannot be cast', () => {
-    expect(spCost("Smoke Bomb", "Ninja")).toBe(0);
+  test('bug fixed: Smoke Bomb costs 25 in a body named exactly "Ninja", like any other body', () => {
+    expect(spCost("Smoke Bomb", "Ninja")).toBe(25);
     expect(spCost("Smoke Bomb", "NOTHING")).toBe(25);
     expect(spCost("Smoke Bomb", "Ninja Outfit")).toBe(17);
     expect(spCost("Smoke Bomb", "Royal Ninja Uniform")).toBe(13);
@@ -110,11 +128,14 @@ describe("SPower", () => {
   test("Wrath school: +2 at > 0 then +1 per tier", () => {
     expect(spellPower("Meteor", caster({ Wrath: 31 }))).toBe(1 + 2 + 3);
   });
-  test("kept bug: Fireball and Wind Wave never get the school bonus, they are renamed first", () => {
+  test("bug fixed: Fireball and Wind Wave get their school bonus by the base name", () => {
     const c = caster({ Fire: 99, Wind: 99 });
+    const school = 2 + 1 + 1 + 1 + 1 + 1 + 2 + 4;
+    expect(spellPower("Fireball", c)).toBe(1 + school);
+    expect(spellPower("Wind Wave", c)).toBe(1 + school);
+    expect(spellPower("Firebolt", c)).toBe(1 + school);
+    // A directional name is not a spell name: the caller works out the power first.
     expect(spellPower("FireballL", c)).toBe(1);
-    expect(spellPower("Wind waveR", c)).toBe(1);
-    expect(spellPower("Firebolt", c)).toBe(1 + 2 + 1 + 1 + 1 + 1 + 1 + 2 + 4);
   });
   test("Bolt gets Wrath before its rename", () => {
     expect(spellPower("Bolt", caster({ Wrath: 5 }))).toBe(3);
@@ -145,14 +166,27 @@ describe("SpellImp", () => {
     ]);
     expect(s[skillIndex("Magery")]).toBe(6);
   });
-  test("kept bug: Bolt and Wind Wave never raise their school; they arrive as BoltR, Wind waveR", () => {
+  test("bug fixed: Bolt and Wind Wave raise their school from their directional names", () => {
     const s = skills({ Magery: 0, Wrath: 4, Wind: 4 });
-    expect(spellImp("BoltR", s, { ...NO_FACTION }, queue([1, 1]))).toEqual([]);
-    expect(spellImp("Wind waveR", s, { ...NO_FACTION }, queue([1, 1]))).toEqual([]);
+    expect(spellImp("BoltR", s, { ...NO_FACTION }, queue([1]))).toEqual([
+      "You have advanced in the art of Wrath!",
+    ]);
+    expect(spellImp("Wind waveU", s, { ...NO_FACTION }, queue([1]))).toEqual([
+      "You have advanced in the art of Wind!",
+    ]);
+    expect(s[skillIndex("Wrath")]).toBe(5);
+    expect(s[skillIndex("Wind")]).toBe(5);
   });
-  test("kept bug: a Fire Staff or Firesword fireball trains Magery and Fire: contains 'Fireball'", () => {
+  test("a cast Fireball trains Magery and Fire from its directional name", () => {
     const s = skills({ Magery: 3, Fire: 3 });
     expect(spellImp("FireballU", s, { ...NO_FACTION }, queue([1, 1]))).toHaveLength(2);
+  });
+  test("baseSpell reads a directional name as its spell", () => {
+    expect(baseSpell("FireballL")).toBe("Fireball");
+    expect(baseSpell("BoltD")).toBe("Bolt");
+    expect(baseSpell("Wind waveR")).toBe("Wind Wave");
+    expect(baseSpell("Firebolt")).toBe("Firebolt");
+    expect(baseSpell("Blue ArrowsL")).toBe("Blue ArrowsL");
   });
   test("arrows and the smoke puff skip it", () => {
     const r = queue([1, 1]);
@@ -190,8 +224,9 @@ describe("SpellImp", () => {
 });
 
 describe("books", () => {
-  test("kept bug: the Dex table's typos: Argon's Fist Book needs 1, only an exact Bolt Book needs 24", () => {
-    expect(bookDex("Argon's Fist Book")).toBe(1);
+  test("bug fixed: the Dex table's typos: Argon's Fist Book needs 10, any Bolt book 24", () => {
+    expect(bookDex("Argon's Fist Book")).toBe(10);
+    expect(bookDex("Bolt Spell Book")).toBe(24);
     expect(bookDex("Bolt Book")).toBe(24);
     expect(bookDex("Firebolt Book")).toBe(20);
     expect(bookDex("Portal Book")).toBe(26);
@@ -204,9 +239,9 @@ describe("books", () => {
     });
     expect(book).toEqual(["Firebolt"]);
   });
-  test("kept bug: the Radar and Haste books teach nothing", () => {
-    expect(runBook("Radar Book", [], [], queue())).toEqual({ kind: "none", lines: [] });
-    expect(runBook("Haste Book", [], [], queue())).toEqual({ kind: "none", lines: [] });
+  test("bug fixed: the Radar and Haste books teach their spells", () => {
+    expect(runBook("Radar Book", [], [], queue())).toMatchObject({ kind: "spell", spell: "Radar" });
+    expect(runBook("Haste Book", [], [], queue())).toMatchObject({ kind: "spell", spell: "Haste" });
   });
   test("already known: an exact line", () => {
     expect(runBook("Hold Book", [], ["Hold"], queue())).toEqual({
@@ -214,21 +249,25 @@ describe("books", () => {
       lines: [BOOK_TEXT.known],
     });
   });
-  test("kept bug: combat books add 1 + random(5) below 77, so up to 82", () => {
-    const s = skills({ Parry: 76 });
+  test("bug fixed: combat books add 1 + random(5) below 77 and stop at 77", () => {
+    const s = skills({ Parry: 70 });
+    expect(runBook("Parry Book", s, [], queue([3]))).toMatchObject({ kind: "skill" });
+    expect(s[skillIndex("Parry")]).toBe(74);
     expect(runBook("Parry Book", s, [], queue([5]))).toMatchObject({ kind: "skill" });
-    expect(s[skillIndex("Parry")]).toBe(82);
+    expect(s[skillIndex("Parry")]).toBe(SKILL_BOOK_CAP);
     expect(runBook("Parry Book", s, [], queue())).toEqual({
       kind: "none",
       lines: [BOOK_TEXT.nothingMore],
     });
   });
-  test("kept bug: savespells keeps 29 lines and drops Identify", () => {
-    const names = spellsData.spells.filter((s) => s.id !== null).map((s) => s.name);
-    const book = ["Identify", ...names];
-    const kept = savedSpellbook(book);
-    expect(kept).not.toContain("Identify");
-    expect(kept.length).toBe(28);
+  test("bug fixed: the saved spellbook keeps every spell, Identify and the 30th line included", () => {
+    const names = spellsData.spells.map((s) => s.name);
+    expect(names.length).toBeGreaterThan(29);
+    expect(savedSpellbook(["Identify", ...names.filter((n) => n !== "Identify")])).toEqual([
+      "Identify",
+      ...names.filter((n) => n !== "Identify"),
+    ]);
+    expect(savedSpellbook(["Minor Heal", "Nonsense"])).toEqual(["Minor Heal"]);
   });
 });
 
@@ -330,16 +369,53 @@ describe("spell hits lifted out of the collision handlers", () => {
     expect(rng.calls).toEqual([2]);
   });
 
-  test("playerSpellAmount: Arrows deal P + random(2), then the spell-definition lookup draws random(3)", () => {
+  test("playerSpellAmount: Arrows deal P + random(2), then the spell-defense lookup adds random(3)", () => {
     const rng = queue([2, 1]);
-    expect(playerSpellAmount("Arrows", 5, rng)).toBe(7);
+    expect(playerSpellAmount("Arrows", 5, BARE, rng)).toBe(8);
     expect(rng.calls).toEqual([2, 3]);
   });
 
-  test("playerSpellAmount: Minor Heal heals 2 + P + random(2) and draws no spell-definition lookup", () => {
+  test("playerSpellAmount: Minor Heal heals 2 + P + random(2) and draws no spell-defense lookup", () => {
     const rng = queue([1]);
-    expect(playerSpellAmount("minor heal", 4, rng)).toBe(7);
+    expect(playerSpellAmount("minor heal", 4, BARE, rng)).toBe(7);
     expect(rng.calls).toEqual([2]);
+  });
+
+  test("playerSpellAmount: Firebolt and Splash skip the spell-defense lookup, as in 1.6", () => {
+    const shielded: SpellTarget = { ...BARE, magicShield: true };
+    expect(playerSpellAmount("firebolt", 3, shielded, queue([1]))).toBe(12);
+    expect(playerSpellAmount("Splash", 3, shielded, queue([1]))).toBe(24);
+  });
+});
+
+/** No armour, no Magic Shield. */
+const BARE: SpellTarget = { equip: { ...NO_EQUIPMENT }, magicShield: false };
+
+describe("the spell-defense lookup", () => {
+  const wearing = (e: Partial<SpellTarget["equip"]>, magicShield = false): SpellTarget => ({
+    equip: { ...NO_EQUIPMENT, ...e },
+    magicShield,
+  });
+  test("bug fixed: robes and Magic Shield lower spell damage; metal armour raises it", () => {
+    // 20 + random(3) bare.
+    expect(spellDefense(20, BARE, queue([2]))).toBe(22);
+    // Necromancer's Robe −4, Crown −3, Small Shield −1.
+    const robed = wearing({ body: "Necromancer's Robe", head: "Crown", offHand: "Small Shield" });
+    expect(spellDefense(20, robed, queue([2]))).toBe(20 - 8 + 2);
+    // Plate Armor +4, War Helm +5, Knight Shield +6.
+    const plate = wearing({ body: "Plate Armor", head: "War Helm", offHand: "Knight Shield" });
+    expect(spellDefense(20, plate, queue([2]))).toBe(20 + 15 + 2);
+    // Magic Shield −5.
+    expect(spellDefense(20, wearing({}, true), queue([2]))).toBe(20 - 5 + 2);
+  });
+  test("bug fixed: an amount brought below 1 becomes random(3); exactly one draw either way", () => {
+    const rng = queue([2]);
+    const robed = wearing({ body: "Necromancer's Robe", head: "Pharaoh Helm" }, true);
+    expect(spellDefense(5, robed, rng)).toBe(2);
+    expect(rng.calls).toEqual([3]);
+  });
+  test("the rows are `contains`, so a damaged or +N item counts", () => {
+    expect(spellDefense(10, wearing({ body: "Lord's Armor +2" }), queue([1]))).toBe(10 - 5 + 1);
   });
 });
 

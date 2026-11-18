@@ -71,6 +71,14 @@ export const itemRulesDataSchema = z.strictObject({
         delta: int,
       }),
     ),
+    /**
+     * 1.6's spell-defense lookup (`GetSpellDef`): flat rows added to the spell damage a player
+     * takes, all `contains`, and Magic Shield's delta while its counter runs.
+     */
+    spell: z.strictObject({
+      rows: z.array(z.strictObject({ slot: slotVarSchema, ...pattern, delta: int })),
+      magicShield: int,
+    }),
   }),
   breaks: z.strictObject({
     /** Armour break rules. */

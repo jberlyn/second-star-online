@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 55 |
-| [Fixed bugs](#fixed-bugs) | 264 |
-| [Kept on purpose](#kept-on-purpose) | 5 |
+| [Fixed bugs](#fixed-bugs) | 286 |
+| [Kept on purpose](#kept-on-purpose) | 10 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **495** |
+| **Total** | **522** |
 
 By system (the code folder that holds the change):
 
@@ -54,7 +54,7 @@ By system (the code folder that holds the change):
 | movement | [7](#movement) | [4](#server-side-movement) |
 | progression | [8](#progression) | [4](#server-side-progression) |
 | social | [22](#social) | [10](#server-side-social) |
-| spells | [1](#spells) | [9](#server-side-spells) |
+| spells | [23](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
 | world | [1](#world) | [6](#server-side-world) |
 
@@ -2927,6 +2927,204 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`), `packages/server/src/systems/world/tick.ts` (`portalOpen`)
 - **Pinned by:** `bug fixed: Portal with no destination is refused before SP and crystals are spent`; `bug fixed: a portal whose targets' maps are all missing moves no one` (packages/server/tests/spells.test.ts)
 
+#### A cast click must land on the playfield
+- **Kind:** Bug fixed
+- **What you notice:** A spell is cast only by clicking on the playfield; a click in the margin around it does nothing.
+- **1.6:** The cast took any click with 8 < H < 580 and 5 < V < 420, a band of up to 22 pixels around the playfield [30, 31, 574, 415].
+- **SSO:** The client and the server both take a click only inside the playfield rectangle.
+- **Why:** The margin was a loose bounds check, not a place to aim; clicks there named tiles off the map.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`inCastBounds`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `bug fixed: a cast click must be on the playfield [30, 31, 574, 415]` (packages/shared/tests/spells/spells.test.ts); `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts); `bug fixed: the point must be on the playfield, not 1.6's wider 8 < H < 580, 5 < V < 420` (packages/client/tests/cast.test.ts)
+
+#### A refused cast costs nothing
+- **Kind:** Bug fixed
+- **What you notice:** A cast that is refused, for any reason, leaves you free to cast again at once and spends no SP or crystals.
+- **1.6:** The 20-frame cast delay was set before the checks for map loading, harmful spells, an empty selection, SP and crystals; Portal's player test and the summons' tests ran after SP and crystals were taken.
+- **SSO:** Every refusal comes first; only a cast that goes ahead sets the delay and takes its cost.
+- **Why:** Charging for a cast that never happened was an ordering accident.
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `bug fixed: only a cast that goes ahead sets the delay; a refused one costs nothing` (packages/server/tests/spells.test.ts)
+
+#### Portal is refused only near another player, before it costs anything
+- **Kind:** Bug fixed
+- **What you notice:** You can open a Portal on yourself. Casting it on another player says "You cannot cast this close to another person." and spends nothing.
+- **1.6:** The test looped over every player sprite, the caster's own included, and ran after SP and crystals were taken.
+- **SSO:** The test leaves out the caster and runs before the cost.
+- **Why:** "Another person" never meant you, and a refused cast should not be paid for.
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `bug fixed: Portal is refused near another player before SP and crystals are spent, and opens on the caster` (packages/server/tests/spells.test.ts)
+
+#### Spells with no effect are refused before they cost anything
+- **Kind:** Bug fixed
+- **What you notice:** Casting Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon or Identify says "This spell has no power." and spends no SP, crystals or delay.
+- **1.6:** These spells had costs but no effect: the cast placed no FX and nothing read them. Haste's flag and Replenish's heal sat in a handler nothing called. The first six took SP and crystals for nothing; Identify had no cost and did nothing silently.
+- **SSO:** They stay learnable and listed, but the cast is refused before anything is spent. No effect is invented for them.
+- **Why:** Taking a player's SP and crystals for a spell that cannot do anything is a bug; giving them effects 1.6 never had would be new content.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`isInert`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `bug fixed: the spells 1.6 gave no effect are inert, by name or effect` (packages/shared/tests/spells/spells.test.ts); `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish and Holy Weapon are refused before anything is spent` (packages/server/tests/spells.test.ts)
+
+#### Smoke Bomb in a body named "Ninja" costs 25
+- **Kind:** Bug fixed
+- **What you notice:** Smoke Bomb costs 25 SP whatever you wear, except the Ninja Outfit (17) and Royal Ninja Uniform (13).
+- **1.6:** The cost was set to 25 only when the body was not exactly "Ninja", so a body named "Ninja" left the cost at 0, which ended the cast: Smoke Bomb could not be cast at all.
+- **SSO:** The "Ninja" row is gone; such a body pays the normal 25.
+- **Why:** The test was a slip for the ninja bodies; it was never meant to make the spell uncastable.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spCost`)
+- **Pinned by:** `bug fixed: Smoke Bomb costs 25 in a body named exactly "Ninja", like any other body` (packages/shared/tests/spells/spells.test.ts)
+
+#### Fireball and Wind Wave get their school bonus
+- **Kind:** Bug fixed
+- **What you notice:** Fire skill adds to Fireball's power and Wind skill to Wind Wave's, as they do for Firebolt and Whirlwind.
+- **1.6:** The spell was renamed to its directional form ("FireballL", "Wind waveR") before the power code looked for "Fireball" and "wind wave", so neither matched.
+- **SSO:** Power is worked out on the spell's own name, then the cast is renamed.
+- **Why:** The power code plainly lists both spells under their schools.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spellPower`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `bug fixed: Fireball and Wind Wave get their school bonus by the base name` (packages/shared/tests/spells/spells.test.ts); `bug fixed: Fireball and Wind Wave cast with their school bonus` (packages/server/tests/spells.test.ts)
+
+#### Bolt and Wind Wave train their school; free fireballs train nothing
+- **Kind:** Bug fixed
+- **What you notice:** Casting Bolt can raise Wrath, and Wind Wave can raise Wind. A Fire Staff or Firesword fireball, which costs nothing, no longer raises Magery or Fire.
+- **1.6:** The skill gain was given the directional name and compared it exactly with "Bolt" and "Wind Wave", so they never trained; it matched "Fireball" with `contains`, so the free weapon fireballs trained Magery and Fire.
+- **SSO:** A directional name trains its base spell's school, and the weapons' fireballs skip the skill gain.
+- **Why:** Every spell lists its school in the skill gain; free swings were never meant to train magic.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`baseSpell`, `spellImp`), `packages/server/src/systems/spells/cast.ts` (`swingFireballs`), `packages/server/src/systems/spells/fx.ts` (`placeQueued`)
+- **Pinned by:** `bug fixed: Bolt and Wind Wave raise their school from their directional names` (packages/shared/tests/spells/spells.test.ts); `bug fixed: a Fire Staff fireball trains no skill` (packages/server/tests/spells.test.ts)
+
+#### Armour and Magic Shield change spell damage
+- **Kind:** Bug fixed
+- **What you notice:** Robes, some helms and some shields lower the damage arrows, Crush, Meteor, Fireball, Bolt and Wind Wave do to you; metal armour, plate helms and steel shields raise it. Magic Shield takes 5 off while it runs.
+- **1.6:** Those branches called the spell-defense lookup (`GetSpellDef`), which held these rows, Magic Shield's −5 and a closing `random(3)`, but it changed only a by-value copy, so the damage never changed.
+- **SSO:** The lookup's result is the damage: each worn item's row is added, Magic Shield takes 5 off, a positive amount gains `random(3)`, and anything below 1 becomes `random(3)`. Firebolt and Splash skip it, as in 1.6. The rows are data (`armour.spell` in item-rules.json).
+- **Why:** The lookup was written to apply and only failed by a Lingo parameter mistake; Magic Shield had no effect at all without it.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spellDefense`, `playerSpellAmount`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
+- **Pinned by:** `bug fixed: robes and Magic Shield lower spell damage; metal armour raises it` (packages/shared/tests/spells/spells.test.ts); `bug fixed: armour and Magic Shield change the spell damage you take` (packages/server/tests/spells.test.ts)
+
+#### Hold obeys the PvP flag
+- **Kind:** Bug fixed
+- **What you notice:** A player's Hold does not root another player on a map where player fighting is off.
+- **1.6:** The Hold branch tested only for a vehicle and for its own caster.
+- **SSO:** A player's Hold is spared where PvP is off, like the harmful spells; a monster's Hold still lands.
+- **Why:** Rooting another player is player-versus-player play.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
+- **Pinned by:** `bug fixed: Hold obeys the PvP flag: a player's Hold roots no one where PvP is off` (packages/server/tests/spells.test.ts)
+
+#### Your own spell no longer shields you from others
+- **Kind:** Bug fixed
+- **What you notice:** Standing in your own harmful spell, or a vehicle-blocked Morph, Nature Shift, Smoke Bomb or Hold, no longer stops other spells from reaching you that frame.
+- **1.6:** Each of those cases left the whole collision handler, so FX in later slots were never checked.
+- **SSO:** Such a case skips only that FX; the others are still checked.
+- **Why:** An `exit` meant for one spell was never meant to cancel the rest.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
+- **Pinned by:** `bug fixed: your own harmful spell skips only itself; a later FX still lands on you` (packages/server/tests/spells.test.ts)
+
+#### A buff cast again refreshes it
+- **Kind:** Bug fixed
+- **What you notice:** Casting Stone Skin, Magic Shield or Argon's Fist again while it runs restarts its time; it never adds to the bonus or the time. A Purple Potion's Argon's Fist works the same way.
+- **1.6:** Stone Skin added 1 to the defense bonus and 30 times its power to its counter on each cast, Magic Shield added 70 times its power, and Argon's Fist added 400 frames, so recasting stacked them. Hold and Firesword were set, not added.
+- **SSO:** Each counter takes the longer of what is left and the new cast's time, and Stone Skin's bonus is 1.
+- **Why:** Stacking turned repeated casts into an unbounded defense bonus; Hold and Firesword show the refresh the spells were meant to have.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `argonsFist`), `packages/server/src/systems/inventory/items.ts` (`useIntent`)
+- **Pinned by:** `bug fixed: a buff cast again restarts its time and never adds: Stone Skin, Magic Shield, Argon's Fist` (packages/server/tests/spells.test.ts)
+
+#### Radar reports a player once
+- **Kind:** Bug fixed
+- **What you notice:** A Radar passing over a player prints one line about them.
+- **1.6:** The Radar branch ran on every frame of its animation, sending a chat line each time (5 in SSO, where the FX steps twice a frame).
+- **SSO:** Each Radar reports each player it touches once.
+- **Why:** A wall of repeated lines was a side effect of the frame loop, not the spell.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
+- **Pinned by:** `bug fixed: Radar on a player sends one line` (packages/server/tests/spells.test.ts)
+
+#### Meteor hits a monster twice
+- **Kind:** Bug fixed
+- **What you notice:** A Meteor hits a monster on both of its impact frames.
+- **1.6:** Monsters were hit on Meteor's frames 13 and 19, but the first hit started a 16-frame lockout that the second fell inside.
+- **SSO:** The FX that set the lockout may hit again on a different hit frame; any other spell still waits it out.
+- **Why:** The second hit frame was written to land.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`monsterHits`)
+- **Pinned by:** `bug fixed: Meteor hits a monster on both its hit frames, 13 and 19`; `a second Meteor inside the lockout still misses: only the FX that set it hits again` (packages/server/tests/spells.test.ts)
+
+#### A summon that cannot go ahead costs nothing
+- **Kind:** Bug fixed
+- **What you notice:** A summon on a full map (four live monsters), on a tile a monster cannot stand on, where fighting is off, or (Raise Dead) away from a grave says "You cannot summon here!" and spends nothing.
+- **1.6:** Each summon's tests ran after SP and crystals were taken, and most failed silently.
+- **SSO:** The summon is planned before the cost and refused with the existing line.
+- **Why:** A summon that never appears should not be paid for.
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`planSummon`, `castIntent`)
+- **Pinned by:** `bug fixed: with four live monsters a summon is refused before SP and crystals are spent`; `bug fixed: a summon on a blocked tile is refused before anything is spent` (packages/server/tests/spells.test.ts)
+
+#### Summons read a tile's own blocked entry; Raise Dead needs a fight map
+- **Kind:** Bug fixed
+- **What you notice:** Summon Creature, Holy Shield and a dropped Pig are refused only on a tile that is actually blocked; x1y1 is no longer blocked because x1y10 is. Raise Dead is refused where fighting is off.
+- **1.6:** The blocked test looked for "x<X>y<Y>" without its closing `*`, so a short tile name matched the start of a longer one. Web, Spikes and Holy Shield tested the no-fight flag; Raise Dead did not, so a hostile Zombie could be raised in town.
+- **SSO:** The test reads the tile's own entry. Raise Dead joins the no-fight test; Summon Creature does not, as its Pig or Cow harms no one.
+- **Why:** The missing `*` was a typo; a Zombie in town is the harm the other summons' test prevents.
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`npcBlocked`, `planSummon`, `summonPig`)
+- **Pinned by:** `bug fixed: the summons read a tile's own blocked entry: x1y1 is open when only x1y10 is blocked`; `bug fixed: Raise Dead is refused where fighting is off; Summon Creature is not` (packages/server/tests/spells.test.ts); `bug fixed: pig drop reads the tile's own entry, so x1y1 is open when only x1y10 is blocked` (packages/server/tests/pigs-orbs-webs.test.ts)
+
+#### Spell books ask for the right Dexterity
+- **Kind:** Bug fixed
+- **What you notice:** The Argon's Fist Book needs Dexterity 10 and every Bolt book 24.
+- **1.6:** The table spelt "Argon's First", so the book matched nothing and needed 1, and its Bolt row matched only a book named exactly "Bolt Book".
+- **SSO:** The rows read "Argon's Fist" and `contains` "Bolt" (Firebolt's later row still wins for Firebolt books).
+- **Why:** Both were typos.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`bookDex`)
+- **Pinned by:** `bug fixed: the Dex table's typos: Argon's Fist Book needs 10, any Bolt book 24` (packages/shared/tests/spells/spells.test.ts)
+
+#### Books teach what they say, and stay when they teach nothing
+- **Kind:** Bug fixed
+- **What you notice:** The Radar Book teaches Radar and the Poison Dart Book teaches Poison Dart. A book for a spell you know, or a combat book at 77 or more, says so and stays in your bag. Reading a Bolt Book uses up that book. A combat book never takes a skill past 77.
+- **1.6:** The book routine had no line for Radar or Haste. The Poison Dart Book had no inventory picture, so using it stopped before reading. The server removed the first bag line containing "<name>-" before the routine ran, so a book that taught nothing was lost and a Bolt Book could use up a Firebolt Book above it. A combat book added `1 + random(5)` below 77, reaching up to 82.
+- **SSO:** Radar and Haste have book rows; any book can be read; the book read is the one used up, and only when it teaches something; a combat book stops at 77.
+- **Why:** Each was an omission or an ordering slip; 77 is the limit the book routine tests.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`runBook`, `SKILL_BOOK_CAP`), `packages/server/src/systems/spells/learn.ts` (`readBook`)
+- **Pinned by:** `bug fixed: the Radar and Haste books teach their spells`; `bug fixed: combat books add 1 + random(5) below 77 and stop at 77` (packages/shared/tests/spells/spells.test.ts); `bug fixed: reading a Bolt Book uses up that Bolt Book, not a Firebolt Book above it`; `bug fixed: a book is kept when the spell is already known`; `bug fixed: a skill book is kept when the skill is 77 or more and it teaches nothing`; `bug fixed: the Poison Dart Book is read like any other book, though it has no picture`; `bug fixed: the Radar Book teaches Radar` (packages/server/tests/spells.test.ts)
+
+#### The spellbook is saved in full
+- **Kind:** Bug fixed
+- **What you notice:** Every spell you learn stays in your spellbook across saves and logins, Identify and the thirtieth line onward included. Clicking the list no longer drops a line.
+- **1.6:** The save wrote at most 29 lines as encode ids, and Identify had none; the list was rebuilt from the save before each save and learn and on every click.
+- **SSO:** Spellbooks are saved by name with no line limit (migration 34 lifts the table's 29-line check), and the client keeps its list as the server sent it.
+- **Why:** Losing learned spells on save was a limit of 1.6's encoding, not a rule.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`savedSpellbook`), `packages/client/src/ui/spellbook.ts` (`createSpellbook`)
+- **Pinned by:** `bug fixed: the saved spellbook keeps every spell, Identify and the 30th line included` (packages/shared/tests/spells/spells.test.ts); `bug fixed: a click keeps the list as it is, a learned Identify included` (packages/client/tests/spells.test.ts); `bug fixed: after a relog the spellbook is kept, Identify included` (packages/server/e2e/spells.test.ts)
+
+#### Monster spells reach you where PvP is off, spells provoke, and only monsters block monster spells
+- **Kind:** Bug fixed
+- **What you notice:** On a fight map with player fighting off, a monster's harmful spell hurts you. Hitting a Passive monster with a harmful spell provokes it, as a melee hit does. A player whose name contains "18" no longer stops the monsters' spells.
+- **1.6:** Every spell on a player passed the PvP check, monsters' too. Only melee set the provoked flag. Any cast whose caster's name contained "18" (meant for monster sprites 180-183) blocked monster spells for 30 frames.
+- **SSO:** The PvP check spares only players' spells; a player's harmful spell on a Passive monster provokes it for everyone on the map; only a monster's own cast sets the block.
+- **Why:** The PvP flag is about players fighting players; the "18" test was a shortcut for monster casters.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `monsterHits`), `packages/server/src/systems/spells/fx.ts` (`isMonsterCaster`, `placeQueued`)
+- **Pinned by:** `bug fixed: the Snow Serpent's Whirlwind drains you with PvP off too: the flag is for players' spells`; `bug fixed: a player's harmful spell provokes a Passive monster for everyone here`; `bug fixed: a player with 18 in the name does not block monster spells` (packages/server/tests/spells.test.ts)
+
+#### A spell kill says "You have become more powerful!"
+- **Kind:** Bug fixed
+- **What you notice:** Levelling up from a spell kill prints the same line as a melee kill.
+- **1.6:** The spell path had its own line with a stray "a": "You have become a more powerful!"
+- **SSO:** Both paths use the melee line. The spell XP table and the missing kill skill gain are unchanged.
+- **Why:** A typo.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
+- **Pinned by:** `bug fixed: a spell kill pays the spell XP table and the melee level-up line` (packages/server/tests/spells.test.ts)
+
+#### Spell heals stop at a monster's own hit points
+- **Kind:** Bug fixed
+- **What you notice:** Healing a monster with a spell never takes it past its full hit points: a Pig stays at 1.
+- **1.6:** HP was capped after a spell from a table that defaulted to 200 with a few named exceptions, so most monsters could be healed far above their maximum.
+- **SSO:** The cap is the species' own hit points; the separate `healCap` column is gone from the monster data.
+- **Why:** The cap was a maximum-HP check with an incomplete table.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
+- **Pinned by:** `bug fixed: a spell heal stops at the monster's own hit points: a Pig stays at 1` (packages/server/tests/spells.test.ts)
+
+#### The church bell leaves channel 5's volume alone
+- **Kind:** Bug fixed
+- **What you notice:** After the church bell, the damage-number sound and the rest of channel 5 play at their normal volume.
+- **1.6:** The bell set channel 5's volume to 200 and nothing reset it, so every later sound on that channel played at the bell's volume for the rest of the session.
+- **SSO:** A volume sent with a sound applies to that sound alone.
+- **Why:** The bell's volume was meant for the bell.
+- **In the code:** `packages/client/src/audio.ts` (`playAll`, `createAudio`)
+- **Pinned by:** `bug fixed: the church bell plays at 200 and leaves channel 5's volume alone` (packages/client/tests/spells.test.ts); `bug fixed: a sound's own volume plays that sound alone at it; the channel keeps its volume` (packages/client/tests/sound.test.ts)
+
 ### vehicles
 
 #### Airship landing pads work on map rows 10–12
@@ -2997,6 +3195,51 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The wanted flag marks murderers, and hunting down a murderer is the game's form of justice, not murder. The flag follows the kill, not the map's PvP setting, because a murder is a murder wherever it happens.
 - **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`)
 - **Pinned by:** `kept on purpose: killing a wanted player never flags the killer`; `an arena death never flags` (packages/server/tests/factions.test.ts)
+
+### Standing in a Whirlwind drains 1 SP a frame
+- **Kind:** Kept on purpose
+- **What you notice:** While you overlap someone's Whirlwind your SP drops by 1 every frame, with no hit blink.
+- **1.6:** The Whirlwind branch took 1 SP each frame and started no blink; the spell list describes it as "sucks the spell points out of a player".
+- **SSO:** The same, though now only a player's Whirlwind is spared where PvP is off.
+- **Why:** The steady drain over the whirlwind's short life is the spell's effect; one point per cast would make it useless.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
+- **Pinned by:** `kept on purpose: Whirlwind drains 1 SP a frame of overlap, no flicker` (packages/server/tests/spells.test.ts)
+
+### Firesword does nothing for a player without a sword
+- **Kind:** Kept on purpose
+- **What you notice:** Firesword on a player whose weapon is not a sword prints "You feel a warmth you haven't felt before, but feel it has not assisted you." and does nothing else. A recast on a sword restarts its time.
+- **1.6:** The same; the spell is described as turning "an ordinary sword into a flaming sword".
+- **SSO:** The same.
+- **Why:** 1.6 wrote a line for exactly this case: the spell has nothing to set alight.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
+- **Pinned by:** `kept on purpose: Firesword without a sword: the warmth line, no counter; a recast refreshes P·40` (packages/server/tests/spells.test.ts)
+
+### Raise Dead's Zombie rises on the tile below the grave
+- **Kind:** Kept on purpose
+- **What you notice:** Clicking a grave, or the tile just below one, raises the Zombie on the tile below the grave.
+- **1.6:** `RaiseDead` set a drop-down flag on a grave click and a stay-here flag on a click below a grave, and placed the Zombie below the grave for both.
+- **SSO:** The same; the blocked-tile and no-fight tests are fixed (see the spells bug fixes).
+- **Why:** The two flags show the drop below the grave was designed, and graves are not tiles a monster stands on.
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`planSummon`)
+- **Pinned by:** `kept on purpose: Raise Dead raises the Zombie on the tile below a grave, from the grave or the tile below` (packages/server/tests/spells.test.ts)
+
+### Passive monsters heal passers-by
+- **Kind:** Kept on purpose
+- **What you notice:** A Passive monster you have not provoked, such as Acrostia, casts its heals and buffs on you.
+- **1.6:** The heal and buff handlers had their own branch for a Passive, unprovoked monster that aimed the spell at the player.
+- **SSO:** The same.
+- **Why:** The branch was written on purpose: friendly healers tend to travellers.
+- **In the code:** `packages/server/src/systems/spells/monsterspells.ts` (`castOne`)
+- **Pinned by:** `kept on purpose: an unprovoked Passive Acrostia casts Major Heal at you` (packages/server/tests/spells.test.ts)
+
+### A monster's Fireball or Wind Wave flies in a random direction
+- **Kind:** Kept on purpose
+- **What you notice:** A monster's Fireball or Wind Wave leaves it in one of the four directions at random, not necessarily at you.
+- **1.6:** The handlers drew `random(4)` for the direction.
+- **SSO:** The same.
+- **Why:** The random spray is how those monsters were written to fight; aiming would make them far deadlier.
+- **In the code:** `packages/server/src/systems/spells/monsterspells.ts` (`castOne`)
+- **Pinned by:** `kept on purpose: a monster's Fireball flies in a random(4) direction from it, not at you` (packages/server/tests/spells.test.ts)
 
 ## Server authority and exploits
 
@@ -3979,9 +4222,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Server-side spell learning
 - **Kind:** Exploit closed
-- **What you notice:** A spellbook that passes the Dexterity check is consumed; it can teach a new spell, or nothing if the book has no matching spell or you already know it.
+- **What you notice:** A book that passes the Dexterity check teaches its spell or skill and is used up; one that teaches nothing stays in your bag.
 - **1.6:** The client checked Dexterity, appended the spell and uploaded the spellbook.
-- **SSO:** The server performs the Dexterity check, consumes the book and appends the spell.
+- **SSO:** The server performs the Dexterity check, appends the spell and consumes the book.
 - **Why:** A modified client could grant itself any spell.
 - **In the code:** `packages/server/src/systems/spells/learn.ts` (`readBook`)
 
@@ -4003,7 +4246,7 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Hold cannot target players on safe maps
 - **Kind:** Exploit closed
-- **What you notice:** Casting Hold off an arena tile on a safe map is refused with “You cannot cast harmful spells here!” before spending spell points or crystals, although the 20-frame cast delay still applies.
+- **What you notice:** Casting Hold off an arena tile on a safe map is refused with “You cannot cast harmful spells here!” before spending spell points, crystals or the cast delay.
 - **1.6:** Hold was not in the harmful set and had no player-versus-player check. A player could repeatedly cast it to hold another player indefinitely in town. It had no effect on monsters.
 - **SSO:** Hold is refused like a harmful spell when the caster is off an arena tile on a safe map; fight maps are unchanged.
 - **Why:** Repeatedly holding another player in town enabled griefing.
@@ -4035,12 +4278,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Summons stay on the map
 - **Kind:** Architecture
-- **What you notice:** A summon aimed beyond the map fails silently while still spending its effect, spell points and crystals. A pig dropped to summon it beyond the map is lost too.
+- **What you notice:** No summon or dropped pig lands off the 17×12 map.
 - **1.6:** The cast area extended far enough beyond the 17×12 playfield that clicking its right or bottom edge could place a monster on column 18 or row 13.
-- **SSO:** A summon on an off-map tile fails silently as it does for a full roster; a dropped pig summoned at row 0 is lost.
+- **SSO:** A cast click must be on the playfield, and a summon whose tile is off the map is refused before anything is spent; a pig dropped toward an edge stays in the bag.
 - **Why:** Server monsters live on map tiles; an off-map monster could not be reached or saved.
-- **In the code:** `packages/server/src/systems/spells/cast.ts` (`summon`, `summonPig`)
-- **Pinned by:** `SSO: a summon on a tile off the 17×12 map fails silently, paid for` (packages/server/tests/spells.test.ts)
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`planSummon`, `summonPig`)
+- **Pinned by:** `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts)
 
 ### Server-side vehicles
 

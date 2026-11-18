@@ -961,7 +961,7 @@
       },
       {
         "match": "contains",
-        "pattern": "Argon's First",
+        "pattern": "Argon's Fist",
         "mysticism": 10
       },
       {
@@ -975,8 +975,8 @@
         "mysticism": 17
       },
       {
-        "match": "exact",
-        "pattern": "Bolt Book",
+        "match": "contains",
+        "pattern": "Bolt",
         "mysticism": 24
       },
       {
@@ -2334,7 +2334,162 @@
         "pattern": "Fire Shield",
         "delta": -4
       }
-    ]
+    ],
+    "spell": {
+      "rows": [
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Chain Armor",
+          "delta": 3
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Leather Armor",
+          "delta": -3
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Plate Armor",
+          "delta": 4
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Argon's Plate",
+          "delta": 7
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Titanium Armor",
+          "delta": 5
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "White Robe",
+          "delta": -2
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Wizard's Robe",
+          "delta": -3
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Necromancer's Robe",
+          "delta": -4
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Ninja Outfit",
+          "delta": -2
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Royal Ninja Uniform",
+          "delta": -5
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Ceramic Armor",
+          "delta": -3
+        },
+        {
+          "slot": "BodyE",
+          "match": "contains",
+          "pattern": "Lord's Armor",
+          "delta": -5
+        },
+        {
+          "slot": "HeadE",
+          "match": "contains",
+          "pattern": "Chain Helm",
+          "delta": -1
+        },
+        {
+          "slot": "HeadE",
+          "match": "contains",
+          "pattern": "leather cap",
+          "delta": -1
+        },
+        {
+          "slot": "HeadE",
+          "match": "contains",
+          "pattern": "Plate Helm",
+          "delta": 3
+        },
+        {
+          "slot": "HeadE",
+          "match": "contains",
+          "pattern": "War Helm",
+          "delta": 5
+        },
+        {
+          "slot": "HeadE",
+          "match": "contains",
+          "pattern": "Murder Helm",
+          "delta": 6
+        },
+        {
+          "slot": "HeadE",
+          "match": "contains",
+          "pattern": "Pharaoh Helm",
+          "delta": -5
+        },
+        {
+          "slot": "HeadE",
+          "match": "contains",
+          "pattern": "Crown",
+          "delta": -3
+        },
+        {
+          "slot": "RightHandE",
+          "match": "contains",
+          "pattern": "Small Shield",
+          "delta": -1
+        },
+        {
+          "slot": "RightHandE",
+          "match": "contains",
+          "pattern": "Steel Shield",
+          "delta": 4
+        },
+        {
+          "slot": "RightHandE",
+          "match": "contains",
+          "pattern": "Knight Shield",
+          "delta": 6
+        },
+        {
+          "slot": "RightHandE",
+          "match": "contains",
+          "pattern": "Magical Shield",
+          "delta": -3
+        },
+        {
+          "slot": "RightHandE",
+          "match": "contains",
+          "pattern": "Murder Shield",
+          "delta": 2
+        },
+        {
+          "slot": "RightHandE",
+          "match": "contains",
+          "pattern": "Champions Shield",
+          "delta": -4
+        }
+      ],
+      "magicShield": -5
+    }
   },
   "breaks": {
     "armour": {

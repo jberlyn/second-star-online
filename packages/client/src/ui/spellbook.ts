@@ -3,9 +3,8 @@
  * button, at their score rects (assets/original/main/layout/frame-67.json).
  *
  * - The list (channel 41): the spellbook field (DBAdmin #19), a scroll box 164×173 in Arial 12
- *   white at (608, 119). A click runs `loadspells` first, which rebuilds the list from what was
- *   saved (a learned Identify drops out), then selects the clicked line, or nothing on an empty
- *   one.
+ *   white at (608, 119). A click selects the clicked line, or nothing on an empty one (a bug
+ *   fixed: 1.6 first rebuilt the list from its 29-line save, so a learned Identify dropped out).
  * - Info (channel 43, Internal #200, a 14×17 "i" at [614, 300, 628, 317]): one line about the
  *   selected spell.
  * - The cast button (channel 44, loc (651, 308)): member 199, a 32×27 bolt at [635, 295, 667, 322],
@@ -18,7 +17,7 @@
  *
  * Every one of the three clicks plays `Clicksound2` on channel 3 first.
  */
-import { savedSpellbook, spellByName } from "@secondstaronline/shared";
+import { spellByName } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
@@ -96,11 +95,9 @@ export function createSpellbook(a: Assets, act: SpellbookActions): Spellbook {
 
   list.addEventListener("click", (e) => {
     act.sound(SOUND.click);
-    // `loadspells()` rebuilds the field from the saved list first.
     if (e.target === list && e.offsetX >= SPELL_FIELD_W) {
       return; // the gap beside the field: outside the sprite in 1.6, so no click
     }
-    lines = savedSpellbook(lines);
     const t = (e.target as HTMLElement).closest<HTMLElement>(".spell-line");
     const n = t ? Number(t.dataset.line) : 0;
     selected = n > 0 ? (lines[n - 1] ?? "") : "";

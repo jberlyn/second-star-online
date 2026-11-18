@@ -114,7 +114,15 @@ export function createAudio(
       stop(s.ch);
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.connect(gain(ctx, s.ch));
+      if (s.volume === undefined) {
+        src.connect(gain(ctx, s.ch));
+      } else {
+        // A volume sent with the sound is that sound's alone; the channel keeps its own.
+        const own = ctx.createGain();
+        own.gain.value = s.volume / 255;
+        own.connect(ctx.destination);
+        src.connect(own);
+      }
       src.onended = () => {
         if (playing[s.ch] === src) {
           playing[s.ch] = undefined;
@@ -128,15 +136,12 @@ export function createAudio(
 }
 
 /**
- * Plays this frame's sounds in order. A server sound message sets the channel's volume first, sound
- * on or off, so the church bell leaves channel 5 at 200 for the session (kept bug: 1.6 did the
- * same).
+ * Plays this frame's sounds in order. A volume a server sound message carries plays that sound
+ * alone at it (a bug fixed: 1.6 set the channel's volume, so after the church bell every later
+ * sound on channel 5 played at 200 for the rest of the session).
  */
-export function playAll(audio: Pick<Audio, "play" | "setVolume">, sounds: readonly Sfx[]): void {
+export function playAll(audio: Pick<Audio, "play">, sounds: readonly Sfx[]): void {
   for (const s of sounds) {
-    if (s.volume !== undefined) {
-      audio.setVolume(s.ch, s.volume);
-    }
     audio.play(s);
   }
 }

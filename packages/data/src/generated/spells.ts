@@ -12,11 +12,6 @@ export const spellsData: SpellsData = {
       "spByBody": [
         {
           "match": "exact",
-          "pattern": "Ninja",
-          "sp": 0
-        },
-        {
-          "match": "exact",
           "pattern": "Ninja Outfit",
           "sp": 17
         },
@@ -1220,7 +1215,10 @@ export const spellsData: SpellsData = {
         "count": 1
       },
       "harmful": false,
-      "book": null,
+      "book": {
+        "match": "contains",
+        "pattern": "Radar"
+      },
       "info": "Learn the strengths and weaknesses of a foe.",
       "fx": [
         {
@@ -1248,7 +1246,10 @@ export const spellsData: SpellsData = {
         "count": 3
       },
       "harmful": false,
-      "book": null,
+      "book": {
+        "match": "contains",
+        "pattern": "Haste"
+      },
       "info": "Speeds up your healing.",
       "fx": [
         {

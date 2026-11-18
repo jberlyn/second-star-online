@@ -13,16 +13,19 @@ import {
   fxMember,
   invAdd,
   inxitionText,
+  LEVEL_UP_TEXT,
   lingoContains,
   meleeKillXp,
   monsterDrawnTile,
   morphBody,
   morphCounterFor,
+  type PlayerSpellBranch,
   playerSpellAmount,
   type Rng,
   radarText,
   rectsIntersect,
   rollLoot,
+  type SpellTarget,
   spellHitOnMonster,
   xpGained,
 } from "@secondstaronline/shared";
@@ -30,8 +33,9 @@ import {
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import { chatterOut } from "../monsters/npc.ts";
-import { npcFileNamed } from "../monsters/npcfiles.ts";
+import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, type MonsterSlot, species } from "../monsters/slots.ts";
+import { spawnHp } from "../monsters/spawn.ts";
 import type { Outgoing, Player, Room, SpellFx } from "../world/world.ts";
 import { fxRect, monsterMember, monsterRect, playerRect } from "./geometry.ts";
 
@@ -41,8 +45,6 @@ export const SPELL_HEAL_COLOR = 5;
 /** Monster floaties: 124 with splat and `hitsound`, heals 46. */
 export const MONSTER_SPELL_HIT_COLOR = 124;
 export const MONSTER_SPELL_HEAL_COLOR = 46;
-/** The spell path's level-up line, with its stray "a". */
-export const SPELL_LEVEL_UP_TEXT = "You have become a more powerful!";
 
 export interface CollideCtx {
   rng: Rng;
@@ -75,10 +77,15 @@ function pvpOff(room: Room, p: Player): boolean {
 
 /**
  * The spell collision for one player: only while not dead and not flickering, read once
- * before the loop. FX are visited by slot; each branch is a `contains` on the member name, and the
- * harmful branches (and Morph, Nature Shift, Smoke Bomb and Hold's own exits) leave the whole
- * handler, so your own harmful spell shields you from the other spells that frame (a kept 1.6
- * bug).
+ * before the loop. FX are visited by slot; each branch is a `contains` on the member name. A
+ * branch that does not apply to you (your own harmful spell, a player's harmful spell where PvP is
+ * off, a body change in a vehicle) skips only that FX (a bug fixed: 1.6 left the whole handler, so
+ * your own spell shielded you from the others that frame).
+ *
+ * The PvP flag stops players' spells only: a monster's spell, which only maps where fighting is on
+ * see, lands wherever it falls (a bug fixed: 1.6 tested every spell against the PvP flag). Hold
+ * obeys it like the harmful spells (a bug fixed: 1.6's Hold tested only for a vehicle and its
+ * caster).
  */
 export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: CollideOut): void {
   if (p.deadLock > 0 || p.loading > 0 || p.flicker >= 1) {
@@ -87,6 +94,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
   const me = playerRect(p, ctx.tick);
   const v = p.char.vitals;
   const off = pvpOff(room, p);
+  const target = (): SpellTarget => ({ equip: p.char.equip, magicShield: p.spell.magicDef > 0 });
   const damage = (fx: SpellFx, dmg: number) => {
     v.hp = v.hp <= dmg ? 0 : v.hp - dmg;
     p.lastToHitMe = fx.owner;
@@ -103,6 +111,8 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     res.events.push({ e: "phit", id: p.id, text: String(n), color: SPELL_HEAL_COLOR });
   };
   const mine = (fx: SpellFx) => fx.ownerId === p.id;
+  /** A harmful spell that does not touch you: your own, or a player's where PvP is off. */
+  const spared = (fx: SpellFx) => mine(fx) || (off && fx.ownerId !== null);
   for (const fx of room.fx) {
     const r = fxRect(fx);
     if (!r || !rectsIntersect(r, me)) {
@@ -114,7 +124,10 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     if (!p.keyLock && has("Portal-3")) {
       res.portals.push(p);
     }
-    if (has("Radar")) {
+    // One line for each player a Radar passes over (a bug fixed: 1.6 sent one every frame).
+    if (has("Radar") && !fx.radarSeen?.has(p.id)) {
+      fx.radarSeen ??= new Set();
+      fx.radarSeen.add(p.id);
       res.out.push(
         ...chatterOut(
           room,
@@ -124,14 +137,14 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       );
     }
     if (has("Arrows")) {
-      if (mine(fx) || off) {
-        return;
+      if (spared(fx)) {
+        continue;
       }
-      damage(fx, playerSpellAmount("Arrows", P, ctx.rng));
+      damage(fx, playerSpellAmount("Arrows", P, target(), ctx.rng));
     }
     if (has("Whirlwind")) {
-      if (mine(fx) || off) {
-        return;
+      if (spared(fx)) {
+        continue;
       }
       if (v.sp > 0) {
         v.sp -= 1;
@@ -146,8 +159,11 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
         tell(res.out, p, EFFECT_TEXT.fireswordNoSword);
       }
     }
+    // A buff cast again while it runs restarts its time, the longer of the two, and never adds
+    // (a bug fixed: 1.6 added Magic Shield's, Stone Skin's and Argon's Fist's counters, and Stone
+    // Skin's bonus, on each cast).
     if (has("Magic Shield-3")) {
-      p.spell.magicDef += P * 70;
+      p.spell.magicDef = Math.max(p.spell.magicDef, P * 70);
       tell(res.out, p, EFFECT_TEXT.magicShield);
     }
     if (has("Diminish Hunger-3") && p.char.hunger < 35000) {
@@ -155,8 +171,8 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       tell(res.out, p, EFFECT_TEXT.hunger);
     }
     if (has("Stone Skin-9")) {
-      p.defenseBonus += 1;
-      p.spell.defenseCounter += P * 30;
+      p.defenseBonus = STONE_SKIN_BONUS;
+      p.spell.defenseCounter = Math.max(p.spell.defenseCounter, P * 30);
       tell(res.out, p, EFFECT_TEXT.stoneSkin);
     }
     if (has("Dispel Illusions-3")) {
@@ -166,8 +182,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       }
     }
     if (has("Argon's Fist-3")) {
-      p.attackBonus = 1;
-      p.timers.attackCounter += 400;
+      argonsFist(p);
       tell(res.out, p, EFFECT_TEXT.argon);
     }
     if (has("Inxition-3")) {
@@ -183,83 +198,71 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       }
     }
     if (has("major heal-3")) {
-      heal(playerSpellAmount("major heal", P, ctx.rng));
+      heal(playerSpellAmount("major heal", P, target(), ctx.rng));
     }
     if (has("minor heal-3")) {
-      heal(playerSpellAmount("minor heal", P, ctx.rng));
+      heal(playerSpellAmount("minor heal", P, target(), ctx.rng));
     }
-    // Morph, Nature Shift and Smoke Bomb exit the whole handler in a vehicle or as a boss (not
-    // built); Hold the same, its vehicle test first.
+    // Morph, Nature Shift and Smoke Bomb do nothing in a vehicle or as a boss (not built); Hold
+    // the same, its vehicle test first.
     if (has("morph-3")) {
       if (p.vehicle) {
-        return;
+        continue;
       }
       setBody(p, morphBody(P, ctx.rng), res);
     }
     if (has("Nature Shift-3")) {
       if (p.vehicle) {
-        return;
+        continue;
       }
       setBody(p, 80, res);
     }
     if (has("Smoke Bomb-3")) {
       if (p.vehicle) {
-        return;
+        continue;
       }
       p.spell.smokeBomb = P;
       setBody(p, 100, res);
     }
     if (has("Hold-3")) {
-      if (p.vehicle || mine(fx)) {
-        return;
+      if (p.vehicle || spared(fx)) {
+        continue;
       }
       p.spell.hold = P * 8;
       tell(res.out, p, EFFECT_TEXT.hold);
     }
-    if (has("crush")) {
-      if (mine(fx) || off) {
-        return;
+    // The harmful branches. Bolt's test leaves out Firebolt.
+    const hits: [boolean, PlayerSpellBranch][] = [
+      [has("crush"), "crush"],
+      [has("firebolt"), "firebolt"],
+      [has("Splash"), "Splash"],
+      [has("meteor"), "meteor"],
+      [has("Fireball"), "Fireball"],
+      [has("Bolt") && !has("fire"), "Bolt"],
+      [has("wind wave"), "wind wave"],
+    ];
+    for (const [hit, branch] of hits) {
+      if (hit && !spared(fx)) {
+        damage(fx, playerSpellAmount(branch, P, target(), ctx.rng));
       }
-      damage(fx, playerSpellAmount("crush", P, ctx.rng));
-    }
-    if (has("firebolt")) {
-      if (mine(fx) || off) {
-        return;
-      }
-      damage(fx, playerSpellAmount("firebolt", P, ctx.rng));
-    }
-    if (has("Splash")) {
-      if (mine(fx) || off) {
-        return;
-      }
-      damage(fx, playerSpellAmount("Splash", P, ctx.rng));
-    }
-    if (has("meteor")) {
-      if (mine(fx) || off) {
-        return;
-      }
-      damage(fx, playerSpellAmount("meteor", P, ctx.rng));
-    }
-    if (has("Fireball")) {
-      if (mine(fx) || off) {
-        return;
-      }
-      damage(fx, playerSpellAmount("Fireball", P, ctx.rng));
-    }
-    if (has("Bolt") && !has("fire")) {
-      if (mine(fx) || off) {
-        return;
-      }
-      damage(fx, playerSpellAmount("Bolt", P, ctx.rng));
-    }
-    if (has("wind wave")) {
-      if (mine(fx) || off) {
-        return;
-      }
-      damage(fx, playerSpellAmount("wind wave", P, ctx.rng));
     }
   }
 }
+
+/** Stone Skin's defense bonus. */
+export const STONE_SKIN_BONUS = 1;
+
+/**
+ * Argon's Fist, from the spell or a Purple Potion: the attack bonus, and its counter restarted at
+ * 400 frames unless more is left.
+ */
+export function argonsFist(p: Player): void {
+  p.attackBonus = 1;
+  p.timers.attackCounter = Math.max(p.timers.attackCounter, ARGON_FRAMES);
+}
+
+/** Argon's Fist's counter. */
+export const ARGON_FRAMES = 400;
 
 /**
  * Changes or reverts a body: everyone on the map sees the new body; the target's morph counter is
@@ -275,9 +278,12 @@ export function setBody(p: Player, body: number | null, res: { events: DeltaEven
 
 /**
  * The monsters' spell hits, once per frame from the mover: each monster against each FX by slot.
- * A hit needs the spell-hit lockout at 0 and sets it to 16, so the first FX of the frame wins.
- * Every effect is an exact member, but Radar (name contains "Radar-5", no lockout) and arrows
- * (name contains " Arrows").
+ * A hit needs the spell-hit lockout at 0 and sets it to 16, so the first FX of the frame wins. The
+ * one exception is the FX that set the lockout reaching a different hit frame: Meteor's frame 19
+ * after its frame 13 (a bug fixed: 1.6's lockout swallowed Meteor's second hit). Every effect is
+ * an exact member, but Radar (name contains "Radar-5", no lockout) and arrows (name contains
+ * " Arrows"). A player's harmful spell provokes a Passive monster as a melee hit does (a bug fixed:
+ * in 1.6 only melee did).
  */
 export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void {
   for (const slot of room.map.slots) {
@@ -288,11 +294,15 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
       }
       const fr = fxRect(fx);
       const mr = monsterRect(slot);
-      if (!fr || !mr || !rectsIntersect(fr, mr) || m.hitCountb >= 1) {
+      if (!fr || !mr || !rectsIntersect(fr, mr)) {
+        continue;
+      }
+      const mem = fxMember({ name: fxEffect(fx.name), frame: fx.frame });
+      const ownSecondHit = m.lockedBy?.fx === fx && m.lockedBy.member !== mem;
+      if (m.hitCountb >= 1 && !ownSecondHit) {
         continue;
       }
       const body = monsterMember(slot);
-      const mem = fxMember({ name: fxEffect(fx.name), frame: fx.frame });
       const P = fx.power;
       const r = ctx.rng;
       if (lingoContains(mem, "Radar-5")) {
@@ -307,7 +317,13 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
       }
       m.hp += hit.heal ? hit.n : -hit.n;
       m.hitCountb = 16;
+      m.lockedBy = { fx, member: mem };
       slot.dirty = true;
+      if (!hit.heal && fx.ownerId !== null && hasFlag(room.npcs, m.name, "Passive")) {
+        for (const o of room.players) {
+          o.npcAttackFlag = true;
+        }
+      }
       const kill = checkForDead(room, slot, fx, ctx, res);
       res.events.push({
         e: "mspell",
@@ -322,9 +338,10 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
 }
 
 /**
- * The death check: above 0 the heal cap clamps HP (default 200); below 0 the monster dies for
- * everyone. Only the FX's owner, a player on this map, sends `M<k>Cncl`, drops the loot and gains
- * the spell table's XP; a monster's or the Server Spirit's kill gives nothing.
+ * The death check: above 0 HP is capped at the species' own hit points (a bug fixed: 1.6 capped it
+ * from a table that defaulted to 200, so a heal lifted a 1 HP Pig to 200); below 0 the monster
+ * dies for everyone. Only the FX's owner, a player on this map, sends `M<k>Cncl`, drops the loot
+ * and gains the spell table's XP; a monster's or the Server Spirit's kill gives nothing.
  */
 function checkForDead(
   room: Room,
@@ -339,7 +356,7 @@ function checkForDead(
   }
   const sp = species(m.name);
   if (m.hp > 0) {
-    const cap = sp?.healCap ?? 200;
+    const cap = spawnHp(m.name);
     if (m.hp > cap) {
       m.hp = cap;
     }
@@ -377,7 +394,7 @@ function checkForDead(
   owner.vitalsDirty = true;
   // One line for each level gained.
   for (let n = checkLevelUp(v); n > 0; n--) {
-    tell(res.out, owner, SPELL_LEVEL_UP_TEXT);
+    tell(res.out, owner, LEVEL_UP_TEXT);
   }
   return true;
 }

@@ -14,8 +14,6 @@ export const monsterSchema = z.strictObject({
   bodyInMainChars: z.boolean(),
   /** Species hit points; every species has them. */
   hp: int,
-  /** Death-check HP cap after spell effects (default 200). */
-  healCap: int,
   /** Monster attack table value, or null when the name has no entry (it never melees). */
   attack: int.nullable(),
   /** Cast line 3: subtracted from melee AttPower. */

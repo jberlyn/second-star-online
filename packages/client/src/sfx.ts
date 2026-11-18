@@ -9,10 +9,7 @@ export interface Sfx {
   name: string;
   /** Director sound channel, 1-8. */
   ch: number;
-  /**
-   * `sound(ch).volume` set first, sound on or off: the church bell leaves channel 5 at 200
-   * for the session (kept bug: 1.6 did the same).
-   */
+  /** This sound's own volume, 0-255 (the church bell's 200); the channel's is left alone. */
   volume?: number;
 }
 

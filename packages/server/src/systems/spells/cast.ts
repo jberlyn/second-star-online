@@ -14,8 +14,10 @@ import {
   directional,
   fireballForm,
   fxForEffect,
+  inCastBounds,
   invDelSlot,
   isHarmful,
+  isInert,
   lingoContains,
   lingoDiv,
   lingoEq,
@@ -62,7 +64,11 @@ const tell = (p: Player, text: string): Outgoing => ({
   msg: { t: "chat", text, color: 0 },
 });
 
-/** The cast for one click at stage (h, v). */
+/**
+ * The cast for one click at stage (h, v). Every refusal comes before anything is spent: the action
+ * delay, SP and crystals are taken only by a cast that goes ahead (a bug fixed: 1.6 set the delay
+ * first and took the cost before Portal's and the summons' own tests).
+ */
 export function castIntent(
   room: Room,
   p: Player,
@@ -81,17 +87,14 @@ export function castIntent(
   if (spell !== "" && !p.spell.book.some((l) => lingoEq(l, spell))) {
     return res;
   }
-  // The spellbook page, the armed cursor and the mouse bounds. The page and the cursor are the
-  // client's; the bounds are checked here.
-  if (!(h > 8 && v > 5 && h < 580 && v < 420)) {
+  // The spellbook page and the armed cursor are the client's; the click must be on the playfield.
+  if (!inCastBounds(h, v)) {
     return res;
   }
   const t = p.timers;
   if (t.actionDelay > 0) {
     return res;
   }
-  // Set before every later check, so a failed cast still costs the delay (a kept 1.6 bug).
-  t.actionDelay = CAST_DELAY;
   // The map is loading or the player is dead.
   if (p.loading > 0 || p.deadLock > 0) {
     return res;
@@ -105,6 +108,10 @@ export function castIntent(
     return res;
   }
   if (spell === "") {
+    return res;
+  }
+  if (isInert(spell)) {
+    res.out.push(tell(p, CAST_TEXT.inert));
     return res;
   }
   const sp = spCost(spell, p.char.equip.body);
@@ -125,13 +132,33 @@ export function castIntent(
   // The last "<Colour> Cry" line must hold enough crystals. 1.6 checked the client's own count and
   // sent the removal afterwards, which allowed free casts; SSO checks and removes in the same step.
   const need = crystalsFor(spell);
+  const line = need ? crystalLine(p.char.bag, need.colour) : -1;
   if (need) {
-    const line = crystalLine(p.char.bag, need.colour);
     const have = line >= 0 ? (p.char.bag[line]?.qty ?? 0) : 0;
     if (have < need.count) {
       res.out.push(tell(p, CAST_TEXT.crystals(spell)));
       return res;
     }
+  }
+  // Portal: sprite 5 at the mouse must touch no other player's sprite 112-157.
+  if (lingoEq(effect, "Portal")) {
+    const marker = spriteRect(PORTAL_MARKER, h, v);
+    if (room.players.some((o) => o !== p && rectsIntersect(marker, playerRect(o)))) {
+      res.out.push(tell(p, CAST_TEXT.portal));
+      return res;
+    }
+  }
+  // The summon tile: `(mouse − sprite110.topLeft)/32 + 1`, sprite 110 at (30, 31).
+  const tx = lingoDiv(h - 30, 32) + 1;
+  const ty = lingoDiv(v - 31, 32) + 1;
+  const plan = planSummon(room, p, effect, spell, tx, ty);
+  if (plan.refuse) {
+    res.out.push(tell(p, CAST_TEXT.summon));
+    return res;
+  }
+
+  t.actionDelay = CAST_DELAY;
+  if (need) {
     invDelSlot(p.char.bag, line, need.count);
     p.invDirty = true;
   }
@@ -139,6 +166,11 @@ export function castIntent(
   p.vitalsDirty = true;
   res.changed = true;
 
+  const power = spellPower(effect, {
+    skills: p.char.skills,
+    equip: p.char.equip,
+    faction: p.char.faction,
+  });
   const me = playerLoc(p);
   let eff = effect;
   if (lingoEq(eff, "Fireball")) {
@@ -147,22 +179,8 @@ export function castIntent(
   if (lingoEq(eff, "Wind Wave")) {
     eff = directional("Wind wave", me.h, me.v, h, v);
   }
-  const power = spellPower(eff, {
-    skills: p.char.skills,
-    equip: p.char.equip,
-    faction: p.char.faction,
-  });
   if (lingoEq(eff, "Bolt")) {
     eff = boltForm(p.facing);
-  }
-  // Portal: sprite 5 at the mouse must touch no player sprite 112-157, yours included. SP and
-  // crystals are already spent when it fails (a kept 1.6 bug).
-  if (lingoEq(eff, "Portal")) {
-    const marker = spriteRect(PORTAL_MARKER, h, v);
-    if (room.players.some((o) => rectsIntersect(marker, playerRect(o)))) {
-      res.out.push(tell(p, CAST_TEXT.portal));
-      return res;
-    }
   }
   queueCast(room, {
     owner: p.name,
@@ -174,45 +192,23 @@ export function castIntent(
     v,
     power,
   });
-  // The summon tile: `(mouse − sprite110.topLeft)/32 + 1`, sprite 110 at (30, 31).
-  const tx = lingoDiv(h - 30, 32) + 1;
-  const ty = lingoDiv(v - 31, 32) + 1;
-  const summoned = summon(room, p, eff, spell, tx, ty, ctx.rng);
-  res.out.push(...summoned.out);
-  res.slotsChanged = summoned.changed;
+  if (plan.place) {
+    const summoned = placeSummon(room, plan.place.monster, plan.place.at, ctx.rng);
+    res.out.push(...summoned.out);
+    res.slotsChanged = summoned.changed;
+  }
   return res;
 }
 
 // ---- summons -------------------------------------------------------
 
-/** The on-foot walk grid, matched exactly: the tile's "x<X>y<Y>*" entry is in the blocked list. */
-function walkBlocked(room: Room, x: number, y: number): boolean {
-  return room.map.walk[y - 1]?.[x - 1] === false;
-}
-
 /**
- * The summons' blocked-tile test looks for "x<X>y<Y>" with no `*`, so "x1y1" also matches the
- * entries "x1y10*", "x1y11*" and "x1y12*" (a kept 1.6 bug: Summon Creature's blocked test matches
- * part of a tile name).
+ * Whether a monster may not stand on tile (x, y): the walk grid's own entry for that tile (a bug
+ * fixed: 1.6 searched the blocked list for "x<X>y<Y>" with no closing `*`, so x1y1 read as blocked
+ * when only x1y10, x1y11 or x1y12 was).
  */
-export function npcBlockedSubstring(room: Room, x: number, y: number): boolean {
-  return blockedSubstring(room.map.walk, x, y);
-}
-
-/**
- * The same substring test over any walk grid: the on-foot list (the Pig drop, which aboard an
- * Airship reads the airship's list) or the summons' list.
- */
-export function blockedSubstring(grid: boolean[][], x: number, y: number): boolean {
-  const want = `x${x}y${y}`;
-  for (let by = 1; by <= MAP_HEIGHT; by += 1) {
-    for (let bx = 1; bx <= MAP_WIDTH; bx += 1) {
-      if (grid[by - 1]?.[bx - 1] === false && `x${bx}y${by}*`.includes(want)) {
-        return true;
-      }
-    }
-  }
-  return false;
+export function npcBlocked(grid: boolean[][], x: number, y: number): boolean {
+  return grid[y - 1]?.[x - 1] === false;
 }
 
 /** The grave tiles of layer 2. */
@@ -221,66 +217,70 @@ function isGrave(room: Room, x: number, y: number): boolean {
   return row !== undefined && tileHas(lingoWord(row, x), "grave");
 }
 
+/** What a summon spell will place, decided before anything is spent. */
+interface SummonPlan {
+  /** The summon cannot go ahead: "You cannot summon here!" and nothing spent. */
+  refuse: boolean;
+  /** The monster and tile, for a summon spell that goes ahead. */
+  place: { monster: string; at: { x: number; y: number } } | null;
+}
+
 /**
- * Web, Illusionary Spikes, Summon Creature, Holy Shield and Raise Dead: the monster takes the first
- * slot of 1-4 without a live monster, or the summon fails silently while its cost is still paid (a
- * kept 1.6 bug). A tile off the 17×12 map fails silently too.
+ * Web, Illusionary Spikes, Summon Creature, Holy Shield and Raise Dead. A summon is refused, and
+ * costs nothing, on a tile off the map or one a monster cannot stand on, when all four monster
+ * slots are taken, and (all but Summon Creature, whose Pig or Cow harms no one) where fighting is
+ * off. Raise Dead needs a grave on the clicked tile or the one above it; the Zombie rises on the
+ * tile below the grave either way, as 1.6 meant.
  */
-function summon(
+function planSummon(
   room: Room,
   p: Player,
-  eff: string,
+  effect: string,
   spell: string,
   x: number,
   y: number,
-  rng: Rng,
-): { out: Outgoing[]; changed: boolean } {
-  const none = { out: [], changed: false };
-  const noFight = room.map.flags.canFight === "O";
+): SummonPlan {
+  const is = (n: string) => lingoEq(effect, n);
+  if (
+    !is("Web") &&
+    !is("Illusionary Spikes") &&
+    !is("Summon Creature") &&
+    !is("Holy Shield") &&
+    !is("Raise Dead")
+  ) {
+    return { refuse: false, place: null };
+  }
+  const no: SummonPlan = { refuse: true, place: null };
+  if (!is("Summon Creature") && room.map.flags.canFight === "O") {
+    return no;
+  }
   let at = { x, y };
-  let isSummon = false;
-  if (lingoEq(eff, "Web") || lingoEq(eff, "Illusionary Spikes")) {
-    if (noFight) {
-      return { out: [tell(p, CAST_TEXT.summon)], changed: false };
-    }
-    if (walkBlocked(room, x, y)) {
-      return none;
-    }
-    isSummon = true;
-  } else if (lingoEq(eff, "Summon Creature")) {
-    if (npcBlockedSubstring(room, x, y)) {
-      return none;
-    }
-    isSummon = true;
-  } else if (lingoEq(eff, "Holy Shield")) {
-    if (npcBlockedSubstring(room, x, y)) {
-      return none;
-    }
-    if (noFight) {
-      return { out: [tell(p, CAST_TEXT.summon)], changed: false };
-    }
-    isSummon = true;
-  } else if (lingoEq(eff, "Raise Dead")) {
-    // 1.6 sets the monster's drop-down and stay-here flags only on a grave; unset they read 0. The
-    // Zombie rises one tile below a grave: the clicked tile's, or the one above the click.
+  if (is("Raise Dead")) {
     if (isGrave(room, x, y)) {
       at = { x, y: y + 1 };
-    } else if (isGrave(room, x, y - 1)) {
-      at = { x, y };
-    } else {
-      return none;
+    } else if (!isGrave(room, x, y - 1)) {
+      return no;
     }
-    isSummon = true;
   }
-  const spec = isSummon ? summonFor(spell) : null;
+  if (
+    at.x < 1 ||
+    at.x > MAP_WIDTH ||
+    at.y < 1 ||
+    at.y > MAP_HEIGHT ||
+    npcBlocked(room.map.walk, at.x, at.y) ||
+    room.map.slots.every((s: MonsterSlot) => s.live !== null)
+  ) {
+    return no;
+  }
+  const spec = summonFor(spell);
   if (!spec) {
-    return none;
+    return { refuse: false, place: null };
   }
   const monster =
     spec.skilled && (p.char.skills[skillIndex(spec.skilled.skill)] ?? 0) > spec.skilled.above
       ? spec.skilled.monster
       : spec.monster;
-  return placeSummon(room, monster, at, rng);
+  return { refuse: false, place: { monster, at } };
 }
 
 /**
@@ -311,9 +311,8 @@ function placeSummon(
 }
 
 /**
- * The tail of a dropped Pig: the substring test on the on-foot list (no `*`) → silent exit; else
- * the first free slot takes a live Pig. No Sorcery test and no no-fight test. The Pig has already
- * left the bag.
+ * The tail of a dropped Pig: a tile a monster cannot stand on → silent exit; else the first free
+ * slot takes a live Pig. No Sorcery test and no no-fight test.
  */
 export function summonPig(
   room: Room,
@@ -321,7 +320,7 @@ export function summonPig(
   y: number,
   rng: Rng,
 ): { out: Outgoing[]; changed: boolean } {
-  if (npcBlockedSubstring(room, x, y)) {
+  if (npcBlocked(room.map.walk, x, y)) {
     return { out: [], changed: false };
   }
   return placeSummon(room, "Pig", { x, y }, rng);
@@ -332,7 +331,9 @@ export function summonPig(
 /**
  * The Fire Staff's and Firesword's free fireballs in the attack routine, after the bar reset and
  * before the cooldowns. Their cast message carries the mouse, which a fireball never reads (it
- * starts beside the caster and flies by facing), so none is sent here.
+ * starts beside the caster and flies by facing), so none is sent here. They train no skill (a bug
+ * fixed: 1.6's skill gain ran on any name containing "Fireball", so a free swing trained Magery and
+ * Fire).
  */
 export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
   const weapon = p.char.equip.weapon;
@@ -348,6 +349,7 @@ export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
       h: me.h,
       v: me.v,
       power,
+      train: false,
     });
   if (lingoEq(weapon, "Fire Staff")) {
     let power = 1 + ctx.rng.random(3);

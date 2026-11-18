@@ -18,12 +18,14 @@ import {
   spellsData,
 } from "@secondstaronline/data";
 
+import { slotItem } from "../combat/armour.ts";
 import { gearBonus } from "../combat/gear.ts";
 import { type Equipment, type Faction, skillIndex } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
-import { firstMatch, lastMatch } from "../core/patterns.ts";
+import { firstMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 import type { Facing } from "../movement/movement.ts";
 import { mageSkillCap } from "../progression/skillgain.ts";
+import { PLAYFIELD_RECT } from "./spellfx.ts";
 
 export interface SpellTable {
   byName(name: string): Spell | null;
@@ -90,9 +92,13 @@ export const fxForEffect = DEFAULT_TABLE.fxForEffect;
 /** The action delay, 20 frames, shared with melee. */
 export const CAST_DELAY = 20;
 
-/** The stage area a cast click must fall in: `8 < H < 580`, `5 < V < 420`. */
+/**
+ * A cast click must fall on the playfield (a bug fixed: 1.6 took `8 < H < 580`, `5 < V < 420`, a
+ * margin around it).
+ */
 export function inCastBounds(h: number, v: number): boolean {
-  return h > 8 && v > 5 && h < 580 && v < 420;
+  const r = PLAYFIELD_RECT;
+  return h >= r.left && v >= r.top && h < r.right && v < r.bottom;
 }
 
 /** In the harmful set, read from the spell row. */
@@ -100,20 +106,41 @@ export function isHarmful(spell: string): boolean {
   return spellByName(spell)?.harmful ?? false;
 }
 
+/**
+ * The spells 1.6 listed, priced and taught but gave no effect: the cast handler places no FX and
+ * nothing reads them (Haste's flag and Replenish's heal sat in a handler nothing called).
+ */
+const INERT_EFFECTS = [
+  "Identify",
+  "Poison Dart",
+  "Weaken",
+  "Bless",
+  "Haste",
+  "Replenish",
+  "Holy Weapon",
+];
+
+/** True for a spell with no effect: SSO refuses it before anything is spent. */
+export function isInert(spell: string): boolean {
+  const eff = castEffect(spell);
+  return INERT_EFFECTS.some((n) => lingoEq(eff, n));
+}
+
 export const CAST_TEXT = {
   harmful: "You cannot cast harmful spells here!",
   sp: (n: number) => `You need ${n} spell points to cast this!`,
   crystals: (spell: string) => `You don't have the required crystals to cast ${spell}!`,
   portal: "You cannot cast this close to another person.",
+  /** SSO: a spell with no effect (`isInert`). */
+  inert: "This spell has no power.",
   /** SSO: Portal with no destination whose map exists. */
   portalClosed: "The portal will not open.",
   summon: "You cannot summon here!",
 } as const;
 
 /**
- * The SP required: the table's cost by exact name, with Smoke Bomb's by body armour (body not
- * "Ninja": 25, Ninja Outfit 17, Royal Ninja Uniform 13; a body named exactly "Ninja" leaves 0). 0
- * means the cast exits silently.
+ * The SP required: the table's cost by exact name, with Smoke Bomb's by body armour (25, Ninja
+ * Outfit 17, Royal Ninja Uniform 13). 0 means the cast exits silently.
  */
 export function spCost(spell: string, bodyE: string): number {
   const s = spellByName(spell);
@@ -256,9 +283,9 @@ function martialArts(c: Caster): number {
 }
 
 /**
- * The spell power for `spell` as the spell-selection handler reads it: Fireball and Wind Wave have
- * already been renamed to their directional form, so they match no school (kept bug: Fireball and
- * Wind Wave never get the school bonus). Bolt is renamed after.
+ * The spell power for `spell` by its base name ("Fireball", "Wind Wave", "Bolt"). The caller works
+ * it out before renaming the spell to its directional form (a bug fixed: 1.6 renamed Fireball and
+ * Wind Wave first, so they never matched their school).
  */
 export function spellPower(spell: string, c: Caster): number {
   let p = basePower(c);
@@ -398,49 +425,67 @@ export type PlayerSpellBranch =
   | "major heal"
   | "minor heal";
 
+/** What the spell-defense lookup reads about the player a spell hits. */
+export interface SpellTarget {
+  equip: Equipment;
+  /** The Magic Shield counter is running. */
+  magicShield: boolean;
+}
+
 /**
- * The amount one branch of the spell collision deals or heals, drawing in source order. A harmful
- * branch that calls the spell-definition lookup also draws its `random(3)` after the amount; that
- * call changes only a by-value parameter, so it never lowers the amount. The guards, exits and
+ * 1.6's spell-defense lookup (`GetSpellDef`): each worn item's row adds to the damage (metal adds,
+ * robes take off), Magic Shield takes off 5, then a positive amount gains `random(3)` and anything
+ * below 1 becomes `random(3)`. Exactly one draw. A bug fixed: 1.6 changed only a by-value copy,
+ * so armour and Magic Shield never touched spell damage.
+ */
+export function spellDefense(n: number, t: SpellTarget, rng: Rng): number {
+  const def = itemRulesData.armour.spell;
+  let p = n;
+  for (const r of def.rows) {
+    if (ruleMatches(slotItem(t.equip, r.slot), r)) {
+      p += r.delta;
+    }
+  }
+  if (t.magicShield) {
+    p += def.magicShield;
+  }
+  if (p > 0) {
+    return p + rng.random(3);
+  }
+  return rng.random(3);
+}
+
+/**
+ * The amount one branch of the spell collision deals or heals, drawing in source order. The
+ * branches 1.6 sent through the spell-defense lookup (arrows, Crush, Meteor, Fireball, Bolt and
+ * Wind Wave, not Firebolt or Splash) pass the amount through `spellDefense`. The guards, exits and
  * state changes stay with the caller.
  */
-export function playerSpellAmount(branch: PlayerSpellBranch, P: number, rng: Rng): number {
+export function playerSpellAmount(
+  branch: PlayerSpellBranch,
+  P: number,
+  target: SpellTarget,
+  rng: Rng,
+): number {
   const r = rng;
+  const def = (n: number) => spellDefense(n, target, r);
   switch (branch) {
-    case "Arrows": {
-      const n = P + r.random(2);
-      r.random(3);
-      return n;
-    }
-    case "crush": {
-      const n = 6 + P + r.random(3);
-      r.random(3);
-      return n;
-    }
+    case "Arrows":
+      return def(P + r.random(2));
+    case "crush":
+      return def(6 + P + r.random(3));
     case "firebolt":
       return 8 + P + r.random(3);
     case "Splash":
       return 20 + P + r.random(3);
-    case "meteor": {
-      const n = 15 + P + r.random(3);
-      r.random(3);
-      return n;
-    }
-    case "Fireball": {
-      const n = 9 + P + r.random(3);
-      r.random(3);
-      return n;
-    }
-    case "Bolt": {
-      const n = 18 + P + r.random(8);
-      r.random(3);
-      return n;
-    }
-    case "wind wave": {
-      const n = 2 + P + r.random(5);
-      r.random(3);
-      return n;
-    }
+    case "meteor":
+      return def(15 + P + r.random(3));
+    case "Fireball":
+      return def(9 + P + r.random(3));
+    case "Bolt":
+      return def(18 + P + r.random(8));
+    case "wind wave":
+      return def(2 + P + r.random(5));
     case "major heal":
       return 15 + P + r.random(5);
     case "minor heal":
@@ -506,8 +551,8 @@ export function castMageCap(f: Faction): number {
 }
 
 /**
- * The school rows after Magery: the spell name as cast (the second entry in the cast handler's
- * list, so "FireballL", "BoltR", "Wind waveR"), the match, the skill, its cap and the line.
+ * The school rows after Magery, matched against the base spell name (`baseSpell`), the match, the
+ * skill, its cap and the line.
  */
 const SCHOOL_ROWS: { spell: string; match: "=" | "contains"; skill: string; text: string }[] = [
   { spell: "Minor Heal", match: "=", skill: "Blessing", text: "blessing" },
@@ -546,10 +591,25 @@ function impText(row: { skill: string; text: string }): string {
 }
 
 /**
+ * The base spell of a directional cast name: "FireballL", "BoltR" and "Wind waveU" read as
+ * "Fireball", "Bolt" and "Wind Wave"; any other name is unchanged.
+ */
+export function baseSpell(name: string): string {
+  const m = /^(fireball|bolt|wind wave)[lrud]$/i.exec(name);
+  if (!m) {
+    return name;
+  }
+  const base = (m[1] ?? "").toLowerCase();
+  return base === "fireball" ? "Fireball" : base === "bolt" ? "Bolt" : "Wind Wave";
+}
+
+/**
  * The cast skill gain for your own cast: Magery `random(Magery) = 1` while 0 < Magery < the Mage
  * skill cap, then each matching school row the same way (Martial Arts up to 100). Raises the skills
- * in place and returns the lines, in order. The "Music" row (Musicianship) is not built: only the
- * unreachable composer sends a "Music" cast, so Musicianship never rises in 1.6.
+ * in place and returns the lines, in order. A directional name trains its base spell's school (a
+ * bug fixed: 1.6 compared "BoltR" and "Wind waveR" with "Bolt" and "Wind Wave", so they never
+ * trained). The "Music" row (Musicianship) is not built: only the unreachable composer sends a
+ * "Music" cast, so Musicianship never rises in 1.6.
  */
 export function spellImp(
   spellName: string,
@@ -557,7 +617,7 @@ export function spellImp(
   faction: Faction,
   rng: Rng,
 ): string[] {
-  const eff = fxEffect(spellName);
+  const eff = baseSpell(fxEffect(spellName));
   if (IMP_EXITS.some((x) => lingoContains(eff, x))) {
     return [];
   }
@@ -592,10 +652,7 @@ export const BOOK_TEXT = {
   nothingMore: "There is nothing more you can learn from this book.",
 } as const;
 
-/**
- * The required Dexterity: 1, then each `use.books` row that matches (the last true wins; two rows
- * are typos).
- */
+/** The required Dexterity: 1, then each `use.books` row that matches (the last true wins). */
 export function bookDex(item: string): number {
   return lastMatch(itemRulesData.use.books, item)?.mysticism ?? 1;
 }
@@ -611,17 +668,21 @@ export type BookResult =
   | { kind: "spell"; spell: string; lines: string[] }
   | { kind: "none"; lines: string[] };
 
+/** A combat book teaches only below this skill, and never takes the skill past it. */
+export const SKILL_BOOK_CAP = 77;
+
 /**
- * Reading a book after the server consumed the book: a combat book below 77 adds `1 + random(5)`
- * (so up to 82); a spell book appends its spell unless an exact line already holds it. `skills` and
- * `spellbook` change in place. Radar and Haste books match nothing.
+ * Reading a book: a combat book below 77 adds `1 + random(5)`, stopping at 77 (a bug fixed: 1.6
+ * let the last read reach 82); a spell book appends its spell unless an exact line already holds
+ * it. `skills` and `spellbook` change in place. Only a `skill` or `spell` result teaches anything,
+ * and only then is the book used up.
  */
 export function runBook(book: string, skills: number[], spellbook: string[], rng: Rng): BookResult {
   const skillBook = firstMatch(itemRulesData.use.skillBooks, book);
   if (skillBook) {
     const i = skillIndex(skillBook.skill);
-    if ((skills[i] ?? 0) < 77) {
-      skills[i] = (skills[i] ?? 0) + 1 + rng.random(5);
+    if ((skills[i] ?? 0) < SKILL_BOOK_CAP) {
+      skills[i] = Math.min(SKILL_BOOK_CAP, (skills[i] ?? 0) + 1 + rng.random(5));
       return {
         kind: "skill",
         skill: skillBook.shown,
@@ -642,15 +703,11 @@ export function runBook(book: string, skills: number[], spellbook: string[], rng
 }
 
 /**
- * What `savespells` keeps (kept bug: the spellbook is truncated at 29, so Identify is lost): the
- * first 29 lines that have an encode id; `loadspells` rebuilds the list from that.
+ * What is saved of a spellbook: every line that names a spell, Identify included, however many
+ * there are (a bug fixed: 1.6 saved at most 29 lines as encode ids, and Identify had none).
  */
-export const SPELLBOOK_SAVE_LINES = 29;
-
 export function savedSpellbook(spellbook: readonly string[]): string[] {
-  return spellbook
-    .slice(0, SPELLBOOK_SAVE_LINES)
-    .filter((s) => (spellByName(s)?.id ?? null) !== null);
+  return spellbook.filter((s) => spellByName(s) !== null);
 }
 
 // ---- effects on players and their counters ----------------------------------
@@ -760,6 +817,3 @@ export function createFood(
       : `Suddenly, ${food} appears in your inventory.`;
   return { item: food, text };
 }
-
-/** The monster death check's heal cap, default 200, from the monster data. */
-export const MONSTER_HEAL_CAP_DEFAULT = 200;

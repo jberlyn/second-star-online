@@ -225,15 +225,18 @@ describe("pig drop", () => {
     expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
   });
 
-  test("pig drop: the blocked test is a substring, so x1y1 is refused when only x1y10 is blocked", () => {
+  test("bug fixed: pig drop reads the tile's own entry, so x1y1 is open when only x1y10 is blocked", () => {
     const s = scene();
     s.map.walk[9]![0] = false; // x1y10
     s.a.x = 2;
     s.a.y = 1;
     s.a.facing = "W";
     give(s.a, 1, "Pig");
-    expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([PIG_TEXT.blocked]);
-    expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
+    expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([]);
+    expect(s.a.char.bag[0]).toBeNull();
+    expect(
+      s.map.slots.some((m) => m.live?.name === "Pig" && m.live.x === 1 && m.live.y === 1),
+    ).toBe(true);
   });
 
   test("bug fixed: a pig is refused from an Airship and kept", () => {

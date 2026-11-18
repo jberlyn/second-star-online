@@ -2,7 +2,7 @@
  * Bot script: Alice, an immortal mage, places a Slime; fails to read a Meteor Book (Dex), reads
  * Fireball, Minor Heal, Hold, Summon Creature and Identify books; casts a fireball at the Slime
  * (refused again inside the cast delay), heals Bob, holds him, summons a Pig; runs out of crystals;
- * then after a relog her spellbook is kept without Identify.
+ * then after a relog her spellbook is kept in full, Identify included.
  *
  * The RNG is the script's: a size with nothing queued answers `n`, which matches only
  * `random(1)` (no spawn, no move, no attack, no chatter), and a damage roll is its maximum.
@@ -188,12 +188,13 @@ describe("spells", () => {
       "Identify",
     ]);
     expect(slotOf(alice, "Fireball Book")).toBe(0);
-    // Saved without Identify.
+    // Saved in full (a bug fixed: 1.6 dropped Identify).
     expect(loadSpellbook(server.db, idOf(server.db, "Alice"))).toEqual([
       "Fireball",
       "Minor Heal",
       "Hold",
       "Summon Creature",
+      "Identify",
     ]);
   });
 
@@ -263,12 +264,18 @@ describe("spells", () => {
     );
   });
 
-  test("after a relog the spellbook is kept, without Identify", async () => {
+  test("bug fixed: after a relog the spellbook is kept, Identify included", async () => {
     alice.close();
     await settle();
     alice = await login("Alice");
     face(server, "Alice", "N"); // staging: 1.6 logs in facing south
     await tick(1);
-    expect(lastSpellbook(alice)).toEqual(["Fireball", "Minor Heal", "Hold", "Summon Creature"]);
+    expect(lastSpellbook(alice)).toEqual([
+      "Fireball",
+      "Minor Heal",
+      "Hold",
+      "Summon Creature",
+      "Identify",
+    ]);
   });
 });

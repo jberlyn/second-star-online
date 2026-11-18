@@ -54,7 +54,7 @@ export const spellSummonSchema = z.strictObject({
 
 export const spellSchema = z.strictObject({
   name: z.string().min(1),
-  /** The `savespells` encode id, or null (Identify has none: it is lost on save). */
+  /** 1.6's `savespells` encode id, or null (Identify had none). SSO saves spellbooks by name. */
   id: int.nullable(),
   /** The 1.6 spell whose effect code this row runs. */
   effect: z.string().min(1),
