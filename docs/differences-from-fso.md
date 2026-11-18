@@ -476,6 +476,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/client/src/ui/bio.ts` (`createBioWindow`), `packages/server/src/systems/economy/intents.ts` (`trainIntent`)
 - **Pinned by:** `divergence: the Train button shows only with train: true, never in a player's bio` and `divergence: the Train click asks for the train list and closes the window` and `divergence: the train list has no quantity field; OK sends the row's line, even at price 0` (packages/client/tests/npcs.test.ts)
 
+#### The amount dialog's buttons sit on its panel and its title is centred
+- **Kind:** Other
+- **What you notice:** In the gold and crystal amount dialog, the X and OK buttons sit straight on the dark panel, and the question is centred vertically in the top box with the same inset on both sides.
+- **1.6:** The OK and Cancel art (Internal #120 and #126) used ink 36 with palette colour 169 (#3333CC) as their background, which neither image contains. Nothing was keyed out, so both buttons appeared in pure black boxes on the panel's #101010. The title field (#125) sat high and to the left in the top box at [245, 197, 436, 229].
+- **SSO:** Both buttons are keyed on black at build time. The title fills the top box's interior [236, 195, 463, 230] with an 8-px inset and is centred vertically.
+- **Why:** The black boxes and the off-centre text made the dialog look broken. The art and its positions are otherwise unchanged.
+- **In the code:** `packages/data/build/assets-lib/key.ts` (`ruleForUsage`), `packages/client/src/ui/amount.ts` (`createAmountDialog`), `packages/client/src/styles.css` (`.amount-dialog .amount-title`)
+- **Pinned by:** `UI rule follows the most-used score appearance, then keyHint` (packages/data/tests/assets.test.ts); `divergence: the title fills the top box's interior, not 1.6's high-left field` (packages/client/tests/panel.test.ts)
+
 #### Alchemy sand is a tool and is never used up
 - **Kind:** Other
 - **What you notice:** You mix a potion and the sand is still in your hand afterwards. The Potion Bottle and the crystal are used up.

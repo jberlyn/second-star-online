@@ -395,6 +395,16 @@ describe("the amount dialog", () => {
     expect(got).toEqual([]);
     expect(d.el.hidden).toBe(true);
   });
+  test("divergence: the title fills the top box's interior, not 1.6's high-left field", () => {
+    const { title } = dialog();
+    // Internal #119's top box is local x 13-239, y 12-46; 1.6's field (#125) was [22, 14, 213, 46].
+    expect([title.style.left, title.style.top, title.style.width, title.style.height]).toEqual([
+      "13px",
+      "12px",
+      "227px",
+      "35px",
+    ]);
+  });
   test("crystals keep the last amount; the saved field text is 2", () => {
     const { d, input, title } = dialog();
     d.open(crystalTitle("blue", "drop"), null, () => {});

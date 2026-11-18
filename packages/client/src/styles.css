@@ -725,6 +725,11 @@ body {
     12px Arial,
     sans-serif;
   color: #fff;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 8px;
+  line-height: 15px;
 }
 .amount-dialog .amount-input {
   font:

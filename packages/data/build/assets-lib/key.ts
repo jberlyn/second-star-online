@@ -51,13 +51,14 @@ export function ruleForUsage(usage: readonly ScoreUsage[] | undefined, keyHint: 
       // The only other index in the score, 169, is used by Internal #120/#126 alone (the
       // amount dialog's OK and Cancel, channels 89 and 92 of frames 50-67). On the runtime
       // palette 169 is #3333CC (measured in the running 1.6);
-      // neither member has that colour, so ink 36 removes nothing and the black boxes stay
-      // (keying white there erased the letters and left the box).
+      // neither member has that colour, so in 1.6 ink 36 removed nothing and the buttons sat
+      // in black boxes on the dialog's #101010 panel. SSO keys their black instead, so the
+      // letters sit on the panel (keying white erases the letters and leaves the box).
       if (top.back[0] === "pal" && top.back[1] === 5) {
         return { kind: "color", rgb: GREEN };
       }
       if (top.back[0] === "pal" && top.back[1] === 169) {
-        return { kind: "color", rgb: [0x33, 0x33, 0xcc] };
+        return { kind: "color", rgb: BLACK };
       }
       if (keyHint === "green") {
         return { kind: "color", rgb: GREEN };

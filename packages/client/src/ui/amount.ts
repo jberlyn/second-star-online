@@ -1,11 +1,13 @@
 /**
  * The gold and crystal amount dialog: channels 88-92 of frames 50-63 at their score rects,
- * background Internal #119 [223, 183, 476, 300], the title field (#125, [245, 197, 436, 229]),
+ * background Internal #119 [223, 183, 476, 300], the title field (#125, [245, 197, 436, 229];
+ * SSO centres it in the top box),
  * the editable amount field (#124, [254, 253, 348, 269]), OK (#120) and Cancel (#126).
  * - Gold (Internal #118): "How Much Gold Do You Want To Give/Drop?" and the amount set to "0".
  * - Crystals: "Drop how many <colour> crystals?" or "Give how many …", by the bag button that
  *   opened it, which leave the amount as it was; the cast's saved text is "2".
  *
+ * OK (#120) and Cancel (#126) are keyed on black so they sit on the panel (1.6 showed black boxes).
  * OK clicks on every press (1.6 clicked only on its drop path), hides the dialog before any test,
  * then keeps the original's silent refusals for what the
  * client can test (more than 4 characters, a "-", outside 1..9999); the server checks the rest.
@@ -52,7 +54,9 @@ export function createAmountDialog(a: Assets, press: () => void = () => {}): Amo
   put(artImg(a.ui("internal", 119)), 223, 183, 253, 117);
   const title = document.createElement("div");
   title.className = "field amount-title";
-  put(title, 245, 197, 191, 32);
+  // 1.6's field (#125) sat at [245, 197, 436, 229], high and left in the top box; SSO fills the
+  // box's interior [236, 195, 463, 230] with an even inset and centres the text vertically.
+  put(title, 236, 195, 227, 35);
   const input = gameInput("amount-input");
   input.className = "field amount-input";
   input.inputMode = "numeric";

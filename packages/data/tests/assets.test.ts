@@ -154,9 +154,9 @@ describe("keying", () => {
       { kind: "matte" },
     );
     expect(ruleForUsage(undefined, "green")).toEqual({ kind: "color", rgb: [0, 255, 0] });
-    // palette 169 is #3333CC, so ink 36 keeps the amount dialog's black boxes
+    // 1.6 kept the amount dialog's black button boxes (palette 169 is #3333CC); SSO keys black
     expect(ruleForUsage([{ ink: 36, back: ["pal", 169], blend: 0, frames: 13 }], "opaque")).toEqual(
-      { kind: "color", rgb: [0x33, 0x33, 0xcc] },
+      { kind: "color", rgb: [0, 0, 0] },
     );
     expect(ruleForUsage([], "opaque")).toEqual({ kind: "none" });
   });
