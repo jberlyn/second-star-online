@@ -30,7 +30,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [economy](#economy) | 49 |
 | [housing](#housing) | 27 |
 | [inventory](#inventory) | 43 |
-| [mail](#mail) | 11 |
+| [mail](#mail) | 27 |
 | [monsters](#monsters) | 4 |
 | [movement](#movement) | 4 |
 | [progression](#progression) | 4 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **324** |
+| **Total** | **340** |
 
 ## admin
 
@@ -1082,7 +1082,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Platform
 - **What you notice:** The game has a Windows-style menu above the game, with File, Edit, Game and Options, plus Admin for immortals.
 - **1.6:** The projector had a native Windows menu above the stage from program start, with File, Edit, Game and Plugins. Immortals received an Admin menu. Return To Title Screen and Quit were in File; preferences were on the title-screen Game Setup.
-- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Admin sits between Edit and Game; Options adds Sharp Pixels Only and Sound Effects. The MP3 player remains omitted. Admin contains World Editor, NPC Editor, Settings, Edit Newspaper, Admin Chat, Return To Game and three Assassin commands, which are sent without confirmation. Game contains Friends, IM and the four rooms; Edit contains Clear Chat Text. Character-dependent items are greyed before entry, while File and Options work everywhere. Return To Title Screen logs out or shows the title before login. Quit logs out and shows “You can close this tab now.” and “Click to return to the title screen.” Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
+- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Admin sits between Edit and Game; Options adds Sharp Pixels Only and Sound Effects. The MP3 player remains omitted. Admin contains World Editor, NPC Editor, Settings, Admin Chat, Return To Game and three Assassin commands, which are sent without confirmation. Game contains Friends, IM, Edit Newspaper and the four rooms; Edit contains Clear Chat Text. Character-dependent items are greyed before entry, while File and Options work everywhere. Return To Title Screen logs out or shows the title before login. Quit logs out and shows “You can close this tab now.” and “Click to return to the title screen.” Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
 - **Why:** Browser scaling and logout need controls, and a page cannot close its own tab.
 - **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
 
@@ -2814,7 +2814,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** A board window shows the board you clicked, and posts go to that board.
 - **1.6:** Clients could name any board to load or save, including guild boards from anywhere.
-- **SSO:** The server opens only the clicked Town Square board or a hall board from row 7 or above, and posts only to that board.
+- **SSO:** The server opens only the board that was clicked or faced, from the tile in front of it (a hall's board for its guild's members only), and posts only to the open board.
 - **Why:** A forged request could read or write a hall board from a distance.
 - **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`, `boardPostIntent`)
 
@@ -2842,19 +2842,20 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** Unbounded or malformed images could abuse disk and memory or be served to other players.
 - **In the code:** `packages/server/src/systems/mail/upload-check.ts` (`isPng`), `packages/server/src/systems/mail/art.ts` (`artSaveIntent`)
 
-### Newspaper editing immortal-only on the server
+### A newspaper is saved under its writer's name
 - **Kind:** Exploit closed
-- **What you notice:** Only immortals can save newspaper edits.
-- **1.6:** The client menu restricted editing, but the server did not check authority on saves.
-- **SSO:** The server checks the player's role.
-- **Why:** Any player could otherwise publish a newspaper.
+- **What you notice:** Saving a newspaper writes your own paper, the one your stand shows.
+- **1.6:** The save carried the paper's name, and the server did not check it, so a client could overwrite anyone's paper.
+- **SSO:** The server saves the paper under the name of the character who sent it.
+- **Why:** A forged save could otherwise rewrite another player's newspaper.
 - **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`newspaperSaveIntent`)
+- **Pinned by:** `bug fixed: a player saves to their own paper, loads it, and their stand shows it` (packages/server/tests/art-news.test.ts)
 
 ### Mail, board and newspaper size caps
 - **Kind:** Exploit closed
 - **What you notice:** Long mail and board posts are shortened, and old mailbox messages or board posts are removed when their limits are reached.
 - **1.6:** The server had no limits beyond the approximately 2 MB messaging cap.
-- **SSO:** Operator defaults are 2,000 characters per mail body, 50 messages per mailbox, 200 posts per board and 300 characters per board post. Longer bodies and posts are cut; the oldest messages and posts are dropped. Newspaper fields are schema-bounded because only an immortal edits them: photo IDs 20 characters, body 4,000 and each of the other five fields 500.
+- **SSO:** Operator defaults are 2,000 characters per mail body, 50 messages per mailbox, 200 posts per board and 300 characters per board post. Longer bodies and posts are cut; the oldest messages and posts are dropped. Newspaper fields are schema-bounded, with one paper per character: photo IDs 20 characters, body 4,000 and each of the other five fields 500.
 - **Why:** Unbounded stored content and payloads served to other players could exhaust resources.
 - **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`), `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`), `packages/shared/src/protocol/mail.ts` (`newspaperSaveSchema`)
 
@@ -2862,16 +2863,16 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** Each saved painting or photo uses one canvas or film. A second save without another is ignored.
 - **1.6:** Saving needed no canvas or film, and a second Save in an open screen stored another painting.
-- **SSO:** Using a canvas or film creates a server-held credit; saving spends it, a save without one is ignored, and credits clear on game entry.
+- **SSO:** Using a Canvas or Film arms one save on the server; the save takes one Canvas or Film from the bag, a save that is not armed or finds none in the bag is ignored, and the arming clears on game entry.
 - **Why:** A modified client could otherwise store unlimited images for free.
 - **In the code:** `packages/server/src/systems/mail/art.ts` (`useCanvas`, `useFilm`, `artSaveIntent`)
 - **Pinned by:** `divergence: a second save and a save with no canvas are ignored` (packages/server/tests/art-news.test.ts)
 
 ### Art is never lost to a full bag
 - **Kind:** Exploit closed
-- **What you notice:** If your bag is full, saving art says “You are carrying too much...” and keeps the canvas or film credit.
+- **What you notice:** If your bag is full, saving art says “You are carrying too much...” and keeps the Canvas or Film.
 - **1.6:** The server stored the image and reported success, but the inventory addition lost the item when the bag was full.
-- **SSO:** Before storing the image, the server refuses a save when more than 14 of bag lines 1–15 are filled, using the original carrying-too-much line and keeping the credit.
+- **SSO:** Before storing the image, the server refuses a save when more than 14 of bag lines 1–15 are filled, using the original carrying-too-much line and keeping the Canvas or Film.
 - **Why:** The original could store an image that nobody held.
 - **In the code:** `packages/server/src/systems/mail/art.ts` (`artSaveIntent`)
 - **Pinned by:** `divergence: a full bag is refused with the line and the canvas kept` (packages/server/tests/art-news.test.ts)
@@ -2884,6 +2885,150 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** A forged ID enabled path traversal and access to art the player did not hold.
 - **In the code:** `packages/server/src/systems/mail/art.ts` (`viewArt`)
 - **Pinned by:** `divergence: an unknown id opens the viewer with no author and no picture` (packages/server/tests/art-news.test.ts)
+
+### A mail pane's Close keeps you still while the list is up
+- **Kind:** Bug fixed
+- **What you notice:** Closing the compose or read pane, or sending a message, leaves the mail list on screen and your character standing still. Closing the list lets you walk again.
+- **1.6:** The pane's CLOSE, and a send, cleared the input lock while the list stayed on screen.
+- **SSO:** The keys stay locked for as long as the list is up; only the list's CLOSE unlocks them.
+- **Why:** Walking with the mailbox list still open left a window behind that no longer belonged to where you stood.
+- **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailUiIntent`, `mailSend`), `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `bug fixed: composeClose keeps the lock with the list up; close unlocks and takes it down`, `bug fixed: a send keeps the keys locked while the list is up` (packages/server/tests/mail-boards.test.ts); `bug fixed: either pane's CLOSE hides both panes; the list and the lock stay up`, `bug fixed: SEND waits for mailSent; then the line, cleared and hidden, still locked` (packages/client/tests/mail-boards.test.ts)
+
+### A reply adds "Re: " once
+- **Kind:** Bug fixed
+- **What you notice:** Replying to a message whose subject already starts "Re: " keeps the subject as it is.
+- **1.6:** "Re: " went in front of the subject every time, so replies stacked "Re: Re: ".
+- **SSO:** "Re: " is added only when the subject does not already start with it, ignoring case.
+- **Why:** Stacked prefixes pushed the real subject out of the list column.
+- **In the code:** `packages/shared/src/rules/mail/mail.ts` (`replySubject`)
+- **Pinned by:** `bug fixed: replySubject adds Re: once` (packages/shared/tests/mail/mail-boards.test.ts); `bug fixed: REPLY locks, answers the sender and adds Re: only once` (packages/client/tests/mail-boards.test.ts)
+
+### Mail goes once to each name, to at most 7 people
+- **Kind:** Bug fixed
+- **What you notice:** A name typed twice gets one copy. Addressing more than 7 different people says "*** A message can go to at most 7 people." and sends nothing, keeping your draft. "*** Sending Mail..." prints for every send that goes through.
+- **1.6:** The send read items 1 to 7 of the To field, so extra names were dropped unseen, a repeated name got two copies, and the line printed only when item 1 was filled.
+- **SSO:** The non-empty names are taken once each, ignoring case; more than 7 is refused with a line on the client and the server.
+- **Why:** Silently dropping recipients and duplicating mail confused senders.
+- **In the code:** `packages/shared/src/rules/mail/mail.ts` (`mailRecipients`), `packages/server/src/systems/mail/mail.ts` (`mailSend`), `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `bug fixed: more than seven different names is too many`, `bug fixed: a repeated name counts once, ignoring case` (packages/shared/tests/mail/mail-boards.test.ts); `bug fixed: a repeated name gets one copy; more than 7 names is refused with a line` (packages/server/tests/mail-boards.test.ts); `bug fixed: a To with no item 1 sends and prints the line`, `bug fixed: more than 7 names says so and sends nothing; repeats count once` (packages/client/tests/mail-boards.test.ts)
+
+### Every space and star leaves a mail's To field
+- **Kind:** Bug fixed
+- **What you notice:** Spaces and stars are removed from the To field however many there are in a row.
+- **1.6:** The strip deleted while stepping forward, which skipped the next character, so runs of four or more left one behind.
+- **SSO:** Every space and star is removed.
+- **Why:** A leftover space or star made a name match nobody.
+- **In the code:** `packages/shared/src/rules/mail/mail.ts` (`stripMailTo`)
+- **Pinned by:** `bug fixed: long runs of spaces and stars are removed completely` (packages/shared/tests/mail/mail-boards.test.ts); `bug fixed: every space and star is stripped from To` (packages/server/tests/mail-boards.test.ts)
+
+### A board post shows on the open board
+- **Kind:** Bug fixed
+- **What you notice:** Press Post and the board stays open, reloaded with your post at the end and scrolled to it, and the post field emptied.
+- **1.6:** Post hid the window and sent the post with nothing reloaded, so you saw your post only on the next open.
+- **SSO:** The server answers a post with the reloaded board.
+- **Why:** Players could not tell whether a post had gone through.
+- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`), `packages/client/src/ui/board.ts` (`createBoardWindow`)
+- **Pinned by:** `bug fixed: a post is appended in 1.6's format and the open board reloads with it` (packages/server/tests/mail-boards.test.ts); `bug fixed: Post keeps the lock; the server's reload shows the post, scrolled to it` (packages/client/tests/mail-boards.test.ts); `Alice, away from Town Square's board, hears the position line; in front her post reloads it` (packages/server/e2e/mail-and-boards.test.ts)
+
+### A refused board post keeps your keys locked
+- **Kind:** Bug fixed
+- **What you notice:** Press Post with nothing to post and you get the alert with the board still open and your character still standing in front of it.
+- **1.6:** Post cleared the input lock before checking the text.
+- **SSO:** A post does not touch the lock; only Close frees the keys.
+- **Why:** You could walk away from a board that was still open.
+- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`), `packages/client/src/ui/board.ts` (`createBoardWindow`)
+- **Pinned by:** `bug fixed: a refused post (no letter or digit) alerts and keeps the keys locked` (packages/server/tests/mail-boards.test.ts)
+
+### A map change closes the message board
+- **Kind:** Bug fixed
+- **What you notice:** Leaving the map with a board open closes it, and nothing more can be posted to it.
+- **1.6:** The board was hidden only on game entry, so it stayed open on the next map and a post went to the last board opened.
+- **SSO:** Entering a map forgets the open board on the server and closes its window on the client.
+- **Why:** A board read on one map could be posted to from anywhere.
+- **In the code:** `packages/server/src/systems/world/world.ts` (`enterRoom`), `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`)
+- **Pinned by:** `bug fixed: a map change closes the board` (packages/server/tests/mail-boards.test.ts)
+
+### A guild board opens for its members, in front of it
+- **Kind:** Bug fixed
+- **What you notice:** A hall's board opens only when you stand in front of it, facing it, and belong to its guild; it then locks your keys like Town Square's. Others hear "You see the message board, but you must be standing in front of it to read it." or "Only members of this guild can read its board."
+- **1.6:** The board tested only that you stood in rows 1 to 7 of whatever map you were on, never your guild, and did not lock the keys.
+- **SSO:** The server tests the tile in front, then membership of the guild named on the board (`The <guild>'s Board`), and locks the keys.
+- **Why:** Anyone could read a guild's board from the top of any map.
+- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`), `packages/shared/src/rules/mail/mail.ts` (`boardMember`, `standingInFront`)
+- **Pinned by:** `bug fixed: a hall's board opens for its members from in front, locks, pause 40`, `bug fixed: a hall's board is refused to a non-member and from away` (packages/server/tests/mail-boards.test.ts); `bug fixed: a hall's board belongs to its guild's members` (packages/shared/tests/mail/mail-boards.test.ts); `the Knights' board: Carol is refused from away, King until he joins; then it locks and posts` (packages/server/e2e/mail-and-boards.test.ts)
+
+### Town Square's board opens from in front of it
+- **Kind:** Bug fixed
+- **What you notice:** Clicking the Town Square board opens it only when you stand in front of it, facing it, as Ctrl already needed. From elsewhere you hear "You see the message board, but you must be standing in front of it to read it."
+- **1.6:** The click had no distance or facing test.
+- **SSO:** The click and Ctrl share the in-front test.
+- **Why:** The board opened, and locked your keys, from across the map.
+- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`)
+- **Pinned by:** `bug fixed: Town Square by click needs you in front: locks, no pause` (packages/server/tests/mail-boards.test.ts)
+
+### Pure white paints with the brushes
+- **Kind:** Bug fixed
+- **What you notice:** With pure white picked, all four brushes paint white.
+- **1.6:** The brush was drawn as a white shape with white treated as transparent, so white left no mark.
+- **SSO:** Every colour blends in the same way, white included.
+- **Why:** There was no way to paint white highlights except Fill.
+- **In the code:** `packages/shared/src/rules/mail/paint.ts` (`paintAt`)
+- **Pinned by:** `bug fixed: pure white paints with every brush` (packages/shared/tests/mail/art-news.test.ts)
+
+### A Canvas is spent when the painting is saved
+- **Kind:** Bug fixed
+- **What you notice:** Using a Canvas opens the paint screen and leaves the Canvas in your bag. Cancel keeps your picture, and the next Canvas reopens it; Save takes one Canvas.
+- **1.6:** Use removed the Canvas before you painted; a cancel then kept the picture, and the next Canvas reopened it without being removed.
+- **SSO:** The Canvas leaves the bag only when a painting is saved, so a cancel costs nothing and no reopen is free.
+- **Why:** Which Canvas was spent depended on whether you had cancelled.
+- **In the code:** `packages/server/src/systems/mail/art.ts` (`useCanvas`, `artSaveIntent`)
+- **Pinned by:** `bug fixed: Use keeps the Canvas and opens the paint screen under the lock`, `bug fixed: a cancel costs no Canvas; the picture reopens and the save spends one`, `bug fixed: a save with no Canvas left in the bag is ignored` (packages/server/tests/art-news.test.ts)
+
+### A Film is spent when the photo is saved
+- **Kind:** Bug fixed
+- **What you notice:** Using a Film shows the lens and leaves the Film in your bag. Cancelling the shot with a bag click, or shooting with a full bag, keeps it; a saved photo takes one Film.
+- **1.6:** Use removed the Film before the shot, so a cancelled or refused photo lost it.
+- **SSO:** The Film leaves the bag only when a photo is saved.
+- **Why:** Players lost film for photos they never got.
+- **In the code:** `packages/server/src/systems/mail/art.ts` (`useFilm`, `artSaveIntent`)
+- **Pinned by:** `bug fixed: with a Camera ('camera' passes) the Film is kept, the lens appears, pause 425`, `bug fixed: using a second Film spends nothing; one saved photo spends one Film`, `bug fixed: a full bag refuses the photo and keeps the Film` (packages/server/tests/art-news.test.ts)
+
+### A viewed painting stays out of your canvas
+- **Kind:** Bug fixed
+- **What you notice:** Viewing a painting and then reopening a cancelled canvas shows your own picture, not the one you viewed. An item with no stored picture shows an empty viewer.
+- **1.6:** The viewer and the canvas shared one image, so a viewed painting reopened in the canvas and Save stored it under your name.
+- **SSO:** The viewer has an image of its own.
+- **Why:** It let a player claim someone else's painting as their own.
+- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
+- **Pinned by:** `bug fixed: a cancelled canvas reopens on your own picture, not a viewed painting`, `bug fixed: a viewed item with no picture shows none, not the last one viewed` (packages/client/tests/art-news.test.ts)
+
+### Paintings and photos on the ground are viewed from in front
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a painting or photo on the ground opens it only when you stand in front of it, facing it. From elsewhere you hear "You see the Painting, but you must be standing in front of it to view it." (or "the photo").
+- **1.6:** The click had no distance, facing or adjacency test.
+- **SSO:** The server tests the tile in front before opening the viewer.
+- **Why:** Art across the map opened and locked your keys.
+- **In the code:** `packages/server/src/systems/mail/art.ts` (`viewArt`), `packages/server/src/systems/inventory/items.ts` (`pickupIntent`)
+- **Pinned by:** `bug fixed: a ground click views only from in front, and clears the pause` (packages/server/tests/art-news.test.ts)
+
+### Newspapers are read from in front of the stand
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a newspaper stand opens the paper only when you stand in front of it, facing it. From elsewhere you hear "You see the newspaper, but you must be standing in front of it to read it."
+- **1.6:** The click had no distance or facing test.
+- **SSO:** The click and Ctrl share the in-front test.
+- **Why:** A stand anywhere on the map could be read.
+- **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`readNewspaper`)
+- **Pinned by:** `bug fixed: a click from away is refused with the line and pause 20`, `a click from in front reads: the line, pause 20, the fields, null for a missing or non-numeric photo` (packages/server/tests/art-news.test.ts)
+
+### Players write their own newspaper
+- **Kind:** Bug fixed
+- **What you notice:** Game > Edit Newspaper opens the editor for every player. What you save is what your stand (`<you>'s Newspaper`) shows.
+- **1.6:** Only an immortal's menu opened the editor, so a player's stand from a Newspaper Kit was always blank.
+- **SSO:** Edit Newspaper sits on the Game menu, and the server loads and saves the player's own paper.
+- **Why:** The Newspaper Kit was useless to the players who bought it.
+- **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`newspaperLoadIntent`, `newspaperSaveIntent`), `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
+- **Pinned by:** `bug fixed: a player saves to their own paper, loads it, and their stand shows it` (packages/server/tests/art-news.test.ts); `menu 500's Game and Edit items: Clear Chat Text, Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms` (packages/client/tests/npceditor.test.ts)
 
 ## monsters
 

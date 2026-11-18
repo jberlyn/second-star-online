@@ -1,18 +1,19 @@
 /**
  * Message boards on the server.
  *
- * Posts are append-only rows read at the moment; the server opens only the board that was clicked
- * and a post goes to the board last opened. (1.6 let any client overwrite a board, or read and
- * write any board by name from anywhere.)
+ * Posts are append-only rows read at the moment; the server opens only the board that was clicked,
+ * from the tile in front of it, and a post goes to the board that is open. A map change closes it.
+ * (1.6 let any client overwrite a board, or read and write any board by name from anywhere.)
  */
 import {
-  BOARD_MAX_Y,
   BOARD_TEXT,
   boardKind,
+  boardMember,
   boardText,
   CHAT_COLOR,
   chatRefusal,
   postHasText,
+  standingInFront,
 } from "@secondstaronline/shared";
 
 import type { GroundItem, Outgoing, Player } from "../world/world.ts";
@@ -40,12 +41,18 @@ const chat = (to: Player, text: string): Outgoing => ({
   msg: { t: "chat", text, color: CHAT_COLOR.normal },
 });
 
+const boardMsg = (p: Player, name: string, store: BoardStore): Outgoing => ({
+  to: p.id,
+  msg: { t: "board", board: { topic: name, text: boardText(store.load(name)), lock: true } },
+});
+
 /**
  * Opens a board by click (`via` "click") or Ctrl ("ctrl", whose 40-frame pause the caller set).
- * Town Square: no distance test, the input lock is set, and the click sets no pause (it runs
- * before). A hall's board: the click's pause, then your own tile's y > 7 on any map is "You have to
- * enter the building to view this board." (no membership test; no lock). Then "You view the message
- * board" and the board.
+ * A hall's board click sets the 40-frame pause first; Town Square's sets none. Either way you must
+ * stand still in front of the board, facing it ("You see the message board, but…"), and a hall's
+ * board opens only for a member of its guild. Then the keys lock and "You view the message board"
+ * shows with the board. (1.6 opened Town Square's board from any distance, and a hall's for anyone
+ * standing in rows 1-7 of any map, without locking the keys.)
  */
 export function boardOpen(
   p: Player,
@@ -57,37 +64,32 @@ export function boardOpen(
   if (!kind) {
     return [];
   }
-  let name: string;
-  let lock: boolean;
-  if (kind === "town") {
-    name = BOARD_TEXT.townSquare;
-    lock = true;
-    p.keyLock = true;
-  } else {
-    if (via === "click") {
-      p.itemPause = CLICK_PAUSE;
-    }
-    if (p.y > BOARD_MAX_Y) {
-      return [chat(p, BOARD_TEXT.enterBuilding)];
-    }
-    name = board.item;
-    lock = false;
+  if (kind === "guild" && via === "click") {
+    p.itemPause = CLICK_PAUSE;
   }
+  const inFront = standingInFront({
+    facing: p.facing,
+    stepFrames: p.stepFrames,
+    player: { x: p.x, y: p.y },
+    item: { x: board.x, y: board.y },
+  });
+  if (!inFront) {
+    return [chat(p, BOARD_TEXT.notInFront)];
+  }
+  if (kind === "guild" && !boardMember(board.item, p.guild)) {
+    return [chat(p, BOARD_TEXT.notMember)];
+  }
+  const name = kind === "town" ? BOARD_TEXT.townSquare : board.item;
+  p.keyLock = true;
   p.board = name;
-  return [
-    chat(p, BOARD_TEXT.view),
-    {
-      to: p.id,
-      msg: { t: "board", board: { topic: name, text: boardText(store.load(name)), lock } },
-    },
-  ];
+  return [chat(p, BOARD_TEXT.view), boardMsg(p, name, store)];
 }
 
 /**
- * Post: the input lock is cleared first (so a refused post leaves the board open and unlocked); no
- * letter or digit gets the alert; the chat wait refuses (the board stays open with its text);
- * otherwise the post is cut, appended to the board last opened, and the window closes without
- * reloading or saying anything.
+ * Post: no letter or digit gets the alert; the chat wait refuses (the board stays open with its
+ * text, the keys still locked); otherwise the post is cut and appended to the open board, which
+ * reloads with the post on it. (1.6 cleared the lock before the test and closed the window
+ * without a reload.)
  */
 export function boardPostIntent(
   p: Player,
@@ -99,7 +101,6 @@ export function boardPostIntent(
   if (board === null) {
     return [];
   }
-  p.keyLock = false;
   if (!postHasText(text)) {
     return [{ to: p.id, msg: { t: "alert", text: BOARD_TEXT.empty } }];
   }
@@ -109,8 +110,7 @@ export function boardPostIntent(
   }
   p.chatIn = deps.chatCooldownFrames;
   store.add(board, p.name, text.slice(0, deps.boardPostMax), deps.boardPostsMax);
-  p.board = null;
-  return [{ to: p.id, msg: { t: "board", board: null } }];
+  return [boardMsg(p, board, store)];
 }
 
 /** Close: the input lock is cleared. */

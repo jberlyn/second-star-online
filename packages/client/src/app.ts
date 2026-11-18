@@ -322,7 +322,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       !model.loading && model.itemPause === 0 && (!model.keyLock || model.storageOpen),
     slotClicked: () => {
       shop.clearBusy();
-      // A bag click cancels the lens, the film lost.
+      // A bag click cancels the lens; the Film is spent only by a saved photo.
       paintUi.cancelLens();
       // A bag click leaves placement.
       leavePlacement();
@@ -813,6 +813,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           shop.close();
           model.storageOpen = false;
         }
+        // And an open message board.
+        board.reset();
         // Drawing the map's items clears the key lock.
         model.keyLock = false;
         void playfield.setMap(msg.map).then(() => {

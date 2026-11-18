@@ -6,6 +6,7 @@ import { describe, expect, test } from "bun:test";
 import {
   BOARD_TEXT,
   boardKind,
+  boardMember,
   boardPostText,
   boardText,
   clickGate,
@@ -16,6 +17,7 @@ import {
   mailRecipients,
   postHasText,
   replySubject,
+  standingInFront,
   stripMailTo,
 } from "../../src/index.ts";
 
@@ -98,36 +100,52 @@ describe("stripMailTo", () => {
     expect(stripMailTo("a*b")).toBe("ab");
     expect(stripMailTo(" Bob , Al ")).toBe("Bob,Al");
   });
-  test("a run of four spaces leaves one (delete while iterating)", () => {
-    // By hand: pass 1 deletes at x=2 and x=3 (4 → 2 spaces, the scan has moved on to `b`);
-    // pass 2 deletes at x=2 (2 → 1) and moves on. Three spaces are all removed.
+  test("bug fixed: long runs of spaces and stars are removed completely", () => {
     expect(stripMailTo("a   b")).toBe("ab");
-    expect(stripMailTo("a    b")).toBe("a b");
-  });
-  test("a run of four stars leaves one", () => {
-    expect(stripMailTo("a***b")).toBe("ab");
-    expect(stripMailTo("a****b")).toBe("a*b");
+    expect(stripMailTo("a    b")).toBe("ab");
+    expect(stripMailTo("a****b")).toBe("ab");
+    expect(stripMailTo(`a${" * ".repeat(300)}b`)).toBe("ab");
   });
 });
 
 describe("mailRecipients", () => {
-  test("eight names → seven", () => {
-    expect(mailRecipients("a,b,c,d,e,f,g,h").names).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
+  test("bug fixed: more than seven different names is too many", () => {
+    expect(mailRecipients("a,b,c,d,e,f,g")).toEqual({
+      names: ["a", "b", "c", "d", "e", "f", "g"],
+      tooMany: false,
+    });
+    expect(mailRecipients("a,b,c,d,e,f,g,h").tooMany).toBe(true);
+    expect(MAIL_TEXT.tooMany).toBe("*** A message can go to at most 7 people.");
   });
-  test(",Bob has no item 1, so no Sending line", () => {
-    expect(mailRecipients(",Bob")).toEqual({ names: ["Bob"], firstFilled: false });
-    expect(mailRecipients("Bob")).toEqual({ names: ["Bob"], firstFilled: true });
-  });
-  test("a repeated name twice; all empty → none", () => {
-    expect(mailRecipients("Bob,Bob").names).toEqual(["Bob", "Bob"]);
+  test("bug fixed: empty items are skipped wherever they are", () => {
+    expect(mailRecipients(",Bob")).toEqual({ names: ["Bob"], tooMany: false });
+    expect(mailRecipients(",,,,,,,Bob").names).toEqual(["Bob"]);
     expect(mailRecipients(",,").names).toEqual([]);
+  });
+  test("bug fixed: a repeated name counts once, ignoring case", () => {
+    expect(mailRecipients("Bob,bob,BOB,Al").names).toEqual(["Bob", "Al"]);
+    expect(mailRecipients("a,a,a,a,a,a,a,a,b").tooMany).toBe(false);
+  });
+});
+
+describe("standingInFront", () => {
+  const at = { player: { x: 5, y: 5 }, item: { x: 5, y: 4 } };
+  test("still, on the tile in front, facing it", () => {
+    expect(standingInFront({ facing: "N", stepFrames: 0, ...at })).toBe(true);
+    expect(standingInFront({ facing: "E", stepFrames: 0, ...at })).toBe(false);
+    expect(standingInFront({ facing: "N", stepFrames: 2, ...at })).toBe(false);
+    expect(
+      standingInFront({ facing: "N", stepFrames: 0, player: { x: 5, y: 7 }, item: at.item }),
+    ).toBe(false);
   });
 });
 
 describe("replies and posts", () => {
-  test("replySubject stacks Re:", () => {
+  test("bug fixed: replySubject adds Re: once", () => {
     expect(replySubject("Hi")).toBe("Re: Hi");
-    expect(replySubject(replySubject("Hi"))).toBe("Re: Re: Hi");
+    expect(replySubject(replySubject("Hi"))).toBe("Re: Hi");
+    expect(replySubject("RE: Hi")).toBe("RE: Hi");
+    expect(replySubject("Reply")).toBe("Re: Reply");
   });
   test("postHasText: a letter or digit, either case", () => {
     expect(postHasText("hello")).toBe(true);
@@ -150,8 +168,17 @@ describe("replies and posts", () => {
     expect(boardKind("The Knights's Board")).toBe("guild");
     expect(boardKind("Sign 1")).toBeNull();
     expect(BOARD_TEXT.view).toBe("You view the message board");
-    expect(BOARD_TEXT.enterBuilding).toBe("You have to enter the building to view this board.");
+    expect(BOARD_TEXT.notInFront).toBe(
+      "You see the message board, but you must be standing in front of it to read it.",
+    );
+    expect(BOARD_TEXT.notMember).toBe("Only members of this guild can read its board.");
     expect(BOARD_TEXT.empty).toBe("Type in something before you post!!!");
     expect(BOARD_TEXT.townSquare).toBe("Town Square");
+  });
+  test("bug fixed: a hall's board belongs to its guild's members", () => {
+    expect(boardMember("The Knights's Board", "Knights")).toBe(true);
+    expect(boardMember("the knights's board", "KNIGHTS")).toBe(true);
+    expect(boardMember("The Knights's Board", "Rooks")).toBe(false);
+    expect(boardMember("The Knights's Board", "")).toBe(false);
   });
 });

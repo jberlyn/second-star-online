@@ -1290,22 +1290,24 @@ export const socialData: SocialData = {
       },
       "reply": {
         "text": "Re: {TEXT}"
+      },
+      "tooMany": {
+        "text": "*** A message can go to at most 7 people."
       }
     },
     "recipients": 7,
-    "listScan": 100,
-    "strip": [
-      100,
-      500
-    ]
+    "listScan": 100
   },
   "boards": {
     "texts": {
       "view": {
         "text": "You view the message board"
       },
-      "enterBuilding": {
-        "text": "You have to enter the building to view this board."
+      "notInFront": {
+        "text": "You see the message board, but you must be standing in front of it to read it."
+      },
+      "notMember": {
+        "text": "Only members of this guild can read its board."
       },
       "empty": {
         "text": "Type in something before you post!!!"
@@ -1315,8 +1317,7 @@ export const socialData: SocialData = {
       }
     },
     "rule": "________________________",
-    "townSquare": "Town Square",
-    "maxY": 7
+    "townSquare": "Town Square"
   },
   "art": {
     "texts": {
@@ -1349,6 +1350,9 @@ export const socialData: SocialData = {
       },
       "noPicture": {
         "text": "You can't take a picture here!"
+      },
+      "notInFront": {
+        "text": "You see the {NAME}, but you must be standing in front of it to view it."
       }
     },
     "bagLines": 15,
@@ -1501,6 +1505,9 @@ export const socialData: SocialData = {
   "newspaper": {
     "view": {
       "text": "You view the newspaper"
+    },
+    "notInFront": {
+      "text": "You see the newspaper, but you must be standing in front of it to read it."
     },
     "saved": {
       "text": "Newspaper saved!"

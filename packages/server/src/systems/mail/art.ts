@@ -2,9 +2,10 @@
  * Paintings and photos on the server.
  *
  * 1.6's client wrote whatever it liked to the art folder and needed no canvas or film to do it.
- * Here the server credits: Use Canvas consumes it and holds a *canvas*, Use Film consumes it and
- * holds a *film*; a save spends the matching one. The server never paints; it stores the finished
- * 64×64 PNG the client sends, after a structural check.
+ * Here Use Canvas and Use Film only open the screen or the lens; the save spends a Canvas or a Film
+ * from the bag, so a cancelled picture or shot costs nothing (1.6 used the film up before the shot
+ * and the canvas before a cancel, which then reopened for free). The server never paints; it
+ * stores the finished 64×64 PNG the client sends, after a structural check.
  */
 import {
   ART_TEXT,
@@ -13,11 +14,14 @@ import {
   CHAT_COLOR,
   equipped,
   invAdd,
+  invDelSlot,
+  lingoContains,
   lingoEq,
   type Rng,
+  standingInFront,
 } from "@secondstaronline/shared";
 
-import type { Outgoing, Player } from "../world/world.ts";
+import type { GroundItem, Outgoing, Player } from "../world/world.ts";
 import { isPng64 } from "./upload-check.ts";
 
 /** What the art handlers read and write; wired to `persistence/art.ts` in `game.ts`. */
@@ -51,21 +55,21 @@ export interface ArtUse {
 }
 
 /**
- * Use on a Canvas. A held canvas (a cancelled screen) reopens for free; otherwise the Canvas is
- * consumed and held. Both lock the keys and set no pause.
+ * Use on a Canvas: the paint screen opens, the keys lock and no pause is set. Nothing is consumed:
+ * the save spends the Canvas. A cancelled picture (`p.canvas` still set) reopens as it was.
  */
 export function useCanvas(p: Player): ArtUse {
   const reopen = p.canvas;
   p.canvas = true;
   p.keyLock = true;
   p.artUi = "paint";
-  return { consume: !reopen, out: [{ to: p.id, msg: { t: "paint", reopen } }] };
+  return { consume: false, out: [{ to: p.id, msg: { t: "paint", reopen } }] };
 }
 
 /**
- * Use on a Film: no camera in the right hand (exact name) is refused; else the film is consumed and
- * held (a second Film while one is held is still consumed), the lens appears and Use's tail sets
- * the 425-frame pause. No lock.
+ * Use on a Film: no camera in the right hand (exact name) is refused; else the lens appears and
+ * Use's tail sets the 425-frame pause. No lock. Nothing is consumed: the photo's save spends the
+ * Film.
  */
 export function useFilm(p: Player): ArtUse {
   if (!lingoEq(equipped(p.char.equip, "RightHand"), "Camera")) {
@@ -73,14 +77,21 @@ export function useFilm(p: Player): ArtUse {
   }
   p.film = true;
   p.itemPause = FILM_PAUSE;
-  return { consume: true, out: [{ to: p.id, msg: { t: "lens" } }] };
+  return { consume: false, out: [{ to: p.id, msg: { t: "lens" } }] };
 }
+
+/** The bag line a save spends: a Canvas (exact name) or a Film (any name containing it). */
+const spentSlot = (p: Player, kind: "painting" | "photo"): number =>
+  p.char.bag.findIndex(
+    (l) => !!l && (kind === "painting" ? lingoEq(l.item, "Canvas") : lingoContains(l.item, "Film")),
+  );
 
 const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
 
 /**
- * The viewer for the item `name`, used from the bag (`via` "bag") or clicked on the ground (the
- * click clears the pause). The id is read from the item, never typed (1.6's viewer read any path it
+ * The viewer for the item `name`, used from the bag (`via` "bag") or clicked on the ground at `at`
+ * (the click clears the pause). A ground click needs you standing still in front of it, facing it
+ * (1.6 had no such test). The id is read from the item, never typed (1.6's viewer read any path it
  * was sent); an unknown id opens the viewer with no author and no picture.
  */
 export function viewArt(
@@ -88,13 +99,27 @@ export function viewArt(
   name: string,
   store: ArtStore,
   via: "bag" | "click",
+  at?: Pick<GroundItem, "x" | "y">,
 ): Outgoing[] {
   const ref = artRef(name);
   if (!ref) {
     return [];
   }
-  const line =
-    ref.kind === "photo" ? ART_TEXT.viewPhoto : ART_TEXT.viewItem(name.split("#")[0] ?? name);
+  const shown = name.split("#")[0] ?? name;
+  if (via === "click") {
+    const inFront =
+      !!at &&
+      standingInFront({
+        facing: p.facing,
+        stepFrames: p.stepFrames,
+        player: { x: p.x, y: p.y },
+        item: at,
+      });
+    if (!inFront) {
+      return [chat(p, ART_TEXT.notInFront(ref.kind === "photo" ? "photo" : shown))];
+    }
+  }
+  const line = ref.kind === "photo" ? ART_TEXT.viewPhoto : ART_TEXT.viewItem(shown);
   p.keyLock = true;
   p.artUi = "view";
   if (via === "click") {
@@ -112,10 +137,10 @@ export function viewArt(
 }
 
 /**
- * Saving a painting or photo: needs the matching credit (1.6 needed none); a full bag refuses with
- * the credit kept; a PNG that fails the check is dropped silently. Otherwise the art is stored
- * under the player's name, the credit is spent, the keys unlock (after a photo too) and the item
- * arrives.
+ * Saving a painting or photo: needs a used Canvas or Film (1.6 needed none) and one still in the
+ * bag; a full bag refuses with both kept; a PNG that fails the check is dropped silently. Otherwise
+ * the art is stored under the player's name, one Canvas or Film is taken from the bag, the keys
+ * unlock (after a photo too) and the item arrives.
  */
 export function artSaveIntent(
   p: Player,
@@ -130,11 +155,16 @@ export function artSaveIntent(
   if (artBagFull(bagNames(p))) {
     return [chat(p, kind === "painting" ? ART_TEXT.paintFull : ART_TEXT.photoFull)];
   }
+  const slot = spentSlot(p, kind);
+  if (slot < 0) {
+    return [];
+  }
   const bytes = new Uint8Array(Buffer.from(png, "base64"));
   if (!isPng64(bytes, deps.artBytesMax)) {
     return [];
   }
   const id = store.add(kind, p.name, bytes);
+  invDelSlot(p.char.bag, slot, 1);
   if (kind === "painting") {
     p.canvas = false;
   } else {
@@ -147,7 +177,7 @@ export function artSaveIntent(
   return [{ to: p.id, msg: { t: "artSaved", kind } }];
 }
 
-/** Cancel: hides the screen and unlocks; the canvas stays held. */
+/** Cancel: hides the screen and unlocks; the picture is kept for the next Canvas. */
 export function paintUiIntent(p: Player): void {
   if (p.artUi !== "paint") {
     return;

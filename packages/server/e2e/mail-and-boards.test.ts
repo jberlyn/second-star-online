@@ -5,10 +5,11 @@
  * Board` is stood on the map as a built hall would place it (it is not a `/drop` item). Alice, out
  * of place, hears the position line; in front she opens her box (the keys lock) and sends to
  * "Bob,Nobody": Bob, online, hears "*** You have new mail from Alice", opens the box, reads it and
- * replies; Alice's open list reloads with Bob's reply and she deletes it. Alice posts on Town
- * Square (the window closes, nothing printed) and Bob, opening it, sees "From: Alice". Carol, with
- * no guild, is refused the Knights' board from row 8 and reads and posts on it from row 7, without
- * the keys locking.
+ * replies; Alice's open list reloads with Bob's reply and she deletes it. Alice, away from Town
+ * Square's board, hears the position line; in front she posts and the board reloads with her post,
+ * the keys still locked. Bob, in front, sees "From: Alice". Carol is refused the Knights' board
+ * from across the map; King, in front, is refused it until he joins the Knights, and then reads
+ * and posts on it with the keys locked.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -170,7 +171,7 @@ describe("mail and boards", () => {
     expect(msgsOf(alice, "mailSent")).toEqual([{ t: "mailSent" }]);
     expect(lines(bob)).toEqual(["*** You have new mail from Alice"]);
     expect(msgsOf(bob, "mail")).toEqual([]);
-    expect(who("Alice").keyLock).toBe(false);
+    expect(who("Alice").keyLock).toBe(true); // the list is still up
   });
 
   test("Bob opens his box, reads the mail and replies; Alice's open list reloads", async () => {
@@ -209,8 +210,16 @@ describe("mail and boards", () => {
     expect(who("Bob").mailList).toBe(false);
   });
 
-  test("Alice posts on Town Square from anywhere; the window closes and prints nothing", async () => {
+  test("Alice, away from Town Square's board, hears the position line; in front her post reloads it", async () => {
     await tick(100); // the chat wait and the click's pause
+    await click(alice, "Alice", "Message Boards");
+    expect(lines(alice)).toEqual([
+      "You see the message board, but you must be standing in front of it to read it.",
+    ]);
+    expect(msgsOf(alice, "board")).toEqual([]);
+    expect(who("Alice").keyLock).toBe(false);
+    await step(alice, "R"); // (13, 8)
+    await step(alice, "U"); // (13, 7), facing the board at (13, 6)
     await click(alice, "Alice", "Message Boards");
     expect(lines(alice)).toEqual(["You view the message board"]);
     expect(msgsOf(alice, "board")[0]?.board).toEqual({
@@ -222,13 +231,30 @@ describe("mail and boards", () => {
     alice.clear();
     alice.send({ t: "boardPost", text: "Hello town" });
     await settle();
-    expect(msgsOf(alice, "board")).toEqual([{ t: "board", board: null }]);
+    expect(msgsOf(alice, "board")).toEqual([
+      {
+        t: "board",
+        board: {
+          topic: "Town Square",
+          text: `From: Alice\r\rHello town\r${"_".repeat(24)}\r`,
+          lock: true,
+        },
+      },
+    ]);
     expect(lines(alice)).toEqual([]);
+    expect(who("Alice").keyLock).toBe(true);
+    alice.send({ t: "boardClose" });
+    await settle();
     expect(who("Alice").keyLock).toBe(false);
   });
 
-  test("Bob opens Town Square and sees From: Alice", async () => {
-    await tick(45);
+  test("Bob, in front of Town Square's board, sees From: Alice", async () => {
+    await step(alice, "D"); // (13, 8)
+    await step(alice, "R"); // (14, 8), out of Bob's way
+    await step(bob, "D"); // (11, 8)
+    await step(bob, "R"); // (12, 8)
+    await step(bob, "R"); // (13, 8)
+    await step(bob, "U"); // (13, 7), facing the board
     await click(bob, "Bob", "Message Boards");
     const board = msgsOf(bob, "board")[0]?.board;
     expect(board?.text).toBe(`From: Alice\r\rHello town\r${"_".repeat(24)}\r`);
@@ -237,26 +263,32 @@ describe("mail and boards", () => {
     expect(who("Bob").keyLock).toBe(false);
   });
 
-  test("Carol, with no guild, is refused the Knights' board from row 8, and reads and posts from row 7", async () => {
+  test("the Knights' board: Carol is refused from away, King until he joins; then it locks and posts", async () => {
     await click(carol, "Carol", "The Knights's Board");
-    expect(lines(carol)).toEqual(["You have to enter the building to view this board."]);
+    expect(lines(carol)).toEqual([
+      "You see the message board, but you must be standing in front of it to read it.",
+    ]);
     expect(msgsOf(carol, "board")).toEqual([]);
     await tick(45);
-    await step(carol, "U"); // (4, 7)
-    await click(carol, "Carol", "The Knights's Board");
-    expect(lines(carol)).toEqual(["You view the message board"]);
-    expect(msgsOf(carol, "board")[0]?.board).toEqual({
+    await turn(king, "U"); // (12, 6), facing the board at (12, 5)
+    await click(king, "King", "The Knights's Board");
+    expect(lines(king)).toEqual(["Only members of this guild can read its board."]);
+    expect(who("King").keyLock).toBe(false);
+    await tick(45);
+    who("King").guild = "Knights";
+    await click(king, "King", "The Knights's Board");
+    expect(lines(king)).toEqual(["You view the message board"]);
+    expect(msgsOf(king, "board")[0]?.board).toEqual({
       topic: "The Knights's Board",
       text: "",
-      lock: false,
+      lock: true,
     });
-    expect(who("Carol").keyLock).toBe(false);
-    carol.send({ t: "boardPost", text: "Carol was here" });
+    expect(who("King").keyLock).toBe(true);
+    king.clear();
+    king.send({ t: "boardPost", text: "King was here" });
     await settle();
-    await tick(45);
-    await click(carol, "Carol", "The Knights's Board");
-    expect(msgsOf(carol, "board")[0]?.board?.text).toBe(
-      `From: Carol\r\rCarol was here\r${"_".repeat(24)}\r`,
+    expect(msgsOf(king, "board")[0]?.board?.text).toBe(
+      `From: King\r\rKing was here\r${"_".repeat(24)}\r`,
     );
   });
 });

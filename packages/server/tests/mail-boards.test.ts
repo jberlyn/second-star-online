@@ -180,7 +180,7 @@ describe("opening a mailbox", () => {
 });
 
 describe("the mail buttons mirror the key lock", () => {
-  test("composeClose unlocks with the list up; close takes the list down", () => {
+  test("bug fixed: composeClose keeps the lock with the list up; close unlocks and takes it down", () => {
     const s = scene();
     s.put("m", "Alice's Mailbox", 5, 5);
     const a = s.join("Alice");
@@ -188,10 +188,11 @@ describe("the mail buttons mirror the key lock", () => {
     mailUiIntent(a, "reply");
     expect(a.keyLock).toBe(true);
     mailUiIntent(a, "composeClose");
-    expect(a.keyLock).toBe(false);
+    expect(a.keyLock).toBe(true);
     expect(a.mailList).toBe(true);
     mailUiIntent(a, "close");
     expect(a.mailList).toBe(false);
+    expect(a.keyLock).toBe(false);
   });
 
   test("ignored before any pane has opened", () => {
@@ -233,7 +234,16 @@ describe("sending", () => {
     const out = send(s, a, "Bob,Nobody");
     expect(s.boxes.get("Bob")).toEqual([{ id: 1, from: "Alice", subject: "Sub", body: "Hello" }]);
     expect(of(out, "Alice", "mailSent")).toHaveLength(1);
-    expect(a.keyLock).toBe(false);
+  });
+
+  test("bug fixed: a send keeps the keys locked while the list is up", () => {
+    const s = scene();
+    s.put("m", "Alice's Mailbox", 5, 5);
+    const a = s.join("Alice");
+    pickupIntent(s.ctx(), s.room(), a, "m");
+    send(s, a, "Bob");
+    expect(a.mailList).toBe(true);
+    expect(a.keyLock).toBe(true);
   });
 
   test("an online recipient gets the notice, and a reload only with the list up", () => {
@@ -261,21 +271,29 @@ describe("sending", () => {
     expect(of(out, "Alice", "mail")).toHaveLength(1);
   });
 
-  test("a repeated name gets two copies, items past 7 are ignored", () => {
+  test("bug fixed: a repeated name gets one copy; more than 7 names is refused with a line", () => {
     const s = scene();
     const a = s.join("Alice");
-    send(s, a, "Bob,Bob");
-    expect(s.boxes.get("Bob")).toHaveLength(2);
+    send(s, a, "Bob,bob,BOB");
+    expect(s.boxes.get("Bob")).toHaveLength(1);
     a.chatIn = 0;
-    send(s, a, "x1,x2,x3,x4,x5,x6,x7,Carol");
+    const out = send(s, a, "x1,x2,x3,x4,x5,x6,x7,Carol");
+    expect(chat(out, "Alice")).toEqual(["*** A message can go to at most 7 people."]);
+    expect(of(out, "Alice", "mailSent")).toEqual([]);
     expect(s.boxes.get("Carol")).toBeUndefined();
+    expect(a.chatIn).toBe(0);
+    send(s, a, ",,,,,,,Carol");
+    expect(s.boxes.get("Carol")).toHaveLength(1);
   });
 
-  test("spaces and stars are stripped from To", () => {
+  test("bug fixed: every space and star is stripped from To", () => {
     const s = scene();
     const a = s.join("Alice");
     send(s, a, " B o*b ");
     expect(s.boxes.get("Bob")).toHaveLength(1);
+    a.chatIn = 0;
+    send(s, a, "Car    ol****");
+    expect(s.boxes.get("Carol")).toHaveLength(1);
   });
 
   test("an empty body or no recipient does nothing", () => {
@@ -348,10 +366,18 @@ describe("boards", () => {
   const board = (s: ReturnType<typeof scene>, p: Player, id: string) =>
     pickupIntent(s.ctx(), s.room(), p, id);
 
-  test("Town Square by click: no distance test, locks, no pause", () => {
+  test("bug fixed: Town Square by click needs you in front: locks, no pause", () => {
     const s = scene();
-    s.put("b", "Message Boards", 12, 3);
+    s.put("b", "Message Boards", 5, 5);
+    s.put("far", "Message Boards", 12, 3);
     const a = s.join("Alice");
+    const away = board(s, a, "far");
+    expect(chat(away, "Alice")).toEqual([
+      "You see the message board, but you must be standing in front of it to read it.",
+    ]);
+    expect(of(away, "Alice", "board")).toEqual([]);
+    expect(a.keyLock).toBe(false);
+    expect(a.board).toBeNull();
     const out = board(s, a, "b");
     expect(chat(out, "Alice")).toEqual(["You view the message board"]);
     expect(of(out, "Alice", "board")).toEqual([
@@ -371,65 +397,75 @@ describe("boards", () => {
     expect(a.board).toBe("Town Square");
   });
 
-  test("a hall's board from y <= 7 on any map by a non-member, no lock, pause 40", () => {
+  test("bug fixed: a hall's board opens for its members from in front, locks, pause 40", () => {
     const s = scene();
     s.put("g", "The Knights's Board", 5, 5);
-    const c = s.join("Carol", 5, 7);
+    const c = s.join("Carol");
+    c.guild = "Knights";
     const out = board(s, c, "g");
     expect(chat(out, "Carol")).toEqual(["You view the message board"]);
     expect(of(out, "Carol", "board")[0]).toMatchObject({
-      board: { topic: "The Knights's Board", lock: false },
+      board: { topic: "The Knights's Board", lock: true },
     });
-    expect(c.keyLock).toBe(false);
+    expect(c.keyLock).toBe(true);
     expect(c.itemPause).toBe(40);
   });
 
-  test("a hall's board from y 8 is refused", () => {
+  test("bug fixed: a hall's board is refused to a non-member and from away", () => {
     const s = scene();
     s.put("g", "The Knights's Board", 5, 5);
-    const c = s.join("Carol", 5, 8);
-    const out = board(s, c, "g");
-    expect(chat(out, "Carol")).toEqual(["You have to enter the building to view this board."]);
+    const c = s.join("Carol");
+    c.guild = "Rooks";
+    expect(chat(board(s, c, "g"), "Carol")).toEqual([
+      "Only members of this guild can read its board.",
+    ]);
     expect(c.board).toBeNull();
-    expect(c.itemPause).toBe(40);
+    expect(c.keyLock).toBe(false);
+    const k = s.join("Kay", 5, 3, "S");
+    k.guild = "Knights";
+    k.y = 2; // rows 1-7, but not in front
+    expect(chat(board(s, k, "g"), "Kay")).toEqual([
+      "You see the message board, but you must be standing in front of it to read it.",
+    ]);
+    expect(k.board).toBeNull();
+    expect(k.itemPause).toBe(40);
   });
 
-  test("a post is appended in 1.6's format, closes the window and a second is ignored", () => {
+  test("bug fixed: a post is appended in 1.6's format and the open board reloads with it", () => {
     const s = scene();
-    s.put("b", "Message Boards", 12, 3);
+    s.put("b", "Message Boards", 5, 5);
     const a = s.join("Alice");
     board(s, a, "b");
     const out = boardPostIntent(a, "Hello there", s.boards, boardDeps);
-    expect(out).toEqual([{ to: "Alice", msg: { t: "board", board: null } }]);
-    expect(a.board).toBeNull();
-    expect(a.keyLock).toBe(false);
+    const text = `From: Alice\r\rHello there\r${"_".repeat(24)}\r`;
+    expect(out).toEqual([
+      { to: "Alice", msg: { t: "board", board: { topic: "Town Square", text, lock: true } } },
+    ]);
+    expect(a.board).toBe("Town Square");
+    expect(a.keyLock).toBe(true);
     expect(s.posts.get("town square")).toEqual([{ author: "Alice", body: "Hello there" }]);
-    a.chatIn = 0;
-    expect(boardPostIntent(a, "again", s.boards, boardDeps)).toEqual([]);
-    const b = s.join("Bob", 3, 3);
+    const b = s.join("Bob", 4, 5, "E");
     const read = board(s, b, "b");
-    expect((of(read, "Bob", "board")[0] as { board: { text: string } }).board.text).toBe(
-      `From: Alice\r\rHello there\r${"_".repeat(24)}\r`,
-    );
+    expect((of(read, "Bob", "board")[0] as { board: { text: string } }).board.text).toBe(text);
   });
 
-  test("a refused post (no letter or digit) alerts, unlocks, and can be retried", () => {
+  test("bug fixed: a refused post (no letter or digit) alerts and keeps the keys locked", () => {
     const s = scene();
-    s.put("b", "Message Boards", 12, 3);
+    s.put("b", "Message Boards", 5, 5);
     const a = s.join("Alice");
     board(s, a, "b");
     const out = boardPostIntent(a, "!!! ...", s.boards, boardDeps);
     expect(out).toEqual([
       { to: "Alice", msg: { t: "alert", text: "Type in something before you post!!!" } },
     ]);
-    expect(a.keyLock).toBe(false);
+    expect(a.keyLock).toBe(true);
     expect(a.board).toBe("Town Square");
     expect(boardPostIntent(a, "ok now", s.boards, boardDeps)).toHaveLength(1);
   });
 
   test("a post is cut to 300 and a board keeps 200", () => {
     const s = scene();
-    s.put("b", "Message Boards", 12, 3);
+    s.put("b", "Message Boards", 5, 5);
     const a = s.join("Alice");
     board(s, a, "b");
     boardPostIntent(a, "x".repeat(400), s.boards, boardDeps);
@@ -443,7 +479,7 @@ describe("boards", () => {
 
   test("the chat wait refuses a post and leaves the board open", () => {
     const s = scene();
-    s.put("b", "Message Boards", 12, 3);
+    s.put("b", "Message Boards", 5, 5);
     const a = s.join("Alice");
     board(s, a, "b");
     a.chatIn = 40;
@@ -453,13 +489,16 @@ describe("boards", () => {
     expect(s.posts.size).toBe(0);
   });
 
-  test("a post goes to the last board opened", () => {
+  test("a post goes to the board that is open", () => {
     const s = scene();
-    s.put("b", "Message Boards", 12, 3);
-    s.put("g", "The Knights's Board", 5, 5);
-    const a = s.join("Alice", 5, 7);
+    s.put("b", "Message Boards", 5, 5);
+    s.put("g", "The Knights's Board", 6, 6);
+    const a = s.join("Alice");
+    a.guild = "Knights";
     board(s, a, "b");
-    a.keyLock = false;
+    boardCloseIntent(a);
+    a.facing = "E";
+    a.y = 6;
     a.itemPause = 0;
     board(s, a, "g");
     boardPostIntent(a, "to the hall", s.boards, boardDeps);
@@ -467,22 +506,24 @@ describe("boards", () => {
     expect(s.posts.get("town square")).toBeUndefined();
   });
 
-  test("kept bug: a map change leaves the board open and able to post", () => {
+  test("bug fixed: a map change closes the board", () => {
     const s = scene();
     s.put("g", "The Knights's Board", 5, 5);
-    const a = s.join("Alice", 5, 7);
+    const a = s.join("Alice");
+    a.guild = "Knights";
     board(s, a, "g");
     a.map = testMap("x1001y992");
     enterRoom(s.world, a);
-    expect(a.board).toBe("The Knights's Board");
+    expect(a.board).toBeNull();
+    expect(a.keyLock).toBe(false);
     a.chatIn = 0;
-    expect(boardPostIntent(a, "from afar", s.boards, boardDeps)).toHaveLength(1);
-    expect(s.posts.get("the knights's board")).toHaveLength(1);
+    expect(boardPostIntent(a, "from afar", s.boards, boardDeps)).toEqual([]);
+    expect(s.posts.get("the knights's board")).toBeUndefined();
   });
 
   test("Close unlocks and forgets the board", () => {
     const s = scene();
-    s.put("b", "Message Boards", 12, 3);
+    s.put("b", "Message Boards", 5, 5);
     const a = s.join("Alice");
     board(s, a, "b");
     boardCloseIntent(a);

@@ -11,8 +11,9 @@
  * SSO fixes 1.6's mail screen bugs: the list's CLOSE clears both panes' flags and the draft (1.6
  * kept them, which left the Use button dead and brought the pane back at the next open); WRITE
  * starts an empty draft; DELETE clears the selection and closes a read pane showing the deleted
- * message; the read pane labels the sender FROM:; the columns scroll together; and no blocker
- * covers the chat entry.
+ * message; the read pane labels the sender FROM:; the columns scroll together; no blocker
+ * covers the chat entry; a pane's CLOSE and a send keep the keys locked while the list is up; and
+ * "*** Sending Mail..." prints for every send that goes through.
  */
 import { MAIL_TEXT, mailRecipients, replySubject, stripMailTo } from "@secondstaronline/shared";
 
@@ -256,7 +257,6 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
   let hilite = 0;
   /** The id of the message in the read pane. */
   let readId = 0;
-  let sendingFirst = false;
 
   const draw = () => {
     el.hidden = !framed;
@@ -378,24 +378,27 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
     draw();
     act.ui("reply");
   };
-  // Either pane's CLOSE unlocks and hides 6-17; the list stays up.
+  // Either pane's CLOSE hides 6-17; the list stays up, and so does the key lock.
   const closePane = () => {
-    act.lock(false);
     composeFlag = false;
     readFlag = false;
     draw();
     act.ui("composeClose");
   };
-  // An empty body, or no filled recipient, does nothing; the rest waits for the server.
+  // An empty body, or no filled recipient, does nothing; more than 7 names says so; the rest
+  // waits for the server.
   const send = () => {
     if (bodyIn.value === "") {
       return;
     }
-    const { names, firstFilled } = mailRecipients(stripMailTo(toIn.value));
+    const { names, tooMany } = mailRecipients(stripMailTo(toIn.value));
     if (names.length === 0) {
       return;
     }
-    sendingFirst = firstFilled;
+    if (tooMany) {
+      act.say(MAIL_TEXT.tooMany);
+      return;
+    }
     act.send(toIn.value, subjectIn.value, bodyIn.value);
   };
 
@@ -417,11 +420,7 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
       draw();
     },
     sent() {
-      if (sendingFirst) {
-        act.say(MAIL_TEXT.sending);
-      }
-      sendingFirst = false;
-      act.lock(false);
+      act.say(MAIL_TEXT.sending);
       composeFlag = false;
       clearDraft();
       draw();
@@ -436,7 +435,6 @@ export function createMailScreen(a: Assets, act: MailActions): MailScreen {
       hilite = 0;
       readId = 0;
       messages = [];
-      sendingFirst = false;
       clearDraft();
       if (wasFramed) {
         act.frame(false);

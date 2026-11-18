@@ -96,30 +96,41 @@ function scene(layer1?: (x: number, y: number) => string) {
 }
 
 describe("Canvas", () => {
-  test("Use consumes the Canvas, holds it and opens the paint screen under the lock", () => {
+  test("bug fixed: Use keeps the Canvas and opens the paint screen under the lock", () => {
     const s = scene();
     const a = s.join("Alice");
     s.give(a, "Canvas");
     const out = useIntent(s.ctx(), s.room(), a, 1);
     expect(of(out, "Alice", "paint")).toEqual([{ t: "paint", reopen: false }]);
-    expect(a.char.bag[0]).toBeNull();
+    expect(a.char.bag[0]?.item).toBe("Canvas");
     expect(a.canvas).toBe(true);
     expect(a.keyLock).toBe(true);
     expect(a.artUi).toBe("paint");
     expect(a.itemPause).toBe(0);
   });
-  test("kept bug: a cancelled canvas reopens without using another", () => {
+  test("bug fixed: a cancel costs no Canvas; the picture reopens and the save spends one", () => {
+    const s = scene();
+    const a = s.join("Alice");
+    s.give(a, "Canvas");
+    s.give(a, "Canvas", 1);
+    useIntent(s.ctx(), s.room(), a, 1);
+    paintUiIntent(a);
+    expect(a.keyLock).toBe(false);
+    expect(a.char.bag[0]?.item).toBe("Canvas");
+    const out = useIntent(s.ctx(), s.room(), a, 2);
+    expect(of(out, "Alice", "paint")).toEqual([{ t: "paint", reopen: true }]);
+    expect(a.char.bag.filter((l) => l?.item === "Canvas")).toHaveLength(2);
+    artSaveIntent(a, "painting", PNG_B64, s.art, s.deps);
+    expect(a.char.bag.filter((l) => l?.item === "Canvas")).toHaveLength(1);
+  });
+  test("bug fixed: a save with no Canvas left in the bag is ignored", () => {
     const s = scene();
     const a = s.join("Alice");
     s.give(a, "Canvas");
     useIntent(s.ctx(), s.room(), a, 1);
-    paintUiIntent(a);
-    expect(a.keyLock).toBe(false);
-    expect(a.canvas).toBe(true);
-    s.give(a, "Canvas", 1);
-    const out = useIntent(s.ctx(), s.room(), a, 2);
-    expect(of(out, "Alice", "paint")).toEqual([{ t: "paint", reopen: true }]);
-    expect(a.char.bag[1]?.item).toBe("Canvas"); // not consumed
+    a.char.bag[0] = null;
+    expect(artSaveIntent(a, "painting", PNG_B64, s.art, s.deps)).toEqual([]);
+    expect(s.arts.size).toBe(0);
   });
   test("a save stores the art, spends the canvas, unlocks and adds Painting#<id>", () => {
     const s = scene();
@@ -132,6 +143,7 @@ describe("Canvas", () => {
     expect(a.keyLock).toBe(false);
     expect(a.artUi).toBeNull();
     expect(a.char.bag.some((l) => l?.item === "Painting#101")).toBe(true);
+    expect(a.char.bag.some((l) => l?.item === "Canvas")).toBe(false);
     expect(s.arts.get(101)?.author).toBe("Alice");
   });
   test("divergence: a second save and a save with no canvas are ignored", () => {
@@ -149,7 +161,7 @@ describe("Canvas", () => {
     const a = s.join("Alice");
     s.give(a, "Canvas");
     useIntent(s.ctx(), s.room(), a, 1);
-    for (let i = 0; i < 15; i++) {
+    for (let i = 1; i < 15; i++) {
       s.give(a, `Thing${i}`, i);
     }
     const out = artSaveIntent(a, "painting", PNG_B64, s.art, s.deps);
@@ -157,6 +169,7 @@ describe("Canvas", () => {
       "You are carrying too much to add a painting to your inventory.",
     ]);
     expect(a.canvas).toBe(true);
+    expect(a.char.bag[0]?.item).toBe("Canvas");
     expect(s.arts.size).toBe(0);
   });
   test("a bad or oversize PNG is dropped silently, the canvas kept", () => {
@@ -198,14 +211,14 @@ describe("Film and the camera", () => {
     expect(a.char.bag[0]?.item).toBe("Film");
     expect(a.film).toBe(false);
   });
-  test("with a Camera ('camera' passes): the film is consumed, the lens appears, pause 425", () => {
+  test("bug fixed: with a Camera ('camera' passes) the Film is kept, the lens appears, pause 425", () => {
     const s = scene();
     const a = s.join("Alice");
     a.char.equip.offHand = "camera";
     s.give(a, "Film");
     const out = useIntent(s.ctx(), s.room(), a, 1);
     expect(of(out, "Alice", "lens")).toEqual([{ t: "lens" }]);
-    expect(a.char.bag[0]).toBeNull();
+    expect(a.char.bag[0]?.item).toBe("Film");
     expect(a.film).toBe(true);
     expect(a.keyLock).toBe(false);
     expect(a.itemPause).toBe(425);
@@ -220,11 +233,12 @@ describe("Film and the camera", () => {
     const out = artSaveIntent(a, "photo", PNG_B64, s.art, s.deps);
     expect(of(out, "Alice", "artSaved")).toEqual([{ t: "artSaved", kind: "photo" }]);
     expect(a.char.bag.some((l) => l?.item === "Photo#101")).toBe(true);
+    expect(a.char.bag.some((l) => l?.item === "Film")).toBe(false);
     expect(a.film).toBe(false);
     expect(a.keyLock).toBe(false);
     expect(artSaveIntent(a, "photo", PNG_B64, s.art, s.deps)).toEqual([]);
   });
-  test("a second Film while one is held is still consumed, and the held film stays one", () => {
+  test("bug fixed: using a second Film spends nothing; one saved photo spends one Film", () => {
     const s = scene();
     const a = s.join("Alice");
     a.char.equip.offHand = "Camera";
@@ -233,9 +247,28 @@ describe("Film and the camera", () => {
     useIntent(s.ctx(), s.room(), a, 1);
     a.itemPause = 0;
     useIntent(s.ctx(), s.room(), a, 2);
-    expect(a.char.bag[1]).toBeNull();
+    expect(a.char.bag.filter((l) => l?.item === "Film")).toHaveLength(2);
     expect(artSaveIntent(a, "photo", PNG_B64, s.art, s.deps)).toHaveLength(1);
+    expect(a.char.bag.filter((l) => l?.item === "Film")).toHaveLength(1);
     expect(artSaveIntent(a, "photo", PNG_B64, s.art, s.deps)).toEqual([]);
+  });
+  test("bug fixed: a full bag refuses the photo and keeps the Film", () => {
+    const s = scene();
+    const a = s.join("Alice");
+    a.char.equip.offHand = "Camera";
+    s.give(a, "Film");
+    useIntent(s.ctx(), s.room(), a, 1);
+    for (let i = 1; i < 15; i++) {
+      s.give(a, `Thing${i}`, i);
+    }
+    const out = artSaveIntent(a, "photo", PNG_B64, s.art, s.deps);
+    expect(chat(out, "Alice")).toEqual([
+      "You are carrying too much to add a photo to your inventory.",
+    ]);
+    expect(a.char.bag[0]?.item).toBe("Film");
+    a.char.bag[14] = null;
+    expect(artSaveIntent(a, "photo", PNG_B64, s.art, s.deps)).toHaveLength(1);
+    expect(a.char.bag.some((l) => l?.item === "Film")).toBe(false);
   });
   test("a canvas credit does not pay for a photo, nor the reverse", () => {
     const s = scene();
@@ -268,11 +301,22 @@ describe("viewing", () => {
     const out = useIntent(s.ctx(), s.room(), a, 1);
     expect(chat(out, "Alice")).toEqual(["You view the photo, please wait..."]);
   });
-  test("kept bug: a ground click views from any distance and clears the pause", () => {
+  test("bug fixed: a ground click views only from in front, and clears the pause", () => {
     const s = scene();
-    const a = s.join("Alice", 1, 1);
+    const a = s.join("Alice");
     s.arts.set(7, { author: "Bob", png: PNG });
-    s.put("g", "Painting#7", 15, 10);
+    s.put("g", "Painting#7", 5, 5);
+    s.put("far", "Painting#7", 15, 10);
+    s.put("ph", "Photo#7", 1, 1);
+    const away = pickupIntent(s.ctx(), s.room(), a, "far");
+    expect(chat(away, "Alice")).toEqual([
+      "You see the Painting, but you must be standing in front of it to view it.",
+    ]);
+    expect(of(away, "Alice", "art")).toEqual([]);
+    expect(a.keyLock).toBe(false);
+    expect(chat(pickupIntent(s.ctx(), s.room(), a, "ph"), "Alice")).toEqual([
+      "You see the photo, but you must be standing in front of it to view it.",
+    ]);
     a.itemPause = 30;
     // Any pause blocks the click first; the click then clears it.
     expect(pickupIntent(s.ctx(), s.room(), a, "g")).toEqual([]);
@@ -304,12 +348,24 @@ describe("newspapers", () => {
     photos: ["101", "Photo Number", "999"],
     texts: ["T1", "T2", "T3", "T4", "T5", "T6"],
   });
-  test("a click reads: the line, pause 20, the fields, null for a missing or non-numeric photo", () => {
+  test("bug fixed: a click from away is refused with the line and pause 20", () => {
     const s = scene();
     const b = s.join("Bob", 1, 1);
     s.papers.set("king", paper());
-    s.arts.set(101, { author: "Alice", png: PNG });
     s.put("n", "King's Newspaper", 15, 10);
+    const out = pickupIntent(s.ctx(), s.room(), b, "n");
+    expect(chat(out, "Bob")).toEqual([
+      "You see the newspaper, but you must be standing in front of it to read it.",
+    ]);
+    expect(of(out, "Bob", "newspaper")).toEqual([]);
+    expect(b.itemPause).toBe(20);
+  });
+  test("a click from in front reads: the line, pause 20, the fields, null for a missing or non-numeric photo", () => {
+    const s = scene();
+    const b = s.join("Bob");
+    s.papers.set("king", paper());
+    s.arts.set(101, { author: "Alice", png: PNG });
+    s.put("n", "King's Newspaper", 5, 5);
     const out = pickupIntent(s.ctx(), s.room(), b, "n");
     expect(chat(out, "Bob")).toEqual(["You view the newspaper"]);
     expect(of(out, "Bob", "newspaper")).toEqual([
@@ -341,7 +397,7 @@ describe("newspapers", () => {
     const out = pickupIntent(s.ctx(), s.room(), b, "n");
     expect(of(out, "Bob", "newspaper")).toHaveLength(1);
   });
-  test("kept bug: a player's stand stays blank", () => {
+  test("a stand with no paper written reads blank", () => {
     const s = scene();
     const b = s.join("Bob");
     s.put("n", "Alice's Newspaper", 5, 5);
@@ -350,16 +406,9 @@ describe("newspapers", () => {
       { t: "newspaper", texts: ["", "", "", "", "", ""], photos: [null, null, null] },
     ]);
   });
-  test("only an immortal loads and saves", () => {
+  test("bug fixed: a player saves to their own paper, loads it, and their stand shows it", () => {
     const s = scene();
-    const p = s.join("Alice");
-    expect(newspaperSaveIntent(p, paper(), s.newspapers)).toEqual([]);
-    expect(s.papers.size).toBe(0);
-    expect(newspaperLoadIntent(p, s.newspapers)).toEqual([]);
-  });
-  test("an immortal saves to their own paper, loads it, and a reader sees it", () => {
-    const s = scene();
-    const k = s.join("King", 5, 6, "N", "immortal");
+    const k = s.join("King", 1, 1);
     const blank = newspaperLoadIntent(k, s.newspapers);
     expect(blank[0]?.msg).toEqual({
       t: "newspaperEdit",
@@ -371,9 +420,11 @@ describe("newspapers", () => {
       t: "newspaperEdit",
       texts: ["T1", "T2", "T3", "T4", "T5", "T6"],
     });
-    const b = s.join("Bob", 1, 1);
-    s.put("n", "King's Newspaper", 15, 10);
-    expect(of(pickupIntent(s.ctx(), s.room(), b, "n"), "Bob", "newspaper")).toHaveLength(1);
+    const b = s.join("Bob");
+    s.put("n", "King's Newspaper", 5, 5);
+    expect(of(pickupIntent(s.ctx(), s.room(), b, "n"), "Bob", "newspaper")).toEqual([
+      { t: "newspaper", texts: ["T1", "T2", "T3", "T4", "T5", "T6"], photos: [null, null, null] },
+    ]);
   });
 });
 

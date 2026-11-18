@@ -4,7 +4,8 @@
  * regpoint on the placeholder's loc, so the rects below are from the member sizes (no frame PNG
  * shows them). Origin: the art, stage (185, 14), 350×303; locZ 5004-5009. No sound anywhere.
  *
- * POST and CLOSE are the members' own scripts.
+ * POST and CLOSE are the members' own scripts. A post keeps the window open: the server reloads
+ * the board with the post on it, scrolled to the end (1.6 closed the window without a reload).
  */
 import type { Assets } from "../assets.ts";
 import { action } from "./action.ts";
@@ -41,7 +42,7 @@ export interface BoardActions {
 export interface BoardWindow {
   el: HTMLElement;
   readonly isOpen: boolean;
-  /** The board and its lock, or the post's close (null). */
+  /** The board and its lock (a reload after a post, too), or null to close it. */
   show(board: { topic: string; text: string; lock: boolean } | null): void;
   /** Game entry hides it. */
   reset(): void;
@@ -105,9 +106,8 @@ export function createBoardWindow(a: Assets, act: BoardActions): BoardWindow {
     act.lock(false);
     act.close();
   });
-  // POST: the key lock is released first; the server tests the text and closes the window.
+  // POST: the server tests the text and reloads the board; the keys stay locked.
   button(145, "Post", BOARD_RECTS.post, 5007, () => {
-    act.lock(false);
     act.post(postText.value);
   });
 
@@ -126,12 +126,14 @@ export function createBoardWindow(a: Assets, act: BoardActions): BoardWindow {
         hide();
         return;
       }
+      // A reload of the open board follows a post: it scrolls to the end, where the post is.
+      const reload = open && topic.textContent === board.topic;
       open = true;
       el.hidden = false;
       topic.textContent = board.topic;
       // The file's carriage returns are line breaks; the field's text is the whole board.
       text.textContent = board.text.replace(/\r\n|\r/g, "\n");
-      text.scrollTop = 0;
+      text.scrollTop = reload ? text.scrollHeight : 0;
       // The board's sort script empties the post field.
       postText.value = "";
       fit = "";

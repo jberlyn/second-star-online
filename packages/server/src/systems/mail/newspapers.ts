@@ -1,13 +1,14 @@
 /**
  * Newspapers on the server.
  *
- * One newspaper per immortal author (1.6's save had no check, so anyone could write one). Reading
- * is by the stand clicked or faced: the server reads the author from the item's name, never from a
- * typed name.
+ * One newspaper per character, written to the writer's own name (1.6's save took any name, and
+ * only an immortal's client could open the editor, so a player's stand stayed blank). Reading is
+ * by the stand clicked or faced, from the tile in front of it: the server reads the author from the
+ * item's name, never from a typed name.
  */
-import { CHAT_COLOR, NEWS_TEXT, newspaperAuthor } from "@secondstaronline/shared";
+import { CHAT_COLOR, NEWS_TEXT, newspaperAuthor, standingInFront } from "@secondstaronline/shared";
 
-import type { Outgoing, Player } from "../world/world.ts";
+import type { GroundItem, Outgoing, Player } from "../world/world.ts";
 import type { ArtStore } from "./art.ts";
 
 /** The nine fields: photo ids 1-3, then the six text fields. */
@@ -26,19 +27,34 @@ const READ_PAUSE = 20;
 
 const blank = (n: number) => Array.from({ length: n }, () => "");
 
+const chat = (to: Player, text: string): Outgoing => ({
+  to: to.id,
+  msg: { t: "chat", text, color: CHAT_COLOR.normal },
+});
+
 /**
- * Reads the stand `name`: "You view the newspaper", the 20-frame pause, then the author's file
- * (blank with none) and each photo id's PNG when it is all digits and stored (any other slot stays
- * hidden). No lock, no distance test.
+ * Reads the stand: the 20-frame pause; away from the tile in front of it, facing it, "You see the
+ * newspaper, but…" (1.6 read from any distance); else "You view the newspaper", then the author's
+ * file (blank with none) and each photo id's PNG when it is all digits and stored (any other slot
+ * stays hidden). No lock.
  */
 export function readNewspaper(
   p: Player,
-  name: string,
+  stand: Pick<GroundItem, "item" | "x" | "y">,
   news: NewspaperStore,
   art: ArtStore,
 ): Outgoing[] {
   p.itemPause = READ_PAUSE;
-  const f = news.load(newspaperAuthor(name));
+  const inFront = standingInFront({
+    facing: p.facing,
+    stepFrames: p.stepFrames,
+    player: { x: p.x, y: p.y },
+    item: { x: stand.x, y: stand.y },
+  });
+  if (!inFront) {
+    return [chat(p, NEWS_TEXT.notInFront)];
+  }
+  const f = news.load(newspaperAuthor(stand.item));
   const photos = (f?.photos ?? blank(3)).map((id) => {
     if (!/^\d{1,9}$/.test(id)) {
       return null;
@@ -47,16 +63,13 @@ export function readNewspaper(
     return row ? Buffer.from(row.png).toString("base64") : null;
   });
   return [
-    { to: p.id, msg: { t: "chat", text: NEWS_TEXT.view, color: CHAT_COLOR.normal } },
+    chat(p, NEWS_TEXT.view),
     { to: p.id, msg: { t: "newspaper", texts: f?.texts ?? blank(6), photos } },
   ];
 }
 
-/** The newspaper editor's load: immortal only; blank with no paper. */
+/** The newspaper editor's load: the player's own paper, blank with none. */
 export function newspaperLoadIntent(p: Player, news: NewspaperStore): Outgoing[] {
-  if (p.role !== "immortal") {
-    return [];
-  }
   const f = news.load(p.name);
   return [
     {
@@ -66,15 +79,15 @@ export function newspaperLoadIntent(p: Player, news: NewspaperStore): Outgoing[]
   ];
 }
 
-/** SAVE PAPER: immortal only; no reply. Written to the sender's own paper. */
+/**
+ * SAVE PAPER: any player; no reply. Written to the sender's own paper, which their stand
+ * (`<name>'s Newspaper`) shows.
+ */
 export function newspaperSaveIntent(
   p: Player,
   f: NewspaperFields,
   news: NewspaperStore,
 ): Outgoing[] {
-  if (p.role !== "immortal") {
-    return [];
-  }
   news.save(p.name, f);
   return [];
 }

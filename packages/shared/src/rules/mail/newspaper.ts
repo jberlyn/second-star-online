@@ -10,6 +10,7 @@ const N = socialData.newspaper;
 /** Every newspaper text, verbatim. */
 export const NEWS_TEXT = {
   view: N.view.text,
+  notInFront: N.notInFront.text,
   saved: N.saved.text,
   noStand: N.noStand.text,
 } as const;

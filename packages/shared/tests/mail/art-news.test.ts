@@ -150,12 +150,14 @@ describe("brushes", () => {
     expect(px(img, 20, 20)?.[0]).toBeGreaterThan(160);
     expect(px(img, 16, 20)?.[0]).toBe(0);
   });
-  test("white paints nothing with the brushes, Fill still fills white (ink 36)", () => {
-    const img = blankPaint();
+  test("bug fixed: pure white paints with every brush", () => {
     for (const t of [1, 2, 3, 4] as const) {
+      const img = blankPaint();
       paintAt(img, t, 30, 30, [255, 255, 255], seq(1));
+      expect(px(img, 30, 30)?.[0]).toBeGreaterThan(0);
+      expect(px(img, 30, 30)?.[0]).toBe(px(img, 30, 30)?.[2]);
     }
-    expect(px(img, 30, 30)).toEqual([0, 0, 0]);
+    const img = blankPaint();
     fillPaint(img, [255, 255, 255]);
     expect(px(img, 30, 30)).toEqual([255, 255, 255]);
   });

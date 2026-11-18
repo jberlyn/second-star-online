@@ -1459,13 +1459,22 @@ describe("the playthrough", () => {
     bob.send({ t: "mailUi", act: "close" });
     await settle();
     expect(who("Alice").keyLock).toBe(false);
-    // The Town Square board: Alice posts; Bob reads her post.
+    // The Town Square board, read from the tile in front: Alice posts and sees her post; Bob
+    // reads it.
+    await warp("Alice", "x1000y992", 14, 6);
+    await turn(alice, "U"); // facing the Message Boards at (14,5)
+    await warp("Bob", "x1000y992", 14, 4);
+    await turn(bob, "D");
     await t(100);
     clearAll();
     alice.send({ t: "pickup", id: groundOf("Alice", "Message Boards") });
     await settle();
     expect(chats(alice)).toEqual(["You view the message board"]);
+    alice.clear();
     alice.send({ t: "boardPost", text: "Hello town" });
+    await settle();
+    expect(msgsOf(alice, "board")[0]?.board?.text).toContain("Hello town");
+    alice.send({ t: "boardClose" });
     await settle();
     await t(45);
     bob.clear();
@@ -1502,6 +1511,9 @@ describe("the playthrough", () => {
     await t(50);
     alice.send({ t: "drop", slot: slotOf(alice, painting) });
     await t(30);
+    // A painting on the ground is viewed from the tile in front of it.
+    await warp("Bob", "x1000y992", 5, 6);
+    await turn(bob, "L");
     bob.clear();
     bob.send({ t: "pickup", id: groundOf("Bob", painting) });
     await settle();
@@ -1556,10 +1568,12 @@ describe("the playthrough", () => {
     ];
     king.send({ t: "newspaperSave", photos: [String(art), "", ""], texts });
     await settle();
-    // Bob cannot overwrite it; Alice reads the stand from the next tile.
+    // Bob's save writes his own paper, not King's; Alice reads the stand from the next tile,
+    // facing it.
     bob.send({ t: "newspaperSave", photos: ["", "", ""], texts: ["x", "x", "x", "x", "x", "x"] });
     await settle();
     await warp("Alice", "x1000y992", 9, 11);
+    await turn(alice, "R");
     await t(50);
     alice.clear();
     alice.send({ t: "pickup", id: groundOf("Alice", "King's Newspaper") });
@@ -1575,6 +1589,7 @@ describe("the playthrough", () => {
       what: "King: the newspaper stand and its text",
       check: async () => {
         await warp("Alice", "x1000y992", 9, 11);
+        await turn(alice, "R");
         await t(50);
         alice.clear();
         alice.send({ t: "pickup", id: groundOf("Alice", "King's Newspaper") });

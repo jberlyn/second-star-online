@@ -2,8 +2,8 @@
 import { z } from "zod";
 
 /**
- * The mail screen's own buttons: the list's CLOSE, REPLY (keys locked) and the compose or read
- * pane's CLOSE (keys unlocked). The server mirrors the key lock from these.
+ * The mail screen's own buttons: the list's CLOSE (keys unlocked), REPLY and the compose or read
+ * pane's CLOSE (keys stay locked while the list is up). The server mirrors the key lock from these.
  */
 export const mailUiSchema = z.strictObject({
   t: z.literal("mailUi"),
@@ -36,7 +36,7 @@ export const boardPostSchema = z.strictObject({
 /** The board window's Close. */
 export const boardCloseSchema = z.strictObject({ t: z.literal("boardClose") });
 
-/** The paint screen's Cancel: unlocks, the canvas is kept. */
+/** The paint screen's Cancel: unlocks; the picture and the Canvas are kept. */
 export const paintUiSchema = z.strictObject({ t: z.literal("paintUi"), act: z.literal("cancel") });
 
 /** The viewer's close, any mouseUp on the page. */
@@ -52,7 +52,7 @@ export const artSaveSchema = z.strictObject({
   png: z.string().max(22_000),
 });
 
-/** The newspaper editor's load: immortals only. */
+/** The newspaper editor's load: the player's own paper. */
 export const newspaperLoadSchema = z.strictObject({ t: z.literal("newspaperLoad") });
 
 /** SAVE PAPER: the three photo ids and the six texts. */
@@ -81,9 +81,9 @@ export type MailServerMsg =
     }
   /** The send went through: SEND's close. */
   | { t: "mailSent" }
-  /** The message board: its topic and text, or null once a post closes the window. */
+  /** The message board: its topic and text (reloaded after a post), or null to close it. */
   | { t: "board"; board: { topic: string; text: string; lock: boolean } | null }
-  /** Using a canvas: the paint screen opens; `reopen` is a held canvas (a free reopen). */
+  /** Using a canvas: the paint screen opens; `reopen` keeps a cancelled picture. */
   | { t: "paint"; reopen: boolean }
   /** Use Film: the camera lens appears and follows the mouse. */
   | { t: "lens" }

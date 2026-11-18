@@ -255,8 +255,16 @@ export const medalsSchema = z.strictObject({
     .min(1),
 });
 
-const mailTexts = ["notInFront", "notYours", "checking", "sending", "newMail", "reply"] as const;
-const boardTexts = ["view", "enterBuilding", "empty", "from"] as const;
+const mailTexts = [
+  "notInFront",
+  "notYours",
+  "checking",
+  "sending",
+  "newMail",
+  "reply",
+  "tooMany",
+] as const;
+const boardTexts = ["view", "notInFront", "notMember", "empty", "from"] as const;
 
 /** Mail: the texts and the send limits. */
 export const mailSchema = z.strictObject({
@@ -265,12 +273,10 @@ export const mailSchema = z.strictObject({
       [K in (typeof mailTexts)[number]]: typeof guildText;
     },
   ),
-  /** Sending mail reads items 1-7 of the stripped To field. */
+  /** A message goes to at most this many different names. */
   recipients: z.literal(7),
   /** Sorting mail scans items 1-100. */
   listScan: z.literal(100),
-  /** The strip passes over characters 1-100 then 1-500. */
-  strip: z.tuple([z.literal(100), z.literal(500)]),
 });
 
 /** Message boards. */
@@ -283,8 +289,6 @@ export const boardsSchema = z.strictObject({
   /** The rule between posts. */
   rule: z.string().min(1),
   townSquare: z.string().min(1),
-  /** A guild board opens only from rows up to this. */
-  maxY: z.literal(7),
 });
 
 const artTexts = [
@@ -298,6 +302,7 @@ const artTexts = [
   "author",
   "needCamera",
   "noPicture",
+  "notInFront",
 ] as const;
 const intPair = z.number().int();
 
@@ -332,6 +337,7 @@ export const artSchema = z.strictObject({
 /** The newspaper. */
 export const newspaperSchema = z.strictObject({
   view: guildText,
+  notInFront: guildText,
   saved: guildText,
   noStand: guildText,
   standTile: guildText,

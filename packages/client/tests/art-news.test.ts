@@ -273,7 +273,7 @@ describe("the paint screen", () => {
     expect(s.ui.paintOpen).toBe(false);
     expect(s.state.locked).toBe(false);
   });
-  test("kept bug: Cancel keeps the picture and the next Canvas reopens it", () => {
+  test("Cancel keeps the picture and the next Canvas reopens it", () => {
     const s = paintScene();
     s.ui.openPaint(false);
     s.down(130, 190);
@@ -306,7 +306,8 @@ describe("the viewer", () => {
     expect((s.ui.viewer.querySelector(".paint-author") as HTMLElement).textContent).toBe(
       "Author: Bob",
     );
-    expect(getPaintPixel(s.ui.image, 0, 0)).toEqual([255, 0, 0]);
+    expect(getPaintPixel(s.ui.viewed, 0, 0)).toEqual([255, 0, 0]);
+    expect(getPaintPixel(s.ui.image, 0, 0)).toEqual([0, 0, 0]);
     expect(s.state.locked).toBe(true);
   });
   test("an item with no stored art opens it with 'Author: ' and no picture", async () => {
@@ -332,19 +333,23 @@ describe("the viewer", () => {
     const V = PAINT_RECTS.viewerImage;
     s.fire(s.viewerImage, "pointerdown", V.x + 8, V.y + 8, s.V);
     s.ui.tick();
-    expect(getPaintPixel(s.ui.image, 2, 2)).toEqual([255, 0, 0]);
+    expect(getPaintPixel(s.ui.viewed, 2, 2)).toEqual([255, 0, 0]);
     expect(s.viewerImage.dataset.action).toBeUndefined();
   });
-  test("kept bug: a cancelled canvas reopens showing a viewed painting, which Save keeps as yours", async () => {
+  test("bug fixed: a cancelled canvas reopens on your own picture, not a viewed painting", async () => {
     const s = paintScene();
     s.ui.openPaint(false);
     s.down(420, 352); // cancel
     await s.ui.showArt("Bob", "x");
     s.fire(s.ui.viewer, "pointerup", 0, 0, s.V);
     s.ui.openPaint(true);
-    expect(getPaintPixel(s.ui.image, 30, 30)).toEqual([255, 0, 0]);
-    s.down(480, 352);
-    expect(s.log).toContainEqual(["save", "painting", "PNGDATA"]);
+    expect(getPaintPixel(s.ui.image, 30, 30)).toEqual([0, 0, 0]);
+  });
+  test("bug fixed: a viewed item with no picture shows none, not the last one viewed", async () => {
+    const s = paintScene();
+    await s.ui.showArt("Bob", "x");
+    await s.ui.showArt("", null);
+    expect(getPaintPixel(s.ui.viewed, 0, 0)).toEqual([0, 0, 0]);
   });
 });
 
@@ -395,7 +400,7 @@ describe("the lens", () => {
     s.ui.openPaint(true);
     expect([...s.ui.image.data]).toEqual(before);
   });
-  test("kept bug: a full bag after the shot says so and the film is lost", () => {
+  test("a full bag after the shot says so and sends nothing (the Film stays in the bag)", () => {
     const s = paintScene({ bagFull: true });
     s.ui.showLens();
     s.ui.takePhoto(200, 150);
@@ -405,7 +410,7 @@ describe("the lens", () => {
     ]);
     expect(s.ui.lensUp).toBe(false);
   });
-  test("a bag click hides it, the film lost", () => {
+  test("a bag click hides it and sends nothing (the Film stays in the bag)", () => {
     const s = paintScene();
     s.ui.showLens();
     s.ui.cancelLens();

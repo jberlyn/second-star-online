@@ -477,13 +477,13 @@ export interface Player {
   mailList: boolean;
   /** A mail pane has opened since login: gates `mailUi` (the client's flags start hidden). */
   mailUi: boolean;
-  /** The board the window can post to, until a post or Close. */
+  /** The open board, which posts go to, until Close or a map change. */
   board: string | null;
 
   // ---- paintings, photos and newspapers --------------------------------------
-  /** A consumed Canvas is held until a save spends it. */
+  /** A Canvas was used: a save spends a Canvas from the bag; a cancelled picture reopens. */
   canvas: boolean;
-  /** A consumed Film is held until a photo save spends it; cleared at game entry. */
+  /** A Film was used (the lens is up): a photo save spends a Film from the bag. */
   film: boolean;
   /** Which art screen the client has up: gates `paintUi` and `viewClose`. */
   artUi: "paint" | "view" | null;
@@ -1092,10 +1092,11 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   // from there.
   p.hidden = false;
   // Drawing the map's items clears the input lock, and a map change ends any running craft and
-  // closes an open vault or container (its window closes on the client too).
+  // closes an open vault, container or message board (its window closes on the client too).
   p.keyLock = false;
   p.vaultOpen = false;
   p.container = null;
+  p.board = null;
   const stopped = cancelCrafts(p);
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;

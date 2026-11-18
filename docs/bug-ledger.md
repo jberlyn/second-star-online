@@ -40,7 +40,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [economy](#economy) | 0 |
 | [housing](#housing) | 0 |
 | [inventory](#inventory) | 0 |
-| [mail](#mail) | 16 |
+| [mail](#mail) | 0 |
 | [monsters](#monsters) | 21 |
 | [movement](#movement) | 7 |
 | [progression](#progression) | 11 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **144** |
+| **Total** | **128** |
 
 ## admin
 
@@ -89,101 +89,7 @@ No kept bugs (all thirty-three former entries were fixed; see [inventory differe
 
 ## mail
 
-### Closing a mail pane lets you walk with the list still open
-- **What you notice:** Close the compose or read pane inside the mailbox and your character can walk again, though the mail list is still on screen.
-- **In 1.6 and SSO:** In 1.6 the pane's CLOSE cleared the input lock and hid only the pane. SSO does the same: the client unlocks and tells the server, which is what actually stops walking.
-- **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailUiIntent`), `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `composeClose unlocks with the list up; close takes the list down` (packages/server/tests/mail-boards.test.ts); `either CLOSE unlocks and hides both panes, the list stays up` (packages/client/tests/mail-boards.test.ts)
-
-### Replying to a reply gives "Re: Re: "
-- **What you notice:** Reply to a message that already starts "Re: " and the subject becomes "Re: Re: ...".
-- **In 1.6 and SSO:** 1.6 put "Re: " in front of the old subject every time. SSO does the same.
-- **In the code:** `packages/shared/src/rules/mail/mail.ts` (`replySubject`)
-- **Pinned by:** `replySubject stacks Re:` (packages/shared/tests/mail/mail-boards.test.ts); `REPLY locks, answers the sender and stacks Re:` (packages/client/tests/mail-boards.test.ts)
-
-### Mail goes to the first 7 names, a repeated name gets two copies
-- **What you notice:** Address a message to more than 7 names and the extra ones are ignored. A name typed twice gets two copies. The "*** Sending Mail..." line prints only when the first name in the list is filled, so a To of ",Bob" sends without it.
-- **In 1.6 and SSO:** 1.6 read items 1 to 7 of the To field, sent to each non-empty item and printed the line only for item 1. SSO does the same.
-- **In the code:** `packages/shared/src/rules/mail/mail.ts` (`mailRecipients`), `packages/server/src/systems/mail/mail.ts` (`mailSend`)
-- **Pinned by:** `mailRecipients` (packages/shared/tests/mail/mail-boards.test.ts); `a repeated name gets two copies, items past 7 are ignored` (packages/server/tests/mail-boards.test.ts); `a To with no item 1 sends but prints no line` (packages/client/tests/mail-boards.test.ts)
-
-### Spaces in a mail's To field vanish, but long runs leave one behind
-- **What you notice:** Spaces are removed from the To field, so "a b" becomes "ab". A run of four or more spaces (or stars) is not removed completely.
-- **In 1.6 and SSO:** 1.6 removed a space and a star at each position while stepping through the field, which skips the next character, so long runs leave some behind. SSO does the same for the To field. It does not keep the same strip on the message body.
-- **In the code:** `packages/shared/src/rules/mail/mail.ts` (`stripMailTo`)
-- **Pinned by:** `stripMailTo` (packages/shared/tests/mail/mail-boards.test.ts); `spaces and stars are stripped from To` (packages/server/tests/mail-boards.test.ts)
-
-### Posting closes the board without showing your post
-- **What you notice:** Press Post and the board window closes with no message and no reload. You see your post only when you next open the board.
-- **In 1.6 and SSO:** 1.6 hid the window and sent the post, with nothing reloaded. SSO does the same: the server answers with an empty board.
-- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`)
-- **Pinned by:** `a post is appended in 1.6's format, closes the window and a second is ignored` (packages/server/tests/mail-boards.test.ts); `Post unlocks first and sends the field; the server's null closes it` (packages/client/tests/mail-boards.test.ts); `Alice posts on Town Square from anywhere; the window closes and prints nothing` (packages/server/e2e/mail-and-boards.test.ts)
-
-### A refused post frees your keys with the board still open
-- **What you notice:** Press Post with nothing to post and you get the alert, but the board stays open and you can walk away from it.
-- **In 1.6 and SSO:** 1.6 cleared the input lock before checking the text. SSO does the same.
-- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`)
-- **Pinned by:** `a refused post (no letter or digit) alerts, unlocks, and can be retried` (packages/server/tests/mail-boards.test.ts)
-
-### The message board stays open when you change map
-- **What you notice:** Leave the map with a board open and it is still open on the next map. A post then goes to the last board you opened.
-- **In 1.6 and SSO:** 1.6 hid the board only on game entry. SSO does the same: the window and the server's chosen board survive a map change.
-- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`, `boardPostIntent`)
-- **Pinned by:** `kept bug: a map change leaves the board open and able to post` (packages/server/tests/mail-boards.test.ts)
-
-### A guild board opens for anyone from the top seven rows of any map
-- **What you notice:** Click a guild board, or press Ctrl facing it, from any map and you can read it as long as you stand in rows 1 to 7. You need not belong to the guild, and your keys are not locked.
-- **In 1.6 and SSO:** 1.6 tested only the row you stood on and never your guild. SSO does the same, except that only the board you actually clicked opens.
-- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`)
-- **Pinned by:** `a hall's board from y <= 7 on any map by a non-member, no lock, pause 40` and `a hall's board from y 8 is refused` (packages/server/tests/mail-boards.test.ts)
-
-### Town Square's board opens from any distance
-- **What you notice:** Click the Town Square board from anywhere on the map and it opens at once. Ctrl still needs you to face it.
-- **In 1.6 and SSO:** 1.6 ran the click with no distance or facing test, locked the keys and set no pause. SSO does the same for the click, and Ctrl needs the faced tile as in 1.6.
-- **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`)
-- **Pinned by:** `Town Square by click: no distance test, locks, no pause` (packages/server/tests/mail-boards.test.ts)
-
-### Pure white paints nothing with the paint brushes
-- **What you notice:** With pure white picked, the four brushes leave no mark on the picture. The Fill tool still fills with white.
-- **In 1.6 and SSO:** 1.6 drew the brush as a white shape that is treated as transparent, so white never showed. SSO does the same.
-- **In the code:** `packages/shared/src/rules/mail/paint.ts` (`paintAt`)
-- **Pinned by:** `white paints nothing with the brushes, Fill still fills white (ink 36)` (packages/shared/tests/mail/art-news.test.ts)
-
-### A cancelled canvas reopens for free
-- **What you notice:** Cancel out of the paint screen and your picture is kept. The next time you use a Canvas it reopens that picture without using up another Canvas.
-- **In 1.6 and SSO:** 1.6 remembered the cancelled picture and exited before removing a canvas. SSO does the same: the server holds the used canvas as a credit until a save spends it or you enter the game, and a Use while it is held is a free reopen.
-- **In the code:** `packages/server/src/systems/mail/art.ts` (`useCanvas`)
-- **Pinned by:** `kept bug: a cancelled canvas reopens without using another` (packages/server/tests/art-news.test.ts); `kept bug: Cancel keeps the picture and the next Canvas reopens it` (packages/client/tests/art-news.test.ts)
-
-### Film is lost when you cancel a shot or your bag is full
-- **What you notice:** Use a Film and then click your bag to cancel, or take the shot with a full bag, and the photo is refused. The film is gone either way.
-- **In 1.6 and SSO:** 1.6 used up the film before the shot. SSO does the same.
-- **In the code:** `packages/server/src/systems/mail/art.ts` (`useFilm`), `packages/client/src/ui/paint.ts` (`createPaintUi`)
-- **Pinned by:** `a bag click hides it, the film lost` and `kept bug: a full bag after the shot says so and the film is lost` (packages/client/tests/art-news.test.ts)
-
-### A painting you are viewing can be saved as your own
-- **What you notice:** View a painting, cancel a canvas, and the canvas reopens showing the viewed painting. Save then stores it under your name.
-- **In 1.6 and SSO:** 1.6 showed the viewed picture in the canvas's own image. SSO does the same: the save needs a canvas credit and a free slot like any painting, and stores the client's picture as yours.
-- **In the code:** `packages/server/src/systems/mail/art.ts` (`artSaveIntent`), `packages/client/src/ui/paint.ts` (`createPaintUi`)
-- **Pinned by:** `kept bug: a cancelled canvas reopens showing a viewed painting, which Save keeps as yours` (packages/client/tests/art-news.test.ts)
-
-### Paintings and photos on the ground can be viewed from anywhere
-- **What you notice:** Click a painting or photo lying on the ground and it opens, however far away it is or which way you face.
-- **In 1.6 and SSO:** 1.6 had no distance, facing or adjacency test for this click. SSO does the same and reads the id from the clicked item.
-- **In the code:** `packages/server/src/systems/mail/art.ts` (`viewArt`), `packages/server/src/systems/inventory/items.ts` (`pickupIntent`)
-- **Pinned by:** `kept bug: a ground click views from any distance and clears the pause` (packages/server/tests/art-news.test.ts)
-
-### Newspapers can be read from anywhere
-- **What you notice:** Click a newspaper stand and you read it from any distance, facing any way.
-- **In 1.6 and SSO:** 1.6 had no distance or facing test for the click. SSO does the same.
-- **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`readNewspaper`)
-- **Pinned by:** `a click reads: the line, pause 20, the fields, null for a missing or non-numeric photo` (packages/server/tests/art-news.test.ts)
-
-### A player's newspaper stand never shows any text
-- **What you notice:** Drop a Newspaper Kit and read the stand: it is blank. Only an immortal can write a paper, so a player's stand never has text.
-- **In 1.6 and SSO:** 1.6 read the owner's paper file but only an immortal could save one. SSO does the same.
-- **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`newspaperSaveIntent`)
-- **Pinned by:** `kept bug: a player's stand stays blank` (packages/server/tests/art-news.test.ts)
+No kept bugs (all sixteen former entries were fixed; see [mail differences](divergences.md#mail)).
 
 ## monsters
 

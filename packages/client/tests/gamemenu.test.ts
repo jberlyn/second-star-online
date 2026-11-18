@@ -65,7 +65,7 @@ describe("the desktop menu bar", () => {
     const { root, app } = start();
     expect(titles(root)).toEqual(["File", "Edit", "Game", "Options"]);
     expect(disabled(root, "Edit")).toEqual(["Clear Chat Text"]);
-    expect(disabled(root, "Game")).toHaveLength(6);
+    expect(disabled(root, "Game")).toHaveLength(7);
     expect(disabled(root, "File")).toEqual([]);
     menuClick(root, "Options", "Sound Effects");
     expect(localStorage.getItem("sso.sfx")).toBe("0");
@@ -84,6 +84,7 @@ describe("the desktop menu bar", () => {
       "Open Friend's List",
       "-",
       "Send Instant Message",
+      "Edit Newspaper",
       "-",
       "General Chat",
       "New Player Chat",

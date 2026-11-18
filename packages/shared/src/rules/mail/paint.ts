@@ -27,6 +27,7 @@ export const ART_TEXT = {
   author: (name: string) => fill(ax("author"), { NAME: name }),
   needCamera: ax("needCamera"),
   noPicture: ax("noPicture"),
+  notInFront: (name: string) => fill(ax("notInFront"), { NAME: name }),
 } as const;
 
 /** The painting's side in pixels (member 505) and its on-screen scale. */
@@ -156,11 +157,8 @@ export function paintAt(
   rnd: Rng,
 ): void {
   if (tool <= 4) {
-    // The brush is created white and drawn with ink 36 (white transparent): pure white paints
-    // nothing (a 1.6 quirk kept).
-    if (rgb[0] === 255 && rgb[1] === 255 && rgb[2] === 255) {
-      return;
-    }
+    // Every colour paints, pure white included (1.6 drew the brush with ink 36, white
+    // transparent, so white left no mark).
     const def = A.tools[tool - 1];
     if (!def) {
       return;

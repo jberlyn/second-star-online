@@ -62,7 +62,6 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         item("World Editor", act.worldEditor, play),
         item("NPC Editor", act.npcEditor, play),
         item("Settings", act.settings, play),
-        item("Edit Newspaper", act.editNewspaper, play),
         SEP,
         item("Admin Chat", act.adminChat, play),
         item("Return To Game", act.returnToGame, play),
@@ -78,6 +77,8 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         item("Open Friend's List", act.openFriends, play),
         SEP,
         item("Send Instant Message", act.sendIm, play),
+        // Anyone may write the paper their stand shows (1.6 offered it to immortals only).
+        item("Edit Newspaper", act.editNewspaper, play),
         SEP,
         item("General Chat", () => act.enterRoom("general"), play),
         item("New Player Chat", () => act.enterRoom("newPlayer"), play),

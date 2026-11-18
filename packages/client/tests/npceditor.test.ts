@@ -139,7 +139,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("World Editor, NPC Editor, Settings, Edit Newspaper, Admin Chat, Return To Game, then the three Assassin items; NPC Editor sends npcEditOpen and shows frame 311; the field keeps its text between visits", () => {
+  test("World Editor, NPC Editor, Settings, Admin Chat, Return To Game, then the three Assassin items; NPC Editor sends npcEditOpen and shows frame 311; the field keeps its text between visits", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -153,7 +153,6 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
       "World Editor",
       "NPC Editor",
       "Settings",
-      "Edit Newspaper",
       "-",
       "Admin Chat",
       "Return To Game",
@@ -164,8 +163,8 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     ]);
     menuClick(root, "Admin", "Admin Chat");
     expect(c.sent).toContainEqual({ t: "roomEnter", room: "admin" });
-    // Edit Newspaper (menu 502) opens the editor and asks for the paper.
-    menuClick(root, "Admin", "Edit Newspaper");
+    // Edit Newspaper (on the Game menu for everyone) opens the editor and asks for the paper.
+    menuClick(root, "Game", "Edit Newspaper");
     expect(c.sent).toContainEqual({ t: "newspaperLoad" });
     expect(root.querySelectorAll(".window-newspaper-editor:not([hidden])")).toHaveLength(1);
     menuClick(root, "Admin", "NPC Editor");
@@ -185,7 +184,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     app.stop();
   });
 
-  test("the Admin menu, Edit Newspaper included, shows only for an immortal on the desktop", () => {
+  test("the Admin menu shows only for an immortal on the desktop", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -204,7 +203,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     app.stop();
   });
 
-  test("menu 500's Game and Edit items: Clear Chat Text, Open Friend's List, Send Instant Message, the four rooms", () => {
+  test("menu 500's Game and Edit items: Clear Chat Text, Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -218,6 +217,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
       "Open Friend's List",
       "-",
       "Send Instant Message",
+      "Edit Newspaper",
       "-",
       "General Chat",
       "New Player Chat",
@@ -232,6 +232,10 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     expect(root.querySelector(".window-friends")?.hasAttribute("hidden")).toBe(false);
     menuClick(root, "Game", "Send Instant Message");
     expect(root.querySelector(".window-imsend")?.hasAttribute("hidden")).toBe(false);
+    // bug fixed: any player may write the paper their stand shows.
+    menuClick(root, "Game", "Edit Newspaper");
+    expect(c.sent).toContainEqual({ t: "newspaperLoad" });
+    expect(root.querySelectorAll(".window-newspaper-editor:not([hidden])")).toHaveLength(1);
     for (const t of ["General Chat", "New Player Chat", "Trading Post Chat", "Guild Chat"]) {
       menuClick(root, "Game", t);
     }

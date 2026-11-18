@@ -202,7 +202,7 @@ describe("the list", () => {
 });
 
 describe("compose, reply and send", () => {
-  test("REPLY locks, answers the sender and stacks Re:", () => {
+  test("bug fixed: REPLY locks, answers the sender and adds Re: only once", () => {
     const { m, btn, rows, input, state, log } = mailScreen();
     m.show(MSGS);
     rows(".mail-from")[1]?.click();
@@ -210,20 +210,20 @@ describe("compose, reply and send", () => {
     btn("Reply", ".mail-read").click();
     expect(state.locked).toBe(true);
     expect(input("To").value).toBe("Carol");
-    expect(input("Subject").value).toBe("Re: Re: Hi");
+    expect(input("Subject").value).toBe("Re: Hi");
     expect((m.el.querySelector(".mail-body") as HTMLTextAreaElement).value).toBe("");
     expect(m.composeUp).toBe(true);
     expect(log).toContainEqual(["ui", "reply"]);
   });
 
-  test("either CLOSE unlocks and hides both panes, the list stays up", () => {
+  test("bug fixed: either pane's CLOSE hides both panes; the list and the lock stay up", () => {
     const { m, btn, rows, state, log } = mailScreen();
     m.show(MSGS);
     rows(".mail-from")[0]?.click();
     btn("Read message").click();
     btn("Reply", ".mail-read").click();
     btn("Close", ".mail-compose").click();
-    expect(state.locked).toBe(false);
+    expect(state.locked).toBe(true);
     expect(m.composeUp).toBe(false);
     expect(m.listUp).toBe(true);
     expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
@@ -233,7 +233,7 @@ describe("compose, reply and send", () => {
     expect(log.filter((l) => (l as unknown[])[1] === "composeClose")).toHaveLength(2);
   });
 
-  test("SEND waits for mailSent; then the line (item 1 filled), unlock, cleared and hidden", () => {
+  test("bug fixed: SEND waits for mailSent; then the line, cleared and hidden, still locked", () => {
     const { m, btn, input, state, log } = mailScreen();
     m.show(MSGS);
     btn("Write message").click();
@@ -249,14 +249,15 @@ describe("compose, reply and send", () => {
     expect(input("To").value).toBe("Bob, Al");
     m.sent();
     expect(log).toContainEqual(["say", "*** Sending Mail..."]);
-    expect(state.locked).toBe(false);
+    expect(state.locked).toBe(true);
+    expect(m.listUp).toBe(true);
     expect(m.composeUp).toBe(false);
     expect(input("To").value).toBe("");
     expect(input("Subject").value).toBe("");
     expect(body.value).toBe("");
   });
 
-  test("a To with no item 1 sends but prints no line", () => {
+  test("bug fixed: a To with no item 1 sends and prints the line", () => {
     const { m, btn, input, log } = mailScreen();
     m.show(MSGS);
     btn("Write message").click();
@@ -264,7 +265,24 @@ describe("compose, reply and send", () => {
     (m.el.querySelector(".mail-body") as HTMLTextAreaElement).value = "x";
     btn("Send", ".mail-compose").click();
     m.sent();
-    expect(log.filter((l) => (l as unknown[])[0] === "say")).toEqual([]);
+    expect(log.filter((l) => (l as unknown[])[0] === "say")).toEqual([
+      ["say", "*** Sending Mail..."],
+    ]);
+  });
+
+  test("bug fixed: more than 7 names says so and sends nothing; repeats count once", () => {
+    const { m, btn, input, log } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    input("To").value = "a,b,c,d,e,f,g,h";
+    (m.el.querySelector(".mail-body") as HTMLTextAreaElement).value = "x";
+    btn("Send", ".mail-compose").click();
+    expect(log).toEqual([["say", "*** A message can go to at most 7 people."]]);
+    expect(m.composeUp).toBe(true);
+    log.length = 0;
+    input("To").value = "a,a,a,a,a,a,a,b";
+    btn("Send", ".mail-compose").click();
+    expect(log).toEqual([["send", "a,a,a,a,a,a,a,b", "", "x"]]);
   });
 
   test("an empty body or no recipient sends nothing and the compose stays", () => {
@@ -375,14 +393,22 @@ describe("the message board", () => {
     expect(state.locked).toBe(false);
   });
 
-  test("Post unlocks first and sends the field; the server's null closes it", () => {
+  test("bug fixed: Post keeps the lock; the server's reload shows the post, scrolled to it", () => {
     const { b, state, btn, post, log } = boardWindow();
     b.show({ topic: "Town Square", text: "", lock: true });
     post().value = "Hello";
     btn("Post").click();
-    expect(state.locked).toBe(false);
+    expect(state.locked).toBe(true);
     expect(log).toEqual([["post", "Hello"]]);
     expect(b.isOpen).toBe(true);
+    const text = b.el.querySelector(".board-text") as HTMLElement;
+    Object.defineProperty(text, "scrollHeight", { configurable: true, value: 900 });
+    b.show({ topic: "Town Square", text: "From: Me\r\rHello\r____\r", lock: true });
+    expect(b.isOpen).toBe(true);
+    expect(text.textContent).toContain("Hello");
+    expect(post().value).toBe("");
+    expect(state.locked).toBe(true);
+    expect(text.scrollTop).toBe(900);
     b.show(null);
     expect(b.isOpen).toBe(false);
   });

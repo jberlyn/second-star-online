@@ -3,10 +3,10 @@
  *
  * Alice, holding a Canvas, a Camera, a Film and a Newspaper Kit, paints (a valid 64×64 PNG, sent as
  * a 16 KB frame the gateway allows only while she holds a canvas) and gets `Painting#<id>`, drops
- * it; Bob clicks it on the ground and sees "Author: Alice" and the picture. Alice equips the Camera,
+ * it; Bob, in front of it, clicks it on the ground and sees "Author: Alice" and the picture. Alice equips the Camera,
  * uses Film and saves a photo. King, an immortal, saves a newspaper whose photo 1 is Alice's
  * painting and stands `King's Newspaper` on the map by hand (a Kit works only on a `K2` tile, which
- * no shipped map has); Bob reads it with photo 1 and two hidden slots. Alice's Kit off a `K2` tile
+ * no shipped map has); Bob, in front of it, reads it with photo 1 and two hidden slots. Alice's Kit off a `K2` tile
  * is refused. Dave, holding nothing, is closed for sending an art-sized frame.
  *
  * The bags are filled through the world (the pickup path is not what this test is about).
@@ -70,6 +70,13 @@ describe("paintings, photos and newspapers", () => {
     bot.send({ t: "mapReady" });
     await settle();
     return bot;
+  };
+  const step = async (bot: Bot, dir: "U" | "D" | "L" | "R") => {
+    bot.send({ t: "step", seq: ++seq, dir, turn: false });
+    bot.send({ t: "move", seq: ++seq, held: null, turn: false });
+    await tick(20);
+    bot.send({ t: "mapReady" });
+    await tick(1);
   };
   const turn = async (bot: Bot, dir: "U" | "D" | "L" | "R") => {
     bot.send({ t: "step", seq: ++seq, dir, turn: true });
@@ -151,12 +158,21 @@ describe("paintings, photos and newspapers", () => {
     expect(n?.n).toBe(1);
   });
 
-  test("Alice drops the painting; Bob clicks it from his own tile and sees Author: Alice", async () => {
+  test("Alice drops the painting; Bob, in front of it, clicks it and sees Author: Alice", async () => {
     await turn(alice, "U");
     alice.send({ t: "drop", slot: bagSlot("Alice", "Painting#") });
     await tick(30);
     const name = who("Alice").map.ground.find((g) => g.item.startsWith("Painting#"))?.item ?? "";
     expect(name).toMatch(/^Painting#\d+$/);
+    // From (11, 7) it is out of reach; from (11, 8), facing it at (12, 8), it opens.
+    bob.clear();
+    bob.send({ t: "pickup", id: groundOf("Bob", name) });
+    await settle();
+    expect(lines(bob)).toEqual([
+      "You see the Painting, but you must be standing in front of it to view it.",
+    ]);
+    await step(bob, "D");
+    await turn(bob, "R");
     bob.clear();
     bob.send({ t: "pickup", id: groundOf("Bob", name) });
     await settle();
@@ -201,21 +217,23 @@ describe("paintings, photos and newspapers", () => {
       texts: ["The Daily Star", "Vol 1", "Body", "Left", "Right", "Footer"],
     });
     await settle();
-    // Bob (not an immortal) cannot overwrite it.
+    // Bob's save writes his own paper, not King's.
     bob.send({
       t: "newspaperSave",
       photos: ["", "", ""],
       texts: ["x", "x", "x", "x", "x", "x"],
     });
     await settle();
+    // The stand goes on the tile above Bob, at (11, 7), and he turns to face it.
     who("King").map.ground.push({
       id: crypto.randomUUID(),
       item: "King's Newspaper",
-      x: 16,
-      y: 3,
+      x: 11,
+      y: 7,
       kind: "admin",
       expiresAt: null,
     });
+    await turn(bob, "U");
     await tick(30);
     bob.clear();
     bob.send({ t: "pickup", id: groundOf("Bob", "King's Newspaper") });

@@ -82,8 +82,8 @@ export function mailOpen(
 
 /**
  * The screen's own buttons mirror the input lock, which only the client set in 1.6: the list's
- * CLOSE unlocks and takes the list down, REPLY locks, the pane's CLOSE unlocks (with the list still
- * up: bug ledger "Closing a mail pane unlocks walking with the list up"). Ignored until a pane has
+ * CLOSE unlocks and takes the list down; REPLY and a pane's CLOSE leave the keys locked while the
+ * list is up (1.6's pane CLOSE unlocked with the list still on screen). Ignored until a pane has
  * opened.
  */
 export function mailUiIntent(p: Player, act: "close" | "reply" | "composeClose"): void {
@@ -91,21 +91,17 @@ export function mailUiIntent(p: Player, act: "close" | "reply" | "composeClose")
     return;
   }
   if (act === "close") {
-    p.keyLock = false;
     p.mailList = false;
-  } else if (act === "reply") {
-    p.keyLock = true;
-  } else {
-    p.keyLock = false;
   }
+  p.keyLock = p.mailList;
 }
 
 /**
- * SEND. An empty body or no filled recipient does nothing. The chat wait refuses before anything is
- * stored (the compose stays open with its draft). Otherwise the input lock is cleared, and each of
- * items 1-7 of the stripped To gets the message, a name with no character dropped silently; an
- * online recipient gets "*** You have new mail from <you>" and, with their list up, the reloaded
- * list; then `mailSent`.
+ * SEND. An empty body or no filled recipient does nothing; more than 7 different names is refused
+ * with a line. The chat wait refuses before anything is stored (the compose stays open with its
+ * draft). Otherwise each different name in the stripped To gets one copy, a name with no character
+ * dropped silently; an online recipient gets "*** You have new mail from <you>" and, with their
+ * list up, the reloaded list; then `mailSent`. The keys stay locked: the list is still up.
  */
 export function mailSend(
   world: World,
@@ -121,15 +117,17 @@ export function mailSend(
   if (msg.body === "") {
     return [];
   }
-  const { names } = mailRecipients(stripMailTo(msg.to));
+  const { names, tooMany } = mailRecipients(stripMailTo(msg.to));
   if (names.length === 0) {
     return [];
+  }
+  if (tooMany) {
+    return [chat(p, MAIL_TEXT.tooMany)];
   }
   const refused = chatRefusal(p.chatIn);
   if (refused) {
     return [chat(p, refused)];
   }
-  p.keyLock = false;
   p.chatIn = deps.chatCooldownFrames;
   const body = msg.body.slice(0, deps.mailBodyMax);
   const out: Outgoing[] = [];

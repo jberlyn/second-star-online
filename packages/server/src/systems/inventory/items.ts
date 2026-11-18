@@ -837,16 +837,16 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
     }
     return io.out;
   }
-  // A newspaper stand and a painting or photo, from any distance.
+  // A newspaper stand and a painting or photo, from the tile in front.
   if (gate.kind === "newspaper") {
     if (ctx.newspapers && ctx.art) {
-      io.out.push(...readNewspaper(p, g.item, ctx.newspapers, ctx.art));
+      io.out.push(...readNewspaper(p, g, ctx.newspapers, ctx.art));
     }
     return io.out;
   }
   if (gate.kind === "view") {
     if (ctx.art) {
-      io.out.push(...viewArt(p, g.item, ctx.art, "click"));
+      io.out.push(...viewArt(p, g.item, ctx.art, "click", g));
     }
     return io.out;
   }
@@ -977,7 +977,7 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   // The faced newspaper stand.
   if (gate.kind === "newspaper") {
     if (ctx.newspapers && ctx.art) {
-      io.out.push(...readNewspaper(p, g.item, ctx.newspapers, ctx.art));
+      io.out.push(...readNewspaper(p, g, ctx.newspapers, ctx.art));
     }
     return io.out;
   }

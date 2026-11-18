@@ -2,8 +2,7 @@
  * Mail and message boards. Pure rules over the generated `socialData.mail` and `socialData.boards`.
  *
  * 1.6 kept a mailbox as the file `MAIL\<name>.txt` and a board as `BOARDS\<board>.txt`; SSO keeps
- * rows, so only what a player can see of the file format is kept: the strip of the To field, the
- * board's `From:` blocks.
+ * rows, so only what a player can see of the file format is kept: the board's `From:` blocks.
  */
 import { socialData } from "@secondstaronline/data";
 
@@ -25,48 +24,43 @@ export const MAIL_TEXT = {
   checking: mx("checking"),
   sending: mx("sending"),
   newMail: (name: string) => fill(mx("newMail"), { NAME: name }),
+  tooMany: mx("tooMany"),
 } as const;
 
 /** Every board text, verbatim. */
 export const BOARD_TEXT = {
   view: bx("view"),
-  enterBuilding: bx("enterBuilding"),
+  notInFront: bx("notInFront"),
+  notMember: bx("notMember"),
   empty: bx("empty"),
   townSquare: B.townSquare,
 } as const;
 
-/** The send routine reads the first 7 comma-separated entries of the To field. */
+/** A message goes to at most this many different names. */
 export const MAIL_RECIPIENTS = M.recipients;
-/** A guild board opens only from rows up to this. */
-export const BOARD_MAX_Y = B.maxY;
 
 /**
- * The To field after SEND's strip: two passes, x = 1-100 then x = 1-500; at each position a space
- * is deleted, then a `*`. Deleting while iterating skips the next character, so runs of four or
- * more leave residue. (The body's `*` strip is not kept.)
+ * The To field after SEND's strip: every space and `*` is removed. (1.6 deleted while stepping
+ * forward, so runs of four or more left some behind; the body's `*` strip is not kept.)
  */
 export function stripMailTo(to: string): string {
-  const chars = [...to];
-  for (const scan of M.strip) {
-    for (let x = 1; x <= scan; x++) {
-      if (chars[x - 1] === " ") {
-        chars.splice(x - 1, 1);
-      }
-      if (chars[x - 1] === "*") {
-        chars.splice(x - 1, 1);
-      }
-    }
-  }
-  return chars.join("");
+  return to.replace(/[ *]/g, "");
 }
 
 /**
- * The first 7 comma-separated entries of the stripped To field: the non-empty ones, duplicates
- * kept, and whether the first entry is filled (only the first prints "*** Sending Mail...").
+ * The comma-separated names of the stripped To field: the non-empty ones, each once (ignoring
+ * case, the first spelling kept), and whether there are more than `MAIL_RECIPIENTS` of them, in
+ * which case nothing is sent. (1.6 read items 1-7 whatever they held, so a repeated name got two
+ * copies and an eighth was dropped unseen.)
  */
-export function mailRecipients(stripped: string): { names: string[]; firstFilled: boolean } {
-  const items = stripped.split(",").slice(0, MAIL_RECIPIENTS);
-  return { names: items.filter((i) => i !== ""), firstFilled: (items[0] ?? "") !== "" };
+export function mailRecipients(stripped: string): { names: string[]; tooMany: boolean } {
+  const names: string[] = [];
+  for (const item of stripped.split(",")) {
+    if (item !== "" && !names.some((n) => lingoEq(n, item))) {
+      names.push(item);
+    }
+  }
+  return { names, tooMany: names.length > MAIL_RECIPIENTS };
 }
 
 /** The owner named before the apostrophe in a house mailbox's name. */
@@ -75,6 +69,17 @@ export function mailboxOwner(name: string): string {
 }
 
 export type MailOpen = "notInFront" | "notYours" | "ok";
+
+/** Standing still on the tile in front of `item`, facing it. */
+export function standingInFront(a: {
+  facing: Facing;
+  stepFrames: number;
+  player: { x: number; y: number };
+  item: { x: number; y: number };
+}): boolean {
+  const [dx, dy] = FACING_DELTA[a.facing];
+  return a.stepFrames === 0 && a.player.x + dx === a.item.x && a.player.y + dy === a.item.y;
+}
 
 /**
  * The mailbox click: you must stand on the tile in front of the box, facing it, not mid-step;
@@ -90,8 +95,7 @@ export function mailOpenCheck(a: {
   universal: boolean;
   me: string;
 }): MailOpen {
-  const [dx, dy] = FACING_DELTA[a.facing];
-  if (a.stepFrames > 0 || a.player.x + dx !== a.box.x || a.player.y + dy !== a.box.y) {
+  if (!standingInFront({ ...a, item: a.box })) {
     return "notInFront";
   }
   if (!a.universal && !lingoEq(mailboxOwner(a.name), a.me)) {
@@ -100,9 +104,13 @@ export function mailOpenCheck(a: {
   return "ok";
 }
 
-/** REPLY's subject: "Re: " in front of whatever the read pane shows, so replies stack. */
+/**
+ * REPLY's subject: "Re: " in front of the read pane's subject, unless it already starts "Re: "
+ * (ignoring case). 1.6 added it every time, so replies stacked "Re: Re: ".
+ */
 export function replySubject(subject: string): string {
-  return `${M.texts.reply.text.replace("{TEXT}", "")}${subject}`;
+  const re = M.texts.reply.text.replace("{TEXT}", "");
+  return subject.toLowerCase().startsWith(re.toLowerCase()) ? subject : `${re}${subject}`;
 }
 
 /** The post button's test: a letter or digit, either case (an assumption: ASCII only). */
@@ -133,4 +141,9 @@ export function boardKind(name: string): "town" | "guild" | null {
     return "town";
   }
   return name.toLowerCase().includes("'s board") ? "guild" : null;
+}
+
+/** A hall's board (`The <guild>'s Board`) is read only by that guild's members. */
+export function boardMember(board: string, guild: string): boolean {
+  return guild !== "" && lingoEq(board, `The ${guild}'s Board`);
 }

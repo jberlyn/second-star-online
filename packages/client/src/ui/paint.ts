@@ -4,9 +4,10 @@
  * The paint screen is the paint screen's art (member 12, 414×293) at stage (91, 72), drawn in place
  * (hit tests are in GUI coordinates). The painting is the shared
  * 64×64 image (member "Painting", Internal #505): the paint screen shows it 4× (sprite 398) and
- * 1:1 in the preview (397), and the viewer shows it 1:1, so a cancelled canvas and a viewed
- * painting land in the same image (kept bug: 1.6 did this). A photo is cropped into an image of
- * its own (1.6 wrote it over a cancelled painting too). The viewed image cannot be painted on, and
+ * 1:1 in the preview (397). The viewer shows a viewed painting from an image of its own, so it
+ * never reaches the canvas (1.6 shared one image, so a cancelled canvas reopened on the viewed
+ * painting and saved it as yours). A photo is cropped into an image of its own (1.6 wrote it over
+ * a cancelled painting too). The viewed image cannot be painted on, and
  * the colour picker reads only the palette strip and the painting (1.6 painted on the viewer and
  * picked any pixel on screen). The tools are the pure rules in `@secondstaronline/shared`
  * (`paintAt`).
@@ -109,8 +110,10 @@ export interface PaintUi {
   viewer: HTMLElement;
   /** The lens, in the playfield overlay (544×384 playfield pixels). */
   lens: HTMLElement;
-  /** The shared 64×64 painting (member 505). */
+  /** The 64×64 painting (member 505). */
   readonly image: PaintImage;
+  /** The viewer's picture, apart from the painting. */
+  readonly viewed: PaintImage;
   readonly tool: PaintTool;
   readonly colour: readonly [number, number, number];
   readonly paintOpen: boolean;
@@ -128,7 +131,7 @@ export interface PaintUi {
   moveLens(x: number, y: number): void;
   /** A click on the map, yourself, a player or a monster while the lens is up. */
   takePhoto(x: number, y: number): void;
-  /** A bag click hides the lens, film lost. */
+  /** A bag click hides the lens; the Film stays in the bag. */
   cancelLens(): void;
   /** Applies the held tool or pick once (the 50 ms loop); a test steps it by hand. */
   tick(): void;
@@ -184,27 +187,29 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
   const image = blankPaint();
   /** The last photo's crop, apart from the painting. */
   const photo = blankPaint();
+  /** The viewed painting or photo, apart from the painting. */
+  const viewed = blankPaint();
   let tool: PaintTool = 1;
   let colour: [number, number, number] = [0, 0, 0];
   const rnd = { random: hooks.random ?? ((n: number) => 1 + Math.floor(Math.random() * n)) };
   const encode = hooks.encode ?? defaultEncode;
   const decode = hooks.decode ?? defaultDecode;
 
-  // ---- the shared image on three canvases (4× image, preview, viewer) ---------------------
-  const canvases: HTMLCanvasElement[] = [];
-  const makeCanvas = (cls: string): HTMLCanvasElement => {
+  // ---- the painting on two canvases (4× image, preview), the viewed image on the viewer ------
+  const canvases: { c: HTMLCanvasElement; img: PaintImage }[] = [];
+  const makeCanvas = (cls: string, img: PaintImage = image): HTMLCanvasElement => {
     const c = document.createElement("canvas");
     c.width = PAINT_SIZE;
     c.height = PAINT_SIZE;
     c.className = `paint-canvas ${cls}`;
-    canvases.push(c);
+    canvases.push({ c, img });
     return c;
   };
   const render = () => {
-    for (const c of canvases) {
+    for (const { c, img } of canvases) {
       const ctx = c.getContext("2d");
       if (ctx) {
-        ctx.putImageData(toImageData(ctx, image), 0, 0);
+        ctx.putImageData(toImageData(ctx, img), 0, 0);
       }
     }
   };
@@ -255,7 +260,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
   viewer.setAttribute("aria-label", "Painting viewer");
   const viewerBg = put(artImg(a.ui("paintings", 23), "Painting"), V, V);
   viewerBg.classList.add("paint-viewer-bg");
-  const viewerImage = put(makeCanvas("paint-viewer-image"), PAINT_RECTS.viewerImage, V);
+  const viewerImage = put(makeCanvas("paint-viewer-image", viewed), PAINT_RECTS.viewerImage, V);
   const author = put(document.createElement("div"), PAINT_RECTS.author, V);
   author.className = "paint-author";
   viewer.append(viewerBg, viewerImage, author);
@@ -475,6 +480,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
     viewer,
     lens,
     image,
+    viewed,
     get tool() {
       return tool;
     },
@@ -509,10 +515,11 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
     },
     async showArt(who, png) {
       author.textContent = ART_TEXT.author(who);
+      viewed.data.fill(0);
       if (png) {
         const px = await decode(png);
         if (px) {
-          setPaintPixels(image, px, 4);
+          setPaintPixels(viewed, px, 4);
         }
       }
       render();
@@ -563,6 +570,7 @@ export function createPaintUi(a: Assets, act: PaintActions, hooks: PaintHooks = 
       release();
       image.data.fill(0);
       photo.data.fill(0);
+      viewed.data.fill(0);
       tool = 1;
       colour = [0, 0, 0];
       paint.hidden = true;
