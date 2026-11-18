@@ -2715,7 +2715,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Bug fixed
 - **What you notice:** Leather, Chain, Plate and Gold Boots show on your character's feet, for you and for everyone who sees you.
 - **1.6:** The character was drawn from every equipment slot except the feet, and the game had no boot art.
-- **SSO:** The paperdoll draws the Feet slot over the body. The boot layers are new art in `assets/added/paperdoll/`, made from the default body's feet in each boot's colours. Gloves are worn in the Ring slot and drawn from it, as before.
+- **SSO:** The paperdoll draws the Feet slot over the body. The boot layers are new art in `assets/added/paperdoll/`, made from the default body's feet in each boot's colours; facing north or south a pair has a dark seam between the feet and a lighter cuff. Gloves are worn in the Ring slot and drawn from it, as before.
 - **Why:** Worn boots should be seen.
 - **In the code:** `packages/shared/src/rules/inventory/paperdoll.ts` (`normaliseLook`, `paperdollLayers`)
 - **Pinned by:** `bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot` (packages/shared/tests/inventory/inventory.test.ts)
