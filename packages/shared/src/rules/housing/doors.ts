@@ -13,8 +13,10 @@ const R = houseData.relock;
 export const KEY_TEXT = { doesntFit: K.doesntFit } as const;
 export const SWITCH_TEXT = { notInFront: SW.text } as const;
 
-/** Coloured keys' pause (425 frames between item actions); house and guild keys set none. */
+/** Coloured keys' pause (425 frames between item actions). */
 export const KEY_PAUSE = K.colouredPause;
+/** House and Guild Keys' pause after turning a door (100 frames). */
+export const HOUSE_KEY_PAUSE = K.housePause;
 /** A switch that flips sets a 100-frame pause between item actions. */
 export const SWITCH_PAUSE = SW.pause;
 
@@ -39,8 +41,8 @@ export function facedDoor(namesOnTile: readonly string[]): string | null {
 export type KeyTurn =
   | { kind: "silent" }
   | { kind: "text"; text: string }
-  /** The door changes from `from` to `to`; a coloured key is consumed and pauses. */
-  | { kind: "turn"; from: string; to: string; coloured: boolean };
+  /** The door changes from `from` to `to`; `opening` is false when it closes. */
+  | { kind: "turn"; from: string; to: string; coloured: boolean; opening: boolean };
 
 /** The part of the door name before the first apostrophe. */
 const owner = (door: string) => door.split("'")[0] ?? "";
@@ -62,13 +64,25 @@ export function turnKey(key: string, door: string, me: string, guild: string): K
     if (lingoEq(key, K.houseKey)) {
       // the door's name before the apostrophe must be yours.
       return lingoEq(person, me)
-        ? { kind: "turn", from: door, to: `${person}${openSuffix}`, coloured: false }
+        ? {
+            kind: "turn",
+            from: door,
+            to: `${person}${openSuffix}`,
+            coloured: false,
+            opening: closedPart === "'s Door",
+          }
         : { kind: "text", text: K.doesntFit };
     }
     if (lingoEq(key, K.guildKey) && lingoEq(lingoWord(door, 1), "The")) {
       // only a guild door ("The …") answers, against "The <guild>".
       return lingoEq(person, myGuild)
-        ? { kind: "turn", from: door, to: `${person}${openSuffix}`, coloured: false }
+        ? {
+            kind: "turn",
+            from: door,
+            to: `${person}${openSuffix}`,
+            coloured: false,
+            opening: closedPart === "'s Door",
+          }
         : { kind: "text", text: K.doesntFit };
     }
     return { kind: "silent" };
@@ -79,18 +93,26 @@ export function turnKey(key: string, door: string, me: string, guild: string): K
       continue;
     }
     if (lingoEq(door, c.closed)) {
-      return { kind: "turn", from: door, to: c.open, coloured: true };
+      return { kind: "turn", from: door, to: c.open, coloured: true, opening: true };
     }
     if (lingoEq(door, c.open)) {
-      return { kind: "turn", from: door, to: c.closed, coloured: true };
+      return { kind: "turn", from: door, to: c.closed, coloured: true, opening: false };
     }
   }
   return { kind: "silent" };
 }
 
-/** The key-usage step deletes the key unless `Keys.txt` contains `<key>:Inf`. */
-export const keyConsumed = (key: string): boolean =>
-  !K.keysTxt.some((l) => lingoContains(l, `${key}:Inf`));
+/**
+ * Whether turning a door uses up the key: a coloured key is spent when it opens its door (unless
+ * `Keys.txt` marks it `<key>:Inf`); closing a door with it is free, and House and Guild Keys are
+ * never spent.
+ */
+export const keyConsumed = (turn: { coloured: boolean; opening: boolean }, key: string): boolean =>
+  turn.coloured && turn.opening && !K.keysTxt.some((l) => lingoContains(l, `${key}:Inf`));
+
+/** The item-action pause after a key turns a door. */
+export const keyPause = (turn: { coloured: boolean }): number =>
+  turn.coloured ? KEY_PAUSE : HOUSE_KEY_PAUSE;
 
 /** The names a door or switch rename may touch (exploit 3: nothing else is renamed). */
 export function isDoorOrSwitch(name: string): boolean {
@@ -101,13 +123,14 @@ export function isDoorOrSwitch(name: string): boolean {
 }
 
 /**
- * The door-switch routine: every door or switch on the map whose name **contains** `old` takes `to`
- * as its whole name. Returns the indices to rename, in order.
+ * The doors or switches on the map named exactly `old` (case ignored), for the changes that touch
+ * every one of a kind: a switch's doors and the relock. Returns the indices, in order. A key or a
+ * switch click changes only the item it was used on.
  */
 export function renameTargets(names: readonly string[], old: string): number[] {
   const out: number[] = [];
   names.forEach((n, i) => {
-    if (isDoorOrSwitch(n) && lingoContains(n, old)) {
+    if (isDoorOrSwitch(n) && lingoEq(n, old)) {
       out.push(i);
     }
   });
@@ -126,9 +149,9 @@ export function switchState(name: string): "on" | "off" | null {
 }
 
 /**
- * A switch that flips: its own door-switch rename, then the close-all step (ON → OFF closes every
- * `Open Switch Door`) or the open-all step (OFF → ON opens every `Switch Door`). Returned as
- * `[old, new]` renames in send order.
+ * A switch that flips: its own new name (only the clicked switch changes), then the close-all step
+ * (ON → OFF closes every `Open Switch Door`) or the open-all step (OFF → ON opens every `Switch
+ * Door`). Returned as `[old, new]` renames in send order.
  */
 export function switchFlip(state: "on" | "off"): [[string, string], [string, string]] {
   const sd = R.closes.find(([open]) => lingoContains(open, "Switch Door"));
@@ -144,36 +167,46 @@ export function switchFlip(state: "on" | "off"): [[string, string], [string, str
       ];
 }
 
+const OPENED_DOOR = "'s Opened Door";
+
+/** What closing turns an open door or ON switch into, or null when the item is not one. */
+export function closedName(name: string): string | null {
+  const pair = R.closes.find(([open]) => lingoEq(name, open));
+  if (pair) {
+    return pair[1];
+  }
+  // A player's or guild's opened door ("<owner>'s Opened Door") shuts as "<owner>'s Door".
+  if (name.toLowerCase().endsWith(OPENED_DOOR.toLowerCase())) {
+    return `${name.slice(0, -OPENED_DOOR.length)}'s Door`;
+  }
+  return null;
+}
+
 /**
- * Closing all doors over the map's items in sprite order: each `ON Switch` and each open coloured
- * or switch door (exact names) is closed; player and guild doors never are. Returned as
- * `[old, new]` renames in send order, each once.
+ * Closing all doors over the map's items in sprite order: each `ON Switch`, each open coloured or
+ * switch door and each opened player or guild door is closed. Returned as `[old, new]` renames in
+ * send order, each name once.
  */
 export function closeAllDoors(names: readonly string[]): [string, string][] {
   const out: [string, string][] = [];
   for (const n of names) {
-    const pair = R.closes.find(([open]) => lingoEq(n, open));
-    if (pair && !out.some(([o]) => lingoEq(o, pair[0]))) {
-      out.push([pair[0], pair[1]]);
+    const to = closedName(n);
+    if (to !== null && !out.some(([o]) => lingoEq(o, n))) {
+      out.push([n, to]);
     }
   }
   return out;
 }
 
-export type RelockEvent = "change" | "arrival" | "switchClick";
+/** Whether anything on the map is open for the relock to close. */
+export const anyOpenDoor = (names: readonly string[]): boolean =>
+  names.some((n) => closedName(n) !== null);
 
 /**
- * The map's relock timer (the door-lock countdown). Every echoed change sets every client to 200;
- * an arrival or a switch click (to 100) sets only that client's counter, so the earliest still
- * wins. 0 means no timer.
+ * The map's relock timer (the door-lock countdown): every door or switch change sets it to 200, so
+ * the doors close 200 frames after the last change, whether or not anyone is on the map.
  */
-export function relockAfter(timer: number, ev: RelockEvent): number {
-  if (ev === "change") {
-    return R.change;
-  }
-  const v = ev === "arrival" ? R.arrival : R.switchClick;
-  return timer > 0 ? Math.min(timer, v) : v;
-}
+export const RELOCK_FRAMES = R.change;
 
 // ---- quest chests ----------------------------------------------------------------------------
 

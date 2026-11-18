@@ -125,10 +125,11 @@ describe("playfield clicks", () => {
       x: 97,
       y: 94,
     });
+    // Bug fixed: the Small Farm's ghost sits one row up, level with every other house.
     expect(ghostTopLeft({ house: "Small Farm", slot: 1, tile: { x: 5, y: 5 }, img: null })).toEqual(
       {
         x: 97,
-        y: 126,
+        y: 94,
       },
     );
   });

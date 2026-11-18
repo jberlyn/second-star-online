@@ -12,6 +12,8 @@ import {
   headDrop,
   houseAnchor,
   houseType,
+  inFootprint,
+  monthIndex,
   type PlacementInput,
   planHouse,
   refreshOwner,
@@ -39,23 +41,25 @@ function input(over: Partial<PlacementInput> & { type: HouseType }): PlacementIn
   };
 }
 
-/** A ground item's bounding rect on tile (x, y): a 32×32 member, reg (16, −2). */
-const itemAt = (x: number, y: number) => {
-  const left = 32 * x - 2;
-  const top = 32 * y - 1;
-  return { left, top, right: left + 32, bottom: top + 32 };
-};
-
 describe("deeds", () => {
-  test("Boat and Battleship Deeds do nothing", () => {
-    expect(deedUse("Boat Deed")).toEqual({ kind: "nothing" });
-    expect(deedUse("Battleship Deed")).toEqual({ kind: "nothing" });
+  test("bug fixed: Boat and Battleship Deeds say they cannot be built", () => {
+    expect(deedUse("Boat Deed")).toEqual({
+      kind: "nothing",
+      text: "Boats cannot be built yet, so this deed can't be used.",
+    });
+    expect(deedUse("Battleship Deed")).toEqual({
+      kind: "nothing",
+      text: "Battleships cannot be built yet, so this deed can't be used.",
+    });
   });
   test("the Airship Deed runs the airship drop", () => {
     expect(deedUse("Airship Deed")).toEqual({ kind: "airship" });
   });
-  test("kept bug: the Stone Guild Hall Deed does nothing (no Houses member, template or builder)", () => {
-    expect(deedUse("Stone Guild Hall Deed")).toEqual({ kind: "nothing" });
+  test("bug fixed: the Stone Guild Hall Deed says it cannot be built", () => {
+    expect(deedUse("Stone Guild Hall Deed")).toEqual({
+      kind: "nothing",
+      text: "The Stone Guild Hall cannot be built yet, so this deed can't be used.",
+    });
   });
   test("the seven house deeds start placement", () => {
     for (const h of [
@@ -75,17 +79,20 @@ describe("deeds", () => {
 });
 
 describe("the ghost and the anchor", () => {
-  test("kept bug: the Small Farm keeps the hovered row ('Small Fam'), and its ghost is shifted to match", () => {
-    expect(houseAnchor(type("Small Farm"), 5, 5)).toEqual({ x: 4, y: 5 });
+  test("bug fixed: the Small Farm anchors one up and one left like every house, its ghost to match", () => {
+    expect(houseAnchor(type("Small Farm"), 5, 5)).toEqual({ x: 4, y: 4 });
     expect(houseAnchor(type("Small House"), 5, 5)).toEqual({ x: 4, y: 4 });
-    // The farm's footprint is tiles x 4-8, y 5-7: stage x 126-286, y 159-255. The ghost sits
-    // 1 px right and 2 px up of it (160×96, reg (80, 48), at (32·5+15+32, 32·5+13+32)).
+    expect(houseAnchor(type("Large House"), 5, 5)).toEqual({ x: 4, y: 4 });
+    // The farm's footprint is tiles x 4-8, y 4-6: stage x 126-286, y 127-223. The ghost sits
+    // 1 px right and 2 px up of it (160×96, reg (80, 48), at (32·5+15+32, 32·5+13)), exactly
+    // where the Large House's does.
     expect(ghostRect(type("Small Farm"), 5, 5)).toEqual({
       left: 127,
-      top: 157,
+      top: 125,
       right: 287,
-      bottom: 253,
+      bottom: 221,
     });
+    expect(ghostRect(type("Small Farm"), 5, 5)).toEqual(ghostRect(type("Large House"), 5, 5));
   });
   test("a 96×96 ghost covers its 3×3 footprint 1 px right, 2 px up; the guild hall's 97-tall member 3 px up (Houses cast)", () => {
     // Small House over tile (5, 5): footprint x 4-6, y 4-6 = stage x 126-222, y 127-223.
@@ -105,20 +112,23 @@ describe("the click's checks", () => {
     expect(r).toEqual({ ok: false, text: "You cannot build off the map, or on the edges of it!" });
     expect(checkPlacement(input({ type: type("Small House"), hx: 3, hy: 3 })).ok).toBe(true);
   });
-  test("kept bug: no house can be anchored on rows 8-9; rows 10-11 read map fields 10-11", () => {
-    // Anchor y 8: the edge test passes, layer 1 rows 9-10 read item 10, which never matches.
+  test("bug fixed: a house can be anchored on rows 8 and 9; its rows 10 and 11 read the map", () => {
     const t = type("Small House");
-    expect(terrainOk(t, 5, 7, FLAT.layer1, FLAT.layer2)).toBe(true);
-    expect(terrainOk(t, 5, 8, FLAT.layer1, FLAT.layer2)).toBe(false);
-    expect(checkPlacement(input({ type: t, hx: 6, hy: 9 }))).toEqual({
-      ok: false,
-      text: "The terrain is too rough to build here!",
+    expect(terrainOk(t, 5, 8, FLAT.layer1, FLAT.layer2)).toBe(true);
+    expect(terrainOk(t, 5, 9, FLAT.layer1, FLAT.layer2)).toBe(true);
+    expect(checkPlacement(input({ type: t, hx: 6, hy: 10 }))).toMatchObject({
+      ok: true,
+      anchor: { x: 5, y: 9 },
     });
+    // Rough ground on row 11 is still refused.
+    const l1 = layer("8R");
+    l1[10] = row("G1");
+    expect(terrainOk(t, 5, 9, l1, FLAT.layer2)).toBe(false);
   });
-  test("kept bug: layer 1 counts only the first 3 columns of a 5-wide house", () => {
+  test("bug fixed: layer 1 is checked on every column of a 5-wide house", () => {
     const l1 = layer("G1");
-    // Rough everywhere except columns 4-6 of rows 4-6: a Large House at anchor (4, 4) spans
-    // columns 4-8, and its columns 7-8 are never read.
+    // Good ground only on columns 4-6 of rows 4-6: a Large House at anchor (4, 4) spans
+    // columns 4-8, so its columns 7-8 are rough.
     for (const y of [4, 5, 6]) {
       const w = row("G1").split(" ");
       w[3] = "8U";
@@ -126,11 +136,14 @@ describe("the click's checks", () => {
       w[5] = "8R";
       l1[y - 1] = w.join(" ");
     }
-    expect(terrainOk(type("Large House"), 4, 4, l1, FLAT.layer2)).toBe(true);
+    expect(terrainOk(type("Large House"), 4, 4, l1, FLAT.layer2)).toBe(false);
+    expect(terrainOk(type("Small House"), 4, 4, l1, FLAT.layer2)).toBe(true);
   });
-  test('kept bug: an 8V tile never counts: "*8R*8U*8V" has no star after 8V, so contains "*8V*" fails', () => {
-    expect(terrainOk(type("Small House"), 5, 4, layer("8V"), FLAT.layer2)).toBe(false);
+  test("bug fixed: 8V counts as house ground like 8R and 8U, matched whole", () => {
+    expect(terrainOk(type("Small House"), 5, 4, layer("8V"), FLAT.layer2)).toBe(true);
+    expect(terrainOk(type("Small House"), 5, 4, layer("8v"), FLAT.layer2)).toBe(true);
     expect(terrainOk(type("Small House"), 5, 4, layer("8U"), FLAT.layer2)).toBe(true);
+    expect(terrainOk(type("Small House"), 5, 4, layer("8"), FLAT.layer2)).toBe(false);
   });
   test("a 5-wide house at x 14 fails layer 2: a 17-word row has no word 18", () => {
     expect(terrainOk(type("Large House"), 13, 3, FLAT.layer1, FLAT.layer2)).toBe(true);
@@ -143,16 +156,28 @@ describe("the click's checks", () => {
     l2[4] = w.join(" ");
     expect(terrainOk(type("Large House"), 3, 4, FLAT.layer1, l2)).toBe(false);
   });
-  test("kept bug: the ghost's rect catches an item in the column to its right, but not one below", () => {
+  test("bug fixed: only something on the footprint itself is in the way", () => {
     const t = type("Small House");
-    // Hovering (6, 5): footprint x 5-7, y 4-6.
-    const right = checkPlacement(input({ type: t, obstacles: [itemAt(8, 5)] }));
-    expect(right).toEqual({
-      ok: false,
-      text: "You cannot build here because there seems to be something in the way!",
-    });
-    expect(checkPlacement(input({ type: t, obstacles: [itemAt(6, 7)] })).ok).toBe(true);
-    expect(checkPlacement(input({ type: t, obstacles: [itemAt(4, 5)] })).ok).toBe(true);
+    // Hovering (6, 5): footprint x 5-7, y 4-6. The tiles all round it are clear to stand on.
+    for (const o of [
+      { x: 8, y: 5 },
+      { x: 6, y: 3 },
+      { x: 6, y: 7 },
+      { x: 4, y: 5 },
+    ]) {
+      expect(checkPlacement(input({ type: t, obstacles: [o] })).ok).toBe(true);
+    }
+    for (const o of [
+      { x: 5, y: 4 },
+      { x: 7, y: 6 },
+    ]) {
+      expect(checkPlacement(input({ type: t, obstacles: [o] }))).toEqual({
+        ok: false,
+        text: "You cannot build here because there seems to be something in the way!",
+      });
+    }
+    expect(inFootprint(type("Large House"), { x: 5, y: 4 }, 9, 6)).toBe(true);
+    expect(inFootprint(type("Large House"), { x: 5, y: 4 }, 10, 6)).toBe(false);
   });
   test("an Exit takes slot 1, so the next house takes Exit2; both taken refuses", () => {
     const t = type("Small House");
@@ -202,10 +227,10 @@ describe("the build", () => {
     expect(p.exit.house).toBe(2);
     expect(p.outdoorItems[0]).toEqual({ item: "Exit2", x: 11, y: 4 });
   });
-  test("kept bug: the Small Shop's lamp is dropped a row below where it is recorded", () => {
+  test("bug fixed: the Small Shop's lamp is recorded where it is dropped, so demolition finds it", () => {
     const p = planHouse(type("Small Shop"), { x: 5, y: 4 }, 1, 0, 0, "Bob", "");
     expect(p.outdoorItems).toContainEqual({ item: "Street Lamp", x: 5, y: 7 });
-    expect(p.item1).toEqual({ item: "Street Lamp", x: 5, y: 6 });
+    expect(p.item1).toEqual({ item: "Street Lamp", x: 5, y: 7 });
     expect(p.title).toBe("Bob's Shop");
     expect(p.interiorItems).toEqual([{ item: "Exit", x: 9, y: 12 }]);
   });
@@ -248,20 +273,17 @@ describe("the build", () => {
 });
 
 describe("HeadDrop", () => {
-  test("a room whose header names you clears nothing; anywhere else sets 1", () => {
-    expect(headDrop(0, "Town Square", "Bob", "")).toBe(1);
-    expect(headDrop(0, "Bob's House", "Bob", "")).toBe(0);
-    expect(headDrop(0, "bob's farm", "Bob", "")).toBe(0);
+  test("a room whose header names you is 0; anywhere else is 1", () => {
+    expect(headDrop("Town Square", "Bob", "")).toBe(1);
+    expect(headDrop("Bob's House", "Bob", "")).toBe(0);
+    expect(headDrop("bob's farm", "Bob", "")).toBe(0);
   });
   test("SSO matches the owner exactly: Bob does not own Jimbob's House (1.6's `contains`)", () => {
-    expect(headDrop(0, "Jimbob's House", "Bob", "")).toBe(1);
+    expect(headDrop("Jimbob's House", "Bob", "")).toBe(1);
   });
-  test("your guild's hall clears it", () => {
-    expect(headDrop(1, "Hall of the Knights", "Bob", "Knights")).toBe(0);
-    expect(headDrop(0, "Hall of the Knights", "Bob", "")).toBe(1);
-  });
-  test("kept bug: nothing clears a set flag in your own house (nothing ever resets it)", () => {
-    expect(headDrop(1, "Bob's House", "Bob", "")).toBe(1);
+  test("your guild's hall is 0", () => {
+    expect(headDrop("Hall of the Knights", "Bob", "Knights")).toBe(0);
+    expect(headDrop("Hall of the Knights", "Bob", "")).toBe(1);
   });
 });
 
@@ -298,37 +320,68 @@ describe("the click's fixtures", () => {
 });
 
 describe("decay", () => {
-  const entry = (name: string, map: string, month: string): HouseListEntry => ({
+  const entry = (
+    name: string,
+    map: string,
+    month: string,
+    interior = `${map}h`,
+  ): HouseListEntry => ({
     ownerId: name.toLowerCase(),
     ownerName: name,
     map,
+    interior,
     month,
   });
-  test("the last-login update gives every entry of the owner this month", () => {
-    const list = [entry("Bob", "x1y1", "3"), entry("Ann", "x2y2", "3"), entry("Bob", "x3y3", "1")];
-    expect(refreshOwner(list, "bob", "7")).toBe(true);
-    expect(list.map((e) => e.month)).toEqual(["7", "3", "7"]);
+  test("months carry their year", () => {
+    expect(monthIndex("2026-01")).toBe(2026 * 12);
+    expect(monthIndex("2026-12")).toBe(2026 * 12 + 11);
+    expect(monthIndex("7")).toBeNull();
+    expect(monthIndex("2026-13")).toBeNull();
   });
-  test("a sweep keeps this month and last; January keeps 12, June's pair is 5/6", () => {
-    const list = [entry("A", "x1y1", "12"), entry("B", "x2y2", "1"), entry("C", "x3y3", "11")];
-    const r = sweep(list, "1");
-    expect(r.demolish).toEqual([{ ownerId: "c", ownerName: "C", map: "x3y3" }]);
-    expect(sweep([entry("A", "x1y1", "5")], "6").demolish).toEqual([]);
+  test("the last-login update gives every house of the owner this month", () => {
+    const list = [
+      entry("Bob", "x1y1", "2026-03"),
+      entry("Ann", "x2y2", "2026-03"),
+      entry("Bob", "x3y3", "2026-01"),
+    ];
+    expect(refreshOwner(list, "bob", "2026-07")).toBe(true);
+    expect(list.map((e) => e.month)).toEqual(["2026-07", "2026-03", "2026-07"]);
+    expect(refreshOwner(list, "bob", "2026-07")).toBe(false);
   });
-  test("kept bug: the house remover takes all of an owner's houses; the year is ignored", () => {
-    const list = [entry("Bob", "x1y1", "2"), entry("Bob", "x2y2", "9")];
-    // Month 9: Bob's x1y1 entry is stale, so both houses go.
-    const r = sweep(list, "9");
-    expect(r.demolish.map((d) => d.map)).toEqual(["x1y1", "x2y2"]);
-    expect(r.list).toEqual([]);
-    // An owner seen exactly a year ago (month 9 last year) survives.
-    expect(sweep([entry("Ann", "x5y5", "9")], "9").demolish).toEqual([]);
+  test("a sweep keeps this month and last, across the new year", () => {
+    const list = [
+      entry("A", "x1y1", "2025-12"),
+      entry("B", "x2y2", "2026-01"),
+      entry("C", "x3y3", "2025-11"),
+    ];
+    expect(sweep(list, "2026-01").demolish.map((d) => d.ownerName)).toEqual(["C"]);
+    expect(sweep([entry("A", "x1y1", "2026-05")], "2026-06").demolish).toEqual([]);
   });
-  test("kept bug: the sweep rewrites the list from its stale copy, so earlier removals come back", () => {
-    const list = [entry("A", "x1y1", "1"), entry("B", "x2y2", "1"), entry("C", "x3y3", "6")];
-    const r = sweep(list, "6");
+  test("bug fixed: a stale house goes alone; the owner's other houses and the year count", () => {
+    const list = [entry("Bob", "x1y1", "2026-02"), entry("Bob", "x2y2", "2026-09")];
+    const r = sweep(list, "2026-09");
+    expect(r.demolish.map((d) => d.map)).toEqual(["x1y1"]);
+    expect(r.list.map((e) => e.map)).toEqual(["x2y2"]);
+    // An owner last seen in this month a year ago is stale.
+    expect(sweep([entry("Ann", "x5y5", "2025-09")], "2026-09").demolish).toHaveLength(1);
+  });
+  test("bug fixed: every house the sweep removes stays removed", () => {
+    const list = [
+      entry("A", "x1y1", "2026-01"),
+      entry("B", "x2y2", "2026-01"),
+      entry("C", "x3y3", "2026-06"),
+      entry("A", "x1y1", "2026-01"),
+    ];
+    const r = sweep(list, "2026-06");
+    // A's duplicate entry is one house, demolished once.
     expect(r.demolish.map((d) => d.ownerName)).toEqual(["A", "B"]);
-    // B was removed last, so the list is the stale copy without B: A is back, house gone.
-    expect(r.list.map((e) => e.ownerName)).toEqual(["A", "C"]);
+    expect(r.list.map((e) => e.ownerName)).toEqual(["C"]);
+  });
+  test("bug fixed: two houses on one map are two entries, judged apart", () => {
+    const list = [
+      entry("Bob", "x1y1", "2026-01", "xH11yH11"),
+      entry("Bob", "x1y1", "2026-06", "xH21yH21"),
+    ];
+    expect(sweep(list, "2026-06").demolish.map((d) => d.interior)).toEqual(["xH11yH11"]);
   });
 });

@@ -193,7 +193,6 @@ import { withdrawVault } from "./systems/economy/vault.ts";
 import {
   demolish,
   type HouseDeps,
-  houseKey,
   monthCheck,
   placeCancel,
   placeHouseIntent,
@@ -429,7 +428,7 @@ export function createGame(deps: GameDeps): Game {
   world.containers = loadContainers(db);
   // The house blueprints and list.
   for (const h of loadHouses(db)) {
-    world.houses.set(houseKey(h.ownerId, h.map), h);
+    world.houses.set(h.interior, h);
   }
   world.houseList = loadHouseList(db);
   // Player shops: their files came in with the NPC editor's saves above.
@@ -1098,12 +1097,16 @@ export function createGame(deps: GameDeps): Game {
    * SAVE: immortals in the editor only (the original checked only in the client). The old map is
    * kept as a version; the map, its slots and its placed items are written together.
    */
-  /** This month in the house decay time zone. */
-  const houseMonth = (): string =>
-    new Intl.DateTimeFormat("en-US", {
+  /** Today in the house decay time zone, `YYYY-MM-DD`. */
+  const houseDay = (): string =>
+    new Intl.DateTimeFormat("en-CA", {
       timeZone: settings.houseDecayTimeZone,
-      month: "numeric",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     }).format(new Date(nowMs()));
+  /** This month in the house decay time zone, `YYYY-MM`. */
+  const houseMonth = (): string => houseDay().slice(0, 7);
 
   /** Writes the house tables when they changed (in the caller's transaction, or its own). */
   const persistHouses = () => {
@@ -1227,12 +1230,13 @@ export function createGame(deps: GameDeps): Game {
     })();
   };
 
-  /** One month report from `p`: refresh, maybe sweep, then demolish. */
+  /** One clock check from `p`: refresh, the day's sweep if it has not run, then demolish. */
   const houseMonthCheck = (p: Player) => {
-    const demolitions = monthCheck(world, p, houseMonth(), rng);
+    const day = houseDay();
+    const demolitions = monthCheck(world, p, day.slice(0, 7), day);
     const out: Outgoing[] = [];
     for (const d of demolitions) {
-      out.push(...demolish(world, d.ownerId, d.map, loadMap).out);
+      out.push(...demolish(world, d.interior, loadMap).out);
     }
     deliver(out);
     if (world.housesDirty || demolitions.length > 0) {
@@ -1324,9 +1328,9 @@ export function createGame(deps: GameDeps): Game {
   // House interiors whose house is gone (a crash between a demolition and its deferred delete, or
   // an interior held back while someone stood in it) are deleted at start.
   {
-    // A blueprint is kept per owner and outdoor map, so a second house of one owner on a map
-    // overwrites the first's record while its interior lives on: an interior is an orphan only when
-    // no record and no list entry names its outdoor map.
+    // Servers before blueprints were kept per house overwrote a second house's record on the same
+    // map while its interior lived on, so an interior is an orphan only when no record and no list
+    // entry names its outdoor map.
     const live = new Set([
       ...[...world.houses.values()].map((h) => h.map),
       ...world.houseList.map((h) => h.map),
@@ -1620,8 +1624,7 @@ export function createGame(deps: GameDeps): Game {
       // The clock's minute (the first clock request at entry).
       send(p.id, { t: "minute", minute: minute() });
       if (!resumed) {
-        // The login's two clock replies each send the month report: two checks.
-        houseMonthCheck(p);
+        // A login is a clock check: the player's houses are seen this month.
         houseMonthCheck(p);
       }
       return true;

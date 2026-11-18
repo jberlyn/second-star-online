@@ -7,57 +7,68 @@ export const houseData: HouseData = {
     {
       "deed": "Boat Deed",
       "use": "nothing",
-      "house": null
+      "house": null,
+      "text": "Boats cannot be built yet, so this deed can't be used."
     },
     {
       "deed": "Airship Deed",
       "use": "airship",
-      "house": null
+      "house": null,
+      "text": null
     },
     {
       "deed": "Battleship Deed",
       "use": "nothing",
-      "house": null
+      "house": null,
+      "text": "Battleships cannot be built yet, so this deed can't be used."
     },
     {
       "deed": "Small House Deed",
       "use": "place",
-      "house": "Small House"
+      "house": "Small House",
+      "text": null
     },
     {
       "deed": "Small Farm Deed",
       "use": "place",
-      "house": "Small Farm"
+      "house": "Small Farm",
+      "text": null
     },
     {
       "deed": "Small Guild Hall Deed",
       "use": "place",
-      "house": "Small Guild Hall"
+      "house": "Small Guild Hall",
+      "text": null
     },
     {
       "deed": "Blue Cottage Deed",
       "use": "place",
-      "house": "Blue Cottage"
+      "house": "Blue Cottage",
+      "text": null
     },
     {
       "deed": "Small Shop Deed",
       "use": "place",
-      "house": "Small Shop"
+      "house": "Small Shop",
+      "text": null
     },
     {
       "deed": "Stone Guild Hall Deed",
-      "use": "place",
-      "house": "Stone Guild Hall"
+      "use": "nothing",
+      "house": null,
+      "text": "The Stone Guild Hall cannot be built yet, so this deed can't be used."
     },
     {
       "deed": "Fortress Guild Hall Deed",
       "use": "place",
-      "house": "Fortress Guild Hall"
+      "house": "Fortress Guild Hall",
+      "text": null
     },
     {
       "deed": "Large House Deed",
       "use": "place",
-      "house": "Large House"
+      "house": "Large House",
+      "text": null
     }
   ],
   "types": [
@@ -691,11 +702,11 @@ export const houseData: HouseData = {
         "regX": 80,
         "regY": 48,
         "shiftX": 32,
-        "shiftY": 32
+        "shiftY": 0
       },
       "anchor": {
         "dx": -1,
-        "dy": 0
+        "dy": -1
       },
       "footprint": {
         "w": 5,
@@ -1292,9 +1303,6 @@ export const houseData: HouseData = {
         "8U",
         "8V"
       ],
-      "layer1Need": 9,
-      "layer1Columns": 3,
-      "layer1MaxRow": 9,
       "text": "The terrain is too rough to build here!"
     },
     "obstacles": "You cannot build here because there seems to be something in the way!",
@@ -1312,8 +1320,7 @@ export const houseData: HouseData = {
     },
     "lamp": {
       "dx": 0,
-      "dy": 3,
-      "recordDy": 2
+      "dy": 3
     },
     "headers": {
       "house": "<name>'s House",
@@ -1506,58 +1513,7 @@ export const houseData: HouseData = {
   },
   "decay": {
     "clockFrames": 1230,
-    "listCap": 500,
-    "sweepOdds": 50,
-    "keep": {
-      "1": [
-        1,
-        12
-      ],
-      "2": [
-        2,
-        1
-      ],
-      "3": [
-        3,
-        2
-      ],
-      "4": [
-        4,
-        3
-      ],
-      "5": [
-        5,
-        4
-      ],
-      "6": [
-        5,
-        6
-      ],
-      "7": [
-        7,
-        6
-      ],
-      "8": [
-        8,
-        7
-      ],
-      "9": [
-        9,
-        8
-      ],
-      "10": [
-        10,
-        9
-      ],
-      "11": [
-        11,
-        10
-      ],
-      "12": [
-        12,
-        11
-      ]
-    }
+    "staleAfterMonths": 2
   },
   "keys": {
     "houseKey": "House Key",
@@ -1597,19 +1553,17 @@ export const houseData: HouseData = {
       "Wooden Key:1",
       "Gold Key5",
       "Steel Key:1"
-    ]
+    ],
+    "housePause": 100
   },
   "switches": {
     "on": "ON Switch",
     "off": "OFF Switch",
-    "arm": 100,
     "pause": 100,
     "text": "You see the switch, but you must be standing in front of it to use it."
   },
   "relock": {
     "change": 200,
-    "arrival": 150,
-    "switchClick": 100,
     "closes": [
       [
         "ON Switch",

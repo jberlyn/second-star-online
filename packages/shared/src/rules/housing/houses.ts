@@ -8,26 +8,31 @@ import type { MapExit } from "../admin/worldedit.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { houseMapName } from "../core/maps.ts";
 import { TILE_DEFAULTS } from "../core/tiles.ts";
-import { rectsIntersect } from "../spells/spellfx.ts";
 
 export type { HouseType };
 
 export type StageRect = { left: number; top: number; right: number; bottom: number };
 
-/** What a deed's Use does: nothing, the airship, or placement. */
-export function deedUse(
-  item: string,
-): { kind: "nothing" | "airship" } | { kind: "place"; type: HouseType } | null {
+export type DeedUse =
+  | { kind: "nothing"; text: string | null }
+  | { kind: "airship" }
+  | { kind: "place"; type: HouseType };
+
+/**
+ * What a deed's Use does: the airship, placement, or nothing. A deed that builds nothing (the Boat,
+ * the Battleship and the Stone Guild Hall, which have no builder, art or template) says why and
+ * is kept.
+ */
+export function deedUse(item: string): DeedUse | null {
   const d = houseData.deeds.find((x) => lingoEq(x.deed, item));
   if (!d) {
     return null;
   }
-  if (d.use !== "place") {
-    return { kind: d.use };
+  if (d.use === "airship") {
+    return { kind: "airship" };
   }
-  // Stone Guild Hall sets the current house but has no art, template or builder.
-  const type = houseData.types.find((t) => lingoEq(t.house, d.house ?? ""));
-  return type ? { kind: "place", type } : { kind: "nothing" };
+  const type = d.use === "place" ? houseType(d.house ?? "") : null;
+  return type ? { kind: "place", type } : { kind: "nothing", text: d.text };
 }
 
 export function houseType(house: string): HouseType | null {
@@ -46,7 +51,7 @@ export function ghostRect(t: HouseType, hx: number, hy: number): StageRect {
   return { left, top, right: left + t.ghost.width, bottom: top + t.ghost.height };
 }
 
-/** The footprint's top-left tile: the Small Farm keeps the hovered row. */
+/** The footprint's top-left tile: one up and one left of the hovered tile, for every house. */
 export function houseAnchor(t: HouseType, hx: number, hy: number): { x: number; y: number } {
   return { x: hx + t.anchor.dx, y: hy + t.anchor.dy };
 }
@@ -55,10 +60,9 @@ const wordAt = (rows: readonly string[], x: number, y: number): string =>
   (rows[y - 1] ?? "").split(" ").filter((w) => w !== "")[x - 1] ?? "";
 
 /**
- * Layer 1 and layer 2. Layer 1 counts `8R`/`8U`/`8V` (a `contains` test) on the first three columns
- * of each row, reading rows above `layer1MaxRow` from the map's NPC and monster fields, which never
- * match; columns 4-5 never count; it needs 9. Layer 2 needs `G3` on the whole footprint (a 17-wide
- * row has no word 18).
+ * The ground under the whole footprint, on every row: each layer-1 tile must be one of the build
+ * codes (`8R`, `8U`, `8V`, exact, case ignored) and each layer-2 tile `G3` (a 17-wide row has no
+ * word 18, so nothing hangs off the map).
  */
 export function terrainOk(
   t: HouseType,
@@ -67,29 +71,24 @@ export function terrainOk(
   layer1: readonly string[],
   layer2: readonly string[],
 ): boolean {
-  const tr = houseData.placement.terrain;
-  const good1 = `*${tr.layer1Codes.join("*")}`;
-  let n1 = 0;
-  for (let dy = 0; dy < 3; dy++) {
-    const y = ay + dy;
-    for (let dx = 0; dx < tr.layer1Columns; dx++) {
-      const w = y > tr.layer1MaxRow ? "" : wordAt(layer1, ax + dx, y);
-      if (lingoContains(good1, `*${w}*`)) {
-        n1 += 1;
-      }
-    }
-  }
-  if (n1 < tr.layer1Need) {
-    return false;
-  }
+  const codes = houseData.placement.terrain.layer1Codes;
   for (let dy = 0; dy < t.footprint.h; dy++) {
     for (let dx = 0; dx < t.footprint.w; dx++) {
-      if (!lingoContains(`*${TILE_DEFAULTS.empty}*`, `*${wordAt(layer2, ax + dx, ay + dy)}*`)) {
+      const ground = wordAt(layer1, ax + dx, ay + dy);
+      if (!codes.some((c) => lingoEq(c, ground))) {
+        return false;
+      }
+      if (!lingoEq(wordAt(layer2, ax + dx, ay + dy), TILE_DEFAULTS.empty)) {
         return false;
       }
     }
   }
   return true;
+}
+
+/** Whether tile (x, y) is under the footprint of a house anchored at `a`. */
+export function inFootprint(t: HouseType, a: { x: number; y: number }, x: number, y: number) {
+  return x >= a.x && x < a.x + t.footprint.w && y >= a.y && y < a.y + t.footprint.h;
 }
 
 export interface PlacementInput {
@@ -99,8 +98,8 @@ export interface PlacementInput {
   hy: number;
   layer1: readonly string[];
   layer2: readonly string[];
-  /** Bounding rects of the ground items, monsters and players on the map (the builder too). */
-  obstacles: readonly StageRect[];
+  /** The tiles taken by ground items, monsters and players on the map (the builder too). */
+  obstacles: readonly { x: number; y: number }[];
   hasExit: boolean;
   hasExit2: boolean;
   /** The builder's guild, or "" (TempSave `Guild`). */
@@ -125,8 +124,7 @@ export function checkPlacement(i: PlacementInput): PlacementResult {
   if (!terrainOk(i.type, a.x, a.y, i.layer1, i.layer2)) {
     return { ok: false, text: pl.terrain.text };
   }
-  const ghost = ghostRect(i.type, i.hx, i.hy);
-  if (i.obstacles.some((r) => rectsIntersect(ghost, r))) {
+  if (i.obstacles.some((o) => inFootprint(i.type, a, o.x, o.y))) {
     return { ok: false, text: pl.obstacles };
   }
   if (i.hasExit && i.hasExit2) {
@@ -182,9 +180,8 @@ export function planHouse(
     outdoorItems.push(item1);
   }
   if (t.lamp) {
-    outdoorItems.push({ item: "Street Lamp", x: anchor.x + b.lamp.dx, y: anchor.y + b.lamp.dy });
-    // Recorded one row up, so demolition misses it.
-    item1 = { item: "Street Lamp", x: anchor.x + b.lamp.dx, y: anchor.y + b.lamp.recordDy };
+    item1 = { item: "Street Lamp", x: anchor.x + b.lamp.dx, y: anchor.y + b.lamp.dy };
+    outdoorItems.push(item1);
   }
   return {
     interior: houseMapName(mx, my, slot),
@@ -201,21 +198,19 @@ export function planHouse(
 }
 
 /**
- * The do-not-drop flag: 1 unless the header names you ("<name>'s"); 0 if it is your guild's hall. Nothing
- * sets it to 0 otherwise, so it keeps `prev`. 1.6 matched by substring (Bob passed in "Jimbob's
- * House"); SSO matches the owner exactly: the header must start with "<name>'s ", or be exactly
- * "Hall of the <guild>".
+ * The do-not-drop flag, worked out afresh from the room you are in: 0 where the header names you
+ * ("<name>'s ", exactly; 1.6 matched by substring, so Bob passed in "Jimbob's House") or is exactly
+ * "Hall of the <guild>" for your guild; 1 anywhere else. Nothing carries over from an earlier
+ * click or drop.
  */
-export function headDrop(prev: 0 | 1, header: string, name: string, guild: string): 0 | 1 {
-  let flag = prev;
-  const owner = `${name.toLowerCase()}'s `;
-  if (!header.toLowerCase().startsWith(owner)) {
-    flag = 1;
+export function headDrop(header: string, name: string, guild: string): 0 | 1 {
+  if (header.toLowerCase().startsWith(`${name.toLowerCase()}'s `)) {
+    return 0;
   }
   if (guild !== "" && lingoEq(header, `Hall of the ${guild}`)) {
-    flag = 0;
+    return 0;
   }
-  return flag;
+  return 1;
 }
 
 export const isFurniture = (item: string): boolean =>
@@ -224,25 +219,38 @@ export const isFurniture = (item: string): boolean =>
 /** Rest regen: `random(10) = 1` on a house map, then y < 11. */
 export const REST_REGEN = houseData.restRegen;
 
-/** The five-minute countdown. */
+/** The five-minute countdown: each online player's clock check refreshes their houses. */
 export const HOUSE_CLOCK_FRAMES = houseData.decay.clockFrames;
 
-/** `random(50) = 1` → the old-house cleanup. */
-export const HOUSE_SWEEP_ODDS = houseData.decay.sweepOdds;
+/** A house goes once its owner's last month is this many calendar months back. */
+export const HOUSE_STALE_MONTHS = houseData.decay.staleAfterMonths;
 
-/** One `houselist.txt` entry (`*<user>+<map>+<month>|`). */
+/** One house-list entry: the house (its interior) and the calendar month its owner was last seen. */
 export interface HouseListEntry {
   ownerId: string;
   ownerName: string;
   map: string;
+  /** The interior map the house built, which names the house (two houses can share a map). */
+  interior: string;
+  /** `YYYY-MM` in the house decay time zone. */
   month: string;
 }
 
-/** The last-login update: every entry of the owner, among the first 500, gets `month`. */
-export function refreshOwner(list: HouseListEntry[], ownerName: string, month: string): boolean {
+/** A `YYYY-MM` month as a count of months, or null when it is not one. */
+export function monthIndex(month: string): number | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!m) {
+    return null;
+  }
+  const mm = Number(m[2]);
+  return mm >= 1 && mm <= 12 ? Number(m[1]) * 12 + mm - 1 : null;
+}
+
+/** The last-login update: every entry of the owner gets `month`. */
+export function refreshOwner(list: HouseListEntry[], ownerId: string, month: string): boolean {
   let changed = false;
-  for (const e of list.slice(0, houseData.decay.listCap)) {
-    if (lingoEq(e.ownerName, ownerName) && e.month !== month) {
+  for (const e of list) {
+    if (e.ownerId === ownerId && e.month !== month) {
       e.month = month;
       changed = true;
     }
@@ -251,33 +259,31 @@ export function refreshOwner(list: HouseListEntry[], ownerName: string, month: s
 }
 
 /**
- * The old-house cleanup: every entry whose month is neither this month nor the last calls the house
- * remover, which demolishes every house of that owner and rewrites the list from the sweep's own
- * stale copy (Lingo passes the list by value). So only the last owner removed leaves the list;
- * earlier ones come back. Returns the demolitions in order (duplicates included, as 1.6 called
- * its house removal for each) and the list as last written.
+ * The decay sweep: each entry whose owner was last seen `HOUSE_STALE_MONTHS` or more months before
+ * `month` (the year counts) demolishes that one house, once, and leaves the list. The owner's other
+ * houses are judged by their own entries, and every removal stays removed.
  */
 export function sweep(
   list: readonly HouseListEntry[],
   month: string,
-): { demolish: { ownerId: string; ownerName: string; map: string }[]; list: HouseListEntry[] } {
-  const keep = houseData.decay.keep[month] ?? [];
-  const stale = list.slice(0, houseData.decay.listCap);
-  const demolish: { ownerId: string; ownerName: string; map: string }[] = [];
-  let written: HouseListEntry[] = [...list];
-  for (const e of stale) {
-    if (keep.includes(Number(e.month))) {
-      continue;
-    }
-    const others: HouseListEntry[] = [];
-    for (const f of stale) {
-      if (lingoEq(f.ownerName, e.ownerName)) {
-        demolish.push({ ownerId: f.ownerId, ownerName: f.ownerName, map: f.map });
-      } else {
-        others.push({ ...f });
-      }
-    }
-    written = others;
+): { demolish: HouseListEntry[]; list: HouseListEntry[] } {
+  const now = monthIndex(month);
+  if (now === null) {
+    return { demolish: [], list: [...list] };
   }
-  return { demolish, list: written };
+  const stale = (e: HouseListEntry) => {
+    const seen = monthIndex(e.month);
+    return seen !== null && now - seen >= HOUSE_STALE_MONTHS;
+  };
+  // An entry with no interior (written before houses were named by it) stands for its owner and map.
+  const key = (e: HouseListEntry) => e.interior || `${e.ownerId} ${e.map}`;
+  const demolish: HouseListEntry[] = [];
+  const gone = new Set<string>();
+  for (const e of list) {
+    if (stale(e) && !gone.has(key(e))) {
+      gone.add(key(e));
+      demolish.push({ ...e });
+    }
+  }
+  return { demolish, list: list.filter((e) => !gone.has(key(e))) };
 }

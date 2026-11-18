@@ -3125,170 +3125,50 @@
       "03524a2e396377ca"
     ]
   ],
-  "houses.json#/decay/keep/1": [
-    [
-      "0",
-      "6b86b273ff34fce1"
-    ],
-    [
-      "1",
-      "6b51d431df5d7f14"
-    ]
-  ],
-  "houses.json#/decay/keep/10": [
-    [
-      "0",
-      "4a44dc15364204a8"
-    ],
-    [
-      "1",
-      "19581e27de7ced00"
-    ]
-  ],
-  "houses.json#/decay/keep/11": [
-    [
-      "0",
-      "4fc82b26aecb47d2"
-    ],
-    [
-      "1",
-      "4a44dc15364204a8"
-    ]
-  ],
-  "houses.json#/decay/keep/12": [
-    [
-      "0",
-      "6b51d431df5d7f14"
-    ],
-    [
-      "1",
-      "4fc82b26aecb47d2"
-    ]
-  ],
-  "houses.json#/decay/keep/2": [
-    [
-      "0",
-      "d4735e3a265e16ee"
-    ],
-    [
-      "1",
-      "6b86b273ff34fce1"
-    ]
-  ],
-  "houses.json#/decay/keep/3": [
-    [
-      "0",
-      "4e07408562bedb8b"
-    ],
-    [
-      "1",
-      "d4735e3a265e16ee"
-    ]
-  ],
-  "houses.json#/decay/keep/4": [
-    [
-      "0",
-      "4b227777d4dd1fc6"
-    ],
-    [
-      "1",
-      "4e07408562bedb8b"
-    ]
-  ],
-  "houses.json#/decay/keep/5": [
-    [
-      "0",
-      "ef2d127de37b942b"
-    ],
-    [
-      "1",
-      "4b227777d4dd1fc6"
-    ]
-  ],
-  "houses.json#/decay/keep/6": [
-    [
-      "0",
-      "ef2d127de37b942b"
-    ],
-    [
-      "1",
-      "e7f6c011776e8db7"
-    ]
-  ],
-  "houses.json#/decay/keep/7": [
-    [
-      "0",
-      "7902699be42c8a8e"
-    ],
-    [
-      "1",
-      "e7f6c011776e8db7"
-    ]
-  ],
-  "houses.json#/decay/keep/8": [
-    [
-      "0",
-      "2c624232cdd22177"
-    ],
-    [
-      "1",
-      "7902699be42c8a8e"
-    ]
-  ],
-  "houses.json#/decay/keep/9": [
-    [
-      "0",
-      "19581e27de7ced00"
-    ],
-    [
-      "1",
-      "2c624232cdd22177"
-    ]
-  ],
   "houses.json#/deeds": [
     [
       "Boat Deed",
-      "8a38cfa880076c68"
+      "646ec495b050a44e"
     ],
     [
       "Airship Deed",
-      "eb4327650db8a0da"
+      "7fce4b8e20a18ff1"
     ],
     [
       "Battleship Deed",
-      "7d66f0fa8b40a5b3"
+      "270550cd20985fd7"
     ],
     [
       "Small House Deed",
-      "062d3a7b834ad2b2"
+      "48eac130bd36bad7"
     ],
     [
       "Small Farm Deed",
-      "543d050b3b18ac19"
+      "10cbd39a527fc5cc"
     ],
     [
       "Small Guild Hall Deed",
-      "27a14d9d8cd4d168"
+      "82a6339235ad50cc"
     ],
     [
       "Blue Cottage Deed",
-      "cc5e04d5299cc522"
+      "56d5b24905b62ec0"
     ],
     [
       "Small Shop Deed",
-      "353d675f9e27b0f1"
+      "0c517814cd7a360b"
     ],
     [
       "Stone Guild Hall Deed",
-      "844eaff3a23c567c"
+      "7733f5d32dde66e5"
     ],
     [
       "Fortress Guild Hall Deed",
-      "c0f142801dc7a966"
+      "656b52aea6e905db"
     ],
     [
       "Large House Deed",
-      "e13dcb706972c23f"
+      "ff8df34e672d299e"
     ]
   ],
   "houses.json#/furnitureDrop/items": [
@@ -3450,7 +3330,7 @@
     ],
     [
       "Small Farm Deed",
-      "727caf99b22c980e"
+      "1115476b3a21f1c7"
     ],
     [
       "Large House Deed",

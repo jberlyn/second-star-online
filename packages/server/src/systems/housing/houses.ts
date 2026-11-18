@@ -5,18 +5,18 @@
  * The rules are `shared/rules/housing/houses.ts`; this module changes the world. The database
  * writes (the interior's map row, the house tables) are game.ts's, through `HouseDeps`.
  */
-import { rectsData } from "@secondstaronline/data/rects";
 import {
   checkPlacement,
   type DeltaEvent,
   deedUse,
-  groundPicture,
+  FACING_DELTA,
   HOUSE_CLOCK_FRAMES,
-  HOUSE_SWEEP_ODDS,
+  type HouseListEntry,
   type HousePlan,
   type HouseType,
   houseType,
   invDelSlot,
+  isFootprint,
   isHouseMap,
   lingoContains,
   lingoEq,
@@ -24,17 +24,13 @@ import {
   REST_REGEN,
   type Rng,
   refreshOwner,
-  type StageRect,
-  spriteRect,
   sweep,
   TILE_DEFAULTS,
   tileAt,
-  tileLoc,
 } from "@secondstaronline/shared";
 
 import { refreshSnapshot } from "../admin/worldedit.ts";
 import { createShopkeeper } from "../economy/playershop.ts";
-import { monsterRect, playerRect } from "../spells/geometry.ts";
 import {
   type GroundItem,
   type HouseRecord,
@@ -53,7 +49,7 @@ export interface HouseDeps {
   createInterior(plan: HousePlan, type: HouseType, outdoor: WorldMap): WorldMap;
   loadMap(name: string): WorldMap | null;
   rng: Rng;
-  /** This month in the house decay time zone, "1"-"12". */
+  /** This month in the house decay time zone, `YYYY-MM`. */
   month(): string;
 }
 
@@ -64,14 +60,17 @@ const tell = (p: Player, text: string): Outgoing => ({
 
 /**
  * Use on a deed, after Use's own gates: a house deed starts placement and the client draws the
- * ghost; Boat and Battleship deeds do nothing, nor do the Stone Guild Hall. The Airship Deed never
- * reaches here: `useIntent` builds it first on a landing pad (`airshipDeed`). Returns null for
- * anything else.
+ * ghost; the Boat, Battleship and Stone Guild Hall Deeds say they cannot be built and are kept.
+ * The Airship Deed never reaches here: `useIntent` builds it first on a landing pad
+ * (`airshipDeed`). Returns null for anything else.
  */
 export function useDeed(p: Player, slot: number, item: string): Outgoing[] | null {
   const use = deedUse(item);
   if (!use) {
     return null;
+  }
+  if (use.kind === "nothing") {
+    return use.text ? [tell(p, use.text)] : [];
   }
   if (use.kind !== "place") {
     return [];
@@ -85,28 +84,27 @@ export function placeCancel(p: Player): void {
   p.placing = null;
 }
 
-/** The custom ground pictures share the 32×32 scratch member, regpoint (16, −2). */
-const SCRATCH_RECT = [32, 32, 16, -2] as const;
-
-/** A ground item's sprite rect (sprites 158-177): its picture's member at the item's loc. */
-export function groundRect(g: GroundItem): StageRect {
-  const pic = groundPicture(g.item);
-  const r = pic !== g.item ? SCRATCH_RECT : (rectsData.items[g.item.toLowerCase()] ?? SCRATCH_RECT);
-  const { h, v } = tileLoc(g.x, g.y);
-  return spriteRect(r, h, v);
-}
-
-/** The ground items, the monsters on stage and every player, the builder too. */
-export function obstacleRects(room: Room): StageRect[] {
-  const out: StageRect[] = room.map.ground.map(groundRect);
+/**
+ * The tiles a house cannot cover: each ground item's, each live monster's (a wide monster's three),
+ * and each player's, the builder's too, including the tile a walker is stepping onto.
+ */
+export function obstacleTiles(room: Room): { x: number; y: number }[] {
+  const out = room.map.ground.map((g) => ({ x: g.x, y: g.y }));
   for (const s of room.map.slots) {
-    const r = s.live ? monsterRect(s) : null;
-    if (r) {
-      out.push(r);
+    const m = s.live;
+    if (m) {
+      const wide = isFootprint(m.name) ? 3 : 1;
+      for (let i = 0; i < wide; i++) {
+        out.push({ x: m.x + i, y: m.y });
+      }
     }
   }
   for (const o of room.players) {
-    out.push(playerRect(o));
+    out.push({ x: o.x, y: o.y });
+    if (o.stepFrames > 0) {
+      const [dx, dy] = FACING_DELTA[o.facing];
+      out.push({ x: o.x + dx, y: o.y + dy });
+    }
   }
   return out;
 }
@@ -149,7 +147,7 @@ export function placeHouseIntent(
     hy,
     layer1: m.layers[0],
     layer2: m.layers[1],
-    obstacles: obstacleRects(room),
+    obstacles: obstacleTiles(room),
     hasExit: m.ground.some((g) => lingoEq(g.item, "Exit")),
     hasExit2: m.ground.some((g) => lingoEq(g.item, "Exit2")),
     guild,
@@ -205,7 +203,7 @@ export function placeHouseIntent(
       setTile(world, m, 2, t.x, t.y, t.code);
     }
   }
-  // 5. The blueprint, overwritten, and a list entry, appended.
+  // 5. The blueprint, one per house (named by its interior), and its list entry.
   const rec: HouseRecord = {
     ownerId: p.id,
     ownerName: p.name,
@@ -215,8 +213,14 @@ export function placeHouseIntent(
     tiles: plan.tiles,
     interior: plan.interior,
   };
-  world.houses.set(houseKey(p.id, m.name), rec);
-  world.houseList.push({ ownerId: p.id, ownerName: p.name, map: m.name, month: deps.month() });
+  world.houses.set(rec.interior, rec);
+  world.houseList.push({
+    ownerId: p.id,
+    ownerName: p.name,
+    map: m.name,
+    interior: rec.interior,
+    month: deps.month(),
+  });
   world.housesDirty = true;
 
   const out: Outgoing[] = [{ to: p.id, msg: { t: "placing", house: null, slot } }];
@@ -226,8 +230,6 @@ export function placeHouseIntent(
   return { out, built: rec, ...(shop ? { shop: { shop, interior } } : {}) };
 }
 
-export const houseKey = (ownerId: string, map: string) => `${ownerId} ${map}`;
-
 function parseOutdoor(name: string): { mx: number; my: number } | null {
   const m = /^x(-?\d+)y(-?\d+)$/i.exec(name);
   return m?.[1] && m[2] ? { mx: Number(m[1]), my: Number(m[2]) } : null;
@@ -236,23 +238,20 @@ function parseOutdoor(name: string): { mx: number; my: number } | null {
 // ---- decay -----------------------------------------------------------------------------
 
 /**
- * One month report from this player: their entries take this month, then `random(50) = 1` sweeps
- * the list. Returns the demolitions.
+ * One clock check from this player: their houses take this month. Then, once per day of the decay
+ * calendar (the first check of the day, by anyone), the sweep removes every house whose owner has
+ * not been seen this month or last. Returns the houses to demolish.
  */
-export function monthCheck(
-  world: World,
-  p: Player,
-  month: string,
-  rng: Rng,
-): { ownerId: string; ownerName: string; map: string }[] {
-  if (refreshOwner(world.houseList, p.name, month)) {
+export function monthCheck(world: World, p: Player, month: string, day: string): HouseListEntry[] {
+  if (refreshOwner(world.houseList, p.id, month)) {
     world.housesDirty = true;
   }
-  if (rng.random(HOUSE_SWEEP_ODDS) !== 1) {
+  if (world.houseSweepDay === day) {
     return [];
   }
+  world.houseSweepDay = day;
   const r = sweep(world.houseList, month);
-  if (r.demolish.length > 0 || r.list.length !== world.houseList.length) {
+  if (r.demolish.length > 0) {
     world.houseList = r.list;
     world.housesDirty = true;
   }
@@ -273,19 +272,18 @@ export function houseClockStep(p: Player): boolean {
 }
 
 /**
- * Demolition for one blueprint: the recorded mailbox or lamp and exit are blanked by exact name
- * and tile, each tile reverts to G3 only where layer 2 still holds it, and the exit field is left.
- * SSO also shows it at once and queues the interior for deletion. Missing blueprint: nothing, as
- * 1.6 read an empty file.
+ * Demolition for one house, named by its interior: the recorded mailbox or lamp and exit are
+ * blanked by exact name and tile, each tile reverts to G3 only where layer 2 still holds it, and
+ * the exit field is left. SSO also shows it at once and queues the interior for deletion. Missing
+ * blueprint: nothing.
  */
 export function demolish(
   world: World,
-  ownerId: string,
-  map: string,
+  interior: string,
   loadMap: (name: string) => WorldMap | null,
 ): { out: Outgoing[]; interior: string | null } {
-  const rec = world.houses.get(houseKey(ownerId, map));
-  const m = loadMap(map);
+  const rec = world.houses.get(interior);
+  const m = rec ? loadMap(rec.map) : null;
   if (!rec || !m) {
     return { out: [], interior: null };
   }
@@ -308,7 +306,7 @@ export function demolish(
       }
     }
   }
-  world.houses.delete(houseKey(ownerId, map));
+  world.houses.delete(interior);
   world.housesDirty = true;
   world.interiorsToDelete.add(rec.interior);
   world.containersDirty.add(`${rec.ownerName}'s House Vault`);
@@ -327,10 +325,10 @@ export function demolish(
 
 /**
  * Rest regen: on a house map `random(10) = 1`; then, if the step's destination row is below 11,
- * HP and SP rise by 1, capped. Nothing tests death.
+ * HP and SP rise by 1, capped. The dead do not rest.
  */
 export function restRegen(p: Player, rng: Rng): void {
-  if (!isHouseMap(p.map.name)) {
+  if (!isHouseMap(p.map.name) || p.deadLock > 0) {
     return;
   }
   if (rng.random(REST_REGEN.odds) !== 1 || p.y > REST_REGEN.maxY) {

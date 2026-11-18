@@ -8,15 +8,17 @@ import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
   closeAllDoors,
   facedDoor,
+  HOUSE_KEY_PAUSE,
   isDoorOrSwitch,
   isKey,
   KEY_PAUSE,
   KEY_TEXT,
   keyConsumed,
+  keyPause,
   periodicSave,
   QUEST_SAVE_BLOCK,
   questChestRefill,
-  relockAfter,
+  RELOCK_FRAMES,
   renameTargets,
   SWITCH_PAUSE,
   SWITCH_TEXT,
@@ -56,12 +58,14 @@ describe("keys", () => {
       from: "Alice's Door",
       to: "Alice's Opened Door",
       coloured: false,
+      opening: true,
     });
     expect(turnKey("House Key", "Alice's Opened Door", "alice", "")).toEqual({
       kind: "turn",
       from: "Alice's Opened Door",
       to: "Alice's Door",
       coloured: false,
+      opening: false,
     });
     expect(turnKey("House Key", "Alice's Door", "Bob", "")).toEqual({
       kind: "text",
@@ -87,37 +91,41 @@ describe("keys", () => {
       from: "Steel Door",
       to: "Open Steel Door",
       coloured: true,
+      opening: true,
     });
     expect(turnKey("Gold Key", "Open Gold Door", "Alice", "")).toMatchObject({
       to: "Gold Door",
       coloured: true,
+      opening: false,
     });
     expect(turnKey("Steel Key", "Gold Door", "Alice", "")).toEqual({ kind: "silent" });
     expect(turnKey("Steel Key", "Alice's Door", "Alice", "")).toEqual({ kind: "silent" });
     expect(turnKey("Steel Key", "Switch Door", "Alice", "")).toEqual({ kind: "silent" });
   });
 
-  test("kept bug: coloured keys are consumed on open and on close; Keys.txt has no Inf", () => {
+  test("bug fixed: a coloured key is spent opening its door, not closing it; Keys.txt has no Inf", () => {
     for (const k of ["Steel Key", "Emerald Key", "Fire Key", "Gold Key", "Wooden Key"]) {
-      expect(keyConsumed(k)).toBe(true);
+      expect(keyConsumed({ coloured: true, opening: true }, k)).toBe(true);
+      expect(keyConsumed({ coloured: true, opening: false }, k)).toBe(false);
     }
+    expect(keyPause({ coloured: true })).toBe(KEY_PAUSE);
     expect(KEY_PAUSE).toBe(425);
+  });
+
+  test("bug fixed: House and Guild Keys are kept and pause 100 after each turn", () => {
+    expect(keyConsumed({ coloured: false, opening: true }, "House Key")).toBe(false);
+    expect(keyConsumed({ coloured: false, opening: false }, "Guild Key")).toBe(false);
+    expect(keyPause({ coloured: false })).toBe(HOUSE_KEY_PAUSE);
+    expect(HOUSE_KEY_PAUSE).toBe(100);
   });
 });
 
 describe("the rename", () => {
-  test("kept bug: opening a coloured door renames every door of that name on the map", () => {
-    const names = ["Steel Door", "3 Gold", "Steel Door", "Open Steel Door", "Gold Door"];
-    // "Open Steel Door" contains "Steel Door" too: renamed to the same name, no change.
-    expect(renameTargets(names, "Steel Door")).toEqual([0, 2, 3]);
-  });
-
-  test("kept bug: a player door rename matches by substring (Bob's Door in Jimbob's Door)", () => {
-    expect(renameTargets(["Jimbob's Door", "Bob's Door"], "Bob's Door")).toEqual([0, 1]);
-  });
-
-  test("kept bug: a switch flips every switch of that state on the map", () => {
-    expect(renameTargets(["ON Switch", "OFF Switch", "ON Switch"], "ON Switch")).toEqual([0, 2]);
+  test("bug fixed: a map-wide rename matches whole names only", () => {
+    const names = ["Switch Door", "3 Gold", "Open Switch Door", "Switch Door"];
+    // "Open Switch Door" contains "Switch Door" but is not one.
+    expect(renameTargets(names, "Switch Door")).toEqual([0, 3]);
+    expect(renameTargets(["Jimbob's Door", "Bob's Door"], "Bob's Door")).toEqual([1]);
   });
 
   test("only doors and switches are renamed (exploit 3 closed)", () => {
@@ -155,17 +163,11 @@ describe("switches", () => {
 });
 
 describe("relock", () => {
-  test("a change sets 200, an arrival 150, a switch click 100; the earliest wins", () => {
-    expect(relockAfter(0, "change")).toBe(200);
-    expect(relockAfter(10, "change")).toBe(200);
-    expect(relockAfter(0, "arrival")).toBe(150);
-    expect(relockAfter(10, "arrival")).toBe(10);
-    expect(relockAfter(180, "arrival")).toBe(150);
-    expect(relockAfter(0, "switchClick")).toBe(100);
-    expect(relockAfter(120, "switchClick")).toBe(100);
+  test("the doors close 200 frames after the last change", () => {
+    expect(RELOCK_FRAMES).toBe(200);
   });
 
-  test("kept bug: CloseAllDoors closes coloured and switch doors and ON switches, never player doors", () => {
+  test("bug fixed: CloseAllDoors closes coloured, switch, player and guild doors and ON switches", () => {
     expect(
       closeAllDoors([
         "Open Steel Door",
@@ -175,11 +177,14 @@ describe("relock", () => {
         "Open Steel Door",
         "The Knights's Opened Door",
         "Gold Door",
+        "Alice's Door",
       ]),
     ).toEqual([
       ["Open Steel Door", "Steel Door"],
+      ["Alice's Opened Door", "Alice's Door"],
       ["ON Switch", "OFF Switch"],
       ["Open Switch Door", "Switch Door"],
+      ["The Knights's Opened Door", "The Knights's Door"],
     ]);
   });
 });

@@ -27,17 +27,17 @@ Keys and switches affect matching doors, with relocking handled on ticks. House 
 
 ### Placement and records
 
-Using an eligible deed starts placement; Boat, Battleship and Stone Guild Hall deeds do nothing. The placement checks run in order: map edges, terrain, overlap, available exit slots and guild requirements. A refusal leaves placement active. On success the server creates the outdoor exit and items, creates the interior, consumes the deed, changes eligible tiles and records the blueprint and house list before refreshing the map. If interior creation fails, the preliminary map changes are rolled back. House types and their sizes come from [house content](../../packages/data/content/houses.json).
+Using an eligible deed starts placement; Boat, Battleship and Stone Guild Hall deeds say they cannot be built yet and are kept. Every house anchors one column left and one row up of the hovered tile. The placement checks run in order: map edges, terrain (every footprint tile must be 8R, 8U or 8V on layer 1 and G3 on layer 2), overlap (anything standing on a footprint tile, the builder included), available exit slots and guild requirements. A refusal leaves placement active. On success the server creates the outdoor exit and items, creates the interior, consumes the deed, changes eligible tiles and records the blueprint and house list before refreshing the map. If interior creation fails, the preliminary map changes are rolled back. House types and their sizes come from [house content](../../packages/data/content/houses.json).
 
-The shared map helpers generate the interior name from the outdoor coordinates and selected exit slot. Ownership and guild information are used for the room's drop and access rules; vaults use the economy system, while mailboxes and boards use mail and board persistence. House activity refreshes the owner's entries. Periodic clock checks can trigger a decay sweep; demolition removes the associated interior and vault in SSO and updates the map. Rest regeneration is separately rolled while inside.
+The shared map helpers generate the interior name from the outdoor coordinates and selected exit slot. Ownership and guild information are used for the room's drop and access rules; vaults use the economy system, while mailboxes and boards use mail and board persistence. Each house has its own blueprint and list entry, named by its interior. A login and each online player's clock check refresh that player's houses to this month (`YYYY-MM`); the first clock check of each day runs the decay sweep, which demolishes each house whose owner was last seen two or more calendar months ago. Demolition removes the house's tiles, exit, mailbox or street lamp, interior and vault, and updates the map at once. Rest regeneration is separately rolled while inside, and skipped while dead.
 
 ### Doors and switches
 
-A key acts on the faced door. House and guild keys remain in the bag and have no key pause; coloured keys are consumed and impose a pause. A switch must be faced while standing still, although even a refused click arms its relock timer. Switching changes matching switches and doors across the map. The map's timer closes coloured and switch doors; player and guild doors do not relock themselves.
+A key acts on the faced door and changes only that door. House and guild keys remain in the bag and pause 100 frames; a coloured key is spent when it opens its door (closing is free) and pauses 425. A switch must be faced while standing still; a refused click changes nothing. A switch flips only itself and opens or closes every switch door on the map. Every door change sets the map's relock to 200 frames, after which coloured, switch, player and guild doors close and ON switches turn off. The timer keeps running while the map is empty.
 
 ## Kept bugs and differences
 
-The Small Farm is built one row lower than other houses. Coloured keys are consumed both on opening and closing, and changing a coloured door can change every door of the same name.
+Housing has no kept bugs; every former entry is fixed and listed under the housing differences.
 
 See the [housing kept bugs](../bug-ledger.md#housing) and [housing differences](../divergences.md#housing) for the specific player-visible cases.
 

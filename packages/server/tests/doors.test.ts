@@ -19,6 +19,7 @@ import {
   addPlayer,
   createWorld,
   type GroundItem,
+  leaveRoom,
   type Player,
   type Room,
   type World,
@@ -106,19 +107,36 @@ describe("keys", () => {
     expect(s.room().doorLock).toBe(200); // the echo
   });
 
-  test("kept bug: house and guild keys work with no pause and are kept", () => {
+  test("bug fixed: a House Key pauses 100 after each turn and is kept", () => {
     const s = scene();
     const alice = s.join("Alice", 9, 11);
     const door = s.put("Alice's Door", 9, 10);
     give(alice, 1, "House Key");
     useIntent(s.ctx(), s.room(), alice, 1);
-    expect(alice.itemPause).toBe(0);
+    expect(door.item).toBe("Alice's Opened Door");
+    expect(alice.itemPause).toBe(100);
+    // Inside the pause the key does nothing.
+    useIntent(s.ctx(), s.room(), alice, 1);
+    expect(door.item).toBe("Alice's Opened Door");
+    alice.itemPause = 0;
     useIntent(s.ctx(), s.room(), alice, 1);
     expect(door.item).toBe("Alice's Door");
     expect(alice.char.bag[0]).toEqual({ item: "House Key", qty: 1 });
   });
 
-  test("kept bug: a coloured key is spent opening and closing; it pauses 425", () => {
+  test("bug fixed: a Guild Key pauses 100 and is kept", () => {
+    const s = scene();
+    const alice = s.join("Alice", 9, 11);
+    alice.guild = "Knights";
+    const door = s.put("The Knights's Door", 9, 10);
+    give(alice, 1, "Guild Key");
+    useIntent(s.ctx(), s.room(), alice, 1);
+    expect(door.item).toBe("The Knights's Opened Door");
+    expect(alice.itemPause).toBe(100);
+    expect(alice.char.bag[0]).toEqual({ item: "Guild Key", qty: 1 });
+  });
+
+  test("bug fixed: a coloured key is spent opening its door, not closing it; it pauses 425", () => {
     const s = scene();
     const p = s.join("Alice", 5, 5);
     const door = s.put("Steel Door", 5, 4);
@@ -130,7 +148,8 @@ describe("keys", () => {
     p.itemPause = 0;
     useIntent(s.ctx(), s.room(), p, 2);
     expect(door.item).toBe("Steel Door");
-    expect(p.char.bag[1]).toBeNull();
+    expect(p.char.bag[1]).toEqual({ item: "Steel Key", qty: 1 });
+    expect(p.itemPause).toBe(425);
   });
 
   test("kept bug: a Steel Key is on the usable list but Use sends it to the door rule, so it is never eaten like a usable item", () => {
@@ -165,7 +184,7 @@ describe("keys", () => {
     expect(p.char.bag[0]).toEqual({ item: "Gold Key", qty: 1 });
   });
 
-  test("kept bug: opening one Steel Door opens every Steel Door on the map", () => {
+  test("bug fixed: a key opens only the Steel Door you face", () => {
     const s = scene();
     const p = s.join("Alice", 5, 5);
     s.put("Steel Door", 5, 4);
@@ -173,7 +192,17 @@ describe("keys", () => {
     s.put("Gold Door", 13, 2);
     give(p, 1, "Steel Key");
     useIntent(s.ctx(), s.room(), p, 1);
-    expect(s.names()).toEqual(["Open Steel Door", "Open Steel Door", "Gold Door"]);
+    expect(s.names()).toEqual(["Open Steel Door", "Steel Door", "Gold Door"]);
+  });
+
+  test("bug fixed: Bob's House Key leaves Jimbob's Door alone", () => {
+    const s = scene();
+    const bob = s.join("Bob", 5, 5);
+    s.put("Jimbob's Door", 7, 4);
+    s.put("Bob's Door", 5, 4);
+    give(bob, 1, "House Key");
+    useIntent(s.ctx(), s.room(), bob, 1);
+    expect(s.names()).toEqual(["Jimbob's Door", "Bob's Opened Door"]);
   });
 
   test("the last door on the faced tile is the one the key tries", () => {
@@ -209,8 +238,7 @@ describe("relock", () => {
     s.join("Bob", 8, 8);
     const door = s.put("Steel Door", 5, 4);
     give(p, 1, "Steel Key", 2);
-    s.run(200); // the arrivals' 150 has run out with nothing to close
-    expect(s.room().doorLock).toBe(0);
+    expect(s.room().doorLock).toBe(0); // arriving sets no relock
     useIntent(s.ctx(), s.room(), p, 1);
     s.run(199);
     expect(door.item).toBe("Open Steel Door");
@@ -220,23 +248,11 @@ describe("relock", () => {
     expect(s.room().doorLock).toBe(200); // the close echoes; the next run finds nothing open
   });
 
-  test("kept bug: arriving on a map closes its doors 150 frames later", () => {
-    const s = scene();
-    const door = s.put("Open Gold Door", 3, 3);
-    s.join("Bob", 8, 8);
-    expect(s.room().doorLock).toBe(150);
-    s.run(149);
-    expect(door.item).toBe("Open Gold Door");
-    s.run(1);
-    expect(door.item).toBe("Gold Door");
-  });
-
-  test("an arrival does not put off an earlier relock (the earliest client's counter)", () => {
+  test("bug fixed: arriving on a map leaves a running relock alone", () => {
     const s = scene();
     const p = s.join("Alice", 5, 5);
     const door = s.put("Steel Door", 5, 4);
     give(p, 1, "Steel Key");
-    s.run(150);
     useIntent(s.ctx(), s.room(), p, 1);
     s.run(190);
     s.join("Bob", 8, 8);
@@ -245,13 +261,48 @@ describe("relock", () => {
     expect(door.item).toBe("Steel Door");
   });
 
-  test("kept bug: player and guild doors never relock", () => {
+  test("bug fixed: doors on a map nobody is on still close on time", () => {
     const s = scene();
-    s.put("Alice's Opened Door", 9, 10);
-    s.put("The Knights's Opened Door", 3, 3);
+    const p = s.join("Alice", 5, 5);
+    const door = s.put("Steel Door", 5, 4);
+    give(p, 1, "Steel Key");
+    useIntent(s.ctx(), s.room(), p, 1);
+    s.run(50);
+    // Alice leaves with 150 frames to go; the map is unloaded.
+    leaveRoom(s.world, p);
+    expect(s.world.rooms.has(s.map.name)).toBe(false);
+    s.run(100);
+    // Bob arrives with 50 to go: the doors close then, not 150 frames after he arrived.
     s.join("Bob", 8, 8);
-    s.run(400);
-    expect(s.names()).toEqual(["Alice's Opened Door", "The Knights's Opened Door"]);
+    expect(s.room().doorLock).toBe(50);
+    s.run(50);
+    expect(door.item).toBe("Steel Door");
+    // Arriving long after the relock was due closes them on the first frame.
+    const q = s.room().players[0] as Player;
+    door.item = "Open Steel Door";
+    s.room().doorLock = 5;
+    leaveRoom(s.world, q);
+    s.run(500);
+    s.join("Carl", 8, 8);
+    expect(s.room().doorLock).toBe(1);
+    s.run(1);
+    expect(door.item).toBe("Steel Door");
+  });
+
+  test("bug fixed: player and guild doors relock like the others", () => {
+    const s = scene();
+    const alice = s.join("Alice", 9, 11);
+    alice.guild = "Knights";
+    const own = s.put("Alice's Door", 9, 10);
+    const hall = s.put("The Knights's Opened Door", 3, 3);
+    give(alice, 1, "House Key");
+    useIntent(s.ctx(), s.room(), alice, 1);
+    expect(own.item).toBe("Alice's Opened Door");
+    s.run(199);
+    expect(own.item).toBe("Alice's Opened Door");
+    s.run(1);
+    expect(own.item).toBe("Alice's Door");
+    expect(hall.item).toBe("The Knights's Door");
   });
 });
 
@@ -278,33 +329,30 @@ describe("switches", () => {
     expect(s.names()).toEqual(["OFF Switch", "Switch Door"]);
   });
 
-  test("kept bug: a switch flips every switch of its state on the map", () => {
+  test("bug fixed: a switch flips only itself", () => {
     const s = scene();
     const p = s.join("Alice", 5, 5);
     const sw = s.put("OFF Switch", 5, 4);
     s.put("OFF Switch", 12, 8);
     pickupIntent(s.ctx(), s.room(), p, sw.id);
-    expect(s.names()).toEqual(["ON Switch", "ON Switch"]);
+    expect(s.names()).toEqual(["ON Switch", "OFF Switch"]);
   });
 
-  test("kept bug: a refused switch click still arms the relock", () => {
+  test("bug fixed: a refused switch click leaves the relock alone", () => {
     const s = scene();
     const p = s.join("Alice", 2, 2);
     const sw = s.put("ON Switch", 5, 4);
     const door = s.put("Open Steel Door", 9, 9);
-    s.run(150); // the arrival's relock closes the door and turns the switch off once
-    door.item = "Open Steel Door";
-    sw.item = "ON Switch";
     s.room().doorLock = 0;
     const out = pickupIntent(s.ctx(), s.room(), p, sw.id);
     expect(chat(out, "Alice")).toEqual([
       "You see the switch, but you must be standing in front of it to use it.",
     ]);
     expect(sw.item).toBe("ON Switch");
-    expect(s.room().doorLock).toBe(100);
-    s.run(100);
-    expect(door.item).toBe("Steel Door");
-    expect(sw.item).toBe("OFF Switch"); // closing all doors turns ON switches off
+    expect(s.room().doorLock).toBe(0);
+    s.run(300);
+    expect(door.item).toBe("Open Steel Door");
+    expect(sw.item).toBe("ON Switch");
   });
 });
 

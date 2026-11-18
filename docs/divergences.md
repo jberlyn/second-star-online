@@ -28,7 +28,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [core](#core) | 55 |
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 49 |
-| [housing](#housing) | 7 |
+| [housing](#housing) | 27 |
 | [inventory](#inventory) | 13 |
 | [mail](#mail) | 11 |
 | [monsters](#monsters) | 4 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **274** |
+| **Total** | **294** |
 
 ## admin
 
@@ -2190,7 +2190,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Exploit closed
 - **What you notice:** House decay follows the server's calendar and the operator's configured time zone.
 - **1.6:** Any client supplied the shared calendar month; a forged month sent repeatedly could demolish every house.
-- **SSO:** The server gets the month using `houseDecayTimeZone`, UTC by default. The refresh and one-in-50 roll run as the original did: twice at login and every 1,230 frames per online player.
+- **SSO:** The server gets the date using `houseDecayTimeZone`, UTC by default. An owner's houses are refreshed at login and every 1,230 frames while they are online; the sweep runs once a day (see "House decay sweeps once a day").
 - **Why:** A forged client could otherwise wipe players' houses.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`monthCheck`, `houseClockStep`)
 
@@ -2214,7 +2214,7 @@ An entry uses this shape; `Pinned by` is optional:
 - **Kind:** Architecture
 - **What you notice:** Doors relock according to a shared timer for the map.
 - **1.6:** Each client counted down and sent its own close. A door change set each client to 200 frames, an arriving client started at 150 and a switch clicker at 100; the earliest closed the doors. An empty map counted nothing.
-- **SSO:** One timer per map uses the same counts: a change sets 200, while arrival or a switch click takes the smaller of the remaining time and 150 or 100 respectively. The timer leaves with an emptied map.
+- **SSO:** One timer per map: every door or switch change sets it to 200. Arriving and refused switch clicks set nothing, and the timer keeps running while the map is empty (see the "Bug fixed" entries below).
 - **Why:** The server model has no peers running separate countdowns.
 - **In the code:** `packages/server/src/systems/housing/doors.ts` (`switchClick`, `relockStep`)
 
@@ -2243,6 +2243,177 @@ An entry uses this shape; `Pinned by` is optional:
 - **Why:** The ground-item cap is lifted, so the count no longer protects the original 20 slots.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`placeHouseIntent`)
 - **Pinned by:** `SSO: a deed builds with 25 items on the ground; 1.6 refused more than 17` (packages/server/tests/houses-db.test.ts)
+
+### Unbuildable deeds say so
+- **Kind:** Bug fixed
+- **What you notice:** Using a Boat Deed, a Battleship Deed or a Stone Guild Hall Deed says "Boats cannot be built yet, so this deed can't be used." (or the Battleship or Stone Guild Hall version) and keeps the deed.
+- **1.6:** The Stone Guild Hall had a deed but no house art, template or builder, and the deed handler exited before the boat builder for the Boat and Battleship, so all three did nothing and said nothing.
+- **SSO:** The deeds still build nothing, since there is no art or template to build from, but Use explains why and the deed stays in the bag. The texts are in `houses.json` (`deeds[].text`).
+- **Why:** A silent item reads as a broken click. Building them is planned: boats and battleships in [#2](https://github.com/jberlyn/second-star-online/issues/2), the Stone Guild Hall in [#10](https://github.com/jberlyn/second-star-online/issues/10).
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`deedUse`), `packages/server/src/systems/housing/houses.ts` (`useDeed`)
+- **Pinned by:** `bug fixed: Boat and Battleship Deeds say they cannot be built`; `bug fixed: the Stone Guild Hall Deed says it cannot be built` (packages/shared/tests/housing/houses.test.ts); `bug fixed: a Boat Deed says it cannot be built and is kept` (packages/server/tests/houses-db.test.ts)
+
+### The Small Farm lands where the other houses do
+- **Kind:** Bug fixed
+- **What you notice:** The Small Farm's ghost and the farm it builds sit in the same place relative to your cursor as the Large House's.
+- **1.6:** The step that moves the anchor up a row tested for the misspelt "Small Fam", so the farm kept the hovered row and was drawn and built one row lower.
+- **SSO:** Every house anchors one column left and one row up of the hovered tile; the farm's ghost moves up with it.
+- **Why:** The misspelling was a typo, not a design.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`houseAnchor`, `ghostRect`)
+- **Pinned by:** `bug fixed: the Small Farm anchors one up and one left like every house, its ghost to match` (packages/shared/tests/housing/houses.test.ts)
+
+### The whole footprint is checked for terrain
+- **Kind:** Bug fixed
+- **What you notice:** A 5-wide house is refused when any of its 15 tiles is rough ground, not just the left three columns.
+- **1.6:** The ground test read a map line whose last two columns came back empty and counted only the first three columns against a fixed pass mark of 9.
+- **SSO:** Every footprint tile's layer-1 code must be a build code.
+- **Why:** Houses could stand half over water or rock.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`terrainOk`)
+- **Pinned by:** `bug fixed: layer 1 is checked on every column of a 5-wide house` (packages/shared/tests/housing/houses.test.ts)
+
+### Houses can be anchored on rows 8 and 9
+- **Kind:** Bug fixed
+- **What you notice:** A house can be placed with its top row on row 8 or 9, as the edge rule allows.
+- **1.6:** The ground test read rows 10 and 11 by item number from the map record, landing on the NPC and monster fields, which never matched.
+- **SSO:** Every footprint row reads the map's own layer 1.
+- **Why:** The bottom of every map was unbuildable by accident.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`terrainOk`)
+- **Pinned by:** `bug fixed: a house can be anchored on rows 8 and 9; its rows 10 and 11 read the map` (packages/shared/tests/housing/houses.test.ts)
+
+### 8V counts as house ground
+- **Kind:** Bug fixed
+- **What you notice:** Ground of type 8V can be built on, like 8R and 8U.
+- **1.6:** The ground test was a text match against `*8R*8U*8V` with no closing star, so `*8V*` never matched.
+- **SSO:** Each code is compared whole, case ignored.
+- **Why:** 8V is listed as house ground; the missing star dropped it.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`terrainOk`)
+- **Pinned by:** `bug fixed: 8V counts as house ground like 8R and 8U, matched whole` (packages/shared/tests/housing/houses.test.ts)
+
+### Only what is on the footprint is in the way
+- **Kind:** Bug fixed
+- **What you notice:** Items, monsters and players next to the house, and the builder standing beside it, no longer block placement. Something on a footprint tile still does.
+- **1.6:** The ghost's bounding rectangle, which sits a pixel or two right of and above the footprint, was tested against item, monster and player sprites, so neighbours and the builder's own sprite counted.
+- **SSO:** The server tests the footprint's tiles against the tiles items, monsters (a wide monster's three) and players (and a walker's next tile) stand on.
+- **Why:** Placement should match what the ghost covers.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`checkPlacement`, `inFootprint`), `packages/server/src/systems/housing/houses.ts` (`obstacleTiles`)
+- **Pinned by:** `bug fixed: only something on the footprint itself is in the way` (packages/shared/tests/housing/houses.test.ts); `bug fixed: standing beside the footprint is not in the way` (packages/server/tests/houses-db.test.ts)
+
+### A demolished Small Shop takes its street lamp
+- **Kind:** Bug fixed
+- **What you notice:** When a Small Shop decays, its street lamp goes too.
+- **1.6:** The lamp was dropped one row lower than the place recorded for it, and demolition removed by exact match, so it was never found.
+- **SSO:** The lamp is recorded where it is dropped. The upgrade moves the lamp in existing shops' records down a row to match.
+- **Why:** Demolition should leave nothing of the house behind.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`planHouse`), `packages/server/migrations/20261118_30_house_decay.sql`
+- **Pinned by:** `bug fixed: the Small Shop's lamp is recorded where it is dropped, so demolition finds it` (packages/shared/tests/housing/houses.test.ts); `bug fixed: a Small Shop's street lamp goes with it`; `the migration names each list entry's house, gives its month a year and moves the shop lamp` (packages/server/tests/houses-db.test.ts)
+
+### Decay takes only the stale house, and counts the year
+- **Kind:** Bug fixed
+- **What you notice:** A house decays on its own; the owner's other houses are judged separately. A house whose owner was last seen in this month a year ago decays.
+- **1.6:** The remover matched every list entry with the owner's name, and months were compared with no year.
+- **SSO:** Each list entry names its house (by interior) and stores its month with the year (`YYYY-MM`). A house goes once its owner was last seen two or more calendar months ago (`decay.staleAfterMonths`). The upgrade gives existing entries this year, or last year for a month later than this one.
+- **Why:** One stale entry should not cost an owner every house, and a year-old visit is not recent.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`sweep`, `monthIndex`), `packages/server/src/systems/housing/houses.ts` (`demolish`)
+- **Pinned by:** `bug fixed: a stale house goes alone; the owner's other houses and the year count` (packages/shared/tests/housing/houses.test.ts); `a stale owner's house is demolished by the day's sweep: tiles revert, Exit and mailbox go, the interior is deleted` (packages/server/tests/houses-db.test.ts)
+
+### The decay sweep's removals stay removed
+- **Kind:** Bug fixed
+- **What you notice:** After a sweep, the list holds only the houses still standing.
+- **1.6:** The sweep looped over an old copy of the list and each removal rewrote the list from that copy, so earlier removals came back as entries for houses that were gone.
+- **SSO:** The sweep removes every demolished house's entries at once.
+- **Why:** Zombie entries were demolished again on later sweeps.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`sweep`)
+- **Pinned by:** `bug fixed: every house the sweep removes stays removed` (packages/shared/tests/housing/houses.test.ts)
+
+### Each house keeps its own blueprint
+- **Kind:** Bug fixed
+- **What you notice:** If you own two houses on one map, demolishing them restores the ground under both.
+- **1.6:** One blueprint was saved per owner and map, so a second house overwrote the first's.
+- **SSO:** Blueprints are keyed by the house's interior. Records already overwritten on an older server cannot be recovered; those houses keep standing.
+- **Why:** A lost blueprint left a house that could never be cleared.
+- **In the code:** `packages/server/src/systems/housing/houses.ts` (`placeHouseIntent`, `demolish`)
+- **Pinned by:** `bug fixed: two houses on one map are two entries, judged apart` (packages/shared/tests/housing/houses.test.ts); `bug fixed: two houses by one owner on one map keep a blueprint each, and both are reverted` (packages/server/tests/houses-db.test.ts)
+
+### House decay sweeps once a day
+- **Kind:** Bug fixed
+- **What you notice:** Stale houses are removed at the first clock check of each day (in the decay time zone), whoever is online, rather than at random while you play.
+- **1.6:** Every date message (twice at login, then about once a minute for each online client) rolled 1 in 50 for a sweep, so busier servers swept far more often.
+- **SSO:** Each clock check still refreshes its player's houses, and a login is one check; the sweep runs once per calendar day.
+- **Why:** Decay should not depend on how many people are online.
+- **In the code:** `packages/server/src/systems/housing/houses.ts` (`monthCheck`, `houseClockStep`)
+- **Pinned by:** `bug fixed: the sweep runs once a day, not on every clock check`; `an owner's own login refreshes their entries before the sweep` (packages/server/tests/houses-db.test.ts)
+
+### The dead do not rest
+- **Kind:** Bug fixed
+- **What you notice:** Resting near the top of a house map no longer heals you while you are dead.
+- **1.6:** The house rest-healing had no death check.
+- **SSO:** Rest regeneration skips a player in the death lock.
+- **Why:** Healing a corpse made no sense and changed what the respawn restored.
+- **In the code:** `packages/server/src/systems/housing/houses.ts` (`restRegen`)
+- **Pinned by:** `bug fixed: the dead do not rest` (packages/server/tests/houses-db.test.ts)
+
+### Your own stations are always yours
+- **Kind:** Bug fixed
+- **What you notice:** Clicking your own Stove, Anvil or Alchemy Lab picks it up, even after a station elsewhere showed its line.
+- **1.6:** A click set the "don't pick this up" flag but never cleared it; only Drop reset it.
+- **SSO:** The flag is worked out from the room you are in on every click.
+- **Why:** Whether a station is yours depends on where it stands, not on what you clicked before.
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`), `packages/server/src/systems/inventory/items.ts` (`pickupIntent`)
+- **Pinned by:** `a room whose header names you is 0; anywhere else is 1` (packages/shared/tests/housing/houses.test.ts); `bug fixed: your own Anvil is picked up even after a refusal elsewhere` (packages/server/tests/houses-db.test.ts)
+
+### Coloured keys are spent only when they open
+- **Kind:** Bug fixed
+- **What you notice:** A coloured key is used up when it opens its door; closing the door with it is free. The 425-frame pause stays.
+- **1.6:** The key routine spent the key on every use, so one door cost two keys.
+- **SSO:** Only an opening turn spends the key.
+- **Why:** Doors relock by themselves, so a second key to close one was pure loss.
+- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`keyConsumed`), `packages/server/src/systems/housing/doors.ts` (`useKey`)
+- **Pinned by:** `bug fixed: a coloured key is spent opening its door, not closing it; Keys.txt has no Inf` (packages/shared/tests/housing/doors.test.ts); `bug fixed: a coloured key is spent opening its door, not closing it; it pauses 425` (packages/server/tests/doors.test.ts)
+
+### A key or switch changes only what you use it on
+- **Kind:** Bug fixed
+- **What you notice:** Opening a Steel Door opens that door only; flipping a switch flips that switch only (its switch doors on the map still open or close together). Bob's House Key no longer opens Jimbob's Door.
+- **1.6:** Every item on the map whose name contained the old name was renamed.
+- **SSO:** A key renames the door you face and a switch renames itself, by item. A switch's doors and the relock still change every door of an exact name.
+- **Why:** One door should not unlock a whole map, nor one owner's key another's house.
+- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`renameTargets`, `switchFlip`), `packages/server/src/systems/housing/doors.ts` (`useKey`, `switchClick`, `renameDoors`)
+- **Pinned by:** `bug fixed: a map-wide rename matches whole names only` (packages/shared/tests/housing/doors.test.ts); `bug fixed: a key opens only the Steel Door you face`; `bug fixed: Bob's House Key leaves Jimbob's Door alone`; `bug fixed: a switch flips only itself` (packages/server/tests/doors.test.ts)
+
+### Player and guild doors relock
+- **Kind:** Bug fixed
+- **What you notice:** A house or guild hall door opened with a key shuts by itself 200 frames after the map's last door change, like coloured and switch doors.
+- **1.6:** The close-all routine listed only switch and coloured doors.
+- **SSO:** The relock also turns "<owner>'s Opened Door" back into "<owner>'s Door".
+- **Why:** An open house door stayed open for anyone until its owner came back.
+- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`closeAllDoors`, `closedName`), `packages/server/src/systems/housing/doors.ts` (`relockStep`)
+- **Pinned by:** `bug fixed: CloseAllDoors closes coloured, switch, player and guild doors and ON switches` (packages/shared/tests/housing/doors.test.ts); `bug fixed: player and guild doors relock like the others` (packages/server/tests/doors.test.ts)
+
+### House and Guild Keys pause after each turn
+- **Kind:** Bug fixed
+- **What you notice:** After a House Key or Guild Key turns a door you wait 100 frames before the next item action, as after a switch. The key stays in your bag.
+- **1.6:** These keys went straight to the door change with no action pause, so a door could be flipped every frame.
+- **SSO:** They pause 100 frames (`keys.housePause`) and are still never spent. Being kept is intended: the key is how an owner gets in.
+- **Why:** Rapid toggling flooded the map with door changes.
+- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`keyPause`), `packages/server/src/systems/housing/doors.ts` (`useKey`)
+- **Pinned by:** `bug fixed: House and Guild Keys are kept and pause 100 after each turn` (packages/shared/tests/housing/doors.test.ts); `bug fixed: a House Key pauses 100 after each turn and is kept`; `bug fixed: a Guild Key pauses 100 and is kept` (packages/server/tests/doors.test.ts)
+
+### A refused switch click changes nothing
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a switch from across the room gives the "standing in front of it" line and nothing else; the map's doors keep their timing.
+- **1.6:** The relock countdown was started at 100 before the adjacency check.
+- **SSO:** Nothing is armed until the switch actually flips.
+- **Why:** A refused action should not shut other players' doors.
+- **In the code:** `packages/server/src/systems/housing/doors.ts` (`switchClick`)
+- **Pinned by:** `bug fixed: a refused switch click leaves the relock alone` (packages/server/tests/doors.test.ts)
+
+### Doors close on their own timer, whoever is on the map
+- **Kind:** Bug fixed
+- **What you notice:** Doors close 200 frames after they were last changed. Arriving on a map does not change when they close, and doors on a map nobody is on still close on time.
+- **1.6:** Loading a map started a 150-frame countdown, and an empty map counted nothing, so its doors stayed open until someone arrived.
+- **SSO:** Arrival sets nothing. When a map empties its timer is kept as the tick it falls due; when the map is next loaded the doors close then, or on the first frame if that tick has passed. Doors found open with no timer (after a restart) close on the first frame.
+- **Why:** Door timing should not depend on who walks in.
+- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`RELOCK_FRAMES`, `anyOpenDoor`), `packages/server/src/systems/world/world.ts` (`enterRoom`, `leaveRoom`)
+- **Pinned by:** `bug fixed: arriving on a map leaves a running relock alone`; `bug fixed: doors on a map nobody is on still close on time` (packages/server/tests/doors.test.ts)
 
 ## inventory
 

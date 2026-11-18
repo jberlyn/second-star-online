@@ -329,7 +329,7 @@ describe("doors, keys and containers", () => {
     server?.stop();
   });
 
-  test("Alice builds and opens her door with her House Key; it stays open", async () => {
+  test("Alice builds and opens her door with her House Key and walks through", async () => {
     alice.send({ t: "use", slot: 1 });
     alice.send({ t: "placeHouse", slot: 1, x: 7, y: 3 });
     await settle();
@@ -342,7 +342,7 @@ describe("doors, keys and containers", () => {
     alice.send({ t: "use", slot: 2 });
     await settle();
     expect(deltas(alice)).toContainEqual({ e: "gset", id: doorId, name: "Alice's Opened Door" });
-    await tick(400); // player doors never relock
+    // The door relocks 200 frames on (bug fixed: player doors relock), so she goes straight in.
     await step(alice, "U"); // through the door (9, 10)
     await step(alice, "U"); // (9, 9)
     await step(alice, "U"); // (9, 8)
@@ -359,6 +359,7 @@ describe("doors, keys and containers", () => {
     await tick(3);
     delete wins[10];
     expect(hp()).toBeGreaterThan(5);
+    await tick(100); // the House Key's pause
     alice.send({ t: "drop", slot: 3 }); // facing (9, 7)
     await settle();
     expect(deltas(alice).some((e) => e.e === "gadd" && e.item.name === "Anvil")).toBe(true);
@@ -366,12 +367,18 @@ describe("doors, keys and containers", () => {
 
   test("Bob walks in: his key does not fit, his Anvil is refused, hers answers his click", async () => {
     bob = await login("Bob");
-    await step(bob, "U"); // the Exit: inside at (9, 11), facing the open door
+    await step(bob, "U"); // the Exit: inside at (9, 11), facing the door, which has relocked
     await tick(2);
     bob.clear();
     bob.send({ t: "use", slot: 1 });
     await settle();
     expect(lines(bob)).toEqual(["Your key doesn't fit this lock!"]);
+    // Alice lets him in: from (9, 9), facing the door, her key opens it.
+    await step(alice, "D"); // (9, 9)
+    await tick(100);
+    alice.send({ t: "use", slot: 2 });
+    await settle();
+    await step(alice, "U"); // back to (9, 8)
     await step(bob, "U"); // (9, 10)
     await step(bob, "U"); // (9, 9)
     bob.clear();
@@ -419,13 +426,20 @@ describe("doors, keys and containers", () => {
   });
 
   test("outside, a Steel Key opens the Steel Door and is spent; 200 frames later it relocks", async () => {
-    for (const d of ["R", "R", "D", "R", "D", "D", "D", "D"] as const) {
-      await step(alice, d); // (7, 7) (8, 7) (8, 8) (9, 8) … the Exit
+    for (const d of ["R", "R", "D", "R", "D"] as const) {
+      await step(alice, d); // (7, 7) (8, 7) (8, 8) (9, 8) (9, 9), facing her relocked door
+    }
+    await tick(100);
+    alice.send({ t: "use", slot: 2 });
+    await settle();
+    for (const d of ["D", "D", "D"] as const) {
+      await step(alice, d); // (9, 10) (9, 11) the Exit
     }
     await tick(2);
     expect(at("Alice")).toBe("x1000y992@7,5");
     await step(alice, "D"); // (7, 6), facing the Steel Door at (7, 7)
     const doorId = groundOf("Alice", "Steel Door");
+    await tick(100); // the House Key's pause
     alice.clear();
     alice.send({ t: "use", slot: 5 });
     await settle();

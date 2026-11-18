@@ -373,7 +373,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
   // before Drop's pause gates: placed only where the header names you.
   p.headFlag = 0;
   if (isFurniture(name)) {
-    p.headFlag = headDrop(0, p.map.title, p.name, p.guild);
+    p.headFlag = headDrop(p.map.title, p.name, p.guild);
     if (p.headFlag === 1) {
       io.tell(p, houseData.furnitureDrop.text);
       return io.out;
@@ -702,9 +702,9 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
     io.tell(p, PICKUP_TEXT.gone);
     return io.out;
   }
-  // The house test on every click, never reset (1.6 did the same, so a room's own stations show
-  // their text after a refusal elsewhere).
-  p.headFlag = headDrop(p.headFlag, p.map.title, p.name, p.guild);
+  // The house test on every click, worked out from this room alone (1.6 kept a set flag until the
+  // next Drop, so a room's own stations showed their text after a refusal elsewhere).
+  p.headFlag = headDrop(p.map.title, p.name, p.guild);
   // The personal vault.
   if (lingoEq(g.item, "Vault")) {
     return openVault(p, g);

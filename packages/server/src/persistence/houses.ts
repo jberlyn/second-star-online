@@ -1,6 +1,6 @@
 /**
- * House blueprints and the house list: 1.6's blueprint file per owner and map, and its
- * `houselist.txt`, as rows. Callers own the transaction.
+ * House blueprints and the house list: one blueprint per house (named by its interior), and the
+ * list of houses with the month each owner was last seen. Callers own the transaction.
  */
 import type { HouseListEntry } from "@secondstaronline/shared";
 
@@ -43,14 +43,16 @@ export function loadHouses(db: Db): HouseRecord[] {
 
 export function loadHouseList(db: Db): HouseListEntry[] {
   return db
-    .query<{ owner_id: string; owner_name: string; map_name: string; month: string }, []>(
-      "SELECT owner_id, owner_name, map_name, month FROM house_list ORDER BY position",
-    )
+    .query<
+      { owner_id: string; owner_name: string; map_name: string; interior: string; month: string },
+      []
+    >("SELECT owner_id, owner_name, map_name, interior, month FROM house_list ORDER BY position")
     .all()
     .map((r) => ({
       ownerId: r.owner_id,
       ownerName: r.owner_name,
       map: r.map_name,
+      interior: r.interior,
       month: r.month,
     }));
 }
@@ -79,9 +81,9 @@ export function saveHouses(
   }
   db.query("DELETE FROM house_list").run();
   const row = db.prepare(
-    "INSERT INTO house_list (position, owner_id, owner_name, map_name, month) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO house_list (position, owner_id, owner_name, map_name, interior, month) VALUES (?, ?, ?, ?, ?, ?)",
   );
   list.forEach((e, i) => {
-    row.run(i + 1, e.ownerId, e.ownerName, e.map, e.month);
+    row.run(i + 1, e.ownerId, e.ownerName, e.map, e.interior, e.month);
   });
 }

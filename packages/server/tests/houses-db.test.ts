@@ -13,7 +13,7 @@ import { loadGround } from "../src/persistence/ground.ts";
 import { loadHouseList, loadHouses } from "../src/persistence/houses.ts";
 import { loadInventory } from "../src/persistence/inventory.ts";
 import { findMapByCoords } from "../src/persistence/maps.ts";
-import { migrate } from "../src/persistence/migrations.ts";
+import { loadMigrations, migrate, runMigrations } from "../src/persistence/migrations.ts";
 import { demolish } from "../src/systems/housing/houses.ts";
 import { prepareScenarioMap } from "./helpers/scenario-map.ts";
 import { rngByN } from "./helpers/sim.ts";
@@ -116,7 +116,13 @@ describe("building a house", () => {
       { ownerName: "Bob", map: "x1000y992", interior: "xH11000yH1992" },
     ]);
     expect(loadHouseList(db)).toEqual([
-      { ownerId: id, ownerName: "Bob", map: "x1000y992", month: "11" },
+      {
+        ownerId: id,
+        ownerName: "Bob",
+        map: "x1000y992",
+        interior: "xH11000yH1992",
+        month: "2026-11",
+      },
     ]);
   });
 
@@ -181,6 +187,39 @@ describe("building a house", () => {
     expect(findMapByCoords(db, 1000, 992, 1)?.name).toBe("xH11000yH1992");
   });
 
+  test("bug fixed: standing beside the footprint is not in the way", async () => {
+    const g = game();
+    const id = await makeChar(g, "Bob");
+    enterWithDeed(g, id);
+    const p = g.world.players.get(id);
+    const map = p?.map;
+    // Hovering (10, 4): footprint x 9-11, y 3-5. Bob stands just left of it, an apple lies
+    // just right of it, and another just above.
+    if (p) {
+      p.x = 8;
+      p.y = 4;
+    }
+    map?.ground.push(
+      { id: "a1", item: "Apple", x: 12, y: 4, kind: "drop", expiresAt: null },
+      { id: "a2", item: "Apple", x: 10, y: 2, kind: "drop", expiresAt: null },
+    );
+    place(g, id, 10, 4);
+    expect(texts(id)).not.toContain(
+      "You cannot build here because there seems to be something in the way!",
+    );
+    expect(findMapByCoords(db, 1000, 992, 1)?.name).toBe("xH11000yH1992");
+  });
+
+  test("bug fixed: a Boat Deed says it cannot be built and is kept", async () => {
+    const g = game();
+    const id = await makeChar(g, "Bob");
+    enterWithDeed(g, id, "Boat Deed");
+    g.intent(id, { t: "use", slot: 3 });
+    expect(texts(id)).toContain("Boats cannot be built yet, so this deed can't be used.");
+    expect(g.world.players.get(id)?.char.bag[2]).toEqual({ item: "Boat Deed", qty: 1 });
+    expect(g.world.players.get(id)?.placing).toBeNull();
+  });
+
   test("a hall deed refuses a player with no guild", async () => {
     const g = game();
     const id = await makeChar(g, "Bob");
@@ -192,15 +231,15 @@ describe("building a house", () => {
 });
 
 describe("decay", () => {
-  test("a stale owner's house is demolished on the 1/50 roll: tiles revert, Exit and mailbox go, the interior is deleted", async () => {
+  test("a stale owner's house is demolished by the day's sweep: tiles revert, Exit and mailbox go, the interior is deleted", async () => {
     let g = game();
     const bob = await makeChar(g, "Bob");
     enterWithDeed(g, bob);
     place(g, bob, 10, 4);
     g.leave(bob);
-    // Two months later Ann logs in; her second clock reply rolls `random(50) = 1`.
+    // Two months later Ann logs in: the first clock check of the day sweeps.
     now = "2027-01-10T00:00:00.000Z";
-    g = game({ 50: [2, 1] });
+    g = game();
     const ann = await makeChar(g, "Ann");
     g.enter(ann, false);
     const outdoor = findMapByCoords(db, 1000, 992);
@@ -226,14 +265,14 @@ describe("decay", () => {
     const map = g.world.players.get(ann)?.map;
     const gone = map?.ground.filter((x) => x.item === "Exit" || x.item === "Bob's Mailbox") ?? [];
     expect(gone).toHaveLength(2);
-    const r = demolish(g.world, bob, "x1000y992", (n) => g.world.rooms.get(n)?.map ?? null);
+    const r = demolish(g.world, "xH11000yH1992", (n) => g.world.rooms.get(n)?.map ?? null);
     const toAnn = r.out.flatMap((o) => (o.to === ann && o.msg.t === "delta" ? o.msg.events : []));
     expect(toAnn).toEqual(expect.arrayContaining(gone.map((x) => ({ e: "gdel", id: x.id }))));
     expect(toAnn.filter((e) => e.e !== "gdel").length).toBeGreaterThan(0);
     expect(map?.layers[1][2]?.split(" ").slice(8, 11)).toEqual(["G3", "G3", "G3"]);
   });
 
-  test("kept bug: a tile changed since the build is not reverted", async () => {
+  test("a tile changed since the build is left as it is", async () => {
     let g = game();
     const bob = await makeChar(g, "Bob");
     enterWithDeed(g, bob);
@@ -245,7 +284,7 @@ describe("decay", () => {
     rows[2] = row.join(" ");
     db.run("UPDATE maps SET layer2 = ? WHERE slot = 0", [JSON.stringify(rows)]);
     now = "2027-01-10T00:00:00.000Z";
-    g = game({ 50: [1] });
+    g = game();
     const ann = await makeChar(g, "Ann");
     g.enter(ann, false);
     expect(findMapByCoords(db, 1000, 992)?.layers[1][2]?.split(" ").slice(8, 11)).toEqual([
@@ -255,7 +294,7 @@ describe("decay", () => {
     ]);
   });
 
-  test("kept bug: two houses by one owner on one map share one blueprint, so only the last is reverted", async () => {
+  test("bug fixed: two houses by one owner on one map keep a blueprint each, and both are reverted", async () => {
     let g = game();
     const bob = await makeChar(g, "Bob");
     enterWithDeed(g, bob);
@@ -267,30 +306,78 @@ describe("decay", () => {
     // The second house hovered at (14, 7): anchor (13, 6), x 13-15, y 6-8.
     place(g, bob, 14, 7);
     expect(findMapByCoords(db, 1000, 992, 2)?.title).toBe("Bob's House");
-    expect(loadHouses(db)).toHaveLength(1);
+    expect(loadHouses(db).map((h) => h.interior)).toEqual(["xH11000yH1992", "xH21000yH2992"]);
     expect(loadHouseList(db)).toHaveLength(2);
     g.leave(bob);
     now = "2027-01-10T00:00:00.000Z";
-    g = game({ 50: [1] });
+    g = game();
     const ann = await makeChar(g, "Ann");
     g.enter(ann, false);
     const l2 = findMapByCoords(db, 1000, 992)?.layers[1] ?? [];
-    // The first house's tiles stay; the second's revert.
-    expect(l2[2]?.split(" ").slice(8, 11)).toEqual(["D5", "E5", "I5"]);
+    expect(l2[2]?.split(" ").slice(8, 11)).toEqual(["G3", "G3", "G3"]);
     expect(l2[5]?.split(" ").slice(12, 15)).toEqual(["G3", "G3", "G3"]);
+    expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
+    expect(findMapByCoords(db, 1000, 992, 2)).toBeNull();
+    expect(loadHouses(db)).toEqual([]);
   });
 
-  test("an owner's own login refreshes their entries before the roll", async () => {
+  test("bug fixed: a Small Shop's street lamp goes with it", async () => {
+    let g = game();
+    const bob = await makeChar(g, "Bob");
+    enterWithDeed(g, bob, "Small Shop Deed");
+    place(g, bob, 10, 4);
+    const lamps = () =>
+      loadGround(db, findMapByCoords(db, 1000, 992)?.id ?? "", now).filter(
+        (x) => x.item === "Street Lamp",
+      );
+    expect(lamps().map((x) => [x.x, x.y])).toEqual([[9, 6]]);
+    g.leave(bob);
+    now = "2027-01-10T00:00:00.000Z";
+    g = game();
+    const ann = await makeChar(g, "Ann");
+    g.enter(ann, false);
+    expect(lamps()).toEqual([]);
+  });
+
+  test("bug fixed: the sweep runs once a day, not on every clock check", async () => {
+    let g = game();
+    const bob = await makeChar(g, "Bob");
+    enterWithDeed(g, bob);
+    place(g, bob, 10, 4);
+    g.leave(bob);
+    // Ann is online through December; Bob's house (last seen November) is fresh until January.
+    now = "2026-12-31T23:00:00.000Z";
+    g = game();
+    const ann = await makeChar(g, "Ann");
+    g.enter(ann, false);
+    g.intent(ann, { t: "mapReady" });
+    const p = g.world.players.get(ann);
+    const check = () => {
+      if (p) {
+        p.houseClock = 1;
+      }
+      g.tick();
+    };
+    check();
+    expect(findMapByCoords(db, 1000, 992, 1)).not.toBeNull();
+    // The first check of 1 January sweeps; later checks that day change nothing.
+    now = "2027-01-01T00:30:00.000Z";
+    check();
+    expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
+    expect(g.world.houseSweepDay).toBe("2027-01-01");
+  });
+
+  test("an owner's own login refreshes their entries before the sweep", async () => {
     let g = game();
     const bob = await makeChar(g, "Bob");
     enterWithDeed(g, bob);
     place(g, bob, 10, 4);
     g.leave(bob);
     now = "2027-01-10T00:00:00.000Z";
-    g = game({ 50: [1] });
+    g = game();
     g.enter(bob, false);
     expect(findMapByCoords(db, 1000, 992, 1)).not.toBeNull();
-    expect(loadHouseList(db)[0]?.month).toBe("1");
+    expect(loadHouseList(db)[0]?.month).toBe("2027-01");
   });
 });
 
@@ -312,6 +399,31 @@ describe("inside", () => {
     p.char.vitals.sp = 5;
     g.tick();
     expect([p.char.vitals.hp, p.char.vitals.sp]).toEqual([6, 6]);
+  });
+
+  test("bug fixed: the dead do not rest", async () => {
+    const g = game({ 10: [1, 1, 1, 1] });
+    const id = await makeChar(g, "Bob");
+    enterWithDeed(g, id);
+    place(g, id, 10, 4);
+    const p = g.world.players.get(id);
+    if (!p) {
+      throw new Error("not in");
+    }
+    p.x = 10;
+    p.y = 5;
+    g.tick();
+    p.y = 9;
+    // Mid death lock: the roll comes up 1 and the row is below 11, but nothing heals.
+    p.char.vitals.hp = 3;
+    p.char.vitals.sp = 5;
+    p.deadLock = 50;
+    g.tick();
+    expect([p.char.vitals.hp, p.char.vitals.sp]).toEqual([3, 5]);
+    // Once alive again the same roll heals.
+    p.deadLock = 0;
+    g.tick();
+    expect([p.char.vitals.hp, p.char.vitals.sp]).toEqual([4, 6]);
   });
 
   test("furniture drops only where the header names you", async () => {
@@ -340,6 +452,37 @@ describe("inside", () => {
       "This building does not belong to you, you can't place this here!",
     );
     expect(p.map.ground.some((x) => x.item === "Anvil" && x.x === 7 && x.y === 8)).toBe(true);
+  });
+
+  test("bug fixed: your own Anvil is picked up even after a refusal elsewhere", async () => {
+    const g = game();
+    const id = await makeChar(g, "Bob");
+    enterWithDeed(g, id);
+    place(g, id, 10, 4);
+    const p = g.world.players.get(id);
+    if (!p) {
+      throw new Error("not in");
+    }
+    // A town Anvil's line sets the flag.
+    p.map.ground.push({ id: "town", item: "Anvil", x: 6, y: 3, kind: "admin", expiresAt: null });
+    g.intent(id, { t: "pickup", id: "town" });
+    expect(texts(id)).toContain("This is an anvil, used for blacksmithing.");
+    expect(p.headFlag).toBe(1);
+    // Into the house, where Bob's own Anvil stands.
+    p.x = 10;
+    p.y = 5;
+    g.tick();
+    g.intent(id, { t: "mapReady" });
+    p.itemPause = 0;
+    p.facing = "N";
+    p.x = 7;
+    p.y = 9;
+    p.map.ground.push({ id: "mine", item: "Anvil", x: 7, y: 8, kind: "drop", expiresAt: null });
+    sent.length = 0;
+    g.intent(id, { t: "pickup", id: "mine" });
+    expect(texts(id)).not.toContain("This is an anvil, used for blacksmithing.");
+    expect(p.headFlag).toBe(0);
+    expect(p.map.ground.some((x) => x.id === "mine")).toBe(false);
   });
 
   test("a town Anvil answers a click with its line; it is not picked up", async () => {
@@ -441,15 +584,15 @@ describe("house faults", () => {
     expect(built).toEqual({ houses: 1, interior: true, exit: true });
     now = "2027-01-10T00:00:00.000Z";
     const faults: string[] = [];
-    g = crashing("house:demolished", { 50: [2, 1] }, faults);
+    g = crashing("house:demolished", {}, faults);
     const ann = await makeChar(g, "Ann");
     expect(g.enter(ann, false)).toBe(false);
     expect(faults).toEqual(["enter"]);
     // Nothing half-written: the house, its interior and its Exit are all still in SQL.
     expect(houseInSql()).toEqual(built);
     expect(g.isOnline(ann)).toBe(false);
-    // A restart and the next login's roll demolish it whole.
-    g = game({ 50: [1] });
+    // A restart and the next login's sweep demolish it whole.
+    g = game();
     g.enter(ann, false);
     expect(houseInSql()).toEqual({ houses: 0, interior: false, exit: false });
   });
@@ -461,13 +604,15 @@ describe("house faults", () => {
     place(g, bob, 10, 4);
     g.leave(bob);
     const built = houseInSql();
-    now = "2027-01-10T00:00:00.000Z";
+    // Ann logs in on 31 December, when the house is still fresh; the clock check in the tick is
+    // the first of 1 January.
+    now = "2026-12-31T23:00:00.000Z";
     const faults: string[] = [];
-    // The login's two checks roll 2 and 2 (no demolition); the clock's check in the tick rolls 1.
-    g = crashing("tick:afterHouseCheck", { 50: [2, 2, 1] }, faults);
+    g = crashing("tick:afterHouseCheck", {}, faults);
     const ann = await makeChar(g, "Ann");
     g.enter(ann, false);
     g.intent(ann, { t: "mapReady" });
+    now = "2027-01-01T00:30:00.000Z";
     const p = g.world.players.get(ann);
     if (p) {
       p.houseClock = 1;
@@ -476,8 +621,8 @@ describe("house faults", () => {
     expect(faults).toEqual(["tick"]);
     expect(houseInSql()).toEqual(built);
     expect(g.tick()).toBe(true);
-    // A restart reads the house back from SQL; the next roll demolishes it whole.
-    g = game({ 50: [1] });
+    // A restart reads the house back from SQL; the next sweep demolishes it whole.
+    g = game();
     g.enter(ann, false);
     expect(houseInSql()).toEqual({ houses: 0, interior: false, exit: false });
   });
@@ -490,5 +635,38 @@ describe("house faults", () => {
     g.leave(id);
     game();
     expect(findMapByCoords(db, 1000, 992, 1)).not.toBeNull();
+  });
+});
+
+describe("upgrading house records", () => {
+  test("the migration names each list entry's house, gives its month a year and moves the shop lamp", () => {
+    const old = openDatabase();
+    const all = loadMigrations();
+    runMigrations(
+      old,
+      all.filter((m) => m.name < "20261118_30"),
+    );
+    // Rows only; the owner need not exist for this test.
+    old.run("PRAGMA foreign_keys = OFF");
+    old.run(
+      `INSERT INTO houses (owner_id, map_name, item1, item2, tiles, interior, updated_at) VALUES
+        ('c1', 'x1y1', '{"item":"Street Lamp","x":5,"y":6}', '{"item":"Exit","x":6,"y":6}', '[]', 'xH11yH11', 'now')`,
+    );
+    old.run(
+      "INSERT INTO house_list (position, owner_id, owner_name, map_name, month) VALUES (1, 'c1', 'Bob', 'x1y1', '1'), (2, 'c1', 'Bob', 'x9y9', '12')",
+    );
+    runMigrations(old, all);
+    expect(
+      old
+        .query<{ item1: string }, []>("SELECT item1 FROM houses")
+        .all()
+        .map((r) => JSON.parse(r.item1)),
+    ).toEqual([{ item: "Street Lamp", x: 5, y: 7 }]);
+    const year = new Date().getUTCFullYear();
+    const thisMonth = new Date().getUTCMonth() + 1;
+    const list = loadHouseList(old);
+    expect(list.map((e) => e.interior)).toEqual(["xH11yH11", ""]);
+    expect(list[0]?.month).toBe(`${year}-01`);
+    expect(list[1]?.month).toBe(`${thisMonth === 12 ? year : year - 1}-12`);
   });
 });

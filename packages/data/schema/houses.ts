@@ -29,7 +29,7 @@ const houseType = z.strictObject({
     shiftX: int,
     shiftY: int,
   }),
-  /** Added to the hovered tile when placing a house (the Small Farm keeps its Y). */
+  /** Added to the hovered tile when placing a house: the footprint's top-left tile. */
   anchor: z.strictObject({ dx: int, dy: int }),
   footprint: z.strictObject({ w: z.union([z.literal(3), z.literal(5)]), h: z.literal(3) }),
   /** `[code, dx, dy]`, in the order they were written. */
@@ -56,6 +56,8 @@ export const houseDataSchema = z
           deed: text,
           use: z.enum(["nothing", "airship", "place"]),
           house: text.nullable(),
+          /** What Use says for a deed that builds nothing; the deed is kept. */
+          text: text.nullable(),
         }),
       )
       .min(1),
@@ -65,11 +67,8 @@ export const houseDataSchema = z
     placement: z.strictObject({
       edge: z.strictObject({ minX: int, minY: int, maxX: int, maxY: int, text }),
       terrain: z.strictObject({
+        /** Every footprint tile's layer-1 code must be one of these (case ignored). */
         layer1Codes: z.array(text).min(1),
-        layer1Need: int.positive(),
-        layer1Columns: int.positive(),
-        /** Footprint rows below this read the map's NPC and monster fields: never a match. */
-        layer1MaxRow: int.positive(),
         text,
       }),
       obstacles: text,
@@ -79,8 +78,8 @@ export const houseDataSchema = z
     build: z.strictObject({
       exit: z.strictObject({ dx: int, dy: int }),
       mailbox: z.strictObject({ dx: int, dy: int }),
-      /** Dropped at `dy`, recorded in the blueprint at `recordDy` (a kept bug). */
-      lamp: z.strictObject({ dx: int, dy: int, recordDy: int }),
+      /** The Small Shop's street lamp, dropped and recorded at the same tile. */
+      lamp: z.strictObject({ dx: int, dy: int }),
       headers: z.strictObject({ house: text, farm: text, guild: text, shop: text }),
       arrival: z.strictObject({ x: int, y: int }),
     }),
@@ -104,10 +103,8 @@ export const houseDataSchema = z
     restRegen: z.strictObject({ odds: int.positive(), maxY: int.positive() }),
     decay: z.strictObject({
       clockFrames: int.positive(),
-      listCap: int.positive(),
-      sweepOdds: int.positive(),
-      /** Current month → the months whose entries survive a sweep (June's pair is written 5/6). */
-      keep: z.record(z.string(), z.array(int.min(1).max(12)).min(1)),
+      /** A house goes once its owner was last seen this many calendar months ago (2: before last month). */
+      staleAfterMonths: int.positive(),
     }),
     /** Keys: the texts, the coloured pairs, the pause. */
     keys: z.strictObject({
@@ -116,22 +113,21 @@ export const houseDataSchema = z
       doesntFit: text,
       coloured: z.array(z.strictObject({ key: text, closed: text, open: text })).min(1),
       colouredPause: int.positive(),
+      /** House and Guild Keys: the pause after turning a door (the key is kept). */
+      housePause: int.positive(),
       /** `Keys.txt`: a key followed by `:Inf` is never consumed. */
       keysTxt: z.array(text),
     }),
-    /** On/Off switch items, arm delay, pause and message. */
+    /** On/Off switch items, the pause after a flip, and the refusal. */
     switches: z.strictObject({
       on: text,
       off: text,
-      arm: int.positive(),
       pause: int.positive(),
       text,
     }),
-    /** Door relock countdown values and `[open, closed]` door pairs. */
+    /** Frames from the last door change to the relock, and the `[open, closed]` pairs it closes. */
     relock: z.strictObject({
       change: int.positive(),
-      arrival: int.positive(),
-      switchClick: int.positive(),
       closes: z.array(z.tuple([text, text])).min(1),
     }),
     /** Drop's container routes in order and the click's pause. */

@@ -8,10 +8,10 @@ import {
   facedDoor,
   invDelSlot,
   isKey,
-  KEY_PAUSE,
   keyConsumed,
+  keyPause,
   lingoEq,
-  relockAfter,
+  RELOCK_FRAMES,
   renameTargets,
   SWITCH_PAUSE,
   SWITCH_TEXT,
@@ -22,29 +22,30 @@ import {
 import type { ItemCtx, ItemOut } from "../inventory/items.ts";
 import type { GroundItem, Player, Room } from "../world/world.ts";
 
-/**
- * The door switch and the `` !`(`` echo: every door or switch on the map whose name contains `old`
- * becomes `to` in place, and the echo sets every client's relock counter to 200.
- */
+/** One door or switch takes its new name in place; every change restarts the map's relock (200). */
+function renameItem(ctx: ItemCtx, room: Room, io: ItemOut, g: GroundItem, to: string): void {
+  g.item = to;
+  ctx.world.groundLog.push({ mapId: room.map.id, set: { id: g.id, item: to } });
+  io.all({ e: "gset", id: g.id, name: to });
+  room.doorLock = RELOCK_FRAMES;
+}
+
+/** Every door or switch on the map named exactly `old` becomes `to` (a switch's doors, the relock). */
 export function renameDoors(ctx: ItemCtx, room: Room, io: ItemOut, old: string, to: string): void {
   const ground = room.map.ground;
   for (const i of renameTargets(
     ground.map((g) => g.item),
     old,
   )) {
-    const g = ground[i] as GroundItem;
-    g.item = to;
-    ctx.world.groundLog.push({ mapId: room.map.id, set: { id: g.id, item: to } });
-    io.all({ e: "gset", id: g.id, name: to });
+    renameItem(ctx, room, io, ground[i] as GroundItem, to);
   }
-  room.doorLock = relockAfter(room.doorLock, "change");
 }
 
 /**
  * A key's Use, after Use's gates. Null when the item is not a key (its name contains "Key"). The
  * faced point is sprite 112 ± 32 px, so mid-step it matches nothing; the last door on the tile
- * wins; house and guild keys set no pause and are kept; a coloured key is consumed from its slot
- * and pauses 425.
+ * wins, and only that door turns. A coloured key is spent from its slot when it opens its door
+ * (closing is free) and pauses 425; House and Guild Keys are kept and pause 100.
  */
 export function useKey(
   ctx: ItemCtx,
@@ -61,9 +62,8 @@ export function useKey(
     return true;
   }
   const [dx, dy] = FACING_DELTA[p.facing];
-  const door = facedDoor(
-    room.map.ground.filter((g) => g.x === p.x + dx && g.y === p.y + dy).map((g) => g.item),
-  );
+  const onTile = room.map.ground.filter((g) => g.x === p.x + dx && g.y === p.y + dy);
+  const door = facedDoor(onTile.map((g) => g.item));
   if (!door) {
     return true;
   }
@@ -75,22 +75,20 @@ export function useKey(
   if (turn.kind !== "turn") {
     return true;
   }
-  renameDoors(ctx, room, io, turn.from, turn.to);
-  if (turn.coloured) {
-    if (keyConsumed(item)) {
-      invDelSlot(p.char.bag, slot - 1, 1);
-      p.invDirty = true;
-    }
-    p.itemPause = KEY_PAUSE;
+  const g = onTile.findLast((x) => x.item === door) as GroundItem;
+  renameItem(ctx, room, io, g, turn.to);
+  if (keyConsumed(turn, item)) {
+    invDelSlot(p.char.bag, slot - 1, 1);
+    p.invDirty = true;
   }
+  p.itemPause = keyPause(turn);
   return true;
 }
 
 /**
  * The On or Off switch click, from a click or Ctrl, which first cleared the item-action pause. The
- * relock is armed with 100 **before** the adjacency test (1.6 did this, so a refused click still
- * arms the relock); then the switch must be the faced tile with you standing still. It flips every
- * switch of its state and closes or opens the switch doors on the map, and pauses 100.
+ * switch must be the faced tile with you standing still, or you are told so and nothing changes.
+ * Then that switch alone flips, the map's switch doors close or open, and you pause 100.
  */
 export function switchClick(
   ctx: ItemCtx,
@@ -101,15 +99,13 @@ export function switchClick(
   state: "on" | "off",
 ): void {
   p.itemPause = 0;
-  room.doorLock = relockAfter(room.doorLock, "switchClick");
   const [dx, dy] = FACING_DELTA[p.facing];
   if (p.stepFrames > 0 || g.x !== p.x + dx || g.y !== p.y + dy) {
     io.tell(p, SWITCH_TEXT.notInFront);
     return;
   }
   const [own, doors] = switchFlip(state);
-  renameDoors(ctx, room, io, own[0], own[1]);
-  // The close-doors and open-doors messages go only for the doors on screen.
+  renameItem(ctx, room, io, g, own[1]);
   if (room.map.ground.some((x) => lingoEq(x.item, doors[0]))) {
     renameDoors(ctx, room, io, doors[0], doors[1]);
   }
@@ -117,9 +113,9 @@ export function switchClick(
 }
 
 /**
- * The relock counter: at 0, `closeAllDoors` closes the open coloured and switch doors and turns ON
- * switches OFF; each close echoes, so the timer runs again from 200. Player and guild doors are
- * never closed.
+ * The relock counter: at 0, `closeAllDoors` closes the open coloured, switch, player and guild
+ * doors and turns ON switches OFF; each close restarts the timer, which finds nothing more to close
+ * when it next runs out.
  */
 export function relockStep(ctx: ItemCtx, room: Room, io: ItemOut): void {
   if (room.doorLock <= 0) {

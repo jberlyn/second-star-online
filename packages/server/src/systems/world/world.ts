@@ -10,6 +10,7 @@ import {
   type AssassinState,
   type AttackTimers,
   airshipWalkGrid,
+  anyOpenDoor,
   archivedQuestLines,
   type Bag,
   type DeltaEvent,
@@ -42,7 +43,6 @@ import {
   type Powers,
   QUEST_SAVE_BLOCK,
   type RoomKey,
-  relockAfter,
   type SelfState,
   type ServerMsg,
   tileAt,
@@ -88,6 +88,8 @@ export interface WorldMap {
   fog: MapFog;
   /** The server tick its regrowth last ran on; an empty map catches up from here. */
   regrowthTick?: number;
+  /** The server tick an emptied map's door relock falls due on; its next room picks it up. */
+  doorLockTick?: number;
 }
 
 /** A ground item: an original `Name:px-py` entry with a server id. */
@@ -757,7 +759,8 @@ export interface Room {
    */
   fxQueue: CastMessage[];
   /**
-   * The map's door relock timer, 0 when none runs. It goes with the room when the map empties.
+   * The map's door relock timer, 0 when none runs. When the map empties it is kept on the map as
+   * `doorLockTick`, so the doors still close on time.
    */
   doorLock: number;
 }
@@ -822,12 +825,14 @@ export interface World {
   containers: Map<string, string[]>;
   /** Containers changed since the last write. */
   containersDirty: Set<string>;
-  /** Blueprints by `<owner id> <outdoor map>` (1.6 kept one file per house). */
+  /** Blueprints by interior map name, one per house. */
   houses: Map<string, HouseRecord>;
-  /** `houselist.txt`, in order, duplicates kept. */
+  /** The house list: each house and the month its owner was last seen, in build order. */
   houseList: HouseListEntry[];
   /** The house tables changed since the last write. */
   housesDirty: boolean;
+  /** The decay calendar day (`YYYY-MM-DD`) the house sweep last ran on, or "" before the first. */
+  houseSweepDay: string;
   /** Demolished interiors to delete once nobody stands in them. */
   interiorsToDelete: Set<string>;
   /** Player shops by lower-case shopkeeper name. */
@@ -977,6 +982,7 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     houses: new Map(),
     houseList: [],
     housesDirty: false,
+    houseSweepDay: "",
     interiorsToDelete: new Set(),
     playerShops: new Map(),
     factionPowers: [...ARCHIVED_POWERS],
@@ -1052,6 +1058,14 @@ function roomFor(world: World, map: WorldMap): Room {
   if (!room) {
     room = { map, npcs: world.npcs, players: [], fx: [], fxQueue: [], doorLock: 0 };
     world.rooms.set(map.name, room);
+    // The relock that was running when the map emptied; one already due closes the doors on the
+    // next frame. Doors left open with no timer at all (a restart) close then too.
+    if (map.doorLockTick !== undefined) {
+      room.doorLock = Math.max(1, map.doorLockTick - world.tickNo);
+      delete map.doorLockTick;
+    } else if (anyOpenDoor(map.ground.map((g) => g.item))) {
+      room.doorLock = 1;
+    }
   }
   return room;
 }
@@ -1071,9 +1085,6 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   }
   room.players.push(p);
   p.loading = LOADING_TIMEOUT_TICKS;
-  // Loading a map sets the arriving client's door-lock countdown to 150: the map's doors close 150
-  // frames on unless an earlier counter runs.
-  room.doorLock = relockAfter(room.doorLock, "arrival");
   // Each map entry: 45 frames without spawn rolls, and the monster-attack flag cleared on map draw.
   p.monDropIn = 45;
   p.npcAttackFlag = false;
@@ -1127,6 +1138,9 @@ export function leaveRoom(world: World, p: Player): Outgoing[] {
   room.players = room.players.filter((o) => o !== p);
   if (room.players.length === 0) {
     world.rooms.delete(p.map.name);
+    if (room.doorLock > 0) {
+      room.map.doorLockTick = world.tickNo + room.doorLock;
+    }
   }
   const leave: DeltaEvent = { e: "leave", id: p.id };
   return room.players.map((o) => ({ to: o.id, msg: { t: "delta", events: [leave] } }));

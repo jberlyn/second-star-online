@@ -542,6 +542,16 @@ describe("guilds", () => {
     }
     await tick(2);
     expect(at("Carol")).toBe("xH11000yH1992@9,11");
+    // The hall door has relocked: Alice comes back and opens it for her, then steps aside.
+    for (const d of ["R", "R", "R", "D", "D"] as const) {
+      await step(alice, d); // (9, 7), (9, 8), (9, 9) facing the door
+    }
+    await tick(100);
+    alice.send({ t: "use", slot: 1 });
+    await settle();
+    for (const d of ["U", "U", "R"] as const) {
+      await step(alice, d); // (9, 8), (9, 7), (10, 7)
+    }
     for (const d of ["U", "U", "U", "L", "L", "L"] as const) {
       await step(carol, d);
     }
@@ -553,7 +563,13 @@ describe("guilds", () => {
   });
 
   test("Alice walks back to the Center and exiles Bob: he hears both lines", async () => {
-    for (const d of ["R", "R", "D", "R", "D", "D", "D", "D"] as const) {
+    for (const d of ["L", "D", "D"] as const) {
+      await step(alice, d); // (9, 7), (9, 8), (9, 9), facing the relocked door
+    }
+    await tick(100);
+    alice.send({ t: "use", slot: 1 });
+    await settle();
+    for (const d of ["D", "D", "D"] as const) {
       await step(alice, d); // out through the Exit: (7, 5)
     }
     await tick(2);

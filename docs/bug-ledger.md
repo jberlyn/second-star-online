@@ -38,7 +38,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [combat](#combat) | 0 |
 | [crafting](#crafting) | 0 |
 | [economy](#economy) | 0 |
-| [housing](#housing) | 20 |
+| [housing](#housing) | 0 |
 | [inventory](#inventory) | 33 |
 | [mail](#mail) | 16 |
 | [monsters](#monsters) | 21 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **197** |
+| **Total** | **177** |
 
 ## admin
 
@@ -81,125 +81,7 @@ No kept bugs (all thirty-three former entries were fixed; see [economy differenc
 
 ## housing
 
-### The Stone Guild Hall Deed does nothing
-- **What you notice:** Using a Stone Guild Hall Deed starts no building. You cannot put up a Stone Guild Hall.
-- **In 1.6 and SSO:** 1.6 had the deed but no Stone Guild Hall house, template or builder behind it, so using it leads nowhere. SSO does the same: the deed exists and using it does nothing, with no error. 1.6 also left a dead exit behind; SSO does not.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`deedUse`)
-- **Pinned by:** `kept bug: the Stone Guild Hall Deed does nothing (no Houses member, template or builder)` (packages/shared/tests/housing/houses.test.ts)
-
-### Boat and Battleship Deeds do nothing when used
-- **What you notice:** Using a Boat Deed or a Battleship Deed does nothing.
-- **In 1.6 and SSO:** 1.6's deed handler exits for both before it selects a deed or calls the boat-building routine, so no boat could be built. The client still contains the boat builder and the boarding, unboarding and movement routines, and the server accepts a dropped `'s Boat` or `'s Battleship`; only the deed branch is missing. SSO does the same.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`deedUse`)
-- **Pinned by:** `Boat and Battleship Deeds do nothing` (packages/shared/tests/housing/houses.test.ts)
-
-### The Small Farm builds one row lower than other houses
-- **What you notice:** The Small Farm lands one row lower, relative to your cursor, than the other houses do. Its ghost is drawn to match, so it still builds exactly where the ghost shows.
-- **In 1.6 and SSO:** 1.6's step that moves the anchor up a row tests for the misspelt name "Small Fam", so the farm keeps the hovered row. SSO does the same: the server applies the one-column shift only for the Small Farm, and the client shifts the ghost the same way.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`houseAnchor`)
-- **Pinned by:** `kept bug: the Small Farm keeps the hovered row ('Small Fam'), and its ghost is shifted to match` (packages/shared/tests/housing/houses.test.ts)
-
-### Only 3 columns of a 5-wide house are checked for terrain
-- **What you notice:** A 5-wide house can be placed with its two right-hand columns over ground that would not be allowed.
-- **In 1.6 and SSO:** 1.6 reads the ground under the house from a map line whose last two columns come back empty, so they never count; the pass mark is a fixed 9 tiles. SSO runs the same test on the server.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`terrainOk`)
-- **Pinned by:** `kept bug: layer 1 counts only the first 3 columns of a 5-wide house` (packages/shared/tests/housing/houses.test.ts)
-
-### No house can be anchored on rows 8-9
-- **What you notice:** You cannot place a house with its anchor on rows 8 or 9, although the edge rule would allow them.
-- **In 1.6 and SSO:** 1.6 reads the ground layer by item number from the map record, and for rows 10 and 11 that lands on the NPC and monster fields, which never match. SSO does the same: the rows above 9 never count for ground.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`terrainOk`)
-- **Pinned by:** `kept bug: no house can be anchored on rows 8-9; rows 10-11 read map fields 10-11` (packages/shared/tests/housing/houses.test.ts)
-
-### A tile of type 8V never counts as house ground
-- **What you notice:** Ground of type 8V is refused as a house site even though 8R and 8U are fine.
-- **In 1.6 and SSO:** 1.6's ground test is a text match that has no closing mark after 8V, so an 8V tile never matches. SSO counts only 8R and 8U.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`terrainOk`)
-- **Pinned by:** `kept bug: an 8V tile never counts: "*8R*8U*8V" has no star after 8V, so contains "*8V*" fails` (packages/shared/tests/housing/houses.test.ts)
-
-### The house ghost blocks on items and players beside it
-- **What you notice:** Placement is refused when an item or a player stands in the column just right of the house or the row just above it, and also because of your own character.
-- **In 1.6 and SSO:** 1.6 tests the ghost's bounding rectangle against item, monster and player sprites; the ghost sits a pixel or two right of and above its footprint, so neighbours count, and so does the builder's own sprite. SSO's server tests the same rectangles.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`ghostRect`), `packages/server/src/systems/housing/houses.ts` (`obstacleRects`)
-- **Pinned by:** `kept bug: the ghost's rect catches an item in the column to its right, but not one below` (packages/shared/tests/housing/houses.test.ts); `a refusal keeps placement on and builds nothing` (packages/server/tests/houses-db.test.ts)
-
-### The Small Shop's street lamp survives demolition
-- **What you notice:** After a Small Shop is demolished, its street lamp is left standing.
-- **In 1.6 and SSO:** 1.6 drops the lamp one row lower than the place it records for it, and demolition removes by exact match, so the lamp is never found. SSO places and records the lamp with the same offsets.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`planHouse`)
-- **Pinned by:** `kept bug: the Small Shop's lamp is dropped a row below where it is recorded` (packages/shared/tests/housing/houses.test.ts)
-
-### Decay demolishes every house an owner has, whatever the year
-- **What you notice:** When a house decays, all of that owner's houses go, not just the stale one. Months are compared with no year. The house's interior and vaults are left behind.
-- **In 1.6 and SSO:** 1.6's remover matches every entry with the owner's name and compares months without a year. SSO follows the same rules on server month records. It differs in one detail: the orphaned interior and vault contents are deleted instead of being left unreachable. The outdoor exit field is left alone, as in 1.6.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`sweep`), `packages/server/src/systems/housing/houses.ts` (`demolish`)
-- **Pinned by:** `kept bug: the house remover takes all of an owner's houses; the year is ignored` (packages/shared/tests/housing/houses.test.ts); `a stale owner's house is demolished on the 1/50 roll: tiles revert, Exit and mailbox go, the interior is deleted` (packages/server/tests/houses-db.test.ts); `kept bug: a tile changed since the build is not reverted` (packages/server/tests/houses-db.test.ts)
-
-### The decay sweep brings back houses it already removed
-- **What you notice:** After a decay sweep, houses that were removed earlier in the same sweep can still be in the list.
-- **In 1.6 and SSO:** 1.6's sweep loops over an old copy of the house list, and each removal rebuilds the list from that copy, undoing earlier removals. SSO reproduces this: the zombie entries stay until a later sweep.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`sweep`)
-- **Pinned by:** `kept bug: the sweep rewrites the list from its stale copy, so earlier removals come back` (packages/shared/tests/housing/houses.test.ts)
-
-### A second house on the same map overwrites the first one's blueprint
-- **What you notice:** If you own two houses on one map and both are demolished, only the second one's ground is restored.
-- **In 1.6 and SSO:** 1.6 saves one blueprint per owner and map, so a second house overwrites the first one's. SSO keeps one blueprint row per owner and map, overwritten the same way.
-- **In the code:** `packages/server/src/systems/housing/houses.ts` (`demolish`, `placeHouseIntent`)
-- **Pinned by:** `kept bug: two houses by one owner on one map share one blueprint, so only the last is reverted` (packages/server/tests/houses-db.test.ts)
-
-### House decay rolls again on every clock check
-- **What you notice:** A stale house can be removed at any time you are online, about once a minute of each player's time.
-- **In 1.6 and SSO:** 1.6 runs its decay roll (a 1 in 50 chance) on every date message: twice at login and then about every 61 seconds for each online client. SSO has the same trigger per player, driven by the server's clock.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`HOUSE_CLOCK_FRAMES`, `HOUSE_SWEEP_ODDS`), `packages/server/src/systems/housing/houses.ts` (`houseClockStep`)
-- **Pinned by:** `a stale owner's house is demolished on the 1/50 roll: tiles revert, Exit and mailbox go, the interior is deleted` (packages/server/tests/houses-db.test.ts); `an owner's own login refreshes their entries before the roll` (packages/server/tests/houses-db.test.ts)
-
-### Resting in a house heals you even when you are dead
-- **What you notice:** On a house map, near the top of the map, you slowly regain hit points and spell points, even while dead.
-- **In 1.6 and SSO:** 1.6's house rest-healing has no death check. SSO does the same, as part of the server's per-tick step.
-- **In the code:** `packages/server/src/systems/housing/houses.ts` (`restRegen`)
-- **Pinned by:** `rest regen: on a house map, random(10) = 1 and y < 11 heals 1 HP and 1 SP` (packages/server/tests/houses-db.test.ts)
-
-### Your own stations show their text after a refusal elsewhere
-- **What you notice:** After being refused somewhere else, clicking your own Stove, Anvil or Alchemy Lab shows its line instead of picking it up. It stays that way until you next press Drop.
-- **In 1.6 and SSO:** In 1.6 a click never clears the "don't pick this up" flag; it is only reset by Drop. SSO keeps the flag per player with the same resets.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`)
-- **Pinned by:** `kept bug: nothing clears a set flag in your own house (nothing ever resets it)` (packages/shared/tests/housing/houses.test.ts)
-
-### Coloured keys are used up on open and again on close
-- **What you notice:** A coloured key is spent every time it opens a door and again when it closes it, and the key pauses you for a while.
-- **In 1.6 and SSO:** 1.6's key routine spends the key unless the key list marks it infinite, and none are. SSO does the same: one key from the used slot per open and per close, plus a 425-frame pause.
-- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`keyConsumed`, `KEY_PAUSE`), `packages/server/src/systems/housing/doors.ts` (`useKey`)
-- **Pinned by:** `kept bug: coloured keys are consumed on open and on close; Keys.txt has no Inf` (packages/shared/tests/housing/doors.test.ts); `kept bug: a coloured key is spent opening and closing; it pauses 425` (packages/server/tests/doors.test.ts)
-
-### Opening one coloured door or switch changes every one of that name
-- **What you notice:** Opening one Steel Door opens every Steel Door on the map, and flipping a switch flips every switch in that state. A player door named Bob's Door also catches Jimbob's Door.
-- **In 1.6 and SSO:** 1.6 renames every item on the map whose name contains the old name, which is why the neighbours go too. SSO does the same renaming within the map, for door and switch items only, and shows it at once instead of on the next load.
-- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`renameTargets`, `switchFlip`), `packages/server/src/systems/housing/doors.ts` (`renameDoors`)
-- **Pinned by:** `kept bug: opening a coloured door renames every door of that name on the map` (packages/shared/tests/housing/doors.test.ts); `kept bug: a player door rename matches by substring (Bob's Door in Jimbob's Door)` (packages/shared/tests/housing/doors.test.ts); `kept bug: a switch flips every switch of that state on the map` (packages/shared/tests/housing/doors.test.ts); `kept bug: opening one Steel Door opens every Steel Door on the map` (packages/server/tests/doors.test.ts); `kept bug: a switch flips every switch of its state on the map` (packages/server/tests/doors.test.ts)
-
-### Player and guild doors never lock again by themselves
-- **What you notice:** Coloured doors and switch doors shut by themselves after a while; a player's or guild's door stays open until someone closes it.
-- **In 1.6 and SSO:** 1.6's close-all routine lists only switch and coloured doors. SSO's relock timer skips the player door's opened state.
-- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`closeAllDoors`), `packages/server/src/systems/housing/doors.ts` (`relockStep`)
-- **Pinned by:** `kept bug: CloseAllDoors closes coloured and switch doors and ON switches, never player doors` (packages/shared/tests/housing/doors.test.ts); `kept bug: player and guild doors never relock` (packages/server/tests/doors.test.ts)
-
-### House and guild keys work with no pause and are never used up
-- **What you notice:** A House Key or Guild Key toggles its door again immediately, and the key stays in your bag.
-- **In 1.6 and SSO:** 1.6 sends these keys straight to the door change, with no key spending and no action pause; coloured keys pause for 425 frames. SSO does the same.
-- **In the code:** `packages/server/src/systems/housing/doors.ts` (`useKey`)
-- **Pinned by:** `kept bug: house and guild keys work with no pause and are kept` (packages/server/tests/doors.test.ts)
-
-### A refused switch click still starts the doors' relock timer
-- **What you notice:** Clicking a switch from across the room does nothing to it, but the map's open coloured and switch doors shut about 100 frames later and its ON switches turn off.
-- **In 1.6 and SSO:** 1.6 starts the countdown before checking you are next to the switch. SSO does the same, on the map's timer (the smaller of what is left and 100).
-- **In the code:** `packages/server/src/systems/housing/doors.ts` (`switchClick`)
-- **Pinned by:** `kept bug: a refused switch click still arms the relock` (packages/server/tests/doors.test.ts)
-
-### Arriving on a map closes its doors a little later
-- **What you notice:** Open coloured and switch doors on a map close 150 frames after someone arrives there. A map with nobody on it keeps its doors open until then.
-- **In 1.6 and SSO:** 1.6 starts the relock countdown at 150 when a map loads. SSO does the same, on the map's timer.
-- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`relockAfter`)
-- **Pinned by:** `kept bug: arriving on a map closes its doors 150 frames later` (packages/server/tests/doors.test.ts)
+No kept bugs (all twenty former entries were fixed; see [housing differences](divergences.md#housing)).
 
 ## inventory
 

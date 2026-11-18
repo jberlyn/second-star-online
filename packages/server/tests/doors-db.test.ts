@@ -102,7 +102,8 @@ describe("doors and house vaults in the database", () => {
     const p = buildAndEnter(g, bob);
     p.facing = "N";
     g.intent(bob, { t: "use", slot: 1 });
-    // Through the door to (5, 9), facing the vault at (5, 8).
+    // The key's pause runs out, then through the door to (5, 9), facing the vault at (5, 8).
+    p.itemPause = 0;
     p.x = 5;
     p.y = 9;
     p.facing = "N";
