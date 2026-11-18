@@ -416,17 +416,17 @@ describe("movement sim", () => {
     const out = run(1);
     expect([a.map.name, a.x, a.y, a.facing]).toEqual(["x1000y992", 17, 5, "E"]);
     expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(false);
-    expect(out.some((o) => o.to === "a" && o.msg.t === "you")).toBe(true);
   });
 
-  test("kept bug: walking off an edge with no neighbour lands on the start point", () => {
+  test("bug fixed: an edge with no map beyond is refused, as a wall would", () => {
     const seed = testMap("x1000y992");
     const { join, run } = setup([seed]);
     const a = player("a", seed, 1, 9);
     join(a);
     pressStep(a, "L", false);
-    run(1);
-    expect([a.map.name, a.x, a.y, a.facing]).toEqual(["x1000y992", 6, 4, "W"]);
+    const out = run(1);
+    expect([a.map.name, a.x, a.y, a.facing]).toEqual(["x1000y992", 1, 9, "W"]);
+    expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(false);
   });
 
   test("loading: no movement until mapReady or 100 ticks", () => {

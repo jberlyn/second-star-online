@@ -537,8 +537,12 @@ export function tick(world: World, deps: TickDeps): TickResult {
   out.push(...decayLoot(itemCtx));
 
   for (const c of crossings) {
+    const from = c.player.map;
     out.push(...crossMapEdge(world, deps, c));
-    saves.add(c.player);
+    // A refused crossing changes nothing worth saving.
+    if (c.player.map !== from) {
+      saves.add(c.player);
+    }
   }
   for (const p of respawns) {
     out.push(...respawn(world, deps, p, saves));
@@ -742,9 +746,10 @@ function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit
 }
 
 /**
- * The map change. An unwalkable wrapped tile on the next map refuses the crossing. If there is no
- * next map, the original's empty map reply warped to `x1000y992` (5,5); SSO sends you to the
- * operator's start point instead. Either way the whole map reloads.
+ * The map change. A crossing is refused, as a wall refuses a step, when there is no map beyond the
+ * edge or the wrapped tile on it is unwalkable; you stay, facing the edge. Bugs fixed: 1.6 never
+ * checked the wrapped tile, and with no next map its empty map reply warped you to `x1000y992`
+ * (5,5).
  */
 export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Outgoing[] {
   const { player: p, outcome: o } = c;
@@ -754,18 +759,12 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
   const from = p.map.name;
   const nextName = neighbourMapName(from, o.dmx, o.dmy);
   const next = nextName ? deps.loadMap(nextName) : null;
-  if (next) {
-    // The wrapped tile must be walkable on the next map, on foot or aboard (a bug fixed: 1.6
-    // never checked it, so you could arrive inside a wall or on water). A refused crossing leaves
-    // you facing the edge, as a wall does.
-    if (!isWalkable(p.vehicle ? next.walkAir : next.walk, o.toX, o.toY)) {
-      p.forceYou = true;
-      return [];
-    }
-    return warp(world, p, next, o.toX, o.toY, deps.casino);
+  // The wrapped tile must be walkable on the next map, on foot or aboard. The client only turned
+  // for an edge and waits for the snapshot, so a refusal needs no correction.
+  if (!next || !isWalkable(p.vehicle ? next.walkAir : next.walk, o.toX, o.toY)) {
+    return [];
   }
-  const sp = deps.startPoint;
-  return warp(world, p, deps.loadMap(sp.map) ?? p.map, sp.x, sp.y, deps.casino);
+  return warp(world, p, next, o.toX, o.toY, deps.casino);
 }
 
 /**

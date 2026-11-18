@@ -2554,14 +2554,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`), `packages/shared/src/rules/chat/chat.ts` (`pushLines`)
 - **Pinned by:** `bug fixed: a weaker pusher is 'too weak' and does not shove` (packages/server/tests/push.test.ts); `bug fixed: a weaker pusher's line says only that they are too weak` (packages/shared/tests/chat/chat.test.ts)
 
-#### Walking off the screen's edge is stopped by a wall on the other side
+#### Walking off the screen's edge is stopped by a wall or a missing map
 - **Kind:** Bug fixed
-- **What you notice:** You cannot walk off the edge of the screen when the matching tile on the next map is a wall or water; you turn to face the edge and stay, as you would at a wall.
-- **1.6:** The step that crossed the edge never checked the tile it landed on, so you could arrive inside a wall or on water.
-- **SSO:** The server checks the wrapped tile against the next map's walk grid (the Airship grid when you ride one). An unwalkable tile refuses the crossing; others see you turn. With no map beyond the edge, you still go to the start point.
-- **Why:** Every other step checks its destination; skipping the check on an edge let players walk into walls.
+- **What you notice:** You cannot walk off the edge of the screen when the matching tile on the next map is a wall or water, or when there is no map beyond the edge; you turn to face the edge and stay, as you would at a wall.
+- **1.6:** The step that crossed the edge never checked the tile it landed on, so you could arrive inside a wall or on water. With no map beyond, the server's empty map reply warped you to the start point and reloaded the map.
+- **SSO:** The server checks that the next map exists and that the wrapped tile is walkable on it (the Airship grid when you ride one). Otherwise the crossing is refused; others see you turn.
+- **Why:** Every other step checks its destination; skipping the check on an edge let players walk into walls, and the edge of the world should feel like a wall rather than a teleport.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
-- **Pinned by:** `bug fixed: an unwalkable wrapped tile refuses the crossing, as a wall would`; `walking off an edge onto an existing neighbour keeps the wrapped tile` (packages/server/tests/world.test.ts)
+- **Pinned by:** `bug fixed: an unwalkable wrapped tile refuses the crossing, as a wall would`; `bug fixed: an edge with no map beyond is refused, as a wall would`; `walking off an edge onto an existing neighbour keeps the wrapped tile` (packages/server/tests/world.test.ts); `bug fixed: walking off an edge with no map beyond is refused, as a wall would` (packages/server/e2e/login-and-walk.test.ts)
 
 #### Only an Overlord or Mutant Worm blocks three tiles wide
 - **Kind:** Bug fixed

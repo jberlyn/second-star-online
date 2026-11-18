@@ -258,7 +258,7 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `startPoint` | Start point | `x1000y992 6 4` | Map `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Where new characters appear, and fallback when walking off an unlinked edge or missing map. |
+| `startPoint` | Start point | `x1000y992 6 4` | Map `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Where new characters appear, and fallback for an exit or warp to a missing map. |
 | `respawnPoint` | Respawn point | `x1000y992 5 5` | Map `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Where characters reappear after dying unless overridden by a map respawn flag. |
 | `portalTargets` | Portal targets | `[]` | Up to 30 points (`map x y`) | Random destinations for the Portal spell; empty falls back to `startPoint`. |
 | `hazardMap` | Server Spirit map | `null` | Map `x<mx>y<my>` or empty | Map where the Server Spirit throws fireballs and lightning bolts every 0.35 s. |

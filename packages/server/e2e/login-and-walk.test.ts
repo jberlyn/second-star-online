@@ -179,7 +179,7 @@ describe("log in and walk the seed map", () => {
     expect(events(bob)).toContainEqual(expect.objectContaining({ e: "turn", facing: "S" }));
   });
 
-  test("kept bug: walking off an edge with no map beyond lands on the start point", async () => {
+  test("bug fixed: walking off an edge with no map beyond is refused, as a wall would", async () => {
     // bob at (7,3) walks up: (7,2), (7,1), then off the top edge.
     bob.clear();
     alice.clear();
@@ -189,21 +189,15 @@ describe("log in and walk the seed map", () => {
     }
     expect(lastSelf(bob)).toMatchObject({ x: 7, y: 1, facing: "N" });
     bob.clear();
+    alice.clear();
     tap(bob, "U");
     await tick(1);
-    const snap = await bob.waitFor(isSnapshot);
-    expect(snap.map.name).toBe("x1000y992");
-    expect(snap.self).toMatchObject({ x: 6, y: 4, facing: "N" });
-    // alice saw bob leave and come back.
-    expect(events(alice).map((e) => e.e)).toEqual(
-      expect.arrayContaining(["move", "leave", "enter"]),
-    );
-    // Loading: bob cannot move until mapReady (or 100 ticks).
-    tap(bob, "R");
-    await tick(1);
-    expect(lastSelf(bob)).toMatchObject({ x: 6, y: 4 });
-    bob.send({ t: "mapReady" });
-    await settle();
+    const p = [...server.game.world.players.values()].find((o) => o.name === "bob");
+    expect(p).toMatchObject({ x: 7, y: 1, facing: "N" });
+    expect(p?.map.name).toBe("x1000y992");
+    expect(bob.inbox.some(isSnapshot)).toBe(false);
+    // alice never saw bob leave.
+    expect(events(alice).map((e) => e.e)).not.toContain("leave");
   });
 
   test("relog: logging out saves the tile, and the next login resumes there, facing south", async () => {
@@ -258,7 +252,7 @@ describe("log in and walk the seed map", () => {
       text: TEXT.replaced,
     });
     expect((await bob.closed).code).toBe(4002);
-    expect(second.snap.self).toMatchObject({ x: 6, y: 4 });
+    expect(second.snap.self).toMatchObject({ x: 7, y: 1 });
     second.bot.close();
   });
 

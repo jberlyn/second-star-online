@@ -19,7 +19,8 @@ import type { ServerMsg, StepMsg } from "../packages/shared/src/index.ts";
 function harness(x = 8) {
   const map = testMap("x1000y992");
   const p = player("me", map, x, 6);
-  const sim = setup([map]);
+  // An open map to the east, so a walk off the right edge crosses.
+  const sim = setup([map, testMap("x1001y992")]);
   sim.join(p);
   const m = createModel();
   applySnapshot(m, {
@@ -262,6 +263,7 @@ describe("scheduled movement prediction", () => {
       });
     }
     expect(h.sim.run().some(({ msg }) => msg.t === "snapshot")).toBe(true);
+    expect(h.p.map.name).toBe("x1001y992");
     expect(h.p.walkQueue).toHaveLength(0);
     expect(h.p.held).toBeNull();
   });
