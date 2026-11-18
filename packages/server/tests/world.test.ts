@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
   blankMap,
+  EDGE_BLOCKED_TEXT,
   footWalkGrid,
   inGameSchema,
   mapName,
@@ -427,6 +428,26 @@ describe("movement sim", () => {
     const out = run(1);
     expect([a.map.name, a.x, a.y, a.facing]).toEqual(["x1000y992", 1, 9, "W"]);
     expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(false);
+  });
+
+  test("SSO: a refused edge says why, once a press", () => {
+    const seed = testMap("x1000y992");
+    const east = testMap(mapName(1001, 992), [[1, 5]]); // a tree on the arrival tile
+    const { join, run } = setup([seed, east]);
+    const a = player("a", seed, 17, 5);
+    join(a);
+    const lines = (out: ReturnType<typeof run>) =>
+      out.flatMap((o) => (o.to === "a" && o.msg.t === "chat" ? [o.msg.text] : []));
+    setHeld(a, "R", false);
+    expect(lines(run(3))).toEqual([EDGE_BLOCKED_TEXT]);
+    // A release and a new press say it again; so does the edge with no map beyond.
+    setHeld(a, null, false);
+    run(1);
+    setHeld(a, "R", false);
+    expect(lines(run(1))).toEqual([EDGE_BLOCKED_TEXT]);
+    a.y = 1;
+    setHeld(a, "U", false);
+    expect(lines(run(2))).toEqual([EDGE_BLOCKED_TEXT]);
   });
 
   test("loading: no movement until mapReady or 100 ticks", () => {

@@ -64,8 +64,8 @@ export function setHeld(p: Player, held: Dir | null, turn: boolean, scheduled = 
   }
   // Pushes also read the current Turn modifier, even for scheduled clients.
   p.heldTurn = turn;
-  // A new press or a release: the next web refusal prints its line again.
-  p.webTold = false;
+  // A new press or a release: the next refusal prints its line again.
+  p.told = null;
   if (p.walkQueue) {
     p.held = null;
     return;
@@ -78,7 +78,7 @@ export function pressStep(p: Player, dir: Dir, turn: boolean): void {
   if (p.walkQueue || p.loading > 0) {
     return;
   }
-  p.webTold = false;
+  p.told = null;
   p.pending = { dir, turn, age: 0 };
 }
 
@@ -305,13 +305,25 @@ function refreshAntiMacro(p: Player, dir: Dir, o: MoveOutcome): void {
 }
 
 /**
+ * Prints a refusal line once for the current press: a held key, or a scheduled client's repeated
+ * requests, print it on the first refusal only.
+ */
+export function tellOnce(p: Player, text: string, tell: (text: string) => void): void {
+  if (p.told !== text) {
+    tell(text);
+    p.told = text;
+  }
+}
+
+/**
  * Applies one move outcome and reports it. Shared by a player's own move and a push, which runs the
  * victim's own move.
  */
 export function carryOut(room: Room, p: Player, dir: Dir, o: MoveOutcome, ctx: MoveCtx): void {
   refreshAntiMacro(p, dir, o);
-  if (o.kind !== "web" && o.kind !== "none") {
-    p.webTold = false;
+  // A web or edge refusal keeps its line told; the edge's is printed by `crossMapEdge`.
+  if (o.kind !== "web" && o.kind !== "edge" && o.kind !== "none") {
+    p.told = null;
   }
   const before = p.facing;
   const [dx, dy] = DIR_DELTA[dir];
@@ -354,10 +366,7 @@ function announce(p: Player, o: MoveOutcome, before: Player["facing"], ctx: Move
     case "web":
       // Facing untouched; only a web on your own tile counts. Printed once a press (a bug fixed:
       // 1.6 printed it on every attempt while a direction was held).
-      if (!p.webTold) {
-        ctx.tell(p, WEB_TEXT);
-        p.webTold = true;
-      }
+      tellOnce(p, WEB_TEXT, (text) => ctx.tell(p, text));
       return;
     case "edge":
       // The crossing can still be refused by the next map's tile, so others see the new facing.

@@ -28,6 +28,7 @@ import {
   CHAT_COLOR,
   type DeltaEvent,
   deathText,
+  EDGE_BLOCKED_TEXT,
   exitTarget,
   isJailMap,
   isWalkable,
@@ -64,6 +65,7 @@ import {
   type EdgeCrossing,
   type MoveCtx,
   movePlayer,
+  tellOnce,
   tickLoading,
 } from "../movement/movement.ts";
 import { medalCheck } from "../progression/medals.ts";
@@ -760,9 +762,14 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
   const nextName = neighbourMapName(from, o.dmx, o.dmy);
   const next = nextName ? deps.loadMap(nextName) : null;
   // The wrapped tile must be walkable on the next map, on foot or aboard. The client only turned
-  // for an edge and waits for the snapshot, so a refusal needs no correction.
+  // for an edge and waits for the snapshot, so a refusal needs no correction; the player reads
+  // why once a press (SSO's own line).
   if (!next || !isWalkable(p.vehicle ? next.walkAir : next.walk, o.toX, o.toY)) {
-    return [];
+    const out: Outgoing[] = [];
+    tellOnce(p, EDGE_BLOCKED_TEXT, (text) =>
+      out.push({ to: p.id, msg: { t: "chat", text, color: CHAT_COLOR.normal } }),
+    );
+    return out;
   }
   return warp(world, p, next, o.toX, o.toY, deps.casino);
 }

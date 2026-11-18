@@ -23,6 +23,9 @@ export type Facing = "N" | "S" | "E" | "W";
 /** The web line. */
 export const WEB_TEXT = "Your feet are stuck in the web, you cannot move!";
 
+/** SSO's line for a walk off an edge with no map beyond, or onto an unwalkable tile on it. */
+export const EDGE_BLOCKED_TEXT = "You cannot go that way.";
+
 /**
  * Whether a monster body is a Web: the original tested the member name `"<body>-F1"` for `92-`.
  * Only body 92 matches in the data.

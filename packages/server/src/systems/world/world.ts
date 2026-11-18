@@ -404,8 +404,11 @@ export interface Player {
   gather: GatherCounters;
   /** The macro-check counter: 5 at login and after an arrow press that turns you. */
   antiMacro: number;
-  /** The web line was printed for the current press; cleared by a new press, release or step. */
-  webTold: boolean;
+  /**
+   * The refusal line (web or blocked edge) already printed for the current press, so a held key
+   * prints it once; cleared by a new press, a release or any other outcome.
+   */
+  told: string | null;
   /**
    * The name last shown placed in each roster slot 1-4 (index = slot - 1), null = never shown
    * (outlives the monster). Kept while this Player lives, empty at a fresh login;
@@ -627,7 +630,7 @@ export function sessionCombatState(): Pick<
   | "warpscript"
   | "gather"
   | "antiMacro"
-  | "webTold"
+  | "told"
   | "shownNames"
   | "craft"
   | "container"
@@ -692,7 +695,7 @@ export function sessionCombatState(): Pick<
     warpscript: null,
     gather: newGatherCounters(),
     antiMacro: ANTI_MACRO_START,
-    webTold: false,
+    told: null,
     shownNames: [null, null, null, null],
     craft: newCraftState(),
     container: null,
