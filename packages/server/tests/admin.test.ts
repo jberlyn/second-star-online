@@ -91,7 +91,7 @@ function scene(withJail = true) {
     saveAll: () => audits.push("saved"),
     reloadSettings: () => audits.push("reloaded"),
     loadMap: (n) => byName.get(n) ?? null,
-    startPoint: () => ({ map: "x1000y992", x: 6, y: 4 }),
+    fallbackPoint: () => ({ map: "x1000y992", x: 6, y: 4 }),
     casino: { graceTicks: 600, addGoldOffline: () => {} },
   };
   const deps: ChatDeps = {
@@ -347,8 +347,9 @@ describe("the jail", () => {
     expect(bob.map.name).toBe("x1001y992");
   });
 
-  test("divergence: the sentence is stored and ends at its time, then releases to the start point", () => {
-    const { imm, bob, say, runMinutes, jails } = scene();
+  test("divergence: the sentence is stored and ends at its time, then releases to the respawn point", () => {
+    const { imm, bob, say, runMinutes, jails, seed } = scene();
+    bob.char.respawn = { mapId: seed.id, x: 7, y: 7 };
     expect(texts(say(imm, "/jail bob 2m"), "Imm")).toEqual([
       "*** Jailing bob...",
       "Bob is jailed until 2026-11-17 09:02 UTC.",
@@ -358,7 +359,7 @@ describe("the jail", () => {
     runMinutes(1);
     expect(bob.map.name).toBe("x0y0");
     const out = runMinutes(1);
-    expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 6, 4]);
+    expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 7, 7]);
     expect(out.some((o) => o.to === "Bob" && o.msg.t === "snapshot")).toBe(true);
     expect(bob.jailUntil).toBeNull();
   });

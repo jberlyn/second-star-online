@@ -49,7 +49,7 @@ export function mapCheck(db: Db): string[] {
   const settings = resolveSettings(loadSettingOverrides(db));
   const points = [
     ["startPoint", settings.startPoint],
-    ["respawnPoint", settings.respawnPoint],
+    ["fallbackPoint", settings.fallbackPoint],
     ...settings.portalTargets.map((t, i) => [`portalTargets ${i + 1}`, t] as const),
   ] as const;
   for (const [name, pt] of points) {

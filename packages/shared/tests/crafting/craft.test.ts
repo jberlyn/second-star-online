@@ -1,6 +1,6 @@
 /**
  * Golden tests for the crafting stations and the Cauldron: each test pins one behaviour of 1.6, or
- * one fixed bug from the bug ledger ("bug fixed:").
+ * one fixed 1.6 bug ("bug fixed:").
  */
 import { describe, expect, test } from "bun:test";
 

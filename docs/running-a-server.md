@@ -198,7 +198,7 @@ Every ban, unban, IP ban, jail, release and pardon is written to the `moderation
 - **Duration and reason.** `/ban`, `/jail` and `/banip` take an optional duration after the name, then an optional reason: `/ban Berlyn 3d being a rude person`. A duration is a number with `m`, `h`, `d` or `w` (`30m`, `12h`, `7d`, `2w`, or combined, such as `1d12h`), up to 10 years, or `perm`. Without one, the `banMinutes`, `ipBanMinutes` and `jailMinutes` settings apply. Write `perm` or a duration first if a reason starts with something like `1d`. `/unban`, `/unjail`, `/unbanip` and `/pardon` take a reason too.
 - **What the player sees.** A banned player reads the original alert and the ban's end, such as `Banned until 2026-11-20 14:00 UTC.` or `This ban is permanent.` The reason is never shown to the player; it is for staff, through `/banlist`.
 - **Who may change an action.** Only the staff member who made a ban or jail, or an immortal, can change its length or lift it. Re-running `/ban` or `/jail` on someone already banned or jailed replaces the length. Moderators who disagree with each other's bans settle it with the team.
-- **Jail.** A sentence runs in real time, including while the prisoner is offline, and works on offline characters: they arrive in jail at their next login, and a sentence that ended while they were away sends them to their respawn point (else `respawnPoint`, else `startPoint`). Staff warps cannot take a prisoner out or put a player in; use `/jail` and `/unjail`.
+- **Jail.** A sentence runs in real time, including while the prisoner is offline, and works on offline characters: they arrive in jail at their next login, and a sentence that ended while they were away sends them to their respawn point (see [Respawn points](#respawn-points)). Staff warps cannot take a prisoner out or put a player in; use `/jail` and `/unjail`.
 - **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Immortals are never stopped by IP bans, so an operator cannot lock themselves out.
 - **Login addresses.** The server keeps the addresses each account logs in from for `addressHistoryDays` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only immortals can read them.
 - **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, made at the rank the banner has now (at least moderator, or immortal if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set `jailMinutes` again if you had changed it.
@@ -227,7 +227,7 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/iplookup <name>` | `moderator` | Online player (word 2) | Prints the target's IP address (refuses if a moderator targets an immortal). |
 | `/kick <name>` | `moderator` | Online player (word 2) | Sends kick notice and disconnects the target (refuses if a moderator targets an immortal). |
 | `/warp <name> <map> <x> <y>` | `moderator` | Online player, `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Warps target to `<map>` at `(x, y)` (single-space split, cut at `*`). A map that does not exist is refused: "There is no map …". |
-| `/jail <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Jails the player in the seeded jail (`x0y0` at `4, 4`) for the duration or `jailMinutes`, then sends them to their respawn point (else `respawnPoint`, else `startPoint`). Moderators can jail players only. |
+| `/jail <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Jails the player in the seeded jail (`x0y0` at `4, 4`) for the duration or `jailMinutes`, then sends them to their respawn point. Moderators can jail players only. |
 | `/unjail <name> [reason]` | `moderator` | Character name (word 2) | Ends the sentence early and sends an online prisoner to their respawn point, as a sentence's end does (only the jailer or an immortal). (Said as local chat by players.) |
 | `/warptome <name>` | `moderator` | Online player (word 2) | Warps target to your current map and tile (refuses if a moderator targets an immortal). |
 | `/warpmeto <name>` | `moderator` | Online player (word 2) | Warps you to the target's current map and tile. |
@@ -258,8 +258,8 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `startPoint` | Start point | `x1000y992 6 4` | Map `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Where new characters appear, and the last resort when a character's place is gone (after their own respawn point and `respawnPoint`). Exits, edges, `/warp` and Portal never fall back here: travel to a missing map is refused. Run `bun run maps:check` to find exits and points that lead nowhere. |
-| `respawnPoint` | Respawn point | `x1000y992 5 5` | Map `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Where characters reappear after dying unless a map respawn flag gave them their own; also where a character goes when their saved map is gone, their house decays or their sentence ends, before `startPoint`. |
+| `startPoint` | Starting map | `x1000y992 6 4` | Map `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Where new characters appear, and their first respawn point (see [Respawn points](#respawn-points)). |
+| `fallbackPoint` | Fallback map | `x1000y992 5 5` | Map `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Where a character goes when their place is gone: their saved map was deleted or their house decayed. Also where a death or jail release goes if the character's respawn map was deleted. Never point it at a tutorial map. Exits, edges, `/warp` and Portal never fall back here: travel to a missing map is refused. Run `bun run maps:check` to find exits and points that lead nowhere. |
 | `portalTargets` | Portal targets | `[]` | Up to 30 points (`map x y`) | Random destinations for the Portal spell, among those whose map exists; with none, Portal cannot be cast and costs nothing. |
 | `hazardMap` | Server Spirit map | `null` | Map `x<mx>y<my>` or empty | Map where the Server Spirit throws fireballs and lightning bolts every 0.35 s. |
 | `treasureMaps` | Treasure maps | `[]` | Up to 100 map names (`x<mx>y<my>`) | Maps where buried treasure can spawn for a Shovel; empty disables buried treasure. |
@@ -301,7 +301,7 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `jailMinutes` | Jail sentence | `10` | `1`–`5256000` minutes (up to 10 years) | Length of a `/jail` without a duration. Sentences run in real time, offline too, then send the prisoner to their respawn point (else `respawnPoint`, else `startPoint`). |
+| `jailMinutes` | Jail sentence | `10` | `1`–`5256000` minutes (up to 10 years) | Length of a `/jail` without a duration. Sentences run in real time, offline too, then send the prisoner to their respawn point. |
 | `banMinutes` | Ban length | `0` (permanent) | `0`–`5256000` minutes | Length of a `/ban` without a duration (`0` is permanent until `/unban`). |
 | `ipBanMinutes` | IP ban length | `43200` (30 days) | `0`–`5256000` minutes | Length of a `/banip` without a duration (`0` is permanent). Addresses are reassigned, so permanent IP bans can catch someone else later. |
 | `addressHistoryDays` | Keep login addresses | `180` | `0`–`3650` days | How long an account's login addresses are kept after their last use, for `/banip <name>` and `/banlist` (`0` keeps them forever). |
@@ -322,6 +322,16 @@ Both editors are accessed from **Admin → World Editor** or **Admin → NPC Edi
 - **Airship landing pads:** Paint `J2` on **layer 1** in rows **`y` 1–9** (rows 10–12 are not checked by the Airship deed/parking logic) and leave the faced tile free of blocking items. See [Vehicles guide](guides/vehicles.md).
 - **Exits, flags, signs, items, and mobs:** Configure up to two exits (`MX`, `MY`, `LX`, `LY`, or `H1<mx>`/`H2<mx>` for house interiors), toggles (`SAFE AREA`, `NO PVP`, `INDOOR`, `FACTION W/M/A`), three sign texts, up to `20` placed items (`Delete` removes a placed item), and up to `4` monster/NPC slots.
 - **Validation and saving:** **SAVE** validates all 4 layers (12 rows × 17 palette tokens), flags, header/sign lengths, exit coordinates, fog settings, placed monster/NPC names, and item names; valid saves persist the map, roster, and admin items to SQLite and refresh players on that map.
+
+### Respawn points
+
+Every character has a respawn point, where a death or the end of a jail sentence sends them. A new character's respawn point is the `startPoint` tile. Entering a map with **SAFE AREA**, **INDOOR** and **NO PVP** all ticked replaces it with the tile they arrive on; the jail never does. The seed map and a new map's default toggles do not. A respawn point whose map is later deleted is replaced by `fallbackPoint`.
+
+`fallbackPoint` is only for a character whose place is gone: logging in when their saved map was deleted, or being saved inside a house interior that decayed. It never uses the character's respawn point, so it cannot send a player somewhere they chose.
+
+**Shrines.** To let players set a respawn point outdoors, build a small hidden map with all three toggles ticked and an `Exit` item on its arrival tile that leads back beside the shrine's entrance. Point an exit on the outdoor map at that arrival tile. Walking into the shrine saves the hidden tile and bounces the player straight back; a later death lands on the hidden tile and bounces them out beside the shrine again. A hidden map has two exits, so it can serve two shrines.
+
+**Tutorial island.** Set `startPoint` to the island, so new characters start there and die back there. Make the way off the island go through a main-world shrine, which replaces their respawn point, and set `fallbackPoint` to a safe main-world tile. Nothing then sends a player back to the island once they have left it.
 
 ### NPC Editor
 

@@ -489,8 +489,9 @@ describe("the playthrough", () => {
   });
 
   chapter("6 Die and respawn", async () => {
-    // Alice kills Dave on the Wilds (PvP is on there); Dave drops one item and comes back at
-    // the Town's respawn tile; the death lock ends and Alice is wanted for the murder.
+    // Alice kills Dave on the Wilds (PvP is on there); Dave drops one item and comes back at his
+    // respawn point, the starting tile he was created on; the death lock ends and Alice is wanted
+    // for the murder.
     // SQL shortcut: Dave is a Warrior with the power a head counts for, and both have the 90 HP
     // a faction asks; earning either takes hours. Chapter 12 uses the head.
     await logout(alice);
@@ -515,8 +516,8 @@ describe("the playthrough", () => {
     const snap = dave.inbox.find(isSnapshot);
     expect(snap?.t === "snapshot" && [snap.map.name, snap.self.x, snap.self.y]).toEqual([
       "x1000y992",
-      5,
-      5,
+      6,
+      4,
     ]);
     dave.send({ t: "mapReady" });
     await t(40); // the end of the death lock

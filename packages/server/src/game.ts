@@ -252,9 +252,10 @@ import {
 import { presenceOut } from "./systems/social/presence.ts";
 import { castIntent } from "./systems/spells/cast.ts";
 import {
-  fallbackPoint,
+  fallbackTarget,
   flushInventory,
   portalOpen,
+  respawnTarget,
   type TickDeps,
   tick,
 } from "./systems/world/tick.ts";
@@ -568,8 +569,7 @@ export function createGame(deps: GameDeps): Game {
     casino: casinoDeps,
     loadMap,
     loadMapById,
-    startPoint: settings.startPoint,
-    respawnPoint: settings.respawnPoint,
+    fallbackPoint: settings.fallbackPoint,
     minute,
     now: nowMs,
     lootDecayMinutes: settings.lootDecayMinutes,
@@ -885,8 +885,7 @@ export function createGame(deps: GameDeps): Game {
     const rulesBefore = settings.chatMaxChars;
     settings = next;
     Object.assign(tickDeps, {
-      startPoint: settings.startPoint,
-      respawnPoint: settings.respawnPoint,
+      fallbackPoint: settings.fallbackPoint,
       lootDecayMinutes: settings.lootDecayMinutes,
       npcChatterSeconds: settings.npcChatterSeconds,
       dropOnDeath: settings.dropOnDeath,
@@ -989,8 +988,7 @@ export function createGame(deps: GameDeps): Game {
     reloadSettings: () => applySettings(resolveSettings(loadSettingOverrides(db))),
     loadMap,
     loadMapById,
-    startPoint: () => settings.startPoint,
-    respawnPoint: () => settings.respawnPoint,
+    fallbackPoint: () => settings.fallbackPoint,
     casino: casinoDeps,
   };
   chatDeps.admin = adminDeps;
@@ -1185,8 +1183,8 @@ export function createGame(deps: GameDeps): Game {
 
   /**
    * Deletes a demolished interior, or leaves it queued while someone stands in it. Offline
-   * characters saved there go to their fallback point: their respawn point, then the operator's,
-   * then the start point (1.6's missing map sent them to the start point).
+   * characters saved there go to the fallback point, not their respawn point (1.6's missing map
+   * sent them to the start point).
    */
   function deleteInterior(name: string): boolean {
     const room = world.rooms.get(name);
@@ -1199,24 +1197,14 @@ export function createGame(deps: GameDeps): Game {
     if (rec) {
       // A respawn point inside the interior goes with it.
       db.query("UPDATE characters SET respawn_map_id = NULL WHERE respawn_map_id = ?").run(rec.id);
-      const inside = db
-        .query("SELECT id, respawn_map_id, respawn_x, respawn_y FROM characters WHERE map_id = ?")
-        .all(rec.id) as {
-        id: string;
-        respawn_map_id: string | null;
-        respawn_x: number | null;
-        respawn_y: number | null;
-      }[];
-      const move = db.query("UPDATE characters SET map_id = ?, x = ?, y = ? WHERE id = ?");
-      for (const ch of inside) {
-        const own =
-          ch.respawn_map_id !== null && ch.respawn_x !== null && ch.respawn_y !== null
-            ? { mapId: ch.respawn_map_id, x: ch.respawn_x, y: ch.respawn_y }
-            : null;
-        const to = fallbackPoint(own, tickDeps);
-        if (to) {
-          move.run(to.map.id, to.x, to.y, ch.id);
-        }
+      const to = fallbackTarget(tickDeps);
+      if (to) {
+        db.query("UPDATE characters SET map_id = ?, x = ?, y = ? WHERE map_id = ?").run(
+          to.map.id,
+          to.x,
+          to.y,
+          rec.id,
+        );
       }
       deleteMap(db, rec.id);
     }
@@ -1470,6 +1458,7 @@ export function createGame(deps: GameDeps): Game {
             start: startingCharacter(choice),
             // Load Character's Facing = "N" is overwritten by the play-entry setup's Facing = "S":
             // every login faces south.
+            // The starting map is also the new character's first respawn point.
             position: { mapId: map.id, x: sp.x, y: sp.y, facing: "S" },
             now,
           });
@@ -1513,17 +1502,16 @@ export function createGame(deps: GameDeps): Game {
       const stored = findMapById(db, c.position.mapId);
       let map = stored ? loadMap(stored.name) : null;
       let { x, y } = c.position;
-      // A saved map that is gone: the fallback point (their respawn point, then the operator's,
-      // then the start point).
+      // A saved map that is gone: the fallback point, never their respawn point.
       if (!map) {
-        const to = fallbackPoint(c.respawn, tickDeps);
+        const to = fallbackTarget(tickDeps);
         if (!to) {
           return false;
         }
         ({ map, x, y } = to);
       }
       // A sentence in force puts the prisoner in jail wherever they were saved; a player on the
-      // jail map without one (it ended while they were away) goes to their fallback point.
+      // jail map without one (it ended while they were away) goes to their respawn point.
       const now = isoNow();
       noteAddress(db, account.id, ip, now, settings.addressHistoryDays);
       const sentence = characterJail(db, c.id);
@@ -1538,7 +1526,7 @@ export function createGame(deps: GameDeps): Game {
         x = JAIL.x;
         y = JAIL.y;
       } else if (jailUntil === null && isJailMap(map.name) && account.role === "player") {
-        const to = fallbackPoint(c.respawn, tickDeps);
+        const to = respawnTarget(c.respawn, tickDeps);
         if (to) {
           ({ map, x, y } = to);
         }

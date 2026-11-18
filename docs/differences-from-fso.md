@@ -1,6 +1,6 @@
 # Differences from First Star Online 1.6
 
-Second Star Online is a remake of First Star Online 1.6 that fixes its exploits and bugs but keeps the feel of the original. This document records every deliberate difference from 1.6: what a player notices, what 1.6 did, what SSO does instead and why. It also records the 1.6 bugs SSO keeps on purpose. Bugs not yet fixed are listed in the [bug ledger](bug-ledger.md).
+Second Star Online is a remake of First Star Online 1.6 that fixes its exploits and bugs but keeps the feel of the original. This document records every deliberate difference from 1.6: what a player notices, what 1.6 did, what SSO does instead and why. It also records the 1.6 bugs SSO keeps on purpose.
 
 ## Policy
 
@@ -10,7 +10,7 @@ Second Star Online is a remake of First Star Online 1.6 that fixes its exploits 
 - **Keep some bugs on purpose.** When fixing a bug would be a design change rather than a correction, it is kept and listed under [Kept on purpose](#kept-on-purpose) with the reason.
 - **Record design changes.** Deliberate changes to how the game plays are listed under [Design changes](#design-changes).
 
-Record a difference in the same change as the code. When a bug-ledger entry is resolved, remove it from the ledger and add it here, as **Bug fixed** or under Kept on purpose. Name its pinning tests `bug fixed: …` or `kept on purpose: …`.
+Record a difference in the same change as the code, as **Bug fixed** or under Kept on purpose when it resolves a 1.6 bug. Name its pinning tests `bug fixed: …` or `kept on purpose: …`.
 
 Kinds are **Bug fixed**, **Kept on purpose**, **Architecture** (server authority and related design), **Exploit closed**, **Limit lifted**, **World content**, **Platform** (the move to a browser and a modern server), and **Other** for a remaining deliberate change.
 
@@ -31,10 +31,10 @@ An entry uses this shape; `Pinned by` is optional:
 |---|---:|
 | [Design changes](#design-changes) | 55 |
 | [Fixed bugs](#fixed-bugs) | 286 |
-| [Kept on purpose](#kept-on-purpose) | 10 |
+| [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **522** |
+| **Total** | **523** |
 
 By system (the code folder that holds the change):
 
@@ -186,7 +186,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** An immortal can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
 - **1.6:** `/drop` put one name on the ground. Gold and crystal piles carried a count; another pile gave one item. A bare dropped crystal name parsed into a useless quantity and item name.
-- **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several still puts the whole count on one line under one ID (bug ledger). A bare crystal name is a pile of one; the World Editor shows and saves the count.
+- **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several gives each container its own line and ID (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)). A bare crystal name is a pile of one; the World Editor shows and saves the count.
 - **Why:** Operators can stock the world without dropping items one at a time, and bare crystal piles work.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`parseDrop`, `handleDrop`)
 
@@ -194,7 +194,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** A new character starts at the server's configured start point, on the seed map by default.
 - **1.6:** The character file started at x1000y992 tile 6,4; a server override was commented out. The death-respawn seed was x0y102 tile 5,5.
-- **SSO:** The start and death-respawn points are operator settings, replacing `Starting Map.txt`.
+- **SSO:** The starting map (`startPoint`) and the fallback map (`fallbackPoint`, replacing `Starting Map.txt`) are operator settings; see [Every character has a respawn point](#every-character-has-a-respawn-point).
 - **Why:** Archived maps are not shipped, so the original Test map and Brinkston are absent on a fresh server.
 - **In the code:** `packages/server/src/game.ts` (`create`)
 - **Pinned by:** `SSO: new characters start on the operator's start point setting, default x1000y992 (6, 4) on the seed map` (packages/server/tests/world.test.ts)
@@ -507,19 +507,19 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Other
 - **What you notice:** You mix a potion and the sand is still in your hand afterwards. The Potion Bottle and the crystal are used up.
 - **1.6:** The same: the sand only had to be held.
-- **SSO:** The same, on purpose. Every craft uses up its materials and keeps its tool: the Blacksmith Hammer, the Saw, and for alchemy the held sand. Shops price sand at 100 to 150 gold against 23 to 35 for a potion, which fits a tool rather than a material. Operators can change those prices. This was listed in the bug ledger until it was reclassified as intended.
+- **SSO:** The same, on purpose. Every craft uses up its materials and keeps its tool: the Blacksmith Hammer, the Saw, and for alchemy the held sand. Shops price sand at 100 to 150 gold against 23 to 35 for a potion, which fits a tool rather than a material. Operators can change those prices.
 - **Why:** Using up the sand on every mix would make alchemy cost far more than it earns.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startMix`, `finishCraft`)
 - **Pinned by:** `completion takes the bottle and the crystal; the held sand is a tool` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand` (packages/server/tests/craft.test.ts)
 
-#### Displaced characters go to their respawn point first
+#### Every character has a respawn point
 - **Kind:** Other
-- **What you notice:** When your place is gone you reappear at your own respawn point (the one a map's respawn flag gave you), not at the start point: logging in when your saved map has been deleted, being saved inside a house that decays, or the end of a jail sentence. With no respawn point of your own you go to the server's respawn point, and only if that map is missing too to the start point.
-- **1.6:** A missing map sent you to the start map's (5,5), and the jail's end sent you to the start point.
-- **SSO:** One fallback order everywhere: your respawn point, then the `respawnPoint` setting, then the `startPoint` setting, the first whose map exists. Death uses the same order. Travel someone chooses (an exit, an edge, `/warp`, a Portal) never falls back: it is refused. Operators can list exits and setting points that lead nowhere with `bun run maps:check`.
-- **Why:** Players set their respawn point on purpose (operators build respawn maps for it), so it is where a displaced player expects to be; the start point is only for new characters and the last resort.
-- **In the code:** `packages/server/src/systems/world/tick.ts` (`fallbackPoint`, `releaseFromJail`), `packages/server/src/game.ts` (`deleteInterior`), `packages/server/src/cli/map-check.ts` (`mapCheck`)
-- **Pinned by:** `SSO: the fallback point is your respawn point, then the operator's, then the start point` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to their respawn point, else the operator's` (packages/server/tests/houses-db.test.ts); `death revives a prisoner in jail without restarting the sentence; expiry still releases` (packages/server/tests/jail.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
+- **What you notice:** A new character's respawn point is the tile they started on, so dying before you find a respawn map returns you to the starting map. Entering a map flagged no fighting, indoors and no PvP (O-O-O) replaces it, as in 1.6. A death or the end of a jail sentence takes you to your respawn point. If your place is gone (you log in after your saved map was deleted, or you were saved inside a house that decayed) you go to the server's fallback map instead, never to your respawn point.
+- **1.6:** A respawn point was saved only on an O-O-O map, and none of the 27 original maps was one, so until an operator's shrine saved one, every death went to `Starting Map.txt` (x0y102 5,5). A missing map sent you to the start map's (5,5), and the jail's end sent you to the start point.
+- **SSO:** Character creation stores the `startPoint` tile as the respawn point. A death or jail release goes there, or to the `fallbackPoint` setting if its map was deleted. A lost place always goes to `fallbackPoint`. `startPoint` is used only for new characters. Travel someone chooses (an exit, an edge, `/warp`, a Portal) never falls back: it is refused. Operators can list exits and setting points that lead nowhere with `bun run maps:check`. A migration renames the old `respawnPoint` setting to `fallbackPoint` and gives characters without a respawn point its tile.
+- **Why:** Operators built tutorial islands that new characters start on, left through a main-world shrine. A server-wide death point could only serve one side: pointed at the island it sent veterans back with main-world items, and pointed at the main world it let new players skip the island. Starting with a respawn point keeps each player on their side. A lost place uses the fallback map rather than the respawn point, so it can never carry a player back to where they started.
+- **In the code:** `packages/server/src/persistence/characters.ts` (`insertCharacter`), `packages/server/src/systems/world/tick.ts` (`respawnTarget`, `fallbackTarget`, `releaseFromJail`), `packages/server/src/game.ts` (`deleteInterior`), `packages/server/src/cli/map-check.ts` (`mapCheck`)
+- **Pinned by:** `SSO: a death or release goes to your respawn point, else the fallback point; a lost place goes to the fallback point`, `SSO: a tutorial island keeps new players until they leave through a shrine, and nothing sends them back`, `SSO: new characters start on the operator's start point setting` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point` (packages/server/tests/houses-db.test.ts); `divergence: the sentence is stored and ends at its time, then releases to the respawn point` (packages/server/tests/admin.test.ts); `fallback_point renames the Respawn point setting` (packages/server/tests/migrations.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
 
 #### Class stat points come from your current class
 - **Kind:** Other
@@ -639,10 +639,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A jail sentence lasts the given minutes, hours or days (10 minutes by default) of real time, whether or not the prisoner stays online, and relogging does not restart it. `/jail` works on an offline character, who arrives in jail at their next login. `/unjail` ends a sentence early; staff warps cannot take a prisoner out or put a player in.
 - **1.6:** The sentence was a frame counter (8000 frames by default) in the client that restarted on every arrival in the jail, counted only while online, started at 10000 on a login, and kept counting after an administrator warped the prisoner out.
-- **SSO:** Each sentence is stored with its end. A prisoner online when it ends goes to their fallback point (see [Displaced characters go to their respawn point first](#displaced-characters-go-to-their-respawn-point-first)); one offline goes there at their next login. The setting is `jailMinutes`.
+- **SSO:** Each sentence is stored with its end. A prisoner online when it ends goes to their respawn point (see [Every character has a respawn point](#every-character-has-a-respawn-point)); one offline goes there at their next login. The setting is `jailMinutes`.
 - **Why:** A sentence that restarts on every login, or that pauses offline, cannot be timed by staff, and a warp-out left the timer meaningless.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`jailTick`, `releaseFromJail`), `packages/server/src/game.ts` (`enter`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
-- **Pinned by:** `divergence: the sentence is stored and ends at its time, then releases to the start point`, `divergence: staff warps neither take a prisoner out nor put a player in; /unjail releases` (packages/server/tests/admin.test.ts); `a sentence survives logout and restart, and one that ends offline releases at login` (packages/server/tests/moderation-db.test.ts)
+- **Pinned by:** `divergence: the sentence is stored and ends at its time, then releases to the respawn point`, `divergence: staff warps neither take a prisoner out nor put a player in; /unjail releases` (packages/server/tests/admin.test.ts); `a sentence survives logout and restart, and one that ends offline releases at login` (packages/server/tests/moderation-db.test.ts)
 
 #### NPC files are read in full
 - **Kind:** Bug fixed
@@ -1258,7 +1258,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Cancel a painting, take a photo, and the next Canvas still reopens your painting.
 - **1.6:** The photo was written into the same image a cancelled canvas keeps.
-- **SSO:** A photo is cropped into an image of its own and saved from there. A viewed painting still shares the canvas's image (see the bug ledger's mail section).
+- **SSO:** A photo is cropped into an image of its own and saved from there. A viewed painting has an image of its own too (see [A viewed painting stays out of your canvas](#a-viewed-painting-stays-out-of-your-canvas)).
 - **Why:** Taking a photo should not destroy unrelated work.
 - **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
 - **Pinned by:** `divergence: a photo leaves a cancelled painting alone` and `a good shot hides the lens, redraws, crops 64×64 around the tap and saves a photo` (packages/client/tests/art-news.test.ts)
@@ -3165,7 +3165,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **What you notice:** Nothing: a map's roster has four slots, so no screen ever holds more than four spawned monsters.
 - **1.6:** Spells and arrows looped over five monster sprites but melee over four, and code for a fifth roster slot sat switched off. No map ever filled a fifth slot and it never spawned.
 - **SSO:** Each map has exactly four roster slots (sprites 180-183), in the World Editor, the protocol and the database.
-- **Why:** Four monsters a map is the game as it was played and designed; the fifth slot's code was a leftover, not an intended feature, so it is not added. The bug ledger listed this twice (the fifth slot, and four monsters a screen); this entry resolves both.
+- **Why:** Four monsters a map is the game as it was played and designed; the fifth slot's code was a leftover, not an intended feature, so it is not added.
 - **In the code:** `packages/server/src/systems/monsters/slots.ts` (`MonsterSlot`)
 - **Pinned by:** `kept on purpose: slot 5 never spawns: a roster has four slots` (packages/server/tests/monsters.test.ts)
 
@@ -3213,6 +3213,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** 1.6 wrote a line for exactly this case: the spell has nothing to set alight.
 - **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
 - **Pinned by:** `kept on purpose: Firesword without a sword: the warmth line, no counter; a recast refreshes P·40` (packages/server/tests/spells.test.ts)
+
+### The seed map and new maps do not save a respawn point
+- **Kind:** Kept on purpose
+- **What you notice:** Only maps with **SAFE AREA**, **INDOOR** and **NO PVP** all ticked (O-O-O) save your respawn point. The seed map and a new World Editor map's defaults do not; houses' and guild halls' interiors and the Church do.
+- **1.6:** The same rule, and no original map was O-O-O, so the respawn point never moved on its own. Operators built shrines: an exit to a small hidden O-O-O map whose arrival tile is an exit straight back, which saved the point as the player passed through.
+- **SSO:** The same rule. A new character's respawn point is the starting map (see [Every character has a respawn point](#every-character-has-a-respawn-point)), and shrines work as they did.
+- **Why:** Saving on an outdoor fighting map would move every player's respawn point as they walked about, and operators' shrines and tutorial islands depend on only O-O-O maps saving it.
+- **In the code:** `packages/server/src/systems/world/world.ts` (`enterRoom`)
+- **Pinned by:** `kept on purpose: the seed map and new-map defaults do not save a respawn point`, `SSO: a tutorial island keeps new players until they leave through a shrine, and nothing sends them back` (packages/server/tests/world.test.ts)
 
 ### Raise Dead's Zombie rises on the tile below the grave
 - **Kind:** Kept on purpose
@@ -3648,7 +3657,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** A built crate or cabinet has its own container contents.
 - **1.6:** The client appended a random number to a built Crate, Cabinet or Wind Cabinet, so two could share the same vault file.
-- **SSO:** The server mints a unique increasing ID; World Editor Cauldrons use the same minter. Only built and placed containers are minted: a bare container added to a bag from a purchase, loot or gift gets a random ID instead, which can collide, and a bought stack shares one (see Cauldrons get unique ids and the bug ledger).
+- **SSO:** The server mints a unique increasing ID; World Editor Cauldrons use the same minter. Only built and placed containers are minted: a bare container added to a bag from a purchase, loot or gift gets a random ID instead, and a purchase rolls again for an ID already in use (see [Cauldrons get unique ids](#cauldrons-get-unique-ids) and [Every bought container gets its own id](#every-bought-container-gets-its-own-id)).
 - **Why:** Each container needs its own contents and clients must not choose server file names.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`)
 
@@ -3665,7 +3674,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** A World Editor placed or crafted Cauldron has its own container ID and retains it on later saves.
 - **1.6:** A World Editor save gave a bare Cauldron a random ID and kept an existing one; random IDs could collide. A carried Cauldron kept no ID and opened the shared Cauldron file. No Cauldron was placed in archived maps.
-- **SSO:** A placed or crafted Cauldron receives a unique minted ID. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed and crafted ones are guaranteed unique. A purchase of several puts the whole count on one line under one random ID, so those Cauldrons share storage, and the random ID can collide with another container or an orphaned one (bug ledger).
+- **SSO:** A placed or crafted Cauldron receives a unique minted ID. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed and crafted ones are guaranteed unique. A purchase of several puts each Cauldron on its own line under a random ID not already in use (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)).
 - **Why:** Container ownership needs a separate container for each placed or crafted Cauldron.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`)
 
@@ -3707,7 +3716,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** You can open and use a personal, house or guild vault only when its rules allow you; a refused house or guild vault says “You can't open a vault that's not yours!”
 - **1.6:** Chest and vault requests had no ownership or position check. A house door was its only protection.
-- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, so a later guild created under the same name inherits the old vault's contents (bug ledger). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. For a forbidden house or guild vault the original standing-in-front line appears before the SSO refusal, modeled on the mailbox's ownership line. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
+- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, and only a disbanded guild's last leader may found its name again, getting its vault back (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. For a forbidden house or guild vault the original standing-in-front line appears before the SSO refusal, modeled on the mailbox's ownership line. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
 - **Why:** Anyone could otherwise read and loot any vault.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `openContainer`, `depositContainer`, `withdrawContainer`), `packages/server/src/systems/economy/vault.ts` (`openVault`)
 
@@ -3815,7 +3824,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** House furniture permissions use the full owner name, or the exact name of your guild hall.
 - **1.6:** The header test accepted a name followed by apostrophe-s anywhere in the header, so Bob could pass the test in “Jimbob's House” and place furniture or take Jimbob's Stove, Anvil and Alchemy Lab.
-- **SSO:** A personal header must begin with “<name>'s ”; a guild hall header must equal “Hall of the <guild>”, so a later guild of that name still matches the old hall (bug ledger).
+- **SSO:** A personal header must begin with “<name>'s ”; a guild hall header must equal “Hall of the <guild>”, so a guild its last leader founds again under that name matches the old hall (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)).
 - **Why:** One player's name inside another's allowed theft of furniture.
 - **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`)
 
@@ -3831,7 +3840,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** A demolished house's lost interior and vault are removed; if someone is inside, its interior is deleted when they leave.
 - **1.6:** Decay removed the house record and reverted the outdoor tiles, but the now-unreachable interior map and vault file stayed on disk. A missing map returned a character to the start point.
-- **SSO:** The sweep also deletes the interior, its items and the house vault contents. An occupied interior waits until its occupant leaves, while a logged-out character saved there moves to their fallback point (see [Displaced characters go to their respawn point first](#displaced-characters-go-to-their-respawn-point-first)).
+- **SSO:** The sweep also deletes the interior, its items and the house vault contents. An occupied interior waits until its occupant leaves, while a logged-out character saved there moves to the fallback map (see [Every character has a respawn point](#every-character-has-a-respawn-point)).
 - **Why:** The contents were unreachable either way; the server need not keep unreachable rows forever.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`demolish`)
 

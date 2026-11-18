@@ -251,4 +251,68 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       { name: "Cat", str: 10, dex: 10, int: 10, wis: 10 },
     ]);
   });
+  test("fallback_point renames the Respawn point setting and gives characters without a respawn point its tile", () => {
+    for (const override of [null, { map: "x0y0", x: 3, y: 2 }, { map: "x9y9", x: 1, y: 1 }]) {
+      const db = openDatabase();
+      const all = loadMigrations(MIGRATIONS_DIR);
+      runMigrations(
+        db,
+        all.filter((m) => m.name < "20261118_35"),
+      );
+      const seed = db.query("SELECT id FROM maps WHERE mx = 1000 AND my = 992").get() as {
+        id: string;
+      };
+      const jail = db.query("SELECT id FROM maps WHERE mx = 0 AND my = 0").get() as { id: string };
+      if (override) {
+        db.run("INSERT INTO settings (key, value, updated_at) VALUES ('respawnPoint', ?, 'now')", [
+          JSON.stringify(override),
+        ]);
+      }
+      db.run(
+        "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+      );
+      const make = (name: string) =>
+        insertCharacter(db, {
+          accountId: "a1",
+          start: startingCharacter({
+            name,
+            sex: 1,
+            head: 1,
+            classCode: 1,
+            str: 1,
+            sta: 1,
+            int: 1,
+            wis: 1,
+            dex: 1,
+          }),
+          position: { mapId: seed.id, x: 6, y: 4, facing: "S" },
+          now: "now",
+        });
+      const none = make("none");
+      const own = make("own");
+      db.run(
+        "UPDATE characters SET respawn_map_id = NULL, respawn_x = NULL, respawn_y = NULL WHERE id = ?",
+        [none],
+      );
+      db.run("UPDATE characters SET respawn_x = 2, respawn_y = 3 WHERE id = ?", [own]);
+      runMigrations(db, all);
+      const point = (id: string) =>
+        db
+          .query("SELECT respawn_map_id, respawn_x, respawn_y FROM characters WHERE id = ?")
+          .get(id);
+      // A point already saved is kept.
+      expect(point(own)).toEqual({ respawn_map_id: seed.id, respawn_x: 2, respawn_y: 3 });
+      if (override === null) {
+        expect(point(none)).toEqual({ respawn_map_id: seed.id, respawn_x: 5, respawn_y: 5 });
+      } else if (override.map === "x0y0") {
+        expect(point(none)).toEqual({ respawn_map_id: jail.id, respawn_x: 3, respawn_y: 2 });
+      } else {
+        // The setting names a missing map: no point, and the fallback point covers it.
+        expect(point(none)).toEqual({ respawn_map_id: null, respawn_x: null, respawn_y: null });
+      }
+      expect(db.query("SELECT key FROM settings").all()).toEqual(
+        override ? [{ key: "fallbackPoint" }] : [],
+      );
+    }
+  });
 });

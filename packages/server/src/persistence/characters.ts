@@ -54,7 +54,10 @@ export interface CharacterRecord {
   stats: StoredStats;
   hunger: number;
   position: Position;
-  /** The O-O-O respawn point, or null for the operator's respawnPoint setting. */
+  /**
+   * Where a death or jail release sends the character: the creation position, replaced on entering
+   * an O-O-O map. Null only when its map was deleted (the fallback point is used then).
+   */
   respawn: { mapId: string; x: number; y: number } | null;
   /** `Fctnme:Fctcnt`, sheet item 5. */
   faction: StoredFaction;
@@ -115,8 +118,8 @@ const COLUMNS =
   "faction, faction_count, wanted, profile, vehicle";
 
 /**
- * Inserts a new character with one row per skill and starting bag. Synchronous: wrap it in the
- * same transaction as the account it belongs to.
+ * Inserts a new character with one row per skill and starting bag. Its first respawn point is
+ * where it is created. Synchronous: wrap it in the same transaction as the account it belongs to.
  */
 export function insertCharacter(
   db: Db,
@@ -127,8 +130,8 @@ export function insertCharacter(
   db.query(
     `INSERT INTO characters (id, account_id, name, sex, head, class_code, level, hp, hp_max, sp, sp_max,
       exp, exp_needed, str, sta, agi, dex, int, wis, spd, aim, gold, profile, hunger, break_count,
-      map_id, x, y, facing, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      map_id, x, y, facing, respawn_map_id, respawn_x, respawn_y, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.accountId,
@@ -159,6 +162,9 @@ export function insertCharacter(
     p.x,
     p.y,
     p.facing,
+    p.mapId,
+    p.x,
+    p.y,
     now,
     now,
   );

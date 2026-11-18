@@ -63,6 +63,6 @@ The input layer resolves multiple held arrows left, right, up, then down. A new 
 
 The stage, panel, placement, window and shell modules arrange screens. Assets use retained layout metadata and sprite images. Audio uses eight channels; a new sound replaces the sound on its channel, and each channel has its own volume. Muting stops all channels. A pointer or key gesture unlocks playback; a sound requested before unlock or before its buffer loads is skipped rather than played late.
 
-## Unfixed bugs and differences
+## Differences from 1.6
 
 The church bell plays at its own volume and leaves channel 5's alone (see [the church bell fix](../differences-from-fso.md#the-church-bell-leaves-channel-5s-volume-alone)). SSO’s sound switch silences every sound. See the [sound switch difference](../differences-from-fso.md#sound-off-silences-everything), the [core bugs fixed](../differences-from-fso.md#core), the [browser platform changes](../differences-from-fso.md#browser-platform), the [movement bugs fixed](../differences-from-fso.md#movement) and the [server-side movement changes](../differences-from-fso.md#server-side-movement).

@@ -36,6 +36,6 @@ Dropping puts an item on the faced tile after the action's checks; ordinary item
 
 The paperdoll combines body, head and equipment layers for the current frame and facing; boots are drawn over the body from authored layers (bare feet when none are worn, covering the shoes every body paints), and an absent layer is skipped. Ground pictures and their draw layers are selected by shared name rules, independently of collision.
 
-## Unfixed bugs and differences
+## Differences from 1.6
 
-The inventory has no unfixed 1.6 bugs. The server checks adjacency and the actual bag slot for item transfers. See the [inventory bugs fixed](../differences-from-fso.md#inventory) and [server-side inventory changes](../differences-from-fso.md#server-side-inventory).
+The server checks adjacency and the actual bag slot for item transfers. See the [inventory bugs fixed](../differences-from-fso.md#inventory) and [server-side inventory changes](../differences-from-fso.md#server-side-inventory).

@@ -1,6 +1,6 @@
 /**
- * Golden tests for the gathering rules: each test pins one behaviour of 1.6, or one fixed bug from
- * the bug ledger ("bug fixed:").
+ * Golden tests for the gathering rules: each test pins one behaviour of 1.6, or one fixed 1.6 bug
+ * ("bug fixed:").
  */
 import { describe, expect, test } from "bun:test";
 

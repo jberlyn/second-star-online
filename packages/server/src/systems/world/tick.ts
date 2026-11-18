@@ -114,10 +114,8 @@ export interface TickDeps {
   loadMap(name: string): WorldMap | null;
   /** Finds a map by id (the stored respawn point), or null. */
   loadMapById?(id: string): WorldMap | null;
-  /** Where a walk off an edge with no map beyond lands. */
-  startPoint: { map: string; x: number; y: number };
-  /** Where a death respawns when the character has no O-O-O point. */
-  respawnPoint?: { map: string; x: number; y: number };
+  /** Where a player goes when their place is gone (the operator's Fallback map setting). */
+  fallbackPoint?: { map: string; x: number; y: number };
   saveIntervalTicks: number;
   rng: Rng;
   /** Server minute of the hour, for Zombie and Skeleton spawns. */
@@ -689,38 +687,43 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
     out.push(...warp(world, p, p.map, JAIL.x, JAIL.y, deps.casino));
     return out;
   }
-  const to = fallbackPoint(p.char.respawn, deps);
+  const to = respawnTarget(p.char.respawn, deps);
   out.push(...warp(world, p, to?.map ?? p.map, to?.x ?? p.x, to?.y ?? p.y, deps.casino));
   return out;
 }
 
-/** What `fallbackPoint` reads. */
-export type FallbackDeps = Pick<
-  TickDeps,
-  "loadMap" | "loadMapById" | "startPoint" | "respawnPoint"
->;
+/** What `respawnTarget` and `fallbackTarget` read. */
+export type FallbackDeps = Pick<TickDeps, "loadMap" | "loadMapById" | "fallbackPoint">;
+
+/** A place on a loaded map. */
+type Target = { map: WorldMap; x: number; y: number };
 
 /**
- * Where a player goes when the place they were is gone or they are released: their own respawn
- * point, then the operator's respawn point, then the start point, the first whose map exists.
- * Null only when none does. Travel someone chooses (an exit, an edge, `/warp`, a Portal) never
- * falls back: it is refused.
+ * Where a death or a jail release sends a player: their respawn point. Every character has one
+ * from creation (the starting map), replaced on entering an O-O-O map; only when its map is gone
+ * do they go to the fallback point. Null when neither map exists.
  */
-export function fallbackPoint(
+export function respawnTarget(
   respawn: { mapId: string; x: number; y: number } | null,
   deps: FallbackDeps,
-): { map: WorldMap; x: number; y: number } | null {
+): Target | null {
   const own = respawn ? (deps.loadMapById?.(respawn.mapId) ?? null) : null;
   if (respawn && own) {
     return { map: own, x: respawn.x, y: respawn.y };
   }
-  for (const pt of [deps.respawnPoint, deps.startPoint]) {
-    const map = pt ? deps.loadMap(pt.map) : null;
-    if (pt && map) {
-      return { map, x: pt.x, y: pt.y };
-    }
-  }
-  return null;
+  return fallbackTarget(deps);
+}
+
+/**
+ * Where a player goes when the place they were is gone (a deleted map, a decayed house): the
+ * operator's fallback point, never their respawn point, so it cannot carry them anywhere they
+ * chose (such as back to a tutorial island). Null when its map is missing. Travel someone chooses
+ * (an exit, an edge, `/warp`, a Portal) never falls back: it is refused.
+ */
+export function fallbackTarget(deps: FallbackDeps): Target | null {
+  const pt = deps.fallbackPoint;
+  const map = pt ? deps.loadMap(pt.map) : null;
+  return pt && map ? { map, x: pt.x, y: pt.y } : null;
 }
 
 /**
@@ -826,8 +829,8 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
 
 /**
  * A stored sentence ends at its wall-clock time, checked once a second (every 20 ticks), in an
- * editor or dead too. A prisoner on the jail map goes to the start
- * point. 1.6 counted frames only while online and restarted the count on every entry to the jail.
+ * editor or dead too. A prisoner on the jail map goes to their respawn point (`releaseFromJail`).
+ * 1.6 counted frames only while online and restarted the count on every entry to the jail.
  */
 export function jailTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
   if (p.jailUntil === null || !deps.now || world.tickNo % 20 !== 0) {
@@ -840,8 +843,8 @@ export function jailTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
 }
 
 /**
- * Ends `p`'s sentence; on the jail map they go to their fallback point (`fallbackPoint`: their
- * respawn point, then the operator's, then the start point). An editor is closed first.
+ * Ends `p`'s sentence; on the jail map they go to their respawn point (`respawnTarget`). An editor
+ * is closed first.
  */
 export function releaseFromJail(
   world: World,
@@ -852,7 +855,7 @@ export function releaseFromJail(
   if (!isJailMap(p.map.name) || p.editing) {
     return [];
   }
-  const to = fallbackPoint(p.char.respawn, deps);
+  const to = respawnTarget(p.char.respawn, deps);
   return to ? warp(world, p, to.map, to.x, to.y, deps.casino) : [];
 }
 

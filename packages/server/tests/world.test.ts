@@ -28,7 +28,7 @@ import { migrate } from "../src/persistence/migrations.ts";
 import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/settings.ts";
 import { defaultSettings, resolveSettings, SETTING_GROUPS, settingRows } from "../src/settings.ts";
 import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
-import { fallbackPoint, tick, warp } from "../src/systems/world/tick.ts";
+import { fallbackTarget, respawnTarget, tick, warp } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld } from "../src/systems/world/world.ts";
 import { NEVER_PUSH, NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
@@ -109,7 +109,7 @@ describe("seed map migration", () => {
 describe("settings", () => {
   test("defaults, and overrides that parse win", () => {
     expect(defaultSettings().startPoint).toEqual({ map: "x1000y992", x: 6, y: 4 });
-    expect(defaultSettings().respawnPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
+    expect(defaultSettings().fallbackPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
     saveSettingOverride(db, "startPoint", { map: "x1y2", x: 3, y: 4 }, NOW);
     saveSettingOverride(db, "saveIntervalTicks", "not a number", NOW);
     const s = resolveSettings(loadSettingOverrides(db));
@@ -429,26 +429,24 @@ describe("movement sim", () => {
     expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(false);
   });
 
-  test("SSO: the fallback point is your respawn point, then the operator's, then the start point", () => {
+  test("SSO: a death or release goes to your respawn point, else the fallback point; a lost place goes to the fallback point", () => {
     const seed = testMap("x1000y992");
     const east = testMap(mapName(1001, 992));
     const byName = new Map([seed, east].map((m) => [m.name, m]));
     const deps = {
       loadMap: (n: string) => byName.get(n) ?? null,
       loadMapById: (id: string) => [seed, east].find((m) => m.id === id) ?? null,
-      startPoint: { map: seed.name, x: 6, y: 4 },
-      respawnPoint: { map: east.name, x: 5, y: 5 },
+      fallbackPoint: { map: east.name, x: 5, y: 5 },
     };
-    const where = (r: Parameters<typeof fallbackPoint>[0], d = deps) => {
-      const to = fallbackPoint(r, d);
-      return to ? [to.map.name, to.x, to.y] : null;
-    };
-    expect(where({ mapId: seed.id, x: 2, y: 3 })).toEqual([seed.name, 2, 3]);
-    expect(where({ mapId: "gone", x: 2, y: 3 })).toEqual([east.name, 5, 5]);
-    expect(where(null)).toEqual([east.name, 5, 5]);
-    const noRespawnMap = { ...deps, respawnPoint: { map: "x9y9", x: 5, y: 5 } };
-    expect(where(null, noRespawnMap)).toEqual([seed.name, 6, 4]);
-    expect(where(null, { ...noRespawnMap, startPoint: { map: "x8y8", x: 1, y: 1 } })).toBeNull();
+    const at = (to: ReturnType<typeof fallbackTarget>) => (to ? [to.map.name, to.x, to.y] : null);
+    expect(at(respawnTarget({ mapId: seed.id, x: 2, y: 3 }, deps))).toEqual([seed.name, 2, 3]);
+    expect(at(respawnTarget({ mapId: "gone", x: 2, y: 3 }, deps))).toEqual([east.name, 5, 5]);
+    expect(at(respawnTarget(null, deps))).toEqual([east.name, 5, 5]);
+    expect(at(fallbackTarget(deps))).toEqual([east.name, 5, 5]);
+    // A missing fallback map: nowhere, and the start point is never used.
+    const noFallback = { ...deps, fallbackPoint: { map: "x9y9", x: 5, y: 5 } };
+    expect(respawnTarget({ mapId: "gone", x: 2, y: 3 }, noFallback)).toBeNull();
+    expect(fallbackTarget(noFallback)).toBeNull();
   });
 
   test("SSO: a refused edge says why, once a press", () => {
@@ -569,6 +567,13 @@ describe("game: creation through the real database", () => {
     expect(g.enter(login.characterId, false)).toBe(true);
     const snap = sent.find((m) => m.msg.t === "snapshot");
     expect(snap?.msg).toMatchObject({ self: { x: 8, y: 9 } });
+    // The starting map is also the new character's first respawn point.
+    const seed = findMapByCoords(db, 1000, 992);
+    expect(
+      db
+        .query("SELECT respawn_map_id, respawn_x, respawn_y FROM characters WHERE id = ?")
+        .get(login.characterId),
+    ).toEqual({ respawn_map_id: seed?.id ?? "", respawn_x: 8, respawn_y: 9 });
   });
 
   test("creation re-checks the screen's rules on the server", async () => {
@@ -609,7 +614,7 @@ describe("the respawn point", () => {
     expect(inGameSchema.safeParse({ t: "writeDeathMap", map: "x1y1" }).success).toBe(false);
   });
 
-  test("kept bug: the seed map and new-map defaults do not save a respawn point; death without one uses the configured fallback", () => {
+  test("kept on purpose: the seed map and new-map defaults do not save a respawn point", () => {
     const isOoo = (f: { canFight: string; isIndoors: string; canPvp: string }) =>
       `${f.canFight}-${f.isIndoors}-${f.canPvp}`.toUpperCase().includes("O-O-O");
     const seed = findMapByCoords(db, 1000, 992);
@@ -618,29 +623,74 @@ describe("the respawn point", () => {
     }
     expect(isOoo(seed.flags)).toBe(false);
     expect(isOoo(blankMap(1001, 992).flags)).toBe(false);
+    // Entering one keeps the point a character already has.
+    const home = testMap("x1000y992");
+    const east = testMap("x1001y992");
+    east.flags = { ...blankMap(1001, 992).flags };
+    const { world, join } = setup([home, east]);
+    const p = player("Al", home, 6, 4);
+    p.char.respawn = { mapId: home.id, x: 6, y: 4 };
+    join(p);
+    warp(world, p, east, 9, 9, NO_CASINO);
+    expect(p.char.respawn).toEqual({ mapId: home.id, x: 6, y: 4 });
+  });
 
-    // Dying on a map with those flags sends the player to the setting's tile and stores no point.
-    const start = testMap("x1000y992");
-    const died = testMap("x1001y992");
-    died.flags = { ...blankMap(1001, 992).flags };
-    const byName = new Map([start, died].map((m) => [m.name, m]));
+  test("SSO: a tutorial island keeps new players until they leave through a shrine, and nothing sends them back", () => {
+    // The island (the starting map), the main world, and a hidden O-O-O shrine map whose arrival
+    // tile is an exit straight back beside the shrine's entrance.
+    const island = testMap("x500y500");
+    island.exit1 = { mx: 50, my: 50, x: 5, y: 5 };
+    island.ground.push({ id: "e1", item: "Exit", x: 9, y: 9, kind: "admin", expiresAt: null });
+    const main = testMap("x1000y992");
+    const shrine = testMap("x50y50");
+    shrine.flags = { canFight: "O", fctSpwn: "X", isIndoors: "O", canPvp: "O" };
+    shrine.exit1 = { mx: 1000, my: 992, x: 3, y: 4 };
+    shrine.ground.push({ id: "e2", item: "Exit", x: 5, y: 5, kind: "admin", expiresAt: null });
+    const maps = [island, main, shrine];
     const world = createWorld();
     const deps = {
-      loadMap: (n: string) => byName.get(n) ?? null,
-      startPoint: { map: "x1000y992", x: 6, y: 4 },
+      loadMap: (n: string) => maps.find((m) => m.name === n) ?? null,
+      loadMapById: (id: string) => maps.find((m) => m.id === id) ?? null,
+      fallbackPoint: { map: main.name, x: 5, y: 5 },
       casino: NO_CASINO,
-      respawnPoint: defaultSettings().respawnPoint,
       saveIntervalTicks: 600,
-      rng: rngByN({ 5: [1] }),
+      rng: rngByN({ 5: [1, 1, 1] }),
     };
-    const p = player("Al", died, 9, 9);
+    const run = (n: number) => {
+      for (let i = 0; i < n; i++) {
+        tick(world, deps);
+        p.loading = 0; // the client reports each map ready at once
+      }
+    };
+    const where = () => [p.map.name, p.x, p.y];
+    const die = () => {
+      p.char.vitals.hp = 0;
+      run(29);
+    };
+    // Created on the island, which is their respawn point (as `insertCharacter` writes it).
+    const p = player("Al", island, 6, 4);
+    p.char.respawn = { mapId: island.id, x: 6, y: 4 };
     addPlayer(world, p);
     p.loading = 0;
-    p.char.vitals.hp = 0;
-    for (let i = 0; i < 28; i++) {
-      tick(world, deps);
-    }
-    expect([p.map.name, p.x, p.y]).toEqual(["x1000y992", 5, 5]);
-    expect(p.char.respawn).toBeNull();
+    die();
+    expect(where()).toEqual([island.name, 6, 4]);
+
+    // Leaving through the shrine saves it and lands beside it in the main world.
+    warp(world, p, island, 9, 9, NO_CASINO);
+    run(5);
+    expect(where()).toEqual([main.name, 3, 4]);
+    expect(p.char.respawn).toEqual({ mapId: shrine.id, x: 5, y: 5 });
+    // A death in the main world comes back through the shrine, beside it.
+    p.x = 10;
+    p.y = 10;
+    die();
+    expect(where()).toEqual([main.name, 3, 4]);
+
+    // A lost place goes to the fallback point, never the island.
+    expect(fallbackTarget(deps)?.map.name).toBe(main.name);
+    // With the shrine map deleted, a death goes to the fallback point too.
+    maps.splice(maps.indexOf(shrine), 1);
+    die();
+    expect(where()).toEqual([main.name, 5, 5]);
   });
 });

@@ -44,7 +44,6 @@ function scene(reels: number[] = [1, 2, 3]) {
   const ctx = (): ItemCtx => ({ world: s.world, rng, now: 1_000_000 });
   const deps = {
     loadMap: (n: string) => (n === other.name ? other : map),
-    startPoint: { map: map.name, x: 6, y: 4 },
     casino: NO_CASINO,
     saveIntervalTicks: 600,
     rng,

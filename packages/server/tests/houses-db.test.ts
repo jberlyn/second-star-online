@@ -547,7 +547,7 @@ describe("house faults", () => {
     expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
   });
 
-  test("SSO: offline characters saved in a deleted interior go to their respawn point, else the operator's", async () => {
+  test("SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point", async () => {
     const g = game();
     const id = await makeChar(g, "Bob");
     const carl = await makeChar(g, "Carl");
@@ -556,7 +556,8 @@ describe("house faults", () => {
     g.leave(id);
     const seed = findMapByCoords(db, 1000, 992);
     const interior = findMapByCoords(db, 1000, 992, 1);
-    // Bob was saved inside with no respawn point; Carl inside with his own on the seed map.
+    // Bob was saved inside with no respawn point; Carl inside with his own on the seed map, which
+    // could be a tutorial island: a lost place never sends him there.
     db.run("UPDATE characters SET map_id = ?, x = 9, y = 10 WHERE id IN (?, ?)", [
       interior?.id ?? "",
       id,
@@ -576,7 +577,7 @@ describe("house faults", () => {
         x: number;
         y: number;
       };
-    expect(at(carl)).toEqual({ map_id: seed?.id ?? "", x: 3, y: 3 });
+    expect(at(carl)).toEqual({ map_id: seed?.id ?? "", x: 5, y: 5 });
     expect(at(id)).toEqual({ map_id: seed?.id ?? "", x: 5, y: 5 });
   });
 

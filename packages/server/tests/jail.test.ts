@@ -64,7 +64,7 @@ function scene() {
     now: () => clock.ms,
     loadMap: (name: string) => (name === jail.name ? jail : home),
     loadMapById: () => home,
-    startPoint: { map: home.name, x: 6, y: 4 },
+    fallbackPoint: { map: home.name, x: 6, y: 4 },
     casino: NO_CASINO,
     saveIntervalTicks: 600,
     rng: rngByN(),

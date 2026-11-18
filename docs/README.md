@@ -14,5 +14,4 @@ Current instructions for running, configuring, and extending the game:
 
 - [Architecture specification](architecture.md): package boundaries, protocol design, and engineering principles.
 - [Differences from 1.6](differences-from-fso.md): the remake's policy and every deliberate difference from First Star Online 1.6, including fixed bugs and bugs kept on purpose.
-- [Bug ledger](bug-ledger.md): 1.6 gameplay bugs not yet fixed.
 

@@ -172,8 +172,8 @@ describe("admin commands, roles, bans and settings", () => {
     wall += 1000;
     await tick(20);
     await bob.waitFor(isSnapshot);
-    // Released to his fallback point: the operator's respawn point, as he set none of his own.
-    expect(where(bob)).toEqual(["x1000y992", 5, 5]);
+    // Released to his respawn point: the starting map's tile, where he was created.
+    expect(where(bob)).toEqual(["x1000y992", 6, 4]);
     bob.send({ t: "mapReady" });
   });
 

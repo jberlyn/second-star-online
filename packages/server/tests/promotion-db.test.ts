@@ -179,7 +179,7 @@ describe("the train OK", () => {
     });
     expect(row(id)).toMatchObject({ class_code: 4, gold: 50 });
     expect(loadInventory(db, id).gold).toBe(50);
-    expect(skills(id)).toEqual(before); // the grants are undone (bug ledger)
+    expect(skills(id)).toEqual(before); // the grants are undone
     // Again: learned all, no change.
     sent.length = 0;
     g.intent(id, { t: "train", line: 2 });

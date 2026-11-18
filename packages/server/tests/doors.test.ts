@@ -55,7 +55,6 @@ function scene(queues: Record<number, number[]> = {}, mapName = "x1000y992") {
   };
   const deps = {
     loadMap: () => map,
-    startPoint: { map: map.name, x: 6, y: 4 },
     casino: NO_CASINO,
     saveIntervalTicks: 600,
     stepFrames: 16,

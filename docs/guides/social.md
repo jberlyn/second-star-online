@@ -27,6 +27,6 @@ Opening a Guild Center requires standing still directly in front of it; opening 
 
 Buddy commands change the account's list; entry and login/logout presence notify appropriate online players. Bio requests build a view from the target's state and profile. Death can invoke murder and faction consequences; arena defeat does not mark a killer. An immortal can pardon a wanted player. A jail sentence runs on the server and restarts on entering the jail map. Chat commands route to these handlers; [chat](chat.md) covers ignore and instant messages, and [progression](progression.md) covers medal checks.
 
-## Unfixed bugs and differences
+## Differences from 1.6
 
-Social has no unfixed 1.6 bugs; see the [social bugs fixed](../differences-from-fso.md#social). Killing a wanted player never flags you, which is [kept on purpose](../differences-from-fso.md#killing-a-wanted-player-never-flags-you). Unavailable original controls are not revived. See the [server-side social changes](../differences-from-fso.md#server-side-social).
+See the [social bugs fixed](../differences-from-fso.md#social). Killing a wanted player never flags you, which is [kept on purpose](../differences-from-fso.md#killing-a-wanted-player-never-flags-you). Unavailable original controls are not revived. See the [server-side social changes](../differences-from-fso.md#server-side-social).

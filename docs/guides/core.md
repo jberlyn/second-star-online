@@ -34,7 +34,7 @@ Map helpers parse grid names and house interiors. Tile flags describe categories
 
 A pattern is exact or substring based. `firstMatch` stops at the first matching row and `lastMatch` keeps the last, so the ordering of editable item rules matters. The map helpers distinguish ordinary grid names from house interior names. Tile categories come from [tile content](../../packages/data/content/tiles.json); foot movement uses the whitelist and blocking rules, while an Airship uses its separate blocking grid. The shared module supplies a grid, not authority to move a character.
 
-## Unfixed bugs and differences
+## Differences from 1.6
 
 Two behaviours of the shared helpers matter to content authors: an empty tile code matches the walk whitelist, and the last matching recipe can win when more than one pattern matches.
 

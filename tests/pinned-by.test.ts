@@ -1,7 +1,7 @@
 /**
- * Every test a ledger entry names must exist. A `Pinned by:` line in the differences document or
- * the bug ledger lists test names (a title or the start of one) followed by the test file in
- * parentheses; each name must be inside a describe, test or it title of that file.
+ * Every test a differences entry names must exist. A `Pinned by:` line in the differences document
+ * lists test names (a title or the start of one) followed by the test file in parentheses; each
+ * name must be inside a describe, test or it title of that file.
  */
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
@@ -20,10 +20,10 @@ function titlesOf(file: string): string {
   return out.join("\u0000");
 }
 
-function checkPinnedBy(ledger: string): void {
-  // The "Entry shape" examples in a ledger's header sit in a fenced block and name no real test.
+function checkPinnedBy(doc: string): void {
+  // The entry-shape example in the document's header sits in a fenced block and names no real test.
   let fenced = false;
-  const lines = readFileSync(join(ROOT, ledger), "utf8")
+  const lines = readFileSync(join(ROOT, doc), "utf8")
     .split("\n")
     .filter((l) => {
       if (l.startsWith("```")) {
@@ -68,8 +68,4 @@ function checkPinnedBy(ledger: string): void {
 
 test("every test named in a differences entry's `Pinned by:` is a title in the file named after it", () => {
   checkPinnedBy("docs/differences-from-fso.md");
-});
-
-test("every test named in a bug-ledger entry's `Pinned by:` is a title in the file named after it", () => {
-  checkPinnedBy("docs/bug-ledger.md");
 });

@@ -121,10 +121,8 @@ export interface AdminDeps {
   reloadSettings(): void;
   loadMap(name: string): WorldMap | null;
   loadMapById?(id: string): WorldMap | null;
-  /** The last resort of `fallbackPoint`. */
-  startPoint(): { map: string; x: number; y: number };
-  /** The operator's respawn point, before the start point in `fallbackPoint`. */
-  respawnPoint?(): { map: string; x: number; y: number };
+  /** The operator's fallback point, for a released prisoner whose respawn map is gone. */
+  fallbackPoint?(): { map: string; x: number; y: number };
   casino: CasinoDeps;
 }
 
@@ -634,8 +632,7 @@ function unjail(world: World, p: Player, w2: string, typed: string, deps: AdminD
       ...releaseFromJail(world, t, {
         loadMap: deps.loadMap,
         loadMapById: deps.loadMapById,
-        startPoint: deps.startPoint(),
-        respawnPoint: deps.respawnPoint?.(),
+        fallbackPoint: deps.fallbackPoint?.(),
         casino: deps.casino,
       }),
     );

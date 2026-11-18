@@ -80,25 +80,25 @@ function def<T>(d: SettingDef<T>): SettingDef<T> {
 export const SETTINGS = {
   startPoint: def({
     group: "World",
-    label: "Start point",
+    label: "Starting map",
     form: { kind: "point" },
     schema: point,
     default: { map: "x1000y992", x: 6, y: 4 },
     tooltip:
-      "Where new characters appear, and the last resort when a character's place is gone: after their own respawn point and the Respawn point setting.",
+      "Where new characters appear, and their first respawn point. Entering a no-fight, indoor, no-PvP map replaces their respawn point.",
     source:
       "SSO setting. Replaces the creation position x1000y992 6-4 that 1.6 hard-coded. 1.6 also sent travel to a missing map here; SSO refuses that travel instead.",
   }),
-  respawnPoint: def({
+  fallbackPoint: def({
     group: "World",
-    label: "Respawn point",
+    label: "Fallback map",
     form: { kind: "point" },
     schema: point,
     default: { map: "x1000y992", x: 5, y: 5 },
     tooltip:
-      "Where characters reappear after dying, unless a map's respawn flag gave them their own. Also where they go when their place is gone (a deleted map, a decayed house, the end of a jail sentence), before the start point.",
+      "Where characters go when their place is gone: their saved map was deleted or their house decayed. Also where a death or jail release goes if their respawn point's map is gone. Never use a tutorial map here.",
     source:
-      "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), keeping its tile on the seed map.",
+      "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), which every death used because no 1.6 map saved a respawn point; keeps its tile on the seed map.",
   }),
   saveIntervalTicks: def({
     group: "Server",
@@ -338,7 +338,7 @@ export const SETTINGS = {
     schema: z.number().int().min(1).max(5_256_000),
     default: 10,
     tooltip:
-      "Minutes a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to their respawn point (else the Respawn point, else the start point).",
+      "Minutes a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to their respawn point (the Fallback map if its map is gone).",
     source:
       '1.6\'s server settings file had "Jail Sentence Time (1800 = 1 minute):8000" in frames, counted only while online and restarted on every entry. SSO stores sentences and counts them in minutes.',
   }),

@@ -194,7 +194,6 @@ describe("clicking a monster or NPC", () => {
     p.piggie = 3;
     tick(s.world, {
       loadMap: () => s.map,
-      startPoint: { map: s.map.name, x: 6, y: 4 },
       casino: NO_CASINO,
       saveIntervalTicks: 600,
       rng: s.rng,
@@ -229,7 +228,6 @@ describe("RND chatter", () => {
     s.put(1, "Fire God", 9, 9);
     const deps = {
       loadMap: () => s.map,
-      startPoint: { map: s.map.name, x: 6, y: 4 },
       casino: NO_CASINO,
       saveIntervalTicks: 10_000,
       npcChatterSeconds: 10, // 200 ticks

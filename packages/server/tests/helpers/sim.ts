@@ -104,7 +104,8 @@ export function player(id: string, map: WorldMap, x: number, y: number): Player 
 
 export function setup(
   maps: WorldMap[],
-  startPoint = { map: "x1000y992", x: 6, y: 4 },
+  /** Where a player whose place (or respawn map) is gone goes. */
+  fallbackPoint = { map: "x1000y992", x: 6, y: 4 },
   rng: Rng = NEVER_PUSH,
   /** A wall clock (ms) for the tick, such as jail sentences; none by default. */
   now?: () => number,
@@ -113,7 +114,8 @@ export function setup(
   const world: World = createWorld();
   const deps = {
     loadMap: (n: string) => byName.get(n) ?? null,
-    startPoint,
+    loadMapById: (id: string) => maps.find((m) => m.id === id) ?? null,
+    fallbackPoint,
     saveIntervalTicks: 600,
     rng,
     casino: NO_CASINO,

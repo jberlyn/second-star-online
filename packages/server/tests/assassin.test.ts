@@ -41,7 +41,6 @@ function scene(rngQueues: Record<number, number[]> = {}) {
   };
   const deps = {
     loadMap: () => map,
-    startPoint: { map: map.name, x: 6, y: 4 },
     casino: NO_CASINO,
     saveIntervalTicks: 600,
     stepFrames: 16,
@@ -182,7 +181,6 @@ describe("Lightning", () => {
     setAssassinMode(s.world, "LIGHTNING", s.game);
     const deps = {
       loadMap: () => map,
-      startPoint: { map: map.name, x: 6, y: 4 },
       casino: NO_CASINO,
       saveIntervalTicks: 600,
       stepFrames: 16,

@@ -64,7 +64,7 @@ Writing rules:
 - Start each bullet with a bold area label: Combat, Moderation, Casino, Chat & Messaging, Admin & World Tools, Interface, Hosting, and so on.
 - Put every migration, removed or renamed setting, permission change and configuration change under Upgrade Notes, even if it also appears in another section. Tell the operator to back up before any release with a migration.
 - Name commands, settings and tables in backticks exactly as they appear in the code.
-- Group many small fixes in one area into a single bullet. Summarise rather than copying the bug ledger.
+- Group many small fixes in one area into a single bullet. Summarise rather than copying the differences document.
 - Use links that work from the release page: full GitHub URLs, not relative paths. Link to docs at the tag (`/blob/<tag>/docs/...`).
 
 ## 4. Publish

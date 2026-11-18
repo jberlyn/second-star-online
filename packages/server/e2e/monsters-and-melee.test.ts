@@ -199,7 +199,8 @@ describe("monsters, melee and XP", () => {
       expect(chatTexts(b)).toContain(line);
     }
     const snap = victim.inbox.filter((m) => m.t === "snapshot").at(-1);
-    expect(snap).toMatchObject({ t: "snapshot", self: { x: 5, y: 5, facing: "S" } });
+    // Back at its respawn point: the starting map's tile, where it was created.
+    expect(snap).toMatchObject({ t: "snapshot", self: { x: 6, y: 4, facing: "S" } });
     // HP and SP were set to 1; regen keeps running through the death lock.
     const v = lastVitals(victim);
     expect(v).toMatchObject({ hpMax: 20, spMax: 20 });
