@@ -155,18 +155,33 @@ describe("monsters block", () => {
   });
 });
 
-describe("three wide from the first Overlord's slot", () => {
-  test("kept bug: a Slime in slot 2 is three wide after an Overlord in slot 1, even a dead one", () => {
+describe("only an Overlord or Mutant Worm is three wide", () => {
+  test("bug fixed: a Slime in slot 2 is one wide after an Overlord in slot 1, dead or alive", () => {
+    for (const overlordLives of [false, true]) {
+      const s = scene();
+      if (overlordLives) {
+        live(s.map, 1, "Overlord", 12, 9);
+      }
+      live(s.map, 2, "Slime", 7, 5);
+      shown(s.a, "Overlord", "Slime");
+      s.a.x = 8;
+      s.a.facing = "W";
+      // Target (9,5): the Slime at 7 is two to its left, and a Slime is one wide.
+      setHeld(s.a, "R", false);
+      s.run(1);
+      expect(s.a.x).toBe(9);
+    }
+  });
+
+  test("an Overlord in a higher slot still blocks three wide", () => {
     const s = scene();
-    live(s.map, 2, "Slime", 7, 5);
-    shown(s.a, "Overlord", "Slime");
-    // Slot 1 is empty now (the Overlord died) but remembered; slot 2 blocks x+1, x+2.
-    s.a.x = 8;
-    s.a.facing = "W";
-    // Target (9,5): slot 2 at 7 is x-2 → blocks.
-    setHeld(s.a, "R", false);
-    s.run(2);
-    expect(s.a.x).toBe(8);
+    live(s.map, 1, "Slime", 12, 9);
+    live(s.map, 2, "Overlord", 7, 5);
+    shown(s.a, "Slime", "Overlord");
+    s.a.x = 10;
+    setHeld(s.a, "L", false);
+    s.run(1);
+    expect(s.a.x).toBe(10); // (9,5) is the Overlord's third tile
   });
 
   test("a lower slot is one wide", () => {
@@ -181,14 +196,25 @@ describe("three wide from the first Overlord's slot", () => {
   });
 });
 
-describe("a Web or Holy Shield clears the block", () => {
-  test("kept bug: a remembered Web in slot 2 lets you walk through a Slime in slot 1", () => {
+describe("a Web or Holy Shield never blocks, and clears nothing else", () => {
+  test("bug fixed: a remembered Web in slot 2 does not let you walk through a Slime in slot 1", () => {
     const s = scene();
     live(s.map, 1, "Slime", 6, 5);
     shown(s.a, "Slime", "Web");
     setHeld(s.a, "R", false);
     s.run(1);
-    expect(s.a.x).toBe(6);
+    expect(s.a.x).toBe(5);
+  });
+
+  test("a live Web or Holy Shield on the target is walked onto", () => {
+    for (const name of ["Web", "Holy Shield"]) {
+      const s = scene();
+      live(s.map, 2, name, 6, 5);
+      shown(s.a, null, name);
+      setHeld(s.a, "R", false);
+      s.run(1);
+      expect(s.a.x).toBe(6);
+    }
   });
 
   test("slot 3 after the Web still blocks", () => {
@@ -200,7 +226,7 @@ describe("a Web or Holy Shield clears the block", () => {
     expect(s.a.x).toBe(5);
   });
 
-  test("kept bug: a Web in slot 4 lets you walk onto a standing player, and the roll still shoves", () => {
+  test("bug fixed: a Web in slot 4 does not let you walk onto a standing player; the roll still shoves", () => {
     const rng = rngByN({ 25: [1] });
     const s = scene(rng);
     const b = player("B", s.map, 6, 5);
@@ -209,7 +235,7 @@ describe("a Web or Holy Shield clears the block", () => {
     shown(s.a, null, null, null, "Web");
     setHeld(s.a, "R", false);
     const out = s.run(1);
-    expect(s.a.x).toBe(6); // stepped onto B's tile
+    expect(s.a.x).toBe(5); // blocked by B
     expect(chat(out, "B")).toEqual(["A shoves you out of the way."]);
     expect(b.x).toBe(7);
   });
@@ -231,7 +257,8 @@ describe("push rolls", () => {
     expect(chat(out, "B")).toHaveLength(1);
     expect(chat(out, "C")).toHaveLength(1);
     expect(b.x).toBe(7);
-    expect(c.x).toBe(7);
+    // C's shove is blocked by B, who now steps onto (7,5): they never share a tile.
+    expect(c.x).toBe(6);
   });
 
   test("a press blocked by a tile with a player behind a Web still rolls", () => {

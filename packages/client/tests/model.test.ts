@@ -109,14 +109,22 @@ describe("client prediction", () => {
     expect(m.self).toMatchObject({ x: 5, y: 5, n: 0 });
   });
 
-  test("a standing peer blocks the prediction too; a moving one does not", () => {
+  test("bug fixed: a peer blocks the prediction on its logical tile, standing or moving", () => {
     const { m, intent } = setup();
     applyDelta(m, [{ e: "enter", player: { ...you, id: "p", name: "p", x: 6, y: 5 } }]);
     intent.pending = { dir: "R", turn: false, age: 0 };
     clientTick(m, intent);
     expect(m.self).toMatchObject({ x: 5, facing: "E" });
+    // Stepping onto (6,5) from (7,5): still blocks.
     applyDelta(m, [
       { e: "move", id: "p", fromX: 7, fromY: 5, toX: 6, toY: 5, facing: "W", frames: 16 },
+    ]);
+    intent.pending = { dir: "R", turn: false, age: 0 };
+    clientTick(m, intent);
+    expect(m.self).toMatchObject({ x: 5 });
+    // Stepping off (6,5) to (7,5): the tile it leaves is free.
+    applyDelta(m, [
+      { e: "move", id: "p", fromX: 6, fromY: 5, toX: 7, toY: 5, facing: "E", frames: 16 },
     ]);
     intent.pending = { dir: "R", turn: false, age: 0 };
     clientTick(m, intent);
@@ -312,7 +320,7 @@ describe("monster blocking prediction", () => {
     expect(m.slotNames).toEqual(["Slime", "Overlord", "Web", null]);
   });
 
-  test("a remembered Web lets prediction walk into a standing peer", () => {
+  test("bug fixed: a remembered Web does not let prediction walk into a standing peer", () => {
     const m = createModel();
     applySnapshot(m, {
       map,
@@ -323,7 +331,7 @@ describe("monster blocking prediction", () => {
     });
     m.loading = false;
     clientTick(m, press());
-    expect(m.self).toMatchObject({ x: 6, facing: "E" });
+    expect(m.self).toMatchObject({ x: 5, facing: "E" });
   });
 });
 

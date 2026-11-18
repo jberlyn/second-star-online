@@ -17,6 +17,7 @@ import {
   blockPCCheck,
   type DeltaEvent,
   DIR_DELTA,
+  DIR_FACING,
   type Dir,
   isWalkable,
   isWebBody,
@@ -63,6 +64,8 @@ export function setHeld(p: Player, held: Dir | null, turn: boolean, scheduled = 
   }
   // Pushes also read the current Turn modifier, even for scheduled clients.
   p.heldTurn = turn;
+  // A new press or a release: the next web refusal prints its line again.
+  p.webTold = false;
   if (p.walkQueue) {
     p.held = null;
     return;
@@ -75,6 +78,7 @@ export function pressStep(p: Player, dir: Dir, turn: boolean): void {
   if (p.walkQueue || p.loading > 0) {
     return;
   }
+  p.webTold = false;
   p.pending = { dir, turn, age: 0 };
 }
 
@@ -127,13 +131,14 @@ export function walkWorld(room: Room, self: Player): WalkWorld {
   }
   return {
     walkable: (x, y) => isWalkable(room.map.walk, x, y),
-    // Standing players, then slots 1-4 by the names this player was shown. A player blocks only
-    // while standing: a moving one is between tiles (a kept 1.6 bug).
+    // Other players at their logical tiles, then slots 1-4 by the names this player was shown. A
+    // player mid-step blocks the tile it is stepping onto (a bug fixed: 1.6 compared sprite
+    // positions, so a moving player blocked no one and two could end on one tile).
     pcBlocked: (x, y) =>
       blockPCCheck(
         x,
         y,
-        room.players.filter((o) => isStandingOther(self, o)),
+        room.players.filter((o) => o !== self && !o.vehicle),
         slotsFor(room, self),
       ),
     // Fixtures on the ground block too; loot never does.
@@ -283,18 +288,18 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
 }
 
 /**
- * 1.6 refreshes the fishing allowance when the facing is not "Left" (to 5), which
- * compares "W" with "Left" and so always holds (a kept bug): every press that gets past the turn,
- * the player/monster and item blocks and the mid-step test refreshes it, a step into a wall or off
- * the screen included. The web test runs after the refresh, so a webbed press refreshes it too.
+ * The fishing allowance refills (to 5) when a press turns you: its arrow points away from the way
+ * you face, and it gets past the turn-in-place, mid-step, player/monster and item tests. A bug
+ * fixed: 1.6 compared the facing letter ("W") with a direction word ("Left"), so every such press
+ * refilled it, a step forward or into a wall included.
  */
-function refreshAntiMacro(p: Player, o: MoveOutcome): void {
-  if (
+function refreshAntiMacro(p: Player, dir: Dir, o: MoveOutcome): void {
+  const passed =
     o.kind === "step" ||
     o.kind === "edge" ||
     o.kind === "web" ||
-    (o.kind === "blocked" && o.by === "tile")
-  ) {
+    (o.kind === "blocked" && o.by === "tile");
+  if (passed && DIR_FACING[dir] !== p.facing) {
     p.antiMacro = ANTI_MACRO_START;
   }
 }
@@ -304,7 +309,10 @@ function refreshAntiMacro(p: Player, o: MoveOutcome): void {
  * victim's own move.
  */
 export function carryOut(room: Room, p: Player, dir: Dir, o: MoveOutcome, ctx: MoveCtx): void {
-  refreshAntiMacro(p, o);
+  refreshAntiMacro(p, dir, o);
+  if (o.kind !== "web" && o.kind !== "none") {
+    p.webTold = false;
+  }
   const before = p.facing;
   const [dx, dy] = DIR_DELTA[dir];
   const tx = p.x + dx;
@@ -344,11 +352,18 @@ function announce(p: Player, o: MoveOutcome, before: Player["facing"], ctx: Move
       });
       return;
     case "web":
-      // Printed on every attempt, facing untouched (a kept 1.6 bug; only a web on your own tile
-      // counts).
-      ctx.tell(p, WEB_TEXT);
+      // Facing untouched; only a web on your own tile counts. Printed once a press (a bug fixed:
+      // 1.6 printed it on every attempt while a direction was held).
+      if (!p.webTold) {
+        ctx.tell(p, WEB_TEXT);
+        p.webTold = true;
+      }
       return;
     case "edge":
+      // The crossing can still be refused by the next map's tile, so others see the new facing.
+      if (p.facing !== before) {
+        ctx.emit(p, { e: "turn", id: p.id, facing: p.facing });
+      }
       ctx.crossings.push({ player: p, outcome: o });
       return;
   }

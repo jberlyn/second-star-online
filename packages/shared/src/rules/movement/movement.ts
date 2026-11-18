@@ -77,42 +77,43 @@ export function monsterSpriteTile(
 
 /** One roster slot as the step-blocking test sees it. */
 export interface BlockSlot {
-  /** The name this player last saw placed in the slot (outlives the monster), or null. */
+  /** The name this player last saw placed in the slot, or null. */
   name: string | null;
   /** The live sprite's tile at test time; null when dead, empty or between tiles. */
   at: { x: number; y: number } | null;
 }
 
 /**
- * The step-blocking test: does a standing player or a monster stop a step into (`tx`, `ty`)? `standing` is
- * the other standing, non-rider players. Slots run 1→4; from the first Overlord/Mutant Worm name
- * every slot blocks three wide; a Web or Holy Shield name clears everything found so far.
+ * The step-blocking test: does another player or a monster stop a step into (`tx`, `ty`)? `players`
+ * are the other non-rider players at their logical tiles, mid-step or not. Each slot blocks its own
+ * sprite's tile; an Overlord or Mutant Worm also blocks the two tiles to its right; a Web or Holy
+ * Shield never blocks.
+ *
+ * Bugs fixed: in 1.6 the three-wide flag, once set by an Overlord or Mutant Worm, stayed set for
+ * every later slot, and a Web or Holy Shield cleared the block found by any player or earlier slot.
  */
 export function blockPCCheck(
   tx: number,
   ty: number,
-  standing: readonly { x: number; y: number }[],
+  players: readonly { x: number; y: number }[],
   slots: readonly BlockSlot[],
 ): boolean {
-  let blocked = standing.some((p) => p.x === tx && p.y === ty);
-  let wide = false;
-  for (const s of slots) {
-    if (s.name !== null && isFootprint(s.name)) {
-      wide = true;
-    }
-    if (s.at) {
-      if (
-        (s.at.x === tx && s.at.y === ty) ||
-        (wide && s.at.y === ty && (s.at.x === tx - 1 || s.at.x === tx - 2))
-      ) {
-        blocked = true;
-      }
-    }
-    if (s.name !== null && anyMatch(monstersData.rules.clearsBlock, s.name)) {
-      blocked = false;
-    }
+  if (players.some((p) => p.x === tx && p.y === ty)) {
+    return true;
   }
-  return blocked;
+  return slots.some((s) => {
+    if (!s.at || s.at.y !== ty) {
+      return false;
+    }
+    const name = s.name ?? "";
+    if (anyMatch(monstersData.rules.clearsBlock, name)) {
+      return false;
+    }
+    if (s.at.x === tx) {
+      return true;
+    }
+    return isFootprint(name) && (s.at.x === tx - 1 || s.at.x === tx - 2);
+  });
 }
 
 export const DIRS: readonly Dir[] = ["L", "R", "U", "D"];
@@ -189,7 +190,7 @@ export interface WalkWorld {
    */
   walkable(x: number, y: number): boolean;
   /**
-   * The step-blocking test for this target (`blockPCCheck`): a standing player or a monster stops the step.
+   * The step-blocking test for this target (`blockPCCheck`): another player or a monster stops the step.
    * May be asked about x = 18 (the right edge).
    */
   pcBlocked(x: number, y: number): boolean;
@@ -220,8 +221,8 @@ export type MoveOutcome =
    */
   | { kind: "web" }
   /**
-   * The target is off the screen: the edge wrap. The wrapped tile is not checked against the walk
-   * grid, and there is no step animation.
+   * The target is off the screen: the edge wrap. The server checks the wrapped tile against the
+   * next map's walk grid (`crossMapEdge`); there is no step animation.
    */
   | { kind: "edge"; facing: Facing; toX: number; toY: number; dmx: number; dmy: number };
 
@@ -236,7 +237,7 @@ export type MoveOutcome =
  * 3. Player/monster block (`pcBlocked`), asked even off screen (x = 18).
  * 4. Item block on an on-screen target, before the web test.
  * 5. Web on my own tile → the web line, stop.
- * 6. Facing set; off-screen target → edge wrap, unchecked.
+ * 6. Facing set; off-screen target → edge wrap (the server checks the next map's tile).
  * 7. Unwalkable target → face and stop.
  * 8. Start the step.
  */

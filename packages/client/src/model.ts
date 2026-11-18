@@ -694,12 +694,13 @@ function walkWorld(m: Model): WalkWorld {
       [...m.monsters.values()].some(
         (mon) => isWebBody(mon.body) && mon.frames === 0 && mon.x === x && mon.y === y,
       ),
-    // The player-blocking check: standing, non-rider peers, then slots 1-4.
+    // The player-blocking check: non-rider peers at their logical tiles, moving or not, then
+    // slots 1-4.
     pcBlocked: (x, y) =>
       blockPCCheck(
         x,
         y,
-        [...m.peers.values()].filter((p) => p.frames === 0 && vehicleOfBody(p.body) === null),
+        [...m.peers.values()].filter((p) => vehicleOfBody(p.body) === null),
         m.slotNames.map((name, i) => {
           const mon = m.monsters.get(i + 1);
           return {

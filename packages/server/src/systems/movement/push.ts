@@ -3,13 +3,14 @@
  *
  * - The roll: every press that reaches the player-block check rolls `random(25) = 1` once for each
  *   standing player on the target tile, in sprite order; each hit sends that player a push message
- *   with a direction and a strength. The roll is made whatever the step then does: a Web or Holy
- *   Shield that lets the step go does not cancel it (a kept 1.6 bug).
+ *   with a direction and a strength. A standing player always blocks the step, so the roll comes
+ *   with a blocked step.
  * - The shove, on the victim's side: immortals and players under 1.6's client-side input lock are
- *   immune. If the pusher's strength is lower the victim reads "… is too weak", and then the code
- *   falls through anyway (a kept 1.6 bug): "… shoves you out of the way." and the victim's own move
- *   runs. That move runs the normal checks, so a victim holding Turn only turns, a wall stops it
- *   silently, and a standing player behind it gets its own push roll (a chain).
+ *   immune. If the pusher's strength is lower the victim reads "… is too weak" and stays (a bug
+ *   fixed: 1.6 fell through, printed "… shoves you out of the way." and moved the victim anyway).
+ *   Otherwise the victim reads the shove line and its own move runs. That move runs the normal
+ *   checks, so a victim holding Turn only turns, a wall stops it silently, and a standing player
+ *   behind it gets its own push roll (a chain).
  *
  * The rolls and the pushes happen in the same tick (the original's message arrived a few frames
  * later), all rolls before any shove. The input lock is set while a window holds the keys (the Bio
@@ -48,8 +49,12 @@ export function pushOnMe(room: Room, victim: Player, dir: Dir, pusher: Player, c
   if (ctx.crossings.some((c) => c.player === victim)) {
     return;
   }
-  for (const line of pushLines(pusher.name, pusher.char.stats.str < victim.char.stats.str)) {
+  const tooWeak = pusher.char.stats.str < victim.char.stats.str;
+  for (const line of pushLines(pusher.name, tooWeak)) {
     ctx.tell(victim, line);
+  }
+  if (tooWeak) {
+    return;
   }
   const from = { x: victim.x, y: victim.y, step: victim.stepFrames };
   const o = attemptMove(victim, dir, victim.heldTurn, walkWorld(room, victim));

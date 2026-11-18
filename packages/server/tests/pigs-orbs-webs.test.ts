@@ -15,7 +15,7 @@ import {
 import { type Rng, scriptedRng } from "../src/rng.ts";
 import { actionIntent, dropIntent, type ItemCtx } from "../src/systems/inventory/items.ts";
 import { type MonsterSlot, species } from "../src/systems/monsters/slots.ts";
-import { setHeld } from "../src/systems/movement/movement.ts";
+import { scheduleStep, setHeld } from "../src/systems/movement/movement.ts";
 import type { Player, Room, WorldMap } from "../src/systems/world/world.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
@@ -67,7 +67,7 @@ const livePigs = (map: WorldMap) =>
   map.slots.filter((s) => s.live !== null && s.live.name === "Pig");
 
 describe("web", () => {
-  test("kept bug: web message every attempt while an arrow is held", () => {
+  test("bug fixed: the web message prints once a press, not every attempt while held", () => {
     const s = scene();
     live(s.map, 1, "Web", 5, 5);
     setHeld(s.a, "R", false);
@@ -75,8 +75,26 @@ describe("web", () => {
     for (let i = 0; i < 3; i += 1) {
       lines.push(...chat(s.run(1), "A"));
     }
-    expect(lines).toEqual([WEB_TEXT, WEB_TEXT, WEB_TEXT]);
+    expect(lines).toEqual([WEB_TEXT]);
     expect([s.a.x, s.a.y, s.a.facing, s.a.stepFrames]).toEqual([5, 5, "E", 0]);
+    // A release and a new press print it again.
+    setHeld(s.a, null, false);
+    s.run(1);
+    setHeld(s.a, "U", false);
+    expect(chat(s.run(1), "A")).toEqual([WEB_TEXT]);
+  });
+
+  test("bug fixed: a scheduled client's web refusals print once until the key changes", () => {
+    const s = scene();
+    live(s.map, 1, "Web", 5, 5);
+    setHeld(s.a, "R", false, true);
+    const lines: string[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const at = { map: s.map.name, n: s.a.n, x: s.a.x, y: s.a.y, blocked: true };
+      scheduleStep(s.a, { t: "step", seq: i + 1, dir: "R", turn: false, at });
+      lines.push(...chat(s.run(1), "A"));
+    }
+    expect(lines).toEqual([WEB_TEXT]);
   });
 
   test("web: it does not turn the walker either", () => {
@@ -130,11 +148,14 @@ describe("web", () => {
     expect([s.b.x, s.b.y]).toEqual([6, 5]);
   });
 
-  test("web: a refused step refreshes the fishing allowance", () => {
+  test("web: a refused press that turns you refreshes the fishing allowance; one ahead does not", () => {
     const s = scene();
     live(s.map, 1, "Web", 5, 5);
     s.a.antiMacro = 0;
-    setHeld(s.a, "R", false);
+    setHeld(s.a, "R", false); // already facing E
+    s.run(1);
+    expect(s.a.antiMacro).toBe(0);
+    setHeld(s.a, "U", false);
     s.run(1);
     expect(s.a.antiMacro).toBe(5);
   });

@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 50 |
-| [Fixed bugs](#fixed-bugs) | 229 |
+| [Fixed bugs](#fixed-bugs) | 236 |
 | [Kept on purpose](#kept-on-purpose) | 3 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **453** |
+| **Total** | **460** |
 
 By system (the code folder that holds the change):
 
@@ -51,7 +51,7 @@ By system (the code folder that holds the change):
 | inventory | [30](#inventory) | [11](#server-side-inventory) |
 | mail | [16](#mail) | [11](#server-side-mail) |
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
-| movement | 0 | [4](#server-side-movement) |
+| movement | [7](#movement) | [4](#server-side-movement) |
 | progression | 0 | [4](#server-side-progression) |
 | social | [4](#social) | [9](#server-side-social) |
 | spells | 0 | [9](#server-side-spells) |
@@ -2542,6 +2542,71 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The count was meant to pick among the items you carry. The crystal check was deliberate and stays, but a crystal stack no longer uses up the drop.
 - **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`, `isCrystal`)
 - **Pinned by:** `bug fixed: the death drop picks one of the bag's items at random; crystals never` (packages/shared/tests/inventory/inventory.test.ts)
+
+### movement
+
+#### A weaker player cannot shove you
+- **Kind:** Bug fixed
+- **What you notice:** When a weaker player walks into you and the 1-in-25 push roll hits, you read "… attempts to shove you out of the way but is too weak." and stay where you are.
+- **1.6:** The strength check printed the "too weak" line and then fell through, so you also read "… shoves you out of the way." and were moved anyway.
+- **SSO:** A pusher weaker than you only prints the "too weak" line. An equal or stronger pusher shoves you as before.
+- **Why:** The check printed its refusal and so plainly meant to stop the shove.
+- **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`), `packages/shared/src/rules/chat/chat.ts` (`pushLines`)
+- **Pinned by:** `bug fixed: a weaker pusher is 'too weak' and does not shove` (packages/server/tests/push.test.ts); `bug fixed: a weaker pusher's line says only that they are too weak` (packages/shared/tests/chat/chat.test.ts)
+
+#### Walking off the screen's edge is stopped by a wall on the other side
+- **Kind:** Bug fixed
+- **What you notice:** You cannot walk off the edge of the screen when the matching tile on the next map is a wall or water; you turn to face the edge and stay, as you would at a wall.
+- **1.6:** The step that crossed the edge never checked the tile it landed on, so you could arrive inside a wall or on water.
+- **SSO:** The server checks the wrapped tile against the next map's walk grid (the Airship grid when you ride one). An unwalkable tile refuses the crossing; others see you turn. With no map beyond the edge, you still go to the start point.
+- **Why:** Every other step checks its destination; skipping the check on an edge let players walk into walls.
+- **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
+- **Pinned by:** `bug fixed: an unwalkable wrapped tile refuses the crossing, as a wall would`; `walking off an edge onto an existing neighbour keeps the wrapped tile` (packages/server/tests/world.test.ts)
+
+#### Only an Overlord or Mutant Worm blocks three tiles wide
+- **Kind:** Bug fixed
+- **What you notice:** A Slime or any other small monster blocks only its own tile, even when an Overlord or Mutant Worm is in a lower monster slot on the map, or was there earlier.
+- **1.6:** The three-wide flag was set by an Overlord or Mutant Worm and never reset while the slots were checked in order, so every monster in a higher slot blocked three wide too, even after the big monster had died.
+- **SSO:** Each slot is three wide only if its own monster is an Overlord or Mutant Worm.
+- **Why:** The width belongs to the big monsters' art; leaking it to later slots was a missing reset.
+- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`blockPCCheck`)
+- **Pinned by:** `bug fixed: only an Overlord or Mutant Worm itself is three wide, in any slot`; `bug fixed: a remembered dead Overlord in slot 1 does not widen slot 2` (packages/shared/tests/movement/movement.test.ts); `bug fixed: a Slime in slot 2 is one wide after an Overlord in slot 1, dead or alive`; `an Overlord in a higher slot still blocks three wide` (packages/server/tests/blocking.test.ts)
+
+#### A Web or Holy Shield no longer clears the way through players and monsters
+- **Kind:** Bug fixed
+- **What you notice:** You can walk onto a Web or Holy Shield, but standing players and other monsters block you as usual whether or not one is on the map.
+- **1.6:** The Web or Holy Shield test cleared the block flag whatever had set it, looking only at the slot's name, so with one in a slot you walked through players and through monsters in lower slots. The name outlived the monster, so a dead Web still did it.
+- **SSO:** A Web or Holy Shield never blocks its own tile and clears nothing else. A push roll on a blocked step against a standing player still happens.
+- **Why:** The test was meant to let you step onto these summons, not to switch off blocking for the whole map.
+- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`blockPCCheck`)
+- **Pinned by:** `bug fixed: a Web or Holy Shield never blocks but clears nothing else`; `bug fixed: a remembered dead Holy Shield clears no player`; `bug fixed: a Web does not clear an Overlord's three-wide block` (packages/shared/tests/movement/movement.test.ts); `bug fixed: a remembered Web in slot 2 does not let you walk through a Slime in slot 1`; `a live Web or Holy Shield on the target is walked onto`; `bug fixed: a Web in slot 4 does not let you walk onto a standing player; the roll still shoves` (packages/server/tests/blocking.test.ts)
+
+#### Only a press that turns you refills the fishing allowance
+- **Kind:** Bug fixed
+- **What you notice:** The limit of 5 casts without moving is topped up when you press an arrow that turns you away from the way you face, even into a wall. Pressing the way you already face, or turning in place, does not top it up.
+- **1.6:** The refill compared the facing letter ("W") with a direction word ("Left"), so it never matched and every step attempt refilled the allowance, a step into a wall or off the screen included.
+- **SSO:** A press refills it only when its direction differs from your facing and it gets past the turn-in-place, mid-step, player and item checks.
+- **Why:** The comparison was meant to refill on a turn; comparing mismatched words made the anti-macro limit trivially reset.
+- **In the code:** `packages/server/src/systems/movement/movement.ts` (`refreshAntiMacro`)
+- **Pinned by:** `bug fixed: a press the way you already face does not refresh the allowance`; `a press that turns you toward a wall refreshes the allowance`; `turning in place does not refresh it` (packages/server/tests/gather.test.ts); `web: a refused press that turns you refreshes the fishing allowance; one ahead does not` (packages/server/tests/pigs-orbs-webs.test.ts)
+
+#### The web message prints once a press
+- **Kind:** Bug fixed
+- **What you notice:** Standing on a web tile, "Your feet are stuck in the web, you cannot move!" prints once when you press a direction, not on every tick while you hold it. Release and press again, change direction, or get shoved off and webbed again, and it prints again.
+- **1.6:** The web test ran on every move attempt while a direction was held and printed the line each time, flooding the chat.
+- **SSO:** The line prints on the first refused attempt of a press. The web still only counts on your own tile, still leaves your facing as it was, and a rider still ignores webs.
+- **Why:** The repeat came from running a one-off message inside the held-key loop.
+- **In the code:** `packages/server/src/systems/movement/movement.ts` (`setHeld`, `carryOut`)
+- **Pinned by:** `bug fixed: the web message prints once a press, not every attempt while held`; `bug fixed: a scheduled client's web refusals print once until the key changes` (packages/server/tests/pigs-orbs-webs.test.ts)
+
+#### Players walking between tiles block each other
+- **Kind:** Bug fixed
+- **What you notice:** A player who is mid-step blocks the tile they are stepping onto, so two players can no longer end up on the same tile. The tile they are leaving is free at once.
+- **1.6:** Blocking compared exact sprite positions, and a moving player's sprite is between tiles, so only standing players blocked.
+- **SSO:** Every other non-rider player blocks their logical tile, moving or not; your client predicts the same. Only standing players can be pushed.
+- **Why:** Two players sharing a tile was never meant to happen.
+- **In the code:** `packages/server/src/systems/movement/movement.ts` (`walkWorld`), `packages/client/src/model.ts` (`walkWorld`)
+- **Pinned by:** `bug fixed: a player mid-step blocks the tile it steps onto; two never end on one tile`; `the tile a moving player leaves is free at once` (packages/server/tests/world.test.ts); `bug fixed: a moving player blocks the tile it steps onto` (packages/server/e2e/login-and-walk.test.ts)
 
 ### social
 

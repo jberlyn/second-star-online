@@ -19,4 +19,4 @@ An Airship uses its own walk grid while ridden, flies over players, monsters, it
 
 ## Unfixed bugs and differences
 
-Vehicles have no unfixed 1.6 bugs. Landing pad checks read layer 1 across all 12 rows, fixing the original's row 10–12 lookup. Airships are converted by the server and the original ground item cap is removed. See the [vehicle bugs fixed](../differences-from-fso.md#vehicles), [server-side vehicle changes](../differences-from-fso.md#server-side-vehicles) and [unfixed movement bugs](../bug-ledger.md#movement).
+Vehicles have no unfixed 1.6 bugs. Landing pad checks read layer 1 across all 12 rows, fixing the original's row 10–12 lookup. Airships are converted by the server and the original ground item cap is removed. See the [vehicle bugs fixed](../differences-from-fso.md#vehicles), [server-side vehicle changes](../differences-from-fso.md#server-side-vehicles) and [movement bugs fixed](../differences-from-fso.md#movement).

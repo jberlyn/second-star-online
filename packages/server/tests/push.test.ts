@@ -73,7 +73,7 @@ describe("the roll against a standing player", () => {
     expect([a.x, a.facing]).toEqual([5, "E"]);
   });
 
-  test("kept bug: a weaker pusher is 'too weak' and still shoves", () => {
+  test("bug fixed: a weaker pusher is 'too weak' and does not shove", () => {
     const map = testMap("x1000y992");
     const { join, run } = setup([map], undefined, ALWAYS());
     const a = player("a", map, 5, 5);
@@ -84,11 +84,9 @@ describe("the roll against a standing player", () => {
     join(b);
     setHeld(a, "R", false);
     const out = run(1);
-    expect(chatTo(out, "b")).toEqual([
-      "a attempts to shove you out of the way but is too weak.",
-      "a shoves you out of the way.",
-    ]);
-    expect(b.x).toBe(7);
+    expect(chatTo(out, "b")).toEqual(["a attempts to shove you out of the way but is too weak."]);
+    expect(b.x).toBe(6);
+    expect(b.stepFrames).toBe(0);
   });
 
   test("equal strength is not 'too weak'", () => {

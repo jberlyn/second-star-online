@@ -1868,7 +1868,7 @@ describe("the playthrough", () => {
     clearAll();
     carol.send({ t: "move", seq: ++seq, held: "R", turn: false });
     await t(2);
-    expect(chats(carol)).toEqual([WEB_TEXT, WEB_TEXT]);
+    expect(chats(carol)).toEqual([WEB_TEXT]); // once for the press, not every tick
     expect(deltas(carol).filter((e) => e.e === "move" && "id" in e)).toEqual([]);
     carol.send({ t: "move", seq: ++seq, held: null, turn: false });
     await t(1);

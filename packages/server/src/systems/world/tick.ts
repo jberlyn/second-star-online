@@ -30,6 +30,7 @@ import {
   deathText,
   exitTarget,
   isJailMap,
+  isWalkable,
   JAIL,
   lingoEq,
   neighbourMapName,
@@ -741,9 +742,9 @@ function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit
 }
 
 /**
- * The map change. The wrapped tile on the next map is not checked. If there is no next map, the
- * original's empty map reply warped to `x1000y992` (5,5); SSO sends you to the operator's start
- * point instead. Either way the whole map reloads.
+ * The map change. An unwalkable wrapped tile on the next map refuses the crossing. If there is no
+ * next map, the original's empty map reply warped to `x1000y992` (5,5); SSO sends you to the
+ * operator's start point instead. Either way the whole map reloads.
  */
 export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Outgoing[] {
   const { player: p, outcome: o } = c;
@@ -754,6 +755,13 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
   const nextName = neighbourMapName(from, o.dmx, o.dmy);
   const next = nextName ? deps.loadMap(nextName) : null;
   if (next) {
+    // The wrapped tile must be walkable on the next map, on foot or aboard (a bug fixed: 1.6
+    // never checked it, so you could arrive inside a wall or on water). A refused crossing leaves
+    // you facing the edge, as a wall does.
+    if (!isWalkable(p.vehicle ? next.walkAir : next.walk, o.toX, o.toY)) {
+      p.forceYou = true;
+      return [];
+    }
     return warp(world, p, next, o.toX, o.toY, deps.casino);
   }
   const sp = deps.startPoint;

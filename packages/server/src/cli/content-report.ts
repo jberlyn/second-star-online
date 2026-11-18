@@ -254,7 +254,7 @@ export const TABLES: Record<string, TableInfo> = {
     wins: "any",
   },
   "monsters.json rules.clearsBlock": {
-    decides: "clears earlier roster slots' blockPCCheck (kept bug)",
+    decides: "never blocks a player's step",
     wins: "any",
   },
   "monsters.json rules.killXp": { decides: "kill XP override after the ring", wins: "first" },

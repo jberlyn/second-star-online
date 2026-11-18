@@ -196,14 +196,33 @@ describe("fishing", () => {
     expect(f.map.ground.map((x) => x.item)).toEqual(["Trout"]);
   });
 
-  test("kept bug: a step into a wall refreshes the allowance", () => {
+  test("a press that turns you toward a wall refreshes the allowance", () => {
     const f = fisher();
+    f.a.facing = "N";
     setLayer(f.map, 1, 6, 6, "W1"); // not walkable on foot
     f.a.antiMacro = 0;
     setHeld(f.a, "R", false);
     f.run(1);
     expect(f.a.x).toBe(5);
+    expect(f.a.facing as string).toBe("E");
     expect(f.a.antiMacro).toBe(5);
+  });
+
+  test("bug fixed: a press the way you already face does not refresh the allowance", () => {
+    const f = fisher();
+    f.a.facing = "N";
+    f.a.antiMacro = 0;
+    setHeld(f.a, "U", false); // into the water on (5,5): refused
+    f.run(1);
+    expect([f.a.x, f.a.y]).toEqual([5, 6]);
+    expect(f.a.antiMacro).toBe(0);
+    setHeld(f.a, "D", false); // turns and steps: refreshed
+    f.run(1);
+    expect(f.a.antiMacro).toBe(5);
+    f.a.antiMacro = 0;
+    f.run(20); // keeps stepping south, facing S: no refresh
+    expect(f.a.y).toBeGreaterThan(7);
+    expect(f.a.antiMacro).toBe(0);
   });
 
   test("turning in place does not refresh it", () => {

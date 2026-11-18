@@ -365,12 +365,14 @@ export function presenceLine(name: string, on: boolean): string {
   return `${name} has logged ${on ? "on" : "off"}.`;
 }
 
-/** Push lines to the victim. */
+/**
+ * Push lines to the victim. A weaker pusher only reads as too weak (a bug fixed: 1.6 printed both
+ * lines and shoved anyway).
+ */
 export function pushLines(pusher: string, tooWeak: boolean): string[] {
-  const shove = `${pusher} shoves you out of the way.`;
   return tooWeak
-    ? [`${pusher} attempts to shove you out of the way but is too weak.`, shove]
-    : [shove];
+    ? [`${pusher} attempts to shove you out of the way but is too weak.`]
+    : [`${pusher} shoves you out of the way.`];
 }
 
 /** Chat line colours: palette indices as the original set `foreColor` (plus `staff` for SSO's staff chat). */

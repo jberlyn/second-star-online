@@ -1,7 +1,7 @@
 /**
  * Bot script: an immortal Alice spawns a roster monster that never moves (Illusionary Spikes, body
  * 90) in front of her and holds the arrow toward it: she stays and faces it. Then a Web in slot 2
- * (which her client was shown) clears the block and she walks onto the Spikes' tile.
+ * (which her client was shown) still leaves the Spikes blocking, and she can walk onto the Web.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -99,15 +99,22 @@ describe("monster blocking", () => {
     expect(alice.inbox.some((m) => m.t === "chat")).toBe(false);
   });
 
-  test("a Web in slot 2 clears the block: Alice walks onto the Spikes' tile", async () => {
+  test("bug fixed: a Web in slot 2 does not clear the Spikes' block; Alice walks onto the Web", async () => {
     turn("U");
     await tick(2);
     await say("/spawn 2");
     await tick(1);
+    const web = server.game.world.rooms.get("x1000y992")?.map.slots[1]?.live;
+    expect(web).toMatchObject({ name: "Web", x: 6, y: 5 });
     hold("R");
     await tick(3);
     hold(null);
     await tick(1);
-    expect(aliceTile()).toEqual({ x: 7, y: 6 });
+    expect(aliceTile()).toEqual({ x: 6, y: 6 });
+    hold("U");
+    await tick(3);
+    hold(null);
+    await tick(1);
+    expect(aliceTile()).toEqual({ x: 6, y: 5 });
   });
 });

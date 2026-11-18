@@ -194,7 +194,7 @@ With no other added tiles in `catalogue`, `Z9` appears on World Editor **palette
 | `rules.hostile` | Species off `editorLists.worldEditor.monsters` that walk toward players | Any | Default wanders |
 | `rules.officer` | Attacks wanted players on no-fight maps | Any | Default skips no-fight maps |
 | `rules.sparesInnocent` | Never hits an innocent player | Any | Default attacks anyone |
-| `rules.clearsBlock` | Clears earlier roster slots' `blockPCCheck` (an unfixed 1.6 bug in the [bug ledger](bug-ledger.md#movement)) | Any | |
+| `rules.clearsBlock` | Never blocks a player's step (`blockPCCheck`); clears no other block | Any | Default blocks its tile |
 | `rules.killXp` | Melee/spell kill XP override after the ring | First | `xp`; default species `xpMelee`/`xpSpell` |
 | `rules.killBroadcasts` | Server broadcast on melee kill (`{}` = killer name) | First | `text`; default none |
 | `rules.namesSelf` | Click says `"This is <name>."` instead of opening Bio | Any | Default opens Bio |

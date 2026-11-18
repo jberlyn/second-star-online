@@ -1,8 +1,8 @@
 /**
  * Bot script: Alice drops a Pig (Bob sees the monster) and Bob grabs it with Ctrl and gets a Pig;
  * Alice drops a Fire Orb (it lands on the ground like any item) and Bob picks it up; Alice learns
- * Web and casts it on Bob's tile, and Bob holding an arrow gets one web line a tick and does not
- * move; Bob logs out and in with the Pig and the orb kept.
+ * Web and casts it on Bob's tile, and Bob holding an arrow gets one web line for the press and
+ * does not move; Bob logs out and in with the Pig and the orb kept.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -158,7 +158,7 @@ describe("orbs, pigs and webs", () => {
     expect(has(bob, "Fire Orb")).toBe(true);
   });
 
-  test("Alice learns Web and casts it on Bob's tile; Bob holding an arrow gets a web line a tick and stays", async () => {
+  test("Alice learns Web and casts it on Bob's tile; Bob holding an arrow gets one web line and stays", async () => {
     alice.clear();
     alice.send({ t: "use", slot: slotOf(alice, "Web Book") });
     await tick(1);
@@ -172,8 +172,8 @@ describe("orbs, pigs and webs", () => {
     expect(web.map((m) => [m.name, m.x, m.y])).toEqual([["Web", 8, 6]]);
     bob.clear();
     bob.send({ t: "move", seq: ++seq, held: "R", turn: false });
-    await tick(2);
-    expect(chats(bob)).toEqual([WEB_TEXT, WEB_TEXT]);
+    await tick(3);
+    expect(chats(bob)).toEqual([WEB_TEXT]);
     expect(deltas(bob).filter((e) => e.e === "move" && "id" in e)).toEqual([]);
     bob.send({ t: "move", seq: ++seq, held: null, turn: false });
     await tick(1);

@@ -207,10 +207,11 @@ describe("collision", () => {
     });
   });
 
-  test("kept bug: a moving player does not block — the world says no one stands there", () => {
-    // The caller's standingPlayerAt only counts players with stepFrames = 0; see the server
-    // movement tests for the full case.
-    expect(attemptMove(walker(), "U", false, open).kind).toBe("step");
+  test("a player on the target, moving or not, is the world's pcBlocked", () => {
+    // The caller passes every other player at its logical tile; see the server movement tests
+    // for a player mid-step.
+    const world: WalkWorld = { ...open, pcBlocked: (x, y) => x === 5 && y === 4 };
+    expect(attemptMove(walker(), "U", false, world)).toMatchObject({ kind: "blocked", by: "pc" });
   });
 });
 
@@ -222,7 +223,7 @@ describe("edge wrap", () => {
     expect(edgeWrap(3, 0)).toEqual({ toX: 3, toY: 12, dmx: 0, dmy: -1 });
   });
 
-  test("kept bug: crossing an edge never checks the wrapped tile", () => {
+  test("crossing an edge leaves the wrapped tile to the server, which knows the next map", () => {
     const nothingWalkable: WalkWorld = {
       walkable: () => false,
       pcBlocked: () => false,
@@ -341,35 +342,43 @@ describe("blockPCCheck", () => {
     });
   }
 
-  test("kept bug: a lower slot is one wide, a higher slot three wide after an Overlord", () => {
+  test("bug fixed: only an Overlord or Mutant Worm itself is three wide, in any slot", () => {
     const lowerFirst = [slot("Slime", 5, 5), slot("Overlord", 9, 9), none, none];
     expect(blockPCCheck(6, 5, [], lowerFirst)).toBe(false);
     const higher = [slot("Overlord", 9, 9), slot("Slime", 5, 5), none, none];
-    expect(blockPCCheck(6, 5, [], higher)).toBe(true);
-    expect(blockPCCheck(7, 5, [], higher)).toBe(true);
+    expect(blockPCCheck(5, 5, [], higher)).toBe(true);
+    expect(blockPCCheck(6, 5, [], higher)).toBe(false);
+    expect(blockPCCheck(7, 5, [], higher)).toBe(false);
+    expect(blockPCCheck(10, 9, [], higher)).toBe(true);
   });
 
-  test("kept bug: a remembered dead Overlord in slot 1 widens slot 2", () => {
+  test("bug fixed: a remembered dead Overlord in slot 1 does not widen slot 2", () => {
     const s = [slot("Overlord"), slot("Slime", 5, 5), none, none];
+    expect(blockPCCheck(6, 5, [], s)).toBe(false);
+    expect(blockPCCheck(7, 5, [], s)).toBe(false);
+  });
+
+  test("bug fixed: a Web or Holy Shield never blocks but clears nothing else", () => {
+    expect(blockPCCheck(9, 9, [], [slot("Web", 9, 9), none, none, none])).toBe(false);
+    expect(blockPCCheck(9, 9, [], [none, slot("Holy Shield", 9, 9), none, none])).toBe(false);
+    const s = [slot("Slime", 5, 5), slot("Web", 9, 9), none, none];
+    expect(blockPCCheck(5, 5, [], s)).toBe(true);
+    expect(blockPCCheck(6, 6, [at(6, 6)], s)).toBe(true);
+  });
+
+  test("bug fixed: a remembered dead Holy Shield clears no player", () => {
+    expect(blockPCCheck(5, 5, [at(5, 5)], [slot("Holy Shield"), none, none, none])).toBe(true);
+  });
+
+  test("bug fixed: a Web does not clear an Overlord's three-wide block", () => {
+    const s = [slot("Overlord", 5, 5), slot("Web", 9, 9), none, none];
+    expect(blockPCCheck(6, 5, [], s)).toBe(true);
     expect(blockPCCheck(7, 5, [], s)).toBe(true);
   });
 
-  test("kept bug: a Web in slot 2 clears a standing player and slot 1, slot 3 still blocks", () => {
-    const s = [slot("Slime", 5, 5), slot("Web", 9, 9), none, none];
-    expect(blockPCCheck(5, 5, [at(5, 5)], s)).toBe(false);
-    const s3 = [slot("Slime", 5, 5), slot("Web", 9, 9), slot("Slime", 5, 5), none];
-    expect(blockPCCheck(5, 5, [at(5, 5)], s3)).toBe(true);
-  });
-
-  test("kept bug: a remembered dead Holy Shield still clears", () => {
-    expect(blockPCCheck(5, 5, [at(5, 5)], [slot("Holy Shield"), none, none, none])).toBe(false);
-  });
-
-  test("kept bug: a Web clears its own Overlord-widened block but a higher slot re-blocks", () => {
-    const s = [slot("Overlord", 5, 5), slot("Web", 9, 9), none, none];
-    expect(blockPCCheck(6, 5, [], s)).toBe(false);
-    const again = [slot("Overlord", 5, 5), slot("Web", 9, 9), slot("Slime", 6, 5), none];
-    expect(blockPCCheck(6, 5, [], again)).toBe(true);
+  test("a live monster whose name was never shown blocks its own tile only", () => {
+    expect(blockPCCheck(5, 5, [], [slot(null, 5, 5), none, none, none])).toBe(true);
+    expect(blockPCCheck(6, 5, [], [slot(null, 5, 5), none, none, none])).toBe(false);
   });
 
   test("a null name and a null position never block or clear", () => {

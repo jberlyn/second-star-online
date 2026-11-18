@@ -150,13 +150,20 @@ describe("log in and walk the seed map", () => {
     expect(events(bob)).toContainEqual({ e: "turn", id: expect.any(String), facing: "E" });
   });
 
-  test("kept bug: a moving player does not block: alice steps onto bob's tile", async () => {
+  test("bug fixed: a moving player blocks the tile it steps onto", async () => {
     // bob walks right, then back left into (7,4)... alice targets (7,4) while bob is mid-step.
     tap(bob, "R");
     await tick(STEP_FRAMES + 1); // bob now standing at (8,4)
     tap(bob, "L");
     await tick(1); // bob mid-step from (8,4) into (7,4)
     expect(lastSelf(bob)).toMatchObject({ x: 7, y: 4, frames: STEP_FRAMES - 1 });
+    tap(alice, "R");
+    await tick(1);
+    expect(lastSelf(alice)).toMatchObject({ x: 6, y: 4, facing: "E" });
+    await tick(STEP_FRAMES);
+    // bob moves on up to (7,3); alice can now take (7,4).
+    tap(bob, "U");
+    await tick(1);
     tap(alice, "R");
     await tick(1);
     expect(lastSelf(alice)).toMatchObject({ x: 7, y: 4, facing: "E" });
@@ -173,10 +180,10 @@ describe("log in and walk the seed map", () => {
   });
 
   test("kept bug: walking off an edge with no map beyond lands on the start point", async () => {
-    // bob at (7,4) walks up: (7,3), (7,2), (7,1), then off the top edge.
+    // bob at (7,3) walks up: (7,2), (7,1), then off the top edge.
     bob.clear();
     alice.clear();
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       tap(bob, "U");
       await tick(STEP_FRAMES);
     }

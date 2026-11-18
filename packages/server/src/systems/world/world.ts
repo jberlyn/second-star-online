@@ -402,8 +402,10 @@ export interface Player {
    * row): client globals, so they start at 0 each login.
    */
   gather: GatherCounters;
-  /** The macro-check counter: 5 at login and after every arrow press past the opening checks. */
+  /** The macro-check counter: 5 at login and after an arrow press that turns you. */
   antiMacro: number;
+  /** The web line was printed for the current press; cleared by a new press, release or step. */
+  webTold: boolean;
   /**
    * The name last shown placed in each roster slot 1-4 (index = slot - 1), null = never shown
    * (outlives the monster). Kept while this Player lives, empty at a fresh login;
@@ -625,6 +627,7 @@ export function sessionCombatState(): Pick<
   | "warpscript"
   | "gather"
   | "antiMacro"
+  | "webTold"
   | "shownNames"
   | "craft"
   | "container"
@@ -689,6 +692,7 @@ export function sessionCombatState(): Pick<
     warpscript: null,
     gather: newGatherCounters(),
     antiMacro: ANTI_MACRO_START,
+    webTold: false,
     shownNames: [null, null, null, null],
     craft: newCraftState(),
     container: null,

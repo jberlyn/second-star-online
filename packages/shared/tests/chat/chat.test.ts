@@ -133,11 +133,10 @@ describe("formats", () => {
     expect(presenceLine("Bob", false)).toBe("Bob has logged off.");
   });
 
-  test("push lines", () => {
+  test("bug fixed: a weaker pusher's line says only that they are too weak", () => {
     expect(pushLines("Bob", false)).toEqual(["Bob shoves you out of the way."]);
     expect(pushLines("Bob", true)).toEqual([
       "Bob attempts to shove you out of the way but is too weak.",
-      "Bob shoves you out of the way.",
     ]);
   });
 });

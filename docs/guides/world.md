@@ -19,4 +19,4 @@ Each tick collects outgoing messages and work to save. For each room it advances
 
 ## Unfixed bugs and differences
 
-Jail sentences run in real time and survive map changes and logouts. The server holds a loading lock until the client is ready or the timeout expires, and runs exactly two actor passes per frame, without the original's occasional extra passes. See the [unfixed world bugs](../bug-ledger.md#world), [server-side world changes](../differences-from-fso.md#server-side-world), [unfixed movement bugs](../bug-ledger.md#movement) and [server-side movement changes](../differences-from-fso.md#server-side-movement).
+Jail sentences run in real time and survive map changes and logouts. The server holds a loading lock until the client is ready or the timeout expires, and runs exactly two actor passes per frame, without the original's occasional extra passes. See the [unfixed world bugs](../bug-ledger.md#world), [server-side world changes](../differences-from-fso.md#server-side-world), [movement bugs fixed](../differences-from-fso.md#movement) and [server-side movement changes](../differences-from-fso.md#server-side-movement).

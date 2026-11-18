@@ -38,4 +38,4 @@ A pattern is exact or substring based. `firstMatch` stops at the first matching 
 
 Two behaviours of the shared helpers matter to content authors: an empty tile code matches the walk whitelist, and the last matching recipe can win when more than one pattern matches.
 
-See the [core bugs fixed](../differences-from-fso.md#core), [server-side core changes](../differences-from-fso.md#server-side-core) and [unfixed movement bugs](../bug-ledger.md#movement).
+See the [core bugs fixed](../differences-from-fso.md#core), [server-side core changes](../differences-from-fso.md#server-side-core) and [movement bugs fixed](../differences-from-fso.md#movement).

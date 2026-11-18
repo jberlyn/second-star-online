@@ -23,56 +23,11 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 
 | Section | Unfixed bugs |
 |---|---|
-| [movement](#movement) | 7 |
 | [progression](#progression) | 10 |
 | [social](#social) | 18 |
 | [spells](#spells) | 25 |
 | [world](#world) | 2 |
-| **Total** | **62** |
-
-## movement
-
-### A weaker player still shoves you
-- **What you notice:** walk into a player who is standing still and now and then (1 blocked step in 25) you push them a tile. If you are weaker than them they read "… is too weak", and then "… shoves you out of the way." and move anyway.
-- **In 1.6 and SSO:** the "too weak" check prints its line but doesn't stop the shove. In SSO the server does it, always tries the victim's step with normal collision, and never pushes immortals or players whose keys are held by a window.
-- **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`)
-- **Pinned by:** `kept bug: a weaker pusher is 'too weak' and still shoves` (packages/server/tests/push.test.ts); `walking into a standing player can push them` (packages/server/e2e/chat-and-presence.test.ts)
-
-### Stepping off the screen's edge ignores walls
-- **What you notice:** walk off the edge of the screen and you arrive on the matching tile of the next map even when that tile is a wall or water.
-- **In 1.6 and SSO:** the step that crosses the edge never checks the tile it lands on. SSO does the same.
-- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`attemptMove`, `edgeWrap`)
-- **Pinned by:** `kept bug: crossing an edge never checks the wrapped tile` (packages/shared/tests/movement/movement.test.ts); `kept bug: walking off an edge onto an existing neighbour keeps the wrapped tile, unchecked` (packages/server/tests/world.test.ts)
-
-### Later monsters block three tiles wide after an Overlord
-- **What you notice:** once an Overlord or Mutant Worm sits in a lower monster slot, the monsters in the higher slots behind it block three tiles wide too, even small ones like a Slime.
-- **In 1.6 and SSO:** the three-wide flag is set for an Overlord or Mutant Worm and never reset while the slots are checked in order, so later slots inherit it. SSO does the same, from the first slot whose remembered name is Overlord or Mutant Worm (live or not): every live monster after it blocks its tile and the two to its right, a step off the right edge included.
-- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`blockPCCheck`)
-- **Pinned by:** `kept bug: a lower slot is one wide, a higher slot three wide after an Overlord`; `kept bug: a remembered dead Overlord in slot 1 widens slot 2` (packages/shared/tests/movement/movement.test.ts); `kept bug: a Slime in slot 2 is three wide after an Overlord in slot 1, even a dead one`; `Overlord at x = 16 stops a walk off the right edge` (packages/server/tests/blocking.test.ts)
-
-### A Web or Holy Shield clears the way through players and earlier monsters
-- **What you notice:** when a Web or Holy Shield is in one of the monster slots, you can walk through standing players and through the monsters in lower slots, though monsters in higher slots can block you again.
-- **In 1.6 and SSO:** the Web or Holy Shield test clears the block flag whatever set it, looking only at the slot's name, and the name outlives the monster. SSO keeps this, using each player's remembered slot names; a push that was already rolled still lands.
-- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`blockPCCheck`)
-- **Pinned by:** `kept bug: a Web in slot 2 clears a standing player and slot 1, slot 3 still blocks`; `kept bug: a remembered dead Holy Shield still clears` (packages/shared/tests/movement/movement.test.ts); `kept bug: a remembered Web in slot 2 lets you walk through a Slime in slot 1`; `kept bug: a Web in slot 4 lets you walk onto a standing player, and the roll still shoves` (packages/server/tests/blocking.test.ts)
-
-### Any step attempt refills the fishing allowance
-- **What you notice:** while fishing, the limit on casts without moving is topped back up to 5 whenever you try to step, even a step into a wall or off the screen.
-- **In 1.6 and SSO:** the code meant to refill it only when you turn, but compared facing letters with direction words, so it always refilled. SSO does the same: every move attempt that gets past the turn, the player and item blocks and the mid-step test resets the allowance to 5.
-- **In the code:** `packages/server/src/systems/movement/movement.ts` (`refreshAntiMacro`)
-- **Pinned by:** `kept bug: a step into a wall refreshes the allowance`; `turning in place does not refresh it` (packages/server/tests/gather.test.ts)
-
-### The web message repeats while you hold a direction
-- **What you notice:** standing on a web tile, you read "Your feet are stuck in the web, you cannot move!" on every move attempt while a direction is held. A web on any other tile never blocks you.
-- **In 1.6 and SSO:** the web only counts when it is exactly on your own tile. SSO checks it every tick while a direction is held, on the walker's own tile only, after the player-block and mid-step tests and before the edge wrap; your facing doesn't change and the fishing allowance is refreshed. A rider ignores webs. A shove runs the same check, so a webbed victim reads the push lines, then the web line, and stays.
-- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`WEB_TEXT`), `packages/server/src/systems/movement/movement.ts` (`walkWorld`)
-- **Pinned by:** `kept bug: web message every attempt while an arrow is held`; `web: aboard an Airship webs are ignored`; `web: a web on the next tile is walked onto`; `web: a shoved webbed player reads the push lines, then the web line, and stays`; `web: a refused step refreshes the fishing allowance` (packages/server/tests/pigs-orbs-webs.test.ts)
-
-### Players walking between tiles don't block each other
-- **What you notice:** a player blocks you only while standing still. Someone mid-step doesn't, so two players can end up on the same tile.
-- **In 1.6 and SSO:** blocking compares exact sprite positions, and other players' sprites animate between tiles. SSO does the same: a player blocks only while not mid-step.
-- **In the code:** `packages/server/src/systems/movement/movement.ts` (`standingPlayersAt`)
-- **Pinned by:** `kept bug: a player mid-step does not block; two players end on one tile` (packages/server/tests/world.test.ts); `kept bug: a moving player does not block: alice steps onto bob's tile` (packages/server/e2e/login-and-walk.test.ts)
+| **Total** | **55** |
 
 ## progression
 

@@ -311,7 +311,7 @@ describe("movement sim", () => {
     expect([a.x, a.y]).toEqual([6, 5]);
   });
 
-  test("kept bug: a player mid-step does not block; two players end on one tile", () => {
+  test("bug fixed: a player mid-step blocks the tile it steps onto; two never end on one tile", () => {
     const seed = testMap("x1000y992");
     const { join, run } = setup([seed]);
     const a = player("a", seed, 5, 5);
@@ -321,8 +321,23 @@ describe("movement sim", () => {
     pressStep(b, "L", false);
     run(1); // b now logically at (6,5), mid-step
     pressStep(a, "R", false);
+    const out = run(1);
+    expect([a.x, a.y, a.facing, b.x, b.y]).toEqual([5, 5, "E", 6, 5]);
+    expect(out.some((o) => o.to === "a" && o.msg.t === "you")).toBe(true);
+  });
+
+  test("the tile a moving player leaves is free at once", () => {
+    const seed = testMap("x1000y992");
+    const { join, run } = setup([seed]);
+    const a = player("a", seed, 5, 5);
+    const b = player("b", seed, 6, 5);
+    join(a);
+    join(b);
+    pressStep(b, "R", false);
+    run(1); // b leaves (6,5) for (7,5)
+    pressStep(a, "R", false);
     run(1);
-    expect([a.x, a.y, b.x, b.y]).toEqual([6, 5, 6, 5]);
+    expect([a.x, b.x]).toEqual([6, 7]);
   });
 
   test("a standing player blocks: facing changes, the walker stays, and a 'you' is sent", () => {
@@ -376,9 +391,9 @@ describe("movement sim", () => {
     expect([a.x, a.facing, a.stepFrames]).toEqual([5, "E", 0]);
   });
 
-  test("kept bug: walking off an edge onto an existing neighbour keeps the wrapped tile, unchecked", () => {
+  test("walking off an edge onto an existing neighbour keeps the wrapped tile", () => {
     const seed = testMap("x1000y992");
-    const east = testMap(mapName(1001, 992), [[1, 5]]); // a tree on the arrival tile
+    const east = testMap(mapName(1001, 992), [[1, 6]]); // a tree beside the arrival tile
     const { world, join, run } = setup([seed, east]);
     const a = player("a", seed, 17, 5);
     join(a);
@@ -388,6 +403,20 @@ describe("movement sim", () => {
     expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(true);
     expect(a.loading).toBe(100);
     expect(world.rooms.has("x1000y992")).toBe(false); // empty room unloaded
+  });
+
+  test("bug fixed: an unwalkable wrapped tile refuses the crossing, as a wall would", () => {
+    const seed = testMap("x1000y992");
+    const east = testMap(mapName(1001, 992), [[1, 5]]); // a tree on the arrival tile
+    const { join, run } = setup([seed, east]);
+    const a = player("a", seed, 17, 5);
+    a.facing = "N";
+    join(a);
+    pressStep(a, "R", false);
+    const out = run(1);
+    expect([a.map.name, a.x, a.y, a.facing]).toEqual(["x1000y992", 17, 5, "E"]);
+    expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(false);
+    expect(out.some((o) => o.to === "a" && o.msg.t === "you")).toBe(true);
   });
 
   test("kept bug: walking off an edge with no neighbour lands on the start point", () => {
