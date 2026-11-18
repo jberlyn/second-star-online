@@ -44,7 +44,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { type CasinoDeps, casinoMapChange, casinoTick } from "../casino/index.ts";
-import { slotTick, submitHighScore } from "../casino/slots.ts";
+import { slotTick } from "../casino/slots.ts";
 import { hears } from "../chat/ignore.ts";
 import { hopTo } from "../combat/arena.ts";
 import { pollAttack } from "../combat/melee.ts";
@@ -78,6 +78,7 @@ import {
 } from "../progression/vitals.ts";
 import { lightningOn, scoreKill } from "../social/assassin.ts";
 import { aqsToMap, loyaltyFrame } from "../social/factions.ts";
+import { submitHighScore } from "../social/highscores.ts";
 import { flagKiller } from "../social/murder.ts";
 import {
   holdDefenseStep,

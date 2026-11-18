@@ -62,13 +62,12 @@ export function leaderFaction(npc: string): FactionRow | null {
 
 /**
  * The faction sort: only your own faction's bonus is set, by a cascade where the last true branch
- * wins: < 200 → 9, < 90 → 9, < 80 → 8 … < 10 → 1, < 5 → 0. Power ≥ 200 matches nothing and leaves 0
- * (a kept bug: 1.6 did this).
+ * wins: < 90 → 9, < 80 → 8 … < 10 → 1, < 5 → 0, so 80 or more gives 9. 1.6 started the cascade at
+ * < 200 → 9 and left 0 when nothing matched, so 200 or more gave 0 (a bug fixed: it gives 9).
  */
 export function factionBonus(power: number): number {
-  let b = 0;
+  let b = 9;
   const steps: [number, number][] = [
-    [200, 9],
     [90, 9],
     [80, 8],
     [70, 7],
@@ -119,8 +118,9 @@ export function deathHead(id: FactionId, pvpX: boolean): string | null {
 
 /**
  * The exile check after the death penalty, on the new HPmax: below the faction's line, the
- * membership ends with its text. No `LeaveGroup` (a kept bug: 1.6 did this). A Warrior who joined
- * at 50-59 is exiled at the next death (also kept).
+ * membership ends with its text (and so the faction channel, which is the faction's members). A
+ * faction never takes a joiner below its own exile line, so a fresh member is not exiled at its
+ * next death.
  */
 export function exileAtDeath(m: Membership, hpMax: number): string | null {
   if (m.id === 0) {
@@ -158,15 +158,32 @@ export interface JoinResult {
   membership: Membership;
   /** Said to the joiner alone (chat line). */
   line: string;
-  /** To `@Faction` as `sqa`, or null. */
+  /** To the leader's faction channel as `sqa`, or null. */
   announce: string | null;
 }
 
 /**
+ * Whether `leader`'s faction would take this membership: anyone already in it, or someone in no
+ * faction with `HPmax` above its join line. A member of another faction, or one too weak, is
+ * refused before anything is handed over.
+ */
+export function joinRefusal(m: Membership, leader: 1 | 2 | 3, hpMax: number): string | null {
+  const row = factionRow(leader);
+  if (m.id === leader) {
+    return null;
+  }
+  if (m.id !== 0) {
+    return row.texts.other;
+  }
+  return hpMax > row.joinHpMaxAbove ? null : row.texts.weak;
+}
+
+/**
  * The three faction-join routines (`joinFaction`) for a head turned in to `leader`'s faction: not
- * in a faction and `HPmax > 49` joins with 212000 frames; too weak is refused; the same faction
- * adds 212000 with no HP check; another faction changes nothing but still announces (with "Mage's"
- * for the Mages).
+ * in a faction and above the join line (49, Warriors 59) joins with 212000 frames; too weak is
+ * refused; the same faction adds 212000 with no HP check; another faction changes nothing but still
+ * announces (with "Mage's" for the Mages). The server asks `joinRefusal` first, so the last two
+ * refusals are never reached by a hand-in.
  */
 export function joinFaction(
   m: Membership,
@@ -243,8 +260,8 @@ export function headTurnIn(npc: string, item: string, powers: Powers): HeadTurnI
 }
 
 /**
- * `SayFaction`: strictly highest → absolute power, strictly lowest → very weak, else fine. No
- * closing quote (a kept bug: 1.6 did this).
+ * `SayFaction`: strictly highest → absolute power, strictly lowest → very weak, else fine. 1.6's
+ * lines lacked their closing quote; SSO's close it.
  */
 export function sayFaction(npc: string, powers: Powers): string | null {
   const row = leaderFaction(npc);

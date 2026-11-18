@@ -6,9 +6,9 @@
  * by splitting on colons, so the first field is always empty and name k is field k + 1. SSO keeps
  * the items between the colons as rows per account and runs 1.6's string tests on the same string
  * rebuilt (`buddyString`), so every quirk carries over: the add test is a case-insensitive
- * substring check for `:<name>:`, and the original's remove routine finds only items 1-190 (so the
- * first 189 names; a kept bug of 1.6) and keeps items 1-200 when it rebuilds. 1.6 had no add limit;
- * SSO stops at `BUDDY_MAX` names.
+ * substring check for `:<name>:`. 1.6's remove routine found only items 1-190 (so the first 189
+ * names) and kept items 1-200 when it rebuilt; SSO's finds any name and keeps every other (a bug
+ * fixed). 1.6 had no add limit; SSO stops at `BUDDY_MAX` names.
  *
  * The Friends window shows online buddies only, in the server's spelling: filled at game entry
  * from everyone online (`friendsAtEntry`), a buddy appended at logon and deleted at logoff, an
@@ -35,8 +35,8 @@ export const BUDDY_TEXT = {
 } as const;
 
 /**
- * SSO's cap (user decision): the names the original's remove rebuild keeps (items 2-200). 1.6 had
- * none; each add rewrote the whole stored list, so a flood of adds could stall the server.
+ * SSO's cap (user decision): the names 1.6's remove rebuild kept (items 2-200). 1.6 had none; each
+ * add rewrote the whole stored list, so a flood of adds could stall the server.
  */
 export const BUDDY_MAX = 199;
 
@@ -95,32 +95,23 @@ export function buddyAdd(
 }
 
 /**
- * `buddyRemove`: the first of items 1-200 equal to the name (ignoring case; item 1 is always
- * empty); not found leaves x = 201, and any x > 190 prints "is not on" (a kept bug of 1.6).
- * Otherwise the list is rebuilt from items 1-200 without x and without empty items.
+ * `buddyRemove`: the first item equal to the name (ignoring case) goes and the rest stay in order;
+ * none → "is not on". 1.6 searched only items 1-190 (item 1 always empty) and rebuilt from items
+ * 1-200, so the 190th name and later could not be removed (a bug fixed).
  */
 export function buddyRemove(
   items: readonly string[],
   name: string,
 ): { items: string[]; line: string; removed: boolean } {
-  const all = ["", ...items];
-  let x = 1;
-  for (; x <= B.removeScan; x++) {
-    if (lingoEq(all[x - 1] ?? "", name)) {
-      break;
-    }
-  }
-  if (x > B.removeLimit) {
+  const x = items.findIndex((i) => lingoEq(i, name));
+  if (x < 0) {
     return { items: [...items], line: BUDDY_TEXT.notOn(name), removed: false };
   }
-  const kept: string[] = [];
-  for (let beh = 1; beh <= B.removeScan; beh++) {
-    const item = all[beh - 1] ?? "";
-    if (item !== "" && beh !== x) {
-      kept.push(item);
-    }
-  }
-  return { items: kept, line: BUDDY_TEXT.removed(name), removed: true };
+  return {
+    items: items.filter((i, k) => k !== x && i !== ""),
+    line: BUDDY_TEXT.removed(name),
+    removed: true,
+  };
 }
 
 /**

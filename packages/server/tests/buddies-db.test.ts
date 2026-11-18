@@ -98,18 +98,18 @@ describe("buddies, profiles and medals (persistence)", () => {
     expect(friends(a.characterId)).toEqual([{ t: "friends", names: [] }]);
   });
 
-  test("closing your own bio writes the stripped profile", async () => {
+  test("bug fixed: closing your own bio writes the profile as typed", async () => {
     const { game, make } = await gameWith();
     const a = await make("Alice");
     expect(findCharacterById(db, a.characterId)?.profile).toBe("I have not edited my profile yet");
     game.enter(a.characterId, false);
     game.intent(a.characterId, { t: "profileSave", text: "Hello. Fish; please" });
-    expect(findCharacterById(db, a.characterId)?.profile).toBe("Hello Fish please");
+    expect(findCharacterById(db, a.characterId)?.profile).toBe("Hello. Fish; please");
     sent.length = 0;
     game.intent(a.characterId, { t: "bioRequest", id: a.characterId });
     const bio = sent.find((o) => o.msg.t === "playerBio")?.msg;
     expect(bio).toMatchObject({ t: "playerBio", title: "Alice Star", own: true });
-    expect(bio && "profile" in bio ? bio.profile : null).toBe("Hello Fish please");
+    expect(bio && "profile" in bio ? bio.profile : null).toBe("Hello. Fish; please");
   });
 
   test("a medal and its point come from the saved skill; the stored stats stay as allocated", async () => {

@@ -28,7 +28,7 @@ import type { Outgoing, Player, World } from "../world/world.ts";
 /** What the end needs from outside: the prize setting and a write for offline winners. */
 export interface AssassinDeps {
   rng: Rng;
-  /** The `assassinPrizes` setting, four lines, read at the end. */
+  /** The `assassinPrizes` setting, four lines (first to fourth place), read at the end. */
   prizes: () => readonly string[];
   /** `InvAdd` on an offline character's stored bag (1.6 wrote the file). */
   giveOffline: (characterId: string, prize: string) => void;
@@ -63,9 +63,9 @@ export function setAssassinMode(world: World, mode: AssassinMode, deps: Assassin
 }
 
 /**
- * The end of a game: the lines, a win for the first, the mode STOP, then prizes 1-3 to the first
- * three. Nobody scored: no winners, no win and no prizes; a missing second or third prints blank
- * and gets nothing. The current table stays for the Statue.
+ * The end of a game: the lines, a win for the first, the mode STOP, then prizes 1-4 to the first
+ * four. Nobody scored: no winners, no win and no prizes; a missing place prints blank (second and
+ * third) and gets nothing. The current table stays for the Statue.
  */
 function endGame(world: World, s: AssassinState, deps: AssassinDeps): Outgoing[] {
   const out = endLines(s.current).flatMap((t) => toAll(world, t));

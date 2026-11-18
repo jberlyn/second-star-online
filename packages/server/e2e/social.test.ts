@@ -181,7 +181,7 @@ describe("murder flag, factions and quests", () => {
     });
   });
 
-  test("Bob gives the head to Angela: power moves, he joins, @Faction hears it", async () => {
+  test("Bob gives the head to Angela: power moves, he joins, only the Mages hear it", async () => {
     const head = added(bob).find((g) => g.name === "Warrior's Head");
     bob.send({ t: "pickup", id: head?.id ?? "" });
     await settle();
@@ -202,8 +202,8 @@ describe("murder flag, factions and quests", () => {
     const joined = "*** The Mage faction has become stronger thanks to Bob.";
     expect(lines(bob)).toEqual([thanks, 'Angela says "Welcome to the Mage faction."', joined]);
     expect(lines(king)).toEqual([thanks]);
-    // Alice is a Warrior, still in the one shared channel.
-    expect(lines(alice)).toContain(joined);
+    // Alice is a Warrior: the Mages' channel is not hers (1.6 shared one channel).
+    expect(lines(alice)).not.toContain(joined);
     expect(loadFactionPowers(server.db)).toEqual([28, 122, 0]);
   });
 
@@ -211,12 +211,12 @@ describe("murder flag, factions and quests", () => {
     king.clear();
     bob.send({ t: "chat", text: "Is there a quest for me?" });
     await settle();
-    expect(lines(king)).toContain('Angela says "Sorry but I don\'t need anything right now"');
+    expect(lines(king)).toContain('Angela says "Sorry but I don\'t need anything right now."');
     await tick(60); // the 3 s chat cooldown
     king.clear();
     bob.send({ t: "chat", text: "Who is in power?" });
     await settle();
-    expect(lines(king)).toContain('Angela says "Our power is fine...for now.');
+    expect(lines(king)).toContain('Angela says "Our power is fine...for now."');
   });
 
   test("King pardons Bob", async () => {
@@ -322,11 +322,10 @@ describe("the Assassin's game", () => {
     expect(added(bob)).toEqual([]);
   });
 
-  test("at the end of his lock Alice is wanted and receives 10 points, after the death line", async () => {
+  test("at the end of his lock Alice receives 10 points, after the death line, and is not wanted", async () => {
     alice.clear();
     await tick(30);
     expect(lines(alice)).toEqual([
-      "*** You are now wanted for the murder of Bob.",
       "*** Bob was just killed by Alice.",
       "*** Alice just received 10 assassin points!",
     ]);
@@ -866,7 +865,7 @@ describe("friends, bios and medals", () => {
     ]);
   });
 
-  test("Alice edits her own profile: closing her bio strips it and saves it", async () => {
+  test("Alice edits her own profile: closing her bio saves it as typed", async () => {
     alice.clear();
     alice.send({ t: "bioRequest", id: idOf(server.db, "Alice") });
     await settle();
@@ -875,7 +874,7 @@ describe("friends, bios and medals", () => {
     alice.clear();
     alice.send({ t: "bioRequest", name: "alice" });
     await settle();
-    expect(bios(alice)[0]).toMatchObject({ profile: "Hunting slimes Daily ask me", own: true });
+    expect(bios(alice)[0]).toMatchObject({ profile: "Hunting slimes. Daily; ask me", own: true });
   });
 
   test("Bob logs off and leaves Alice's list", async () => {

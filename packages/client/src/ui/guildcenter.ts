@@ -252,6 +252,7 @@ export function createGuildCenter(a: Assets, act: GuildCenterActions): GuildCent
     const target = memberLines[selNum - 1] ?? "";
     memberLines.splice(selNum - 1, 1);
     selNum = 0;
+    selName = "";
     drawMembers();
     act.act("exile", v, target);
   });
@@ -261,7 +262,8 @@ export function createGuildCenter(a: Assets, act: GuildCenterActions): GuildCent
       act.act("abdicate", v);
       return;
     }
-    // The selected member survives exile, viewing and reopening (1.6 never cleared it).
+    // Nothing selected → nothing. Exiling, viewing and reopening clear the selection (1.6 never
+    // cleared it, so a stale name could be crowned).
     if (selName === "") {
       return;
     }
@@ -359,6 +361,7 @@ export function createGuildCenter(a: Assets, act: GuildCenterActions): GuildCent
     leaderField.textContent = leader;
     memberLines = [...members];
     selNum = 0;
+    selName = "";
     drawMembers();
   };
   const close = () => {

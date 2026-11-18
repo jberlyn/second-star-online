@@ -100,16 +100,23 @@ describe("guild rows (migration 20261107_16)", () => {
     expect(texts(bo)).toContain("You have been kicked out of the Knights");
     expect(loadCharacterGuild(db, bo)).toBe("");
 
-    // Disband: the row stays marked; a new guild of the name reuses it and lists it last.
+    // Disband: the row stays marked with its leader, so after a restart only that leader may
+    // found the name again; doing so reuses the row and lists it last.
     openScreen(g, al);
     g.intent(al, { t: "guildAction", act: "disband", viewing: "Knights" });
-    expect(loadGuilds(db)[0]?.disbanded).toBe(true);
+    expect(loadGuilds(db)[0]).toMatchObject({ disbanded: true, leaderId: al });
     expect(loadCharacterGuild(db, al)).toBe("");
-    openScreen(g, bo);
-    g.intent(bo, { t: "guildCreate", name: "knights", alignment: "E" });
+    const g2 = game();
+    g2.enter(al, false);
+    g2.enter(bo, false);
+    openScreen(g2, bo);
+    g2.intent(bo, { t: "guildCreate", name: "knights", alignment: "E" });
+    expect(loadGuilds(db)[0]?.disbanded).toBe(true);
+    openScreen(g2, al);
+    g2.intent(al, { t: "guildCreate", name: "knights", alignment: "E" });
     const rows = loadGuilds(db);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ name: "knights", leaderName: "Bo", disbanded: false });
+    expect(rows[0]).toMatchObject({ name: "knights", leaderName: "Al", disbanded: false });
   });
 
   test("a member logging in hails the guild", async () => {

@@ -11237,24 +11237,6 @@
       "6cda9b04d1a3657d"
     ]
   ],
-  "social.json#/bios/profile/strip": [
-    [
-      "0",
-      "194aa390a244ed61"
-    ],
-    [
-      "1",
-      "df7e940f72aa93cb"
-    ],
-    [
-      "2",
-      "7299b59de0b5dad3"
-    ],
-    [
-      "3",
-      "8c45a5435a740956"
-    ]
-  ],
   "social.json#/bios/score/counted": [
     [
       "0",
@@ -11358,45 +11340,43 @@
     ],
     [
       "25",
-      "a3f05d98d83f12f2"
-    ],
-    [
-      "26",
-      "02d38b8a8af1119a"
-    ]
-  ],
-  "social.json#/bios/score/lost": [
-    [
-      "0",
       "e68386d5f8976a75"
     ],
     [
-      "1",
+      "26",
       "11d11a59b3bcc2d8"
     ],
     [
-      "2",
+      "27",
       "7fc319b77c7bef34"
     ],
     [
-      "3",
+      "28",
       "75918a465bd77fbf"
     ],
     [
-      "4",
+      "29",
       "5502a5ef87a99d87"
     ],
     [
-      "5",
+      "30",
       "fccaf4d6818ad30c"
     ],
     [
-      "6",
-      "bdeeba03d0bdbb2e"
+      "31",
+      "30b9028d32de27e7"
     ],
     [
-      "7",
-      "2ebd56fff45069e4"
+      "32",
+      "a16ef3e7a48e3bbf"
+    ],
+    [
+      "33",
+      "a3f05d98d83f12f2"
+    ],
+    [
+      "34",
+      "02d38b8a8af1119a"
     ]
   ],
   "social.json#/bios/titles": [
@@ -11598,7 +11578,7 @@
     ],
     [
       "Warrior",
-      "ee2030d0b887e26f"
+      "65f032280e9d9f4f"
     ],
     [
       "Adventurer",

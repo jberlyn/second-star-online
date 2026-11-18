@@ -19,10 +19,11 @@
  * grows with them, an assumption: 1.6's files do not say), Buy and Sell are hidden, the medal
  * strip (channel 7, [17, 113, 241, 129]) shows, and the profile is the read-only profile field
  * or, in your own bio, an editable field at [22, 137] 271×102 (`limit`: SSO stops it at 500
- * characters). The strip is 14 slots of 16 px; each bio clears slots 1-10 to the empty medal
- * and draws its medals from slot 1, each 14×16 tile stretched into 16×15 at y 1, so slots
- * 11-14 keep the last bio's medals. Closing your own bio sends the profile field for saving
- * whether or not it was edited; a bio drawn over it before closing loses the edit.
+ * characters). The strip is 14 slots of 16 px; each bio clears every slot to the empty medal
+ * and draws its medals from slot 1, each 14×16 tile stretched into 16×15 at y 1 (1.6 cleared only
+ * slots 1-10, so slots 11-14 kept the last bio's medals). Closing your own bio sends the profile
+ * field for saving whether or not it was edited (the server ignores an unchanged one); a bio drawn
+ * over it before closing loses the edit.
  */
 import { MEDAL_SLOT_WIDTH, medalStrip, PROFILE_MAX } from "@secondstaronline/shared";
 
@@ -200,7 +201,7 @@ export function createBioWindow(a: Assets, layer: WindowLayer, act: BioActions):
       buy.hidden = true;
       sell.hidden = true;
       train.hidden = true;
-      strip = medalStrip(strip, v.medals);
+      strip = medalStrip(v.medals);
       drawStrip();
       medals.hidden = false;
       medals.setAttribute("aria-label", `${v.medals.length} medals`);

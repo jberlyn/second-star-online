@@ -94,7 +94,6 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
     expect(p?.char.faction).toEqual({ id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 });
     expect(p?.char.factionCount).toBe(5000);
     expect(p?.char.wanted).toBe(true);
-    expect(p?.factionChannel).toBe(true);
     if (p) {
       p.char.factionCount = 4000;
     }

@@ -29,19 +29,19 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 53 |
-| [Fixed bugs](#fixed-bugs) | 247 |
-| [Kept on purpose](#kept-on-purpose) | 4 |
+| [Design changes](#design-changes) | 55 |
+| [Fixed bugs](#fixed-bugs) | 264 |
+| [Kept on purpose](#kept-on-purpose) | 5 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **475** |
+| **Total** | **495** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
 | admin | [12](#admin) | [18](#server-side-admin) |
-| casino | [16](#casino) | [4](#server-side-casino) |
+| casino | [15](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [5](#server-side-chat) |
 | combat | [24](#combat) | [7](#server-side-combat) |
 | core | [18](#core) | [9](#server-side-core) |
@@ -53,7 +53,7 @@ By system (the code folder that holds the change):
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
 | movement | [7](#movement) | [4](#server-side-movement) |
 | progression | [8](#progression) | [4](#server-side-progression) |
-| social | [4](#social) | [9](#server-side-social) |
+| social | [22](#social) | [10](#server-side-social) |
 | spells | [1](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
 | world | [1](#world) | [6](#server-side-world) |
@@ -145,6 +145,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The cap came from ground-item sprite channels.
 - **In the code:** `packages/server/src/systems/vehicles/airship.ts` (`airshipDeed`, `unboardAirship`)
 - **Pinned by:** `SSO: no 20-item cap at the deed or at the unboard` (packages/server/tests/vehicles.test.ts)
+
+#### High scores have no upper limit
+- **Kind:** Limit lifted
+- **What you notice:** Every player's score can reach the High Score Statue, however large. Immortals are still left off.
+- **1.6:** A score of five digits or more was never submitted.
+- **SSO:** No limit. A legitimate character can't come near 10,000 with the shipped caps, so this changes nothing on a stock server; on a server whose operator raises skill levels or caps, the board shows the higher scores.
+- **Why:** The limit only guarded against edited characters, which the server's own score makes impossible, and it would hide the best players on a server with higher caps.
+- **In the code:** `packages/server/src/systems/social/highscores.ts` (`submitHighScore`), `packages/shared/src/rules/social/highscores.ts` (`highScorePoints`)
+- **Pinned by:** `no cap: a five-digit score counts` (packages/shared/tests/social/highscores.test.ts); `submitted on the save tick only; immortals skipped; five-digit scores count` (packages/server/tests/highscores.test.ts)
 
 ### World content and operator tools
 
@@ -707,15 +716,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Standard checkers rules prevent stalemates and skipped captures.
 - **In the code:** `packages/shared/src/rules/casino/checkers.ts` (`checkersMove`, `loser`, `pieceHasJump`, `sideHasJump`, `sideHasMove`); `packages/server/src/systems/casino/checkers.ts` (`ckMove`)
 - **Pinned by:** `forced capture and multi-jump: steps are blocked when a jump exists, and jumpFrom restricts to the jumping piece` (packages/shared/tests/casino/checkers.test.ts); `multi-jump keeps the turn on the jumping piece; forced capture blocks steps; blocking a side wins` (packages/server/tests/checkers.test.ts)
-
-#### High score points restore the eight dropped skills and ties rank after the tied slot
-- **Kind:** Bug fixed
-- **What you notice:** The 8 skills formerly dropped from `bioScore` (`Lumberjacking`, `Archery`, `Blessing`, `Musicianship`, `Illusion`, `Punch`, `Fire`, `Wind`) count toward the high-score board, ties rank right after the tied entry, and your own lower score never replaces a higher entry.
-- **1.6:** Eight skills were omitted by a typo, ties failed to rank, and blanking your own entry allowed a lower score to overwrite it.
-- **SSO:** Sums both `counted` and `lost` skills (`bioScore` plus the 8 formerly dropped skills) for `highScorePoints` and uses `rankHighScore` for tie-friendly ranking.
-- **Why:** Reflects full character progression and preserves personal bests.
-- **In the code:** `packages/shared/src/rules/casino/casino.ts` (`highScorePoints`, `rankHighScore`); `packages/server/src/systems/casino/slots.ts` (`submitHighScore`)
-- **Pinned by:** `the points include bioScore plus the eight formerly dropped skills` and `rankHighScore places ties right after the tied slot and keeps a higher existing score` (packages/shared/tests/casino/casino.test.ts)
 
 #### Blackjack wrong-spot text always shows
 - **Kind:** Bug fixed
@@ -1777,7 +1777,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Every reply goes to the map. An NPC answers only for quest lines that name it exactly.
 - **Why:** One rule for every NPC.
 - **In the code:** `packages/shared/src/rules/economy/quests.ts` (`sayQuest`); `packages/server/src/systems/economy/quests.ts` (`askForQuest`)
-- **Pinned by:** `bug fixed: every quest reply is heard by the map and closes its quote` (packages/shared/tests/social/factions.test.ts); `bug fixed: SayQuest: every slot's reply is heard by the map, with its closing quote` (packages/server/tests/factions.test.ts)
+- **Pinned by:** `bug fixed: every quest reply is heard by the map, closes its quote and ends its sentence` (packages/shared/tests/social/factions.test.ts); `bug fixed: SayQuest: every slot's reply is heard by the map, with its closing quote` (packages/server/tests/factions.test.ts)
 
 #### Handing in a head takes the head you gave
 - **Kind:** Bug fixed
@@ -2753,6 +2753,169 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A game with no scorer should not award an empty-name win.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`endGame`)
 
+
+#### A guild line keeps its first character
+- **Kind:** Bug fixed
+- **What you notice:** Nothing in ordinary play: every guild line reads as it is stored.
+- **1.6:** The guild loader deleted the first character of any line that did not start with a letter, on your own guild's lines at login, on every change and on the guild screen. Honest data always started with a letter, so only odd names or damaged files showed it.
+- **SSO:** The loader drops empty lines and keeps every other line whole.
+- **Why:** The strip guarded nothing and could only damage a line.
+- **In the code:** `packages/shared/src/rules/social/guilds.ts` (`loadGuildLines`)
+- **Pinned by:** `bug fixed: a line not starting with a letter keeps its first character; empty lines go` (packages/shared/tests/social/guilds.test.ts)
+
+#### Only a disbanded guild's leader may found its name again
+- **Kind:** Bug fixed
+- **What you notice:** After a guild disbands, anyone else who tries to found a guild of the same name is told "This guild name is already taken!". The leader who disbanded it may found it again, and gets back its Guild Vault, Guild Key doors and hall.
+- **1.6:** Anyone could found a guild with a disbanded guild's name and inherit what it left behind, because vaults, doors and halls are all found by guild name. Nobody was warned.
+- **SSO:** The disbanded row keeps its last leader, and only that character may reuse the name. Former members are still kicked at their next login, as for any re-founded guild.
+- **Why:** A stranger should not walk into a dead guild's vault and hall; its leader re-founding it is the one case where taking them back is right. How guilds should own their halls, doors and vaults is open in [issue #16](https://github.com/jberlyn/second-star-online/issues/16).
+- **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildCreate`), `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`)
+- **Pinned by:** `bug fixed: only the leader who disbanded a guild may found its name again`; `a guild of the same name created again: an old member is kicked at login` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts)
+
+#### Abdicating names the new leader and redraws your screen
+- **Kind:** Bug fixed
+- **What you notice:** Abdicating prints "*** Abdicating to <new leader>", and your Guild Center redraws as a member's screen, with you as the last member. Exiling a member, or any redraw of the screen, clears the selected member, so Abdicate needs a fresh selection.
+- **1.6:** The line named the guild, the leader's screen stayed up with its leader buttons, and the selected member survived an exile, so Abdicate could try to crown someone who had just been exiled.
+- **SSO:** The line names the new leader, the server sends the redrawn screen, and the client clears its selection whenever the member list changes. The server still checks leadership and membership on every action.
+- **Why:** The confirmation should say who leads now, and a screen should not offer buttons its viewer can no longer use.
+- **In the code:** `packages/shared/src/rules/social/guilds.ts` (`abdicateGuild`), `packages/server/src/systems/social/guilds.ts` (`guildAction`), `packages/client/src/ui/guildcenter.ts` (`createGuildCenter`)
+- **Pinned by:** `bug fixed: abdicate crowns the target, re-adds the old leader last and names the new leader` (packages/shared/tests/social/guilds.test.ts); `bug fixed: abdicate names the new leader and redraws the old leader's screen as a member's` (packages/server/tests/guilds.test.ts); `bug fixed: an exile clears the selection, so Abdicate cannot crown the exiled member`; `bug fixed: a redrawn screen clears the selection` (packages/client/tests/guildcenter.test.ts)
+
+#### Each faction hears only its own announcements
+- **Kind:** Bug fixed
+- **What you notice:** "*** The Mage faction has become stronger thanks to <name>." and the other factions' announcements reach only that faction's online members. Leaving a faction in any way, including exile at death, stops them at once.
+- **1.6:** All three factions shared one @Faction channel, so every member heard every faction's announcements. The loyalty kick left the channel but a death exile did not, so an exiled player kept hearing it until the next login.
+- **SSO:** A faction's channel is its online members, worked out when a line is sent, so there is nothing to join or leave.
+- **Why:** A faction's announcements are its own business; one shared channel and a forgotten leave were oversights.
+- **In the code:** `packages/server/src/systems/social/factions.ts` (`toFactionChannel`, `giveHead`), `packages/shared/src/rules/social/factions.ts` (`exileAtDeath`)
+- **Pinned by:** `a rival head to Angela: said to the map, power moved, joined, announced to the Mages, bonuses for all`; `bug fixed: exile below the line after the penalty also leaves the faction channel` (packages/server/tests/factions.test.ts); `Bob gives the head to Angela: power moves, he joins, only the Mages hear it` (packages/server/e2e/social.test.ts)
+
+#### A faction at 200 power or more keeps its bonus
+- **Kind:** Bug fixed
+- **What you notice:** A faction's members keep a bonus of 9 once its power reaches 200, as they had from 80.
+- **1.6:** The bonus cascade had no row for 200 or more, so nothing matched and the bonus fell to 0.
+- **SSO:** 80 or more gives 9, however high the power goes. Lower powers give what they did.
+- **Why:** Growing stronger should never take a faction's bonus away.
+- **In the code:** `packages/shared/src/rules/social/factions.ts` (`factionBonus`)
+- **Pinned by:** `bug fixed: the faction bonus cascade's last true row wins, and 200 or more gives 9` (packages/shared/tests/social/factions.test.ts)
+
+#### A head a faction leader would refuse stays in your bag
+- **Kind:** Bug fixed
+- **What you notice:** Give a rival faction's head to a leader whose faction would not take you (too weak, or already in another faction) and the leader says why ("You need more experience to join us." or the other-faction line); you keep the head and no power moves. A member giving a rival head to its own leader, or a fit newcomer, is handled as before. A head of the leader's own faction is still taken, with the leader's line about disposing of it.
+- **1.6:** The server took the head and moved the power before the client decided whether you could join, so a refused joiner lost the head and still made the leader's faction stronger.
+- **SSO:** The server asks whether the leader's faction would take you before anything leaves the bag.
+- **Why:** A refusal should cost nothing. Disposing of a fallen member's head is what the leader's own line says, so it stays.
+- **In the code:** `packages/server/src/systems/social/factions.ts` (`headRefusal`, `giveHead`), `packages/shared/src/rules/social/factions.ts` (`joinRefusal`), `packages/server/src/systems/economy/quests.ts` (`questGive`)
+- **Pinned by:** `bug fixed: a joiner who would be refused keeps the head and moves no power`; `a member turning a rival head in to its own leader adds time and moves power` (packages/server/tests/factions.test.ts); `joinRefusal: members and fit newcomers pass; the weak and other factions' members are refused`; `turn-in: own head wasted; a rival head moves 1 power when the rival has any` (packages/shared/tests/social/factions.test.ts)
+
+#### The Warriors take no one they would exile
+- **Kind:** Bug fixed
+- **What you notice:** Trianus refuses anyone with fewer than 60 maximum hit points, so a new Warrior is never exiled at the next death.
+- **1.6:** Every faction took joiners above 49 maximum hit points, but the Warriors exile anyone below 60 at each death, so a Warrior who joined at 50-59 was thrown out at the next death.
+- **SSO:** The Warriors' join line is above 59 (`joinHpMaxAbove` in `social.json`); the Mages' and Adventurers' stay above 49.
+- **Why:** A faction's own entry test should not admit someone its exile test rejects.
+- **In the code:** `packages/shared/src/rules/social/factions.ts` (`joinFaction`, `exileAtDeath`)
+- **Pinned by:** `bug fixed: the Warriors take no one below their exile line of 60`; `no faction's join line is below its exile line` (packages/shared/tests/social/factions.test.ts)
+
+#### Faction leader and quest lines close their quotes
+- **Kind:** Bug fixed
+- **What you notice:** Angela, Trianus and Corin's answers about their faction's power end with a closing quote, and a quest giver's "Sorry but I don't need anything right now." ends with a full stop.
+- **1.6:** The three power lines had no closing quote, and the quest giver's line no full stop.
+- **SSO:** The texts in `social.json` are complete.
+- **Why:** Typos.
+- **In the code:** `packages/shared/src/rules/social/factions.ts` (`sayFaction`), `packages/shared/src/rules/economy/quests.ts` (`sayQuest`)
+- **Pinned by:** `bug fixed: faction leader lines close their quote`; `bug fixed: every quest reply is heard by the map, closes its quote and ends its sentence` (packages/shared/tests/social/factions.test.ts)
+
+#### An exile on death leaves the faction channel
+- **Kind:** Bug fixed
+- **What you notice:** Once a death exiles you from a faction, you stop hearing its announcements at once.
+- **1.6:** The death exile never left the @Faction channel, so you kept hearing it until you logged in again.
+- **SSO:** A faction's channel is its current members, so the exile ends it with the membership.
+- **Why:** Leaving the channel was forgotten on that one path; the loyalty kick did it.
+- **In the code:** `packages/shared/src/rules/social/factions.ts` (`exileAtDeath`), `packages/server/src/systems/social/factions.ts` (`toFactionChannel`)
+- **Pinned by:** `bug fixed: exile below the line after the penalty also leaves the faction channel` (packages/server/tests/factions.test.ts)
+
+#### Assassin points follow the bands at equal ratings and 1800 or more
+- **Kind:** Bug fixed
+- **What you notice:** A kill between equal combat ratings pays the victim's band, as for a stronger killer, and a deciding rating of 1800 or more pays the top band (70, or 100 for a weaker killer). Before, those kills paid the victim's whole rating, often hundreds or thousands of points.
+- **1.6:** The comparison had no row for equal ratings or a rating past its last band, so the score fell through to the victim's raw rating.
+- **SSO:** A killer at least as strong as the victim is paid from the victim's band; a rating past the last band takes the last band.
+- **Why:** The ladders cap a kill's worth; falling through to the raw rating let one kill outscore a whole game.
+- **In the code:** `packages/shared/src/rules/social/assassin.ts` (`compareAss`)
+- **Pinned by:** `bug fixed: equal ratings pay the victim's band; a rating of 1800 or more takes the last band` (packages/shared/tests/social/assassin.test.ts)
+
+#### Assassin tables rank ties and give the fourth prize
+- **Kind:** Bug fixed
+- **What you notice:** A score equal to a table entry ranks just below it, so it makes the current and all-time tables whenever there is room. The fourth line of the Assassin prizes setting goes to fourth place.
+- **1.6:** The ranking used strict comparisons, so a score equal to any entry, even with empty slots below, never made the table. Only prizes 1-3 were given, so the fourth line never was.
+- **SSO:** A new score goes after every entry with an equal or higher score. Prizes 1-4 go to the first four places, still stopping at the first blank. The end lines still name the top three.
+- **Why:** A tie is still a score, and a prize line an operator fills should be given.
+- **In the code:** `packages/shared/src/rules/social/assassin.ts` (`rankEntry`, `prizesGiven`), `packages/server/src/systems/social/assassin.ts` (`endGame`)
+- **Pinned by:** `bug fixed: a tie ranks just below the entry it ties`; `bug fixed: the archive's prizes; 1-4 given, a blank stops the rest` (packages/shared/tests/social/assassin.test.ts)
+
+#### A tied Assassin total replaces your old entry
+- **Kind:** Bug fixed
+- **What you notice:** If your new total ties someone's entry, the table shows your new total below theirs. With Bob 40 and Alice 30, Alice reaching 40 shows Bob 40, Alice 40.
+- **1.6:** Your entry was blanked only in the copy being ranked, and a tie never ranked, so the table kept your old, lower total.
+- **SSO:** Your old entry is dropped before your new total is ranked.
+- **Why:** The table should show what each player has scored.
+- **In the code:** `packages/shared/src/rules/social/assassin.ts` (`rankEntry`)
+- **Pinned by:** `bug fixed: a tied total replaces the player's old entry (Bob 40, Alice 30 → Alice 40)` (packages/shared/tests/social/assassin.test.ts); `bug fixed: a tied total replaces the old table entry, below the entry it ties` (packages/server/tests/assassin.test.ts)
+
+#### Lightning kills flag no one
+- **Kind:** Bug fixed
+- **What you notice:** A kill while a Lightning Assassin's game runs pays its 10 points but does not make the killer wanted.
+- **1.6:** The Lightning game announces "all death penalties are OFF", but its deaths still sent the wanted flag.
+- **SSO:** While a Lightning game runs, the end of a death lock flags no one; the Assassin points are paid as before.
+- **Why:** A game that tells everyone to kill on sight, with penalties off, should not brand its players murderers.
+- **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`), `packages/server/src/systems/social/assassin.ts` (`lightningOn`)
+- **Pinned by:** `bug fixed: the kill pays 10 after the death line and flags no one` (packages/server/tests/assassin.test.ts); `at the end of his lock Alice receives 10 points, after the death line, and is not wanted` (packages/server/e2e/social.test.ts)
+
+#### Closing your bio keeps your profile as written
+- **Kind:** Bug fixed
+- **What you notice:** Closing your own Bio window saves your profile exactly as typed, periods and semicolons included; closing it unedited changes nothing. A colon or slash refuses the save with "You can't have a : in your profile!" (or the same with a slash).
+- **1.6:** Every close saved the box after one forward pass each deleting colons, slashes, periods and semicolons, so the profile lost its punctuation even unedited. Of two adjacent characters the second survived, so "a:b" saved as "ab" while "a::b" was refused.
+- **SSO:** Nothing is deleted: any colon or slash refuses the save, and an unchanged profile is not saved or checked at all.
+- **Why:** Saving should not rewrite what the player wrote; the alerts show colons and slashes were meant to be refused, not silently removed.
+- **In the code:** `packages/shared/src/rules/social/bios.ts` (`saveProfile`), `packages/server/src/systems/social/bios.ts` (`profileSave`)
+- **Pinned by:** `bug fixed: periods and semicolons are kept`; `bug fixed: any colon or slash refuses the save, none is silently removed` (packages/shared/tests/social/friends-bios-medals.test.ts); `bug fixed: the profile is written as typed, periods and semicolons kept`; `bug fixed: closing an unedited profile writes and alerts nothing, even with an old colon` (packages/server/tests/friends.test.ts); `bug fixed: closing your own bio writes the profile as typed` (packages/server/tests/buddies-db.test.ts)
+
+#### Each bio clears all its medal slots
+- **Kind:** Bug fixed
+- **What you notice:** Looking at a bio with fewer medals after one with more shows only its own medals; the last four slots no longer keep the earlier bio's.
+- **1.6:** Each bio cleared only the first ten of the strip's fourteen slots, and the strip persisted between bios.
+- **SSO:** Every slot is cleared before the medals are drawn.
+- **Why:** A bio should show its own medals only.
+- **In the code:** `packages/shared/src/rules/social/bios.ts` (`medalStrip`), `packages/client/src/ui/bio.ts` (`createBioWindow`)
+- **Pinned by:** `bug fixed: each bio clears all 14 slots and draws from slot 1` (packages/shared/tests/social/friends-bios-medals.test.ts); `bug fixed: a bio with fewer medals clears slots 11-14 too` (packages/client/tests/friends-bio.test.ts)
+
+#### The bio score counts every skill
+- **Kind:** Bug fixed
+- **What you notice:** A bio's score now includes Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and Wind, so scores rise for anyone with those skills. The High Score table already counted them and is unchanged.
+- **1.6:** The second line of the score's sum assigned to a misspelt variable, so those eight skills never counted.
+- **SSO:** The score sums every skill, HPmax and SPmax (`bios.score.counted` in `social.json`).
+- **Why:** A misspelt variable, not a design.
+- **In the code:** `packages/shared/src/rules/social/bios.ts` (`bioScore`), `packages/shared/src/rules/social/highscores.ts` (`highScorePoints`)
+- **Pinned by:** `bug fixed: the score counts every skill, HPmax and SPmax` (packages/shared/tests/social/friends-bios-medals.test.ts)
+
+#### High scores count every skill and rank ties after the tied entry
+- **Kind:** Bug fixed
+- **What you notice:** The High Score Statue's points count every skill, HPmax and SPmax, the same sum as the bio score. A tie ranks right after the entry it ties, and your own lower score never replaces your higher entry.
+- **1.6:** The score left out eight skills (Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and Wind) through a misspelt variable, ties failed to rank, and blanking your own entry let a lower score overwrite it.
+- **SSO:** `highScorePoints` is the bio score, which now counts every skill, and `rankHighScore` ranks ties after the tied entry and keeps a personal best.
+- **Why:** The board should reflect a whole character and keep each player's best.
+- **In the code:** `packages/shared/src/rules/social/highscores.ts` (`highScorePoints`, `rankHighScore`), `packages/server/src/systems/social/highscores.ts` (`submitHighScore`)
+- **Pinned by:** `the points are the bio score: every skill, HPmax and SPmax`; `rankHighScore places ties right after the tied slot and keeps a higher existing score` (packages/shared/tests/social/highscores.test.ts)
+
+#### Any friend can be removed
+- **Kind:** Bug fixed
+- **What you notice:** `/friends remove` works on any name on your list, the 190th and later included.
+- **1.6:** The removal searched only the first 190 list items, the first of which is always empty, so names past the 189th could not be removed; the rebuild also dropped names past the 199th.
+- **SSO:** The removal finds the name anywhere on the list and keeps every other name in order.
+- **Why:** Loop bounds, not a limit anyone chose; SSO's own cap of 199 names is separate.
+- **In the code:** `packages/shared/src/rules/social/buddies.ts` (`buddyRemove`)
+- **Pinned by:** `bug fixed: any name on the list can be removed, the 190th and later too`; `bug fixed: a removal keeps every other name, in order, past the 199th too` (packages/shared/tests/social/friends-bios-medals.test.ts)
+
 ### spells
 
 #### Portal with nowhere to go cannot be cast
@@ -2825,6 +2988,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Flying an airship through a PvP area, or past monsters that cast spells, is a risk the rider takes; losing it is the price of dying there.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts` (`vehicleDeath`)
 - **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `a Lightning death clears it too`; `an arena death keeps the airship, as it keeps everything` (packages/server/tests/vehicles.test.ts)
+
+### Killing a wanted player never flags you
+- **Kind:** Kept on purpose
+- **What you notice:** Killing someone who is already wanted does not make you wanted. Any other player kill does, wherever the death happens, unless a Lightning game is running. An arena death never flags anyone.
+- **1.6:** The killer was flagged only when the victim was not wanted and had last been hit by a player.
+- **SSO:** The same, on the server, crediting the killer by id and only for a hit within the kill-credit window.
+- **Why:** The wanted flag marks murderers, and hunting down a murderer is the game's form of justice, not murder. The flag follows the kill, not the map's PvP setting, because a murder is a murder wherever it happens.
+- **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`)
+- **Pinned by:** `kept on purpose: killing a wanted player never flags the killer`; `an arena death never flags` (packages/server/tests/factions.test.ts)
 
 ## Server authority and exploits
 
@@ -3007,14 +3179,6 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server accepts a pull only while the panel is open and idle and settles it 30 ticks later.
 - **Why:** Trusting client timing allowed requests to be spammed and load the server.
 - **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotPull`, `slotTick`)
-
-#### High-score points computed by the server
-- **Kind:** Exploit closed
-- **What you notice:** The leaderboard score reflects your character's skills and is submitted on each periodic save.
-- **1.6:** Clients could submit any integer as a high score; ordinary clients submitted only one time in three.
-- **SSO:** The server computes the high-score points from authoritative skills (`bioScore` plus the 8 formerly dropped skills) and ranks each periodic save with tie-friendly ordering.
-- **Why:** A modified client could otherwise submit fake leaderboard scores.
-- **In the code:** `packages/server/src/systems/casino/slots.ts` (`submitHighScore`)
 
 ### Server-side chat
 
@@ -3730,10 +3894,10 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Guild actions use current membership and leadership, and accepting an invitation requires the inviter to remain online and in charge.
 - **1.6:** Clients could overwrite or delete guild files, join without an invitation and use path-like guild names to read other files, including character files containing passwords. An ex-leader's open screen still allowed exile, abdication and disbanding, and could crown a stale selection. A peer accept sent after its leader left was lost.
-- **SSO:** Guild and member rows and each character's Guild field are written together. Each action checks current membership and leadership, names resolve to rows rather than paths, and Accept requires a pending invitation from an online current leader. A disbanded row remains so offline members can be told on login, and its name can be created again; the new guild reuses the old row's id. Because the vault, Guild Key doors and hall header name the guild, a guild created under that name inherits the old vault's contents, key doors and hall permissions (bug ledger).
+- **SSO:** Guild and member rows and each character's Guild field are written together. Each action checks current membership and leadership, names resolve to rows rather than paths, and Accept requires a pending invitation from an online current leader. A disbanded row remains so offline members can be told on login, and only its last leader may create its name again, reusing the old row's id and so its vault, Guild Key doors and hall (see [the fix](#only-a-disbanded-guilds-leader-may-found-its-name-again)).
 - **Why:** Unchecked file and action requests allowed guild hijacking, forgery, disclosure and disbanding.
 - **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildAction`, `guildAnswer`, `guildCreate`)
-- **Pinned by:** `divergence: a stale target (exiled since) is refused`, `divergence: ACCEPT after the inviter left joins nothing` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts); `kept bug: a re-created guild's name opens the old vault, Guild Key door and hall` (packages/server/tests/guilds.test.ts)
+- **Pinned by:** `divergence: a stale target (exiled since) is refused`, `divergence: ACCEPT after the inviter left joins nothing` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts); `bug fixed: only the leader who disbanded a guild may found its name again` (packages/server/tests/guilds.test.ts)
 
 #### Faction membership and power are server state
 - **Kind:** Exploit closed
@@ -3775,7 +3939,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The box accepts at most 500 characters, and the server cuts longer text to 500 before saving.
 - **Why:** A pixel limit in the client is not a server storage limit.
 - **In the code:** `packages/shared/src/rules/social/bios.ts` (`saveProfile`)
-- **Pinned by:** `capped at 500 characters before the strip` (packages/shared/tests/social/friends-bios-medals.test.ts)
+- **Pinned by:** `capped at 500 characters` (packages/shared/tests/social/friends-bios-medals.test.ts)
 
 #### Friends list capped at 199
 - **Kind:** Exploit closed
@@ -3793,6 +3957,15 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Server rows store the game, current and all-time tables, player scores and legends; ordered entries keep character IDs and name copies. Prizes come from the `assassinPrizes` setting, and an offline winner's prize is written to the stored bag. No old all-time standings are seeded.
 - **Why:** The server owns the state, and the archive's all-time names belonged to players without characters on this server.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`setAssassinMode`, `endGame`)
+
+#### High-score points computed by the server
+- **Kind:** Exploit closed
+- **What you notice:** The High Score Statue's score reflects your character's skills and is checked on each periodic save.
+- **1.6:** Clients could submit any integer as a high score; ordinary clients submitted only one time in three.
+- **SSO:** The server computes the points from authoritative skills and ranks them on each periodic save.
+- **Why:** A modified client could otherwise submit fake leaderboard scores.
+- **In the code:** `packages/server/src/systems/social/highscores.ts` (`submitHighScore`)
+- **Pinned by:** `submitted on the save tick only; immortals skipped; five-digit scores count` (packages/server/tests/highscores.test.ts)
 
 ### Server-side spells
 

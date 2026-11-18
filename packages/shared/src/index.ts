@@ -70,6 +70,7 @@ export * from "./rules/social/bios.ts";
 export * from "./rules/social/buddies.ts";
 export * from "./rules/social/factions.ts";
 export * from "./rules/social/guilds.ts";
+export * from "./rules/social/highscores.ts";
 export * from "./rules/spells/spellfx.ts";
 export * from "./rules/spells/spells.ts";
 export * from "./rules/vehicles/vehicles.ts";

@@ -288,7 +288,7 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 |---|---|---|---|---|
 | `lootDecayMinutes` | Loot lasts | `30` | `1`–`10080` minutes | Minutes before monster loot disappears from the ground (player drops and `/drop` items never decay). |
 | `dropOnDeath` | Drop an item on death | `true` | `true` / `false` | Whether dying characters may drop one random item from their bag, never crystals (immortals always drop). |
-| `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–3rd place prizes when an Assassin's Game ends (4th line is preserved but never awarded). |
+| `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–4th place prizes when an Assassin's Game ends. |
 
 ### Server
 

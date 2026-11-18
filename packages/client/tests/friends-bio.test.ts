@@ -169,7 +169,10 @@ describe("the Bio window's player layouts", () => {
       `/assets/ui/biowindow-${socialData.bios.medalStrip.blankMember}.png`,
     );
     expect(imgs[1]?.style.left).toBe("16px");
-    expect(imgs[10]?.hidden).toBe(true);
+    // Every slot past the medals shows the empty medal.
+    expect(imgs[10]?.getAttribute("src")).toBe(
+      `/assets/ui/biowindow-${socialData.bios.medalStrip.blankMember}.png`,
+    );
     bio.window.close();
     expect(closed).toEqual([{ player: true, profile: null }]);
   });
@@ -203,14 +206,16 @@ describe("the Bio window's player layouts", () => {
     ]);
   });
 
-  test("kept bug: slots 11-14 keep the previous bio's medals", () => {
+  test("bug fixed: a bio with fewer medals clears slots 11-14 too", () => {
     const { bio } = bioScene();
     const twelve = ["39", "31", "94", "95", "93", "35", "61", "44", "45", "91", "92", "20"];
     bio.showPlayer({ title: "A", bio: [], profile: "", medals: twelve, own: false });
-    bio.showPlayer({ title: "B", bio: [], profile: "", medals: [], own: false });
     expect(bio.strip.slice(10, 12)).toEqual([member(92) ?? null, member(20) ?? null]);
+    bio.showPlayer({ title: "B", bio: [], profile: "", medals: [], own: false });
+    const blank = socialData.bios.medalStrip.blankMember;
+    expect(bio.strip).toEqual(Array(14).fill(blank));
     const imgs = [...bio.window.el.querySelectorAll<HTMLImageElement>(".bio-medal")];
-    expect(imgs[11]?.getAttribute("src")).toBe(`/assets/ui/biowindow-${member(20)}.png`);
+    expect(imgs[11]?.getAttribute("src")).toBe(`/assets/ui/biowindow-${blank}.png`);
   });
 
   test("an NPC bio over a player one hides the strip and the editable box; closing is the NPC close", () => {

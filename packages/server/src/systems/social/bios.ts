@@ -82,10 +82,13 @@ export function bioRequest(
 }
 
 /**
- * Closing your own Bio window: the strip, then an alert for a remaining ":" or "/", else the new
- * profile, written through `write`.
+ * Closing your own Bio window: an unchanged profile does nothing; otherwise an alert for a ":" or
+ * "/", else the new profile, written through `write`.
  */
 export function profileSave(p: Player, text: string, write: (profile: string) => void): Outgoing[] {
+  if (text === p.char.profile) {
+    return [];
+  }
   const r = saveProfile(text);
   if (r.profile === null) {
     return r.alert ? [{ to: p.id, msg: { t: "alert", text: r.alert } }] : [];

@@ -1,6 +1,6 @@
 /**
- * Sim tests: the murder flag, the faction head and exile at death, loyalty, the `@Faction`
- * channel, head and quest turn-ins, and the NPC keyword replies.
+ * Sim tests: the murder flag, the faction head and exile at death, loyalty, the faction channels,
+ * head and quest turn-ins, and the NPC keyword replies.
  */
 import { describe, expect, test } from "bun:test";
 
@@ -9,7 +9,7 @@ import type { ServerMsg } from "@secondstaronline/shared";
 import { askForQuest, questGive } from "../src/systems/economy/quests.ts";
 import { type MonsterSlot, species } from "../src/systems/monsters/slots.ts";
 import { KILL_CREDIT_TICKS } from "../src/systems/progression/vitals.ts";
-import { askFactionPower, factionLogin } from "../src/systems/social/factions.ts";
+import { askFactionPower, toFactionChannel } from "../src/systems/social/factions.ts";
 import type { WorldMap } from "../src/systems/world/world.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
@@ -63,7 +63,7 @@ describe("the murder flag", () => {
     expect(a.char.wanted).toBe(false);
   });
 
-  test("kept bug: killing a wanted player never flags the killer", () => {
+  test("kept on purpose: killing a wanted player never flags the killer", () => {
     const { a, b, run } = murderScene();
     a.char.wanted = true;
     run(28);
@@ -153,12 +153,12 @@ describe("faction death", () => {
     expect(map.ground.some((g) => g.item === "Warrior's Head")).toBe(false);
   });
 
-  test("kept bug: exile below the line after the penalty; the channel is kept", () => {
-    const { a, run } = murderScene(rngByN({ 5: [1] }));
+  test("bug fixed: exile below the line after the penalty also leaves the faction channel", () => {
+    const { world, a, run } = murderScene(rngByN({ 5: [1] }));
     a.char.faction = { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 };
     a.char.factionCount = 100000;
     a.char.vitals.hpMax = 50; // the penalty takes it to 49
-    factionLogin(a);
+    expect(toFactionChannel(world, 1, "*** Mages!", "Nobody").map((o) => o.to)).toEqual([a.id]);
     const msgs = run(1);
     expect(chat(msgs, "Alice")).toEqual([
       "*** Your downfall in battle has caused you to become weakened.",
@@ -166,18 +166,17 @@ describe("faction death", () => {
     ]);
     expect(a.char.faction.id).toBe(0);
     expect(a.char.factionCount).toBe(0);
-    expect(a.factionChannel).toBe(true);
+    expect(toFactionChannel(world, 1, "*** Mages!", "Nobody")).toEqual([]);
   });
 });
 
 describe("loyalty", () => {
-  test("the count drains per frame, warns at 20000 and kicks at 1, leaving @Faction", () => {
+  test("the count drains per frame, warns at 20000 and kicks at 1, leaving the channel", () => {
     const map = testMap("x1000y992");
     const s = setup([map]);
     const a = player("Alice", map, 5, 5);
     a.char.faction = { id: 3, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
     a.char.factionCount = 20001;
-    factionLogin(a);
     s.join(a);
     expect(chat(s.run(1), "Alice")).toEqual([
       "*** Corin requests you bring him the head of a rival faction member.",
@@ -186,7 +185,8 @@ describe("loyalty", () => {
     expect(chat(s.run(1), "Alice")).toEqual([
       "*** You have been kicked out of the Adventurer faction due to lack of loyalty.",
     ]);
-    expect([a.char.faction.id, a.char.factionCount, a.factionChannel]).toEqual([0, 0, false]);
+    expect([a.char.faction.id, a.char.factionCount]).toEqual([0, 0]);
+    expect(toFactionChannel(s.world, 3, "*** Adventurers!", "Nobody")).toEqual([]);
   });
 });
 
@@ -202,19 +202,25 @@ describe("turn-ins", () => {
     return { ...s, map, a, c };
   }
 
-  test("a rival head to Angela: said to the map, power moved, joined, announced, bonuses for all", () => {
-    const { world, map, a, c } = npcScene();
+  test("a rival head to Angela: said to the map, power moved, joined, announced to the Mages, bonuses for all", () => {
+    const { world, map, a, c, join } = npcScene();
     live(map, 1, "Angela", 5, 4);
     world.factionPowers = [27, 123, 0];
     a.char.vitals.hpMax = 60;
     a.char.bag[3] = { item: "Warrior's Head", qty: 1 };
     c.char.faction = { id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 };
-    factionLogin(c);
+    const d = player("Dan", map, 3, 3);
+    d.char.faction = { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 };
+    join(d);
     const out = questGive(world, a, 3, "Angela", rngByN());
     expect(a.char.bag[3]).toBeNull();
     expect(world.factionPowers).toEqual([28, 122, 0]);
     expect(world.powersDirty).toBe(true);
+    // Bug fixed: a Warrior no longer hears the Mages' announcement; a Mage does.
     expect(chat(out, "Carol")).toEqual([
+      'Angela says "You have done well in slaying one of our foes."',
+    ]);
+    expect(chat(out, "Dan")).toEqual([
       'Angela says "You have done well in slaying one of our foes."',
       "*** The Mage faction has become stronger thanks to Alice.",
     ]);
@@ -228,19 +234,47 @@ describe("turn-ins", () => {
     expect(c.char.faction.f2Bonus).toBe(9);
   });
 
-  test("kept bug: a refused joiner's head still moves the power", () => {
-    const { world, a } = npcScene();
+  test("bug fixed: a joiner who would be refused keeps the head and moves no power", () => {
+    const { world, a, c } = npcScene();
     world.factionPowers = [27, 123, 0];
     a.char.vitals.hpMax = 20;
     a.char.bag[0] = { item: "Warrior's Head", qty: 1 };
     const out = questGive(world, a, 0, "Angela", rngByN());
-    expect(world.factionPowers).toEqual([28, 122, 0]);
-    expect(chat(out, "Alice")).toContain('Angela says "You need more experience to join us."');
+    expect(chat(out, "Alice")).toEqual(['Angela says "You need more experience to join us."']);
+    expect(chat(out, "Carol")).toEqual([]);
+    expect(a.char.bag[0]).toEqual({ item: "Warrior's Head", qty: 1 });
+    expect(world.factionPowers).toEqual([27, 123, 0]);
+    expect(world.powersDirty).toBe(false);
     expect(a.char.faction.id).toBe(0);
+    // Another faction's member is refused the same way.
+    a.char.vitals.hpMax = 90;
+    a.char.faction = { id: 3, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    expect(chat(questGive(world, a, 0, "Angela", rngByN()), "Alice")).toEqual([
+      'Angela says "We could use someone like you in our faction."',
+    ]);
+    expect(a.char.bag[0]).toEqual({ item: "Warrior's Head", qty: 1 });
+    expect(world.factionPowers).toEqual([27, 123, 0]);
+  });
+
+  test("a member turning a rival head in to its own leader adds time and moves power", () => {
+    const { world, a } = npcScene();
+    world.factionPowers = [27, 123, 0];
+    a.char.vitals.hpMax = 20;
+    a.char.faction = { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 };
+    a.char.factionCount = 5;
+    a.char.bag[0] = { item: "Warrior's Head", qty: 1 };
+    const out = questGive(world, a, 0, "Angela", rngByN());
+    expect(chat(out, "Alice")).toContain(
+      'Angela says "I hope that you will be with us for years to come."',
+    );
+    expect(a.char.bag[0]).toBeNull();
+    expect(world.factionPowers).toEqual([28, 122, 0]);
+    expect(a.char.factionCount).toBe(212005);
   });
 
   test("bug fixed: turn-in takes the head you gave, not the first in the bag", () => {
     const { world, a } = npcScene();
+    a.char.vitals.hpMax = 90;
     a.char.bag[0] = { item: "Mage's Head", qty: 2 };
     a.char.bag[5] = { item: "Mage's Head", qty: 1 };
     questGive(world, a, 5, "Trianus", rngByN());
@@ -339,8 +373,8 @@ describe("NPC keyword replies", () => {
     live(map, 1, "Trianus", 3, 2);
     s.world.factionPowers = [27, 123, 0];
     expect(chat(askFactionPower(s.world, a), "Alice")).toEqual([
-      'Trianus says "We are currently in absolute power.',
-      'Corin says "We are very weak, I fear that we may be destroyed.',
+      'Trianus says "We are currently in absolute power."',
+      'Corin says "We are very weak, I fear that we may be destroyed."',
     ]);
   });
 
@@ -364,9 +398,9 @@ describe("NPC keyword replies", () => {
     live(map, 3, "Angela", 4, 2);
     s.world.factionPowers = [150, 150, 150];
     expect(chat(askFactionPower(s.world, a), "Alice")).toEqual([
-      'Angela says "Our power is fine...for now.',
-      'Trianus says "Our power is fine...for now.',
-      'Corin says "Our power is fine...for now.',
+      'Angela says "Our power is fine...for now."',
+      'Trianus says "Our power is fine...for now."',
+      'Corin says "Our power is fine...for now."',
     ]);
   });
 });

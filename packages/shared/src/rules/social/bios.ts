@@ -40,9 +40,9 @@ export function bioTitle(skills: readonly number[]): string {
 }
 
 /**
- * The score: the original's points sum. Its second line assigns to a misspelt variable, so
- * Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and Wind never count (a
- * kept bug: 1.6 did this); HPmax and SPmax do. No cap.
+ * The score: every skill, HPmax and SPmax summed, with no cap. 1.6's second sum line assigned to a
+ * misspelt variable, so Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and
+ * Wind never counted (a bug fixed).
  */
 export function bioScore(skills: readonly number[], hpMax: number, spMax: number): number {
   let sum = 0;
@@ -171,22 +171,19 @@ export function drawProfile(items: BioItems, viewer: string): DrawnBio {
 }
 
 /**
- * The medal strip's member per slot after drawing `medals` over `before`: slots 1-10 get the
- * empty medal member, then each medal its own member from slot 1 on; slots 11-14 keep what they
- * showed (a kept bug: 1.6 did this). Medals past slot 14 fall outside the image. `null` is a
- * slot never drawn (the member's stored image is clear there).
+ * The medal strip's member per slot after drawing `medals`: every slot gets the
+ * empty medal member, then each medal its own member from slot 1 on. 1.6 cleared only slots 1-10,
+ * so slots 11-14 kept the previous bio's medals (a bug fixed). Medals past slot 14 fall outside
+ * the image.
  */
-export function medalStrip(before: readonly (number | null)[], medals: readonly string[]) {
+export function medalStrip(medals: readonly string[]): number[] {
   const S = B.medalStrip;
-  const out: (number | null)[] = Array.from({ length: S.slots }, (_, i) => before[i] ?? null);
-  for (let i = 0; i < S.cleared; i++) {
-    out[i] = S.blankMember;
-  }
+  const out: number[] = Array.from({ length: S.slots }, () => S.blankMember);
   let slot = 0;
   for (const id of medals) {
     if (slot < S.slots) {
       // An id with no matching medal image draws nothing in 1.6 (the default reading) and
-      // the slot keeps what it had.
+      // the slot stays empty.
       const award = socialData.medals.awards.find((a) => String(a.id) === id);
       if (award) {
         out[slot] = award.member;
@@ -204,25 +201,13 @@ export const MEDAL_SLOT_WIDTH = B.medalStrip.slotWidth;
 export const PROFILE_MAX = 500;
 
 /**
- * Saving the profile, on closing your own Bio window: the text cut to 500 characters, then one
- * forward pass each over characters 1-500 deleting ":", "/", "." and ";" in that order; after a
- * deletion the next character moves into the place and is not tested, so of two adjacent ones
- * the second survives. A remaining ":" or "/" refuses the save with its alert; "." and ";" are
- * simply lost (a kept bug: 1.6 did this).
+ * Saving the profile, on closing your own Bio window: the text cut to 500 characters; a ":" or "/"
+ * refuses the save with its alert, and anything else is saved as typed. 1.6 first ran one forward
+ * pass each deleting ":", "/", "." and ";", so every close lost the profile's periods and
+ * semicolons and most of its colons and slashes, even unedited (a bug fixed).
  */
 export function saveProfile(text: string): { profile: string | null; alert: string | null } {
-  const chars = [...text].slice(0, PROFILE_MAX);
-  for (const ch of B.profile.strip) {
-    if (!chars.includes(ch)) {
-      continue;
-    }
-    for (let x = 1; x <= B.profile.scan; x++) {
-      if (chars[x - 1] === ch) {
-        chars.splice(x - 1, 1);
-      }
-    }
-  }
-  const out = chars.join("");
+  const out = [...text].slice(0, PROFILE_MAX).join("");
   if (out.includes(":")) {
     return { profile: null, alert: B.profile.alerts[":"].text };
   }

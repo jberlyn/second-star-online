@@ -401,11 +401,12 @@ describe("ignore filters what the ignored player's client sent", () => {
 
   test("the faction announcement, Radar and Inxition lines and the like", () => {
     const { world, alice, bob, here } = scene();
-    alice.factionChannel = true;
-    bob.factionChannel = true;
+    alice.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    bob.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
     bob.ignore = ["Alice"];
     const f = toFactionChannel(
       world,
+      1,
       "*** The Mage faction has become stronger thanks to Alice.",
       "Alice",
     );

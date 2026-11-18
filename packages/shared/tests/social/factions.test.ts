@@ -1,6 +1,8 @@
 /** Factions, the murder flag's lines and quests. */
 import { describe, expect, test } from "bun:test";
 
+import { socialData } from "@secondstaronline/data";
+
 import {
   ARCHIVED_POWERS,
   archivedQuestLines,
@@ -14,6 +16,7 @@ import {
   findNewQuest,
   headTurnIn,
   joinFaction,
+  joinRefusal,
   loyaltyStep,
   pardonedLine,
   pardoningLine,
@@ -36,9 +39,9 @@ describe("factions", () => {
     expect(ARCHIVED_POWERS).toEqual([27, 123, 0]);
   });
 
-  test("kept bug: the faction bonus cascade's last true row wins, so 200 or more gives 0", () => {
-    expect([0, 4, 5, 9, 10, 27, 89, 90, 123, 199, 200, 500].map(factionBonus)).toEqual([
-      0, 0, 1, 1, 2, 3, 9, 9, 9, 9, 0, 0,
+  test("bug fixed: the faction bonus cascade's last true row wins, and 200 or more gives 9", () => {
+    expect([0, 4, 5, 9, 10, 27, 79, 80, 89, 90, 123, 199, 200, 500].map(factionBonus)).toEqual([
+      0, 0, 1, 1, 2, 3, 8, 9, 9, 9, 9, 9, 9, 9,
     ]);
     // Only your own faction's bonus is set.
     expect(sortFaction(2, [27, 123, 0])).toEqual({ id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 });
@@ -66,11 +69,34 @@ describe("factions", () => {
     expect(exileAtDeath({ id: 0, count: 0 }, 1)).toBeNull();
   });
 
-  test("kept bug: a Warrior who joins at 50-59 HP is exiled on the next death", () => {
-    const j = joinFaction({ id: 0, count: 0 }, 2, 55, "Bob");
+  test("bug fixed: the Warriors take no one below their exile line of 60", () => {
+    expect(joinFaction({ id: 0, count: 0 }, 2, 55, "Bob")).toEqual({
+      membership: { id: 0, count: 0 },
+      line: 'Trianus says "You need more experience to join us."',
+      announce: null,
+    });
+    expect(joinRefusal({ id: 0, count: 0 }, 2, 59)).toBe(
+      'Trianus says "You need more experience to join us."',
+    );
+    const j = joinFaction({ id: 0, count: 0 }, 2, 60, "Bob");
     expect(j.membership).toEqual({ id: 2, count: 212000 });
-    expect(exileAtDeath(j.membership, 55)).toBe(
-      "*** You have been exiled from the Warrior's faction due to your downfalls in battle.",
+    expect(exileAtDeath(j.membership, 60)).toBeNull();
+  });
+
+  test("no faction's join line is below its exile line", () => {
+    for (const f of socialData.factions) {
+      expect(f.joinHpMaxAbove + 1).toBeGreaterThanOrEqual(f.exileHpMaxBelow);
+    }
+  });
+
+  test("joinRefusal: members and fit newcomers pass; the weak and other factions' members are refused", () => {
+    expect(joinRefusal({ id: 0, count: 0 }, 1, 50)).toBeNull();
+    expect(joinRefusal({ id: 1, count: 5 }, 1, 3)).toBeNull();
+    expect(joinRefusal({ id: 0, count: 0 }, 1, 49)).toBe(
+      'Angela says "You need more experience to join us."',
+    );
+    expect(joinRefusal({ id: 2, count: 5 }, 1, 90)).toBe(
+      'Angela says "We could use someone like you in our faction."',
     );
   });
 
@@ -140,16 +166,16 @@ describe("factions", () => {
     expect(headTurnIn("Corin", "Sword", [1, 1, 1]).kind).toBe("notHead");
   });
 
-  test("kept bug: faction leader lines lack their closing quote", () => {
-    expect(sayFaction("Angela", [27, 123, 0])).toBe('Angela says "Our power is fine...for now.');
+  test("bug fixed: faction leader lines close their quote", () => {
+    expect(sayFaction("Angela", [27, 123, 0])).toBe('Angela says "Our power is fine...for now."');
     expect(sayFaction("Trianus", [27, 123, 0])).toBe(
-      'Trianus says "We are currently in absolute power.',
+      'Trianus says "We are currently in absolute power."',
     );
     expect(sayFaction("Corin", [27, 123, 0])).toBe(
-      'Corin says "We are very weak, I fear that we may be destroyed.',
+      'Corin says "We are very weak, I fear that we may be destroyed."',
     );
     // A tie for highest is not absolute power.
-    expect(sayFaction("Corin", [5, 5, 5])).toBe('Corin says "Our power is fine...for now.');
+    expect(sayFaction("Corin", [5, 5, 5])).toBe('Corin says "Our power is fine...for now."');
     expect(sayFaction("Smithy", [1, 2, 3])).toBeNull();
   });
 
@@ -253,16 +279,16 @@ describe("quests", () => {
     expect(questLineUnanswerable("")).toBe(false);
   });
 
-  test("bug fixed: every quest reply is heard by the map and closes its quote", () => {
+  test("bug fixed: every quest reply is heard by the map, closes its quote and ends its sentence", () => {
     const lines = archivedQuestLines();
     expect(sayQuest(lines, ["Stephie", "", "Smithy", "Edwin"])).toEqual([
       { text: 'Stephie says "Bring me a Fishle quickly and I\'ll reward you."', to: "map" },
-      { text: 'Smithy says "Sorry but I don\'t need anything right now"', to: "map" },
+      { text: 'Smithy says "Sorry but I don\'t need anything right now."', to: "map" },
       { text: 'Edwin says "Bring me a scroll quickly and I\'ll reward you."', to: "map" },
     ]);
     // A name inside another's line text is not that NPC's quest.
     expect(sayQuest(lines, ["Steel"])).toEqual([
-      { text: 'Steel says "Sorry but I don\'t need anything right now"', to: "map" },
+      { text: 'Steel says "Sorry but I don\'t need anything right now."', to: "map" },
     ]);
   });
 });

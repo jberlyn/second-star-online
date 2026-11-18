@@ -62,10 +62,13 @@ describe("ratings and points", () => {
     expect(compareAss(1799, 2000)).toBe(100);
   });
 
-  test("kept bug: equal ratings, or a deciding rating of 1800 or more, pay the victim's raw rating", () => {
-    expect(compareAss(300, 300)).toBe(300);
-    expect(compareAss(2500, 1800)).toBe(1800);
-    expect(compareAss(1800, 1900)).toBe(1900);
+  test("bug fixed: equal ratings pay the victim's band; a rating of 1800 or more takes the last band", () => {
+    expect(compareAss(300, 300)).toBe(25);
+    expect(compareAss(100, 100)).toBe(10);
+    expect(compareAss(2500, 1800)).toBe(70);
+    expect(compareAss(1800, 1800)).toBe(70);
+    expect(compareAss(1800, 1900)).toBe(100);
+    expect(compareAss(1799, 1900)).toBe(100);
   });
 
   test("Lightning pays 10 for any kill; a game runs only in GO or LIGHTNING", () => {
@@ -89,16 +92,26 @@ describe("the tables", () => {
     ]);
   });
 
-  test("kept bug: a score equal to any entry never ranks, even with empty slots below", () => {
-    expect(rankEntry([e("Alice", 10)], e("Bob", 10))).toBeNull();
-    expect(rankEntry([e("Alice", 30), e("Bob", 20)], e("Carol", 20))).toBeNull();
+  test("bug fixed: a tie ranks just below the entry it ties", () => {
+    expect(rankEntry([e("Alice", 10)], e("Bob", 10))).toEqual([e("Alice", 10), e("Bob", 10)]);
+    expect(rankEntry([e("Alice", 30), e("Bob", 20)], e("Carol", 20))).toEqual([
+      e("Alice", 30),
+      e("Bob", 20),
+      e("Carol", 20),
+    ]);
+    const full = Array.from({ length: 10 }, (_, k) => e(`P${k}`, 100 - k * 5));
+    expect(rankEntry(full, e("Tie", 55))).toBeNull();
+    expect(rankEntry(full, e("Tie", 60))?.at(-1)).toEqual(e("Tie", 60));
   });
 
-  test("kept bug: a tied score leaves the player's old entry (Bob 40, Alice 30 → Alice 40 is not written)", () => {
-    expect(rankEntry([e("Bob", 40), e("Alice", 30)], e("Alice", 40))).toBeNull();
+  test("bug fixed: a tied total replaces the player's old entry (Bob 40, Alice 30 → Alice 40)", () => {
+    expect(rankEntry([e("Bob", 40), e("Alice", 30)], e("Alice", 40))).toEqual([
+      e("Bob", 40),
+      e("Alice", 40),
+    ]);
   });
 
-  test("the player's own entry is blanked and counts 0: a new total moves it up", () => {
+  test("the player's own entry is dropped: a new total moves it up", () => {
     expect(rankEntry([e("Bob", 40), e("Alice", 30)], e("Alice", 50))).toEqual([
       e("Alice", 50),
       e("Bob", 40),
@@ -182,9 +195,9 @@ describe("texts", () => {
 });
 
 describe("prizes and commands", () => {
-  test("the archive's prizes; 1-3 given, a blank stops the rest, the fourth is never given", () => {
+  test("bug fixed: the archive's prizes; 1-4 given, a blank stops the rest", () => {
     expect(ARCHIVED_PRIZES).toEqual(["Long Sword", "1000 Gold", "500 Gold", "Knife"]);
-    expect(prizesGiven(ARCHIVED_PRIZES)).toEqual(["Long Sword", "1000 Gold", "500 Gold"]);
+    expect(prizesGiven(ARCHIVED_PRIZES)).toEqual(["Long Sword", "1000 Gold", "500 Gold", "Knife"]);
     expect(prizesGiven(["Long Sword", "", "500 Gold", "Knife"])).toEqual(["Long Sword"]);
   });
 

@@ -2,9 +2,10 @@
  * Factions on the server.
  *
  * 1.6 ran membership, the loyalty count and the joins on the client and only the powers on the
- * server; SSO keeps all of it on the server. The `@Faction` channel is one channel for all three
- * factions: members join it at login and on joining, the loyalty kick leaves it, and a death exile
- * does not, so an exiled player keeps hearing it until the next login.
+ * server; SSO keeps all of it on the server. 1.6 had one `@Faction` channel for all three factions,
+ * which a death exile never left; SSO's faction channel is each faction's online members, so a
+ * player hears only its own faction's announcements and stops hearing them the moment the
+ * membership ends, however it ends (bugs fixed).
  */
 import { socialData } from "@secondstaronline/data";
 import {
@@ -14,6 +15,9 @@ import {
   headTurnIn,
   heardSqa,
   joinFaction,
+  joinRefusal,
+  leaderFaction,
+  lingoContains,
   loyaltyStep,
   NO_FACTION,
   type Powers,
@@ -42,12 +46,20 @@ export function aqsToMap(world: World, asker: Player, text: string): Outgoing[] 
 }
 
 /**
- * A `sqa` to `@Faction`: every player in the channel, but those ignoring `from`, whose client
- * sent it.
+ * A `sqa` to faction `id`'s channel: every online member of that faction, but those ignoring
+ * `from`, whose client sent it.
  */
-export function toFactionChannel(world: World, text: string, from: string): Outgoing[] {
+export function toFactionChannel(
+  world: World,
+  id: FactionId,
+  text: string,
+  from: string,
+): Outgoing[] {
+  if (id === 0) {
+    return [];
+  }
   return [...world.players.values()]
-    .filter((o) => o.factionChannel && hears(o, from))
+    .filter((o) => o.char.faction.id === id && hears(o, from))
     .map((o) => chat(o, text));
 }
 
@@ -79,20 +91,38 @@ export function loyaltyFrame(world: World, p: Player): { line: string | null; ki
   p.char.factionCount = step.count;
   if (step.kicked) {
     setMembership(world, p, 0, 0);
-    p.factionChannel = false; // LeaveGroup @Faction
   }
   return { line: step.text, kicked: step.kicked };
 }
 
-/** Joins the channel at login when a member. */
-export function factionLogin(p: Player): void {
-  p.factionChannel = p.char.faction.id > 0;
+/**
+ * Before a head leaves the bag: a rival head given to a leader whose faction would not take the
+ * giver (too weak, or in another faction) is refused with the leader's line, and nothing is taken
+ * or moved. 1.6 took the head and moved the power first (a bug fixed). Null when the hand-in goes
+ * ahead: not a head for a leader, the leader's own faction's head, or a join that would succeed.
+ */
+export function headRefusal(world: World, p: Player, npc: string, item: string): Outgoing[] | null {
+  const row = leaderFaction(npc);
+  if (!row || !lingoContains(item, " Head")) {
+    return null;
+  }
+  const r = headTurnIn(npc, item, world.factionPowers);
+  if (r.kind !== "rival" || !r.join) {
+    return null;
+  }
+  const line = joinRefusal(
+    { id: p.char.faction.id, count: p.char.factionCount },
+    r.leader,
+    p.char.vitals.hpMax,
+  );
+  return line === null ? null : [chat(p, line)];
 }
 
 /**
- * The faction branch of the quest hand-in once the head is taken: own head wasted; a rival head
- * said to the map, the power moved, then the join whatever the outcome, and everyone's bonuses
- * refreshed. Null when `item` is not a head for a leader.
+ * The faction branch of the quest hand-in once the head is taken (`headRefusal` has let it
+ * through): own head wasted; a rival head said to the map, the power moved, then the join, its
+ * announcement to the leader's faction channel, and everyone's bonuses refreshed. Null when `item`
+ * is not a head for a leader.
  */
 export function giveHead(
   world: World,
@@ -118,12 +148,9 @@ export function giveHead(
       p.name,
     );
     out.push(chat(p, j.line));
-    if (j.membership.id !== p.char.faction.id) {
-      p.factionChannel = true; // joins the faction channel
-    }
     setMembership(world, p, factionIdOf(j.membership.id), j.membership.count);
     if (j.announce) {
-      out.push(...toFactionChannel(world, j.announce, p.name));
+      out.push(...toFactionChannel(world, r.leader, j.announce, p.name));
     }
   }
   refreshBonuses(world);

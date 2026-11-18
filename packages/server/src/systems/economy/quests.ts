@@ -27,7 +27,7 @@ import {
   sayQuest,
 } from "@secondstaronline/shared";
 
-import { aqsToMap, giveHead } from "../social/factions.ts";
+import { aqsToMap, giveHead, headRefusal } from "../social/factions.ts";
 import type { Outgoing, Player, World } from "../world/world.ts";
 
 /** Whether the editor monster list contains the given name. */
@@ -45,7 +45,8 @@ export const QUEST_TEXT = {
  * tiles ahead. A name the World Editor's MONSTER list contains gets nothing (GiveNPC's exit). In
  * order: a head to a faction leader, Oraku's orb, then the quest lines. The item always comes from
  * the slot you gave from, and a reward with no room in the bag stops the hand-in before anything is
- * taken (1.6 took from the first slot containing the name and overwrote it with the reward).
+ * taken (1.6 took from the first slot containing the name and overwrote it with the reward). A head
+ * the leader's faction would refuse the giver for stays in the bag (`headRefusal`).
  */
 export function questGive(
   world: World,
@@ -59,6 +60,10 @@ export function questGive(
     return [];
   }
   if (leaderFaction(npc) && lingoContains(given, " Head")) {
+    const refused = headRefusal(world, p, npc, given);
+    if (refused) {
+      return refused;
+    }
     if (questTake(p.char.bag, slot) < 0) {
       return [];
     }

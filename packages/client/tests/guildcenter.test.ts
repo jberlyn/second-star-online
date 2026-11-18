@@ -138,12 +138,23 @@ describe("the members list, exile and abdicate", () => {
     expect(rows("Guild members").map((r) => r.textContent)).toEqual(["Cy"]);
   });
 
-  test("kept bug: the abdicate selection survives an exile", () => {
+  test("bug fixed: an exile clears the selection, so Abdicate cannot crown the exiled member", () => {
     const { by, rows, sent } = leader();
     rows("Guild members")[0]?.click();
     by("Exile").click();
     by("Abdicate").click();
-    expect(sent.at(-1)).toEqual(["act", "abdicate", "Knights", "Bo"]);
+    expect(sent).toEqual([["act", "exile", "Knights", "Bo"]]);
+    rows("Guild members")[0]?.click();
+    by("Abdicate").click();
+    expect(sent.at(-1)).toEqual(["act", "abdicate", "Knights", "Cy"]);
+  });
+
+  test("bug fixed: a redrawn screen clears the selection", () => {
+    const { gc, by, rows, sent } = leader();
+    rows("Guild members")[0]?.click();
+    gc.view({ name: "Knights", alignment: "G", leader: "Al", members: ["Bo", "Cy"] });
+    by("Abdicate").click();
+    expect(sent).toEqual([]);
   });
 
   test("another guild on screen: the action is sent for the server's line, the screen stays", () => {

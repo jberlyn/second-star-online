@@ -163,7 +163,7 @@ describe("bios", () => {
             "Name: Bob Star",
             "Class: Novice Cook",
             "Sex: Male",
-            `Score: ${90 + 1 * 24 + 20 + 20}`,
+            `Score: ${90 + 1 * 32 + 20 + 20}`,
             "Leader of the Knights",
             "Loyal to the Warriors",
             "Vile Murderer",
@@ -207,15 +207,23 @@ describe("bios", () => {
 });
 
 describe("saving the profile on closing your own bio", () => {
-  test("the strip, then the write", () => {
+  test("bug fixed: the profile is written as typed, periods and semicolons kept", () => {
     const { alice } = scene();
     const writes: string[] = [];
     expect(profileSave(alice, "Hi. I fish; a lot", (t) => writes.push(t))).toEqual([]);
-    expect(alice.char.profile).toBe("Hi I fish a lot");
-    expect(writes).toEqual(["Hi I fish a lot"]);
+    expect(alice.char.profile).toBe("Hi. I fish; a lot");
+    expect(writes).toEqual(["Hi. I fish; a lot"]);
   });
 
-  test("a surviving : or / is an alert and nothing is saved", () => {
+  test("bug fixed: closing an unedited profile writes and alerts nothing, even with an old colon", () => {
+    const { alice } = scene();
+    alice.char.profile = "Time: now";
+    const writes: string[] = [];
+    expect(profileSave(alice, "Time: now", (t) => writes.push(t))).toEqual([]);
+    expect(writes).toEqual([]);
+  });
+
+  test("a : or / is an alert and nothing is saved", () => {
     const { alice } = scene();
     const writes: string[] = [];
     expect(profileSave(alice, "a::b", (t) => writes.push(t))).toEqual([

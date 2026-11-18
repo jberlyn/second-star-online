@@ -178,9 +178,6 @@ const textsOf = <const K extends readonly string[]>(keys: K) =>
 /** Buddies and the Friends window. */
 export const buddiesSchema = z.strictObject({
   texts: textsOf(["added", "already", "removed", "notOn", "title"] as const),
-  /** Removing a buddy searches items 1-200 of `:a:b:` and fails past item 190. */
-  removeScan: z.number().int().positive(),
-  removeLimit: z.number().int().positive(),
   /** Lines 1-100 of the window are searched on a removal or logoff. */
   windowLines: z.number().int().positive(),
   /** Initial buddy check adds from the first 200 online names. */
@@ -213,23 +210,21 @@ export const biosSchema = z.strictObject({
   firstTitle: z.string(),
   /** In script order; a row applies when every test holds; the last one that applies wins. */
   titles: z.array(z.strictObject({ tests: z.array(skillTest).min(1), title: z.string() })),
-  score: z.strictObject({ counted: z.array(z.string()), lost: z.array(z.string()) }),
+  /** The skills (and `HPmax`, `SPmax`) a bio's score adds up. */
+  score: z.strictObject({ counted: z.array(z.string()) }),
   /** Every character's last name: castLib 2 member 6's stored text, never placed or written. */
   lastName: z.string(),
   disguise: z.strictObject({ treeMember: z.string(), robeItem: z.string() }),
   medalStrip: z.strictObject({
     slots: z.number().int().positive(),
-    cleared: z.number().int().positive(),
     items: z.number().int().positive(),
     slotWidth: z.number().int().positive(),
-    /** `Medal00`, drawn into slots 1-10 first. */
+    /** `Medal00`, drawn into every slot first. */
     blankMember: z.number().int().positive(),
     /** `DrawMedal`, the strip's own member (sprite 7). */
     stripMember: z.number().int().positive(),
   }),
   profile: z.strictObject({
-    strip: z.array(z.string().length(1)),
-    scan: z.number().int().positive(),
     alerts: z.strictObject({ ":": guildText, "/": guildText }),
   }),
 });
@@ -334,6 +329,20 @@ export const artSchema = z.strictObject({
   shade: z.strictObject({ centre: intPair, arm: intPair }),
 });
 
+/** The High Score Statue: the server's top-ten ranking of player scores. */
+export const highScoresSchema = z.strictObject({
+  item: z.strictObject({ text: z.string().min(1) }),
+  text: z.string().min(1),
+  pause: z.number().int().positive(),
+  header: z.string().min(1),
+  entry: z.string().min(1),
+  perLine: z.number().int().positive(),
+  separator: z.string().min(1),
+  tableSize: z.number().int().positive(),
+  /** 1.6 rolled `random(3) = 1` on character save (recorded; SSO submits the score on every save). */
+  oneSaveIn: z.number().int().positive(),
+});
+
 /** The newspaper. */
 export const newspaperSchema = z.strictObject({
   view: guildText,
@@ -394,6 +403,7 @@ export const socialDataSchema = z.strictObject({
     say: z.strictObject({ rule, bring: z.string(), nothing: z.string() }),
   }),
   assassin: assassinSchema,
+  highScores: highScoresSchema,
   guilds: guildsSchema,
   chat: chatSchema,
   buddies: buddiesSchema,

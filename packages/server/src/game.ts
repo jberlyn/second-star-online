@@ -240,7 +240,6 @@ import type { MonsterSlot } from "./systems/monsters/slots.ts";
 import { noteShown, pressStep, scheduleStep, setHeld } from "./systems/movement/movement.ts";
 import { type AssassinDeps, setAssassinMode } from "./systems/social/assassin.ts";
 import { bioRequest, profileSave } from "./systems/social/bios.ts";
-import { factionLogin } from "./systems/social/factions.ts";
 import { friendsCommand, friendsEntry } from "./systems/social/friends.ts";
 import {
   type GuildDeps,
@@ -1606,7 +1605,6 @@ export function createGame(deps: GameDeps): Game {
       }
       keptRegen.delete(c.id);
       keptSocial.delete(c.id);
-      factionLogin(p); // `@Faction` at load
       send(p.id, { t: "role", role: p.role });
       deliver(addPlayer(world, p));
       // The guild loads with the character; a resumed session greets nobody.

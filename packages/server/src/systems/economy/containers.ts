@@ -51,8 +51,8 @@ export const CONTAINER_TEXT = {
 
 /**
  * Who may open or fill a container: `<owner>'s House Vault` only its owner, by exact name; `The
- * <guild>'s Guild Vault` the members of that guild, by name (a disbanded guild's vault opens for a
- * new guild of the same name); the rest anyone.
+ * <guild>'s Guild Vault` the members of that guild, by name (a disbanded guild's vault opens again
+ * only if its last leader founds it anew: `guildCreate`); the rest anyone.
  */
 export function mayUseContainer(p: Player, name: string): boolean {
   if (lingoContains(name, "Guild Vault")) {

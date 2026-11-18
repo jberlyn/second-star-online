@@ -50,20 +50,14 @@ export function combatRating(skills: readonly number[], hpMax: number): number {
 }
 
 /**
- * `CompareAss`: a stronger killer is paid from the victim's band, a weaker one from its own; equal
- * ratings, or a deciding rating of 1800 or more, leave the victim's raw rating (kept bug: 1.6 did
- * this). The ladders overwrite in order, so the lowest band the rating is under wins.
+ * `CompareAss`: a killer at least as strong as the victim is paid from the victim's band, a weaker
+ * one from its own; a rating past the last band takes the last band. 1.6 paid the victim's raw
+ * rating at equal ratings or a deciding rating of 1800 or more (a bug fixed).
  */
 export function compareAss(killer: number, victim: number): number {
   const band = (ladder: readonly { below: number; points: number }[], rating: number) =>
-    ladder.find((b) => rating < b.below)?.points;
-  if (killer > victim) {
-    return band(A.compare.stronger, victim) ?? victim;
-  }
-  if (killer < victim) {
-    return band(A.compare.weaker, killer) ?? victim;
-  }
-  return victim;
+    (ladder.find((b) => rating < b.below) ?? ladder[ladder.length - 1])?.points ?? 0;
+  return killer >= victim ? band(A.compare.stronger, victim) : band(A.compare.weaker, killer);
 }
 
 /** The points a kill is worth: Lightning forces 10. */
@@ -72,45 +66,23 @@ export function killPoints(mode: AssassinMode, killer: number, victim: number): 
 }
 
 /**
- * The tie-blind ranking (the all-time legend table uses the same pass): the player's own entry is
- * blanked and counts 0, as empty slots do; the entry goes before the first slot k with `score <
- * H(k-1)` and `score > Hk` (k = 1: `score > H1`). Unranked (a tie with any entry; a kept bug of
- * 1.6) → `null`: the file is not rewritten, so the old entry stays. The High Score table (the
- * original's high-score check) is the same algorithm at its own size.
+ * The ranking (the all-time legend table uses the same pass): the player's own entry is dropped,
+ * and the entry goes after every remaining entry with an equal or higher score, so a tie ranks
+ * below the entry it ties. Unranked (a full table whose last entry beats it) → `null`: the old
+ * table stands. 1.6 ranked with strict comparisons, so a tie with any entry never ranked and left
+ * the player's old, lower entry in place (bugs fixed).
  */
 export function rankEntry(
   table: AssassinTable,
   entry: AssassinEntry,
   size: number = A.score.tableSize,
 ): AssassinTable | null {
-  const slots: (AssassinEntry | null)[] = Array.from({ length: size }, (_, k) => {
-    const e = table[k];
-    return e && e.id !== entry.id ? e : null;
-  });
-  const val = (k: number) => slots[k]?.points ?? 0;
-  let at = -1;
-  if (entry.points > val(0)) {
-    at = 0;
-  } else {
-    for (let k = 1; k < size; k += 1) {
-      if (entry.points < val(k - 1) && entry.points > val(k)) {
-        at = k;
-        break;
-      }
-    }
-  }
-  if (at < 0) {
+  const others = table.filter((e) => e.id !== entry.id).slice(0, size);
+  const at = others.findIndex((e) => entry.points > e.points);
+  const out = [...others];
+  out.splice(at < 0 ? out.length : at, 0, entry);
+  if (out.indexOf(entry) >= size) {
     return null;
-  }
-  const out: AssassinEntry[] = [];
-  for (let k = 0; k < size; k += 1) {
-    if (k === at) {
-      out.push(entry);
-    }
-    const e = slots[k];
-    if (e) {
-      out.push(e);
-    }
   }
   return out.slice(0, size);
 }
@@ -199,8 +171,8 @@ export function topTenBlock(layout: TopTenLayout, table: AssassinTable): string 
 export const ARCHIVED_PRIZES: readonly string[] = A.prizes.archived.split(":");
 
 /**
- * The prizes given, in place order: items 1-3, stopping at the first blank; the fourth is never
- * given (kept bug: 1.6 did this).
+ * The prizes given, in place order: items 1-4, stopping at the first blank. 1.6 gave only items
+ * 1-3, so the fourth line was never given (a bug fixed).
  */
 export function prizesGiven(prizes: readonly string[]): string[] {
   const out: string[] = [];

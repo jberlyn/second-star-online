@@ -1,31 +1,22 @@
 /**
- * The casino's slots and high scores.
+ * The casino's slots and click gates.
  */
 import { describe, expect, test } from "bun:test";
 
 import { casinoData } from "@secondstaronline/data";
 
 import {
-  type AssassinEntry,
   clickGate,
   ctrlGate,
-  highScorePoints,
   isSlotMachine,
-  rankHighScore,
-  SCORES_SIZE,
-  scoresBlock,
-  skillIndex,
   slotOpenCheck,
   slotPayout,
   slotReels,
   slotSettle,
-  submitsScore,
 } from "../../src/index.ts";
 
 /** Ctrl by a player of middling Strength away from their own premises. */
 const STRANGER = { str: 50, mine: false };
-
-const e = (name: string, points: number): AssassinEntry => ({ id: name, name, points });
 
 describe("slots", () => {
   test("4-4-4 pays 80 and 2-3-2 pays 50; RTP 245/64 over all 64 reels", () => {
@@ -95,63 +86,6 @@ describe("slots", () => {
   });
 });
 
-describe("high scores", () => {
-  test("submitsScore: 9999 sends, 10000 does not; immortals never", () => {
-    expect(submitsScore(0, false)).toBe(true);
-    expect(submitsScore(9999, false)).toBe(true);
-    expect(submitsScore(10000, false)).toBe(false);
-    expect(submitsScore(50, true)).toBe(false);
-  });
-
-  test("the points include bioScore plus the eight formerly dropped skills", () => {
-    const skills = Array.from({ length: 38 }, () => 0);
-    skills[skillIndex("Slash")] = 3;
-    skills[skillIndex("Cooking")] = 4;
-    const lost = [
-      "Lumberjacking",
-      "Archery",
-      "Blessing",
-      "Musicianship",
-      "Illusion",
-      "Punch",
-      "fire",
-      "wind",
-    ] as const;
-    for (const [i, name] of lost.entries()) {
-      skills[skillIndex(name)] = 10 + i;
-    }
-    const lostSum = lost.reduce((acc, _, i) => acc + 10 + i, 0);
-    expect(highScorePoints(skills, 20, 10)).toBe(3 + 4 + lostSum + 20 + 10);
-  });
-
-  test("rankHighScore places ties right after the tied slot and keeps a higher existing score", () => {
-    // Bob 40, Alice 30: Alice at 40 ties Bob and ranks right after Bob.
-    expect(rankHighScore([e("Bob", 40), e("Alice", 30)], e("Alice", 40), SCORES_SIZE)).toEqual([
-      e("Bob", 40),
-      e("Alice", 40),
-    ]);
-    // Alice alone at 50: a lower or equal score never replaces her higher entry.
-    expect(rankHighScore([e("Alice", 50)], e("Alice", 20), SCORES_SIZE)).toBeNull();
-    expect(rankHighScore([e("Alice", 50)], e("Alice", 50), SCORES_SIZE)).toBeNull();
-    // The table keeps ten.
-    const full = Array.from({ length: 10 }, (_, k) => e(`P${k}`, 100 - k * 10));
-    const out = rankHighScore(full, e("New", 55), SCORES_SIZE);
-    expect(out?.length).toBe(10);
-    expect(out?.[5]?.name).toBe("New");
-    // Tying the 10th entry when full does not displace it.
-    expect(rankHighScore(full, e("New", 10), SCORES_SIZE)).toBeNull();
-  });
-
-  test("scoresBlock: one chat entry, header with 25 spaces, four per line, empty slots 'N.  -  points'", () => {
-    expect(scoresBlock([e("Alice", 10), e("Bob", 5)])).toBe(
-      `\n${" ".repeat(25)}Top FSO Player Scores\n\n` +
-        "1. Alice - 10 points      2. Bob - 5 points      3.  -  points      4.  -  points\n" +
-        "5.  -  points      6.  -  points      7.  -  points      8.  -  points\n" +
-        "9.  -  points      10.  -  points",
-    );
-  });
-});
-
 describe("gates", () => {
   test("the High Score Statue reads from anywhere, before the header test", () => {
     expect(clickGate("High Score Statue")).toEqual({ kind: "scores" });
@@ -182,11 +116,9 @@ describe("gates", () => {
 });
 
 describe("the casino data", () => {
-  test("round-trips the slot table and the statue's layout", () => {
+  test("round-trips the slot table", () => {
     expect(casinoData.slots.payouts.length).toBeGreaterThan(0);
     expect(casinoData.slots.cost).toBe(5);
     expect(casinoData.slots.spinFrames).toBe(30);
-    expect(casinoData.scores.header).toBe(`${" ".repeat(25)}Top FSO Player Scores`);
-    expect(casinoData.scores.tableSize).toBe(10);
   });
 });

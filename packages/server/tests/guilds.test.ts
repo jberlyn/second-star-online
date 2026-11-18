@@ -306,19 +306,31 @@ describe("leave, exile, abdicate, disband", () => {
     expect(a.guildScreen).toBe(true);
   });
 
-  test("kept bug: abdicate names the guild; the old leader becomes the last member", () => {
+  test("bug fixed: abdicate names the new leader and redraws the old leader's screen as a member's", () => {
     const s = scene();
     const { a, b } = s.full();
     s.open(a);
     const out = guildAction(s.world, a, "abdicate", "Knights", "Bob");
     expect(chat(out, "Alice")).toEqual([
-      "*** Abdicating to Knights",
+      "*** Abdicating to Bob",
       "*** Alice has promoted Bob to the new leader of the Knights!!",
     ]);
     const g = s.world.guilds.get("knights");
     expect(g?.leaderName).toBe("Bob");
     expect(g?.members.map((m) => m.name)).toEqual(["Carol", "Alice"]);
-    // The screen stays as it was, but its buttons no longer act.
+    expect(of(out, "Alice", "guild")).toEqual([
+      {
+        t: "guild",
+        screen: {
+          mode: "member",
+          name: "Knights",
+          alignment: "G",
+          leader: "Bob",
+          members: ["Carol", "Alice"],
+        },
+      },
+    ]);
+    expect(a.guildScreen).toBe(true);
     expect(guildAction(s.world, a, "exile", "Knights", "Carol")).toEqual([]);
     expect(b.guild).toBe("Knights");
   });
@@ -374,9 +386,8 @@ describe("login", () => {
     s.world.players.delete(b.id);
     s.open(a);
     guildAction(s.world, a, "disband", "Knights", undefined);
-    const d = s.join("Dave", 2, 2);
-    s.open(d);
-    guildCreate(s.world, d, "knights", "N", guildDeps);
+    s.open(a);
+    guildCreate(s.world, a, "knights", "N", guildDeps);
     const b2 = s.join("Bob", 3, 3);
     expect(chat(guildLogin(s.world, b2, "Knights"), "Bob")).toEqual([
       "You have been kicked out of the Knights",
@@ -424,18 +435,33 @@ describe("halls, keys, vaults and head drops follow the guild", () => {
     expect(headDrop("Hall of the Knights", "Bob", "Knights")).toBe(0);
   });
 
-  test("kept bug: a re-created guild's name opens the old vault, Guild Key door and hall", () => {
+  test("bug fixed: only the leader who disbanded a guild may found its name again", () => {
     const s = scene();
-    const { a } = s.full();
+    const { a, b } = s.full();
     s.world.containers.set("The Knights's Guild Vault", ["Gold Crown"]);
     s.open(a);
     guildAction(s.world, a, "disband", "Knights", undefined);
-    const d = s.join("Dave", 2, 2);
-    s.open(d);
-    guildCreate(s.world, d, "knights", "N", guildDeps);
-    expect(mayUseContainer(d, "The Knights's Guild Vault")).toBe(true);
+    // A stranger, and a former member, get the taken alert and nothing of the old guild's.
+    for (const p of [s.join("Dave", 2, 2), b]) {
+      s.open(p);
+      const out = guildCreate(s.world, p, "knights", "N", guildDeps);
+      expect(of(out, p.name, "alert")).toEqual([
+        { t: "alert", text: "This guild name is already taken!" },
+      ]);
+      expect(p.guild).toBe("");
+      expect(mayUseContainer(p, "The Knights's Guild Vault")).toBe(false);
+      expect(turnKey("Guild Key", "The Knights's Door", p.name, p.guild).kind).not.toBe("turn");
+      expect(headDrop("Hall of the Knights", p.name, p.guild)).toBe(1);
+      guildClose(p);
+    }
+    expect(s.world.guilds.get("knights")?.disbanded).toBe(true);
+    // The old leader takes the name back, with its vault, door and hall.
+    s.open(a);
+    guildCreate(s.world, a, "knights", "N", guildDeps);
+    expect(a.guild).toBe("knights");
+    expect(mayUseContainer(a, "The Knights's Guild Vault")).toBe(true);
     expect(s.world.containers.get("The Knights's Guild Vault")).toEqual(["Gold Crown"]);
-    expect(turnKey("Guild Key", "The Knights's Door", d.name, d.guild).kind).toBe("turn");
-    expect(headDrop("Hall of the Knights", d.name, d.guild)).toBe(0);
+    expect(turnKey("Guild Key", "The Knights's Door", a.name, a.guild).kind).toBe("turn");
+    expect(headDrop("Hall of the Knights", a.name, a.guild)).toBe(0);
   });
 });

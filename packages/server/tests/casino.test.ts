@@ -1,9 +1,9 @@
 /**
- * Sim tests: the Slot Machine and the High Score Statue.
+ * Sim tests: the Slot Machine.
  */
 import { describe, expect, test } from "bun:test";
 
-import { highScorePoints, type ServerMsg, skillIndex } from "@secondstaronline/shared";
+import type { ServerMsg } from "@secondstaronline/shared";
 
 import { slotClose, slotPull } from "../src/systems/casino/slots.ts";
 import { actionIntent, type ItemCtx, pickupIntent } from "../src/systems/inventory/items.ts";
@@ -33,15 +33,6 @@ function scene(reels: number[] = [1, 2, 3]) {
     expiresAt: null,
   };
   map.ground.push(machine);
-  const statue: GroundItem = {
-    id: "hs",
-    item: "High Score Statue",
-    x: 12,
-    y: 9,
-    kind: "drop",
-    expiresAt: null,
-  };
-  map.ground.push(statue);
   const join = (name: string, x = 5, y = 6, facing: Player["facing"] = "N"): Player => {
     const p = player(name, map, x, y);
     p.facing = facing;
@@ -257,41 +248,5 @@ describe("pulling", () => {
     const out = t.run(30);
     expect(ofType(out, "slotResult")).toEqual([{ t: "slotResult", reels: [4, 4, 4], win: true }]);
     expect(a.char.gold).toBe(100 - 5 + 80);
-  });
-});
-
-describe("high scores", () => {
-  test("the statue reads from anywhere: the line, then one block", () => {
-    const t = scene();
-    const a = t.join("Alice", 1, 1);
-    t.world.highScores = [{ id: "bob", name: "Bob", points: 77 }];
-    const out = t.click(a, "hs");
-    const lines = chat(out, "Alice");
-    expect(lines[0]).toBe("You read the high score list...");
-    expect(lines[1]).toContain("1. Bob - 77 points");
-    expect(lines[1]).toContain(`${" ".repeat(25)}Top FSO Player Scores`);
-    expect(a.itemPause).toBe(20);
-  });
-
-  test("submitted on the save tick only; immortals and five-digit scores skipped", () => {
-    const t = scene();
-    const a = t.join("Alice");
-    const imm = t.join("King");
-    imm.role = "immortal";
-    const big = t.join("Big");
-    for (const p of [a, imm, big]) {
-      p.char.skills[skillIndex("Slash")] = 40;
-      p.saveIn = 10;
-    }
-    big.char.skills[skillIndex("Slash")] = 20000;
-    t.run(5);
-    expect(t.world.highScores).toEqual([]);
-    expect(t.world.highScoresDirty).toBe(false);
-    t.run(5);
-    const v = a.char.vitals;
-    expect(t.world.highScores).toEqual([
-      { id: "Alice", name: "Alice", points: highScorePoints(a.char.skills, v.hpMax, v.spMax) },
-    ]);
-    expect(t.world.highScoresDirty).toBe(true);
   });
 });

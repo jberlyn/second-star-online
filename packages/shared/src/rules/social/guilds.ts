@@ -3,8 +3,8 @@
  *
  * 1.6 kept a guild as the file `DAT\GUILDS\<guild>.txt`: the header `<align>-<colour>-*<leader>*`
  * then one member per line in join order. SSO keeps rows but renders the file text so the client's
- * two readers (the loader with its first-character strip, a kept bug, and the viewer without it)
- * behave as they did.
+ * readers behave as they did. 1.6's loader also deleted the first character of any line not
+ * starting with a letter; SSO reads every line as it is (a bug fixed).
  */
 import { socialData } from "@secondstaronline/data";
 
@@ -77,7 +77,7 @@ export const GUILD_TEXT = {
   quitting: (guild: string) => fill(tx("quitting"), { GUILD: guild }),
   quit: (name: string, guild: string) => fill(tx("quit"), { NAME: name, GUILD: guild }),
   exiled: (name: string, guild: string) => fill(tx("exiled"), { NAME: name, GUILD: guild }),
-  abdicating: (guild: string) => fill(tx("abdicating"), { GUILD: guild }),
+  abdicating: (target: string) => fill(tx("abdicating"), { NAME: target }),
   promoted: (name: string, target: string, guild: string) =>
     fill(tx("promoted"), { NAME: name, TARGET: target, GUILD: guild }),
   notMember: tx("notMember"),
@@ -147,22 +147,11 @@ export function guildFileLines(g: GuildRecord): string[] {
 export const GUILD_DISBANDED = "!DISBAND!";
 
 /**
- * Kept bug: the guild loader's pass over lines 1-100: a non-empty line whose first character is not
- * a letter (case-insensitive) loses it; empty lines are dropped. Honest data starts with G, N or E
- * and names are letters only, so it never changes anything.
+ * The guild loader's pass over lines 1-100: empty lines are dropped and every other line is kept as
+ * it is. 1.6 also deleted the first character of a line not starting with a letter (a bug fixed).
  */
-export function loadGuildStrip(lines: readonly string[]): string[] {
-  const out: string[] = [];
-  for (const raw of lines.slice(0, 100)) {
-    let line = raw;
-    if (line !== "" && !/^[a-z]/i.test(line)) {
-      line = line.slice(1);
-    }
-    if (line !== "") {
-      out.push(line);
-    }
-  }
-  return out;
+export function loadGuildLines(lines: readonly string[]): string[] {
+  return lines.slice(0, 100).filter((line) => line !== "");
 }
 
 /**
@@ -181,7 +170,7 @@ export function loadGuildOutcome(
   if (file.length === 1 && file[0] === GUILD_DISBANDED) {
     return "disbanded";
   }
-  const starred = loadGuildStrip(file).map((l) => `*${l}*`);
+  const starred = loadGuildLines(file).map((l) => `*${l}*`);
   return starred.some((l) => lingoContains(l, `*${me}*`)) ? "kept" : "kicked";
 }
 
@@ -189,8 +178,8 @@ export function loadGuildOutcome(
 const item = (s: string, d: string, n: number) => s.split(d)[n - 1] ?? "";
 
 /**
- * The screen's fields from a file (for your own guild, after the first-character strip; for a
- * viewed one, raw): the leader is the second part of line 1 split on `*`; alignment checks for G,
+ * The screen's fields from a file (for your own guild, after the loader's pass; for a viewed one,
+ * raw): the leader is the second part of line 1 split on `*`; alignment checks for G,
  * N, E in that order in the first part split on `-`, the last match winning; members are lines
  * 2-100, empty ones dropped. A missing file gives no alignment, no leader, no members; `!DISBAND!`
  * contains "N", so it reads Neutral.
@@ -217,7 +206,7 @@ export function guildScreenFor(me: string, guild: GuildRecord | null): GuildScre
   if (!guild) {
     return { mode: "create" };
   }
-  const f = guildScreenFields(loadGuildStrip(guildFileLines(guild)));
+  const f = guildScreenFields(loadGuildLines(guildFileLines(guild)));
   return {
     mode: lingoEq(f.leader, me) ? "leader" : "member",
     name: guild.name,

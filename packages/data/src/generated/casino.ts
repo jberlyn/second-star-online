@@ -75,20 +75,6 @@ export const casinoData: CasinoData = {
       "ch": 4
     }
   },
-  "scores": {
-    "item": {
-      "text": "High Score Statue"
-    },
-    "text": "You read the high score list...",
-    "pause": 20,
-    "header": "                         Top FSO Player Scores",
-    "entry": "{N}. {NAME} - {POINTS} points",
-    "perLine": 4,
-    "separator": "      ",
-    "tableSize": 10,
-    "maxDigits": 4,
-    "oneSaveIn": 3
-  },
   "blackjack": {
     "item": {
       "text": "Blackjack Table"

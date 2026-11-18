@@ -88,7 +88,7 @@ describe("Lightning", () => {
     expect(s.map.ground).toEqual([]);
   });
 
-  test("kept bug: the kill still flags the killer and pays 10, after the death line", () => {
+  test("bug fixed: the kill pays 10 after the death line and flags no one", () => {
     const s = scene();
     setAssassinMode(s.world, "LIGHTNING", s.game);
     setAttackHeld(s.alice, true);
@@ -96,7 +96,6 @@ describe("Lightning", () => {
     setAttackHeld(s.alice, false);
     const msgs = s.run(40);
     expect(chat(msgs, "Alice")).toEqual([
-      "*** You are now wanted for the murder of Bob.",
       "*** Bob was just killed by Alice.",
       "*** Alice just received 10 assassin points!",
     ]);
@@ -104,7 +103,7 @@ describe("Lightning", () => {
       "*** Bob was just killed by Alice.",
       "*** Alice just received 10 assassin points!",
     ]);
-    expect(s.alice.char.wanted).toBe(true);
+    expect(s.alice.char.wanted).toBe(false);
     expect(s.world.assassin.current).toEqual([{ id: s.alice.id, name: "Alice", points: 10 }]);
   });
 
@@ -233,7 +232,7 @@ describe("scoring", () => {
     expect(scoreKill(s.world, s.bob)).toEqual([]);
   });
 
-  test("kept bug: a tied total leaves the old table entry, though the line still prints", () => {
+  test("bug fixed: a tied total replaces the old table entry, below the entry it ties", () => {
     const s = scene();
     const carol = s.join("Carol", 9, 9);
     setAssassinMode(s.world, "LIGHTNING", s.game);
@@ -247,7 +246,7 @@ describe("scoring", () => {
     expect(s.world.assassin.scores.get(s.alice.id)).toBe(20);
     expect(s.world.assassin.current).toEqual([
       { id: carol.id, name: "Carol", points: 20 },
-      { id: s.alice.id, name: "Alice", points: 10 },
+      { id: s.alice.id, name: "Alice", points: 20 },
     ]);
   });
 });

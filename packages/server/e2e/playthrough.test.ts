@@ -1179,7 +1179,7 @@ describe("the playthrough", () => {
     await t(60);
     clearAll();
     await say(alice, "Is there a quest for me?");
-    expect(chats(king)).toContain('Angela says "Sorry but I don\'t need anything right now"');
+    expect(chats(king)).toContain('Angela says "Sorry but I don\'t need anything right now."');
     clearAll();
     await say(king, "/Pardon Alice");
     expect(chats(king)).toEqual(["Pardoning Alice..."]);
@@ -1206,8 +1206,8 @@ describe("the playthrough", () => {
     await t(1);
     clearAll();
     await t(30);
+    // A Lightning death carries no penalties, so the kill flags no one.
     expect(chats(alice)).toEqual([
-      "*** You are now wanted for the murder of Carol.",
       "*** Carol was just killed by Alice.",
       "*** Alice just received 10 assassin points!",
     ]);
@@ -1389,14 +1389,14 @@ describe("the playthrough", () => {
     clearAll();
     alice.send({ t: "bioRequest", name: "alice" });
     await settle();
-    expect(bios(alice)[0]).toMatchObject({ profile: "Hunting slimes Daily ask me", own: true });
+    expect(bios(alice)[0]).toMatchObject({ profile: "Hunting slimes. Daily; ask me", own: true });
     kept.push({
       what: "Alice: her profile, her friend Bob, Carol ignoring Dave",
       check: async () => {
         alice.clear();
         alice.send({ t: "bioRequest", name: "alice" });
         await settle();
-        expect(bios(alice)[0]).toMatchObject({ profile: "Hunting slimes Daily ask me" });
+        expect(bios(alice)[0]).toMatchObject({ profile: "Hunting slimes. Daily; ask me" });
         expect(loadBuddies(server.db, (await accountOf("Alice")) ?? "")).toEqual(["Bob"]);
         carol.clear();
         await sayLater(dave, "hello again");

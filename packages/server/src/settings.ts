@@ -305,7 +305,7 @@ export const SETTINGS = {
       .length(4),
     default: [...ARCHIVED_PRIZES],
     tooltip:
-      "What the first, second and third place win when an Assassin's game ends: an item, or an amount like 1000 Gold. An empty line gives no prize from that place on. The fourth line is kept but never given, as in 1.6. An item to a full bag is lost; gold always arrives.",
+      "What the first, second, third and fourth place win when an Assassin's game ends: an item, or an amount like 1000 Gold. An empty line gives no prize from that place on. An item to a full bag is lost; gold always arrives.",
     source:
       '1.6\'s AssassinPrizes.txt, "Long Sword:1000 Gold:500 Gold:Knife", given when the game ends; SSO edits it with the File Editor.',
   }),

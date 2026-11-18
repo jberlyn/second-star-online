@@ -50,7 +50,7 @@ export const socialData: SocialData = {
       "name": "Warrior",
       "leader": "Trianus",
       "head": "Warrior's Head",
-      "joinHpMaxAbove": 49,
+      "joinHpMaxAbove": 59,
       "joinCount": 212000,
       "rejoinAdds": 212000,
       "texts": {
@@ -148,10 +148,10 @@ export const socialData: SocialData = {
       "missingPowers": "50:50:50"
     },
     "sayFaction": {
-      "rule": "SayFaction <leader>: strictly highest power → absolute, else strictly lowest → weak, else fine; sent as aqs (the asker's map hears it). The lines have no closing quote.",
-      "fine": "{NPC} says \"Our power is fine...for now.",
-      "weak": "{NPC} says \"We are very weak, I fear that we may be destroyed.",
-      "absolute": "{NPC} says \"We are currently in absolute power."
+      "rule": "SayFaction <leader>: strictly highest power → absolute, else strictly lowest → weak, else fine; sent as aqs (the asker's map hears it). 1.6's lines had no closing quote; SSO closes them.",
+      "fine": "{NPC} says \"Our power is fine...for now.\"",
+      "weak": "{NPC} says \"We are very weak, I fear that we may be destroyed.\"",
+      "absolute": "{NPC} says \"We are currently in absolute power.\""
     },
     "powers": {
       "file": "POLITICAL\\factions.txt = mage:warrior:adventurer",
@@ -189,9 +189,9 @@ export const socialData: SocialData = {
       "text": "{NPC} says \"I've been searching for one of my lost orbs forever. You have done well in finding it. These hold the true secrets of the ninja. Take this as a reward, and symbol of your loyalty to our cause.\""
     },
     "say": {
-      "rule": "SayQuest n1:n2:n3:n4 (on-screen slots 180-183, less names the MONSTER field contains, Pig and Cow): per name, if Quests.txt contains it, one 'bring' per line 1-40 containing it (slot 1 by sqa, slots 2-4 by aqs); else 'nothing' by aqs. 'bring' has no closing quote; 'nothing' no full stop. SSO: one 'bring' per line naming the NPC exactly, every reply by aqs, and 'bring' closes its quote.",
+      "rule": "SayQuest n1:n2:n3:n4 (on-screen slots 180-183, less names the MONSTER field contains, Pig and Cow): per name, if Quests.txt contains it, one 'bring' per line 1-40 containing it (slot 1 by sqa, slots 2-4 by aqs); else 'nothing' by aqs. 'bring' has no closing quote; 'nothing' no full stop. SSO: one 'bring' per line naming the NPC exactly, every reply by aqs, 'bring' closes its quote and 'nothing' ends with a full stop.",
       "bring": "{NPC} says \"Bring me a {ITEM} quickly and I'll reward you.\"",
-      "nothing": "{NPC} says \"Sorry but I don't need anything right now\""
+      "nothing": "{NPC} says \"Sorry but I don't need anything right now.\""
     }
   },
   "assassin": {
@@ -211,7 +211,7 @@ export const socialData: SocialData = {
       ]
     },
     "score": {
-      "rule": "Score additions are ignored when the mode contains OFF, PAUSE or STOP, or is unset or empty. A mode containing NING uses lightning points. Announce before ranking, add the points, and temporarily treat the player's current entry as zero. Insert before the first lower score when the score is also below the preceding entry; at the top, it only needs to exceed the first score. If unranked, leave the old file unchanged; otherwise keep the first 10 entries.",
+      "rule": "Score additions are ignored when the mode contains OFF, PAUSE or STOP, or is unset or empty. A mode containing NING uses lightning points. Announce before ranking, add the points, and drop the player's current entry. Insert after every entry with an equal or higher score; keep the first 10 entries. 1.6 ranked with strict comparisons, so a tie never ranked and left the old entry.",
       "text": "*** {NAME} just received {POINTS} assassin points!",
       "lightningPoints": 10,
       "tableSize": 10
@@ -238,7 +238,7 @@ export const socialData: SocialData = {
       ]
     },
     "compare": {
-      "rule": "CompareAss: killer > victim → the victim's rating picks stronger[]; killer < victim → the killer's rating picks weaker[]; the first band with rating < below; equal ratings or no band (rating >= 1800) leave the victim's raw rating",
+      "rule": "CompareAss: killer >= victim → the victim's rating picks stronger[]; killer < victim → the killer's rating picks weaker[]; the first band with rating < below, and a rating past the last band takes the last band. 1.6 paid the victim's raw rating at equal ratings or a rating of 1800 or more.",
       "stronger": [
         {
           "below": 150,
@@ -309,7 +309,7 @@ export const socialData: SocialData = {
       ]
     },
     "end": {
-      "rule": "Send the lightning-off signal twice and announce the top three names and the first entry's points. Add a win to the first-place player and rank it like a score, then stop the game. Give prizes to the top three in order; a blank prize stops the rest, a prize name containing a space followed by Gold adds gold, and a full bag loses an item prize.",
+      "rule": "Send the lightning-off signal twice and announce the top three names and the first entry's points. Add a win to the first-place player and rank it like a score, then stop the game. Give prizes to the top four in order (1.6 gave only three); a blank prize stops the rest, a prize name containing a space followed by Gold adds gold, and a full bag loses an item prize.",
       "lines": [
         "*** The assassin's game has ended!!!",
         "*** {W1} has won first place with {POINTS} points!",
@@ -319,7 +319,7 @@ export const socialData: SocialData = {
     },
     "prizes": {
       "archived": "Long Sword:1000 Gold:500 Gold:Knife",
-      "awarded": 3
+      "awarded": 4
     },
     "statue": {
       "item": "Assassin Statue",
@@ -331,6 +331,19 @@ export const socialData: SocialData = {
       "separator": "      ",
       "perLine": 4
     }
+  },
+  "highScores": {
+    "item": {
+      "text": "High Score Statue"
+    },
+    "text": "You read the high score list...",
+    "pause": 20,
+    "header": "                         Top FSO Player Scores",
+    "entry": "{N}. {NAME} - {POINTS} points",
+    "perLine": 4,
+    "separator": "      ",
+    "tableSize": 10,
+    "oneSaveIn": 3
   },
   "guilds": {
     "texts": {
@@ -386,7 +399,7 @@ export const socialData: SocialData = {
         "text": "*** {NAME} was just exiled from the {GUILD}"
       },
       "abdicating": {
-        "text": "*** Abdicating to {GUILD}"
+        "text": "*** Abdicating to {NAME}"
       },
       "promoted": {
         "text": "*** {NAME} has promoted {TARGET} to the new leader of the {GUILD}!!"
@@ -539,8 +552,6 @@ export const socialData: SocialData = {
         "text": "Friends"
       }
     },
-    "removeScan": 200,
-    "removeLimit": 190,
     "windowLines": 100,
     "entryNames": 200
   },
@@ -1042,18 +1053,16 @@ export const socialData: SocialData = {
         "Carpentry",
         "Fishing",
         "Blacksmithing",
-        "HPmax",
-        "SPmax"
-      ],
-      "lost": [
         "Lumberjacking",
         "Archery",
         "Blessing",
         "Musicianship",
         "Illusion",
         "Punch",
-        "fire",
-        "wind"
+        "Fire",
+        "Wind",
+        "HPmax",
+        "SPmax"
       ]
     },
     "lastName": "Star",
@@ -1063,20 +1072,12 @@ export const socialData: SocialData = {
     },
     "medalStrip": {
       "slots": 14,
-      "cleared": 10,
       "items": 20,
       "slotWidth": 16,
       "blankMember": 15,
       "stripMember": 7
     },
     "profile": {
-      "strip": [
-        ":",
-        "/",
-        ".",
-        ";"
-      ],
-      "scan": 500,
       "alerts": {
         ":": {
           "text": "You can't have a : in your profile!"

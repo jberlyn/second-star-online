@@ -85,26 +85,31 @@ describe("buddies", () => {
     expect(buddyAdd(many.slice(1), "a:b").items).toHaveLength(199);
   });
 
-  test("kept bug: removing a buddy finds only items 1-190, so the 190th name and later cannot go", () => {
-    const list = Array.from({ length: 195 }, (_, i) => `P${i + 1}`);
-    // Name k is item k + 1 (item 1 is the empty piece before the first colon).
+  test("bug fixed: any name on the list can be removed, the 190th and later too", () => {
+    const list = Array.from({ length: BUDDY_MAX }, (_, i) => `P${i + 1}`);
     const first = buddyRemove(list, "p189");
     expect(first.line).toBe("*** p189 was removed from your friend's list.");
-    expect(first.items).toHaveLength(194);
+    expect(first.items).toHaveLength(BUDDY_MAX - 1);
     expect(first.items).not.toContain("P189");
-    expect(buddyRemove(list, "P190")).toEqual({
+    for (const name of ["P190", "P199"]) {
+      const r = buddyRemove(list, name);
+      expect(r.removed).toBe(true);
+      expect(r.line).toBe(`*** ${name} was removed from your friend's list.`);
+      expect(r.items).toEqual(list.filter((n) => n !== name));
+    }
+    expect(buddyRemove(list, "Nobody")).toEqual({
       items: list,
-      line: "*** P190 is not on your friend's list!",
+      line: "*** Nobody is not on your friend's list!",
       removed: false,
     });
-    expect(buddyRemove(list, "Nobody").line).toBe("*** Nobody is not on your friend's list!");
   });
 
-  test("a removal rebuilds from items 1-200 only: names past the 199th are dropped", () => {
+  test("bug fixed: a removal keeps every other name, in order, past the 199th too", () => {
     const list = Array.from({ length: 205 }, (_, i) => `P${i + 1}`);
     const r = buddyRemove(list, "P1");
-    expect(r.items).toHaveLength(198);
-    expect(r.items.at(-1)).toBe("P199");
+    expect(r.items).toHaveLength(204);
+    expect(r.items[0]).toBe("P2");
+    expect(r.items.at(-1)).toBe("P205");
   });
 
   test("the window: entry from everyone online in the server's order and spelling", () => {
@@ -162,26 +167,26 @@ describe("bios", () => {
     expect(bioTitle(skills({ Magery: 95, Archery: 96 }))).toBe("Master Archer");
   });
 
-  test("kept bug: the score drops the eight skills of the misspelt-variable line", () => {
-    expect(socialData.bios.score.lost).toEqual([
-      "Lumberjacking",
-      "Archery",
-      "Blessing",
-      "Musicianship",
-      "Illusion",
-      "Punch",
-      "fire",
-      "wind",
-    ]);
+  test("bug fixed: the score counts every skill, HPmax and SPmax", () => {
     const s = skills({
       Slash: 10,
       Lumberjacking: 50,
       Archery: 50,
       Punch: 50,
+      Fire: 7,
+      Wind: 3,
       Cooking: 5,
-      Farming: 9,
     });
-    expect(bioScore(s, 40, 25)).toBe(10 + 5 + 40 + 25);
+    expect(bioScore(s, 40, 25)).toBe(10 + 50 + 50 + 50 + 7 + 3 + 5 + 40 + 25);
+    // Every skill counts once.
+    const all = skills();
+    for (const name of socialData.bios.score.counted) {
+      if (name !== "HPmax" && name !== "SPmax") {
+        all[skillIndex(name)] = 1;
+      }
+    }
+    expect(bioScore(all, 0, 0)).toBe(all.filter((v) => v === 1).length);
+    expect(new Set(socialData.bios.score.counted).size).toBe(socialData.bios.score.counted.length);
   });
 
   test("the reply's items and the viewer's lines", () => {
@@ -258,45 +263,45 @@ describe("bios", () => {
     );
   });
 
-  test("kept bug: each bio clears slots 1-10 and draws from slot 1; slots 11-14 keep the last bio's medals", () => {
+  test("bug fixed: each bio clears all 14 slots and draws from slot 1", () => {
     const blank = socialData.bios.medalStrip.blankMember;
     const member = (id: number) => socialData.medals.awards.find((a) => a.id === id)?.member;
     const twelve = ["39", "31", "94", "95", "93", "35", "61", "44", "45", "91", "92", "20"];
-    const first = medalStrip([], twelve);
+    const first = medalStrip(twelve);
     expect(first).toHaveLength(14);
     expect(first[0]).toBe(member(39));
     expect(first[11]).toBe(member(20));
-    expect(first[12]).toBeNull();
-    const second = medalStrip(first, ["21"]);
+    expect(first.slice(12)).toEqual([blank, blank]);
+    const second = medalStrip(["21"]);
     expect(second[0]).toBe(member(21));
-    expect(second.slice(1, 10)).toEqual(Array(9).fill(blank));
-    expect(second[10]).toBe(member(92));
-    expect(second[11]).toBe(member(20));
+    expect(second.slice(1)).toEqual(Array(13).fill(blank));
   });
 });
 
 describe("SaveProfile", () => {
-  test("periods and semicolons are lost on every close", () => {
-    expect(saveProfile("I like fish. And chips; really")).toEqual({
-      profile: "I like fish And chips really",
+  test("bug fixed: periods and semicolons are kept", () => {
+    expect(saveProfile("I like fish. And chips; really..")).toEqual({
+      profile: "I like fish. And chips; really..",
       alert: null,
     });
   });
 
-  test("one forward pass: of two adjacent characters the second survives", () => {
-    expect(saveProfile("Wait..")).toEqual({ profile: "Wait.", alert: null });
-    expect(saveProfile("a::b")).toEqual({
-      profile: null,
-      alert: "You can't have a : in your profile!",
-    });
-    expect(saveProfile("http//x")).toEqual({
-      profile: null,
-      alert: "You can't have a / in your profile!",
-    });
-    expect(saveProfile("a:b/c")).toEqual({ profile: "abc", alert: null });
+  test("bug fixed: any colon or slash refuses the save, none is silently removed", () => {
+    for (const text of ["a:b", "a::b", "a:b/c"]) {
+      expect(saveProfile(text)).toEqual({
+        profile: null,
+        alert: "You can't have a : in your profile!",
+      });
+    }
+    for (const text of ["http/x", "http//x"]) {
+      expect(saveProfile(text)).toEqual({
+        profile: null,
+        alert: "You can't have a / in your profile!",
+      });
+    }
   });
 
-  test("capped at 500 characters before the strip", () => {
+  test("capped at 500 characters", () => {
     expect(saveProfile("x".repeat(600)).profile).toHaveLength(500);
   });
 });

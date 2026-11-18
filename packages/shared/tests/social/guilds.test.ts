@@ -13,8 +13,8 @@ import {
   guildScreenFields,
   guildScreenFor,
   leaveGuild,
+  loadGuildLines,
   loadGuildOutcome,
-  loadGuildStrip,
   parseChatLine,
   sanitiseGuildName,
 } from "../../src/index.ts";
@@ -64,8 +64,17 @@ describe("the file and the guild loader", () => {
     expect(guildFileLines(knights)).toEqual(["G-0-*Alice*", "Bob", "Carol"]);
   });
 
-  test("kept bug: a line not starting with a letter loses its first character; honest data never does", () => {
-    expect(loadGuildStrip(["G-0-*Alice*", "Bob", "", "1st"])).toEqual(["G-0-*Alice*", "Bob", "st"]);
+  test("bug fixed: a line not starting with a letter keeps its first character; empty lines go", () => {
+    expect(loadGuildLines(["G-0-*Alice*", "Bob", "", "1st", "_x"])).toEqual([
+      "G-0-*Alice*",
+      "Bob",
+      "1st",
+      "_x",
+    ]);
+    const odd: GuildRecord = { ...knights, members: ["_Bob", "1Carol"] };
+    expect(guildScreenFor("Alice", odd)).toMatchObject({ members: ["_Bob", "1Carol"] });
+    expect(loadGuildOutcome(guildFileLines(odd), "_Bob")).toBe("kept");
+    expect(loadGuildOutcome(guildFileLines(odd), "Bob")).toBe("kicked");
   });
 
   test("the leader and every member are kept; anyone else is kicked", () => {
@@ -109,13 +118,13 @@ describe("changes (leave, exile, abdicate)", () => {
     expect(exileMember(knights, "Carol").members).toEqual(["Bob"]);
   });
 
-  test("kept bug: abdicate crowns the target and re-adds the old leader last", () => {
+  test("bug fixed: abdicate crowns the target, re-adds the old leader last and names the new leader", () => {
     const g = abdicateGuild(knights, "Bob");
     expect(g.leader).toBe("Bob");
     expect(g.members).toEqual(["Carol", "Alice"]);
     expect(guildFileLines(g)[0]).toBe("G-0-*Bob*");
-    // "*** Abdicating to <guild>" names the guild, not the new leader.
-    expect(GUILD_TEXT.abdicating("Knights")).toBe("*** Abdicating to Knights");
+    // "*** Abdicating to <name>" names the new leader (1.6 named the guild).
+    expect(GUILD_TEXT.abdicating("Bob")).toBe("*** Abdicating to Bob");
   });
 });
 

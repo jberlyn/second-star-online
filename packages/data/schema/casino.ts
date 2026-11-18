@@ -40,20 +40,6 @@ export const casinoDataSchema = z.strictObject({
     sound: z.strictObject({ name: z.string().min(1), channels: z.number().int().positive() }),
     cash: z.strictObject({ name: z.string().min(1), ch: z.number().int().positive() }),
   }),
-  scores: z.strictObject({
-    item: z.strictObject({ text: z.string().min(1) }),
-    text: z.string().min(1),
-    pause: z.number().int().positive(),
-    header: z.string().min(1),
-    entry: z.string().min(1),
-    perLine: z.number().int().positive(),
-    separator: z.string().min(1),
-    tableSize: z.number().int().positive(),
-    /** Scores with five or more digits are skipped. */
-    maxDigits: z.number().int().positive(),
-    /** 1.6 rolled `random(3) = 1` on character save (recorded; SSO submits the score on every save). */
-    oneSaveIn: z.number().int().positive(),
-  }),
   blackjack: z.strictObject({
     /** The exact item name that sits. */
     item: z.strictObject({ text }),

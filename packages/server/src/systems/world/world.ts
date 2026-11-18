@@ -338,11 +338,6 @@ export interface Player {
   lastToHitId: string | null;
   /** Ticks since the hit that set `lastToHitMe` landed. */
   hitAge: number;
-  /**
-   * In the shared `@Faction` channel: joined at login as a member and on joining; left by
-   * the loyalty kick, but not by a death exile.
-   */
-  factionChannel: boolean;
   /** Frames left of the death lock; the respawn warp happens when it ends. */
   deadLock: number;
   /** Vitals changed: send `vitals` and save them. */
@@ -618,7 +613,6 @@ export function sessionCombatState(): Pick<
   | "lastToHitMe"
   | "lastToHitId"
   | "hitAge"
-  | "factionChannel"
   | "deadLock"
   | "vitalsDirty"
   | "invDirty"
@@ -684,7 +678,6 @@ export function sessionCombatState(): Pick<
     lastToHitMe: null,
     lastToHitId: null,
     hitAge: 0,
-    factionChannel: false,
     deadLock: 0,
     vitalsDirty: true,
     invDirty: true,

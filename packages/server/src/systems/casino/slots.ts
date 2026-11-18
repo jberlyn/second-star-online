@@ -1,15 +1,12 @@
 /**
- * The Slot Machine and the High Score Statue's table.
+ * The Slot Machine.
  *
  * The panel is `p.slot`: `null` closed, `spin` the ticks until a pull settles (0 idle). A map
  * change closes the panel, and a pull requires standing in front of a slot machine on the map.
  */
 import {
   CHAT_COLOR,
-  highScorePoints,
   isSlotMachine,
-  rankHighScore,
-  SCORES_SIZE,
   SLOT_COST,
   SLOT_FX,
   SLOT_SPIN_FRAMES,
@@ -17,7 +14,6 @@ import {
   slotOpenCheck,
   slotReels,
   slotSettle,
-  submitsScore,
 } from "@secondstaronline/shared";
 
 import type { Rng } from "../../rng.ts";
@@ -131,21 +127,4 @@ export function slotTick(rng: Rng, p: Player): Outgoing[] {
     { to: p.id, msg: { t: "slotResult", reels, win: r.win } },
     chat(p, r.win ? SLOT_TEXT.win : SLOT_TEXT.lose),
   ];
-}
-
-/**
- * The score send and the high-score check on a save tick: immortals and five-digit scores send
- * nothing; a ranked score replaces the table.
- */
-export function submitHighScore(world: World, p: Player): void {
-  const v = p.char.vitals;
-  const points = highScorePoints(p.char.skills, v.hpMax, v.spMax);
-  if (!submitsScore(points, p.role === "immortal")) {
-    return;
-  }
-  const next = rankHighScore(world.highScores, { id: p.id, name: p.name, points }, SCORES_SIZE);
-  if (next) {
-    world.highScores = next;
-    world.highScoresDirty = true;
-  }
 }

@@ -173,9 +173,11 @@ function closeScreen(p: Player): Outgoing {
 }
 
 /**
- * Create's OK: the keys unlock at once; the name is sanitised; an empty one or a live guild of that
- * name gets the alert; otherwise "Guild created!", the screen closes, and you join the guild with
- * the Hail.
+ * Create's OK: the keys unlock at once; the name is sanitised; an empty one, a live guild of that
+ * name, or a disbanded one you did not lead when it disbanded gets the alert; otherwise "Guild
+ * created!", the screen closes, and you join the guild with the Hail. A guild's vault, Guild Key
+ * doors and hall are found by its name, so only the leader who disbanded a guild may found it again
+ * and take them back. 1.6 let anyone re-create the name and inherit them (a bug fixed).
  */
 export function guildCreate(
   world: World,
@@ -190,7 +192,7 @@ export function guildCreate(
   p.keyLock = false;
   const name = sanitiseGuildName(typed);
   const old = world.guilds.get(name.toLowerCase());
-  if (name === "" || (old && !old.disbanded)) {
+  if (name === "" || (old && (!old.disbanded || old.leaderId !== p.id))) {
     return [{ to: p.id, msg: { t: "alert", text: GUILD_TEXT.taken } }];
   }
   // A loop, not `Math.max(...)`: a spread of every guild row ever made would pass the engine's
@@ -307,10 +309,12 @@ export function guildAction(
       g.leaderId = target.id;
       g.leaderName = target.name;
       dirty(world, g);
-      // It names the guild, not the new leader; the screen stays as it was.
-      const out: Outgoing[] = [chat(p, GUILD_TEXT.abdicating(name))];
+      // It names the new leader, and the screen redraws as a member's (1.6 named the guild and left
+      // the leader's screen up).
+      const out: Outgoing[] = [chat(p, GUILD_TEXT.abdicating(target.name))];
       out.push(...guildcast(world, g, GUILD_TEXT.promoted(p.name, target.name, name)));
       out.push(...pushLoadGuild2(world, g, channel(world, g)));
+      out.push({ to: p.id, msg: { t: "guild", screen: guildScreenFor(p.name, record(g)) } });
       return out;
     }
   }
