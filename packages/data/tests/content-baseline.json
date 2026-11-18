@@ -2988,95 +2988,95 @@
   "houses.json#/clickFixtures": [
     [
       "Slash Master Platform",
-      "86a9665380947476"
+      "4e09bad2fcbd1451"
     ],
     [
       "Experience Platform",
-      "097a3f51b8207e0d"
+      "d016987d5dd31fc4"
     ],
     [
       "Wall Torch",
-      "8e6f31ddba7599bd"
+      "8c104edf7975c24c"
     ],
     [
       "Windmill",
-      "3f65e229cf1d67ff"
+      "7cec229629ebed85"
     ],
     [
       "Holy Water",
-      "0c02947c872766e8"
+      "992d7ab7e409aaf1"
     ],
     [
       "Fire Pot",
-      "70b2b10fd6831331"
+      "476f92e448382270"
     ],
     [
       "Chimney",
-      "8875ca8f1dd869fb"
+      "50b868dbafdd222a"
     ],
     [
       "Fountain",
-      "017010618c3ba2d8"
+      "5aff7f833313e2f1"
     ],
     [
       "Mage Master Platform",
-      "3edd5278c0876c7c"
+      "d66d4d3f5b60a26f"
     ],
     [
       "Ninja Master Platform",
-      "30f1e684428a3800"
+      "3e14d5e2dbb89d35"
     ],
     [
       "Clock",
-      "63c9910b643b1659"
+      "a47c2df72a6109b0"
     ],
     [
       "Street Lamp",
-      "014035fdf9ffbbbe"
+      "e47ff1d93a693a6a"
     ],
     [
       "Stove",
-      "c2b608f913110927"
+      "6c04711f10a602af"
     ],
     [
       "Anvil",
-      "302a16a45856e025"
+      "1416e52568559fb8"
     ],
     [
       "Alchemy Lab",
-      "d4d5a0443a16c623"
+      "b7c3f6153de10064"
     ],
     [
       "ON Switch",
-      "a7484bf2a9cf1348"
+      "2a9f86db200b41f2"
     ],
     [
       "OFF Switch",
-      "b1ca5bbc2ef5d8c2"
+      "5e6b5665ea5baa30"
     ],
     [
       "Vault",
-      "e809286254d72003"
+      "646930ab46c2faef"
     ],
     [
       "Guild Center",
-      "f6836ae7abeb9bf8"
+      "71ad5f201b39ed72"
     ],
     [
       "Slot Machine",
-      "aff90e3a5cfffd69"
+      "224fee51dae6cd2f"
     ],
     [
       "Blackjack",
-      "e7e2d376316c1398"
+      "baa25cc4b3260a07"
     ],
     [
       "Checkers",
-      "dd06255fb528e5f4"
+      "da2ea4fc5cdbbab6"
     ],
     [
       "Platform",
-      "2d023bfa073f3f46"
+      "97afcf1d7fcacae1"
     ]
   ],
   "houses.json#/containers/drop": [
@@ -4438,7 +4438,7 @@
     ],
     [
       "Bo",
-      "ada6df6305ec57ef"
+      "288237d718aa2c23"
     ],
     [
       "Laser Sword",
@@ -4806,167 +4806,167 @@
   "item-rules.json#/ground/blocks": [
     [
       "Fire Pot",
-      "f2ee67725ef46ecb"
+      "2d06f324cca0a185"
     ],
     [
       "Chimney",
-      "0af5f32aedbda551"
+      "f7243e4a0992faa6"
     ],
     [
       "Windmill",
-      "8385f3b8d5cc1fe5"
+      "8df445a4184ffc11"
     ],
     [
       "Holy Water",
-      "c4a8a2ede38aba00"
+      "b62b82d8c223570a"
     ],
     [
       "'s Newspaper",
-      "9ecf301316aa7943"
+      "6173d65af62573ff"
     ],
     [
       "Fountain",
-      "6f100f1a042fb2d0"
+      "b4d7eccfaa992431"
     ],
     [
       "Piano",
-      "d38ae7a2d827c30f"
+      "2e7ea4602cfde8db"
     ],
     [
       "Statue",
-      "13639cac84edea66"
+      "b3e38dbec2e7dd09"
     ],
     [
       "Universal",
-      "12129fbf847606dd"
+      "78aa473e2e1fffd7"
     ],
     [
       "Steel Door",
-      "819172ae65b0722b"
+      "67bcb10430539fc8"
     ],
     [
       "Wooden Door",
-      "17853c4acf3d24a9"
+      "5bb2cc659fc09c03"
     ],
     [
       "Emerald Door",
-      "25267473bd6c843d"
+      "ae08fcf84340830a"
     ],
     [
       "Fire Door",
-      "9dfb0bc3c5337db4"
+      "e868bb12534e0478"
     ],
     [
       "Gold Door",
-      "50b65277a23b79dd"
+      "a979a545dc7f9d3c"
     ],
     [
       "Large Rock",
-      "32f99bdbd5898d64"
+      "973be9d87dedddd4"
     ],
     [
       "Sign 1",
-      "0fd93ea368d85515"
+      "e9bc2afa57c3e362"
     ],
     [
       "Sign 2",
-      "3c5514dd55466dcd"
+      "1bed8768479499b9"
     ],
     [
       "Sign 3",
-      "e17b983327cad7a6"
+      "0ba496871420aac1"
     ],
     [
       " Chest",
-      "81f305c590db2d2c"
+      "c1edbe9d1d5b27c4"
     ],
     [
       "Vault",
-      "a5e1e730db6c14bd"
+      "c959a21e3d4c5bd2"
     ],
     [
       "Guild Center",
-      "c64aa98db009930e"
+      "86a1d01a1ee086da"
     ],
     [
       "'s Door",
-      "d1413b198aee5b8a"
+      "73240fc95557860e"
     ],
     [
       "Stove",
-      "fc742262c9fffc51"
+      "cbc6b452501c77b8"
     ],
     [
       "Alchemy Lab",
-      "1b5272b39432f9b1"
+      "fe3eb3b5f0b59fed"
     ],
     [
       "Anvil",
-      "d3cfff24bf3a53ff"
+      "056ea7e22836e0ef"
     ],
     [
       "Table",
-      "0fe4f49af43399cc"
+      "8f786062263c2a56"
     ],
     [
       "Crate",
-      "aea27f0a52986870"
+      "3c73211801768238"
     ],
     [
       "Cauldron",
-      "02b11a61b0c95472"
+      "5e43700bf5aa09b4"
     ],
     [
       "Painting",
-      "e9227aa9937ece15"
+      "f9d0d6a1345fc5d9"
     ],
     [
       "Cabinet",
-      "4937604dc92dea98"
+      "1a0a68b578036350"
     ],
     [
       "Campfire",
-      "584a94ec27a325e8"
+      "eb68ae47d519349e"
     ],
     [
       "'s Airship",
-      "0639ac5445d4e342"
+      "8c1c3e9963b63a17"
     ],
     [
       "Street Lamp",
-      "d87a4aa2779e5bb5"
+      "e10c71e2cddba3c6"
     ],
     [
       "Blackjack Table",
-      "0af66d116edd33d9"
+      "1da061ae553bdfd0"
     ],
     [
       "Checkers Table",
-      "0f8a0646731d54a6"
+      "a0c72fd57d4cbf1b"
     ],
     [
       "slot machine",
-      "a07a5fd7257264f6"
+      "1148f3ee9f1d77b1"
     ],
     [
       "Copy Machine",
-      "a394450ca4d62112"
+      "4f5015513a43e8dd"
     ],
     [
       "Switch Door",
-      "6a861daade32d1bb"
+      "7fa545560bb51308"
     ],
     [
       "OFF Switch",
-      "7b2f6e4488938c40"
+      "0496231d7f36411a"
     ],
     [
       "ON Switch",
-      "371f6283c917e4ac"
+      "4f0f3c674e8901ea"
     ],
     [
       "Cauldron",
-      "2c16a3fb7420fde7"
+      "c3aaeea8e679614b"
     ]
   ],
   "item-rules.json#/ground/layers": [
@@ -5240,7 +5240,7 @@
     ],
     [
       "Experience Platform",
-      "2154548370f5c6ba"
+      "ace38cf26b20eb17"
     ],
     [
       "Slash Master Platform",
@@ -5248,7 +5248,7 @@
     ],
     [
       "Mage Master Platform",
-      "9576decb65c4dda4"
+      "9125c08409810c12"
     ],
     [
       "Ninja Master Platform",
@@ -5737,10 +5737,6 @@
     [
       "Map",
       "aff6d76e86df5e65"
-    ],
-    [
-      "Ocarina",
-      "271911fb2f702ba9"
     ]
   ],
   "item-rules.json#/use/skillBooks": [
@@ -5777,26 +5773,6 @@
     [
       " photo",
       "c16774458ff9d878"
-    ],
-    [
-      "Steel Key",
-      "7051345eea733b1f"
-    ],
-    [
-      "Wooden Key",
-      "877232bde1c54d5b"
-    ],
-    [
-      "Emerald Key",
-      "983a5ac92e29a38c"
-    ],
-    [
-      "Fire Key",
-      "00f51ed8d1e775fe"
-    ],
-    [
-      "Gold Key",
-      "5ad4487b23411e1e"
     ],
     [
       "Pie",

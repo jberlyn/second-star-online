@@ -140,7 +140,7 @@ describe("opening a mailbox", () => {
     expect(of(out, "Bob", "mail")).toHaveLength(1);
   });
 
-  test("Ctrl reopens under the lock, pause 40", () => {
+  test("bug fixed: Ctrl does not reopen an open mailbox; it opens again once closed", () => {
     const s = scene();
     s.put("m", "Alice's Mailbox", 5, 5);
     const a = s.join("Alice");
@@ -149,19 +149,24 @@ describe("opening a mailbox", () => {
     expect(a.keyLock).toBe(true);
     expect(a.itemPause).toBe(40);
     a.itemPause = 0;
-    const again = actionIntent(s.ctx(), s.room(), a);
-    expect(chat(again, "Alice")).toEqual(["You check your mail..."]);
+    expect(actionIntent(s.ctx(), s.room(), a)).toEqual([]);
+    expect(a.itemPause).toBe(0);
+    mailUiIntent(a, "close");
+    expect(a.keyLock).toBe(false);
+    expect(chat(actionIntent(s.ctx(), s.room(), a), "Alice")).toEqual(["You check your mail..."]);
   });
 
-  test("kept bug: Ctrl still works while a window holds the key lock, but not while the map loads", () => {
+  test("bug fixed: Ctrl does nothing while a window holds the key lock or the map loads", () => {
     const s = scene();
     s.put("c", "Clock", 5, 5);
     const a = s.join("Alice");
     a.keyLock = true;
-    expect(chat(actionIntent(s.ctx(), s.room(), a), "Alice")).toEqual(["This is a clock."]);
-    a.itemPause = 0;
+    expect(actionIntent(s.ctx(), s.room(), a)).toEqual([]);
+    a.keyLock = false;
     a.loading = 1;
     expect(actionIntent(s.ctx(), s.room(), a)).toEqual([]);
+    a.loading = 0;
+    expect(chat(actionIntent(s.ctx(), s.room(), a), "Alice")).toEqual(["This is a clock."]);
   });
 
   test("the click is ignored under the key lock", () => {

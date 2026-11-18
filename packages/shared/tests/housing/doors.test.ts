@@ -28,6 +28,9 @@ import {
 } from "../../src/rules/housing/doors.ts";
 import { clickGate, ctrlGate } from "../../src/rules/inventory/ground.ts";
 
+/** Ctrl by a player of middling Strength away from their own premises. */
+const STRANGER = { str: 50, mine: false };
+
 const queue = (...xs: number[]): Rng & { asked: number[] } => {
   const asked: number[] = [];
   return {
@@ -157,8 +160,8 @@ describe("switches", () => {
     expect(switchState("ON Switch")).toBe("on");
     expect(switchState("OFF Switch")).toBe("off");
     expect(switchState("Switch Door")).toBeNull();
-    expect(clickGate("ON Switch", 1)).toEqual({ kind: "switch", state: "on" });
-    expect(ctrlGate("OFF Switch")).toEqual({ kind: "switch", state: "off" });
+    expect(clickGate("ON Switch")).toEqual({ kind: "switch", state: "on" });
+    expect(ctrlGate("OFF Switch", STRANGER)).toEqual({ kind: "switch", state: "off" });
   });
 });
 
@@ -191,28 +194,30 @@ describe("relock", () => {
 
 describe("container routing", () => {
   test("a click opens chests and house and guild vaults", () => {
-    expect(clickGate("Gold Chest", 1)).toEqual({ kind: "open" });
-    expect(clickGate("Wind Chest", 1)).toEqual({ kind: "open" });
-    expect(clickGate("Alice's House Vault", 1)).toEqual({ kind: "open" });
-    expect(clickGate("The Knights's Guild Vault", 1)).toEqual({ kind: "open" });
+    expect(clickGate("Gold Chest")).toEqual({ kind: "open" });
+    expect(clickGate("Wind Chest")).toEqual({ kind: "open" });
+    expect(clickGate("Alice's House Vault")).toEqual({ kind: "open" });
+    expect(clickGate("The Knights's Guild Vault")).toEqual({ kind: "open" });
   });
 
-  test("kept bug: clicking a crate or cabinet picks it up; only Ctrl opens it", () => {
-    expect(clickGate("Crate#12", 15)).toEqual({ kind: "take" });
-    expect(clickGate("Crate#12", 14)).toMatchObject({ kind: "text" });
-    expect(clickGate("Wind Cabinet#3", 19)).toEqual({ kind: "take" });
-    expect(clickGate("Cabinet#3", 18)).toMatchObject({ kind: "text" });
-    expect(ctrlGate("Crate#12")).toEqual({ kind: "open" });
-    expect(ctrlGate("Wind Cabinet#3")).toEqual({ kind: "open" });
+  test("bug fixed: a click opens a crate or cabinet; Ctrl picks it up with Strength 15 or 19", () => {
+    expect(clickGate("Crate#12")).toEqual({ kind: "open" });
+    expect(clickGate("Wind Cabinet#3")).toEqual({ kind: "open" });
+    expect(clickGate("Cabinet#3")).toEqual({ kind: "open" });
+    const weak = { kind: "text", text: "You're not strong enough to pick this up!" } as const;
+    expect(ctrlGate("Crate#12", { str: 15, mine: false })).toEqual({ kind: "take" });
+    expect(ctrlGate("Crate#12", { str: 14, mine: false })).toEqual(weak);
+    expect(ctrlGate("Wind Cabinet#3", { str: 19, mine: false })).toEqual({ kind: "take" });
+    expect(ctrlGate("Cabinet#3", { str: 18, mine: false })).toEqual(weak);
   });
 
   test("Ctrl opens chests, house and guild vaults and the Cauldron", () => {
     for (const n of ["Dark Chest", "Alice's House Vault", "The X's Guild Vault", "Cauldron#4"]) {
-      expect(ctrlGate(n)).toEqual({ kind: "open" });
+      expect(ctrlGate(n, STRANGER)).toEqual({ kind: "open" });
     }
     // Doors stay silent to a click and to Ctrl.
-    expect(clickGate("Steel Door", 1)).toEqual({ kind: "silent" });
-    expect(ctrlGate("Alice's Door")).toEqual({ kind: "silent" });
+    expect(clickGate("Steel Door")).toEqual({ kind: "silent" });
+    expect(ctrlGate("Alice's Door", STRANGER)).toEqual({ kind: "silent" });
   });
 });
 

@@ -10,13 +10,11 @@
  * there on its side).
  */
 import {
-  type AmountPath,
   ATTACK_ANIM_FRAMES,
   ATTACK_LATCH_TICKS,
   type AttackTimers,
   advanceStep,
   airshipWalkGrid,
-  amountPath,
   applyOutcome,
   attemptMove,
   blockPCCheck,
@@ -25,7 +23,6 @@ import {
   type DeltaEvent,
   type Dir,
   type EquipView,
-  FACING_DELTA,
   type Facing,
   type FxSprite,
   footWalkGrid,
@@ -924,31 +921,12 @@ export function walkerPixel(
   return { px: (x - dx) * 32 - 16 + dx * moved, py: (y - dy) * 32 - 34 + dy * moved };
 }
 
-/** Ctrl or the Action button: the server starts the 40-frame pause unless one is running. */
+/**
+ * Ctrl or the Action button: the server starts the 40-frame pause unless one is running, a window
+ * holds the keys or the map is loading.
+ */
 export function pressAction(m: Model): void {
-  if (m.itemPause === 0) {
+  if (m.itemPause === 0 && !m.keyLock && !m.loading) {
     m.itemPause = 40;
   }
-}
-
-/**
- * The branch the amount dialog's OK will take, from what this client sees, as 1.6's client
- * decided it from its own sprites (`amountPath`): a standing player on the faced tile
- * while you stand, then a monster one or two tiles ahead.
- */
-export function predictAmountPath(m: Model, gold: boolean, enough: boolean): AmountPath {
-  const s = m.self;
-  if (!s) {
-    return "short";
-  }
-  const [dx, dy] = FACING_DELTA[s.facing];
-  const ax = s.x + dx;
-  const ay = s.y + dy;
-  const playerAhead =
-    s.stepFrames === 0 &&
-    [...m.peers.values()].some((p) => p.frames === 0 && p.x === ax && p.y === ay);
-  const monsterAhead = [...m.monsters.values()].some(
-    (mon) => (mon.x === ax && mon.y === ay) || (mon.x === ax + dx && mon.y === ay + dy),
-  );
-  return amountPath({ gold, enough, playerAhead, monsterAhead });
 }

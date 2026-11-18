@@ -32,13 +32,14 @@ export const pickupSchema = z.strictObject({ t: z.literal("pickup"), id: z.uuid(
 export const actionSchema = z.strictObject({ t: z.literal("action") });
 
 /**
- * The crystal amount dialog's OK: `n` crystals of the stack in `slot`, given to the player on the
- * faced tile, else dropped.
+ * The crystal amount dialog's OK: `n` crystals of the stack in `slot`, dropped on the faced tile or
+ * given to the player standing there, by the bag button (`mode`) that opened the dialog.
  */
 export const crystalsSchema = z.strictObject({
   t: z.literal("crystals"),
   slot: bagSlot,
   n: z.number().int().min(1).max(9999),
+  mode: z.enum(["drop", "give"]),
 });
 
 /**

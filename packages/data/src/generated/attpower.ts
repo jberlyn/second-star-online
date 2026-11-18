@@ -230,6 +230,13 @@ export const attPowerData: AttPowerData = {
         "expr": "13 + random(13)",
         "flat": 13,
         "randomN": 13
+      },
+      {
+        "match": "contains",
+        "pattern": "Dragon Sword",
+        "expr": "12 + random(8)",
+        "flat": 12,
+        "randomN": 8
       }
     ],
     "exactOverrides": [

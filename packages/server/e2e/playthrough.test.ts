@@ -570,9 +570,12 @@ describe("the playthrough", () => {
       expect.objectContaining({ e: "look", equip: expect.objectContaining({ weapon: "Knife" }) }),
     );
     alice.clear();
+    // Still at the starting hunger, Alice is stuffed: the Apple is refused and kept.
+    const kept = lastInv(alice)?.bag.find((l) => l?.item === "Apple")?.qty ?? 0;
     alice.send({ t: "use", slot: slotOf(alice, "Apple") });
     await t(1);
-    expect(chats(alice)).toContain("You eat an apple.");
+    expect(chats(alice)).toEqual(["You're stuffed!"]);
+    expect(lastInv(alice)?.bag.find((l) => l?.item === "Apple")?.qty ?? 0).toBe(kept);
     // Give the Apple to Bob: the give line on both sides; he gets it 60 frames later.
     const apples = lastInv(bob)?.bag.find((l) => l?.item === "Apple")?.qty ?? 0;
     alice.clear();
@@ -612,19 +615,18 @@ describe("the playthrough", () => {
     bob.clear();
     alice.send({ t: "gold", n: 100 });
     await t(1);
-    // Kept bug: the give line names no gold or crystals.
-    expect(chats(alice)).toEqual(["*** Offering the 100 to Bob."]);
-    expect(chats(bob)).toEqual(["Alice is giving you a 100 Gold."]);
+    expect(chats(alice)).toEqual(["*** Offering the 100 gold to Bob."]);
+    expect(chats(bob)).toEqual(["Alice is giving you 100 Gold."]);
     await t(60);
     expect(goldOf(alice)).toBe(a0 - 100);
     expect(goldOf(bob)).toBe(b0 + 100);
     alice.clear();
     bob.clear();
     const stack = lastInv(alice)?.bag.findIndex((l) => l?.item.includes("Crystals")) ?? -1;
-    alice.send({ t: "crystals", slot: stack + 1, n: 2 });
+    alice.send({ t: "crystals", slot: stack + 1, n: 2, mode: "give" });
     await t(1);
-    expect(chats(alice)).toEqual(["*** Offering the  to Bob."]);
-    expect(chats(bob)).toEqual(["Alice is giving you a 2 White Crystals."]);
+    expect(chats(alice)).toEqual(["*** Offering the 2 White Crystals to Bob."]);
+    expect(chats(bob)).toEqual(["Alice is giving you 2 White Crystals."]);
     await t(60);
     expect(lastInv(bob)?.bag.some((l) => l?.item.includes("Crystals"))).toBe(true);
   });

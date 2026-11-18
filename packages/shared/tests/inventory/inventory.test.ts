@@ -38,6 +38,7 @@ import {
   blocksPlayer,
   clickGate,
   ctrlGate,
+  fixedInPlace,
   groundPicture,
   groundPictureTopLeft,
   tilePixel,
@@ -51,6 +52,9 @@ import {
 } from "../../src/rules/inventory/inventory.ts";
 import { normaliseLook, paperdollLayers } from "../../src/rules/inventory/paperdoll.ts";
 import { rollDeathDrop, rollLoot } from "../../src/rules/monsters/loot.ts";
+
+/** Ctrl by a player of middling Strength away from their own premises. */
+const STRANGER = { str: 50, mine: false };
 
 function scripted(results: readonly number[]): Rng & { calls: number[] } {
   let i = 0;
@@ -134,17 +138,31 @@ describe("equip", () => {
     expect(equipSlotFor("Leather Armor")).toBe("Body");
     expect(equipSlotFor("Apple")).toBe("No");
   });
-  test('kept bug: books and Boat Deed equip LeftHand as a "Bo"', () => {
-    expect(equipSlotFor("Fireball Book")).toBe("LeftHand");
-    expect(equipSlotFor("Boat Deed")).toBe("LeftHand");
+  test('bug fixed: only the Bo itself matches "Bo"; books and the Boat Deed cannot be equipped', () => {
+    expect(equipSlotFor("Bo")).toBe("LeftHand");
+    expect(equipSlotFor("Fireball Book")).toBe("No");
+    expect(equipSlotFor("Book")).toBe("No");
+    expect(equipSlotFor("Boat Deed")).toBe("No");
+    // Bows and boots keep their own rows.
+    expect(equipSlotFor("Wooden Bow")).toBe("LeftHand");
+    expect(equipSlotFor("Chain Boots")).toBe("Feet");
+    expect(equipSlotFor("Bowmaster's Ring")).toBe("Ring");
   });
-  test("kept bug: Catfish Sandwich equips RightHand", () => {
-    expect(equipSlotFor("Catfish Sandwich")).toBe("RightHand");
+  test("bug fixed: a Catfish Sandwich cannot be equipped; alchemy sand still goes in the right hand", () => {
+    expect(equipSlotFor("Catfish Sandwich")).toBe("No");
+    expect(equipSlotFor("Purple Sand")).toBe("RightHand");
   });
-  test("kept bug: Dragon Sword cannot be equipped", () => {
-    expect(checkEquip("Dragon Sword", { str: 99, wanted: false, equip: gear({}) })).toEqual({
+  test("bug fixed: the Dragon Sword is wielded in the left hand", () => {
+    expect(checkEquip("Dragon Sword", { str: 26, wanted: false, equip: gear({}) })).toEqual({
+      ok: true,
+      slot: "LeftHand",
+    });
+    expect(strengthRequirement("Dragon Sword")).toBe(26);
+  });
+  test('bug fixed: "You cannot equip the ..." ends with a full stop', () => {
+    expect(checkEquip("Apple", { str: 99, wanted: false, equip: gear({}) })).toEqual({
       ok: false,
-      text: "You cannot equip the Dragon Sword",
+      text: "You cannot equip the Apple.",
     });
   });
   test("strength comes first", () => {
@@ -176,13 +194,10 @@ describe("equip", () => {
       slot: "Head",
     });
   });
-  test("kept bug: an occupied slot is refused, not swapped", () => {
+  test("bug fixed: an occupied slot is no refusal (the server swaps)", () => {
     expect(
       checkEquip("Knife", { str: 99, wanted: false, equip: gear({ weapon: "Dagger" }) }),
-    ).toEqual({
-      ok: false,
-      text: EQUIP_TEXT.occupied,
-    });
+    ).toEqual({ ok: true, slot: "LeftHand" });
   });
   test("the menu swaps Equip for Cook/Mix/Build/Smith/Storage", () => {
     expect(menuAction("Knife")).toBe("Equip");
@@ -211,11 +226,11 @@ describe("use", () => {
   test("HP is capped at HPmax, hunger is not", () => {
     expect(useItem("Yeti Burger", { ...v, hp: 19 }, scripted([8]))).toMatchObject({ hp: 20 });
   });
-  test("kept bug: eating while stuffed still consumes the item", () => {
+  test("bug fixed: a stuffed player is refused and keeps the food", () => {
     const rng = scripted([3]);
     expect(useItem("Apple", { ...v, hunger: 35000 }, rng)).toEqual({
-      consume: true,
-      lines: ["You eat an apple.", "You're stuffed!"],
+      consume: false,
+      lines: ["You're stuffed!"],
       hp: 10,
       sp: 10,
       hunger: 35000,
@@ -223,20 +238,23 @@ describe("use", () => {
     });
     expect(rng.calls).toEqual([]);
   });
-  test('kept bug: "You\'re stuffed!" on the bite that crosses the limit', () => {
-    expect(useItem("Apple", { ...v, hunger: 34000 }, scripted([1])).lines).toEqual([
-      "You eat an apple.",
-      "You're stuffed!",
-    ]);
+  test('bug fixed: the bite that fills you only says the eat line; "You\'re stuffed!" is the refusal', () => {
+    const out = useItem("Apple", { ...v, hunger: 34000 }, scripted([1]));
+    expect(out).toMatchObject({ consume: true, lines: ["You eat an apple."] });
+    expect(out.hunger).toBeGreaterThan(34999);
   });
-  test("kept bug: Purple Potion prints its line twice and works when stuffed", () => {
-    const out = useItem("Purple Potion", { ...v, hunger: 40000 }, scripted([1]));
-    expect(out.argon).toBe(true);
-    expect(out.lines).toEqual([
-      "The power of argon flows through your body.",
-      "The power of argon flows through your body.",
-      "You're stuffed!",
-    ]);
+  test("bug fixed: Purple Potion says its line once and is refused when stuffed", () => {
+    const out = useItem("Purple Potion", v, scripted([1]));
+    expect(out).toMatchObject({
+      consume: true,
+      argon: true,
+      lines: ["The power of argon flows through your body."],
+    });
+    expect(useItem("Purple Potion", { ...v, hunger: 40000 }, scripted([1]))).toMatchObject({
+      consume: false,
+      argon: false,
+      lines: ["You're stuffed!"],
+    });
   });
   test("a potion's line names it", () => {
     expect(useItem("Blue Potion", v, scripted([1])).lines).toEqual(["You drink the Blue Potion."]);
@@ -368,20 +386,25 @@ describe("ground items", () => {
     expect(blocksPlayer("Bob's Newspaper", who)).toBe(true);
     expect(blocksPlayer("Experience Platform", { ...who, level: 21 })).toBe(false);
   });
-  test("kept bug: the Experience Platform says 30 hit points but blocks by level (21 passes)", () => {
+  test("bug fixed: the Experience Platform names the level it checks (21 passes)", () => {
     const who = { level: 20, skills: zeroSkills() };
-    // Ctrl on it says "over 30 hit points", yet the block is decided by level alone.
-    expect(ctrlGate("Experience Platform")).toMatchObject({
-      kind: "text",
-      text: "You must be over 30 hit points to pass this platform.",
-    });
+    for (const gate of [
+      ctrlGate("Experience Platform", STRANGER),
+      clickGate("Experience Platform"),
+    ]) {
+      expect(gate).toMatchObject({
+        kind: "text",
+        text: "You must be level 21 or higher to pass this platform.",
+      });
+    }
     expect(blocksPlayer("Experience Platform", who)).toBe(true);
     expect(blocksPlayer("Experience Platform", { ...who, level: 21 })).toBe(false);
   });
-  test("kept bug: monsters walk onto Holy Water and newspapers", () => {
-    expect(blocksMonster("Holy Water")).toBe(false);
-    expect(blocksMonster("Bob's Newspaper")).toBe(false);
+  test("bug fixed: Holy Water and newspapers stop monsters as they stop players", () => {
+    expect(blocksMonster("Holy Water")).toBe(true);
+    expect(blocksMonster("Bob's Newspaper")).toBe(true);
     expect(blocksMonster("Windmill")).toBe(true);
+    expect(blocksMonster("Apple")).toBe(false);
   });
   test("gold piles: small 1-49, medium 50-99, large 100+", () => {
     expect(groundPicture("2 Gold")).toBe("SmallGold");
@@ -399,10 +422,27 @@ describe("ground items", () => {
     // The crystal picture's own regpoint (3, -4) plays no part.
     expect(groundPictureTopLeft(100, 200)).toEqual({ x: 85, y: 203 });
   });
-  test("kept bug: Ctrl takes paintings, a click does not", () => {
-    expect(clickGate("Painting#12", 10)).toEqual({ kind: "view" }); // a click views it
-    expect(ctrlGate("Painting#12")).toEqual({ kind: "take" });
-    expect(clickGate("Copy Machine", 10)).toEqual({ kind: "take" });
+  test("a click views a painting and Ctrl takes it, as a click uses and Ctrl carries", () => {
+    expect(clickGate("Painting#12")).toEqual({ kind: "view" });
+    expect(ctrlGate("Painting#12", STRANGER)).toEqual({ kind: "take" });
+  });
+  test("bug fixed: a fixture the world placed is fixed in place; a player's own is not", () => {
+    for (const n of [
+      "Copy Machine",
+      "Large Rock",
+      "Table",
+      "Campfire",
+      "Piano",
+      "Knight Statue",
+      "Universal Bank",
+      "Painting#12",
+      "Experience Platform",
+    ]) {
+      expect(fixedInPlace(n, true)).toBe(true);
+    }
+    expect(fixedInPlace("Table", false)).toBe(false);
+    expect(fixedInPlace("Apple", true)).toBe(false);
+    expect(fixedInPlace("15 Gold", true)).toBe(false);
   });
 });
 
@@ -497,13 +537,19 @@ describe("paperdoll", () => {
       ),
     ).toEqual(["BIM", "Chain Armor-F1-E", "Plate Helm-F1-E"]);
   });
-  test("kept bug: boots are never drawn; gloves come from the Ring slot", () => {
+  test("bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot", () => {
     const layers = paperdollLayers(
-      { head: 1, equip: gear({ feet: "Chain Boots", ring: "Gauntlets" }) },
+      { head: 1, equip: gear({ feet: "Chain Boots+1", ring: "Gauntlets" }) },
       "F1",
       "S",
     );
-    expect(layers).toEqual(["BIM", "DEFBOD-F1-S", "Gauntlets-F1-S", "Head1-F1-S"]);
+    expect(layers).toEqual([
+      "BIM",
+      "DEFBOD-F1-S",
+      "Chain Boots-F1-S",
+      "Gauntlets-F1-S",
+      "Head1-F1-S",
+    ]);
     expect(
       paperdollLayers({ head: 1, equip: gear({ ring: "Ruby Ring" }) }, "F1", "S"),
     ).toHaveLength(3);

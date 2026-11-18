@@ -11,7 +11,7 @@ describe("amounts are validated positive integers", () => {
     for (const bad of [0, -1, 1.5, Number.NaN]) {
       expect(ok({ t: "buy", line: 4, count: bad })).toBe(false);
       expect(ok({ t: "sell", line: 4, count: bad })).toBe(false);
-      expect(ok({ t: "crystals", slot: 1, n: bad })).toBe(false);
+      expect(ok({ t: "crystals", slot: 1, n: bad, mode: "drop" })).toBe(false);
       expect(ok({ t: "gold", n: bad })).toBe(false);
       expect(ok({ t: "tradeOffer", gold: 0, items: [{ slot: 1, qty: bad }] })).toBe(false);
     }
@@ -19,7 +19,8 @@ describe("amounts are validated positive integers", () => {
     expect(ok({ t: "tradeOffer", gold: -1, items: [] })).toBe(false);
     expect(ok({ t: "buy", line: 4, count: 1 })).toBe(true);
     expect(ok({ t: "sell", line: 4, count: 3 })).toBe(true);
-    expect(ok({ t: "crystals", slot: 1, n: 1 })).toBe(true);
+    expect(ok({ t: "crystals", slot: 1, n: 1, mode: "give" })).toBe(true);
+    expect(ok({ t: "crystals", slot: 1, n: 1 })).toBe(false); // the button is required
     expect(ok({ t: "gold", n: 9999 })).toBe(true);
     expect(ok({ t: "tradeOffer", gold: 0, items: [{ slot: 1, qty: 1 }] })).toBe(true);
   });

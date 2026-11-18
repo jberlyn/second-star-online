@@ -15,7 +15,9 @@ import {
 import { pollAttack, setAttackHeld } from "../src/systems/combat/melee.ts";
 import {
   actionIntent,
+  crystalsIntent,
   dropIntent,
+  goldIntent,
   type ItemCtx,
   pickupIntent,
   useIntent,
@@ -366,32 +368,40 @@ describe("what an Airship cannot do", () => {
     expect(s.ann.spell.body).toBe(57);
     expect(s.room.fxQueue.length + s.room.fx.length).toBeGreaterThan(0);
   });
-  test("kept bug: aboard an airship items are refused 'from the sky' but gold and crystals still drop", () => {
+  test("bug fixed: aboard an airship items, gold and crystals are all refused 'from the sky'", () => {
     const s = aboard();
     give(s.ann, 2, "Apple", 1);
     expect(chat(dropIntent(s.ctx(), s.room, s.ann, 2), "Ann")).toEqual([VEHICLE_TEXT.sky]);
     expect(s.ann.char.bag[1]?.item).toBe("Apple");
     give(s.ann, 3, "Blue Crystals", 5);
-    // Crystals and gold go by their dialogs, which have no vehicle test.
-    expect(dropIntent(s.ctx(), s.room, s.ann, 3)).toEqual([]);
+    s.ann.char.gold = 50;
+    s.ann.facing = "E";
+    expect(chat(crystalsIntent(s.ctx(), s.room, s.ann, 3, 2, "drop"), "Ann")).toEqual([
+      VEHICLE_TEXT.sky,
+    ]);
+    expect(chat(goldIntent(s.ctx(), s.room, s.ann, 10), "Ann")).toEqual([VEHICLE_TEXT.sky]);
+    expect(s.ann.char.bag[2]).toEqual({ item: "Blue Crystals", qty: 5 });
+    expect(s.ann.char.gold).toBe(50);
+    expect(s.map.ground.some((g) => /Gold|Crystals/.test(g.item))).toBe(false);
   });
-  test("kept bug: Ctrl aboard an airship only ever unboards; a click still picks up", () => {
+  test("bug fixed: Ctrl aboard an airship takes what is in front, and unboards when nothing is", () => {
     const s = aboard();
-    s.ann.facing = "S";
-    s.map.ground.push({ id: "ap", item: "Apple", x: 6, y: 6, kind: "drop", expiresAt: null });
-    s.map.ground.push({ id: "pg", item: "Pig", x: 6, y: 6, kind: "drop", expiresAt: null });
-    // The pad under us is the airship's own tile and the pad (6,5) holds nothing else: it parks.
-    // Move to a non-pad first to see the refusal.
+    // Off a pad, facing an Apple: Ctrl takes it, as on foot.
     s.ann.x = 7;
     s.ann.y = 5;
     s.ann.facing = "S";
     s.map.ground.push({ id: "ap2", item: "Apple", x: 7, y: 6, kind: "drop", expiresAt: null });
-    expect(chat(actionIntent(s.ctx(), s.room, s.ann), "Ann")).toEqual([VEHICLE_TEXT.cannotGetOff]);
-    expect(s.ann.char.bag.some((l) => l?.item === "Apple")).toBe(false);
-    s.clear(s.ann);
-    const out = pickupIntent(s.ctx(), s.room, s.ann, "ap2");
+    expect(chat(actionIntent(s.ctx(), s.room, s.ann), "Ann")).toEqual([]);
     expect(s.ann.char.bag.some((l) => l?.item === "Apple")).toBe(true);
-    expect(out).toBeDefined();
+    expect(s.ann.vehicle).not.toBeNull();
+    // Nothing in front: Ctrl tries to unboard, refused off a pad.
+    s.clear(s.ann);
+    expect(chat(actionIntent(s.ctx(), s.room, s.ann), "Ann")).toEqual([VEHICLE_TEXT.cannotGetOff]);
+    // A click still picks up too.
+    s.clear(s.ann);
+    s.map.ground.push({ id: "ap3", item: "Apple", x: 7, y: 6, kind: "drop", expiresAt: null });
+    pickupIntent(s.ctx(), s.room, s.ann, "ap3");
+    expect(s.ann.char.bag.find((l) => l?.item === "Apple")?.qty).toBe(2);
   });
   test("the bio reads the vehicle, so the Robe's disguise is skipped aboard", () => {
     const s = aboard();

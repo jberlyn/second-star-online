@@ -33,7 +33,6 @@ import {
   type Model,
   onDeath,
   onRespawnDrawn,
-  predictAmountPath,
   pressAction,
 } from "./model.ts";
 import { type Connection, connect } from "./net.ts";
@@ -301,7 +300,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       }
     },
   };
-  const amount = createAmountDialog(assets);
+  // The amount dialog's OK clicks on every press.
+  const amount = createAmountDialog(assets, () => sound(SOUND.click));
   const panel = createPanel(assets, {
     use: (slot) => send({ t: "use", slot }),
     // The Use button exits silently while the compose pane is up.
@@ -312,23 +312,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     craft: (slot) => send({ t: "craft", slot }),
     storage: (slot) => send({ t: "storage", slot }),
     unequip: (slot) => send({ t: "unequip", slot }),
-    // OK clicks only on the drop path, a refused drop included (kept bug: gold and crystal OK
-    // click only when dropping, as in 1.6).
-    crystals: (slot, colour) =>
-      amount.open(crystalTitle(colour), null, (n) => {
-        const qty = model.inv?.bag[slot - 1]?.qty ?? 0;
-        if (predictAmountPath(model, false, qty >= n) === "drop") {
-          sound(SOUND.click);
-        }
-        send({ t: "crystals", slot, n });
-      }),
-    gold: () =>
-      amount.open(GOLD_TITLE, "0", (n) => {
-        if (predictAmountPath(model, true, (model.inv?.gold ?? 0) >= n) === "drop") {
-          sound(SOUND.click);
-        }
-        send({ t: "gold", n });
-      }),
+    crystals: (slot, colour, mode) =>
+      amount.open(crystalTitle(colour, mode), null, (n) => send({ t: "crystals", slot, n, mode })),
+    gold: () => amount.open(GOLD_TITLE, "0", (n) => send({ t: "gold", n })),
     sound,
     // An open vault or container holds the keys, but the bag still takes clicks so Drop can
     // store an item in it.

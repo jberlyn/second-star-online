@@ -175,20 +175,22 @@ describe("pig drop", () => {
     expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
   });
 
-  test("pig drop: faced tile off the map at the side or bottom → silent, the pig kept", () => {
+  test('bug fixed: a faced tile off the map at the side, bottom or top → "You can\'t drop an animal here!", the pig kept', () => {
     const s = scene();
-    give(s.a, 1, "Pig", 3);
-    s.a.x = 17;
-    s.a.facing = "E";
-    expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([]);
-    s.a.x = 1;
-    s.a.facing = "W";
-    expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([]);
-    s.a.x = 5;
-    s.a.y = 12;
-    s.a.facing = "S";
-    expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([]);
-    expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 3 });
+    give(s.a, 1, "Pig", 4);
+    const tries: [number, number, "N" | "E" | "S" | "W"][] = [
+      [17, 5, "E"],
+      [1, 5, "W"],
+      [5, 12, "S"],
+      [5, 1, "N"],
+    ];
+    for (const [x, y, facing] of tries) {
+      s.a.x = x;
+      s.a.y = y;
+      s.a.facing = facing;
+      expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([PIG_TEXT.blocked]);
+    }
+    expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 4 });
     expect(livePigs(s.map)).toHaveLength(0);
   });
 
@@ -213,52 +215,31 @@ describe("pig drop", () => {
     expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
   });
 
-  test("kept bug: a dropped pig is lost on an NPC-blocked tile", () => {
+  test("bug fixed: a pig is refused from an Airship and kept", () => {
     const s = scene();
-    // Aboard an Airship the blocked-tiles list is the airship's, so water passes the first
-    // test but fails the on-foot NPCBlockedTiles test inside the summon.
     s.map.walk[4]![5] = false;
     s.map.walkAir[4]![5] = true;
     s.a.vehicle = "Airship";
     give(s.a, 1, "Pig");
-    const out = dropIntent(s.ctx(), s.room, s.a, 1);
-    expect(s.a.char.bag[0]).toBeNull();
+    expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([VEHICLE_TEXT.sky]);
+    expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
     expect(livePigs(s.map)).toHaveLength(0);
-    expect(chat(out, "A")).toEqual([]);
-    expect(events(out, "A")).toEqual([]);
   });
 
-  test("kept bug: a dropped pig is lost facing north on row 1", () => {
-    const s = scene();
-    s.a.y = 1;
-    s.a.facing = "N";
-    give(s.a, 1, "Pig");
-    const out = dropIntent(s.ctx(), s.room, s.a, 1);
-    expect(s.a.char.bag[0]).toBeNull();
-    expect(livePigs(s.map)).toHaveLength(0);
-    expect(chat(out, "A")).toEqual([]);
-  });
-
-  test("kept bug: a pig drops during the item pause and mid-step", () => {
+  test("bug fixed: a pig waits out the item pause and the step like any other item", () => {
     const s = scene();
     give(s.a, 1, "Pig", 2);
     s.a.itemPause = 400;
+    expect(dropIntent(s.ctx(), s.room, s.a, 1)).toEqual([]);
+    s.a.itemPause = 0;
     s.a.stepFrames = 7;
+    expect(dropIntent(s.ctx(), s.room, s.a, 1)).toEqual([]);
+    expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 2 });
+    expect(livePigs(s.map)).toHaveLength(0);
+    s.a.stepFrames = 0;
     dropIntent(s.ctx(), s.room, s.a, 1);
     expect(s.a.char.bag[0]).toEqual({ item: "Pig", qty: 1 });
     expect(livePigs(s.map)).toHaveLength(1);
-  });
-
-  test("kept bug: a pig drops from an Airship onto a pad-free land tile", () => {
-    const s = scene();
-    s.a.vehicle = "Airship";
-    give(s.a, 1, "Pig");
-    // Any other item is refused from the sky; a Pig is not.
-    give(s.a, 2, "Apple");
-    expect(chat(dropIntent(s.ctx(), s.room, s.a, 2), "A")).toEqual([VEHICLE_TEXT.sky]);
-    dropIntent(s.ctx(), s.room, s.a, 1);
-    expect(livePigs(s.map)).toHaveLength(1);
-    expect(s.a.char.bag[0]).toBeNull();
   });
 
   test("pig drop: allowed on a no-fight map, no Sorcery test", () => {

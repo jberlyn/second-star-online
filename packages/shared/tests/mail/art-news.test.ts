@@ -28,6 +28,9 @@ import {
   useDeferred,
 } from "../../src/index.ts";
 
+/** Ctrl by a player of middling Strength away from their own premises. */
+const STRANGER = { str: 50, mine: false };
+
 /** A random source returning the numbers in `seq` in turn. */
 const seq = (...v: number[]) => {
   let i = 0;
@@ -38,29 +41,30 @@ const tool = (n: PaintTool) => n;
 
 describe("gate routing", () => {
   test("click: 's Newspaper before Painting before door/exit", () => {
-    expect(clickGate("Alice's Newspaper", 10)).toEqual({ kind: "newspaper" });
-    expect(clickGate("Painting#12", 10)).toEqual({ kind: "view" });
-    expect(clickGate("Photo#12", 10)).toEqual({ kind: "view" });
-    expect(clickGate("Doorman's Newspaper", 10)).toEqual({ kind: "newspaper" });
-    expect(clickGate("front door", 10)).toEqual({ kind: "silent" });
+    expect(clickGate("Alice's Newspaper")).toEqual({ kind: "newspaper" });
+    expect(clickGate("Painting#12")).toEqual({ kind: "view" });
+    expect(clickGate("Photo#12")).toEqual({ kind: "view" });
+    expect(clickGate("Doorman's Newspaper")).toEqual({ kind: "newspaper" });
+    expect(clickGate("front door")).toEqual({ kind: "silent" });
   });
   test("click: names are cut at # first", () => {
     // Item 1 of "Photo#12" is "Photo"; a `#` tail never makes a name a painting.
-    expect(clickGate("Photo#12", 10)).toEqual({ kind: "view" });
-    expect(clickGate("Bag#Painting", 10)).not.toEqual({ kind: "view" });
-    expect(clickGate("Bag#Alice's Newspaper", 10)).not.toEqual({ kind: "newspaper" });
+    expect(clickGate("Photo#12")).toEqual({ kind: "view" });
+    expect(clickGate("Bag#Painting")).not.toEqual({ kind: "view" });
+    expect(clickGate("Bag#Alice's Newspaper")).not.toEqual({ kind: "newspaper" });
   });
-  test("Ctrl: Doorman's Newspaper is silent, door/exit first", () => {
-    expect(ctrlGate("Doorman's Newspaper")).toEqual({ kind: "silent" });
-    expect(ctrlGate("Alexit's Newspaper")).toEqual({ kind: "silent" });
-    expect(ctrlGate("Alice's Newspaper")).toEqual({ kind: "newspaper" });
+  test("bug fixed: Ctrl reads Doorman's Newspaper; the newspaper test comes before door/exit", () => {
+    expect(ctrlGate("Doorman's Newspaper", STRANGER)).toEqual({ kind: "newspaper" });
+    expect(ctrlGate("Alexit's Newspaper", STRANGER)).toEqual({ kind: "newspaper" });
+    expect(ctrlGate("Alice's Newspaper", STRANGER)).toEqual({ kind: "newspaper" });
+    expect(ctrlGate("front door", STRANGER)).toEqual({ kind: "silent" });
   });
-  test("Ctrl: the newspaper comes after Universal Mail", () => {
-    expect(ctrlGate("Universal Mail's Newspaper")).toEqual({ kind: "mail", universal: true });
+  test("Ctrl: a newspaper stand is read before every other name test", () => {
+    expect(ctrlGate("Universal Mail's Newspaper", STRANGER)).toEqual({ kind: "newspaper" });
   });
   test("Ctrl still takes a painting and a photo (the Ctrl handler has no Painting branch)", () => {
-    expect(ctrlGate("Painting#12")).toEqual({ kind: "take" });
-    expect(ctrlGate("Photo#12")).toEqual({ kind: "take" });
+    expect(ctrlGate("Painting#12", STRANGER)).toEqual({ kind: "take" });
+    expect(ctrlGate("Photo#12", STRANGER)).toEqual({ kind: "take" });
   });
   test("Film, Canvas, Painting and Photo leave the deferred list", () => {
     for (const n of ["Film", "Canvas", "Painting#1", "Photo#1"]) {
@@ -68,10 +72,9 @@ describe("gate routing", () => {
     }
     expect(useDeferred("Piano")).toBe(false); // Use on a Piano has its line
   });
-  test("kept bug: music is silent: the Ocarina's use does nothing", () => {
-    // The music reset is empty and nothing else runs, so the server answers nothing at all.
-    expect(useDeferred("Ocarina")).toBe(true);
-    expect(useDeferred("ocarina")).toBe(true);
+  test("bug fixed: the Ocarina is not a silent item; the server plays it", () => {
+    expect(useDeferred("Ocarina")).toBe(false);
+    expect(useDeferred("ocarina")).toBe(false);
   });
 });
 

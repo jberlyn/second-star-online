@@ -29,7 +29,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [crafting](#crafting) | 8 |
 | [economy](#economy) | 49 |
 | [housing](#housing) | 27 |
-| [inventory](#inventory) | 13 |
+| [inventory](#inventory) | 43 |
 | [mail](#mail) | 11 |
 | [monsters](#monsters) | 4 |
 | [movement](#movement) | 4 |
@@ -38,7 +38,7 @@ An entry uses this shape; `Pinned by` is optional:
 | [spells](#spells) | 10 |
 | [vehicles](#vehicles) | 3 |
 | [world](#world) | 8 |
-| **Total** | **294** |
+| **Total** | **324** |
 
 ## admin
 
@@ -2354,12 +2354,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 ### Your own stations are always yours
 - **Kind:** Bug fixed
-- **What you notice:** Clicking your own Stove, Anvil or Alchemy Lab picks it up, even after a station elsewhere showed its line.
+- **What you notice:** Ctrl carries off your own Stove, Anvil or Alchemy Lab, even after a station elsewhere showed its line. A click shows the station's line wherever it stands (see "A click uses a station or casino table; Ctrl carries off your own").
 - **1.6:** A click set the "don't pick this up" flag but never cleared it; only Drop reset it.
-- **SSO:** The flag is worked out from the room you are in on every click.
+- **SSO:** Whether you are on your own premises is worked out from the room you are in on every Ctrl.
 - **Why:** Whether a station is yours depends on where it stands, not on what you clicked before.
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`), `packages/server/src/systems/inventory/items.ts` (`pickupIntent`)
-- **Pinned by:** `a room whose header names you is 0; anywhere else is 1` (packages/shared/tests/housing/houses.test.ts); `bug fixed: your own Anvil is picked up even after a refusal elsewhere` (packages/server/tests/houses-db.test.ts)
+- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`), `packages/server/src/systems/inventory/items.ts` (`actionIntent`)
+- **Pinned by:** `a room whose header names you is 0; anywhere else is 1` (packages/shared/tests/housing/houses.test.ts); `bug fixed: a click on your own Anvil shows its line; Ctrl carries it off, even after a refusal elsewhere` (packages/server/tests/houses-db.test.ts)
 
 ### Coloured keys are spent only when they open
 - **Kind:** Bug fixed
@@ -2521,6 +2521,276 @@ An entry uses this shape; `Pinned by` is optional:
 - **SSO:** Loot and gathering drops, including logs, crystals, chunks, fish, produce and treasure, expire after an operator-set time. Player drops and admin placements never expire.
 - **Why:** Without the ground-item cap, generated loot would accumulate without bound. Gathering also creates items from nothing, and the original fishing allowance can be refreshed indefinitely by attempting to walk. Player drops remain because players used house floors for storage.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`decayLoot`), `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
+
+### Nothing is dropped from an airship
+- **Kind:** Bug fixed
+- **What you notice:** Aboard an airship, dropping gold, crystals or a Pig is refused with the same "from the sky" line as any other item. Giving to a player in front still works.
+- **1.6:** The sky test sat after the gold and crystal handling and after the Pig, so those three still fell from the airship.
+- **SSO:** The gold and crystal dialogs' drop path and the Pig drop make the same vehicle test as Drop.
+- **Why:** The rule is that nothing leaves the bag in the sky; the test was simply in the wrong place.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`, `crystalsIntent`, `goldIntent`)
+- **Pinned by:** `bug fixed: aboard an airship items, gold and crystals are all refused 'from the sky'` (packages/server/tests/vehicles.test.ts); `bug fixed: a pig is refused from an Airship and kept` (packages/server/tests/pigs-orbs-webs.test.ts)
+
+### Ctrl aboard an airship takes what is in front
+- **Kind:** Bug fixed
+- **What you notice:** Riding an airship, Ctrl picks up or uses the item or Pig in front of you, as on foot. With nothing in front, Ctrl unboards.
+- **1.6:** Ctrl tested for the airship before anything else and only ever tried to unboard; only a mouse click could pick anything up.
+- **SSO:** Ctrl unboards only when the faced tile holds no item and no monster.
+- **Why:** The key did one thing aboard and another on foot for no reason a player could see.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/systems/vehicles/airship.ts` (`unboardAirship`)
+- **Pinned by:** `bug fixed: Ctrl aboard an airship takes what is in front, and unboards when nothing is` (packages/server/tests/vehicles.test.ts)
+
+### The Experience Platform names the level it checks
+- **Kind:** Bug fixed
+- **What you notice:** A click or Ctrl on the Experience Platform says "You must be level 21 or higher to pass this platform.", which is what lets you through.
+- **1.6:** The text said you must be over 30 hit points, but the gate checked level 21.
+- **SSO:** The gate is unchanged and both texts (`clickFixtures` in `houses.json`, `pickup.ctrlTexts` in `item-rules.json`) name the level.
+- **Why:** The text sent players after the wrong goal.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`blocksPlayer`, `clickGate`, `ctrlGate`)
+- **Pinned by:** `bug fixed: the Experience Platform names the level it checks (21 passes)` (packages/shared/tests/inventory/inventory.test.ts)
+
+### Ctrl waits while a window holds the keys
+- **Kind:** Bug fixed
+- **What you notice:** With a window open that holds your keys, such as your mailbox, Ctrl does nothing, so it no longer reopens the open mailbox. Once the window closes, Ctrl works again.
+- **1.6:** Ctrl waited only for the item pause and the map load, not the key lock, so it read, opened or picked up behind an open window.
+- **SSO:** Ctrl waits on the same key lock as Use, Equip, Drop and the click. The client does not start Ctrl's pause while the keys are held.
+- **Why:** The key lock is there to stop actions behind a window; Ctrl slipped past it.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`paused`, `actionIntent`), `packages/client/src/model.ts` (`pressAction`)
+- **Pinned by:** `bug fixed: Ctrl does nothing while a window holds the key lock or the map loads`; `bug fixed: Ctrl does not reopen an open mailbox; it opens again once closed` (packages/server/tests/mail-boards.test.ts)
+
+### A stuffed player keeps the food
+- **Kind:** Bug fixed
+- **What you notice:** At or above the hunger limit, using food or a potion says only "You're stuffed!" and the item stays in your bag. The bite that fills you up says just its eat line.
+- **1.6:** Eating while stuffed gave nothing and still used the item up. "You're stuffed!" also followed the bite that crossed the limit.
+- **SSO:** Hunger at or above 35000 refuses the use before any effect; "You're stuffed!" is that refusal's line. A new character starts stuffed, so they eat once their hunger has dropped.
+- **Why:** Losing food for nothing was a trap, and the line on the filling bite read as a refusal.
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`, `STUFFED`)
+- **Pinned by:** `bug fixed: a stuffed player is refused and keeps the food`; `bug fixed: the bite that fills you only says the eat line; "You're stuffed!" is the refusal` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: a stuffed player is refused and keeps the food` (packages/server/tests/inventory.test.ts)
+
+### Purple Potion says its line once and waits for hunger
+- **Kind:** Bug fixed
+- **What you notice:** Drinking a Purple Potion prints "The power of argon flows through your body." once. A stuffed player is refused it like any other potion.
+- **1.6:** The line was added twice, and the attack boost sat outside the hunger guard, so it worked when stuffed.
+- **SSO:** The line is added once, and the boost goes through the same stuffed refusal.
+- **Why:** The doubled line was a slip, and one potion ignoring the hunger rule was inconsistent.
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`)
+- **Pinned by:** `bug fixed: Purple Potion says its line once and is refused when stuffed` (packages/shared/tests/inventory/inventory.test.ts)
+
+### Holy Water and newspapers stop monsters
+- **Kind:** Bug fixed
+- **What you notice:** A monster cannot walk onto a tile holding Holy Water or a newspaper stand, as a player cannot.
+- **1.6:** The monsters' blocking list left out those two rows that the players' list had.
+- **SSO:** Players and monsters share one list (`ground.blocks` in `item-rules.json`).
+- **Why:** The two lists were meant to match; the missing rows were an omission.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`blocksMonster`)
+- **Pinned by:** `bug fixed: Holy Water and newspapers stop monsters as they stop players` (packages/shared/tests/inventory/inventory.test.ts); `a blocking item on the anchor tile aborts a monster's path` (packages/server/tests/inventory.test.ts)
+
+### A refused Pig stays in the bag
+- **Kind:** Bug fixed
+- **What you notice:** Dropping a Pig where it cannot stand, including off any edge of the map, says "You can't drop an animal here!" and the Pig stays in your bag.
+- **1.6:** The Pig left the bag before the summon checked the tile, so a pig dropped on a tile monsters cannot stand on, or north from the top row, was silently lost. Off the other edges the drop did nothing and said nothing.
+- **SSO:** Every test the summon makes runs before the Pig leaves the bag, and each refusal says the blocked line.
+- **Why:** Losing a pig without a word was never meant.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`pigDrop`), `packages/server/src/systems/spells/cast.ts` (`summonPig`)
+- **Pinned by:** `bug fixed: a faced tile off the map at the side, bottom or top → "You can't drop an animal here!", the pig kept` (packages/server/tests/pigs-orbs-webs.test.ts)
+
+### A Pig drops only when other items can
+- **Kind:** Bug fixed
+- **What you notice:** During the short pause after using an item, or mid-step, a Pig is refused like every other item.
+- **1.6:** The Pig test came before the pause, vehicle and mid-step tests, so a Pig dropped when nothing else could.
+- **SSO:** The Pig test comes after them.
+- **Why:** The order was an accident and let pigs skip the rules every item follows.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`, `pigDrop`)
+- **Pinned by:** `bug fixed: a pig waits out the item pause and the step like any other item` (packages/server/tests/pigs-orbs-webs.test.ts)
+
+### Only the Bo is wielded as a Bo
+- **Kind:** Bug fixed
+- **What you notice:** Books and the Boat Deed can no longer be equipped. The Bo still goes in the left hand.
+- **1.6:** The left-hand rule for the Bo matched any name containing "Bo", so every book and the Boat Deed could be wielded, and a book hit like a bow.
+- **SSO:** The rule matches the name "Bo" exactly (`equip.slots` in `item-rules.json`). Bows and boots have their own rules and are unchanged.
+- **Why:** The rule was written for one weapon.
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`)
+- **Pinned by:** `bug fixed: only the Bo itself matches "Bo"; books and the Boat Deed cannot be equipped` (packages/shared/tests/inventory/inventory.test.ts)
+
+### A Catfish Sandwich cannot be equipped
+- **Kind:** Bug fixed
+- **What you notice:** A Catfish Sandwich can no longer be wielded in the right hand. Alchemy sands still can.
+- **1.6:** The right-hand rule meant for sand matched any name containing " Sand", including "Catfish Sandwich".
+- **SSO:** A later rule makes the Catfish Sandwich "No" (`equip.slots` in `item-rules.json`).
+- **Why:** Food is not held in the hand.
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`)
+- **Pinned by:** `bug fixed: a Catfish Sandwich cannot be equipped; alchemy sand still goes in the right hand` (packages/shared/tests/inventory/inventory.test.ts)
+
+### The Dragon Sword can be wielded
+- **Kind:** Bug fixed
+- **What you notice:** A Dragon Sword goes in the left hand with Strength 26, hits for 12 plus up to 8, and is drawn with the Fire Sword's art.
+- **1.6:** No rule gave the Dragon Sword a slot, attack power or picture, so Equip refused it.
+- **SSO:** `item-rules.json` gives it a slot, a strength requirement and a paperdoll alias, and `attpower.json` an attack row, between the Star Sword and the Pharaoh Sword. The Dragon Sword still only appears if an operator hands one out.
+- **Why:** An item that exists should be usable for what it is.
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`, `strengthRequirement`)
+- **Pinned by:** `bug fixed: the Dragon Sword is wielded in the left hand` (packages/shared/tests/inventory/inventory.test.ts)
+
+### "You cannot equip the …" ends with a full stop
+- **Kind:** Bug fixed
+- **What you notice:** The line for an item that cannot be equipped ends with a full stop.
+- **1.6:** The line was built with nothing after the item's name.
+- **SSO:** The line ends with ".".
+- **Why:** Every other line of its kind has one.
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`EQUIP_TEXT`)
+- **Pinned by:** `bug fixed: "You cannot equip the ..." ends with a full stop` (packages/shared/tests/inventory/inventory.test.ts)
+
+### Equipping into a full slot swaps
+- **Kind:** Bug fixed
+- **What you notice:** Equipping an item into a slot that already holds something swaps them: the worn item goes back into your bag. If the bag has no room for it, you read "You are carrying too much to swap this for what you're wearing!" and nothing changes.
+- **1.6:** The server refused with "You have to remove the current item you're wearing to equip this!", so every change of gear took two steps.
+- **SSO:** The worn item needs a stack, an empty line, or the line the new item leaves.
+- **Why:** The two-step change was friction with no purpose.
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`checkEquip`), `packages/server/src/systems/inventory/items.ts` (`equipIntent`)
+- **Pinned by:** `bug fixed: an occupied slot is no refusal (the server swaps)` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: equipping into a full slot swaps, the worn item back in the bag`; `bug fixed: a swap needs room for the worn item; a full bag refuses and changes nothing` (packages/server/tests/inventory.test.ts)
+
+### No key is on the usable list
+- **Kind:** Bug fixed
+- **What you notice:** Nothing changes in play: a key is used only on a door.
+- **1.6:** The five coloured keys were on the usable list, as if they could be eaten like food, but Use sent every key to the door handler first, so those rows were dead.
+- **SSO:** The keys are off the usable list (`use.usable` in `item-rules.json`), so the data says what the game does.
+- **Why:** A modder reading the list would expect keys to be consumed.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`useIntent`), `packages/server/src/systems/housing/doors.ts` (`useKey`)
+- **Pinned by:** `bug fixed: no key is on the usable list; Use sends a key to the door rule only` (packages/server/tests/doors.test.ts)
+
+### A full bag takes an item it can stack
+- **Kind:** Bug fixed
+- **What you notice:** With all 15 bag lines used, a click on a ground item you already carry picks it up onto that stack, as Ctrl does. Receiving a give works the same way.
+- **1.6:** The click's bag test overwrote its stack test, so a full bag always looked full to a click and to a give; Ctrl tested correctly.
+- **SSO:** Click, Ctrl and a received give share one bag test.
+- **Why:** Ctrl and the click disagreed about the same bag.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`bagFull`, `pickupIntent`, `receiveGive`)
+- **Pinned by:** `bug fixed: a full bag takes a clicked item it holds a stack of, as Ctrl does` (packages/server/tests/inventory.test.ts)
+
+### Picking up takes one item
+- **Kind:** Bug fixed
+- **What you notice:** When identical items lie on one tile, picking one up leaves the others there.
+- **1.6:** Pickup cleared every entry with the same name on the tile and granted one, so the rest vanished.
+- **SSO:** Pickup removes only the entry taken.
+- **Why:** The others were destroyed for nothing.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`grab`)
+- **Pinned by:** `bug fixed: picking up takes the one entry and leaves its twins on the tile` (packages/server/tests/inventory.test.ts)
+
+### Items share a tile
+- **Kind:** Bug fixed
+- **What you notice:** You can drop an item, gold or crystals onto a tile that already holds ordinary items, up to 10. A tile holding something that stands in the way, such as a Table or a fixture, or one already holding 10 items, is "too crowded". Dropping onto a chest, crate or vault still stores the item in it.
+- **1.6:** A player's drop was refused on any tile holding any item, though loot and gathered items landed on occupied tiles.
+- **SSO:** A player's drop is refused only on a tile with a blocking item (`ground.blocks`) or 10 items.
+- **Why:** Loot already shared tiles; refusing only the player was inconsistent. The cap keeps a tile from becoming a dump.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`tileCrowded`, `TILE_ITEM_CAP`, `dropIntent`, `crystalsIntent`, `goldIntent`)
+- **Pinned by:** `bug fixed: items share a tile; a fixture or a full tile is too crowded` (packages/server/tests/inventory.test.ts)
+
+### A click opens a crate or cabinet; Ctrl carries it
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a Crate, Cabinet or Wind Cabinet opens it, like a chest. Ctrl picks it up, keeping its contents, if your Strength is 15 for a crate or 19 for a cabinet; otherwise you read "You're not strong enough to pick this up!".
+- **1.6:** The click fell through to pickup and never reached the chest-opening code, and Ctrl opened it before its Strength tests, which could never be reached.
+- **SSO:** The click opens; Ctrl's Strength tests decide the pickup.
+- **Why:** Both paths existed; each was reaching the other's half.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`clickGate`, `ctrlGate`)
+- **Pinned by:** `bug fixed: a click opens a crate or cabinet; Ctrl picks it up with Strength 15 or 19` (packages/shared/tests/housing/doors.test.ts); `bug fixed: a click opens a Crate on the floor; Ctrl picks it up with its id and contents` (packages/server/tests/doors.test.ts)
+
+### A click uses a station or casino table; Ctrl carries off your own
+- **Kind:** Bug fixed
+- **What you notice:** Clicking a Stove, Anvil, Alchemy Lab, Slot Machine, Blackjack Table or Checkers Table always shows its line or plays its game, in your own house too. Ctrl picks one up on your own premises (your house or your guild's hall) and uses it anywhere else.
+- **1.6:** In your own house the click picked a station or table up and Ctrl played it; elsewhere Ctrl took a station from anyone's house or the town.
+- **SSO:** The click always uses; Ctrl takes only where the room's header names you or your guild. A painting follows the same rule: a click views it and Ctrl takes it.
+- **Why:** The same click did opposite things by location, and Ctrl could carry off stations that were not yours.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`clickGate`, `ctrlGate`), `packages/server/src/systems/inventory/items.ts` (`actionIntent`)
+- **Pinned by:** `bug fixed: a click plays a casino game anywhere; Ctrl carries one off only from your own premises` (packages/shared/tests/casino/casino.test.ts); `bug fixed: a click on an Anvil, Stove or Alchemy Lab shows its line anywhere; Ctrl takes yours` (packages/shared/tests/housing/houses.test.ts); `a click views a painting and Ctrl takes it, as a click uses and Ctrl carries` (packages/shared/tests/inventory/inventory.test.ts)
+
+### World fixtures are fixed in place
+- **Kind:** Bug fixed
+- **What you notice:** A fixture the world placed, such as a Copy Machine, Large Rock, Table, Campfire, Piano, statue, "Universal" fixture, painting or platform, cannot be picked up by a click or Ctrl: you read "This is fixed in place; you can't pick it up.". A Table you crafted and dropped can still be carried off. A click on a Piano now says "This is a piano." as Ctrl does.
+- **1.6:** Neither pickup path excluded those fixtures, so players could carry off the town's furniture; a click also took the Piano.
+- **SSO:** An item placed by the world editor or an immortal's `/drop` that is on the blocking list (`ground.blocks`) or is a platform is fixed in place.
+- **Why:** Players could strip shared scenery from the world.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`fixedInPlace`, `clickGate`), `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `actionIntent`)
+- **Pinned by:** `bug fixed: a fixture the world placed is fixed in place; a player's own is not` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: a fixture the world placed is not picked up by a click or Ctrl; a player's is` (packages/server/tests/inventory.test.ts)
+
+### Boots are drawn on your character
+- **Kind:** Bug fixed
+- **What you notice:** Leather, Chain, Plate and Gold Boots show on your character's feet, for you and for everyone who sees you.
+- **1.6:** The character was drawn from every equipment slot except the feet, and the game had no boot art.
+- **SSO:** The paperdoll draws the Feet slot over the body. The boot layers are new art in `assets/added/paperdoll/`, made from the default body's feet in each boot's colours. Gloves are worn in the Ring slot and drawn from it, as before.
+- **Why:** Worn boots should be seen.
+- **In the code:** `packages/shared/src/rules/inventory/paperdoll.ts` (`normaliseLook`, `paperdollLayers`)
+- **Pinned by:** `bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot` (packages/shared/tests/inventory/inventory.test.ts)
+
+### Crystals are dropped or given by the button you chose
+- **Kind:** Bug fixed
+- **What you notice:** Drop on crystals asks "Drop how many …?" and drops them on the faced tile even when a player stands there; Give asks "Give how many …?" and hands them to the player in front, or says you must be standing in front of someone. Gold has one button, so it still gives to a player in front and otherwise drops.
+- **1.6:** Both buttons opened the same window, whose OK gave whenever a player was in front.
+- **SSO:** The crystal request carries the button (`mode`).
+- **Why:** Pressing Drop and having the crystals given away ignored the player's choice.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`crystalsIntent`), `packages/client/src/ui/amount.ts` (`crystalTitle`)
+- **Pinned by:** `bug fixed: Give on crystals gives them, naming the pile, to the player in front`; `bug fixed: Drop on crystals drops them even facing a player` (packages/server/tests/inventory.test.ts); `crystals keep the last amount; the saved field text is 2` (packages/client/tests/panel.test.ts)
+
+### Give lines name the gold and crystals
+- **Kind:** Bug fixed
+- **What you notice:** Giving gold reads "*** Offering the 50 gold to Bob." and Bob reads "Alice is giving you 50 Gold.". Giving crystals reads "*** Offering the 4 Red Crystals to Bob.".
+- **1.6:** The gold line named only the amount ("Offering the 50 to Bob"), the crystal line left a blank ("Offering the  to Bob"), and the receiver read "a 50 Gold".
+- **SSO:** The lines name the pile, in the wording of the NPC gold line.
+- **Why:** The lines did not say what was given.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`GIVE_TEXT`, `receiveGive`)
+- **Pinned by:** `bug fixed: give says 'Offering the 50 gold to B.'; B has it at once`; `bug fixed: a gold give says "A is giving you 50 Gold."` (packages/server/tests/inventory.test.ts)
+
+### A given painting is named without its number
+- **Kind:** Bug fixed
+- **What you notice:** When someone gives you a painting, you read "Bob is giving you a Painting.", as the giver's line names it.
+- **1.6:** The receiver's line used the stored name with its "#" number ("a Painting#12"), while the giver's line stripped it.
+- **SSO:** The receiver's line strips the number too.
+- **Why:** The number is an internal id.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`receiveGive`)
+- **Pinned by:** `bug fixed: a given painting is named without its # number` (packages/server/tests/inventory.test.ts)
+
+### The amount window's OK always clicks
+- **Kind:** Bug fixed
+- **What you notice:** OK in the gold and crystal amount window clicks every time you press it, whether you give, drop or are refused.
+- **1.6:** The click came only on the drop path, so a give, even a successful one, was silent.
+- **SSO:** The window plays the click on every OK press.
+- **Why:** A button that clicks only sometimes feels broken.
+- **In the code:** `packages/client/src/ui/amount.ts` (`createAmountDialog`)
+- **Pinned by:** `bug fixed: OK clicks on every press, give, drop or refusal alike` (packages/client/tests/sound.test.ts)
+
+### A placed clock goes round once an hour
+- **Kind:** Bug fixed
+- **What you notice:** A clock's hand points at the minute: a new face every 5 minutes, once round each hour.
+- **1.6:** The face table stepped every 3 minutes up to :35 and every 2 after, so the hand went round twice an hour, faster the second time.
+- **SSO:** The face is the minute divided by five.
+- **Why:** A clock should tell the time.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`clockFace`)
+- **Pinned by:** `bug fixed: a placed clock's hand goes round once an hour, a face every 5 minutes` (packages/shared/tests/inventory/ground.test.ts)
+
+### Ctrl on the Mage Master Platform ends the pause
+- **Kind:** Bug fixed
+- **What you notice:** Ctrl on the Mage Master Platform prints its line and frees you at once, like the other platforms.
+- **1.6:** The Mage Master branch exited without ending the 40-frame item pause the others ended.
+- **SSO:** Its `pickup.ctrlTexts` row in `item-rules.json` ends the pause.
+- **Why:** One platform out of four behaving differently was a slip.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`ctrlGate`)
+- **Pinned by:** `bug fixed: Ctrl on the Mage Master Platform says its line and ends the pause like the others` (packages/shared/tests/inventory/ground.test.ts)
+
+### The Ocarina plays a tune
+- **Kind:** Bug fixed
+- **What you notice:** Using an Ocarina says "You play a tune on your Ocarina." and plays a short tune that everyone on the map hears. The Ocarina stays in your bag.
+- **1.6:** Its use called an empty music routine, so it did nothing and said nothing; the game had no music at all.
+- **SSO:** The tune is new sound in `assets/added/sounds/ocarina.wav`. The game still has no background music.
+- **Why:** An instrument that makes no sound reads as broken.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`useIntent`, `OCARINA`), `packages/shared/src/rules/inventory/equip.ts` (`useDeferred`)
+- **Pinned by:** `bug fixed: an Ocarina plays its tune to everyone on the map, says so, and is kept` (packages/server/tests/art-news.test.ts); `bug fixed: the Ocarina is not a silent item; the server plays it` (packages/shared/tests/mail/art-news.test.ts)
+
+### Ctrl reads a newspaper whatever its owner is called
+- **Kind:** Bug fixed
+- **What you notice:** Ctrl on "Doorman's Newspaper", or any stand whose owner's name holds "door" or "exit", reads it as a click does.
+- **1.6:** Ctrl tested for a door or exit name before a newspaper, so those stands were silent.
+- **SSO:** Ctrl tests for a newspaper stand first.
+- **Why:** A player's name should not decide whether their paper can be read.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`ctrlGate`)
+- **Pinned by:** `bug fixed: Ctrl reads Doorman's Newspaper; the newspaper test comes before door/exit` (packages/shared/tests/mail/art-news.test.ts); `bug fixed: Ctrl reads 'Doorman's Newspaper' as a click does` (packages/server/tests/art-news.test.ts)
 
 ## mail
 

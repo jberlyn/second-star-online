@@ -20,7 +20,7 @@ import {
   sweep,
   terrainOk,
 } from "../../src/rules/housing/houses.ts";
-import { clickGate } from "../../src/rules/inventory/ground.ts";
+import { clickGate, ctrlGate } from "../../src/rules/inventory/ground.ts";
 
 const row = (code: string) => Array.from({ length: 17 }, () => code).join(" ");
 const layer = (code: string) => Array.from({ length: 12 }, () => row(code));
@@ -288,34 +288,37 @@ describe("HeadDrop", () => {
 });
 
 describe("the click's fixtures", () => {
-  test("a town Anvil, Stove or Alchemy Lab shows its line; in your house it is picked up", () => {
-    expect(clickGate("Anvil", 10, 1)).toEqual({
-      kind: "text",
-      text: "This is an anvil, used for blacksmithing.",
-    });
-    expect(clickGate("Stove", 10, 1)).toEqual({
+  test("bug fixed: a click on an Anvil, Stove or Alchemy Lab shows its line anywhere; Ctrl takes yours", () => {
+    const anvil = { kind: "text", text: "This is an anvil, used for blacksmithing." } as const;
+    expect(clickGate("Anvil")).toEqual(anvil);
+    expect(clickGate("Stove")).toEqual({
       kind: "text",
       text: "This is a stove, used for cooking food.",
     });
-    expect(clickGate("Alchemy Lab", 10, 0)).toEqual({ kind: "take" });
+    expect(clickGate("Alchemy Lab")).toEqual({
+      kind: "text",
+      text: "This is an alchemy lab, used for mixing potions.",
+    });
+    expect(ctrlGate("Anvil", { str: 10, mine: false })).toEqual(anvil);
+    expect(ctrlGate("Anvil", { str: 10, mine: true })).toEqual({ kind: "take" });
   });
   test("the fixed lines: Fire Pot, Wall Torch, platforms, a clock by `contains`", () => {
-    expect(clickGate("Fire Pot", 10)).toEqual({ kind: "text", text: "I bet that's hot" });
-    expect(clickGate("Wall Torch", 10)).toEqual({
+    expect(clickGate("Fire Pot")).toEqual({ kind: "text", text: "I bet that's hot" });
+    expect(clickGate("Wall Torch")).toEqual({
       kind: "text",
       text: "This is a brightly lit torch.",
     });
-    expect(clickGate("Experience Platform", 10)).toEqual({
+    expect(clickGate("Experience Platform")).toEqual({
       kind: "text",
-      text: "You must be over 30 hit points to pass this platform.",
+      text: "You must be level 21 or higher to pass this platform.",
     });
-    expect(clickGate("Grandfather Clock", 10)).toEqual({ kind: "text", text: "This is a clock." });
-    expect(clickGate("Chimney", 10)).toEqual({ kind: "silent" });
-    expect(clickGate("Street Lamp", 10)).toEqual({ kind: "text", text: "This is a street lamp." });
+    expect(clickGate("Grand Piano")).toEqual({ kind: "text", text: "This is a piano." });
+    expect(clickGate("Grandfather Clock")).toEqual({ kind: "text", text: "This is a clock." });
+    expect(clickGate("Chimney")).toEqual({ kind: "silent" });
+    expect(clickGate("Street Lamp")).toEqual({ kind: "text", text: "This is a street lamp." });
   });
-  test("the casino tables open only where the flag is set, else they are picked up", () => {
-    expect(clickGate("Slot Machine", 10, 1)).toEqual({ kind: "casino", game: "slots" });
-    expect(clickGate("Slot Machine", 10, 0)).toEqual({ kind: "take" });
+  test("the casino tables play on a click wherever they stand", () => {
+    expect(clickGate("Slot Machine")).toEqual({ kind: "casino", game: "slots" });
   });
 });
 

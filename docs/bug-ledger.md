@@ -39,7 +39,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [crafting](#crafting) | 0 |
 | [economy](#economy) | 0 |
 | [housing](#housing) | 0 |
-| [inventory](#inventory) | 33 |
+| [inventory](#inventory) | 0 |
 | [mail](#mail) | 16 |
 | [monsters](#monsters) | 21 |
 | [movement](#movement) | 7 |
@@ -49,7 +49,7 @@ The `In the code:` paths and identifiers are checked by the gate (`tests/doc-pat
 | [vehicles](#vehicles) | 0 |
 | [world](#world) | 5 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **177** |
+| **Total** | **144** |
 
 ## admin
 
@@ -85,203 +85,7 @@ No kept bugs (all twenty former entries were fixed; see [housing differences](di
 
 ## inventory
 
-### You can still drop gold and crystals from an airship
-- **What you notice:** aboard an airship, dropping most items is refused ("from the sky"), but the gold and crystal dialogs still let you drop those.
-- **In 1.6 and SSO:** the "can't drop this from the sky" test comes after the gold and crystal handling. SSO does the same: the bag Drop refuses everything else aboard, and the gold and crystal dialogs have no vehicle test.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`)
-- **Pinned by:** `kept bug: aboard an airship items are refused 'from the sky' but gold and crystals still drop` (packages/server/tests/vehicles.test.ts)
-
-### Ctrl on an airship only ever unboards
-- **What you notice:** while riding an airship, pressing Ctrl always tries to unboard and never picks anything up. Clicking an adjacent item with the mouse still picks it up.
-- **In 1.6 and SSO:** Ctrl checks for the airship before the pig grab or any item. SSO does the same.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/systems/vehicles/airship.ts` (`unboardAirship`)
-- **Pinned by:** `kept bug: Ctrl aboard an airship only ever unboards; a click still picks up` (packages/server/tests/vehicles.test.ts)
-
-### The Experience Platform says hit points but checks level
-- **What you notice:** the Experience Platform tells you that you must be over 30 hit points to pass, but what actually stops you is your level: you need to be level 21 or more.
-- **In 1.6 and SSO:** the text and the gate disagree. SSO keeps the same text and the same gate.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`blocksPlayer`, `ctrlGate`)
-- **Pinned by:** `kept bug: the Experience Platform says 30 hit points but blocks by level (21 passes)` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Ctrl still works while a window holds the keys
-- **What you notice:** with a dialog open that locks your keys, pressing Ctrl still reads or picks up the item you face. It does nothing only while the map is loading.
-- **In 1.6 and SSO:** the Ctrl check sits outside the key lock that stops other keys. SSO ignores the dialog lock for this action, but not the map-loading lock.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`)
-- **Pinned by:** `kept bug: Ctrl still works while a window holds the key lock, but not while the map loads` (packages/server/tests/mail-boards.test.ts)
-
-### Food is eaten for nothing when you are already stuffed
-- **What you notice:** eating while your hunger is at its top gives no benefit, yet the food is still used up.
-- **In 1.6 and SSO:** the hunger gain applies only below 35000, but the item is removed regardless. SSO does the same.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`)
-- **Pinned by:** `kept bug: eating while stuffed still consumes the item` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Monsters walk over Holy Water and newspapers that stop you
-- **What you notice:** a player cannot step onto a tile holding Holy Water or a newspaper, but a monster walks straight over it.
-- **In 1.6 and SSO:** the list of ground items that block monsters is missing those two, while the list for players has them. SSO keeps the two separate lists exactly as written.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`blocksMonster`, `blocksPlayer`)
-- **Pinned by:** `kept bug: monsters walk onto Holy Water and newspapers` (packages/shared/tests/inventory/inventory.test.ts); `a blocking item on the anchor tile aborts a monster's path` (packages/server/tests/inventory.test.ts)
-
-### A pig dropped on water or on the top row is lost
-- **What you notice:** you drop a Pig and nothing appears: no pig and no message, and it is gone from your bag. This happens when you drop it onto a tile monsters cannot stand on (water, when you are in an Airship), or when you face north on the top row of the map.
-- **In 1.6 and SSO:** the Pig leaves your bag first, and only then does the summon check whether the tile will do. Facing north on the top row, 1.6 summons the pig on a row above the screen, where the slot reads as free, and the pig is lost there too. SSO keeps the same order and the same silent loss; its summon refuses to place anything off the map.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`pigDrop`); `packages/server/src/systems/spells/cast.ts` (`summonPig`)
-- **Pinned by:** `kept bug: a dropped pig is lost on an NPC-blocked tile`; `kept bug: a dropped pig is lost facing north on row 1` (packages/server/tests/pigs-orbs-webs.test.ts)
-
-### A Pig can be dropped when every other item is refused
-- **What you notice:** while the short pause after using an item is running, or while you are mid-step, every item you try to drop is refused, except a Pig, which drops anyway. From an Airship you can drop a Pig over water, and it is then lost.
-- **In 1.6 and SSO:** the Pig check comes before the pause, the vehicle and the mid-step tests, and it matches the exact name "Pig". Aboard an Airship the blocked-tile list is the airship's own, which is why water is allowed. SSO does the same.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`, `pigDrop`)
-- **Pinned by:** `kept bug: a pig drops during the item pause and mid-step`; `kept bug: a pig drops from an Airship onto a pad-free land tile` (packages/server/tests/pigs-orbs-webs.test.ts)
-
-### Books and the Boat Deed are wielded in the left hand like a bow
-- **What you notice:** you can equip any book and the Boat Deed into the left hand, and a wielded book hits like a bow. A Book with "Shield" in its name goes in the right hand instead.
-- **In 1.6 and SSO:** the slot rules are an ordered list of "name contains" tests, and the one for "Bo" also catches every book, the Boat Deed and any bow without a rule of its own. The Potion Bottle also matches, but its menu offers Mix instead of Equip, so you never reach it. SSO runs the same ordered list with the same case-insensitive match, and the last matching rule wins.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`, `menuAction`)
-- **Pinned by:** `kept bug: books and Boat Deed equip LeftHand as a "Bo"` (packages/shared/tests/inventory/inventory.test.ts); `the menu swaps Equip for Cook/Mix/Build/Smith/Storage` (packages/shared/tests/inventory/inventory.test.ts)
-
-### A Catfish Sandwich equips in the right hand
-- **What you notice:** you can wield a Catfish Sandwich in your right hand.
-- **In 1.6 and SSO:** the right-hand rule meant for alchemy sand matches any name containing " Sand", and "Catfish Sandwich" contains it. SSO uses the same ordered rules.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`)
-- **Pinned by:** `kept bug: Catfish Sandwich equips RightHand` (packages/shared/tests/inventory/inventory.test.ts)
-
-### The Dragon Sword cannot be equipped
-- **What you notice:** if you ever hold a Dragon Sword, Equip gives you nothing.
-- **In 1.6 and SSO:** no slot rule matches its name, so it stays at "No" and cannot be worn. SSO has the same rules; it only matters if the Dragon Sword, which only comes from casting, is shipped.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`)
-- **Pinned by:** `kept bug: Dragon Sword cannot be equipped` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Equipping into a slot that is already full is refused
-- **What you notice:** if the slot already holds something, equipping a new item does not swap them. You read "You have to remove the current item you're wearing to equip this!" and nothing changes.
-- **In 1.6 and SSO:** the server replies with that message and writes nothing. SSO's server refuses with the same message whenever the slot is not empty.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`checkEquip`)
-- **Pinned by:** `kept bug: an occupied slot is refused, not swapped` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Eating when you are stuffed still uses up the food
-- **What you notice:** you eat something while your hunger is at the top and it does nothing for you, yet the item is gone from your bag.
-- **In 1.6 and SSO:** the effects only apply while hunger is below the limit (35000), but the removal of the item is always sent. SSO's server takes one unit, applies nothing at or above the limit and says "You're stuffed!".
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`)
-- **Pinned by:** `kept bug: eating while stuffed still consumes the item` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Keys on the usable list are never used up like food
-- **What you notice:** a key may appear on the list of usable items, but using it only tries a door and never uses it up the way a potion or food is.
-- **In 1.6 and SSO:** any name containing "Key" is sent to the key handler and exits before the usable list is looked at, so that part of the list is dead. In SSO key use goes only through the door and key rule.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`useIntent`); `packages/server/src/systems/housing/doors.ts` (`useKey`)
-- **Pinned by:** `kept bug: a Steel Key is on the usable list but Use sends it to the door rule, so it is never eaten like a usable item` (packages/server/tests/doors.test.ts)
-
-### A full bag refuses a clicked pickup even if it would stack
-- **What you notice:** with all 15 bag lines used, clicking a ground item you already carry is refused, even though it would stack. Gold is the exception, and pressing Ctrl takes it fine.
-- **In 1.6 and SSO:** the click's pre-check overwrites its own count with 1 before looking for a matching stack, so a full bag always looks full. The same check runs when someone gives you an item. Ctrl pickup and vault withdrawal test correctly. SSO does the same, for click and tap pickup and for receiving a give.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`clickBagFull`, `pickupIntent`)
-- **Pinned by:** `kept bug: a full bag refuses a click on a stackable item, Ctrl takes it` (packages/server/tests/inventory.test.ts)
-
-### Picking up one item clears every identical item on that tile
-- **What you notice:** if several identical items lie on the same tile, you pick up one and the rest vanish.
-- **In 1.6 and SSO:** pickup blanks every ground entry with the same name on the tile and then grants one. SSO removes all entries with the same name (and quantity) on that tile and grants one.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`grab`)
-- **Pinned by:** `kept bug: picking up clears every identical entry on the tile` (packages/server/tests/inventory.test.ts)
-
-### You cannot drop onto a tile that already holds an item
-- **What you notice:** facing a tile that has any ordinary item on it, Drop says "You begin to drop this but realize the floor is too crowded." Loot and gathered items still land on occupied tiles.
-- **In 1.6 and SSO:** the drop is refused for any non-container item on the faced tile. In SSO the player's drop is refused on an occupied tile, and drops the server creates itself may stack.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`)
-- **Pinned by:** `drop puts one unit on the faced tile; a second drop finds it crowded` (packages/server/tests/inventory.test.ts)
-
-### Clicking a crate or cabinet picks it up; only Ctrl opens it
-- **What you notice:** with enough Strength, clicking a Crate (15 or more) or a Cabinet or Wind Cabinet (19 or more) picks it up instead of opening it. Pressing Ctrl on it opens it and never picks it up. A picked-up crate keeps its contents.
-- **In 1.6 and SSO:** the click falls through to the pickup path and never reaches the chest-opening code, and Ctrl's Strength checks can never be reached. A picked-up crate keeps its id, so its contents go with it. SSO does the same.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`clickGate`, `ctrlGate`)
-- **Pinned by:** `kept bug: clicking a crate or cabinet picks it up; only Ctrl opens it` (packages/shared/tests/housing/doors.test.ts); `a Crate on the floor opens with Ctrl; a click picks it up with its id and contents` (packages/server/tests/doors.test.ts)
-
-### "You're stuffed!" appears on the bite that fills you
-- **What you notice:** the bite that takes your hunger over the limit feeds you and also says "You're stuffed!". A player who is already stuffed still sees the eat line first.
-- **In 1.6 and SSO:** effects apply while hunger is under 35000, then the stuffed line prints whenever hunger is over 34999 after the add. SSO prints the lines in the same order.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`)
-- **Pinned by:** `kept bug: "You're stuffed!" on the bite that crosses the limit` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Purple Potion says its line twice and works when stuffed
-- **What you notice:** drinking a Purple Potion prints "The power of argon flows through your body." twice. It still gives its attack boost when you are stuffed.
-- **In 1.6 and SSO:** the attack bonus sits outside the hunger guard, and the line is added in two places. SSO does the same.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`)
-- **Pinned by:** `kept bug: Purple Potion prints its line twice and works when stuffed` (packages/shared/tests/inventory/inventory.test.ts)
-
-### "You cannot equip the ..." has no full stop
-- **What you notice:** when you cannot equip something, the message ends without a full stop.
-- **In 1.6 and SSO:** the message is built as "You cannot equip the " followed by the item name, with nothing after it. SSO uses the same text.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`EQUIP_TEXT`)
-- **Pinned by:** `kept bug: Dragon Sword cannot be equipped` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Boots are never drawn on your character
-- **What you notice:** equipped boots do not show on your character, and gloves are drawn from the Ring slot.
-- **In 1.6 and SSO:** the character is drawn from items 1, 2, 3, 5, 6 and 7 of its render data; item 4, the feet, is never used. SSO uses the same layers.
-- **In the code:** `packages/shared/src/rules/inventory/paperdoll.ts` (`normaliseLook`, `paperdollLayers`)
-- **Pinned by:** `kept bug: boots are never drawn; gloves come from the Ring slot` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Many fixtures can be picked up, and paintings only with Ctrl
-- **What you notice:** a click or Ctrl can pick up things that look fixed in place, such as a Copy Machine, Large Rock, Table, Campfire, most statues and the "Universal" fixtures. Ctrl takes paintings and photos but a click does not, and a click takes the Piano.
-- **In 1.6 and SSO:** neither the click path nor the Ctrl pickup path excludes those fixtures, and each path has its own list. SSO keeps the same list for each path.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`clickGate`, `ctrlGate`)
-- **Pinned by:** `kept bug: Ctrl takes paintings, a click does not` (packages/shared/tests/inventory/inventory.test.ts)
-
-### Dropping crystals while facing a player gives them instead
-- **What you notice:** you choose Drop for crystals or gold while a player stands in front of you, and the amount is given to that player instead. Gold always gives when someone is in front.
-- **In 1.6 and SSO:** the amount window's OK picks give or drop by whether a player is on the faced tile, not by which button opened it. The gold window has one button for both. SSO does the same for crystals and gold.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`amountPath`); `packages/server/src/systems/inventory/items.ts` (`crystalsIntent`, `goldIntent`)
-- **Pinned by:** `kept bug: OK on crystals while facing a player gives them (C120)`; `kept bug: give says 'Offering the 50 to B.' without the word gold; B has it at once` (packages/server/tests/inventory.test.ts)
-
-### The give message names no gold or crystals
-- **What you notice:** giving gold reads "*** Offering the 50 to Bob." with no word "gold". Giving crystals reads "*** Offering the  to Bob." with a blank where the name should be.
-- **In 1.6 and SSO:** the message is built from a name field that, for gold, holds only the amount, and for crystals is never set. SSO prints the same texts.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`GIVE_TEXT`, `crystalsIntent`, `goldIntent`)
-- **Pinned by:** `kept bug: give says 'Offering the 50 to B.' without the word gold; B has it at once`; `kept bug: OK on crystals while facing a player gives them (C120)` (packages/server/tests/inventory.test.ts)
-
-### The gold and crystal amount OK clicks only when you drop
-- **What you notice:** pressing OK in the amount window gives no click when you give something to a player, even a successful give. Every drop clicks, even one then refused as mid-step, crowded or blocked.
-- **In 1.6 and SSO:** the click comes after the give path and gold's monster exit have returned and before the drop's own refusals. SSO does the same, and client and server pick the branch with the shared `amountPath`.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`amountPath`); `packages/client/src/model.ts` (`amountPath`)
-- **Pinned by:** `drop clicks; short, give and the monster exit are silent`; `facing a player while mid-step takes the drop path: it clicks, then the drop stops` (packages/client/tests/sound.test.ts); `balance first, then a player ahead, then gold's monster exit, else the drop` (packages/shared/tests/inventory/inventory.test.ts)
-
-### A given painting shows its # number to the receiver
-- **What you notice:** when someone gives you a painting, you read "Bob is giving you a Painting#12.", while the giver's own line has no number.
-- **In 1.6 and SSO:** the receiver's line takes the name as stored with no "#" stripping, while the giver's line strips it. SSO uses the ground item's stored name for the receiver.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`receiveGive`, `GIVE_TEXT`)
-- **Pinned by:** `kept bug: a given painting is named with its # number` (packages/server/tests/inventory.test.ts)
-
-### A placed clock goes round twice an hour
-- **What you notice:** a clock placed in the world shows a new face every 3 minutes up to :35, then every 2 minutes after, so its hand goes round twice an hour, faster the second time, and never shows the hour.
-- **In 1.6 and SSO:** the face table works that way in every place the clock is drawn. SSO uses the same table, drawn by the client from the server's minute.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`clockFace`)
-- **Pinned by:** `kept bug: a placed clock goes round twice an hour: every 3 minutes up to :35, then every 2` (packages/shared/tests/inventory/ground.test.ts)
-
-### Ctrl on the Mage Master Platform keeps the item pause
-- **What you notice:** Ctrl on the Experience, Slash Master or Ninja Master Platform prints its line and frees you at once. On the Mage Master Platform it prints its line, but your next item click waits out the 40-frame (2 second) pause.
-- **In 1.6 and SSO:** the other platforms end the pause when they print; the Mage Master branch exits without doing so. SSO does the same: its Ctrl handling returns the Mage Master's text without the unpause flag.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`ctrlGate`)
-- **Pinned by:** `kept bug: Ctrl on the Mage Master Platform says its line but keeps the pause` (packages/shared/tests/inventory/ground.test.ts)
-
-### In your own house a click picks up a casino table, Ctrl plays
-- **What you notice:** in your own house or your guild's hall, clicking a Slot Machine, Blackjack Table or Checkers Table picks it up, and Ctrl is what plays it.
-- **In 1.6 and SSO:** the click only opens a casino game when the "do not drop this" flag is set (off your own premises); otherwise it falls through to pickup. Ctrl has no such test and always runs the game. SSO does the same.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`clickGate`, `ctrlGate`)
-- **Pinned by:** `kept bug: casino games in your own house: a click picks up, Ctrl plays` (packages/shared/tests/casino/casino.test.ts); `a click and Ctrl both reach the table, with the click's 40-frame pause first` (packages/server/tests/blackjack.test.ts) and `a click and Ctrl both reach the table, with the click's 40-frame pause first` (packages/server/tests/checkers.test.ts)
-
-### Music never plays, and the Ocarina does nothing
-- **What you notice:** No music ever plays. Using an Ocarina gives no sound and no message, and the Ocarina stays in your bag.
-- **In 1.6 and SSO:** The original's music routines were empty, and using an Ocarina only called one of them. SSO's Ocarina use does nothing.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useDeferred`)
-- **Pinned by:** `kept bug: music is silent: the Ocarina's use does nothing` (packages/shared/tests/mail/art-news.test.ts); `kept bug: music is silent: using an Ocarina sends nothing, says nothing and keeps the Ocarina` (packages/server/tests/art-news.test.ts)
-
-### Ctrl reopens a mailbox that is already open
-- **What you notice:** Press Ctrl facing your mailbox while it is open and you see "You check your mail..." again, as if you had just opened it.
-- **In 1.6 and SSO:** 1.6's Ctrl waited only for the item-action pause and not for the input lock, so Ctrl worked with the box open. SSO does the same.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`ctrlPaused`), `packages/server/src/systems/mail/mail.ts` (`mailOpen`)
-- **Pinned by:** `Ctrl reopens under the lock, pause 40` (packages/server/tests/mail-boards.test.ts)
-
-### Ctrl is silent on a stand whose owner's name has 'door' or 'exit'
-- **What you notice:** Press Ctrl facing "Doorman's Newspaper" and nothing happens, though clicking the same stand reads it.
-- **In 1.6 and SSO:** 1.6 tested Ctrl for a door or exit name, in any case, before testing for a newspaper. SSO does the same.
-- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`ctrlGate`)
-- **Pinned by:** `Ctrl: Doorman's Newspaper is silent, door/exit first` (packages/shared/tests/mail/art-news.test.ts); `kept bug: Ctrl is silent on 'Doorman's Newspaper' while a click reads it` (packages/server/tests/art-news.test.ts)
+No kept bugs (all thirty-three former entries were fixed; see [inventory differences](divergences.md#inventory)).
 
 ## mail
 

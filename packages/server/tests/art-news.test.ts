@@ -2,6 +2,8 @@
  * Sim tests: paintings, photos and newspapers on the server.
  */
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 import type { ServerMsg } from "@secondstaronline/shared";
 
@@ -329,12 +331,13 @@ describe("newspapers", () => {
     expect(of(out, "Bob", "newspaper")).toHaveLength(1);
     expect(b.itemPause).toBe(20);
   });
-  test("kept bug: Ctrl is silent on 'Doorman's Newspaper' while a click reads it", () => {
+  test("bug fixed: Ctrl reads 'Doorman's Newspaper' as a click does", () => {
     const s = scene();
     const b = s.join("Bob");
     s.put("n", "Doorman's Newspaper", 5, 5);
-    expect(actionIntent(s.ctx(), s.room(), b)).toEqual([]);
+    expect(of(actionIntent(s.ctx(), s.room(), b), "Bob", "newspaper")).toHaveLength(1);
     b.itemPause = 0;
+    b.keyLock = false;
     const out = pickupIntent(s.ctx(), s.room(), b, "n");
     expect(of(out, "Bob", "newspaper")).toHaveLength(1);
   });
@@ -429,15 +432,24 @@ describe("game entry", () => {
 });
 
 describe("music", () => {
-  test("kept bug: music is silent: using an Ocarina sends nothing, says nothing and keeps the Ocarina", () => {
+  test("bug fixed: an Ocarina plays its tune to everyone on the map, says so, and is kept", () => {
     const s = scene();
     const a = s.join("Alice");
     const b = s.join("Bob", 6, 6);
     s.give(a, "Ocarina");
     const out = useIntent(s.ctx(), s.room(), a, 1);
-    expect(out).toEqual([]);
+    expect(of(out, a.id, "chat")).toEqual([
+      { t: "chat", text: "You play a tune on your Ocarina.", color: 0 },
+    ]);
+    for (const id of [a.id, b.id]) {
+      expect(of(out, id, "sound")).toEqual([{ t: "sound", name: "ocarina", ch: 5 }]);
+    }
+    expect(of(out, b.id, "chat")).toEqual([]);
     expect(a.char.bag[0]).toEqual({ item: "Ocarina", qty: 1 });
-    expect(s.room().fxQueue).toEqual([]);
-    expect(of(out, b.id, "delta")).toEqual([]);
+  });
+  test("the Ocarina's tune is an authored sound the asset build packs", () => {
+    const dir = join(import.meta.dir, "../../../assets/added/sounds");
+    expect(existsSync(join(dir, "ocarina.wav"))).toBe(true);
+    expect(existsSync(join(dir, "ocarina.json"))).toBe(true);
   });
 });

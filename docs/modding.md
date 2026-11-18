@@ -55,12 +55,12 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `equip.strength` | Strength needed to equip | Last | `strength`; default `0` |
 | `equip.twoHanded`, `equip.murder` | Two-handed weapons; items requiring murder flag | Any | Boolean |
 | `use.usable`, `use.effects`, `use.messages` | Food and potion use behaviour | See schema | Healing/messages |
-| `use.silent` | Use does and says nothing (keys, deeds, seeds, `Map`, `Ocarina`) | Any | Boolean |
+| `use.silent` | Use does and says nothing (keys, deeds, seeds, `Map`) | Any | Boolean |
 | `use.books` | Mysticism needed for a spell book | Last | `mysticism`; default `1` |
 | `use.skillBooks` | Combat-skill books | First | `skill` raised and `shown` name |
 | `menu` | Item menu button in place of Equip | Last | `Cook`, `Mix`, `Build`, `Smith`, or `Storage`; default `Equip` |
 | `paperdoll.aliases` | Worn item sprite name | In order, per `layer` | `becomes` sprite name; default is the item's own name |
-| `ground.blocks` | Ground items that block walking | Any | `monsters: false` lets monsters pass (kept bug) |
+| `ground.blocks` | Ground items that block players and monsters; one the world placed cannot be picked up | Any | Boolean |
 | `ground.platforms` | Blocks until a skill or level reaches `atLeast` | Any | `needs` skill or `level` |
 | `ground.overlays` | Animated overlay on a ground item | First | `overlay`; default none |
 | `ground.layers` | Draw layer | First | `hidden`, `overChars`, or `overLayer3`; default items layer |
@@ -92,8 +92,8 @@ Some keywords are handled directly in game logic or formulas without a table row
 
 Notes carried over from the code:
 
-- **`use.silent`:** `Map` stays although no item has `"Map"` in its name, so its Use text can never show. The Ocarina's use calls an empty music-reset handler and nothing else, so it stays silent for good (kept bug).
-- **Platforms (`ground.platforms`):** the Experience Platform's Ctrl text names hit points though the step gate is level `21`. Three platforms' Ctrl text ends Ctrl's 40-frame pause (`unpause`); the Mage Master's does not, so its pause runs out (kept bug). The Street Lamp also ends the pause.
+- **`use.silent`:** `Map` stays although no item has `"Map"` in its name, so its Use text can never show. The Ocarina is not on the list: the server plays its tune.
+- **Platforms (`ground.platforms`):** the Experience Platform's step gate is level `21`, and its text says so. All four platforms' Ctrl text ends Ctrl's 40-frame pause (`unpause`), as does the Street Lamp's.
 - **Book table order:** the book table keeps the original typos (`"Smoke bomb"`, `"Argon's First"`) and its exact `Bolt Book` row.
 
 ### Adding an item

@@ -3,10 +3,11 @@
  * background Internal #119 [223, 183, 476, 300], the title field (#125, [245, 197, 436, 229]),
  * the editable amount field (#124, [254, 253, 348, 269]), OK (#120) and Cancel (#126).
  * - Gold (Internal #118): "How Much Gold Do You Want To Give/Drop?" and the amount set to "0".
- * - Crystals: "Drop/Give how many <colour> crystals?", which leave the amount as it was; the
- *   cast's saved text is "2".
+ * - Crystals: "Drop how many <colour> crystals?" or "Give how many …", by the bag button that
+ *   opened it, which leave the amount as it was; the cast's saved text is "2".
  *
- * OK hides the dialog before any test, then keeps the original's silent refusals for what the
+ * OK clicks on every press (1.6 clicked only on its drop path), hides the dialog before any test,
+ * then keeps the original's silent refusals for what the
  * client can test (more than 4 characters, a "-", outside 1..9999); the server checks the rest.
  */
 import type { Assets } from "../assets.ts";
@@ -33,7 +34,7 @@ export function parseAmount(text: string): number | null {
   return n;
 }
 
-export function createAmountDialog(a: Assets): AmountDialog {
+export function createAmountDialog(a: Assets, press: () => void = () => {}): AmountDialog {
   const el = document.createElement("div");
   el.className = "amount-dialog";
   el.hidden = true;
@@ -90,6 +91,7 @@ export function createAmountDialog(a: Assets): AmountDialog {
     },
   };
   const submit = () => {
+    press();
     const go = done;
     dialog.close(); // before the tests
     const n = parseAmount(input.value);
@@ -115,6 +117,7 @@ export function createAmountDialog(a: Assets): AmountDialog {
   return dialog;
 }
 
-/** The two titles. */
+/** The titles. Gold has one button, so it gives to a player in front and otherwise drops. */
 export const GOLD_TITLE = "How Much Gold Do You Want To Give/Drop?";
-export const crystalTitle = (colour: string) => `Drop/Give how many ${colour} crystals?`;
+export const crystalTitle = (colour: string, mode: "drop" | "give") =>
+  `${mode === "drop" ? "Drop" : "Give"} how many ${colour} crystals?`;

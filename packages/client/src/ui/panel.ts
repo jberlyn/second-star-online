@@ -57,8 +57,8 @@ export interface PanelActions {
   /** Storage on a carried container. */
   storage?(slot: number): void;
   unequip(slot: EquipSlot): void;
-  /** Drop or Give on crystals opens the amount dialog. */
-  crystals(slot: number, colour: string): void;
+  /** Drop or Give on crystals opens the amount dialog for that button. */
+  crystals(slot: number, colour: string, mode: "drop" | "give"): void;
   /** The gold button beside the gold count opens the amount dialog. */
   gold(): void;
   /** Plays a sound. */
@@ -597,10 +597,10 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       );
     }
     button("Drop", 53, artImg(a.ui("inventory", 53)), -20, 5, 36, 13, () =>
-      isCrystal ? act.crystals(menuSlot, colour) : act.drop(menuSlot),
+      isCrystal ? act.crystals(menuSlot, colour, "drop") : act.drop(menuSlot),
     );
     button("Give", 56, artImg(a.ui("inventory", 56)), -57, 5, 31, 11, () =>
-      isCrystal ? act.crystals(menuSlot, colour) : act.give(menuSlot),
+      isCrystal ? act.crystals(menuSlot, colour, "give") : act.give(menuSlot),
     );
     menu.hidden = false;
   };

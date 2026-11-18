@@ -19,6 +19,9 @@ import {
   sanitiseGuildName,
 } from "../../src/index.ts";
 
+/** Ctrl by a player of middling Strength away from their own premises. */
+const STRANGER = { str: 50, mine: false };
+
 const knights: GuildRecord = {
   name: "Knights",
   alignment: "G",
@@ -159,7 +162,7 @@ describe("chat grammar", () => {
 
 describe("the Guild Center click", () => {
   test("click and Ctrl reach GuildCenterClick", () => {
-    expect(clickGate("Guild Center", 10)).toEqual({ kind: "guildCenter" });
-    expect(ctrlGate("Guild Center")).toEqual({ kind: "guildCenter" });
+    expect(clickGate("Guild Center")).toEqual({ kind: "guildCenter" });
+    expect(ctrlGate("Guild Center", STRANGER)).toEqual({ kind: "guildCenter" });
   });
 });

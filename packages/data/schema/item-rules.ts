@@ -94,8 +94,8 @@ export const itemRulesDataSchema = z.strictObject({
     aliases: z.array(strictRow({ layer: paperdollLayerSchema, becomes: z.string().min(1) })),
   }),
   ground: z.strictObject({
-    /** Ground items that stop a walker, any match. */
-    blocks: z.array(strictRow({ monsters: z.boolean() })),
+    /** Ground items that stop a walker, player or monster, any match. */
+    blocks: z.array(z.strictObject(pattern)),
     /** Blocks until a skill (or the level) reaches `atLeast`. */
     platforms: z.array(strictRow({ needs: z.string().min(1), atLeast: int })),
     /** The animated overlay, first match. */

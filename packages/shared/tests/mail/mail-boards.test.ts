@@ -19,26 +19,32 @@ import {
   stripMailTo,
 } from "../../src/index.ts";
 
+/** Ctrl by a player of middling Strength away from their own premises. */
+const STRANGER = { str: 50, mine: false };
+
 describe("gate routing", () => {
   test("click: Message Boards exact, 's Board", () => {
-    expect(clickGate("Message Boards", 10)).toEqual({ kind: "board" });
-    expect(clickGate("message boards", 10)).toEqual({ kind: "board" });
-    expect(clickGate("The Knights's Board", 10)).toEqual({ kind: "board" });
+    expect(clickGate("Message Boards")).toEqual({ kind: "board" });
+    expect(clickGate("message boards")).toEqual({ kind: "board" });
+    expect(clickGate("The Knights's Board")).toEqual({ kind: "board" });
   });
   test("click: Universal Mail before 's Mailbox", () => {
-    expect(clickGate("Universal Mail", 10)).toEqual({ kind: "mail", universal: true });
-    expect(clickGate("Alice's Mailbox", 10)).toEqual({ kind: "mail", universal: false });
-    expect(clickGate("Universal Mail's Mailbox", 10)).toEqual({ kind: "mail", universal: true });
+    expect(clickGate("Universal Mail")).toEqual({ kind: "mail", universal: true });
+    expect(clickGate("Alice's Mailbox")).toEqual({ kind: "mail", universal: false });
+    expect(clickGate("Universal Mail's Mailbox")).toEqual({ kind: "mail", universal: true });
   });
   test("click: signs stay silent", () => {
-    expect(clickGate("Sign 1", 10)).toEqual({ kind: "silent" });
+    expect(clickGate("Sign 1")).toEqual({ kind: "silent" });
   });
   test("Ctrl: 's Mailbox before Universal Mail, boards", () => {
-    expect(ctrlGate("Universal Mail's Mailbox")).toEqual({ kind: "mail", universal: false });
-    expect(ctrlGate("Universal Mail")).toEqual({ kind: "mail", universal: true });
-    expect(ctrlGate("Bob's Mailbox")).toEqual({ kind: "mail", universal: false });
-    expect(ctrlGate("Message Boards")).toEqual({ kind: "board" });
-    expect(ctrlGate("The Knights's Board")).toEqual({ kind: "board" });
+    expect(ctrlGate("Universal Mail's Mailbox", STRANGER)).toEqual({
+      kind: "mail",
+      universal: false,
+    });
+    expect(ctrlGate("Universal Mail", STRANGER)).toEqual({ kind: "mail", universal: true });
+    expect(ctrlGate("Bob's Mailbox", STRANGER)).toEqual({ kind: "mail", universal: false });
+    expect(ctrlGate("Message Boards", STRANGER)).toEqual({ kind: "board" });
+    expect(ctrlGate("The Knights's Board", STRANGER)).toEqual({ kind: "board" });
   });
 });
 

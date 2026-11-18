@@ -87,7 +87,7 @@ export const houseDataSchema = z
     furnitureDrop: z.strictObject({ items: z.array(text).min(1), text }),
     /**
      * Fixtures checked on a ground-item click after the Guild Vault, in order: a text, a silent exit
-     * (both null) or a handler; `needsFlag` rows apply only while the drop-block flag is set.
+     * (both null) or a handler. They answer wherever they stand.
      */
     clickFixtures: z
       .array(
@@ -96,7 +96,6 @@ export const houseDataSchema = z
           match: z.enum(["exact", "contains"]),
           text: text.nullable(),
           action: text.nullable(),
-          needsFlag: z.boolean(),
         }),
       )
       .min(1),

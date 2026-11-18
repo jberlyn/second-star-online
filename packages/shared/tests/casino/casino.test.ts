@@ -22,6 +22,9 @@ import {
   submitsScore,
 } from "../../src/index.ts";
 
+/** Ctrl by a player of middling Strength away from their own premises. */
+const STRANGER = { str: 50, mine: false };
+
 const e = (name: string, points: number): AssassinEntry => ({ id: name, name, points });
 
 describe("slots", () => {
@@ -151,30 +154,30 @@ describe("high scores", () => {
 
 describe("gates", () => {
   test("the High Score Statue reads from anywhere, before the header test", () => {
-    expect(clickGate("High Score Statue", 1, 0)).toEqual({ kind: "scores" });
-    expect(clickGate("High Score Statue", 1, 1)).toEqual({ kind: "scores" });
-    expect(ctrlGate("High Score Statue")).toEqual({ kind: "scores" });
+    expect(clickGate("High Score Statue")).toEqual({ kind: "scores" });
+    expect(clickGate("High Score Statue")).toEqual({ kind: "scores" });
+    expect(ctrlGate("High Score Statue", STRANGER)).toEqual({ kind: "scores" });
   });
 
-  test("kept bug: casino games in your own house: a click picks up, Ctrl plays", () => {
+  test("bug fixed: a click plays a casino game anywhere; Ctrl carries one off only from your own premises", () => {
     const games = [
       ["Slot Machine", "slots"],
       ["Blackjack Table", "blackjack"],
       ["Checkers Table", "checkers"],
     ] as const;
     for (const [name, game] of games) {
-      expect(clickGate(name, 10, 1)).toEqual({ kind: "casino", game });
-      expect(clickGate(name, 10, 0)).toEqual({ kind: "take" });
-      expect(ctrlGate(name)).toEqual({ kind: "casino", game });
+      expect(clickGate(name)).toEqual({ kind: "casino", game });
+      expect(ctrlGate(name, STRANGER)).toEqual({ kind: "casino", game });
+      expect(ctrlGate(name, { ...STRANGER, mine: true })).toEqual({ kind: "take" });
     }
     // `contains`, so a longer name routes and plays; a chest first.
     expect(isSlotMachine("Slot Machine")).toBe(true);
     expect(isSlotMachine("Slot Machine 2")).toBe(true);
     expect(isSlotMachine("Piano")).toBe(false);
-    expect(ctrlGate("Slot Machine 2")).toEqual({ kind: "casino", game: "slots" });
-    expect(ctrlGate("Slot Machine Chest")).toEqual({ kind: "open" });
+    expect(ctrlGate("Slot Machine 2", STRANGER)).toEqual({ kind: "casino", game: "slots" });
+    expect(ctrlGate("Slot Machine Chest", STRANGER)).toEqual({ kind: "open" });
     // The Piano says its line and is never a game.
-    expect(ctrlGate("Piano")).toEqual({ kind: "text", text: "This is a piano." });
+    expect(ctrlGate("Piano", STRANGER)).toEqual({ kind: "text", text: "This is a piano." });
   });
 });
 

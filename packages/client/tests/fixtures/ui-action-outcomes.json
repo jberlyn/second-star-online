@@ -836,7 +836,7 @@
       },
       {
         "action": "crystals",
-        "args": [7, "blue"]
+        "args": [7, "blue", "drop"]
       },
       {
         "action": "sound",
@@ -863,7 +863,7 @@
       },
       {
         "action": "crystals",
-        "args": [7, "blue"]
+        "args": [7, "blue", "give"]
       },
       {
         "action": "sound",

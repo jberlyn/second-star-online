@@ -152,15 +152,17 @@ describe("keys", () => {
     expect(p.itemPause).toBe(425);
   });
 
-  test("kept bug: a Steel Key is on the usable list but Use sends it to the door rule, so it is never eaten like a usable item", () => {
-    // The usable list would spend it with no other effect...
-    const asUsable = useItem(
-      "Steel Key",
-      { hp: 10, hpMax: 20, sp: 10, spMax: 20, hunger: 100 },
-      rngByN(),
-    );
-    expect(asUsable.consume).toBe(true);
-    // ...but Use stops at the key rule: with no door in front nothing is said and nothing spent.
+  test("bug fixed: no key is on the usable list; Use sends a key to the door rule only", () => {
+    // The usable list no longer names the coloured keys...
+    for (const key of ["Steel Key", "Wooden Key", "Emerald Key", "Fire Key", "Gold Key"]) {
+      const asUsable = useItem(
+        key,
+        { hp: 10, hpMax: 20, sp: 10, spMax: 20, hunger: 100 },
+        rngByN(),
+      );
+      expect(asUsable).toMatchObject({ consume: false, lines: [`You cannot use the ${key}.`] });
+    }
+    // ...and Use stops at the key rule: with no door in front nothing is said and nothing spent.
     const s = scene();
     const p = s.join("Alice", 5, 5);
     give(p, 1, "Steel Key");
@@ -429,19 +431,26 @@ describe("placed containers", () => {
     expect(p.itemPause).toBe(0);
   });
 
-  test("a Crate on the floor opens with Ctrl; a click picks it up with its id and contents", () => {
+  test("bug fixed: a click opens a Crate on the floor; Ctrl picks it up with its id and contents", () => {
     const s = scene();
     const p = s.join("Alice", 5, 5);
-    p.char.stats.str = 15;
+    p.char.stats.str = 14;
     const crate = s.put("Crate#77", 5, 4);
     give(p, 1, "Apple");
     dropIntent(s.ctx(), s.room(), p, 1);
     expect(s.world.containers.get("Crate#77")).toEqual(["Apple"]);
-    const ctrl = actionIntent(s.ctx(), s.room(), p);
-    expect(chat(ctrl, "Alice")).toEqual(["You open the Crate to see what's inside..."]);
+    const click = pickupIntent(s.ctx(), s.room(), p, crate.id);
+    expect(chat(click, "Alice")).toEqual(["You open the Crate to see what's inside..."]);
     p.keyLock = false;
+    p.container = null;
     p.itemPause = 0;
-    pickupIntent(s.ctx(), s.room(), p, crate.id);
+    // Strength 15 is needed to carry it.
+    expect(chat(actionIntent(s.ctx(), s.room(), p), "Alice")).toEqual([
+      "You're not strong enough to pick this up!",
+    ]);
+    p.itemPause = 0;
+    p.char.stats.str = 15;
+    actionIntent(s.ctx(), s.room(), p);
     expect(s.map.ground).toEqual([]);
     expect(p.char.bag.some((l) => l?.item === "Crate#77")).toBe(true);
     expect(s.world.containers.get("Crate#77")).toEqual(["Apple"]);

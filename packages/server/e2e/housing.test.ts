@@ -64,11 +64,12 @@ function bag(db: Db, name: string, items: string[]) {
     ]);
   });
 }
-function fixture(db: Db, item: string, x: number, y: number) {
+/** A ground item placed by the world, or (`kind` "drop") one a player put down. */
+function fixture(db: Db, item: string, x: number, y: number, kind: "admin" | "drop" = "admin") {
   const map = db.query("SELECT id FROM maps WHERE mx = 1000 AND my = 992").get() as { id: string };
   db.run(
-    "INSERT INTO ground_items (id, map_id, x, y, item, qty, kind, expires_at, created_at) VALUES (?, ?, ?, ?, ?, 1, 'admin', NULL, '2026-11-05')",
-    [crypto.randomUUID(), map.id, x, y, item],
+    "INSERT INTO ground_items (id, map_id, x, y, item, qty, kind, expires_at, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, NULL, '2026-11-05')",
+    [crypto.randomUUID(), map.id, x, y, item, kind],
   );
 }
 
@@ -297,7 +298,8 @@ describe("doors, keys and containers", () => {
           JSON.stringify(Array.from({ length: 12 }, () => row)),
         ]);
         fixture(db, "Steel Door", 7, 7);
-        fixture(db, "Crate#501", 6, 6);
+        // A crate a player put down, so it can be carried off.
+        fixture(db, "Crate#501", 6, 6, "drop");
       },
     });
     const bot = await connectBot(server.wsUrl);
@@ -452,20 +454,20 @@ describe("doors, keys and containers", () => {
     expect(deltas(alice)).toContainEqual({ e: "gset", id: doorId, name: "Steel Door" });
   });
 
-  test("a Crate takes her Apple, opens with Ctrl, and is clicked up with the Apple in it", async () => {
+  test("a Crate takes her Apple, opens with a click, and is taken by Ctrl with the Apple in it", async () => {
     await turn(alice, "L"); // facing the Crate at (6, 6)
     await tick(430); // the Steel Key's 425-frame pause
     alice.clear();
     alice.send({ t: "drop", slot: slotOf("Alice", "Apple") });
     await settle();
     expect(lines(alice)).toEqual(["You drop a Apple into the container."]);
-    alice.send({ t: "action" });
+    alice.send({ t: "pickup", id: groundOf("Alice", "Crate#501") });
     await settle();
     expect(lines(alice)).toContain("You open the Crate to see what's inside...");
     expect(alice.inbox).toContainEqual({ t: "vault", items: ["Apple"], open: true });
     alice.send({ t: "shopCancel" });
-    await tick(1);
-    alice.send({ t: "pickup", id: groundOf("Alice", "Crate#501") });
+    await tick(41);
+    alice.send({ t: "action" });
     await settle();
     expect(slotOf("Alice", "Crate#501")).toBeGreaterThan(0);
     const row = server.db

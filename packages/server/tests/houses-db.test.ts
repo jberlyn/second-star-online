@@ -454,7 +454,7 @@ describe("inside", () => {
     expect(p.map.ground.some((x) => x.item === "Anvil" && x.x === 7 && x.y === 8)).toBe(true);
   });
 
-  test("bug fixed: your own Anvil is picked up even after a refusal elsewhere", async () => {
+  test("bug fixed: a click on your own Anvil shows its line; Ctrl carries it off, even after a refusal elsewhere", async () => {
     const g = game();
     const id = await makeChar(g, "Bob");
     enterWithDeed(g, id);
@@ -463,11 +463,10 @@ describe("inside", () => {
     if (!p) {
       throw new Error("not in");
     }
-    // A town Anvil's line sets the flag.
+    // A town Anvil says its line.
     p.map.ground.push({ id: "town", item: "Anvil", x: 6, y: 3, kind: "admin", expiresAt: null });
     g.intent(id, { t: "pickup", id: "town" });
     expect(texts(id)).toContain("This is an anvil, used for blacksmithing.");
-    expect(p.headFlag).toBe(1);
     // Into the house, where Bob's own Anvil stands.
     p.x = 10;
     p.y = 5;
@@ -480,9 +479,13 @@ describe("inside", () => {
     p.map.ground.push({ id: "mine", item: "Anvil", x: 7, y: 8, kind: "drop", expiresAt: null });
     sent.length = 0;
     g.intent(id, { t: "pickup", id: "mine" });
+    expect(texts(id)).toContain("This is an anvil, used for blacksmithing.");
+    expect(p.map.ground.some((x) => x.id === "mine")).toBe(true);
+    sent.length = 0;
+    g.intent(id, { t: "action" });
     expect(texts(id)).not.toContain("This is an anvil, used for blacksmithing.");
-    expect(p.headFlag).toBe(0);
     expect(p.map.ground.some((x) => x.id === "mine")).toBe(false);
+    expect(p.char.bag.some((l) => l?.item === "Anvil")).toBe(true);
   });
 
   test("a town Anvil answers a click with its line; it is not picked up", async () => {

@@ -397,13 +397,14 @@ describe("the amount dialog", () => {
   });
   test("crystals keep the last amount; the saved field text is 2", () => {
     const { d, input, title } = dialog();
-    d.open(crystalTitle("blue"), null, () => {});
-    expect(title.textContent).toBe("Drop/Give how many blue crystals?");
+    d.open(crystalTitle("blue", "drop"), null, () => {});
+    expect(title.textContent).toBe("Drop how many blue crystals?");
     expect(input.value).toBe("2");
     d.close();
     d.open(GOLD_TITLE, "0", () => {});
     d.close();
-    d.open(crystalTitle("red"), null, () => {});
+    d.open(crystalTitle("red", "give"), null, () => {});
+    expect(title.textContent).toBe("Give how many red crystals?");
     expect(input.value).toBe("0");
   });
 

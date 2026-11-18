@@ -135,16 +135,15 @@ describe("inventory, equipment and loot", () => {
     );
   });
 
-  test("eating an Apple at the starting hunger of 50000: spent, no effect, stuffed", async () => {
+  test("bug fixed: eating an Apple at the starting hunger of 50000 is refused and the Apple kept", async () => {
     alice.clear();
     alice.send({ t: "use", slot: 1 });
-    await settle();
-    // Bug ledger "Eating while stuffed still consumes the item".
-    expect(chatTexts(alice)).toEqual(["You eat an apple.", "You're stuffed!"]);
-    expect(lastInv(alice)?.bag[0]).toEqual({ item: "Apple", qty: 1 });
+    await tick(1);
+    expect(chatTexts(alice)).toEqual(["You're stuffed!"]);
+    expect(lastInv(alice)).toBeUndefined();
   });
 
-  test("giving the last Apple to Bob: it lands on his tile and he grabs it 60 frames later", async () => {
+  test("giving an Apple to Bob: it lands on his tile and he grabs it 60 frames later", async () => {
     // Turn west to face Bob (Alt-turn).
     alice.send({ t: "step", seq: 1, dir: "L", turn: true });
     await tick(1);
@@ -220,7 +219,7 @@ describe("inventory, equipment and loot", () => {
     const knife = added(alice)[0] as GroundView;
     alice.send({ t: "pickup", id: knife.id });
     await settle();
-    expect(bag3(alice)).toEqual([{ item: "Knife", qty: 1 }, null, null]);
+    expect(bag3(alice)).toEqual([{ item: "Apple", qty: 1 }, { item: "Knife", qty: 1 }, null]);
   });
 
   test("a relog keeps the bag and the equipment", async () => {
@@ -229,7 +228,7 @@ describe("inventory, equipment and loot", () => {
     alice = await login("Alice");
     await tick(1);
     expect(lastInv(alice)?.equip.weapon).toBe("Knife");
-    expect(bag3(alice)).toEqual([{ item: "Knife", qty: 1 }, null, null]);
+    expect(bag3(alice)).toEqual([{ item: "Apple", qty: 1 }, { item: "Knife", qty: 1 }, null]);
     alice.close();
     bob.close();
     await settle(60);

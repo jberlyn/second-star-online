@@ -22,6 +22,9 @@ import {
   statueBlock,
 } from "../../src/index.ts";
 
+/** Ctrl by a player of middling Strength away from their own premises. */
+const STRANGER = { str: 50, mine: false };
+
 const e = (name: string, points: number): AssassinEntry => ({ id: name, name, points });
 
 describe("ratings and points", () => {
@@ -154,8 +157,8 @@ describe("texts", () => {
   test("the Statue: its line and pause", () => {
     expect(STATUE_TEXT).toBe("You view the top Assassins of FSO...");
     expect(STATUE_PAUSE).toBe(20);
-    expect(clickGate("Assassin Statue", 1)).toEqual({ kind: "statue" });
-    expect(ctrlGate("Assassin Statue")).toEqual({ kind: "statue" });
+    expect(clickGate("Assassin Statue")).toEqual({ kind: "statue" });
+    expect(ctrlGate("Assassin Statue", STRANGER)).toEqual({ kind: "statue" });
   });
 
   test("the Statue's blocks: four entries a line, empty ones as 'N.  -  points'", () => {

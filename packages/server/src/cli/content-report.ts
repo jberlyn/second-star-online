@@ -277,7 +277,7 @@ export const TABLES: Record<string, TableInfo> = {
   "houses.json clickFixtures": {
     decides: "what a click on a fixture does",
     wins: "first",
-    note: "reached only after the click gate's own name tests; a needsFlag row answers only while the head flag is 1",
+    note: "reached only after the click gate's own name tests",
   },
 };
 

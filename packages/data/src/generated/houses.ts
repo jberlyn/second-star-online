@@ -1349,162 +1349,145 @@ export const houseData: HouseData = {
       "item": "Slash Master Platform",
       "match": "exact",
       "text": "This is a slash master's platform, only a master of slash can pass through this.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Experience Platform",
       "match": "exact",
-      "text": "You must be over 30 hit points to pass this platform.",
-      "action": null,
-      "needsFlag": false
+      "text": "You must be level 21 or higher to pass this platform.",
+      "action": null
     },
     {
       "item": "Wall Torch",
       "match": "exact",
       "text": "This is a brightly lit torch.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Windmill",
       "match": "exact",
       "text": "This is a windmill.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Holy Water",
       "match": "exact",
       "text": "This is Holy Water.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Fire Pot",
       "match": "exact",
       "text": "I bet that's hot",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Chimney",
       "match": "exact",
       "text": null,
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Fountain",
       "match": "exact",
       "text": "This is a fountain.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Mage Master Platform",
       "match": "exact",
       "text": "This is a mage master's platform, only a master of magery can pass through this.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Ninja Master Platform",
       "match": "exact",
       "text": "This is a ninja master's platform, only a master of martial arts can pass through this.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Clock",
       "match": "contains",
       "text": "This is a clock.",
-      "action": null,
-      "needsFlag": false
+      "action": null
     },
     {
       "item": "Street Lamp",
       "match": "exact",
       "text": "This is a street lamp.",
-      "action": null,
-      "needsFlag": false
+      "action": null
+    },
+    {
+      "item": "Piano",
+      "match": "contains",
+      "text": "This is a piano.",
+      "action": null
     },
     {
       "item": "Stove",
       "match": "exact",
       "text": "This is a stove, used for cooking food.",
-      "action": null,
-      "needsFlag": true
+      "action": null
     },
     {
       "item": "Anvil",
       "match": "exact",
       "text": "This is an anvil, used for blacksmithing.",
-      "action": null,
-      "needsFlag": true
+      "action": null
     },
     {
       "item": "Alchemy Lab",
       "match": "exact",
       "text": "This is an alchemy lab, used for mixing potions.",
-      "action": null,
-      "needsFlag": true
+      "action": null
     },
     {
       "item": "ON Switch",
       "match": "contains",
       "text": null,
-      "action": "TheOnSwitchClick",
-      "needsFlag": false
+      "action": "TheOnSwitchClick"
     },
     {
       "item": "OFF Switch",
       "match": "contains",
       "text": null,
-      "action": "TheOffSwitchClick",
-      "needsFlag": false
+      "action": "TheOffSwitchClick"
     },
     {
       "item": "Vault",
       "match": "exact",
       "text": null,
-      "action": "VaultClick",
-      "needsFlag": false
+      "action": "VaultClick"
     },
     {
       "item": "Guild Center",
       "match": "exact",
       "text": null,
-      "action": "GuildCenterClick",
-      "needsFlag": false
+      "action": "GuildCenterClick"
     },
     {
       "item": "Slot Machine",
       "match": "contains",
       "text": null,
-      "action": "SlotMachineClick",
-      "needsFlag": true
+      "action": "SlotMachineClick"
     },
     {
       "item": "Blackjack",
       "match": "contains",
       "text": null,
-      "action": "BlackJackTableClick",
-      "needsFlag": true
+      "action": "BlackJackTableClick"
     },
     {
       "item": "Checkers",
       "match": "contains",
       "text": null,
-      "action": "CheckersTableClick",
-      "needsFlag": true
+      "action": "CheckersTableClick"
     },
     {
       "item": "Platform",
       "match": "contains",
       "text": null,
-      "action": null,
-      "needsFlag": false
+      "action": null
     }
   ],
   "restRegen": {

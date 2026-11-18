@@ -5,9 +5,9 @@
  * (`copyPixels(src.image, src.rect, src.rect)`), then shows that member with its registration point
  * (25, 6).
  *
- * The render data string is `<headNo>:<Body>:<Head>:<Feet>:<LeftHand>:<RightHand>:<Ring>`. Feet is
- * never drawn (a kept bug: 1.6 never drew boots); gloves are the Ring slot. A layer member that
- * does not exist is skipped.
+ * The render data string is `<headNo>:<Body>:<Head>:<Feet>:<LeftHand>:<RightHand>:<Ring>`. Boots
+ * are drawn over the body from the Feet slot (1.6 never drew them; SSO's boot layers are authored
+ * art); gloves are worn in the Ring slot. A layer member that does not exist is skipped.
  */
 import { itemRulesData } from "@secondstaronline/data";
 
@@ -53,6 +53,7 @@ export function normaliseLook(e: Equipment): {
   weapon: string;
   shield: string;
   gloves: string;
+  boots: string;
   helm: string;
   body: string;
   rawBody: string;
@@ -74,7 +75,8 @@ export function normaliseLook(e: Equipment): {
     }
   }
   ({ weapon, shield, helm, gloves, body } = layers);
-  return { weapon, shield, gloves, helm, body, rawBody: e.body };
+  const boots = strip(e.feet) || NOTHING;
+  return { weapon, shield, gloves, boots, helm, body, rawBody: e.body };
 }
 
 const isNothing = (s: string) => lingoEq(s, NOTHING);
@@ -107,6 +109,9 @@ export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): s
   }
   if (!isNothing(n.body)) {
     out.push(f(n.body));
+  }
+  if (!isNothing(n.boots)) {
+    out.push(f(n.boots));
   }
   if (!isNothing(n.gloves)) {
     out.push(f(n.gloves));

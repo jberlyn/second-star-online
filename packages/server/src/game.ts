@@ -1931,7 +1931,7 @@ export function createGame(deps: GameDeps): Game {
                             : msg.t === "action"
                               ? actionIntent(ctx, room, p)
                               : msg.t === "crystals"
-                                ? crystalsIntent(ctx, room, p, msg.slot, msg.n)
+                                ? crystalsIntent(ctx, room, p, msg.slot, msg.n, msg.mode)
                                 : goldIntent(ctx, room, p, msg.n);
           deliver(out);
           // Everyone whose inventory changed (a crystal or gold give changes two) gets `inv` now.

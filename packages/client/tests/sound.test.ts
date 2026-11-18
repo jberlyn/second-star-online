@@ -5,12 +5,11 @@
 import { describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { type MapView, NO_EQUIPMENT, NO_FOG, type PlayerView } from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";
 import { type AudioCtx, createAudio } from "../src/audio.ts";
-import { applySnapshot, createModel, predictAmountPath } from "../src/model.ts";
 import { type Sfx, SOUND } from "../src/sfx.ts";
+import { createAmountDialog, crystalTitle, GOLD_TITLE } from "../src/ui/amount.ts";
 import { creationScreen, loginScreen, titleScreen } from "../src/ui/screens.ts";
 
 const assets = (sounds: Record<string, string>): Assets => ({
@@ -186,66 +185,20 @@ describe("title, login and creation clicks", () => {
   });
 });
 
-describe("the amount dialog's click follows the dialog script's branch", () => {
-  const rows = (code: string) => Array.from({ length: 12 }, () => Array(17).fill(code).join(" "));
-  const map: MapView = {
-    name: "x1000y992",
-    title: "",
-    layers: [rows("G1"), rows("G3"), rows("G3"), rows("5A")],
-    signs: ["", "", ""],
-    fog: { ...NO_FOG },
-  };
-  const player = (id: string, x: number, y: number): PlayerView => ({
-    id,
-    name: id,
-    head: 1,
-    x,
-    y,
-    facing: "S",
-    step: null,
-    equip: { ...NO_EQUIPMENT },
-    body: null,
-  });
-  const scene = (o: { peerAt?: [number, number]; monsterAt?: [number, number] }) => {
-    const m = createModel();
-    applySnapshot(m, {
-      map,
-      you: { ...player("me", 5, 5), facing: "E" },
-      self: { n: 0, x: 5, y: 5, facing: "E", frames: 0 },
-      players: o.peerAt ? [player("B", ...o.peerAt)] : [],
-      monsters: o.monsterAt
-        ? [
-            {
-              slot: 1,
-              name: "Slime",
-              body: 30,
-              x: o.monsterAt[0],
-              y: o.monsterAt[1],
-              facing: "S",
-              step: null,
-            },
-          ]
-        : [],
-    });
-    return m;
-  };
-
-  test("drop clicks; short, give and the monster exit are silent", () => {
-    expect(predictAmountPath(scene({}), true, true)).toBe("drop");
-    expect(predictAmountPath(scene({}), true, false)).toBe("short");
-    expect(predictAmountPath(scene({ peerAt: [6, 5] }), true, true)).toBe("give"); // :151-299
-    expect(predictAmountPath(scene({ monsterAt: [7, 5] }), true, true)).toBe("monster"); // :300-397
-  });
-
-  test("the monster exit is gold's only: crystals facing a monster drop", () => {
-    expect(predictAmountPath(scene({ monsterAt: [6, 5] }), false, true)).toBe("drop");
-  });
-
-  test("facing a player while mid-step takes the drop path: it clicks, then the drop stops", () => {
-    const m = scene({ peerAt: [6, 5] });
-    if (m.self) {
-      m.self.stepFrames = 8;
-    }
-    expect(predictAmountPath(m, true, true)).toBe("drop");
+describe("the amount dialog's OK", () => {
+  test("bug fixed: OK clicks on every press, give, drop or refusal alike", () => {
+    const sounds: Sfx[] = [];
+    const got: number[] = [];
+    const d = createAmountDialog(assets({}), () => sounds.push(SOUND.click));
+    const ok = d.el.querySelector('[aria-label="OK"]') as HTMLButtonElement;
+    const input = d.el.querySelector("input") as HTMLInputElement;
+    d.open(GOLD_TITLE, "0", (n) => got.push(n));
+    input.value = "50";
+    ok.click();
+    d.open(crystalTitle("blue", "give"), null, (n) => got.push(n));
+    input.value = "-1"; // refused by the client, and still a click
+    ok.click();
+    expect(got).toEqual([50]);
+    expect(sounds).toEqual([SOUND.click, SOUND.click]);
   });
 });

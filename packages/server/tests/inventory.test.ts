@@ -4,7 +4,12 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { type DeltaEvent, NO_EQUIPMENT, type ServerMsg } from "@secondstaronline/shared";
+import {
+  type DeltaEvent,
+  NO_EQUIPMENT,
+  PICKUP_TEXT,
+  type ServerMsg,
+} from "@secondstaronline/shared";
 
 import { handleDrop, NO_SUCH_ITEM, parseDrop } from "../src/systems/admin/drop.ts";
 import { setAttackHeld } from "../src/systems/combat/melee.ts";
@@ -20,6 +25,7 @@ import {
   goldIntent,
   type ItemCtx,
   pickupIntent,
+  TILE_ITEM_CAP,
   unequipIntent,
   useIntent,
 } from "../src/systems/inventory/items.ts";
@@ -118,8 +124,11 @@ describe("use", () => {
   test("Purple Potion: AttackBonus and AttackCounter 400; it wears off with its line", () => {
     const s = scene();
     const p = s.join("A", 5, 5);
+    p.char.hunger = 1000;
     give(p, 1, "Purple Potion");
-    useIntent(s.ctx(), s.room(), p, 1);
+    expect(chat(useIntent(s.ctx(), s.room(), p, 1), "A")).toEqual([
+      "The power of argon flows through your body.",
+    ]);
     expect(p.attackBonus).toBe(1);
     expect(p.timers.attackCounter).toBe(400);
     const out = s.run(400);
@@ -127,6 +136,15 @@ describe("use", () => {
       "You no longer feel the power of Argon helping you in battle.",
     );
     expect(p.attackBonus).toBe(0);
+  });
+  test("bug fixed: a stuffed player is refused and keeps the food", () => {
+    const s = scene();
+    const p = s.join("A", 5, 5);
+    p.char.hunger = 35000;
+    give(p, 1, "Apple", 2);
+    expect(chat(useIntent(s.ctx(), s.room(), p, 1), "A")).toEqual(["You're stuffed!"]);
+    expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
+    expect(p.char.hunger).toBe(35000);
   });
 });
 
@@ -146,6 +164,35 @@ describe("equip and unequip", () => {
       equip: { ...NO_EQUIPMENT, weapon: "Knife" },
     });
     expect(out.some((m) => m.to === "A" && m.msg.t === "inv")).toBe(true);
+  });
+  test("bug fixed: equipping into a full slot swaps, the worn item back in the bag", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.char.equip.weapon = "Dagger";
+    give(a, 3, "Knife");
+    expect(equipIntent(s.ctx(), s.room(), a, 3)).toEqual([]);
+    expect(a.char.equip.weapon).toBe("Knife");
+    // The Knife's line was emptied and takes the Dagger (the lowest empty line is line 1).
+    expect(a.char.bag.filter((l) => l !== null)).toEqual([{ item: "Dagger", qty: 1 }]);
+  });
+  test("bug fixed: a swap needs room for the worn item; a full bag refuses and changes nothing", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.char.equip.weapon = "Dagger";
+    a.char.bag = a.char.bag.map((_, i) => ({
+      item: i === 0 ? "Knife" : `Rock${i}`,
+      qty: i === 0 ? 2 : 1,
+    }));
+    expect(chat(equipIntent(s.ctx(), s.room(), a, 1), "A")).toEqual([
+      "You are carrying too much to swap this for what you're wearing!",
+    ]);
+    expect(a.char.equip.weapon).toBe("Dagger");
+    expect(a.char.bag[0]).toEqual({ item: "Knife", qty: 2 });
+    // A single Knife frees its own line for the Dagger.
+    a.char.bag[0] = { item: "Knife", qty: 1 };
+    equipIntent(s.ctx(), s.room(), a, 1);
+    expect(a.char.equip.weapon).toBe("Knife");
+    expect(a.char.bag[0]).toEqual({ item: "Dagger", qty: 1 });
   });
   test("no Equip button for a Potion Bottle: nothing happens", () => {
     const s = scene();
@@ -181,7 +228,7 @@ describe("equip and unequip", () => {
 });
 
 describe("drop, pickup and give", () => {
-  test("drop puts one unit on the faced tile; a second drop finds it crowded", () => {
+  test("drop puts one unit on the faced tile", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
@@ -189,8 +236,26 @@ describe("drop, pickup and give", () => {
     const out = dropIntent(s.ctx(), s.room(), a, 1);
     expect(groundAt(s.map, 6, 5)).toEqual(["Apple"]);
     expect(events(out, "A").map((e) => e.e)).toEqual(["gadd"]);
-    expect(chat(dropIntent(s.ctx(), s.room(), a, 1), "A")).toEqual([DROP_TEXT.crowded]);
     expect(a.char.bag[0]?.qty).toBe(1);
+  });
+  test("bug fixed: items share a tile; a fixture or a full tile is too crowded", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.facing = "E";
+    give(a, 1, "Apple", 20);
+    dropIntent(s.ctx(), s.room(), a, 1);
+    expect(chat(dropIntent(s.ctx(), s.room(), a, 1), "A")).toEqual([]);
+    expect(groundAt(s.map, 6, 5)).toEqual(["Apple", "Apple"]);
+    for (let i = 2; i < TILE_ITEM_CAP; i++) {
+      dropIntent(s.ctx(), s.room(), a, 1);
+    }
+    expect(groundAt(s.map, 6, 5)).toHaveLength(TILE_ITEM_CAP);
+    expect(chat(dropIntent(s.ctx(), s.room(), a, 1), "A")).toEqual([DROP_TEXT.crowded]);
+    expect(a.char.bag[0]?.qty).toBe(20 - TILE_ITEM_CAP);
+    // Something that stands in the way leaves no room at all.
+    s.map.ground.length = 0;
+    s.map.ground.push({ id: "t", item: "Table", x: 6, y: 5, kind: "drop", expiresAt: null });
+    expect(chat(dropIntent(s.ctx(), s.room(), a, 1), "A")).toEqual([DROP_TEXT.crowded]);
   });
   test("drop onto a blocked tile", () => {
     const s = scene();
@@ -212,7 +277,7 @@ describe("drop, pickup and give", () => {
     expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
     expect(s.map.ground).toEqual([]);
   });
-  test("kept bug: picking up clears every identical entry on the tile", () => {
+  test("bug fixed: picking up takes the one entry and leaves its twins on the tile", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     for (const id of ["g1", "g2"]) {
@@ -220,6 +285,9 @@ describe("drop, pickup and give", () => {
     }
     pickupIntent(s.ctx(), s.room(), a, "g1");
     expect(a.char.gold).toBe(3);
+    expect(s.map.ground.map((g) => g.id)).toEqual(["g2"]);
+    pickupIntent(s.ctx(), s.room(), a, "g2");
+    expect(a.char.gold).toBe(6);
     expect(s.map.ground).toEqual([]);
   });
   test("a click on an item someone already took says it is no longer there", () => {
@@ -233,21 +301,50 @@ describe("drop, pickup and give", () => {
     ]);
     expect(b.char.bag.filter((x) => x !== null)).toEqual([]);
   });
-  test("kept bug: a full bag refuses a click on a stackable item, Ctrl takes it", () => {
+  test("bug fixed: a full bag takes a clicked item it holds a stack of, as Ctrl does", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
     a.char.bag = a.char.bag.map((_, i) => ({ item: i === 0 ? "Apple" : `Rock${i}`, qty: 1 }));
     s.map.ground.push({ id: "g1", item: "Apple", x: 6, y: 5, kind: "drop", expiresAt: null });
-    expect(chat(pickupIntent(s.ctx(), s.room(), a, "g1"), "A")).toEqual([
-      "You see the Apple, but you are carrying too much to pick it up!",
-    ]);
-    actionIntent(s.ctx(), s.room(), a);
+    s.map.ground.push({ id: "g2", item: "Apple", x: 6, y: 5, kind: "drop", expiresAt: null });
+    s.map.ground.push({ id: "g3", item: "Pear", x: 6, y: 5, kind: "drop", expiresAt: null });
+    expect(chat(pickupIntent(s.ctx(), s.room(), a, "g1"), "A")).toEqual([]);
     expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
+    actionIntent(s.ctx(), s.room(), a);
+    expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 3 });
+    // Nothing to stack on: still too full.
+    a.itemPause = 0;
+    expect(chat(pickupIntent(s.ctx(), s.room(), a, "g3"), "A")).toEqual([
+      "You see the Pear, but you are carrying too much to pick it up!",
+    ]);
+  });
+  test("bug fixed: a fixture the world placed is not picked up by a click or Ctrl; a player's is", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.facing = "E";
+    s.map.ground.push({
+      id: "c",
+      item: "Copy Machine",
+      x: 6,
+      y: 5,
+      kind: "admin",
+      expiresAt: null,
+    });
+    expect(chat(pickupIntent(s.ctx(), s.room(), a, "c"), "A")).toEqual([PICKUP_TEXT.fixed]);
+    a.itemPause = 0;
+    expect(chat(actionIntent(s.ctx(), s.room(), a), "A")).toEqual([PICKUP_TEXT.fixed]);
+    expect(s.map.ground).toHaveLength(1);
+    // A Table a player dropped can be carried off again.
+    s.map.ground[0] = { id: "t", item: "Table", x: 6, y: 5, kind: "drop", expiresAt: null };
+    a.itemPause = 0;
+    actionIntent(s.ctx(), s.room(), a);
+    expect(a.char.bag[0]).toEqual({ item: "Table", qty: 1 });
   });
   test("Ctrl sets ItemActionPause 40: Use waits it out", () => {
     const s = scene({ 3: [1] });
     const a = s.join("A", 5, 5);
+    a.char.hunger = 1000;
     give(a, 1, "Apple", 2);
     actionIntent(s.ctx(), s.room(), a);
     expect(a.itemPause).toBe(40);
@@ -324,17 +421,17 @@ describe("drop, pickup and give", () => {
     expect(chat(s.run(1), "B")[0]).toBe("A is giving you a Knife.");
     expect(b.char.bag.every((l) => l?.item.startsWith("Rock"))).toBe(true);
   });
-  test('a gold give says "a 50 Gold."', () => {
+  test('bug fixed: a gold give says "A is giving you 50 Gold."', () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     const b = s.join("B", 6, 5);
     a.facing = "E";
     a.char.gold = 100;
     const out = goldIntent(s.ctx(), s.room(), a, 50);
-    expect(chat(out, "B")).toEqual(["A is giving you a 50 Gold."]);
+    expect(chat(out, "B")).toEqual(["A is giving you 50 Gold."]);
     expect(b.char.gold).toBe(50);
   });
-  test("kept bug: a given painting is named with its # number", () => {
+  test("bug fixed: a given painting is named without its # number", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     const b = s.join("B", 6, 5);
@@ -342,7 +439,7 @@ describe("drop, pickup and give", () => {
     give(a, 1, "Painting#12");
     const out = giveIntent(s.ctx(), s.room(), a, 1);
     expect(chat(out, "A")).toEqual(["*** You offer the Painting to B."]);
-    expect(chat(s.run(60), "B")).toContain("A is giving you a Painting#12.");
+    expect(chat(s.run(60), "B")).toContain("A is giving you a Painting.");
     expect(b.char.bag[0]?.item).toBe("Painting#12");
   });
   test("give with no one in front", () => {
@@ -351,23 +448,40 @@ describe("drop, pickup and give", () => {
     give(a, 1, "Knife");
     expect(chat(giveIntent(s.ctx(), s.room(), a, 1), "A")).toEqual([GIVE_TEXT.noOne]);
   });
-  test("kept bug: OK on crystals while facing a player gives them (C120)", () => {
+  test("bug fixed: Give on crystals gives them, naming the pile, to the player in front", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     const b = s.join("B", 6, 5);
     a.facing = "E";
     give(a, 1, "Red Crystals", 10);
-    const out = crystalsIntent(s.ctx(), s.room(), a, 1, 4);
-    expect(chat(out, "A")).toEqual(["*** Offering the  to B."]);
+    const out = crystalsIntent(s.ctx(), s.room(), a, 1, 4, "give");
+    expect(chat(out, "A")).toEqual(["*** Offering the 4 Red Crystals to B."]);
+    expect(chat(out, "B")).toEqual(["A is giving you 4 Red Crystals."]);
     expect(a.char.bag[0]).toEqual({ item: "Red Crystals", qty: 6 });
     expect(b.char.bag[0]).toEqual({ item: "Red Crystals", qty: 4 });
+  });
+  test("bug fixed: Drop on crystals drops them even facing a player", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    const b = s.join("B", 6, 5);
+    a.facing = "E";
+    give(a, 1, "Red Crystals", 10);
+    expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 4, "drop"), "A")).toEqual([]);
+    expect(groundAt(s.map, 6, 5)).toEqual(["4 Red Crystals"]);
+    expect(b.char.bag[0]).toBeNull();
+    // Give with no one in front says so and keeps them.
+    a.facing = "W";
+    expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 2, "give"), "A")).toEqual([
+      GIVE_TEXT.noOne,
+    ]);
+    expect(a.char.bag[0]).toEqual({ item: "Red Crystals", qty: 6 });
   });
   test("a short crystal drop says the balance test's line, before the path split", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
     give(a, 1, "Red Crystals", 3);
-    expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 4), "A")).toEqual([
+    expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 4, "drop"), "A")).toEqual([
       "You don't have enough crystals!",
     ]);
   });
@@ -413,7 +527,7 @@ describe("gold drop and give", () => {
     expect(a.char.gold).toBe(10);
     expect(s.map.ground).toEqual([]);
   });
-  test("kept bug: give says 'Offering the 50 to B.' without the word gold; B has it at once", () => {
+  test("bug fixed: give says 'Offering the 50 gold to B.'; B has it at once", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     const b = s.join("B", 6, 5);
@@ -421,7 +535,7 @@ describe("gold drop and give", () => {
     a.char.gold = 100;
     b.char.gold = 7;
     const out = goldIntent(s.ctx(), s.room(), a, 50);
-    expect(chat(out, "A")).toEqual(["*** Offering the 50 to B."]);
+    expect(chat(out, "A")).toEqual(["*** Offering the 50 gold to B."]);
     expect(a.char.gold).toBe(50);
     expect(b.char.gold).toBe(57);
     expect(s.map.ground).toEqual([]);
@@ -460,7 +574,7 @@ describe("gold drop and give", () => {
     a.stepFrames = 3;
     expect(goldIntent(s.ctx(), s.room(), a, 1)).toEqual([]);
     a.stepFrames = 0;
-    s.map.ground.push({ id: "g", item: "Apple", x: 6, y: 5, kind: "drop", expiresAt: null });
+    s.map.ground.push({ id: "g", item: "Fire Pot", x: 6, y: 5, kind: "drop", expiresAt: null });
     expect(chat(goldIntent(s.ctx(), s.room(), a, 1), "A")).toEqual([DROP_TEXT.crowded]);
     s.map.ground.length = 0;
     s.map.walk[4]![5] = false;
@@ -519,7 +633,11 @@ describe("ground items block by name", () => {
     });
     expect(nextStep(s.map, slot)).toBeNull();
     expect(slot.live.queue).toEqual([]);
+    // Bug fixed: Holy Water stops a monster as it stops a player.
     s.map.ground[0]!.item = "Holy Water";
+    slot.live.queue = ["R"];
+    expect(nextStep(s.map, slot)).toBeNull();
+    s.map.ground[0]!.item = "Apple";
     slot.live.queue = ["R"];
     expect(nextStep(s.map, slot)).not.toBeNull();
   });

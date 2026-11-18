@@ -7,7 +7,6 @@ import { type EquipSlot, itemRulesData } from "@secondstaronline/data";
 import type { Equipment } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
-import { EQUIP_FIELD } from "./inventory.ts";
 
 const R = itemRulesData;
 
@@ -36,11 +35,10 @@ export const EQUIP_TEXT = {
   twoHandedHeld:
     "You are currently equipped with a 2-handed weapon, you must remove it first in order to equip this.",
   shieldHeld: "This is a 2-handed weapon, you cannot have a shield equipped to wield this.",
-  /** No full stop: 1.6 left it off. */
-  cannot: (name: string) => `You cannot equip the ${name}`,
+  cannot: (name: string) => `You cannot equip the ${name}.`,
   vile: "You are not vile enough to equip this!",
-  /** The server's refusal for an occupied slot. */
-  occupied: "You have to remove the current item you're wearing to equip this!",
+  /** A swap whose worn item has nowhere to go in the bag. */
+  swapFull: "You are carrying too much to swap this for what you're wearing!",
   /** `flinv`. */
   full: "You are carrying too much to unequip this!",
   /** remEQ when the slot no longer holds it. */
@@ -49,7 +47,11 @@ export const EQUIP_TEXT = {
 
 export type EquipCheck = { ok: true; slot: EquipSlot } | { ok: false; text: string };
 
-/** The client's equip gates in order, then the server's occupied-slot refusal. */
+/**
+ * The client's equip gates in order. An occupied slot is no refusal: the server swaps the worn item
+ * back into the bag (1.6's server refused with "You have to remove the current item you're wearing
+ * to equip this!").
+ */
 export function checkEquip(
   name: string,
   who: { str: number; wanted: boolean; equip: Equipment },
@@ -71,9 +73,6 @@ export function checkEquip(
   if (!who.wanted && ruleMatches(name, R.equip.murder)) {
     return { ok: false, text: EQUIP_TEXT.vile };
   }
-  if (!lingoEq(who.equip[EQUIP_FIELD[slot]], "NOTHING")) {
-    return { ok: false, text: EQUIP_TEXT.occupied };
-  }
   return { ok: true, slot };
 }
 
@@ -88,11 +87,10 @@ export const USE_TEXT = {
 } as const;
 
 /**
- * Items whose use does nothing and says nothing. Books are read by the spell-learning system. The
- * Ocarina stays for good: its use calls the empty music reset and nothing else, and the composer is
- * unreachable, so no music plays in 1.6 (kept bug). The names are `use.silent` in
- * content/item-rules.json. "Map" stays in it: no item has "Map" in its name, so the Use text
- * ("You open up the map and read it...") can never show and nothing is built for it.
+ * Items whose use is handled before the usable list, or does nothing and says nothing. Books are
+ * read by the spell-learning system and the Ocarina is played by the server. The names are
+ * `use.silent` in content/item-rules.json. "Map" stays in it: no item has "Map" in its name, so the
+ * Use text ("You open up the map and read it...") can never show and nothing is built for it.
  */
 export function useDeferred(name: string): boolean {
   return anyMatch(R.use.silent, name);
@@ -110,10 +108,14 @@ export interface UseOutcome {
   argon: boolean;
 }
 
+/** Hunger at or above this refuses every usable item: "You're stuffed!", and the item is kept. */
+export const STUFFED = 35000;
+
 /**
  * The use handler from the whitelist on, for one item. `v` is HP/SP/Hunger and their caps; the
- * result is the new values. Every `random` of the effect rows is drawn in source order, and only
- * while Hunger < 35000.
+ * result is the new values. Every `random` of the effect rows is drawn in source order. A player
+ * who is already stuffed is refused and keeps the item (1.6 used it up for nothing, and also said
+ * "You're stuffed!" on the bite that filled you).
  */
 export function useItem(
   name: string,
@@ -132,22 +134,22 @@ export function useItem(
     out.lines.push(USE_TEXT.cannot(name.includes("#") ? name.slice(0, name.indexOf("#")) : name));
     return out;
   }
+  if (out.hunger >= STUFFED) {
+    out.lines.push(USE_TEXT.stuffed);
+    return out;
+  }
   const effects = R.use.effects.filter((r) => ruleMatches(name, r));
-  // HP and SP rows, then the hunger rows; both behind the guard.
-  if (out.hunger < 35000) {
-    for (const r of effects.filter((e) => e.stat !== "Hunger")) {
-      const add = r.flat + (r.randomN ? rng.random(r.randomN) : 0);
-      if (r.stat === "HP") {
-        out.hp += add;
-      } else {
-        out.sp += add;
-      }
+  // HP and SP rows, then the hunger rows.
+  for (const r of effects.filter((e) => e.stat !== "Hunger")) {
+    const add = r.flat + (r.randomN ? rng.random(r.randomN) : 0);
+    if (r.stat === "HP") {
+      out.hp += add;
+    } else {
+      out.sp += add;
     }
   }
-  if (out.hunger < 35000) {
-    for (const r of effects.filter((e) => e.stat === "Hunger")) {
-      out.hunger += r.flat + (r.randomN ? rng.random(r.randomN) : 0);
-    }
+  for (const r of effects.filter((e) => e.stat === "Hunger")) {
+    out.hunger += r.flat + (r.randomN ? rng.random(r.randomN) : 0);
   }
   out.hp = Math.min(out.hp, v.hpMax);
   out.sp = Math.min(out.sp, v.spMax);
@@ -158,16 +160,12 @@ export function useItem(
   );
   let text = msg ? msg.text.replace('" & SelInventory & "', name) : null;
   if (lingoEq(name, "Purple Potion")) {
-    // Outside the hunger guard; the Argon line is printed twice, as 1.6 did (kept bug).
+    // The Argon line once (1.6 printed it twice).
     out.argon = true;
-    out.lines.push(USE_TEXT.argon);
     text = USE_TEXT.argon;
   }
   if (text !== null) {
     out.lines.push(text);
-    if (out.hunger > 34999) {
-      out.lines.push(USE_TEXT.stuffed);
-    }
   }
   out.consume = true;
   return out;

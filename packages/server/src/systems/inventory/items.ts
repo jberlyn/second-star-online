@@ -5,9 +5,11 @@
  */
 import { houseData } from "@secondstaronline/data";
 import {
+  addSlotFor,
   amountPath,
   artRef,
   bagText,
+  blocksMonster,
   blocksPlayer,
   checkEquip,
   clickGate,
@@ -21,6 +23,7 @@ import {
   equipped,
   FACING_DELTA,
   filledLines,
+  fixedInPlace,
   headDrop,
   invAdd,
   invDelSlot,
@@ -91,17 +94,27 @@ export const GIVE_TEXT = {
   cannot: "You cannot give this.",
   offer: (item: string, to: string) => `*** You offer the ${item} to ${to}.`,
   noOne: "*** You must be standing in front of someone to give them this.",
+  /** A single item, `#` number stripped ("a Painting"). */
   receiving: (giver: string, item: string) => `${giver} is giving you a ${item}.`,
-  /** 1.6 never sets the line's item for crystals, so it is void. */
-  offerCrystals: (to: string) => `*** Offering the  to ${to}.`,
+  /** A pile of gold or crystals, named with its amount ("50 Gold", "5 Blue Crystals"). */
+  receivingPile: (giver: string, pile: string) => `${giver} is giving you ${pile}.`,
+  /** 1.6 left the crystals out ("Offering the  to Bob"). */
+  offerCrystals: (pile: string, to: string) => `*** Offering the ${pile} to ${to}.`,
   notEnough: "You don't have enough crystals!",
-  /**
-   * For gold 1.6 sets the line's item to the amount typed, so the line names the amount and not the
-   * gold (a kept 1.6 bug: "Offering the 50 to Bob").
-   */
-  offerGold: (n: number, to: string) => `*** Offering the ${n} to ${to}.`,
+  /** The NPC gold line's wording; 1.6 named only the amount ("Offering the 50 to Bob"). */
+  offerGold: (n: number, to: string) => `*** Offering the ${n} gold to ${to}.`,
   notEnoughGold: "You don't have enough gold!",
 } as const;
+
+/** Using an Ocarina: the line, and the tune everyone on the map hears. */
+export const OCARINA = {
+  text: "You play a tune on your Ocarina.",
+  sound: "ocarina",
+  ch: 5,
+} as const;
+
+/** How many items one tile holds before a player's drop finds the floor too crowded. */
+export const TILE_ITEM_CAP = 10;
 
 /** Frames between a give's drop and the target's grab: 180 ticks of 1/60 s. */
 export const GIVE_GRAB_FRAMES = 60;
@@ -139,13 +152,12 @@ export class ItemOut {
 }
 
 const busy = (p: Player) => p.deadLock > 0 || p.loading > 0;
-/** Ctrl waits out its own item-action pause and ignores 1.6's client-side input lock. */
-const ctrlPaused = (p: Player) => busy(p) || p.itemPause > 0;
 /**
- * Use, Equip, Drop and a click wait out Ctrl's item-action pause; the bag and ground clicks also
- * exit while a window holds the input lock.
+ * Use, Equip, Drop, a click and Ctrl wait out the item-action pause and exit while a window holds
+ * the input lock (1.6's Ctrl ignored the lock, so it worked behind an open window and reopened an
+ * open mailbox).
  */
-const paused = (p: Player) => ctrlPaused(p) || p.keyLock;
+const paused = (p: Player) => busy(p) || p.itemPause > 0 || p.keyLock;
 
 function faced(p: Player): { x: number; y: number } {
   const [dx, dy] = FACING_DELTA[p.facing];
@@ -233,6 +245,14 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
     io.tell(p, USE_TEXT.piano);
     return io.out;
   }
+  // The Ocarina plays a tune that everyone on the map hears, and is kept (1.6's did nothing).
+  if (lingoEq(line.item, "Ocarina")) {
+    io.tell(p, OCARINA.text);
+    for (const o of room.players) {
+      io.out.push({ to: o.id, msg: { t: "sound", name: OCARINA.sound, ch: OCARINA.ch } });
+    }
+    return io.out;
+  }
   if (useDeferred(line.item)) {
     return io.out;
   }
@@ -270,8 +290,11 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
 
 // ---- equip and unequip -----------------------------------------------------------------
 
-/** The Equip button: one unit moves into the derived slot. */
-export function equipIntent(_ctx: ItemCtx, room: Room, p: Player, slot: number): Outgoing[] {
+/**
+ * The Equip button: one unit moves into the derived slot. Whatever the slot held goes back into the
+ * bag, so a swap needs room for it (1.6 refused an occupied slot).
+ */
+export function equipIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
   // Items whose menu shows Cook/Mix/Build/Smith/Storage have no Equip button.
@@ -287,8 +310,20 @@ export function equipIntent(_ctx: ItemCtx, room: Room, p: Player, slot: number):
     io.tell(p, c.text);
     return io.out;
   }
-  p.char.equip[EQUIP_FIELD[c.slot]] = line.item;
+  const field = EQUIP_FIELD[c.slot];
+  const worn = p.char.equip[field];
+  const swap = !lingoEq(worn, NOTHING);
+  // The worn item needs a stack, an empty line, or the line the new item leaves.
+  if (swap && line.qty > 1 && addSlotFor(p.char.bag, worn) < 0) {
+    io.tell(p, EQUIP_TEXT.swapFull);
+    return io.out;
+  }
+  const item = line.item;
   invDelSlot(p.char.bag, slot - 1, 1);
+  if (swap) {
+    invAdd(p.char, worn, 1, ctx.rng);
+  }
+  p.char.equip[field] = item;
   changed(p);
   p.lookDirty = true;
   return io.out;
@@ -322,8 +357,9 @@ export function unequipIntent(ctx: ItemCtx, room: Room, p: Player, slot: EquipSl
 // ---- drop ------------------------------------------------------------------------------
 
 /**
- * Dropping a Pig: a live Pig is summoned on the faced tile. The checks run in 1.6's order, and the
- * Pig is gone before the summon's own tests, so a dropped pig can be lost (a kept 1.6 bug).
+ * Dropping a Pig: a live Pig is summoned on the faced tile. Every test the summon makes runs before
+ * the Pig leaves the bag, so a refused pig stays in the bag (1.6 took it first and lost it on a
+ * tile monsters cannot stand on, or above the top row).
  */
 function pigDrop(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, slot: number): Outgoing[] {
   // Monster slots 1-4 all live (sprites 180-183; slot 5 is never counted).
@@ -332,20 +368,35 @@ function pigDrop(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, slot: number)
     return io.out;
   }
   const t = faced(p);
-  // 1.6's fourth test repeats the x < 1 test, so there is no y < 1 test.
-  if (t.x > MAP_WIDTH || t.x < 1 || t.y > MAP_HEIGHT) {
-    return io.out;
-  }
-  if (blockedSubstring(p.vehicle ? room.map.walkAir : room.map.walk, t.x, t.y)) {
+  if (
+    t.x > MAP_WIDTH ||
+    t.x < 1 ||
+    t.y > MAP_HEIGHT ||
+    t.y < 1 ||
+    blockedSubstring(room.map.walk, t.x, t.y)
+  ) {
     io.tell(p, PIG_TEXT.blocked);
     return io.out;
   }
-  // The Pig leaves the bag, then the summon runs. No pause is set here: 1.6's item-action pause and
-  // modify flag are cleared by the reply's `inx`.
+  // No pause is set here: 1.6's item-action pause and modify flag are cleared by the reply's `inx`.
+  const r = summonPig(room, t.x, t.y, ctx.rng);
+  if (!r.changed) {
+    io.tell(p, PIG_TEXT.blocked);
+    return io.out;
+  }
   invDelSlot(p.char.bag, slot - 1, 1);
   changed(p);
-  io.out.push(...summonPig(room, t.x, t.y, ctx.rng).out);
+  io.out.push(...r.out);
   return io.out;
+}
+
+/**
+ * Whether a player's drop of one more item finds the faced tile too crowded: something on it stands
+ * in the way, or it already holds `TILE_ITEM_CAP` items. 1.6 refused any tile holding an item.
+ */
+function tileCrowded(room: Room, x: number, y: number): boolean {
+  const here = room.map.ground.filter((g) => g.x === x && g.y === y);
+  return here.length >= TILE_ITEM_CAP || here.some((g) => blocksMonster(g.item));
 }
 
 /** The Drop button: one unit onto the faced tile. */
@@ -379,11 +430,6 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
       return io.out;
     }
   }
-  // A Pig (exact name) comes before the locks, the vehicle tests and the mid-step test, so Pigs
-  // drop during the item pause, mid-step and from an Airship (1.6 did the same).
-  if (lingoEq(name, "Pig")) {
-    return pigDrop(ctx, room, io, p, slot);
-  }
   if (paused(p)) {
     return io.out;
   }
@@ -391,8 +437,8 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
   if (lingoContains(name, "Crystals")) {
     return io.out;
   }
-  // Aboard an Airship nothing else leaves the bag. The gold and crystal dialogs never reach here,
-  // so they still drop from the sky.
+  // Aboard an Airship nothing leaves the bag, a Pig included; the gold and crystal dialogs refuse
+  // the same way.
   if (p.vehicle) {
     io.tell(p, VEHICLE_TEXT.sky);
     return io.out;
@@ -400,12 +446,17 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
   if (p.stepFrames > 0) {
     return io.out; // mid-step: silent
   }
+  // A Pig (exact name) after the pause, vehicle and mid-step tests like every other item (1.6
+  // tested it first, so pigs dropped when nothing else could).
+  if (lingoEq(name, "Pig")) {
+    return pigDrop(ctx, room, io, p, slot);
+  }
   // The four orbs go to 1.6's orb routine, which never matches and falls through.
   const t = faced(p);
   // The first item on the faced tile decides (sprites 158-177 in order): a house or guild vault, a
   // `Cabinet#`, `Crate#` or `Cauldron#`, the Gold, Steel, Water, Emerald, Dark or Wind Chest (1.6
-  // left the Wind Chest out), or the Vault takes the item; a plain "Crate" falls to "the floor is
-  // too crowded".
+  // left the Wind Chest out), or the Vault takes the item; a plain "Crate" stands in the way, so
+  // the floor is too crowded. Ordinary items share a tile.
   const first = room.map.ground.find((g) => g.x === t.x && g.y === t.y);
   const route = first ? dropRoute(first) : null;
   if (route !== null && lingoEq(route, "Vault")) {
@@ -416,7 +467,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
     io.out.push(...depositContainer(ctx.world, p, slot, route));
     return io.out;
   }
-  if (first) {
+  if (tileCrowded(room, t.x, t.y)) {
     io.tell(p, DROP_TEXT.crowded);
     return io.out;
   }
@@ -506,8 +557,9 @@ export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
 // ---- crystals --------------------------------------------------------------------------
 
 /**
- * The crystal dialog's OK (C120): a player on the faced tile gets them, otherwise they are
- * dropped there (bug ledger "Drop on crystals while facing a player gives them").
+ * The crystal dialog's OK (C120), opened by the bag's Drop or Give: Give hands them to the player on
+ * the faced tile, Drop puts them on it. 1.6 ignored the button and gave whenever a player stood in
+ * front.
  */
 export function crystalsIntent(
   ctx: ItemCtx,
@@ -515,6 +567,7 @@ export function crystalsIntent(
   p: Player,
   slot: number,
   n: number,
+  mode: "drop" | "give",
 ): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
@@ -522,7 +575,8 @@ export function crystalsIntent(
     return io.out;
   }
   const t = faced(p);
-  const target = p.stepFrames === 0 ? playerOn(room, p, t.x, t.y) : null;
+  const ahead = p.stepFrames === 0 ? playerOn(room, p, t.x, t.y) : null;
+  const target = mode === "give" ? ahead : null;
   const pile = `${n} ${line.item}`;
   const path = amountPath({
     gold: false,
@@ -536,8 +590,12 @@ export function crystalsIntent(
     io.tell(p, GIVE_TEXT.notEnough);
     return io.out;
   }
+  if (mode === "give" && !target) {
+    io.tell(p, GIVE_TEXT.noOne);
+    return io.out;
+  }
   if (target) {
-    io.tell(p, GIVE_TEXT.offerCrystals(target.name));
+    io.tell(p, GIVE_TEXT.offerCrystals(pile, target.name));
     const g = addGround(ctx, room, io, {
       item: pile,
       x: target.x,
@@ -551,11 +609,15 @@ export function crystalsIntent(
     io.out.push(...receiveGive(ctx, room, target, g, p.name));
     return io.out;
   }
+  if (p.vehicle) {
+    io.tell(p, VEHICLE_TEXT.sky);
+    return io.out;
+  }
   if (p.stepFrames > 0) {
     return io.out;
   }
-  if (room.map.ground.some((g) => g.x === t.x && g.y === t.y)) {
-    io.tell(p, DROP_TEXT.crowded); // any item, no container redirect
+  if (tileCrowded(room, t.x, t.y)) {
+    io.tell(p, DROP_TEXT.crowded); // no container redirect
     return io.out;
   }
   if (!isWalkable(room.map.walk, t.x, t.y)) {
@@ -615,11 +677,16 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
     io.out.push(...(giveGoldToNpc(ctx, room, p, n) ?? []));
     return io.out;
   }
+  // Aboard an Airship gold is not dropped from the sky (1.6 let it fall).
+  if (p.vehicle) {
+    io.tell(p, VEHICLE_TEXT.sky);
+    return io.out;
+  }
   if (p.stepFrames > 0) {
     return io.out;
   }
-  if (room.map.ground.some((g) => g.x === t.x && g.y === t.y)) {
-    io.tell(p, DROP_TEXT.crowded); // any item, no container redirect
+  if (tileCrowded(room, t.x, t.y)) {
+    io.tell(p, DROP_TEXT.crowded); // no container redirect
     return io.out;
   }
   if (!isWalkable(room.map.walk, t.x, t.y)) {
@@ -635,17 +702,13 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
 // ---- pickup ----------------------------------------------------------------------------
 
 /**
- * The pickup: every entry with the same name on that tile goes (1.6 did this, so picking up clears
- * every identical entry on the tile), then one is granted. Gold goes to the gold field; a crystal
- * pile becomes n crystals; with no empty line and no substring match of the name in the bag, the
- * item is destroyed. An immortal's counted `/drop` pile gives its count.
+ * The pickup: the one entry goes and is granted (1.6 cleared every entry with the same name on the
+ * tile and granted one). Gold goes to the gold field; a crystal pile becomes n crystals; with no
+ * empty line and no substring match of the name in the bag, the item is destroyed. An immortal's
+ * counted `/drop` pile gives its count.
  */
 export function grab(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, g: GroundItem): void {
-  for (const other of [...room.map.ground]) {
-    if (other.x === g.x && other.y === g.y && lingoEq(other.item, g.item)) {
-      removeGround(ctx, room, io, other.id);
-    }
-  }
+  removeGround(ctx, room, io, g.id);
   if (isGoldName(g.item)) {
     invAdd(p.char, g.item, 1, ctx.rng);
     changed(p);
@@ -662,10 +725,16 @@ export function grab(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, g: Ground
   changed(p);
 }
 
-/** The click pre-check on a full bag (give side): gold always passes. */
-function clickBagFull(p: Player, name: string): boolean {
-  // The stack test overwrites the bag list first, so a stack never helps (bug ledger).
-  return !isGoldName(name) && filledLines(p.char.bag) >= p.char.bag.length;
+/**
+ * The bag test of a click, a Ctrl and a received give: gold always passes, and a full bag still
+ * takes an item it already holds a stack of (1.6's click and give overwrote the stack test, so a
+ * full bag refused even a stack).
+ */
+function bagFull(p: Player, name: string): boolean {
+  if (isGoldName(name) || filledLines(p.char.bag) < p.char.bag.length) {
+    return false;
+  }
+  return !lingoContains(bagText(p.char.bag), `${pileToItem(name).item}-`);
 }
 
 /**
@@ -702,14 +771,11 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
     io.tell(p, PICKUP_TEXT.gone);
     return io.out;
   }
-  // The house test on every click, worked out from this room alone (1.6 kept a set flag until the
-  // next Drop, so a room's own stations showed their text after a refusal elsewhere).
-  p.headFlag = headDrop(p.map.title, p.name, p.guild);
   // The personal vault.
   if (lingoEq(g.item, "Vault")) {
     return openVault(p, g);
   }
-  const gate = clickGate(g.item, p.char.stats.str, p.headFlag);
+  const gate = clickGate(g.item);
   if (gate.kind === "silent") {
     return io.out;
   }
@@ -785,7 +851,11 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
     return io.out;
   }
   const name = displayName(g.item);
-  if (clickBagFull(p, g.item)) {
+  if (fixedInPlace(g.item, g.kind === "admin")) {
+    io.tell(p, PICKUP_TEXT.fixed);
+    return io.out;
+  }
+  if (bagFull(p, g.item)) {
     io.tell(p, PICKUP_TEXT.full(name));
     return io.out;
   }
@@ -814,13 +884,15 @@ export function signNumber(name: string): 1 | 2 | 3 | null {
 export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   const io = new ItemOut(room);
   // The click timer and the item-action pause gate Ctrl to one action per 40 frames.
-  if (ctrlPaused(p)) {
+  if (paused(p)) {
     return io.out;
   }
   p.itemPause = 40;
-  // Aboard an Airship Ctrl only ever tries to unboard, never picks anything up: a pig or an item in
-  // front is ignored.
-  if (p.vehicle) {
+  const t = faced(p);
+  const g = room.map.ground.find((x) => x.x === t.x && x.y === t.y);
+  // Aboard an Airship Ctrl unboards unless something is in front to act on: a pig or an item is
+  // taken as on foot (1.6 only ever unboarded).
+  if (p.vehicle && !g && !room.map.slots.some((s) => s.live?.x === t.x && s.live?.y === t.y)) {
     return unboardAirship(ctx, room, p);
   }
   // A Pig or Snow Demon on the faced tile is grabbed first.
@@ -832,12 +904,10 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     }
     return io.out;
   }
-  if (p.stepFrames > 0) {
-    return io.out;
+  if (p.vehicle && !g) {
+    return unboardAirship(ctx, room, p);
   }
-  const t = faced(p);
-  const g = room.map.ground.find((x) => x.x === t.x && x.y === t.y);
-  if (!g) {
+  if (p.stepFrames > 0 || !g) {
     return io.out;
   }
   // A sign shows its text: map field 14-16.
@@ -851,7 +921,10 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     io.out.push(...openVault(p, g));
     return io.out;
   }
-  const gate = ctrlGate(g.item);
+  const gate = ctrlGate(g.item, {
+    str: p.char.stats.str,
+    mine: headDrop(p.map.title, p.name, p.guild) === 0,
+  });
   // The airship click on the faced Airship.
   if (gate.kind === "airship") {
     return airshipClick(ctx, room, p, g);
@@ -912,18 +985,18 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     if (gate.kind === "text") {
       io.tell(p, gate.text);
       if (gate.unpause) {
-        p.itemPause = 0; // the Street Lamp clears the item-action pause
+        p.itemPause = 0; // the Street Lamp and the platforms clear the item-action pause
       }
     }
     return io.out;
   }
-  if (!isGoldName(g.item) && filledLines(p.char.bag) >= p.char.bag.length) {
-    // Ctrl tests the bag for "<name>-" correctly.
-    const search = `${pileToItem(g.item).item}-`;
-    if (!lingoContains(bagText(p.char.bag), search)) {
-      io.tell(p, PICKUP_TEXT.full(g.item));
-      return io.out;
-    }
+  if (fixedInPlace(g.item, g.kind === "admin")) {
+    io.tell(p, PICKUP_TEXT.fixed);
+    return io.out;
+  }
+  if (bagFull(p, g.item)) {
+    io.tell(p, PICKUP_TEXT.full(g.item));
+    return io.out;
   }
   grab(ctx, room, io, p, g);
   return io.out;
@@ -941,10 +1014,16 @@ export function receiveGive(
   giverName: string,
 ): Outgoing[] {
   const io = new ItemOut(room);
-  // 1.6 prints this first, before the ground and bag checks, with the name as the client stored it:
-  // a painting's `#` number stays (a kept 1.6 bug), gold reads "a 50 Gold".
-  io.tell(target, GIVE_TEXT.receiving(giverName, g.item));
-  if (!room.map.ground.includes(g) || clickBagFull(target, g.item)) {
+  // Printed first, before the ground and bag checks. A pile is named with its amount ("50 Gold"),
+  // an item without its `#` number (1.6 showed "a Painting#12" and "a 50 Gold").
+  const pile = isGoldName(g.item) || lingoContains(g.item, " Crystals");
+  io.tell(
+    target,
+    pile
+      ? GIVE_TEXT.receivingPile(giverName, g.item)
+      : GIVE_TEXT.receiving(giverName, displayName(g.item)),
+  );
+  if (!room.map.ground.includes(g) || bagFull(target, g.item)) {
     return io.out;
   }
   grab(ctx, room, io, target, g);

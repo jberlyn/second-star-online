@@ -28,17 +28,17 @@ Ground items have blocking and drawing rules distinct from bag entries. Monster 
 
 ### Bag, equipment and use
 
-The bag has 15 lines. Ordinary items stack by case-insensitive exact name or use the first empty line; gold piles increase gold instead. Containers needing individual storage get IDs, including cauldrons. Equipping derives the slot from the item name and checks requirements before moving one item; the server also refuses an occupied slot. Name rules are ordered and the last matching rule can determine the slot or strength requirement. Item use applies its effects and consumes items according to their rules, with special items delegated to other systems. [Item rules](../../packages/data/content/item-rules.json) contain the editable matching data.
+The bag has 15 lines. Ordinary items stack by case-insensitive exact name or use the first empty line; gold piles increase gold instead. Containers needing individual storage get IDs, including cauldrons. Equipping derives the slot from the item name and checks requirements before moving one item; an item already in that slot goes back into the bag, so the swap needs room for it. Name rules are ordered and the last matching rule can determine the slot or strength requirement. Item use applies its effects and consumes items according to their rules, with special items delegated to other systems. [Item rules](../../packages/data/content/item-rules.json) contain the editable matching data.
 
 ### Ground and transfers
 
-Dropping puts an item on the faced tile after the action's checks. Giving a normal item creates a ground item at the target and schedules its grab 60 frames later; gold and NPC hand-ins follow their own routes. Pickup checks the current map, position and item before moving it to the bag. The server records ground changes for persistence and removes expired monster loot on its decay step. Ground objects can block players and monsters differently; for example monsters can cross Holy Water and newspapers that stop players.
+Dropping puts an item on the faced tile after the action's checks; ordinary items share a tile up to a cap, and a tile holding something that stands in the way is too crowded. Giving a normal item creates a ground item at the target and schedules its grab 60 frames later; gold, crystals and NPC hand-ins follow their own routes, and the crystal dialog drops or gives by the bag button that opened it. Pickup checks the current map, position and item before moving that one item to the bag. A click uses a thing that does something (opens a crate, plays a casino table, views a painting) and Ctrl carries off the ones that can be moved; a blocking fixture the world placed is never picked up. Ctrl, like every other item action, waits while a window holds the keys. The server records ground changes for persistence and removes expired monster loot on its decay step. Ground objects that block players block monsters too.
 
-The paperdoll combines body, head and equipment layers for the current frame and facing. Boots are not drawn, a retained original behaviour; an absent layer is skipped. Ground pictures and their draw layers are selected by shared name rules, independently of collision.
+The paperdoll combines body, head and equipment layers for the current frame and facing; boots are drawn over the body from authored layers, and an absent layer is skipped. Ground pictures and their draw layers are selected by shared name rules, independently of collision.
 
 ## Kept bugs and differences
 
-A clicked pickup can be refused when the bag is full even if the item would stack. Food can still be consumed when the player is already stuffed. The server checks adjacency and the actual bag slot for item transfers.
+The inventory has no kept bugs. The server checks adjacency and the actual bag slot for item transfers.
 
-See the [inventory kept bugs](../bug-ledger.md#inventory) and [inventory differences](../divergences.md#inventory) for the specific player-visible cases.
+See the [inventory differences](../divergences.md#inventory) for the specific player-visible cases, including every inventory bug SSO fixed.
 

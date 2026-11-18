@@ -9,6 +9,7 @@ import { skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
+import { isFurniture } from "../housing/houses.ts";
 import { leadingInteger } from "./inventory.ts";
 
 /** The pixel anchor of a tile (`32·x + 14`, `32·y − 3`). */
@@ -38,14 +39,20 @@ export function blocksPlayer(
 }
 
 /**
- * The monsters' list (anchor tile only): the player list without the rows marked `monsters: false`,
- * Holy Water and "'s Newspaper" (a kept bug: monsters walk onto Holy Water and newspapers).
+ * The monsters' list (anchor tile only): the same list as the players', so Holy Water and
+ * newspapers stop monsters too (1.6 left those two off the monsters' list).
  */
 export function blocksMonster(name: string): boolean {
-  return anyMatch(
-    G.blocks.filter((r) => r.monsters),
-    name,
-  );
+  return anyMatch(G.blocks, name);
+}
+
+/**
+ * A fixture the world placed (the world editor or an immortal's `/drop`) that stands in the way
+ * (`ground.blocks`, or a skill platform) is never picked up by a player. The same item dropped by a
+ * player, such as a crafted Table, can be.
+ */
+export function fixedInPlace(name: string, placedByWorld: boolean): boolean {
+  return placedByWorld && (anyMatch(G.blocks, name) || anyMatch(G.platforms, name));
 }
 
 /**
@@ -74,12 +81,13 @@ const PICTURES: readonly [string, string][] = [
 
 /**
  * The face a placed Clock shows at server minute `minute` (the clock-face drawing; the same table
- * in the time swatch, and the items draw). Minutes 0-35 step every 3 (Clock12 … Clock11), 36-59
- * every 2, so the hand goes round twice an hour, the second time faster (a kept bug).
+ * in the time swatch, and the items draw): the hand points at the minute, moving one face every 5
+ * minutes, so it goes round once an hour (Clock12 at :00, Clock1 at :05 … Clock11 at :55). 1.6's
+ * table stepped every 3 minutes up to :35 and every 2 after, going round twice.
  */
 export function clockFace(minute: number): string {
-  const hour = minute < 36 ? Math.floor(minute / 3) : Math.floor((minute - 36) / 2);
-  return hour === 0 ? "Clock12" : `Clock${hour}`;
+  const face = Math.floor((((minute % 60) + 60) % 60) / 5);
+  return face === 0 ? "Clock12" : `Clock${face}`;
 }
 
 /**
@@ -190,6 +198,8 @@ export const PICKUP_TEXT = {
   gone: "You cannot pick this up because it's no longer there",
   cauldron: "This is WAY too heavy for anyone to pick up!",
   weak: "You're not strong enough to pick this up!",
+  /** A fixture the world placed (`fixedInPlace`). */
+  fixed: "This is fixed in place; you can't pick it up.",
 } as const;
 
 export type PickupGate =
@@ -227,15 +237,15 @@ const CASINO_CLICKS: Readonly<Record<string, "slots" | "blackjack" | "checkers">
 };
 
 /**
- * The name gates of a click pickup. Chests and house and guild vaults open with the chest click;
- * boards, mailboxes and signs open windows elsewhere (here they are left alone); the fixtures after
- * the Guild Vault run in 1.6's order from `houseData.clickFixtures`: a text, a silent exit, or a
- * handler (the switches, the Guild Center and the casino tables; the personal Vault is the
- * server's, before this test). `headFlag` is the do-not-drop flag after the click's house test: the
- * stations and casino tables answer only while it is 1, and in a room whose header names you fall
- * through to pickup.
+ * The name gates of a click pickup. A click uses a thing that does something and Ctrl picks up the
+ * ones that can be carried (`ctrlGate`). Chests, crates, cabinets and house and guild vaults open
+ * with the chest click; boards, mailboxes and signs open windows elsewhere (here they are left
+ * alone); the fixtures after the Guild Vault run in 1.6's order from `houseData.clickFixtures`: a
+ * text, a silent exit, or a handler (the switches, the Guild Center and the casino tables; the
+ * personal Vault is the server's, before this test). The stations and casino tables answer
+ * wherever they stand, your own house included (1.6 picked them up there instead).
  */
-export function clickGate(name: string, str: number, headFlag: 0 | 1 = 1): PickupGate {
+export function clickGate(name: string): PickupGate {
   const has = (p: string) => lingoContains(name, p);
   const eq = (p: string) => lingoEq(name, p);
   // The newspaper, then a painting or photo, both tested on the part of the name before `#`,
@@ -289,19 +299,15 @@ export function clickGate(name: string, str: number, headFlag: 0 | 1 = 1): Picku
   if (eq("Cauldron") || has("Cauldron#")) {
     return { kind: "text", text: PICKUP_TEXT.cauldron };
   }
-  if (has("Crate") && str < 15) {
-    return { kind: "text", text: PICKUP_TEXT.weak };
-  }
-  if (has("Cabinet") && str < 19) {
-    return { kind: "text", text: PICKUP_TEXT.weak };
+  // A crate or cabinet opens like a chest; Ctrl carries it off (1.6's click picked it up and never
+  // reached the chest click).
+  if (has("Crate") || has("Cabinet")) {
+    return { kind: "open" };
   }
   if (has("Guild Vault")) {
     return { kind: "open" };
   }
   for (const f of houseData.clickFixtures) {
-    if (f.needsFlag && headFlag !== 1) {
-      continue;
-    }
     if (f.match === "exact" ? eq(f.item) : has(f.item)) {
       if (f.text) {
         return { kind: "text", text: f.text };
@@ -310,7 +316,7 @@ export function clickGate(name: string, str: number, headFlag: 0 | 1 = 1): Picku
       if (f.action === "GuildCenterClick") {
         return { kind: "guildCenter" };
       }
-      // The casino tables, only where `needsFlag` held above.
+      // The casino tables.
       const game = CASINO_CLICKS[f.action ?? ""];
       if (game) {
         return { kind: "casino", game };
@@ -324,14 +330,22 @@ export function clickGate(name: string, str: number, headFlag: 0 | 1 = 1): Picku
 }
 
 /**
- * The name gates of a Ctrl pickup: door/exit silent; containers open and switches flip; no
- * Painting/Photo branch, so paintings and photos are taken; the fixtures with a line (Piano, Wall
- * Torch, Windmill, Holy Water, Fire Pot, Fountain, Clock, Street Lamp) say it and take nothing, as
- * do the four skill platforms; Chimney is silent.
+ * The name gates of a Ctrl pickup: a newspaper is read, then door/exit is silent; chests open and
+ * switches flip; no Painting/Photo branch, so paintings and photos are taken (a click views them);
+ * a crate or cabinet is taken by whoever is strong enough (a click opens it); the stations and
+ * casino tables are taken on your own premises (`mine`: the room's header names you or your guild)
+ * and used anywhere else; the fixtures with a line (Piano, Wall Torch, Windmill, Holy Water, Fire
+ * Pot, Fountain, Clock, Street Lamp) say it and take nothing, as do the four skill platforms;
+ * Chimney is silent.
  */
-export function ctrlGate(name: string): PickupGate {
+export function ctrlGate(name: string, who: { str: number; mine: boolean }): PickupGate {
   const has = (p: string) => lingoContains(name, p);
   const eq = (p: string) => lingoEq(name, p);
+  // A newspaper stand first, so a stand whose author's name holds "door" or "exit" is read (1.6
+  // tested the door/exit silence first, so Ctrl ignored "Doorman's Newspaper").
+  if (has("'s Newspaper")) {
+    return { kind: "newspaper" };
+  }
   if (has("door") || has("exit")) {
     return { kind: "silent" };
   }
@@ -357,19 +371,18 @@ export function ctrlGate(name: string): PickupGate {
   if (has("Universal Mail")) {
     return { kind: "mail", universal: true };
   }
-  // A newspaper stand, tested on the whole name: after the door/exit silence above, so an author
-  // whose name holds "door" or "exit" is never read by Ctrl.
-  if (has("'s Newspaper")) {
-    return { kind: "newspaper" };
-  }
   // The chest click for a chest, House Vault, Cabinet, Crate, Cauldron and Guild Vault; then the
   // switches.
   // No other name before them contains these.
   if (has(" Chest")) {
     return { kind: "open" };
   }
-  // The casino tables: Ctrl plays with no header test, even in your own house, in 1.6's order: Slot
-  // Machine, Blackjack, Checkers, before the vaults, cabinets and crates.
+  // The six furniture items (stations and casino tables) are carried off from your own premises.
+  if (who.mine && isFurniture(name)) {
+    return { kind: "take" };
+  }
+  // Elsewhere the casino tables play, in 1.6's order: Slot Machine, Blackjack, Checkers, before the
+  // vaults, cabinets and crates.
   if (has("Slot Machine")) {
     return { kind: "casino", game: "slots" };
   }
@@ -379,21 +392,20 @@ export function ctrlGate(name: string): PickupGate {
   if (has("Checkers")) {
     return { kind: "casino", game: "checkers" };
   }
-  // The fixtures' one-line texts and the skill platforms', `pickup.ctrlTexts`, in 1.6's
-  // order. The notes on the Experience Platform, the Mage Master's kept bug and the Street Lamp are
-  // in the content README.
+  // The fixtures' one-line texts and the skill platforms', `pickup.ctrlTexts`, in 1.6's order, with
+  // the stations' lines after them (docs/modding.md has the notes on the platforms).
   const said = firstMatch(itemRulesData.pickup.ctrlTexts, name);
   if (said) {
     return { kind: "text", text: said.text, ...(said.unpause ? { unpause: true } : {}) };
   }
-  if (
-    has("House Vault") ||
-    has("Cabinet") ||
-    has("Crate") ||
-    has("Cauldron") ||
-    has("Guild Vault")
-  ) {
+  // The vaults and the Cauldron open. 1.6 opened crates and cabinets here too, so its Strength
+  // tests below were never reached; SSO takes them.
+  if (has("House Vault") || has("Cauldron") || has("Guild Vault")) {
     return { kind: "open" };
+  }
+  if (has("Crate") || has("Cabinet")) {
+    const need = has("Cabinet") ? 19 : 15;
+    return who.str < need ? { kind: "text", text: PICKUP_TEXT.weak } : { kind: "take" };
   }
   // A hall's board (only " Chest" precedes it in 1.6 and no item has both).
   if (has("'s Board")) {
@@ -432,8 +444,8 @@ export type AmountPath = "short" | "give" | "monster" | "drop";
 /**
  * The amount dialog's branches in order: the balance test for every path (gold, crystals, "You
  * don't have enough …!"), then a standing player on the faced tile takes it, then for gold only a
- * monster or NPC one or two tiles ahead (the give-gold routine), else the drop. Server and client
- * share it: only the drop path clicks.
+ * monster or NPC one or two tiles ahead (the give-gold routine), else the drop. The crystal dialog
+ * passes `playerAhead` only for its Give button.
  */
 export function amountPath(a: {
   gold: boolean;

@@ -99,6 +99,11 @@ export const itemRulesData: ItemRulesData = {
         "match": "contains",
         "pattern": "Lord's Armor",
         "strength": 25
+      },
+      {
+        "match": "contains",
+        "pattern": "Dragon Sword",
+        "strength": 26
       }
     ],
     "slots": [
@@ -469,6 +474,11 @@ export const itemRulesData: ItemRulesData = {
       },
       {
         "match": "exact",
+        "pattern": "Catfish Sandwich",
+        "slot": "No"
+      },
+      {
+        "match": "exact",
         "pattern": "Steel Key",
         "slot": "No"
       },
@@ -588,7 +598,7 @@ export const itemRulesData: ItemRulesData = {
         "slot": "LeftHand"
       },
       {
-        "match": "contains",
+        "match": "exact",
         "pattern": "Bo",
         "slot": "LeftHand"
       },
@@ -886,6 +896,11 @@ export const itemRulesData: ItemRulesData = {
         "match": "contains",
         "pattern": "Watering Bucket",
         "slot": "LeftHand"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dragon Sword",
+        "slot": "LeftHand"
       }
     ],
     "twoHanded": [
@@ -920,10 +935,6 @@ export const itemRulesData: ItemRulesData = {
       {
         "match": "contains",
         "pattern": "Map"
-      },
-      {
-        "match": "exact",
-        "pattern": "Ocarina"
       }
     ],
     "books": [
@@ -1047,26 +1058,6 @@ export const itemRulesData: ItemRulesData = {
       {
         "match": "contains",
         "pattern": " photo"
-      },
-      {
-        "match": "exact",
-        "pattern": "Steel Key"
-      },
-      {
-        "match": "exact",
-        "pattern": "Wooden Key"
-      },
-      {
-        "match": "exact",
-        "pattern": "Emerald Key"
-      },
-      {
-        "match": "exact",
-        "pattern": "Fire Key"
-      },
-      {
-        "match": "exact",
-        "pattern": "Gold Key"
       },
       {
         "match": "exact",
@@ -2888,6 +2879,12 @@ export const itemRulesData: ItemRulesData = {
         "match": "contains",
         "pattern": "Damaged",
         "becomes": "DEFBOD"
+      },
+      {
+        "layer": "weapon",
+        "match": "exact",
+        "pattern": "Dragon Sword",
+        "becomes": "Fire Sword"
       }
     ]
   },
@@ -2895,208 +2892,167 @@ export const itemRulesData: ItemRulesData = {
     "blocks": [
       {
         "match": "exact",
-        "pattern": "Fire Pot",
-        "monsters": true
+        "pattern": "Fire Pot"
       },
       {
         "match": "exact",
-        "pattern": "Chimney",
-        "monsters": true
+        "pattern": "Chimney"
       },
       {
         "match": "exact",
-        "pattern": "Windmill",
-        "monsters": true
+        "pattern": "Windmill"
       },
       {
         "match": "exact",
-        "pattern": "Holy Water",
-        "monsters": false
+        "pattern": "Holy Water"
       },
       {
         "match": "contains",
-        "pattern": "'s Newspaper",
-        "monsters": false
+        "pattern": "'s Newspaper"
       },
       {
         "match": "exact",
-        "pattern": "Fountain",
-        "monsters": true
+        "pattern": "Fountain"
       },
       {
         "match": "exact",
-        "pattern": "Piano",
-        "monsters": true
+        "pattern": "Piano"
       },
       {
         "match": "contains",
-        "pattern": "Statue",
-        "monsters": true
+        "pattern": "Statue"
       },
       {
         "match": "contains",
-        "pattern": "Universal",
-        "monsters": true
+        "pattern": "Universal"
       },
       {
         "match": "exact",
-        "pattern": "Steel Door",
-        "monsters": true
+        "pattern": "Steel Door"
       },
       {
         "match": "exact",
-        "pattern": "Wooden Door",
-        "monsters": true
+        "pattern": "Wooden Door"
       },
       {
         "match": "exact",
-        "pattern": "Emerald Door",
-        "monsters": true
+        "pattern": "Emerald Door"
       },
       {
         "match": "exact",
-        "pattern": "Fire Door",
-        "monsters": true
+        "pattern": "Fire Door"
       },
       {
         "match": "exact",
-        "pattern": "Gold Door",
-        "monsters": true
+        "pattern": "Gold Door"
       },
       {
         "match": "exact",
-        "pattern": "Large Rock",
-        "monsters": true
+        "pattern": "Large Rock"
       },
       {
         "match": "exact",
-        "pattern": "Sign 1",
-        "monsters": true
+        "pattern": "Sign 1"
       },
       {
         "match": "exact",
-        "pattern": "Sign 2",
-        "monsters": true
+        "pattern": "Sign 2"
       },
       {
         "match": "exact",
-        "pattern": "Sign 3",
-        "monsters": true
+        "pattern": "Sign 3"
       },
       {
         "match": "contains",
-        "pattern": " Chest",
-        "monsters": true
+        "pattern": " Chest"
       },
       {
         "match": "contains",
-        "pattern": "Vault",
-        "monsters": true
+        "pattern": "Vault"
       },
       {
         "match": "exact",
-        "pattern": "Guild Center",
-        "monsters": true
+        "pattern": "Guild Center"
       },
       {
         "match": "contains",
-        "pattern": "'s Door",
-        "monsters": true
+        "pattern": "'s Door"
       },
       {
         "match": "exact",
-        "pattern": "Stove",
-        "monsters": true
+        "pattern": "Stove"
       },
       {
         "match": "exact",
-        "pattern": "Alchemy Lab",
-        "monsters": true
+        "pattern": "Alchemy Lab"
       },
       {
         "match": "exact",
-        "pattern": "Anvil",
-        "monsters": true
+        "pattern": "Anvil"
       },
       {
         "match": "exact",
-        "pattern": "Table",
-        "monsters": true
+        "pattern": "Table"
       },
       {
         "match": "contains",
-        "pattern": "Crate",
-        "monsters": true
+        "pattern": "Crate"
       },
       {
         "match": "contains",
-        "pattern": "Cauldron",
-        "monsters": true
+        "pattern": "Cauldron"
       },
       {
         "match": "contains",
-        "pattern": "Painting",
-        "monsters": true
+        "pattern": "Painting"
       },
       {
         "match": "contains",
-        "pattern": "Cabinet",
-        "monsters": true
+        "pattern": "Cabinet"
       },
       {
         "match": "exact",
-        "pattern": "Campfire",
-        "monsters": true
+        "pattern": "Campfire"
       },
       {
         "match": "contains",
-        "pattern": "'s Airship",
-        "monsters": true
+        "pattern": "'s Airship"
       },
       {
         "match": "exact",
-        "pattern": "Street Lamp",
-        "monsters": true
+        "pattern": "Street Lamp"
       },
       {
         "match": "exact",
-        "pattern": "Blackjack Table",
-        "monsters": true
+        "pattern": "Blackjack Table"
       },
       {
         "match": "exact",
-        "pattern": "Checkers Table",
-        "monsters": true
+        "pattern": "Checkers Table"
       },
       {
         "match": "contains",
-        "pattern": "slot machine",
-        "monsters": true
+        "pattern": "slot machine"
       },
       {
         "match": "exact",
-        "pattern": "Copy Machine",
-        "monsters": true
+        "pattern": "Copy Machine"
       },
       {
         "match": "exact",
-        "pattern": "Switch Door",
-        "monsters": true
+        "pattern": "Switch Door"
       },
       {
         "match": "exact",
-        "pattern": "OFF Switch",
-        "monsters": true
+        "pattern": "OFF Switch"
       },
       {
         "match": "exact",
-        "pattern": "ON Switch",
-        "monsters": true
+        "pattern": "ON Switch"
       },
       {
         "match": "exact",
-        "pattern": "Cauldron",
-        "monsters": true
+        "pattern": "Cauldron"
       }
     ],
     "platforms": [
@@ -3266,7 +3222,7 @@ export const itemRulesData: ItemRulesData = {
       {
         "match": "exact",
         "pattern": "Experience Platform",
-        "text": "You must be over 30 hit points to pass this platform.",
+        "text": "You must be level 21 or higher to pass this platform.",
         "unpause": true
       },
       {
@@ -3279,7 +3235,7 @@ export const itemRulesData: ItemRulesData = {
         "match": "exact",
         "pattern": "Mage Master Platform",
         "text": "This is a mage master's platform, only a master of magery can pass through this.",
-        "unpause": false
+        "unpause": true
       },
       {
         "match": "exact",
@@ -3292,6 +3248,24 @@ export const itemRulesData: ItemRulesData = {
         "pattern": "Street Lamp",
         "text": "This is a street lamp.",
         "unpause": true
+      },
+      {
+        "match": "exact",
+        "pattern": "Stove",
+        "text": "This is a stove, used for cooking food.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Anvil",
+        "text": "This is an anvil, used for blacksmithing.",
+        "unpause": false
+      },
+      {
+        "match": "exact",
+        "pattern": "Alchemy Lab",
+        "text": "This is an alchemy lab, used for mixing potions.",
+        "unpause": false
       }
     ]
   },
