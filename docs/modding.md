@@ -56,6 +56,7 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `equip.twoHanded`, `equip.murder` | Two-handed weapons; items requiring murder flag | Any | Boolean |
 | `use.usable`, `use.effects`, `use.messages` | Food and potion use behaviour | See schema | Healing/messages |
 | `use.silent` | Use does and says nothing (keys, deeds, seeds, `Map`) | Any | Boolean |
+| `use.refusals` | The line Use shows for an item it does not accept (burned food) | Last | `text`; default "You cannot use the X." |
 | `use.books` | Mysticism needed for a spell book | Last | `mysticism`; default `1` |
 | `use.skillBooks` | Combat-skill books | First | `skill` raised and `shown` name |
 | `menu` | Item menu button in place of Equip | Last | `Cook`, `Mix`, `Build`, `Smith`, or `Storage`; default `Equip` |

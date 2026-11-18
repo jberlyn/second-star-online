@@ -266,6 +266,28 @@ describe("use", () => {
     });
     expect(useItem("Potion Bottle", v, scripted([1])).consume).toBe(false);
   });
+  test("burned food is refused with its own line and kept", () => {
+    for (const name of ["Burned Orc Meat", "Burned Fish", "Burned Meat", "burned pig"]) {
+      expect(useItem(name, v, scripted([1]))).toMatchObject({
+        consume: false,
+        lines: ["That doesn't look very tasty."],
+        hp: v.hp,
+        hunger: v.hunger,
+      });
+    }
+  });
+  test("Raw Meat is eaten like the other raw meats; Cooked Meat like a cooked meal", () => {
+    expect(useItem("Raw Meat", v, scripted([1]))).toMatchObject({
+      consume: true,
+      lines: ["You eat some raw meat. You're disgusting."],
+      hunger: v.hunger + 1800,
+    });
+    expect(useItem("Cooked Meat", v, scripted([1]))).toMatchObject({
+      consume: true,
+      lines: ["You eat the cooked meat."],
+      hunger: v.hunger + 3200,
+    });
+  });
 });
 
 describe("armour and PvP", () => {

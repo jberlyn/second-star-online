@@ -1516,39 +1516,39 @@
   "craft.json#/stations/cook/recipes": [
     [
       "0",
-      "428318559c9741ca"
+      "29ce160283f52d55"
     ],
     [
       "1",
-      "7c4ca64aa5a1ba71"
+      "71c6ee099a646a92"
     ],
     [
       "2",
-      "55d885dc964cf94a"
+      "45b85d600a86f9f9"
     ],
     [
       "3",
-      "ae5dadf8c0d49743"
+      "9eef509af6db734a"
     ],
     [
       "4",
-      "9bad61e4f140956b"
+      "c2906b2ecfab4f24"
     ],
     [
       "5",
-      "47647751e3ba4412"
+      "bdf34b2874ae305b"
     ],
     [
       "6",
-      "52f349a9e4d67268"
+      "250e67e94d1ecc82"
     ],
     [
       "7",
-      "4ea7c3ed8f51e016"
+      "daaa7240eed8b571"
     ],
     [
       "8",
-      "4ea0d51f9f8d3097"
+      "3b79c135a1653bd5"
     ]
   ],
   "craft.json#/stations/cook/stations": [
@@ -5063,10 +5063,6 @@
   ],
   "item-rules.json#/menu": [
     [
-      "Meat",
-      "8a66f08463f10405"
-    ],
-    [
       "Raw Fish",
       "23aecce857884ee3"
     ],
@@ -7314,7 +7310,7 @@
     ],
     [
       "Raw Meat",
-      "a66bb5462eb36733"
+      "8c47ef50d2365829"
     ],
     [
       "Red Arrows",
@@ -10652,7 +10648,7 @@
     ],
     [
       "Wolf",
-      "803a92f0842f2551"
+      "bc8d7fef6da6990c"
     ],
     [
       "Wrel",

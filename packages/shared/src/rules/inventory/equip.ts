@@ -131,6 +131,11 @@ export function useItem(
     argon: false,
   };
   if (!R.use.usable.some((r) => ruleMatches(name, r))) {
+    const refusal = lastMatch(R.use.refusals, name);
+    if (refusal) {
+      out.lines.push(refusal.text);
+      return out;
+    }
     out.lines.push(USE_TEXT.cannot(name.includes("#") ? name.slice(0, name.indexOf("#")) : name));
     return out;
   }

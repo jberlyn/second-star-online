@@ -153,6 +153,10 @@ export const TABLES: Record<string, TableInfo> = {
   },
   [`item-rules.json use.books`]: { decides: "the Mysticism a spell book needs", wins: "last" },
   [`item-rules.json use.messages`]: { decides: "the text Use shows for food", wins: "last" },
+  [`item-rules.json use.refusals`]: {
+    decides: "the line Use shows for an item it refuses",
+    wins: "last",
+  },
   [`item-rules.json containers.capacity`]: { decides: "lines a container holds", wins: "last" },
   [`item-rules.json swing.cooldowns`]: {
     decides: "swing delays for a worn item",

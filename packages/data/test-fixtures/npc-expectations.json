@@ -4134,6 +4134,10 @@
           "oneIn": 9
         },
         {
+          "item": "Raw Meat",
+          "oneIn": 5
+        },
+        {
           "item": "Dagger",
           "oneIn": 15
         }

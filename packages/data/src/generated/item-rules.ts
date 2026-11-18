@@ -1166,6 +1166,14 @@ export const itemRulesData: ItemRulesData = {
       {
         "match": "contains",
         "pattern": "Film"
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Meat"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cooked Meat"
       }
     ],
     "effects": [
@@ -1616,6 +1624,34 @@ export const itemRulesData: ItemRulesData = {
         "stat": "Hunger",
         "flat": 3500,
         "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Meat",
+        "stat": "HP",
+        "flat": 3,
+        "randomN": 3
+      },
+      {
+        "match": "exact",
+        "pattern": "Cooked Meat",
+        "stat": "HP",
+        "flat": 9,
+        "randomN": 5
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Meat",
+        "stat": "Hunger",
+        "flat": 1800,
+        "randomN": null
+      },
+      {
+        "match": "exact",
+        "pattern": "Cooked Meat",
+        "stat": "Hunger",
+        "flat": 3200,
+        "randomN": null
       }
     ],
     "messages": [
@@ -1763,6 +1799,68 @@ export const itemRulesData: ItemRulesData = {
         "match": "exact",
         "pattern": "Purple Potion",
         "text": "The power of argon flows through your body."
+      },
+      {
+        "match": "exact",
+        "pattern": "Raw Meat",
+        "text": "You eat some raw meat. You're disgusting."
+      },
+      {
+        "match": "exact",
+        "pattern": "Cooked Meat",
+        "text": "You eat the cooked meat."
+      }
+    ],
+    "refusals": [
+      {
+        "match": "exact",
+        "pattern": "Burned Cyclops Meat",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Orc Meat",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Fish",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Trout",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Catfish",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Swordfish",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Yeti Meat",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Squid",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Pig",
+        "text": "That doesn't look very tasty."
+      },
+      {
+        "match": "exact",
+        "pattern": "Burned Meat",
+        "text": "That doesn't look very tasty."
       }
     ]
   },
@@ -2831,8 +2929,23 @@ export const itemRulesData: ItemRulesData = {
   },
   "menu": [
     {
-      "match": "contains",
-      "pattern": "Meat",
+      "match": "exact",
+      "pattern": "Orc Meat",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Cyclops Meat",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Yeti Meat",
+      "action": "Cook"
+    },
+    {
+      "match": "exact",
+      "pattern": "Raw Meat",
       "action": "Cook"
     },
     {

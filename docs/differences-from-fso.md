@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 55 |
+| [Design changes](#design-changes) | 56 |
 | [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **524** |
+| **Total** | **525** |
 
 By system (the code folder that holds the change):
 
@@ -248,6 +248,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The hard-wired bell map should exist on a fresh server.
 - **In the code:** `packages/data/content/church-map.json`, `packages/server/src/persistence/seed-map.ts` (`churchMapSql`), `packages/server/src/systems/spells/hazards.ts` (`CHURCH_MAP`, `serverTimer`)
 - **Pinned by:** `the seeded church is the validated Church of the Bells at x999y999 with no exits` (packages/server/tests/church.test.ts); `the church bell rings at the 20th run to x999y999, Churchy:5:200` (packages/server/tests/spells.test.ts)
+
+#### Burned food and Cooked Meat
+- **Kind:** World content
+- **What you notice:** A burned meal leaves a charred version of its raw food: Burned Orc Meat, Burned Cyclops Meat, Burned Yeti Meat, Burned Meat, Burned Fish, Burned Trout, Burned Catfish, Burned Swordfish, Burned Squid or Burned Pig. Burned food stacks, cannot be cooked and has no use yet; trying to eat it says "That doesn't look very tasty." and keeps it. Raw Meat now has an icon, is dropped by Wolves (1 in 5), can be eaten raw ("You eat some raw meat. You're disgusting.") and cooks into Cooked Meat.
+- **1.6:** A burn printed its line and kept the raw food (see [Every craft takes its materials when it finishes](#every-craft-takes-its-materials-when-it-finishes)). There was no burned food. Raw Meat had no icon, no source and no recipe, though the item menu offered Cook for any name containing "Meat".
+- **SSO:** Each cooking recipe in `craft.json` names its `burned` result, which a burn adds through the same full-bag check as a success. The burned icons, Raw Meat's and Cooked Meat's are the original raw-food icons recoloured (`tools/recolour-icon.ts`). The item menu offers Cook to the four meats by exact name, so burned meat has no Cook button. The new `use.refusals` table in `item-rules.json` gives burned food its line. Cooked Meat restores 9 + random(5) HP and 3200 Hunger, and Raw Meat 3 + random(3) HP and 1800 Hunger, like the other raw meats. The Wolf drop is in the seed NPC file, so a server whose Wolf file was saved in the NPC Editor keeps its own drops.
+- **Why:** A burn should cost the raw food and leave something to show for it, and every item with a Cook button should cook.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`, `burnedResult`); `packages/shared/src/rules/inventory/equip.ts` (`useItem`); `packages/data/content/craft.json`, `items.json`, `item-rules.json`, `npc-files.json`; `assets/added/items/`
+- **Pinned by:** `every cookable has a burned form: a catalogue item with art and no Cook button`; `Raw Meat cooks into Cooked Meat and burns into Burned Meat` (packages/shared/tests/crafting/craft.test.ts); `burned food is refused with its own line and kept`; `Raw Meat is eaten like the other raw meats; Cooked Meat like a cooked meal` (packages/shared/tests/inventory/inventory.test.ts)
 
 ### Browser platform
 
@@ -1357,12 +1366,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Every craft takes its materials when it finishes
 - **Kind:** Bug fixed
-- **What you notice:** Starting a craft takes nothing. When it finishes, it takes its materials: the damaged item and chunk, the raw food, the Potion Bottle and crystal, or the Logs. A failure (a burned meal, a bad potion, a ruined build) uses them up and makes nothing.
+- **What you notice:** Starting a craft takes nothing. When it finishes, it takes its materials: the damaged item and chunk, the raw food, the Potion Bottle and crystal, or the Logs. A failure uses them up: a burned meal leaves its burned food (see [Burned food](#burned-food-and-cooked-meat)), and a bad potion or a ruined build makes nothing.
 - **1.6:** Cooking and smithing took their inputs at completion, and a burn exited before the raw food was taken, so a burned meal kept its food. Alchemy and carpentry took their inputs at the start, so their failures lost them.
-- **SSO:** `finishCraft` takes every material by exact name at completion. Failures use them up the same way for cooking, alchemy and carpentry. If a material is gone by then, the craft ends silently, as a repair with no chunk already did.
+- **SSO:** `finishCraft` takes every material by exact name at completion. Failures use them up the same way for cooking, alchemy and carpentry. If a material is gone by then, the craft ends silently, as a repair with no chunk already did. A burn whose burned food has no room in the bag is treated like a success with no room: "Your inventory is too crowded!", and nothing is taken.
 - **Why:** Failures should cost the same in every craft, and crafts that end early should lose nothing.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`, `startCraft`)
-- **Pinned by:** `bug fixed: a burned meal uses up its raw food, like failed brews and builds`; `a failed brew uses up the bottle and the crystal`; `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand`; `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `bug fixed: a burned meal uses up its raw food and makes its burned form`; `a burn on a full bag says so, makes nothing and keeps the raw stack`; `a failed brew uses up the bottle and the crystal`; `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand`; `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id` (packages/server/tests/craft.test.ts)
 
 #### Yeti Meat cooks into a Yeti Burger
 - **Kind:** Bug fixed
@@ -1427,14 +1436,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`)
 - **Pinned by:** `bug fixed: a full bag says so, makes nothing and keeps the raw stack`; `bug fixed: a full bag keeps the Logs and makes nothing` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: a full bag says so, with no skill roll and no 'is ready!'; the inputs stay` (packages/server/tests/craft.test.ts)
 
-#### Each cook rolls its own burn, and Raw Meat cannot be cooked
+#### Each cook rolls its own burn
 - **Kind:** Bug fixed
-- **What you notice:** Whether a meal burns depends only on that cook's own roll. Raw Meat, which has no recipe, is refused at the start with "You don't know how to cook that."
+- **What you notice:** Whether a meal burns depends only on that cook's own roll.
 - **1.6:** The food chosen for a cook was kept for the session, and a failed start set it to "Bad Food". Any name without its own food row, such as Raw Meat, kept it, so Raw Meat burned every time after one failure. With no earlier cook it read "Your  is ready!" with a blank name.
-- **SSO:** The failure roll happens once, at completion, and the Cook button refuses an item with no recipe.
+- **SSO:** The failure roll happens once, at completion. The Cook button refuses an item with no recipe ("You don't know how to cook that."); every Cook button has one, now that Raw Meat cooks into Cooked Meat (see [Burned food](#burned-food-and-cooked-meat)).
 - **Why:** One failure should not doom later cooks, and an uncookable item should say so.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startCraft`, `cookResult`)
-- **Pinned by:** `bug fixed: each cook rolls its own burn; Raw Meat cannot be cooked at all` (packages/shared/tests/crafting/craft.test.ts)
+- **Pinned by:** `bug fixed: each cook rolls its own burn` (packages/shared/tests/crafting/craft.test.ts)
 
 #### Building says "You built a ..."
 - **Kind:** Bug fixed

@@ -16,6 +16,8 @@ const skillRow = z.union([
 ]);
 const timer = z.strictObject({ default: z.number().int().positive(), rows: z.array(gtRow).min(1) });
 const recipe = z.strictObject({ input: z.string().min(1), output: z.string().min(1) });
+/** A cooking recipe also names what a burn makes. */
+const cookRecipe = recipe.extend({ burned: z.string().min(1) });
 
 export const craftDataSchema = z.strictObject({
   stations: z.strictObject({
@@ -52,8 +54,8 @@ export const craftDataSchema = z.strictObject({
       doubles: z.string(),
       minSkill: z.number().int(),
       timer,
-      /** The cooking recipes: an item with none cannot be cooked. */
-      recipes: z.array(recipe).min(1),
+      /** The cooking recipes: an item with none cannot be cooked. A burn makes `burned`. */
+      recipes: z.array(cookRecipe).min(1),
     }),
     mix: z.strictObject({
       station: z.string(),

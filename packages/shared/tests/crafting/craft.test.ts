@@ -4,8 +4,11 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { craftData, itemsData } from "@secondstaronline/data";
+
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
+  burnedResult,
   CRAFT_ORDER,
   CRAFT_TEXT,
   type CraftJob,
@@ -138,6 +141,7 @@ describe("timers and the failure table", () => {
     expect(craftKind("Logs")).toBe("Build");
     expect(craftKind("Damaged Sword, Long")).toBe("Smith");
     expect(craftKind("Cooked Pig")).toBeNull();
+    expect(craftKind("Cooked Meat")).toBeNull();
     expect(craftKind("Crate#4")).toBeNull();
   });
 });
@@ -253,23 +257,73 @@ describe("Cook", () => {
     expect(fire.started?.frames).toBe(400);
   });
 
-  test("bug fixed: a burned meal uses up its raw food, like failed brews and builds", () => {
+  test("bug fixed: a burned meal uses up its raw food and makes its burned form", () => {
     const i = inv(bagOf(["Trout", 2]));
     const r = finishCraft(i, { kind: "Cook", raw: "Trout" }, 1, rngByN({ 3: [1] }));
-    expect(r).toEqual({ reached: true, lines: [CRAFT_TEXT.burned], added: null, gain: false });
+    expect(r).toMatchObject({ reached: true, lines: [CRAFT_TEXT.burned], gain: false });
+    expect(r.added?.kind).toBe("bag");
     expect(i.bag[0]).toEqual({ item: "Trout", qty: 1 });
+    expect(i.bag[1]).toEqual({ item: "Burned Trout", qty: 1 });
+    // A second burn stacks on the first.
+    finishCraft(i, { kind: "Cook", raw: "Trout" }, 1, rngByN({ 3: [1] }));
+    expect(i.bag[0]).toBeNull();
+    expect(i.bag[1]).toEqual({ item: "Burned Trout", qty: 2 });
   });
 
-  test("bug fixed: each cook rolls its own burn; Raw Meat cannot be cooked at all", () => {
+  test("every cookable has a burned form: a catalogue item with art and no Cook button", () => {
+    const recipes = craftData.stations.cook.recipes;
+    expect(recipes.map((r) => [r.input, r.burned])).toEqual([
+      ["Cyclops Meat", "Burned Cyclops Meat"],
+      ["Orc Meat", "Burned Orc Meat"],
+      ["Raw Fish", "Burned Fish"],
+      ["Trout", "Burned Trout"],
+      ["Catfish", "Burned Catfish"],
+      ["Swordfish", "Burned Swordfish"],
+      ["Yeti Meat", "Burned Yeti Meat"],
+      ["Squid", "Burned Squid"],
+      ["Pig", "Burned Pig"],
+      ["Raw Meat", "Burned Meat"],
+    ]);
+    for (const r of recipes) {
+      expect(burnedResult(r.input)).toBe(r.burned);
+      const row = itemsData.items.find((i) => i.name === r.burned);
+      expect(row?.icon, r.burned).toBe("added");
+      expect(craftKind(r.burned), r.burned).toBeNull();
+    }
+    expect(burnedResult("Cooked Pig")).toBeNull();
+  });
+
+  test("a burn on a full bag says so, makes nothing and keeps the raw stack", () => {
+    const i = inv(fullBag(["Orc Meat", 2]));
+    const r = finishCraft(i, { kind: "Cook", raw: "Orc Meat" }, 1, rngByN({ 3: [1] }));
+    expect(r).toEqual({ reached: true, lines: [CRAFT_TEXT.crowded], added: null, gain: false });
+    expect(i.bag[0]).toEqual({ item: "Orc Meat", qty: 2 });
+    // A last Orc Meat frees its own slot, so the burned meat fits.
+    const one = inv(fullBag(["Orc Meat", 1]));
+    const burned = finishCraft(one, { kind: "Cook", raw: "Orc Meat" }, 1, rngByN({ 3: [1] }));
+    expect(burned.lines).toEqual([CRAFT_TEXT.burned]);
+    expect(one.bag[0]).toEqual({ item: "Burned Orc Meat", qty: 1 });
+  });
+
+  test("bug fixed: each cook rolls its own burn", () => {
     // No session food carries over: a failed cook does not make the next one burn.
     const first = inv(bagOf(["Trout", 2]));
     finishCraft(first, { kind: "Cook", raw: "Trout" }, 1, rngByN({ 3: [1] }));
     const next = finishCraft(first, { kind: "Cook", raw: "Trout" }, 1, rngByN());
     expect(next.lines).toEqual(["Your Trout Fillet is ready!"]);
-    // Raw Meat has no recipe, so the Cook button refuses it rather than saying "Your  is ready!".
-    expect(cookResult("Raw Meat")).toBeNull();
+  });
+
+  test("Raw Meat cooks into Cooked Meat and burns into Burned Meat", () => {
+    expect(cookResult("Raw Meat")).toBe("Cooked Meat");
     const v = view({ bag: bagOf(["Raw Meat", 1]), facing: at("Stove"), skills: { Cooking: 1 } });
-    expect(startCraft(v, 1)).toEqual({ lines: [CRAFT_TEXT.cantCook], started: null });
+    expect(startCraft(v, 1).lines).toEqual(["You begin to cook the Raw Meat."]);
+    const ok = inv(bagOf(["Raw Meat", 1]));
+    const r = finishCraft(ok, { kind: "Cook", raw: "Raw Meat" }, 1, rngByN());
+    expect(r).toMatchObject({ lines: ["Your Cooked Meat is ready!"], gain: true });
+    expect(ok.bag[0]).toEqual({ item: "Cooked Meat", qty: 1 });
+    const bad = inv(bagOf(["Raw Meat", 1]));
+    finishCraft(bad, { kind: "Cook", raw: "Raw Meat" }, 1, rngByN({ 3: [1] }));
+    expect(bad.bag[0]).toEqual({ item: "Burned Meat", qty: 1 });
   });
 
   test("bug fixed: Yeti Meat cooks into a Yeti Burger", () => {

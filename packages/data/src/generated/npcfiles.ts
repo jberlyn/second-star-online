@@ -466,7 +466,7 @@ export const npcFilesData: NpcFilesData = {
   },
   {
    "name": "Wolf",
-   "text": "INV|4 Gold:1\rINV|8 Gold:2\rINV|Raw Fish:9\rINV|Dagger:15\r"
+   "text": "INV|4 Gold:1\rINV|8 Gold:2\rINV|Raw Fish:9\rINV|Raw Meat:5\rINV|Dagger:15\r"
   },
   {
    "name": "Wrel",

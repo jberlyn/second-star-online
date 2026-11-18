@@ -349,6 +349,14 @@ export function cookResult(item: string): string | null {
   return recipeFor(ST.cook.recipes, item);
 }
 
+/** What a raw food becomes when it burns, or null when it cannot be cooked. */
+export function burnedResult(item: string): string | null {
+  return recipeFor(
+    ST.cook.recipes.map((r) => ({ input: r.input, output: r.burned })),
+    item,
+  );
+}
+
 /** The masterwork pool by skill: 250, then 100 (>50) … 35 (>98). */
 export function masterworkPool(skill: number): number {
   return cascade(ST.smith.masterworkPool, skill);
@@ -385,7 +393,7 @@ export interface CraftFinish {
   /** False when a material is gone at completion: nothing changes and nothing is said. */
   reached: boolean;
   lines: string[];
-  /** The item added, or null (a failure, or no room in the bag). */
+  /** The item added, or null (a failure that makes nothing, or no room in the bag). */
   added: AddResult | null;
   /** The craft made something, so the skill handler rolls. */
   gain: boolean;
@@ -408,10 +416,11 @@ function materials(job: CraftJob): string[] {
 /**
  * A craft's completion on `inv` in place. The materials are taken now, by exact name; if any is
  * gone the craft ends silently and nothing changes. Cooking, alchemy and carpentry then roll their
- * failure: a failure uses the materials up and makes nothing. A success makes the result (a
- * repair rolls its masterwork on the server's skill); if the bag has no room for it, nothing is
- * taken, nothing is made and the crafter is told the bag is too crowded. `addName` lets the server
- * mint a built container's id.
+ * failure: a failure uses the materials up, and a burn makes the raw food's burned form while a
+ * failed brew or build makes nothing. A success makes the result (a repair rolls its masterwork on
+ * the server's skill). If the bag has no room for what is made, nothing is taken, nothing is made
+ * and the crafter is told the bag is too crowded. `addName` lets the server mint a built
+ * container's id.
  */
 export function finishCraft(
   inv: { bag: Bag; gold: number },
@@ -427,8 +436,20 @@ export function finishCraft(
   const commit = () => {
     inv.bag.splice(0, inv.bag.length, ...bag);
   };
+  /** Adds `name` and keeps the change, or says the bag is too crowded and changes nothing. */
+  const make = (name: string, line: string, gain: boolean): CraftFinish => {
+    const trial = { bag, gold: inv.gold };
+    const added = invAdd(trial, addName(name), 1, rng);
+    if (added.kind === "full") {
+      return { reached: true, lines: [CRAFT_TEXT.crowded], added: null, gain: false };
+    }
+    commit();
+    inv.gold = trial.gold;
+    return { reached: true, lines: [line], added, gain };
+  };
   let result: string | null;
   let failed: string | null = null;
+  let spoiled: string | null = null;
   switch (job.kind) {
     case "Smith": {
       result = repairResult(job.item);
@@ -442,6 +463,7 @@ export function finishCraft(
     case "Cook":
       result = cookResult(job.raw);
       failed = CRAFT_TEXT.burned;
+      spoiled = burnedResult(job.raw);
       break;
     case "Mix":
       result = job.potion;
@@ -453,26 +475,22 @@ export function finishCraft(
       break;
   }
   if (failed !== null && rollFailure(skill, rng)) {
+    if (spoiled !== null) {
+      return make(spoiled, failed, false);
+    }
     commit();
     return { reached: true, lines: [failed], added: null, gain: false };
   }
   if (result === null || result === "") {
     return { reached: false, lines: [], added: null, gain: false };
   }
-  const trial = { bag, gold: inv.gold };
-  const added = invAdd(trial, addName(result), 1, rng);
-  if (added.kind === "full") {
-    return { reached: true, lines: [CRAFT_TEXT.crowded], added: null, gain: false };
-  }
-  commit();
-  inv.gold = trial.gold;
   const line =
     job.kind === "Mix"
       ? CRAFT_TEXT.potionReady
       : job.kind === "Build"
         ? CRAFT_TEXT.built(result)
         : CRAFT_TEXT.ready(result);
-  return { reached: true, lines: [line], added, gain: true };
+  return make(result, line, true);
 }
 
 /**

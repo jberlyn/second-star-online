@@ -55,6 +55,8 @@ export const itemRulesDataSchema = z.strictObject({
     ),
     /** The eat/drink lines, last match wins. `& SelInventory &` marks the name. */
     messages: z.array(z.strictObject({ ...pattern, text: z.string() })),
+    /** Not usable, with its own line in place of "You cannot use the X."; last match wins. */
+    refusals: z.array(z.strictObject({ ...pattern, text: z.string().min(1) })),
   }),
   armour: z.strictObject({
     /** 40 flat rows. `hitMe2` null = no row in HitMe2. */

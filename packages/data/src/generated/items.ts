@@ -230,6 +230,46 @@ export const itemsData: ItemsData = {
       }
     },
     {
+      "name": "Burned Catfish",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Cyclops Meat",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Fish",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Meat",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Orc Meat",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Pig",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Squid",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Swordfish",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Trout",
+      "icon": "added"
+    },
+    {
+      "name": "Burned Yeti Meat",
+      "icon": "added"
+    },
+    {
       "name": "Cabinet",
       "icon": null
     },
@@ -414,6 +454,10 @@ export const itemsData: ItemsData = {
         "castLib": 9,
         "asset": "bitmaps/390345_Clarinet.png"
       }
+    },
+    {
+      "name": "Cooked Meat",
+      "icon": "added"
     },
     {
       "name": "Cooked Pig",
@@ -1874,7 +1918,7 @@ export const itemsData: ItemsData = {
     },
     {
       "name": "Raw Meat",
-      "icon": null
+      "icon": "added"
     },
     {
       "name": "Red Arrows",

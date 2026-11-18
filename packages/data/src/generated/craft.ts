@@ -541,39 +541,53 @@ export const craftData: CraftData = {
       "recipes": [
         {
           "input": "Cyclops Meat",
-          "output": "Cyclops Burger"
+          "output": "Cyclops Burger",
+          "burned": "Burned Cyclops Meat"
         },
         {
           "input": "Orc Meat",
-          "output": "Orc Pot Pie"
+          "output": "Orc Pot Pie",
+          "burned": "Burned Orc Meat"
         },
         {
           "input": "Raw Fish",
-          "output": "Fish Sticks"
+          "output": "Fish Sticks",
+          "burned": "Burned Fish"
         },
         {
           "input": "Trout",
-          "output": "Trout Fillet"
+          "output": "Trout Fillet",
+          "burned": "Burned Trout"
         },
         {
           "input": "Catfish",
-          "output": "Catfish Sandwich"
+          "output": "Catfish Sandwich",
+          "burned": "Burned Catfish"
         },
         {
           "input": "Swordfish",
-          "output": "Swordfish Steak"
+          "output": "Swordfish Steak",
+          "burned": "Burned Swordfish"
         },
         {
           "input": "Yeti Meat",
-          "output": "Yeti Burger"
+          "output": "Yeti Burger",
+          "burned": "Burned Yeti Meat"
         },
         {
           "input": "Squid",
-          "output": "Squid Platter"
+          "output": "Squid Platter",
+          "burned": "Burned Squid"
         },
         {
           "input": "Pig",
-          "output": "Cooked Pig"
+          "output": "Cooked Pig",
+          "burned": "Burned Pig"
+        },
+        {
+          "input": "Raw Meat",
+          "output": "Cooked Meat",
+          "burned": "Burned Meat"
         }
       ]
     },
