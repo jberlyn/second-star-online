@@ -8,6 +8,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { type AddedArt, type AddedSound, addedAssetSchema } from "../../schema/added-asset.ts";
+import { checkMirroredFlags } from "./mirror.ts";
 
 export const ART_GROUPS = ["bodies", "fx", "items", "paperdoll", "tiles"] as const;
 export type ArtGroup = (typeof ART_GROUPS)[number];
@@ -136,6 +137,14 @@ export function listAdded(addedDir: string): AddedFiles {
       }
     }
   }
+  checkMirroredFlags(
+    out.art.map((a) => ({
+      group: a.group,
+      name: a.name,
+      mirrored: a.side.mirrored === true,
+      file: `assets/added/${a.group}/${a.name}.png`,
+    })),
+  );
   const seen = new Map<string, string>();
   for (const s of out.sounds) {
     for (const k of [`name:${s.name.toLowerCase()}`, `file:${addedSoundFile(s.name, s.ext)}`]) {

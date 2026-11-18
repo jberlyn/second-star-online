@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 55 |
-| [Fixed bugs](#fixed-bugs) | 286 |
+| [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 130 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **523** |
+| **Total** | **524** |
 
 By system (the code folder that holds the change):
 
@@ -48,7 +48,7 @@ By system (the code folder that holds the change):
 | crafting | [27](#crafting) | [8](#server-side-crafting) |
 | economy | [33](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
-| inventory | [30](#inventory) | [11](#server-side-inventory) |
+| inventory | [31](#inventory) | [11](#server-side-inventory) |
 | mail | [16](#mail) | [11](#server-side-mail) |
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
 | movement | [7](#movement) | [4](#server-side-movement) |
@@ -2196,6 +2196,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Worn boots should be seen.
 - **In the code:** `packages/shared/src/rules/inventory/paperdoll.ts` (`normaliseLook`, `paperdollLayers`)
 - **Pinned by:** `bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot` and `SSO: with no boots the feet are bare, over whatever shoes the body paints` (packages/shared/tests/inventory/inventory.test.ts); `every frame of the default body has bare feet to cover its painted shoes` (packages/data/tests/assets.test.ts)
+
+#### Characters face away holding their weapon in the right hand
+- **Kind:** Bug fixed
+- **What you notice:** Walking north, your character holds the shield in the left hand and swings with the right, matching the other three facings. Most monsters and NPCs turn the same way from behind: the Orc and Orc Lord raise their right arm to attack.
+- **1.6:** The back views were drawn as if seen from the front. Facing north the shield showed in the right hand and the sword in the left, and the body's attack arm was on the wrong side, so every character looked left-handed from behind. Most monster and NPC back views had the same mirror.
+- **SSO:** The asset build flips every north frame marked `"mirrored": true` before packing the atlas. Original art is marked in `assets/original-sidecars.json`, which holds the same correction fields as an added file's sidecar. Every original paperdoll layer's north frames are marked; a layer flips about the body's centre line. The north frames of 34 bodies are marked; each body flips about the centre line of its standing north frame, so it faces away from where it stood, and its hit rects move with it. The Lizard Warrior, Elf and Dwarf already held their weapon correctly from behind and are not marked, nor are the bodies whose north frame copies the south one (the Slimes, Dragon Hatchling, Death, Demons, Ghoul, Snared Loah, Ghost, Illusionary Spikes, Web, Holy Shield, Squid, Mutant Worm, Snow Demon and the bush). Asymmetric back-of-head details, such as some hairstyles, flip with the body. Added art drawn the 1.6 way is marked in its own sidecar, as the boot and bare-feet layers are.
+- **Why:** One character should not change hands when it turns around.
+- **In the code:** `assets/original-sidecars.json`; `packages/data/build/assets-lib/mirror.ts` (`mirrorPaperdoll`, `centreLine2`, `mirrorBody`, `checkMirroredFlags`), `packages/data/build/assets-lib/original-sidecars.ts` (`checkOriginalSidecars`), `packages/data/build/assets.ts` (`buildAssets`), `packages/data/build/data.ts` (`renderRects`)
+- **Pinned by:** `bug fixed: from behind, a character holds the shield in the left hand and the weapon in the right`, `original sidecars: every paperdoll north frame and the listed bodies' north frames are mirrored, nothing else` and `added art marked mirrored is flipped in the atlas and its hit rect` (packages/data/tests/assets.test.ts)
 
 #### Crystals are dropped or given by the button you chose
 - **Kind:** Bug fixed

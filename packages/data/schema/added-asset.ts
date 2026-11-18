@@ -6,6 +6,18 @@
  */
 import { z } from "zod";
 
+/**
+ * What SSO decides about an image, beyond what the image itself records: the same fields for
+ * added art (in its sidecar) and original art (in assets/original-sidecars.json).
+ */
+export const artCorrections = {
+  /**
+   * A north frame (`-F<n>-N`) of a paperdoll layer or body drawn mirrored, like 1.6's back views:
+   * the asset build flips it. Set on every north frame of the layer or body, or on none.
+   */
+  mirrored: z.literal(true).optional(),
+};
+
 /** Art: the five atlas groups. The registration point is the image's own anchor. */
 export const addedArtSchema = z.strictObject({
   group: z.enum(["tiles", "bodies", "paperdoll", "fx", "items"]),
@@ -14,6 +26,7 @@ export const addedArtSchema = z.strictObject({
   key: z.enum(["none", "green", "white", "matte"]),
   prov: z.literal("authored"),
   note: z.string().min(1),
+  ...artCorrections,
 });
 
 /** A sound: nothing but where it came from. The channel belongs to the content row that plays it. */

@@ -347,12 +347,15 @@ And to `classes.json` `skillPanel`:
 
 Original extracted assets are indexed in [assets/original/usage.md](../assets/original/usage.md); do not edit `assets/original/`.
 
+Corrections to original art live in [assets/original-sidecars.json](../assets/original-sidecars.json), keyed `<cast>/<member name>` (`Chars/31-F1-N`), with the same correction fields as an added file's sidecar (today `mirrored`). A test pins its contents, so change it together with that test.
+
 Place new art and audio in [assets/added/](../assets/added/README.md) with a matching JSON sidecar next to each file (see [assets/added/README.md](../assets/added/README.md) for exact folder names, colour-key rules, registration points, and sidecar schemas):
 
 - **Item icons:** `"icon": "added"` in `items.json`, PNG + sidecar in `items/`.
 - **Spell FX:** `fx/<member>-<n>.png` (and `fx/x<member>-<n>.png` for trails listed in `TRAILS` in `packages/shared/src/rules/spells/spellfx.ts`).
 - **Tiles:** 32×32 PNG + sidecar in `tiles/` plus a `tiles.json` row.
 - **Sounds:** WAV or MP3 + sidecar in `sounds/`, referenced by name in `spells.json`, `gather.json`, or `item-rules.json` `swing.sounds`.
+- **North frames:** draw paperdoll layers and bodies as seen from behind, with the right hand on the viewer's right. A north frame copied from an original keeps 1.6's mirror; set `"mirrored": true` on every north frame of that layer or body and the build flips them.
 
 Hit rectangles for `fx`, `bodies`, and `items` are computed automatically from the images and their registration points when you run `bun run data:build` and `bun run assets:build`.
 

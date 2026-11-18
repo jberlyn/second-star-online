@@ -28,6 +28,10 @@ Every file has a sidecar JSON with the same name. Art:
 
 - `key`: `none`, `green` (0,255,0 becomes transparent), `white`, or `matte` (edge-connected white).
 - `regX`, `regY`: the registration point, as for an original member.
+- `mirrored` (optional, `true` only): the image is a north frame (`-F<n>-N`) of a paperdoll layer
+  or body, drawn mirrored the way 1.6 drew its back views, and the build flips it. Leave it out
+  when the art is drawn as it should look from behind. Set it on every north frame of a layer or
+  body or on none; the build fails otherwise.
 
 Sound (nothing else is allowed; the channel belongs to the content row that plays it):
 
@@ -48,6 +52,14 @@ Sound (nothing else is allowed; the channel belongs to the content row that play
   transparent). Run `bun run data:build` after adding art there; `data:check` fails until you do.
 - **Item icons.** An added item's catalogue row (`items.json`) has `"icon": "added"`, and its picture
   is `items/<item name>.png`. A data test fails if the file or its sidecar is missing.
+- **North frames.** 1.6 drew the paperdoll's and most bodies' back views mirrored, holding the
+  weapon in the left hand; those originals are marked `"mirrored": true` in
+  `../original-sidecars.json` and the build flips them (`packages/data/build/assets-lib/mirror.ts`). Draw a
+  new north frame as it should look, the right hand on the viewer's right. If you start from an
+  original north frame instead, keep it as it is and set `"mirrored": true`; the boot and bare-feet
+  layers do. A paperdoll layer flips about the body's centre line, column 22, so keep its pixels
+  within columns 0 to 44. A body flips about the centre line of its standing frame, `-F2-N`, which
+  it must have.
 - **Tiles.** A tile also needs its `tiles.json` row, and goes on palette page 10 (slot 50 onwards), then page 11 and later.
 - **Sounds.** A sound is played by naming it in a content row: a spell FX run's `sounds`
   (`spells.json`), `gather.json`, or `swing.sounds` in `item-rules.json`. A data test fails if a

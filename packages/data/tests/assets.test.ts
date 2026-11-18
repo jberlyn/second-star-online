@@ -12,11 +12,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { buildAssets, renderUsage, USAGE_PATH } from "../build/assets.ts";
+import { listAdded } from "../build/assets-lib/added.ts";
 import { applyKey, ruleForUsage } from "../build/assets-lib/key.ts";
+import { keyedOriginal } from "../build/assets-lib/load.ts";
+import { centreLine2, mirrorBody, mirrorPaperdoll } from "../build/assets-lib/mirror.ts";
+import {
+  checkOriginalSidecars,
+  readOriginalSidecars,
+} from "../build/assets-lib/original-sidecars.ts";
 import { pack } from "../build/assets-lib/pack.ts";
 import { TAB_MASKS } from "../build/assets-lib/panel-tab-masks.ts";
 import { applyTabMask, mendPanelSeam, PANEL_SEAM } from "../build/assets-lib/panel-tabs.ts";
-import { createRgba, decodePng, encodePng } from "../build/assets-lib/png.ts";
+import { createRgba, decodePng, encodePng, type Rgba } from "../build/assets-lib/png.ts";
+import type { ManifestBitmap } from "../build/assets-lib/select.ts";
+import { renderRects } from "../build/data.ts";
 import type { AssetIndex } from "../src/assets.ts";
 import { TAB_ART } from "../src/panel-tabs.ts";
 
@@ -410,6 +419,261 @@ describe("asset build", () => {
     put(b, "sounds", "Chime.json", soundSide({ note: "changed" }));
     build(b, "m3");
     expect(h("m3")).not.toBe(h("m1"));
+  }, 60_000);
+});
+
+describe("mirrored north frames", () => {
+  const dot = (w: number, h: number, x: number, y: number) => {
+    const img = createRgba(w, h);
+    img.data.set([1, 2, 3, 255], (y * w + x) * 4);
+    return img;
+  };
+  const opaque = (img: Rgba) => {
+    const at: [number, number][] = [];
+    for (let i = 3; i < img.data.length; i += 4) {
+      if (img.data[i]) {
+        at.push([((i - 3) / 4) % img.width, Math.floor((i - 3) / 4 / img.width)]);
+      }
+    }
+    return at;
+  };
+
+  test("bug fixed: from behind, a character holds the shield in the left hand and the weapon in the right", () => {
+    // The first test's build, reused through the input hash (built here when run alone).
+    const a = join(tmp, "a");
+    buildAssets({ outDir: a, addedDir: join(tmp, "no-added") });
+    const index = JSON.parse(readFileSync(join(a, "index.json"), "utf8")) as AssetIndex;
+    // North frames are flipped about the body's centre line (column 22); the body stays put.
+    const sheets = new Map<string, Rgba>();
+    const centreX = (group: "paperdoll" | "bodies", name: string): number => {
+      const [sheet, sx, sy, w, h] = index.atlases[group].sprites[name] as number[];
+      const file = index.atlases[group].sheets[sheet as number] as string;
+      if (!sheets.has(file)) {
+        sheets.set(file, decodePng(new Uint8Array(readFileSync(join(a, file)))));
+      }
+      const img = sheets.get(file) as Rgba;
+      let sum = 0;
+      let n = 0;
+      for (let y = 0; y < (h as number); y++) {
+        for (let x = 0; x < (w as number); x++) {
+          if (img.data[(((sy as number) + y) * img.width + (sx as number) + x) * 4 + 3]) {
+            sum += x;
+            n += 1;
+          }
+        }
+      }
+      return sum / n;
+    };
+    expect(centreX("paperdoll", "small shield-f2-s")).toBeGreaterThan(22);
+    expect(centreX("paperdoll", "small shield-f2-n")).toBeLessThan(22);
+    expect(centreX("paperdoll", "short sword-f3-s")).toBeLessThan(22);
+    expect(centreX("paperdoll", "short sword-f4-n")).toBeGreaterThan(22);
+    expect(Math.abs(centreX("paperdoll", "defbod-f2-n") - 22)).toBeLessThan(0.5);
+    // A listed body's north frames are its 1.6 frames reversed, standing where they stood: the
+    // standing frame's figure keeps its place to within the half pixel the centre line rounds to.
+    // The server's hit rects move with them. The Lizard Warrior is not flipped.
+    const repo = join(import.meta.dir, "../../..");
+    const manifest = new Map<string, ManifestBitmap>();
+    for (const line of readFileSync(
+      join(repo, "assets/original/main/layout/cast-manifest.jsonl"),
+      "utf8",
+    ).split("\n")) {
+      const r = line ? (JSON.parse(line) as ManifestBitmap) : null;
+      if (r?.cast === "Chars" && r.type === "bitmap" && !manifest.has(r.name)) {
+        manifest.set(r.name, r);
+      }
+    }
+    const rects = renderRects() as { chars: Record<string, number[]> };
+    const centreOf = (img: Rgba, regX: number) => {
+      let sum = 0;
+      let n = 0;
+      for (let i = 3; i < img.data.length; i += 4) {
+        if (img.data[i]) {
+          sum += ((i - 3) / 4) % img.width;
+          n += 1;
+        }
+      }
+      return sum / n - regX;
+    };
+    let bodies = 0;
+    for (const key of readOriginalSidecars(repo).keys()) {
+      if (!key.startsWith("Chars/")) {
+        continue;
+      }
+      const name = key.slice("Chars/".length);
+      const b = manifest.get(name) as ManifestBitmap;
+      const [sheet, sx, sy, w, h, regX] = index.atlases.bodies.sprites[
+        name.toLowerCase()
+      ] as number[];
+      const file = index.atlases.bodies.sheets[sheet as number] as string;
+      if (!sheets.has(file)) {
+        sheets.set(file, decodePng(new Uint8Array(readFileSync(join(a, file)))));
+      }
+      const atlasSheet = sheets.get(file) as Rgba;
+      const built = createRgba(w as number, h as number);
+      for (let y = 0; y < built.height; y++) {
+        built.data.set(
+          atlasSheet.data.subarray(
+            (((sy as number) + y) * atlasSheet.width + (sx as number)) * 4,
+            (((sy as number) + y) * atlasSheet.width + (sx as number) + built.width) * 4,
+          ),
+          y * built.width * 4,
+        );
+      }
+      const original = keyedOriginal(repo, b);
+      expect(opaque(built), name).toEqual(
+        opaque(original)
+          .map(([x, y]): [number, number] => [original.width - 1 - x, y])
+          .sort((p, q) => p[1] - q[1] || p[0] - q[0]),
+      );
+      if (name.endsWith("-F2-N")) {
+        expect(
+          Math.abs(centreOf(built, regX as number) - centreOf(original, b.regX)),
+          name,
+        ).toBeLessThanOrEqual(0.5);
+      }
+      expect(rects.chars[name.toLowerCase()]?.[2], name).toBe(regX);
+      bodies += 1;
+    }
+    expect(bodies).toBe(137);
+    expect(index.atlases.bodies.sprites["41-f2-n"]?.slice(5)).toEqual([16, 9]);
+    expect(rects.chars["41-f2-n"]?.[2]).toBe(16);
+  }, 60_000);
+
+  test("a paperdoll layer flips about the body's centre line, column x to 44 - x", () => {
+    expect(opaque(mirrorPaperdoll(dot(30, 5, 9, 2), "t"))).toEqual([[35, 2]]);
+    expect(opaque(mirrorPaperdoll(dot(46, 45, 22, 0), "t"))).toEqual([[22, 0]]);
+    expect(() => mirrorPaperdoll(dot(46, 45, 45, 0), "Test-F1-N")).toThrow(/Test-F1-N: column 45/);
+  });
+
+  test("a body frame flips about its own centre line, so the figure stays put", () => {
+    // Two pixels, at columns 1 and 2, registration point 5: the figure is centred 3 left of it.
+    const img = dot(10, 4, 1, 3);
+    img.data.set([1, 2, 3, 255], (3 * 10 + 2) * 4);
+    expect(centreLine2(img, 5)).toBe(-6);
+    const flipped = mirrorBody(img, 5, -6);
+    expect(opaque(flipped.img)).toEqual([
+      [7, 3],
+      [8, 3],
+    ]);
+    // Measured from the registration point, the figure still spans -4 to -3.
+    expect(flipped.regX).toBe(11);
+    expect([7 - flipped.regX, 8 - flipped.regX]).toEqual([-4, -3]);
+    // A line through the registration point is a flip about it.
+    expect(mirrorBody(img, 5, 0).regX).toBe(5);
+  });
+
+  /**
+   * Bodies whose 1.6 back view is drawn mirrored. Left out: Lizard Warrior (41), Elf (50) and
+   * Dwarf (60), whose back views are already right, and the bodies whose north frames copy the
+   * south frames (30, 36, 37, 40, 42, 45, 46, 47, 52, 80, 90, 92, 99, 444, 502, 891).
+   */
+  const MIRRORED_BODIES = [
+    1, 3, 5, 6, 31, 32, 33, 34, 35, 38, 51, 57, 58, 59, 61, 62, 89, 91, 94, 100, 200, 201, 202, 203,
+    204, 207, 210, 311, 445, 477, 498, 621, 622, 858,
+  ];
+
+  test("original sidecars: every paperdoll north frame and the listed bodies' north frames are mirrored, nothing else", () => {
+    const a = join(tmp, "a");
+    buildAssets({ outDir: a, addedDir: join(tmp, "no-added") });
+    const index = JSON.parse(readFileSync(join(a, "index.json"), "utf8")) as AssetIndex;
+    const north = /^(.*)-f\d-n$/;
+    const expected = [
+      ...Object.keys(index.atlases.paperdoll.sprites)
+        .filter((k) => north.test(k))
+        .map((k) => `paperdoll:${k}`),
+      ...Object.keys(index.atlases.bodies.sprites)
+        .filter((k) => MIRRORED_BODIES.includes(Number(north.exec(k)?.[1])))
+        .map((k) => `bodies:${k}`),
+    ].sort();
+    const groupOf: Record<string, string> = { Characters: "paperdoll", Chars: "bodies" };
+    const sides = readOriginalSidecars(join(import.meta.dir, "../../.."));
+    const actual = [...sides].map(([key, side]) => {
+      expect(side).toEqual({ mirrored: true });
+      const [cast, name] = [key.slice(0, key.indexOf("/")), key.slice(key.indexOf("/") + 1)];
+      return `${groupOf[cast]}:${name.toLowerCase()}`;
+    });
+    expect(actual.sort()).toEqual(expected);
+    expect(expected).toContain("paperdoll:small shield-f2-n");
+    expect(expected).not.toContain("bodies:41-f2-n");
+    expect(expected).toHaveLength(267 + 137);
+  }, 60_000);
+
+  test("an original sidecar must name a built member, and its flags pass the added-art checks", () => {
+    const members = [
+      { group: "bodies", cast: "Chars", name: "31-F1-N" },
+      { group: "bodies", cast: "Chars", name: "31-F2-N" },
+      { group: "bodies", cast: "Chars", name: "31-F2-S" },
+    ];
+    const m = (entries: [string, object][]) => new Map(entries) as never;
+    expect(() =>
+      checkOriginalSidecars(
+        members,
+        m([
+          ["Chars/31-F1-N", { mirrored: true }],
+          ["Chars/31-F2-N", { mirrored: true }],
+        ]),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      checkOriginalSidecars(members, m([["Chars/999-F1-N", { mirrored: true }]])),
+    ).toThrow(/Chars\/999-F1-N is not an original member built into an atlas/);
+    expect(() =>
+      checkOriginalSidecars(members, m([["Chars/31-F2-S", { mirrored: true }]])),
+    ).toThrow(/\(Chars\/31-F2-S\): "mirrored" is only for north frames/);
+    expect(() =>
+      checkOriginalSidecars(members, m([["Chars/31-F1-N", { mirrored: true }]])),
+    ).toThrow(/must match on every north frame of 31/);
+  });
+
+  const side = (group: string, extra: object = {}) =>
+    JSON.stringify({ group, regX: 3, regY: 1, key: "none", prov: "authored", note: "t", ...extra });
+  const put = (
+    dir: string,
+    group: string,
+    name: string,
+    sidecar: string,
+    img = dot(10, 4, 1, 3),
+  ) => {
+    mkdirSync(join(dir, group), { recursive: true });
+    writeFileSync(join(dir, group, `${name}.png`), encodePng(img));
+    writeFileSync(join(dir, group, `${name}.json`), sidecar);
+  };
+
+  test('"mirrored" is refused off a north frame, outside paperdoll and bodies, and when it differs between north frames', () => {
+    const south = join(tmp, "mirror-south");
+    put(south, "paperdoll", "Test Boots-F1-S", side("paperdoll", { mirrored: true }));
+    expect(() => listAdded(south)).toThrow(/Test Boots-F1-S.png: "mirrored" is only for north/);
+    const fx = join(tmp, "mirror-fx");
+    put(fx, "fx", "Spark-F1-N", side("fx", { mirrored: true }));
+    expect(() => listAdded(fx)).toThrow(/Spark-F1-N.png: "mirrored" is only for north/);
+    const mixed = join(tmp, "mirror-mixed");
+    put(mixed, "bodies", "900-F1-N", side("bodies", { mirrored: true }));
+    put(mixed, "bodies", "900-F2-N", side("bodies"));
+    expect(() => listAdded(mixed)).toThrow(/must match on every north frame of 900/);
+    const off = join(tmp, "mirror-false");
+    put(off, "bodies", "900-F1-N", side("bodies", { mirrored: false }));
+    expect(() => listAdded(off)).toThrow(/900-F1-N.json/);
+  });
+
+  test("added art marked mirrored is flipped in the atlas and its hit rect", () => {
+    const dir = join(tmp, "mirror-added");
+    for (const f of ["F1", "F2", "F3", "F4"]) {
+      put(dir, "bodies", `900-${f}-N`, side("bodies", { mirrored: true }));
+      put(dir, "paperdoll", `Test Boots-${f}-N`, side("paperdoll", { mirrored: true }));
+    }
+    put(dir, "bodies", "900-F2-S", side("bodies"));
+    buildAssets({ outDir: join(tmp, "mirror-out"), addedDir: dir, force: true });
+    const index = JSON.parse(
+      readFileSync(join(tmp, "mirror-out", "index.json"), "utf8"),
+    ) as AssetIndex;
+    // One pixel at column 1, registration point 3: flipped in place, regX moves to 10.
+    expect(index.atlases.bodies.sprites["900-f2-n"]?.slice(3)).toEqual([10, 4, 10, 1]);
+    expect(index.atlases.bodies.sprites["900-f2-s"]?.slice(3)).toEqual([10, 4, 3, 1]);
+    expect(index.atlases.paperdoll.sprites["test boots-f2-n"]?.slice(3)).toEqual([45, 4, 3, 1]);
+    const rects = renderRects(undefined, dir) as { chars: Record<string, number[]> };
+    expect(rects.chars["900-f2-n"]).toEqual([10, 4, 10, 1]);
+    expect(rects.chars["900-f2-s"]).toEqual([10, 4, 3, 1]);
   }, 60_000);
 });
 

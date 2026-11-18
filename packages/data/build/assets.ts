@@ -27,7 +27,15 @@ import { join, relative } from "node:path";
 
 import type { AssetIndex, AtlasGroup, AtlasIndex, AtlasSprite, UiFile } from "../src/assets.ts";
 import { addedSoundFile, listAdded } from "./assets-lib/added.ts";
-import { applyKey, GREEN, type KeyRule, ruleForUsage } from "./assets-lib/key.ts";
+import { applyKey, type KeyRule, ruleForUsage } from "./assets-lib/key.ts";
+import { ATLAS_RULE, loadOriginal, MAIN_ROOT, rootOf, ruleForSidecar } from "./assets-lib/load.ts";
+import { centreLine2, mirrorBody, mirrorPaperdoll, standingFrameOf } from "./assets-lib/mirror.ts";
+import {
+  checkOriginalSidecars,
+  ORIGINAL_SIDECARS_PATH,
+  originalSidecarKey,
+  readOriginalSidecars,
+} from "./assets-lib/original-sidecars.ts";
 import { pack } from "./assets-lib/pack.ts";
 import { derivePanelTabs } from "./assets-lib/panel-tabs.ts";
 import { blit, createRgba, decodePng, encodePng, type Rgba } from "./assets-lib/png.ts";
@@ -46,26 +54,7 @@ import {
 export const ASSETS_DIR = join(import.meta.dir, "..", "assets");
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
 /** Bump when the build's output format or rules change, so the cache is invalidated. */
-const BUILD_VERSION = 15;
-
-const MAIN_ROOT = "assets/original/main";
-const rootOf = (b: ManifestBitmap) => b.root ?? MAIN_ROOT;
-
-/**
- * Bit 0x10 of the bitmap's CASt flags byte 22 marks a bitmap whose alpha channel Director
- * uses: every cast bitmap with partial alpha has it, bar one tile (the asset notes left
- * the byte undecoded). Without it Director ignores the channel, and many extracted
- * PNGs store alpha 0 on every pixel (the frame art, Internal #186-191), so the channel is
- * reset to opaque before keying.
- */
-export const USES_ALPHA = 0x10;
-
-function ignoreAlpha(img: Rgba): Rgba {
-  for (let i = 3; i < img.data.length; i += 4) {
-    img.data[i] = 255;
-  }
-  return img;
-}
+const BUILD_VERSION = 16;
 
 interface Source {
   name: string;
@@ -74,6 +63,8 @@ interface Source {
   regX: number;
   regY: number;
   rule: KeyRule;
+  /** A north frame stored mirrored (assets-lib/mirror.ts), flipped after keying. */
+  mirrored: boolean;
 }
 
 export interface BuildOptions {
@@ -173,6 +164,10 @@ function inputHash(
   const h = new Bun.CryptoHasher("sha256");
   h.update(`v${BUILD_VERSION}\n`);
   h.update(readFileSync(join(repoRoot, mainManifestPath)));
+  const sidecars = join(repoRoot, ORIGINAL_SIDECARS_PATH);
+  if (existsSync(sidecars)) {
+    h.update(readFileSync(sidecars));
+  }
   for (const movie of UI_SUB_MOVIES) {
     const path = join(repoRoot, subManifestPath(movie));
     if (existsSync(path)) {
@@ -202,6 +197,9 @@ function inputHash(
   for (const f of [
     "assets-lib/added.ts",
     "assets-lib/key.ts",
+    "assets-lib/load.ts",
+    "assets-lib/mirror.ts",
+    "assets-lib/original-sidecars.ts",
     "assets-lib/pack.ts",
     "assets-lib/panel-tab-masks.ts",
     "assets-lib/panel-tabs.ts",
@@ -209,6 +207,8 @@ function inputHash(
     "assets-lib/select.ts",
     "assets.ts",
     "../src/panel-tabs.ts",
+    "../schema/added-asset.ts",
+    "../schema/original-sidecars.ts",
   ]) {
     h.update(readFileSync(join(import.meta.dir, f)));
   }
@@ -255,23 +255,30 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
     stats.files += 1;
     stats.bytes += typeof bytes === "string" ? Buffer.byteLength(bytes) : bytes.length;
   };
-  const load = (b: ManifestBitmap) => () => {
-    const img = decodePng(new Uint8Array(readFileSync(join(repoRoot, rootOf(b), b.asset))));
-    return ((b.flags22 ?? 0) & USES_ALPHA) === 0 ? ignoreAlpha(img) : img;
-  };
+  const load = (b: ManifestBitmap) => () => loadOriginal(repoRoot, b);
 
   const atlases = {} as Record<AtlasGroup, AtlasIndex>;
   const added = listAdded(addedDir);
-  for (const group of Object.keys(GROUP_CAST).sort() as AtlasGroup[]) {
+  const originalSides = readOriginalSidecars(repoRoot);
+  const groups = Object.keys(GROUP_CAST).sort() as AtlasGroup[];
+  checkOriginalSidecars(
+    groups.flatMap((group) =>
+      selection.atlas[group].map(({ b, name }) => ({ group, cast: b.cast, name })),
+    ),
+    originalSides,
+  );
+  for (const group of groups) {
     const byKey = new Map<string, Source>();
     for (const { b, name } of selection.atlas[group]) {
+      const side = originalSides.get(originalSidecarKey(b.cast, name));
       byKey.set(name.toLowerCase(), {
         name,
         key: name.toLowerCase(),
         img: load(b),
         regX: b.regX,
         regY: b.regY,
-        rule: { kind: "color", rgb: GREEN },
+        rule: ATLAS_RULE,
+        mirrored: side?.mirrored === true,
       });
     }
     for (const s of added.art.filter((x) => x.group === group)) {
@@ -282,21 +289,14 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
         );
       }
       const side = s.side;
-      const rule: KeyRule =
-        side.key === "green"
-          ? { kind: "color", rgb: GREEN }
-          : side.key === "white"
-            ? { kind: "color", rgb: [255, 255, 255] }
-            : side.key === "matte"
-              ? { kind: "matte" }
-              : { kind: "none" };
       byKey.set(key, {
         name: s.name,
         key,
         img: () => decodePng(new Uint8Array(readFileSync(s.png))),
         regX: side.regX,
         regY: side.regY,
-        rule,
+        rule: ruleForSidecar(side.key),
+        mirrored: side.mirrored === true,
       });
     }
     const sources = [...byKey.values()];
@@ -305,6 +305,35 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
       const img = s.img();
       applyKey(img, s.rule);
       images.set(s.key, img);
+    }
+    // Each mirrored body's centre line, from its standing north frame before any is flipped.
+    const lines = new Map<string, number>();
+    for (const s of sources) {
+      const standing = standingFrameOf(s.name)?.toLowerCase();
+      if (group !== "bodies" || !s.mirrored || !standing || lines.has(standing)) {
+        continue;
+      }
+      const from = byKey.get(standing);
+      if (!from) {
+        throw new Error(
+          `bodies ${s.name}: mirrored, but there is no ${standingFrameOf(s.name)} to centre it on`,
+        );
+      }
+      lines.set(standing, centreLine2(images.get(standing) as Rgba, from.regX));
+    }
+    for (const s of sources) {
+      if (!s.mirrored) {
+        continue;
+      }
+      const img = images.get(s.key) as Rgba;
+      if (group === "paperdoll") {
+        images.set(s.key, mirrorPaperdoll(img, `${group} ${s.name}`));
+      } else {
+        const line2 = lines.get(standingFrameOf(s.name)?.toLowerCase() ?? "") as number;
+        const flipped = mirrorBody(img, s.regX, line2);
+        images.set(s.key, flipped.img);
+        s.regX = flipped.regX;
+      }
     }
     const layout = pack(
       sources.map((s) => {

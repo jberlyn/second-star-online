@@ -24,7 +24,11 @@ import { socialDataSchema } from "../schema/social.ts";
 import { spellsDataSchema } from "../schema/spells.ts";
 import { tilesDataSchema } from "../schema/tiles.ts";
 import { listAdded } from "./assets-lib/added.ts";
+import { keyedAdded, keyedOriginal } from "./assets-lib/load.ts";
+import { centreLine2, standingFrameOf } from "./assets-lib/mirror.ts";
+import { originalSidecarKey, readOriginalSidecars } from "./assets-lib/original-sidecars.ts";
 import { pngSize } from "./assets-lib/png.ts";
+import type { ManifestBitmap } from "./assets-lib/select.ts";
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
 const CONTENT = join(import.meta.dir, "..", "content");
@@ -163,13 +167,17 @@ export const MODULES: readonly Module[] = [
  * The member rects of casts FX, Chars and Inventory from the cast manifest (schema/rects.ts): the first
  * member of each name, lower-cased; then the rect of each added `fx`, `bodies` and `items` image
  * (width and height from the PNG, registration point from its sidecar: the same bounding rect
- * Director's `intersects` uses for an original). Pure apart from reading the manifest and
- * assets/added/.
+ * Director's `intersects` uses for an original). A mirrored north frame's regX is moved by
+ * the flip, as the asset build makes it (build/assets-lib/mirror.ts) when its sidecar says so.
+ * Pure apart from reading the manifest, assets/original-sidecars.json, the mirrored bodies'
+ * standing frames and assets/added/.
  */
 export function renderRects(
   manifest = CAST_MANIFEST,
   addedDir = ADDED_DIR,
+  repoRoot = REPO_ROOT,
 ): { [key: string]: Json } {
+  const originalSides = readOriginalSidecars(repoRoot);
   const out: { fx: Obj; chars: Obj; items: Obj } = { fx: {}, chars: {}, items: {} };
   const rows = readFileSync(manifest, "utf8")
     .split("\n")
@@ -180,6 +188,23 @@ export function renderRects(
         (r.cast === "FX" || r.cast === "Chars" || r.cast === "Inventory") && r.type === "bitmap",
     )
     .sort((a, b) => Number(a.member) - Number(b.member));
+  const firstChars = new Map<string, Obj>();
+  for (const r of rows) {
+    if (r.cast === "Chars" && !firstChars.has(String(r.name))) {
+      firstChars.set(String(r.name), r);
+    }
+  }
+  /** A mirrored body's centre line, from its standing frame as the asset build keys it. */
+  const originalLine = (name: string): number => {
+    const standing = firstChars.get(standingFrameOf(name) ?? "");
+    if (!standing) {
+      throw new Error(
+        `Chars ${name}: mirrored, but there is no ${standingFrameOf(name)} to centre it on`,
+      );
+    }
+    const b = standing as unknown as ManifestBitmap;
+    return centreLine2(keyedOriginal(repoRoot, b), Number(b.regX));
+  };
   for (const r of rows) {
     const table = r.cast === "FX" ? out.fx : r.cast === "Chars" ? out.chars : out.items;
     const key = String(r.name).toLowerCase();
@@ -189,10 +214,24 @@ export function renderRects(
     }
     const w = Number(rect[2]) - Number(rect[0]);
     const h = Number(rect[3]) - Number(rect[1]);
-    table[key] = [w, h, Number(r.regX), Number(r.regY)];
+    const regX =
+      r.cast === "Chars" && originalSides.get(originalSidecarKey("Chars", String(r.name)))?.mirrored
+        ? w - Number(r.regX) - originalLine(String(r.name))
+        : Number(r.regX);
+    table[key] = [w, h, regX, Number(r.regY)];
   }
   const addedTable = { fx: out.fx, bodies: out.chars, items: out.items } as const;
-  for (const a of listAdded(addedDir).art) {
+  const addedArt = listAdded(addedDir).art;
+  const addedLine = (name: string): number => {
+    const standing = addedArt.find((x) => x.group === "bodies" && x.name === standingFrameOf(name));
+    if (!standing) {
+      throw new Error(
+        `assets/added/bodies/${name}.png: mirrored, but there is no ${standingFrameOf(name)} to centre it on`,
+      );
+    }
+    return centreLine2(keyedAdded(standing.png, standing.side), standing.side.regX);
+  };
+  for (const a of addedArt) {
     if (a.group !== "fx" && a.group !== "bodies" && a.group !== "items") {
       continue; // tiles and paperdoll layers have no rect
     }
@@ -204,7 +243,8 @@ export function renderRects(
       );
     }
     const { width, height } = pngSize(new Uint8Array(readFileSync(a.png)));
-    table[key] = [width, height, a.side.regX, a.side.regY];
+    const regX = a.side.mirrored ? width - a.side.regX - addedLine(a.name) : a.side.regX;
+    table[key] = [width, height, regX, a.side.regY];
   }
   const sorted = (t: Obj): Obj =>
     Object.fromEntries(
