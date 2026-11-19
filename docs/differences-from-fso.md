@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 60 |
+| [Design changes](#design-changes) | 61 |
 | [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **532** |
+| **Total** | **533** |
 
 By system (the code folder that holds the change):
 
@@ -310,6 +310,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Browser scaling and logout need controls. A page cannot close its own tab, so Quit Game could only log out to a screen asking the player to close it, which Return To Title Screen and the tab's own close button already cover. With Quit Game gone, File and Edit would each hold a single item, so the items are grouped by purpose: chat rooms (including Admin Chat) together, and Admin keeping only tools and events. Server Settings is named for what it changes. Items that need a character are hidden rather than greyed before entry, so the title screen offers nothing that cannot work there.
 - **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
 - **Pinned by:** `no menu offers Quit Game: a page cannot close its own tab`, `an immortal gets Admin between Chat and Options, and Admin Chat among the rooms`, `out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
+
+#### Scroll bars appear only when there is text to scroll
+- **Kind:** Platform
+- **What you notice:** The chat box and spellbook list show no scroll bar while their text fits; the bar appears in the same place once there is more text than the box shows.
+- **1.6:** Director drew the `#scroll` field's bar beside the chat and spellbook fields at all times, even when empty.
+- **SSO:** The bar sits where Director drew it but only shows when the text overflows. Its room stays reserved, so text does not reflow when it appears.
+- **Why:** An empty track beside an empty box reads as a broken control in a browser, and the bar has nothing to do until there is text to scroll.
+- **In the code:** `packages/client/src/styles.css` (`.director-scroll`, `.chat-log`)
+- **Pinned by:** `divergence: the scroll bar shows only when there is text to scroll, in a gutter kept for it` (packages/client/tests/chat.test.ts)
 
 #### Sound waits for your first click or key press
 - **Kind:** Platform

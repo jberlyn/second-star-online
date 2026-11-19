@@ -141,15 +141,18 @@ body {
 }
 /*
  * Director #scroll fields (chat on the desktop stage, the spellbook): the box is DIRECTOR_BAR_W
- * (19 px) wider than the field, and the bar is always on, 16 px wide, 3 px clear of the text, at
- * the x where 1.6 drew Director's (chat x 765-780, spellbook x 775-790; measured in Director).
- * Text keeps the field's width: 1 px margin, then 3 px gap + 16 px bar. Firefox ignores the
- * ::-webkit-scrollbar rules and draws its own bar in the same place, at its own width.
+ * (19 px) wider than the field, and the bar is 16 px wide, 3 px clear of the text, at the x where
+ * 1.6 drew Director's (chat x 765-780, spellbook x 775-790; measured in Director). Director drew
+ * the bar even with nothing to scroll; here it shows only when the text overflows, and the stable
+ * gutter keeps its room so the text never reflows when it appears. Text keeps the field's width:
+ * 1 px margin, then 3 px gap + 16 px bar. Firefox ignores the ::-webkit-scrollbar rules and draws
+ * its own bar in the same place, at its own width.
  */
 .director-scroll,
 .game[data-shell="desktop"] .chat-log {
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: 1px 4px 1px 1px;
 }
 .director-scroll::-webkit-scrollbar,

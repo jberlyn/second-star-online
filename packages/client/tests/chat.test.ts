@@ -41,6 +41,22 @@ describe("chat input", () => {
 });
 
 describe("chat log", () => {
+  test("divergence: the scroll bar shows only when there is text to scroll, in a gutter kept for it", () => {
+    const style = document.createElement("style");
+    style.textContent = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    document.body.append(style);
+    const game = document.createElement("div");
+    game.className = "game";
+    game.dataset.shell = "desktop";
+    const log = createChatLog();
+    game.append(log.el);
+    document.body.append(game);
+    const css = getComputedStyle(log.el);
+    expect([css.overflowY, css.getPropertyValue("scrollbar-gutter")]).toEqual(["auto", "stable"]);
+    game.remove();
+    style.remove();
+  });
+
   test("lines take their palette colour: 0 white, 4 yellow", () => {
     const log = createChatLog();
     log.add('Bob says "hi"', 0);
