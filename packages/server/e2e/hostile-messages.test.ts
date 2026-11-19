@@ -404,6 +404,19 @@ describe("login, creation and socket limits", () => {
     expect(again).toBeDefined();
     again.close();
   });
+
+  test("SSO_SOCKETS_PER_IP sets the open-socket limit", async () => {
+    const two = startTestServer({ limits: true, config: { socketsPerIp: 2 } });
+    try {
+      const open = [await connectBot(two.wsUrl), await connectBot(two.wsUrl)];
+      expect((await connectUntilClosed(two.wsUrl)).code).toBe(CLOSE.tooManyConnections.code);
+      for (const bot of open) {
+        bot.close();
+      }
+    } finally {
+      await two.stop();
+    }
+  });
 });
 
 describe("tries sent together on several sockets count before the hash", () => {

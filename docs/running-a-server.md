@@ -122,8 +122,13 @@ That source-build configuration sets `SSO_PROXY_HOPS=1` for a host reverse proxy
 | `SSO_CLIENT_DIR` | `dist/client` | Optional override for the prebuilt production client directory (used by tests). |
 | `SSO_PROXY_HOPS` | `0` | Number of trusted reverse proxies in front of the server (whole number `>= 0`; invalid values refuse startup). The recommended Compose example sets `0`; use `1` behind a single reverse proxy. |
 | `SSO_FRAME_ANCESTORS` | unset | Optional CSP `frame-ancestors` directive value. Unset adds no `frame-ancestors` directive. |
+| `SSO_SAVE_INTERVAL` | `30s` | How often online characters are saved, besides saves on logout and map change. A time from `1s` to `1h`, written like the Settings window's times (`30s`, `2m`). |
+| `SSO_RECONNECT_GRACE` | `30s` | How long a dropped connection can resume with its token without logging in again. `0` to `5m`; `0` turns resuming off. |
+| `SSO_SOCKETS_PER_IP` | `10` | Open connections one address (IPv6 `/64`) may hold at once. Whole number `0`–`1000`; `0` turns the limit off. Moderator and immortal connections stop counting once logged in. |
 | `SSO_PERF_OUT` | unset | Path to append once-a-second JSON performance samples (see [performance.md](performance.md)). |
 | `SSO_CRASH_AT` | unset | Test hook that kills the process at a named crash point; not an operator setting. |
+
+A value of `SSO_SAVE_INTERVAL`, `SSO_RECONNECT_GRACE` or `SSO_SOCKETS_PER_IP` that does not read, or is out of range, refuses startup with a message naming the variable. A bare number is not a time: write `30s`, not `30`.
 
 ### Reverse proxies and TLS
 
@@ -282,6 +287,8 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 
 **Upgrading from 1.7.0 or earlier:** the duration settings were renamed to drop their unit, and their stored values are converted to seconds when the server starts: `saveIntervalTicks` → `saveInterval`, `broadcastCooldownFrames` → `broadcastCooldown`, `chatCooldownFrames` → `chatCooldown`, `resumeGraceMs` → `resumeGrace`, `npcChatterSeconds` → `npcChatter`, `lootDecayMinutes` → `lootDecay`, `jailMinutes` → `jailSentence`, `banMinutes` → `banLength`, `ipBanMinutes` → `ipBanLength`, `addressHistoryDays` → `addressHistory`, `chatLogRetentionDays` → `chatLogRetention` and `auditLogRetentionDays` → `auditLogRetention`. A frame count rounds to the nearest second (a wait that was on stays at least `1s`), and milliseconds round to the nearest second. Update any scripts that write these keys to the `settings` table.
 
+**Upgrading from 1.7.0 or earlier:** the save interval, reconnect grace and open connections per address are server infrastructure, so they left the Settings window for environment variables: `saveIntervalTicks`/`saveInterval` → `SSO_SAVE_INTERVAL`, `resumeGraceMs`/`resumeGrace` → `SSO_RECONNECT_GRACE` and `socketsPerIp` → `SSO_SOCKETS_PER_IP` (see [Environment variables](#environment-variables)). Their rows are removed from the `settings` table when the server starts. If you had changed one, set its variable to keep your value.
+
 ### World
 
 | Key | Label | Default | Allowed / range | Effect |
@@ -318,13 +325,6 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | `dropOnDeath` | Drop an item on death | `true` | `true` / `false` | Whether dying characters may drop one random item from their bag, never crystals (immortals always drop). |
 | `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–4th place prizes when an Assassin's Game ends. |
 
-### Server
-
-| Key | Label | Default | Allowed / range | Effect |
-|---|---|---|---|---|
-| `saveInterval` | Save every | `30s` | `1s`–`1h` | Periodic save interval for online characters, besides saves on logout and map change. |
-| `resumeGrace` | Reconnect grace | `30s` | `0`–`5m` | How long a dropped connection can resume with its token without logging in again (`0` disables). |
-
 ### Moderation and security
 
 | Key | Label | Default | Allowed / range | Effect |
@@ -338,7 +338,6 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | `loginFailsPerIp` | Failed logins per address | `20` | `0`–`1000` | Failed logins per address (IPv6 `/64`) in 5 minutes before refusal (`0` disables; moderators and immortals are not refused). |
 | `loginFailsPerAccount` | Failed logins per account | `5` | `0`–`1000` | Wrong passwords per address+account pair in 5 minutes before refusal (`0` disables; no role exemption). |
 | `createsPerIp` | New characters per address | `3` | `0`–`1000` | Character creations per address (IPv6 `/64`) per hour (`0` disables; no role exemption). |
-| `socketsPerIp` | Open connections per address | `10` | `0`–`1000` | Concurrent open connections per address (IPv6 `/64`, `0` disables; moderator/immortal connections stop counting after login). |
 
 ## World Editor and NPC Editor
 

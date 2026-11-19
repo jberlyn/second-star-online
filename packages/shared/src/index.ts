@@ -37,6 +37,7 @@ export {
 export * from "./rules/core/maps.ts";
 export * from "./rules/core/patterns.ts";
 export * from "./rules/core/tiles.ts";
+export * from "./rules/core/timelength.ts";
 export {
   AIRSHIP_BLOCK,
   airshipWalkGrid,

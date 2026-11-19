@@ -15,7 +15,12 @@
  *
  * Save and Revert stand for the File Editor's Save and Load (its members 2 and 3).
  */
-import { prizeLineOk, type SettingRow } from "@secondstaronline/shared";
+import {
+  formatTimeLength,
+  parseTimeLength,
+  prizeLineOk,
+  type SettingRow,
+} from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
 import type { GameWindow, WindowLayer } from "./window.ts";
@@ -108,68 +113,9 @@ export function parsePoints(text: string): unknown[] {
     });
 }
 
-const UNITS = [
-  { s: 86_400, short: "d", words: ["d", "day", "days"] },
-  { s: 3600, short: "h", words: ["h", "hr", "hrs", "hour", "hours"] },
-  { s: 60, short: "m", words: ["m", "min", "mins", "minute", "minutes"] },
-  { s: 1, short: "s", words: ["s", "sec", "secs", "second", "seconds"] },
-] as const;
-const WEEK = { s: 604_800, words: ["w", "wk", "wks", "week", "weeks"] } as const;
-const UNIT_SECONDS = new Map<string, number>(
-  [...UNITS, WEEK].flatMap((u) => u.words.map((w) => [w, u.s] as const)),
-);
-const DURATION_PART = /(\d+(?:\.\d+)?)\s*([a-z]+)/y;
-
-/** Whole seconds as a duration field shows them: "30s", "5m", "1d 12h", "0". */
-export function formatDuration(seconds: number): string {
-  let left = Math.max(0, Math.round(seconds));
-  const parts: string[] = [];
-  for (const u of UNITS) {
-    const n = Math.floor(left / u.s);
-    if (n > 0) {
-      parts.push(`${n}${u.short}`);
-      left -= n * u.s;
-    }
-  }
-  return parts.length > 0 ? parts.join(" ") : "0";
-}
-
-/**
- * Reads a duration field: numbers with units (s, m, h, d, w or their words, like "5 min" or
- * "2 hours"), several in a row ("1h 30m"), rounded to whole seconds. "0" alone, or the row's word
- * for 0 ("off", "permanent", "forever"), is 0. Null when it is not a time.
- */
-export function parseDuration(text: string, zero?: string): number | null {
-  const t = text.trim().toLowerCase();
-  if (t === "0" || (zero !== undefined && t === zero.toLowerCase())) {
-    return 0;
-  }
-  let at = 0;
-  let total = 0;
-  let parts = 0;
-  while (at < t.length) {
-    while (t[at] === " " || t[at] === ",") {
-      at++;
-    }
-    if (at >= t.length) {
-      break;
-    }
-    DURATION_PART.lastIndex = at;
-    const m = DURATION_PART.exec(t);
-    const unit = m ? UNIT_SECONDS.get(m[2] ?? "") : undefined;
-    if (!m || unit === undefined) {
-      return null;
-    }
-    total += Number(m[1]) * unit;
-    parts++;
-    at = DURATION_PART.lastIndex;
-  }
-  return parts > 0 ? Math.round(total) : null;
-}
-
 /** A duration as the window names it: "30s", or "0 (off)" where 0 has a meaning. */
 function durationValueText(r: SettingRow, seconds: number): string {
-  return seconds === 0 && r.zero ? `0 (${r.zero})` : formatDuration(seconds);
+  return seconds === 0 && r.zero ? `0 (${r.zero})` : formatTimeLength(seconds);
 }
 
 /** A value as the row's "Reset to default" names it. */
@@ -230,8 +176,8 @@ export function checkValue(r: SettingRow, v: unknown): string | null {
         return null;
       }
       return min === 0
-        ? `Enter a time up to ${formatDuration(max)}${r.zero ? `, or 0 for ${r.zero}` : ""}.`
-        : `Enter a time from ${formatDuration(min)} to ${formatDuration(max)}.`;
+        ? `Enter a time up to ${formatTimeLength(max)}${r.zero ? `, or 0 for ${r.zero}` : ""}.`
+        : `Enter a time from ${formatTimeLength(min)} to ${formatTimeLength(max)}.`;
     }
     case "map":
       return v === null || (typeof v === "string" && MAP_NAME.test(v))
@@ -467,9 +413,9 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
         d.spellcheck = false;
         d.autocomplete = "off";
         // A field that is not a time reads as its text, so the check can name the fault.
-        read = () => parseDuration(d.value, r.zero) ?? d.value;
+        read = () => parseTimeLength(d.value, r.zero) ?? d.value;
         write = (v) => {
-          d.value = typeof v === "number" ? formatDuration(v) : String(v);
+          d.value = typeof v === "number" ? formatTimeLength(v) : String(v);
         };
         fields.push(d);
         control.append(d);

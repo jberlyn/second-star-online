@@ -46,6 +46,8 @@ export async function stage(options: StageOptions): Promise<void> {
   }
   const db = openDatabase(options.dbPath);
   migrate(db);
+  // `socketsPerIp` is `SSO_SOCKETS_PER_IP` now (set where the server starts); the stored key is
+  // kept for images from before that, which still read it.
   for (const key of ["loginFailsPerIp", "loginFailsPerAccount", "createsPerIp", "socketsPerIp"]) {
     saveSettingOverride(db, key, 0, NOW);
   }

@@ -12,7 +12,6 @@ import { join } from "node:path";
 
 import type { ClientMsg } from "@secondstaronline/shared";
 
-import { saveSettingOverride } from "../src/persistence/settings.ts";
 import { expectConserved, totals } from "./conservation.ts";
 import { connectBot, idOf, make, settle, startTestServer } from "./harness.ts";
 
@@ -26,7 +25,11 @@ interface Child {
 }
 
 /** Starts `bun src/main.ts` on `dbPath` and waits for its "listening on" line. */
-async function spawnServer(dbPath: string, crashAt?: string): Promise<Child> {
+async function spawnServer(
+  dbPath: string,
+  crashAt?: string,
+  extraEnv: Record<string, string> = {},
+): Promise<Child> {
   const clientDir = join(dir, "client");
   rmSync(clientDir, { recursive: true, force: true });
   mkdirSync(clientDir, { recursive: true });
@@ -36,6 +39,7 @@ async function spawnServer(dbPath: string, crashAt?: string): Promise<Child> {
     SSO_DB: dbPath,
     SSO_CLIENT_DIR: clientDir,
     PORT: "0",
+    ...extraEnv,
   };
   if (crashAt) {
     env.SSO_CRASH_AT = crashAt;
@@ -164,7 +168,6 @@ describe("a kill inside a write lands on the state before it", () => {
 
   test("bj:offlineCredit: a forfeit after the grace is killed after the debit", async () => {
     const { dbPath, before } = await build((db) => {
-      saveSettingOverride(db, "resumeGrace", 1, "2026-11-10T00:00:00.000Z");
       db.run("UPDATE characters SET gold = 100, x = 9, y = 6 WHERE name = 'Alice'");
       db.run("UPDATE characters SET gold = 100, x = 11, y = 6 WHERE name = 'Bob'");
       const map = db
@@ -175,7 +178,7 @@ describe("a kill inside a write lands on the state before it", () => {
         [crypto.randomUUID(), map?.map_id ?? ""],
       );
     });
-    const c = await spawnServer(dbPath, "bj:offlineCredit");
+    const c = await spawnServer(dbPath, "bj:offlineCredit", { SSO_RECONNECT_GRACE: "1s" });
     children.push(c);
     const alice = await loginTo(c, "Alice");
     const bob = await loginTo(c, "Bob");

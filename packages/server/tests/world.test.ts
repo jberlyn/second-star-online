@@ -117,10 +117,19 @@ describe("settings", () => {
     expect(defaultSettings().startPoint).toEqual({ map: "x1000y992", x: 6, y: 4 });
     expect(defaultSettings().fallbackPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
     saveSettingOverride(db, "startPoint", { map: "x1y2", x: 3, y: 4 }, NOW);
-    saveSettingOverride(db, "saveInterval", "not a number", NOW);
+    saveSettingOverride(db, "chatCooldown", "not a number", NOW);
     const s = resolveSettings(loadSettingOverrides(db));
     expect(s.startPoint).toEqual({ map: "x1y2", x: 3, y: 4 });
-    expect(s.saveInterval).toBe(30);
+    expect(s.chatCooldown).toBe(3);
+  });
+
+  test("server infrastructure is not a setting: no row, and stored values are ignored", () => {
+    for (const key of ["saveInterval", "resumeGrace", "socketsPerIp"]) {
+      expect(key in defaultSettings()).toBe(false);
+      expect(settingRows(defaultSettings()).some((r) => r.key === key)).toBe(false);
+      saveSettingOverride(db, key, 5, NOW);
+      expect(key in resolveSettings(loadSettingOverrides(db))).toBe(false);
+    }
   });
 
   test("walk speed is not a setting: no row, and a stored stepFrames is ignored", () => {
@@ -150,9 +159,7 @@ describe("settings", () => {
       expect(r.key).not.toMatch(/Frames|Ticks|Ms$|Seconds|Minutes|Days/);
     }
     const s = defaultSettings();
-    expect([s.saveInterval, s.chatCooldown, s.broadcastCooldown, s.resumeGrace]).toEqual([
-      30, 3, 50, 30,
-    ]);
+    expect([s.chatCooldown, s.broadcastCooldown, s.npcChatter]).toEqual([3, 50, 150]);
     expect(secondsToTicks(s.chatCooldown)).toBe(60);
     expect(resolveSettings(new Map([["chatCooldown", "1.5"]])).chatCooldown).toBe(3);
   });

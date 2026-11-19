@@ -44,6 +44,8 @@ export interface TestServerOptions {
   limits?: boolean;
   /** Reverse proxies in front (`SSO_PROXY_HOPS`). */
   proxyHops?: number;
+  /** Server infrastructure (`SSO_SOCKETS_PER_IP` and the rest), over the harness's own. */
+  config?: ServerOptions["config"];
   /** Receives throws the game caught at an entry point (default: collected in `faults`). */
   onFault?: (where: string, err: unknown) => void;
   /** Named crash windows. */
@@ -90,18 +92,14 @@ export function startTestServer(options: TestServerOptions = {}): TestServer {
     prepare: (db) => {
       prepareScenarioMap(db);
       if (!options.limits) {
-        for (const key of [
-          "loginFailsPerIp",
-          "loginFailsPerAccount",
-          "createsPerIp",
-          "socketsPerIp",
-        ]) {
+        for (const key of ["loginFailsPerIp", "loginFailsPerAccount", "createsPerIp"]) {
           saveSettingOverride(db, key, 0, "2026-11-04T00:00:00.000Z");
         }
       }
       options.prepare?.(db);
     },
     proxyHops: options.proxyHops,
+    config: { ...(options.limits ? {} : { socketsPerIp: 0 }), ...options.config },
     onFault:
       options.onFault ??
       ((where, err) => {

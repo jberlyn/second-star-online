@@ -29,13 +29,7 @@ export type SettingForm =
   | { kind: "text" };
 
 /** The Settings window's sections, in the order it shows them. */
-export const SETTING_GROUPS = [
-  "World",
-  "Chat",
-  "Items",
-  "Server",
-  "Moderation and security",
-] as const;
+export const SETTING_GROUPS = ["World", "Chat", "Items", "Moderation and security"] as const;
 export type SettingGroup = (typeof SETTING_GROUPS)[number];
 
 interface SettingDef<T> {
@@ -116,14 +110,6 @@ export const SETTINGS = {
       "Where characters go when their place is gone: their saved map was deleted or their house decayed. Also where a death or jail release goes if their respawn point's map is gone. Never use a tutorial map here.",
     source:
       "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), which every death used because no 1.6 map saved a respawn point; keeps its tile on the seed map.",
-  }),
-  saveInterval: def({
-    group: "Server",
-    label: "Save every",
-    ...duration(1, HOUR),
-    default: 30,
-    tooltip: "How often online characters are saved, besides saves on logout and map change.",
-    source: "The original client uploaded its character file every 20-40 s.",
   }),
   chatMaxChars: def({
     group: "Chat",
@@ -325,14 +311,6 @@ export const SETTINGS = {
     source:
       "1.6's News.txt, sent at game entry and printed when it differs from the client's saved news preference. 1.6 operators edited the file by hand.",
   }),
-  resumeGrace: def({
-    group: "Server",
-    label: "Reconnect grace",
-    ...duration(0, 5 * MINUTE, "off"),
-    default: 30,
-    tooltip: "How long after a dropped connection a player can reconnect without logging in again.",
-    source: "SSO addition (resumed sessions); the same 30 s grace as blackjack.",
-  }),
   jailSentence: def({
     group: "Moderation and security",
     label: "Jail sentence",
@@ -415,16 +393,6 @@ export const SETTINGS = {
     default: 3,
     tooltip:
       "How many characters one address (an IPv6 /64) may create in an hour. 0 turns the limit off. A restart clears the counts.",
-    source: "SSO addition. 1.6 had no limit.",
-  }),
-  socketsPerIp: def({
-    group: "Moderation and security",
-    label: "Open connections per address",
-    form: { kind: "int", min: 0, max: 1000 },
-    schema: z.number().int().min(0).max(1000),
-    default: 10,
-    tooltip:
-      "How many connections one address (an IPv6 /64) may hold open at once. 0 turns the limit off. A moderator or immortal's connection stops counting once logged in.",
     source: "SSO addition. 1.6 had no limit.",
   }),
 } as const;

@@ -14,8 +14,6 @@ import type { Connection } from "../src/net.ts";
 import {
   checkValue,
   createSettingsWindow,
-  formatDuration,
-  parseDuration,
   parsePoints,
   parsePrizes,
   pointsText,
@@ -138,28 +136,6 @@ describe("the Settings window", () => {
     expect((wait.querySelector("input") as HTMLInputElement).value).toBe("6m 40s");
     expect(wait.querySelector(".settings-unit")?.textContent).toBe("0 = off");
     expect(row("saveInterval").querySelector(".settings-unit")).toBeNull();
-    expect(formatDuration(0)).toBe("0");
-    expect(formatDuration(3)).toBe("3s");
-    expect(formatDuration(150)).toBe("2m 30s");
-    expect(formatDuration(129_600)).toBe("1d 12h");
-    expect(formatDuration(315_360_000)).toBe("3650d");
-    expect(parseDuration("30s")).toBe(30);
-    expect(parseDuration(" 5 min ")).toBe(300);
-    expect(parseDuration("1h 30m")).toBe(5400);
-    expect(parseDuration("1d12h")).toBe(129_600);
-    expect(parseDuration("2 weeks")).toBe(1_209_600);
-    expect(parseDuration("1.5h")).toBe(5400);
-    expect(parseDuration("0")).toBe(0);
-    expect(parseDuration("Off", "off")).toBe(0);
-    expect(parseDuration("off")).toBeNull();
-    // A bare number has no unit: refused, not guessed.
-    expect(parseDuration("30")).toBeNull();
-    expect(parseDuration("5 fortnights")).toBeNull();
-    expect(parseDuration("")).toBeNull();
-    // Every shown value reads back as itself.
-    for (const n of [1, 59, 61, 3600, 86_399, 2_592_000]) {
-      expect(parseDuration(formatDuration(n))).toBe(n);
-    }
   });
 
   test("a changed row is marked and counted; Reset puts its default back", () => {

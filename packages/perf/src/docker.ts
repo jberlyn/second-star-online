@@ -108,6 +108,9 @@ export function startDockerServer(options: {
     "SSO_DB=/data/sso.sqlite",
     "-e",
     `SSO_PERF_OUT=/data/${options.perfOutName}`,
+    // Every bot connects from this machine.
+    "-e",
+    "SSO_SOCKETS_PER_IP=0",
   ];
   if (options.cpusetCpus) {
     args.push("--cpuset-cpus", options.cpusetCpus);

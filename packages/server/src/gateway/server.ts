@@ -7,7 +7,7 @@
  * - Each connection has a token bucket, so a flood is cut off. The game's own cadence (one step per
  *   16 ticks) is enforced by the sim, not here.
  * - Sessions: a login issues a resume token. When a connection drops, the character leaves the map
- *   at once and is saved; for `resumeGrace` the token lets the client reconnect without a
+ *   at once and is saved; for `reconnectGrace` (`SSO_RECONNECT_GRACE`) the token lets the client reconnect without a
  *   password, which counts as a resumed session, not a login.
  * - A second login to the same account replaces the first.
  */
@@ -104,7 +104,7 @@ export interface ConnData {
   busy: boolean;
   /** The client's IP address (the socket's, or the proxy header's: `SSO_PROXY_HOPS`). */
   ip: string;
-  /** Counts toward `socketsPerIp` until a moderator or immortal logs in. */
+  /** Counts toward `socketsPerIp` (`SSO_SOCKETS_PER_IP`) until a moderator or immortal logs in. */
   counted: boolean;
   /** Closed with `CLOSE.behind`: later sends to it are skipped. */
   behind?: boolean;
@@ -464,7 +464,7 @@ export function startGateway(options: GatewayOptions): Gateway {
       backpressureLimit: 4 * MAX_BACKLOG_BYTES,
       closeOnBackpressureLimit: false,
       open(ws) {
-        const limit = game.settings.socketsPerIp;
+        const limit = game.config.socketsPerIp;
         const k = ipKey(ws.data.ip);
         const n = socketsByIp.get(k) ?? 0;
         if (limit > 0 && n >= limit) {
@@ -646,7 +646,7 @@ export function startGateway(options: GatewayOptions): Gateway {
     game.leave(d.characterId);
     const s = d.token ? sessions.get(d.token) : undefined;
     if (s) {
-      s.expiresAt = clock.now() + game.settings.resumeGrace * 1000;
+      s.expiresAt = clock.now() + game.config.reconnectGrace * 1000;
     }
   }
 

@@ -8,6 +8,8 @@
  *   the security headers.
  * - SSO_PROXY_HOPS: how many reverse proxies stand in front (default 0: the socket's address).
  * - SSO_FRAME_ANCESTORS: the CSP `frame-ancestors` value; unset adds none.
+ * - SSO_SAVE_INTERVAL, SSO_RECONNECT_GRACE, SSO_SOCKETS_PER_IP: server infrastructure
+ *   (config.ts); a value that does not read refuses startup.
  * - SSO_CRASH_AT: a named crash point where the process kills itself (tests only).
  * - SSO_PERF_OUT: a file path; once a second one JSON line is appended with tick timing by phase,
  *   traffic, memory and database growth (written by `bun run perf`, see docs/performance.md).
@@ -19,6 +21,7 @@
 import { join } from "node:path";
 
 import { type Clock, systemClock } from "./clock.ts";
+import { DEFAULT_SERVER_CONFIG, readServerConfig, type ServerConfig } from "./config.ts";
 import { createGame, type Game } from "./game.ts";
 import {
   type Gateway,
@@ -54,6 +57,8 @@ export interface ServerOptions {
   prepare?: (db: Db) => void;
   /** Reverse proxies in front (`SSO_PROXY_HOPS`); 0 = the socket's address. */
   proxyHops?: number;
+  /** Server infrastructure (`SSO_SAVE_INTERVAL` and the rest); unset fields keep their default. */
+  config?: Partial<ServerConfig>;
   /** CSP `frame-ancestors` value (`SSO_FRAME_ANCESTORS`). */
   frameAncestors?: string;
   /** Prebuilt client directory (`SSO_CLIENT_DIR`, default `dist/client` in production). */
@@ -113,6 +118,7 @@ export function startServer(options: ServerOptions): RunningServer {
     dropOtherSessions: (id) => gateway?.dropOtherSessions(id),
     onFault: options.onFault,
     crashPoint: options.crashPoint,
+    config: { ...DEFAULT_SERVER_CONFIG, ...options.config },
   });
   gateway = startGateway({
     port: options.port,
@@ -209,6 +215,18 @@ export function startServer(options: ServerOptions): RunningServer {
   };
 }
 
+/** The `SSO_*` infrastructure variables, or an exit naming each one that does not read. */
+function readConfigOrExit(): ServerConfig {
+  const r = readServerConfig(process.env);
+  if (!r.ok) {
+    for (const e of r.errors) {
+      console.error(e);
+    }
+    process.exit(1);
+  }
+  return r.config;
+}
+
 /** `SSO_PROXY_HOPS`: an integer >= 0, or an exit with a message. */
 function readProxyHops(raw: string | undefined): number {
   if (raw === undefined || raw === "") {
@@ -229,6 +247,7 @@ if (import.meta.main) {
     port: Number(process.env.PORT ?? 3000),
     development: process.env.NODE_ENV === "development",
     proxyHops: readProxyHops(process.env.SSO_PROXY_HOPS),
+    config: readConfigOrExit(),
     frameAncestors: process.env.SSO_FRAME_ANCESTORS || undefined,
     clientDir: process.env.SSO_CLIENT_DIR || undefined,
     perfOut: process.env.SSO_PERF_OUT || undefined,

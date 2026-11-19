@@ -37,6 +37,7 @@ import {
   TEXT,
 } from "@secondstaronline/shared";
 
+import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "./config.ts";
 import {
   findAccountById,
   findAccountByUsername,
@@ -311,6 +312,8 @@ export interface GameDeps {
   dropOtherSessions?(playerId: string): void;
   /** Times the stretches of each tick; absent in normal play. */
   probe?: TickProbe;
+  /** Server infrastructure (`SSO_*` variables); defaults to `DEFAULT_SERVER_CONFIG`. */
+  config?: ServerConfig;
 }
 
 /**
@@ -330,6 +333,8 @@ export interface Game {
   readonly world: World;
   /** The settings in force; replaced when an operator saves them or runs `/Refresh`. */
   readonly settings: Settings;
+  /** Server infrastructure, fixed for the process (config.ts). */
+  readonly config: ServerConfig;
   /** `ip` is the connection's address: an IP ban refuses the login. */
   login(name: string, password: string, ip?: string): Promise<LoginResult>;
   create(msg: CreateMsg, ip?: string): Promise<{ ok: true } | { ok: false; text: string }>;
@@ -430,6 +435,7 @@ export function createGame(deps: GameDeps): Game {
   /** Failed-login and creation counts; a restart clears them. */
   const limits = newLoginLimits();
   let settings = resolveSettings(loadSettingOverrides(db));
+  const config: ServerConfig = { ...DEFAULT_SERVER_CONFIG, ...deps.config };
   // The archive's NPC files with the NPC editor's saves on top.
   const npcs = archiveNpcStore();
   for (const f of loadNpcFiles(db)) {
@@ -578,7 +584,7 @@ export function createGame(deps: GameDeps): Game {
   /** The Blackjack Table's grace and offline gold. */
   const casinoDeps: CasinoDeps = {
     get graceTicks() {
-      return secondsToTicks(settings.resumeGrace);
+      return secondsToTicks(config.reconnectGrace);
     },
     addGoldOffline: (id, delta) => {
       addGoldOffline(db, id, delta);
@@ -600,7 +606,7 @@ export function createGame(deps: GameDeps): Game {
     dropOnDeath: settings.dropOnDeath,
     portalTargets: settings.portalTargets,
     hazardMap: settings.hazardMap,
-    saveIntervalTicks: secondsToTicks(settings.saveInterval),
+    saveIntervalTicks: secondsToTicks(config.saveInterval),
     rng,
   };
 
@@ -914,7 +920,6 @@ export function createGame(deps: GameDeps): Game {
       dropOnDeath: settings.dropOnDeath,
       portalTargets: settings.portalTargets,
       hazardMap: settings.hazardMap,
-      saveIntervalTicks: secondsToTicks(settings.saveInterval),
     });
     Object.assign(chatDeps, {
       maxChars: settings.chatMaxChars,
@@ -1406,6 +1411,7 @@ export function createGame(deps: GameDeps): Game {
     get settings() {
       return settings;
     },
+    config,
 
     async login(name, password, ip = "") {
       const account = findAccountByUsername(db, name);
@@ -1584,7 +1590,7 @@ export function createGame(deps: GameDeps): Game {
         loading: 0,
         n: 0,
         resumed,
-        saveIn: secondsToTicks(settings.saveInterval),
+        saveIn: secondsToTicks(config.saveInterval),
         lastSent: null,
         forceYou: false,
         broadcastIn: 0,

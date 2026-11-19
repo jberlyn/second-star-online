@@ -174,6 +174,8 @@ export async function runScenario(o: RunOptions): Promise<RunResult> {
         SSO_DB: dbPath,
         PORT: String(port),
         SSO_PERF_OUT: perfOut,
+        // Every bot connects from this machine.
+        SSO_SOCKETS_PER_IP: "0",
         NODE_ENV: "production",
         // PERF_GC_LOG=1 logs every JavaScriptCore collection into server.err.log/server.log.
         ...(process.env.PERF_GC_LOG ? { BUN_JSC_logGC: "1" } : {}),

@@ -340,7 +340,10 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     for (const [key, value] of Object.entries(old)) {
       db.run("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, 'then')", [key, value]);
     }
-    runMigrations(db, all);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261119_38"),
+    );
     const rows = db.query("SELECT key, value, updated_at FROM settings ORDER BY key").all() as {
       key: string;
       value: string;
@@ -362,5 +365,26 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       startPoint: { map: "x1y1", x: 2, y: 3 },
     });
     expect(rows.every((r) => r.updated_at === "then")).toBe(true);
+  });
+
+  test("infrastructure_config drops the settings that moved to SSO_* variables", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261119_38"),
+    );
+    for (const [key, value] of [
+      ["saveInterval", "60"],
+      ["resumeGrace", "2"],
+      ["socketsPerIp", "4"],
+      ["chatCooldown", "5"],
+    ] as const) {
+      db.run("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, 'then')", [key, value]);
+    }
+    runMigrations(db, all);
+    expect(db.query("SELECT key, value FROM settings").all()).toEqual([
+      { key: "chatCooldown", value: "5" },
+    ]);
   });
 });
