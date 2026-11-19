@@ -148,18 +148,6 @@ describe("web", () => {
     expect([s.b.x, s.b.y]).toEqual([6, 5]);
   });
 
-  test("web: a refused press that turns you refreshes the fishing allowance; one ahead does not", () => {
-    const s = scene();
-    live(s.map, 1, "Web", 5, 5);
-    s.a.antiMacro = 0;
-    setHeld(s.a, "R", false); // already facing E
-    s.run(1);
-    expect(s.a.antiMacro).toBe(0);
-    setHeld(s.a, "U", false);
-    s.run(1);
-    expect(s.a.antiMacro).toBe(5);
-  });
-
   test("web: a dead slot's old web does not hold anyone", () => {
     const s = scene();
     const slot = live(s.map, 1, "Web", 5, 5);

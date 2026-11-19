@@ -452,7 +452,8 @@ export const gatherData: GatherData = {
           "value": 5
         }
       ],
-      "antiMacroStart": 5
+      "antiMacroStart": 5,
+      "stoppedText": "The fish have stopped biting here. Try fishing from another spot."
     },
     "sprinkle": {
       "fx": "sprinkle",

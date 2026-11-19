@@ -7,6 +7,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   type DeltaEvent,
+  FISHING_STOPPED_TEXT,
   footWalkGrid,
   type ServerMsg,
   skillIndex,
@@ -22,7 +23,7 @@ import { handleChat } from "../src/systems/chat/chat.ts";
 import { setAttackHeld } from "../src/systems/combat/melee.ts";
 import { resetTreasure } from "../src/systems/crafting/gather.ts";
 import { type ItemCtx, useIntent } from "../src/systems/inventory/items.ts";
-import { setHeld } from "../src/systems/movement/movement.ts";
+import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
 import { type Player, removePlayer, type WorldMap } from "../src/systems/world/world.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
@@ -159,7 +160,7 @@ describe("fishing", () => {
     const swing = f.run(1);
     expect(events(swing, "a").find((e) => e.e === "swing")).toMatchObject({ atDelay: 20 });
     expect(f.map.ground.map((x) => [x.item, x.x, x.y])).toEqual([["Trout", 5, 5]]);
-    expect(f.a.antiMacro).toBe(4);
+    expect(f.world.fishingSpots.get("a")?.left).toBe(4);
     const next = f.run(1);
     const fx = events(next, "a").find((e) => e.e === "fx");
     // The FX at sprite 112 + (-5, -17), facing north.
@@ -184,7 +185,7 @@ describe("fishing", () => {
     setAttackHeld(f.a, true);
     f.run(1);
     expect(f.map.ground.map((x) => [x.item, x.x, x.y])).toEqual([["Trout", 5, 5]]);
-    expect(f.a.antiMacro).toBe(4);
+    expect(f.world.fishingSpots.get("a")?.left).toBe(4);
   });
 
   test("bug fixed: a cast mid-step catches like any other", () => {
@@ -196,42 +197,62 @@ describe("fishing", () => {
     expect(f.map.ground.map((x) => x.item)).toEqual(["Trout"]);
   });
 
-  test("a press that turns you toward a wall refreshes the allowance", () => {
-    const f = fisher();
-    f.a.facing = "N";
-    setLayer(f.map, 1, 6, 6, "W1"); // not walkable on foot
-    f.a.antiMacro = 0;
-    setHeld(f.a, "R", false);
-    f.run(1);
-    expect(f.a.x).toBe(5);
-    expect(f.a.facing as string).toBe("E");
-    expect(f.a.antiMacro).toBe(5);
-  });
+  const spent = (f: ReturnType<typeof fisher>, x = 5, y = 6) =>
+    f.world.fishingSpots.set("a", { mapId: f.map.id, x, y, left: 0 });
 
-  test("bug fixed: a press the way you already face does not refresh the allowance", () => {
-    const f = fisher();
-    f.a.facing = "N";
-    f.a.antiMacro = 0;
-    setHeld(f.a, "U", false); // into the water on (5,5): refused
-    f.run(1);
-    expect([f.a.x, f.a.y]).toEqual([5, 6]);
-    expect(f.a.antiMacro).toBe(0);
-    setHeld(f.a, "D", false); // turns and steps: refreshed
-    f.run(1);
-    expect(f.a.antiMacro).toBe(5);
-    f.a.antiMacro = 0;
-    f.run(20); // keeps stepping south, facing S: no refresh
-    expect(f.a.y).toBeGreaterThan(7);
-    expect(f.a.antiMacro).toBe(0);
-  });
-
-  test("turning in place does not refresh it", () => {
-    const f = fisher();
-    f.a.antiMacro = 0;
+  test("design change: turning does not refill a tile's allowance; fishing from another does", () => {
+    const f = fisher(rngByN({ 28: [1, 1] }));
+    setSkill(f.a, "Fishing", 20);
+    setLayer(f.map, 0, 6, 5, "W1");
+    spent(f);
+    // Turn away and back without leaving the tile: 1.6 refilled the allowance on each press.
     setHeld(f.a, "R", true);
     f.run(1);
-    expect(f.a.facing).toBe("E");
-    expect(f.a.antiMacro).toBe(0);
+    setHeld(f.a, "U", true);
+    f.run(1);
+    setHeld(f.a, null, false);
+    expect([f.a.x, f.a.y, f.a.facing]).toEqual([5, 6, "N"]);
+    setAttackHeld(f.a, true);
+    const out = f.run(1);
+    setAttackHeld(f.a, false);
+    expect(f.map.ground).toEqual([]);
+    expect(lines(out, "a")).toContain(FISHING_STOPPED_TEXT);
+    expect(f.world.fishingSpots.get("a")?.left).toBe(0);
+    // A step to the next tile, facing water again: a full allowance there.
+    pressStep(f.a, "R", false);
+    f.run(20);
+    pressStep(f.a, "U", true);
+    f.run(1);
+    expect([f.a.x, f.a.y, f.a.facing]).toEqual([6, 6, "N"]);
+    f.run(20);
+    setAttackHeld(f.a, true);
+    f.run(1);
+    expect(f.map.ground.map((g) => [g.item, g.x, g.y])).toEqual([["Trout", 6, 5]]);
+    expect(f.world.fishingSpots.get("a")).toEqual({ mapId: f.map.id, x: 6, y: 6, left: 4 });
+  });
+
+  test("design change: logging out and back in does not refill a tile's allowance", () => {
+    const f = fisher(rngByN({ 28: [1] }));
+    spent(f);
+    removePlayer(f.world, "a");
+    const again = player("a", f.map, 5, 6);
+    again.char.equip.weapon = "Fishing Pole";
+    setSkill(again, "Fishing", 20);
+    f.join(again);
+    setAttackHeld(again, true);
+    const out = f.run(1);
+    expect(f.map.ground).toEqual([]);
+    expect(lines(out, "a")).toContain(FISHING_STOPPED_TEXT);
+  });
+
+  test("design change: a fished-out tile says so once while the line is held", () => {
+    const f = fisher();
+    setSkill(f.a, "Fishing", 20);
+    spent(f);
+    setAttackHeld(f.a, true);
+    const out = f.run(100); // five casts
+    expect(lines(out, "a").filter((l) => l === FISHING_STOPPED_TEXT)).toHaveLength(1);
+    expect(skill(f.a, "Fishing")).toBe(20);
   });
 });
 

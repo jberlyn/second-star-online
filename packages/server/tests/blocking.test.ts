@@ -66,17 +66,15 @@ function scene(rng: Rng = noPushRoll()) {
 }
 
 describe("monsters block", () => {
-  test("a standing Slime blocks and turns the player, no push roll, no fishing refresh", () => {
+  test("a standing Slime blocks and turns the player, no push roll", () => {
     const s = scene();
     live(s.map, 1, "Slime", 5, 4);
     shown(s.a, "Slime");
-    s.a.antiMacro = 1;
     setHeld(s.a, "U", false);
     s.run(3);
     expect(s.a.y).toBe(5);
     expect(s.a.facing).toBe("N");
     expect(s.a.stepFrames).toBe(0);
-    expect(s.a.antiMacro).toBe(1);
     expect(chat(s.run(1), "A")).toEqual([]);
   });
 

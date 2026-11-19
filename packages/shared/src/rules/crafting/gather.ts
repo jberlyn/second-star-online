@@ -204,8 +204,36 @@ export function fishingOffset(facing: Facing): readonly [number, number] {
   return G.fishing.fxOffsets[facing] ?? [0, 0];
 }
 
-/** The anti-macro counter reset at login and after an arrow press. */
+/** The catches one tile allows before you must fish from another. */
 export const ANTI_MACRO_START = G.fishing.antiMacroStart;
+
+/** Told when a cast finds its tile's allowance spent. */
+export const FISHING_STOPPED_TEXT = G.fishing.stoppedText;
+
+/** The tile a fisher's allowance belongs to, and the catches it has left. */
+export interface FishingSpot {
+  mapId: string;
+  x: number;
+  y: number;
+  left: number;
+}
+
+/**
+ * The allowance for a cast from (mapId, x, y): the remembered spot's when it is that same tile,
+ * otherwise a full one for the new tile. Only fishing from another tile refills it (a design change
+ * from 1.6, which refilled it on any arrow press, a turn included).
+ */
+export function fishingSpot(
+  prev: FishingSpot | undefined,
+  mapId: string,
+  x: number,
+  y: number,
+): FishingSpot {
+  if (prev && prev.mapId === mapId && prev.x === x && prev.y === y) {
+    return prev;
+  }
+  return { mapId, x, y, left: ANTI_MACRO_START };
+}
 
 /** The fish a skill catches: one kind per band. */
 export function fishFor(skill: number): string | null {

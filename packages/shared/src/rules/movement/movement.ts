@@ -7,8 +7,7 @@
  * monster blocking (`blockPCCheck`).
  *
  * The web check is the `web` outcome of `attemptMove`. The Airship's 8-frame step is
- * `stepLengthFor`. The anti-macro counter refresh is server state
- * (server/systems/movement/movement.ts `refreshAntiMacro`).
+ * `stepLengthFor`.
  */
 import { monstersData } from "@secondstaronline/data";
 

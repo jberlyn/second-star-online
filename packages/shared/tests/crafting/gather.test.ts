@@ -14,6 +14,7 @@ import {
   fishCheck,
   fishFor,
   fishingOffset,
+  fishingSpot,
   gatherTool,
   hitCounter,
   isFishingWater,
@@ -204,6 +205,14 @@ describe("fishing", () => {
     const spent = rngByN({ 28: [1] });
     expect(castLine(20, 0, spent)).toEqual({ fish: null, gained: false, antiMacro: 0 });
     expect(spent.calls).toEqual([28]);
+  });
+
+  test("design change: the allowance belongs to a tile; only another tile refills it", () => {
+    const here = { mapId: "m", x: 5, y: 6, left: 0 };
+    expect(fishingSpot(here, "m", 5, 6)).toBe(here);
+    expect(fishingSpot(here, "m", 6, 6)).toEqual({ mapId: "m", x: 6, y: 6, left: 5 });
+    expect(fishingSpot(here, "n", 5, 6)).toEqual({ mapId: "n", x: 5, y: 6, left: 5 });
+    expect(fishingSpot(undefined, "m", 5, 6)).toEqual({ mapId: "m", x: 5, y: 6, left: 5 });
   });
 
   test("the last allowance goes to the catch, so no Imp roll follows", () => {

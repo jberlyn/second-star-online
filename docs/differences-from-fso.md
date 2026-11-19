@@ -118,7 +118,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **What you notice:** Monster loot and gathered items disappear after the configured time, 30 minutes by default. Player drops and operator-placed items do not decay.
 - **1.6:** The server did not expire ground items; the map's 20 item slots bounded them.
 - **SSO:** Loot and gathering drops, including logs, crystals, chunks, fish, produce and treasure, expire after an operator-set time. Player drops and admin placements never expire.
-- **Why:** Without the ground-item cap, generated loot would accumulate without bound. Gathering also creates items from nothing, and the original fishing allowance can be refreshed indefinitely by attempting to walk. Player drops remain because players used house floors for storage.
+- **Why:** Without the ground-item cap, generated loot would accumulate without bound. Gathering also creates items from nothing, and 1.6's fishing allowance could be refilled forever by pressing an arrow key. Player drops remain because players used house floors for storage.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`decayLoot`), `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
 
 #### Monster population: one live monster per roster slot, sprite cap removed
@@ -467,6 +467,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Pinned by:** `death: the dying player gets { t: "death" } after the tick's vitals, once, and nobody else does` (packages/server/tests/monsters.test.ts); `death: black for one draw, then frozen until the respawn map is drawn` (packages/client/tests/death-stage.test.ts)
 
 ### Other design changes
+
+#### The fishing allowance belongs to the tile you fish from
+- **Kind:** Other
+- **What you notice:** A tile gives at most 5 catches. After that, a cast from it catches nothing and gains no skill, and the chat says "The fish have stopped biting here. Try fishing from another spot." once each time you start fishing. Fishing from any other tile, on this map or another, starts with 5 again. Turning on the spot and logging out and back in don't refill it.
+- **1.6:** Each player had one allowance of 5, filled at login and meant to refill when an arrow press turned you. The refill compared the facing letter ("W") with a direction word ("Left"), so it never matched and every arrow press refilled it, a step into a wall included. A run-out allowance said nothing. Even with that comparison fixed, turning back and forth between two directions without leaving the tile refilled it forever, and so did logging in again.
+- **SSO:** The server remembers each character's allowance and the tile it belongs to (`fishingSpots`), across logouts, until the server restarts. A cast from the same tile uses what is left there. A cast from any other tile starts a fresh allowance. Movement no longer touches it.
+- **Why:** The allowance exists to stop unattended fishing, and a macro could beat both 1.6's rule and the fixed turn rule without moving. Having to change tiles beats that while barely affecting someone fishing by hand. The message tells a player why the fish stopped biting, which 1.6 never did. The skill gain rate is unchanged and is part of the skill levelling balance pass (#18).
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`fishingSpot`, `FISHING_STOPPED_TEXT`); `packages/server/src/systems/crafting/gather.ts` (`preSwing`); `packages/data/content/gather.json` (`stoppedText`)
+- **Pinned by:** `design change: the allowance belongs to a tile; only another tile refills it` (packages/shared/tests/crafting/gather.test.ts); `design change: turning does not refill a tile's allowance; fishing from another does`; `design change: logging out and back in does not refill a tile's allowance`; `design change: a fished-out tile says so once while the line is held` (packages/server/tests/gather.test.ts)
 
 #### No hit blink
 - **Kind:** Other
@@ -1555,7 +1564,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Fishing skill-ups do not use the anti-macro allowance
 - **Kind:** Bug fixed
-- **What you notice:** The allowance of casts without moving is spent only by catches, so earning Fishing skill does not run it down.
+- **What you notice:** A tile's fishing allowance is spent only by catches, so earning Fishing skill does not run it down.
 - **1.6:** A skill-up took one from the allowance, as a catch did.
 - **SSO:** Only a catch spends it. The skill roll still runs only while the allowance lasts.
 - **Why:** Getting better at fishing should not cut fishing short.
@@ -2670,15 +2679,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The test was meant to let you step onto these summons, not to switch off blocking for the whole map.
 - **In the code:** `packages/shared/src/rules/movement/movement.ts` (`blockPCCheck`)
 - **Pinned by:** `bug fixed: a Web or Holy Shield never blocks but clears nothing else`; `bug fixed: a remembered dead Holy Shield clears no player`; `bug fixed: a Web does not clear an Overlord's three-wide block` (packages/shared/tests/movement/movement.test.ts); `bug fixed: a remembered Web in slot 2 does not let you walk through a Slime in slot 1`; `a live Web or Holy Shield on the target is walked onto`; `bug fixed: a Web in slot 4 does not let you walk onto a standing player; the roll still shoves` (packages/server/tests/blocking.test.ts)
-
-#### Only a press that turns you refills the fishing allowance
-- **Kind:** Bug fixed
-- **What you notice:** The limit of 5 casts without moving is topped up when you press an arrow that turns you away from the way you face, even into a wall. Pressing the way you already face, or turning in place, does not top it up.
-- **1.6:** The refill compared the facing letter ("W") with a direction word ("Left"), so it never matched and every step attempt refilled the allowance, a step into a wall or off the screen included.
-- **SSO:** A press refills it only when its direction differs from your facing and it gets past the turn-in-place, mid-step, player and item checks.
-- **Why:** The comparison was meant to refill on a turn; comparing mismatched words made the anti-macro limit trivially reset.
-- **In the code:** `packages/server/src/systems/movement/movement.ts` (`refreshAntiMacro`)
-- **Pinned by:** `bug fixed: a press the way you already face does not refresh the allowance`; `a press that turns you toward a wall refreshes the allowance`; `turning in place does not refresh it` (packages/server/tests/gather.test.ts); `web: a refused press that turns you refreshes the fishing allowance; one ahead does not` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 #### The web message prints once a press
 - **Kind:** Bug fixed

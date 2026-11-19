@@ -10,7 +10,9 @@ import {
   EDITOR_MONSTERS,
   FACING_DELTA,
   FISHING_LAYERS,
+  FISHING_STOPPED_TEXT,
   fishingOffset,
+  fishingSpot,
   GATHER_TEXT,
   gatherTool,
   hitCounter,
@@ -158,8 +160,15 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
       v: me.v + off[1],
       power: 1,
     });
-    const r = castLine(skillOf(p, "Fishing"), p.antiMacro, ctx.rng);
-    p.antiMacro = r.antiMacro;
+    // The allowance belongs to the tile you fish from, and outlasts a logout.
+    const spot = fishingSpot(ctx.world.fishingSpots.get(p.id), p.map.id, p.x, p.y);
+    const r = castLine(skillOf(p, "Fishing"), spot.left, ctx.rng);
+    ctx.world.fishingSpots.set(p.id, { ...spot, left: r.antiMacro });
+    // A spent tile says so, once per press like a movement refusal.
+    if (spot.left === 0 && p.told !== FISHING_STOPPED_TEXT) {
+      ev.lines.push(FISHING_STOPPED_TEXT);
+      p.told = FISHING_STOPPED_TEXT;
+    }
     if (r.fish) {
       drop(ctx, room, io, r.fish, t.x, t.y);
     }

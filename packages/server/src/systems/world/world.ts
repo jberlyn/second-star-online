@@ -4,7 +4,6 @@
  */
 import { classesData } from "@secondstaronline/data";
 import {
-  ANTI_MACRO_START,
   ARCHIVED_POWERS,
   type AssassinEntry,
   type AssassinState,
@@ -24,6 +23,7 @@ import {
   FACING_DELTA,
   type Facing,
   type Faction,
+  type FishingSpot,
   type FxSprite,
   footWalkGrid,
   type GatherCounters,
@@ -409,11 +409,9 @@ export interface Player {
    * row): client globals, so they start at 0 each login.
    */
   gather: GatherCounters;
-  /** The macro-check counter: 5 at login and after an arrow press that turns you. */
-  antiMacro: number;
   /**
-   * The refusal line (web or blocked edge) already printed for the current press, so a held key
-   * prints it once; cleared by a new press, a release or any other outcome.
+   * The refusal line (web, blocked edge or a fished-out tile) already printed for the current
+   * press, so a held key prints it once; cleared by a new press, a release or any other outcome.
    */
   told: string | null;
   /**
@@ -638,7 +636,6 @@ export function sessionCombatState(): Pick<
   | "jailUntil"
   | "warpscript"
   | "gather"
-  | "antiMacro"
   | "told"
   | "shownNames"
   | "craft"
@@ -703,7 +700,6 @@ export function sessionCombatState(): Pick<
     jailUntil: null,
     warpscript: null,
     gather: newGatherCounters(),
-    antiMacro: ANTI_MACRO_START,
     told: null,
     shownNames: [null, null, null, null],
     craft: newCraftState(),
@@ -852,6 +848,11 @@ export interface World {
   treasure: { map: string; item: string } | null;
   /** The `treasureMaps` setting: the maps 1.6's treasure-list builder picks from. */
   treasureMaps: string[];
+  /**
+   * Each character's fishing allowance, by character id: the tile it belongs to and the catches
+   * left. Kept here rather than on the player so logging out and back in does not refill it.
+   */
+  fishingSpots: Map<string, FishingSpot>;
   /** The last container id minted (`mintContainerId`). */
   lastContainerId: number;
   /** Named containers' lines (1.6 kept one text file per container), loaded at start. */
@@ -1010,6 +1011,7 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     tileLog: new Set(),
     treasure: null,
     treasureMaps: [],
+    fishingSpots: new Map(),
     lastContainerId: 0,
     containers: new Map(),
     containersDirty: new Set(),

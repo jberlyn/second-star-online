@@ -9,7 +9,6 @@
  *    rolls a push for each of them (push.ts).
  */
 import {
-  ANTI_MACRO_START,
   advanceStep,
   applyOutcome,
   attemptMove,
@@ -288,23 +287,6 @@ export function movePlayer(room: Room, p: Player, ctx: MoveCtx): void {
 }
 
 /**
- * The fishing allowance refills (to 5) when a press turns you: its arrow points away from the way
- * you face, and it gets past the turn-in-place, mid-step, player/monster and item tests. A bug
- * fixed: 1.6 compared the facing letter ("W") with a direction word ("Left"), so every such press
- * refilled it, a step forward or into a wall included.
- */
-function refreshAntiMacro(p: Player, dir: Dir, o: MoveOutcome): void {
-  const passed =
-    o.kind === "step" ||
-    o.kind === "edge" ||
-    o.kind === "web" ||
-    (o.kind === "blocked" && o.by === "tile");
-  if (passed && DIR_FACING[dir] !== p.facing) {
-    p.antiMacro = ANTI_MACRO_START;
-  }
-}
-
-/**
  * Prints a refusal line once for the current press: a held key, or a scheduled client's repeated
  * requests, print it on the first refusal only.
  */
@@ -320,7 +302,6 @@ export function tellOnce(p: Player, text: string, tell: (text: string) => void):
  * victim's own move.
  */
 export function carryOut(room: Room, p: Player, dir: Dir, o: MoveOutcome, ctx: MoveCtx): void {
-  refreshAntiMacro(p, dir, o);
   // A web or edge refusal keeps its line told; the edge's is printed by `crossMapEdge`.
   if (o.kind !== "web" && o.kind !== "edge" && o.kind !== "none") {
     p.told = null;

@@ -83,7 +83,10 @@ export const gatherDataSchema = z.strictObject({
       fxOffsets: z.record(z.enum(["E", "W", "N", "S"]), offset),
       bands: z.array(z.strictObject({ lt: z.number().int(), fish: z.string() })).min(1),
       fishCheck: z.array(gtRow).min(1),
+      /** Catches allowed from one tile before you must fish from another. */
       antiMacroStart: z.number().int().positive(),
+      /** Told when a cast finds the tile's allowance spent. */
+      stoppedText: z.string().min(1),
     }),
     sprinkle: z.strictObject({
       fx: z.string(),
