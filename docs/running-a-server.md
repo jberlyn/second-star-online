@@ -283,7 +283,7 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 
 Immortals open **Admin → Settings** from the top menu bar. The window has a sidebar of pages (World, Chat and mail, Items, Moderation, Logins and Logs) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
 
-Each page is saved on its own. Clicking **SAVE** validates the page's fields on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values. Only the open page can hold unsaved changes: leaving it for another page or a search result asks first, and the changes are discarded if you go on.
+Each page is saved on its own. Clicking **SAVE** validates the page's fields on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values. Only the open page can hold unsaved changes: leaving it for another page or a search result, or closing the window, asks first, and the changes are discarded if you go on.
 
 Server infrastructure (save interval, reconnect grace, open connections per address) is not in the window; set it with [environment variables](#environment-variables).
 

@@ -260,6 +260,39 @@ describe("the Settings window", () => {
     );
   });
 
+  test("closing with unsaved changes asks; Keep editing stays open, Discard closes", () => {
+    const { w, el, row, type, open, confirm, btn } = win();
+    const closeBox = el.querySelector(".window-close") as HTMLButtonElement;
+    open("chat");
+    type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "1m");
+    closeBox.click();
+    expect(w.window.isOpen).toBe(true);
+    expect(confirm().hidden).toBe(false);
+    expect(confirm().textContent).toContain(
+      "You have an unsaved change on Chat and mail. If you close the window, it will be discarded.",
+    );
+    btn("settings-stay").click();
+    expect(w.window.isOpen).toBe(true);
+    expect((row("broadcastCooldown").querySelector("input") as HTMLInputElement).value).toBe("1m");
+    closeBox.click();
+    btn("settings-discard").click();
+    expect(w.window.isOpen).toBe(false);
+    expect(confirm().hidden).toBe(true);
+  });
+
+  test("closing with no changes, or by script, does not ask", () => {
+    const { w, el, row, type, open, confirm } = win();
+    (el.querySelector(".window-close") as HTMLButtonElement).click();
+    expect(w.window.isOpen).toBe(false);
+    w.show(PAGES, ROWS);
+    open("chat");
+    type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "1m");
+    // A demotion closes the window by script: it goes at once.
+    w.window.close();
+    expect(w.window.isOpen).toBe(false);
+    expect(confirm().hidden).toBe(true);
+  });
+
   test("an unchanged page, or its own link, never asks", () => {
     const { open, confirm, w, row } = win();
     open("items");

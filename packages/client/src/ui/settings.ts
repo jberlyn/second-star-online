@@ -8,8 +8,8 @@
  *   page at that setting. Each setting's explanation is always shown under it (hover-only hints
  *   never show on a tablet).
  * - Each page is saved on its own. Only the open page can hold changes: leaving it with unsaved
- *   changes (another page, or a search result on one) asks first, and the changes are discarded
- *   if the operator goes on.
+ *   changes (another page, a search result on one, or the close button) asks first, and the
+ *   changes are discarded if the operator goes on.
  * - A length of time is typed as time ("30s", "5m", "1d 12h") and sent in whole seconds.
  * - A changed setting is marked and can be reset to its default; the footer counts the page's
  *   unsaved changes and its sidebar link gets a dot.
@@ -680,14 +680,18 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
     countChanges();
   };
 
-  /** Runs `go` now, or after the operator agrees to drop this page's changes. */
-  const leave = (go: () => void) => {
+  /**
+   * Runs `go` now, or after the operator agrees to drop this page's changes. `closing`: the
+   * window is closing, not changing page.
+   */
+  const leave = (go: () => void, closing = false) => {
     const n = changes();
     if (n === 0) {
       go();
       return;
     }
-    confirmText.textContent = `You have ${n === 1 ? "an unsaved change" : `${n} unsaved changes`} on ${pageTitle(current)}. If you leave this page, ${n === 1 ? "it" : "they"} will be discarded.`;
+    const what = closing ? "close the window" : "leave this page";
+    confirmText.textContent = `You have ${n === 1 ? "an unsaved change" : `${n} unsaved changes`} on ${pageTitle(current)}. If you ${what}, ${n === 1 ? "it" : "they"} will be discarded.`;
     pendingLeave = go;
     confirm.hidden = false;
     confirmBox.setAttribute("role", "alertdialog");
@@ -799,6 +803,14 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
     height: SETTINGS_SIZE.h,
     body: stage,
     onClose: closeConfirm,
+    // The close button asks too; a close by script (a demotion) does not.
+    beforeClose: () => {
+      if (changes() === 0) {
+        return true;
+      }
+      leave(() => win.close(), true);
+      return false;
+    },
   });
 
   return {

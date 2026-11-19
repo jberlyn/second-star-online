@@ -53,6 +53,11 @@ export interface WindowOptions {
   body: HTMLElement;
   /** Runs when an open window closes, by its close button or by script (`on closeWindow`). */
   onClose?: () => void;
+  /**
+   * Asked when the close button is clicked: false keeps the window open (it may close itself
+   * later). A close by script does not ask.
+   */
+  beforeClose?: () => boolean;
   /** The sub-movie, for its stage colour (`STAGE_COLOR`). */
   movie?: string;
 }
@@ -167,7 +172,11 @@ export function createWindowLayer(): WindowLayer {
           win.setAttribute("aria-label", t);
         },
       };
-      close.addEventListener("click", () => gw.close());
+      close.addEventListener("click", () => {
+        if (opts.beforeClose?.() !== false) {
+          gw.close();
+        }
+      });
       return gw;
     },
   };
