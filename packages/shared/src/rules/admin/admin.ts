@@ -9,7 +9,7 @@ export type Role = "player" | "moderator" | "immortal";
 
 /**
  * The admin commands of 1.6's `ChatSend` grammar, plus SSO's `/role`, `/unban`, `/setclass`,
- * `/unjail` and `/banlist`.
+ * `/unjail`, `/banlist` and `/chatlog`.
  */
 export type AdminCmd =
   | "save"
@@ -32,17 +32,19 @@ export type AdminCmd =
   | "unban"
   | "setclass"
   | "unjail"
-  | "banlist";
+  | "banlist"
+  | "chatlog"
+  | "auditlog";
 
 /**
  * Who may run each command.
  * Moderators share most of the 1.6 admin commands, `/unban`, `/unjail` and `/banlist`; IP bans,
- * `/role` and `/setclass` remain immortal-only. Item creation (`/drop`) is immortal-only too, checked in `handleDrop`.
+ * `/role`, `/setclass`, `/chatlog`, `/auditlog` and `/cheatfile` remain immortal-only. Item creation (`/drop`) is immortal-only too, checked in `handleDrop`.
  */
 export const ADMIN_ROLES: Readonly<Record<AdminCmd, readonly Role[]>> = {
   save: ["immortal", "moderator"],
   refresh: ["immortal", "moderator"],
-  cheatfile: ["immortal", "moderator"],
+  cheatfile: ["immortal"], // SSO: every player's address and suspected cheat
   unbanip: ["immortal"], // an IP ban can lock out an immortal or the whole proxy
   inventory: ["immortal", "moderator"],
   banip: ["immortal"], // an IP ban can lock out an immortal or the whole proxy
@@ -61,20 +63,13 @@ export const ADMIN_ROLES: Readonly<Record<AdminCmd, readonly Role[]>> = {
   setclass: ["immortal"], // SSO
   unjail: ["immortal", "moderator"], // SSO
   banlist: ["immortal", "moderator"], // SSO
+  chatlog: ["immortal"], // SSO: every channel, IMs and staff chat included
+  auditlog: ["immortal"], // SSO: what staff did, moderators included
 };
 
 export function mayRun(cmd: AdminCmd, role: Role): boolean {
   return ADMIN_ROLES[cmd].includes(role);
 }
-
-/** The SSO additions: for anyone not allowed, the line is said as local chat, as 1.6 would have. */
-export const SSO_ADMIN_CMDS: readonly AdminCmd[] = [
-  "role",
-  "unban",
-  "setclass",
-  "unjail",
-  "banlist",
-];
 
 /**
  * Who may read and post to staff chat (`-text`): both staff roles (immortals and
@@ -86,13 +81,6 @@ export function usesStaffChat(role: Role): boolean {
 
 /** The exact texts of the admin commands. */
 export const ADMIN_TEXT = {
-  kickDenied: "Only immortals/guides can kick players.",
-  banDenied: "Only immortals can ban players.",
-  /** (`/warp`, `/warpmeto`): moderators may run both despite the wording. */
-  warpDenied: "Only immortals can warp players.",
-  /** (`/warptome`). */
-  warpToMeDenied: "Only immortals/guides can warp players.",
-  warpscriptDenied: "Only staff can use /warpscript.",
   staffChatDenied: "Only immortals and moderators can use staff chat.",
   kicking: (name: string) => `*** kicking ${name}...`,
   /** The kicked player's chat line before the alert. */
@@ -197,11 +185,16 @@ export const WARPSCRIPT_OFF = "iasdfji23j4ihfih23io4haklsq";
  * `""`.
  */
 export function formatStaffChat(name: string, typed: string): string {
+  return `<... ${name} tells the staff "${staffChatText(typed)}"`;
+}
+
+/** The words of a `-text` line: the `-` and up to 100 leading spaces dropped. */
+export function staffChatText(typed: string): string {
   let t = typed.startsWith("-") ? typed.slice(1) : typed;
   for (let i = 0; i < 2 + 98 && t.startsWith(" "); i++) {
     t = t.slice(1);
   }
-  return `<... ${name} tells the staff "${t}"`;
+  return t;
 }
 
 /**

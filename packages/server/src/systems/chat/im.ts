@@ -6,7 +6,8 @@
  * through the server with the same texts and adds:
  * - "<name> is not online." to the sender after a send to nobody;
  * - no auto-reply to an auto-reply or to yourself (two away players do not loop);
- * - the chat cooldown and the 200-character cap.
+ * - the chat cooldown and the 200-character cap;
+ * - every IM, automatic away reply and away text in the chat log, sent or not.
  */
 import {
   awayAnswers,
@@ -21,6 +22,7 @@ import {
 
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { hears } from "./ignore.ts";
+import { logChat } from "./log.ts";
 
 export interface ImDeps {
   /** Setting `chatMaxChars`. */
@@ -56,9 +58,12 @@ export function deliverIm(
   text: string,
   autoReply = false,
 ): Outgoing[] {
+  const channel = autoReply ? "awayReply" : "im";
   if (!hears(to, from.name)) {
+    logChat(world, from, channel, text, "ignored", to.name);
     return [];
   }
+  logChat(world, from, channel, text, "delivered", to.name);
   if (awayAnswers(to.away)) {
     const out: Outgoing[] = [{ to: to.id, msg: { t: "im", from: from.name, text, away: true } }];
     if (to !== from && !autoReply) {
@@ -88,6 +93,7 @@ export function msgCommand(
   }
   const refused = chatRefusal(p.chatIn);
   if (refused) {
+    logChat(world, p, "im", m.text, "cooldown", m.name);
     return [
       {
         to: p.id,
@@ -105,6 +111,7 @@ export function msgCommand(
   const out: Outgoing[] = [tell(p, CHAT_SOCIAL_TEXT.imEcho(p.name, m.text))];
   const target = online(world, m.name);
   if (!target) {
+    logChat(world, p, "im", m.text, "notOnline", m.name);
     out.push(tell(p, CHAT_SOCIAL_TEXT.notOnline(m.name)));
     return out;
   }
@@ -130,6 +137,7 @@ export function imIntent(
   }
   const refused = chatRefusal(p.chatIn);
   if (refused) {
+    logChat(world, p, "im", text, "cooldown", to);
     const restoreTo: RestoreTarget = via === "send" ? { kind: "imSend", to } : { kind: "im", to };
     return [{ to: p.id, msg: { t: "chat", text: refused, color: 0, restore: raw, restoreTo } }];
   }
@@ -137,6 +145,7 @@ export function imIntent(
   const out: Outgoing[] = via === "window" ? [{ to: p.id, msg: { t: "imEcho", to, text } }] : [];
   const target = online(world, to);
   if (!target) {
+    logChat(world, p, "im", text, "notOnline", to);
     out.push(tell(p, CHAT_SOCIAL_TEXT.notOnline(to)));
     return out;
   }
@@ -147,12 +156,13 @@ export function imIntent(
  * The Away window: Away holds the field's text, Back turns it off; each prints its line in the main
  * chat. An empty text or "OFF" (any case) turns it off. Held for the session.
  */
-export function setAway(p: Player, text: string | null, deps: ImDeps): Outgoing[] {
+export function setAway(world: World, p: Player, text: string | null, deps: ImDeps): Outgoing[] {
   const away = text === null ? null : text.slice(0, deps.maxChars);
   if (away === null || !awayAnswers(away)) {
     p.away = null;
     return [tell(p, CHAT_SOCIAL_TEXT.awayOff)];
   }
   p.away = away;
+  logChat(world, p, "away", away, "delivered");
   return [tell(p, CHAT_SOCIAL_TEXT.awayOn)];
 }

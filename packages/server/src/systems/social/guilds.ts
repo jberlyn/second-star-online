@@ -27,6 +27,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { hears } from "../chat/ignore.ts";
+import { logChat } from "../chat/log.ts";
 import type { GroundItem, GuildRow, Outgoing, Player, World } from "../world/world.ts";
 
 export interface GuildDeps {
@@ -390,15 +391,18 @@ export function guildChat(
 ): Outgoing[] {
   const g = guildOf(world, p);
   if (!g) {
+    logChat(world, p, "guild", text, "noGuild");
     return [chat(p, GUILD_TEXT.noGuild)];
   }
   const refused = chatRefusal(p.chatIn);
   if (refused) {
+    logChat(world, p, "guild", text, "cooldown", p.guild);
     return [
       { to: p.id, msg: { t: "chat", text: refused, color: CHAT_COLOR.normal, restore: typed } },
     ];
   }
   p.chatIn = cooldownFrames;
+  logChat(world, p, "guild", text, "delivered", p.guild);
   return guildcast(world, g, GUILD_TEXT.chat(p.name, p.guild, text), p.name);
 }
 

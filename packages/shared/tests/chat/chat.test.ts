@@ -19,6 +19,7 @@ import {
   pushLines,
   REPEATING_LINES,
   sayRefusedInHouse,
+  unknownCommandText,
   whoCountLine,
 } from "../../src/rules/chat/chat.ts";
 
@@ -83,7 +84,7 @@ describe("parseChatLine: the ChatSend order", () => {
     });
     // `/Pardon` is built as an admin command.
     expect(parseChatLine("/Pardon bob")?.kind).toBe("admin");
-    expect(parseChatLine("/message")?.kind).toBe("say");
+    expect(parseChatLine("/message")?.kind).toBe("unknown");
     expect(parseChatLine("quit it")?.kind).toBe("say");
   });
 
@@ -108,10 +109,21 @@ describe("parseChatLine: the ChatSend order", () => {
     expect(PASSWORD_TEXT.changed).toBe("Password has been changed.");
   });
 
+  test("SSO: a command word that is no command is unknown, never said; other slashes are talk", () => {
+    expect(parseChatLine("/dance now")).toEqual({ kind: "unknown", command: "/dance" });
+    expect(parseChatLine(" /Teleport2 x")).toEqual({ kind: "unknown", command: "/Teleport2" });
+    // Not command words: talk as before.
+    expect(parseChatLine("/o\\ yay")?.kind).toBe("say");
+    expect(parseChatLine("/ hi")?.kind).toBe("say");
+    expect(parseChatLine("/2 for 1")?.kind).toBe("say");
+    expect(parseChatLine("and/or")?.kind).toBe("say");
+    expect(unknownCommandText("/dance")).toBe('Unknown command "/dance".');
+  });
+
   test("the bank by word 1, any case, after one leading space", () => {
     expect(parseChatLine(" /DEPOSIT 50")).toEqual({ kind: "bank", text: "/DEPOSIT 50" });
     expect(parseChatLine("/balance")).toEqual({ kind: "bank", text: "/balance" });
-    expect(parseChatLine("/withdrawal 5")?.kind).toBe("say");
+    expect(parseChatLine("/withdrawal 5")?.kind).toBe("unknown");
   });
 
   test("SSO's /spawn, like /roster", () => {

@@ -153,44 +153,44 @@ describe("the IM windows' sends", () => {
 
 describe("away", () => {
   test("ON and OFF print their lines", () => {
-    const { bob } = scene();
-    expect(texts(setAway(bob, "brb", deps), "Bob")).toEqual([
+    const { bob, world } = scene();
+    expect(texts(setAway(world, bob, "brb", deps), "Bob")).toEqual([
       "*** Your away message has been turned ON.",
     ]);
-    expect(texts(setAway(bob, null, deps), "Bob")).toEqual([
+    expect(texts(setAway(world, bob, null, deps), "Bob")).toEqual([
       "*** Your away message has been turned OFF.",
     ]);
     expect(bob.away).toBeNull();
   });
 
   test("while away an IM is logged and answered with the bare away text", () => {
-    const { alice, bob, say } = scene();
-    setAway(bob, "brb", deps);
+    const { alice, bob, say, world } = scene();
+    setAway(world, bob, "brb", deps);
     const out = say(alice, "/msg bob hi");
     expect(ims(out, "Bob")).toEqual([{ t: "im", from: "Alice", text: "hi", away: true }]);
     expect(ims(out, "Alice")).toEqual([{ t: "im", from: "Bob", text: "brb", away: false }]);
   });
 
   test("divergence: two away players do not loop; each logs the other's reply once", () => {
-    const { alice, bob, say } = scene();
-    setAway(alice, "out", deps);
-    setAway(bob, "brb", deps);
+    const { alice, bob, say, world } = scene();
+    setAway(world, alice, "out", deps);
+    setAway(world, bob, "brb", deps);
     const out = say(alice, "/msg bob hi");
     expect(ims(out, "Bob")).toEqual([{ t: "im", from: "Alice", text: "hi", away: true }]);
     expect(ims(out, "Alice")).toEqual([{ t: "im", from: "Bob", text: "brb", away: true }]);
   });
 
   test("no auto-reply to yourself", () => {
-    const { alice, say } = scene();
-    setAway(alice, "out", deps);
+    const { alice, say, world } = scene();
+    setAway(world, alice, "out", deps);
     expect(ims(say(alice, "/msg alice note"), "Alice")).toEqual([
       { t: "im", from: "Alice", text: "note", away: true },
     ]);
   });
 
   test("OFF in any case or an empty text turns away off instead of answering", () => {
-    const { alice, bob, say } = scene();
-    expect(texts(setAway(bob, "off", deps), "Bob")).toEqual([
+    const { alice, bob, say, world } = scene();
+    expect(texts(setAway(world, bob, "off", deps), "Bob")).toEqual([
       "*** Your away message has been turned OFF.",
     ]);
     expect(bob.away).toBeNull();
@@ -198,7 +198,7 @@ describe("away", () => {
       { t: "im", from: "Alice", text: "a", away: false },
     ]);
     alice.chatIn = 0;
-    expect(texts(setAway(bob, "", deps), "Bob")).toEqual([
+    expect(texts(setAway(world, bob, "", deps), "Bob")).toEqual([
       "*** Your away message has been turned OFF.",
     ]);
     expect(bob.away).toBeNull();
@@ -208,21 +208,21 @@ describe("away", () => {
   });
 
   test("the chat limit is applied before the off test", () => {
-    const { bob } = scene();
+    const { bob, world } = scene();
     const tiny = { ...deps, maxChars: 3 };
-    expect(texts(setAway(bob, "office", tiny), "Bob")).toEqual([
+    expect(texts(setAway(world, bob, "office", tiny), "Bob")).toEqual([
       "*** Your away message has been turned OFF.",
     ]);
     expect(bob.away).toBeNull();
-    expect(texts(setAway(bob, "onward", tiny), "Bob")).toEqual([
+    expect(texts(setAway(world, bob, "onward", tiny), "Bob")).toEqual([
       "*** Your away message has been turned ON.",
     ]);
     expect(bob.away).toBe("onw");
   });
 
   test("an ignored sender gets no auto-reply: the ignore check runs before the message is sorted", () => {
-    const { alice, bob, say } = scene();
-    setAway(bob, "brb", deps);
+    const { alice, bob, say, world } = scene();
+    setAway(world, bob, "brb", deps);
     bob.ignore = ["Alice"];
     expect(say(alice, "/msg bob hi").filter((o) => o.msg.t === "im")).toEqual([]);
   });
@@ -253,6 +253,26 @@ describe("chat rooms", () => {
     expect(of(out, "Alice", "roomLine")).toEqual([{ t: "roomLine", text: "Alice: sellingswords" }]);
     expect(of(out, "Bob", "roomLine")).toHaveLength(1);
     expect(out.filter((o) => o.to === carol.id)).toEqual([]);
+  });
+
+  test("SSO: /me or a typo in a room is an unknown command, told only to the typist and given back", () => {
+    const { world, alice, bob } = scene();
+    enterRoom(world, alice, "general");
+    enterRoom(world, bob, "general");
+    expect(roomSay(world, alice, "/me waves", deps, () => [])).toEqual([
+      {
+        to: alice.id,
+        msg: {
+          t: "chat",
+          text: 'Unknown command "/me".',
+          color: 0,
+          restore: "/me waves",
+          restoreTo: { kind: "room" },
+        },
+      },
+    ]);
+    expect(alice.chatIn).toBe(0);
+    expect(world.chatLog).toEqual([]);
   });
 
   test("rooms are never filtered by ignore", () => {

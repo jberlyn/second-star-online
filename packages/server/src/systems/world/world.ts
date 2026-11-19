@@ -13,6 +13,8 @@ import {
   anyOpenDoor,
   archivedQuestLines,
   type Bag,
+  type ChatChannel,
+  type ChatOutcome,
   type DeltaEvent,
   type Dir,
   type Equipment,
@@ -790,11 +792,32 @@ export interface CastMessage {
   train?: boolean;
 }
 
+/** One line for the chat log (`systems/chat/log.ts`). */
+export interface ChatLogEntry {
+  /** ISO time, set by the game when the line's intent ends. */
+  at?: string;
+  channel: ChatChannel;
+  accountId: string;
+  characterId: string;
+  sender: string;
+  target: string | null;
+  text: string;
+  outcome: ChatOutcome;
+  heard?: number;
+  ignored?: number;
+  muffled?: number;
+}
+
 export interface World {
   rooms: Map<string, Room>;
   players: Map<string, Player>;
   /** Ticks since the server started (the periodic monster save). */
   tickNo: number;
+  /**
+   * Lines players wrote to each other since the last write, in order (the chat log). Systems
+   * append through `logChat`; the game stamps and writes them.
+   */
+  chatLog: ChatLogEntry[];
   /** Ground items added or removed since the last write, in order (persistence). */
   /** Ground changes since the last write; `set` renames in place (doors). */
   groundLog: {
@@ -976,6 +999,7 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     rooms: new Map(),
     players: new Map(),
     tickNo: 0,
+    chatLog: [],
     groundLog: [],
     gives: [],
     shops: new Map(),

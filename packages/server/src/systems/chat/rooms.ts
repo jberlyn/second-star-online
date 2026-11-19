@@ -15,10 +15,12 @@ import {
   roomGroup,
   roomTexts,
   stripReturns,
+  unknownCommandText,
 } from "@secondstaronline/shared";
 
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { type ImDeps, msgCommand } from "./im.ts";
+import { logChat } from "./log.ts";
 
 const tell = (p: Player, text: string): Outgoing => ({
   to: p.id,
@@ -158,12 +160,24 @@ export function roomSay(
   if (line.kind === "msg") {
     return msgCommand(world, p, line.text, typed, deps, { kind: "room" });
   }
+  if (line.kind === "unknown") {
+    // Said nowhere: the typist is told, and gets the line back to fix.
+    const text = unknownCommandText(line.command);
+    return [
+      { to: p.id, msg: { t: "chat", text, color: 0, restore: typed, restoreTo: { kind: "room" } } },
+    ];
+  }
   const room = p.room;
+  const said = stripReturns(line.text);
   if (!room) {
+    logChat(world, p, "room", said, "noRoom");
     return [];
   }
+  // The log names the room by its key, a guild's with the guild: `general`, `guild:Knights`.
+  const title = room.key === "guild" ? `guild:${p.guild}` : room.key;
   const refused = chatRefusal(p.chatIn);
   if (refused) {
+    logChat(world, p, "room", said, "cooldown", title);
     return [
       {
         to: p.id,
@@ -172,6 +186,7 @@ export function roomSay(
     ];
   }
   p.chatIn = deps.chatCooldownFrames;
-  const text = CHAT_SOCIAL_TEXT.roomLine(p.name, stripReturns(line.text));
+  logChat(world, p, "room", said, "delivered", title);
+  const text = CHAT_SOCIAL_TEXT.roomLine(p.name, said);
   return members(world, room.group).map((o) => ({ to: o.id, msg: { t: "roomLine", text } }));
 }

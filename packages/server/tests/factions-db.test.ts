@@ -142,7 +142,7 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
     expect(texts(imm)).toContain("Pardoning bob...");
     expect(texts(bob)).toContain("*** You have been pardoned by King.");
     expect(column(bob)?.wanted).toBe(0);
-    // A player's /Pardon is swallowed: nothing said, nothing changed.
+    // A player's /Pardon is an unknown command: only they are told, and nothing changes.
     db.run("UPDATE characters SET wanted = 1 WHERE id = ?", [bob]);
     const p = g.world.players.get(bob);
     if (p) {
@@ -150,7 +150,7 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
     }
     sent.length = 0;
     g.intent(bob, { t: "chat", text: "/Pardon Bob" });
-    expect(sent.filter((m) => m.msg.t === "chat")).toEqual([]);
+    expect(sent.filter((m) => m.msg.t === "chat").map((m) => m.to)).toEqual([bob]);
     expect(p?.char.wanted).toBe(true);
   });
 });

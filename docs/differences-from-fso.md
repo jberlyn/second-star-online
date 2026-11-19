@@ -32,17 +32,17 @@ An entry uses this shape; `Pinned by` is optional:
 | [Design changes](#design-changes) | 56 |
 | [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
-| [Server authority and exploits](#server-authority-and-exploits) | 130 |
+| [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **525** |
+| **Total** | **528** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [12](#admin) | [18](#server-side-admin) |
+| admin | [12](#admin) | [19](#server-side-admin) |
 | casino | [15](#casino) | [3](#server-side-casino) |
-| chat | [12](#chat) | [5](#server-side-chat) |
+| chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [24](#combat) | [7](#server-side-combat) |
 | core | [18](#core) | [9](#server-side-core) |
 | crafting | [27](#crafting) | [8](#server-side-crafting) |
@@ -170,7 +170,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** An immortal can inspect or change the four monster roster slots with `/roster`; the World Editor can also set them.
 - **1.6:** A GM placed up to four monsters with the World Editor; there was no roster chat command.
-- **SSO:** `/roster` lists the roster, `/roster <1-4> <species>` sets a slot and `/roster <1-4> clear` clears it. For other players these lines are local chat. The command remains useful for species the editor's lists do not offer; a slot set through it has no editor tile and appears on row 1 under its slot number. The first immortal comes from `bun run admin:role`.
+- **SSO:** `/roster` lists the roster, `/roster <1-4> <species>` sets a slot and `/roster <1-4> clear` clears it. For anyone else they are an unknown command. The command remains useful for species the editor's lists do not offer; a slot set through it has no editor tile and appears on row 1 under its slot number. The first immortal comes from `bun run admin:role`.
 - **Why:** Operators needed a way to place monsters before the editor existed.
 - **In the code:** `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
 
@@ -178,7 +178,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** An immortal can spawn a roster slot's species immediately on the faced tile with `/spawn <1-4>`.
 - **1.6:** There was no spawn command. NPCs in a roster spawned at one thirtieth of a monster's rate, taking about ten minutes on average for a player alone on the map.
-- **SSO:** The command reports “Spawned a <name> in roster slot <n>.” For anyone other than an immortal it is local chat.
+- **SSO:** The command reports “Spawned a <name> in roster slot <n>.” For anyone other than an immortal it is an unknown command.
 - **Why:** Operators needed a way to place shopkeepers and bankers before the NPC editor existed.
 - **In the code:** `packages/server/src/systems/admin/spawn.ts` (`handleSpawn`)
 
@@ -574,12 +574,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Moderators share the original moderation commands and staff chat
 - **Kind:** Bug fixed
-- **What you notice:** Moderators can use `/ban`, `/unban`, `/unjail` and `/pardon` on players, `/banlist`, `/CheatFile`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` staff chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
+- **What you notice:** Moderators can use `/ban`, `/unban`, `/unjail` and `/pardon` on players, `/banlist`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` staff chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/CheatFile`, `/chatlog`, `/auditlog`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
 - **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
 - **SSO:** `ADMIN_ROLES`, `usesStaffChat`, and `warpscriptOnBroadcast` grant moderators the original moderation command set and staff chat while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: `handleDrop` and `ADMIN_ROLES` keep them immortal-only, and `/unban` lifts only a ban the moderator made (`mayChange`).
 - **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an immortal's ban.
 - **In the code:** `packages/shared/src/rules/admin/admin.ts` (`ADMIN_ROLES`, `mayRun`, `usesStaffChat`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `staffChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
-- **Pinned by:** `moderators keep the moderation commands; IP bans, /role and /setclass stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
+- **Pinned by:** `moderators keep the moderation commands; IP bans, /role, /setclass and /cheatfile stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
 
 #### World editor Fat brush reaches the full 17 × 12 map
 - **Kind:** Bug fixed
@@ -626,14 +626,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`); `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`)
 - **Pinned by:** `lossless display: preserves OWN|, all first characters, empty lines, and >100 lines` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines` (packages/client/tests/npceditor.test.ts); `SSO: a file over the save limit loads in full with a warning that SAVE will refuse it` (packages/server/tests/npcedit.test.ts)
 
-#### Unauthorized staff chat and /warpscript show a refusal and clear input
+#### Unauthorized staff chat shows a refusal and clears input
 - **Kind:** Bug fixed
-- **What you notice:** When a player types `-text` or `/warpscript`, they see an explicit refusal in chat and the chat input clears.
-- **1.6:** Both commands exited without sending and left the typed text stuck in the input box.
-- **SSO:** `staffChat` and `handleAdmin` reply with `ADMIN_TEXT.staffChatDenied` or `ADMIN_TEXT.warpscriptDenied` and do not send `restore`.
+- **What you notice:** When a player types `-text`, they see an explicit refusal in chat and the chat input clears.
+- **1.6:** The line exited without sending and left the typed text stuck in the input box.
+- **SSO:** `staffChat` replies with `ADMIN_TEXT.staffChatDenied` and does not send `restore`. (`/warpscript` once did the same; it is now an unknown command to players, see [Unknown commands are never said aloud](#unknown-commands-are-never-said-aloud).)
 - **Why:** Gives clear feedback and avoids leaving failed commands stuck in the input field.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`, `handleAdmin`)
-- **Pinned by:** `a player's - line gets an explicit denial and clears input (no restore)` and `a player gets an explicit denial and cleared input (no restore); moderators can set it` (packages/server/tests/admin.test.ts)
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`)
+- **Pinned by:** `a player's - line gets an explicit denial and clears input (no restore)` (packages/server/tests/admin.test.ts)
 
 #### Staff chat uses a dedicated channel without muffling or ignore filtering
 - **Kind:** Bug fixed
@@ -3422,6 +3422,15 @@ Changes that move authority from the client to the server and close exploits tha
 - **In the code:** `packages/shared/src/rules/admin/moderation.ts` (`canonicalIp`, `ipKey`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/game.ts` (`login`, `create`, `refusal`), `packages/server/src/persistence/moderation.ts` (`noteAddress`)
 - **Pinned by:** `an IP ban disconnects every session from that address except an immortal's`, `/banip <name> bans the latest address, or all of them; an immortal is never IP banned`, `divergence: an IP ban refuses a login from that address after the password` (packages/server/tests/admin.test.ts); `IP bans cover the IPv6 /64, refuse creation and resume, and never stop an immortal` (packages/server/tests/moderation-db.test.ts)
 
+#### Immortals read what staff did with /auditlog
+- **Kind:** Architecture
+- **What you notice:** An immortal types `/auditlog <name> [count]` (default 10, at most 100) to see the newest staff actions taken by that character's account or done to that character, oldest first, such as `2026-11-18 09:14:02 UTC Mod /jail Bob (until 2026-11-18 09:44:02 UTC, "spamming")` or `2026-11-18 10:02:45 UTC King /setclass Bob: 1 -> 7`.
+- **1.6:** There was no record of staff actions, so nobody could check what a GM had done.
+- **SSO:** `auditTrail` merges the audit log (admin commands, editor saves, setting and role changes, `/chatlog`, `/cheatfile` and `/auditlog` looks) with the moderation log (bans, jails, IP bans and pardons, with their reasons and ends), leaving out the audit log's own copy of each moderation action. Matching by account covers all of a staff member's characters. Each lookup is audited. Moderators and players are told it is an unknown command.
+- **Why:** Immortals need to review moderators' actions and a player's history without shell access to the server.
+- **In the code:** `packages/shared/src/rules/admin/auditlog.ts` (`parseAuditlogArgs`, `auditlogLine`), `packages/server/src/persistence/admin.ts` (`auditTrail`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `an immortal sees what a moderator did and what was done to a player, with reasons; the lookup is audited`; `/auditlog is an immortal's: a moderator or a player is told it is unknown, and nothing is audited` (packages/server/tests/auditlog.test.ts)
+
 ### Server-side casino
 
 #### Blackjack dealt, escrowed and settled by the server
@@ -3486,6 +3495,24 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** Entries past line 100 could neither work nor be removed, and the list is stored per account.
 - **In the code:** `packages/shared/src/rules/chat/ignore.ts` (`ignoreAdd`)
 - **Pinned by:** `the list holds 100; the 101st is refused` (packages/shared/tests/chat/im.test.ts)
+
+#### Unknown commands are never said aloud
+- **Kind:** Exploit closed
+- **What you notice:** A line starting with a command word (`/` then a letter) that is not a command, or is a staff command you may not use, is answered privately with “Unknown command "/word".” and handed back to the input to fix. Nothing is said to the map or room and no chat cooldown is charged. `/me` in a chat room is unknown too.
+- **1.6:** An unrecognised command was said as local chat or room text, so typos went to everyone on the map. Staff commands answered a player with “Only immortals can ban players.” and similar, or said nothing, and SSO's own `/role`, `/roster` and `/spawn` were said aloud: either way a player could find the staff commands by trying them.
+- **SSO:** `parseChatLine` and `parseRoomLine` return `unknown` for a command word that is no command, and `handleChat` gives the same reply for any admin command, `/drop`, `/spawn` or `/roster` the typist's role may not run. The 1.6 denial lines are gone. A slash that does not begin a command word, such as `/o\` or `and/or`, is still talk. Unknown commands are not written to the chat log, since nothing was said.
+- **Why:** Typos should not be broadcast, and a player should not be able to tell a staff command from a typo.
+- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`commandWord`, `unknownCommandText`, `parseChatLine`), `packages/shared/src/rules/chat/rooms.ts` (`parseRoomLine`), `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/chat/rooms.ts` (`roomSay`)
+- **Pinned by:** `SSO: a command word that is no command is unknown, never said; other slashes are talk` (packages/shared/tests/chat/chat.test.ts); `a typo is told to the typist alone, given back to fix, costs no cooldown and is not logged` and `a slash that is not a command word is still talk` (packages/server/tests/chat.test.ts); `SSO: a player's admin command is answered as an unknown one, privately, and does nothing` (packages/server/tests/admin.test.ts); `SSO: /me or a typo in a room is an unknown command, told only to the typist and given back` (packages/server/tests/im.test.ts)
+
+#### The server logs player communication
+- **Kind:** Architecture
+- **What you notice:** Immortals can read back what a player said, including IMs and lines that were refused, with `/chatlog <name>`; operators can search it with `bun run admin:chatlog`.
+- **1.6:** The server kept no record of chat. IMs went peer to peer, so the server never saw them, and the only log was the file a player saved with `/logchat`, which staff could not check and the player could edit.
+- **SSO:** Every line a player writes to others (say, `/me`, broadcasts, IMs and automatic away replies, away texts, guild chat, chat rooms, staff chat and Bio profiles) is written to the `chat_log` table with its time, channel, sender, destination, exact text and outcome: delivered, or refused by the cooldown, house rule or jail, dropped by the recipient's ignore list, sent to someone not online, and so on. Say, `/me` and broadcasts also count how many others read the line, ignored it or heard it muffled. Immortals read every channel with `/chatlog`; each lookup is audited. Lines are kept for `chatLogRetentionDays` (default 90). Commands and `Password=` lines are not logged. Players are not shown a notice; operators disclose it in their own terms.
+- **Why:** Moderators could not confirm harassment, scam or threat reports, check a player's history before acting, or review an incident.
+- **In the code:** `packages/server/src/systems/chat/log.ts` (`logChat`), `packages/server/src/persistence/chatlog.ts`, `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/cli/admin-chatlog.ts`, `packages/shared/src/rules/admin/chatlog.ts`
+- **Pinned by:** `a delivered say: the words, the map and how many others heard it`; `/msg: delivered, ignored, not online and refused by the cooldown`; `an away text and the automatic away reply are logged`; `/chatlog: an immortal reads a player's lines and the IMs sent to them; the lookup is audited`; `/chatlog is an immortal's: a moderator or a player who types it is told it is unknown` (packages/server/tests/chatlog.test.ts); `every /g line is in the chat log: delivered, refused by the cooldown, with no guild` (packages/server/tests/guilds.test.ts)
 
 #### Password change via account flow
 - **Kind:** Architecture
@@ -3600,7 +3627,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** If an action fails unexpectedly, the affected player is logged out with “Something went wrong on the server, so you were logged out. Please log in again.”
 - **1.6:** In a test of a malformed network message, the shipped client showed “Script Error. Continue?” and froze until answered. Yes resumed play; No quit the client. Other error types were not tested.
-- **SSO:** Intents, ticks, map entry and exit run in SQL transactions. A thrown error rolls back its writes, is logged, writes a cheat-log line “Server error on <message>” and logs out the affected player; their next login reloads the database state. A failed tick is logged and the next tick runs; 20 consecutive tick errors save and exit the server.
+- **SSO:** Intents, ticks, map entry and exit run in SQL transactions. A thrown error rolls back its writes, is logged to the server's error output with the message type and the player's name (not to the cheat log, since a bug is not cheating) and logs out the affected player; their next login reloads the database state. A failed tick is logged and the next tick runs; 20 consecutive tick errors save and exit the server.
 - **Why:** The shared server must survive errors without committing a half-completed action.
 - **In the code:** `packages/server/src/game.ts` (`createGame`)
 
@@ -3608,7 +3635,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Invalid client actions are refused or logged by the server rather than relying on a client to ban itself.
 - **1.6:** The client used ciphers, self-ban, name and equipment shadow checks, echoes and a per-minute speed check. Anyone could write a cheater report.
-- **SSO:** Schema validation, per-tick gates, rate limits and a server-written cheat log replace those client self-bans. `/CheatFile` shows the original “<name> - at IP <ip> - <reason>” format. The log records editor or Settings intents from non-immortals, editor load/save outside the editor, malformed frames and flooding. Its reasons include “Attempted Admin Access”, “Attempting to get Admin access”, “Sending bad messages” and “Flooding”. There are no automatic kicks.
+- **SSO:** Schema validation, per-tick gates, rate limits and a server-written cheat log replace those client self-bans. `/CheatFile` shows the original “<name> - at IP <ip> - <reason>” format. The log records editor or Settings intents from non-immortals, editor load/save outside the editor, malformed frames and flooding. Its reasons include “Attempted Admin Access”, “Attempting to get Admin access”, “Sending bad messages” and “Flooding”. There are no automatic kicks. `/CheatFile` is immortal-only, and each look is written to the audit log, since the lines show players' addresses.
 - **Why:** The client has no authoritative state to protect.
 - **In the code:** `packages/server/src/game.ts` (`editingOk`, `createGame`)
 

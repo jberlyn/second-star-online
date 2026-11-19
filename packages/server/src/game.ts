@@ -49,9 +49,11 @@ import {
   verifyPassword,
 } from "./persistence/accounts.ts";
 import {
+  auditTrail,
   findCharacterAccount,
   insertAudit,
   insertCheat,
+  pruneAudit,
   recentCheats,
   setClassCode,
 } from "./persistence/admin.ts";
@@ -69,6 +71,7 @@ import {
   savePromotion,
   saveVehicle,
 } from "./persistence/characters.ts";
+import { chatLogLines, insertChatLog, pruneChatLog } from "./persistence/chatlog.ts";
 import { loadContainers, saveContainer } from "./persistence/containers.ts";
 import type { Db } from "./persistence/database.ts";
 import {
@@ -430,6 +433,20 @@ export function createGame(deps: GameDeps): Game {
   // IP bans from before keys get their standard form; lapsed bans and old addresses go.
   normalizeIpBans(db, isoNow());
   pruneModeration(db, isoNow(), settings.addressHistoryDays);
+  /** Forgets chat lines and audit rows past their retention settings. */
+  const pruneLogs = () => {
+    pruneChatLog(db, isoNow(), settings.chatLogRetentionDays);
+    pruneAudit(db, isoNow(), settings.auditLogRetentionDays);
+  };
+  pruneLogs();
+  /** The logs are pruned again an hour after the last time. */
+  let logPruneAt = nowMs() + 3_600_000;
+  /** Writes the lines logged since the last write (`world.chatLog`). */
+  const flushChatLog = () => {
+    if (world.chatLog.length > 0) {
+      insertChatLog(db, world.chatLog.splice(0), isoNow());
+    }
+  };
   // Named containers: the Cauldrons and carried crates and cabinets.
   world.containers = loadContainers(db);
   // The house blueprints and list.
@@ -969,6 +986,11 @@ export function createGame(deps: GameDeps): Game {
       activeIpBans: (now) => activeIpBans(db, now),
       history: (accountId, limit) => moderationHistory(db, accountId, limit),
     },
+    chatLog: (q) => {
+      flushChatLog();
+      return chatLogLines(db, q);
+    },
+    auditTrail: (q) => auditTrail(db, q),
     now: isoNow,
     durations: () => settings,
     setClass: (characterId, code) => {
@@ -1034,6 +1056,7 @@ export function createGame(deps: GameDeps): Game {
     db.transaction(() => {
       all.forEach(save);
       maps.forEach(saveMapSlots);
+      flushChatLog();
     })();
     persistItems(all);
   };
@@ -1843,7 +1866,7 @@ export function createGame(deps: GameDeps): Game {
           deliver(imIntent(world, p, msg.to, msg.text, msg.via, chatDeps));
           return;
         case "away":
-          deliver(setAway(p, msg.text, chatDeps));
+          deliver(setAway(world, p, msg.text, chatDeps));
           return;
         case "roomEnter":
           // Admin Chat is an immortal's (menu 502); anyone else is ignored, not disconnected as 1.6
@@ -1866,7 +1889,7 @@ export function createGame(deps: GameDeps): Game {
           return;
         case "profileSave":
           deliver(
-            profileSave(p, msg.text, (profile) =>
+            profileSave(world, p, msg.text, (profile) =>
               db.transaction(() => saveProfileText(db, p.id, profile, isoNow()))(),
             ),
           );
@@ -2122,6 +2145,17 @@ export function createGame(deps: GameDeps): Game {
   const fault =
     deps.onFault ?? ((where: string, err: unknown) => console.error(`fault in ${where}`, err));
   const inner = { enter: core.enter, leave: core.leave, intent: core.intent, tick: core.tick };
+  /** A logged line takes the time its intent ended, not the time it was written. */
+  const stampChat = () => {
+    const now = isoNow();
+    for (let i = world.chatLog.length - 1; i >= 0; i--) {
+      const e = world.chatLog[i];
+      if (!e || e.at !== undefined) {
+        break;
+      }
+      e.at = now;
+    }
+  };
   return Object.assign(core, {
     enter(characterId: string, resumed: boolean, ip?: string) {
       try {
@@ -2144,21 +2178,33 @@ export function createGame(deps: GameDeps): Game {
       try {
         db.transaction(() => inner.intent(characterId, msg))();
       } catch (err) {
-        fault(`intent ${msg.t}`, err);
+        // A server fault is a bug, not cheating: it goes to the error log, naming who it hit, and
+        // never to the cheat log.
         const p = world.players.get(characterId);
-        if (p) {
-          cheat(p.name, p.ip, `Server error on ${msg.t}`);
-        }
+        fault(`intent ${msg.t} from ${p?.name ?? characterId}`, err);
         deps.kick?.(characterId, TEXT.serverError);
         // A kick without a gateway (tests) still takes the player off the map.
         if (world.players.has(characterId)) {
           evict(characterId);
         }
       }
+      stampChat();
     },
     tick() {
+      deps.probe?.begin();
+      // The chat log is written in its own transaction, so a tick that throws still keeps it.
       try {
-        deps.probe?.begin();
+        db.transaction(() => {
+          flushChatLog();
+          if (nowMs() >= logPruneAt) {
+            logPruneAt = nowMs() + 3_600_000;
+            pruneLogs();
+          }
+        })();
+      } catch (err) {
+        fault("chat log", err);
+      }
+      try {
         db.transaction(() => inner.tick())();
         deps.probe?.end();
         return true;

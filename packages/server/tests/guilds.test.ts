@@ -252,6 +252,21 @@ describe("guild chat /g", () => {
     expect(b.guild).toBe("Knights");
   });
 
+  test("every /g line is in the chat log: delivered, refused by the cooldown, with no guild", () => {
+    const s = scene();
+    const { a } = s.full();
+    const z = s.join("Zed", 9, 9);
+    s.world.chatLog.length = 0;
+    s.say(a, "/g hello");
+    handleChat(s.world, a, "/g too fast", chatDeps);
+    s.say(z, "/g hi");
+    expect(s.world.chatLog.map((e) => [e.channel, e.sender, e.target, e.text, e.outcome])).toEqual([
+      ["guild", "Alice", "Knights", "hello", "delivered"],
+      ["guild", "Alice", "Knights", "too fast", "cooldown"],
+      ["guild", "Zed", null, "hi", "noGuild"],
+    ]);
+  });
+
   test("guild chat is filtered by each member's ignore list", () => {
     const s = scene();
     const { a, b } = s.full();

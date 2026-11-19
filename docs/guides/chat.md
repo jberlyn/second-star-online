@@ -24,15 +24,19 @@ Entry points:
 
 ## How it works
 
-The shared parser recognises commands and formatting; the server routes each recognised command to its handler. Ordinary speech, emotes and broadcasts have different audiences and cooldown checks. House and jail locations impose further restrictions. Admin and guild commands hand off to those systems. Recognition does not mean every historical command executes: some are dropped, and `/logchat` is client behaviour rather than a server logging switch.
+The shared parser recognises commands and formatting; the server routes each recognised command to its handler. Ordinary speech, emotes and broadcasts have different audiences and cooldown checks. House and jail locations impose further restrictions. Admin and guild commands hand off to those systems. Recognition does not mean every historical command executes: some are dropped, and `/logchat` is client behaviour rather than a server logging switch (the server logs chat regardless; see [The chat log](#the-chat-log)).
 
 Private messages use the recipient's session and away state. Ignore checks apply to every entry on the account's list before delivery. Room membership determines who receives a room line; leaving and rejoining update membership. The server sends messages, while the shared rules parse and format them.
 
 ### Channels and delivery
 
-Local speech and emotes are sent to the map; broadcasts reach a wider audience. The server truncates input to the configured maximum before parsing, applies separate chat and broadcast cooldowns, and checks house and jail restrictions on the applicable routes. It also hands recognised bank, quest, faction and shop lines to those systems. Some lines that look like commands instead fall through to ordinary speech when the relevant privilege or invitation is absent.
+Local speech and emotes are sent to the map; broadcasts reach a wider audience. The server truncates input to the configured maximum before parsing, applies separate chat and broadcast cooldowns, and checks house and jail restrictions on the applicable routes. It also hands recognised bank, quest, faction and shop lines to those systems. A line whose first word looks like a command (`/` then a letter) but is not one, or is a staff command the typist may not use, is never said: only the typist sees “Unknown command "/word".” and the line returns to the input. `accept` and `reject` without a pending guild invitation are still ordinary speech.
 
 Ignore lists belong to the account and are saved through [ignore persistence](../../packages/server/src/persistence/ignores.ts). Every entry is checked for chat, broadcasts and private messages. Ignoring yourself does not suppress server-originated messages, and chat rooms and trade are not filtered. Guild chat is filtered when a player sends it, but not the guild system's own lines. Private messages to an offline player return a notice; away replies do not answer other automatic replies, preventing a loop. Room membership is held by the server: entering one room leaves the previous one, closing or disconnecting leaves it, and messages reach all members including the sender and dead players. Choosing Guild Chat without a guild leaves your current room untouched.
+
+### The chat log
+
+Every line a player writes to others is logged on the server, delivered or refused: local say, `/me`, broadcasts, IMs and automatic away replies, away texts, guild chat, room lines, staff chat and saved Bio profiles. Each system appends one entry with [`logChat`](../../packages/server/src/systems/chat/log.ts) at the point it decides what becomes of the line (delivered, cooldown, house rule, jail, ignored, not online, and so on). For say, `/me` and broadcasts, `audienceCounts` also records how many others read it, ignored it or heard it muffled. The entries collect in `world.chatLog`; the game stamps each with the time its intent ended and writes the batch to `chat_log` ([chat log persistence](../../packages/server/src/persistence/chatlog.ts)) at the start of the next tick, in its own transaction, so chat adds no SQL to the intent and a failed tick keeps the log. Commands and `Password=` are never logged. Staff read the log with `/chatlog` (see the [Admin guide](admin.md)) and operators with `bun run admin:chatlog`; `chatLogRetentionDays` prunes it hourly.
 
 ## Differences from 1.6
 

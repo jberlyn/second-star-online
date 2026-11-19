@@ -13,11 +13,18 @@ import {
   ADMIN_TEXT,
   type AddressSeen,
   type AdminCmd,
+  AUDITLOG_TEXT,
+  type AuditTrailRow,
+  auditlogLine,
   BANLIST_PAGE,
   banListLine,
   banNotice,
   CHAT_COLOR,
+  CHATLOG_TEXT,
+  type ChatChannel,
+  type ChatLogRow,
   canonicalIp,
+  chatlogLine,
   cheatFileLines,
   expiryOf,
   findClass,
@@ -42,6 +49,8 @@ import {
   mayTarget,
   type NamedRecord,
   pardoningLine,
+  parseAuditlogArgs,
+  parseChatlogArgs,
   parseModerationArgs,
   parseWarpLine,
   type Role,
@@ -108,6 +117,10 @@ export interface AdminDeps {
   /** The default lengths in minutes (settings `banMinutes`, `ipBanMinutes`, `jailMinutes`). */
   durations(): { banMinutes: number; ipBanMinutes: number; jailMinutes: number };
   setClass(characterId: string, code: number): void;
+  /** The chat log's newest lines for a name, oldest first (written up to now first). */
+  chatLog?(q: { name: string; channel: ChatChannel | null; limit: number }): ChatLogRow[];
+  /** `/auditlog`: staff actions by the account or to the name, newest `limit`, oldest first. */
+  auditTrail?(q: { accountId: string | null; name: string; limit: number }): AuditTrailRow[];
   /** The cheat log's newest lines, oldest first, as 1.6's cheat-report routine wrote them. */
   cheatLines(): string[];
   audit(e: AuditEntry): void;
@@ -175,7 +188,11 @@ export function handleAdmin(
   typed: string,
   deps: AdminDeps,
 ): Outgoing[] {
-  const allowed = mayRun(cmd, p.role);
+  // The chat handler answers a command the typist may not use as an unknown one; this guard
+  // keeps any other caller honest.
+  if (!mayRun(cmd, p.role)) {
+    return [];
+  }
   const audit = (target: string | null, before?: unknown, after?: unknown) =>
     deps.audit({ actor: p.accountId, command: `/${cmd}`, target, before, after });
   // SSO's own rule: a moderator's /iplookup, /jail, /warp and /warptome refuse an immortal
@@ -183,36 +200,33 @@ export function handleAdmin(
   const shieldedFrom = (t: Player) => t.role === "immortal" && p.role !== "immortal";
 
   switch (cmd) {
-    // ---- immortal-only lines that clear the field and say nothing otherwise --------------
+    // ---- immortal-only ------------------------------------------------------------------
     case "save": // every client saved; nothing printed
-      if (allowed) {
-        deps.saveAll();
-        audit(null);
-      }
+      deps.saveAll();
+      audit(null);
       return [];
     case "refresh": // every client re-read its system settings file
-      if (allowed) {
-        deps.reloadSettings();
-        audit(null);
-      }
+      deps.reloadSettings();
+      audit(null);
       return [];
-    case "cheatfile": // the cheat log
-      return allowed ? tell(p, ...cheatFileLines(deps.cheatLines())) : [];
+    case "cheatfile": {
+      // The cheat log. SSO audits each look: its lines name players' addresses.
+      const lines = cheatFileLines(deps.cheatLines());
+      audit(null, undefined, { entries: lines.length - 1 });
+      return tell(p, ...lines);
+    }
     case "inventory":
-      return allowed ? tell(p, ...inventoryLines(p.char.bag)) : [];
+      return tell(p, ...inventoryLines(p.char.bag));
     case "banip": // "Banning <ip>..." echoes what was typed
-      return allowed ? banIp(world, p, w2, typed, deps) : [];
+      return banIp(world, p, w2, typed, deps);
     case "unbanip":
-      return allowed ? unbanIp(p, w2, typed, deps) : [];
+      return unbanIp(p, w2, typed, deps);
 
     // ---- moderator or immortal ----------------------------------------------------------
     case "location": // the admin's own map and tile
-      return allowed ? tell(p, ADMIN_TEXT.location(p.map.name, p.x, p.y)) : [];
+      return tell(p, ADMIN_TEXT.location(p.map.name, p.x, p.y));
     case "iplookup": {
       // The reply prints "The IP is: …".
-      if (!allowed) {
-        return [];
-      }
       const out = tell(p, ADMIN_TEXT.lookingUpIp(w2));
       if (w2 === "") {
         return out;
@@ -229,9 +243,6 @@ export function handleAdmin(
     }
     case "kick": {
       // In 1.6 SMUS's `system.user.delete` needed user level 60; SSO's server kick always works.
-      if (!allowed) {
-        return tell(p, ADMIN_TEXT.kickDenied);
-      }
       if (w2 === "") {
         return [];
       }
@@ -251,9 +262,6 @@ export function handleAdmin(
     }
     case "warp": {
       // The server sent the target a warp message (`name*<line>`), and the target's client warped.
-      if (!allowed) {
-        return tell(p, ADMIN_TEXT.warpDenied);
-      }
       if (w2 === "") {
         return [];
       }
@@ -281,26 +289,16 @@ export function handleAdmin(
       return [...out, ...adminWarp(world, t, to.map, to.x, to.y, deps)];
     }
     case "jail": {
-      if (!allowed) {
-        return [];
-      }
       const out = tell(p, ADMIN_TEXT.jailing(w2));
       return w2 === ""
         ? [...out, ...tell(p, MODERATION_TEXT.jailUsage)]
         : [...out, ...jail(world, p, w2, typed, deps)];
     }
     case "unjail":
-      if (!allowed) {
-        return [];
-      }
       return w2 === "" ? tell(p, MODERATION_TEXT.unjailUsage) : unjail(world, p, w2, typed, deps);
     case "pardon": {
-      // An immortal's P2P `PRDN` to word 2 and "Pardoning <name>..."; anyone else's line is
-      // swallowed. The target's client cleared its murder flag and said who pardoned it; SSO does
+      // An immortal's P2P `PRDN` to word 2 and "Pardoning <name>...". The target's client cleared its murder flag and said who pardoned it; SSO does
       // it on the server and says when the name is not online.
-      if (!allowed) {
-        return [];
-      }
       const out = tell(p, pardoningLine(w2));
       if (w2 === "") {
         return out;
@@ -328,9 +326,6 @@ export function handleAdmin(
     }
     case "warptome": {
       // The target is sent to the admin's own map and tile.
-      if (!allowed) {
-        return tell(p, ADMIN_TEXT.warpToMeDenied);
-      }
       if (w2 === "") {
         return [];
       }
@@ -351,9 +346,6 @@ export function handleAdmin(
     }
     case "warpmeto": {
       // The admin's client sent `WRP`, and the target replied with a warp to its own tile.
-      if (!allowed) {
-        return tell(p, ADMIN_TEXT.warpDenied);
-      }
       if (w2 === "") {
         return [];
       }
@@ -371,18 +363,12 @@ export function handleAdmin(
 
     // ---- staff commands and immortal-only account tools ------------------------------------
     case "warpscript": {
-      if (!allowed) {
-        return tell(p, ADMIN_TEXT.warpscriptDenied);
-      }
       p.warpscript = lingoEq(w2, "OFF") ? WARPSCRIPT_OFF : w2;
       audit(null, null, p.warpscript);
       return tell(p, ADMIN_TEXT.warpscriptSet(p.warpscript));
     }
     case "ban": {
       // The ban is recorded, and the login refusal follows.
-      if (!allowed) {
-        return tell(p, ADMIN_TEXT.banDenied);
-      }
       if (w2 === "") {
         return tell(p, MODERATION_TEXT.banUsage);
       }
@@ -393,7 +379,45 @@ export function handleAdmin(
     case "unban":
       return w2 === "" ? tell(p, MODERATION_TEXT.unbanUsage) : unban(p, w2, typed, deps);
     case "banlist":
-      return allowed ? banList(p, w2, deps) : [];
+      return banList(p, w2, deps);
+    case "chatlog": {
+      if (!deps.chatLog) {
+        return [];
+      }
+      const args = parseChatlogArgs(typed);
+      if (!args) {
+        return tell(p, CHATLOG_TEXT.usage);
+      }
+      const c = deps.findCharacter(args.name);
+      // A deleted character's lines are still logged under its name.
+      const name = c?.name ?? args.name;
+      const rows = deps.chatLog({ name, channel: args.channel, limit: args.limit });
+      // Reading someone's chat is itself recorded.
+      audit(name, null, { limit: args.limit, channel: args.channel });
+      if (rows.length === 0) {
+        return tell(p, c ? CHATLOG_TEXT.none(name) : ADMIN_TEXT.noSuchCharacter(name));
+      }
+      return tell(p, CHATLOG_TEXT.header(name, rows.length), ...rows.map(chatlogLine));
+    }
+    case "auditlog": {
+      if (!deps.auditTrail) {
+        return [];
+      }
+      const args = parseAuditlogArgs(typed);
+      if (!args) {
+        return tell(p, AUDITLOG_TEXT.usage);
+      }
+      const c = deps.findCharacter(args.name);
+      // A deleted character is still found as a target by its name.
+      const name = c?.name ?? args.name;
+      const rows = deps.auditTrail({ accountId: c?.accountId ?? null, name, limit: args.limit });
+      // Recorded after the read, so it is the next lookup's newest entry, not this one's.
+      audit(name, null, { limit: args.limit });
+      if (rows.length === 0) {
+        return tell(p, c ? AUDITLOG_TEXT.none(name) : ADMIN_TEXT.noSuchCharacter(name));
+      }
+      return tell(p, AUDITLOG_TEXT.header(name, rows.length), ...rows.map(auditlogLine));
+    }
     case "role": {
       const role = lingoWord(typed, 3).toLowerCase();
       if (w2 === "" || !["player", "moderator", "immortal"].includes(role)) {

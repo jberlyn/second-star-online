@@ -523,7 +523,7 @@ describe("house faults", () => {
       "CREATE TRIGGER no_interiors BEFORE INSERT ON maps WHEN NEW.slot > 0 BEGIN SELECT RAISE(ABORT, 'no interiors'); END",
     );
     g.intent(id, { t: "placeHouse", slot: 3, x: 10, y: 4 });
-    expect(faults).toEqual(["intent placeHouse"]);
+    expect(faults).toEqual(["intent placeHouse from Bob"]);
     // Nothing reached SQL, and nothing is queued in memory to reach it at the next write.
     expect(g.world.groundLog).toEqual([]);
     expect(loadHouses(db)).toEqual([]);

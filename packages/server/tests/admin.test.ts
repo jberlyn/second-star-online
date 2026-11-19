@@ -10,6 +10,7 @@ import {
   MODERATION_TEXT,
   type ServerMsg,
   TEXT,
+  unknownCommandText,
 } from "@secondstaronline/shared";
 
 import { createGame, helpLines } from "../src/game.ts";
@@ -134,14 +135,14 @@ function scene(withJail = true) {
 }
 
 describe("the role table (moderator command set)", () => {
-  test("a player's denials say 1.6's lines; the silent ones say nothing", () => {
-    const { bob, say } = scene();
-    expect(texts(say(bob, "/warp Imm x1y1 2 2"), "Bob")).toEqual([ADMIN_TEXT.warpDenied]);
-    expect(texts(say(bob, "/warpmeto Imm"), "Bob")).toEqual([ADMIN_TEXT.warpDenied]);
-    expect(texts(say(bob, "/warptome Imm"), "Bob")).toEqual([ADMIN_TEXT.warpToMeDenied]);
-    expect(texts(say(bob, "/kick Imm"), "Bob")).toEqual([ADMIN_TEXT.kickDenied]);
-    expect(texts(say(bob, "/ban Imm"), "Bob")).toEqual([ADMIN_TEXT.banDenied]);
+  test("SSO: a player's admin command is answered as an unknown one, privately, and does nothing", () => {
+    const { bob, imm, say, bans } = scene();
     for (const line of [
+      "/warp Imm x1y1 2 2",
+      "/warpmeto Imm",
+      "/warptome Imm",
+      "/kick Imm",
+      "/ban Imm",
       "/save",
       "/Refresh",
       "/CheatFile",
@@ -150,9 +151,32 @@ describe("the role table (moderator command set)", () => {
       "/jail Imm",
       "/Location",
       "/IPlookup Imm",
+      "/warpscript help",
+      "/role Bob immortal",
+      "/chatlog Imm",
     ]) {
-      expect(say(bob, line)).toEqual([]);
+      const w1 = line.split(" ")[0] as string;
+      // The same reply a typo gets: only Bob hears it, and the line comes back to fix.
+      expect(say(bob, line)).toEqual([
+        {
+          to: "Bob",
+          msg: { t: "chat", text: unknownCommandText(w1), color: CHAT_COLOR.normal, restore: line },
+        },
+      ]);
     }
+    expect(say(bob, "/warpz Imm")).toEqual([
+      {
+        to: "Bob",
+        msg: {
+          t: "chat",
+          text: unknownCommandText("/warpz"),
+          color: CHAT_COLOR.normal,
+          restore: "/warpz Imm",
+        },
+      },
+    ]);
+    expect(bans.size).toBe(0);
+    expect(imm.map.name).toBe("x1000y992");
   });
 
   test("a moderator may run the moderation commands, but not IP bans, /role or /setclass", () => {
@@ -170,8 +194,8 @@ describe("the role table (moderator command set)", () => {
     expect(texts(say(mod, "/Pardon Bob"), "Mod")).toEqual(["Pardoning Bob..."]);
     expect(bob.char.wanted).toBe(false);
     // IP bans can lock out an immortal or the whole proxy, so they stay immortal-only.
-    expect(say(mod, "/BanIP 2.3.4.5")).toEqual([]);
-    expect(texts(say(mod, "/unbanip 1.2.3.4"), "Mod")).toEqual([]);
+    expect(texts(say(mod, "/BanIP 2.3.4.5"), "Mod")).toEqual([unknownCommandText("/BanIP")]);
+    expect(texts(say(mod, "/unbanip 1.2.3.4"), "Mod")).toEqual([unknownCommandText("/unbanip")]);
     expect(ipBans.size).toBe(0);
     expect(texts(say(mod, "/ban Bob"), "Mod")).toEqual([
       "*** banning Bob...",
@@ -180,7 +204,8 @@ describe("the role table (moderator command set)", () => {
     expect(bans.get("Bob")?.actorId).toBe("Mod");
     expect(texts(say(mod, "/unban Bob"), "Mod")).toEqual(["Bob is no longer banned."]);
     expect(bans.has("Bob")).toBe(false);
-    expect(texts(say(mod, "/CheatFile"), "Mod")[0]).toBe("* Cheater Log:");
+    // The cheat log shows every player's address: an immortal's.
+    expect(texts(say(mod, "/CheatFile"), "Mod")).toEqual([unknownCommandText("/CheatFile")]);
     expect(texts(say(mod, "/Inventory"), "Mod")).toHaveLength(15);
     say(mod, "/save");
     say(mod, "/Refresh");
@@ -201,11 +226,11 @@ describe("the role table (moderator command set)", () => {
     expect(bans.has("Bob")).toBe(false);
   });
 
-  test("SSO's /role and /setclass are said as local chat by anyone but an immortal", () => {
+  test("SSO's /role and /setclass are unknown commands to anyone but an immortal", () => {
     const { mod, say } = scene();
-    expect(texts(say(mod, "/role Bob immortal"), "Mod")).toEqual(['Mod says "/role Bob immortal"']);
+    expect(texts(say(mod, "/role Bob immortal"), "Mod")).toEqual([unknownCommandText("/role")]);
     expect(texts(say(mod, "/setclass Bob Ninja"), "Mod")).toEqual([
-      'Mod says "/setclass Bob Ninja"',
+      unknownCommandText("/setclass"),
     ]);
   });
 });
@@ -441,14 +466,9 @@ describe("the jail", () => {
 });
 
 describe("/warpscript", () => {
-  test("a player gets an explicit denial and cleared input (no restore); moderators can set it", () => {
+  test("a player's /warpscript is an unknown command; moderators can set it", () => {
     const { bob, mod, say } = scene();
-    expect(say(bob, "/warpscript help")).toEqual([
-      {
-        to: "Bob",
-        msg: { t: "chat", text: ADMIN_TEXT.warpscriptDenied, color: CHAT_COLOR.normal },
-      },
-    ]);
+    expect(texts(say(bob, "/warpscript help"), "Bob")).toEqual([unknownCommandText("/warpscript")]);
     expect(texts(say(mod, "/warpscript help"), "Mod")).toEqual(["Warpscript set to: help"]);
   });
 
@@ -605,7 +625,7 @@ describe("kicks, bans, roles and classes", () => {
     expect(ipBans.size).toBe(0);
   });
 
-  test("/Inventory, /CheatFile, /save and /Refresh", () => {
+  test("/Inventory, /CheatFile, /save and /Refresh; SSO audits /CheatFile, whose lines show addresses", () => {
     const { imm, say, audits } = scene();
     imm.char.bag[0] = { item: "Apple", qty: 2 };
     const inv = texts(say(imm, "/Inventory"), "Imm");
@@ -617,7 +637,7 @@ describe("kicks, bans, roles and classes", () => {
     ]);
     expect(say(imm, "/save")).toEqual([]);
     expect(say(imm, "/Refresh")).toEqual([]);
-    expect(audits).toEqual(["saved", "/save", "reloaded", "/refresh"]);
+    expect(audits).toEqual(["/cheatfile", "saved", "/save", "reloaded", "/refresh"]);
   });
 });
 
@@ -745,10 +765,10 @@ describe("moderation: who may change what, durations and reasons", () => {
     expect(m.log.at(-1)).toMatchObject({ action: "pardon", reason: "self-defence" });
   });
 
-  test("/unjail and /banlist are said as local chat by players", () => {
+  test("/unjail and /banlist are unknown commands to players", () => {
     const { bob, say } = scene();
-    expect(texts(say(bob, "/unjail Bob"), "Bob")).toEqual(['Bob says "/unjail Bob"']);
-    expect(texts(say(bob, "/banlist"), "Bob")).toEqual(['Bob says "/banlist"']);
+    expect(texts(say(bob, "/unjail Bob"), "Bob")).toEqual([unknownCommandText("/unjail")]);
+    expect(texts(say(bob, "/banlist"), "Bob")).toEqual([unknownCommandText("/banlist")]);
   });
 });
 

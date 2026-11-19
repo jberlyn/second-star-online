@@ -15,6 +15,7 @@ import {
   saveProfile,
 } from "@secondstaronline/shared";
 
+import { logChat } from "../chat/log.ts";
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { guildOf } from "./guilds.ts";
 import { onlineNamed } from "./presence.ts";
@@ -83,17 +84,24 @@ export function bioRequest(
 
 /**
  * Closing your own Bio window: an unchanged profile does nothing; otherwise an alert for a ":" or
- * "/", else the new profile, written through `write`.
+ * "/", else the new profile, written through `write`. Both are in the chat log.
  */
-export function profileSave(p: Player, text: string, write: (profile: string) => void): Outgoing[] {
+export function profileSave(
+  world: World,
+  p: Player,
+  text: string,
+  write: (profile: string) => void,
+): Outgoing[] {
   if (text === p.char.profile) {
     return [];
   }
   const r = saveProfile(text);
   if (r.profile === null) {
+    logChat(world, p, "bio", text, "refused");
     return r.alert ? [{ to: p.id, msg: { t: "alert", text: r.alert } }] : [];
   }
   if (r.profile !== p.char.profile) {
+    logChat(world, p, "bio", r.profile, "delivered");
     p.char.profile = r.profile;
     write(r.profile);
   }

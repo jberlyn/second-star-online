@@ -213,8 +213,37 @@ describe("who", () => {
   });
 });
 
+describe("SSO: unknown commands", () => {
+  test("a typo is told to the typist alone, given back to fix, costs no cooldown and is not logged", () => {
+    const { world, a } = twoMaps();
+    expect(handleChat(world, a, " /dacne now", deps)).toEqual([
+      {
+        to: "a",
+        msg: { t: "chat", text: 'Unknown command "/dacne".', color: 0, restore: " /dacne now" },
+      },
+    ]);
+    expect(a.chatIn).toBe(0);
+    expect(world.chatLog).toEqual([]);
+  });
+
+  test.each(["/drop 5 gold", "/spawn 1", "/roster", "/Pardon b", "/kick b"])(
+    "a player's %s gets the same reply as a typo",
+    (typed) => {
+      const { world, a } = twoMaps();
+      const w1 = typed.split(" ")[0];
+      expect(texts(handleChat(world, a, typed, deps), "a")).toEqual([`Unknown command "${w1}".`]);
+      expect(texts(handleChat(world, a, typed, deps), "b")).toEqual([]);
+    },
+  );
+
+  test("a slash that is not a command word is still talk", () => {
+    const { world, a } = twoMaps();
+    expect(texts(handleChat(world, a, "/o\\ yay", deps), "b")).toEqual(['a says "/o\\ yay"']);
+  });
+});
+
 describe("commands not built yet are dropped, never said", () => {
-  test.each(["/logchat file", "/Pardon b", "/RPG hi", "quit", "Challenge"])("%s", (line) => {
+  test.each(["/logchat file", "/RPG hi", "quit", "Challenge"])("%s", (line) => {
     const { world, a } = twoMaps();
     expect(handleChat(world, a, line, deps)).toEqual([]);
     expect(a.chatIn).toBe(0);

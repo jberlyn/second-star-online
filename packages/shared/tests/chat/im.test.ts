@@ -197,11 +197,12 @@ describe("chat rooms", () => {
     expect(CHAT_SOCIAL_TEXT.roomLine("Bob", "hi")).toBe("Bob: hi");
   });
 
-  test("the room input: /logchat, who, /msg, everything else is room text", () => {
+  test("the room input: /logchat, who, /msg, another command word is unknown, the rest is room text", () => {
     expect(parseRoomLine("/logchat room.txt more")).toEqual({ kind: "logchat", file: "room.txt" });
     expect(parseRoomLine(" who")).toEqual({ kind: "who" });
     expect(parseRoomLine("/msg bob hi")).toEqual({ kind: "msg", text: "/msg bob hi" });
-    expect(parseRoomLine("/me waves")).toEqual({ kind: "say", text: "/me waves" });
+    expect(parseRoomLine("/me waves")).toEqual({ kind: "unknown", command: "/me" });
+    expect(parseRoomLine("/o\\ yay")).toEqual({ kind: "say", text: "/o\\ yay" });
     expect(parseRoomLine("'shout")).toEqual({ kind: "say", text: "'shout" });
     expect(parseRoomLine("   ")).toEqual({ kind: "say", text: "  " });
     expect(parseRoomLine("")).toBeNull();

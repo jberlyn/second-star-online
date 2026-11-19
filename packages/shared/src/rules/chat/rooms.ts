@@ -4,6 +4,7 @@
 import { socialData } from "@secondstaronline/data";
 
 import { lingoEq, lingoWord } from "../core/lingo.ts";
+import { commandWord } from "./chat.ts";
 
 export type RoomKey = "general" | "newPlayer" | "tradingPost" | "guild" | "admin";
 export const ROOM_KEYS: readonly RoomKey[] = socialData.chat.rooms.map((r) => r.key);
@@ -37,6 +38,8 @@ export type RoomLine =
   | { kind: "who" }
   /** `/msg`, with the main chat's echo; `text` is the line after its leading space. */
   | { kind: "msg"; text: string }
+  /** SSO: any other command word, `/me` included; the typist is told and nothing is said. */
+  | { kind: "unknown"; command: string }
   /** Everything else is room text: no `/me`, `'`, `/g` or keywords. */
   | { kind: "say"; text: string };
 
@@ -55,6 +58,9 @@ export function parseRoomLine(raw: string): RoomLine | null {
   }
   if (lingoEq(w1, "/msg")) {
     return { kind: "msg", text };
+  }
+  if (commandWord(w1)) {
+    return { kind: "unknown", command: w1 };
   }
   return { kind: "say", text };
 }

@@ -30,9 +30,10 @@ import {
  * over three runs); a run may use up to 120 % of each. Re-recorded 2026-11-18 (4,814-4,834
  * messages, 1.135 MB, 64 rows): a walk off the seed map's edge is now refused instead of warping
  * to the start point, so bots no longer sit out the 100-tick load lock and keep fighting, which
- * saves more kills and skill gains.
+ * saves more kills and skill gains. Rows re-recorded 2026-11-18 (163 over three runs): each of the
+ * crowd's 100 chat lines is now a row in the chat log.
  */
-const RECORDED = { messages: 4830, bytes: 1136000, rows: 64 };
+const RECORDED = { messages: 4830, bytes: 1136000, rows: 163 };
 const CEILING = 1.2;
 
 const BOTS = 20;

@@ -104,7 +104,7 @@ describe("Assassin's game rows (migration 20261107_15)", () => {
     expect(loadAssassinState(db).mode).toBe("LIGHTNING");
   });
 
-  test("SSO: '/assassin end' from an immortal is said as chat: the command is gone, the Admin menu's End Assassin's Game is the way", async () => {
+  test("SSO: '/assassin end' from an immortal is an unknown command: it is gone, the Admin menu's End Assassin's Game is the way", async () => {
     const g = game();
     const imm = await makeChar(g, "King");
     const bob = await makeChar(g, "Bob");
@@ -118,7 +118,8 @@ describe("Assassin's game rows (migration 20261107_15)", () => {
     sent = [];
     g.intent(imm, { t: "chat", text: "/assassin end" });
     expect(loadAssassinState(db).mode).toBe("GO");
-    expect(texts(bob).some((t) => t.includes("/assassin end"))).toBe(true);
+    expect(texts(bob).some((t) => t.includes("/assassin end"))).toBe(false);
+    expect(texts(imm)).toContain('Unknown command "/assassin".');
   });
 
   test("an end writes an offline winner's prize into its stored bag", async () => {

@@ -18,6 +18,7 @@ import {
   MODERATION_TEXT,
   type ServerMsg,
   TEXT,
+  unknownCommandText,
 } from "@secondstaronline/shared";
 
 import { recentAudit } from "../src/persistence/admin.ts";
@@ -133,7 +134,7 @@ describe("admin commands, roles, bans and settings", () => {
     expect(lines(mo)).toEqual(["*** banning Alice...", MODERATION_TEXT.staffTarget]);
     bob.clear();
     await say(bob, "/ban Alice");
-    expect(lines(bob)).toEqual([ADMIN_TEXT.banDenied]);
+    expect(lines(bob)).toEqual([unknownCommandText("/ban")]);
     bob.clear();
     await say(bob, "-sneak");
     expect(bob.inbox.filter((m) => m.t === "restore" || m.t === "chat")).toEqual([

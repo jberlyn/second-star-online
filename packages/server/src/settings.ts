@@ -373,6 +373,26 @@ export const SETTINGS = {
       "Days an account's login addresses are kept for /banip <name> and /banlist after it last used them. 0 keeps them forever.",
     source: "SSO addition: /banip <name> needs the addresses an account has used.",
   }),
+  chatLogRetentionDays: def({
+    group: "Moderation and security",
+    label: "Keep chat log",
+    form: { kind: "int", min: 0, max: 3650 },
+    schema: z.number().int().min(0).max(3650),
+    default: 90,
+    tooltip:
+      "Days the chat log keeps each line players write to each other (say, /me, broadcasts, IMs, guild, rooms, staff chat, away texts and bios) for /chatlog and admin:chatlog. 0 keeps them forever.",
+    source: "SSO addition. 1.6 logged no chat on the server.",
+  }),
+  auditLogRetentionDays: def({
+    group: "Moderation and security",
+    label: "Keep audit log",
+    form: { kind: "int", min: 0, max: 3650 },
+    schema: z.number().int().min(0).max(3650),
+    default: 0,
+    tooltip:
+      "Days the audit log keeps each staff action (admin commands, editor saves, setting and role changes, /chatlog lookups) for admin:audit. 0 keeps them forever. Bans, jails and pardons are kept regardless, for /banlist.",
+    source: "SSO addition. 1.6 kept no audit log.",
+  }),
   loginFailsPerIp: def({
     group: "Moderation and security",
     label: "Failed logins per address",

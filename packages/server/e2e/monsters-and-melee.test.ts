@@ -103,7 +103,7 @@ describe("monsters, melee and XP", () => {
     await Bun.file(dbPath).delete();
   });
 
-  test("an immortal lists and sets the roster; a player's /roster is just chat", async () => {
+  test("an immortal lists and sets the roster; a player's /roster is an unknown command", async () => {
     gm = await login("Gm");
     fighter = await login("Fighter");
     face(server, "Fighter", "N"); // staging: 1.6 logs in facing south
@@ -116,7 +116,7 @@ describe("monsters, melee and XP", () => {
     ]);
     fighter.send({ t: "chat", text: "/roster 1 clear" });
     await settle();
-    expect(chatTexts(fighter).at(-1)).toBe('Fighter says "/roster 1 clear"');
+    expect(chatTexts(fighter).at(-1)).toBe('Unknown command "/roster".');
   });
 
   test("after the 45-frame entry wait a Slime spawns where the rolls say, for everyone", async () => {

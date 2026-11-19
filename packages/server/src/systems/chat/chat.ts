@@ -10,7 +10,8 @@
  * `/withdraw`), the operators' `/spawn`, `-` staff chat and the admin commands
  * (systems/admin/commands.ts), `/g`, `/invite`, ACCEPT and REJECT (systems/social/guilds.ts),
  * `/msg` (im.ts), `/ignore`, `/unignore`, `/ignorelist` (ignore.ts) and the ignore filter on say,
- * `/me` and broadcasts; the client saves `/logchat` itself. Every other command of the original
+ * `/me` and broadcasts; the client saves `/logchat` itself. Every line a player writes to others
+ * is logged (log.ts), refused or not; commands and `Password=` are not. Every other command of the original
  * grammar is recognised and dropped.
  */
 import {
@@ -26,14 +27,17 @@ import {
   formatSay,
   heardSqa,
   isJailMap,
+  lingoWord,
   mayRun,
   PASSWORD_MAX,
   PASSWORD_TEXT,
   parseChatLine,
   type Rng,
   type ServerMsg,
-  SSO_ADMIN_CMDS,
   sayRefusedInHouse,
+  staffChatText,
+  unknownCommandText,
+  usesStaffChat,
   whoCountLine,
 } from "@secondstaronline/shared";
 
@@ -58,6 +62,7 @@ import { whoNames } from "../social/presence.ts";
 import type { Outgoing, Player, World, WorldMap } from "../world/world.ts";
 import { hears, ignoreCommand } from "./ignore.ts";
 import { msgCommand } from "./im.ts";
+import { audienceCounts, logChat } from "./log.ts";
 
 export interface ChatDeps {
   /** Setting `chatMaxChars`. */
@@ -111,15 +116,32 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
   }
   let cmd = parsed;
   if (cmd.kind === "staffChat") {
+    const outcome = usesStaffChat(p.role) ? "delivered" : "denied";
+    logChat(world, p, "staff", staffChatText(cmd.typed), outcome);
     return staffChat(world, p, cmd.typed);
   }
+  // A command the typist may not use gets the same reply as one that does not exist (1.6 swallowed
+  // its own staff commands and said the others aloud, giving them away).
+  const unknown = (): Outgoing[] => [
+    {
+      to: p.id,
+      msg: { ...line(unknownCommandText(lingoWord(typed, 1))), restore: typed },
+    },
+  ];
+  if (cmd.kind === "unknown") {
+    return unknown();
+  }
   if (cmd.kind === "admin") {
-    if (SSO_ADMIN_CMDS.includes(cmd.cmd) && !mayRun(cmd.cmd, p.role)) {
-      // Not a 1.6 command: anyone else just says it, as 1.6 would have.
-      cmd = { kind: "say", text: cmd.line.replace(/^ {1,98}/, "") };
-    } else {
-      return deps.admin ? handleAdmin(world, p, cmd.cmd, cmd.w2, cmd.line, deps.admin) : [];
+    if (!mayRun(cmd.cmd, p.role)) {
+      return unknown();
     }
+    return deps.admin ? handleAdmin(world, p, cmd.cmd, cmd.w2, cmd.line, deps.admin) : [];
+  }
+  if (
+    (cmd.kind === "drop" || cmd.kind === "spawn" || cmd.kind === "roster") &&
+    p.role !== "immortal"
+  ) {
+    return unknown();
   }
   if (cmd.kind === "drop") {
     const room = world.rooms.get(p.map.name);
@@ -158,7 +180,7 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       }
       return r.out;
     }
-    cmd = { kind: "say", text: cmd.line };
+    return [];
   }
   if (cmd.kind === "guildAnswer") {
     // With no invitation pending the line falls through to local chat.
@@ -182,8 +204,7 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       }
       return r.out;
     }
-    // Not a 1.6 command: anyone else just says it.
-    cmd = { kind: "say", text: cmd.line };
+    return [];
   }
   switch (cmd.kind) {
     case "unbuilt":
@@ -233,8 +254,10 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
           return s.out;
         }
       }
+      const channel = cmd.kind;
       const refused = chatRefusal(p.chatIn);
       if (refused) {
+        logChat(world, p, channel, cmd.text, "cooldown", p.map.name);
         return [{ to: p.id, msg: { ...line(refused), restore: typed } }];
       }
       // A plain line asking for a quest, about treasure or about faction power also asks the NPCs
@@ -253,21 +276,29 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
         ];
       };
       if (houseRefused) {
+        logChat(world, p, channel, cmd.text, "house", p.map.name);
         return [{ to: p.id, msg: line(CHAT_TEXT.houseRefused) }, ...rumours()];
       }
       p.chatIn = deps.chatCooldownFrames;
       const text = cmd.kind === "say" ? formatSay(p.name, cmd.text) : formatEmote(p.name, cmd.text);
-      return [...toMap(world, p, text), ...rumours()];
+      const said = toMap(world, p, text);
+      const audience = world.rooms.get(p.map.name)?.players ?? [p];
+      logChat(world, p, channel, cmd.text, "delivered", p.map.name, {
+        ...audienceCounts(p, audience, said, text),
+      });
+      return [...said, ...rumours()];
     }
     case "broadcast": {
       const refused = broadcastRefusal(p.broadcastIn);
       if (refused) {
+        logChat(world, p, "broadcast", cmd.text, "cooldown");
         // The original exits without clearing the input.
         return [{ to: p.id, msg: { ...line(refused), restore: typed } }];
       }
       // The cooldown starts before the jail check, so a failed shout still costs it.
       p.broadcastIn = deps.broadcastCooldownFrames;
       if (isJailMap(p.map.name)) {
+        logChat(world, p, "broadcast", cmd.text, "jail");
         return [{ to: p.id, msg: line(CHAT_TEXT.jailShout) }];
       }
       const text = formatBroadcast(p.name, cmd.text);
@@ -275,6 +306,9 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       const out: Outgoing[] = [...world.players.values()]
         .filter((o) => hears(o, p.name))
         .map((o) => ({ to: o.id, msg: line(text, CHAT_COLOR.broadcast) }));
+      logChat(world, p, "broadcast", cmd.text, "delivered", null, {
+        ...audienceCounts(p, [...world.players.values()], out, text),
+      });
       // Staff `/warpscript` checks the broadcast message content (not the speaker name or wrapper).
       if (deps.admin) {
         out.push(...warpscriptOnBroadcast(world, p, cmd.text, deps.admin));

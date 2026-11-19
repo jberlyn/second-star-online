@@ -27,6 +27,11 @@ export type ChatCommand =
   /** A command of the original grammar that SSO has not built yet: dropped. */
   | { kind: "unbuilt"; command: string }
   /**
+   * SSO: a line whose first word looks like a command (`/` and a letter) that is no command. 1.6
+   * said it as local chat; SSO tells only the typist (`unknownCommandText`) and says nothing.
+   */
+  | { kind: "unknown"; command: string }
+  /**
    * `Password=<new>`: `password` is the second part of the whole line split on `=`, with every
    * forbidden character removed (`passwordFrom`). The server hashes it into the account.
    */
@@ -88,7 +93,9 @@ export type ChatCommand =
    */
   | { kind: "friends"; friends: FriendsCommand };
 
-/** The admin commands by their word 1, and SSO's `/role`, `/unban`, `/setclass`, `/unjail` and `/banlist`. */
+/**
+ * The admin commands by their word 1, 1.6's and SSO's own.
+ */
 const ADMIN_WORD1: Readonly<Record<string, AdminCmd>> = {
   "/save": "save",
   "/refresh": "refresh",
@@ -111,6 +118,8 @@ const ADMIN_WORD1: Readonly<Record<string, AdminCmd>> = {
   "/setclass": "setclass",
   "/unjail": "unjail",
   "/banlist": "banlist",
+  "/chatlog": "chatlog",
+  "/auditlog": "auditlog",
 };
 
 /**
@@ -278,10 +287,26 @@ export function parseChatLine(raw: string): ChatCommand | null {
   if (UNBUILT_WORD1.some((c) => lingoEq(w1, c))) {
     return { kind: "unbuilt", command: w1 };
   }
+  if (commandWord(w1)) {
+    return { kind: "unknown", command: w1 };
+  }
   // Local chat re-reads the field and deletes one leading space, then up to 98 more. A line with
   // nothing but spaces sends nothing, rather than `Bob says ""`.
   const say = dropLeadingSpaces(dropLeadingSpaces(raw, 1), 98);
   return say.trim() === "" ? null : { kind: "say", text: say };
+}
+
+/** True when `w1` looks like a command: `/`, a letter, then letters and digits. */
+export function commandWord(w1: string): boolean {
+  return /^\/[A-Za-z][A-Za-z0-9]*$/.test(w1);
+}
+
+/**
+ * SSO's reply to a command that does not exist or that the typist may not use: the same either
+ * way, so a player cannot learn the staff commands by trying them.
+ */
+export function unknownCommandText(command: string): string {
+  return `Unknown command "${command}".`;
 }
 
 /** `"<name> says "<text>""`. */

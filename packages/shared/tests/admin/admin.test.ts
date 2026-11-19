@@ -17,7 +17,7 @@ import {
 } from "../../src/index.ts";
 
 describe("the moderator/immortal table", () => {
-  test("moderators keep the moderation commands; IP bans, /role and /setclass stay immortal-only", () => {
+  test("moderators keep the moderation commands; IP bans, /role, /setclass and /cheatfile stay immortal-only", () => {
     const mod = Object.entries(ADMIN_ROLES)
       .filter(([, roles]) => roles.includes("moderator"))
       .map(([c]) => c)
@@ -26,7 +26,6 @@ describe("the moderator/immortal table", () => {
       [
         "ban",
         "banlist",
-        "cheatfile",
         "inventory",
         "iplookup",
         "jail",
@@ -65,7 +64,7 @@ describe("parsing a chat line", () => {
     expect(parseChatLine("/warptome bob")).toMatchObject({ cmd: "warptome", w2: "bob" });
     expect(parseChatLine("/BanIP 1.2.3.4")).toMatchObject({ cmd: "banip", w2: "1.2.3.4" });
     expect(parseChatLine("/setclass Bob Death Knight")).toMatchObject({ cmd: "setclass" });
-    expect(parseChatLine("/warping")?.kind).toBe("say");
+    expect(parseChatLine("/warping")?.kind).toBe("unknown");
   });
 
   test("a line starting with - is staff chat, whatever follows", () => {

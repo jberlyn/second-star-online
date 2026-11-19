@@ -135,12 +135,12 @@ describe("/roster", () => {
     ]);
   });
 
-  test("anyone else just says it, as 1.6 would", async () => {
+  test("SSO: anyone else is told it is an unknown command; nothing is said", async () => {
     const g = game();
     const id = await makeChar(g, "Bob");
     g.enter(id, false);
     g.intent(id, { t: "chat", text: "/roster 1 clear" });
-    expect(texts(id).at(-1)).toBe('Bob says "/roster 1 clear"');
+    expect(texts(id).at(-1)).toBe('Unknown command "/roster".');
   });
 
   test("bun run admin:role makes an operator immortal", async () => {

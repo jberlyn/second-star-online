@@ -493,7 +493,7 @@ describe("a throw in an intent or a tick", () => {
     const kicked = await a.waitFor((m) => m.t === "kicked");
     boom = false;
     expect(kicked).toEqual({ t: "kicked", text: TEXT.serverError });
-    expect(faults).toEqual(["intent drop"]);
+    expect(faults).toEqual(["intent drop from Alice"]);
     // Rolled back: the bag is as it was, nothing on the ground.
     expect(
       server.db
@@ -501,10 +501,8 @@ describe("a throw in an intent or a tick", () => {
         .all(aId),
     ).toEqual(bagBefore);
     expect(server.db.query("SELECT COUNT(*) AS n FROM ground_items").get()).toEqual({ n: 0 });
-    // A cheat-log line names it.
-    expect(
-      server.db.query("SELECT reason FROM cheat_log WHERE reason LIKE 'Server error%'").all(),
-    ).toEqual([{ reason: "Server error on drop" }]);
+    // A bug is not cheating: the error log names it, the cheat log does not.
+    expect(server.db.query("SELECT COUNT(*) AS n FROM cheat_log").get()).toEqual({ n: 0 });
     // The other bot is still in and a re-login reloads Alice from SQL.
     expect(server.game.isOnline(idOf(server.db, "Bob"))).toBe(true);
     expect(server.game.isOnline(aId)).toBe(false);
@@ -626,7 +624,7 @@ describe("the Pig grab is one write", () => {
     boom = true;
     server.game.intent(id, { t: "npcClick", slot: slot?.slot ?? 1 });
     boom = false;
-    expect(faults).toEqual(["intent npcClick"]); // the window was reached
+    expect(faults).toEqual(["intent npcClick from Alice"]); // the window was reached
     // Either the Pig is back in the bag or still a monster: never both and never neither.
     expect(pigs().n + bagPigs().n).toBe(1);
     expect([pigs().n, bagPigs().n]).toEqual([1, 0]); // the fault rolled the grab back

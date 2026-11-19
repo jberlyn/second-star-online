@@ -208,25 +208,25 @@ describe("bios", () => {
 
 describe("saving the profile on closing your own bio", () => {
   test("bug fixed: the profile is written as typed, periods and semicolons kept", () => {
-    const { alice } = scene();
+    const { alice, world } = scene();
     const writes: string[] = [];
-    expect(profileSave(alice, "Hi. I fish; a lot", (t) => writes.push(t))).toEqual([]);
+    expect(profileSave(world, alice, "Hi. I fish; a lot", (t) => writes.push(t))).toEqual([]);
     expect(alice.char.profile).toBe("Hi. I fish; a lot");
     expect(writes).toEqual(["Hi. I fish; a lot"]);
   });
 
   test("bug fixed: closing an unedited profile writes and alerts nothing, even with an old colon", () => {
-    const { alice } = scene();
+    const { alice, world } = scene();
     alice.char.profile = "Time: now";
     const writes: string[] = [];
-    expect(profileSave(alice, "Time: now", (t) => writes.push(t))).toEqual([]);
+    expect(profileSave(world, alice, "Time: now", (t) => writes.push(t))).toEqual([]);
     expect(writes).toEqual([]);
   });
 
   test("a : or / is an alert and nothing is saved", () => {
-    const { alice } = scene();
+    const { alice, world } = scene();
     const writes: string[] = [];
-    expect(profileSave(alice, "a::b", (t) => writes.push(t))).toEqual([
+    expect(profileSave(world, alice, "a::b", (t) => writes.push(t))).toEqual([
       { to: "Alice", msg: { t: "alert", text: "You can't have a : in your profile!" } },
     ]);
     expect(writes).toEqual([]);
