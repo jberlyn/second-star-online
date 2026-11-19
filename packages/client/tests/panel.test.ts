@@ -529,6 +529,43 @@ describe("drag to rearrange the bag (SSO; 1.6 had none)", () => {
     pointer(document, "pointerup", 90, 130);
     expect(sent).toEqual([]);
   });
+  // The equipment boxes, panel-local: left column x 60-95, right x 160-195; the hand row y 318-353.
+  const dragTo = (panel: { el: HTMLElement }, slot: number, x: number, y: number) => {
+    const hit = panel.el.querySelectorAll<HTMLButtonElement>(".bag-slot")[slot - 1] as HTMLElement;
+    const at = { x: 50 + 37 * (slot - 1), y: 130 };
+    pointer(hit, "pointerdown", at.x, at.y);
+    pointer(document, "pointermove", x, y);
+    pointer(document, "pointerup", x, y);
+  };
+  const gear = () => [
+    { item: "Long Sword", qty: 1 },
+    { item: "Wooden Shield", qty: 1 },
+    { item: "Apple", qty: 2 },
+  ];
+  test("an item let go on its own equipment box is equipped", () => {
+    const { panel, sent, sounds } = panelWith(gear());
+    dragTo(panel, 1, 75, 335); // the weapon box
+    dragTo(panel, 2, 175, 335); // the shield box
+    expect(sent).toEqual(["equip 1", "equip 2"]);
+    expect(sounds).toHaveLength(2);
+  });
+  test("an item let go on another item's box, or one that cannot be worn, goes back", () => {
+    const { panel, sent } = panelWith(gear());
+    dragTo(panel, 2, 75, 335); // a shield on the weapon box
+    dragTo(panel, 1, 75, 295); // a sword on the head box
+    dragTo(panel, 3, 75, 335); // an Apple
+    expect(sent).toEqual([]);
+  });
+  test("nothing is equipped by dragging while the bag is locked", () => {
+    let locked = false;
+    const { panel, sent } = panelWith(gear(), { locked: () => locked });
+    const hit = panel.el.querySelector<HTMLButtonElement>(".bag-slot") as HTMLElement;
+    pointer(hit, "pointerdown", 50, 130);
+    pointer(document, "pointermove", 75, 335);
+    locked = true;
+    pointer(document, "pointerup", 75, 335);
+    expect(sent).toEqual([]);
+  });
 });
 
 describe("ground items and looks in the model", () => {

@@ -30,6 +30,7 @@ import {
   displayName,
   type EquipSlot,
   type EquipView,
+  equipSlotFor,
   type InventoryView,
   lingoContains,
   menuAction,
@@ -654,6 +655,15 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     }
     return 0;
   };
+  /** The equipment box under panel-local (x, y), if any. */
+  const equipBoxAt = (x: number, y: number): EquipSlot | undefined => {
+    const sx = x + PANEL_X;
+    return EQUIP_BOX.find((b) => {
+      const bx = BOX_X[b.col];
+      const by = BOX_Y[b.row] as number;
+      return sx >= bx && sx < bx + BOX_SIZE && y >= by && y < by + BOX_SIZE;
+    })?.slot;
+  };
   const endDrag = () => {
     if (drag) {
       drag.ghost?.remove();
@@ -713,6 +723,21 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     if (to > 0 && to !== from && act.canModify()) {
       act.sound(SOUND.click);
       act.arrange(from, to);
+      return;
+    }
+    // An item let go on its own equipment box is equipped, as the menu's Equip would; on any other
+    // box it goes back. The server still makes every equip check (strength, two-handed, vile).
+    const box = equipBoxAt(p.x, p.y);
+    const item = inventory?.bag[from - 1]?.item;
+    if (
+      box &&
+      item &&
+      menuAction(item) === "Equip" &&
+      equipSlotFor(item) === box &&
+      act.canModify()
+    ) {
+      act.sound(SOUND.click);
+      act.equip(from);
     }
   });
   document.addEventListener("pointercancel", endDrag);
