@@ -14,7 +14,8 @@ import type { Connection } from "../src/net.ts";
 import {
   checkValue,
   createSettingsWindow,
-  durationText,
+  formatDuration,
+  parseDuration,
   parsePoints,
   parsePrizes,
   pointsText,
@@ -70,28 +71,27 @@ const ROWS: SettingRow[] = [
     default: true,
   },
   {
-    key: "broadcastCooldownFrames",
+    key: "broadcastCooldown",
     group: "Moderation and security",
     label: "Broadcast",
     tooltip: "Broadcast.",
-    kind: "int",
-    value: 8000,
-    default: 8000,
-    min: 1,
-    max: 9000,
-    unit: "frames",
+    kind: "duration",
+    value: 400,
+    default: 400,
+    min: 0,
+    max: 3600,
+    zero: "off",
   },
   {
-    key: "saveIntervalTicks",
+    key: "saveInterval",
     group: "Server",
     label: "Save",
     tooltip: "Save.",
-    kind: "int",
-    value: 600,
-    default: 1200,
+    kind: "duration",
+    value: 30,
+    default: 90,
     min: 1,
-    max: 100000,
-    unit: "frames",
+    max: 3600,
   },
 ];
 
@@ -132,35 +132,55 @@ describe("the Settings window", () => {
     expect(el.querySelector(".settings [title]")).toBeNull();
   });
 
-  test("frames show as time, live as you type (20 frames a second)", () => {
-    const { row, type } = win();
-    const wait = row("broadcastCooldownFrames");
-    expect(wait.querySelector(".settings-unit")?.textContent).toBe("frames = 6 min 40 s");
-    type(wait.querySelector("input") as HTMLInputElement, "1000");
-    expect(wait.querySelector(".settings-unit")?.textContent).toBe("frames = 50 s");
-    expect(durationText(0.8)).toBe("0.8 s");
-    expect(durationText(7_200)).toBe("2 h");
+  test("a duration is shown and typed as time, and read as whole seconds", () => {
+    const { row } = win();
+    const wait = row("broadcastCooldown");
+    expect((wait.querySelector("input") as HTMLInputElement).value).toBe("6m 40s");
+    expect(wait.querySelector(".settings-unit")?.textContent).toBe("0 = off");
+    expect(row("saveInterval").querySelector(".settings-unit")).toBeNull();
+    expect(formatDuration(0)).toBe("0");
+    expect(formatDuration(3)).toBe("3s");
+    expect(formatDuration(150)).toBe("2m 30s");
+    expect(formatDuration(129_600)).toBe("1d 12h");
+    expect(formatDuration(315_360_000)).toBe("3650d");
+    expect(parseDuration("30s")).toBe(30);
+    expect(parseDuration(" 5 min ")).toBe(300);
+    expect(parseDuration("1h 30m")).toBe(5400);
+    expect(parseDuration("1d12h")).toBe(129_600);
+    expect(parseDuration("2 weeks")).toBe(1_209_600);
+    expect(parseDuration("1.5h")).toBe(5400);
+    expect(parseDuration("0")).toBe(0);
+    expect(parseDuration("Off", "off")).toBe(0);
+    expect(parseDuration("off")).toBeNull();
+    // A bare number has no unit: refused, not guessed.
+    expect(parseDuration("30")).toBeNull();
+    expect(parseDuration("5 fortnights")).toBeNull();
+    expect(parseDuration("")).toBeNull();
+    // Every shown value reads back as itself.
+    for (const n of [1, 59, 61, 3600, 86_399, 2_592_000]) {
+      expect(parseDuration(formatDuration(n))).toBe(n);
+    }
   });
 
   test("a changed row is marked and counted; Reset puts its default back", () => {
     const { row, status, type } = win();
     expect(status()).toBe("No unsaved changes");
-    // Save is 600 on the server, default 1200: not changed, but resettable.
-    const walk = row("saveIntervalTicks");
+    // Save is 30 s on the server, default 90 s: not changed, but resettable.
+    const walk = row("saveInterval");
     expect(walk.classList.contains("settings-changed")).toBe(false);
     const reset = walk.querySelector(".settings-reset") as HTMLButtonElement;
     expect(reset.hidden).toBe(false);
-    expect(reset.textContent).toBe("Reset to default (1200 frames (1 min))");
+    expect(reset.textContent).toBe("Reset to default (1m 30s)");
     reset.click();
     expect(walk.classList.contains("settings-changed")).toBe(true);
     expect(reset.hidden).toBe(true);
-    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "100");
+    type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "100s");
     expect(status()).toBe("2 unsaved changes");
   });
 
   test("Save sends every value from its control; Revert asks again", () => {
     const { row, el, saves, loads, type } = win();
-    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "100");
+    type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "1m 40s");
     type(
       row("portalTargets").querySelector("textarea") as HTMLTextAreaElement,
       "x1y1 2 3\nx5y5 6 7",
@@ -175,8 +195,8 @@ describe("the Settings window", () => {
           { map: "x5y5", x: 6, y: 7 },
         ],
         dropOnDeath: true,
-        broadcastCooldownFrames: 100,
-        saveIntervalTicks: 600,
+        broadcastCooldown: 100,
+        saveInterval: 30,
       },
     ]);
     (el.querySelector(".settings-revert") as HTMLButtonElement).click();
@@ -185,24 +205,33 @@ describe("the Settings window", () => {
 
   test("a bad value is shown on its row and nothing is sent", () => {
     const { row, el, saves, status, type } = win();
-    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "0");
+    const field = row("broadcastCooldown").querySelector("input") as HTMLInputElement;
+    type(field, "100");
     (el.querySelector(".settings-save") as HTMLButtonElement).click();
     expect(saves).toEqual([]);
-    const err = row("broadcastCooldownFrames").querySelector(".settings-error") as HTMLElement;
+    const err = row("broadcastCooldown").querySelector(".settings-error") as HTMLElement;
     expect(err.hidden).toBe(false);
-    expect(err.textContent).toBe("Enter a number from 1 to 9,000.");
+    expect(err.textContent).toBe("Write a time like 30s, 5m, 2h or 7d.");
     expect(status()).toBe("Check Broadcast before saving.");
     // Typing again clears it.
-    type(row("broadcastCooldownFrames").querySelector("input") as HTMLInputElement, "5");
+    type(field, "2h");
     expect(err.hidden).toBe(true);
+    (el.querySelector(".settings-save") as HTMLButtonElement).click();
+    expect(err.textContent).toBe("Enter a time up to 1h, or 0 for off.");
+    type(row("saveInterval").querySelector("input") as HTMLInputElement, "0");
+    (el.querySelector(".settings-save") as HTMLButtonElement).click();
+    expect(row("saveInterval").querySelector(".settings-error")?.textContent).toBe(
+      "Enter a time from 1s to 1h.",
+    );
+    expect(saves).toEqual([]);
   });
 
   test("the server's answer: saved for everyone, or refused on the setting at fault", () => {
     const { w, row, status } = win();
     w.result({ ok: true });
     expect(status()).toBe(SETTINGS_SAVED);
-    w.result({ ok: false, key: "saveIntervalTicks", text: "Save: 1 or more" });
-    expect(row("saveIntervalTicks").querySelector(".settings-error")?.textContent).toBe(
+    w.result({ ok: false, key: "saveInterval", text: "Save: 1 or more" });
+    expect(row("saveInterval").querySelector(".settings-error")?.textContent).toBe(
       "Save: 1 or more",
     );
     expect(status()).toBe("Not saved. Check Save.");

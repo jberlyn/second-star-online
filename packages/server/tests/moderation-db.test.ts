@@ -221,7 +221,7 @@ describe("moderation in the game (real SQLite)", () => {
     expect(
       db.query("SELECT action, actor_rank FROM moderation_log WHERE action = 'ban'").all(),
     ).toEqual([{ action: "ban", actor_rank: "immortal" }]);
-    expect(game().settings.banMinutes).toBe(0);
+    expect(game().settings.banLength).toBe(0);
   });
 
   test("IP bans cover the IPv6 /64, refuse creation and resume, and never stop an immortal", async () => {

@@ -35,7 +35,6 @@ import {
   sortFaction,
   startingCharacter,
   TEXT,
-  TICK_MS,
 } from "@secondstaronline/shared";
 
 import {
@@ -135,7 +134,14 @@ import {
 } from "./persistence/social.ts";
 import { loadSpellbook, saveSpellbook } from "./persistence/spells.ts";
 import type { Rng } from "./rng.ts";
-import { applySettingValues, resolveSettings, type Settings, settingRows } from "./settings.ts";
+import {
+  applySettingValues,
+  DAY_SECONDS,
+  resolveSettings,
+  type Settings,
+  secondsToTicks,
+  settingRows,
+} from "./settings.ts";
 import type { AdminDeps } from "./systems/admin/commands.ts";
 import {
   allowCreate,
@@ -432,11 +438,11 @@ export function createGame(deps: GameDeps): Game {
   const world = createWorld(npcs);
   // IP bans from before keys get their standard form; lapsed bans and old addresses go.
   normalizeIpBans(db, isoNow());
-  pruneModeration(db, isoNow(), settings.addressHistoryDays);
+  pruneModeration(db, isoNow(), settings.addressHistory / DAY_SECONDS);
   /** Forgets chat lines and audit rows past their retention settings. */
   const pruneLogs = () => {
-    pruneChatLog(db, isoNow(), settings.chatLogRetentionDays);
-    pruneAudit(db, isoNow(), settings.auditLogRetentionDays);
+    pruneChatLog(db, isoNow(), settings.chatLogRetention / DAY_SECONDS);
+    pruneAudit(db, isoNow(), settings.auditLogRetention / DAY_SECONDS);
   };
   pruneLogs();
   /** The logs are pruned again an hour after the last time. */
@@ -572,7 +578,7 @@ export function createGame(deps: GameDeps): Game {
   /** The Blackjack Table's grace and offline gold. */
   const casinoDeps: CasinoDeps = {
     get graceTicks() {
-      return Math.ceil(settings.resumeGraceMs / TICK_MS);
+      return secondsToTicks(settings.resumeGrace);
     },
     addGoldOffline: (id, delta) => {
       addGoldOffline(db, id, delta);
@@ -589,19 +595,19 @@ export function createGame(deps: GameDeps): Game {
     fallbackPoint: settings.fallbackPoint,
     minute,
     now: nowMs,
-    lootDecayMinutes: settings.lootDecayMinutes,
-    npcChatterSeconds: settings.npcChatterSeconds,
+    lootDecayMinutes: settings.lootDecay / 60,
+    npcChatterSeconds: settings.npcChatter,
     dropOnDeath: settings.dropOnDeath,
     portalTargets: settings.portalTargets,
     hazardMap: settings.hazardMap,
-    saveIntervalTicks: settings.saveIntervalTicks,
+    saveIntervalTicks: secondsToTicks(settings.saveInterval),
     rng,
   };
 
   const chatDeps: ChatDeps = {
     maxChars: settings.chatMaxChars,
-    broadcastCooldownFrames: settings.broadcastCooldownFrames,
-    chatCooldownFrames: settings.chatCooldownFrames,
+    broadcastCooldownFrames: secondsToTicks(settings.broadcastCooldown),
+    chatCooldownFrames: secondsToTicks(settings.chatCooldown),
     helpLines,
     saveSlots: (m) => saveMapSlots(m),
     itemCtx: () => itemCtx(),
@@ -880,12 +886,12 @@ export function createGame(deps: GameDeps): Game {
   };
   const artDeps: ArtDeps = { artBytesMax: settings.artBytesMax, rng };
   const mailDeps: MailDeps = {
-    chatCooldownFrames: settings.chatCooldownFrames,
+    chatCooldownFrames: secondsToTicks(settings.chatCooldown),
     mailBodyMax: settings.mailBodyMax,
     mailboxMax: settings.mailboxMax,
   };
   const boardDeps: BoardDeps = {
-    chatCooldownFrames: settings.chatCooldownFrames,
+    chatCooldownFrames: secondsToTicks(settings.chatCooldown),
     boardPostsMax: settings.boardPostsMax,
     boardPostMax: settings.boardPostMax,
   };
@@ -903,26 +909,26 @@ export function createGame(deps: GameDeps): Game {
     settings = next;
     Object.assign(tickDeps, {
       fallbackPoint: settings.fallbackPoint,
-      lootDecayMinutes: settings.lootDecayMinutes,
-      npcChatterSeconds: settings.npcChatterSeconds,
+      lootDecayMinutes: settings.lootDecay / 60,
+      npcChatterSeconds: settings.npcChatter,
       dropOnDeath: settings.dropOnDeath,
       portalTargets: settings.portalTargets,
       hazardMap: settings.hazardMap,
-      saveIntervalTicks: settings.saveIntervalTicks,
+      saveIntervalTicks: secondsToTicks(settings.saveInterval),
     });
     Object.assign(chatDeps, {
       maxChars: settings.chatMaxChars,
-      broadcastCooldownFrames: settings.broadcastCooldownFrames,
-      chatCooldownFrames: settings.chatCooldownFrames,
+      broadcastCooldownFrames: secondsToTicks(settings.broadcastCooldown),
+      chatCooldownFrames: secondsToTicks(settings.chatCooldown),
     });
     Object.assign(artDeps, { artBytesMax: settings.artBytesMax });
     Object.assign(mailDeps, {
-      chatCooldownFrames: settings.chatCooldownFrames,
+      chatCooldownFrames: secondsToTicks(settings.chatCooldown),
       mailBodyMax: settings.mailBodyMax,
       mailboxMax: settings.mailboxMax,
     });
     Object.assign(boardDeps, {
-      chatCooldownFrames: settings.chatCooldownFrames,
+      chatCooldownFrames: secondsToTicks(settings.chatCooldown),
       boardPostsMax: settings.boardPostsMax,
       boardPostMax: settings.boardPostMax,
     });
@@ -992,7 +998,11 @@ export function createGame(deps: GameDeps): Game {
     },
     auditTrail: (q) => auditTrail(db, q),
     now: isoNow,
-    durations: () => settings,
+    durations: () => ({
+      banMinutes: settings.banLength / 60,
+      ipBanMinutes: settings.ipBanLength / 60,
+      jailMinutes: settings.jailSentence / 60,
+    }),
     setClass: (characterId, code) => {
       setClassCode(db, characterId, code, isoNow());
       // An online target's promotions read the live class.
@@ -1536,7 +1546,7 @@ export function createGame(deps: GameDeps): Game {
       // A sentence in force puts the prisoner in jail wherever they were saved; a player on the
       // jail map without one (it ended while they were away) goes to their respawn point.
       const now = isoNow();
-      noteAddress(db, account.id, ip, now, settings.addressHistoryDays);
+      noteAddress(db, account.id, ip, now, settings.addressHistory / DAY_SECONDS);
       const sentence = characterJail(db, c.id);
       const jailUntil = isActive(sentence, now)
         ? sentence?.expiresAt
@@ -1574,7 +1584,7 @@ export function createGame(deps: GameDeps): Game {
         loading: 0,
         n: 0,
         resumed,
-        saveIn: settings.saveIntervalTicks,
+        saveIn: secondsToTicks(settings.saveInterval),
         lastSent: null,
         forceYou: false,
         broadcastIn: 0,

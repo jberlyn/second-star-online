@@ -67,9 +67,9 @@ import { audienceCounts, logChat } from "./log.ts";
 export interface ChatDeps {
   /** Setting `chatMaxChars`. */
   maxChars: number;
-  /** Setting `broadcastCooldownFrames` (original 1000). */
+  /** Setting `broadcastCooldown`, in frames (original 1000). */
   broadcastCooldownFrames: number;
-  /** Setting `chatCooldownFrames`. */
+  /** Setting `chatCooldown`, in frames. */
   chatCooldownFrames: number;
   /** The lines of a help file by the name `gethelp` sent, or null if there is none. */
   helpLines(topic: string): readonly string[] | null;

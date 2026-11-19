@@ -26,7 +26,13 @@ import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { findMapByCoords } from "../src/persistence/maps.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/settings.ts";
-import { defaultSettings, resolveSettings, SETTING_GROUPS, settingRows } from "../src/settings.ts";
+import {
+  defaultSettings,
+  resolveSettings,
+  SETTING_GROUPS,
+  secondsToTicks,
+  settingRows,
+} from "../src/settings.ts";
 import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
 import { fallbackTarget, respawnTarget, tick, warp } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld } from "../src/systems/world/world.ts";
@@ -111,10 +117,10 @@ describe("settings", () => {
     expect(defaultSettings().startPoint).toEqual({ map: "x1000y992", x: 6, y: 4 });
     expect(defaultSettings().fallbackPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
     saveSettingOverride(db, "startPoint", { map: "x1y2", x: 3, y: 4 }, NOW);
-    saveSettingOverride(db, "saveIntervalTicks", "not a number", NOW);
+    saveSettingOverride(db, "saveInterval", "not a number", NOW);
     const s = resolveSettings(loadSettingOverrides(db));
     expect(s.startPoint).toEqual({ map: "x1y2", x: 3, y: 4 });
-    expect(s.saveIntervalTicks).toBe(600);
+    expect(s.saveInterval).toBe(30);
   });
 
   test("walk speed is not a setting: no row, and a stored stepFrames is ignored", () => {
@@ -129,10 +135,26 @@ describe("settings", () => {
     const groups = rows.map((r) => r.group).filter((g, i, all) => all.indexOf(g) === i);
     expect(groups).toEqual([...SETTING_GROUPS]);
     expect(rows.every((r) => r.tooltip !== "")).toBe(true);
-    expect(rows.find((r) => r.key === "jailMinutes")).toMatchObject({
+    expect(rows.find((r) => r.key === "jailSentence")).toMatchObject({
       group: "Moderation and security",
-      unit: "minutes",
+      kind: "duration",
+      value: 600,
+      min: 60,
     });
+    expect(rows.find((r) => r.key === "banLength")).toMatchObject({ zero: "permanent" });
+  });
+
+  test("every duration is set in whole seconds; no setting is counted in frames", () => {
+    const rows = settingRows(defaultSettings());
+    for (const r of rows) {
+      expect(r.key).not.toMatch(/Frames|Ticks|Ms$|Seconds|Minutes|Days/);
+    }
+    const s = defaultSettings();
+    expect([s.saveInterval, s.chatCooldown, s.broadcastCooldown, s.resumeGrace]).toEqual([
+      30, 3, 50, 30,
+    ]);
+    expect(secondsToTicks(s.chatCooldown)).toBe(60);
+    expect(resolveSettings(new Map([["chatCooldown", "1.5"]])).chatCooldown).toBe(3);
   });
 });
 

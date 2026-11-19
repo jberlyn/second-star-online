@@ -315,4 +315,52 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       );
     }
   });
+
+  test("duration_settings moves duration overrides to their new keys, in whole seconds", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261119_37"),
+    );
+    const old: Record<string, string> = {
+      saveIntervalTicks: "1200",
+      broadcastCooldownFrames: "0",
+      chatCooldownFrames: "5",
+      resumeGraceMs: "1500",
+      npcChatterSeconds: "45",
+      lootDecayMinutes: "60",
+      jailMinutes: "40",
+      banMinutes: "0",
+      ipBanMinutes: "1440",
+      addressHistoryDays: "7",
+      chatLogRetentionDays: '"lots"',
+      startPoint: JSON.stringify({ map: "x1y1", x: 2, y: 3 }),
+    };
+    for (const [key, value] of Object.entries(old)) {
+      db.run("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, 'then')", [key, value]);
+    }
+    runMigrations(db, all);
+    const rows = db.query("SELECT key, value, updated_at FROM settings ORDER BY key").all() as {
+      key: string;
+      value: string;
+      updated_at: string;
+    }[];
+    expect(Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]))).toEqual({
+      saveInterval: 60,
+      broadcastCooldown: 0,
+      // 5 frames is a quarter second: a wait that was on stays on.
+      chatCooldown: 1,
+      resumeGrace: 2,
+      npcChatter: 45,
+      lootDecay: 3600,
+      jailSentence: 2400,
+      banLength: 0,
+      ipBanLength: 86_400,
+      addressHistory: 604_800,
+      // A value that was not a number is dropped, as the loader ignored it.
+      startPoint: { map: "x1y1", x: 2, y: 3 },
+    });
+    expect(rows.every((r) => r.updated_at === "then")).toBe(true);
+  });
 });

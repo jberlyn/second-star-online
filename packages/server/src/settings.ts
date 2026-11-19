@@ -6,12 +6,7 @@
 
 import { z } from "zod";
 
-import {
-  ARCHIVED_PRIZES,
-  prizeLineOk,
-  type SettingRow,
-  STEP_FRAMES,
-} from "@secondstaronline/shared";
+import { ARCHIVED_PRIZES, prizeLineOk, type SettingRow, TICK_HZ } from "@secondstaronline/shared";
 
 const point = z.strictObject({
   map: z.string().regex(/^x-?\d+y-?\d+$/),
@@ -25,6 +20,7 @@ export type SettingForm =
   | { kind: "point" }
   | { kind: "points" }
   | { kind: "int"; min: number; max: number }
+  | { kind: "duration"; min: number; max: number; zero?: string }
   | { kind: "bool" }
   | { kind: "map" }
   | { kind: "maps" }
@@ -49,8 +45,6 @@ interface SettingDef<T> {
   group: SettingGroup;
   label: string;
   form: SettingForm;
-  /** What a number counts, so the window can show it as time (protocol `SettingRow.unit`). */
-  unit?: SettingRow["unit"];
   /** Shown to operators in the settings form. */
   tooltip: string;
   /**
@@ -77,6 +71,29 @@ function def<T>(d: SettingDef<T>): SettingDef<T> {
   return d;
 }
 
+const MINUTE = 60;
+const HOUR = 3600;
+export const DAY_SECONDS = 86_400;
+const DAY = DAY_SECONDS;
+/** Ten years, the longest /ban or /jail (shared `DURATION_MAX_MINUTES`). */
+const TEN_YEARS = 3650 * DAY;
+
+/**
+ * A length of time, stored and sent in whole seconds; the Settings window reads and writes it as
+ * time ("30s", "5m", "7d"). `zero` says what 0 means when it is allowed.
+ */
+function duration(min: number, max: number, zero?: string) {
+  return {
+    form: { kind: "duration" as const, min, max, ...(zero ? { zero } : {}) },
+    schema: z.number().int().min(min).max(max),
+  };
+}
+
+/** A setting's seconds as frames (1/20 s), the unit the world tick counts. */
+export function secondsToTicks(seconds: number): number {
+  return seconds * TICK_HZ;
+}
+
 export const SETTINGS = {
   startPoint: def({
     group: "World",
@@ -100,16 +117,13 @@ export const SETTINGS = {
     source:
       "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), which every death used because no 1.6 map saved a respawn point; keeps its tile on the seed map.",
   }),
-  saveIntervalTicks: def({
+  saveInterval: def({
     group: "Server",
     label: "Save every",
-    unit: "frames",
-    form: { kind: "int", min: 20, max: 72_000 },
-    schema: z.number().int().min(20).max(72_000),
-    default: 600,
-    tooltip:
-      "How often (in 1/20 s frames) online characters are saved, besides saves on logout and map change.",
-    source: "The original client uploaded its character file every 20-40 s; 600 frames = 30 s.",
+    ...duration(1, HOUR),
+    default: 30,
+    tooltip: "How often online characters are saved, besides saves on logout and map change.",
+    source: "The original client uploaded its character file every 20-40 s.",
   }),
   chatMaxChars: def({
     group: "Chat",
@@ -120,27 +134,22 @@ export const SETTINGS = {
     tooltip: "The longest chat line a player can send, in characters. Longer lines are cut.",
     source: "SSO addition. The original had no limit.",
   }),
-  broadcastCooldownFrames: def({
+  broadcastCooldown: def({
     group: "Chat",
     label: "Broadcast wait",
-    unit: "frames",
-    form: { kind: "int", min: 0, max: 72_000 },
-    schema: z.number().int().min(0).max(72_000),
-    default: 1000,
-    tooltip:
-      "Frames (1/20 s) a player must wait between broadcasts (lines starting with '). 1000 = 50 s.",
+    ...duration(0, HOUR, "off"),
+    default: 50,
+    tooltip: "How long a player must wait between broadcasts (lines starting with ').",
     source:
-      "1.6's broadcast cooldown of 1000 frames, unused in 1.6 because the registered flag was always 1; SSO applies it to everyone.",
+      "1.6's broadcast cooldown of 1000 frames (50 s), unused in 1.6 because the registered flag was always 1; SSO applies it to everyone.",
   }),
-  chatCooldownFrames: def({
+  chatCooldown: def({
     group: "Chat",
     label: "Chat wait",
-    unit: "frames",
-    form: { kind: "int", min: 0, max: 72_000 },
-    schema: z.number().int().min(0).max(72_000),
-    default: 60,
+    ...duration(0, HOUR, "off"),
+    default: 3,
     tooltip:
-      "Frames (1/20 s) a player must wait between local chat lines and emotes. 60 = 3 s; 0 turns it off.",
+      "How long a player must wait between local chat lines and emotes. Also paces IMs, guild and room lines, mail and board posts.",
     source: "SSO addition. The original had no local chat limit.",
   }),
   mailBodyMax: def({
@@ -210,27 +219,23 @@ export const SETTINGS = {
       'Also print "<name> has logged on." and "<name> has logged off." in everyone\'s chat. Off in First Star Online 1.6.',
     source: "SSO addition. 1.6 printed nothing.",
   }),
-  lootDecayMinutes: def({
+  lootDecay: def({
     group: "Items",
     label: "Loot lasts",
-    unit: "minutes",
-    form: { kind: "int", min: 1, max: 10_080 },
-    schema: z.number().int().min(1).max(10_080),
-    default: 30,
+    ...duration(MINUTE, 7 * DAY),
+    default: 30 * MINUTE,
     tooltip:
-      "Minutes before items dropped by monsters disappear from the ground. Player drops and items placed with /drop never disappear.",
+      "How long items dropped by monsters stay on the ground. Player drops and items placed with /drop never disappear.",
     source:
       "SSO addition. The original never removed ground items; its 20 slots per map were the only limit.",
   }),
-  npcChatterSeconds: def({
+  npcChatter: def({
     group: "World",
     label: "NPC chatter every",
-    unit: "seconds",
-    form: { kind: "int", min: 10, max: 3600 },
-    schema: z.number().int().min(10).max(3600),
+    ...duration(10, HOUR),
     default: 150,
     tooltip:
-      "Seconds between an NPC's random lines (RND| lines in its NPC file), such as a God's. Everyone on the map sees them.",
+      "Time between an NPC's random lines (RND| lines in its NPC file), such as a God's. Everyone on the map sees them.",
     source:
       "1.6 rolled per player against a ladder that never scaled; 150 s was its average with one player on the map.",
   }),
@@ -320,77 +325,66 @@ export const SETTINGS = {
     source:
       "1.6's News.txt, sent at game entry and printed when it differs from the client's saved news preference. 1.6 operators edited the file by hand.",
   }),
-  resumeGraceMs: def({
+  resumeGrace: def({
     group: "Server",
     label: "Reconnect grace",
-    unit: "ms",
-    form: { kind: "int", min: 0, max: 300_000 },
-    schema: z.number().int().min(0).max(300_000),
-    default: 30_000,
+    ...duration(0, 5 * MINUTE, "off"),
+    default: 30,
     tooltip: "How long after a dropped connection a player can reconnect without logging in again.",
     source: "SSO addition (resumed sessions); the same 30 s grace as blackjack.",
   }),
-  jailMinutes: def({
+  jailSentence: def({
     group: "Moderation and security",
     label: "Jail sentence",
-    unit: "minutes",
-    form: { kind: "int", min: 1, max: 5_256_000 },
-    schema: z.number().int().min(1).max(5_256_000),
-    default: 10,
+    ...duration(MINUTE, TEN_YEARS),
+    default: 10 * MINUTE,
     tooltip:
-      "Minutes a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to their respawn point (the Fallback map if its map is gone).",
+      "How long a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to their respawn point (the Fallback map if its map is gone).",
     source:
-      '1.6\'s server settings file had "Jail Sentence Time (1800 = 1 minute):8000" in frames, counted only while online and restarted on every entry. SSO stores sentences and counts them in minutes.',
+      '1.6\'s server settings file had "Jail Sentence Time (1800 = 1 minute):8000" in frames, counted only while online and restarted on every entry. SSO stores sentences and counts them in real time.',
   }),
-  banMinutes: def({
+  banLength: def({
     group: "Moderation and security",
     label: "Ban length",
-    unit: "minutes",
-    form: { kind: "int", min: 0, max: 5_256_000 },
-    schema: z.number().int().min(0).max(5_256_000),
+    ...duration(0, TEN_YEARS, "permanent"),
     default: 0,
-    tooltip: "Minutes a /ban without a duration lasts. 0 makes it permanent until /unban.",
+    tooltip: "How long a /ban without a duration lasts. 0 makes it permanent until /unban.",
     source: "SSO addition. 1.6's bans were permanent.",
   }),
-  ipBanMinutes: def({
+  ipBanLength: def({
     group: "Moderation and security",
     label: "IP ban length",
-    unit: "minutes",
-    form: { kind: "int", min: 0, max: 5_256_000 },
-    schema: z.number().int().min(0).max(5_256_000),
-    default: 43_200,
+    ...duration(0, TEN_YEARS, "permanent"),
+    default: 30 * DAY,
     tooltip:
-      "Minutes a /banip without a duration lasts (43200 = 30 days). 0 makes it permanent. Addresses are reassigned over time, so a permanent IP ban can lock out someone else later.",
+      "How long a /banip without a duration lasts. 0 makes it permanent. Addresses are reassigned over time, so a permanent IP ban can lock out someone else later.",
     source: "SSO addition. 1.6's IP bans were permanent (and never checked).",
   }),
-  addressHistoryDays: def({
+  addressHistory: def({
     group: "Moderation and security",
     label: "Keep login addresses",
-    form: { kind: "int", min: 0, max: 3650 },
-    schema: z.number().int().min(0).max(3650),
-    default: 180,
+    ...duration(0, TEN_YEARS, "forever"),
+    default: 180 * DAY,
     tooltip:
-      "Days an account's login addresses are kept for /banip <name> and /banlist after it last used them. 0 keeps them forever.",
+      "How long an account's login addresses are kept for /banip <name> and /banlist after it last used them. 0 keeps them forever.",
     source: "SSO addition: /banip <name> needs the addresses an account has used.",
   }),
-  chatLogRetentionDays: def({
+  chatLogRetention: def({
     group: "Moderation and security",
     label: "Keep chat log",
-    form: { kind: "int", min: 0, max: 3650 },
-    schema: z.number().int().min(0).max(3650),
-    default: 90,
+    ...duration(0, TEN_YEARS, "forever"),
+    default: 90 * DAY,
     tooltip:
-      "Days the chat log keeps each line players write to each other (say, /me, broadcasts, IMs, guild, rooms, staff chat, away texts and bios) for /chatlog and admin:chatlog. 0 keeps them forever.",
+      "How long the chat log keeps each line players write to each other (say, /me, broadcasts, IMs, guild, rooms, staff chat, away texts and bios) for /chatlog and admin:chatlog. 0 keeps them forever.",
     source: "SSO addition. 1.6 logged no chat on the server.",
   }),
-  auditLogRetentionDays: def({
+  auditLogRetention: def({
     group: "Moderation and security",
     label: "Keep audit log",
-    form: { kind: "int", min: 0, max: 3650 },
-    schema: z.number().int().min(0).max(3650),
+    ...duration(0, TEN_YEARS, "forever"),
     default: 0,
     tooltip:
-      "Days the audit log keeps each staff action (admin commands, editor saves, setting and role changes, /chatlog lookups) for admin:audit. 0 keeps them forever. Bans, jails and pardons are kept regardless, for /banlist.",
+      "How long the audit log keeps each staff action (admin commands, editor saves, setting and role changes, /chatlog lookups) for admin:audit. 0 keeps them forever. Bans, jails and pardons are kept regardless, for /banlist.",
     source: "SSO addition. 1.6 kept no audit log.",
   }),
   loginFailsPerIp: def({
@@ -482,7 +476,6 @@ export function settingRows(current: Settings): SettingRow[] {
       group: def.group,
       label: def.label,
       tooltip: def.tooltip,
-      ...(def.unit ? { unit: def.unit } : {}),
       ...def.form,
       value: structuredClone((current as Record<string, unknown>)[key]),
       default: structuredClone(def.default),

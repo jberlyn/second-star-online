@@ -389,7 +389,7 @@ describe("the jail", () => {
     expect(bob.jailUntil).toBeNull();
   });
 
-  test("a /jail without a duration lasts the jailMinutes setting", () => {
+  test("a /jail without a duration lasts the jailSentence setting", () => {
     const { imm, say, jails } = scene();
     say(imm, "/jail Bob being rude");
     expect(jails.get("Bob")).toMatchObject({
@@ -1001,9 +1001,9 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     sent.length = 0;
     game.intent(alice.characterId, {
       t: "settingsSave",
-      values: { jailMinutes: 100, chatMaxChars: 150 },
+      values: { jailSentence: 6000, chatMaxChars: 150 },
     });
-    expect(game.settings.jailMinutes).toBe(100);
+    expect(game.settings.jailSentence).toBe(6000);
     expect(loadSettingOverrides(db).get("chatMaxChars")).toBe("150");
     expect(sent).toContainEqual({
       to: bob.characterId,
@@ -1015,7 +1015,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     });
     expect(
       recentAudit(db, 10).map((r) => `${r.command} ${r.target} ${r.before} ${r.after}`),
-    ).toEqual(["settings jailMinutes 10 100", "settings chatMaxChars 200 150"]);
+    ).toEqual(["settings jailSentence 600 6000", "settings chatMaxChars 200 150"]);
   });
 
   test("Settings: a bad value refuses the whole save with its key and label", async () => {
@@ -1023,7 +1023,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     const alice = await make("Alice", "immortal");
     game.intent(alice.characterId, {
       t: "settingsSave",
-      values: { jailMinutes: 5, chatMaxChars: 0 },
+      values: { jailSentence: 300, chatMaxChars: 0 },
     });
     expect(sent.at(-1)?.msg).toMatchObject({
       t: "settingsResult",
@@ -1031,27 +1031,27 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       key: "chatMaxChars",
       text: expect.stringMatching(/^Longest chat line/),
     });
-    expect(game.settings.jailMinutes).toBe(10);
+    expect(game.settings.jailSentence).toBe(600);
   });
 
   test("/Refresh reads the stored settings again", async () => {
     const { game, make } = await start();
     const alice = await make("Alice", "immortal");
-    saveSettingOverride(db, "jailMinutes", 42, NOW);
-    expect(game.settings.jailMinutes).toBe(10);
+    saveSettingOverride(db, "jailSentence", 2520, NOW);
+    expect(game.settings.jailSentence).toBe(600);
     game.intent(alice.characterId, { t: "chat", text: "/Refresh" });
-    expect(game.settings.jailMinutes).toBe(42);
+    expect(game.settings.jailSentence).toBe(2520);
   });
 
   test("the cheat log: admin intents from anyone else are refused and written", async () => {
     const { game, make } = await start();
     const alice = await make("Alice", "immortal");
     const bob = await make("Bob");
-    game.intent(bob.characterId, { t: "settingsSave", values: { jailMinutes: 1 } });
+    game.intent(bob.characterId, { t: "settingsSave", values: { jailSentence: 60 } });
     game.intent(bob.characterId, { t: "npcSave", name: "Cril", text: "GLD|1" });
     // An immortal's editor SAVE from outside the editor is no honest client's either.
     game.intent(alice.characterId, { t: "editLoad", mx: 1, my: 1 });
-    expect(game.settings.jailMinutes).toBe(10);
+    expect(game.settings.jailSentence).toBe(600);
     expect(recentCheats(db, 10)).toEqual([
       { name: "Bob", ip: "10.0.0.1", reason: "Attempted Admin Access" },
       { name: "Bob", ip: "10.0.0.1", reason: "Attempting to get Admin access" },

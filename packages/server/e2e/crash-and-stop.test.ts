@@ -164,7 +164,7 @@ describe("a kill inside a write lands on the state before it", () => {
 
   test("bj:offlineCredit: a forfeit after the grace is killed after the debit", async () => {
     const { dbPath, before } = await build((db) => {
-      saveSettingOverride(db, "resumeGraceMs", 1000, "2026-11-10T00:00:00.000Z");
+      saveSettingOverride(db, "resumeGrace", 1, "2026-11-10T00:00:00.000Z");
       db.run("UPDATE characters SET gold = 100, x = 9, y = 6 WHERE name = 'Alice'");
       db.run("UPDATE characters SET gold = 100, x = 11, y = 6 WHERE name = 'Bob'");
       const map = db

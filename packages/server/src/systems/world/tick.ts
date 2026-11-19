@@ -122,9 +122,9 @@ export interface TickDeps {
   minute?(): number;
   /** Wall-clock ms, for loot decay. */
   now?(): number;
-  /** Minutes before monster loot decays (setting `lootDecayMinutes`, default 30). */
+  /** Minutes before monster loot decays (setting `lootDecay`, in minutes, default 30). */
   lootDecayMinutes?: number;
-  /** Seconds between a talking NPC's RND lines (setting `npcChatterSeconds`, default 150). */
+  /** Seconds between a talking NPC's RND lines (setting `npcChatter`, default 150). */
   npcChatterSeconds?: number;
   /** "Chars Drop Items On Death" (setting `dropOnDeath`, default on). */
   dropOnDeath?: boolean;

@@ -1,6 +1,6 @@
 /**
  * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; both staff roles read and post
- * `-` lines in green. Mo warps Bob. Alice sets `jailMinutes` in Settings and jails Bob in the seeded
+ * `-` lines in green. Mo warps Bob. Alice sets `jailSentence` in Settings and jails Bob in the seeded
  * jail map x0y0: his shout fails, and when the wall clock passes his sentence he is on the start
  * point. Her `/warpscript` pulls Bob over when he broadcasts the keyword. `/warpmeto`,
  * `/Location`, `/IPlookup`, a counted `/drop`, a forged editor save that lands in `/CheatFile`, and
@@ -142,14 +142,16 @@ describe("admin commands, roles, bans and settings", () => {
     ]);
   });
 
-  test("Settings: Alice sets jailMinutes; the window shows it", async () => {
+  test("Settings: Alice sets jailSentence; the window shows it", async () => {
     alice.clear();
     alice.send({ t: "settingsOpen" });
     const rows = await alice.waitFor((m) => m.t === "settings");
-    expect(rows.t === "settings" && rows.rows.find((r) => r.key === "jailMinutes")?.value).toBe(10);
-    alice.send({ t: "settingsSave", values: { jailMinutes: 2, broadcastCooldownFrames: 0 } });
+    expect(rows.t === "settings" && rows.rows.find((r) => r.key === "jailSentence")?.value).toBe(
+      600,
+    );
+    alice.send({ t: "settingsSave", values: { jailSentence: 120, broadcastCooldown: 0 } });
     await alice.waitFor((m) => m.t === "settingsResult" && m.ok);
-    expect(server.game.settings.jailMinutes).toBe(2);
+    expect(server.game.settings.jailSentence).toBe(120);
   });
 
   test("the seeded jail confines Bob until his sentence ends", async () => {

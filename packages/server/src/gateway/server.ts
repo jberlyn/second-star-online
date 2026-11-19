@@ -7,7 +7,7 @@
  * - Each connection has a token bucket, so a flood is cut off. The game's own cadence (one step per
  *   16 ticks) is enforced by the sim, not here.
  * - Sessions: a login issues a resume token. When a connection drops, the character leaves the map
- *   at once and is saved; for `resumeGraceMs` the token lets the client reconnect without a
+ *   at once and is saved; for `resumeGrace` the token lets the client reconnect without a
  *   password, which counts as a resumed session, not a login.
  * - A second login to the same account replaces the first.
  */
@@ -646,7 +646,7 @@ export function startGateway(options: GatewayOptions): Gateway {
     game.leave(d.characterId);
     const s = d.token ? sessions.get(d.token) : undefined;
     if (s) {
-      s.expiresAt = clock.now() + game.settings.resumeGraceMs;
+      s.expiresAt = clock.now() + game.settings.resumeGrace * 1000;
     }
   }
 

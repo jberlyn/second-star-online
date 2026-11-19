@@ -110,16 +110,27 @@ export interface SettingRow {
   tooltip: string;
   /**
    * The control: a map tile (`point`), a list of them (`points`), a whole number (`int`, with
-   * `min`/`max`), on/off (`bool`), a map name or none (`map`), a list of map names (`maps`), a time
-   * zone (`zone`), the four Assassin prize lines (`prizes`), or free text (`text`, the login news).
+   * `min`/`max`), a length of time (`duration`, whole seconds from `min` to `max`), on/off
+   * (`bool`), a map name or none (`map`), a list of map names (`maps`), a time zone (`zone`), the
+   * four Assassin prize lines (`prizes`), or free text (`text`, the login news).
    */
-  kind: "point" | "points" | "int" | "bool" | "map" | "maps" | "zone" | "prizes" | "text";
+  kind:
+    | "point"
+    | "points"
+    | "int"
+    | "duration"
+    | "bool"
+    | "map"
+    | "maps"
+    | "zone"
+    | "prizes"
+    | "text";
   value: unknown;
   default: unknown;
   min?: number;
   max?: number;
-  /** What an `int` counts: frames (1/20 s), milliseconds or minutes; the window shows it as time. */
-  unit?: "frames" | "ms" | "seconds" | "minutes";
+  /** What a `duration` of 0 means, such as "off" or "permanent", when 0 is allowed. */
+  zero?: string;
 }
 
 export type AdminServerMsg =

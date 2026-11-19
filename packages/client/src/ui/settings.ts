@@ -6,7 +6,7 @@
  * - The settings are grouped in sections (`SettingRow.group`), each with its explanation
  *   always shown under it (every setting carries one; hover-only hints never show on a
  *   tablet).
- * - A number counted in frames, milliseconds or minutes shows the time it stands for.
+ * - A length of time is typed as time ("30s", "5m", "1d 12h") and sent in whole seconds.
  * - A changed setting is marked and can be reset to its default; the footer counts the
  *   unsaved changes.
  * - Save checks each value here first, then sends every value. The server applies them for
@@ -108,42 +108,69 @@ export function parsePoints(text: string): unknown[] {
     });
 }
 
-/** "0.8 s", "50 s", "6 min 40 s", "2 h 5 min". */
-export function durationText(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) {
-    return "";
+const UNITS = [
+  { s: 86_400, short: "d", words: ["d", "day", "days"] },
+  { s: 3600, short: "h", words: ["h", "hr", "hrs", "hour", "hours"] },
+  { s: 60, short: "m", words: ["m", "min", "mins", "minute", "minutes"] },
+  { s: 1, short: "s", words: ["s", "sec", "secs", "second", "seconds"] },
+] as const;
+const WEEK = { s: 604_800, words: ["w", "wk", "wks", "week", "weeks"] } as const;
+const UNIT_SECONDS = new Map<string, number>(
+  [...UNITS, WEEK].flatMap((u) => u.words.map((w) => [w, u.s] as const)),
+);
+const DURATION_PART = /(\d+(?:\.\d+)?)\s*([a-z]+)/y;
+
+/** Whole seconds as a duration field shows them: "30s", "5m", "1d 12h", "0". */
+export function formatDuration(seconds: number): string {
+  let left = Math.max(0, Math.round(seconds));
+  const parts: string[] = [];
+  for (const u of UNITS) {
+    const n = Math.floor(left / u.s);
+    if (n > 0) {
+      parts.push(`${n}${u.short}`);
+      left -= n * u.s;
+    }
   }
-  if (seconds < 60) {
-    return `${Math.round(seconds * 100) / 100} s`;
-  }
-  const total = Math.round(seconds);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const parts = [h ? `${h} h` : "", m ? `${m} min` : "", s ? `${s} s` : ""];
-  return parts.filter((p) => p !== "").join(" ");
+  return parts.length > 0 ? parts.join(" ") : "0";
 }
 
-/** What a number of `unit` lasts: frames are 1/20 s (the original ran its puppet tempo at 20). */
-export function unitSeconds(n: number, unit: NonNullable<SettingRow["unit"]>): number {
-  switch (unit) {
-    case "frames":
-      return n / 20;
-    case "ms":
-      return n / 1000;
-    case "seconds":
-      return n;
-    case "minutes":
-      return n * 60;
+/**
+ * Reads a duration field: numbers with units (s, m, h, d, w or their words, like "5 min" or
+ * "2 hours"), several in a row ("1h 30m"), rounded to whole seconds. "0" alone, or the row's word
+ * for 0 ("off", "permanent", "forever"), is 0. Null when it is not a time.
+ */
+export function parseDuration(text: string, zero?: string): number | null {
+  const t = text.trim().toLowerCase();
+  if (t === "0" || (zero !== undefined && t === zero.toLowerCase())) {
+    return 0;
   }
+  let at = 0;
+  let total = 0;
+  let parts = 0;
+  while (at < t.length) {
+    while (t[at] === " " || t[at] === ",") {
+      at++;
+    }
+    if (at >= t.length) {
+      break;
+    }
+    DURATION_PART.lastIndex = at;
+    const m = DURATION_PART.exec(t);
+    const unit = m ? UNIT_SECONDS.get(m[2] ?? "") : undefined;
+    if (!m || unit === undefined) {
+      return null;
+    }
+    total += Number(m[1]) * unit;
+    parts++;
+    at = DURATION_PART.lastIndex;
+  }
+  return parts > 0 ? Math.round(total) : null;
 }
 
-const UNIT_WORD: Record<NonNullable<SettingRow["unit"]>, string> = {
-  frames: "frames",
-  ms: "ms",
-  seconds: "s",
-  minutes: "min",
-};
+/** A duration as the window names it: "30s", or "0 (off)" where 0 has a meaning. */
+function durationValueText(r: SettingRow, seconds: number): string {
+  return seconds === 0 && r.zero ? `0 (${r.zero})` : formatDuration(seconds);
+}
 
 /** A value as the row's "Reset to default" names it. */
 export function valueText(r: SettingRow, v: unknown): string {
@@ -164,12 +191,10 @@ export function valueText(r: SettingRow, v: unknown): string {
       return Array.isArray(v) ? v.join(", ") : "";
     case "text":
       return typeof v === "string" && v !== "" ? v : "none";
-    case "int": {
-      const n = Number(v);
-      return r.unit
-        ? `${n} ${UNIT_WORD[r.unit]} (${durationText(unitSeconds(n, r.unit))})`
-        : `${n}`;
-    }
+    case "int":
+      return `${Number(v)}`;
+    case "duration":
+      return durationValueText(r, Number(v));
   }
 }
 
@@ -195,6 +220,19 @@ export function checkValue(r: SettingRow, v: unknown): string | null {
         r.max ?? Number.MAX_SAFE_INTEGER,
         "a number",
       );
+    case "duration": {
+      if (typeof v !== "number" || !Number.isInteger(v)) {
+        return "Write a time like 30s, 5m, 2h or 7d.";
+      }
+      const min = r.min ?? 0;
+      const max = r.max ?? Number.MAX_SAFE_INTEGER;
+      if (v >= min && v <= max) {
+        return null;
+      }
+      return min === 0
+        ? `Enter a time up to ${formatDuration(max)}${r.zero ? `, or 0 for ${r.zero}` : ""}.`
+        : `Enter a time from ${formatDuration(min)} to ${formatDuration(max)}.`;
+    }
     case "map":
       return v === null || (typeof v === "string" && MAP_NAME.test(v))
         ? null
@@ -420,25 +458,25 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
           n.value = String(v);
         };
         fields.push(n);
-        control.append(...fields);
-        if (r.unit) {
-          const unit = r.unit;
+        control.append(n);
+        break;
+      }
+      case "duration": {
+        const d = input("text", "settings-duration", r.label);
+        d.placeholder = "30s, 5m, 2h, 7d";
+        d.spellcheck = false;
+        d.autocomplete = "off";
+        // A field that is not a time reads as its text, so the check can name the fault.
+        read = () => parseDuration(d.value, r.zero) ?? d.value;
+        write = (v) => {
+          d.value = typeof v === "number" ? formatDuration(v) : String(v);
+        };
+        fields.push(d);
+        control.append(d);
+        if (r.zero) {
           const hint = document.createElement("span");
           hint.className = "settings-unit";
-          const show = () => {
-            const v = read() as number;
-            const t = durationText(unitSeconds(v, unit));
-            hint.textContent =
-              Number.isFinite(v) && t !== "" ? `${UNIT_WORD[unit]} = ${t}` : UNIT_WORD[unit];
-          };
-          const update = write;
-          write = (v) => {
-            update(v);
-            show();
-          };
-          for (const f of fields) {
-            f.addEventListener("input", show);
-          }
+          hint.textContent = `0 = ${r.zero}`;
           control.append(hint);
         }
         break;

@@ -195,13 +195,13 @@ Roles live on the `accounts` table, not on character names:
 
 Every ban, unban, IP ban, jail, release and pardon is written to the `moderation_log` table with its reason, who made it, their rank at that moment and when it ends. The in-force bans, IP bans and jails are in `account_bans`, `ip_bans` and `jails`; a row whose `expires_at` has passed no longer applies.
 
-- **Duration and reason.** `/ban`, `/jail` and `/banip` take an optional duration after the name, then an optional reason: `/ban Berlyn 3d being a rude person`. A duration is a number with `m`, `h`, `d` or `w` (`30m`, `12h`, `7d`, `2w`, or combined, such as `1d12h`), up to 10 years, or `perm`. Without one, the `banMinutes`, `ipBanMinutes` and `jailMinutes` settings apply. Write `perm` or a duration first if a reason starts with something like `1d`. `/unban`, `/unjail`, `/unbanip` and `/pardon` take a reason too.
+- **Duration and reason.** `/ban`, `/jail` and `/banip` take an optional duration after the name, then an optional reason: `/ban Berlyn 3d being a rude person`. A duration is a number with `m`, `h`, `d` or `w` (`30m`, `12h`, `7d`, `2w`, or combined, such as `1d12h`), up to 10 years, or `perm`. Without one, the `banLength`, `ipBanLength` and `jailSentence` settings apply. Write `perm` or a duration first if a reason starts with something like `1d`. `/unban`, `/unjail`, `/unbanip` and `/pardon` take a reason too.
 - **What the player sees.** A banned player reads the original alert and the ban's end, such as `Banned until 2026-11-20 14:00 UTC.` or `This ban is permanent.` The reason is never shown to the player; it is for staff, through `/banlist`.
 - **Who may change an action.** Only the staff member who made a ban or jail, or an immortal, can change its length or lift it. Re-running `/ban` or `/jail` on someone already banned or jailed replaces the length. Moderators who disagree with each other's bans settle it with the team.
 - **Jail.** A sentence runs in real time, including while the prisoner is offline, and works on offline characters: they arrive in jail at their next login, and a sentence that ended while they were away sends them to their respawn point (see [Respawn points](#respawn-points)). Staff warps cannot take a prisoner out or put a player in; use `/jail` and `/unjail`.
 - **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Immortals are never stopped by IP bans, so an operator cannot lock themselves out.
-- **Login addresses.** The server keeps the addresses each account logs in from for `addressHistoryDays` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only immortals can read them.
-- **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, made at the rank the banner has now (at least moderator, or immortal if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set `jailMinutes` again if you had changed it.
+- **Login addresses.** The server keeps the addresses each account logs in from for `addressHistory` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only immortals can read them.
+- **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, made at the rank the banner has now (at least moderator, or immortal if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
 
 ### The chat log
 
@@ -220,7 +220,7 @@ Each line records the time (UTC, to the second), the channel, the sender's accou
   SSO_DB=sso.sqlite bun run admin:chatlog --since 2026-11-18T09:00Z --until 2026-11-18T10:00Z -n 200
   ```
 
-- **Retention.** Lines older than `chatLogRetentionDays` (default 90) are deleted at startup and every hour; `0` keeps them forever.
+- **Retention.** Lines older than `chatLogRetention` (default 90 days) are deleted at startup and every hour; `0` keeps them forever.
 - **Telling your players.** SSO does not show players a notice that their chat is logged. If you run a public server, say so in your privacy policy or terms of service, including that private messages are logged and readable by your staff, and how long you keep them.
 
 ### Reading the audit log
@@ -235,7 +235,7 @@ docker compose exec -T second-star-online bun run admin:audit 50
 SSO_DB=sso.sqlite bun run admin:audit 50
 ```
 
-Audit rows are kept forever by default. Set `auditLogRetentionDays` to delete rows older than that many days, at startup and every hour. Bans, jails and pardons live in their own moderation log, which `/banlist` reads and which is never pruned, since current bans refer back to it.
+Audit rows are kept forever by default. Set `auditLogRetention` to delete rows older than that, at startup and every hour. Bans, jails and pardons live in their own moderation log, which `/banlist` reads and which is never pruned, since current bans refer back to it.
 
 ## In-game commands
 
@@ -251,7 +251,7 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/iplookup <name>` | `moderator` | Online player (word 2) | Prints the target's IP address (refuses if a moderator targets an immortal). |
 | `/kick <name>` | `moderator` | Online player (word 2) | Sends kick notice and disconnects the target (refuses if a moderator targets an immortal). |
 | `/warp <name> <map> <x> <y>` | `moderator` | Online player, `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Warps target to `<map>` at `(x, y)` (single-space split, cut at `*`). A map that does not exist is refused: "There is no map …". |
-| `/jail <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Jails the player in the seeded jail (`x0y0` at `4, 4`) for the duration or `jailMinutes`, then sends them to their respawn point. Moderators can jail players only. |
+| `/jail <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Jails the player in the seeded jail (`x0y0` at `4, 4`) for the duration or `jailSentence`, then sends them to their respawn point. Moderators can jail players only. |
 | `/unjail <name> [reason]` | `moderator` | Character name (word 2) | Ends the sentence early and sends an online prisoner to their respawn point, as a sentence's end does (only the jailer or an immortal). |
 | `/warptome <name>` | `moderator` | Online player (word 2) | Warps target to your current map and tile (refuses if a moderator targets an immortal). |
 | `/warpmeto <name>` | `moderator` | Online player (word 2) | Warps you to the target's current map and tile. |
@@ -259,9 +259,9 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/refresh` | `moderator` | None | Reloads settings overrides from the database and applies them to everyone online. |
 | `/cheatfile` | `immortal` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. Each look is audited. |
 | `/inventory` | `moderator` | None | Prints your 15 bag lines as held by the server (`Name-qty`). |
-| `/banip <name\|ip> [latest\|all] [duration] [reason]` | `immortal` | Character name, else an IPv4 or IPv6 address (word 2) | Bans the character's last address (`latest`, the default) or every address it has used, or the typed address (an IPv6 address bans its /64), for the duration or `ipBanMinutes`. Disconnects matching sessions except immortals'. |
+| `/banip <name\|ip> [latest\|all] [duration] [reason]` | `immortal` | Character name, else an IPv4 or IPv6 address (word 2) | Bans the character's last address (`latest`, the default) or every address it has used, or the typed address (an IPv6 address bans its /64), for the duration or `ipBanLength`. Disconnects matching sessions except immortals'. |
 | `/unbanip <name\|ip> [reason]` | `immortal` | Character name or address (word 2) | Lifts every IP ban made on the character's addresses, or the ban on that address. |
-| `/ban <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Bans the target's account for the duration or `banMinutes` (cannot ban yourself; moderators can ban players only) and kicks if online. Re-banning replaces the length (only the banner or an immortal). |
+| `/ban <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Bans the target's account for the duration or `banLength` (cannot ban yourself; moderators can ban players only) and kicks if online. Re-banning replaces the length (only the banner or an immortal). |
 | `/unban <name> [reason]` | `moderator` | Character name (word 2) | Lifts the ban on the target's account (only the banner or an immortal). |
 | `/banlist [page\|name\|ip]` | `moderator` | None, a page number, a character name, or (immortals) an address | Lists the bans and jails in force, 10 a page, and for immortals the IP bans; with a name, that character's standing, last 10 actions and (immortals) addresses; with an address, its ban and the characters seen there. |
 | `/chatlog <name> [count] [channel]` | `immortal` | Character name (word 2), online or offline; a count up to `100` and a channel (`say`, `emote`, `broadcast`, `im`, `awayReply`, `away`, `guild`, `room`, `staff`, `bio`) in either order | Prints the character's newest logged lines (default 20) and the IMs sent to them, oldest first. Each lookup is audited. See [The chat log](#the-chat-log). |
@@ -278,7 +278,9 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 
 Immortals open **Admin → Settings** from the top menu bar. Clicking **SAVE** validates every field on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values.
 
-Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second), milliseconds (`ms`), or minutes. For rate limits, `0` disables the limit; rate-limit counters live in memory and reset on server restart, grouping IPv6 addresses by `/64` prefix.
+Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w` (or words such as `5 min` or `2 hours`), several in a row if needed (`1h 30m`, `1d12h`). The window shows them the same way. Each is stored in whole seconds, so a value in the `settings` table or an audit row is a number of seconds. Where `0` is allowed, the window says what it means (`off`, `permanent` or `forever`). For rate limits, `0` disables the limit; rate-limit counters live in memory and reset on server restart, grouping IPv6 addresses by `/64` prefix.
+
+**Upgrading from 1.7.0 or earlier:** the duration settings were renamed to drop their unit, and their stored values are converted to seconds when the server starts: `saveIntervalTicks` → `saveInterval`, `broadcastCooldownFrames` → `broadcastCooldown`, `chatCooldownFrames` → `chatCooldown`, `resumeGraceMs` → `resumeGrace`, `npcChatterSeconds` → `npcChatter`, `lootDecayMinutes` → `lootDecay`, `jailMinutes` → `jailSentence`, `banMinutes` → `banLength`, `ipBanMinutes` → `ipBanLength`, `addressHistoryDays` → `addressHistory`, `chatLogRetentionDays` → `chatLogRetention` and `auditLogRetentionDays` → `auditLogRetention`. A frame count rounds to the nearest second (a wait that was on stays at least `1s`), and milliseconds round to the nearest second. Update any scripts that write these keys to the `settings` table.
 
 ### World
 
@@ -290,15 +292,15 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 | `hazardMap` | Server Spirit map | `null` | Map `x<mx>y<my>` or empty | Map where the Server Spirit throws fireballs and lightning bolts every 0.35 s. |
 | `treasureMaps` | Treasure maps | `[]` | Up to 100 map names (`x<mx>y<my>`) | Maps where buried treasure can spawn for a Shovel; empty disables buried treasure. |
 | `houseDecayTimeZone` | House decay time zone | `UTC` | Valid IANA time zone | Calendar time zone used for monthly house-decay checks. |
-| `npcChatterSeconds` | NPC chatter every | `150` | `10`–`3600` seconds | How often an NPC with `RND\|` lines in its NPC file, such as a God, says one of them; everyone on the map sees it. |
+| `npcChatter` | NPC chatter every | `2m 30s` | `10s`–`1h` | How often an NPC with `RND\|` lines in its NPC file, such as a God, says one of them; everyone on the map sees it. |
 
 ### Chat
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `chatMaxChars` | Longest chat line | `200` | `1`–`500` chars | Maximum typed chat line length; longer lines are truncated. |
-| `broadcastCooldownFrames` | Broadcast wait | `1000` (50 s) | `0`–`72000` frames (up to 1 h) | Minimum wait between `'` broadcasts (`0` disables). |
-| `chatCooldownFrames` | Chat wait | `60` (3 s) | `0`–`72000` frames (up to 1 h) | Minimum wait between local chat lines and emotes (`0` disables). |
+| `broadcastCooldown` | Broadcast wait | `50s` | `0`–`1h` | Minimum wait between `'` broadcasts (`0` disables). |
+| `chatCooldown` | Chat wait | `3s` | `0`–`1h` | Minimum wait between local chat lines and emotes, also applied to IMs, guild and room lines, mail and board posts (`0` disables). |
 | `mailBodyMax` | Longest mail | `2000` | `1`–`4000` chars | Maximum mail body length; longer bodies are truncated. |
 | `mailboxMax` | Messages per mailbox | `50` | `1`–`1000` | Maximum messages kept per mailbox; newer mail drops the oldest. |
 | `boardPostsMax` | Posts per board | `200` | `1`–`1000` | Maximum posts kept per message board; newer posts evict the oldest (there is no board moderation tool). |
@@ -312,7 +314,7 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `lootDecayMinutes` | Loot lasts | `30` | `1`–`10080` minutes | Minutes before monster loot disappears from the ground (player drops and `/drop` items never decay). |
+| `lootDecay` | Loot lasts | `30m` | `1m`–`7d` | How long before monster loot disappears from the ground (player drops and `/drop` items never decay). |
 | `dropOnDeath` | Drop an item on death | `true` | `true` / `false` | Whether dying characters may drop one random item from their bag, never crystals (immortals always drop). |
 | `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–4th place prizes when an Assassin's Game ends. |
 
@@ -320,19 +322,19 @@ Time-based settings count in **frames** (`1/20` second; `20` frames = `1` second
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `saveIntervalTicks` | Save every | `600` (30 s) | `20`–`72000` frames (1 s–1 h) | Periodic save interval for online characters, besides saves on logout and map change. |
-| `resumeGraceMs` | Reconnect grace | `30000` (30 s) | `0`–`300000` ms (up to 5 min) | How long a dropped connection can resume with its token without logging in again. |
+| `saveInterval` | Save every | `30s` | `1s`–`1h` | Periodic save interval for online characters, besides saves on logout and map change. |
+| `resumeGrace` | Reconnect grace | `30s` | `0`–`5m` | How long a dropped connection can resume with its token without logging in again (`0` disables). |
 
 ### Moderation and security
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `jailMinutes` | Jail sentence | `10` | `1`–`5256000` minutes (up to 10 years) | Length of a `/jail` without a duration. Sentences run in real time, offline too, then send the prisoner to their respawn point. |
-| `banMinutes` | Ban length | `0` (permanent) | `0`–`5256000` minutes | Length of a `/ban` without a duration (`0` is permanent until `/unban`). |
-| `ipBanMinutes` | IP ban length | `43200` (30 days) | `0`–`5256000` minutes | Length of a `/banip` without a duration (`0` is permanent). Addresses are reassigned, so permanent IP bans can catch someone else later. |
-| `addressHistoryDays` | Keep login addresses | `180` | `0`–`3650` days | How long an account's login addresses are kept after their last use, for `/banip <name>` and `/banlist` (`0` keeps them forever). |
-| `chatLogRetentionDays` | Keep chat log | `90` | `0`–`3650` days | How long the chat log keeps each line, for `/chatlog` and `admin:chatlog` (`0` keeps them forever). See [The chat log](#the-chat-log). |
-| `auditLogRetentionDays` | Keep audit log | `0` | `0`–`3650` days | How long the audit log keeps each staff action, for `admin:audit` (`0` keeps them forever). Bans, jails and pardons are kept regardless. See [Reading the audit log](#reading-the-audit-log). |
+| `jailSentence` | Jail sentence | `10m` | `1m`–`3650d` (10 years) | Length of a `/jail` without a duration. Sentences run in real time, offline too, then send the prisoner to their respawn point. |
+| `banLength` | Ban length | `0` (permanent) | `0`–`3650d` | Length of a `/ban` without a duration (`0` is permanent until `/unban`). |
+| `ipBanLength` | IP ban length | `30d` | `0`–`3650d` | Length of a `/banip` without a duration (`0` is permanent). Addresses are reassigned, so permanent IP bans can catch someone else later. |
+| `addressHistory` | Keep login addresses | `180d` | `0`–`3650d` | How long an account's login addresses are kept after their last use, for `/banip <name>` and `/banlist` (`0` keeps them forever). |
+| `chatLogRetention` | Keep chat log | `90d` | `0`–`3650d` | How long the chat log keeps each line, for `/chatlog` and `admin:chatlog` (`0` keeps them forever). See [The chat log](#the-chat-log). |
+| `auditLogRetention` | Keep audit log | `0` (forever) | `0`–`3650d` | How long the audit log keeps each staff action, for `admin:audit` (`0` keeps them forever). Bans, jails and pardons are kept regardless. See [Reading the audit log](#reading-the-audit-log). |
 | `loginFailsPerIp` | Failed logins per address | `20` | `0`–`1000` | Failed logins per address (IPv6 `/64`) in 5 minutes before refusal (`0` disables; moderators and immortals are not refused). |
 | `loginFailsPerAccount` | Failed logins per account | `5` | `0`–`1000` | Wrong passwords per address+account pair in 5 minutes before refusal (`0` disables; no role exemption). |
 | `createsPerIp` | New characters per address | `3` | `0`–`1000` | Character creations per address (IPv6 `/64`) per hour (`0` disables; no role exemption). |

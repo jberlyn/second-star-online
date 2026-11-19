@@ -32,7 +32,7 @@ import {
 } from "./tables.ts";
 
 export interface CasinoDeps {
-  /** Ticks of reconnect grace (setting `resumeGraceMs`). */
+  /** Ticks of reconnect grace (setting `resumeGrace`). */
   graceTicks: number;
   /** Gold for a character that is not logged in. */
   addGoldOffline(id: string, delta: number): void;

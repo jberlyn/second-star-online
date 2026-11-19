@@ -455,7 +455,7 @@ describe("the chat log in the database", () => {
     expect(chatLogLines(db, { limit: 10 })).toEqual([]);
 
     insertChatLog(db, [old("2020-01-01T00:00:00.000Z", "kept")], "");
-    saveSettingOverride(db, "chatLogRetentionDays", 0, "");
+    saveSettingOverride(db, "chatLogRetention", 0, "");
     pruneChatLog(db, new Date(wall).toISOString(), 0);
     await start();
     expect(chatLogLines(db, { limit: 10 }).map((r) => r.text)).toEqual(["kept"]);
@@ -470,7 +470,7 @@ describe("the chat log in the database", () => {
     const targets = () => recentAudit(db, 10).map((r) => r.target);
     expect(targets()).toEqual(["Ancient", "Older"]);
 
-    saveSettingOverride(db, "auditLogRetentionDays", 10, "");
+    saveSettingOverride(db, "auditLogRetention", 10 * 86_400, "");
     const second = (await start()).game;
     // 10 days before 2026-11-18 09:00 is 2026-11-08 09:00.
     expect(targets()).toEqual(["Older"]);

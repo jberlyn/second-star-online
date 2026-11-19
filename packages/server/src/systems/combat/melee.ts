@@ -100,7 +100,7 @@ export interface MeleeCtx {
   rng: Rng;
   /** Wall-clock ms, for loot decay. */
   now?: number;
-  /** Minutes before monster loot decays (setting `lootDecayMinutes`). */
+  /** Minutes before monster loot decays (setting `lootDecay`, in minutes). */
   lootDecayMinutes?: number;
   /** Where loot is recorded; without it (unit tests) kills drop nothing. */
   world?: World;

@@ -27,7 +27,7 @@ import { logChat } from "./log.ts";
 export interface ImDeps {
   /** Setting `chatMaxChars`. */
   maxChars: number;
-  /** Setting `chatCooldownFrames`. */
+  /** Setting `chatCooldown`, in frames. */
   chatCooldownFrames: number;
 }
 

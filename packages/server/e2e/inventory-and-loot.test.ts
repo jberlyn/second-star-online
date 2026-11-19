@@ -93,12 +93,11 @@ describe("inventory, equipment and loot", () => {
     server = startTestServer({
       rng,
       isoNow: iso,
-      // One-minute loot decay so the script can watch it go (setting `lootDecayMinutes`).
+      // One-minute loot decay so the script can watch it go (setting `lootDecay`).
       prepare: (db) =>
-        db.run(
-          "INSERT INTO settings (key, value, updated_at) VALUES ('lootDecayMinutes', '1', ?)",
-          [iso()],
-        ),
+        db.run("INSERT INTO settings (key, value, updated_at) VALUES ('lootDecay', '60', ?)", [
+          iso(),
+        ]),
     });
     const bot = await connectBot(server.wsUrl);
     for (const name of ["Alice", "Bob"]) {

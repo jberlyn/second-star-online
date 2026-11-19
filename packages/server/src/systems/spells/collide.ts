@@ -49,7 +49,7 @@ export const MONSTER_SPELL_HEAL_COLOR = 46;
 export interface CollideCtx {
   rng: Rng;
   item: ItemCtx;
-  /** Minutes before monster loot decays (setting `lootDecayMinutes`). */
+  /** Minutes before monster loot decays (setting `lootDecay`, in minutes). */
   lootDecayMinutes: number;
   /** The world tick: which of F2, F3, F1 a standing Airship rider shows. */
   tick?: number;

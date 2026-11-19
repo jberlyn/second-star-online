@@ -25,7 +25,7 @@ export interface BoardStore {
 }
 
 export interface BoardDeps {
-  /** Setting `chatCooldownFrames`. */
+  /** Setting `chatCooldown`, in frames. */
   chatCooldownFrames: number;
   /** Setting `boardPostsMax`. */
   boardPostsMax: number;

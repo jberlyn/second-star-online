@@ -260,10 +260,10 @@ describe("the playthrough", () => {
     king.clear();
     king.send({ t: "settingsOpen" });
     await king.waitFor((m) => m.t === "settings");
-    king.send({ t: "settingsSave", values: { jailMinutes: 40 } });
+    king.send({ t: "settingsSave", values: { jailSentence: 2400 } });
     await king.waitFor((m) => m.t === "settingsResult" && m.ok);
     king.send({ t: "settingsClose" });
-    expect(server.game.settings.jailMinutes).toBe(40);
+    expect(server.game.settings.jailSentence).toBe(2400);
 
     // The NPCs, in front of King at the start tile.
     await say(king, "/roster 1 Amber");

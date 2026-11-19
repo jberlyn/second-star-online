@@ -30,7 +30,7 @@ export interface MailStore {
 }
 
 export interface MailDeps {
-  /** Setting `chatCooldownFrames`. */
+  /** Setting `chatCooldown`, in frames. */
   chatCooldownFrames: number;
   /** Setting `mailBodyMax`. */
   mailBodyMax: number;

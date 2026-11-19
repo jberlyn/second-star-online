@@ -409,6 +409,9 @@ body {
 .settings-int {
   width: 96px;
 }
+.settings-duration {
+  width: 104px;
+}
 .settings-map {
   width: 104px;
 }

@@ -114,7 +114,7 @@ export interface AdminDeps {
   moderation: ModerationStore;
   /** Wall-clock ISO time: when actions start and whether they have ended. */
   now(): string;
-  /** The default lengths in minutes (settings `banMinutes`, `ipBanMinutes`, `jailMinutes`). */
+  /** The default lengths in minutes (settings `banLength`, `ipBanLength`, `jailSentence`). */
   durations(): { banMinutes: number; ipBanMinutes: number; jailMinutes: number };
   setClass(characterId: string, code: number): void;
   /** The chat log's newest lines for a name, oldest first (written up to now first). */
