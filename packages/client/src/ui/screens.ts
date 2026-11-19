@@ -11,6 +11,7 @@ import {
   CREATION_POINTS,
   HEADS_BY_SEX,
   nextHead,
+  prevHead,
   type Sex,
   STAT_MAX,
   STAT_MIN,
@@ -297,15 +298,14 @@ export function creationScreen(
   void a.loadGroup("paperdoll").then(drawHead);
   items.push({ el: artImg(ui(a, 159)), x: 438, y: 202, w: 46, h: 45, z: 17 });
   items.push({ el: preview, x: 438, y: 202, w: 46, h: 45, z: 18 });
-  const arrow = () => {
-    v.head = nextHead(v.sex, v.head);
+  const stepHead = (step: typeof nextHead) => () => {
+    v.head = step(v.sex, v.head);
     drawHead();
   };
   items.push({ el: artImg(ui(a, 197)), x: 433, y: 252, w: 29, h: 23, z: 28, art: true });
   items.push({ el: artImg(ui(a, 198)), x: 459, y: 252, w: 30, h: 23, z: 29, art: true });
-  // Both arrows' scripts are the same "next" cycle.
   items.push({
-    el: hit("Previous head", "creation-previous-head", arrow),
+    el: hit("Previous head", "creation-previous-head", stepHead(prevHead)),
     x: 433,
     y: 252,
     w: 29,
@@ -313,7 +313,7 @@ export function creationScreen(
     z: 100,
   });
   items.push({
-    el: hit("Next head", "creation-next-head", arrow),
+    el: hit("Next head", "creation-next-head", stepHead(nextHead)),
     x: 459,
     y: 252,
     w: 30,

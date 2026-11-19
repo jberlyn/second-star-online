@@ -13,8 +13,9 @@ export type StartClass = 1 | 2 | 3;
 export const START_CLASSES: Readonly<Record<StartClass, string>> = classesData.creation.classes;
 
 /**
- * Heads the screen can show. Choosing Male shows Head1 and Female shows Head2. Both arrows step
- * through the same cycle (the two arrows are identical): 1→3→4→5→6→9→10→1 and 2→7→8→11→2. These are
+ * Heads the screen can show. Choosing Male shows Head1 and Female shows Head2. The right arrow
+ * steps forward through the cycle and the left arrow back: 1→3→4→5→6→9→10→1 and 2→7→8→11→2 (in 1.6
+ * both arrows stepped forward). These are
  * all 11 heads in the `Characters` cast (`HEAD1`-`HEAD11`); the original's code also maps
  * Head12-17, which have no art.
  */
@@ -28,6 +29,16 @@ export function nextHead(sex: Sex, head: number): number {
   const cycle = HEADS_BY_SEX[sex];
   const i = cycle.indexOf(head);
   return cycle[(i + 1) % cycle.length] ?? cycle[0] ?? 1;
+}
+
+/** The head before `head` in its sex's cycle; a head outside the cycle goes to its first. */
+export function prevHead(sex: Sex, head: number): number {
+  const cycle = HEADS_BY_SEX[sex];
+  const i = cycle.indexOf(head);
+  if (i < 0) {
+    return cycle[0] ?? 1;
+  }
+  return cycle[(i - 1 + cycle.length) % cycle.length] ?? cycle[0] ?? 1;
 }
 
 /** Points to spend (50). Every stat starts at 1. */

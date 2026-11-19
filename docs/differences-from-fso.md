@@ -2701,6 +2701,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 ### progression
 
+#### The left head arrow steps back
+- **Kind:** Bug fixed
+- **What you notice:** On the new character screen the right arrow shows the next head and the left arrow the previous one.
+- **1.6:** Both arrows ran the same script, so each stepped forward through the heads.
+- **SSO:** The left arrow steps back through the same cycle, wrapping from the first head to the last.
+- **Why:** A pair of opposite arrows that both go forward is a slip, not a feature.
+- **In the code:** `packages/shared/src/rules/progression/creation.ts` (`nextHead`, `prevHead`), `packages/client/src/ui/screens.ts` (`creationScreen`)
+- **Pinned by:** `bug fixed: the left arrow steps back through the cycle` (packages/shared/tests/progression/creation.test.ts)
+
 #### A rider must land before challenging
 - **Kind:** Bug fixed
 - **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are. If you fly onto an arena tile and are defeated there, or type quit, you leave the arena still flying, with your airship.

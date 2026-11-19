@@ -11,6 +11,7 @@ import {
   nameError,
   nextHead,
   padStartingSkills,
+  prevHead,
   startingCharacter,
   statsError,
 } from "../../src/rules/progression/creation.ts";
@@ -65,11 +66,23 @@ describe("stats (the + and − buttons)", () => {
 });
 
 describe("heads (the head arrows)", () => {
-  test("each sex has its own head cycle; both arrows go the same way", () => {
+  test("each sex has its own head cycle; the right arrow steps forward", () => {
     expect(HEADS_BY_SEX).toEqual({ 1: [1, 3, 4, 5, 6, 9, 10], 2: [2, 7, 8, 11] });
     expect(nextHead(1, 10)).toBe(1);
     expect(nextHead(2, 11)).toBe(2);
     expect(nextHead(1, 6)).toBe(9);
+  });
+
+  test("bug fixed: the left arrow steps back through the cycle", () => {
+    expect(prevHead(1, 1)).toBe(10);
+    expect(prevHead(1, 9)).toBe(6);
+    expect(prevHead(2, 2)).toBe(11);
+    expect(prevHead(2, 8)).toBe(7);
+    for (const sex of [1, 2] as const) {
+      for (const head of HEADS_BY_SEX[sex]) {
+        expect(prevHead(sex, nextHead(sex, head))).toBe(head);
+      }
+    }
   });
 
   test("a head from the other sex's cycle is refused", () => {
