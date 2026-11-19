@@ -13,11 +13,14 @@ export const ORIGINAL_SIDECARS_PATH = "assets/original-sidecars.json";
 /** The key of an original member's entry: `<cast>/<member name>` (`Chars/31-F1-N`). */
 export const originalSidecarKey = (cast: string, name: string): string => `${cast}/${name}`;
 
-/** Every entry, by key. A missing file has none. Throws naming the file on a bad entry. */
+/**
+ * Every entry, by key. Throws naming the file when it is missing or has a bad entry: a build
+ * without it would silently leave original art uncorrected (the Docker image once did).
+ */
 export function readOriginalSidecars(repoRoot: string): Map<string, OriginalSidecar> {
   const path = join(repoRoot, ORIGINAL_SIDECARS_PATH);
   if (!existsSync(path)) {
-    return new Map();
+    throw new Error(`${ORIGINAL_SIDECARS_PATH} is missing; the asset and data builds need it`);
   }
   try {
     return new Map(

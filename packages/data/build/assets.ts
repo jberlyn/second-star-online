@@ -164,10 +164,7 @@ function inputHash(
   const h = new Bun.CryptoHasher("sha256");
   h.update(`v${BUILD_VERSION}\n`);
   h.update(readFileSync(join(repoRoot, mainManifestPath)));
-  const sidecars = join(repoRoot, ORIGINAL_SIDECARS_PATH);
-  if (existsSync(sidecars)) {
-    h.update(readFileSync(sidecars));
-  }
+  h.update(readFileSync(join(repoRoot, ORIGINAL_SIDECARS_PATH)));
   for (const movie of UI_SUB_MOVIES) {
     const path = join(repoRoot, subManifestPath(movie));
     if (existsSync(path)) {

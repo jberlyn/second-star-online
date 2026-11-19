@@ -599,6 +599,18 @@ describe("mirrored north frames", () => {
     expect(expected).toHaveLength(267 + 137);
   }, 60_000);
 
+  test("a build without original-sidecars.json fails instead of leaving art uncorrected", () => {
+    const repo = mkdtempSync(join(tmp, "no-sidecars-"));
+    expect(() => readOriginalSidecars(repo)).toThrow(/original-sidecars\.json is missing/);
+  });
+
+  test("the image build copies original-sidecars.json in", () => {
+    const dockerfile = readFileSync(join(import.meta.dir, "../../../Dockerfile"), "utf8");
+    expect(dockerfile).toContain(
+      "COPY assets/original-sidecars.json ./assets/original-sidecars.json",
+    );
+  });
+
   test("an original sidecar must name a built member, and its flags pass the added-art checks", () => {
     const members = [
       { group: "bodies", cast: "Chars", name: "31-F1-N" },

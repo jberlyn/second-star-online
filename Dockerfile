@@ -25,6 +25,7 @@ COPY packages/shared ./packages/shared
 COPY packages/client ./packages/client
 COPY assets/original ./assets/original
 COPY assets/added ./assets/added
+COPY assets/original-sidecars.json ./assets/original-sidecars.json
 RUN bun run data:build && bun run build
 
 FROM oven/bun:1.4.0@sha256:18639686662e5cd8a963ffb967dd130034a2a2d076a52e65dfd4fe18f75cc038 AS runtime
