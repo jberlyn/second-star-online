@@ -140,7 +140,7 @@ describe("settings", () => {
     expect("stepFrames" in resolveSettings(loadSettingOverrides(db))).toBe(false);
   });
 
-  test("the Settings window's rows come page by page, every one explained", () => {
+  test("the Server Settings window's rows come page by page, every one explained", () => {
     const rows = settingRows(defaultSettings());
     const pages = rows.map((r) => r.page).filter((g, i, all) => all.indexOf(g) === i);
     // Every page has rows, and the rows come in the sidebar's order.

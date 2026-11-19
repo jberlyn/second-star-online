@@ -1378,20 +1378,6 @@ body {
   border-top: 1px solid #808080;
   border-bottom: 1px solid #fff;
 }
-.quit-black {
-  width: 100%;
-  height: 100%;
-  background: #000;
-}
-.quit-text {
-  text-align: center;
-  font:
-    12px Arial,
-    sans-serif;
-  line-height: 20px;
-  color: #fff;
-  pointer-events: none;
-}
 
 /* ---- the NPC editor (frame 311) ---------------------------------------------------------- */
 .npced-list {

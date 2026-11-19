@@ -1,8 +1,13 @@
 /**
- * 1.6's menus, drawn above the stage as the menu bar.
+ * The menu bar above the stage, regrouped from 1.6's menus 500 and 502 by what each item is for.
  *
- * The classic layout draws menu 500 (File, Edit, Game) and, for an immortal, menu 502's Admin
- * between Edit and Game, plus SSO's Options. Plugins stays dropped.
+ * 1.6 had File, Edit, Game and Plugins, plus Admin for an immortal. SSO's bar is Game (your
+ * character and the people you know), Chat (rooms), Admin for an immortal (tools and events) and
+ * Options (browser preferences). Quit Game is dropped (a page cannot close its tab) and so is
+ * Plugins. Admin Chat sits with the other rooms, shown to an immortal only.
+ *
+ * Out of the game only what works there shows: Options always, and on the login and creation
+ * screens Game with Return To Title Screen alone. The rest appears once a character is in play.
  */
 
 import type { Menu, MenuItem } from "./menubar.ts";
@@ -10,6 +15,8 @@ import type { Menu, MenuItem } from "./menubar.ts";
 export interface MenuState {
   /** A character is in the game (an editor counts). */
   inPlay(): boolean;
+  /** The title screen is up: Return To Title Screen has nowhere to go. */
+  atTitle(): boolean;
   immortal(): boolean;
   sharp(): boolean;
   sfx(): boolean;
@@ -20,16 +27,14 @@ export type AssassinMode = "GO" | "LIGHTNING" | "STOP";
 
 export interface MenuActions {
   returnToTitle(): void;
-  quitGame(): void;
   clearChat(): void;
   openFriends(): void;
   sendIm(): void;
   enterRoom(room: Room): void;
   worldEditor(): void;
   npcEditor(): void;
-  settings(): void;
+  serverSettings(): void;
   editNewspaper(): void;
-  adminChat(): void;
   returnToGame(): void;
   assassin(mode: AssassinMode): void;
   setSharp(on: boolean): void;
@@ -38,52 +43,57 @@ export interface MenuActions {
 
 const SEP: MenuItem = { kind: "sep" };
 
-/** The desktop bar's menus, in 1.6's order. */
+/** The desktop bar's menus: Game, Chat, Admin (immortals), Options. */
 export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
   const play = () => state.inPlay();
-  const item = (label: string, run: () => void, enabled?: () => boolean): MenuItem => ({
+  const item = (label: string, run: () => void): Extract<MenuItem, { kind: "item" }> => ({
     kind: "item",
     label,
     run,
-    ...(enabled ? { enabled } : {}),
   });
+  const inGame = (label: string, run: () => void) => ({ ...item(label, run), visible: play });
+  const room = (label: string, r: Room) => inGame(label, () => act.enterRoom(r));
   return [
-    // Menu 500: File > Return To Title Screen and Quit Game both work before login.
     {
-      title: "File",
-      items: [item("Return To Title Screen", act.returnToTitle), item("Quit Game", act.quitGame)],
-    },
-    { title: "Edit", items: [item("Clear Chat Text", act.clearChat, play)] },
-    // Menu 502 adds Admin for an immortal; Settings stands in the File Editor's place.
-    {
-      title: "Admin",
-      visible: () => state.immortal(),
+      title: "Game",
+      visible: () => play() || !state.atTitle(),
       items: [
-        item("World Editor", act.worldEditor, play),
-        item("NPC Editor", act.npcEditor, play),
-        item("Settings", act.settings, play),
-        SEP,
-        item("Admin Chat", act.adminChat, play),
-        item("Return To Game", act.returnToGame, play),
-        SEP,
-        item("Begin Assassin's Game", () => act.assassin("GO"), play),
-        item("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING"), play),
-        item("End Assassin's Game", () => act.assassin("STOP"), play),
+        inGame("Open Friend's List", act.openFriends),
+        inGame("Send Instant Message", act.sendIm),
+        // Anyone may write the paper their stand shows (1.6 offered it to immortals only).
+        inGame("Edit Newspaper", act.editNewspaper),
+        { kind: "sep", visible: play },
+        // Works before login too: it leaves the login or creation screen.
+        item("Return To Title Screen", act.returnToTitle),
       ],
     },
     {
-      title: "Game",
+      title: "Chat",
+      visible: play,
       items: [
-        item("Open Friend's List", act.openFriends, play),
+        room("General Chat", "general"),
+        room("New Player Chat", "newPlayer"),
+        room("Trading Post Chat", "tradingPost"),
+        room("Guild Chat", "guild"),
+        { ...room("Admin Chat", "admin"), visible: () => play() && state.immortal() },
         SEP,
-        item("Send Instant Message", act.sendIm, play),
-        // Anyone may write the paper their stand shows (1.6 offered it to immortals only).
-        item("Edit Newspaper", act.editNewspaper, play),
+        item("Clear Chat Text", act.clearChat),
+      ],
+    },
+    // Server Settings stands in the File Editor's place.
+    {
+      title: "Admin",
+      visible: () => play() && state.immortal(),
+      items: [
+        item("World Editor", act.worldEditor),
+        item("NPC Editor", act.npcEditor),
+        item("Return To Game", act.returnToGame),
         SEP,
-        item("General Chat", () => act.enterRoom("general"), play),
-        item("New Player Chat", () => act.enterRoom("newPlayer"), play),
-        item("Trading Post Chat", () => act.enterRoom("tradingPost"), play),
-        item("Guild Chat", () => act.enterRoom("guild"), play),
+        item("Server Settings", act.serverSettings),
+        SEP,
+        item("Begin Assassin's Game", () => act.assassin("GO")),
+        item("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING")),
+        item("End Assassin's Game", () => act.assassin("STOP")),
       ],
     },
     // SSO's own: the browser preferences, in 1.6's Title Case.

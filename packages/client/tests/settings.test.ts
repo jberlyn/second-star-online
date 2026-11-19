@@ -1,5 +1,5 @@
 /**
- * The Settings window (ui/settings.ts) and the admin messages the app handles:
+ * The Server Settings window (ui/settings.ts) and the admin messages the app handles:
  * `rules`, `restore`, `role`, `settingsResult`.
  */
 
@@ -144,7 +144,7 @@ function win() {
   };
 }
 
-describe("the Settings window", () => {
+describe("the Server Settings window", () => {
   test("a sidebar link per page; the first page opens, every explanation shown, not hovered", () => {
     const { el, link, shownKeys } = win();
     expect([...el.querySelectorAll(".settings-link")].map((a) => a.textContent)).toEqual([
@@ -504,7 +504,7 @@ describe("admin messages in the app", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("Settings in the Admin menu asks for the rows; the reply opens the window", () => {
+  test("Server Settings in the Admin menu asks for the rows; the reply opens the titled window", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -514,11 +514,12 @@ describe("admin messages in the app", () => {
     c.onMessage(welcome);
     c.onMessage({ t: "role", role: "immortal" });
     c.onMessage(SNAPSHOT);
-    menuClick(root, "Admin", "Settings");
+    menuClick(root, "Admin", "Server Settings");
     expect(c.sent).toContainEqual({ t: "settingsOpen" });
     c.onMessage({ t: "settings", pages: PAGES, rows: ROWS });
     const w = root.querySelector(".settings")?.closest<HTMLElement>(".sso-window");
     expect(w?.hidden).toBe(false);
+    expect(w?.textContent).toContain("Server Settings");
     c.onMessage({ t: "settingsResult", ok: true });
     expect(w?.querySelector(".settings-status")?.textContent).toBe(SETTINGS_SAVED);
     // A demotion closes it and hides the Admin section.
@@ -542,7 +543,7 @@ describe("admin messages in the app", () => {
     c.onMessage({ t: "chat", text: "*** You are being kicked.", color: 0 });
     c.onMessage({ t: "kicked", text: "You have been kicked from the game." });
     c.onGone(null);
-    // The connection is gone, but the game (here its open Settings window) stays until OK.
+    // The connection is gone, but the game (here its open Server Settings window) stays until OK.
     expect(w?.hidden).toBe(false);
     const ok = document.querySelector<HTMLButtonElement>('[role="alertdialog"] .alert-ok');
     expect(ok?.closest("[role=alertdialog]")?.textContent).toContain(

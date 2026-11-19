@@ -370,8 +370,8 @@ export interface Game {
 }
 
 /**
- * The intents an editor takes and the Settings window's, whose ≡ menu item stays reachable in an
- * editor; every other intent is ignored while editing.
+ * The intents an editor takes and the Server Settings window's, whose ≡ menu item stays
+ * reachable in an editor; every other intent is ignored while editing.
  */
 const EDITOR_INTENTS = new Set([
   "editOpen",
@@ -1033,7 +1033,7 @@ export function createGame(deps: GameDeps): Game {
   };
   chatDeps.admin = adminDeps;
 
-  /** Settings window SAVE: immortals only; every changed value audited. */
+  /** Server Settings window SAVE: immortals only; every changed value audited. */
   const settingsSave = (p: Player, values: Record<string, unknown>) => {
     if (p.role !== "immortal") {
       cheat(p.name, p.ip, "Attempted Admin Access");

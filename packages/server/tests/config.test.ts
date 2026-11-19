@@ -16,7 +16,7 @@ describe("server config from the environment", () => {
     });
   });
 
-  test("times are written as in the Settings window; counts are whole numbers", () => {
+  test("times are written as in the Server Settings window; counts are whole numbers", () => {
     expect(
       readServerConfig({
         SSO_SAVE_INTERVAL: "2m",
@@ -31,7 +31,7 @@ describe("server config from the environment", () => {
 
   test("a value that does not read, or is out of range, refuses startup by name", () => {
     const r = readServerConfig({
-      // A bare number has no unit: refused, as in the Settings window.
+      // A bare number has no unit: refused, as in the Server Settings window.
       SSO_SAVE_INTERVAL: "30",
       SSO_RECONNECT_GRACE: "10m",
       SSO_SOCKETS_PER_IP: "ten",

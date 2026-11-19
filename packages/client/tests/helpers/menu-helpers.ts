@@ -49,9 +49,11 @@ export const openMenu = (root: ParentNode, title: string): HTMLElement | null =>
   const t = [...root.querySelectorAll<HTMLElement>(".menu-title")].find(
     (b) => b.textContent === title,
   );
-  if (t?.getAttribute("aria-expanded") !== "true") {
-    t?.click();
+  // Reopen an open menu, so its items reflect the current state.
+  if (t?.getAttribute("aria-expanded") === "true") {
+    t.click();
   }
+  t?.click();
   return root.querySelector<HTMLElement>(".menu-drop");
 };
 

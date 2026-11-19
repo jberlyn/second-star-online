@@ -24,7 +24,7 @@ const point = z.strictObject({
 });
 export type MapPoint = z.infer<typeof point>;
 
-/** How the Settings window shows a setting (protocol `SettingRow`). */
+/** How the Server Settings window shows a setting (protocol `SettingRow`). */
 export type SettingForm =
   | { kind: "point" }
   | { kind: "points" }
@@ -39,8 +39,8 @@ export type SettingForm =
   | { kind: "text" };
 
 /**
- * The Settings window's sidebar pages, in order, grouped by what an operator is trying to do.
- * Every page here is a list of settings (`kind: "rows"`); pages of other kinds (such as
+ * The Server Settings window's sidebar pages, in order, grouped by what an operator is trying to
+ * do. Every page here is a list of settings (`kind: "rows"`); pages of other kinds (such as
  * roles) bring their own editors and are added to `settingPages` beside these.
  */
 export const SETTING_PAGES = [
@@ -56,7 +56,7 @@ export type SettingPageId = (typeof SETTING_PAGES)[number]["id"];
 interface SettingDef<T> {
   schema: z.ZodType<T>;
   default: T;
-  /** The Settings window's page, label and control. */
+  /** The Server Settings window's page, label and control. */
   page: SettingPageId;
   label: string;
   form: SettingForm;
@@ -79,7 +79,7 @@ export function isTimeZone(zone: string): boolean {
   }
 }
 
-/** The longest login news the Settings window takes (SSO; News.txt had no limit). */
+/** The longest login news the Server Settings window takes (SSO; News.txt had no limit). */
 export const NEWS_MAX = 1000;
 
 function def<T>(d: SettingDef<T>): SettingDef<T> {
@@ -94,8 +94,8 @@ const DAY = DAY_SECONDS;
 const TEN_YEARS = 3650 * DAY;
 
 /**
- * A length of time, stored and sent in whole seconds; the Settings window reads and writes it as
- * time ("30s", "5m", "7d"). `zero` says what 0 means when it is allowed.
+ * A length of time, stored and sent in whole seconds; the Server Settings window reads and writes
+ * it as time ("30s", "5m", "7d"). `zero` says what 0 means when it is allowed.
  */
 /** A pick from a list: each value with the label the window shows for it. */
 function choice<const T extends string>(labels: Record<T, string>) {
@@ -510,12 +510,12 @@ export function resolveSettings(overrides: ReadonlyMap<string, string>): Setting
   return out as Settings;
 }
 
-/** The Settings window's pages (protocol `SettingPage`), in sidebar order. */
+/** The Server Settings window's pages (protocol `SettingPage`), in sidebar order. */
 export function settingPages(): SettingPage[] {
   return SETTING_PAGES.map((p) => ({ id: p.id, title: p.title, kind: "rows" }));
 }
 
-/** The Settings window's rows (protocol `SettingRow`), page by page. */
+/** The Server Settings window's rows (protocol `SettingRow`), page by page. */
 export function settingRows(current: Settings): SettingRow[] {
   const order = (d: unknown) =>
     SETTING_PAGES.findIndex((p) => p.id === (d as SettingDef<unknown>).page);
@@ -535,7 +535,7 @@ export function settingRows(current: Settings): SettingRow[] {
 }
 
 /**
- * Checks a Settings window SAVE against each setting's schema. Returns the new settings and
+ * Checks a Server Settings window SAVE against each setting's schema. Returns the new settings and
  * what changed (with the values before and after, for the audit log), or why the save is
  * refused: an unknown key or a value its schema refuses, named by its label.
  */

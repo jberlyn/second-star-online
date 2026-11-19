@@ -1,7 +1,7 @@
 /**
- * The Settings window: the operator's typed settings forms. It takes the File Editor's place in
- * menu 502 but not its look: 1.6 had no settings screen, so this is a plain SSO panel (the File
- * Editor and its path-based file access are removed).
+ * The Server Settings window: the operator's typed settings forms. It takes the File Editor's
+ * place in the Admin menu but not its look: 1.6 had no settings screen, so this is a plain SSO
+ * panel (the File Editor and its path-based file access are removed).
  *
  * - A sidebar lists the pages the server sends (`SettingPage`), grouped by what an operator is
  *   trying to do, with a search over every setting's label and explanation; a result opens its
@@ -566,7 +566,7 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
   // ---- the sidebar: search, then one link per page ----
   const nav = document.createElement("nav");
   nav.className = "settings-nav";
-  nav.setAttribute("aria-label", "Settings pages");
+  nav.setAttribute("aria-label", "Server Settings pages");
   const search = gameInput("settings-search");
   search.type = "search";
   search.className = "settings-search";
@@ -819,7 +819,7 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
   stage.append(nav, pane, confirm);
 
   const win = layer.create({
-    title: "Settings",
+    title: "Server Settings",
     name: "settings",
     width: SETTINGS_SIZE.w,
     height: SETTINGS_SIZE.h,

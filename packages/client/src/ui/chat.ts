@@ -24,7 +24,7 @@ export const CHAT_SAVE_LINES = 20_000;
 export interface ChatLog {
   el: HTMLElement;
   add(text: string, color?: number): void;
-  /** Edit → Clear Chat Text (menu 500): empties the log and what `/logchat` saves. */
+  /** Chat → Clear Chat Text: empties the log and what `/logchat` saves. */
   clear(): void;
   /** The main chat as `/logchat` saves it: every line since login or Clear Chat Text. */
   text(): string;

@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 
 import type { Assets } from "../src/assets.ts";
 import { createAmountDialog } from "../src/ui/amount.ts";
-import { quitScreen } from "../src/ui/quit.ts";
 import { createSignPanel } from "../src/ui/sign.ts";
 
 const assets = { ui: () => "" } as unknown as Assets;
@@ -24,16 +23,11 @@ describe("semantic actions", () => {
     expect(dialog.el.hidden).toBe(true);
   });
 
-  test("sign closes on click and quit returns to title", () => {
+  test("sign closes on click", () => {
     const sign = createSignPanel(assets);
     sign.show("Hello");
     sign.el.click();
     expect(sign.el.dataset.action).toBe("sign-close");
     expect(sign.open).toBe(false);
-    let returned = 0;
-    const quit = quitScreen(() => returned++);
-    const button = quit.items.find((item) => item.el.dataset.action === "quit-return-title")!.el;
-    button.click();
-    expect(returned).toBe(1);
   });
 });

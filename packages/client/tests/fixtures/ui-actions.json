@@ -714,19 +714,14 @@
     "hidden": 1,
     "disabled": 0
   },
-  "menu-open-edit": {
+  "menu-open-chat": {
     "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "menu-open-file": {
-    "count": 1,
-    "hidden": 0,
+    "hidden": 1,
     "disabled": 0
   },
   "menu-open-game": {
     "count": 1,
-    "hidden": 0,
+    "hidden": 1,
     "disabled": 0
   },
   "menu-open-options": {

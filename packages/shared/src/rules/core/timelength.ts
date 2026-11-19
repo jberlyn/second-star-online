@@ -1,6 +1,7 @@
 /**
  * Lengths of time as operators write and read them: "30s", "5 min", "1h 30m", "1d12h", "2 weeks".
- * The Settings window's duration fields and the server's time-valued environment variables use it.
+ * The Server Settings window's duration fields and the server's time-valued environment variables
+ * use it.
  * Pure; whole seconds in and out.
  */
 
@@ -16,7 +17,7 @@ const UNIT_SECONDS = new Map<string, number>(
 );
 const DURATION_PART = /(\d+(?:\.\d+)?)\s*([a-z]+)/y;
 
-/** Whole seconds as the Settings window shows them: "30s", "5m", "1d 12h", "0". */
+/** Whole seconds as the Server Settings window shows them: "30s", "5m", "1d 12h", "0". */
 export function formatTimeLength(seconds: number): string {
   let left = Math.max(0, Math.round(seconds));
   const parts: string[] = [];
@@ -31,7 +32,7 @@ export function formatTimeLength(seconds: number): string {
 }
 
 /**
- * Reads a length of time as operators write it (the Settings window, `SSO_*` variables): numbers with units (s, m, h, d, w or their words, like "5 min" or
+ * Reads a length of time as operators write it (the Server Settings window, `SSO_*` variables): numbers with units (s, m, h, d, w or their words, like "5 min" or
  * "2 hours"), several in a row ("1h 30m"), rounded to whole seconds. "0" alone, or the row's word
  * for 0 ("off", "permanent", "forever"), is 0. Null when it is not a time.
  */

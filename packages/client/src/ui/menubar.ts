@@ -10,13 +10,15 @@ export type MenuItem =
   | {
       kind: "item";
       label: string;
+      /** False leaves the item out of the open menu (Admin Chat, for non-immortals). */
+      visible?(): boolean;
       enabled?(): boolean;
       checked?(): boolean;
       /** A radio bullet instead of a check mark. */
       radio?: boolean;
       run(): void;
     }
-  | { kind: "sep" };
+  | { kind: "sep"; visible?(): boolean };
 
 export interface Menu {
   title: string;
@@ -84,6 +86,9 @@ export function createMenuBar(menus: readonly Menu[]): MenuBar {
     d.setAttribute("role", "menu");
     d.style.left = `${t.offsetLeft}px`;
     for (const it of m.items) {
+      if (it.visible && !it.visible()) {
+        continue;
+      }
       if (it.kind === "sep") {
         const s = document.createElement("div");
         s.className = "menu-sep";

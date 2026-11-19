@@ -43,9 +43,8 @@ The UI files are:
 - [packages/client/src/ui/paint.ts](../../packages/client/src/ui/paint.ts): painting, viewer and camera screens.
 - [packages/client/src/ui/panel.ts](../../packages/client/src/ui/panel.ts): stats, inventory and skills panel.
 - [packages/client/src/ui/placement.ts](../../packages/client/src/ui/placement.ts): house placement mode.
-- [packages/client/src/ui/quit.ts](../../packages/client/src/ui/quit.ts): quit screen.
 - [packages/client/src/ui/screens.ts](../../packages/client/src/ui/screens.ts): title, login and character creation.
-- [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): operator settings window.
+- [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): Server Settings window.
 - [packages/client/src/ui/shells.ts](../../packages/client/src/ui/shells.ts): game screen shell.
 - [packages/client/src/ui/shop.ts](../../packages/client/src/ui/shop.ts): shop and vault window.
 - [packages/client/src/ui/sign.ts](../../packages/client/src/ui/sign.ts): sign display.

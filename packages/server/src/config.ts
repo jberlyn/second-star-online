@@ -45,8 +45,9 @@ function range(f: Field): string {
 
 /**
  * The config from the environment: an unset or empty variable keeps its default. A time is
- * written as in the Settings window ("30s", "2m", "0"). Any value out of range or not a time is
- * an error naming the variable, so a typo refuses startup instead of quietly using a default.
+ * written as in the Server Settings window ("30s", "2m", "0"). Any value out of range or not a
+ * time is an error naming the variable, so a typo refuses startup instead of quietly using a
+ * default.
  */
 export function readServerConfig(
   env: Readonly<Record<string, string | undefined>>,

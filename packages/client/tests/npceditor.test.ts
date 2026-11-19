@@ -139,7 +139,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("World Editor, NPC Editor, Settings, Admin Chat, Return To Game, then the three Assassin items; NPC Editor sends npcEditOpen and shows frame 311; the field keeps its text between visits", () => {
+  test("Admin holds World Editor, NPC Editor, Return To Game, Server Settings, then the three Assassin items; Admin Chat is on Chat; NPC Editor sends npcEditOpen and shows frame 311; the field keeps its text between visits", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -152,16 +152,15 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     expect(menuTexts(root, "Admin")).toEqual([
       "World Editor",
       "NPC Editor",
-      "Settings",
-      "-",
-      "Admin Chat",
       "Return To Game",
+      "-",
+      "Server Settings",
       "-",
       "Begin Assassin's Game",
       "Begin Lightning Assassin's Game",
       "End Assassin's Game",
     ]);
-    menuClick(root, "Admin", "Admin Chat");
+    menuClick(root, "Chat", "Admin Chat");
     expect(c.sent).toContainEqual({ t: "roomEnter", room: "admin" });
     // Edit Newspaper (on the Game menu for everyone) opens the editor and asks for the paper.
     menuClick(root, "Game", "Edit Newspaper");
@@ -192,18 +191,19 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     const c = conn();
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
+    c.onMessage(SNAPSHOT);
     for (const role of ["player", "moderator"] as const) {
       c.onMessage({ t: "role", role });
-      expect(titles(root)).toEqual(["File", "Edit", "Game", "Options"]);
+      expect(titles(root)).toEqual(["Game", "Chat", "Options"]);
     }
     c.onMessage({ t: "role", role: "immortal" });
-    expect(titles(root)).toEqual(["File", "Edit", "Admin", "Game", "Options"]);
+    expect(titles(root)).toEqual(["Game", "Chat", "Admin", "Options"]);
     c.onMessage({ t: "role", role: "moderator" });
     expect(titles(root)).not.toContain("Admin");
     app.stop();
   });
 
-  test("menu 500's Game and Edit items: Clear Chat Text, Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms", () => {
+  test("the Game and Chat items: Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms, Clear Chat Text", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -215,16 +215,20 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     c.onMessage({ t: "chat", text: "old line", color: 0 });
     expect(menuTexts(root, "Game")).toEqual([
       "Open Friend's List",
-      "-",
       "Send Instant Message",
       "Edit Newspaper",
       "-",
+      "Return To Title Screen",
+    ]);
+    expect(menuTexts(root, "Chat")).toEqual([
       "General Chat",
       "New Player Chat",
       "Trading Post Chat",
       "Guild Chat",
+      "-",
+      "Clear Chat Text",
     ]);
-    menuClick(root, "Edit", "Clear Chat Text");
+    menuClick(root, "Chat", "Clear Chat Text");
     expect(root.querySelector(".chat-log")?.childElementCount).toBe(0);
     // The open-Friend's-List command opens the window; it never opens by itself.
     expect(root.querySelector(".window-friends")?.hasAttribute("hidden")).toBe(true);
@@ -237,7 +241,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     expect(c.sent).toContainEqual({ t: "newspaperLoad" });
     expect(root.querySelectorAll(".window-newspaper-editor:not([hidden])")).toHaveLength(1);
     for (const t of ["General Chat", "New Player Chat", "Trading Post Chat", "Guild Chat"]) {
-      menuClick(root, "Game", t);
+      menuClick(root, "Chat", t);
     }
     expect(c.sent.filter((m) => (m as { t: string }).t === "roomEnter")).toEqual([
       { t: "roomEnter", room: "general" },

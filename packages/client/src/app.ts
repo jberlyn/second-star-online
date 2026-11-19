@@ -61,7 +61,6 @@ import { createNpcEditor, type NpcEditor } from "./ui/npceditor.ts";
 import { createPaintUi } from "./ui/paint.ts";
 import { createPanel } from "./ui/panel.ts";
 import { type Ghost, ghostTile, placementClick } from "./ui/placement.ts";
-import { quitScreen } from "./ui/quit.ts";
 import { creationScreen, loginScreen, type Screen, titleScreen } from "./ui/screens.ts";
 import { createSettingsWindow } from "./ui/settings.ts";
 import { createGameView, type GameView } from "./ui/shells.ts";
@@ -153,27 +152,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   let npcEditor: NpcEditor | null = null;
   /** Which editor is up; either opens from the other. */
   let editing: "world" | "npc" | null = null;
-  /** Quit Game logged out: the next disconnect shows the quit screen, not the title. */
-  let quitting = false;
 
+  /** The title screen is the screen showing (the menu bar hides Game there). */
+  let atTitle = false;
   const menuState: MenuState = {
     inPlay: () => model.self !== null,
+    atTitle: () => atTitle,
     immortal: () => role === "immortal",
     sharp: () => sharp,
     sfx: () => sfxOn,
   };
   const menuActions: MenuActions = {
-    // File > Return To Title Screen: in play it is today's Log out.
+    // Game > Return To Title Screen: in play it is today's Log out.
     returnToTitle: () => (menuState.inPlay() ? conn.send({ t: "logout" }) : toTitle()),
-    // File > Quit Game: log out, then the quit screen.
-    quitGame: () => {
-      if (menuState.inPlay()) {
-        quitting = true;
-        conn.send({ t: "logout" });
-      } else {
-        toQuit();
-      }
-    },
     clearChat: () => chat.clear(),
     // Open Friend's List only reopens the window, without refilling it.
     openFriends: () => friends.window.open(),
@@ -189,13 +180,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         conn.send({ t: "npcEditOpen" });
       }
     },
-    settings: () => conn.send({ t: "settingsOpen" }),
+    serverSettings: () => conn.send({ t: "settingsOpen" }),
     editNewspaper: () => {
       news.openEditor();
       conn.send({ t: "newspaperLoad" });
     },
-    // Menu 502's Admin Chat sits before Return To Game.
-    adminChat: () => send({ t: "roomEnter", room: "admin" }),
     returnToGame: () => {
       if (editing) {
         conn.send({ t: "editClose" });
@@ -215,10 +204,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       setPref(PREFS.sfx, on ? "1" : "0");
     },
   };
-  const menuBar = createMenuBar(desktopMenus(menuState, menuActions));
 
   // ---- game parts, built once ---------------------------------------------------------------
   const model = createModel();
+  // After the model: the bar reads whether a character is in play as it is built.
+  const menuBar = createMenuBar(desktopMenus(menuState, menuActions));
   // The arrows' mask test reads each FX member's rect from the atlas (spellfx.ts).
   model.fxRect = (member) => {
     const r = assets.sprite("fx", member);
@@ -701,16 +691,17 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       focused.blur();
     }
   };
-  const show = (s: Screen) => {
+  const show = (s: Screen, title = false) => {
     releaseFocus();
     game = null;
     screen = s;
+    atTitle = title;
+    menuBar.refresh();
     renderScreen(true);
     s.onShow?.();
   };
   const toTitle = () =>
-    show(titleScreen(assets, { load: () => toLogin(lastName), create: toCreate, sound }));
-  const toQuit = () => show(quitScreen(() => toTitle()));
+    show(titleScreen(assets, { load: () => toLogin(lastName), create: toCreate, sound }), true);
   const toLogin = (prefill = "") =>
     show(
       loginScreen(
@@ -784,7 +775,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   }
 
   // ---- server messages ---------------------------------------------------------------------
+  // The menus follow whether a character is in play, which any message may change.
+  let menusInPlay = false;
+  const syncMenus = () => {
+    if (menuState.inPlay() !== menusInPlay) {
+      menusInPlay = menuState.inPlay();
+      menuBar.refresh();
+    }
+  };
   conn.onMessage = (msg: ServerMsg) => {
+    handleMessage(msg);
+    syncMenus();
+  };
+  const handleMessage = (msg: ServerMsg) => {
     switch (msg.t) {
       case "welcome":
         chatInput.maxLength = msg.rules.chatMaxChars;
@@ -1138,6 +1141,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     chatInput.value = "";
     chatInput.blur();
     model.self = null;
+    syncMenus();
     model.inv = null;
     model.ground.clear();
     amount.close();
@@ -1156,10 +1160,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     settingsWin.window.close();
     model.peers.clear();
     model.map = null;
-    // Quit Game shows its own screen instead of the title, and no alert.
-    const quit = quitting;
-    quitting = false;
-    if (text && !quit) {
+    if (text) {
       void showAlert(root, text);
     }
     // Start over with a fresh connection.
@@ -1171,11 +1172,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       conn.close = c.close;
       c.onMessage = conn.onMessage;
       c.onGone = conn.onGone;
-      if (quit) {
-        toQuit();
-      } else {
-        toTitle();
-      }
+      toTitle();
     });
   };
 

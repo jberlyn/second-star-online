@@ -3769,19 +3769,19 @@
     "errors": []
   },
   {
-    "action": "menu-open-file",
+    "action": "menu-open-game",
     "tag": "BUTTON",
     "events": ["click", "pointerenter"],
-    "hidden": false,
+    "hidden": true,
     "changed": true,
     "calls": [],
     "errors": []
   },
   {
-    "action": "menu-open-edit",
+    "action": "menu-open-chat",
     "tag": "BUTTON",
     "events": ["click", "pointerenter"],
-    "hidden": false,
+    "hidden": true,
     "changed": true,
     "calls": [],
     "errors": []
@@ -3791,15 +3791,6 @@
     "tag": "BUTTON",
     "events": ["click", "pointerenter"],
     "hidden": true,
-    "changed": true,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "menu-open-game",
-    "tag": "BUTTON",
-    "events": ["click", "pointerenter"],
-    "hidden": false,
     "changed": true,
     "calls": [],
     "errors": []

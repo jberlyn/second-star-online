@@ -1,4 +1,4 @@
-/** The World Editor, the NPC editor and the Settings window. */
+/** The World Editor, the NPC editor and the Server Settings window. */
 import { z } from "zod";
 
 import {
@@ -82,8 +82,8 @@ export const npcSaveSchema = z.strictObject({
 });
 
 /**
- * Admin menu → Settings, and the window's LOAD: the settings as the server holds them (SSO's typed
- * settings forms in place of the File Editor).
+ * Admin menu → Server Settings, and the window's LOAD: the settings as the server holds them
+ * (SSO's typed settings forms in place of the File Editor).
  */
 export const settingsOpenSchema = z.strictObject({ t: z.literal("settingsOpen") });
 
@@ -97,12 +97,12 @@ export const settingsSaveSchema = z.strictObject({
   values: z.record(z.string().max(40), z.unknown()),
 });
 
-/** The Settings window closes (its close box). */
+/** The Server Settings window closes (its close box). */
 export const settingsCloseSchema = z.strictObject({ t: z.literal("settingsClose") });
 
 /**
- * One page of the Settings window's sidebar (server/src/settings.ts `SETTING_PAGES`). The server
- * sends only the pages the player may use. A `rows` page lists the settings whose `page` is its
+ * One page of the Server Settings window's sidebar (server/src/settings.ts `SETTING_PAGES`). The
+ * server sends only the pages the player may use. A `rows` page lists the settings whose `page` is its
  * id and is saved on its own; other kinds of page (roles, per-map overrides) will bring their own
  * editor and messages.
  */
@@ -112,7 +112,7 @@ export interface SettingPage {
   kind: "rows";
 }
 
-/** One row of the Settings window (server/src/settings.ts). */
+/** One row of the Server Settings window (server/src/settings.ts). */
 export interface SettingRow {
   key: string;
   /** The id of the page it is on (`SettingPage.id`); rows come in page order. */
@@ -167,11 +167,11 @@ export type AdminServerMsg =
   | { t: "npcScript"; name: string; text: string }
   /** An NPC editor save changed this NPC's file: its Bio window and shop list close (SSO). */
   | { t: "npcClosed" }
-  /** The Settings window: its pages, and every setting with its value. */
+  /** The Server Settings window: its pages, and every setting with its value. */
   | { t: "settings"; pages: SettingPage[]; rows: SettingRow[] }
   /**
-   * The Settings window's SAVE: applied for everyone online, or refused whole with the setting
-   * at fault (`key`, null for an unknown one) and why.
+   * The Server Settings window's SAVE: applied for everyone online, or refused whole with the
+   * setting at fault (`key`, null for an unknown one) and why.
    */
   | { t: "settingsResult"; ok: true }
   | { t: "settingsResult"; ok: false; key: string | null; text: string };
