@@ -142,27 +142,6 @@ export const DEATH_HUNGER = 40000;
 
 // ---- death -----------------------------------------------------------------------------
 
-export const DEATH_PENALTY_TEXT = "*** Your downfall in battle has caused you to become weakened.";
-
-/**
- * The death penalty, on a map whose PvP flag is X only: `random(5) = 1` (wanted: `random(1)`) for
- * HPmax −1 and SPmax −1, each only if above 2. Returns true when the penalty text prints. 1.6 forced
- * its `DeathPenalty` flag to X just before the test, so every non-arena death rolled; the flag holds
- * the map's PvP setting everywhere else (a bug fixed).
- */
-export function rollDeathPenalty(v: Vitals, wanted: boolean, pvpMap: boolean, rng: Rng): boolean {
-  if (!pvpMap || rng.random(wanted ? 1 : 5) !== 1) {
-    return false;
-  }
-  if (v.hpMax > 2) {
-    v.hpMax -= 1;
-  }
-  if (v.spMax > 2) {
-    v.spMax -= 1;
-  }
-  return true;
-}
-
 /** HP and SP after a death. */
 export function deathVitals(v: Vitals): void {
   v.hp = 1;

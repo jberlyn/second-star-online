@@ -153,15 +153,14 @@ describe("faction death", () => {
     expect(map.ground.some((g) => g.item === "Warrior's Head")).toBe(false);
   });
 
-  test("bug fixed: exile below the line after the penalty also leaves the faction channel", () => {
-    const { world, a, run } = murderScene(rngByN({ 5: [1] }));
+  test("bug fixed: exile below the line on death also leaves the faction channel", () => {
+    const { world, a, run } = murderScene();
     a.char.faction = { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 };
     a.char.factionCount = 100000;
-    a.char.vitals.hpMax = 50; // the penalty takes it to 49
+    a.char.vitals.hpMax = 49; // below the Mage line of 50, as an operator might set it
     expect(toFactionChannel(world, 1, "*** Mages!", "Nobody").map((o) => o.to)).toEqual([a.id]);
     const msgs = run(1);
     expect(chat(msgs, "Alice")).toEqual([
-      "*** Your downfall in battle has caused you to become weakened.",
       "*** You have been exiled from the Mage faction due to your downfalls in battle.",
     ]);
     expect(a.char.faction.id).toBe(0);

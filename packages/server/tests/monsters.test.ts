@@ -571,7 +571,7 @@ describe("monster attacks and death", () => {
     expect(run(1).some((m) => m.to === "a" && m.msg.t === "death")).toBe(true);
   });
 
-  test("death: penalty roll, HP and SP 1, facing south, then the death text to everyone and the respawn warp", () => {
+  test("death: HP and SP 1, facing south, then the death text to everyone and the respawn warp", () => {
     const map = testMap("x1000y992");
     const rng = rngByN({ 5: [1] });
     const { join, run, world } = setup([map], undefined, rng);
@@ -583,11 +583,9 @@ describe("monster attacks and death", () => {
     a.lastToHitMe = "a Slime";
     let msgs = run(1);
     expect(a.deadLock).toBe(27);
-    expect(a.char.vitals).toMatchObject({ hp: 1, sp: 1, hpMax: 19, spMax: 19 });
+    expect(a.char.vitals).toMatchObject({ hp: 1, sp: 1, hpMax: 20, spMax: 20 });
     expect(a.facing).toBe("S");
-    expect(chat(msgs, "a")).toContain(
-      "*** Your downfall in battle has caused you to become weakened.",
-    );
+    expect(chat(msgs, "a")).toEqual([]);
     msgs = run(26);
     expect(chat(msgs, "b")).toEqual([]);
     msgs = run(1);

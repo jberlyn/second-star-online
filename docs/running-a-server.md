@@ -326,7 +326,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `lootDecay` | Loot lasts | `30m` | `1m`–`7d` | How long before monster loot disappears from the ground (player drops and `/drop` items never decay). |
-| `dropOnDeath` | Drop an item on death | `true` | `true` / `false` | Whether dying characters may drop one random item from their bag, never crystals (immortals always drop). |
+| `dropOnDeath` | Wanted characters drop on death | `true` | `true` / `false` | Whether a character wanted for murder drops some gold or one random bag item, never crystals, when they die (a wanted immortal always does). Nobody else drops anything on death. |
 | `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–4th place prizes when an Assassin's Game ends. |
 
 ### Moderation

@@ -387,4 +387,54 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       { key: "chatCooldown", value: "5" },
     ]);
   });
+
+  test("divergence: restore_death_penalty raises max HP and SP to 19 + level, never lowering them", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261119_39"),
+    );
+    const seed = db.query("SELECT id FROM maps WHERE mx = 1000 AND my = 992").get() as {
+      id: string;
+    };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    const make = (name: string, level: number, hpMax: number, spMax: number) => {
+      const id = insertCharacter(db, {
+        accountId: "a1",
+        start: startingCharacter({
+          name,
+          sex: 1,
+          head: 1,
+          classCode: 1,
+          str: 1,
+          sta: 1,
+          int: 1,
+          wis: 1,
+          dex: 1,
+        }),
+        position: { mapId: seed.id, x: 6, y: 4, facing: "S" },
+        now: "now",
+      });
+      db.run("UPDATE characters SET level = ?, hp_max = ?, sp_max = ? WHERE id = ?", [
+        level,
+        hpMax,
+        spMax,
+        id,
+      ]);
+      return id;
+    };
+    // Weakened twice at level 31; untouched at level 5; above the line (a promotion's SP).
+    const weak = make("weak", 31, 48, 48);
+    const fine = make("fine", 5, 24, 24);
+    const high = make("high", 2, 21, 90);
+    runMigrations(db, all);
+    const max = (id: string) =>
+      db.query("SELECT hp_max, sp_max FROM characters WHERE id = ?").get(id);
+    expect(max(weak)).toEqual({ hp_max: 50, sp_max: 50 });
+    expect(max(fine)).toEqual({ hp_max: 24, sp_max: 24 });
+    expect(max(high)).toEqual({ hp_max: 21, sp_max: 90 });
+  });
 });

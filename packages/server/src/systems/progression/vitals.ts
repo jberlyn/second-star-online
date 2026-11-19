@@ -6,7 +6,6 @@ import {
   DEATH_HUNGER,
   DEATH_LOCK_FRAMES,
   DEATH_PAUSE_FRAMES,
-  DEATH_PENALTY_TEXT,
   deathHead,
   deathVitals,
   exileAtDeath,
@@ -19,7 +18,6 @@ import {
   regenTarget,
   regenTick,
   rollDeathDrop,
-  rollDeathPenalty,
 } from "@secondstaronline/shared";
 
 import { arenaTileTaken } from "../combat/arena.ts";
@@ -62,10 +60,10 @@ export type DeathOutcome =
   | { kind: "none" }
   /** An arena death: no penalty, a random free tile on the same map. */
   | { kind: "arena"; tile: { x: number; y: number } | null; text: string }
-  /** A normal death: the lock starts; the penalty line, if rolled; the drop's ground event. */
+  /** A normal death: the lock starts; an exile line, if any; the head's and drop's ground events. */
   | { kind: "death"; lines: string[]; out: Outgoing[] };
 
-/** DropOnDeath: the operator setting, forced on for immortals. */
+/** DropOnDeath: the operator setting for a wanted character's drop, forced on for immortals. */
 export interface DeathDropCtx {
   item: ItemCtx;
   dropOnDeath: boolean;
@@ -80,9 +78,10 @@ export interface DeathDropCtx {
 /**
  * The frame script's `HP < 1 → RunDeathScript`. The guard is a separate don't-hit-again flag, not
  * the i-frames. A stale last hit is forgotten first, so it names no killer. After the arena exit,
- * in 1.6's order: the drop's draws, a faction member's head on a map whose PvP flag is X (whatever
- * killed it, created from nothing), the item or gold, the stat penalty (on a PvP-X map only), then
- * exile on the new HPmax (no channel leave, as in 1.6). Dying aboard loses the airship and drops
+ * in 1.6's order: the drop's draws (a wanted character only), a faction member's head on a map whose
+ * PvP flag is X (whatever killed it, created from nothing), the item or gold, then exile on HPmax (no
+ * channel leave, as in 1.6). A death never lowers HPmax or SPmax (a design change: 1.6 had a one in
+ * five chance of −1 each). Dying aboard loses the airship and drops
  * nothing but the head (kept on purpose). The wanted flag waits for the end of the lock (`respawn`).
  */
 export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx): DeathOutcome {
@@ -128,8 +127,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
     out.push(...vehicleDeath(room, p));
   }
   if (lightning) {
-    // The Lightning death script sets 1.6's don't-drop flag and has no head, stat penalty or exile
-    // code at all; the HP/SP reset, the lock and the pause are as below. The flag and the points
+    // The Lightning death script sets 1.6's don't-drop flag and has no head or exile code at all; the HP/SP reset, the lock and the pause are as below. The flag and the points
     // still follow at the end of the lock.
     deathVitals(v);
     p.vitalsDirty = true;
@@ -182,9 +180,6 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
       p.invDirty = true;
       out.push(...io.out);
     }
-  }
-  if (rollDeathPenalty(v, p.char.wanted, pvpMap, rng)) {
-    lines.push(DEATH_PENALTY_TEXT);
   }
   const exile = exileAtDeath({ id: p.char.faction.id, count: p.char.factionCount }, v.hpMax);
   if (exile) {

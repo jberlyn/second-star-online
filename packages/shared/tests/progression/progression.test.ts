@@ -12,11 +12,11 @@ import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
   checkLevelUp,
   deathText,
+  deathVitals,
   hungerTick,
   meleeKillXp,
   regenTarget,
   regenTick,
-  rollDeathPenalty,
   type Vitals,
   xpGained,
 } from "../../src/rules/progression/progression.ts";
@@ -164,30 +164,11 @@ describe("hunger", () => {
 });
 
 describe("death", () => {
-  test("on a PvP map, random(5) = 1 → HPmax and SPmax −1 above 2; wanted always", () => {
+  test("divergence: a death never lowers HPmax or SPmax, wanted or not", () => {
     const v = vitals();
-    expect(rollDeathPenalty(v, false, true, minRng)).toBe(true);
-    expect([v.hpMax, v.spMax]).toEqual([19, 19]);
-    expect(rollDeathPenalty(v, false, true, maxRng)).toBe(false);
-    expect(rollDeathPenalty(v, true, true, maxRng)).toBe(true);
-    expect([v.hpMax, v.spMax]).toEqual([18, 18]);
-    const low = { ...vitals(), hpMax: 2, spMax: 2 };
-    expect(rollDeathPenalty(low, false, true, minRng)).toBe(true);
-    expect([low.hpMax, low.spMax]).toEqual([2, 2]);
-  });
-  test("bug fixed: off a PvP map there is no penalty and no roll, wanted or not", () => {
-    const calls: number[] = [];
-    const spy: Rng = {
-      random: (n) => {
-        calls.push(n);
-        return 1;
-      },
-    };
-    const v = vitals();
-    expect(rollDeathPenalty(v, false, false, spy)).toBe(false);
-    expect(rollDeathPenalty(v, true, false, spy)).toBe(false);
-    expect([v.hpMax, v.spMax]).toEqual([20, 20]);
-    expect(calls).toEqual([]);
+    v.hp = 0;
+    deathVitals(v);
+    expect(v).toMatchObject({ hp: 1, sp: 1, hpMax: 20, spMax: 20 });
   });
   test("the death message line", () => {
     expect(deathText("Bob", "a Slime")).toBe("*** Bob was just killed by a Slime.");

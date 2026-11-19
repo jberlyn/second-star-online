@@ -862,11 +862,23 @@ describe("breaks", () => {
 });
 
 describe("the death drop", () => {
-  test("no gold: a random bag line is picked; one unit goes on the death tile", () => {
+  test("divergence: a death that is not wanted drops nothing, gold or items", () => {
+    const s = scene({ 2: [1, 1] });
+    const a = s.join("A", 5, 5);
+    give(a, 1, "Apple", 2);
+    a.char.gold = 500;
+    a.char.vitals.hp = 0;
+    s.run(1);
+    expect(groundAt(s.map, 5, 5)).toEqual([]);
+    expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
+    expect(a.char.gold).toBe(500);
+  });
+  test("wanted, no gold: a random bag line is picked; one unit goes on the death tile", () => {
     const s = scene({ 2: [1] });
     const a = s.join("A", 5, 5);
     give(a, 1, "Apple", 2);
     give(a, 2, "Knife");
+    a.char.wanted = true;
     a.char.vitals.hp = 0;
     s.run(1);
     expect(groundAt(s.map, 5, 5)).toEqual(["Apple"]);
@@ -876,19 +888,8 @@ describe("the death drop", () => {
 });
 
 describe("the death gold drop", () => {
-  test("random(2) = 1 picks gold; random(gold) over 200 is redrawn as random(200)", () => {
-    // random(500) = 500 (> 200) → random(200) = 120.
-    const s = scene({ 2: [1], 500: [500], 200: [120] });
-    const a = s.join("A", 5, 5);
-    a.char.gold = 500;
-    a.char.vitals.hp = 0;
-    s.run(1);
-    expect(groundAt(s.map, 5, 5)).toEqual(["120 Gold"]);
-    expect(a.char.gold).toBe(380);
-    expect(s.map.ground[0]?.kind).toBe("drop");
-  });
-  test("a wanted player draws random(gold) again, past the 200 cap", () => {
-    const s = scene({ 2: [1], 500: [450, 470], 200: [10] });
+  test("wanted: random(2) = 1 picks gold, random(gold) of it with no cap", () => {
+    const s = scene({ 2: [1], 500: [470] });
     const a = s.join("A", 5, 5);
     a.char.gold = 500;
     a.char.wanted = true;
@@ -896,11 +897,13 @@ describe("the death gold drop", () => {
     s.run(1);
     expect(groundAt(s.map, 5, 5)).toEqual(["470 Gold"]);
     expect(a.char.gold).toBe(30);
+    expect(s.map.ground[0]?.kind).toBe("drop");
   });
-  test("random(2) = 2 with gold picks an item instead", () => {
+  test("wanted: random(2) = 2 with gold picks an item instead", () => {
     const s = scene({ 2: [2, 1] });
     const a = s.join("A", 5, 5);
     a.char.gold = 50;
+    a.char.wanted = true;
     give(a, 1, "Knife");
     a.char.vitals.hp = 0;
     s.run(1);

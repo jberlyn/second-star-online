@@ -487,14 +487,19 @@ describe("loot and the death drop", () => {
     expect(one.calls).toEqual([4, 1]);
     expect(rollLoot(null, scripted([1]))).toBeNull();
   });
-  test("death: random(2) gold-or-item even with DropOnDeath off", () => {
-    const rng = scripted([2]);
-    expect(
-      rollDeathDrop({ bag: emptyBag(), gold: 5, wanted: false, inVehicle: false }, false, rng),
-    ).toEqual({
-      kind: "none",
-    });
-    expect(rng.calls).toEqual([2]);
+  test("divergence: only a wanted death drops; otherwise, or with DropOnDeath off, nothing is drawn", () => {
+    const bag = emptyBag();
+    bag[0] = { item: "Apple", qty: 2 };
+    for (const [wanted, on] of [
+      [false, true],
+      [true, false],
+    ] as const) {
+      const rng = scripted([1, 1]);
+      expect(rollDeathDrop({ bag, gold: 5, wanted, inVehicle: false }, on, rng)).toEqual({
+        kind: "none",
+      });
+      expect(rng.calls).toEqual([]);
+    }
   });
   test("bug fixed: the death drop picks one of the bag's items at random; crystals never", () => {
     const bag = emptyBag();
@@ -502,7 +507,7 @@ describe("loot and the death drop", () => {
     bag[3] = { item: "Blue Crystals", qty: 5 };
     bag[5] = { item: "Knife", qty: 1 };
     bag[13] = { item: "Bread", qty: 1 }; // line 14 counts too
-    const who = { bag, gold: 0, wanted: false, inVehicle: false };
+    const who = { bag, gold: 0, wanted: true, inVehicle: false };
     // Three items (the crystals are skipped): random(3) picks among Apple, Knife and Bread.
     const rng = scripted([3]);
     expect(rollDeathDrop(who, true, rng)).toEqual({ kind: "item", slot: 13 });
@@ -526,15 +531,15 @@ describe("loot and the death drop", () => {
       kind: "none",
     });
   });
-  test("gold branch draws random(gold), random(200) over 200, again when wanted", () => {
-    const rng = scripted([1, 250, 30, 7]);
+  test("gold branch draws random(gold), with no cap", () => {
+    const rng = scripted([1, 250]);
     expect(
       rollDeathDrop({ bag: emptyBag(), gold: 300, wanted: true, inVehicle: false }, true, rng),
     ).toEqual({
       kind: "gold",
-      amount: 7,
+      amount: 250,
     });
-    expect(rng.calls).toEqual([2, 300, 200, 300]);
+    expect(rng.calls).toEqual([2, 300]);
   });
 });
 

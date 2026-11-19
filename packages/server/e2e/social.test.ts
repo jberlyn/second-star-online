@@ -165,11 +165,8 @@ describe("murder flag, factions and quests", () => {
     await tick(1);
     bob.send({ t: "attack", seq: ++seq, held: false });
     await tick(1);
-    // The head goes down before her item drop.
-    expect(added(bob).map((g) => `${g.name}@${g.x},${g.y}`)).toEqual([
-      "Warrior's Head@6,4",
-      "Knife@6,4",
-    ]);
+    // Her faction's head goes down; she is not wanted, so her Knife stays in her bag.
+    expect(added(bob).map((g) => `${g.name}@${g.x},${g.y}`)).toEqual(["Warrior's Head@6,4"]);
   });
 
   test("at the end of her death lock Bob is wanted for her murder", async () => {

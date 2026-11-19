@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 58 |
-| [Fixed bugs](#fixed-bugs) | 287 |
+| [Design changes](#design-changes) | 60 |
+| [Fixed bugs](#fixed-bugs) | 286 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **530** |
+| **Total** | **531** |
 
 By system (the code folder that holds the change):
 
@@ -52,7 +52,7 @@ By system (the code folder that holds the change):
 | mail | [16](#mail) | [11](#server-side-mail) |
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
 | movement | [7](#movement) | [4](#server-side-movement) |
-| progression | [8](#progression) | [4](#server-side-progression) |
+| progression | [7](#progression) | [4](#server-side-progression) |
 | social | [22](#social) | [10](#server-side-social) |
 | spells | [23](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
@@ -565,6 +565,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Players want to keep their bag in an order of their choosing, and dragging gear onto the paperdoll is what they expect from other games.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`), `packages/shared/src/rules/inventory/inventory.ts` (`arrangeBag`), `packages/server/src/systems/inventory/items.ts` (`arrangeIntent`)
 - **Pinned by:** `dragging a slot onto another sends both slots, and the click after it opens no menu`; `a press that moves less than 4 pixels is still a click`; `letting go off the bag, or on the same slot, sends nothing`; `an empty slot cannot be picked up, and nothing moves while the bag is locked`; `an item let go on its own equipment box is equipped`; `an item let go on another item's box, or one that cannot be worn, goes back`; `nothing is equipped by dragging while the bag is locked` (packages/client/tests/panel.test.ts); `two filled slots change places; a line moves to an empty slot`; `an empty source, the same slot, a trade in progress or a loading player change nothing` (packages/server/tests/inventory.test.ts)
+
+#### A death never lowers your maximum HP or SP
+- **Kind:** Other
+- **What you notice:** Dying never costs maximum HP or SP, on any map, wanted or not; "*** Your downfall in battle has caused you to become weakened." is gone. Characters weakened before the upgrade get their maximums back.
+- **1.6:** Every death outside an arena had a one in five chance (always, if you were wanted) of lowering maximum HP and SP by 1 each, down to 2. The roll was probably meant for PvP maps only: the death routine forced its `DeathPenalty` flag, which elsewhere holds the map's PvP setting, to X just before testing it.
+- **SSO:** No death lowers either maximum. The upgrade raises maximum HP and SP to 19 + level wherever they are lower, the value a character never weakened has, since both start at 20 and only a level raises them; nothing is lowered. Faction exile is still checked on death, but only a maximum already below a faction's line can trigger it.
+- **Why:** Levelling is the only way to raise maximum HP and SP, and near the top levels cost too much to win them back, so one unlucky death could undo long-term progress, exile a faction member or block a promotion. Permanent loss is a poor experience in an online game, and PvP risk comes from the wanted drop instead (see [Only a wanted character drops on death](#only-a-wanted-character-drops-on-death)).
+- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`); `packages/server/migrations/20261119_39_restore_death_penalty.sql`
+- **Pinned by:** `divergence: a death never lowers HPmax or SPmax, wanted or not` (packages/shared/tests/progression/progression.test.ts); `death: HP and SP 1, facing south, then the death text to everyone and the respawn warp` (packages/server/tests/monsters.test.ts); `divergence: restore_death_penalty raises max HP and SP to 19 + level, never lowering them` (packages/server/tests/migrations.test.ts)
+
+#### Only a wanted character drops on death
+- **Kind:** Other
+- **What you notice:** A death drops nothing from your bag or purse unless you are wanted for murder. A wanted character's death drops some of their gold (any amount up to all of it) or one random bag item, never crystals, where they died. A faction member killed on a PvP map still drops their faction's head.
+- **1.6:** With "Chars Drop Items On Death" on (the default), every death outside an arena dropped either up to 200 gold (any amount if wanted) or a random bag item.
+- **SSO:** `rollDeathDrop` returns no drop, with no draws, unless the character is wanted. The `dropOnDeath` setting, now labelled "Wanted characters drop on death", turns the wanted drop off; a wanted immortal always drops. The gold amount is one `random(gold)` draw. Dying aboard an airship still drops nothing, and a Lightning game's deaths still drop nothing.
+- **Why:** Losing gear to a monster punishes players who only fight monsters, for no gain. Killing other players should put the killer's own gear at risk, so the drop stays where it is earned: on a murderer's death.
+- **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/settings.ts` (`dropOnDeath`)
+- **Pinned by:** `divergence: only a wanted death drops; otherwise, or with DropOnDeath off, nothing is drawn`; `gold branch draws random(gold), with no cap` (packages/shared/tests/inventory/inventory.test.ts); `divergence: a death that is not wanted drops nothing, gold or items`; `wanted: random(2) = 1 picks gold, random(gold) of it with no cap` (packages/server/tests/inventory.test.ts); `Bob kills Alice: her Warrior's Head drops on her tile` (packages/server/e2e/social.test.ts)
 
 ## Fixed bugs
 
@@ -1137,7 +1155,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Every death in a Lightning game is penalty-free
 - **Kind:** Bug fixed
-- **What you notice:** During a Lightning game no death takes the drop, the head, the stat penalty or exile, whether it came from a melee hit, an arrow, a spell or a monster.
+- **What you notice:** During a Lightning game no death takes the drop, the head or exile, whether it came from a melee hit, an arrow, a spell or a monster.
 - **1.6:** Only the melee hit checked for a Lightning game.
 - **SSO:** `checkDeath` runs the penalty-free death for any death while `lightningGame` is set.
 - **Why:** The game announces that all death penalties are off.
@@ -2608,7 +2626,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A death drop is a random item from your bag
 - **Kind:** Bug fixed
-- **What you notice:** When you die and drop an item, it is one of the items in your bag at random, from any line. Crystals never drop; an item that only has the word in its name, such as a Crystal Axe, can.
+- **What you notice:** When a wanted character dies and drops an item, it is one of the items in their bag at random, from any line. Crystals never drop; an item that only has the word in its name, such as a Crystal Axe, can.
 - **1.6:** The game counted the filled lines among 1 to 8 and picked a line number up to that count, so with gaps in your bag the pick could land on an empty line and nothing dropped, and lines 9 to 15 never dropped. A crystal stack picked dropped nothing, by an explicit check.
 - **SSO:** The pick is one of the bag's lines other than the six colours of crystal (matched by whole name, not by "contains"), every line counting, with the same single draw; one unit of it drops.
 - **Why:** The count was meant to pick among the items you carry. The crystal check was deliberate and stays, but a crystal stack no longer uses up the drop.
@@ -2727,15 +2745,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/progression/progression.ts` (`hungerTick`, `HUNGER_WARNINGS`)
 - **Pinned by:** `bug fixed: a warning prints once, on the frame hunger drops onto the value`; `bug fixed: over many frames each warning prints exactly once` (packages/shared/tests/progression/progression.test.ts)
 
-#### The death penalty applies only on PvP maps
-- **Kind:** Bug fixed
-- **What you notice:** A death on a map where players can fight each other still has a one in five chance (always, if you are wanted) of costing 1 off maximum HP and SP, with "*** Your downfall in battle has caused you to become weakened." Elsewhere a death never weakens you.
-- **1.6:** The death routine set its `DeathPenalty` flag to X just before testing it. Everywhere else that flag holds the map's PvP setting, so the roll was meant for PvP maps only but ran on every non-arena death.
-- **SSO:** The penalty is rolled only when the map's PvP flag is X, the same test that drops a faction head. A maximum is still only lowered while above 2, and faction exile is still checked on every death.
-- **Why:** Overwriting the flag just before the test was a leftover; the flag's meaning shows the intent. Whether permanent stat loss should stay at all, even on PvP maps, is still open in [issue #12](https://github.com/jberlyn/second-star-online/issues/12).
-- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`rollDeathPenalty`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
-- **Pinned by:** `bug fixed: off a PvP map there is no penalty and no roll, wanted or not`; `on a PvP map, random(5) = 1 → HPmax and SPmax −1 above 2; wanted always` (packages/shared/tests/progression/progression.test.ts)
-
 #### Mage skills cap the same from kills and casts
 - **Kind:** Bug fixed
 - **What you notice:** A Mage faction member with a bonus of 3 can raise Mage skills to 90 by killing as well as by casting.
@@ -2824,7 +2833,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A faction's channel is its online members, worked out when a line is sent, so there is nothing to join or leave.
 - **Why:** A faction's announcements are its own business; one shared channel and a forgotten leave were oversights.
 - **In the code:** `packages/server/src/systems/social/factions.ts` (`toFactionChannel`, `giveHead`), `packages/shared/src/rules/social/factions.ts` (`exileAtDeath`)
-- **Pinned by:** `a rival head to Angela: said to the map, power moved, joined, announced to the Mages, bonuses for all`; `bug fixed: exile below the line after the penalty also leaves the faction channel` (packages/server/tests/factions.test.ts); `Bob gives the head to Angela: power moves, he joins, only the Mages hear it` (packages/server/e2e/social.test.ts)
+- **Pinned by:** `a rival head to Angela: said to the map, power moved, joined, announced to the Mages, bonuses for all`; `bug fixed: exile below the line on death also leaves the faction channel` (packages/server/tests/factions.test.ts); `Bob gives the head to Angela: power moves, he joins, only the Mages hear it` (packages/server/e2e/social.test.ts)
 
 #### A faction at 200 power or more keeps its bonus
 - **Kind:** Bug fixed
@@ -2869,7 +2878,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A faction's channel is its current members, so the exile ends it with the membership.
 - **Why:** Leaving the channel was forgotten on that one path; the loyalty kick did it.
 - **In the code:** `packages/shared/src/rules/social/factions.ts` (`exileAtDeath`), `packages/server/src/systems/social/factions.ts` (`toFactionChannel`)
-- **Pinned by:** `bug fixed: exile below the line after the penalty also leaves the faction channel` (packages/server/tests/factions.test.ts)
+- **Pinned by:** `bug fixed: exile below the line on death also leaves the faction channel` (packages/server/tests/factions.test.ts)
 
 #### Assassin points follow the bands at equal ratings and 1800 or more
 - **Kind:** Bug fixed

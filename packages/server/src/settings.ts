@@ -244,13 +244,14 @@ export const SETTINGS = {
   }),
   dropOnDeath: def({
     page: "items",
-    label: "Drop an item on death",
+    label: "Wanted characters drop on death",
     form: { kind: "bool" },
     schema: z.boolean(),
     default: true,
     tooltip:
-      "When a character dies, they may drop one random item from their bag (never crystals) on the spot where they died. Immortals always do.",
-    source: '1.6\'s server settings file: "Chars Drop Items On Death: ON".',
+      "When a character wanted for murder dies, they drop some of their gold or one random item from their bag (never crystals) where they died. Nobody else drops anything. A wanted immortal always does.",
+    source:
+      "1.6's server settings file: \"Chars Drop Items On Death: ON\". 1.6 dropped on every death; SSO only on a wanted character's.",
   }),
   portalTargets: def({
     page: "world",

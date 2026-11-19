@@ -70,8 +70,7 @@ function scene(rngQueues: Record<number, number[]> = {}) {
 
 describe("Lightning", () => {
   test("one landed melee hit kills: HP held at 1, no drop, head, penalty or exile", () => {
-    // random(5) = 1 would weaken a normal death.
-    const s = scene({ 5: [1, 1, 1] });
+    const s = scene();
     setAssassinMode(s.world, "LIGHTNING", s.game);
     s.bob.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
     setAttackHeld(s.alice, true);
@@ -139,11 +138,8 @@ describe("Lightning", () => {
     s.bob.lastToHitId = s.alice.id;
     const gold = s.bob.char.gold;
     const bag = JSON.stringify(s.bob.char.bag);
-    const msgs = s.run(1);
-    expect(chat(msgs, "Bob")).not.toContain(
-      "*** Your downfall in battle has caused you to become weakened.",
-    );
-    expect(s.bob.char.vitals.hpMax).toBe(90);
+    s.bob.char.wanted = true;
+    s.run(1);
     expect(s.bob.char.gold).toBe(gold);
     expect(JSON.stringify(s.bob.char.bag)).toBe(bag);
     expect(s.bob.deadLock).toBeGreaterThan(0);
@@ -152,15 +148,15 @@ describe("Lightning", () => {
   });
 
   test("outside a Lightning game the same death takes every penalty", () => {
-    const s = scene({ 5: [1, 1, 1] });
+    const s = scene({ 2: [1] });
     s.bob.char.vitals.hp = 0;
     s.bob.lastToHitMe = "Alice";
     s.bob.lastToHitId = s.alice.id;
-    const msgs = s.run(1);
-    expect(chat(msgs, "Bob")).toContain(
-      "*** Your downfall in battle has caused you to become weakened.",
-    );
-    expect(s.bob.char.vitals.hpMax).toBe(89);
+    s.bob.char.wanted = true;
+    s.bob.char.gold = 100;
+    s.run(1);
+    expect(s.bob.char.gold).toBeLessThan(100);
+    expect(s.map.ground.some((g) => g.item.endsWith(" Gold"))).toBe(true);
   });
 
   test("an arena Lightning death takes the arena exit: no flag, no points", () => {

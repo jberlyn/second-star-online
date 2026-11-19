@@ -189,7 +189,7 @@ describe("inventory, equipment and loot", () => {
     expect(deltas(bob)).toContainEqual({ e: "gdel", id: gold.id });
   });
 
-  test("PvP on this map: Alice's swing hurts Bob, with the splat; he dies and drops his Knife", async () => {
+  test("PvP on this map: Alice's swing hurts Bob, with the splat; wanted, he dies and drops his Knife", async () => {
     // Face Bob again; Bob is down to 1 HP.
     alice.send({ t: "step", seq: 5, dir: "L", turn: true });
     await tick(30);
@@ -199,6 +199,8 @@ describe("inventory, equipment and loot", () => {
     );
     if (p) {
       p.char.vitals.hp = 1;
+      // Only a wanted character drops on death.
+      p.char.wanted = true;
     }
     alice.clear();
     bob.clear();
@@ -209,7 +211,7 @@ describe("inventory, equipment and loot", () => {
     expect(deltas(bob)).toContainEqual(
       expect.objectContaining({ e: "phit", splat: true, color: 6 }),
     );
-    // Death drop: no gold, two filled lines among 1-8, random(2) = 2: line 2, the Knife.
+    // Death drop: no gold, two filled lines, random(2) = 2: line 2, the Knife.
     expect(added(alice)).toMatchObject([{ name: "Knife", x: 5, y: 4 }]);
     expect(lastInv(bob)?.bag[1]).toBeNull();
   });

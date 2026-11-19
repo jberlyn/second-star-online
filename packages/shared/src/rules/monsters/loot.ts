@@ -46,23 +46,20 @@ export type DeathDrop =
   | { kind: "gold"; amount: number };
 
 /**
- * The drop draws of a non-arena death, in order: `random(2)` gold-or-item when gold > 0 (drawn even
- * with the death drop off); then, if it is on, the item branch `random(items)` over the bag's
- * non-crystal lines (drawn even in a vehicle) or the gold branch `random(gold)`, `random(200)` if
- * over 200, and again `random(gold)` when wanted.
+ * The drop of a non-arena death: only a wanted character drops, with no draws otherwise (a design
+ * change: 1.6 dropped on every death). Then `random(2)` gold-or-item when gold > 0, and the item
+ * branch `random(items)` over the bag's non-crystal lines or the gold branch `random(gold)`. Nothing
+ * drops aboard a vehicle, after the same draws.
  */
 export function rollDeathDrop(
   who: { bag: Bag; gold: number; wanted: boolean; inVehicle: boolean },
   dropOnDeath: boolean,
   rng: Rng,
 ): DeathDrop {
-  let gold = false;
-  if (who.gold > 0) {
-    gold = rng.random(2) === 1;
-  }
-  if (!dropOnDeath) {
+  if (!who.wanted || !dropOnDeath) {
     return { kind: "none" };
   }
+  const gold = who.gold > 0 && rng.random(2) === 1;
   if (!gold) {
     // One of the bag's items at random, every line counting and crystals never (a bug fixed: 1.6
     // counted the filled lines among 1-8 and picked a line number up to that count, so it could
@@ -74,15 +71,6 @@ export function rollDeathDrop(
     }
     return { kind: "item", slot };
   }
-  if (who.inVehicle) {
-    return { kind: "none" };
-  }
-  let amount = rng.random(who.gold);
-  if (amount > 200) {
-    amount = rng.random(200);
-  }
-  if (who.wanted) {
-    amount = rng.random(who.gold);
-  }
-  return { kind: "gold", amount };
+  const amount = rng.random(who.gold);
+  return who.inVehicle ? { kind: "none" } : { kind: "gold", amount };
 }
