@@ -17,7 +17,7 @@
  *   everyone online at once (the same step as `/Refresh`) or refuses the save whole, and the
  *   refusal is shown on the setting at fault. Revert asks the server for what it holds.
  *
- * Pages of other kinds (roles, per-map overrides) will draw their own editors in the same pane.
+ * Pages of other kinds (such as roles) will draw their own editors in the same pane.
  *
  * Save and Revert stand for the File Editor's Save and Load (its members 2 and 3).
  */

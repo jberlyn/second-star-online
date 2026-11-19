@@ -36,8 +36,8 @@ export type SettingForm =
 
 /**
  * The Settings window's sidebar pages, in order, grouped by what an operator is trying to do.
- * Every page here is a list of settings (`kind: "rows"`); pages of other kinds (roles, per-map
- * overrides) bring their own editors and are added to `settingPages` beside these.
+ * Every page here is a list of settings (`kind: "rows"`); pages of other kinds (such as
+ * roles) bring their own editors and are added to `settingPages` beside these.
  */
 export const SETTING_PAGES = [
   { id: "world", title: "World" },
