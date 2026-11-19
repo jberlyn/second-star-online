@@ -45,22 +45,72 @@ export type DeathDrop =
   /** `amount` gold goes on the death tile as `"<amount> Gold"`. */
   | { kind: "gold"; amount: number };
 
+/** Whose deaths drop gold or an item (setting `deathDrops`). */
+export type DeathDropWho = "off" | "wanted" | "pvp" | "everyone";
+/** What a death drop can be (setting `deathDropKind`): gold or an item as in 1.6, or only one. */
+export type DeathDropKind = "either" | "gold" | "items";
+
+/** The operator's death-drop rules (Settings → Items). */
+export interface DeathDropRules {
+  who: DeathDropWho;
+  kind: DeathDropKind;
+  /** The most gold a death drops unless wanted; 0 for no cap (1.6: 200). */
+  goldCap: number;
+  /** A character below this level drops nothing unless wanted; 0 for none. */
+  minLevel: number;
+}
+
+/** SSO's defaults: only a wanted character drops, gold or an item, as 1.6 chose it. */
+export const DEFAULT_DEATH_DROPS: DeathDropRules = {
+  who: "wanted",
+  kind: "either",
+  goldCap: 200,
+  minLevel: 0,
+};
+
+/** The character who died, as the drop sees it. */
+export interface DeathDropVictim {
+  bag: Bag;
+  gold: number;
+  level: number;
+  wanted: boolean;
+  /** Another player landed the last hit, recently enough to be credited with the kill. */
+  killedByPlayer: boolean;
+  inVehicle: boolean;
+}
+
+/** Whether this death drops anything under `rules`, before any draw. */
+export function dropsOnDeath(who: DeathDropVictim, rules: DeathDropRules): boolean {
+  if (rules.who === "off") {
+    return false;
+  }
+  if (who.wanted) {
+    // A murderer chose the risk: no level protection.
+    return true;
+  }
+  if (who.level < rules.minLevel) {
+    return false;
+  }
+  return rules.who === "everyone" || (rules.who === "pvp" && who.killedByPlayer);
+}
+
 /**
- * The drop of a non-arena death: only a wanted character drops, with no draws otherwise (a design
- * change: 1.6 dropped on every death). Then `random(2)` gold-or-item when gold > 0, and the item
- * branch `random(items)` over the bag's non-crystal lines or the gold branch `random(gold)`. Nothing
- * drops aboard a vehicle, after the same draws.
+ * The drop of a non-arena death (a design change: 1.6 dropped on every death; here the operator's
+ * `rules` decide, and the default is a wanted character's death only). No draws when it does not
+ * drop. Then `random(2)` gold-or-item when gold > 0 and the kind allows both; the item branch
+ * `random(items)` over the bag's non-crystal lines, or the gold branch `random(gold)`, redrawn as
+ * `random(cap)` over the cap unless wanted. Nothing drops aboard a vehicle, after the same draws.
  */
-export function rollDeathDrop(
-  who: { bag: Bag; gold: number; wanted: boolean; inVehicle: boolean },
-  dropOnDeath: boolean,
-  rng: Rng,
-): DeathDrop {
-  if (!who.wanted || !dropOnDeath) {
+export function rollDeathDrop(who: DeathDropVictim, rules: DeathDropRules, rng: Rng): DeathDrop {
+  if (!dropsOnDeath(who, rules)) {
     return { kind: "none" };
   }
-  const gold = who.gold > 0 && rng.random(2) === 1;
+  const gold =
+    who.gold > 0 && (rules.kind === "gold" || (rules.kind === "either" && rng.random(2) === 1));
   if (!gold) {
+    if (rules.kind === "gold") {
+      return { kind: "none" };
+    }
     // One of the bag's items at random, every line counting and crystals never (a bug fixed: 1.6
     // counted the filled lines among 1-8 and picked a line number up to that count, so it could
     // land on an empty line; its deliberate crystal exclusion is kept).
@@ -71,6 +121,9 @@ export function rollDeathDrop(
     }
     return { kind: "item", slot };
   }
-  const amount = rng.random(who.gold);
+  let amount = rng.random(who.gold);
+  if (!who.wanted && rules.goldCap > 0 && amount > rules.goldCap) {
+    amount = rng.random(rules.goldCap);
+  }
   return who.inVehicle ? { kind: "none" } : { kind: "gold", amount };
 }

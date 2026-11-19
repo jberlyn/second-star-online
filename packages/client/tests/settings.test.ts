@@ -379,6 +379,39 @@ describe("the Settings window", () => {
     expect(status()).toBe("Not saved. Check Chat wait.");
   });
 
+  test("a choice is a list of its labels; Save sends the value and Reset names the default", () => {
+    const drops: SettingRow = {
+      key: "deathDrops",
+      page: "items",
+      label: "Drops on death",
+      tooltip: "Drops.",
+      kind: "choice",
+      choices: [
+        { value: "off", label: "Off" },
+        { value: "wanted", label: "Wanted only" },
+        { value: "everyone", label: "Everyone" },
+      ],
+      value: "off",
+      default: "wanted",
+    };
+    const { w, row, open, btn, saves } = win();
+    w.show(PAGES, [...ROWS, drops]);
+    open("items");
+    const sel = row("deathDrops").querySelector("select") as HTMLSelectElement;
+    expect([...sel.options].map((o) => o.textContent)).toEqual(["Off", "Wanted only", "Everyone"]);
+    expect(sel.value).toBe("off");
+    expect(sel.dataset.action).toBe("settings-value");
+    expect(row("deathDrops").querySelector(".settings-reset")?.textContent).toBe(
+      "Reset to default (Wanted only)",
+    );
+    sel.value = "everyone";
+    sel.dispatchEvent(new Event("change"));
+    btn("settings-save").click();
+    expect(saves.at(-1)).toEqual({ dropOnDeath: true, deathDrops: "everyone" });
+    expect(checkValue(drops, "pvp")).toBe("Pick one from the list.");
+    expect(checkValue(drops, "wanted")).toBeNull();
+  });
+
   test("checks match the server's schemas", () => {
     const [start, spirit, portal] = ROWS as [SettingRow, SettingRow, SettingRow];
     expect(checkValue(start, { map: "x1y1", x: 17, y: 12 })).toBeNull();

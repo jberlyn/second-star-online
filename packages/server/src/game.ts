@@ -138,6 +138,7 @@ import type { Rng } from "./rng.ts";
 import {
   applySettingValues,
   DAY_SECONDS,
+  deathDropRules,
   resolveSettings,
   type Settings,
   secondsToTicks,
@@ -605,7 +606,7 @@ export function createGame(deps: GameDeps): Game {
     now: nowMs,
     lootDecayMinutes: settings.lootDecay / 60,
     npcChatterSeconds: settings.npcChatter,
-    dropOnDeath: settings.dropOnDeath,
+    deathDrops: deathDropRules(settings),
     portalTargets: settings.portalTargets,
     hazardMap: settings.hazardMap,
     saveIntervalTicks: secondsToTicks(config.saveInterval),
@@ -919,7 +920,7 @@ export function createGame(deps: GameDeps): Game {
       fallbackPoint: settings.fallbackPoint,
       lootDecayMinutes: settings.lootDecay / 60,
       npcChatterSeconds: settings.npcChatter,
-      dropOnDeath: settings.dropOnDeath,
+      deathDrops: deathDropRules(settings),
       portalTargets: settings.portalTargets,
       hazardMap: settings.hazardMap,
     });

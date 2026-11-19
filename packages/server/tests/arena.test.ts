@@ -4,7 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import type { DeltaEvent, ServerMsg } from "@secondstaronline/shared";
+import { DEFAULT_DEATH_DROPS, type DeltaEvent, type ServerMsg } from "@secondstaronline/shared";
 
 import { helpLines } from "../src/game.ts";
 import { type ChatDeps, handleChat } from "../src/systems/chat/chat.ts";
@@ -203,7 +203,7 @@ describe("Challenge and quit", () => {
     s.bob.char.vitals.hp = 0;
     const r = checkDeath(s.room, s.bob, s.rng, {
       item: { world: s.world, rng: s.rng, now: 0 },
-      dropOnDeath: true,
+      rules: DEFAULT_DEATH_DROPS,
       immortal: false,
     });
     expect(r).toMatchObject({ kind: "arena", tile: { x: 2, y: 1 } });

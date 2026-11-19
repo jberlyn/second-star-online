@@ -47,7 +47,6 @@ function scene(rngQueues: Record<number, number[]> = {}) {
     rng,
     now: () => 1_000_000,
     lootDecayMinutes: 30,
-    dropOnDeath: true,
   };
   const run = (n = 1): Out => {
     const all: Out = [];

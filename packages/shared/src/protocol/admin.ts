@@ -124,8 +124,9 @@ export interface SettingRow {
   /**
    * The control: a map tile (`point`), a list of them (`points`), a whole number (`int`, with
    * `min`/`max`), a length of time (`duration`, whole seconds from `min` to `max`), on/off
-   * (`bool`), a map name or none (`map`), a list of map names (`maps`), a time zone (`zone`), the
-   * four Assassin prize lines (`prizes`), or free text (`text`, the login news).
+   * (`bool`), one of a list (`choice`, the values and their labels in `choices`), a map name or
+   * none (`map`), a list of map names (`maps`), a time zone (`zone`), the four Assassin prize
+   * lines (`prizes`), or free text (`text`, the login news).
    */
   kind:
     | "point"
@@ -133,6 +134,7 @@ export interface SettingRow {
     | "int"
     | "duration"
     | "bool"
+    | "choice"
     | "map"
     | "maps"
     | "zone"
@@ -142,6 +144,8 @@ export interface SettingRow {
   default: unknown;
   min?: number;
   max?: number;
+  /** A `choice`'s values, in order, each with the label the window shows. */
+  choices?: { value: string; label: string }[];
   /** What a `duration` of 0 means, such as "off" or "permanent", when 0 is allowed. */
   zero?: string;
 }

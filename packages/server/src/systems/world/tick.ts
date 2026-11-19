@@ -26,6 +26,8 @@
 import {
   CANNOT_FIGHT_TEXT,
   CHAT_COLOR,
+  DEFAULT_DEATH_DROPS,
+  type DeathDropRules,
   type DeltaEvent,
   deathText,
   EDGE_BLOCKED_TEXT,
@@ -126,8 +128,8 @@ export interface TickDeps {
   lootDecayMinutes?: number;
   /** Seconds between a talking NPC's RND lines (setting `npcChatter`, default 150). */
   npcChatterSeconds?: number;
-  /** "Chars Drop Items On Death" (setting `dropOnDeath`, default on). */
-  dropOnDeath?: boolean;
+  /** Whose deaths drop gold or an item, and how (settings `deathDrops` and the rest of Items). */
+  deathDrops?: DeathDropRules;
   /** Where Portal sends players (setting `portalTargets`); with none, a Portal cast is refused. */
   portalTargets?: readonly { map: string; x: number; y: number }[];
   /** The Server Spirit's map (setting `hazardMap`), or null. */
@@ -435,7 +437,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       swordShieldStep(p, (text) => tell(p, text));
       const death = checkDeath(room, p, rng, {
         item: itemCtx,
-        dropOnDeath: deps.dropOnDeath ?? true,
+        rules: deps.deathDrops ?? DEFAULT_DEATH_DROPS,
         immortal: isImmortal(p),
         lightningGame: lightningOn(world),
       });

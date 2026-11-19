@@ -135,6 +135,8 @@ export function valueText(r: SettingRow, v: unknown): string {
   switch (r.kind) {
     case "bool":
       return v === true ? "on" : "off";
+    case "choice":
+      return r.choices?.find((c) => c.value === v)?.label ?? String(v);
     case "map":
       return typeof v === "string" && v !== "" ? v : "none";
     case "point":
@@ -171,6 +173,8 @@ export function checkValue(r: SettingRow, v: unknown): string | null {
   switch (r.kind) {
     case "bool":
       return null;
+    case "choice":
+      return r.choices?.some((c) => c.value === v) ? null : "Pick one from the list.";
     case "int":
       return wholeIn(
         v,
@@ -354,6 +358,24 @@ function createRow(r: SettingRow, onChange: () => void): RowState {
         hint.textContent = `0 = ${r.zero}`;
         label.append(hint);
       }
+      break;
+    }
+    case "choice": {
+      const sel = action(document.createElement("select"), "settings-value");
+      sel.className = "settings-choice";
+      sel.setAttribute("aria-label", r.label);
+      for (const c of r.choices ?? []) {
+        const o = document.createElement("option");
+        o.value = c.value;
+        o.textContent = c.label;
+        sel.append(o);
+      }
+      read = () => sel.value;
+      write = (v) => {
+        sel.value = typeof v === "string" ? v : "";
+      };
+      fields.push(sel);
+      control.append(sel);
       break;
     }
     case "zone": {

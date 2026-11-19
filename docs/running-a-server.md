@@ -326,7 +326,10 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `lootDecay` | Loot lasts | `30m` | `1m`–`7d` | How long before monster loot disappears from the ground (player drops and `/drop` items never decay). |
-| `dropOnDeath` | Wanted characters drop on death | `true` | `true` / `false` | Whether a character wanted for murder drops some gold or one random bag item, never crystals, when they die (a wanted immortal always does). Nobody else drops anything on death. |
+| `deathDrops` | Drops on death | `wanted` | `off`, `wanted`, `pvp`, `everyone` | Whose deaths drop some gold or one random bag item (never crystals) where they died. `off`: nobody. `wanted` (Wanted only): characters wanted for murder. `pvp` (Killed by a player): anyone another player kills, and wanted characters however they die. `everyone`: every death outside an arena, as in 1.6. Faction heads on PvP maps drop regardless, and an immortal always drops. Replaces the old on/off `dropOnDeath`; a server that had it off is set to `off`. |
+| `deathDropKind` | What drops on death | `either` | `either`, `gold`, `items` | `either` (Gold or an item): a coin toss when the character carries gold, as in 1.6. `gold`: gold only; a death without gold drops nothing. `items`: bag items only. |
+| `deathDropGoldCap` | Most gold dropped on death | `200` | `0`–`1000000000` | The most gold a death drops unless the character is wanted (a wanted character can drop up to all they carry). `0` means no cap. |
+| `deathDropMinLevel` | No drops below level | `0` | `0`–`100000` | Characters below this level drop nothing on death unless wanted, so new players keep their first gear. `0` protects no one. |
 | `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–4th place prizes when an Assassin's Game ends. |
 
 ### Moderation

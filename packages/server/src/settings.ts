@@ -8,6 +8,9 @@ import { z } from "zod";
 
 import {
   ARCHIVED_PRIZES,
+  type DeathDropKind,
+  type DeathDropRules,
+  type DeathDropWho,
   prizeLineOk,
   type SettingPage,
   type SettingRow,
@@ -28,6 +31,7 @@ export type SettingForm =
   | { kind: "int"; min: number; max: number }
   | { kind: "duration"; min: number; max: number; zero?: string }
   | { kind: "bool" }
+  | { kind: "choice"; choices: { value: string; label: string }[] }
   | { kind: "map" }
   | { kind: "maps" }
   | { kind: "zone" }
@@ -93,10 +97,32 @@ const TEN_YEARS = 3650 * DAY;
  * A length of time, stored and sent in whole seconds; the Settings window reads and writes it as
  * time ("30s", "5m", "7d"). `zero` says what 0 means when it is allowed.
  */
+/** A pick from a list: each value with the label the window shows for it. */
+function choice<const T extends string>(labels: Record<T, string>) {
+  const values = Object.keys(labels) as T[];
+  return {
+    form: {
+      kind: "choice" as const,
+      choices: values.map((value) => ({ value, label: labels[value] })),
+    },
+    schema: z.enum(values as [T, ...T[]]),
+  };
+}
+
 function duration(min: number, max: number, zero?: string) {
   return {
     form: { kind: "duration" as const, min, max, ...(zero ? { zero } : {}) },
     schema: z.number().int().min(min).max(max),
+  };
+}
+
+/** The Items page's death-drop settings, as the world tick reads them. */
+export function deathDropRules(s: Settings): DeathDropRules {
+  return {
+    who: s.deathDrops,
+    kind: s.deathDropKind,
+    goldCap: s.deathDropGoldCap,
+    minLevel: s.deathDropMinLevel,
   };
 }
 
@@ -242,16 +268,49 @@ export const SETTINGS = {
     source:
       "1.6 rolled per player against a ladder that never scaled; 150 s was its average with one player on the map.",
   }),
-  dropOnDeath: def({
+  deathDrops: def({
     page: "items",
-    label: "Wanted characters drop on death",
-    form: { kind: "bool" },
-    schema: z.boolean(),
-    default: true,
+    label: "Drops on death",
+    ...choice({
+      off: "Off",
+      wanted: "Wanted only",
+      pvp: "Killed by a player",
+      everyone: "Everyone",
+    }),
+    default: "wanted" as DeathDropWho,
     tooltip:
-      "When a character wanted for murder dies, they drop some of their gold or one random item from their bag (never crystals) where they died. Nobody else drops anything. A wanted immortal always does.",
+      "Whose deaths drop gold or one random bag item (never crystals) where they died. Wanted only: characters wanted for murder. Killed by a player: anyone another player kills, and wanted characters however they die. Everyone: every death outside an arena, as in 1.6. A faction member killed on a PvP map drops the faction's head whatever this says, and an immortal always drops.",
     source:
-      "1.6's server settings file: \"Chars Drop Items On Death: ON\". 1.6 dropped on every death; SSO only on a wanted character's.",
+      "1.6's server settings file: \"Chars Drop Items On Death: ON\", which dropped on every death. SSO defaults to wanted characters only, so monsters never take a player's gear.",
+  }),
+  deathDropKind: def({
+    page: "items",
+    label: "What drops on death",
+    ...choice({ either: "Gold or an item", gold: "Gold only", items: "Items only" }),
+    default: "either" as DeathDropKind,
+    tooltip:
+      "Gold or an item: a coin toss when the character carries gold, as in 1.6. Gold only: a death without gold drops nothing. Items only: gold is never dropped.",
+    source: "SSO addition. 1.6 always chose between gold and an item.",
+  }),
+  deathDropGoldCap: def({
+    page: "items",
+    label: "Most gold dropped on death",
+    form: { kind: "int", min: 0, max: 1_000_000_000 },
+    schema: z.number().int().min(0).max(1_000_000_000),
+    default: 200,
+    tooltip:
+      "The most gold a death drops, unless the character is wanted for murder: a wanted character can drop any amount up to all they carry. 0 means no cap.",
+    source: "1.6 capped the gold drop at 200 unless wanted; the cap was fixed in its code.",
+  }),
+  deathDropMinLevel: def({
+    page: "items",
+    label: "No drops below level",
+    form: { kind: "int", min: 0, max: 100_000 },
+    schema: z.number().int().min(0).max(100_000),
+    default: 0,
+    tooltip:
+      "Characters below this level drop nothing when they die, so new players keep their first gear. It does not protect a character wanted for murder. 0 protects no one.",
+    source: "SSO addition.",
   }),
   portalTargets: def({
     page: "world",

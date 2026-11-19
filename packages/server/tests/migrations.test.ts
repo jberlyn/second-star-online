@@ -437,4 +437,26 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(max(fine)).toEqual({ hp_max: 24, sp_max: 24 });
     expect(max(high)).toEqual({ hp_max: 21, sp_max: 90 });
   });
+
+  test("divergence: death_drop_settings turns Drops on death off where drops were off", () => {
+    for (const [old, after] of [
+      ["false", [{ key: "deathDrops", value: '"off"' }]],
+      ["true", []],
+      [null, []],
+    ] as const) {
+      const db = openDatabase();
+      const all = loadMigrations(MIGRATIONS_DIR);
+      runMigrations(
+        db,
+        all.filter((m) => m.name < "20261119_40"),
+      );
+      if (old !== null) {
+        db.run("INSERT INTO settings (key, value, updated_at) VALUES ('dropOnDeath', ?, 'then')", [
+          old,
+        ]);
+      }
+      runMigrations(db, all);
+      expect(db.query("SELECT key, value FROM settings").all()).toEqual([...after]);
+    }
+  });
 });

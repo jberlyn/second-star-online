@@ -5,6 +5,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   airshipWalkGrid,
+  DEFAULT_DEATH_DROPS,
   type DeltaEvent,
   footWalkGrid,
   type ServerMsg,
@@ -483,7 +484,11 @@ describe("death", () => {
     give(s.ann, 2, "Apple", 1);
     s.map.flags.canPvp = "X";
     const rng = rngByN({ 2: [1], 3: [2] });
-    return checkDeath(s.room, s.ann, rng, { item: s.ctx(), dropOnDeath: true, immortal: false });
+    return checkDeath(s.room, s.ann, rng, {
+      item: s.ctx(),
+      rules: DEFAULT_DEATH_DROPS,
+      immortal: false,
+    });
   };
   test("kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops", () => {
     const s = aboard();
@@ -503,7 +508,7 @@ describe("death", () => {
     s.ann.char.vitals.hp = 20;
     const r = checkDeath(s.room, s.ann, rngByN(), {
       item: s.ctx(),
-      dropOnDeath: true,
+      rules: DEFAULT_DEATH_DROPS,
       immortal: false,
     });
     expect(r.kind).toBe("death");
@@ -517,7 +522,7 @@ describe("death", () => {
     s.ann.char.vitals.hp = 0;
     const r = checkDeath(s.room, s.ann, rngByN(), {
       item: s.ctx(),
-      dropOnDeath: true,
+      rules: DEFAULT_DEATH_DROPS,
       immortal: false,
     });
     expect(r.kind).toBe("arena");

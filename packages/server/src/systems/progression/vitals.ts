@@ -6,6 +6,7 @@ import {
   DEATH_HUNGER,
   DEATH_LOCK_FRAMES,
   DEATH_PAUSE_FRAMES,
+  type DeathDropRules,
   deathHead,
   deathVitals,
   exileAtDeath,
@@ -63,10 +64,10 @@ export type DeathOutcome =
   /** A normal death: the lock starts; an exile line, if any; the head's and drop's ground events. */
   | { kind: "death"; lines: string[]; out: Outgoing[] };
 
-/** DropOnDeath: the operator setting for a wanted character's drop, forced on for immortals. */
+/** The death drop: the operator's rules; an immortal drops on every death, for testing. */
 export interface DeathDropCtx {
   item: ItemCtx;
-  dropOnDeath: boolean;
+  rules: DeathDropRules;
   immortal: boolean;
   /**
    * A Lightning Assassin game is running: every death is penalty-free, whatever caused it (a bug
@@ -78,7 +79,7 @@ export interface DeathDropCtx {
 /**
  * The frame script's `HP < 1 → RunDeathScript`. The guard is a separate don't-hit-again flag, not
  * the i-frames. A stale last hit is forgotten first, so it names no killer. After the arena exit,
- * in 1.6's order: the drop's draws (a wanted character only), a faction member's head on a map whose
+ * in 1.6's order: the drop's draws (as the operator's rules allow), a faction member's head on a map whose
  * PvP flag is X (whatever killed it, created from nothing), the item or gold, then exile on HPmax (no
  * channel leave, as in 1.6). A death never lowers HPmax or SPmax (a design change: 1.6 had a one in
  * five chance of −1 each). Dying aboard loses the airship and drops
@@ -138,8 +139,15 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   if (drop) {
     // The drop draws; the pile goes on the death tile.
     const d = rollDeathDrop(
-      { bag: p.char.bag, gold: p.char.gold, wanted: p.char.wanted, inVehicle: aboard },
-      drop.dropOnDeath || drop.immortal,
+      {
+        bag: p.char.bag,
+        gold: p.char.gold,
+        level: v.level,
+        wanted: p.char.wanted,
+        killedByPlayer: p.lastToHitId !== null && p.lastToHitId !== p.id,
+        inVehicle: aboard,
+      },
+      drop.immortal ? { ...drop.rules, who: "everyone", minLevel: 0 } : drop.rules,
       rng,
     );
     // The faction head goes down first, even in a vehicle or with drops off.

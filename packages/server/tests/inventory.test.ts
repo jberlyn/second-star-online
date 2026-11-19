@@ -5,6 +5,8 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  DEFAULT_DEATH_DROPS,
+  type DeathDropRules,
   type DeltaEvent,
   NO_EQUIPMENT,
   PICKUP_TEXT,
@@ -78,7 +80,7 @@ function scene(
     rng,
     now: () => now,
     lootDecayMinutes: 30,
-    dropOnDeath: true,
+    deathDrops: DEFAULT_DEATH_DROPS as DeathDropRules,
   };
   const run = (n = 1): Out => {
     const all: Out = [];
@@ -91,6 +93,7 @@ function scene(
     map,
     world,
     rng,
+    deps,
     ctx,
     join,
     room,
@@ -884,6 +887,52 @@ describe("the death drop", () => {
     expect(groundAt(s.map, 5, 5)).toEqual(["Apple"]);
     expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
     expect(s.map.ground[0]?.kind).toBe("drop");
+  });
+});
+
+describe("the death drop settings", () => {
+  test("divergence: Killed by a player drops on a player's kill, not a monster's", () => {
+    const s = scene({ 2: [1, 1] });
+    s.deps.deathDrops = { ...DEFAULT_DEATH_DROPS, who: "pvp" };
+    const a = s.join("A", 5, 5);
+    const b = s.join("B", 9, 9);
+    give(a, 1, "Apple", 1);
+    a.lastToHitMe = "a Slime";
+    a.char.vitals.hp = 0;
+    s.run(1);
+    expect(groundAt(s.map, 5, 5)).toEqual([]);
+    give(b, 1, "Knife", 1);
+    b.lastToHitMe = "A";
+    b.lastToHitId = a.id;
+    b.char.vitals.hp = 0;
+    s.run(1);
+    expect(groundAt(s.map, 9, 9)).toEqual(["Knife"]);
+  });
+  test("divergence: Everyone drops on any death; Off drops nothing, even when wanted", () => {
+    const s = scene({ 2: [1, 1] });
+    s.deps.deathDrops = { ...DEFAULT_DEATH_DROPS, who: "everyone" };
+    const a = s.join("A", 5, 5);
+    give(a, 1, "Apple", 1);
+    a.char.vitals.hp = 0;
+    s.run(1);
+    expect(groundAt(s.map, 5, 5)).toEqual(["Apple"]);
+    s.deps.deathDrops = { ...DEFAULT_DEATH_DROPS, who: "off" };
+    const b = s.join("B", 9, 9);
+    give(b, 1, "Knife", 1);
+    b.char.wanted = true;
+    b.char.vitals.hp = 0;
+    s.run(1);
+    expect(groundAt(s.map, 9, 9)).toEqual([]);
+  });
+  test("an immortal drops on any death, whatever the setting", () => {
+    const s = scene({ 2: [1] });
+    s.deps.deathDrops = { ...DEFAULT_DEATH_DROPS, who: "off", minLevel: 50 };
+    const a = s.join("A", 5, 5);
+    a.role = "immortal";
+    give(a, 1, "Apple", 1);
+    a.char.vitals.hp = 0;
+    s.run(1);
+    expect(groundAt(s.map, 5, 5)).toEqual(["Apple"]);
   });
 });
 

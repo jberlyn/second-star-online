@@ -51,7 +51,15 @@ import {
   pileToItem,
 } from "../../src/rules/inventory/inventory.ts";
 import { normaliseLook, paperdollLayers } from "../../src/rules/inventory/paperdoll.ts";
-import { isCrystal, rollDeathDrop, rollLoot } from "../../src/rules/monsters/loot.ts";
+import {
+  DEFAULT_DEATH_DROPS,
+  type DeathDropRules,
+  type DeathDropVictim,
+  dropsOnDeath,
+  isCrystal,
+  rollDeathDrop,
+  rollLoot,
+} from "../../src/rules/monsters/loot.ts";
 
 /** Ctrl by a player of middling Strength away from their own premises. */
 const STRANGER = { str: 50, mine: false };
@@ -487,19 +495,46 @@ describe("loot and the death drop", () => {
     expect(one.calls).toEqual([4, 1]);
     expect(rollLoot(null, scripted([1]))).toBeNull();
   });
-  test("divergence: only a wanted death drops; otherwise, or with DropOnDeath off, nothing is drawn", () => {
+  const victim = (over: Partial<DeathDropVictim> = {}): DeathDropVictim => ({
+    bag: emptyBag(),
+    gold: 0,
+    level: 10,
+    wanted: false,
+    killedByPlayer: false,
+    inVehicle: false,
+    ...over,
+  });
+  const rules = (over: Partial<DeathDropRules> = {}): DeathDropRules => ({
+    ...DEFAULT_DEATH_DROPS,
+    ...over,
+  });
+  test("divergence: whose deaths drop: off, wanted only (the default), killed by a player, everyone", () => {
+    expect(DEFAULT_DEATH_DROPS.who).toBe("wanted");
+    const plain = victim();
+    const pk = victim({ killedByPlayer: true });
+    const wanted = victim({ wanted: true });
+    const table = (["off", "wanted", "pvp", "everyone"] as const).map((who) =>
+      [plain, pk, wanted].map((v) => dropsOnDeath(v, rules({ who }))),
+    );
+    expect(table).toEqual([
+      [false, false, false],
+      [false, false, true],
+      [false, true, true],
+      [true, true, true],
+    ]);
+  });
+  test("divergence: below the protected level nothing drops, unless wanted", () => {
+    const r = rules({ who: "everyone", minLevel: 5 });
+    expect(dropsOnDeath(victim({ level: 4 }), r)).toBe(false);
+    expect(dropsOnDeath(victim({ level: 5 }), r)).toBe(true);
+    expect(dropsOnDeath(victim({ level: 4, wanted: true }), r)).toBe(true);
+  });
+  test("a death that does not drop draws nothing", () => {
     const bag = emptyBag();
     bag[0] = { item: "Apple", qty: 2 };
-    for (const [wanted, on] of [
-      [false, true],
-      [true, false],
-    ] as const) {
-      const rng = scripted([1, 1]);
-      expect(rollDeathDrop({ bag, gold: 5, wanted, inVehicle: false }, on, rng)).toEqual({
-        kind: "none",
-      });
-      expect(rng.calls).toEqual([]);
-    }
+    const rng = scripted([1, 1]);
+    expect(rollDeathDrop(victim({ bag, gold: 5 }), rules(), rng)).toEqual({ kind: "none" });
+    expect(rng.calls).toEqual([]);
   });
   test("bug fixed: the death drop picks one of the bag's items at random; crystals never", () => {
     const bag = emptyBag();
@@ -507,39 +542,65 @@ describe("loot and the death drop", () => {
     bag[3] = { item: "Blue Crystals", qty: 5 };
     bag[5] = { item: "Knife", qty: 1 };
     bag[13] = { item: "Bread", qty: 1 }; // line 14 counts too
-    const who = { bag, gold: 0, wanted: true, inVehicle: false };
+    const who = victim({ bag, wanted: true });
     // Three items (the crystals are skipped): random(3) picks among Apple, Knife and Bread.
     const rng = scripted([3]);
-    expect(rollDeathDrop(who, true, rng)).toEqual({ kind: "item", slot: 13 });
+    expect(rollDeathDrop(who, rules(), rng)).toEqual({ kind: "item", slot: 13 });
     expect(rng.calls).toEqual([3]);
-    expect(rollDeathDrop(who, true, scripted([2]))).toEqual({ kind: "item", slot: 5 });
-    expect(rollDeathDrop(who, true, scripted([1]))).toEqual({ kind: "item", slot: 0 });
+    expect(rollDeathDrop(who, rules(), scripted([2]))).toEqual({ kind: "item", slot: 5 });
+    expect(rollDeathDrop(who, rules(), scripted([1]))).toEqual({ kind: "item", slot: 0 });
     // Only whole crystal names count: a "Crystal Axe" can drop.
     expect(isCrystal("Blue Crystal")).toBe(true);
     expect(isCrystal("red crystals")).toBe(true);
     expect(isCrystal("Crystal Axe")).toBe(false);
     const axe = emptyBag();
     axe[0] = { item: "Crystal Axe", qty: 1 };
-    expect(rollDeathDrop({ ...who, bag: axe }, true, scripted([1]))).toEqual({
+    expect(rollDeathDrop({ ...who, bag: axe }, rules(), scripted([1]))).toEqual({
       kind: "item",
       slot: 0,
     });
     // Only crystals: nothing drops.
     const crystals = emptyBag();
     crystals[0] = { item: "Red Crystals", qty: 9 };
-    expect(rollDeathDrop({ ...who, bag: crystals }, true, scripted([1]))).toEqual({
+    expect(rollDeathDrop({ ...who, bag: crystals }, rules(), scripted([1]))).toEqual({
       kind: "none",
     });
   });
-  test("gold branch draws random(gold), with no cap", () => {
-    const rng = scripted([1, 250]);
+  test("gold over the cap is redrawn as random(cap), unless wanted or the cap is 0", () => {
+    const everyone = rules({ who: "everyone" });
+    const capped = scripted([1, 250, 120]);
+    expect(rollDeathDrop(victim({ gold: 300 }), everyone, capped)).toEqual({
+      kind: "gold",
+      amount: 120,
+    });
+    expect(capped.calls).toEqual([2, 300, 200]);
+    const wanted = scripted([1, 250]);
+    expect(rollDeathDrop(victim({ gold: 300, wanted: true }), everyone, wanted)).toEqual({
+      kind: "gold",
+      amount: 250,
+    });
+    expect(wanted.calls).toEqual([2, 300]);
+    const uncapped = scripted([1, 250]);
     expect(
-      rollDeathDrop({ bag: emptyBag(), gold: 300, wanted: true, inVehicle: false }, true, rng),
+      rollDeathDrop(victim({ gold: 300 }), rules({ who: "everyone", goldCap: 0 }), uncapped),
     ).toEqual({
       kind: "gold",
       amount: 250,
     });
-    expect(rng.calls).toEqual([2, 300]);
+  });
+  test("divergence: what drops: gold only, or items only, with no coin toss", () => {
+    const bag = emptyBag();
+    bag[0] = { item: "Knife", qty: 1 };
+    const who = victim({ bag, gold: 50, wanted: true });
+    const gold = scripted([20]);
+    expect(rollDeathDrop(who, rules({ kind: "gold" }), gold)).toEqual({ kind: "gold", amount: 20 });
+    expect(gold.calls).toEqual([50]);
+    expect(rollDeathDrop({ ...who, gold: 0 }, rules({ kind: "gold" }), scripted([1]))).toEqual({
+      kind: "none",
+    });
+    const items = scripted([1]);
+    expect(rollDeathDrop(who, rules({ kind: "items" }), items)).toEqual({ kind: "item", slot: 0 });
+    expect(items.calls).toEqual([1]);
   });
 });
 
