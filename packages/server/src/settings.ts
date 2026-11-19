@@ -6,7 +6,13 @@
 
 import { z } from "zod";
 
-import { ARCHIVED_PRIZES, prizeLineOk, type SettingRow, TICK_HZ } from "@secondstaronline/shared";
+import {
+  ARCHIVED_PRIZES,
+  prizeLineOk,
+  type SettingPage,
+  type SettingRow,
+  TICK_HZ,
+} from "@secondstaronline/shared";
 
 const point = z.strictObject({
   map: z.string().regex(/^x-?\d+y-?\d+$/),
@@ -28,15 +34,26 @@ export type SettingForm =
   | { kind: "prizes" }
   | { kind: "text" };
 
-/** The Settings window's sections, in the order it shows them. */
-export const SETTING_GROUPS = ["World", "Chat", "Items", "Moderation and security"] as const;
-export type SettingGroup = (typeof SETTING_GROUPS)[number];
+/**
+ * The Settings window's sidebar pages, in order, grouped by what an operator is trying to do.
+ * Every page here is a list of settings (`kind: "rows"`); pages of other kinds (roles, per-map
+ * overrides) bring their own editors and are added to `settingPages` beside these.
+ */
+export const SETTING_PAGES = [
+  { id: "world", title: "World" },
+  { id: "chat", title: "Chat and mail" },
+  { id: "items", title: "Items" },
+  { id: "moderation", title: "Moderation" },
+  { id: "logins", title: "Logins" },
+  { id: "records", title: "Logs" },
+] as const;
+export type SettingPageId = (typeof SETTING_PAGES)[number]["id"];
 
 interface SettingDef<T> {
   schema: z.ZodType<T>;
   default: T;
-  /** The Settings window's section, label and control. */
-  group: SettingGroup;
+  /** The Settings window's page, label and control. */
+  page: SettingPageId;
   label: string;
   form: SettingForm;
   /** Shown to operators in the settings form. */
@@ -90,7 +107,7 @@ export function secondsToTicks(seconds: number): number {
 
 export const SETTINGS = {
   startPoint: def({
-    group: "World",
+    page: "world",
     label: "Starting map",
     form: { kind: "point" },
     schema: point,
@@ -101,7 +118,7 @@ export const SETTINGS = {
       "SSO setting. Replaces the creation position x1000y992 6-4 that 1.6 hard-coded. 1.6 also sent travel to a missing map here; SSO refuses that travel instead.",
   }),
   fallbackPoint: def({
-    group: "World",
+    page: "world",
     label: "Fallback map",
     form: { kind: "point" },
     schema: point,
@@ -112,7 +129,7 @@ export const SETTINGS = {
       "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), which every death used because no 1.6 map saved a respawn point; keeps its tile on the seed map.",
   }),
   chatMaxChars: def({
-    group: "Chat",
+    page: "chat",
     label: "Longest chat line",
     form: { kind: "int", min: 1, max: 500 },
     schema: z.number().int().min(1).max(500),
@@ -121,7 +138,7 @@ export const SETTINGS = {
     source: "SSO addition. The original had no limit.",
   }),
   broadcastCooldown: def({
-    group: "Chat",
+    page: "chat",
     label: "Broadcast wait",
     ...duration(0, HOUR, "off"),
     default: 50,
@@ -130,7 +147,7 @@ export const SETTINGS = {
       "1.6's broadcast cooldown of 1000 frames (50 s), unused in 1.6 because the registered flag was always 1; SSO applies it to everyone.",
   }),
   chatCooldown: def({
-    group: "Chat",
+    page: "chat",
     label: "Chat wait",
     ...duration(0, HOUR, "off"),
     default: 3,
@@ -139,7 +156,7 @@ export const SETTINGS = {
     source: "SSO addition. The original had no local chat limit.",
   }),
   mailBodyMax: def({
-    group: "Chat",
+    page: "chat",
     label: "Longest mail",
     form: { kind: "int", min: 1, max: 4000 },
     schema: z.number().int().min(1).max(4000),
@@ -149,7 +166,7 @@ export const SETTINGS = {
       "SSO addition. 1.6 had only the compose box's limit and the multiuser server's ~2 MB message cap.",
   }),
   mailboxMax: def({
-    group: "Chat",
+    page: "chat",
     label: "Messages per mailbox",
     form: { kind: "int", min: 1, max: 1000 },
     schema: z.number().int().min(1).max(1000),
@@ -158,7 +175,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 had no cap.",
   }),
   boardPostsMax: def({
-    group: "Chat",
+    page: "chat",
     label: "Posts per board",
     form: { kind: "int", min: 1, max: 1000 },
     schema: z.number().int().min(1).max(1000),
@@ -167,7 +184,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 kept every post in one file.",
   }),
   boardPostMax: def({
-    group: "Chat",
+    page: "chat",
     label: "Longest board post",
     form: { kind: "int", min: 1, max: 4000 },
     schema: z.number().int().min(1).max(4000),
@@ -176,7 +193,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6's only cap was the post text box's 312x58 limit.",
   }),
   artBytesMax: def({
-    group: "Chat",
+    page: "chat",
     label: "Largest painting or photo",
     form: { kind: "int", min: 1024, max: 65536 },
     schema: z.number().int().min(1024).max(65536),
@@ -186,7 +203,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 stored whatever the client sent, any size and format.",
   }),
   announcePresence: def({
-    group: "Chat",
+    page: "chat",
     label: "Announce logons",
     form: { kind: "bool" },
     schema: z.boolean(),
@@ -196,7 +213,7 @@ export const SETTINGS = {
     source: "1.6 sent 934/935 to @AllUsers; the operator toggle is an SSO addition.",
   }),
   presenceChatLines: def({
-    group: "Chat",
+    page: "chat",
     label: "Logon lines in chat",
     form: { kind: "bool" },
     schema: z.boolean(),
@@ -206,7 +223,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 printed nothing.",
   }),
   lootDecay: def({
-    group: "Items",
+    page: "items",
     label: "Loot lasts",
     ...duration(MINUTE, 7 * DAY),
     default: 30 * MINUTE,
@@ -216,7 +233,7 @@ export const SETTINGS = {
       "SSO addition. The original never removed ground items; its 20 slots per map were the only limit.",
   }),
   npcChatter: def({
-    group: "World",
+    page: "world",
     label: "NPC chatter every",
     ...duration(10, HOUR),
     default: 150,
@@ -226,7 +243,7 @@ export const SETTINGS = {
       "1.6 rolled per player against a ladder that never scaled; 150 s was its average with one player on the map.",
   }),
   dropOnDeath: def({
-    group: "Items",
+    page: "items",
     label: "Drop an item on death",
     form: { kind: "bool" },
     schema: z.boolean(),
@@ -236,7 +253,7 @@ export const SETTINGS = {
     source: '1.6\'s server settings file: "Chars Drop Items On Death: ON".',
   }),
   portalTargets: def({
-    group: "World",
+    page: "world",
     label: "Portal targets",
     form: { kind: "points" },
     schema: z.array(point).max(30),
@@ -247,7 +264,7 @@ export const SETTINGS = {
       "1.6's Portal file, read by the server's Portal handler: random(n) of its first 30 items. Its only entry, xbrinkybrink, is not a map, so in 1.6 Portal always ended on the fallback x1000y992 5-5.",
   }),
   hazardMap: def({
-    group: "World",
+    page: "world",
     label: "Server Spirit map",
     form: { kind: "map" },
     schema: z
@@ -261,7 +278,7 @@ export const SETTINGS = {
       "The @xSlimmySlimm sends of 1.6's timer script. No archived map has that name, so in 1.6 they hit nobody.",
   }),
   treasureMaps: def({
-    group: "World",
+    page: "world",
     label: "Treasure maps",
     form: { kind: "maps" },
     schema: z.array(z.string().regex(/^x-?\d+y-?\d+$/)).max(100),
@@ -272,7 +289,7 @@ export const SETTINGS = {
       "The 21 maps of 1.6's treasure list. None of them is archived. The item list stays the original's.",
   }),
   houseDecayTimeZone: def({
-    group: "World",
+    page: "world",
     label: "House decay time zone",
     form: { kind: "zone" },
     schema: z.string().refine(isTimeZone, "Pick a time zone from the list."),
@@ -283,7 +300,7 @@ export const SETTINGS = {
       "1.6 used the month of the multiuser server's clock, relayed by whichever client last sent the month.",
   }),
   assassinPrizes: def({
-    group: "Items",
+    page: "items",
     label: "Assassin prizes",
     form: { kind: "prizes" },
     schema: z
@@ -301,7 +318,7 @@ export const SETTINGS = {
       '1.6\'s AssassinPrizes.txt, "Long Sword:1000 Gold:500 Gold:Knife", given when the game ends; SSO edits it with the File Editor.',
   }),
   news: def({
-    group: "Chat",
+    page: "chat",
     label: "Login news",
     form: { kind: "text" },
     schema: z.string().max(NEWS_MAX),
@@ -312,7 +329,7 @@ export const SETTINGS = {
       "1.6's News.txt, sent at game entry and printed when it differs from the client's saved news preference. 1.6 operators edited the file by hand.",
   }),
   jailSentence: def({
-    group: "Moderation and security",
+    page: "moderation",
     label: "Jail sentence",
     ...duration(MINUTE, TEN_YEARS),
     default: 10 * MINUTE,
@@ -322,7 +339,7 @@ export const SETTINGS = {
       '1.6\'s server settings file had "Jail Sentence Time (1800 = 1 minute):8000" in frames, counted only while online and restarted on every entry. SSO stores sentences and counts them in real time.',
   }),
   banLength: def({
-    group: "Moderation and security",
+    page: "moderation",
     label: "Ban length",
     ...duration(0, TEN_YEARS, "permanent"),
     default: 0,
@@ -330,7 +347,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6's bans were permanent.",
   }),
   ipBanLength: def({
-    group: "Moderation and security",
+    page: "moderation",
     label: "IP ban length",
     ...duration(0, TEN_YEARS, "permanent"),
     default: 30 * DAY,
@@ -339,7 +356,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6's IP bans were permanent (and never checked).",
   }),
   addressHistory: def({
-    group: "Moderation and security",
+    page: "moderation",
     label: "Keep login addresses",
     ...duration(0, TEN_YEARS, "forever"),
     default: 180 * DAY,
@@ -348,7 +365,7 @@ export const SETTINGS = {
     source: "SSO addition: /banip <name> needs the addresses an account has used.",
   }),
   chatLogRetention: def({
-    group: "Moderation and security",
+    page: "records",
     label: "Keep chat log",
     ...duration(0, TEN_YEARS, "forever"),
     default: 90 * DAY,
@@ -357,7 +374,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 logged no chat on the server.",
   }),
   auditLogRetention: def({
-    group: "Moderation and security",
+    page: "records",
     label: "Keep audit log",
     ...duration(0, TEN_YEARS, "forever"),
     default: 0,
@@ -366,7 +383,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 kept no audit log.",
   }),
   loginFailsPerIp: def({
-    group: "Moderation and security",
+    page: "logins",
     label: "Failed logins per address",
     form: { kind: "int", min: 0, max: 1000 },
     schema: z.number().int().min(0).max(1000),
@@ -376,7 +393,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 had no limit.",
   }),
   loginFailsPerAccount: def({
-    group: "Moderation and security",
+    page: "logins",
     label: "Failed logins per account",
     form: { kind: "int", min: 0, max: 1000 },
     schema: z.number().int().min(0).max(1000),
@@ -386,7 +403,7 @@ export const SETTINGS = {
     source: "SSO addition. 1.6 had no limit.",
   }),
   createsPerIp: def({
-    group: "Moderation and security",
+    page: "logins",
     label: "New characters per address",
     form: { kind: "int", min: 0, max: 1000 },
     schema: z.number().int().min(0).max(1000),
@@ -433,15 +450,21 @@ export function resolveSettings(overrides: ReadonlyMap<string, string>): Setting
   return out as Settings;
 }
 
-/** The Settings window's rows (protocol `SettingRow`), section by section. */
+/** The Settings window's pages (protocol `SettingPage`), in sidebar order. */
+export function settingPages(): SettingPage[] {
+  return SETTING_PAGES.map((p) => ({ id: p.id, title: p.title, kind: "rows" }));
+}
+
+/** The Settings window's rows (protocol `SettingRow`), page by page. */
 export function settingRows(current: Settings): SettingRow[] {
-  const order = (d: unknown) => SETTING_GROUPS.indexOf((d as SettingDef<unknown>).group);
+  const order = (d: unknown) =>
+    SETTING_PAGES.findIndex((p) => p.id === (d as SettingDef<unknown>).page);
   const defs = Object.entries(SETTINGS).sort(([, a], [, b]) => order(a) - order(b));
   return defs.map(([key, d]) => {
     const def = d as SettingDef<unknown>;
     return {
       key,
-      group: def.group,
+      page: def.page,
       label: def.label,
       tooltip: def.tooltip,
       ...def.form,

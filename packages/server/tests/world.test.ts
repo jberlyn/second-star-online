@@ -29,8 +29,9 @@ import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/se
 import {
   defaultSettings,
   resolveSettings,
-  SETTING_GROUPS,
+  SETTING_PAGES,
   secondsToTicks,
+  settingPages,
   settingRows,
 } from "../src/settings.ts";
 import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
@@ -139,13 +140,15 @@ describe("settings", () => {
     expect("stepFrames" in resolveSettings(loadSettingOverrides(db))).toBe(false);
   });
 
-  test("the Settings window's rows come section by section, every one explained", () => {
+  test("the Settings window's rows come page by page, every one explained", () => {
     const rows = settingRows(defaultSettings());
-    const groups = rows.map((r) => r.group).filter((g, i, all) => all.indexOf(g) === i);
-    expect(groups).toEqual([...SETTING_GROUPS]);
+    const pages = rows.map((r) => r.page).filter((g, i, all) => all.indexOf(g) === i);
+    // Every page has rows, and the rows come in the sidebar's order.
+    expect(pages).toEqual(SETTING_PAGES.map((p) => p.id));
+    expect(settingPages()).toEqual(SETTING_PAGES.map((p) => ({ ...p, kind: "rows" })));
     expect(rows.every((r) => r.tooltip !== "")).toBe(true);
     expect(rows.find((r) => r.key === "jailSentence")).toMatchObject({
-      group: "Moderation and security",
+      page: "moderation",
       kind: "duration",
       value: 600,
       min: 60,

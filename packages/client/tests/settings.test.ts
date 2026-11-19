@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import type { ServerMsg, SettingRow } from "@secondstaronline/shared";
+import type { ServerMsg, SettingPage, SettingRow } from "@secondstaronline/shared";
 
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -31,10 +31,16 @@ const fakeAssets: Assets = {
   ui: (cast, member) => `/assets/ui/${cast.toLowerCase()}-${member}.png`,
 };
 
+const PAGES: SettingPage[] = [
+  { id: "world", title: "World", kind: "rows" },
+  { id: "items", title: "Items", kind: "rows" },
+  { id: "chat", title: "Chat and mail", kind: "rows" },
+];
+
 const ROWS: SettingRow[] = [
   {
     key: "startPoint",
-    group: "World",
+    page: "world",
     label: "Start",
     tooltip: "Start.",
     kind: "point",
@@ -43,7 +49,7 @@ const ROWS: SettingRow[] = [
   },
   {
     key: "hazardMap",
-    group: "World",
+    page: "world",
     label: "Spirit",
     tooltip: "Spirit.",
     kind: "map",
@@ -52,7 +58,7 @@ const ROWS: SettingRow[] = [
   },
   {
     key: "portalTargets",
-    group: "World",
+    page: "world",
     label: "Portal",
     tooltip: "Portal.",
     kind: "points",
@@ -61,7 +67,7 @@ const ROWS: SettingRow[] = [
   },
   {
     key: "dropOnDeath",
-    group: "Items",
+    page: "items",
     label: "Drop",
     tooltip: "Drops.",
     kind: "bool",
@@ -70,7 +76,7 @@ const ROWS: SettingRow[] = [
   },
   {
     key: "broadcastCooldown",
-    group: "Moderation and security",
+    page: "chat",
     label: "Broadcast",
     tooltip: "Broadcast.",
     kind: "duration",
@@ -81,10 +87,10 @@ const ROWS: SettingRow[] = [
     zero: "off",
   },
   {
-    key: "saveInterval",
-    group: "Server",
-    label: "Save",
-    tooltip: "Save.",
+    key: "chatCooldown",
+    page: "chat",
+    label: "Chat wait",
+    tooltip: "Between chat lines.",
     kind: "duration",
     value: 30,
     default: 90,
@@ -104,7 +110,7 @@ function win() {
       loads += 1;
     },
   });
-  w.show(ROWS);
+  w.show(PAGES, ROWS);
   const el = w.window.el;
   const row = (key: string) => el.querySelector(`[data-key="${key}"]`) as HTMLElement;
   const status = () => el.querySelector(".settings-status")?.textContent;
@@ -112,37 +118,77 @@ function win() {
     input.value = v;
     input.dispatchEvent(new Event("input"));
   };
-  return { w, el, row, status, type, saves, loads: () => loads };
+  const link = (id: string) => el.querySelector(`.settings-link[data-page="${id}"]`) as HTMLElement;
+  const open = (id: string) => link(id).click();
+  const btn = (cls: string) => el.querySelector(`.${cls}`) as HTMLButtonElement;
+  const confirm = () => el.querySelector(".settings-confirm") as HTMLElement;
+  const search = (q: string) => type(el.querySelector(".settings-search") as HTMLInputElement, q);
+  const shownKeys = () =>
+    [...el.querySelectorAll(".settings-list:not([hidden]) .settings-row")].map(
+      (r) => (r as HTMLElement).dataset.key,
+    );
+  return {
+    w,
+    el,
+    row,
+    status,
+    type,
+    saves,
+    loads: () => loads,
+    link,
+    open,
+    btn,
+    confirm,
+    search,
+    shownKeys,
+  };
 }
 
 describe("the Settings window", () => {
-  test("one section per group in the rows' order; every explanation shown, not hovered", () => {
-    const { el } = win();
-    expect([...el.querySelectorAll(".settings-section h3")].map((h) => h.textContent)).toEqual([
+  test("a sidebar link per page; the first page opens, every explanation shown, not hovered", () => {
+    const { el, link, shownKeys } = win();
+    expect([...el.querySelectorAll(".settings-link")].map((a) => a.textContent)).toEqual([
       "World",
       "Items",
-      "Moderation and security",
-      "Server",
+      "Chat and mail",
     ]);
-    expect([...el.querySelectorAll(".settings-help")].map((p) => p.textContent)).toEqual(
-      ROWS.map((r) => r.tooltip),
-    );
+    expect(link("world").getAttribute("aria-current")).toBe("page");
+    expect(el.querySelector(".settings-title")?.textContent).toBe("World");
+    expect(shownKeys()).toEqual(["startPoint", "hazardMap", "portalTargets"]);
+    expect([...el.querySelectorAll(".settings-help")].map((p) => p.textContent)).toEqual([
+      "Start.",
+      "Spirit.",
+      "Portal.",
+    ]);
     expect(el.querySelector(".settings [title]")).toBeNull();
   });
 
-  test("a duration is shown and typed as time, and read as whole seconds", () => {
-    const { row } = win();
-    const wait = row("broadcastCooldown");
-    expect((wait.querySelector("input") as HTMLInputElement).value).toBe("6m 40s");
-    expect(wait.querySelector(".settings-unit")?.textContent).toBe("0 = off");
-    expect(row("saveInterval").querySelector(".settings-unit")).toBeNull();
+  test("a page link opens that page's rows", () => {
+    const { el, link, open, shownKeys } = win();
+    open("chat");
+    expect(shownKeys()).toEqual(["broadcastCooldown", "chatCooldown"]);
+    expect(link("chat").getAttribute("aria-current")).toBe("page");
+    expect(link("world").hasAttribute("aria-current")).toBe(false);
+    expect(el.querySelector(".settings-title")?.textContent).toBe("Chat and mail");
   });
 
-  test("a changed row is marked and counted; Reset puts its default back", () => {
-    const { row, status, type } = win();
+  test("a duration is shown and typed as time, and read as whole seconds", () => {
+    const { row, open } = win();
+    open("chat");
+    const wait = row("broadcastCooldown");
+    expect((wait.querySelector("input") as HTMLInputElement).value).toBe("6m 40s");
+    // "0 = off" sits by the label, so the field lines up with every other row's.
+    expect(wait.querySelector(".settings-label .settings-unit")?.textContent).toBe("0 = off");
+    expect(wait.querySelector(".settings-control .settings-unit")).toBeNull();
+    expect(row("chatCooldown").querySelector(".settings-unit")).toBeNull();
+  });
+
+  test("a changed row is marked and counted, with a dot on its page; Reset puts its default back", () => {
+    const { row, status, type, open, link } = win();
+    open("chat");
     expect(status()).toBe("No unsaved changes");
-    // Save is 30 s on the server, default 90 s: not changed, but resettable.
-    const walk = row("saveInterval");
+    // Chat wait is 30 s on the server, default 90 s: not changed, but resettable.
+    const walk = row("chatCooldown");
     expect(walk.classList.contains("settings-changed")).toBe(false);
     const reset = walk.querySelector(".settings-reset") as HTMLButtonElement;
     expect(reset.hidden).toBe(false);
@@ -150,18 +196,18 @@ describe("the Settings window", () => {
     reset.click();
     expect(walk.classList.contains("settings-changed")).toBe(true);
     expect(reset.hidden).toBe(true);
+    expect(link("chat").classList.contains("settings-changed")).toBe(true);
     type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "100s");
     expect(status()).toBe("2 unsaved changes");
   });
 
-  test("Save sends every value from its control; Revert asks again", () => {
-    const { row, el, saves, loads, type } = win();
-    type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "1m 40s");
+  test("Save sends only the open page's values; Revert asks again", () => {
+    const { w, row, saves, loads, type, btn, open } = win();
     type(
       row("portalTargets").querySelector("textarea") as HTMLTextAreaElement,
       "x1y1 2 3\nx5y5 6 7",
     );
-    (el.querySelector(".settings-save") as HTMLButtonElement).click();
+    btn("settings-save").click();
     expect(saves).toEqual([
       {
         startPoint: { map: "x1000y992", x: 6, y: 4 },
@@ -170,20 +216,106 @@ describe("the Settings window", () => {
           { map: "x1y1", x: 2, y: 3 },
           { map: "x5y5", x: 6, y: 7 },
         ],
-        dropOnDeath: true,
-        broadcastCooldown: 100,
-        saveInterval: 30,
       },
     ]);
-    (el.querySelector(".settings-revert") as HTMLButtonElement).click();
+    btn("settings-revert").click();
     expect(loads()).toBe(1);
+    // The server's reply shows what it holds, so the page has no changes left to ask about.
+    w.show(PAGES, ROWS);
+    open("items");
+    btn("settings-save").click();
+    expect(saves[1]).toEqual({ dropOnDeath: true });
+  });
+
+  test("leaving a page with unsaved changes asks; Keep editing stays, Discard goes", () => {
+    const { w, el, row, type, open, confirm, btn, shownKeys, link, status } = win();
+    open("chat");
+    type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "1m");
+    open("items");
+    expect(confirm().hidden).toBe(false);
+    expect(el.querySelector('[role="alertdialog"]')).toBe(
+      confirm().querySelector(".settings-confirm-box"),
+    );
+    expect(confirm().textContent).toContain(
+      "You have an unsaved change on Chat and mail. If you leave this page, it will be discarded.",
+    );
+    expect(shownKeys()).toEqual(["broadcastCooldown", "chatCooldown"]);
+    btn("settings-stay").click();
+    expect(confirm().hidden).toBe(true);
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect((row("broadcastCooldown").querySelector("input") as HTMLInputElement).value).toBe("1m");
+    expect(w.page).toBe("chat");
+    open("items");
+    btn("settings-discard").click();
+    expect(confirm().hidden).toBe(true);
+    expect(w.page).toBe("items");
+    expect(shownKeys()).toEqual(["dropOnDeath"]);
+    expect(link("chat").classList.contains("settings-changed")).toBe(false);
+    expect(status()).toBe("No unsaved changes");
+    // Back on Chat, the server's value is shown again.
+    open("chat");
+    expect(confirm().hidden).toBe(true);
+    expect((row("broadcastCooldown").querySelector("input") as HTMLInputElement).value).toBe(
+      "6m 40s",
+    );
+  });
+
+  test("an unchanged page, or its own link, never asks", () => {
+    const { open, confirm, w, row } = win();
+    open("items");
+    expect(confirm().hidden).toBe(true);
+    expect(w.page).toBe("items");
+    (row("dropOnDeath").querySelector("input") as HTMLInputElement).click();
+    open("items");
+    expect(confirm().hidden).toBe(true);
+  });
+
+  test("search finds settings on every page by label or explanation; a result opens its page", () => {
+    const { el, search, open, w, confirm, row, type, btn } = win();
+    search("portal");
+    const results = () =>
+      [...el.querySelectorAll(".settings-result")].map((r) => [
+        (r as HTMLElement).dataset.key,
+        r.querySelector(".settings-result-page")?.textContent,
+      ]);
+    expect(results()).toEqual([["portalTargets", "World"]]);
+    expect((el.querySelector(".settings-list") as HTMLElement).hidden).toBe(true);
+    search("between chat");
+    expect(results()).toEqual([["chatCooldown", "Chat and mail"]]);
+    search("nothing like it");
+    expect(el.querySelector(".settings-none")?.textContent).toBe(
+      "No setting matches “nothing like it”.",
+    );
+    // A result on another page asks first when this page has changes.
+    open("world");
+    type(row("hazardMap").querySelector("input") as HTMLInputElement, "x1y1");
+    // The key matches too.
+    search("cooldown");
+    expect(results().map(([k]) => k)).toEqual(["broadcastCooldown", "chatCooldown"]);
+    (el.querySelector('.settings-result[data-key="chatCooldown"]') as HTMLElement).click();
+    expect(confirm().hidden).toBe(false);
+    btn("settings-discard").click();
+    expect(w.page).toBe("chat");
+    expect((el.querySelector(".settings-search") as HTMLInputElement).value).toBe("");
+    expect((el.querySelector(".settings-list") as HTMLElement).hidden).toBe(false);
+    expect(document.activeElement?.closest("[data-key]")?.getAttribute("data-key")).toBe(
+      "chatCooldown",
+    );
+  });
+
+  test("the rows coming again (after a save) stay on the open page", () => {
+    const { w, open } = win();
+    open("chat");
+    w.show(PAGES, ROWS);
+    expect(w.page).toBe("chat");
   });
 
   test("a bad value is shown on its row and nothing is sent", () => {
-    const { row, el, saves, status, type } = win();
+    const { row, saves, status, type, btn, open } = win();
+    open("chat");
     const field = row("broadcastCooldown").querySelector("input") as HTMLInputElement;
     type(field, "100");
-    (el.querySelector(".settings-save") as HTMLButtonElement).click();
+    btn("settings-save").click();
     expect(saves).toEqual([]);
     const err = row("broadcastCooldown").querySelector(".settings-error") as HTMLElement;
     expect(err.hidden).toBe(false);
@@ -192,25 +324,26 @@ describe("the Settings window", () => {
     // Typing again clears it.
     type(field, "2h");
     expect(err.hidden).toBe(true);
-    (el.querySelector(".settings-save") as HTMLButtonElement).click();
+    btn("settings-save").click();
     expect(err.textContent).toBe("Enter a time up to 1h, or 0 for off.");
-    type(row("saveInterval").querySelector("input") as HTMLInputElement, "0");
-    (el.querySelector(".settings-save") as HTMLButtonElement).click();
-    expect(row("saveInterval").querySelector(".settings-error")?.textContent).toBe(
+    type(row("chatCooldown").querySelector("input") as HTMLInputElement, "0");
+    btn("settings-save").click();
+    expect(row("chatCooldown").querySelector(".settings-error")?.textContent).toBe(
       "Enter a time from 1s to 1h.",
     );
     expect(saves).toEqual([]);
   });
 
   test("the server's answer: saved for everyone, or refused on the setting at fault", () => {
-    const { w, row, status } = win();
+    const { w, row, status, open } = win();
+    open("chat");
     w.result({ ok: true });
     expect(status()).toBe(SETTINGS_SAVED);
-    w.result({ ok: false, key: "saveInterval", text: "Save: 1 or more" });
-    expect(row("saveInterval").querySelector(".settings-error")?.textContent).toBe(
-      "Save: 1 or more",
+    w.result({ ok: false, key: "chatCooldown", text: "Chat wait: 1 or more" });
+    expect(row("chatCooldown").querySelector(".settings-error")?.textContent).toBe(
+      "Chat wait: 1 or more",
     );
-    expect(status()).toBe("Not saved. Check Save.");
+    expect(status()).toBe("Not saved. Check Chat wait.");
   });
 
   test("checks match the server's schemas", () => {
@@ -228,7 +361,7 @@ describe("the Settings window", () => {
   test("Assassin prizes: four lines, blanks kept; items, gold amounts or blank", () => {
     const prizes: SettingRow = {
       key: "assassinPrizes",
-      group: "Items",
+      page: "items",
       label: "Assassin prizes",
       tooltip: "Prizes.",
       kind: "prizes",
@@ -249,7 +382,7 @@ describe("the Settings window", () => {
     document.body.append(layer.el);
     const saves: Record<string, unknown>[] = [];
     const w = createSettingsWindow(layer, { save: (v) => saves.push(v), load: () => {} });
-    w.show([prizes]);
+    w.show([{ id: "items", title: "Items", kind: "rows" }], [prizes]);
     const t = w.window.el.querySelector("textarea") as HTMLTextAreaElement;
     expect(t.value).toBe("Long Sword\n1000 Gold\n500 Gold\nKnife");
     expect(t.getAttribute("data-action")).not.toBeNull();
@@ -258,7 +391,7 @@ describe("the Settings window", () => {
   test("Login news: free text up to 1000 characters, empty for none", () => {
     const news: SettingRow = {
       key: "news",
-      group: "Chat",
+      page: "chat",
       label: "Login news",
       tooltip: "News.",
       kind: "text",
@@ -271,7 +404,7 @@ describe("the Settings window", () => {
     const layer = createWindowLayer();
     document.body.append(layer.el);
     const w = createSettingsWindow(layer, { save: () => {}, load: () => {} });
-    w.show([news]);
+    w.show([{ id: "chat", title: "Chat and mail", kind: "rows" }], [news]);
     const t = w.window.el.querySelector("textarea") as HTMLTextAreaElement;
     expect(t.value).toBe("Welcome to First Star Online!");
     expect(t.getAttribute("data-action")).not.toBeNull();
@@ -317,7 +450,7 @@ describe("admin messages in the app", () => {
     c.onMessage(SNAPSHOT);
     menuClick(root, "Admin", "Settings");
     expect(c.sent).toContainEqual({ t: "settingsOpen" });
-    c.onMessage({ t: "settings", rows: ROWS });
+    c.onMessage({ t: "settings", pages: PAGES, rows: ROWS });
     const w = root.querySelector(".settings")?.closest<HTMLElement>(".sso-window");
     expect(w?.hidden).toBe(false);
     c.onMessage({ t: "settingsResult", ok: true });
@@ -337,7 +470,7 @@ describe("admin messages in the app", () => {
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
     c.onMessage({ t: "role", role: "immortal" });
-    c.onMessage({ t: "settings", rows: ROWS });
+    c.onMessage({ t: "settings", pages: PAGES, rows: ROWS });
     const w = root.querySelector(".settings")?.closest<HTMLElement>(".sso-window");
     expect(w?.hidden).toBe(false);
     c.onMessage({ t: "chat", text: "*** You are being kicked.", color: 0 });

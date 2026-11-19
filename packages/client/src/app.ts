@@ -915,7 +915,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         }
         return;
       case "settings":
-        settingsWin.show(msg.rows);
+        settingsWin.show(msg.pages, msg.rows);
         return;
       case "settingsResult":
         settingsWin.result(msg);

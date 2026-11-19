@@ -88,8 +88,9 @@ export const npcSaveSchema = z.strictObject({
 export const settingsOpenSchema = z.strictObject({ t: z.literal("settingsOpen") });
 
 /**
- * The window's SAVE: the values by setting key. Each value is checked by its setting's own
- * schema on the server (server/src/settings.ts); one bad value refuses the whole save.
+ * The window's SAVE: the values by setting key, those of the page being saved (keys left out keep
+ * their values). Each value is checked by its setting's own schema on the server
+ * (server/src/settings.ts); one bad value refuses the whole save.
  */
 export const settingsSaveSchema = z.strictObject({
   t: z.literal("settingsSave"),
@@ -99,11 +100,23 @@ export const settingsSaveSchema = z.strictObject({
 /** The Settings window closes (its close box). */
 export const settingsCloseSchema = z.strictObject({ t: z.literal("settingsClose") });
 
+/**
+ * One page of the Settings window's sidebar (server/src/settings.ts `SETTING_PAGES`). The server
+ * sends only the pages the player may use. A `rows` page lists the settings whose `page` is its
+ * id and is saved on its own; other kinds of page (roles, per-map overrides) will bring their own
+ * editor and messages.
+ */
+export interface SettingPage {
+  id: string;
+  title: string;
+  kind: "rows";
+}
+
 /** One row of the Settings window (server/src/settings.ts). */
 export interface SettingRow {
   key: string;
-  /** The window's section, e.g. "Chat" (server/src/settings.ts `SETTING_GROUPS`, in order). */
-  group: string;
+  /** The id of the page it is on (`SettingPage.id`); rows come in page order. */
+  page: string;
   /** The row's label. */
   label: string;
   /** What it does and where 1.6 had it (every setting carries an explanation). */
@@ -150,8 +163,8 @@ export type AdminServerMsg =
   | { t: "npcScript"; name: string; text: string }
   /** An NPC editor save changed this NPC's file: its Bio window and shop list close (SSO). */
   | { t: "npcClosed" }
-  /** The Settings window: every setting with its value. */
-  | { t: "settings"; rows: SettingRow[] }
+  /** The Settings window: its pages, and every setting with its value. */
+  | { t: "settings"; pages: SettingPage[]; rows: SettingRow[] }
   /**
    * The Settings window's SAVE: applied for everyone online, or refused whole with the setting
    * at fault (`key`, null for an unknown one) and why.

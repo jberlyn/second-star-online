@@ -195,43 +195,46 @@ function buildAll(): HTMLElement[] {
   createChatRoomWindow(fakeAssets, layer, noop);
   createTradeWindow(fakeAssets, layer, noop);
   // The Settings window with one row of each kind, each with its Reset shown.
-  createSettingsWindow(layer, noop).show([
-    { key: "a", group: "G", label: "A", tooltip: "", kind: "bool", value: true, default: false },
-    {
-      key: "b",
-      group: "G",
-      label: "B",
-      tooltip: "",
-      kind: "duration",
-      value: 1,
-      default: 2,
-      min: 0,
-      max: 9,
-      zero: "off",
-    },
-    {
-      key: "c",
-      group: "G",
-      label: "C",
-      tooltip: "",
-      kind: "int",
-      value: 16,
-      default: 8,
-      min: 0,
-      max: 20,
-    },
-    { key: "d", group: "G", label: "D", tooltip: "", kind: "map", value: null, default: "x1y1" },
-    {
-      key: "e",
-      group: "G",
-      label: "E",
-      tooltip: "",
-      kind: "point",
-      value: { map: "x1y1", x: 1, y: 1 },
-      default: null,
-    },
-    { key: "f", group: "G", label: "F", tooltip: "", kind: "points", value: [], default: [1] },
-  ]);
+  createSettingsWindow(layer, noop).show(
+    [{ id: "g", title: "G", kind: "rows" }],
+    [
+      { key: "a", page: "g", label: "A", tooltip: "", kind: "bool", value: true, default: false },
+      {
+        key: "b",
+        page: "g",
+        label: "B",
+        tooltip: "",
+        kind: "duration",
+        value: 1,
+        default: 2,
+        min: 0,
+        max: 9,
+        zero: "off",
+      },
+      {
+        key: "c",
+        page: "g",
+        label: "C",
+        tooltip: "",
+        kind: "int",
+        value: 16,
+        default: 8,
+        min: 0,
+        max: 20,
+      },
+      { key: "d", page: "g", label: "D", tooltip: "", kind: "map", value: null, default: "x1y1" },
+      {
+        key: "e",
+        page: "g",
+        label: "E",
+        tooltip: "",
+        kind: "point",
+        value: { map: "x1y1", x: 1, y: 1 },
+        default: null,
+      },
+      { key: "f", page: "g", label: "F", tooltip: "", kind: "points", value: [], default: [1] },
+    ],
+  );
 
   // The World Editor with a map shown, every panel open; the sign panel in play.
   const editor = createWorldEditor(fakeAssets, noop);

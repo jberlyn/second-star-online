@@ -281,7 +281,11 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 
 ## Server settings
 
-Immortals open **Admin → Settings** from the top menu bar. Clicking **SAVE** validates every field on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values.
+Immortals open **Admin → Settings** from the top menu bar. The window has a sidebar of pages (World, Chat and mail, Items, Moderation, Logins and Logs) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
+
+Each page is saved on its own. Clicking **SAVE** validates the page's fields on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values. Only the open page can hold unsaved changes: leaving it for another page or a search result asks first, and the changes are discarded if you go on.
+
+Server infrastructure (save interval, reconnect grace, open connections per address) is not in the window; set it with [environment variables](#environment-variables).
 
 Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w` (or words such as `5 min` or `2 hours`), several in a row if needed (`1h 30m`, `1d12h`). The window shows them the same way. Each is stored in whole seconds, so a value in the `settings` table or an audit row is a number of seconds. Where `0` is allowed, the window says what it means (`off`, `permanent` or `forever`). For rate limits, `0` disables the limit; rate-limit counters live in memory and reset on server restart, grouping IPv6 addresses by `/64` prefix.
 
@@ -301,7 +305,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | `houseDecayTimeZone` | House decay time zone | `UTC` | Valid IANA time zone | Calendar time zone used for monthly house-decay checks. |
 | `npcChatter` | NPC chatter every | `2m 30s` | `10s`–`1h` | How often an NPC with `RND\|` lines in its NPC file, such as a God, says one of them; everyone on the map sees it. |
 
-### Chat
+### Chat and mail
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
@@ -325,7 +329,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | `dropOnDeath` | Drop an item on death | `true` | `true` / `false` | Whether dying characters may drop one random item from their bag, never crystals (immortals always drop). |
 | `assassinPrizes` | Assassin prizes | `Long Sword`, `1000 Gold`, `500 Gold`, `Knife` | 4 lines, each <= 60 chars (item, `<n> Gold`, or empty) | 1st–4th place prizes when an Assassin's Game ends. |
 
-### Moderation and security
+### Moderation
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
@@ -333,11 +337,21 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | `banLength` | Ban length | `0` (permanent) | `0`–`3650d` | Length of a `/ban` without a duration (`0` is permanent until `/unban`). |
 | `ipBanLength` | IP ban length | `30d` | `0`–`3650d` | Length of a `/banip` without a duration (`0` is permanent). Addresses are reassigned, so permanent IP bans can catch someone else later. |
 | `addressHistory` | Keep login addresses | `180d` | `0`–`3650d` | How long an account's login addresses are kept after their last use, for `/banip <name>` and `/banlist` (`0` keeps them forever). |
-| `chatLogRetention` | Keep chat log | `90d` | `0`–`3650d` | How long the chat log keeps each line, for `/chatlog` and `admin:chatlog` (`0` keeps them forever). See [The chat log](#the-chat-log). |
-| `auditLogRetention` | Keep audit log | `0` (forever) | `0`–`3650d` | How long the audit log keeps each staff action, for `admin:audit` (`0` keeps them forever). Bans, jails and pardons are kept regardless. See [Reading the audit log](#reading-the-audit-log). |
+
+### Logins
+
+| Key | Label | Default | Allowed / range | Effect |
+|---|---|---|---|---|
 | `loginFailsPerIp` | Failed logins per address | `20` | `0`–`1000` | Failed logins per address (IPv6 `/64`) in 5 minutes before refusal (`0` disables; moderators and immortals are not refused). |
 | `loginFailsPerAccount` | Failed logins per account | `5` | `0`–`1000` | Wrong passwords per address+account pair in 5 minutes before refusal (`0` disables; no role exemption). |
 | `createsPerIp` | New characters per address | `3` | `0`–`1000` | Character creations per address (IPv6 `/64`) per hour (`0` disables; no role exemption). |
+
+### Logs
+
+| Key | Label | Default | Allowed / range | Effect |
+|---|---|---|---|---|
+| `chatLogRetention` | Keep chat log | `90d` | `0`–`3650d` | How long the chat log keeps each line, for `/chatlog` and `admin:chatlog` (`0` keeps them forever). See [The chat log](#the-chat-log). |
+| `auditLogRetention` | Keep audit log | `0` (forever) | `0`–`3650d` | How long the audit log keeps each staff action, for `admin:audit` (`0` keeps them forever). Bans, jails and pardons are kept regardless. See [Reading the audit log](#reading-the-audit-log). |
 
 ## World Editor and NPC Editor
 

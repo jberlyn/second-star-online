@@ -141,6 +141,7 @@ import {
   resolveSettings,
   type Settings,
   secondsToTicks,
+  settingPages,
   settingRows,
 } from "./settings.ts";
 import type { AdminDeps } from "./systems/admin/commands.ts";
@@ -1060,7 +1061,7 @@ export function createGame(deps: GameDeps): Game {
     })();
     // The same step as `/Refresh`: everyone online gets the new rules at once.
     applySettings(r.settings);
-    send(p.id, { t: "settings", rows: settingRows(settings) });
+    send(p.id, { t: "settings", pages: settingPages(), rows: settingRows(settings) });
     send(p.id, { t: "settingsResult", ok: true });
   };
 
@@ -1726,7 +1727,7 @@ export function createGame(deps: GameDeps): Game {
       }
       switch (msg.t) {
         case "settingsOpen":
-          send(p.id, { t: "settings", rows: settingRows(settings) });
+          send(p.id, { t: "settings", pages: settingPages(), rows: settingRows(settings) });
           return;
         case "settingsSave":
           settingsSave(p, msg.values);

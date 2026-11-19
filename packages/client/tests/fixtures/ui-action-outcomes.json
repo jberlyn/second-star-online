@@ -2410,6 +2410,24 @@
     "errors": []
   },
   {
+    "action": "settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "settings-value",
     "tag": "INPUT",
     "events": ["change", "input"],
@@ -2551,6 +2569,33 @@
   },
   {
     "action": "settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-discard",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,
@@ -5083,6 +5128,15 @@
     "errors": []
   },
   {
+    "action": "settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "settings-revert",
     "tag": "BUTTON",
     "events": ["click"],
@@ -5093,6 +5147,33 @@
   },
   {
     "action": "settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-discard",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,

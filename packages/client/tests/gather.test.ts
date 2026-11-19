@@ -111,7 +111,7 @@ describe("gathering sounds", () => {
 describe("the treasure maps setting", () => {
   const row: SettingRow = {
     key: "treasureMaps",
-    group: "World",
+    page: "world",
     label: "Treasure maps",
     tooltip: "",
     kind: "maps",
