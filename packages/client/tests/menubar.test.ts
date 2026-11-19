@@ -43,6 +43,15 @@ function setup(over: { adminVisible?: () => boolean } = {}) {
 }
 
 describe("menu bar widget", () => {
+  test("the bar lifts above game windows only while a menu is open", () => {
+    const { bar, title } = setup();
+    expect(bar.el.classList.contains("menu-open")).toBe(false);
+    title("File").click();
+    expect(bar.el.classList.contains("menu-open")).toBe(true);
+    title("File").click();
+    expect(bar.el.classList.contains("menu-open")).toBe(false);
+  });
+
   test("a title click opens its menu; a second click closes it", () => {
     const { bar, title } = setup();
     title("File").click();

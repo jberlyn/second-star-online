@@ -65,6 +65,7 @@ export function createMenuBar(menus: readonly Menu[]): MenuBar {
     drop = null;
     open = null;
     catcher.hidden = true;
+    holder.classList.remove("menu-open");
   };
 
   const openMenu = (m: Menu) => {
@@ -77,6 +78,7 @@ export function createMenuBar(menus: readonly Menu[]): MenuBar {
     t.classList.add("open");
     t.setAttribute("aria-expanded", "true");
     catcher.hidden = false;
+    holder.classList.add("menu-open");
     const d = document.createElement("div");
     d.className = "menu-drop";
     d.setAttribute("role", "menu");

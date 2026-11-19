@@ -1275,6 +1275,11 @@ body {
 .menu-bar-holder {
   position: relative;
   flex: none;
+  /* Windows sit over the bar (as 1.6's own windows covered its menu bar); an open menu drops
+     down over them. */
+  z-index: 800;
+}
+.menu-bar-holder.menu-open {
   z-index: 1000;
 }
 .menu-catcher {
