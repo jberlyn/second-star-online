@@ -169,6 +169,10 @@ const BAG_Y = (i: number) => [116, 153, 190][Math.floor(i / 5)] as number;
 /** The bag's quantity field rects (frame-63.json channels 220-234). */
 const QTY_X = [612, 649, 683, 722, 755];
 const QTY_Y = [139, 177, 219];
+// The skills page: the backdrop's clip height, the rows' inset from its edges, and the 15 px line.
+const SKILLS_CLIP_H = 165;
+const SKILLS_INSET = 3;
+const SKILL_ROW_H = 15;
 
 /**
  * The six boxes of Inventory #1 (loc (693, 335) less its regpoint (67, 55): [626, 280]):
@@ -415,21 +419,27 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   clip.className = "skills-clip";
   // The backdrop's rect y 114-278 clips the columns, as 1.6; the rows start 3 px inside it, at y
   // 117.
-  at(clip, 620, 114, 143, 165);
+  at(clip, 620, 114, 143, SKILLS_CLIP_H);
   const names = field("", "skill-names");
+  // The rows on show: the fixed panel list once setSkills has filled it.
+  const skillsRows = () => (names.textContent ? names.textContent.split("\n").length : 0);
   const amounts = field("", "skill-values");
   names.style.position = "absolute";
   amounts.style.position = "absolute";
-  names.style.top = "3px";
-  amounts.style.top = "3px";
+  names.style.top = `${SKILLS_INSET}px`;
+  amounts.style.top = `${SKILLS_INSET}px`;
   amounts.style.left = "116px";
   clip.append(names, amounts);
-  // Sprites 22/23 move by 32 px per press with no limit; the backdrop clips the columns, as 1.6.
+  // Sprites 22/23 move by 32 px per press and the backdrop clips the columns, as 1.6. 1.6 had no
+  // limit, so the list could scroll off into empty wood; here it stops with the first row at the
+  // top (3 px inside the clip) or the last row at the bottom (3 px inside it), and the press that
+  // reaches an end moves only as far as it.
   let offset = 0;
   const scrollBy = (dy: number) => {
-    offset += dy;
-    names.style.top = `${3 + offset}px`;
-    amounts.style.top = `${3 + offset}px`;
+    const minOffset = Math.min(0, SKILLS_CLIP_H - 2 * SKILLS_INSET - skillsRows() * SKILL_ROW_H);
+    offset = Math.max(minOffset, Math.min(0, offset + dy));
+    names.style.top = `${SKILLS_INSET + offset}px`;
+    amounts.style.top = `${SKILLS_INSET + offset}px`;
   };
   const arrow = (member: number, y: number, label: string, dy: number) => {
     const f = a.index.ui[`internal:${member}`];

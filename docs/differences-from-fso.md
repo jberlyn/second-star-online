@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 60 |
-| [Fixed bugs](#fixed-bugs) | 286 |
+| [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **531** |
+| **Total** | **532** |
 
 By system (the code folder that holds the change):
 
@@ -52,7 +52,7 @@ By system (the code folder that holds the change):
 | mail | [16](#mail) | [11](#server-side-mail) |
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
 | movement | [7](#movement) | [4](#server-side-movement) |
-| progression | [7](#progression) | [4](#server-side-progression) |
+| progression | [8](#progression) | [4](#server-side-progression) |
 | social | [22](#social) | [10](#server-side-social) |
 | spells | [23](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
@@ -2762,6 +2762,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A kill should be credited to the hit that caused it.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`, `ageLastHit`, `KILL_CREDIT_TICKS`), `packages/server/src/systems/social/murder.ts` (`flagKiller`)
 - **Pinned by:** `bug fixed: a death long after the last hit credits no one`; `a death within the credit window still credits the hit` (packages/server/tests/factions.test.ts)
+
+#### The skills list stops at its first and last rows
+- **Kind:** Bug fixed
+- **What you notice:** On the Skills page, the up arrow does nothing when the first skill is at the top, and the down arrow stops when the last skill reaches the bottom. The press that reaches the end moves only as far as it, so the list never slides off into empty wood.
+- **1.6:** Each arrow press moved both columns 32 px with no limit, so you could scroll the whole list out of view in either direction and had to press back to find it.
+- **SSO:** Presses still move 32 px, but the offset is held between the first row 3 px inside the top of the clip and the last row 3 px inside its bottom.
+- **Why:** Scrolling past the list's ends shows nothing; the missing bound was an oversight.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
+- **Pinned by:** `bug fixed: the skills list stops at its first and last rows` (packages/client/tests/panel.test.ts)
 
 ### social
 

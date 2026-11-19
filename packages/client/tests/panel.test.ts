@@ -153,11 +153,12 @@ describe("the right panel (frames 50-65)", () => {
     expect(values[11]).toBe("13");
     expect(values.at(-1)).toBe("38");
   });
-  test("the skill arrows move both columns 32 px per press, unbounded", async () => {
+  test("the skill arrows move both columns 32 px per press", async () => {
     const style = document.createElement("style");
     style.textContent = await Bun.file(new URL("../src/styles.css", import.meta.url)).text();
     document.head.append(style);
     const { panel } = panelWith([]);
+    panel.setSkills(Array.from({ length: classesData.skills.length }, () => 0));
     document.body.append(panel.el);
     try {
       const up = panel.el.querySelector<HTMLButtonElement>('[aria-label="Scroll skills up"]');
@@ -174,17 +175,42 @@ describe("the right panel (frames 50-65)", () => {
       expect(names?.style.top).toBe("-61px"); // 3 px inside the clip, less two presses
       expect(amounts?.style.top).toBe("-61px");
       press(up);
-      press(up);
-      press(up);
-      expect(names?.style.top).toBe("35px");
+      expect(names?.style.top).toBe("-29px");
       // A keyboard press is a click with detail 0; a mouse click (detail 1) does not double up.
-      down?.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 0 }));
-      down?.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+      up?.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 0 }));
+      up?.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
       expect(names?.style.top).toBe("3px");
     } finally {
       panel.el.remove();
       style.remove();
     }
+  });
+  test("bug fixed: the skills list stops at its first and last rows", () => {
+    const { panel } = panelWith([]);
+    panel.setSkills(Array.from({ length: classesData.skills.length }, () => 0));
+    const up = panel.el.querySelector<HTMLButtonElement>('[aria-label="Scroll skills up"]');
+    const down = panel.el.querySelector<HTMLButtonElement>('[aria-label="Scroll skills down"]');
+    const names = panel.el.querySelector<HTMLElement>(".skill-names");
+    const amounts = panel.el.querySelector<HTMLElement>(".skill-values");
+    const press = (b: HTMLElement | null, n = 1) => {
+      for (let i = 0; i < n; i++) {
+        b?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      }
+    };
+    // Up at the start does nothing (1.6 slid the first row 32 px down per press).
+    press(up, 3);
+    expect(names?.style.top).toBe("3px");
+    // Down stops with the last row's bottom 3 px above the clip's 165 px bottom edge.
+    const rows = classesData.skillPanel.length;
+    const lastTop = 165 - 3 - rows * 15;
+    press(down, 40);
+    expect(names?.style.top).toBe(`${lastTop}px`);
+    expect(amounts?.style.top).toBe(`${lastTop}px`);
+    expect(lastTop + rows * 15).toBe(162);
+    // The press that reaches the end moved less than 32 px; one up press is a full step back.
+    expect((3 - lastTop) % 32).not.toBe(0);
+    press(up);
+    expect(names?.style.top).toBe(`${lastTop + 32}px`);
   });
   test("the skills clip is the backdrop's 165 px at y 114, so row 12 is outside it", () => {
     const { panel } = panelWith([]);
