@@ -40,7 +40,7 @@ import { createPlayfield, type Pick, PLAYFIELD_H, PLAYFIELD_W } from "./playfiel
 import { type Sfx, SOUND } from "./sfx.ts";
 import { action } from "./ui/action.ts";
 import { showAlert } from "./ui/alert.ts";
-import { createAmountDialog, crystalTitle, GOLD_TITLE } from "./ui/amount.ts";
+import { createAmountDialog, crystalTitle, GOLD_TITLE, stackTitle } from "./ui/amount.ts";
 import { createAwayWindow } from "./ui/away.ts";
 import { createBars } from "./ui/bars.ts";
 import { createBioWindow } from "./ui/bio.ts";
@@ -315,6 +315,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     crystals: (slot, colour, mode) =>
       amount.open(crystalTitle(colour, mode), null, (n) => send({ t: "crystals", slot, n, mode })),
     gold: () => amount.open(GOLD_TITLE, "0", (n) => send({ t: "gold", n })),
+    // Any other stack asks how many, starting at 1.
+    stack: (slot, name, mode) =>
+      amount.open(stackTitle(name, mode), "1", (n) => send({ t: mode, slot, n })),
+    arrange: (from, to) => send({ t: "arrange", from, to }),
     sound,
     // An open vault or container holds the keys, but the bag still takes clicks so Drop can
     // store an item in it.

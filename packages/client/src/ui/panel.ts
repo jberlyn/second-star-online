@@ -59,6 +59,10 @@ export interface PanelActions {
   unequip(slot: EquipSlot): void;
   /** Drop or Give on crystals opens the amount dialog for that button. */
   crystals(slot: number, colour: string, mode: "drop" | "give"): void;
+  /** Drop or Give on any other stack of more than one opens the amount dialog (1.6 moved one). */
+  stack(slot: number, name: string, mode: "drop" | "give"): void;
+  /** A bag slot dragged onto another: the two change places. */
+  arrange(from: number, to: number): void;
   /** The gold button beside the gold count opens the amount dialog. */
   gold(): void;
   /** Plays a sound. */
@@ -484,7 +488,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     }
   });
   let menuSlot = 0;
-  const openMenu = (slot: number, name: string, x: number, y: number) => {
+  const openMenu = (slot: number, name: string, qty: number, x: number, y: number) => {
     menuSlot = slot;
     menu.replaceChildren();
     // Background at (mouseH − 60, mouseV) with reg (64, 32); buttons share its loc.
@@ -596,17 +600,122 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         () => (action === "Storage" ? act.storage : act.craft) !== undefined,
       );
     }
+    // A stack of more than one asks how many; a single item goes at once.
+    const many = qty > 1;
     button("Drop", 53, artImg(a.ui("inventory", 53)), -20, 5, 36, 13, () =>
-      isCrystal ? act.crystals(menuSlot, colour, "drop") : act.drop(menuSlot),
+      isCrystal
+        ? act.crystals(menuSlot, colour, "drop")
+        : many
+          ? act.stack(menuSlot, displayName(name), "drop")
+          : act.drop(menuSlot),
     );
     button("Give", 56, artImg(a.ui("inventory", 56)), -57, 5, 31, 11, () =>
-      isCrystal ? act.crystals(menuSlot, colour, "give") : act.give(menuSlot),
+      isCrystal
+        ? act.crystals(menuSlot, colour, "give")
+        : many
+          ? act.stack(menuSlot, displayName(name), "give")
+          : act.give(menuSlot),
     );
     menu.hidden = false;
   };
 
   let inventory: InventoryView | null = null;
   let headNo = 1;
+
+  // ---- drag to rearrange (SSO; 1.6 had none) ------------------------------------------------
+  // Press on an item and move a few pixels to pick it up; its picture follows the pointer, and
+  // letting go over another bag slot sends the two slots to the server, which swaps them. Letting
+  // go anywhere else puts it back. The click that ends a drag opens no menu.
+  const DRAG_START_PX = 4;
+  let drag: {
+    from: number;
+    pointer: number;
+    x0: number;
+    y0: number;
+    ghost: HTMLCanvasElement | null;
+    source: HTMLElement;
+  } | null = null;
+  let swallowClick = false;
+  /** Panel-local stage coordinates of a pointer position, whatever the panel is scaled to. */
+  const local = (clientX: number, clientY: number) => {
+    const r = panel.el.getBoundingClientRect();
+    const scale = r.width / 234 || 1;
+    return { x: (clientX - r.left) / scale, y: (clientY - r.top) / scale };
+  };
+  /** The bag slot (1-based) under panel-local (x, y), or 0. */
+  const slotAt = (x: number, y: number): number => {
+    const sx = x + PANEL_X;
+    for (let i = 0; i < (inventory?.bag.length ?? 0); i++) {
+      const bx = BAG_X(i) - 16;
+      const by = BAG_Y(i) + 4;
+      if (sx >= bx && sx < bx + 32 && y >= by && y < by + 34) {
+        return i + 1;
+      }
+    }
+    return 0;
+  };
+  const endDrag = () => {
+    if (drag) {
+      drag.ghost?.remove();
+      drag.source.style.opacity = "";
+    }
+    drag = null;
+    bagLayer.classList.remove("dragging");
+  };
+  document.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.pointer) {
+      return;
+    }
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < DRAG_START_PX) {
+        return;
+      }
+      if (!act.canModify()) {
+        drag = null;
+        return;
+      }
+      const line = inventory?.bag[drag.from - 1];
+      if (!line) {
+        drag = null;
+        return;
+      }
+      menu.hidden = true;
+      drag.ghost = spriteCanvas(a, "items", bagPicture(line.item), 0, 0);
+      drag.ghost.classList.add("drag-ghost");
+      drag.source.style.opacity = "0.35";
+      bagLayer.classList.add("dragging");
+      el.append(drag.ghost);
+    }
+    const p = local(e.clientX, e.clientY);
+    // The picture's regpoint sits on the pointer.
+    const w = drag.ghost.width;
+    const h = drag.ghost.height;
+    drag.ghost.style.left = `${p.x - w / 2}px`;
+    drag.ghost.style.top = `${p.y - h / 2}px`;
+  });
+  document.addEventListener("pointerup", (e) => {
+    if (!drag || e.pointerId !== drag.pointer) {
+      return;
+    }
+    const from = drag.from;
+    const dragged = drag.ghost !== null;
+    endDrag();
+    if (!dragged) {
+      return; // a plain click: the menu opens as before
+    }
+    swallowClick = true;
+    // Some browsers send no click after a drag, so the flag clears itself.
+    setTimeout(() => {
+      swallowClick = false;
+    }, 0);
+    const p = local(e.clientX, e.clientY);
+    const to = slotAt(p.x, p.y);
+    if (to > 0 && to !== from && act.canModify()) {
+      act.sound(SOUND.click);
+      act.arrange(from, to);
+    }
+  });
+  document.addEventListener("pointercancel", endDrag);
 
   /** The bare character's drawn bounds, centred once in the box (needs canvas pixel reads). */
   let dollCentred = false;
@@ -721,13 +830,31 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
           line ? `${displayName(line.item)}, ${line.qty}` : `Empty slot ${i + 1}`,
         );
         if (line) {
-          bagLayer.append(spriteCanvas(a, "items", bagPicture(line.item), x, y));
+          const picture = spriteCanvas(a, "items", bagPicture(line.item), x, y);
+          bagLayer.append(picture);
           if (line.qty > 1) {
             const q = field(String(line.qty), "qty");
             at(q, QTY_X[i % 5] as number, QTY_Y[Math.floor(i / 5)] as number, 39, 13);
             bagLayer.append(q);
           }
+          hit.addEventListener("pointerdown", (e) => {
+            if (e.button !== 0) {
+              return;
+            }
+            drag = {
+              from: i + 1,
+              pointer: e.pointerId,
+              x0: e.clientX,
+              y0: e.clientY,
+              ghost: null,
+              source: picture,
+            };
+          });
           hit.addEventListener("click", (e) => {
+            if (swallowClick) {
+              swallowClick = false;
+              return;
+            }
             if (act.slotClicked && !act.slotClicked()) {
               return;
             }
@@ -737,6 +864,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
             openMenu(
               i + 1,
               line.item,
+              line.qty,
               PANEL_X + (e.clientX - r.left) / scale,
               (e.clientY - r.top) / scale,
             );

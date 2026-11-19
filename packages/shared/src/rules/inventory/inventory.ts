@@ -168,6 +168,20 @@ export function invDelSlot(bag: Bag, slot: number, qty: number): boolean {
   return true;
 }
 
+/**
+ * Drag to rearrange: the lines in bag slots `from` and `to` (0-based) change places, so a line
+ * dragged onto an empty slot moves there. False when `from` is empty or the two are the same slot.
+ */
+export function arrangeBag(bag: Bag, from: number, to: number): boolean {
+  if (from === to || !bag[from] || to < 0 || to >= bag.length) {
+    return false;
+  }
+  const line = bag[from] ?? null;
+  bag[from] = bag[to] ?? null;
+  bag[to] = line;
+  return true;
+}
+
 export function filledLines(bag: Bag): number {
   return bag.filter((l) => l !== null).length;
 }

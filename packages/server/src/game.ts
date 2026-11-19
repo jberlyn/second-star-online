@@ -210,6 +210,7 @@ import {
 } from "./systems/housing/houses.ts";
 import {
   actionIntent,
+  arrangeIntent,
   crystalsIntent,
   dropIntent,
   equipIntent,
@@ -1932,6 +1933,7 @@ export function createGame(deps: GameDeps): Game {
         case "equip":
         case "drop":
         case "give":
+        case "arrange":
         case "unequip":
         case "pickup":
         case "action":
@@ -1954,18 +1956,20 @@ export function createGame(deps: GameDeps): Game {
                   : msg.t === "equip"
                     ? equipIntent(ctx, room, p, msg.slot)
                     : msg.t === "drop"
-                      ? dropIntent(ctx, room, p, msg.slot)
+                      ? dropIntent(ctx, room, p, msg.slot, msg.n)
                       : msg.t === "give"
-                        ? giveIntent(ctx, room, p, msg.slot)
-                        : msg.t === "unequip"
-                          ? unequipIntent(ctx, room, p, msg.slot)
-                          : msg.t === "pickup"
-                            ? pickupIntent(ctx, room, p, msg.id)
-                            : msg.t === "action"
-                              ? actionIntent(ctx, room, p)
-                              : msg.t === "crystals"
-                                ? crystalsIntent(ctx, room, p, msg.slot, msg.n, msg.mode)
-                                : goldIntent(ctx, room, p, msg.n);
+                        ? giveIntent(ctx, room, p, msg.slot, msg.n)
+                        : msg.t === "arrange"
+                          ? arrangeIntent(p, msg.from, msg.to)
+                          : msg.t === "unequip"
+                            ? unequipIntent(ctx, room, p, msg.slot)
+                            : msg.t === "pickup"
+                              ? pickupIntent(ctx, room, p, msg.id)
+                              : msg.t === "action"
+                                ? actionIntent(ctx, room, p)
+                                : msg.t === "crystals"
+                                  ? crystalsIntent(ctx, room, p, msg.slot, msg.n, msg.mode)
+                                  : goldIntent(ctx, room, p, msg.n);
           deliver(out);
           // Everyone whose inventory changed (a crystal or gold give changes two) gets `inv` now.
           const changed: Player[] = [];

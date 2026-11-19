@@ -72,6 +72,7 @@ import {
 import { type HousingServerMsg, placeCancelSchema, placeHouseSchema } from "./housing.ts";
 import {
   actionSchema,
+  arrangeSchema,
   craftSchema,
   crystalsSchema,
   dropSchema,
@@ -124,6 +125,7 @@ export const inGameSchema = z.discriminatedUnion("t", [
   equipSchema,
   dropSchema,
   giveSchema,
+  arrangeSchema,
   craftSchema,
   storageSchema,
   placeHouseSchema,
@@ -201,6 +203,7 @@ export type ItemMsg = z.infer<
   | typeof equipSchema
   | typeof dropSchema
   | typeof giveSchema
+  | typeof arrangeSchema
   | typeof craftSchema
   | typeof storageSchema
   | typeof unequipSchema

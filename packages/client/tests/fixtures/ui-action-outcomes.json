@@ -451,7 +451,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -465,7 +465,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -479,7 +479,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -493,7 +493,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -507,7 +507,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -521,7 +521,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -535,7 +535,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown"],
     "hidden": false,
     "changed": false,
     "calls": [

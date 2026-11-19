@@ -16,6 +16,7 @@ import { setAttackHeld } from "../src/systems/combat/melee.ts";
 import { containerCapacity } from "../src/systems/economy/containers.ts";
 import {
   actionIntent,
+  arrangeIntent,
   crystalsIntent,
   DROP_TEXT,
   dropIntent,
@@ -237,6 +238,31 @@ describe("drop, pickup and give", () => {
     expect(events(out, "A").map((e) => e.e)).toEqual(["gadd"]);
     expect(a.char.bag[0]?.qty).toBe(1);
   });
+  test("divergence: Drop with an amount leaves one pile of that many; picking it up returns them all", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.facing = "E";
+    give(a, 1, "Long Sword", 3);
+    dropIntent(s.ctx(), s.room(), a, 1, 2);
+    expect(s.map.ground.map((g) => [g.item, g.qty, g.x, g.y])).toEqual([["Long Sword", 2, 6, 5]]);
+    expect(a.char.bag[0]).toEqual({ item: "Long Sword", qty: 1 });
+    a.facing = "E";
+    const g = s.map.ground[0] as GroundItem;
+    pickupIntent(s.ctx(), s.room(), a, g.id);
+    expect(a.char.bag[0]).toEqual({ item: "Long Sword", qty: 3 });
+  });
+  test("divergence: Drop or Give asking for more than the stack holds is refused", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    s.join("B", 6, 5);
+    a.facing = "E";
+    give(a, 1, "Long Sword", 2);
+    const line = "You don't have that many of the Long Sword!";
+    expect(chat(dropIntent(s.ctx(), s.room(), a, 1, 3), "A")).toEqual([line]);
+    expect(chat(giveIntent(s.ctx(), s.room(), a, 1, 3), "A")).toEqual([line]);
+    expect(a.char.bag[0]).toEqual({ item: "Long Sword", qty: 2 });
+    expect(s.map.ground).toEqual([]);
+  });
   test("bug fixed: items share a tile; a fixture or a full tile is too crowded", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
@@ -407,6 +433,18 @@ describe("drop, pickup and give", () => {
     expect(b.char.bag[0]).toEqual({ item: "Knife", qty: 1 });
     expect(s.map.ground).toEqual([]);
   });
+  test("divergence: Give with an amount offers one pile, and the target grabs all of it", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    const b = s.join("B", 6, 5);
+    a.facing = "E";
+    give(a, 1, "Long Sword", 3);
+    const out = giveIntent(s.ctx(), s.room(), a, 1, 3);
+    expect(chat(out, "A")).toEqual(["*** You offer 3 Long Sword to B."]);
+    expect(a.char.bag[0]).toBeNull();
+    expect(chat(s.run(60), "B")).toContain("A is giving you 3 Long Sword.");
+    expect(b.char.bag[0]).toEqual({ item: "Long Sword", qty: 3 });
+  });
   test('the receiver is told "<giver> is giving you a <item>." before the bag check', () => {
     const s = scene();
     const a = s.join("A", 5, 5);
@@ -483,6 +521,40 @@ describe("drop, pickup and give", () => {
     expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 4, "drop"), "A")).toEqual([
       "You don't have enough crystals!",
     ]);
+  });
+});
+
+describe("drag to rearrange (SSO; 1.6 had none)", () => {
+  test("two filled slots change places; a line moves to an empty slot", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    give(a, 1, "Apple", 2);
+    give(a, 2, "Knife");
+    arrangeIntent(a, 1, 2);
+    expect(a.char.bag.slice(0, 2)).toEqual([
+      { item: "Knife", qty: 1 },
+      { item: "Apple", qty: 2 },
+    ]);
+    expect(a.invDirty).toBe(true);
+    arrangeIntent(a, 2, 9);
+    expect(a.char.bag[1]).toBeNull();
+    expect(a.char.bag[8]).toEqual({ item: "Apple", qty: 2 });
+  });
+  test("an empty source, the same slot, a trade in progress or a loading player change nothing", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    give(a, 1, "Apple", 2);
+    const before = structuredClone(a.char.bag);
+    a.invDirty = false;
+    arrangeIntent(a, 3, 1);
+    arrangeIntent(a, 1, 1);
+    a.trade = "t1";
+    arrangeIntent(a, 1, 2);
+    a.trade = null;
+    a.loading = 1;
+    arrangeIntent(a, 1, 2);
+    expect(a.char.bag).toEqual(before);
+    expect(a.invDirty).toBe(false);
   });
 });
 

@@ -330,7 +330,7 @@ describe("crafts in the frame script", () => {
 function cauldron(name = "Cauldron#7") {
   const k = bench(name);
   const ictx: ItemCtx = { world: k.world, rng: rngByN(), now: 0 };
-  const drop = (slot: number) => dropIntent(ictx, k.room, k.a, slot);
+  const drop = (slot: number, n?: number) => dropIntent(ictx, k.room, k.a, slot, n);
   return { ...k, ictx, drop };
 }
 
@@ -381,6 +381,32 @@ describe("the Cauldron", () => {
     c.a.char.bag[1] = { item: "Chunk of Star", qty: 1 };
     expect(lines(c.drop(2), "a")).not.toContain(CRAFT_TEXT.puff);
     expect(c.world.containers.get("Cauldron#7")).toEqual(["Gold Axe", "Chunk of Star"]);
+  });
+
+  test("divergence: Drop with an amount stores that many, as many as fit, brewing after each", () => {
+    const c = cauldron();
+    c.world.containers.set("Cauldron#7", Array(12).fill("Pie"));
+    c.a.char.bag[0] = { item: "Apple", qty: 5 };
+    expect(lines(c.drop(1, 2), "a")).toEqual(["You drop 2 Apple into the container."]);
+    expect(c.a.char.bag[0]).toEqual({ item: "Apple", qty: 3 });
+    // One line is left: one goes in and the rest stay in the bag.
+    expect(lines(c.drop(1, 3), "a")).toEqual([
+      "You drop a Apple into the container.",
+      "This is too full to store anything else!",
+    ]);
+    expect(c.a.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
+    expect(c.world.containers.get("Cauldron#7")).toHaveLength(15);
+    // A recipe completed partway through brews before the next unit goes in.
+    c.world.containers.set("Cauldron#7", ["Pie"]);
+    c.a.char.bag[1] = { item: "Chunk of Star", qty: 2 };
+    c.a.char.bag[2] = { item: "Silver Crown", qty: 2 };
+    expect(lines(c.drop(3, 2), "a")).toEqual(["You drop 2 Silver Crown into the container."]);
+    expect(lines(c.drop(2, 2), "a")).toEqual([
+      "You drop 2 Chunk of Star into the container.",
+      CRAFT_TEXT.puff,
+      CRAFT_TEXT.puff,
+    ]);
+    expect(c.world.containers.get("Cauldron#7")).toEqual(["Pie", "Gold Crown", "Gold Crown"]);
   });
 
   test("containers are refused; a full one says so without the drop line", () => {

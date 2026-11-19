@@ -22,6 +22,8 @@ export const VAULT_TEXT = {
   notInFront: "You see your vault, but you must be standing in front of it to use it.",
   container: "You cannot store a container!",
   drop: (item: string) => `You drop a ${displayName(item)} into the container.`,
+  /** A deposit of more than one. */
+  dropMany: (n: number, item: string) => `You drop ${n} ${displayName(item)} into the container.`,
   /** A withdrawal (1.6 printed nothing). */
   take: (item: string) => `You take a ${displayName(item)} out of the container.`,
   full: "This is too full to store anything else!",
@@ -60,7 +62,7 @@ export function openVault(p: Player, g: GroundItem): Outgoing[] {
  * vault says so, otherwise one unit goes in, the drop line prints and an open list shows it. (1.6
  * printed the drop line before the capacity test and never refreshed the list.)
  */
-export function depositVault(p: Player, slot: number): Outgoing[] {
+export function depositVault(p: Player, slot: number, n = 1): Outgoing[] {
   const line = p.char.bag[slot - 1];
   if (!line) {
     return [];
@@ -70,17 +72,24 @@ export function depositVault(p: Player, slot: number): Outgoing[] {
     // 1.6's 425-frame item-action pause and modify flag cleared were locals here: no lock.
     return [tell(p, VAULT_TEXT.container)];
   }
-  if (p.char.vault.length >= VAULT_CAPACITY) {
+  // Each unit takes a line of its own; as many as fit go in.
+  const count = Math.min(n, line.qty, VAULT_CAPACITY - p.char.vault.length);
+  if (count <= 0) {
     return [tell(p, VAULT_TEXT.full)];
   }
-  line.qty -= 1;
+  line.qty -= count;
   if (line.qty <= 0) {
     p.char.bag[slot - 1] = null;
   }
-  p.char.vault.push(item);
+  for (let i = 0; i < count; i++) {
+    p.char.vault.push(item);
+  }
   p.char.storeDirty = true;
   p.invDirty = true;
-  const out = [tell(p, VAULT_TEXT.drop(item))];
+  const out = [tell(p, count > 1 ? VAULT_TEXT.dropMany(count, item) : VAULT_TEXT.drop(item))];
+  if (count < n) {
+    out.push(tell(p, VAULT_TEXT.full));
+  }
   if (p.vaultOpen) {
     out.push({ to: p.id, msg: { t: "vault", items: [...p.char.vault], open: false } });
   }

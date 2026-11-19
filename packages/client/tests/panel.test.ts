@@ -11,7 +11,13 @@ import type { Assets } from "../src/assets.ts";
 import { createInputState, keyDown } from "../src/input.ts";
 import { applyDelta, createModel } from "../src/model.ts";
 import type { Sfx } from "../src/sfx.ts";
-import { createAmountDialog, crystalTitle, GOLD_TITLE, parseAmount } from "../src/ui/amount.ts";
+import {
+  createAmountDialog,
+  crystalTitle,
+  GOLD_TITLE,
+  parseAmount,
+  stackTitle,
+} from "../src/ui/amount.ts";
 import { createPanel } from "../src/ui/panel.ts";
 
 const fakeAssets: Assets = {
@@ -35,6 +41,8 @@ function panelWith(
     give: (s) => sent.push(`give ${s}`),
     unequip: (s) => sent.push(`unequip ${s}`),
     crystals: (s, c) => sent.push(`crystals ${s} ${c}`),
+    stack: (s, name, mode) => sent.push(`stack ${s} ${name} ${mode}`),
+    arrange: (from, to) => sent.push(`arrange ${from} ${to}`),
     gold: () => sent.push("gold"),
     sound: (x) => sounds.push(x),
     canModify: () => !(opts.locked?.() ?? false),
@@ -207,6 +215,27 @@ describe("the right panel (frames 50-65)", () => {
     panel.menu.querySelector<HTMLButtonElement>('[aria-label="Drop"]')?.click();
     expect(sent).toEqual(["crystals 1 blue"]);
   });
+  test("divergence: Drop and Give on a stack of more than one ask how many; a single item goes at once", () => {
+    const { panel, sent } = panelWith([
+      { item: "Long Sword", qty: 3 },
+      { item: "Knife", qty: 1 },
+    ]);
+    const slots = panel.el.querySelectorAll<HTMLButtonElement>(".bag-slot");
+    const pick = (slot: number, button: string) => {
+      slots[slot]?.click();
+      panel.menu.querySelector<HTMLButtonElement>(`[aria-label="${button}"]`)?.click();
+    };
+    pick(0, "Drop");
+    pick(0, "Give");
+    pick(1, "Drop");
+    pick(1, "Give");
+    expect(sent).toEqual([
+      "stack 1 Long Sword drop",
+      "stack 1 Long Sword give",
+      "drop 2",
+      "give 2",
+    ]);
+  });
   test("the gold button beside the gold count opens the gold dialog", () => {
     const { panel, sent } = panelWith([]);
     const b = panel.el.querySelector<HTMLButtonElement>(
@@ -325,6 +354,8 @@ describe("panel sounds", () => {
       give: () => {},
       unequip: () => {},
       crystals: () => {},
+      stack: () => {},
+      arrange: () => {},
       gold: () => {},
       sound: (x) => sounds.push(x),
       canModify: () => true,
@@ -418,12 +449,85 @@ describe("the amount dialog", () => {
     expect(input.value).toBe("0");
   });
 
+  test("divergence: a stack asks how many of its item, starting at 1 and selected", () => {
+    const { d, input, title } = dialog();
+    document.body.append(d.el);
+    d.open(stackTitle("Long Sword", "drop"), "1", () => {});
+    expect(title.textContent).toBe("Drop how many Long Sword?");
+    expect(input.value).toBe("1");
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 1]);
+    d.open(stackTitle("Apple", "give"), "1", () => {});
+    expect(title.textContent).toBe("Give how many Apple?");
+    d.el.remove();
+  });
+
   test("silent refusals: more than 4 characters, a dash, outside 1..9999", () => {
     expect(parseAmount("5")).toBe(5);
     expect(parseAmount("0050")).toBe(50);
     expect(parseAmount("10000")).toBeNull();
     expect(parseAmount("-5")).toBeNull();
     expect(parseAmount("0")).toBeNull();
+  });
+});
+
+describe("drag to rearrange the bag (SSO; 1.6 had none)", () => {
+  // happy-dom lays nothing out, so the panel's box is at (0, 0) with scale 1: client coordinates
+  // are panel-local. Slot 1 spans x 35-67, y 120-154; slot 2 starts at x 72.
+  const pointer = (target: EventTarget, type: string, x: number, y: number) =>
+    target.dispatchEvent(
+      new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true }),
+    );
+  const bag = () => [
+    { item: "Long Sword", qty: 3 },
+    { item: "Knife", qty: 1 },
+  ];
+  test("dragging a slot onto another sends both slots, and the click after it opens no menu", () => {
+    const { panel, sent, sounds } = panelWith(bag());
+    const slots = panel.el.querySelectorAll<HTMLButtonElement>(".bag-slot");
+    pointer(slots[0] as HTMLElement, "pointerdown", 50, 130);
+    pointer(document, "pointermove", 70, 130);
+    expect(panel.el.querySelector(".drag-ghost")).not.toBeNull();
+    pointer(document, "pointermove", 160, 175); // slot 9: x 146-178, row 2 y 157-191
+    pointer(document, "pointerup", 160, 175);
+    slots[0]?.click();
+    expect(sent).toEqual(["arrange 1 9"]);
+    expect(sounds).toHaveLength(1);
+    expect(panel.menu.hidden).toBe(true);
+    expect(panel.el.querySelector(".drag-ghost")).toBeNull();
+  });
+  test("a press that moves less than 4 pixels is still a click", () => {
+    const { panel, sent } = panelWith(bag());
+    const slot = panel.el.querySelector<HTMLButtonElement>(".bag-slot") as HTMLButtonElement;
+    pointer(slot, "pointerdown", 50, 130);
+    pointer(document, "pointermove", 52, 131);
+    pointer(document, "pointerup", 52, 131);
+    slot.click();
+    expect(sent).toEqual([]);
+    expect(panel.menu.hidden).toBe(false);
+  });
+  test("letting go off the bag, or on the same slot, sends nothing", () => {
+    const { panel, sent } = panelWith(bag());
+    const slot = panel.el.querySelector<HTMLButtonElement>(".bag-slot") as HTMLButtonElement;
+    pointer(slot, "pointerdown", 50, 130);
+    pointer(document, "pointermove", 50, 300);
+    pointer(document, "pointerup", 50, 300);
+    pointer(slot, "pointerdown", 50, 130);
+    pointer(document, "pointermove", 60, 140);
+    pointer(document, "pointerup", 60, 140);
+    expect(sent).toEqual([]);
+  });
+  test("an empty slot cannot be picked up, and nothing moves while the bag is locked", () => {
+    let locked = false;
+    const { panel, sent } = panelWith(bag(), { locked: () => locked });
+    const slots = panel.el.querySelectorAll<HTMLButtonElement>(".bag-slot");
+    pointer(slots[5] as HTMLElement, "pointerdown", 50, 165);
+    pointer(document, "pointermove", 90, 130);
+    pointer(document, "pointerup", 90, 130);
+    locked = true;
+    pointer(slots[0] as HTMLElement, "pointerdown", 50, 130);
+    pointer(document, "pointermove", 90, 130);
+    pointer(document, "pointerup", 90, 130);
+    expect(sent).toEqual([]);
   });
 });
 

@@ -419,6 +419,22 @@ describe("the personal vault", () => {
     expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
   });
 
+  test("divergence: a deposit with an amount stores that many lines, as many as fit", () => {
+    const { p } = scene();
+    p.char.bag = bag(["Apple", 5]);
+    const text = (out: ReturnType<typeof depositVault>) =>
+      out.map((o) => (o.msg.t === "chat" ? o.msg.text : ""));
+    expect(text(depositVault(p, 1, 3))).toEqual(["You drop 3 Apple into the container."]);
+    expect(p.char.vault).toEqual(["Apple", "Apple", "Apple"]);
+    expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
+    p.char.vault = Array.from({ length: 14 }, () => "Rock");
+    expect(text(depositVault(p, 1, 2))).toEqual([
+      "You drop a Apple into the container.",
+      "This is too full to store anything else!",
+    ]);
+    expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
+  });
+
   test("bug fixed: a withdrawal keeps the window open and the keys locked, says so, and stacks on an exact name", () => {
     const { p, vault } = scene();
     p.char.vault = ["Apple", "Pie"];

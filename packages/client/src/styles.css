@@ -770,6 +770,19 @@ body {
   padding: 0;
   cursor: pointer;
 }
+/* A bag item can be dragged onto another slot; touch drags it rather than scrolling. */
+.panel-page .bag-slot {
+  touch-action: none;
+}
+.panel-page .dragging .bag-slot {
+  cursor: grabbing;
+}
+/* The picture that follows the pointer while an item is dragged. */
+.panel-page .drag-ghost {
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.85;
+}
 .panel-page .tab-hit:focus-visible,
 .panel-page .skill-arrow:focus-visible,
 .panel-page .gold-button:focus-visible,

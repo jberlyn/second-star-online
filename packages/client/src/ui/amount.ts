@@ -6,6 +6,8 @@
  * - Gold (Internal #118): "How Much Gold Do You Want To Give/Drop?" and the amount set to "0".
  * - Crystals: "Drop how many <colour> crystals?" or "Give how many …", by the bag button that
  *   opened it, which leave the amount as it was; the cast's saved text is "2".
+ * - Any other stack of more than one (SSO; 1.6 moved one at a time): "Drop how many <item>?" or
+ *   "Give how many …", with the amount set to "1".
  *
  * OK (#120) and Cancel (#126) are keyed on black so they sit on the panel (1.6 showed black boxes).
  * OK clicks on every press (1.6 clicked only on its drop path), hides the dialog before any test,
@@ -87,6 +89,10 @@ export function createAmountDialog(a: Assets, press: () => void = () => {}): Amo
       done = onOk;
       el.hidden = false;
       input.focus();
+      // A seeded amount is selected, so typing replaces it.
+      if (seed !== null) {
+        input.select();
+      }
     },
     close() {
       el.hidden = true;
@@ -125,3 +131,5 @@ export function createAmountDialog(a: Assets, press: () => void = () => {}): Amo
 export const GOLD_TITLE = "How Much Gold Do You Want To Give/Drop?";
 export const crystalTitle = (colour: string, mode: "drop" | "give") =>
   `${mode === "drop" ? "Drop" : "Give"} how many ${colour} crystals?`;
+export const stackTitle = (name: string, mode: "drop" | "give") =>
+  `${mode === "drop" ? "Drop" : "Give"} how many ${name}?`;

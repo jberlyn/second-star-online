@@ -9,9 +9,19 @@ export const useSchema = z.strictObject({ t: z.literal("use"), slot: bagSlot });
 
 export const equipSchema = z.strictObject({ t: z.literal("equip"), slot: bagSlot });
 
-export const dropSchema = z.strictObject({ t: z.literal("drop"), slot: bagSlot });
+/** How many of a stack Drop or Give moves; absent means 1. 1.6 always moved one. */
+const itemAmount = z.number().int().min(1).max(9999).optional();
 
-export const giveSchema = z.strictObject({ t: z.literal("give"), slot: bagSlot });
+export const dropSchema = z.strictObject({ t: z.literal("drop"), slot: bagSlot, n: itemAmount });
+
+export const giveSchema = z.strictObject({ t: z.literal("give"), slot: bagSlot, n: itemAmount });
+
+/** Drag a bag slot onto another: the two lines change places (or the line moves to an empty one). */
+export const arrangeSchema = z.strictObject({
+  t: z.literal("arrange"),
+  from: bagSlot,
+  to: bagSlot,
+});
 
 /** Cook, Mix, Build or Smith on a bag slot; the server takes the button from the item. */
 export const craftSchema = z.strictObject({ t: z.literal("craft"), slot: bagSlot });

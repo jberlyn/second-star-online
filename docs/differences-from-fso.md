@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 56 |
+| [Design changes](#design-changes) | 58 |
 | [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **528** |
+| **Total** | **530** |
 
 By system (the code folder that holds the change):
 
@@ -547,6 +547,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A medal marks mastery of a skill, so it should follow the skill; a calculated bonus cannot be missed, duplicated or left behind.
 - **In the code:** `packages/shared/src/rules/progression/medals.ts` (`heldMedals`, `medalField`, `newMedalLines`), `packages/shared/src/rules/progression/stats.ts` (`effectiveStats`), `packages/server/src/systems/world/world.ts` (`statsOf`), `packages/server/src/systems/progression/medals.ts` (`medalCheck`), `packages/server/src/systems/social/bios.ts` (`bioSource`)
 - **Pinned by:** `90 or more holds a medal, 89 does not`; `the stats played with are the allocated stats plus the bonus; the input is untouched` (packages/shared/tests/social/friends-bios-medals.test.ts); `a skill lowered below 90 loses its medal and its point; back at 90 it returns`; `a skill already at 90 or more at login holds its medal and point without a line` (packages/server/tests/friends.test.ts); `a medal and its point come from the saved skill; the stored stats stay as allocated` (packages/server/tests/buddies-db.test.ts); `calculated_medals takes each held medal's points off the stored stats and drops the field` (packages/server/tests/migrations.test.ts)
+
+#### Drop and Give ask how many of a stack
+- **Kind:** Other
+- **What you notice:** Drop or Give on a stack of more than one item opens the amount dialog, titled "Drop how many Long Sword?" or "Give how many …", with 1 filled in and selected. A single item goes at once, as before. Dropped items land as one pile, and picking it up returns them all. A vault or container takes as many as fit, then says it is full. Asking for more than you hold reads "You don't have that many of the Long Sword!".
+- **1.6:** Drop and Give moved one unit per click, so emptying a stack took a click per item. Only crystals and gold had the amount dialog.
+- **SSO:** `drop` and `give` carry an optional amount `n` (1 if absent). The pile is one ground item with a count (`qty`), as an operator's `/drop` makes. A Give receiver reads "A is giving you 3 Long Sword." A Newspaper Kit or a piece of furniture still goes down one at a time, and a Give to an NPC is a quest hand-in, which takes one.
+- **Why:** Moving a stack one click at a time was tedious, and the bag had no other way to split a stack.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`), `packages/client/src/ui/amount.ts` (`stackTitle`), `packages/server/src/systems/inventory/items.ts` (`dropIntent`, `giveIntent`), `packages/server/src/systems/economy/vault.ts` (`depositVault`), `packages/server/src/systems/economy/containers.ts` (`depositContainer`)
+- **Pinned by:** `divergence: Drop and Give on a stack of more than one ask how many; a single item goes at once`; `divergence: a stack asks how many of its item, starting at 1 and selected` (packages/client/tests/panel.test.ts); `divergence: Drop with an amount leaves one pile of that many; picking it up returns them all`; `divergence: Drop or Give asking for more than the stack holds is refused`; `divergence: Give with an amount offers one pile, and the target grabs all of it` (packages/server/tests/inventory.test.ts); `divergence: a deposit with an amount stores that many lines, as many as fit` (packages/server/tests/economy.test.ts); `divergence: Drop with an amount stores that many, as many as fit, brewing after each` (packages/server/tests/craft.test.ts)
+
+#### Drag to rearrange the bag
+- **Kind:** Other
+- **What you notice:** Press on a bag item and drag it. Its picture follows the pointer, and letting go over another slot swaps the two items, or moves the item if that slot is empty. Letting go anywhere else puts it back, and a press that barely moves still opens the item menu.
+- **1.6:** A new item took the lowest empty slot and could only be moved by dropping it and picking it up again.
+- **SSO:** The client sends `arrange` with both slots, and the server swaps the two lines. It refuses while you are dead or loading, and during a trade, whose offer names its items by slot. Nothing is dragged while the bag is locked.
+- **Why:** Players want to keep their bag in an order of their choosing.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`), `packages/shared/src/rules/inventory/inventory.ts` (`arrangeBag`), `packages/server/src/systems/inventory/items.ts` (`arrangeIntent`)
+- **Pinned by:** `dragging a slot onto another sends both slots, and the click after it opens no menu`; `a press that moves less than 4 pixels is still a click`; `letting go off the bag, or on the same slot, sends nothing`; `an empty slot cannot be picked up, and nothing moves while the bag is locked` (packages/client/tests/panel.test.ts); `two filled slots change places; a line moves to an empty slot`; `an empty source, the same slot, a trade in progress or a loading player change nothing` (packages/server/tests/inventory.test.ts)
 
 ## Fixed bugs
 

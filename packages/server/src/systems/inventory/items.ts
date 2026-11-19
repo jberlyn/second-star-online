@@ -7,6 +7,7 @@ import { houseData } from "@secondstaronline/data";
 import {
   addSlotFor,
   amountPath,
+  arrangeBag,
   artRef,
   bagText,
   blocksMonster,
@@ -95,6 +96,10 @@ export const DROP_TEXT = {
 export const GIVE_TEXT = {
   cannot: "You cannot give this.",
   offer: (item: string, to: string) => `*** You offer the ${item} to ${to}.`,
+  /** A give of more than one ("*** You offer 3 Long Sword to Bob."). */
+  offerMany: (n: number, item: string, to: string) => `*** You offer ${n} ${item} to ${to}.`,
+  /** Drop or Give asked for more of an item than the stack holds. */
+  notEnoughItems: (item: string) => `You don't have that many of the ${item}!`,
   noOne: "*** You must be standing in front of someone to give them this.",
   /** A single item, `#` number stripped ("a Painting"). */
   receiving: (giver: string, item: string) => `${giver} is giving you a ${item}.`,
@@ -400,19 +405,26 @@ function tileCrowded(room: Room, x: number, y: number): boolean {
   return here.length >= TILE_ITEM_CAP || here.some((g) => blocksMonster(g.item));
 }
 
-/** The Drop button: one unit onto the faced tile. */
-export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Outgoing[] {
+/**
+ * The Drop button: `n` of the stack (the client asks how many when it holds more than one; 1.6
+ * always dropped one) onto the faced tile as one pile, or into a vault or container.
+ */
+export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n = 1): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
+  if (line && !busy(p) && line.qty < n && !lingoContains(line.item, "Crystals")) {
+    io.tell(p, GIVE_TEXT.notEnoughItems(displayName(line.item)));
+    return io.out;
+  }
   // With a vault or container window open, Drop puts the item into it (in 1.6 the window's key
   // lock made the bag ignore clicks, so nothing could be stored until a take freed the keys).
   if (line && !busy(p) && !lingoContains(line.item, "Crystals")) {
     if (p.vaultOpen) {
-      io.out.push(...depositVault(p, slot));
+      io.out.push(...depositVault(p, slot, n));
       return io.out;
     }
     if (p.container) {
-      io.out.push(...depositContainer(ctx.world, p, slot, p.container.name));
+      io.out.push(...depositContainer(ctx.world, p, slot, p.container.name, n));
       return io.out;
     }
   }
@@ -461,11 +473,11 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
   const first = room.map.ground.find((g) => g.x === t.x && g.y === t.y);
   const route = first ? dropRoute(first) : null;
   if (route !== null && lingoEq(route, "Vault")) {
-    io.out.push(...depositVault(p, slot));
+    io.out.push(...depositVault(p, slot, n));
     return io.out;
   }
   if (route !== null) {
-    io.out.push(...depositContainer(ctx.world, p, slot, route));
+    io.out.push(...depositContainer(ctx.world, p, slot, route, n));
     return io.out;
   }
   if (tileCrowded(room, t.x, t.y)) {
@@ -482,17 +494,41 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
   // The Newspaper Kit needs the faced tile's layer-1 code `K2`, and the item put down is
   // `<owner>'s Newspaper`.
   let placed = name;
+  // A stand or a piece of furniture is placed one at a time.
+  let qty = isFurniture(name) ? 1 : n;
   if (lingoEq(name, "Newspaper Kit")) {
     if (!kitTileOk(room.map.layers[0], t.x, t.y)) {
       io.tell(p, NEWS_TEXT.noStand);
       return io.out;
     }
     placed = standName(p.name);
+    qty = 1;
   }
-  addGround(ctx, room, io, { item: placed, x: t.x, y: t.y, kind: "drop", expiresAt: null });
-  invDelSlot(p.char.bag, slot - 1, 1);
+  addGround(ctx, room, io, {
+    item: placed,
+    ...(qty > 1 ? { qty } : {}),
+    x: t.x,
+    y: t.y,
+    kind: "drop",
+    expiresAt: null,
+  });
+  invDelSlot(p.char.bag, slot - 1, qty);
   changed(p);
   return io.out;
+}
+
+// ---- arrange ---------------------------------------------------------------------------
+
+/**
+ * Drag to rearrange (1.6 had none): bag slots `from` and `to` (1-based) change places. Refused
+ * silently while dead or loading, and during a trade, whose offer names its lines by slot.
+ */
+export function arrangeIntent(p: Player, from: number, to: number): Outgoing[] {
+  if (busy(p) || p.trade || !arrangeBag(p.char.bag, from - 1, to - 1)) {
+    return [];
+  }
+  changed(p);
+  return [];
 }
 
 // ---- give ------------------------------------------------------------------------------
@@ -511,9 +547,10 @@ function monsterAhead(room: Room, p: Player): boolean {
 }
 
 /**
- * The Give button: one unit goes onto the target's tile, and the target grabs it 60 frames later.
+ * The Give button: `n` of the stack (1.6 always gave one) go onto the target's tile as one pile, and
+ * the target grabs it 60 frames later.
  */
-export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Outgoing[] {
+export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n = 1): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
   if (busy(p) || p.keyLock || !line || lingoContains(line.item, "Crystals")) {
@@ -523,7 +560,12 @@ export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
     io.tell(p, GIVE_TEXT.cannot);
     return io.out;
   }
-  // A monster or NPC one, then two tiles ahead takes it as a quest give.
+  if (line.qty < n) {
+    io.tell(p, GIVE_TEXT.notEnoughItems(displayName(line.item)));
+    return io.out;
+  }
+  // A monster or NPC one, then two tiles ahead takes it as a quest give: one item, whatever the
+  // amount, since a quest takes one.
   const npc = goldTarget(room, p)?.live?.name;
   if (npc !== undefined) {
     return [...io.out, ...questGive(ctx.world, p, slot - 1, npc, ctx.rng)];
@@ -534,15 +576,21 @@ export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): O
     io.tell(p, GIVE_TEXT.noOne);
     return io.out;
   }
-  io.tell(p, GIVE_TEXT.offer(displayName(line.item), target.name));
+  io.tell(
+    p,
+    n > 1
+      ? GIVE_TEXT.offerMany(n, displayName(line.item), target.name)
+      : GIVE_TEXT.offer(displayName(line.item), target.name),
+  );
   const g = addGround(ctx, room, io, {
     item: line.item,
+    ...(n > 1 ? { qty: n } : {}),
     x: target.x,
     y: target.y,
     kind: "drop",
     expiresAt: null,
   });
-  invDelSlot(p.char.bag, slot - 1, 1);
+  invDelSlot(p.char.bag, slot - 1, n);
   changed(p);
   ctx.world.gives.push({
     at: ctx.world.tickNo + GIVE_GRAB_FRAMES,
@@ -1018,11 +1066,14 @@ export function receiveGive(
   // Printed first, before the ground and bag checks. A pile is named with its amount ("50 Gold"),
   // an item without its `#` number (1.6 showed "a Painting#12" and "a 50 Gold").
   const pile = isGoldName(g.item) || lingoContains(g.item, " Crystals");
+  const count = g.qty ?? 1;
   io.tell(
     target,
     pile
       ? GIVE_TEXT.receivingPile(giverName, g.item)
-      : GIVE_TEXT.receiving(giverName, displayName(g.item)),
+      : count > 1
+        ? GIVE_TEXT.receivingPile(giverName, `${count} ${displayName(g.item)}`)
+        : GIVE_TEXT.receiving(giverName, displayName(g.item)),
   );
   if (!room.map.ground.includes(g) || bagFull(target, g.item)) {
     return io.out;

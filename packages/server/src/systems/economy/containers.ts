@@ -129,7 +129,13 @@ export function storageIntent(world: World, p: Player, slot: number): Outgoing[]
  * depositor; a deposit that completes nothing says nothing more (1.6 "fizzled" on every one). The
  * list of anyone with the container open is refreshed.
  */
-export function depositContainer(world: World, p: Player, slot: number, name: string): Outgoing[] {
+export function depositContainer(
+  world: World,
+  p: Player,
+  slot: number,
+  name: string,
+  n = 1,
+): Outgoing[] {
   const line = p.char.bag[slot - 1];
   if (!line) {
     return [];
@@ -142,21 +148,37 @@ export function depositContainer(world: World, p: Player, slot: number, name: st
   if (["Cabinet", "Crate", "Cauldron"].some((c) => lingoContains(item, c))) {
     return [tell(p, VAULT_TEXT.container)];
   }
-  const lines = linesOf(world, name);
-  if (lines.length >= containerCapacity(name)) {
+  if (linesOf(world, name).length >= containerCapacity(name)) {
     return [tell(p, VAULT_TEXT.full)];
   }
-  line.qty -= 1;
+  // One unit at a time, as many as fit: a Cauldron tries its recipes after each one.
+  const out: Outgoing[] = [];
+  let count = 0;
+  let brews = 0;
+  while (count < n && line.qty > 0) {
+    const lines = linesOf(world, name);
+    if (lines.length >= containerCapacity(name)) {
+      break;
+    }
+    line.qty -= 1;
+    count += 1;
+    const next = [...lines, item];
+    const brewed = lingoContains(name, "Cauldron") ? cauldronBrew(next) : null;
+    write(world, name, brewed ?? next);
+    if (brewed !== null) {
+      brews += 1;
+    }
+  }
   if (line.qty <= 0) {
     p.char.bag[slot - 1] = null;
   }
   p.invDirty = true;
-  const out = [tell(p, VAULT_TEXT.drop(item))];
-  const next = [...lines, item];
-  const brewed = lingoContains(name, "Cauldron") ? cauldronBrew(next) : null;
-  write(world, name, brewed ?? next);
-  if (brewed !== null) {
+  out.push(tell(p, count > 1 ? VAULT_TEXT.dropMany(count, item) : VAULT_TEXT.drop(item)));
+  for (let i = 0; i < brews; i++) {
     out.push(tell(p, CRAFT_TEXT.puff));
+  }
+  if (count < n) {
+    out.push(tell(p, VAULT_TEXT.full));
   }
   out.push(...refreshViewers(world, name));
   return out;
