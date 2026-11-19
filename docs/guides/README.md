@@ -15,7 +15,7 @@ These guides describe the game in play and where its current implementation live
 - [Monsters](monsters.md): spawns, movement and attacks.
 - [Movement](movement.md): walking, collisions and pushing.
 - [Progression](progression.md): character growth, vitals and death.
-  Each skill has its own page in the [skill guides](../skills/README.md).
+  Each skill has its own page in the [skill guides](skills/README.md).
 - [Social](social.md): guilds, factions and presence.
 - [Spells](spells.md): casting, effects and learning.
 - [Vehicles](vehicles.md): Airship building, travel and parking.

@@ -8,7 +8,7 @@ Current instructions for running, configuring, and extending the game:
 - [Script reference](scripts.md): development, build, test and operator commands.
 - [Modding](modding.md): editing content JSON, adding art and sound, the content report, and adding spell effects.
 - [System and client guides](guides/README.md): gameplay behaviour and where each system lives in the codebase.
-- [Skills](skills/README.md): each of the 38 skills, how it rises, what it does and the systems it touches.
+  - [Skills](guides/skills/README.md): each of the 38 skills, how it rises, what it does and the systems it touches.
 - [Performance](performance.md): measured capacity, tick timing, and running load tests.
 
 ## Architecture and differences from 1.6
