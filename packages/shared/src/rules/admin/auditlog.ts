@@ -35,6 +35,8 @@ export const MODERATION_COMMANDS = {
   unipban: "/unbanip",
   jail: "/jail",
   unjail: "/unjail",
+  mute: "/mute",
+  unmute: "/unmute",
   pardon: "/pardon",
 } as const;
 

@@ -177,6 +177,20 @@ describe("/auditlog in the game", () => {
     ]);
   });
 
+  test("mutes and unmutes come from the moderation log, once each, with their reasons", async () => {
+    const { make, say } = await start();
+    const king = await make("King", "immortal");
+    const mod = await make("Mod", "moderator");
+    await make("Bob");
+    say(mod.characterId, "/mute Bob perm flooding");
+    say(king.characterId, "/unmute Bob appealed");
+    expect(say(king.characterId, "/auditlog bob")).toEqual([
+      AUDITLOG_TEXT.header("Bob", 2),
+      '2026-11-18 09:00:00 UTC Mod /mute Bob (permanent, "flooding")',
+      '2026-11-18 09:00:01 UTC King /unmute Bob ("appealed")',
+    ]);
+  });
+
   test("/auditlog is an immortal's: a moderator or a player is told it is unknown, and nothing is audited", async () => {
     const { make, say } = await start();
     const mod = await make("Mod", "moderator");

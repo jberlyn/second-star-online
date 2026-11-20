@@ -159,7 +159,7 @@ export function auditTrail(
          UNION ALL
          SELECT m.created_at, m.id, m.actor_name, CASE m.action ${actions} END,
            COALESCE(m.character_name, m.address), NULL, NULL, m.reason, m.expires_at,
-           m.action IN ('ban', 'jail', 'ipban') AND m.expires_at IS NULL
+           m.action IN ('ban', 'jail', 'mute', 'ipban') AND m.expires_at IS NULL
          FROM moderation_log m
          WHERE m.actor_id = ?1 OR m.account_id = ?1 OR m.character_name = ?2 COLLATE NOCASE
        ) ORDER BY at DESC, id DESC LIMIT ?3`,
