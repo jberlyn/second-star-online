@@ -1507,7 +1507,8 @@ describe("the playthrough", () => {
     await settle();
     expect(msgsOf(alice, "paint")).toEqual([{ t: "paint", reopen: false }]);
     alice.send({ t: "artSave", kind: "painting", png: b64(PNG) });
-    await settle();
+    // The 16 KB frame can take longer than a settle under load: wait for the reply itself.
+    await alice.waitFor((m) => m.t === "artSaved");
     expect(msgsOf(alice, "artSaved")).toEqual([{ t: "artSaved", kind: "painting" }]);
     await t(1);
     const painting = lastInv(alice)?.bag.find((l) => l?.item.startsWith("Painting#"))?.item ?? "";

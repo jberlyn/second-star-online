@@ -139,7 +139,8 @@ describe("paintings, photos and newspapers", () => {
     alice.clear();
     // 16 KB of base64 in one frame: allowed only because she holds a canvas.
     alice.send({ t: "artSave", kind: "painting", png: b64(PNG) });
-    await settle();
+    // A 16 KB frame can take longer than a settle under load: wait for the reply itself.
+    await alice.waitFor((m) => m.t === "artSaved");
     expect(msgsOf(alice, "artSaved")).toEqual([{ t: "artSaved", kind: "painting" }]);
     expect(who("Alice").keyLock).toBe(false);
     expect(bagSlot("Alice", "Painting#")).toBeGreaterThan(0);
@@ -199,7 +200,7 @@ describe("paintings, photos and newspapers", () => {
     await settle();
     expect(msgsOf(alice, "lens")).toEqual([{ t: "lens" }]);
     alice.send({ t: "artSave", kind: "photo", png: b64(PNG) });
-    await settle();
+    await alice.waitFor((m) => m.t === "artSaved");
     expect(msgsOf(alice, "artSaved")).toEqual([{ t: "artSaved", kind: "photo" }]);
     expect(bagSlot("Alice", "Photo#")).toBeGreaterThan(0);
   });
