@@ -6,13 +6,13 @@ import {
   can,
   checkLevelUp,
   createFood,
-  DEFAULT_HULL_RULES,
   type DeltaEvent,
   EFFECT_TEXT,
   FLICKER_FRAMES,
   filledLines,
   fxEffect,
   fxMember,
+  HULL_HIT_DAMAGE,
   invAdd,
   inxitionText,
   LEVEL_UP_TEXT,
@@ -101,18 +101,13 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
   // A role that takes no damage is untouched by harmful spells (a bug fixed: SSO's early immortals,
   // safe from monsters and melee, could still be killed by a spell).
   const invulnerable = can(p.role, "invulnerable");
-  const hullHit = (ctx.item.hulls ?? DEFAULT_HULL_RULES).hitDamage;
   const damage = (fx: SpellFx, spellDmg: number) => {
     if (invulnerable) {
       return;
     }
-    // Aboard, the hit wears the hull by a fixed amount instead (an SSO addition); with no hull
-    // damage set, the rider is untouched.
+    // Aboard, the hit wears the hull by a fixed amount instead (an SSO addition).
     const aboard = p.vehicle !== null && p.hull !== null;
-    const dmg = aboard ? hullHit : spellDmg;
-    if (aboard && dmg <= 0) {
-      return;
-    }
+    const dmg = aboard ? HULL_HIT_DAMAGE : spellDmg;
     if (aboard && p.hull !== null) {
       p.hull = p.hull <= dmg ? 0 : p.hull - dmg;
     } else {

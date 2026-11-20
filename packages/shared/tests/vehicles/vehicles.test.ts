@@ -3,7 +3,6 @@ import { describe, expect, test } from "bun:test";
 import {
   boardCheck,
   boardingHull,
-  DEFAULT_HULL_RULES,
   deedCheck,
   hullMax,
   isDock,
@@ -153,9 +152,8 @@ describe("hulls", () => {
   test("SSO: a hull above a lowered full hull is cut to it", () => {
     expect(boardingHull({ hull: 70, parkedAt: 0 }, 40, 0, 1)).toBe(40);
   });
-  test("SSO: the full hull comes from the rules", () => {
-    expect(hullMax("Airship", DEFAULT_HULL_RULES)).toBe(80);
-    expect(hullMax("Airship", { ...DEFAULT_HULL_RULES, airship: 120 })).toBe(120);
+  test("SSO: an airship's full hull is 80", () => {
+    expect(hullMax("Airship")).toBe(80);
   });
   test("SSO: the shot-down line names the attacker when there is one", () => {
     expect(sunkText("Bob", "Airship", "Ann")).toBe(

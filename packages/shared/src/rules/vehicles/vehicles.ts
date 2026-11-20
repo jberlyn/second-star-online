@@ -129,38 +129,32 @@ export function unboardCheck(a: {
 
 /**
  * A vehicle's hull (issue #2, an SSO addition: 1.6 had none). Hits on a rider wear the hull, never
- * the rider. A fixed amount per hit, whatever the attacker's level or power. At 0 the vehicle is
+ * the rider: a fixed amount per hit, whatever the attacker's level or power. At 0 the vehicle is
  * lost and the rider dies.
  */
-export interface HullRules {
-  /** The Airship's full hull (setting `airshipHull`). */
-  airship: number;
-  /** What one arrow or harmful spell takes off a hull (setting `hullHitDamage`). */
-  hitDamage: number;
-  /** Hull a parked vehicle regains per whole minute parked (setting `hullRepairPerMinute`). */
-  repairPerMinute: number;
-}
+export const HULL_MAX: Readonly<Record<Vehicle, number>> = { Airship: 80 };
 
-export const DEFAULT_HULL_RULES: HullRules = { airship: 80, hitDamage: 2, repairPerMinute: 1 };
+/** What one arrow or harmful spell takes off a hull. */
+export const HULL_HIT_DAMAGE = 2;
 
-/** A vehicle's full hull under these rules. */
-export function hullMax(vehicle: Vehicle, rules: HullRules): number {
-  switch (vehicle) {
-    case "Airship":
-      return rules.airship;
-  }
+/** Hull a parked vehicle regains for each whole minute parked. */
+export const HULL_REPAIR_PER_MINUTE = 1;
+
+/** A vehicle's full hull. */
+export function hullMax(vehicle: Vehicle): number {
+  return HULL_MAX[vehicle];
 }
 
 /**
  * The hull a rider boards with. A parked vehicle's hull (null: never damaged, or parked before
  * hulls existed, so full) gains `repairPerMinute` for each whole minute since `parkedAt`, and never
- * exceeds the current full hull (an operator may have lowered it since).
+ * exceeds the full hull (which may have been lowered since).
  */
 export function boardingHull(
   parked: { hull: number | null; parkedAt: number | null },
   max: number,
   now: number,
-  repairPerMinute: number,
+  repairPerMinute = HULL_REPAIR_PER_MINUTE,
 ): number {
   if (parked.hull === null) {
     return max;

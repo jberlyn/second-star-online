@@ -33,7 +33,6 @@ import {
   deathText,
   EDGE_BLOCKED_TEXT,
   exitTarget,
-  type HullRules,
   isJailMap,
   isWalkable,
   JAIL,
@@ -135,8 +134,6 @@ export interface TickDeps {
   npcChatterSeconds?: number;
   /** Whose deaths drop gold or an item, and how (settings `deathDrops` and the rest of Items). */
   deathDrops?: DeathDropRules;
-  /** Vehicle hull sizes, the damage a hit does to one, and repair (World settings). */
-  hulls?: HullRules;
   /** Where Portal sends players (setting `portalTargets`); with none, a Portal cast is refused. */
   portalTargets?: readonly { map: string; x: number; y: number }[];
   /** The Server Spirit's map (setting `hazardMap`), or null. */
@@ -205,12 +202,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
   const tell = (to: Player, text: string, color: number = CHAT_COLOR.normal) =>
     out.push({ to: to.id, msg: { t: "chat", text, color } });
   world.tickNo += 1;
-  const itemCtx: ItemCtx = {
-    world,
-    rng,
-    now: deps.now?.() ?? 0,
-    ...(deps.hulls ? { hulls: deps.hulls } : {}),
-  };
+  const itemCtx: ItemCtx = { world, rng, now: deps.now?.() ?? 0 };
 
   const collideCtx: CollideCtx = {
     rng,
@@ -616,7 +608,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
     }
     if (p.vitalsDirty) {
       p.vitalsDirty = false;
-      out.push({ to: p.id, msg: { t: "vitals", vitals: vitalsView(p, deps.hulls) } });
+      out.push({ to: p.id, msg: { t: "vitals", vitals: vitalsView(p) } });
     }
     out.push(...flushInventory(world, p));
     if (deaths.has(p)) {

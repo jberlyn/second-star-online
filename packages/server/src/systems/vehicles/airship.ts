@@ -11,7 +11,6 @@ import {
   AIRSHIP_BODY,
   boardCheck,
   boardingHull,
-  DEFAULT_HULL_RULES,
   deedCheck,
   FACING_DELTA,
   hullMax,
@@ -115,13 +114,11 @@ export function airshipClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem)
   }
   // Board: the airship leaves the ground, the rider hops onto its tile with no step.
   removeGround(ctx, room, io, g.id);
-  const rules = ctx.hulls ?? DEFAULT_HULL_RULES;
   // The hull it was parked with, repaired for the time it stood (an SSO addition).
   p.hull = boardingHull(
     { hull: g.hull ?? null, parkedAt: g.parkedAt ?? null },
-    hullMax("Airship", rules),
+    hullMax("Airship"),
     ctx.now,
-    rules.repairPerMinute,
   );
   p.vitalsDirty = true;
   p.vehicle = "Airship";

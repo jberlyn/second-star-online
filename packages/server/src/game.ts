@@ -163,7 +163,6 @@ import {
   applySettingValues,
   DAY_SECONDS,
   deathDropRules,
-  hullRules,
   resolveSettings,
   type Settings,
   secondsToTicks,
@@ -651,7 +650,6 @@ export function createGame(deps: GameDeps): Game {
     lootDecayMinutes: settings.lootDecay / 60,
     npcChatterSeconds: settings.npcChatter,
     deathDrops: deathDropRules(settings),
-    hulls: hullRules(settings),
     portalTargets: settings.portalTargets,
     hazardMap: settings.hazardMap,
     saveIntervalTicks: secondsToTicks(config.saveInterval),
@@ -774,7 +772,6 @@ export function createGame(deps: GameDeps): Game {
     art: artStore,
     newspapers: newspaperStore,
     slotsChanged: (m) => saveMapSlots(m),
-    hulls: hullRules(settings),
   });
 
   /**
@@ -970,7 +967,6 @@ export function createGame(deps: GameDeps): Game {
       lootDecayMinutes: settings.lootDecay / 60,
       npcChatterSeconds: settings.npcChatter,
       deathDrops: deathDropRules(settings),
-      hulls: hullRules(settings),
       portalTargets: settings.portalTargets,
       hazardMap: settings.hazardMap,
     });
@@ -1782,7 +1778,7 @@ export function createGame(deps: GameDeps): Game {
         facing: resumed ? c.position.facing : "S",
         stepFrames: 0,
         vehicle: c.vehicle,
-        hull: c.vehicle ? (c.hull ?? hullMax(c.vehicle, hullRules(settings))) : null,
+        hull: c.vehicle ? (c.hull ?? hullMax(c.vehicle)) : null,
         held: null,
         heldTurn: false,
         pending: null,
@@ -2200,7 +2196,7 @@ export function createGame(deps: GameDeps): Game {
           }
           if (p.vitalsDirty) {
             p.vitalsDirty = false;
-            send(p.id, { t: "vitals", vitals: vitalsView(p, hullRules(settings)) });
+            send(p.id, { t: "vitals", vitals: vitalsView(p) });
           }
           if (p.spell.bookDirty) {
             send(p.id, { t: "spellbook", spells: [...p.spell.book] });
@@ -2262,7 +2258,7 @@ export function createGame(deps: GameDeps): Game {
           deliver(r.out);
           if (p.vitalsDirty) {
             p.vitalsDirty = false;
-            send(p.id, { t: "vitals", vitals: vitalsView(p, hullRules(settings)) });
+            send(p.id, { t: "vitals", vitals: vitalsView(p) });
           }
           if (r.slotsChanged) {
             saveMapSlots(p.map);

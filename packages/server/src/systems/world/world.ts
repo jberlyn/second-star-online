@@ -14,7 +14,6 @@ import {
   type Bag,
   type ChatChannel,
   type ChatOutcome,
-  DEFAULT_HULL_RULES,
   type DeltaEvent,
   type Dir,
   type Equipment,
@@ -31,7 +30,6 @@ import {
   type GroundView,
   HOUSE_CLOCK_FRAMES,
   type HouseListEntry,
-  type HullRules,
   hullMax,
   type InventoryView,
   isJailMap,
@@ -1062,11 +1060,9 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
 }
 
 /** My HP, SP and XP for my own client, with the hull while aboard (the HP bar shows it). */
-export function vitalsView(p: Player, hulls: HullRules = DEFAULT_HULL_RULES): VitalsView {
+export function vitalsView(p: Player): VitalsView {
   const v = { ...p.char.vitals };
-  return p.vehicle && p.hull !== null
-    ? { ...v, hull: { hp: p.hull, max: hullMax(p.vehicle, hulls) } }
-    : v;
+  return p.vehicle && p.hull !== null ? { ...v, hull: { hp: p.hull, max: hullMax(p.vehicle) } } : v;
 }
 
 export function playerView(p: Player): PlayerView {

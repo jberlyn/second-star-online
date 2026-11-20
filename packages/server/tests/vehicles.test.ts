@@ -570,23 +570,10 @@ describe("hulls", () => {
     actionIntent({ ...s.ctx(), now: 1_000_000 + 10 * 60_000 + 59_999 }, s.room, s.ann);
     expect([s.ann.vehicle, s.ann.hull]).toEqual(["Airship", 60]);
   });
-  test("SSO: a full hull and the repair follow the World settings", () => {
-    const s = built();
-    const hulls = { airship: 120, hitDamage: 2, repairPerMinute: 1 };
-    actionIntent({ ...s.ctx(), hulls }, s.room, s.ann);
-    expect(s.ann.hull).toBe(120);
-    expect(vitalsView(s.ann, hulls).hull).toEqual({ hp: 120, max: 120 });
-  });
   test("SSO: a player's spell wears a rider's hull by a fixed 2, never the rider's HP", () => {
     const s = target(80);
     s.fire();
     expect([s.bob.hull, s.bob.char.vitals.hp, s.bob.lastToHitMe]).toEqual([78, 20, "Ann"]);
-  });
-  test("SSO: with hull damage per hit at 0, spells leave riders alone", () => {
-    const s = target(80);
-    s.deps.hulls = { airship: 80, hitDamage: 0, repairPerMinute: 1 };
-    s.fire();
-    expect([s.bob.hull, s.bob.char.vitals.hp, s.bob.lastToHitMe]).toEqual([80, 20, null]);
   });
   test("SSO: the hull running out kills the rider; the airship is lost and everyone hears it", () => {
     const s = target(2);

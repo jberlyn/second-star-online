@@ -25,7 +25,6 @@ import {
   FACING_DELTA,
   filledLines,
   fixedInPlace,
-  type HullRules,
   headDrop,
   invAdd,
   invDelSlot,
@@ -142,8 +141,6 @@ export interface ItemCtx {
   newspapers?: NewspaperStore;
   /** A map's roster slots changed outside the tick (a pig grab): write them. */
   slotsChanged?(map: WorldMap): void;
-  /** Vehicle hull sizes and repair (World settings); the defaults when absent. */
-  hulls?: HullRules;
 }
 
 /** What an intent produced: chat lines and events for the map. */

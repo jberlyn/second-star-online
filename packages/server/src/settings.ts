@@ -11,7 +11,6 @@ import {
   type DeathDropKind,
   type DeathDropRules,
   type DeathDropWho,
-  type HullRules,
   prizeLineOk,
   type SettingPage,
   type SettingRow,
@@ -124,15 +123,6 @@ export function deathDropRules(s: Settings): DeathDropRules {
     kind: s.deathDropKind,
     goldCap: s.deathDropGoldCap,
     minLevel: s.deathDropMinLevel,
-  };
-}
-
-/** The World page's vehicle hull settings. */
-export function hullRules(s: Settings): HullRules {
-  return {
-    airship: s.airshipHull,
-    hitDamage: s.hullHitDamage,
-    repairPerMinute: s.hullRepairPerMinute,
   };
 }
 
@@ -357,37 +347,6 @@ export const SETTINGS = {
       "A map where the Server Spirit throws fireballs and lightning bolts every 0.35 s. Empty turns it off.",
     source:
       "The @xSlimmySlimm sends of 1.6's timer script. No archived map has that name, so in 1.6 they hit nobody.",
-  }),
-  airshipHull: def({
-    page: "world",
-    label: "Airship hull",
-    form: { kind: "int", min: 1, max: 100_000 },
-    schema: z.number().int().min(1).max(100_000),
-    default: 80,
-    tooltip:
-      "How much damage an airship takes before it is shot down. Hits on a rider wear the hull, not the rider's HP. When it runs out, the airship is lost and the rider dies.",
-    source: "SSO addition (issue #2). 1.6's riders took hits on their own HP.",
-  }),
-  hullHitDamage: def({
-    page: "world",
-    label: "Hull damage per hit",
-    form: { kind: "int", min: 0, max: 100_000 },
-    schema: z.number().int().min(0).max(100_000),
-    default: 2,
-    tooltip:
-      "What one arrow or harmful spell takes off a vehicle's hull, whatever the attacker's level or power. 0 makes vehicles immune to them.",
-    source:
-      "SSO addition (issue #2). A fixed amount, so a strong character cannot wear a hull down faster than a cannon.",
-  }),
-  hullRepairPerMinute: def({
-    page: "world",
-    label: "Hull repair per minute parked",
-    form: { kind: "int", min: 0, max: 100_000 },
-    schema: z.number().int().min(0).max(100_000),
-    default: 1,
-    tooltip:
-      "How much hull a parked vehicle regains for each minute it stays parked, up to full. There is no repair while riding. 0 turns repair off.",
-    source: "SSO addition (issue #2).",
   }),
   treasureMaps: def({
     page: "world",
