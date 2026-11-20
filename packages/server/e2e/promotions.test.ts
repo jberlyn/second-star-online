@@ -1,7 +1,7 @@
 /**
  * Bot script: Amber's file is replaced by a trainer
  * (`TRN|Grunt:100`, `TRN|Fire Mage:10000`, `TRN|Ninja:5`; /roster takes only the `mlists` species,
- * so the trainer wears Amber's name). Alice, an immortal, puts it on the map. Bob (a Fighter with
+ * so the trainer wears Amber's name). Alice, an administrator, puts it on the map. Bob (a Fighter with
  * 150 gold and Slash 30) clicks it: the Bio has Train; the train list has the three lines; Fire
  * Mage is refused for a Fighter, Ninja does nothing, Grunt promotes (class, gold, `heal2`, and
  * Thrust raised from 1 to the grant's roll); a second Grunt says "learned all"; after a reconnect
@@ -83,7 +83,7 @@ describe("promotions at a trainer", () => {
     }
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
     server.db.run("UPDATE characters SET x = 6, y = 4, gold = 150 WHERE name = 'Bob'");

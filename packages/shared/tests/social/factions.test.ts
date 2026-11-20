@@ -188,7 +188,7 @@ describe("factions", () => {
     expect(asksForQuest("a quest")).toBe(false);
   });
 
-  test("the murder lines name the victim and the immortal", () => {
+  test("the murder lines name the victim and the administrator", () => {
     expect(wantedLine("Bob")).toBe("*** You are now wanted for the murder of Bob.");
     expect(pardonedLine("King")).toBe("*** You have been pardoned by King.");
     expect(pardoningLine("Alice")).toBe("Pardoning Alice...");

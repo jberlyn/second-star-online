@@ -301,7 +301,7 @@ function gainOnShot(p: Player, ctx: MeleeCtx, ev: SwingEvents): void {
 /**
  * Every other player's reaction to the swing, and the hit on them. The attacker must be allowed to
  * swing (already checked); the victim's map must allow PvP or the victim stand on a `6P` tile.
- * Immortals are never hurt, as monsters never hurt them (a bug fixed: 1.6's player hit had no
+ * An `invulnerable` role is never hurt, as monsters never hurt them (a bug fixed: 1.6's player hit had no
  * immortal check).
  */
 function pvpSwing(

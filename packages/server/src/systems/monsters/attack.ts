@@ -54,8 +54,8 @@ export interface MonsterAttackCtx {
   rng: Rng;
   /** The NPC files (`FLG|Passive`). */
   npcs: NpcStore;
-  /** True when the victim is an immortal. */
-  immortal(p: Player): boolean;
+  /** True when the victim takes no damage (the `invulnerable` permission). */
+  invulnerable(p: Player): boolean;
   /** Frames per player step: where the victim's sprite is for the Holy Shield test. */
 }
 
@@ -111,8 +111,8 @@ function hitMe2(
   ctx: MonsterAttackCtx,
 ): AttackOutcome | null {
   const m = slot.live as NonNullable<MonsterSlot["live"]>;
-  if (ctx.immortal(p)) {
-    return null; // immortals take no damage, from monsters or players
+  if (ctx.invulnerable(p)) {
+    return null; // no damage, from monsters or players
   }
   // Holy Shield never hits an innocent.
   if (!p.char.wanted && anyMatch(monstersData.rules.sparesInnocent, m.name)) {

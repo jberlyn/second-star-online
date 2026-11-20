@@ -1,5 +1,5 @@
 /**
- * `/auditlog`: an immortal reads what staff did, by a character's account or to that character,
+ * `/auditlog`: an administrator reads what staff did, by a character's account or to that character,
  * from the audit log and the moderation log together.
  */
 import { beforeEach, describe, expect, test } from "bun:test";
@@ -91,7 +91,7 @@ describe("/auditlog in the game", () => {
       rng: NEVER_PUSH,
     });
     let n = 0;
-    const make = async (name: string, role?: "moderator" | "immortal") => {
+    const make = async (name: string, role?: "moderator" | "administrator") => {
       n += 1;
       const ip = `10.0.0.${n}`;
       await game.create(
@@ -129,9 +129,9 @@ describe("/auditlog in the game", () => {
     return { make, say };
   }
 
-  test("an immortal sees what a moderator did and what was done to a player, with reasons; the lookup is audited", async () => {
+  test("an administrator sees what a moderator did and what was done to a player, with reasons; the lookup is audited", async () => {
     const { make, say } = await start();
-    const king = await make("King", "immortal");
+    const king = await make("King", "administrator");
     const mod = await make("Mod", "moderator");
     await make("Bob");
     await make("Alice");
@@ -154,7 +154,7 @@ describe("/auditlog in the game", () => {
       '2026-11-18 09:00:02 UTC King /unjail Bob ("served enough")',
       "2026-11-18 09:00:03 UTC King /setclass Bob: 1 -> 7",
     ]);
-    // By the immortal, the newest 2: the two lookups above.
+    // By the administrator, the newest 2: the two lookups above.
     expect(say(king.characterId, "/auditlog King 2")).toEqual([
       AUDITLOG_TEXT.header("King", 2),
       '2026-11-18 09:00:05 UTC King /auditlog Mod: {"limit":10}',
@@ -167,7 +167,7 @@ describe("/auditlog in the game", () => {
 
   test("usage, an unknown name, a quiet one", async () => {
     const { make, say } = await start();
-    const king = await make("King", "immortal");
+    const king = await make("King", "administrator");
     await make("Quiet");
     expect(say(king.characterId, "/auditlog")).toEqual([AUDITLOG_TEXT.usage]);
     expect(say(king.characterId, "/auditlog Quiet many")).toEqual([AUDITLOG_TEXT.usage]);
@@ -179,7 +179,7 @@ describe("/auditlog in the game", () => {
 
   test("mutes and unmutes come from the moderation log, once each, with their reasons", async () => {
     const { make, say } = await start();
-    const king = await make("King", "immortal");
+    const king = await make("King", "administrator");
     const mod = await make("Mod", "moderator");
     await make("Bob");
     say(mod.characterId, "/mute Bob perm flooding");
@@ -191,7 +191,7 @@ describe("/auditlog in the game", () => {
     ]);
   });
 
-  test("/auditlog is an immortal's: a moderator or a player is told it is unknown, and nothing is audited", async () => {
+  test("/auditlog is an administrator's: a moderator or a player is told it is unknown, and nothing is audited", async () => {
     const { make, say } = await start();
     const mod = await make("Mod", "moderator");
     const bob = await make("Bob");

@@ -40,8 +40,8 @@ export type SettingForm =
 
 /**
  * The Server Settings window's sidebar pages, in order, grouped by what an operator is trying to
- * do. Every page here is a list of settings (`kind: "rows"`); pages of other kinds (such as
- * roles) bring their own editors and are added to `settingPages` beside these.
+ * do. Every page here is a list of settings (`kind: "rows"`); the Roles and Staff pages bring their
+ * own editors and are added by `settingPages` after these.
  */
 export const SETTING_PAGES = [
   { id: "world", title: "World" },
@@ -169,7 +169,7 @@ export const SETTINGS = {
     ...duration(0, HOUR, "off"),
     default: 50,
     tooltip:
-      "How long a player must wait between broadcasts (lines starting with '). Immortals skip it.",
+      "How long a player must wait between broadcasts (lines starting with '). Roles with the matching bypass permission skip it.",
     source:
       "1.6's broadcast cooldown of 1000 frames (50 s), unused in 1.6 because the registered flag was always 1; SSO applies it to everyone.",
   }),
@@ -179,7 +179,7 @@ export const SETTINGS = {
     ...duration(0, HOUR, "off"),
     default: 3,
     tooltip:
-      "How long a player must wait between local chat lines and emotes. Also paces IMs, guild and room lines, mail and board posts. Immortals skip it.",
+      "How long a player must wait between local chat lines and emotes. Also paces IMs, guild and room lines, mail and board posts. Roles with the matching bypass permission skip it.",
     source: "SSO addition. The original had no local chat limit.",
   }),
   mailBodyMax: def({
@@ -249,6 +249,16 @@ export const SETTINGS = {
       'Also print "<name> has logged on." and "<name> has logged off." in everyone\'s chat. Off in First Star Online 1.6.',
     source: "SSO addition. 1.6 printed nothing.",
   }),
+  roleTags: def({
+    page: "chat",
+    label: "Role tags in chat",
+    form: { kind: "bool" },
+    schema: z.boolean(),
+    default: false,
+    tooltip:
+      'Put a staff member\'s role name before their name when they talk, as in "[Admin] Berlyn says". Covers local chat, /me, broadcasts, chat rooms, guild chat and staff chat; IMs keep the plain name. Players get no tag.',
+    source: "SSO addition (issue #7). 1.6 had no roles.",
+  }),
   lootDecay: def({
     page: "items",
     label: "Loot lasts",
@@ -280,7 +290,7 @@ export const SETTINGS = {
     }),
     default: "wanted" as DeathDropWho,
     tooltip:
-      "Whose deaths drop gold or one random bag item (never crystals) where they died. Wanted only: characters wanted for murder. Killed by a player: anyone another player kills, and wanted characters however they die. Everyone: every death outside an arena, as in 1.6. A faction member killed on a PvP map drops the faction's head whatever this says, and an immortal always drops.",
+      "Whose deaths drop gold or one random bag item (never crystals) where they died. Wanted only: characters wanted for murder. Killed by a player: anyone another player kills, and wanted characters however they die. Everyone: every death outside an arena, as in 1.6. A faction member killed on a PvP map drops the faction's head whatever this says, and a role with the drop-on-every-death permission always drops.",
     source:
       "1.6's server settings file: \"Chars Drop Items On Death: ON\", which dropped on every death. SSO defaults to wanted characters only, so monsters never take a player's gear.",
   }),
@@ -449,7 +459,7 @@ export const SETTINGS = {
     ...duration(0, TEN_YEARS, "forever"),
     default: 0,
     tooltip:
-      "How long the audit log keeps each staff action (admin commands, editor saves, setting and role changes, /chatlog lookups) for admin:audit. 0 keeps them forever. Bans, jails and pardons are kept regardless, for /banlist.",
+      "How long the audit log keeps each staff action (admin commands, editor saves, setting changes, role edits and assignments, /chatlog lookups) for admin:audit. 0 keeps them forever. Bans, jails and pardons are kept regardless, for /banlist.",
     source: "SSO addition. 1.6 kept no audit log.",
   }),
   loginFailsPerIp: def({
@@ -459,7 +469,7 @@ export const SETTINGS = {
     schema: z.number().int().min(0).max(1000),
     default: 20,
     tooltip:
-      "How many failed logins one address (an IPv6 /64) may make in 5 minutes before further logins from it are refused. 0 turns the limit off. Moderators and immortals are not refused by it. A restart clears the counts.",
+      "How many failed logins one address (an IPv6 /64) may make in 5 minutes before further logins from it are refused. 0 turns the limit off. Roles that bypass login limits are not refused by it. A restart clears the counts.",
     source: "SSO addition. 1.6 had no limit.",
   }),
   loginFailsPerAccount: def({
@@ -522,7 +532,11 @@ export function resolveSettings(overrides: ReadonlyMap<string, string>): Setting
 
 /** The Server Settings window's pages (protocol `SettingPage`), in sidebar order. */
 export function settingPages(): SettingPage[] {
-  return SETTING_PAGES.map((p) => ({ id: p.id, title: p.title, kind: "rows" }));
+  return [
+    ...SETTING_PAGES.map((p) => ({ id: p.id, title: p.title, kind: "rows" as const })),
+    { id: "roles", title: "Roles", kind: "roles" },
+    { id: "staff", title: "Staff", kind: "staff" },
+  ];
 }
 
 /** The Server Settings window's rows (protocol `SettingRow`), page by page. */

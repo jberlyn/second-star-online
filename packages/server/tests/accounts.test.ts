@@ -20,10 +20,10 @@ beforeEach(() => {
 });
 
 describe("accounts", () => {
-  test("creates an account with an Argon2id hash and the player role", async () => {
+  test("creates an account with an Argon2id hash and no role", async () => {
     const a = await createAccount(db, { username: " Arthur ", password: "Excalibur!", now: NOW });
     expect(a.username).toBe("Arthur");
-    expect(a.role).toBe("player");
+    expect(a.role).toBeNull();
     expect(a.id.charAt(14)).toBe("7"); // UUIDv7
     expect(a.passwordHash.startsWith("$argon2id$")).toBe(true);
     expect(await verifyPassword(a, "Excalibur!")).toBe(true);
@@ -45,9 +45,12 @@ describe("accounts", () => {
 
   test("roles come from the row, never the name (closes gm_*)", async () => {
     const gm = await createAccount(db, { username: "gm_Merlin", password: "pw", now: NOW });
-    expect(gm.role).toBe("player");
-    setRole(db, gm.id, "immortal", NOW);
-    expect(findAccountById(db, gm.id)?.role).toBe("immortal");
-    expect(() => setRole(db, gm.id, "god" as never, NOW)).toThrow(/CHECK/);
+    expect(gm.role).toBeNull();
+    setRole(db, gm.id, "administrator", NOW);
+    expect(findAccountById(db, gm.id)?.role).toBe("administrator");
+    // Only a role in the roles table.
+    expect(() => setRole(db, gm.id, "god", NOW)).toThrow(/FOREIGN KEY/);
+    setRole(db, gm.id, null, NOW);
+    expect(findAccountById(db, gm.id)?.role).toBeNull();
   });
 });

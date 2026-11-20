@@ -5,9 +5,11 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
+  ADMINISTRATOR,
   CHATLOG_TEXT,
   type ChatLogRow,
   chatlogLine,
+  MODERATOR,
   parseChatlogArgs,
   type ServerMsg,
 } from "@secondstaronline/shared";
@@ -165,7 +167,7 @@ describe("broadcasts", () => {
 describe("staff chat", () => {
   test("from staff, delivered; from a player, denied", () => {
     const { alice, bob, say, logged } = scene();
-    alice.role = "moderator";
+    alice.role = MODERATOR;
     say(alice, "-  heads up");
     say(bob, "-let me in");
     expect(logged().map((e) => [e.sender, e.channel, e.text, e.outcome])).toEqual([
@@ -220,9 +222,9 @@ describe("instant messages", () => {
 });
 
 describe("chat rooms", () => {
-  test("delivered to the room, refused by the cooldown, and out of a room; an immortal skips the cooldown", () => {
+  test("delivered to the room, refused by the cooldown, and out of a room; an administrator skips the cooldown", () => {
     const { alice, bob, world, logged } = scene();
-    alice.role = "immortal";
+    alice.role = ADMINISTRATOR;
     enterRoom(world, alice, "admin");
     enterRoom(world, bob, "general");
     const who = () => [];
@@ -324,7 +326,7 @@ describe("the chat log in the database", () => {
       isoNow: () => new Date(wall).toISOString(),
       rng: NEVER_PUSH,
     });
-    const make = async (name: string, role?: "moderator" | "immortal") => {
+    const make = async (name: string, role?: "moderator" | "administrator") => {
       await game.create({
         t: "create",
         name,
@@ -368,9 +370,9 @@ describe("the chat log in the database", () => {
     ]);
   });
 
-  test("/chatlog: an immortal reads a player's lines and the IMs sent to them; the lookup is audited", async () => {
+  test("/chatlog: an administrator reads a player's lines and the IMs sent to them; the lookup is audited", async () => {
     const { make, say } = await start();
-    const mod = await make("God", "immortal");
+    const mod = await make("God", "administrator");
     const alice = await make("Alice");
     const bob = await make("Bob");
     say(alice.characterId, "hello all");
@@ -396,10 +398,10 @@ describe("the chat log in the database", () => {
     ]);
   });
 
-  test("/chatlog: usage, an unknown name, a quiet one, another immortal's log", async () => {
+  test("/chatlog: usage, an unknown name, a quiet one, another administrator's log", async () => {
     const { make, say } = await start();
-    const god = await make("God", "immortal");
-    const other = await make("Other", "immortal");
+    const god = await make("God", "administrator");
+    const other = await make("Other", "administrator");
     await make("Alice");
     expect(say(god.characterId, "/chatlog")).toEqual([CHATLOG_TEXT.usage]);
     expect(say(god.characterId, "/chatlog Nobody")).toEqual([
@@ -414,7 +416,7 @@ describe("the chat log in the database", () => {
     ]);
   });
 
-  test("/chatlog is an immortal's: a moderator or a player who types it is told it is unknown", async () => {
+  test("/chatlog is an administrator's: a moderator or a player who types it is told it is unknown", async () => {
     const { game, make, say } = await start();
     const mod = await make("Mod", "moderator");
     const alice = await make("Alice");

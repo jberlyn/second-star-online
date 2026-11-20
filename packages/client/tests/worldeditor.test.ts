@@ -5,7 +5,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { blankMap, type EditorMap, type ServerMsg } from "@secondstaronline/shared";
+import { blankMap, type EditorMap, PERMISSIONS, type ServerMsg } from "@secondstaronline/shared";
 
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -295,7 +295,7 @@ describe("the Admin menu (menu 502) and the editor switch", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("immortals on desktop see World Editor; it sends editOpen; the editor replaces the game", () => {
+  test("administrators on desktop see World Editor; it sends editOpen; the editor replaces the game", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -304,9 +304,9 @@ describe("the Admin menu (menu 502) and the editor switch", () => {
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
     c.onMessage(SNAPSHOT);
-    c.onMessage({ t: "role", role: "player" });
+    c.onMessage({ t: "permissions", permissions: [] });
     expect(titles(root)).not.toContain("Admin");
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     expect(titles(root)).toContain("Admin");
     menuClick(root, "Admin", "World Editor");
     expect(c.sent).toContainEqual({ t: "editOpen" });

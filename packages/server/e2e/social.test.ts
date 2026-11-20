@@ -3,7 +3,7 @@
  *
  * Part 1: on the seed map (PvP flag X), Bob kills Alice, a Warrior: her Warrior's Head drops on her
  * tile and, when her death lock ends, Bob is wanted for her murder. Bob picks the head up; King, an
- * immortal, puts Angela in front of him; Bob gives her the head: the map hears her thanks, the
+ * administrator, puts Angela in front of him; Bob gives her the head: the map hears her thanks, the
  * Warriors lose a point to the Mages, Bob joins the Mages and the shared `@Faction` channel (Alice
  * too, still a Warrior) hears the announcement. Asked about a quest, Angela has nothing; asked
  * about power, she says the Mages are fine. King pardons Bob.
@@ -13,7 +13,7 @@
  * King ends the game with menu 502's End Assassin's Game: Alice wins first place and the Long
  * Sword, nobody is second or third; Alice clicks the Assassin Statue and reads both tables.
  *
- * Part 3: King, an immortal, drops a Guild Center. Alice stands in front of it, opens it in create
+ * Part 3: King, an administrator, drops a Guild Center. Alice stands in front of it, opens it in create
  * mode and creates the Knights. She invites Bob; Carol's ACCEPT with no invitation is said aloud;
  * Bob accepts and both hear the Hail. `/g` reaches Alice and Bob, not Carol. Bob builds a Small
  * Guild Hall; Alice walks in, opens "The Knights's Door" with her Guild Key and drops an Apple into
@@ -23,7 +23,7 @@
  *
  * Part 4: Alice IMs Bob with `/msg` and Bob replies from his IM window, its echo back in it; an IM
  * to someone offline says so. Bob sets away and Alice's next IM gets the bare away text. Both enter
- * General Chat and see each other in the roster; Carol, not an immortal, cannot enter Admin Chat.
+ * General Chat and see each other in the roster; Carol, not an administrator, cannot enter Admin Chat.
  * Bob ignores Alice: her local chat and IMs stop reaching him, her room lines do not.
  *
  * Part 5: Alice's Friends window is filled (empty) at game entry, not opened. She adds Bob while he
@@ -140,7 +140,7 @@ describe("murder flag, factions and quests", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
     bob = await login("Bob");
     king = await login("King");
@@ -281,7 +281,7 @@ describe("the Assassin's game", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
     bob = await login("Bob");
     king = await login("King");
@@ -440,7 +440,7 @@ describe("guilds", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
     bob = await login("Bob");
     carol = await login("Carol");
@@ -798,7 +798,7 @@ describe("friends, bios and medals", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
   });
 

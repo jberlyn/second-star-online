@@ -5,9 +5,12 @@ import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
   ADMIN_TEXT,
+  ADMINISTRATOR,
   banNotice,
   CHAT_COLOR,
   MODERATION_TEXT,
+  MODERATOR,
+  PERMISSIONS,
   type ServerMsg,
   TEXT,
   unknownCommandText,
@@ -19,7 +22,7 @@ import { recentAudit, recentCheats } from "../src/persistence/admin.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/settings.ts";
-import type { AdminDeps, CharacterAccount } from "../src/systems/admin/commands.ts";
+import { type AdminDeps, applyRole, type CharacterAccount } from "../src/systems/admin/commands.ts";
 import { openEditor } from "../src/systems/admin/worldedit.ts";
 import { type ChatDeps, handleChat } from "../src/systems/chat/chat.ts";
 import { setAway } from "../src/systems/chat/im.ts";
@@ -44,9 +47,9 @@ function scene(withJail = true) {
   const s = setup(maps, undefined, undefined, () => clock.ms);
   const byName = new Map(maps.map((m) => [m.name, m]));
   const imm = player("Imm", seed, 5, 5);
-  imm.role = "immortal";
+  imm.role = ADMINISTRATOR;
   const mod = player("Mod", seed, 6, 5);
-  mod.role = "moderator";
+  mod.role = MODERATOR;
   const bob = player("Bob", other, 3, 3);
   for (const p of [imm, mod, bob]) {
     s.join(p);
@@ -56,7 +59,6 @@ function scene(withJail = true) {
   const kicks: { id: string; text: string }[] = [];
   const audits: string[] = [];
   const classes = new Map<string, number>();
-  const roles = new Map<string, string>();
   // Test players' account and character ids are their names.
   const m = fakeModeration((id) => id);
   const accountOf = (p: Player): CharacterAccount => ({
@@ -80,12 +82,11 @@ function scene(withJail = true) {
             characterId: off,
             accountId: off,
             name: off,
-            role: offline.get(off) ?? "player",
+            role: offline.get(off) ?? null,
             classCode: 1,
           }
         : null;
     },
-    setRole: (id, role) => roles.set(id, role),
     moderation: m.store,
     now: clock.iso,
     durations: () => ({ banMinutes: 0, ipBanMinutes: 43_200, jailMinutes: 10, muteMinutes: 10 }),
@@ -156,7 +157,6 @@ describe("the role table (moderator command set)", () => {
       "/Location",
       "/IPlookup Imm",
       "/warpscript help",
-      "/role Bob immortal",
       "/chatlog Imm",
     ]) {
       const w1 = line.split(" ")[0] as string;
@@ -183,7 +183,7 @@ describe("the role table (moderator command set)", () => {
     expect(imm.map.name).toBe("x1000y992");
   });
 
-  test("a moderator may run the moderation commands, but not IP bans, /role or /setclass", () => {
+  test("a moderator may run the moderation commands, but not IP bans or /setclass", () => {
     const { mod, say, bob, bans, ipBans, audits } = scene();
     expect(texts(say(mod, "/Location"), "Mod")).toEqual([
       "You are at map: x1000y992 at position: 6-5",
@@ -205,7 +205,7 @@ describe("the role table (moderator command set)", () => {
     bob.char.wanted = true;
     expect(texts(say(mod, "/Pardon Bob"), "Mod")).toEqual(["Pardoning Bob..."]);
     expect(bob.char.wanted).toBe(false);
-    // IP bans can lock out an immortal or the whole proxy, so they stay immortal-only.
+    // IP bans can lock out an administrator or the whole proxy, so they stay administrator-only.
     expect(texts(say(mod, "/BanIP 2.3.4.5"), "Mod")).toEqual([unknownCommandText("/BanIP")]);
     expect(texts(say(mod, "/unbanip 1.2.3.4"), "Mod")).toEqual([unknownCommandText("/unbanip")]);
     expect(ipBans.size).toBe(0);
@@ -216,7 +216,7 @@ describe("the role table (moderator command set)", () => {
     expect(bans.get("Bob")?.actorId).toBe("Mod");
     expect(texts(say(mod, "/unban Bob"), "Mod")).toEqual(["Bob is no longer banned."]);
     expect(bans.has("Bob")).toBe(false);
-    // The cheat log shows every player's address: an immortal's.
+    // The cheat log shows every player's address: an administrator's.
     expect(texts(say(mod, "/CheatFile"), "Mod")).toEqual([unknownCommandText("/CheatFile")]);
     expect(texts(say(mod, "/Inventory"), "Mod")).toHaveLength(15);
     say(mod, "/save");
@@ -225,7 +225,7 @@ describe("the role table (moderator command set)", () => {
     expect(audits).toContain("reloaded");
   });
 
-  test("SSO: a moderator may not lift a ban an immortal made", () => {
+  test("SSO: a moderator may not lift a ban an administrator made", () => {
     const { imm, mod, say, bans } = scene();
     say(imm, "/ban Bob");
     expect(bans.get("Bob")?.actorId).toBe("Imm");
@@ -233,14 +233,16 @@ describe("the role table (moderator command set)", () => {
       MODERATION_TEXT.notYourBan("Bob", "Imm"),
     ]);
     expect(bans.get("Bob")?.actorId).toBe("Imm");
-    // An immortal may still lift it.
+    // An administrator may still lift it.
     expect(texts(say(imm, "/unban Bob"), "Imm")).toEqual(["Bob is no longer banned."]);
     expect(bans.has("Bob")).toBe(false);
   });
 
-  test("SSO's /role and /setclass are unknown commands to anyone but an immortal", () => {
+  test("/role is gone, and /setclass is unknown to anyone but an administrator", () => {
     const { mod, say } = scene();
-    expect(texts(say(mod, "/role Bob immortal"), "Mod")).toEqual([unknownCommandText("/role")]);
+    expect(texts(say(mod, "/role Bob administrator"), "Mod")).toEqual([
+      unknownCommandText("/role"),
+    ]);
     expect(texts(say(mod, "/setclass Bob Ninja"), "Mod")).toEqual([
       unknownCommandText("/setclass"),
     ]);
@@ -255,7 +257,7 @@ describe("staff chat", () => {
     ]);
   });
 
-  test("both immortals and moderators post to staff in CHAT_COLOR.staff; players excluded", () => {
+  test("both administrators and moderators post to staff in CHAT_COLOR.staff; players excluded", () => {
     const { imm, mod, say } = scene();
     const immOut = say(imm, "-  hello");
     const immLine = {
@@ -348,7 +350,7 @@ describe("warps", () => {
   test("a target in an editor is put back in the game first", () => {
     const { imm, world, say, seed } = scene();
     const imm2 = player("Ed", seed, 1, 1);
-    imm2.role = "immortal";
+    imm2.role = ADMINISTRATOR;
     world.players.set(imm2.id, imm2);
     openEditor(
       world,
@@ -407,7 +409,7 @@ describe("the jail", () => {
     expect(jails.get("Bob")).toMatchObject({
       expiresAt: "2026-11-17T09:10:00.000Z",
       reason: "being rude",
-      actorRank: "immortal",
+      actorRole: "Admin",
     });
   });
 
@@ -436,10 +438,10 @@ describe("the jail", () => {
     expect(bob.map.name).toBe("x1000y992");
   });
 
-  test("a jailed immortal cannot /warpmeto out", () => {
+  test("a jailed administrator cannot /warpmeto out", () => {
     const { imm, seed, join, say } = scene();
     const imm2 = player("Imm2", seed, 7, 5);
-    imm2.role = "immortal";
+    imm2.role = ADMINISTRATOR;
     join(imm2);
     say(imm, "/jail Imm2 1h");
     expect(texts(say(imm2, "/warpmeto Imm"), "Imm2")[1]).toBe(MODERATION_TEXT.prisoner("Imm2"));
@@ -448,7 +450,7 @@ describe("the jail", () => {
 
   test("an offline character can be jailed; the sentence waits for their login", () => {
     const { imm, say, jails, offline } = scene();
-    offline.set("Zed", "player");
+    offline.set("Zed", null);
     expect(texts(say(imm, "/jail Zed 1d"), "Imm")).toEqual([
       "*** Jailing Zed...",
       "Zed is jailed until 2026-11-18 09:00 UTC.",
@@ -544,10 +546,10 @@ describe("mutes", () => {
     expect(texts(say(bob, "hello again"), "Bob")).toEqual(['Bob says "hello again"']);
   });
 
-  test("only the staff member who muted, or an immortal, changes or lifts a mute; staff are out of reach", () => {
+  test("only the staff member who muted, or an administrator, changes or lifts a mute; staff are out of reach", () => {
     const { imm, mod, bob, seed, join, say } = scene();
     const mod2 = player("Mod2", seed, 7, 5);
-    mod2.role = "moderator";
+    mod2.role = MODERATOR;
     join(mod2);
     say(mod, "/mute Bob 1h");
     expect(texts(say(mod2, "/unmute Bob"), "Mod2")).toEqual([
@@ -567,22 +569,22 @@ describe("mutes", () => {
 
   test("an offline account can be muted; /banlist shows mutes; players cannot /mute", () => {
     const { mod, bob, say, offline, m } = scene();
-    offline.set("Zed", "player");
+    offline.set("Zed", null);
     expect(texts(say(mod, "/mute Zed perm"), "Mod")).toEqual(["Zed is muted permanently."]);
     expect(m.mutes.get("Zed")?.expiresAt).toBeNull();
     expect(texts(say(mod, "/banlist"), "Mod").slice(-2)).toEqual([
       "* Muted:",
-      "Zed - permanent - Mod (moderator)",
+      "Zed - permanent - Mod (Moderator)",
     ]);
     expect(texts(say(mod, "/banlist Zed"), "Mod")[0]).toBe(
-      "* Zed: muted - permanent - Mod (moderator)",
+      "* Zed: muted - permanent - Mod (Moderator)",
     );
     expect(texts(say(bob, "/mute Zed"), "Bob")).toEqual([unknownCommandText("/mute")]);
   });
 });
 
 describe("moderators play as ordinary players", () => {
-  test("divergence: a moderator cannot pardon or warp themselves; an immortal can", () => {
+  test("divergence: a moderator cannot pardon or warp themselves; an administrator can", () => {
     const { imm, mod, say } = scene();
     mod.char.wanted = true;
     expect(texts(say(mod, "/pardon Mod"), "Mod")).toEqual([
@@ -597,7 +599,7 @@ describe("moderators play as ordinary players", () => {
     expect([imm.map.name, imm.x, imm.y]).toEqual(["x1001y992", 2, 2]);
   });
 
-  test("divergence: an immortal skips the chat and broadcast cooldowns; everyone else waits", () => {
+  test("divergence: an administrator skips the chat and broadcast cooldowns; everyone else waits", () => {
     const { imm, bob } = scene();
     for (const p of [imm, bob]) {
       p.chatIn = 40;
@@ -609,7 +611,7 @@ describe("moderators play as ordinary players", () => {
 });
 
 describe("/warpscript", () => {
-  test("divergence: /warpscript is an unknown command to players and moderators; immortals set it", () => {
+  test("divergence: /warpscript is an unknown command to players and moderators; administrators set it", () => {
     const { bob, mod, imm, say } = scene();
     expect(texts(say(bob, "/warpscript help"), "Bob")).toEqual([unknownCommandText("/warpscript")]);
     expect(texts(say(mod, "/warpscript help"), "Mod")).toEqual([unknownCommandText("/warpscript")]);
@@ -642,7 +644,7 @@ describe("/warpscript", () => {
   test("multiple matching staff: deterministic single winner (first in login order)", () => {
     const { imm, other, join, bob, say } = scene();
     const imm2 = player("Imm2", other, 8, 8);
-    imm2.role = "immortal";
+    imm2.role = ADMINISTRATOR;
     join(imm2);
     say(imm, "/warpscript help");
     say(imm2, "/warpscript help");
@@ -663,7 +665,7 @@ describe("/warpscript", () => {
 });
 
 describe("ignore and /warpscript", () => {
-  test("an immortal ignoring the speaker never reads the broadcast, so never warps them", () => {
+  test("an administrator ignoring the speaker never reads the broadcast, so never warps them", () => {
     const { imm, bob, say } = scene();
     say(imm, "/warpscript HELP");
     imm.ignore = ["Bob"];
@@ -682,11 +684,11 @@ describe("kicks, bans, roles and classes", () => {
     expect(kicks).toEqual([{ id: "Bob", text: TEXT.kicked }]);
   });
 
-  test("SSO: a moderator cannot kick or ban an immortal", () => {
+  test("SSO: a moderator cannot kick or ban an administrator", () => {
     const { mod, say, kicks, bans } = scene();
     expect(texts(say(mod, "/kick Imm"), "Mod")).toEqual([
       "*** kicking Imm...",
-      ADMIN_TEXT.kickImmortal,
+      ADMIN_TEXT.kickOutranked,
     ]);
     expect(kicks).toEqual([]);
     expect(texts(say(mod, "/ban Imm"), "Mod")).toEqual([
@@ -696,18 +698,15 @@ describe("kicks, bans, roles and classes", () => {
     expect(bans.size).toBe(0);
   });
 
-  test("SSO: a moderator cannot look up, jail or mute an immortal", () => {
+  test("SSO: a moderator cannot look up, jail or mute an administrator", () => {
     const { imm, mod, bob, say, audits } = scene();
     const lines = (typed: string) => texts(say(mod, typed), "Mod");
-    expect(lines("/iplookup Imm")).toEqual([
-      ADMIN_TEXT.lookingUpIp("Imm"),
-      ADMIN_TEXT.immortalTarget,
-    ]);
+    expect(lines("/iplookup Imm")).toEqual([ADMIN_TEXT.lookingUpIp("Imm"), ADMIN_TEXT.outranked]);
     expect(lines("/jail Imm")[1]).toBe(MODERATION_TEXT.staffTarget);
     expect(lines("/mute Imm")).toEqual([MODERATION_TEXT.staffTarget]);
     expect([imm.map.name, imm.x, imm.y, imm.muteUntil]).toEqual(["x1000y992", 5, 5, null]);
     expect(audits).toEqual([]);
-    // A player target still works for a moderator; an immortal may act on an immortal.
+    // A player target still works for a moderator; an administrator may act on an administrator.
     expect(lines("/iplookup Bob")[1]).toMatch(/^The IP is: /);
     expect(bob.map.name).toBe("x1001y992");
     expect(texts(say(imm, "/iplookup imm"), "Imm")[1]).toMatch(/^The IP is: /);
@@ -725,14 +724,42 @@ describe("kicks, bans, roles and classes", () => {
     expect(texts(say(imm, "/ban Zed"), "Imm")[1]).toBe("There is no character called Zed.");
   });
 
-  test("/role changes a role at once; your own is refused", () => {
+  test("/role is gone: an administrator is told it is an unknown command", () => {
     const { imm, bob, say } = scene();
-    const out = say(imm, "/role bob moderator");
-    expect(texts(out, "Imm")).toEqual(["Bob is now a moderator."]);
-    expect(bob.role).toBe("moderator");
-    expect(out).toContainEqual({ to: "Bob", msg: { t: "role", role: "moderator" } });
-    expect(texts(say(imm, "/role imm player"), "Imm")).toEqual([ADMIN_TEXT.roleSelf]);
-    expect(texts(say(imm, "/role bob king"), "Imm")).toEqual([ADMIN_TEXT.roleUsage]);
+    expect(texts(say(imm, "/role bob moderator"), "Imm")).toEqual([unknownCommandText("/role")]);
+    expect(bob.role).toBeNull();
+  });
+
+  test("a new role takes effect at once: permissions sent, warpscript cleared, editor closed", () => {
+    const { imm, say, world, seed } = scene();
+    say(imm, "/warpscript help");
+    expect(imm.warpscript).toBe("help");
+    openEditor(
+      world,
+      imm,
+      () => seed,
+      { mx: 1000, my: 992 },
+      {
+        graceTicks: 600,
+        addGoldOffline: () => {},
+      },
+    );
+    expect(imm.editing).toBe("world");
+    const out = applyRole(world, imm, MODERATOR);
+    expect(imm.role).toBe(MODERATOR);
+    expect(imm.warpscript).toBeNull();
+    expect(imm.editing).toBeNull();
+    expect(out).toContainEqual({
+      to: "Imm",
+      msg: {
+        t: "permissions",
+        permissions: PERMISSIONS.filter((x) => MODERATOR.permissions.has(x)),
+      },
+    });
+    expect(applyRole(world, imm, null)[0]).toEqual({
+      to: "Imm",
+      msg: { t: "permissions", permissions: [] },
+    });
   });
 
   test("/setclass sets the class code by name or number", () => {
@@ -781,12 +808,12 @@ describe("moderation: who may change what, durations and reasons", () => {
   /** A second moderator, online. */
   const withMo2 = (sc: ReturnType<typeof scene>) => {
     const mo2 = player("Mo2", sc.seed, 7, 5);
-    mo2.role = "moderator";
+    mo2.role = MODERATOR;
     sc.join(mo2);
     return mo2;
   };
 
-  test("regression: a moderator's /ban cannot overwrite an immortal's ban to lift it", () => {
+  test("regression: a moderator's /ban cannot overwrite an administrator's ban to lift it", () => {
     const { imm, mod, say, bans } = scene();
     say(imm, "/ban Bob perm");
     expect(texts(say(mod, "/ban Bob 1h"), "Mod")).toEqual([
@@ -795,7 +822,7 @@ describe("moderation: who may change what, durations and reasons", () => {
     ]);
     expect(bans.get("Bob")).toMatchObject({
       actorId: "Imm",
-      actorRank: "immortal",
+      actorRole: "Admin",
       expiresAt: null,
     });
     expect(texts(say(mod, "/unban Bob"), "Mod")).toEqual([
@@ -813,14 +840,14 @@ describe("moderation: who may change what, durations and reasons", () => {
     expect(texts(sc.say(sc.mod, "/pardon Mo2"), "Mod")[1]).toBe(MODERATION_TEXT.staffTarget);
     expect(mo2.char.wanted).toBe(true);
     expect(sc.bans.size + sc.jails.size).toBe(0);
-    // An immortal may act on anyone but themselves.
+    // An administrator may act on anyone but themselves.
     expect(texts(sc.say(sc.imm, "/ban Mo2 1d"), "Imm")[1]).toBe(
       "Mo2 is banned until 2026-11-18 09:00 UTC.",
     );
     expect(texts(sc.say(sc.imm, "/jail Imm"), "Imm")[1]).toBe(MODERATION_TEXT.jailSelf);
   });
 
-  test("a moderator changes only their own ban; an immortal changes any", () => {
+  test("a moderator changes only their own ban; an administrator changes any", () => {
     const sc = scene();
     withMo2(sc);
     const { mod, imm, say, bans } = sc;
@@ -837,7 +864,7 @@ describe("moderation: who may change what, durations and reasons", () => {
     expect(texts(say(imm, "/ban Bob 1h"), "Imm")[1]).toBe(
       "Bob is now banned until 2026-11-17 10:00 UTC (was until 2026-11-24 09:00 UTC).",
     );
-    expect(bans.get("Bob")).toMatchObject({ actorId: "Imm", actorRank: "immortal" });
+    expect(bans.get("Bob")).toMatchObject({ actorId: "Imm", actorRole: "Admin" });
   });
 
   test("a lapsed ban stops nobody: another moderator may ban anew", () => {
@@ -853,7 +880,7 @@ describe("moderation: who may change what, durations and reasons", () => {
     ]);
   });
 
-  test("a jail follows the same rule: its maker or an immortal changes or ends it", () => {
+  test("a jail follows the same rule: its maker or an administrator changes or ends it", () => {
     const sc = scene();
     const mo2 = withMo2(sc);
     sc.say(sc.mod, "/jail Bob 1h");
@@ -880,7 +907,11 @@ describe("moderation: who may change what, durations and reasons", () => {
     expect(bans.get("Bob")).toMatchObject({ expiresAt: null, reason: "being a rude person" });
     expect(kicks).toEqual([{ id: "Bob", text: banNotice(ADMIN_TEXT.banned, null) }]);
     expect(JSON.stringify(out.filter((o) => o.to === "Bob"))).not.toContain("rude");
-    expect(m.log.at(-1)).toMatchObject({ action: "ban", actorName: "Imm", actorRank: "immortal" });
+    expect(m.log.at(-1)).toMatchObject({
+      action: "ban",
+      actorName: "Imm",
+      actorRole: "Admin",
+    });
   });
 
   test("usage lines for the moderation commands with no name", () => {
@@ -891,7 +922,7 @@ describe("moderation: who may change what, durations and reasons", () => {
     expect(texts(say(imm, "/banip"), "Imm")[1]).toBe(MODERATION_TEXT.banIpUsage);
   });
 
-  test("a moderator may not pardon an immortal; pardons are logged", () => {
+  test("a moderator may not pardon an administrator; pardons are logged", () => {
     const { imm, mod, bob, say, m } = scene();
     imm.char.wanted = true;
     expect(texts(say(mod, "/pardon Imm"), "Mod")[1]).toBe(MODERATION_TEXT.staffTarget);
@@ -926,7 +957,7 @@ describe("IP bans", () => {
     expect([...ipBans.keys()]).toEqual(["2001:db8:0:0"]);
   });
 
-  test("/banip <name> bans the latest address, or all of them; an immortal is never IP banned", () => {
+  test("/banip <name> bans the latest address, or all of them; an administrator is never IP banned", () => {
     const { imm, say, ipBans, m, offline } = scene();
     m.addresses.set("Bob", [
       seen("10.0.0.2", "10.0.0.2", "2026-11-17T08:00:00.000Z"),
@@ -941,8 +972,8 @@ describe("IP bans", () => {
       "Banned 2 addresses used by Bob until 2026-11-24 09:00 UTC.",
     );
     expect(ipBans.get("2001:db8:1:2")).toMatchObject({ sourceAccountId: "Bob", reason: "alts" });
-    offline.set("Root", "immortal");
-    expect(texts(say(imm, "/banip Root"), "Imm")[1]).toBe(MODERATION_TEXT.ipImmortal);
+    offline.set("Root", ADMINISTRATOR);
+    expect(texts(say(imm, "/banip Root"), "Imm")[1]).toBe(MODERATION_TEXT.ipBypassed);
     expect(texts(say(imm, "/unbanip Bob"), "Imm")[1]).toBe(
       "Lifted 2 IP bans on addresses used by Bob.",
     );
@@ -950,7 +981,7 @@ describe("IP bans", () => {
     expect(texts(say(imm, "/unbanip Bob"), "Imm")[1]).toBe(MODERATION_TEXT.noIpBans("Bob"));
   });
 
-  test("an IP ban disconnects every session from that address except an immortal's", () => {
+  test("an IP ban disconnects every session from that address except an administrator's", () => {
     const { imm, mod, bob, say, kicks } = scene();
     for (const p of [imm, mod, bob]) {
       p.ip = "2001:db8:5:6::1";
@@ -972,13 +1003,13 @@ describe("IP bans", () => {
 });
 
 describe("/banlist", () => {
-  test("moderators see bans and jails; immortals also see IP bans", () => {
+  test("moderators see bans and jails; administrators also see IP bans", () => {
     const { imm, mod, say } = scene();
     say(mod, "/ban Bob 3d spam");
     say(imm, "/banip 10.9.9.9 perm proxy");
     expect(texts(say(mod, "/banlist"), "Mod")).toEqual([
       "* Bans (page 1 of 1):",
-      "Bob - until 2026-11-20 09:00 UTC - Mod (moderator): spam",
+      "Bob - until 2026-11-20 09:00 UTC - Mod (Moderator): spam",
       "* Jailed:",
       "(none)",
       "* Muted:",
@@ -986,14 +1017,12 @@ describe("/banlist", () => {
     ]);
     expect(texts(say(imm, "/banlist"), "Imm").slice(-2)).toEqual([
       "* IP bans:",
-      "10.9.9.9 - permanent - Imm (immortal): proxy",
+      "10.9.9.9 - permanent - Imm (Admin): proxy",
     ]);
-    expect(texts(say(mod, "/banlist 10.9.9.9"), "Mod")).toEqual([
-      MODERATION_TEXT.addressesImmortal,
-    ]);
+    expect(texts(say(mod, "/banlist 10.9.9.9"), "Mod")).toEqual([MODERATION_TEXT.addressesDenied]);
   });
 
-  test("/banlist <name>: standing, history and (immortals) addresses", () => {
+  test("/banlist <name>: standing, history and (administrators) addresses", () => {
     const { imm, mod, say, clock, m } = scene();
     m.addresses.set("Bob", [
       { address: "10.0.0.2", key: "10.0.0.2", lastSeen: "2026-11-17T08:00:00.000Z" },
@@ -1004,20 +1033,20 @@ describe("/banlist", () => {
     say(imm, "/banip Bob 1d");
     say(mod, "/jail Bob 1h rude");
     expect(texts(say(mod, "/banlist bob"), "Mod")).toEqual([
-      "* Bob: jailed - until 2026-11-17 11:00 UTC - Mod (moderator): rude",
-      "2026-11-17 09:00 UTC ban 3d by Mod (moderator): spam",
-      "2026-11-17 10:00 UTC unban by Imm (immortal): appeal accepted",
-      "2026-11-17 10:00 UTC ipban 1d by Imm (immortal)",
-      "2026-11-17 10:00 UTC jail 1h by Mod (moderator): rude",
+      "* Bob: jailed - until 2026-11-17 11:00 UTC - Mod (Moderator): rude",
+      "2026-11-17 09:00 UTC ban 3d by Mod (Moderator): spam",
+      "2026-11-17 10:00 UTC unban by Imm (Admin): appeal accepted",
+      "2026-11-17 10:00 UTC ipban 1d by Imm (Admin)",
+      "2026-11-17 10:00 UTC jail 1h by Mod (Moderator): rude",
     ]);
     expect(texts(say(imm, "/banlist bob"), "Imm").slice(3)).toEqual([
-      "2026-11-17 10:00 UTC ipban 10.0.0.2 1d by Imm (immortal)",
-      "2026-11-17 10:00 UTC jail 1h by Mod (moderator): rude",
+      "2026-11-17 10:00 UTC ipban 10.0.0.2 1d by Imm (Admin)",
+      "2026-11-17 10:00 UTC jail 1h by Mod (Moderator): rude",
       "* Addresses:",
       "10.0.0.2 (last 2026-11-17 08:00 UTC)",
     ]);
     expect(texts(say(imm, "/banlist 10.0.0.2"), "Imm")).toEqual([
-      "* 10.0.0.2 - until 2026-11-18 10:00 UTC - Imm (immortal)",
+      "* 10.0.0.2 - until 2026-11-18 10:00 UTC - Imm (Admin)",
       "* Seen with:",
       "Bob (last 2026-11-17 08:00 UTC)",
     ]);
@@ -1047,7 +1076,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       rng: NEVER_PUSH,
       kick: (id) => kicked.push(id),
     });
-    const make = async (name: string, role?: "moderator" | "immortal") => {
+    const make = async (name: string, role?: "moderator" | "administrator") => {
       await game.create({
         t: "create",
         name,
@@ -1076,7 +1105,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
 
   test("a banned account's login is refused with 1.6's alert until /unban", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     game.intent(alice.characterId, { t: "chat", text: "/ban Bob" });
     expect(kicked).toEqual([bob.characterId]);
@@ -1093,9 +1122,9 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ]);
   });
 
-  test("a moderator cannot lift a ban an immortal made", async () => {
+  test("a moderator cannot lift a ban an administrator made", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const mo = await make("Mo", "moderator");
     const bob = await make("Bob");
     game.intent(alice.characterId, { t: "chat", text: "/ban Bob" });
@@ -1108,14 +1137,14 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       ok: false,
       text: banNotice(ADMIN_TEXT.banned, null),
     });
-    // The stored maker lets an immortal undo its own ban.
+    // The stored maker lets an administrator undo its own ban.
     game.intent(alice.characterId, { t: "chat", text: "/unban bob" });
     expect((await game.login("Bob", "pw", "10.0.0.2")).ok).toBe(true);
   });
 
   test("divergence: an IP ban refuses a login from that address after the password", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     await make("Bob");
     game.intent(alice.characterId, { t: "chat", text: "/BanIP 10.0.0.9" });
     expect(await game.login("Bob", "nope", "10.0.0.9")).toEqual({
@@ -1129,9 +1158,9 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     expect((await game.login("Bob", "pw", "10.0.0.8")).ok).toBe(true);
   });
 
-  test("Settings: an immortal's save is stored, audited and applied at once; rules go to everyone", async () => {
+  test("Settings: an administrator's save is stored, audited and applied at once; rules go to everyone", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     game.intent(alice.characterId, { t: "settingsOpen" });
     const rows = sent.find((o) => o.msg.t === "settings");
@@ -1158,7 +1187,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
 
   test("Settings: a bad value refuses the whole save with its key and label", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     game.intent(alice.characterId, {
       t: "settingsSave",
       values: { jailSentence: 300, chatMaxChars: 0 },
@@ -1174,7 +1203,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
 
   test("/Refresh reads the stored settings again", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     saveSettingOverride(db, "jailSentence", 2520, NOW);
     expect(game.settings.jailSentence).toBe(600);
     game.intent(alice.characterId, { t: "chat", text: "/Refresh" });
@@ -1183,11 +1212,11 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
 
   test("the cheat log: admin intents from anyone else are refused and written", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     game.intent(bob.characterId, { t: "settingsSave", values: { jailSentence: 60 } });
     game.intent(bob.characterId, { t: "npcSave", name: "Cril", text: "GLD|1" });
-    // An immortal's editor SAVE from outside the editor is no honest client's either.
+    // An administrator's editor SAVE from outside the editor is no honest client's either.
     game.intent(alice.characterId, { t: "editLoad", mx: 1, my: 1 });
     expect(game.settings.jailSentence).toBe(600);
     expect(recentCheats(db, 10)).toEqual([
@@ -1207,7 +1236,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
 
   test("/setclass writes the class code, online or not", async () => {
     const { game, make } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     game.leave(bob.characterId);
     game.intent(alice.characterId, { t: "chat", text: "/setclass Bob Ninja" });

@@ -10,7 +10,7 @@ export type MenuItem =
   | {
       kind: "item";
       label: string;
-      /** False leaves the item out of the open menu (Admin Chat, for non-immortals). */
+      /** False leaves the item out of the open menu (Admin Chat, without `adminChat`). */
       visible?(): boolean;
       enabled?(): boolean;
       checked?(): boolean;
@@ -22,7 +22,7 @@ export type MenuItem =
 
 export interface Menu {
   title: string;
-  /** False hides the title (Admin, for non-immortals). */
+  /** False hides the title (Admin, with no admin tool). */
   visible?(): boolean;
   items: MenuItem[];
 }

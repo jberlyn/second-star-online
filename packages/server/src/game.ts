@@ -36,7 +36,14 @@ import {
   parseHouseMapName,
   parseMapName,
   questLineUnanswerable,
+  ROLE_TEXT,
   type Role,
+  type RoleData,
+  type RoleDef,
+  roleDataError,
+  roleFromData,
+  rolesError,
+  roleToData,
   type ServerMsg,
   savedSpellbook,
   sortFaction,
@@ -135,6 +142,13 @@ import { loadSlots, saveSlots } from "./persistence/monsters.ts";
 import { loadNewspaper, saveNewspaper } from "./persistence/newspapers.ts";
 import { insertNpcFileVersion, loadNpcFiles, saveNpcFile } from "./persistence/npcfiles.ts";
 import { deletePlayerShops, insertPlayerShop, loadPlayerShops } from "./persistence/playershops.ts";
+import {
+  deleteRole,
+  loadRoles,
+  roleHolders,
+  saveRole,
+  staffAccounts,
+} from "./persistence/roles.ts";
 import { loadSettingOverrides, saveSettingOverride } from "./persistence/settings.ts";
 import {
   loadFactionPowers,
@@ -154,7 +168,7 @@ import {
   settingPages,
   settingRows,
 } from "./settings.ts";
-import type { AdminDeps } from "./systems/admin/commands.ts";
+import { type AdminDeps, applyRole, permissionsMsg } from "./systems/admin/commands.ts";
 import {
   allowCreate,
   allowLoginFromIp,
@@ -365,9 +379,9 @@ export interface Game {
   /** Takes a character off the map and saves it. */
   leave(characterId: string): void;
   isOnline(characterId: string): boolean;
-  /** An immortal may send editor-sized frames (`EDITOR_MESSAGE_BYTES`). */
+  /** A World or NPC Editor user may send editor-sized frames (`EDITOR_MESSAGE_BYTES`). */
   canEdit(characterId: string): boolean;
-  /** Moderators and immortals are exempt from the per-address socket count. */
+  /** Roles that bypass login limits are exempt from the per-address socket count. */
   canModerate(characterId: string): boolean;
   /** A player holding an unspent canvas or film may send an art-sized frame. */
   canUpload(characterId: string): boolean;
@@ -393,6 +407,9 @@ const EDITOR_INTENTS = new Set([
   "settingsOpen",
   "settingsSave",
   "settingsClose",
+  "roleSave",
+  "roleDelete",
+  "roleAssign",
   "assassinGame",
   // IM, Away and chat rooms are their own windows (MIAWs), usable over the editors.
   "im",
@@ -407,7 +424,7 @@ const EDITOR_INTENTS = new Set([
 ]);
 
 /**
- * Admin intents an honest client sends only for an immortal (in the matching editor), with the
+ * Admin intents an honest client sends only for a role with the permission (in the matching editor), with the
  * cheat log reason 1.6's own gate wrote for that tool: the World Editor's SAVE ("Attempted Admin
  * Access") and the NPC editor's ("Attempting to get Admin access"). Settings take the World
  * Editor's.
@@ -421,7 +438,10 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   npcSave: { permission: "npcEditor", reason: "Attempting to get Admin access" },
   settingsOpen: { permission: "settings", reason: "Attempted Admin Access" },
   settingsSave: { permission: "settings", reason: "Attempted Admin Access" },
-  // Menu 502's Assassin items: 1.6's server just ignored a non-immortal.
+  roleSave: { permission: "settings", reason: "Attempted Admin Access" },
+  roleDelete: { permission: "settings", reason: "Attempted Admin Access" },
+  roleAssign: { permission: "settings", reason: "Attempted Admin Access" },
+  // Menu 502's Assassin items: 1.6's server just ignored anyone but an immortal.
   assassinGame: { permission: "assassinGame", reason: "Attempted Admin Access" },
 };
 
@@ -454,6 +474,15 @@ export function createGame(deps: GameDeps): Game {
     setNpcFile(npcs, npcFileNamed(npcs, f.npc)?.name ?? f.npc, f.text);
   }
   const world = createWorld(npcs);
+  world.roleTags = settings.roleTags;
+  /** The operator's roles by id (persistence/roles.ts), read at start and after every change. */
+  let roles = new Map<string, RoleDef>();
+  const reloadRoles = () => {
+    roles = new Map(loadRoles(db).map((r) => [r.id, r]));
+  };
+  reloadRoles();
+  /** An account's role by its stored id; an id with no role (deleted) is no role. */
+  const roleOf = (id: string | null): Role => (id === null ? null : (roles.get(id) ?? null));
   // IP bans from before keys get their standard form; lapsed bans and old addresses go.
   normalizeIpBans(db, isoNow());
   pruneModeration(db, isoNow(), settings.addressHistory / DAY_SECONDS);
@@ -953,6 +982,7 @@ export function createGame(deps: GameDeps): Game {
       announcePresence: settings.announcePresence,
       presenceChatLines: settings.presenceChatLines,
     });
+    world.roleTags = settings.roleTags;
     if (JSON.stringify(settings.treasureMaps) !== JSON.stringify(world.treasureMaps)) {
       resetTreasure(world, settings.treasureMaps, rng);
     }
@@ -992,8 +1022,10 @@ export function createGame(deps: GameDeps): Game {
     },
   };
   const adminDeps: AdminDeps = {
-    findCharacter: (name) => findCharacterAccount(db, name),
-    setRole: (accountId, role) => setRole(db, accountId, role, isoNow()),
+    findCharacter: (name) => {
+      const c = findCharacterAccount(db, name);
+      return c && { ...c, role: roleOf(c.roleId) };
+    },
     moderation: {
       accountBan: (accountId) => accountBan(db, accountId),
       jail: (characterId) => characterJail(db, characterId),
@@ -1075,9 +1107,149 @@ export function createGame(deps: GameDeps): Game {
     })();
     // The same step as `/Refresh`: everyone online gets the new rules at once.
     applySettings(r.settings);
-    send(p.id, { t: "settings", pages: settingPages(), rows: settingRows(settings) });
+    send(p.id, settingsMsg());
     send(p.id, { t: "settingsResult", ok: true });
   };
+
+  /** The Server Settings window's contents: the pages, the settings, the roles and the staff. */
+  const settingsMsg = (): ServerMsg => {
+    const holders = roleHolders(db);
+    return {
+      t: "settings",
+      pages: settingPages(),
+      rows: settingRows(settings),
+      roles: [...roles.values()].map((r) => ({
+        ...roleToData(r),
+        holders: holders.get(r.id) ?? 0,
+      })),
+      staff: staffAccounts(db).map((a) => ({ name: a.name, role: a.role })),
+    };
+  };
+
+  /**
+   * After the roles or an assignment change: everyone online takes their account's role as the
+   * database now holds it, and those whose role changed get their new permissions at once.
+   */
+  const refreshRoles = () => {
+    reloadRoles();
+    for (const o of [...world.players.values()]) {
+      const next = roleOf(findAccountById(db, o.accountId)?.role ?? null);
+      if (
+        JSON.stringify(next && roleToData(next)) !== JSON.stringify(o.role && roleToData(o.role))
+      ) {
+        deliver(applyRole(world, o, next));
+      }
+    }
+  };
+
+  /** A role change from the Server Settings window: refused with why, or applied and audited. */
+  const roleChange = (p: Player, change: () => string | { done: string }) => {
+    const r = db.transaction(change)();
+    if (typeof r === "string") {
+      send(p.id, { t: "roleResult", ok: false, text: r });
+      return;
+    }
+    refreshRoles();
+    send(p.id, settingsMsg());
+    send(p.id, { t: "roleResult", ok: true, text: r.done });
+  };
+
+  /** Roles page → Save: a new role or a change to one. */
+  const roleSave = (p: Player, data: RoleData, create: boolean) =>
+    roleChange(p, () => {
+      const bad = roleDataError(data);
+      if (bad) {
+        return bad;
+      }
+      const was = roles.get(data.id) ?? null;
+      if (create && was) {
+        return ROLE_TEXT.taken(data.id);
+      }
+      if (!create && !was) {
+        return ROLE_TEXT.noRole(data.id);
+      }
+      const role = roleFromData(data);
+      const next = [...roles.values()].filter((r) => r.id !== role.id).concat(role);
+      const locked = rolesError(next);
+      if (locked) {
+        return locked;
+      }
+      const now = isoNow();
+      saveRole(db, role, now);
+      insertAudit(
+        db,
+        {
+          actor: p.accountId,
+          command: create ? "role create" : "role edit",
+          target: role.id,
+          before: was && roleToData(was),
+          after: roleToData(role),
+        },
+        now,
+      );
+      return { done: ROLE_TEXT.saved(role.name) };
+    });
+
+  /** Roles page → Delete: the role goes and its accounts are left with no role. */
+  const roleDelete = (p: Player, id: string) =>
+    roleChange(p, () => {
+      const was = roles.get(id);
+      if (!was) {
+        return ROLE_TEXT.noRole(id);
+      }
+      const locked = rolesError([...roles.values()].filter((r) => r.id !== id));
+      if (locked) {
+        return locked;
+      }
+      const now = isoNow();
+      const held = staffAccounts(db).filter((a) => a.role === id);
+      deleteRole(db, id, now);
+      insertAudit(
+        db,
+        {
+          actor: p.accountId,
+          command: "role delete",
+          target: id,
+          before: { ...roleToData(was), accounts: held.map((a) => a.name) },
+          after: null,
+        },
+        now,
+      );
+      return { done: ROLE_TEXT.deleted(was.name) };
+    });
+
+  /** Staff page: gives a character's account a role, or none. */
+  const roleAssign = (p: Player, name: string, roleId: string | null) =>
+    roleChange(p, () => {
+      const c = findCharacterAccount(db, name.trim());
+      if (!c) {
+        return ADMIN_TEXT.noSuchCharacter(name.trim());
+      }
+      if (c.accountId === p.accountId) {
+        return ROLE_TEXT.self;
+      }
+      const role = roleId === null ? null : roles.get(roleId);
+      if (role === undefined) {
+        return ROLE_TEXT.noRole(roleId ?? "");
+      }
+      if (c.roleId === (role?.id ?? null)) {
+        return ROLE_TEXT.unchanged(c.name);
+      }
+      const now = isoNow();
+      setRole(db, c.accountId, role?.id ?? null, now);
+      insertAudit(
+        db,
+        {
+          actor: p.accountId,
+          command: "role assign",
+          target: c.name,
+          before: c.roleId,
+          after: role?.id ?? null,
+        },
+        now,
+      );
+      return { done: ROLE_TEXT.assigned(c.name, role?.name ?? null) };
+    });
 
   /** Everyone online and every loaded map written now (`/save`, shutdown). */
   const saveEveryone = () => {
@@ -1148,7 +1320,7 @@ export function createGame(deps: GameDeps): Game {
   };
 
   /**
-   * SAVE: immortals in the editor only (the original checked only in the client). The old map is
+   * SAVE: World Editor users in the editor only (the original checked only in the client). The old map is
    * kept as a version; the map, its slots and its placed items are written together.
    */
   /** Today in the house decay time zone, `YYYY-MM-DD`. */
@@ -1432,7 +1604,7 @@ export function createGame(deps: GameDeps): Game {
       const account = findAccountByUsername(db, name);
       // SSO's login limits: a role with `bypassLoginLimits` is never refused by the per-address
       // count (an operator behind a shared address must still get in).
-      const exempt = account !== null && can(account.role, "bypassLoginLimits");
+      const exempt = account !== null && can(roleOf(account.role), "bypassLoginLimits");
       if (!exempt && !allowLoginFromIp(limits, ip, nowMs(), settings.loginFailsPerIp)) {
         return { ok: false, text: TEXT.tooManyLogins };
       }
@@ -1454,9 +1626,9 @@ export function createGame(deps: GameDeps): Game {
         return { ok: false, text: TEXT.noSuchName };
       }
       // The server checked the password first and the client refused the banned file it got
-      // back. An IP ban is checked after the password too, so that it never stops an immortal
-      // (1.6 checked the address on connect; the reply did nothing).
-      const refused = banRefusal(account.id, account.role, ip);
+      // back. An IP ban is checked after the password too, so that it never stops a role that
+      // bypasses it (1.6 checked the address on connect; the reply did nothing).
+      const refused = banRefusal(account.id, roleOf(account.role), ip);
       if (refused) {
         return { ok: false, text: refused };
       }
@@ -1534,7 +1706,7 @@ export function createGame(deps: GameDeps): Game {
     refusal(characterId, ip) {
       const c = findCharacterById(db, characterId);
       const account = c ? findAccountById(db, c.accountId) : null;
-      return account ? banRefusal(account.id, account.role, ip) : ipBanRefusal(ip);
+      return account ? banRefusal(account.id, roleOf(account.role), ip) : ipBanRefusal(ip);
     },
 
     cheat(characterId, ip, reason) {
@@ -1577,7 +1749,7 @@ export function createGame(deps: GameDeps): Game {
         map = jailMap;
         x = JAIL.x;
         y = JAIL.y;
-      } else if (jailUntil === null && isJailMap(map.name) && !isStaff(account.role)) {
+      } else if (jailUntil === null && isJailMap(map.name) && !isStaff(roleOf(account.role))) {
         const to = respawnTarget(c.respawn, tickDeps);
         if (to) {
           ({ map, x, y } = to);
@@ -1588,7 +1760,7 @@ export function createGame(deps: GameDeps): Game {
         accountId: c.accountId,
         name: c.name,
         head: c.head,
-        role: account.role,
+        role: roleOf(account.role),
         map,
         x,
         y,
@@ -1643,7 +1815,7 @@ export function createGame(deps: GameDeps): Game {
       }
       keptRegen.delete(c.id);
       keptSocial.delete(c.id);
-      send(p.id, { t: "role", role: p.role });
+      send(p.id, permissionsMsg(p.role));
       deliver(addPlayer(world, p));
       // The guild loads with the character; a resumed session greets nobody.
       deliver(guildLogin(world, p, loadCharacterGuild(db, c.id), resumed));
@@ -1751,7 +1923,16 @@ export function createGame(deps: GameDeps): Game {
       }
       switch (msg.t) {
         case "settingsOpen":
-          send(p.id, { t: "settings", pages: settingPages(), rows: settingRows(settings) });
+          send(p.id, settingsMsg());
+          return;
+        case "roleSave":
+          roleSave(p, msg.role, msg.create);
+          return;
+        case "roleDelete":
+          roleDelete(p, msg.id);
+          return;
+        case "roleAssign":
+          roleAssign(p, msg.name, msg.role);
           return;
         case "settingsSave":
           settingsSave(p, msg.values);
@@ -1910,7 +2091,7 @@ export function createGame(deps: GameDeps): Game {
           deliver(setAway(world, p, msg.text, chatDeps));
           return;
         case "roomEnter":
-          // Admin Chat is an immortal's (menu 502); anyone else is ignored, not disconnected as 1.6
+          // Admin Chat needs `adminChat` (1.6: an immortal's, menu 502); anyone else is ignored, not disconnected as 1.6
           // did, and logged.
           if (msg.room === "admin" && !can(p.role, "adminChat")) {
             cheat(p.name, p.ip, "Attempted Admin Access");

@@ -1,7 +1,7 @@
 /**
  * The World Editor on the server.
  *
- * - Open: immortals only. You leave the map: everyone there sees you go (`##!` + `LeaveGroup`), and
+ * - Open: the `worldEditor` permission only. You leave the map: everyone there sees you go (`##!` + `LeaveGroup`), and
  *   nothing on it ticks for you. The editor loads the map you were on.
  * - Load: the map at X/Y, or the blank-map template when there is none.
  * - Save: validated, then the map, its roster and live monsters, and its placed items are replaced;
@@ -114,7 +114,7 @@ export function leaveForEditor(
   return out;
 }
 
-/** Admin menu → World Editor. Anyone but an immortal gets nothing. */
+/** Admin menu → World Editor. Anyone without `worldEditor` gets nothing. */
 export function openEditor(
   world: World,
   p: Player,

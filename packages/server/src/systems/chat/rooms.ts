@@ -2,7 +2,7 @@
  * Chat rooms on the server.
  *
  * 1.6's rooms were SMUS groups any client could join; the server now holds who is in which room:
- * Guild Chat for the members of your guild, Admin Chat for immortals. One room at a time; entering
+ * Guild Chat for the members of your guild, Admin Chat for roles with `adminChat`. One room at a time; entering
  * another leaves the first; closing the window is the only other way out, and logging off drops
  * you. Lines reach every member, the sender included, never filtered by ignore, and reach the dead.
  */
@@ -16,6 +16,7 @@ import {
   roomGroup,
   roomTexts,
   stripReturns,
+  taggedName,
   unknownCommandText,
 } from "@secondstaronline/shared";
 
@@ -74,7 +75,7 @@ function joinGroup(world: World, p: Player, key: RoomKey, group: string): Outgoi
  * A Game menu room or Admin Chat (`EnterGeneralChat`, `NewPlayerChat`, `TradingPostChat`,
  * `xxGuildChat`, `EnterAdminChat`): Guild Chat with no guild prints "You don't belong to a guild!"
  * and leaves your current room untouched; otherwise the old room is left first. Admin Chat from
- * anyone but an immortal is refused before that by the caller (no disconnect).
+ * anyone without `adminChat` is refused before that by the caller (no disconnect).
  */
 export function enterRoom(world: World, p: Player, key: RoomKey): Outgoing[] {
   if (key === "guild" && p.guild === "") {
@@ -106,8 +107,8 @@ function stillMember(p: Player): boolean {
 }
 
 /**
- * Drops anyone who lost a room's membership (exiled, guild disbanded or left, demoted from
- * immortal), at once and silently: the window stays with its text and others' rosters drop them.
+ * Drops anyone who lost a room's membership (exiled, guild disbanded or left, or a role that lost
+ * `adminChat`), at once and silently: the window stays with its text and others' rosters drop them.
  * Run once a tick.
  */
 export function roomMembership(world: World): Outgoing[] {
@@ -194,6 +195,6 @@ export function roomSay(
   }
   p.chatIn = deps.chatCooldownFrames;
   logChat(world, p, "room", said, "delivered", title);
-  const text = CHAT_SOCIAL_TEXT.roomLine(p.name, said);
+  const text = CHAT_SOCIAL_TEXT.roomLine(taggedName(p.name, p.role, world.roleTags), said);
   return members(world, room.group).map((o) => ({ to: o.id, msg: { t: "roomLine", text } }));
 }

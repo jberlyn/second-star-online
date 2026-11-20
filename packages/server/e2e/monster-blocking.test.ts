@@ -1,5 +1,5 @@
 /**
- * Bot script: an immortal Alice spawns a roster monster that never moves (Illusionary Spikes, body
+ * Bot script: an administrator Alice spawns a roster monster that never moves (Illusionary Spikes, body
  * 90) in front of her and holds the arrow toward it: she stays and faces it. Then a Web in slot 2
  * (which her client was shown) still leaves the Spikes blocking, and she can walk onto the Web.
  */
@@ -71,7 +71,7 @@ describe("monster blocking", () => {
     await bot.waitFor((m) => m.t === "created");
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
   });

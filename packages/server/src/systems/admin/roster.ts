@@ -1,7 +1,7 @@
 /**
  * Operator tools v0: chat commands that set a map's four roster slots, so a server has monsters
  * before the monster editor exists. In 1.6 a GM placed up to four monsters in the World Editor and
- * its save wrote the roster; there was no chat command. Immortals only.
+ * its save wrote the roster; there was no chat command. The `roster` permission only.
  *
  * - `/roster` lists the four slots of your map.
  * - `/roster <1-4> <species>` puts a species in a slot (any `mlists` name, case ignored); species
@@ -34,7 +34,7 @@ export interface RosterResult {
   changed: WorldMap | null;
 }
 
-/** Handles `/roster …` from an immortal. */
+/** Handles `/roster …` from a role with `roster`. */
 export function handleRoster(world: World, p: Player, args: string): RosterResult {
   const map = p.map;
   const tell = (text: string): Outgoing => ({

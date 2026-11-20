@@ -96,6 +96,10 @@ export function auditlogLine(r: AuditTrailRow): string {
   if (before !== null && after !== null) {
     return `${head}: ${before} -> ${after}`;
   }
+  if (before !== null) {
+    // Something taken away, such as a role.
+    return `${head}: ${before} -> none`;
+  }
   return after !== null ? `${head}: ${after}` : head;
 }
 

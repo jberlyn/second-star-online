@@ -172,10 +172,17 @@ describe("the playthrough", () => {
     maker.send(make("King", 1));
     await maker.waitFor((m) => m.t === "created");
     maker.close();
-    // The only role write: there is no in-game way to make the first immortal.
-    setRole(server.db, (await accountOf("King")) ?? "", "immortal", "2026-11-08T00:00:00.000Z");
+    // The only role write: there is no in-game way to make the first administrator.
+    setRole(
+      server.db,
+      (await accountOf("King")) ?? "",
+      "administrator",
+      "2026-11-08T00:00:00.000Z",
+    );
     king = await login(server, "King");
-    expect(king.inbox.some((m) => m.t === "role" && m.role === "immortal")).toBe(true);
+    expect(
+      king.inbox.some((m) => m.t === "permissions" && m.permissions.includes("worldEditor")),
+    ).toBe(true);
 
     // NPC Editor: Smithy becomes a trainer (the file is the NPC).
     king.send({ t: "npcEditOpen" });
@@ -356,7 +363,7 @@ describe("the playthrough", () => {
     expect(chats(carol)).toEqual(["There are 5 players logged on."]);
 
     // Push (random(25) = 1 per standing player on the target tile): Dave shoves Carol; then
-    // walks into the tile King, Alice and Bob stand on, and King (an immortal) is not shoved.
+    // walks into the tile King, Alice and Bob stand on, and King (an administrator) is not shoved.
     carol.send({ t: "step", seq: ++seq, dir: "D", turn: false });
     await t(20);
     clearAll();

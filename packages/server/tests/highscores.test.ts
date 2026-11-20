@@ -3,7 +3,12 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { highScorePoints, type ServerMsg, skillIndex } from "@secondstaronline/shared";
+import {
+  ADMINISTRATOR,
+  highScorePoints,
+  type ServerMsg,
+  skillIndex,
+} from "@secondstaronline/shared";
 
 import { type ItemCtx, pickupIntent } from "../src/systems/inventory/items.ts";
 import { tick } from "../src/systems/world/tick.ts";
@@ -67,11 +72,11 @@ describe("high scores", () => {
     expect(a.itemPause).toBe(20);
   });
 
-  test("submitted on the save tick only; immortals skipped; five-digit scores count", () => {
+  test("submitted on the save tick only; administrators skipped; five-digit scores count", () => {
     const t = scene();
     const a = t.join("Alice");
     const imm = t.join("King");
-    imm.role = "immortal";
+    imm.role = ADMINISTRATOR;
     const big = t.join("Big");
     for (const p of [a, imm, big]) {
       p.char.skills[skillIndex("Slash")] = 40;

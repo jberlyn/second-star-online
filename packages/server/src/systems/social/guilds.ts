@@ -24,6 +24,7 @@ import {
   lingoEq,
   loadGuildOutcome,
   sanitiseGuildName,
+  taggedName,
 } from "@secondstaronline/shared";
 
 import { hears } from "../chat/ignore.ts";
@@ -409,7 +410,12 @@ export function guildChat(
   }
   p.chatIn = cooldownFrames;
   logChat(world, p, "guild", text, "delivered", p.guild);
-  return guildcast(world, g, GUILD_TEXT.chat(p.name, p.guild, text), p.name);
+  return guildcast(
+    world,
+    g,
+    GUILD_TEXT.chat(taggedName(p.name, p.role, world.roleTags), p.guild, text),
+    p.name,
+  );
 }
 
 /**

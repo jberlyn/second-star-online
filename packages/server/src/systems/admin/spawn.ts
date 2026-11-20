@@ -1,5 +1,5 @@
 /**
- * Operator tool v0: `/spawn <1-4>` puts the slot's roster species on the tile the immortal faces,
+ * Operator tool v0: `/spawn <1-4>` puts the slot's roster species on the tile the operator faces,
  * now. NPCs spawn at 1/30 of a monster's rate (`random(60) <= 2`), so a shopkeeper set with
  * `/roster` takes about 10 minutes alone on the map to appear; this places it at once and where the
  * operator wants it. Not a 1.6 command; for anyone else the line is local chat.

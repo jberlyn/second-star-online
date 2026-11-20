@@ -4,21 +4,23 @@ import { describe, expect, test } from "bun:test";
 import {
   ADMIN_COMMANDS,
   ADMIN_TEXT,
+  ADMINISTRATOR,
   can,
   cheatFileLines,
   cheatLine,
   findClass,
   formatStaffChat,
   inventoryLines,
+  MODERATOR,
   parseChatLine,
   parseWarpLine,
   WARPSCRIPT_OFF,
   warpscriptMatches,
 } from "../../src/index.ts";
 
-describe("the moderator/immortal table", () => {
-  test("moderators keep the moderation commands; IP bans, warps, /role, /setclass and /cheatfile stay immortal-only", () => {
-    const mod: string[] = ADMIN_COMMANDS.filter((c) => can("moderator", c)).sort();
+describe("the default roles' commands", () => {
+  test("moderators keep the moderation commands; IP bans, warps, /setclass and /cheatfile are administrators'", () => {
+    const mod: string[] = ADMIN_COMMANDS.filter((c) => can(MODERATOR, c)).sort();
     expect(mod).toEqual(
       [
         "ban",
@@ -37,15 +39,19 @@ describe("the moderator/immortal table", () => {
         "unmute",
       ].sort(),
     );
-    expect(can("moderator", "banip")).toBe(false);
-    expect(can("moderator", "unbanip")).toBe(false);
-    expect(can("moderator", "role")).toBe(false);
-    expect(can("moderator", "setclass")).toBe(false);
-    expect(can("moderator", "warp")).toBe(false);
+    expect(can(MODERATOR, "banip")).toBe(false);
+    expect(can(MODERATOR, "unbanip")).toBe(false);
+    expect(can(MODERATOR, "setclass")).toBe(false);
+    expect(can(MODERATOR, "warp")).toBe(false);
     for (const cmd of ADMIN_COMMANDS) {
-      expect(can("immortal", cmd)).toBe(true);
-      expect(can("player", cmd)).toBe(false);
+      expect(can(ADMINISTRATOR, cmd)).toBe(true);
+      expect(can(null, cmd)).toBe(false);
     }
+  });
+
+  test("/role is gone: roles are given in Server Settings or with admin:role", () => {
+    expect((ADMIN_COMMANDS as readonly string[]).includes("role")).toBe(false);
+    expect(parseChatLine("/role Bob administrator")?.kind).not.toBe("admin");
   });
 });
 

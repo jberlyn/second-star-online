@@ -93,7 +93,7 @@ export function player(id: string, map: WorldMap, x: number, y: number): Player 
     saveIn: 600,
     lastSent: null,
     forceYou: false,
-    role: "player",
+    role: null,
     broadcastIn: 0,
     chatIn: 0,
     char: defaultCharacter(),

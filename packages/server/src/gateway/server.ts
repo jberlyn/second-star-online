@@ -104,7 +104,7 @@ export interface ConnData {
   busy: boolean;
   /** The client's IP address (the socket's, or the proxy header's: `SSO_PROXY_HOPS`). */
   ip: string;
-  /** Counts toward `socketsPerIp` (`SSO_SOCKETS_PER_IP`) until a moderator or immortal logs in. */
+  /** Counts toward `socketsPerIp` (`SSO_SOCKETS_PER_IP`) until a role that bypasses login limits logs in. */
   counted: boolean;
   /** Closed with `CLOSE.behind`: later sends to it are skipped. */
   behind?: boolean;
@@ -572,7 +572,7 @@ export function startGateway(options: GatewayOptions): Gateway {
     if (typeof raw !== "string") {
       return strike(ws);
     }
-    // Only an immortal in game may send an editor-sized frame (a map save), and only a player
+    // Only a World or NPC Editor user in game may send an editor-sized frame (a map save), and only a player
     // holding an unspent canvas or film an art-sized one.
     if (raw.length > MAX_MESSAGE_BYTES) {
       const id = ws.data.characterId;

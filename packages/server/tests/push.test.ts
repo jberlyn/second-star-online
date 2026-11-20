@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
+import { ADMINISTRATOR } from "@secondstaronline/shared";
 
 import { scriptedRng, seededRng } from "../src/rng.ts";
 import { setHeld } from "../src/systems/movement/movement.ts";
@@ -28,7 +29,7 @@ describe("the push roll", () => {
     const { join, run } = setup([map], undefined, rng);
     const a = player("a", map, 5, 5);
     const b = player("b", map, 6, 5);
-    b.role = "immortal"; // never moves, so every tick is a blocked attempt
+    b.role = ADMINISTRATOR; // never moves, so every tick is a blocked attempt
     join(a);
     join(b);
     setHeld(a, "R", false);
@@ -100,12 +101,12 @@ describe("the roll against a standing player", () => {
     expect(chatTo(run(1), "b")).toEqual(["a shoves you out of the way."]);
   });
 
-  test("immortals are immune", () => {
+  test("administrators are immune", () => {
     const map = testMap("x1000y992");
     const { join, run } = setup([map], undefined, ALWAYS());
     const a = player("a", map, 5, 5);
     const b = player("b", map, 6, 5);
-    b.role = "immortal";
+    b.role = ADMINISTRATOR;
     join(a);
     join(b);
     setHeld(a, "R", false);

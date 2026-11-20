@@ -45,6 +45,7 @@ import {
   type PlayerView,
   type Powers,
   QUEST_SAVE_BLOCK,
+  type Role,
   type RoomKey,
   type SelfState,
   type ServerMsg,
@@ -59,8 +60,8 @@ import type { ShopLedger } from "../economy/shop.ts";
 import { archiveNpcStore, type NpcStore } from "../monsters/npcfiles.ts";
 import { type MonsterSlot, monsterView } from "../monsters/slots.ts";
 
-/** Account roles as the sim sees them (persistence/accounts.ts `ROLES`, passed in). */
-export type Role = "player" | "moderator" | "immortal";
+/** The account's role as the sim sees it: the operator's definition, or null for a player. */
+export type { Role };
 
 /** A map as the sim uses it. */
 export interface WorldMap {
@@ -101,7 +102,7 @@ export interface GroundItem {
   /** The original name, quantity included ("15 Gold", "5 Blue Crystals"). */
   item: string;
   /**
-   * How many the pile gives on pickup when more than 1: only an immortal's counted `/drop`. Absent
+   * How many the pile gives on pickup when more than 1: only a counted `/drop`. Absent
    * means 1.
    */
   qty?: number;
@@ -254,7 +255,7 @@ export interface Player {
   accountId: string;
   name: string;
   head: number;
-  /** Account role: immortals are never pushed. */
+  /** The account's role (its permissions and rank), or null for an ordinary player. */
   role: Role;
   map: WorldMap;
   x: number;
@@ -405,7 +406,7 @@ export interface Player {
    * and set by `/mute`; `muteTick` lifts it at the time.
    */
   muteUntil: number | null;
-  /** An immortal's `/warpscript` keyword, or null until set. */
+  /** A staff member's `/warpscript` keyword, or null until set. */
   warpscript: string | null;
 
   // ---- gathering ---------------------------------------------------------------
@@ -855,6 +856,8 @@ export interface World {
   treasure: { map: string; item: string } | null;
   /** The `treasureMaps` setting: the maps 1.6's treasure-list builder picks from. */
   treasureMaps: string[];
+  /** The `roleTags` setting: chat puts the speaker's role name before their name. */
+  roleTags: boolean;
   /**
    * Each character's fishing allowance, by character id: the tile it belongs to and the catches
    * left. Kept here rather than on the player so logging out and back in does not refill it.
@@ -1018,6 +1021,7 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     tileLog: new Set(),
     treasure: null,
     treasureMaps: [],
+    roleTags: false,
     fishingSpots: new Map(),
     lastContainerId: 0,
     containers: new Map(),

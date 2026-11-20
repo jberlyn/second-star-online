@@ -145,7 +145,11 @@ describe("settings", () => {
     const pages = rows.map((r) => r.page).filter((g, i, all) => all.indexOf(g) === i);
     // Every page has rows, and the rows come in the sidebar's order.
     expect(pages).toEqual(SETTING_PAGES.map((p) => p.id));
-    expect(settingPages()).toEqual(SETTING_PAGES.map((p) => ({ ...p, kind: "rows" })));
+    expect(settingPages()).toEqual([
+      ...SETTING_PAGES.map((p) => ({ ...p, kind: "rows" as const })),
+      { id: "roles", title: "Roles", kind: "roles" },
+      { id: "staff", title: "Staff", kind: "staff" },
+    ]);
     expect(rows.every((r) => r.tooltip !== "")).toBe(true);
     expect(rows.find((r) => r.key === "jailSentence")).toMatchObject({
       page: "moderation",
@@ -171,7 +175,7 @@ describe("settings", () => {
 describe("characters", () => {
   test("insert writes the record, 38 skills and the starting bag; position saves", () => {
     db.run(
-      "INSERT INTO accounts (id, username, password_hash, role, created_at, updated_at) VALUES ('a1', 'alice', 'h', 'player', ?, ?)",
+      "INSERT INTO accounts (id, username, password_hash, role, created_at, updated_at) VALUES ('a1', 'alice', 'h', NULL, ?, ?)",
       [NOW, NOW],
     );
     const map = findMapByCoords(db, 1000, 992);
@@ -210,7 +214,7 @@ describe("characters", () => {
 describe("saving skills (open skill count)", () => {
   function newCharacter(): { id: string; progress: Parameters<typeof saveProgress>[2] } {
     db.run(
-      "INSERT INTO accounts (id, username, password_hash, role, created_at, updated_at) VALUES ('a2', 'bob', 'h', 'player', ?, ?)",
+      "INSERT INTO accounts (id, username, password_hash, role, created_at, updated_at) VALUES ('a2', 'bob', 'h', NULL, ?, ?)",
       [NOW, NOW],
     );
     const map = findMapByCoords(db, 1000, 992);

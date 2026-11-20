@@ -5,11 +5,9 @@ import { classesData } from "@secondstaronline/data";
 
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 
-export type Role = "player" | "moderator" | "immortal";
-
 /**
- * The admin commands of 1.6's `ChatSend` grammar, plus SSO's `/role`, `/unban`, `/setclass`,
- * `/unjail`, `/banlist`, `/chatlog`, `/auditlog`, `/mute` and `/unmute`. Each is also the permission that runs it
+ * The admin commands of 1.6's `ChatSend` grammar, plus SSO's `/unban`, `/setclass`, `/unjail`,
+ * `/banlist`, `/chatlog`, `/auditlog`, `/mute` and `/unmute`. Each is also the permission that runs it
  * (`permissions.ts`).
  */
 export const ADMIN_COMMANDS = [
@@ -29,7 +27,6 @@ export const ADMIN_COMMANDS = [
   "pardon",
   "warptome",
   "warpmeto",
-  "role",
   "unban",
   "setclass",
   "unjail",
@@ -44,7 +41,7 @@ export type AdminCmd = (typeof ADMIN_COMMANDS)[number];
 
 /** The exact texts of the admin commands. */
 export const ADMIN_TEXT = {
-  staffChatDenied: "Only immortals and moderators can use staff chat.",
+  staffChatDenied: "Only staff can use staff chat.",
   kicking: (name: string) => `*** kicking ${name}...`,
   /** The kicked player's chat line before the alert. */
   beingKicked: "*** You are being kicked.",
@@ -68,22 +65,18 @@ export const ADMIN_TEXT = {
    * nothing.
    */
   ipBanned: "You are banned from playing on this server.",
-  // ---- SSO lines: the jail map, the role and unban chat commands, the set-class tool ----
+  // ---- SSO lines: the jail map, the unban chat command, the set-class tool ----
   notOnline: (name: string) => `${name} is not online.`,
   noSuchCharacter: (name: string) => `There is no character called ${name}.`,
   noJail: "There is no jail map: save a map at X 0, Y 0 in the World Editor first.",
   warpUsage: "Usage: /warp <name> <map> <x> <y>, for example /warp Slim x1000y992 5 5",
   noMap: (map: string) => `There is no map ${map}.`,
-  roleUsage: "Usage: /role <name> player, moderator or immortal",
-  roleSelf: "You cannot change your own role.",
-  roleSet: (name: string, role: Role) =>
-    `${name} is now ${role === "immortal" ? "an" : "a"} ${role}.`,
   banSelf: "You cannot ban yourself.",
   unbanned: (name: string) => `${name} is no longer banned.`,
   notBanned: (name: string) => `${name} is not banned.`,
-  kickImmortal: "Only an immortal can kick an immortal.",
-  /** `/iplookup`, `/jail`, `/warp`, `/warptome` by a moderator on an immortal. */
-  immortalTarget: "Only an immortal can do that to an immortal.",
+  kickOutranked: "You cannot kick someone who outranks you.",
+  /** `/iplookup`, `/warp`, `/warptome`, `/pardon` on someone who outranks you. */
+  outranked: "You cannot do that to someone who outranks you.",
   setClassUsage: "Usage: /setclass <name> <class name or number 1-26>",
   noSuchClass: (cls: string) => `There is no class called ${cls}.`,
   classSet: (name: string, cls: string) => `${name} is now a ${cls}.`,

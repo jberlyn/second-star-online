@@ -43,10 +43,17 @@ describe("the moderation migration", () => {
     const all = loadMigrations();
     runMigrations(
       db,
-      // Every other migration; the mutes one rebuilds a table this one makes, so it waits too.
-      all.filter((m) => m.name !== MINE && m.name !== "20261120_41_mutes.sql"),
+      // Every other migration; the mutes and roles ones rebuild tables this one makes, so they
+      // wait too.
+      all.filter(
+        (m) =>
+          m.name !== MINE &&
+          m.name !== "20261120_41_mutes.sql" &&
+          m.name !== "20261120_42_roles.sql",
+      ),
     );
     const now = "2026-11-10T00:00:00.000Z";
+    // The roles as they were stored before the roles migration.
     const acct = (username: string, role: "player" | "moderator" | "immortal" = "player") =>
       insertAccount(db, { username, passwordHash: "h", now, role }).id;
     const imm = acct("imm", "immortal");
@@ -96,8 +103,9 @@ describe("the moderation migration", () => {
     migrate(db);
     normalizeIpBans(db, now);
 
-    const rank = (id: string | undefined) => accountBan(db, id ?? "")?.actorRank;
-    expect(victims.map(rank)).toEqual(["immortal", "moderator", "immortal", "moderator"]);
+    const rank = (id: string | undefined) => accountBan(db, id ?? "")?.actorRole;
+    // The roles migration names them as the default roles are named.
+    expect(victims.map(rank)).toEqual(["Admin", "Moderator", "Admin", "Moderator"]);
     expect(accountBan(db, victims[0] ?? "")).toMatchObject({
       actorId: imm,
       actorName: "imm",
@@ -160,7 +168,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   async function start() {
     let game = startGame();
-    const make = async (name: string, role?: "moderator" | "immortal", ip = "10.0.0.1") => {
+    const make = async (name: string, role?: "moderator" | "administrator", ip = "10.0.0.1") => {
       await game.create({
         t: "create",
         name,
@@ -198,7 +206,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   test("a timed ban refuses login with its end, and lapses on time", async () => {
     const { game, make, say } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     expect(say(alice.characterId, "/ban Bob 1h spamming")[1]).toBe(
       "Bob is banned until 2026-11-17 10:00 UTC.",
@@ -211,23 +219,23 @@ describe("moderation in the game (real SQLite)", () => {
     expect((await game().login("Bob", "pw", "10.0.0.5")).ok).toBe(true);
   });
 
-  test("a ban keeps its maker's rank at the time: a demoted immortal's ban stays theirs", async () => {
+  test("a ban keeps its maker's rank at the time: a demoted administrator's ban stays theirs", async () => {
     const { game, make, say } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const mo = await make("Mo", "moderator");
     await make("Bob");
     say(alice.characterId, "/ban Bob");
     setRole(db, alice.accountId, "moderator", "now");
     expect(say(mo.characterId, "/unban Bob")).toEqual([MODERATION_TEXT.notYourBan("Bob", "Alice")]);
     expect(
-      db.query("SELECT action, actor_rank FROM moderation_log WHERE action = 'ban'").all(),
-    ).toEqual([{ action: "ban", actor_rank: "immortal" }]);
+      db.query("SELECT action, actor_role FROM moderation_log WHERE action = 'ban'").all(),
+    ).toEqual([{ action: "ban", actor_role: "Admin" }]);
     expect(game().settings.banLength).toBe(0);
   });
 
-  test("IP bans cover the IPv6 /64, refuse creation and resume, and never stop an immortal", async () => {
+  test("IP bans cover the IPv6 /64, refuse creation and resume, and never stop an administrator", async () => {
     const { game, make, say } = await start();
-    const alice = await make("Alice", "immortal", "2001:db8:7:7::1");
+    const alice = await make("Alice", "administrator", "2001:db8:7:7::1");
     const bob = await make("Bob", undefined, "2001:db8:7:7::2");
     expect(say(alice.characterId, "/banip 2001:db8:7:7::99 1d")[1]).toBe(
       "Banned 2001:db8:7:7::/64 until 2026-11-18 09:00 UTC.",
@@ -266,7 +274,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   test("login addresses are kept for /banip <name>; old ones are forgotten", async () => {
     const { game, make, say } = await start();
-    const alice = await make("Alice", "immortal", "10.0.0.1");
+    const alice = await make("Alice", "administrator", "10.0.0.1");
     const bob = await make("Bob", undefined, "10.0.0.2");
     game().leave(bob.characterId);
     wall += 60_000;
@@ -279,7 +287,7 @@ describe("moderation in the game (real SQLite)", () => {
       "Banned 2 addresses used by Bob permanently.",
     );
     expect(say(alice.characterId, "/banlist 10.0.0.2")).toEqual([
-      "* 10.0.0.2 - permanent - Alice (immortal)",
+      "* 10.0.0.2 - permanent - Alice (Admin)",
       "* Seen with:",
       "Bob (last 2026-11-17 09:00 UTC)",
     ]);
@@ -289,7 +297,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   test("a sentence survives logout and restart, and one that ends offline releases at login", async () => {
     const { game, make, say, restart } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     say(alice.characterId, "/jail Bob 30m");
     expect(game().world.players.get(bob.characterId)?.map.name).toBe("x0y0");
@@ -307,7 +315,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   test("a mute survives logout and restart and is told at login; one that ends offline is gone", async () => {
     const { game, make, say, restart } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     say(alice.characterId, "/mute Bob 30m flooding");
     game().leave(bob.characterId);
@@ -329,7 +337,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   test("a prisoner is told the sentence at login", async () => {
     const { game, make, say } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     game().leave(bob.characterId);
     say(alice.characterId, "/jail Bob 2h");
@@ -342,7 +350,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   test("an offline /jail puts the prisoner in jail at login", async () => {
     const { game, make, say } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     game().leave(bob.characterId);
     expect(say(alice.characterId, "/jail Bob 2h")[1]).toBe(
@@ -355,7 +363,7 @@ describe("moderation in the game (real SQLite)", () => {
 
   test("staff may stand in the jail without a sentence; a player there without one is released", async () => {
     const { game, make, say } = await start();
-    const alice = await make("Alice", "immortal");
+    const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     say(alice.characterId, "/jail Bob 1m");
     say(alice.characterId, "/warp Alice x0y0 5 5");

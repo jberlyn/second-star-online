@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
+import { ADMINISTRATOR } from "@secondstaronline/shared";
 
 import { createGame, type Game } from "../src/game.ts";
 import { setRole } from "../src/persistence/accounts.ts";
@@ -118,14 +119,14 @@ describe("inventory persistence", () => {
     expect(loadGround(db, seedMapId(), now)).toEqual([]);
   });
 
-  test("/drop by an immortal is saved and never decays", async () => {
+  test("/drop by an administrator is saved and never decays", async () => {
     const g = game();
     const id = await makeChar(g, "Alice");
     g.enter(id, false);
     const p = g.world.players.get(id);
-    setRole(db, p?.accountId ?? "", "immortal", now);
+    setRole(db, p?.accountId ?? "", "administrator", now);
     if (p) {
-      p.role = "immortal";
+      p.role = ADMINISTRATOR;
     }
     g.intent(id, { t: "mapReady" });
     g.tick();
@@ -138,9 +139,9 @@ describe("inventory persistence", () => {
     const id = await makeChar(g, "Alice");
     g.enter(id, false);
     const p = g.world.players.get(id);
-    setRole(db, p?.accountId ?? "", "immortal", now);
+    setRole(db, p?.accountId ?? "", "administrator", now);
     if (p) {
-      p.role = "immortal";
+      p.role = ADMINISTRATOR;
     }
     g.intent(id, { t: "mapReady" });
     g.tick();

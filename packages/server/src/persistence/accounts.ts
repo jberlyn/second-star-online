@@ -1,17 +1,15 @@
 /**
- * Accounts: Argon2id hashes via `Bun.password`, roles on the row. Plain functions taking the `Db`
- * first.
+ * Accounts: Argon2id hashes via `Bun.password`, the role's id on the row (roles.ts). Plain
+ * functions taking the `Db` first.
  */
 import type { Db } from "./database.ts";
-
-export const ROLES = ["player", "moderator", "immortal"] as const;
-export type Role = (typeof ROLES)[number];
 
 export interface Account {
   id: string;
   username: string;
   passwordHash: string;
-  role: Role;
+  /** The role's id, or null for an ordinary player. */
+  role: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,7 +18,7 @@ interface AccountRow {
   id: string;
   username: string;
   password_hash: string;
-  role: Role;
+  role: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -88,7 +86,7 @@ export function hashPassword(password: string): Promise<string> {
  */
 export function insertAccount(
   db: Db,
-  input: { username: string; passwordHash: string; now: string; role?: Role },
+  input: { username: string; passwordHash: string; now: string; role?: string | null },
 ): Account {
   const username = input.username.trim();
   if (username === "") {
@@ -98,7 +96,7 @@ export function insertAccount(
     id: Bun.randomUUIDv7(),
     username,
     passwordHash: input.passwordHash,
-    role: input.role ?? "player",
+    role: input.role ?? null,
     createdAt: input.now,
     updatedAt: input.now,
   };
@@ -121,7 +119,7 @@ export function insertAccount(
  */
 export async function createAccount(
   db: Db,
-  input: { username: string; password: string; now: string; role?: Role },
+  input: { username: string; password: string; now: string; role?: string | null },
 ): Promise<Account> {
   const username = input.username.trim();
   if (username === "") {
@@ -148,7 +146,8 @@ export function setPasswordHash(db: Db, accountId: string, hash: string, now: st
   );
 }
 
-export function setRole(db: Db, accountId: string, role: Role, now: string): void {
+/** Gives an account a role by id, or none (`null`). */
+export function setRole(db: Db, accountId: string, role: string | null, now: string): void {
   db.query("UPDATE accounts SET role = ?, updated_at = ? WHERE id = ?").run(role, now, accountId);
 }
 

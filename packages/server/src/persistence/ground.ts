@@ -9,7 +9,7 @@ export interface StoredGroundItem {
   x: number;
   y: number;
   item: string;
-  /** How many the pile holds: 1, except an immortal's counted `/drop`. */
+  /** How many the pile holds: 1, except a counted `/drop`. */
   qty: number;
   kind: GroundKind;
   /** ISO time the item decays, or null (only loot decays). */

@@ -335,7 +335,7 @@ export type MonsterHit =
   | { kind: "hit"; lost: number };
 
 /**
- * HitMe2 from the attack value onward, for a player who is not immortal and not in i-frames: the
+ * HitMe2 from the attack value onward, for a player who is not invulnerable and not in i-frames: the
  * armour rows (`hitMe2` column), `+N`, the elemental rows against `attacker` ("a Yeti"), faction,
  * then `+ random(3)`, the defense bonus, `< 2 → random(3)`, then the parry and block ladders.
  * `shielded`: an innocent on a Holy Shield's exact sprite position gets "Shield" before any draw

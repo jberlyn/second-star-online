@@ -59,7 +59,7 @@ async function makeChar(g: Game, name: string): Promise<string> {
 
 const TRAINER = ["BIO|A trainer", "TRN|Grunt:100", "TRN|Fire Mage:10000", "TRN|Ninja:5"].join("\r");
 
-/** An immortal Al (Fighter, Slash 30, gold 150) with `npc` in roster slot 1 and spawned. */
+/** An administrator Al (Fighter, Slash 30, gold 150) with `npc` in roster slot 1 and spawned. */
 async function scene(npc = "Amber") {
   const g = game();
   setNpcFile(g.world.npcs, "Amber", TRAINER);
@@ -67,7 +67,7 @@ async function scene(npc = "Amber") {
   const acc = db
     .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
     .get(id);
-  setRole(db, acc?.account_id ?? "", "immortal", NOW);
+  setRole(db, acc?.account_id ?? "", "administrator", NOW);
   db.run("UPDATE characters SET gold = 150 WHERE id = ?", [id]);
   db.run("UPDATE character_skills SET value = 30 WHERE character_id = ? AND skill = 1", [id]);
   g.enter(id, false);

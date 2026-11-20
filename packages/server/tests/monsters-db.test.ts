@@ -8,7 +8,7 @@ import { join } from "node:path";
 
 import type { ServerMsg } from "@secondstaronline/shared";
 
-import { runSetRole } from "../src/cli/set-role.ts";
+import { listRoles, runSetRole } from "../src/cli/set-role.ts";
 import { createGame, type Game } from "../src/game.ts";
 import { setRole } from "../src/persistence/accounts.ts";
 import { findCharacterById } from "../src/persistence/characters.ts";
@@ -108,11 +108,11 @@ describe("monsters survive a restart", () => {
 });
 
 describe("/roster", () => {
-  test("an immortal lists, sets and clears slots; the change is saved", async () => {
+  test("an administrator lists, sets and clears slots; the change is saved", async () => {
     const g = game();
     const id = await makeChar(g, "Gm");
     const acc = findCharacterById(db, id)?.accountId ?? "";
-    setRole(db, acc, "immortal", NOW);
+    setRole(db, acc, "administrator", NOW);
     g.enter(id, false);
     g.intent(id, { t: "chat", text: "/roster" });
     g.intent(id, { t: "chat", text: "/roster 2 orc lord" });
@@ -143,16 +143,31 @@ describe("/roster", () => {
     expect(texts(id).at(-1)).toBe('Unknown command "/roster".');
   });
 
-  test("bun run admin:role makes an operator immortal", async () => {
+  test("bun run admin:role gives an operator a role, or takes it away", async () => {
     const path = join(tmpdir(), `sso-role-${process.pid}-${Date.now()}.sqlite`);
     const file = openDatabase(path);
     migrate(file);
     db = file;
     await makeChar(game(), "Op");
     file.close();
-    expect(runSetRole(path, "op", "immortal")).toBe("Op is now immortal.");
-    expect(() => runSetRole(path, "nobody", "immortal")).toThrow(/no account/);
-    expect(() => runSetRole(path, "Op", "king")).toThrow(/role must be/);
+    expect(runSetRole(path, "op", "administrator")).toBe("Op is now Admin (administrator).");
+    expect(listRoles(path)).toContain('administrator "Admin" rank 2');
+    expect(listRoles(path)).toContain("  held by: Op");
+    expect(runSetRole(path, "Op", "none")).toBe("Op has no role now.");
+    expect(() => runSetRole(path, "nobody", "administrator")).toThrow(/no account/);
+    expect(() => runSetRole(path, "Op", "immortal")).toThrow(/role must be/);
+    const check = openDatabase(path);
+    expect(
+      check
+        .query<{ before: string; after: string }, []>(
+          "SELECT before, after FROM audit_log WHERE command = 'admin:role' ORDER BY created_at",
+        )
+        .all(),
+    ).toEqual([
+      { before: "null", after: '"administrator"' },
+      { before: '"administrator"', after: "null" },
+    ]);
+    check.close();
     await Bun.file(path).delete();
   });
 });

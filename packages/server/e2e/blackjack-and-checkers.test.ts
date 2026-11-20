@@ -1,7 +1,7 @@
 /**
  * Bot script: blackjack and checkers.
  *
- * King (an immortal) stands a Blackjack Table and a Checkers Table on the map. Alice sits west of
+ * King (an administrator) stands a Blackjack Table and a Checkers Table on the map. Alice sits west of
  * the blackjack table and Bob east, each sees their line, Carol is told "That seat is taken."
  * Alice bids 50 and Bob 30 (her gold drops 50 then rises 20), the deal, both stand, the gold
  * moves by the stake and the table resets 40 ticks later with the stake in both fields. In a
@@ -106,7 +106,7 @@ describe("blackjack and checkers", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
     bob = await login("Bob");
     carol = await login("Carol");

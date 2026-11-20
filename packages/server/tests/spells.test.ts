@@ -5,6 +5,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  ADMINISTRATOR,
   CAST_TEXT,
   EFFECT_TEXT,
   LEVEL_UP_TEXT,
@@ -335,7 +336,7 @@ describe("players", () => {
   });
   test("bug fixed: a role that takes no damage is untouched by harmful spells and Whirlwind", () => {
     const { a, b, run, cast } = scene();
-    b.role = "immortal";
+    b.role = ADMINISTRATOR;
     a.spell.book = ["Firebolt", "Whirlwind"];
     give(a, "Red Crystals", 20);
     give(a, "Purple Crystals", 10);

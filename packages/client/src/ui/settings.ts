@@ -17,7 +17,7 @@
  *   everyone online at once (the same step as `/Refresh`) or refuses the save whole, and the
  *   refusal is shown on the setting at fault. Revert asks the server for what it holds.
  *
- * Pages of other kinds (such as roles) will draw their own editors in the same pane.
+ * The Roles and Staff pages draw their own editors in the same pane (settings-roles.ts).
  *
  * Save and Revert stand for the File Editor's Save and Load (its members 2 and 3).
  */
@@ -25,11 +25,19 @@ import {
   formatTimeLength,
   parseTimeLength,
   prizeLineOk,
+  type RoleRow,
   type SettingPage,
   type SettingRow,
+  type StaffRow,
 } from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
+import {
+  type CustomPage,
+  createRolesPage,
+  createStaffPage,
+  type RoleActions,
+} from "./settings-roles.ts";
 import type { GameWindow, WindowLayer } from "./window.ts";
 
 export const SETTINGS_SIZE = { w: 720, h: 500 } as const;
@@ -39,7 +47,7 @@ export const SETTINGS_SIZE = { w: 720, h: 500 } as const;
 /** The footer after a save the server applied. */
 export const SETTINGS_SAVED = "Saved. Everyone online now has these settings.";
 
-export interface SettingsActions {
+export interface SettingsActions extends RoleActions {
   /** SAVE: the open page's values by key. */
   save(values: Record<string, unknown>): void;
   /** REVERT: ask for the values the server holds. */
@@ -54,9 +62,15 @@ export interface SettingsWindow {
    * Fills the pages and opens the window (the server's `settings` reply). It stays on the open
    * page when that page still exists, and the rows show what the server holds.
    */
-  show(pages: readonly SettingPage[], rows: readonly SettingRow[]): void;
+  show(
+    pages: readonly SettingPage[],
+    rows: readonly SettingRow[],
+    lists?: { roles: readonly RoleRow[]; staff: readonly StaffRow[] },
+  ): void;
   /** The server's answer to a save (`settingsResult`). */
   result(r: SettingsResult): void;
+  /** The server's answer to a role save, delete or assignment (`roleResult`). */
+  roleResult(r: { ok: boolean; text: string }): void;
   /** The open page's values as the controls hold them now. */
   values(): Record<string, unknown>;
   /** The open page's id. */
@@ -647,9 +661,25 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
 
   let pages: SettingPage[] = [];
   let rows: SettingRow[] = [];
+  let roleRows: RoleRow[] = [];
+  let staffRows: StaffRow[] = [];
   let current: string | null = null;
   /** The current page's rows; only this page can hold changes. */
   const states: RowState[] = [];
+  /** The Roles and Staff pages, made once and drawn again from each `settings` reply. */
+  const custom: Record<"roles" | "staff", CustomPage> = {
+    roles: createRolesPage(
+      actions,
+      () => countChanges(),
+      (go) => leave(go),
+    ),
+    staff: createStaffPage(actions),
+  };
+  /** The open page's own editor, if it is not a list of settings. */
+  const customPage = (): CustomPage | null => {
+    const kind = pages.find((p) => p.id === current)?.kind;
+    return kind === "roles" || kind === "staff" ? custom[kind] : null;
+  };
 
   const values = () => {
     const out: Record<string, unknown> = {};
@@ -658,7 +688,8 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
     }
     return out;
   };
-  const changes = () => states.filter((s) => !same(s.read(), s.row.value)).length;
+  const changes = () =>
+    customPage()?.changes() ?? states.filter((s) => !same(s.read(), s.row.value)).length;
   const pageTitle = (id: string | null) => pages.find((p) => p.id === id)?.title ?? "";
 
   /** "2 unsaved changes" from the rows as they stand; the page's link gets a dot. */
@@ -690,7 +721,20 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
       }
     }
     title.textContent = pageTitle(id);
-    list.replaceChildren(...states.map((s) => s.el));
+    const page = customPage();
+    if (page) {
+      page.show(roleRows, staffRows);
+      list.replaceChildren(page.el);
+    } else {
+      list.replaceChildren(...states.map((s) => s.el));
+    }
+    intro.textContent =
+      page === custom.staff
+        ? "Who holds each role. Changes apply as soon as you make them."
+        : page === custom.roles
+          ? "What each role may do. Saving applies the role to everyone who holds it at once."
+          : "Changes apply to everyone online as soon as you save this page.";
+    saveButton.hidden = page !== null && page.save === null;
     for (const a of links.children) {
       const on = (a as HTMLElement).dataset.page === id;
       if (on) {
@@ -792,6 +836,16 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
   });
 
   const save = () => {
+    const page = customPage();
+    if (page?.save) {
+      const err = page.save();
+      if (err) {
+        setStatus(err, "error");
+      } else {
+        status.textContent = "Saving…";
+      }
+      return;
+    }
     let first: RowState | null = null;
     for (const s of states) {
       const err = checkValue(s.row, s.read());
@@ -810,10 +864,11 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
     actions.save(values());
   };
 
+  const saveButton = button("settings-save", "settings-save", "Save", save);
   footer.append(
     status,
     button("settings-revert", "settings-revert", "Revert", () => actions.load()),
-    button("settings-save", "settings-save", "Save", save),
+    saveButton,
   );
   pane.append(title, intro, list, results, footer);
   stage.append(nav, pane, confirm);
@@ -837,9 +892,11 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
 
   return {
     window: win,
-    show(nextPages, nextRows) {
+    show(nextPages, nextRows, lists) {
       pages = [...nextPages];
       rows = [...nextRows];
+      roleRows = [...(lists?.roles ?? [])];
+      staffRows = [...(lists?.staff ?? [])];
       links.replaceChildren(
         ...pages.map((p) => {
           const a = action(document.createElement("button"), "settings-page");
@@ -882,6 +939,9 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
       } else {
         setStatus(`Not saved. ${r.text}`, "error");
       }
+    },
+    roleResult(r) {
+      setStatus(r.text, r.ok ? "ok" : "error");
     },
     values,
     get page() {

@@ -17,7 +17,6 @@ import {
   type AuditTrailRow,
   auditlogLine,
   BANLIST_PAGE,
-  BUILTIN_ROLES,
   banListLine,
   banNotice,
   CHAT_COLOR,
@@ -52,6 +51,7 @@ import {
   mayTarget,
   type NamedRecord,
   outranks,
+  PERMISSIONS,
   pardoningLine,
   parseAuditlogArgs,
   parseChatlogArgs,
@@ -60,6 +60,7 @@ import {
   type Role,
   type ServerMsg,
   TEXT,
+  taggedName,
   WARPSCRIPT_OFF,
   warpscriptMatches,
 } from "@secondstaronline/shared";
@@ -115,7 +116,6 @@ export interface AuditEntry {
 export interface AdminDeps {
   /** A character and its account by name, ignoring case; null when there is none. */
   findCharacter(name: string): CharacterAccount | null;
-  setRole(accountId: string, role: Role): void;
   moderation: ModerationStore;
   /** Wall-clock ISO time: when actions start and whether they have ended. */
   now(): string;
@@ -192,6 +192,29 @@ export function adminWarp(
   return out;
 }
 
+/**
+ * Puts `role` in force for an online player at once (a role assigned in the Server Settings window
+ * or with `admin:role`, or the definition of their role changed): they get their new permissions,
+ * a `/warpscript` they may no longer use is cleared, and they leave an editor they may no longer
+ * use. A room they may no longer be in drops them on the next tick (`roomMembership`).
+ */
+export function applyRole(world: World, t: Player, role: Role): Outgoing[] {
+  t.role = role;
+  if (!can(role, "warpscript")) {
+    t.warpscript = null;
+  }
+  const out: Outgoing[] = [{ to: t.id, msg: permissionsMsg(role) }];
+  if (t.editing && !can(role, t.editing === "world" ? "worldEditor" : "npcEditor")) {
+    out.push(...closeEditor(world, t));
+  }
+  return out;
+}
+
+/** The `permissions` message for a role. */
+export function permissionsMsg(role: Role): ServerMsg {
+  return { t: "permissions", permissions: PERMISSIONS.filter((x) => can(role, x)) };
+}
+
 /** What a command line from `p` does. */
 export function handleAdmin(
   world: World,
@@ -213,7 +236,7 @@ export function handleAdmin(
   const shieldedFrom = (t: Player) => outranks(t.role, p.role);
 
   switch (cmd) {
-    // ---- immortal-only ------------------------------------------------------------------
+    // ---- administrators' by default ---------------------------------------------------------
     case "save": // every client saved; nothing printed
       deps.saveAll();
       audit(null);
@@ -235,7 +258,7 @@ export function handleAdmin(
     case "unbanip":
       return unbanIp(p, w2, typed, deps);
 
-    // ---- moderator or immortal ----------------------------------------------------------
+    // ---- moderators' and administrators' by default ------------------------------------------
     case "location": // the admin's own map and tile
       return tell(p, ADMIN_TEXT.location(p.map.name, p.x, p.y));
     case "iplookup": {
@@ -246,7 +269,7 @@ export function handleAdmin(
       }
       const t = onlineByName(world, w2);
       if (t && shieldedFrom(t)) {
-        return [...out, ...tell(p, ADMIN_TEXT.immortalTarget)];
+        return [...out, ...tell(p, ADMIN_TEXT.outranked)];
       }
       out.push(...tell(p, t ? ADMIN_TEXT.theIpIs(t.ip) : ADMIN_TEXT.notOnline(w2)));
       if (t) {
@@ -265,7 +288,7 @@ export function handleAdmin(
         return [...out, ...tell(p, ADMIN_TEXT.notOnline(w2))];
       }
       if (shieldedFrom(t)) {
-        return [...out, ...tell(p, ADMIN_TEXT.kickImmortal)];
+        return [...out, ...tell(p, ADMIN_TEXT.kickOutranked)];
       }
       audit(t.name);
       // The kicked player's chat line, then the alert: `x956`'s "*** You are being kicked." and
@@ -291,7 +314,7 @@ export function handleAdmin(
         return [...out, ...tell(p, MODERATION_TEXT.warpSelf)];
       }
       if (shieldedFrom(t)) {
-        return [...out, ...tell(p, ADMIN_TEXT.immortalTarget)];
+        return [...out, ...tell(p, ADMIN_TEXT.outranked)];
       }
       const stop = jailWarpRefusal(t, to.map);
       if (stop) {
@@ -317,7 +340,7 @@ export function handleAdmin(
     case "unmute":
       return w2 === "" ? tell(p, MODERATION_TEXT.unmuteUsage) : unmute(world, p, w2, typed, deps);
     case "pardon": {
-      // An immortal's P2P `PRDN` to word 2 and "Pardoning <name>...". The target's client cleared its murder flag and said who pardoned it; SSO does
+      // 1.6: an immortal's P2P `PRDN` to word 2 and "Pardoning <name>...". The target's client cleared its murder flag and said who pardoned it; SSO does
       // it on the server and says when the name is not online.
       const out = tell(p, pardoningLine(w2));
       if (w2 === "") {
@@ -358,7 +381,7 @@ export function handleAdmin(
         return [...out, ...tell(p, ADMIN_TEXT.notOnline(w2))];
       }
       if (shieldedFrom(t)) {
-        return [...out, ...tell(p, ADMIN_TEXT.immortalTarget)];
+        return [...out, ...tell(p, ADMIN_TEXT.outranked)];
       }
       const stop = jailWarpRefusal(t, p.map.name);
       if (stop) {
@@ -384,7 +407,7 @@ export function handleAdmin(
       return [...out, ...adminWarp(world, p, t.map.name, t.x, t.y, deps)];
     }
 
-    // ---- staff commands and immortal-only account tools ------------------------------------
+    // ---- staff commands and account tools ----------------------------------------------------
     case "warpscript": {
       p.warpscript = lingoEq(w2, "OFF") ? WARPSCRIPT_OFF : w2;
       audit(null, null, p.warpscript);
@@ -441,35 +464,6 @@ export function handleAdmin(
       }
       return tell(p, AUDITLOG_TEXT.header(name, rows.length), ...rows.map(auditlogLine));
     }
-    case "role": {
-      const role = lingoWord(typed, 3).toLowerCase();
-      if (w2 === "" || !Object.hasOwn(BUILTIN_ROLES, role)) {
-        return tell(p, ADMIN_TEXT.roleUsage);
-      }
-      const c = deps.findCharacter(w2);
-      if (!c) {
-        return tell(p, ADMIN_TEXT.noSuchCharacter(w2));
-      }
-      if (c.accountId === p.accountId) {
-        return tell(p, ADMIN_TEXT.roleSelf);
-      }
-      deps.setRole(c.accountId, role as Role);
-      audit(c.name, c.role, role);
-      const out = tell(p, ADMIN_TEXT.roleSet(c.name, role as Role));
-      const t = world.players.get(c.characterId);
-      if (t) {
-        t.role = role as Role;
-        if (!can(t.role, "warpscript")) {
-          t.warpscript = null;
-        }
-        out.push({ to: t.id, msg: { t: "role", role: t.role } });
-        // A demoted operator leaves an editor they may no longer use.
-        if (t.editing && !can(t.role, t.editing === "world" ? "worldEditor" : "npcEditor")) {
-          out.push(...closeEditor(world, t));
-        }
-      }
-      return out;
-    }
     case "setclass": {
       // The six path-less classes had no way in but the raw file editor.
       const rest = typed.trim().replace(/^\S+\s+\S+\s*/, "");
@@ -493,9 +487,14 @@ export function handleAdmin(
 
 // ---- moderation: bans, jails and IP bans -------------------------------------------------------
 
-/** Who acts, at what rank, and when: every moderation entry's common fields. */
+/** Who acts, in what role, and when: every moderation entry's common fields. */
 function by(p: Player, deps: AdminDeps) {
-  return { actorId: p.accountId, actorName: p.name, actorRank: p.role, createdAt: deps.now() };
+  return {
+    actorId: p.accountId,
+    actorName: p.name,
+    actorRole: p.role?.name ?? "Player",
+    createdAt: deps.now(),
+  };
 }
 
 const auditOf =
@@ -565,7 +564,7 @@ function ban(world: World, p: Player, w2: string, typed: string, deps: AdminDeps
   );
 }
 
-/** `/unban <name> [reason]`: only the ban's maker or an immortal lifts it. */
+/** `/unban <name> [reason]`: only the ban's maker or a role with `overrule` lifts it. */
 function unban(p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
   const c = deps.findCharacter(w2);
   if (!c) {
@@ -698,7 +697,7 @@ function mute(world: World, p: Player, w2: string, typed: string, deps: AdminDep
   return out;
 }
 
-/** `/unmute <name> [reason]`: only the staff member who muted them, or an immortal. */
+/** `/unmute <name> [reason]`: only the staff member who muted them, or a role with `overrule`. */
 function unmute(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
   const c = deps.findCharacter(w2);
   if (!c) {
@@ -730,7 +729,7 @@ function unmute(world: World, p: Player, w2: string, typed: string, deps: AdminD
   return out;
 }
 
-/** `/unjail <name> [reason]`: only the jailer or an immortal ends a sentence early. */
+/** `/unjail <name> [reason]`: only the jailer or a role with `overrule` ends a sentence early. */
 function unjail(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
   const c = deps.findCharacter(w2);
   if (!c) {
@@ -772,7 +771,7 @@ function unjail(world: World, p: Player, w2: string, typed: string, deps: AdminD
 /**
  * `/banip <name|address> [latest|all] [duration] [reason]`: a character's latest address (or every
  * one it has used), else a typed address. An IPv6 address bans its /64. Sessions from a banned
- * address are disconnected at once, except immortals', whom IP bans never stop.
+ * address are disconnected at once, except roles that bypass IP bans.
  */
 function banIp(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
   const out = tell(p, ADMIN_TEXT.banningIp(w2));
@@ -797,7 +796,7 @@ function banIp(world: World, p: Player, w2: string, typed: string, deps: AdminDe
       return [...out, ...tell(p, ADMIN_TEXT.banSelf)];
     }
     if (can(c.role, "bypassIpBan")) {
-      return [...out, ...tell(p, MODERATION_TEXT.ipImmortal)];
+      return [...out, ...tell(p, MODERATION_TEXT.ipBypassed)];
     }
     const seen = deps.moderation.addresses(c.accountId);
     if (seen.length === 0) {
@@ -898,14 +897,15 @@ function unbanIp(p: Player, w2: string, typed: string, deps: AdminDeps): Outgoin
 }
 
 /**
- * `/banlist [page]`: the bans, jails, mutes and (for immortals) IP bans in force. `/banlist <name>`: that
- * character's standing, history and (for immortals) addresses. `/banlist <address>` (immortals):
+ * `/banlist [page]`: the bans, jails, mutes and (for roles with `/banip`) IP bans in force.
+ * `/banlist <name>`: that character's standing, history and (with `/banip`) addresses.
+ * `/banlist <address>` (with `/banip`):
  * the address's ban and who has played from it.
  */
 function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
   const now = deps.now();
   // IP bans and addresses are for those who may make IP bans.
-  const immortal = can(p.role, "banip");
+  const seesAddresses = can(p.role, "banip");
   const m = deps.moderation;
   const rows = (lines: string[]) => (lines.length > 0 ? lines : [MODERATION_TEXT.listNone]);
   if (w2 === "" || /^\d+$/.test(w2)) {
@@ -934,7 +934,7 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
           .map((u) => banListLine(u.name, u)),
       ),
     ];
-    if (immortal) {
+    if (seesAddresses) {
       lines.push(
         MODERATION_TEXT.listIpBans,
         ...rows(
@@ -966,9 +966,9 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
     lines.push(
       ...m
         .history(c.accountId, BANLIST_PAGE)
-        .map((r) => historyLine(immortal ? r : { ...r, address: null })),
+        .map((r) => historyLine(seesAddresses ? r : { ...r, address: null })),
     );
-    if (immortal) {
+    if (seesAddresses) {
       lines.push(
         MODERATION_TEXT.historyAddresses,
         ...rows(
@@ -985,8 +985,8 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
   if (!ip) {
     return tell(p, MODERATION_TEXT.noSuchTarget(w2));
   }
-  if (!immortal) {
-    return tell(p, MODERATION_TEXT.addressesImmortal);
+  if (!seesAddresses) {
+    return tell(p, MODERATION_TEXT.addressesDenied);
   }
   const b = live(m.ipBan(ip.key), now);
   return tell(
@@ -1003,7 +1003,7 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
 }
 
 /**
- * `-text`: both staff roles (immortals and moderators) post to staff chat, a dedicated channel
+ * `-text`: staff (any account with a role) post to staff chat, a dedicated channel
  * (`CHAT_COLOR.staff`), with no house sender restriction, no muffling, and no ignore filtering.
  * Non-staff receive an explicit denial and their input clears.
  */
@@ -1011,7 +1011,7 @@ export function staffChat(world: World, p: Player, typed: string): Outgoing[] {
   if (!isStaff(p.role)) {
     return tell(p, ADMIN_TEXT.staffChatDenied);
   }
-  const text = formatStaffChat(p.name, typed);
+  const text = formatStaffChat(taggedName(p.name, p.role, world.roleTags), typed);
   const out: Outgoing[] = [];
   for (const o of world.players.values()) {
     if (isStaff(o.role)) {

@@ -46,8 +46,8 @@ export function regenStep(p: Player): void {
 }
 
 /** Hunger for one player. Returns a warning line, if any. */
-export function hungerStep(p: Player, immortal: boolean, rng: Rng): string | null {
-  const r = hungerTick(p.char.hunger, immortal, rng);
+export function hungerStep(p: Player, noHunger: boolean, rng: Rng): string | null {
+  const r = hungerTick(p.char.hunger, noHunger, rng);
   p.char.hunger = r.hunger;
   return r.warning;
 }
@@ -70,11 +70,11 @@ export type DeathOutcome =
   /** A normal death: the lock starts; an exile line, if any; the head's and drop's ground events. */
   | { kind: "death"; lines: string[]; out: Outgoing[] };
 
-/** The death drop: the operator's rules; an immortal drops on every death, for testing. */
+/** The death drop: the operator's rules; a role with `dropOnEveryDeath` drops every time, for testing. */
 export interface DeathDropCtx {
   item: ItemCtx;
   rules: DeathDropRules;
-  immortal: boolean;
+  everyDeath: boolean;
   /**
    * A Lightning Assassin game is running: every death is penalty-free, whatever caused it (a bug
    * fixed: 1.6 spared only deaths from a Lightning melee hit).
@@ -153,7 +153,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
         killedByPlayer: p.lastToHitId !== null && p.lastToHitId !== p.id,
         inVehicle: aboard,
       },
-      drop.immortal ? { ...drop.rules, who: "everyone", minLevel: 0 } : drop.rules,
+      drop.everyDeath ? { ...drop.rules, who: "everyone", minLevel: 0 } : drop.rules,
       rng,
     );
     // The faction head goes down first, even in a vehicle or with drops off.

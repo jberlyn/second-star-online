@@ -8,7 +8,6 @@ import {
   CHAT_COLOR,
   CHAT_SOCIAL_TEXT,
   type ClientMsg,
-  can,
   type Dir,
   hidesName,
   houseType,
@@ -17,7 +16,6 @@ import {
   newsIsNew,
   PLAYFIELD_RECT,
   type RestoreTarget,
-  type Role,
   type ServerMsg,
   TICK_MS,
 } from "@secondstaronline/shared";
@@ -149,7 +147,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   // ---- menus (In-game menu) ----------------------------------------------------------------
   // The classic layout draws 1.6's menu bar above the stage.
   let sfxOn = pref(PREFS.sfx) !== "0";
-  let role: Role = "player";
+  /** Your role's permissions as the server last sent them (it still checks every request). */
+  let permissions: ReadonlySet<string> = new Set();
   let editor: WorldEditor | null = null;
   let npcEditor: NpcEditor | null = null;
   /** Which editor is up; either opens from the other. */
@@ -160,7 +159,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   const menuState: MenuState = {
     inPlay: () => model.self !== null,
     atTitle: () => atTitle,
-    can: (permission) => can(role, permission),
+    can: (permission) => permissions.has(permission),
     sharp: () => sharp,
     sfx: () => sfxOn,
   };
@@ -512,6 +511,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   };
   const settingsWin = createSettingsWindow(windows, {
     save: (values) => send({ t: "settingsSave", values }),
+    saveRole: (role, create) => send({ t: "roleSave", role, create }),
+    deleteRole: (id) => send({ t: "roleDelete", id }),
+    assignRole: (name, role) => send({ t: "roleAssign", name, role }),
     load: () => send({ t: "settingsOpen" }),
   });
   const trade = createTradeWindow(assets, windows, {
@@ -915,16 +917,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         panel.setStats(msg.stats);
         panel.setSkills(msg.skills);
         return;
-      case "role":
-        // Sent at entry and when an immortal's `/role` changes yours.
-        role = msg.role;
+      case "permissions":
+        // Sent at entry and whenever your role or its definition changes.
+        permissions = new Set(msg.permissions);
         menuBar.refresh();
-        if (!can(role, "settings")) {
+        if (!permissions.has("settings")) {
           settingsWin.window.close();
         }
         return;
       case "settings":
-        settingsWin.show(msg.pages, msg.rows);
+        settingsWin.show(msg.pages, msg.rows, { roles: msg.roles, staff: msg.staff });
+        return;
+      case "roleResult":
+        settingsWin.roleResult(msg);
         return;
       case "settingsResult":
         settingsWin.result(msg);
@@ -1126,7 +1131,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
     game = null;
     editing = null;
-    role = "player";
+    permissions = new Set();
     menuBar.refresh();
     sign.close();
     who.window.close();

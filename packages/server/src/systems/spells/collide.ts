@@ -96,7 +96,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
   const v = p.char.vitals;
   const off = pvpOff(room, p);
   const target = (): SpellTarget => ({ equip: p.char.equip, magicShield: p.spell.magicDef > 0 });
-  // A role that takes no damage is untouched by harmful spells (a bug fixed: SSO's immortals,
+  // A role that takes no damage is untouched by harmful spells (a bug fixed: SSO's early immortals,
   // safe from monsters and melee, could still be killed by a spell).
   const invulnerable = can(p.role, "invulnerable");
   const damage = (fx: SpellFx, dmg: number) => {

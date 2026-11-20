@@ -389,12 +389,12 @@ describe("presence and the login greeting", () => {
     ]);
   });
 
-  test("an immortal account is loaded with its role (push immunity)", async () => {
+  test("an administrator account is loaded with its role (push immunity)", async () => {
     const { game, make } = await gameWith();
     const a = await make("Alice");
-    setRole(db, a.accountId, "immortal", NOW);
+    setRole(db, a.accountId, "administrator", NOW);
     game.enter(a.characterId, false);
-    expect(game.world.players.get(a.characterId)?.role).toBe("immortal");
+    expect(game.world.players.get(a.characterId)?.role?.id).toBe("administrator");
     expect(game.world.players.get(a.characterId)?.char.stats.str).toBe(10);
   });
 });

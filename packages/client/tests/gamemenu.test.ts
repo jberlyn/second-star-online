@@ -5,6 +5,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
 import type { ServerMsg } from "@secondstaronline/shared";
+import { MODERATOR, PERMISSIONS } from "@secondstaronline/shared";
 
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -67,10 +68,10 @@ describe("the desktop menu bar", () => {
     app.stop();
   });
 
-  test("an immortal's role before entry shows no Admin until a character is in play", () => {
+  test("an administrator's role before entry shows no Admin until a character is in play", () => {
     const { root, c, app } = start();
     c.onMessage(welcome);
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     expect(titles(root)).not.toContain("Admin");
     c.onMessage(SNAPSHOT);
     expect(titles(root)).toEqual(["Game", "Chat", "Admin", "Options"]);
@@ -115,16 +116,16 @@ describe("the desktop menu bar", () => {
     app.stop();
   });
 
-  test("an immortal gets Admin between Chat and Options, and Admin Chat among the rooms", () => {
+  test("an administrator gets Admin between Chat and Options, and Admin Chat among the rooms", () => {
     const { root, c, app } = start();
     c.onMessage(welcome);
     c.onMessage(SNAPSHOT);
-    for (const role of ["player", "moderator"] as const) {
-      c.onMessage({ t: "role", role });
+    for (const permissions of [[], [...MODERATOR.permissions]]) {
+      c.onMessage({ t: "permissions", permissions });
       expect(titles(root)).toEqual(["Game", "Chat", "Options"]);
       expect(menuTexts(root, "Chat")).not.toContain("Admin Chat");
     }
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     expect(titles(root)).toEqual(["Game", "Chat", "Admin", "Options"]);
     expect(menuTexts(root, "Chat")).toEqual([
       "General Chat",
@@ -137,7 +138,7 @@ describe("the desktop menu bar", () => {
     ]);
     menuClick(root, "Chat", "Admin Chat");
     expect(c.sent).toContainEqual({ t: "roomEnter", room: "admin" } as never);
-    c.onMessage({ t: "role", role: "player" });
+    c.onMessage({ t: "permissions", permissions: [] });
     expect(titles(root)).not.toContain("Admin");
     expect(menuTexts(root, "Chat")).not.toContain("Admin Chat");
     app.stop();
@@ -146,7 +147,7 @@ describe("the desktop menu bar", () => {
   test("no menu offers Quit Game: a page cannot close its own tab", () => {
     const { root, c, app } = start();
     c.onMessage(welcome);
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage(SNAPSHOT);
     const all = titles(root).flatMap((t) => menuTexts(root, t));
     expect(all).not.toContain("Quit Game");

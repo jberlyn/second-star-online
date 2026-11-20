@@ -2604,6 +2604,723 @@
     "errors": []
   },
   {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-pick",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-delete",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "deleteRole",
+        "args": ["administrator"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "roles-id",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-name",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-rank",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "saveRole",
+        "args": [
+          {
+            "id": "administrator",
+            "name": "Admin",
+            "rank": 2,
+            "permissions": [
+              "save",
+              "refresh",
+              "cheatfile",
+              "unbanip",
+              "inventory",
+              "banip",
+              "location",
+              "iplookup",
+              "kick",
+              "warpscript",
+              "ban",
+              "warp",
+              "jail",
+              "pardon",
+              "warptome",
+              "warpmeto",
+              "unban",
+              "setclass",
+              "unjail",
+              "banlist",
+              "chatlog",
+              "auditlog",
+              "mute",
+              "unmute",
+              "drop",
+              "spawn",
+              "roster",
+              "worldEditor",
+              "npcEditor",
+              "settings",
+              "adminChat",
+              "assassinGame",
+              "overrule",
+              "pardonSelf",
+              "warpSelf",
+              "invulnerable",
+              "noHunger",
+              "unpushable",
+              "noHighScores",
+              "bypassIpBan",
+              "bypassLoginLimits",
+              "dropOnEveryDeath",
+              "bypassChatCooldown",
+              "bypassBroadcastCooldown"
+            ]
+          },
+          false
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-discard",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "staff-name",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "staff-role",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "staff-assign",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "staff-row-role",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "load",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [
+      {
+        "action": "save",
+        "args": [{}]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-discard",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "editor-map",
     "tag": "CANVAS",
     "events": ["pointercancel", "pointerdown", "pointermove", "pointerup"],

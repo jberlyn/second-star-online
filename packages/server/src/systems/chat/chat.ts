@@ -37,6 +37,7 @@ import {
   type ServerMsg,
   sayRefusedInHouse,
   staffChatText,
+  taggedName,
   unknownCommandText,
   whoCountLine,
 } from "@secondstaronline/shared";
@@ -286,7 +287,9 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
         return [{ to: p.id, msg: line(CHAT_TEXT.houseRefused) }, ...rumours()];
       }
       p.chatIn = deps.chatCooldownFrames;
-      const text = cmd.kind === "say" ? formatSay(p.name, cmd.text) : formatEmote(p.name, cmd.text);
+      // The role tag (setting `roleTags`) goes before the name; the ignore lists still go by name.
+      const shown = taggedName(p.name, p.role, world.roleTags);
+      const text = cmd.kind === "say" ? formatSay(shown, cmd.text) : formatEmote(shown, cmd.text);
       const said = toMap(world, p, text);
       const audience = world.rooms.get(p.map.name)?.players ?? [p];
       logChat(world, p, channel, cmd.text, "delivered", p.map.name, {
@@ -312,7 +315,7 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
         logChat(world, p, "broadcast", cmd.text, "jail");
         return [{ to: p.id, msg: line(CHAT_TEXT.jailShout) }];
       }
-      const text = formatBroadcast(p.name, cmd.text);
+      const text = formatBroadcast(taggedName(p.name, p.role, world.roleTags), cmd.text);
       // Each reader's ignore list drops it by the speaker (word 1).
       const out: Outgoing[] = [...world.players.values()]
         .filter((o) => hears(o, p.name))

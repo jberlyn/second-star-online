@@ -1,5 +1,5 @@
 /**
- * Bot script: Alice, an immortal, places Amber, Cril and the Fire God with `/roster` and `/spawn`;
+ * Bot script: Alice, an administrator, places Amber, Cril and the Fire God with `/roster` and `/spawn`;
  * opens Amber's Bio, buys and sells; gets a free Fireball Book; banks with Cril in the roster, and
  * cannot once he is gone; fills and empties her vault; gives Cril gold; trades with Bob, and a
  * second trade ends when Bob leaves; after a relog her gold, bag, bank, vault and Amber's stock are
@@ -84,7 +84,7 @@ describe("NPCs, shops, bank and trade", () => {
     }
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET gold = 1000 WHERE name = 'Alice'");
     place(server.db, "Alice", 6, 6); // the test turns it north after login (face)

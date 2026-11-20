@@ -8,6 +8,7 @@ import { monstersData } from "@secondstaronline/data";
 import { npcFilesData } from "@secondstaronline/data/npcfiles";
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 import {
+  ADMINISTRATOR,
   checkNpcFile,
   editorLines,
   NPC_EDITOR_MONSTERS,
@@ -37,7 +38,7 @@ const casino = { graceTicks: 600, addGoldOffline: () => {} };
 
 const imm = (map: WorldMap, x = 6, y = 6) => {
   const p = player("imm", map, x, y);
-  p.role = "immortal";
+  p.role = ADMINISTRATOR;
   return p;
 };
 
@@ -130,7 +131,7 @@ describe("the NPC file store (packages/data npcfiles)", () => {
 });
 
 describe("opening the editor", () => {
-  test("a player gets nothing; an immortal leaves the map; the World Editor opens from it without leaving again", () => {
+  test("a player gets nothing; an administrator leaves the map; the World Editor opens from it without leaving again", () => {
     const { world, map, p, i } = scene();
     expect(openNpcEditor(world, p, casino)).toEqual([]);
     const out = openNpcEditor(world, i, casino);
@@ -329,7 +330,7 @@ describe("persistence (real SQL)", () => {
       rng: rngByN(),
       minute: () => 0,
     });
-  const makeImmortal = async (g: Game) => {
+  const makeAdministrator = async (g: Game) => {
     await g.create({
       t: "create",
       name: "Al",
@@ -350,13 +351,13 @@ describe("persistence (real SQL)", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(l.characterId);
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-06T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-06T00:00:00.000Z");
     return l.characterId;
   };
 
   test("a save writes the file and its old version and drops the stored ledger; a restart loads it", async () => {
     let g = game();
-    const id = await makeImmortal(g);
+    const id = await makeAdministrator(g);
     g.enter(id, false);
     g.intent(id, { t: "mapReady" });
     // A sale gives Amber a stored ledger first.
@@ -400,8 +401,8 @@ describe("persistence (real SQL)", () => {
 
   test("a player's npcSave is ignored", async () => {
     const g = game();
-    const id = await makeImmortal(g);
-    db.run("UPDATE accounts SET role = 'player'");
+    const id = await makeAdministrator(g);
+    db.run("UPDATE accounts SET role = NULL");
     g.enter(id, false);
     g.intent(id, { t: "mapReady" });
     g.intent(id, { t: "npcEditOpen" });

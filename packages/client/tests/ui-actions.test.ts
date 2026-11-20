@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { blankMap, emptyBag, NO_EQUIPMENT, type ServerMsg } from "@secondstaronline/shared";
+import {
+  ADMINISTRATOR,
+  blankMap,
+  emptyBag,
+  NO_EQUIPMENT,
+  roleToData,
+  type ServerMsg,
+} from "@secondstaronline/shared";
 
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -235,6 +242,14 @@ function buildAll(): HTMLElement[] {
       { key: "f", page: "g", label: "F", tooltip: "", kind: "points", value: [], default: [1] },
     ],
   );
+
+  // The Roles and Staff pages, with a role picked and a staff member listed.
+  const lists = {
+    roles: [{ ...roleToData(ADMINISTRATOR), holders: 1 }],
+    staff: [{ name: "Al", role: "administrator" }],
+  };
+  createSettingsWindow(layer, noop).show([{ id: "r", title: "R", kind: "roles" }], [], lists);
+  createSettingsWindow(layer, noop).show([{ id: "s", title: "S", kind: "staff" }], [], lists);
 
   // The World Editor with a map shown, every panel open; the sign panel in play.
   const editor = createWorldEditor(fakeAssets, noop);

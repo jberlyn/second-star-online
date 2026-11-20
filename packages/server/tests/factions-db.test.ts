@@ -55,11 +55,11 @@ async function makeChar(g: Game, name: string): Promise<string> {
   return l.characterId;
 }
 
-const immortal = (id: string) => {
+const administrator = (id: string) => {
   const acc = db
     .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
     .get(id);
-  setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+  setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
 };
 
 const texts = (to: string) =>
@@ -108,7 +108,7 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
     expect(g.world.questLines[2]).toBe("Water God:Dragon Wing:Fire Key");
     expect(loadQuestLines(db)?.[2]).toBe("Water God:Dragon Wing:Fire Key");
     const id = await makeChar(g, "Al");
-    immortal(id);
+    administrator(id);
     g.enter(id, false);
     g.intent(id, { t: "mapReady" });
     g.intent(id, { t: "chat", text: "/roster 1 Stephie" });
@@ -134,7 +134,7 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
     const g = game();
     const imm = await makeChar(g, "King");
     const bob = await makeChar(g, "Bob");
-    immortal(imm);
+    administrator(imm);
     db.run("UPDATE characters SET wanted = 1 WHERE id = ?", [bob]);
     g.enter(imm, false);
     g.enter(bob, false);

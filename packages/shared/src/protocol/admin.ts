@@ -100,16 +100,62 @@ export const settingsSaveSchema = z.strictObject({
 /** The Server Settings window closes (its close box). */
 export const settingsCloseSchema = z.strictObject({ t: z.literal("settingsClose") });
 
+/** A role as the Roles page sends it (shared `RoleData`; the server checks it with `roleDataError`). */
+const roleDataSchema = z.strictObject({
+  id: z.string().max(40),
+  name: z.string().max(40),
+  rank: z.number().int(),
+  permissions: z.array(z.string().max(40)).max(100),
+});
+
+/**
+ * Roles page → Save: a new role (`create`, refused if the id is taken) or a change to one. Gated by
+ * the `settings` permission and audited.
+ */
+export const roleSaveSchema = z.strictObject({
+  t: z.literal("roleSave"),
+  role: roleDataSchema,
+  create: z.boolean(),
+});
+
+/** Roles page → Delete: its accounts are left with no role. */
+export const roleDeleteSchema = z.strictObject({
+  t: z.literal("roleDelete"),
+  id: z.string().max(40),
+});
+
+/** Staff page: gives a character's account a role, or none (`null`). */
+export const roleAssignSchema = z.strictObject({
+  t: z.literal("roleAssign"),
+  name: z.string().max(40),
+  role: z.string().max(40).nullable(),
+});
+
 /**
  * One page of the Server Settings window's sidebar (server/src/settings.ts `SETTING_PAGES`). The
  * server sends only the pages the player may use. A `rows` page lists the settings whose `page` is its
- * id and is saved on its own; other kinds of page (roles, per-map overrides) will bring their own
- * editor and messages.
+ * id and is saved on its own. The `roles` page edits the role definitions (`roleSave`,
+ * `roleDelete`) and the `staff` page who holds them (`roleAssign`).
  */
 export interface SettingPage {
   id: string;
   title: string;
-  kind: "rows";
+  kind: "rows" | "roles" | "staff";
+}
+
+/** A role on the Roles page, with how many accounts hold it. */
+export interface RoleRow {
+  id: string;
+  name: string;
+  rank: number;
+  permissions: string[];
+  holders: number;
+}
+
+/** A staff account on the Staff page: its character's name and its role's id. */
+export interface StaffRow {
+  name: string;
+  role: string;
 }
 
 /** One row of the Server Settings window (server/src/settings.ts). */
@@ -167,11 +213,22 @@ export type AdminServerMsg =
   | { t: "npcScript"; name: string; text: string }
   /** An NPC editor save changed this NPC's file: its Bio window and shop list close (SSO). */
   | { t: "npcClosed" }
-  /** The Server Settings window: its pages, and every setting with its value. */
-  | { t: "settings"; pages: SettingPage[]; rows: SettingRow[] }
+  /**
+   * The Server Settings window: its pages, every setting with its value, the roles and the staff
+   * who hold them.
+   */
+  | {
+      t: "settings";
+      pages: SettingPage[];
+      rows: SettingRow[];
+      roles: RoleRow[];
+      staff: StaffRow[];
+    }
   /**
    * The Server Settings window's SAVE: applied for everyone online, or refused whole with the
    * setting at fault (`key`, null for an unknown one) and why.
    */
   | { t: "settingsResult"; ok: true }
-  | { t: "settingsResult"; ok: false; key: string | null; text: string };
+  | { t: "settingsResult"; ok: false; key: string | null; text: string }
+  /** A role save, delete or assignment: done (the window's `settings` follows) or refused. */
+  | { t: "roleResult"; ok: boolean; text: string };

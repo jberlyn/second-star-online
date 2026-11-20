@@ -14,25 +14,24 @@ import {
   type NamedRecord,
 } from "@secondstaronline/shared";
 
-import type { Role } from "./accounts.ts";
 import type { Db } from "./database.ts";
 
 interface RecordRow {
   log_id: string;
   actor_id: string;
   actor_name: string;
-  actor_rank: Role;
+  actor_role: string;
   reason: string;
   created_at: string;
   expires_at: string | null;
 }
 
-const RECORD_COLUMNS = "log_id, actor_id, actor_name, actor_rank, reason, created_at, expires_at";
+const RECORD_COLUMNS = "log_id, actor_id, actor_name, actor_role, reason, created_at, expires_at";
 
 const toRecord = (r: RecordRow): ModerationRecord => ({
   actorId: r.actor_id,
   actorName: r.actor_name,
-  actorRank: r.actor_rank,
+  actorRole: r.actor_role,
   reason: r.reason,
   createdAt: r.created_at,
   expiresAt: r.expires_at,
@@ -103,7 +102,7 @@ export function recordModeration(db: Db, e: ModerationEntry): string {
     const replaces = currentLogId(db, e);
     db.query(
       `INSERT INTO moderation_log (id, action, account_id, character_name, ip_key, address,
-         actor_id, actor_name, actor_rank, reason, expires_at, replaces, created_at)
+         actor_id, actor_name, actor_role, reason, expires_at, replaces, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
@@ -114,7 +113,7 @@ export function recordModeration(db: Db, e: ModerationEntry): string {
       e.address ?? null,
       e.actorId,
       e.actorName,
-      e.actorRank,
+      e.actorRole,
       e.reason,
       e.expiresAt,
       replaces,
@@ -124,7 +123,7 @@ export function recordModeration(db: Db, e: ModerationEntry): string {
       id,
       e.actorId,
       e.actorName,
-      e.actorRank,
+      e.actorRole,
       e.reason,
       e.createdAt,
       e.expiresAt,
@@ -261,7 +260,7 @@ export function charactersAt(db: Db, key: string): { name: string; lastSeen: str
 export function activeBans(db: Db, now: string): NamedRecord[] {
   return db
     .query<RecordRow & { name: string }, [string]>(
-      `SELECT c.name, b.log_id, b.actor_id, b.actor_name, b.actor_rank, b.reason, b.created_at,
+      `SELECT c.name, b.log_id, b.actor_id, b.actor_name, b.actor_role, b.reason, b.created_at,
               b.expires_at
        FROM account_bans b JOIN characters c ON c.account_id = b.account_id
        WHERE b.expires_at IS NULL OR b.expires_at > ?
@@ -275,7 +274,7 @@ export function activeBans(db: Db, now: string): NamedRecord[] {
 export function activeJails(db: Db, now: string): NamedRecord[] {
   return db
     .query<RecordRow & { name: string }, [string]>(
-      `SELECT c.name, j.log_id, j.actor_id, j.actor_name, j.actor_rank, j.reason, j.created_at,
+      `SELECT c.name, j.log_id, j.actor_id, j.actor_name, j.actor_role, j.reason, j.created_at,
               j.expires_at
        FROM jails j JOIN characters c ON c.id = j.character_id
        WHERE j.expires_at IS NULL OR j.expires_at > ?
@@ -289,7 +288,7 @@ export function activeJails(db: Db, now: string): NamedRecord[] {
 export function activeMutes(db: Db, now: string): NamedRecord[] {
   return db
     .query<RecordRow & { name: string }, [string]>(
-      `SELECT c.name, m.log_id, m.actor_id, m.actor_name, m.actor_rank, m.reason, m.created_at,
+      `SELECT c.name, m.log_id, m.actor_id, m.actor_name, m.actor_role, m.reason, m.created_at,
               m.expires_at
        FROM mutes m JOIN characters c ON c.account_id = m.account_id
        WHERE m.expires_at IS NULL OR m.expires_at > ?
@@ -304,7 +303,7 @@ export function activeIpBans(db: Db, now: string): (IpBanRecord & { sourceName: 
   return db
     .query<IpRow & { source_name: string | null }, [string]>(
       `SELECT i.ip_key, i.address, i.source_account_id, i.log_id, i.actor_id, i.actor_name,
-              i.actor_rank, i.reason, i.created_at, i.expires_at,
+              i.actor_role, i.reason, i.created_at, i.expires_at,
               (SELECT c.name FROM characters c WHERE c.account_id = i.source_account_id LIMIT 1)
                 AS source_name
        FROM ip_bans i WHERE i.expires_at IS NULL OR i.expires_at > ?
@@ -325,14 +324,14 @@ export function moderationHistory(db: Db, accountId: string, limit: number): Mod
         action: ModerationAction;
         address: string | null;
         actor_name: string;
-        actor_rank: Role;
+        actor_role: string;
         reason: string;
         created_at: string;
         expires_at: string | null;
       },
       [string, number]
     >(
-      `SELECT action, address, actor_name, actor_rank, reason, created_at, expires_at
+      `SELECT action, address, actor_name, actor_role, reason, created_at, expires_at
        FROM moderation_log WHERE account_id = ?
        ORDER BY created_at DESC, id DESC LIMIT ?`,
     )
@@ -342,7 +341,7 @@ export function moderationHistory(db: Db, accountId: string, limit: number): Mod
       action: r.action,
       address: r.address,
       actorName: r.actor_name,
-      actorRank: r.actor_rank,
+      actorRole: r.actor_role,
       reason: r.reason,
       createdAt: r.created_at,
       expiresAt: r.expires_at,
@@ -394,7 +393,7 @@ export function normalizeIpBans(db: Db, now: string): void {
           address: r.address,
           actorId: "system",
           actorName: "system",
-          actorRank: "immortal",
+          actorRole: "System",
           reason: c ? "Same address as another ban" : "Not an address",
           expiresAt: null,
           createdAt: now,

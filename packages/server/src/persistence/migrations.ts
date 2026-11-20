@@ -72,11 +72,20 @@ export function runMigrations(db: Db, migrations: readonly Migration[]): Migrati
     if (rebuild) {
       db.run("PRAGMA foreign_keys = OFF;");
     }
+    // Only rows the rebuild breaks count: a database may already hold orphans it did not make.
+    const violations = () =>
+      new Set(
+        db
+          .query("PRAGMA foreign_key_check")
+          .all()
+          .map((r) => JSON.stringify(r)),
+      );
+    const before = rebuild ? violations() : new Set<string>();
     try {
       db.transaction(() => {
         db.run(m.sql);
         if (rebuild) {
-          const broken = db.query("PRAGMA foreign_key_check").all();
+          const broken = [...violations()].filter((v) => !before.has(v));
           if (broken.length > 0) {
             throw new Error(`${m.name}: foreign key check failed (${broken.length} rows)`);
           }

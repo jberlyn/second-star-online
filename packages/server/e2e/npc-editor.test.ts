@@ -1,5 +1,5 @@
 /**
- * Bot script: Alice, an immortal, puts Amber and a Slime on the seed map; Bob buys 3 Apples from
+ * Bot script: Alice, an administrator, puts Amber and a Slime on the seed map; Bob buys 3 Apples from
  * Amber. Alice opens the NPC editor (Bob sees her leave; Bob cannot open it) and LOADs Amber with
  * the live stock. A save naming an item that does not exist is refused and changes nothing. Her
  * save of Amber's new prices closes Bob's open shop; reopened, it lists the new line and charges
@@ -76,7 +76,7 @@ describe("the NPC editor", () => {
     }
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
     server.db.run("UPDATE characters SET x = 6, y = 4, gold = 1000 WHERE name = 'Bob'");
@@ -111,7 +111,7 @@ describe("the NPC editor", () => {
     expect(goldOf(bob)).toBe(970);
   });
 
-  test("only an immortal opens the NPC editor; Bob sees Alice leave", async () => {
+  test("only an administrator opens the NPC editor; Bob sees Alice leave", async () => {
     bob.clear();
     bob.send({ t: "npcEditOpen" });
     await settle();

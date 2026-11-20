@@ -1,9 +1,9 @@
 /**
- * Bot script: Alice, an immortal, opens the World Editor (Bob sees her leave), paints the seed map,
+ * Bot script: Alice, an administrator, opens the World Editor (Bob sees her leave), paints the seed map,
  * ticks SAFE AREA, writes a sign and a header, places an Exit to x1001y992, a Sign 1 and a Slime,
  * and saves: Bob gets the map again with all of it. She loads x1001y992 (blank), saves it as a new
  * map, and returns to the game where she stood. Bob reads the sign with Ctrl, walks onto the Exit
- * and arrives on x1001y992. A save from a player, or from an immortal outside the editor, is
+ * and arrives on x1001y992. A save from a player, or from an administrator outside the editor, is
  * ignored.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -66,7 +66,7 @@ describe("the World Editor", () => {
     }
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
     server.db.run("UPDATE characters SET x = 9, y = 6 WHERE name = 'Bob'");
@@ -75,11 +75,13 @@ describe("the World Editor", () => {
     await server.stop();
   });
 
-  test("only an immortal opens the editor; Bob sees Alice leave", async () => {
+  test("only an administrator opens the editor; Bob sees Alice leave", async () => {
     alice = await login("Alice");
     bob = await login("Bob");
     face(server, "Bob", "N"); // staging: 1.6 logs in facing south
-    expect(alice.inbox.some((m) => m.t === "role" && m.role === "immortal")).toBe(true);
+    expect(
+      alice.inbox.some((m) => m.t === "permissions" && m.permissions.includes("worldEditor")),
+    ).toBe(true);
     bob.clear();
     bob.send({ t: "editOpen" });
     await settle();

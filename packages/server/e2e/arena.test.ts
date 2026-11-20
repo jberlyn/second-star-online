@@ -1,5 +1,5 @@
 /**
- * Bot script: Alice, an immortal, paints a `6P` patch through the World Editor's SAVE. Before it,
+ * Bot script: Alice, an administrator, paints a `6P` patch through the World Editor's SAVE. Before it,
  * Bob types `Challenge` and is told "This is not an arena!". After it, Bob's `Challenge` is read by
  * both bots as "Bob has entered the arena!" and Alice sees him jump onto a `6P` tile; a second one
  * says "You are already in a battle!!". Bob's `quit` is read by both as "Bob has stopped fighting."
@@ -84,7 +84,7 @@ describe("the arena challenge", () => {
     }
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
     server.db.run("UPDATE characters SET x = 6, y = 4 WHERE name = 'Bob'");

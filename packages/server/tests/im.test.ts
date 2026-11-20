@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
+import { ADMINISTRATOR } from "@secondstaronline/shared";
 
 import { helpLines } from "../src/game.ts";
 import { type ChatDeps, handleChat } from "../src/systems/chat/chat.ts";
@@ -329,11 +330,11 @@ describe("chat rooms", () => {
     expect(bob.room).toBeNull();
   });
 
-  test("divergence: a demoted immortal leaves Admin Chat", () => {
+  test("divergence: a demoted administrator leaves Admin Chat", () => {
     const { world, alice } = scene();
-    alice.role = "immortal";
+    alice.role = ADMINISTRATOR;
     enterRoom(world, alice, "admin");
-    alice.role = "player";
+    alice.role = null;
     roomMembership(world);
     expect(alice.room).toBeNull();
   });

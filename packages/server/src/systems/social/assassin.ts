@@ -46,7 +46,7 @@ export function lightningOn(world: World): boolean {
 }
 
 /**
- * Menu 502's three items; the caller has checked the immortal. Both starts send their lines, clear
+ * Menu 502's three items; the caller has checked the `assassinGame` permission. Both starts send their lines, clear
  * the scores of everyone who scored and the current table, and set the mode; a normal start over a
  * Lightning game ends Lightning, which reading Lightning from the mode does by itself.
  */

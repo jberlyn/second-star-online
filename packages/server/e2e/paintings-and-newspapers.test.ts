@@ -4,7 +4,7 @@
  * Alice, holding a Canvas, a Camera, a Film and a Newspaper Kit, paints (a valid 64×64 PNG, sent as
  * a 16 KB frame the gateway allows only while she holds a canvas) and gets `Painting#<id>`, drops
  * it; Bob, in front of it, clicks it on the ground and sees "Author: Alice" and the picture. Alice equips the Camera,
- * uses Film and saves a photo. King, an immortal, saves a newspaper whose photo 1 is Alice's
+ * uses Film and saves a photo. King, an administrator, saves a newspaper whose photo 1 is Alice's
  * painting and stands `King's Newspaper` on the map by hand (a Kit works only on a `K2` tile, which
  * no shipped map has); Bob, in front of it, reads it with photo 1 and two hidden slots. Alice's Kit off a `K2` tile
  * is refused. Dave, holding nothing, is closed for sending an art-sized frame.
@@ -112,7 +112,7 @@ describe("paintings, photos and newspapers", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
     bob = await login("Bob");
     king = await login("King");

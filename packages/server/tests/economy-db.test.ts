@@ -82,7 +82,7 @@ describe("economy persistence", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(id);
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-05T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-05T00:00:00.000Z");
     db.run("UPDATE characters SET gold = 1000 WHERE id = ?", [id]);
     g.enter(id, false);
     g.intent(id, { t: "mapReady" });
@@ -132,7 +132,7 @@ describe("selling a container", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(id);
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-05T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-05T00:00:00.000Z");
     const inv = loadInventory(db, id);
     inv.bag[0] = { item: "Crate#4242", qty: 1 };
     saveInventory(db, id, inv, "2026-11-05T00:00:00.000Z");

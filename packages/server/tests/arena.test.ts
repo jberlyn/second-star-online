@@ -204,7 +204,7 @@ describe("Challenge and quit", () => {
     const r = checkDeath(s.room, s.bob, s.rng, {
       item: { world: s.world, rng: s.rng, now: 0 },
       rules: DEFAULT_DEATH_DROPS,
-      immortal: false,
+      everyDeath: false,
     });
     expect(r).toMatchObject({ kind: "arena", tile: { x: 2, y: 1 } });
   });

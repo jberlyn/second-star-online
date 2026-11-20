@@ -1,6 +1,6 @@
 /**
  * Assassin's game persistence (real SQL on in-memory SQLite): the game rows (migration
- * 20261107_15) round-trip and survive a restart; the menu message is the immortal's and silent
+ * 20261107_15) round-trip and survive a restart; the menu message is the administrator's and silent
  * to anyone else; `/assassin` is plain chat for everyone; an end writes an offline winner's
  * prize into its stored bag.
  */
@@ -55,11 +55,11 @@ async function makeChar(g: Game, name: string): Promise<string> {
   return l.characterId;
 }
 
-const immortal = (id: string) => {
+const administrator = (id: string) => {
   const acc = db
     .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
     .get(id);
-  setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+  setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
 };
 
 const texts = (to: string) =>
@@ -85,11 +85,11 @@ describe("Assassin's game rows (migration 20261107_15)", () => {
     expect(game().world.assassin).toEqual(s);
   });
 
-  test("the menu message: an immortal starts a game, written at once; anyone else is silent and logged", async () => {
+  test("the menu message: an administrator starts a game, written at once; anyone else is silent and logged", async () => {
     const g = game();
     const imm = await makeChar(g, "King");
     const bob = await makeChar(g, "Bob");
-    immortal(imm);
+    administrator(imm);
     g.enter(imm, false);
     g.enter(bob, false);
     sent = [];
@@ -104,11 +104,11 @@ describe("Assassin's game rows (migration 20261107_15)", () => {
     expect(loadAssassinState(db).mode).toBe("LIGHTNING");
   });
 
-  test("SSO: '/assassin end' from an immortal is an unknown command: it is gone, the Admin menu's End Assassin's Game is the way", async () => {
+  test("SSO: '/assassin end' from an administrator is an unknown command: it is gone, the Admin menu's End Assassin's Game is the way", async () => {
     const g = game();
     const imm = await makeChar(g, "King");
     const bob = await makeChar(g, "Bob");
-    immortal(imm);
+    administrator(imm);
     g.enter(imm, false);
     g.enter(bob, false);
     g.intent(imm, { t: "mapReady" });
@@ -126,7 +126,7 @@ describe("Assassin's game rows (migration 20261107_15)", () => {
     const g = game();
     const imm = await makeChar(g, "King");
     const al = await makeChar(g, "Al");
-    immortal(imm);
+    administrator(imm);
     g.enter(imm, false);
     g.intent(imm, { t: "assassinGame", mode: "GO" });
     g.world.assassin.current = [{ id: al, name: "Al", points: 10 }];

@@ -1,7 +1,7 @@
 /**
  * The menu bar above the stage, regrouped from 1.6's menus 500 and 502 by what each item is for.
  *
- * 1.6 had File, Edit, Game and Plugins, plus Admin for an immortal. SSO's bar is Game (your
+ * 1.6 had File, Edit, Game and Plugins, plus Admin for an immortal (1.6's staff). SSO's bar is Game (your
  * character and the people you know), Chat (rooms), Admin for staff with tools (tools and events) and
  * Options (browser preferences). Quit Game is dropped (a page cannot close its tab) and so is
  * Plugins. Admin Chat sits with the other rooms, shown only to a role that may use it.

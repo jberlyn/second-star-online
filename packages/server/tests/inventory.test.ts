@@ -5,9 +5,11 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  ADMINISTRATOR,
   DEFAULT_DEATH_DROPS,
   type DeathDropRules,
   type DeltaEvent,
+  MODERATOR,
   NO_EQUIPMENT,
   PICKUP_TEXT,
   type ServerMsg,
@@ -824,11 +826,11 @@ describe("PvP melee", () => {
     expect(slot.live?.hp).toBeLessThan(50);
     expect(b.char.vitals.hp).toBeLessThan(20);
   });
-  test("bug fixed: immortals take no PvP damage", () => {
+  test("bug fixed: administrators take no PvP damage", () => {
     const s = scene({ 90: [2] });
     const a = s.join("A", 5, 5);
     const b = s.join("B", 5, 4);
-    b.role = "immortal";
+    b.role = ADMINISTRATOR;
     b.char.skills = Array(38).fill(0);
     setAttackHeld(a, true);
     const out = s.run(1);
@@ -924,11 +926,11 @@ describe("the death drop settings", () => {
     s.run(1);
     expect(groundAt(s.map, 9, 9)).toEqual([]);
   });
-  test("an immortal drops on any death, whatever the setting", () => {
+  test("an administrator drops on any death, whatever the setting", () => {
     const s = scene({ 2: [1] });
     s.deps.deathDrops = { ...DEFAULT_DEATH_DROPS, who: "off", minLevel: 50 };
     const a = s.join("A", 5, 5);
-    a.role = "immortal";
+    a.role = ADMINISTRATOR;
     give(a, 1, "Apple", 1);
     a.char.vitals.hp = 0;
     s.run(1);
@@ -962,19 +964,19 @@ describe("the death gold drop", () => {
 });
 
 describe("/drop", () => {
-  test("only immortals drop items or gold; moderators and players do nothing", () => {
+  test("only administrators drop items or gold; moderators and players do nothing", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
     expect(handleDrop(s.ctx(), s.room(), a, "Long Sword")).toEqual([]);
-    // Item and gold creation stays immortal-only, count or not.
-    a.role = "moderator";
+    // Item and gold creation stays administrator-only, count or not.
+    a.role = MODERATOR;
     expect(handleDrop(s.ctx(), s.room(), a, "Apple")).toEqual([]);
     expect(handleDrop(s.ctx(), s.room(), a, "50 gold")).toEqual([]);
     expect(handleDrop(s.ctx(), s.room(), a, "20 Apple")).toEqual([]);
     expect(groundAt(s.map, 6, 5)).toEqual([]);
     a.facing = "S";
-    a.role = "immortal";
+    a.role = ADMINISTRATOR;
     handleDrop(s.ctx(), s.room(), a, "Long Sword");
     expect(groundAt(s.map, 5, 6)).toEqual(["Long Sword"]);
     expect(handleDrop(s.ctx(), s.room(), a, "Sword of Bob")).toEqual([
@@ -1021,7 +1023,7 @@ describe("/drop names", () => {
   test("/drop Blue Crystal shows the alert; /drop 50 Blue Crystals picks up as 50", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
-    a.role = "immortal";
+    a.role = ADMINISTRATOR;
     a.facing = "E";
     expect(handleDrop(s.ctx(), s.room(), a, "Blue Crystal")).toEqual([
       { to: "A", msg: { t: "alert", text: NO_SUCH_ITEM } },
@@ -1035,7 +1037,7 @@ describe("/drop names", () => {
   test("/drop 20 Apple is one pile that adds 20 to the stack", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
-    a.role = "immortal";
+    a.role = ADMINISTRATOR;
     a.facing = "E";
     give(a, 1, "Apple", 3);
     handleDrop(s.ctx(), s.room(), a, "20 Apple");

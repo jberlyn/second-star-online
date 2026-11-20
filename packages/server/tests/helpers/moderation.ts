@@ -41,7 +41,7 @@ export function fakeModeration(nameOf: (accountId: string) => string) {
   const rec = (e: ModerationEntry): ModerationRecord => ({
     actorId: e.actorId,
     actorName: e.actorName,
-    actorRank: e.actorRank,
+    actorRole: e.actorRole,
     reason: e.reason,
     createdAt: e.createdAt,
     expiresAt: e.expiresAt,
@@ -109,7 +109,7 @@ export function fakeModeration(nameOf: (accountId: string) => string) {
           action: e.action,
           address: e.address ?? null,
           actorName: e.actorName,
-          actorRank: e.actorRank,
+          actorRole: e.actorRole,
           reason: e.reason,
           createdAt: e.createdAt,
           expiresAt: e.expiresAt,

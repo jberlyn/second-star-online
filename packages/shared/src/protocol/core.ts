@@ -73,7 +73,7 @@ export const mapReadySchema = z.strictObject({ t: z.literal("mapReady") });
 export const logoutSchema = z.strictObject({ t: z.literal("logout") });
 
 /**
- * Upper bound on an in-game frame from an immortal: a whole map save (four layers, three signs, the
+ * Upper bound on an in-game frame from a World Editor user: a whole map save (four layers, three signs, the
  * header) is about 7 KB; an NPC file is at most 100 lines of 255 characters. Not a game rule.
  */
 export const EDITOR_MESSAGE_BYTES = 32_768;
@@ -384,10 +384,11 @@ export type CoreServerMsg =
    */
   | { t: "sign"; n: 1 | 2 | 3 }
   /**
-   * Your account role, sent on entering the world: an immortal gets the Admin menu (menu 502,
-   * `installMenu(502)` when the immortal flag is set).
+   * Your role's permissions, sent on entering the world and whenever your role or its definition
+   * changes: they decide which menus show (1.6 installed the Admin menu, 502, for an immortal).
+   * The server still checks every request.
    */
-  | { t: "role"; role: "player" | "moderator" | "immortal" }
+  | { t: "permissions"; permissions: string[] }
   /** A message box (`alert`), e.g. "Map has been successfully saved!" */
   | { t: "alert"; text: string }
   /**

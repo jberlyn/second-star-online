@@ -260,7 +260,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
             const o = monsterAttack(map, slot, p, {
               rng,
               npcs: room.npcs,
-              immortal: isInvulnerable,
+              invulnerable: isInvulnerable,
             });
             if (o) {
               all({ e: "phit", id: o.victim.id, text: o.text, color: o.color, splat: o.splat });
@@ -440,7 +440,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       const death = checkDeath(room, p, rng, {
         item: itemCtx,
         rules: deps.deathDrops ?? DEFAULT_DEATH_DROPS,
-        immortal: can(p.role, "dropOnEveryDeath"),
+        everyDeath: can(p.role, "dropOnEveryDeath"),
         lightningGame: lightningOn(world),
       });
       if (death.kind === "death") {

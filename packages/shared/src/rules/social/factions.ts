@@ -286,12 +286,12 @@ export function wantedLine(victim: string): string {
   return fill(socialData.murder.wanted.text, { NAME: victim });
 }
 
-/** The pardon line to the pardoned, naming the immortal. */
-export function pardonedLine(immortal: string): string {
-  return fill(socialData.murder.pardoned.text, { NAME: immortal });
+/** The pardon line to the pardoned, naming the staff member (1.6: the immortal). */
+export function pardonedLine(staff: string): string {
+  return fill(socialData.murder.pardoned.text, { NAME: staff });
 }
 
-/** "Pardoning <name>..." to the immortal. */
+/** "Pardoning <name>..." to the staff member. */
 export function pardoningLine(name: string): string {
   return fill(socialData.murder.pardoning.text, { NAME: name });
 }

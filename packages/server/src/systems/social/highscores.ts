@@ -7,7 +7,7 @@ import { can, highScorePoints, rankHighScore, SCORES_SIZE } from "@secondstaronl
 import type { Player, World } from "../world/world.ts";
 
 /**
- * The high-score check on a save tick: immortals send nothing; a ranked score replaces the table.
+ * The high-score check on a save tick: a role with `noHighScores` sends nothing; a ranked score replaces the table.
  * There is no upper limit, so a server that raises skill caps sees it in the scores (1.6 skipped
  * scores of five digits or more).
  */

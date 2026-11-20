@@ -1,5 +1,5 @@
 /**
- * Bot script: an immortal sets the roster, a Slime spawns, a fighter kills it bare-handed for XP, a
+ * Bot script: an administrator sets the roster, a Slime spawns, a fighter kills it bare-handed for XP, a
  * Slime kills a second bot, everyone sees the death line, the victim respawns, and after a relog
  * and a server restart the XP, the vitals and a damaged monster are all still there.
  *
@@ -93,7 +93,7 @@ describe("monsters, melee and XP", () => {
     const acc = server.db.query<{ id: string }, [string]>(
       "SELECT id FROM accounts WHERE username = ?",
     );
-    setRole(server.db, acc.get("Gm")?.id ?? "", "immortal", NOW);
+    setRole(server.db, acc.get("Gm")?.id ?? "", "administrator", NOW);
     place(server.db, "Gm", 2, 11);
     place(server.db, "Fighter", 6, 4); // the test turns it north after login (face)
     place(server.db, "Victim", 14, 11);
@@ -103,7 +103,7 @@ describe("monsters, melee and XP", () => {
     await Bun.file(dbPath).delete();
   });
 
-  test("an immortal lists and sets the roster; a player's /roster is an unknown command", async () => {
+  test("an administrator lists and sets the roster; a player's /roster is an unknown command", async () => {
     gm = await login("Gm");
     fighter = await login("Fighter");
     face(server, "Fighter", "N"); // staging: 1.6 logs in facing south

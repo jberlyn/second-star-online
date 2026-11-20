@@ -117,16 +117,16 @@ export const HUNGER_WARNINGS: Readonly<Record<number, string>> = {
 };
 
 /**
- * One frame of hunger: unless immortal, `random(3) = 1` and Hunger > 0 takes 1; a warning prints on
+ * One frame of hunger: unless the role never gets hungry (1.6: an immortal), `random(3) = 1` and Hunger > 0 takes 1; a warning prints on
  * the frame Hunger drops onto its value (a bug fixed: 1.6 printed it on every frame Hunger sat on
  * the value, about three times).
  */
 export function hungerTick(
   hunger: number,
-  immortal: boolean,
+  noHunger: boolean,
   rng: Rng,
 ): { hunger: number; warning: string | null } {
-  if (immortal) {
+  if (noHunger) {
     return { hunger, warning: null };
   }
   let h = hunger;

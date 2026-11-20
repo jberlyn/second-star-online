@@ -4,7 +4,6 @@
  */
 import { type AuditTrailRow, MODERATION_COMMANDS } from "@secondstaronline/shared";
 
-import type { Role } from "./accounts.ts";
 import type { Db } from "./database.ts";
 
 /** A character with its account, by name ignoring case (names are unique, NOCASE). */
@@ -12,14 +11,21 @@ export interface CharacterAccount {
   characterId: string;
   accountId: string;
   name: string;
-  role: Role;
+  /** The account's role id, or null. */
+  roleId: string | null;
   classCode: number;
 }
 
 export function findCharacterAccount(db: Db, name: string): CharacterAccount | null {
   const row = db
     .query<
-      { character_id: string; account_id: string; name: string; role: Role; class_code: number },
+      {
+        character_id: string;
+        account_id: string;
+        name: string;
+        role: string | null;
+        class_code: number;
+      },
       [string]
     >(
       `SELECT c.id AS character_id, a.id AS account_id, c.name, a.role, c.class_code
@@ -33,7 +39,7 @@ export function findCharacterAccount(db: Db, name: string): CharacterAccount | n
         characterId: row.character_id,
         accountId: row.account_id,
         name: row.name,
-        role: row.role,
+        roleId: row.role,
         classCode: row.class_code,
       }
     : null;

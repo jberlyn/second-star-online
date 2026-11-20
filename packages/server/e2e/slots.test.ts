@@ -1,7 +1,7 @@
 /**
  * Bot script: slots and high scores.
  *
- * King, an immortal, stands a Slot Machine and a High Score Statue on the map by hand (no shipped
+ * King, an administrator, stands a Slot Machine and a High Score Statue on the map by hand (no shipped
  * map places either). Alice is refused facing E, then opens the panel from the tile south facing
  * N, cannot walk, pulls (Bob sees the Slot Machine FX), gets her result 30 ticks later with her
  * gold changed by the table, closes and walks. With 3 gold she pulls and the panel closes with the
@@ -98,7 +98,7 @@ describe("slots and high scores", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
     bob = await login("Bob");
     king = await login("King");

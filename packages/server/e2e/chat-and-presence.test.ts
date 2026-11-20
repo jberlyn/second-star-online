@@ -224,7 +224,7 @@ describe("chat, help, who, pushing and presence", () => {
     await tick(16);
   });
 
-  test("logoff and logon reach the others as presence events; an immortal is never pushed", async () => {
+  test("logoff and logon reach the others as presence events; an administrator is never pushed", async () => {
     clearAll();
     bob.send({ t: "logout" });
     await bob.closed;
@@ -235,7 +235,7 @@ describe("chat, help, who, pushing and presence", () => {
     const account = server.db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE name = ?")
       .get("Bob");
-    setRole(server.db, account?.account_id ?? "", "immortal", NOW);
+    setRole(server.db, account?.account_id ?? "", "administrator", NOW);
     bob = await login(server, "Bob");
     expect(alice.inbox.filter((m) => m.t === "presence").at(-1)).toEqual({
       t: "presence",

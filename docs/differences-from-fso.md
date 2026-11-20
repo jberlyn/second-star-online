@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 61 |
+| [Design changes](#design-changes) | 62 |
 | [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **533** |
+| **Total** | **534** |
 
 By system (the code folder that holds the change):
 
@@ -148,12 +148,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### High scores have no upper limit
 - **Kind:** Limit lifted
-- **What you notice:** Every player's score can reach the High Score Statue, however large. Immortals are still left off.
+- **What you notice:** Every player's score can reach the High Score Statue, however large. Administrators are still left off.
 - **1.6:** A score of five digits or more was never submitted.
 - **SSO:** No limit. A legitimate character can't come near 10,000 with the shipped caps, so this changes nothing on a stock server; on a server whose operator raises skill levels or caps, the board shows the higher scores.
 - **Why:** The limit only guarded against edited characters, which the server's own score makes impossible, and it would hide the best players on a server with higher caps.
 - **In the code:** `packages/server/src/systems/social/highscores.ts` (`submitHighScore`), `packages/shared/src/rules/social/highscores.ts` (`highScorePoints`)
-- **Pinned by:** `no cap: a five-digit score counts` (packages/shared/tests/social/highscores.test.ts); `submitted on the save tick only; immortals skipped; five-digit scores count` (packages/server/tests/highscores.test.ts)
+- **Pinned by:** `no cap: a five-digit score counts` (packages/shared/tests/social/highscores.test.ts); `submitted on the save tick only; administrators skipped; five-digit scores count` (packages/server/tests/highscores.test.ts)
 
 ### World content and operator tools
 
@@ -168,23 +168,23 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Roster chat commands for operators
 - **Kind:** World content
-- **What you notice:** An immortal can inspect or change the four monster roster slots with `/roster`; the World Editor can also set them.
+- **What you notice:** An administrator can inspect or change the four monster roster slots with `/roster`; the World Editor can also set them.
 - **1.6:** A GM placed up to four monsters with the World Editor; there was no roster chat command.
-- **SSO:** `/roster` lists the roster, `/roster <1-4> <species>` sets a slot and `/roster <1-4> clear` clears it. For anyone else they are an unknown command. The command remains useful for species the editor's lists do not offer; a slot set through it has no editor tile and appears on row 1 under its slot number. The first immortal comes from `bun run admin:role`.
+- **SSO:** `/roster` lists the roster, `/roster <1-4> <species>` sets a slot and `/roster <1-4> clear` clears it. For anyone else they are an unknown command. The command remains useful for species the editor's lists do not offer; a slot set through it has no editor tile and appears on row 1 under its slot number. The first administrator comes from `bun run admin:role`.
 - **Why:** Operators needed a way to place monsters before the editor existed.
 - **In the code:** `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
 
 #### Spawn chat command for operators
 - **Kind:** World content
-- **What you notice:** An immortal can spawn a roster slot's species immediately on the faced tile with `/spawn <1-4>`.
+- **What you notice:** An administrator can spawn a roster slot's species immediately on the faced tile with `/spawn <1-4>`.
 - **1.6:** There was no spawn command. NPCs in a roster spawned at one thirtieth of a monster's rate, taking about ten minutes on average for a player alone on the map.
-- **SSO:** The command reports “Spawned a <name> in roster slot <n>.” For anyone other than an immortal it is an unknown command.
+- **SSO:** The command reports “Spawned a <name> in roster slot <n>.” For anyone other than an administrator it is an unknown command.
 - **Why:** Operators needed a way to place shopkeepers and bankers before the NPC editor existed.
 - **In the code:** `packages/server/src/systems/admin/spawn.ts` (`handleSpawn`)
 
-#### Immortal /drop takes a count
+#### Staff /drop takes a count
 - **Kind:** World content
-- **What you notice:** An immortal can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
+- **What you notice:** An administrator can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
 - **1.6:** `/drop` put one name on the ground. Gold and crystal piles carried a count; another pile gave one item. A bare dropped crystal name parsed into a useless quantity and item name.
 - **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several gives each container its own line and ID (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)). A bare crystal name is a pile of one; the World Editor shows and saves the count.
 - **Why:** Operators can stock the world without dropping items one at a time, and bare crystal piles work.
@@ -304,12 +304,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### In-game menu
 - **Kind:** Platform
-- **What you notice:** The game has a Windows-style menu above the game, with Game, Chat and Options, plus Admin for immortals. The items are regrouped by what they are for, and there is no Quit Game.
+- **What you notice:** The game has a Windows-style menu above the game, with Game, Chat and Options, plus Admin for administrators. The items are regrouped by what they are for, and there is no Quit Game.
 - **1.6:** The projector had a native Windows menu above the stage from program start, with File, Edit, Game and Plugins. Immortals received an Admin menu. Return To Title Screen and Quit were in File; preferences were on the title-screen Game Setup.
-- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Send Instant Message, Edit Newspaper and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an immortal, then Clear Chat Text. Admin, for an immortal, sits between Chat and Options and contains World Editor, NPC Editor, Return To Game, Server Settings and three Assassin commands, which are sent without confirmation. Options adds Sharp Pixels Only and Sound Effects. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Options alone, and the login and creation screens add Game with Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
+- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Send Instant Message, Edit Newspaper and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an administrator, then Clear Chat Text. Admin, for an administrator, sits between Chat and Options and contains World Editor, NPC Editor, Return To Game, Server Settings and three Assassin commands, which are sent without confirmation. Options adds Sharp Pixels Only and Sound Effects. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Options alone, and the login and creation screens add Game with Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
 - **Why:** Browser scaling and logout need controls. A page cannot close its own tab, so Quit Game could only log out to a screen asking the player to close it, which Return To Title Screen and the tab's own close button already cover. With Quit Game gone, File and Edit would each hold a single item, so the items are grouped by purpose: chat rooms (including Admin Chat) together, and Admin keeping only tools and events. Server Settings is named for what it changes. Items that need a character are hidden rather than greyed before entry, so the title screen offers nothing that cannot work there.
 - **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
-- **Pinned by:** `no menu offers Quit Game: a page cannot close its own tab`, `an immortal gets Admin between Chat and Options, and Admin Chat among the rooms`, `out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
+- **Pinned by:** `no menu offers Quit Game: a page cannot close its own tab`, `an administrator gets Admin between Chat and Options, and Admin Chat among the rooms`, `out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
 
 #### Scroll bars appear only when there is text to scroll
 - **Kind:** Platform
@@ -478,14 +478,23 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 ### Other design changes
 
+#### Staff can wear their role in chat
+- **Kind:** Other
+- **What you notice:** With the Role tags setting on, a staff member's lines show their role's name before their name, such as `[Admin] Berlyn says "hi"`, in local chat, `/me`, broadcasts, chat rooms, guild chat and staff chat. Players' lines are unchanged. It is off by default.
+- **1.6:** Nothing in chat showed who was staff.
+- **SSO:** `taggedName` puts the role's display name in brackets before the speaker's name when the `roleTags` setting is on. IMs keep the plain name, because it is where a reply goes, and ignore lists still match the plain name.
+- **Why:** Players can tell staff from impostors when the operator wants them to.
+- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`taggedName`), `packages/server/src/systems/chat/chat.ts` (`handleChat`)
+- **Pinned by:** `role tags: off by default; on, staff speak as [Role] Name and players as themselves` (packages/server/tests/roles.test.ts); `the tag is the role's name, only when the setting is on and the speaker has a role` (packages/shared/tests/admin/permissions.test.ts)
+
 #### Moderators play by the same rules as players
 - **Kind:** Other
-- **What you notice:** A moderator moderates other players but gets no advantage in play: `/warp`, `/warptome`, `/warpmeto` and `/warpscript` are unknown commands to them, and they cannot pardon themselves. An immortal can still warp and pardon anyone, themselves included.
+- **What you notice:** A moderator moderates other players but gets no advantage in play: `/warp`, `/warptome`, `/warpmeto` and `/warpscript` are unknown commands to them, and they cannot pardon themselves. An administrator can still warp and pardon anyone, themselves included.
 - **1.6:** Moderators could warp themselves anywhere, pull players to them, follow a friend with `/warpmeto` and clear their own murder flag with `/pardon`.
-- **SSO:** Each role is a set of permissions (`BUILTIN_ROLES`). The moderator's leaves out the warps, and pardoning or warping yourself needs its own permission (`pardonSelf`, `warpSelf`) that only immortals hold. Moderators keep one exemption: the per-address login limit never refuses them, so staff behind a shared address can still log in during a flood of bad logins.
+- **SSO:** Each role is a set of permissions (`DEFAULT_ROLES` are the ones a new server starts with). The default moderator's leaves out the warps, and pardoning or warping yourself needs its own permission (`pardonSelf`, `warpSelf`) that only administrators hold by default. Moderators keep one exemption: the per-address login limit never refuses them, so staff behind a shared address can still log in during a flood of bad logins.
 - **Why:** Moderators are players who moderate. Warps and self-pardons let them travel or escape the murder penalty in a way other players cannot.
-- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`BUILTIN_ROLES`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
-- **Pinned by:** `a moderator has no tools or gameplay exemptions except the login-limit bypass` (packages/shared/tests/admin/permissions.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `divergence: /warpscript is an unknown command to players and moderators; immortals set it`, `divergence: a moderator cannot pardon or warp themselves; an immortal can` (packages/server/tests/admin.test.ts)
+- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`DEFAULT_ROLES`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `a moderator has no tools or gameplay exemptions except the login-limit bypass` (packages/shared/tests/admin/permissions.test.ts); `a moderator may run the moderation commands, but not IP bans or /setclass`, `divergence: /warpscript is an unknown command to players and moderators; administrators set it`, `divergence: a moderator cannot pardon or warp themselves; an administrator can` (packages/server/tests/admin.test.ts)
 
 #### Mutes
 - **Kind:** Other
@@ -494,7 +503,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A mute is stored on the account like a ban and runs in real time like a sentence, offline too; it follows the same rank and ownership rules as bans and jails (`mayTarget`, `mayChange`), and `/banlist` lists it. Every way of talking asks `silenced` first.
 - **Why:** Spam and abuse in chat call for something lighter than a ban that still stops it at once.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`mute`, `unmute`), `packages/server/src/systems/chat/speech.ts` (`silenced`), `packages/server/src/systems/world/tick.ts` (`muteTick`), `packages/server/src/persistence/moderation.ts` (`accountMute`)
-- **Pinned by:** `SSO: /mute silences a player everywhere but IMs to staff, until it lapses`, `only the staff member who muted, or an immortal, changes or lifts a mute; staff are out of reach`, `an offline account can be muted; /banlist shows mutes; players cannot /mute` (packages/server/tests/admin.test.ts); `mutes and unmutes come from the moderation log, once each, with their reasons` (packages/server/tests/auditlog.test.ts); `a mute survives logout and restart and is told at login; one that ends offline is gone` (packages/server/tests/moderation-db.test.ts)
+- **Pinned by:** `SSO: /mute silences a player everywhere but IMs to staff, until it lapses`, `only the staff member who muted, or an administrator, changes or lifts a mute; staff are out of reach`, `an offline account can be muted; /banlist shows mutes; players cannot /mute` (packages/server/tests/admin.test.ts); `mutes and unmutes come from the moderation log, once each, with their reasons` (packages/server/tests/auditlog.test.ts); `a mute survives logout and restart and is told at login; one that ends offline is gone` (packages/server/tests/moderation-db.test.ts)
 
 #### Prisoners are told their sentence and talk only nearby
 - **Kind:** Other
@@ -505,14 +514,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/chat/speech.ts` (`silenced`), `packages/server/src/systems/admin/commands.ts` (`jail`)
 - **Pinned by:** `divergence: a prisoner is told the sentence, talks only on the jail map, and may IM staff` (packages/server/tests/admin.test.ts); `a prisoner is told the sentence at login` (packages/server/tests/moderation-db.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
 
-#### Immortals skip the chat and broadcast waits
+#### Administrators skip the chat and broadcast waits
 - **Kind:** Other
-- **What you notice:** An immortal can talk, IM, post and broadcast without waiting for the chat or broadcast cooldown. Everyone else, moderators included, waits as before.
+- **What you notice:** An administrator can talk, IM, post and broadcast without waiting for the chat or broadcast cooldown. Everyone else, moderators included, waits as before.
 - **1.6:** The waits applied to everyone, so an operator making announcements waited 50 seconds between broadcasts.
 - **SSO:** `chatWait` and `broadcastWait` read 0 for a role with `bypassChatCooldown` or `bypassBroadcastCooldown`.
 - **Why:** The waits stop players flooding chat; operators making announcements or answering many players at once are not the problem they solve.
 - **In the code:** `packages/server/src/systems/chat/speech.ts` (`chatWait`, `broadcastWait`)
-- **Pinned by:** `divergence: an immortal skips the chat and broadcast cooldowns; everyone else waits` (packages/server/tests/admin.test.ts); `delivered to the room, refused by the cooldown, and out of a room; an immortal skips the cooldown` (packages/server/tests/chatlog.test.ts)
+- **Pinned by:** `divergence: an administrator skips the chat and broadcast cooldowns; everyone else waits` (packages/server/tests/admin.test.ts); `delivered to the room, refused by the cooldown, and out of a room; an administrator skips the cooldown` (packages/server/tests/chatlog.test.ts)
 
 #### The fishing allowance belongs to the tile you fish from
 - **Kind:** Other
@@ -634,7 +643,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Other
 - **What you notice:** By default a death drops nothing from your bag or purse unless you are wanted for murder. A wanted character's death drops some of their gold (up to all of it) or one random bag item, never crystals, where they died. An operator can instead make every death drop, as in 1.6, only deaths at another player's hands, or none at all, and can set what drops, a gold cap and a level below which nothing drops. A faction member killed on a PvP map still drops their faction's head.
 - **1.6:** With "Chars Drop Items On Death" on (the default), every death outside an arena dropped either up to 200 gold (any amount if wanted) or a random bag item. Off dropped nothing, and immortals always dropped.
-- **SSO:** Four settings on the Items page replace the on/off one. "Drops on death" (`deathDrops`) is Off, Wanted only (the default), Killed by a player (the last hit credited to another player, or wanted) or Everyone. "What drops on death" (`deathDropKind`) is gold or an item (1.6's coin toss), gold only or items only. "Most gold dropped on death" (`deathDropGoldCap`, 200) caps a death's gold unless wanted, redrawn as in 1.6; 0 is no cap. "No drops below level" (`deathDropMinLevel`, 0) protects characters below that level unless wanted. An immortal drops on every death, whatever the settings. Dying aboard an airship, and every death in a Lightning game, still drops nothing. A server that had turned drops off is set to Off on upgrade.
+- **SSO:** Four settings on the Items page replace the on/off one. "Drops on death" (`deathDrops`) is Off, Wanted only (the default), Killed by a player (the last hit credited to another player, or wanted) or Everyone. "What drops on death" (`deathDropKind`) is gold or an item (1.6's coin toss), gold only or items only. "Most gold dropped on death" (`deathDropGoldCap`, 200) caps a death's gold unless wanted, redrawn as in 1.6; 0 is no cap. "No drops below level" (`deathDropMinLevel`, 0) protects characters below that level unless wanted. An administrator drops on every death, whatever the settings. Dying aboard an airship, and every death in a Lightning game, still drops nothing. A server that had turned drops off is set to Off on upgrade.
 - **Why:** Losing gear to a monster punishes players who only fight monsters, for no gain, so the default keeps the drop where it is earned: on a murderer's death. Servers differ in how harsh they want death to be, so the operator chooses, from 1.6's rules to none.
 - **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`dropsOnDeath`, `rollDeathDrop`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/settings.ts` (`deathDropRules`), `packages/server/migrations/20261119_40_death_drop_settings.sql`
 - **Pinned by:** `divergence: whose deaths drop: off, wanted only (the default), killed by a player, everyone`; `divergence: below the protected level nothing drops, unless wanted`; `divergence: what drops: gold only, or items only, with no coin toss`; `gold over the cap is redrawn as random(cap), unless wanted or the cap is 0` (packages/shared/tests/inventory/inventory.test.ts); `divergence: a death that is not wanted drops nothing, gold or items`; `divergence: Killed by a player drops on a player's kill, not a monster's`; `divergence: Everyone drops on any death; Off drops nothing, even when wanted` (packages/server/tests/inventory.test.ts); `divergence: death_drop_settings turns Drops on death off where drops were off` (packages/server/tests/migrations.test.ts); `a choice is a list of its labels; Save sends the value and Reset names the default` (packages/client/tests/settings.test.ts)
@@ -665,12 +674,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Moderators share the original moderation commands and staff chat
 - **Kind:** Bug fixed
-- **What you notice:** Moderators can use `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute` and `/pardon` on players, `/banlist`, `/Inventory`, `/save`, `/Refresh`, and `-text` staff chat, in addition to kick, IP lookup, and location. `/BanIP`, `/unbanip`, `/CheatFile`, `/chatlog`, `/auditlog`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, the warps and editors remain immortal-only, and moderators still cannot act on immortals. (Moderators lost the warps on purpose: see [Moderators play by the same rules as players](#moderators-play-by-the-same-rules-as-players).)
+- **What you notice:** Moderators can use `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute` and `/pardon` on players, `/banlist`, `/Inventory`, `/save`, `/Refresh`, and `-text` staff chat, in addition to kick, IP lookup, and location. `/BanIP`, `/unbanip`, `/CheatFile`, `/chatlog`, `/auditlog`, `/drop`, `/setclass`, `/roster`, `/spawn`, the warps and editors are administrators' by default, and moderators still cannot act on administrators. (Moderators lost the warps on purpose: see [Moderators play by the same rules as players](#moderators-play-by-the-same-rules-as-players).)
 - **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
-- **SSO:** `BUILTIN_ROLES` grants moderators the moderation command set and `isStaff` gives them staff chat, while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: the moderator's permissions leave out `drop` and `banip`, and `/unban` lifts only a ban the moderator made (`mayChange`).
-- **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an immortal's ban.
-- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`BUILTIN_ROLES`, `can`, `isStaff`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `staffChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
-- **Pinned by:** `moderators keep the moderation commands; IP bans, warps, /role, /setclass and /cheatfile stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
+- **SSO:** The default `MODERATOR` role grants the moderation command set and `isStaff` gives them staff chat, while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: the moderator's permissions leave out `drop` and `banip`, and `/unban` lifts only a ban the moderator made (`mayChange`).
+- **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an administrator's ban.
+- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`MODERATOR`, `can`, `isStaff`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `staffChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
+- **Pinned by:** `moderators keep the moderation commands; IP bans, warps, /setclass and /cheatfile are administrators'` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans or /setclass`, `SSO: a moderator may not lift a ban an administrator made`, `a moderator cannot lift a ban an administrator made` (packages/server/tests/admin.test.ts); `only administrators drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
 
 #### World editor Fat brush reaches the full 17 × 12 map
 - **Kind:** Bug fixed
@@ -728,12 +737,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Staff chat uses a dedicated channel without muffling or ignore filtering
 - **Kind:** Bug fixed
-- **What you notice:** Staff chat (`-text`) renders in a distinct green colour (`CHAT_COLOR.staff`) as `<... Name tells the staff "text"`, reaches only staff (immortals and moderators), works from anywhere inside houses, and is never muffled or dropped by ignore lists.
+- **What you notice:** Staff chat (`-text`) renders in a distinct green colour (`CHAT_COLOR.staff`) as `<... Name tells the staff "text"`, reaches only staff (administrators and moderators), works from anywhere inside houses, and is never muffled or dropped by ignore lists.
 - **1.6:** The channel was called admin chat and its lines read `<... Name tells the admins "text"`. It used an ordinary local-chat `sqa` message, so it appeared white, failed below row 7 in houses, muffled below row 10, and was dropped by ignore lists.
-- **SSO:** `staffChat` sends directly to all online staff in `CHAT_COLOR.staff` without house restrictions, `heardSqa`, or `hears`. It is called staff chat, and its lines say "tells the staff", because moderators use it as well as immortals and "Admin Chat" names the immortals-only Game menu room.
+- **SSO:** `staffChat` sends directly to all online staff in `CHAT_COLOR.staff` without house restrictions, `heardSqa`, or `hears`. It is called staff chat, and its lines say "tells the staff", because moderators use it as well as administrators and "Admin Chat" names the administrators-only Game menu room.
 - **Why:** Staff communication should be visually distinct and reliable regardless of position or ignore lists.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`), `packages/shared/src/rules/chat/chat.ts` (`CHAT_COLOR`)
-- **Pinned by:** `both immortals and moderators post to staff in CHAT_COLOR.staff; players excluded` and `staff chat has no house sender restriction, no muffling, and no ignore filtering` (packages/server/tests/admin.test.ts)
+- **Pinned by:** `both administrators and moderators post to staff in CHAT_COLOR.staff; players excluded` and `staff chat has no house sender restriction, no muffling, and no ignore filtering` (packages/server/tests/admin.test.ts)
 
 #### Jail sentences are stored and run in real time
 - **Kind:** Bug fixed
@@ -1145,14 +1154,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/combat/armour.ts` (`rollArmourBreak`)
 - **Pinned by:** `bug fixed: the armour exclusion list matches "a <name>"` (packages/shared/tests/inventory/inventory.test.ts)
 
-#### Immortals take no damage of any kind
+#### Administrators take no damage of any kind
 - **Kind:** Bug fixed
-- **What you notice:** Another player's swing, a harmful spell, a Whirlwind and starving do nothing to an immortal, just as monsters do nothing.
+- **What you notice:** Another player's swing, a harmful spell, a Whirlwind and starving do nothing to an administrator, just as monsters do nothing.
 - **1.6:** The monster hit handler exited for immortals; the player-versus-player one and the spell collision had no such check, so an immortal could be killed by a player or a spell.
 - **SSO:** Every source of damage asks whether the victim's role has the `invulnerable` permission: `pvpSwing` skips such a victim, `playerCollision` lands no harmful spell or Whirlwind on them, and `regenStep` takes no HP for starving.
-- **Why:** Immortality should be the same against everything.
+- **Why:** Invulnerability should be the same against everything.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`pvpSwing`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`), `packages/server/src/systems/progression/vitals.ts` (`regenStep`)
-- **Pinned by:** `bug fixed: immortals take no PvP damage` (packages/server/tests/inventory.test.ts); `immortals take no monster damage` (packages/server/tests/monsters.test.ts); `bug fixed: a role that takes no damage is untouched by harmful spells and Whirlwind` (packages/server/tests/spells.test.ts); `costs a player HP, and an invulnerable role none` (packages/server/tests/invulnerable.test.ts)
+- **Pinned by:** `bug fixed: administrators take no PvP damage` (packages/server/tests/inventory.test.ts); `administrators take no monster damage` (packages/server/tests/monsters.test.ts); `bug fixed: a role that takes no damage is untouched by harmful spells and Whirlwind` (packages/server/tests/spells.test.ts); `costs a player HP, and an invulnerable role none` (packages/server/tests/invulnerable.test.ts)
 
 #### Weapon attack power matches the right weapons
 - **Kind:** Bug fixed
@@ -2283,7 +2292,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A fixture the world placed, such as a Copy Machine, Large Rock, Table, Campfire, Piano, statue, "Universal" fixture, painting or platform, cannot be picked up by a click or Ctrl: you read "This is fixed in place; you can't pick it up.". A Table you crafted and dropped can still be carried off. A click on a Piano now says "This is a piano." as Ctrl does.
 - **1.6:** Neither pickup path excluded those fixtures, so players could carry off the town's furniture; a click also took the Piano.
-- **SSO:** An item placed by the world editor or an immortal's `/drop` that is on the blocking list (`ground.blocks`) or is a platform is fixed in place.
+- **SSO:** An item placed by the world editor or an administrator's `/drop` that is on the blocking list (`ground.blocks`) or is a platform is fixed in place.
 - **Why:** Players could strip shared scenery from the world.
 - **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`fixedInPlace`, `clickGate`), `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `actionIntent`)
 - **Pinned by:** `bug fixed: a fixture the world placed is fixed in place; a player's own is not` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: a fixture the world placed is not picked up by a click or Ctrl; a player's is` (packages/server/tests/inventory.test.ts)
@@ -3385,13 +3394,13 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Too many login failures, new characters or simultaneous connections from an address cause a temporary refusal.
 - **1.6:** The game scripts did not limit password attempts or character creation. The Multiuser Server had a configurable total connection limit subject to its license; the archived configuration left that setting commented out.
-- **SSO:** Failed logins are counted per address (IPv6 per /64) and account-and-address for five minutes, creations per address for an hour, and open connections per address. The settings `loginFailsPerIp` (20), `loginFailsPerAccount` (5) and `createsPerIp` (3), and the environment variable `SSO_SOCKETS_PER_IP` (10), set the limits; zero disables one. The respective messages are “Too many failed logins. Please wait a few minutes and try again.”, “Too many new characters from this address. Please try again later.” and “Too many connections from this address.” The last also closes the socket with code 4006. Moderators and immortals bypass the per-address login refusal and stop counting toward open sockets after login. Only two password hashes run at once. Counters are in memory and reset on restart; an attempt counts before hashing, so simultaneous sockets cannot evade a limit. The original missing-name and wrong-password replies remain distinct.
+- **SSO:** Failed logins are counted per address (IPv6 per /64) and account-and-address for five minutes, creations per address for an hour, and open connections per address. The settings `loginFailsPerIp` (20), `loginFailsPerAccount` (5) and `createsPerIp` (3), and the environment variable `SSO_SOCKETS_PER_IP` (10), set the limits; zero disables one. The respective messages are “Too many failed logins. Please wait a few minutes and try again.”, “Too many new characters from this address. Please try again later.” and “Too many connections from this address.” The last also closes the socket with code 4006. Moderators and administrators bypass the per-address login refusal and stop counting toward open sockets after login. Only two password hashes run at once. Counters are in memory and reset on restart; an attempt counts before hashing, so simultaneous sockets cannot evade a limit. The original missing-name and wrong-password replies remain distinct.
 - **Why:** Limits hinder password guessing, mass account creation and exhausting memory with password hashes.
 - **In the code:** `packages/server/src/systems/admin/login-limits.ts` (`allowLoginFromIp`, `allowLoginToAccount`, `allowCreate`)
 
 #### Staff chat membership enforced
 - **Kind:** Exploit closed
-- **What you notice:** Immortals and moderators can read and post staff chat (`-text`) in a dedicated colour; ordinary players cannot.
+- **What you notice:** Administrators and moderators can read and post staff chat (`-text`) in a dedicated colour; ordinary players cannot.
 - **1.6:** Any client could request membership in the administrators' group, and only immortals could post.
 - **SSO:** The server chooses who receives and can post to staff chat (both staff roles), and delivers it in `CHAT_COLOR.staff`.
 - **Why:** Other players could otherwise listen to staff conversations.
@@ -3407,9 +3416,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### NPC editor checks its files
 - **Kind:** Exploit closed
-- **What you notice:** An immortal selects a listed NPC in the editor; invalid files are refused with a reason, and a successful save warns about lines that have no effect in play.
+- **What you notice:** An administrator selects a listed NPC in the editor; invalid files are refused with a reason, and a successful save warns about lines that have no effect in play.
 - **1.6:** Anyone could load a file by an unchecked NPC name. Save was gated by the client and an immortals-name lookup, and wrote arbitrary field content under the supplied name. Saving or loading before selecting a name used a leftover or empty name. A backtick truncated text and `*` or `^` broke the NPC bundle; item names, numbers and tags were unchecked.
-- **SSO:** Load and save require an immortal in the editor and a name on its monster or NPC list; selecting no name sends nothing. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After “NPC has been successfully saved.”, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
+- **SSO:** Load and save require an administrator in the editor and a name on its monster or NPC list; selecting no name sends nothing. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After “NPC has been successfully saved.”, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
 - **Why:** Server validation prevents arbitrary file access and invalid data; warnings make silent original rules visible to operators.
 - **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`, `saveNpc`), `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
 
@@ -3417,7 +3426,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Items come from game systems such as loot, crafting, shops, quests or operator actions.
 - **1.6:** Multiple messages let clients ask the server to create items. An immortal's `/drop` accepted any Inventory cast member, including screen art, scripts, fields, saved copies, facing frames and junk, while refusing singular crystal names and some real items without Inventory members.
-- **SSO:** Loot, gathering, crafting, shops, quests and admin create items using their own rules. An immortal's `/drop` and World Editor placements accept `N gold` or an Inventory cast member that is a catalogue item with an icon or a fixture such as a vault, chest, sign or door. They refuse non-item cast members; like 1.6 they refuse singular crystal names and items without Inventory members such as Gold Armor and Rune Sword.
+- **SSO:** Loot, gathering, crafting, shops, quests and admin create items using their own rules. An administrator's `/drop` and World Editor placements accept `N gold` or an Inventory cast member that is a catalogue item with an icon or a fixture such as a vault, chest, sign or door. They refuse non-item cast members; like 1.6 they refuse singular crystal names and items without Inventory members such as Gold Armor and Rune Sword.
 - **Why:** An arbitrary client request could mint items, and non-item cast members would produce objects the game cannot use.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`droppableName`, `handleDrop`), `packages/server/src/systems/crafting/craft.ts` (`craftStep`)
 
@@ -3433,7 +3442,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** IP lookups are available only to authorized staff.
 - **1.6:** The server address lookup was open to everyone and `/IPlookup` was gated only by the client.
-- **SSO:** Addresses stay server-side and lookup is restricted to staff. The login addresses the server keeps for IP bans are shown only to immortals.
+- **SSO:** Addresses stay server-side and lookup is restricted to staff. The login addresses the server keeps for IP bans are shown only to administrators.
 - **Why:** Players' network addresses are private.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
@@ -3456,7 +3465,7 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Admin set-class tool
 - **Kind:** Architecture
-- **What you notice:** An immortal can use `/setclass <name> <class name or 1-26>` on an online or offline character, and receives a confirmation such as “Bob is now a Ninja.”
+- **What you notice:** An administrator can use `/setclass <name> <class name or 1-26>` on an online or offline character, and receives a confirmation such as “Bob is now a Ninja.”
 - **1.6:** Six classes had no promotion entry: Swordsman, Brawler, Ninja, Warlock, Death Knight and Gladiator. Administrators changed class by editing the raw character file.
 - **SSO:** The command accepts any of the 26 classes without regard to case and changes only the class code, not skills. Promotion rules are unchanged.
 - **Why:** The raw file editor is removed, so operators need a replacement for the only original route to those classes.
@@ -3466,17 +3475,18 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** An administrator receives a useful refusal when a command cannot act, after the original command echo.
 - **1.6:** The client printed its echo and sent the request whether or not the target was online; malformed warp lines were sent unchanged and the administrator heard nothing further.
-- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “Only an immortal can kick an immortal.”, “Only an immortal can do that to an immortal.” or “Only an immortal can do that to staff.” A moderator cannot kick an immortal, nor use IP lookup, warp or warptome on one, and can ban, jail or pardon players only; warpmeto still moves the moderator. `/ban` and `/jail` work on offline characters. IP bans are immortal-only, and only the staff member who made a ban or jail, or an immortal, can change or lift it.
-- **Why:** The server can report failed actions, and an immortal's address and editor session should not be controlled by a moderator.
+- **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “You cannot kick someone who outranks you.”, “You cannot do that to someone who outranks you.” or “You can only do that to someone you outrank.” Staff cannot kick someone who outranks them, nor use IP lookup, warp or warptome on them, and can ban, jail, mute or pardon only those they outrank (a role with `overrule` excepted); warpmeto still moves the staff member. `/ban` and `/jail` work on offline characters. IP bans are administrators' by default, and only the staff member who made a ban or jail, or a role with `overrule`, can change or lift it.
+- **Why:** The server can report failed actions, and a senior staff member's address and editor session should not be controlled by a junior one.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
-#### Role and unban chat commands
+#### Operators define the staff roles; unban is a chat command
 - **Kind:** Architecture
-- **What you notice:** An immortal can change another account's role with `/role <name> player|moderator|immortal`, and immortals or moderators can unban with `/unban <name> [reason]`, though only the staff member who made a ban, or an immortal, can lift it.
-- **1.6:** Roles were lines in an immortals file edited with the File Editor; unbanning meant removing a prefix from the character file.
-- **SSO:** A role change takes effect immediately in the admin menu, chat and role table; changing one's own role is refused. For anyone else `/role` is local chat, as in 1.6. `bun run admin:role` remains available to create the first immortal.
-- **Why:** Roles now live on accounts and the File Editor is gone.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **What you notice:** The operator decides what each staff role may do. The Server Settings window's Roles page edits each role's name, rank and permissions (every command, tool and gameplay exemption is a box to tick) and adds or deletes roles; its Staff page gives an account a role or takes it away. A new server starts with Moderator (`moderator`) and Admin (`administrator`); an account with no role is an ordinary player. Staff can unban with `/unban <name> [reason]`, though only the staff member who made a ban, or a role with `overrule`, can lift it.
+- **1.6:** Two fixed ranks: immortals, listed in an immortals file edited with the File Editor, and moderators. What each could do was written into the client. Unbanning meant removing a prefix from the character file.
+- **SSO:** Roles live in the database's `roles` table and belong to accounts. A change applies at once to everyone online who holds the role, and the client receives only its permissions, to choose its menus; the server checks every request. At least one role must keep every permission, nobody can change their own role, and every role edit and assignment is audited. There is no in-game `/role` command; `bun run admin:role <name> <role|none>` makes the first administrator and is the way back in. Upgrading from 1.10 turns immortals into administrators and players into accounts with no role.
+- **Why:** Different servers want different staff, and an operator should not need to change code to decide what a moderator may do. The File Editor is gone.
+- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`can`), `packages/server/src/game.ts` (`roleSave`), `packages/client/src/ui/settings-roles.ts` (`createRolesPage`)
+- **Pinned by:** `a role edit applies to everyone online who holds it at once, and is audited`, `some role always keeps every permission; your own role is not yours to change`, `immortal becomes administrator, player no role, and moderation rows keep role names` (packages/server/tests/roles.test.ts); `/role is gone: an administrator is told it is an unknown command` (packages/server/tests/admin.test.ts)
 
 #### Banned players are told at once
 - **Kind:** Architecture
@@ -3488,39 +3498,39 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Bans and jails carry a reason, a length and the maker's rank
 - **Kind:** Exploit closed
-- **What you notice:** `/ban`, `/jail` and `/banip` take an optional duration (`30m`, `12h`, `7d`, `2w`, `perm`) and reason after the name, such as `/ban Berlyn 3d being a rude person`; without a duration the server settings decide. Bans, jails and pardons by a moderator reach players only. Only the staff member who made a ban or jail, or an immortal, can change its length or lift it.
+- **What you notice:** `/ban`, `/jail` and `/banip` take an optional duration (`30m`, `12h`, `7d`, `2w`, `perm`) and reason after the name, such as `/ban Berlyn 3d being a rude person`; without a duration the server settings decide. Bans, jails and pardons by a moderator reach players only. Only the staff member who made a ban or jail, or an administrator, can change its length or lift it.
 - **1.6:** A ban was a prefix on the character file with no reason, end or author; any administrator could add or remove it.
-- **SSO:** Each action stores its maker's account, name and rank at that moment, the reason and the end. A re-ban by its maker or an immortal replaces the length; anyone else is refused with “Bob was banned by Alice; ask Alice or an immortal.” A lapsed ban or jail stops nobody.
-- **Why:** Moderators could otherwise overwrite an immortal's ban with their own and then lift it, and changes of role later would change who may lift an old ban. Staff with different views settle them together rather than overriding each other.
+- **SSO:** Each action stores its maker's account, name and rank at that moment, the reason and the end. A re-ban by its maker or an administrator replaces the length; anyone else is refused with “Bob was banned by Alice; ask Alice or a senior staff member.” A lapsed ban or jail stops nobody.
+- **Why:** Moderators could otherwise overwrite an administrator's ban with their own and then lift it, and changes of role later would change who may lift an old ban. Staff with different views settle them together rather than overriding each other.
 - **In the code:** `packages/shared/src/rules/admin/moderation.ts` (`mayTarget`, `mayChange`, `parseModerationArgs`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/persistence/moderation.ts` (`recordModeration`)
-- **Pinned by:** `regression: a moderator's /ban cannot overwrite an immortal's ban to lift it`, `a moderator changes only their own ban; an immortal changes any`, `a moderator may not ban, jail or pardon another moderator` (packages/server/tests/admin.test.ts); `a ban keeps its maker's rank at the time: a demoted immortal's ban stays theirs` (packages/server/tests/moderation-db.test.ts)
+- **Pinned by:** `regression: a moderator's /ban cannot overwrite an administrator's ban to lift it`, `a moderator changes only their own ban; an administrator changes any`, `a moderator may not ban, jail or pardon another moderator` (packages/server/tests/admin.test.ts); `a ban keeps its maker's rank at the time: a demoted administrator's ban stays theirs` (packages/server/tests/moderation-db.test.ts)
 
 #### Moderation history and /banlist
 - **Kind:** Architecture
-- **What you notice:** `/banlist` lists the bans and jails in force (and, for immortals, IP bans); `/banlist <name>` shows a character's standing, last ten moderation actions with their reasons and, for immortals, their login addresses; `/banlist <address>` (immortals) shows an address's ban and who has played from it.
+- **What you notice:** `/banlist` lists the bans and jails in force (and, for administrators, IP bans); `/banlist <name>` shows a character's standing, last ten moderation actions with their reasons and, for administrators, their login addresses; `/banlist <address>` (administrators) shows an address's ban and who has played from it.
 - **1.6:** The bans lived in character files and a bans file, with no history and no in-game list.
 - **SSO:** Every ban, unban, IP ban, jail, release and pardon is a row in `moderation_log`, kept after the action ends.
 - **Why:** Staff need to see why someone was banned and by whom before changing it.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/persistence/moderation.ts` (`moderationHistory`)
-- **Pinned by:** `moderators see bans and jails; immortals also see IP bans`, `/banlist <name>: standing, history and (immortals) addresses` (packages/server/tests/admin.test.ts)
+- **Pinned by:** `moderators see bans and jails; administrators also see IP bans`, `/banlist <name>: standing, history and (administrators) addresses` (packages/server/tests/admin.test.ts)
 
 #### IP bans are checked, cover an IPv6 /64 and act at once
 - **Kind:** Exploit closed
-- **What you notice:** `/banip` accepts a character name (their last login address, or every address with `all`) or a valid address, and refuses anything else. Sessions from the address are disconnected immediately, and it cannot log in or create characters until the ban ends (30 days by default). Immortals are never stopped by an IP ban.
+- **What you notice:** `/banip` accepts a character name (their last login address, or every address with `all`) or a valid address, and refuses anything else. Sessions from the address are disconnected immediately, and it cannot log in or create characters until the ban ends (30 days by default). Administrators are never stopped by an IP ban.
 - **1.6:** `/BanIP` wrote any text to the bans file and the ban was never enforced.
-- **SSO:** Addresses are stored in their standard form; an IPv6 ban covers the /64, matching the login limits. The server keeps each account's login addresses for `addressHistory`. The check runs after the password, so that an immortal behind a banned address can still log in.
+- **SSO:** Addresses are stored in their standard form; an IPv6 ban covers the /64, matching the login limits. The server keeps each account's login addresses for `addressHistory`. The check runs after the password, so that an administrator behind a banned address can still log in.
 - **Why:** Unvalidated text could ban nothing or an unintended address, an IPv6 user could step to a neighbouring address, and an operator must not lock themselves out.
 - **In the code:** `packages/shared/src/rules/admin/moderation.ts` (`canonicalIp`, `ipKey`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/game.ts` (`login`, `create`, `refusal`), `packages/server/src/persistence/moderation.ts` (`noteAddress`)
-- **Pinned by:** `an IP ban disconnects every session from that address except an immortal's`, `/banip <name> bans the latest address, or all of them; an immortal is never IP banned`, `divergence: an IP ban refuses a login from that address after the password` (packages/server/tests/admin.test.ts); `IP bans cover the IPv6 /64, refuse creation and resume, and never stop an immortal` (packages/server/tests/moderation-db.test.ts)
+- **Pinned by:** `an IP ban disconnects every session from that address except an administrator's`, `/banip <name> bans the latest address, or all of them; an administrator is never IP banned`, `divergence: an IP ban refuses a login from that address after the password` (packages/server/tests/admin.test.ts); `IP bans cover the IPv6 /64, refuse creation and resume, and never stop an administrator` (packages/server/tests/moderation-db.test.ts)
 
-#### Immortals read what staff did with /auditlog
+#### Administrators read what staff did with /auditlog
 - **Kind:** Architecture
-- **What you notice:** An immortal types `/auditlog <name> [count]` (default 10, at most 100) to see the newest staff actions taken by that character's account or done to that character, oldest first, such as `2026-11-18 09:14:02 UTC Mod /jail Bob (until 2026-11-18 09:44:02 UTC, "spamming")` or `2026-11-18 10:02:45 UTC King /setclass Bob: 1 -> 7`.
+- **What you notice:** An administrator types `/auditlog <name> [count]` (default 10, at most 100) to see the newest staff actions taken by that character's account or done to that character, oldest first, such as `2026-11-18 09:14:02 UTC Mod /jail Bob (until 2026-11-18 09:44:02 UTC, "spamming")` or `2026-11-18 10:02:45 UTC King /setclass Bob: 1 -> 7`.
 - **1.6:** There was no record of staff actions, so nobody could check what a GM had done.
 - **SSO:** `auditTrail` merges the audit log (admin commands, editor saves, setting and role changes, `/chatlog`, `/cheatfile` and `/auditlog` looks) with the moderation log (bans, jails, IP bans and pardons, with their reasons and ends), leaving out the audit log's own copy of each moderation action. Matching by account covers all of a staff member's characters. Each lookup is audited. Moderators and players are told it is an unknown command.
-- **Why:** Immortals need to review moderators' actions and a player's history without shell access to the server.
+- **Why:** Administrators need to review moderators' actions and a player's history without shell access to the server.
 - **In the code:** `packages/shared/src/rules/admin/auditlog.ts` (`parseAuditlogArgs`, `auditlogLine`), `packages/server/src/persistence/admin.ts` (`auditTrail`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
-- **Pinned by:** `an immortal sees what a moderator did and what was done to a player, with reasons; the lookup is audited`; `/auditlog is an immortal's: a moderator or a player is told it is unknown, and nothing is audited` (packages/server/tests/auditlog.test.ts)
+- **Pinned by:** `an administrator sees what a moderator did and what was done to a player, with reasons; the lookup is audited`; `/auditlog is an administrator's: a moderator or a player is told it is unknown, and nothing is audited` (packages/server/tests/auditlog.test.ts)
 
 ### Server-side casino
 
@@ -3571,12 +3581,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Rooms check membership on the server
 - **Kind:** Exploit closed
-- **What you notice:** Guild Chat belongs to your current guild and Admin Chat to immortals; losing that membership silently removes you from the room while leaving its window open.
+- **What you notice:** Guild Chat belongs to your current guild and Admin Chat to administrators; losing that membership silently removes you from the room while leaving its window open.
 - **1.6:** Anyone could join the underlying groups by hand. Guild Chat used the client's guild field, and the Admin Chat client disconnected non-immortals. A player otherwise stayed until closing the window.
-- **SSO:** The server holds membership. A non-immortal's Admin Chat join is ignored and logged without a disconnect; exile, disbanding or demotion removes room membership immediately, and a line typed from outside a room goes nowhere.
+- **SSO:** The server holds membership. A join to Admin Chat without the `adminChat` permission is ignored and logged without a disconnect; exile, disbanding or demotion removes room membership immediately, and a line typed from outside a room goes nowhere.
 - **Why:** Client-controlled room membership allowed eavesdropping on guild and admin conversations.
 - **In the code:** `packages/server/src/systems/chat/rooms.ts` (`enterRoom`, `roomMembership`, `roomSay`)
-- **Pinned by:** `divergence: Guild Chat is your guild's room; losing the guild drops you silently` and `divergence: a demoted immortal leaves Admin Chat` (packages/server/tests/im.test.ts)
+- **Pinned by:** `divergence: Guild Chat is your guild's room; losing the guild drops you silently` and `divergence: a demoted administrator leaves Admin Chat` (packages/server/tests/im.test.ts)
 
 #### Ignore list capped at 100
 - **Kind:** Exploit closed
@@ -3598,12 +3608,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### The server logs player communication
 - **Kind:** Architecture
-- **What you notice:** Immortals can read back what a player said, including IMs and lines that were refused, with `/chatlog <name>`; operators can search it with `bun run admin:chatlog`.
+- **What you notice:** Administrators can read back what a player said, including IMs and lines that were refused, with `/chatlog <name>`; operators can search it with `bun run admin:chatlog`.
 - **1.6:** The server kept no record of chat. IMs went peer to peer, so the server never saw them, and the only log was the file a player saved with `/logchat`, which staff could not check and the player could edit.
-- **SSO:** Every line a player writes to others (say, `/me`, broadcasts, IMs and automatic away replies, away texts, guild chat, chat rooms, staff chat and Bio profiles) is written to the `chat_log` table with its time, channel, sender, destination, exact text and outcome: delivered, or refused by the cooldown, house rule or jail, dropped by the recipient's ignore list, sent to someone not online, and so on. Say, `/me` and broadcasts also count how many others read the line, ignored it or heard it muffled. Immortals read every channel with `/chatlog`; each lookup is audited. Lines are kept for `chatLogRetention` (default 90 days). Commands and `Password=` lines are not logged. Players are not shown a notice; operators disclose it in their own terms.
+- **SSO:** Every line a player writes to others (say, `/me`, broadcasts, IMs and automatic away replies, away texts, guild chat, chat rooms, staff chat and Bio profiles) is written to the `chat_log` table with its time, channel, sender, destination, exact text and outcome: delivered, or refused by the cooldown, house rule or jail, dropped by the recipient's ignore list, sent to someone not online, and so on. Say, `/me` and broadcasts also count how many others read the line, ignored it or heard it muffled. Administrators read every channel with `/chatlog`; each lookup is audited. Lines are kept for `chatLogRetention` (default 90 days). Commands and `Password=` lines are not logged. Players are not shown a notice; operators disclose it in their own terms.
 - **Why:** Moderators could not confirm harassment, scam or threat reports, check a player's history before acting, or review an incident.
 - **In the code:** `packages/server/src/systems/chat/log.ts` (`logChat`), `packages/server/src/persistence/chatlog.ts`, `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/cli/admin-chatlog.ts`, `packages/shared/src/rules/admin/chatlog.ts`
-- **Pinned by:** `a delivered say: the words, the map and how many others heard it`; `/msg: delivered, ignored, not online and refused by the cooldown`; `an away text and the automatic away reply are logged`; `/chatlog: an immortal reads a player's lines and the IMs sent to them; the lookup is audited`; `/chatlog is an immortal's: a moderator or a player who types it is told it is unknown` (packages/server/tests/chatlog.test.ts); `every /g line is in the chat log: delivered, refused by the cooldown, with no guild` (packages/server/tests/guilds.test.ts)
+- **Pinned by:** `a delivered say: the words, the map and how many others heard it`; `/msg: delivered, ignored, not online and refused by the cooldown`; `an away text and the automatic away reply are logged`; `/chatlog: an administrator reads a player's lines and the IMs sent to them; the lookup is audited`; `/chatlog is an administrator's: a moderator or a player who types it is told it is unknown` (packages/server/tests/chatlog.test.ts); `every /g line is in the chat log: delivered, refused by the cooldown, with no guild` (packages/server/tests/guilds.test.ts)
 
 #### Password change via account flow
 - **Kind:** Architecture
@@ -3683,9 +3693,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### IP bans and lookups use the socket
 - **Kind:** Exploit closed
-- **What you notice:** A banned address is refused at login, while IP lookup is available to moderators and immortals.
+- **What you notice:** A banned address is refused at login, while IP lookup is available to moderators and administrators.
 - **1.6:** IP sorting trusted the client-reported address and used substring matching; anyone could call the server's IP lookup. The IP ban did nothing because its response had no client handler and its marker files were never read.
-- **SSO:** `/BanIP` and `/unbanIP` work and are immortal-only. A banned address is refused before the password check with the original unshown “You are banned from playing on this server.”; existing sessions are not kicked. The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` is restricted to moderators and immortals.
+- **SSO:** `/BanIP` and `/unbanIP` work and are administrators' by default. A banned address is refused before the password check with the original unshown “You are banned from playing on this server.”; existing sessions are not kicked. The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` is restricted to moderators and administrators.
 - **Why:** Trusting a client address allowed ban evasion and exposed IP addresses; an ineffective ban provided no protection.
 - **In the code:** `packages/server/src/gateway/server.ts` (`clientIp`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
@@ -3726,7 +3736,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Invalid client actions are refused or logged by the server rather than relying on a client to ban itself.
 - **1.6:** The client used ciphers, self-ban, name and equipment shadow checks, echoes and a per-minute speed check. Anyone could write a cheater report.
-- **SSO:** Schema validation, per-tick gates, rate limits and a server-written cheat log replace those client self-bans. `/CheatFile` shows the original “<name> - at IP <ip> - <reason>” format. The log records editor or Settings intents from non-immortals, editor load/save outside the editor, malformed frames and flooding. Its reasons include “Attempted Admin Access”, “Attempting to get Admin access”, “Sending bad messages” and “Flooding”. There are no automatic kicks. `/CheatFile` is immortal-only, and each look is written to the audit log, since the lines show players' addresses.
+- **SSO:** Schema validation, per-tick gates, rate limits and a server-written cheat log replace those client self-bans. `/CheatFile` shows the original “<name> - at IP <ip> - <reason>” format. The log records editor or Settings intents from roles without the permission, editor load/save outside the editor, malformed frames and flooding. Its reasons include “Attempted Admin Access”, “Attempting to get Admin access”, “Sending bad messages” and “Flooding”. There are no automatic kicks. `/CheatFile` is administrators' by default, and each look is written to the audit log, since the lines show players' addresses.
 - **Why:** The client has no authoritative state to protect.
 - **In the code:** `packages/server/src/game.ts` (`editingOk`, `createGame`)
 
@@ -4297,7 +4307,7 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Murder flag and pardons are server-only
 - **Kind:** Exploit closed
-- **What you notice:** A credited killer can become wanted; a moderator or immortal can pardon an online player.
+- **What you notice:** A credited killer can become wanted; a moderator or administrator can pardon an online player.
 - **1.6:** Any client could send wanted or pardon messages to any player. A message to an absent killer was lost.
 - **SSO:** At the end of the victim's death lock the server credits the recorded last player to hit them by player ID and applies the flag, even if another cause killed them later. A player who has logged off is not flagged. A staff `/Pardon` says “<name> is not online.” if the named player is absent.
 - **Why:** Forged messages could frame an innocent player or pardon oneself.
@@ -4353,7 +4363,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server computes the points from authoritative skills and ranks them on each periodic save.
 - **Why:** A modified client could otherwise submit fake leaderboard scores.
 - **In the code:** `packages/server/src/systems/social/highscores.ts` (`submitHighScore`)
-- **Pinned by:** `submitted on the save tick only; immortals skipped; five-digit scores count` (packages/server/tests/highscores.test.ts)
+- **Pinned by:** `submitted on the save tick only; administrators skipped; five-digit scores count` (packages/server/tests/highscores.test.ts)
 
 ### Server-side spells
 

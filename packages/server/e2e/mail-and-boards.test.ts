@@ -1,7 +1,7 @@
 /**
  * Bot script: mail and message boards.
  *
- * Part 1: King, an immortal, drops a `Universal Mail` and `Message Boards`; a hall's `The Knights's
+ * Part 1: King, an administrator, drops a `Universal Mail` and `Message Boards`; a hall's `The Knights's
  * Board` is stood on the map as a built hall would place it (it is not a `/drop` item). Alice, out
  * of place, hears the position line; in front she opens her box (the keys lock) and sends to
  * "Bob,Nobody": Bob, online, hears "*** You have new mail from Alice", opens the box, reads it and
@@ -115,7 +115,7 @@ describe("mail and boards", () => {
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
       .get(idOf(db, "King"));
-    setRole(db, acc?.account_id ?? "", "immortal", "2026-11-07T00:00:00.000Z");
+    setRole(db, acc?.account_id ?? "", "administrator", "2026-11-07T00:00:00.000Z");
     alice = await login("Alice");
     bob = await login("Bob");
     carol = await login("Carol");

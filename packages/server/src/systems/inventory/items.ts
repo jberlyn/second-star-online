@@ -753,7 +753,7 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
 /**
  * The pickup: the one entry goes and is granted (1.6 cleared every entry with the same name on the
  * tile and granted one). Gold goes to the gold field; a crystal pile becomes n crystals; with no
- * empty line and no substring match of the name in the bag, the item is destroyed. An immortal's
+ * empty line and no substring match of the name in the bag, the item is destroyed. A
  * counted `/drop` pile gives its count.
  */
 export function grab(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, g: GroundItem): void {

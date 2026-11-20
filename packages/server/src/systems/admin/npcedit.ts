@@ -1,7 +1,7 @@
 /**
  * The NPC editor on the server.
  *
- * - Open: immortals only; you leave the map as for the World Editor.
+ * - Open: the `npcEditor` permission only; you leave the map as for the World Editor.
  * - LOAD: the file as the server holds it, with the shop's live stock and gold written in (in 1.6
  *   the file was the ledger); "" with no file. The client shows it through the editor's display routine.
  * - SAVE: checked line by line (`checkNpcFile`), then the file replaces the NPC's, its shop ledger
@@ -29,7 +29,7 @@ import { npcFileNamed, setNpcFile } from "../monsters/npcfiles.ts";
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { leaveForEditor } from "./worldedit.ts";
 
-/** Admin menu → NPC Editor. Anyone but an immortal gets nothing. */
+/** Admin menu → NPC Editor. Anyone without `npcEditor` gets nothing. */
 export function openNpcEditor(world: World, p: Player, casino: CasinoDeps): Outgoing[] {
   if (!can(p.role, "npcEditor") || p.editing === "npc") {
     return [];

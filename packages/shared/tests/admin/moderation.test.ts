@@ -2,6 +2,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  ADMINISTRATOR,
   banListLine,
   banNotice,
   canonicalIp,
@@ -13,6 +14,7 @@ import {
   ipKey,
   isActive,
   keyLabel,
+  MODERATOR,
   type ModerationRecord,
   mayChange,
   mayTarget,
@@ -25,7 +27,7 @@ const NOW = "2026-11-17T09:00:00.000Z";
 const rec = (over: Partial<ModerationRecord> = {}): ModerationRecord => ({
   actorId: "a1",
   actorName: "Alice",
-  actorRank: "moderator",
+  actorRole: "Moderator",
   reason: "",
   createdAt: NOW,
   expiresAt: null,
@@ -33,29 +35,37 @@ const rec = (over: Partial<ModerationRecord> = {}): ModerationRecord => ({
 });
 
 describe("ranks", () => {
-  test("player < moderator < immortal", () => {
-    expect(outranks("immortal", "moderator")).toBe(true);
-    expect(outranks("moderator", "player")).toBe(true);
-    expect(outranks("moderator", "moderator")).toBe(false);
-    expect(outranks("moderator", "immortal")).toBe(false);
-    expect(outranks("player", "moderator")).toBe(false);
+  test("no role < moderator < administrator, by rank", () => {
+    expect(outranks(ADMINISTRATOR, MODERATOR)).toBe(true);
+    expect(outranks(MODERATOR, null)).toBe(true);
+    expect(outranks(MODERATOR, MODERATOR)).toBe(false);
+    expect(outranks(MODERATOR, ADMINISTRATOR)).toBe(false);
+    expect(outranks(null, MODERATOR)).toBe(false);
   });
 
-  test("a moderator acts on players only; an immortal on anyone", () => {
-    expect(mayTarget("moderator", "player")).toBe(true);
-    expect(mayTarget("moderator", "moderator")).toBe(false);
-    expect(mayTarget("moderator", "immortal")).toBe(false);
-    expect(mayTarget("immortal", "immortal")).toBe(true);
-    expect(mayTarget("player", "player")).toBe(false);
+  test("an operator's role outranks by its rank, whatever it is called", () => {
+    const senior = { id: "senior", name: "Senior", rank: 5, permissions: new Set<never>() };
+    expect(outranks(senior, ADMINISTRATOR)).toBe(true);
+    expect(mayTarget(senior, ADMINISTRATOR)).toBe(true);
+    expect(mayTarget(ADMINISTRATOR, senior)).toBe(true); // overrule
+    expect(mayTarget(MODERATOR, senior)).toBe(false);
   });
 
-  test("only the maker of an action or an immortal may change it", () => {
+  test("a moderator acts on players only; an administrator on anyone", () => {
+    expect(mayTarget(MODERATOR, null)).toBe(true);
+    expect(mayTarget(MODERATOR, MODERATOR)).toBe(false);
+    expect(mayTarget(MODERATOR, ADMINISTRATOR)).toBe(false);
+    expect(mayTarget(ADMINISTRATOR, ADMINISTRATOR)).toBe(true);
+    expect(mayTarget(null, null)).toBe(false);
+  });
+
+  test("only the maker of an action or an administrator may change it", () => {
     const byAlice = rec();
-    expect(mayChange({ id: "a1", role: "moderator" }, byAlice)).toBe(true);
-    expect(mayChange({ id: "b2", role: "moderator" }, byAlice)).toBe(false);
-    expect(mayChange({ id: "c3", role: "immortal" }, byAlice)).toBe(true);
-    expect(mayChange({ id: "c3", role: "immortal" }, rec({ actorRank: "immortal" }))).toBe(true);
-    expect(mayChange({ id: "b2", role: "moderator" }, rec({ actorRank: "immortal" }))).toBe(false);
+    expect(mayChange({ id: "a1", role: MODERATOR }, byAlice)).toBe(true);
+    expect(mayChange({ id: "b2", role: MODERATOR }, byAlice)).toBe(false);
+    expect(mayChange({ id: "c3", role: ADMINISTRATOR }, byAlice)).toBe(true);
+    expect(mayChange({ id: "c3", role: ADMINISTRATOR }, rec({ actorRole: "Admin" }))).toBe(true);
+    expect(mayChange({ id: "b2", role: MODERATOR }, rec({ actorRole: "Admin" }))).toBe(false);
   });
 
   test("an action is in force until it expires; permanent ones never do", () => {
@@ -191,32 +201,30 @@ describe("lines", () => {
   test("/banlist rows and history lines", () => {
     expect(formatUtc(NOW)).toBe("2026-11-17 09:00 UTC");
     expect(banListLine("Bob", rec({ reason: "spam", expiresAt: "2026-11-20T14:00:00.000Z" }))).toBe(
-      "Bob - until 2026-11-20 14:00 UTC - Alice (moderator): spam",
+      "Bob - until 2026-11-20 14:00 UTC - Alice (Moderator): spam",
     );
-    expect(banListLine("Eve", rec({ actorRank: "immortal" }))).toBe(
-      "Eve - permanent - Alice (immortal)",
-    );
+    expect(banListLine("Eve", rec({ actorRole: "Admin" }))).toBe("Eve - permanent - Alice (Admin)");
     expect(
       historyLine({
         action: "ban",
         address: null,
         actorName: "Alice",
-        actorRank: "moderator",
+        actorRole: "Moderator",
         reason: "spam",
         createdAt: NOW,
         expiresAt: "2026-11-20T09:00:00.000Z",
       }),
-    ).toBe("2026-11-17 09:00 UTC ban 3d by Alice (moderator): spam");
+    ).toBe("2026-11-17 09:00 UTC ban 3d by Alice (Moderator): spam");
     expect(
       historyLine({
         action: "unipban",
         address: "203.0.113.7",
         actorName: "Root",
-        actorRank: "immortal",
+        actorRole: "Admin",
         reason: "",
         createdAt: NOW,
         expiresAt: null,
       }),
-    ).toBe("2026-11-17 09:00 UTC unipban 203.0.113.7 by Root (immortal)");
+    ).toBe("2026-11-17 09:00 UTC unipban 203.0.113.7 by Root (Admin)");
   });
 });

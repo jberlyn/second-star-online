@@ -834,23 +834,53 @@
     "hidden": 0,
     "disabled": 0
   },
+  "roles-delete": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "roles-id": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "roles-name": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "roles-permission": {
+    "count": 44,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "roles-pick": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "roles-rank": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
   "room-chat-input": {
     "count": 2,
     "hidden": 0,
     "disabled": 0
   },
   "settings-confirm": {
-    "count": 2,
+    "count": 4,
     "hidden": 0,
     "disabled": 0
   },
   "settings-discard": {
-    "count": 2,
+    "count": 4,
     "hidden": 0,
     "disabled": 0
   },
   "settings-page": {
-    "count": 1,
+    "count": 3,
     "hidden": 0,
     "disabled": 0
   },
@@ -860,22 +890,22 @@
     "disabled": 0
   },
   "settings-revert": {
-    "count": 2,
+    "count": 4,
     "hidden": 0,
     "disabled": 0
   },
   "settings-save": {
-    "count": 2,
-    "hidden": 0,
+    "count": 4,
+    "hidden": 1,
     "disabled": 0
   },
   "settings-search": {
-    "count": 2,
+    "count": 4,
     "hidden": 0,
     "disabled": 0
   },
   "settings-stay": {
-    "count": 2,
+    "count": 4,
     "hidden": 0,
     "disabled": 0
   },
@@ -946,6 +976,26 @@
   },
   "spell-toggle-cast": {
     "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "staff-assign": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "staff-name": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "staff-role": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "staff-row-role": {
+    "count": 1,
     "hidden": 0,
     "disabled": 0
   },
@@ -1020,12 +1070,12 @@
     "disabled": 0
   },
   "window-close": {
-    "count": 29,
+    "count": 31,
     "hidden": 0,
     "disabled": 0
   },
   "window-drag": {
-    "count": 29,
+    "count": 31,
     "hidden": 0,
     "disabled": 0
   }

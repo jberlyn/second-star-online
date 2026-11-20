@@ -124,7 +124,7 @@ That source-build configuration sets `SSO_PROXY_HOPS=1` for a host reverse proxy
 | `SSO_FRAME_ANCESTORS` | unset | Optional CSP `frame-ancestors` directive value. Unset adds no `frame-ancestors` directive. |
 | `SSO_SAVE_INTERVAL` | `30s` | How often online characters are saved, besides saves on logout and map change. A time from `1s` to `1h`, written like the Server Settings window's times (`30s`, `2m`). |
 | `SSO_RECONNECT_GRACE` | `30s` | How long a dropped connection can resume with its token without logging in again. `0` to `5m`; `0` turns resuming off. |
-| `SSO_SOCKETS_PER_IP` | `10` | Open connections one address (IPv6 `/64`) may hold at once. Whole number `0`–`1000`; `0` turns the limit off. Moderator and immortal connections stop counting once logged in. |
+| `SSO_SOCKETS_PER_IP` | `10` | Open connections one address (IPv6 `/64`) may hold at once. Whole number `0`–`1000`; `0` turns the limit off. Connections of roles with the login-limit bypass (moderators and administrators by default) stop counting once logged in. |
 | `SSO_PERF_OUT` | unset | Path to append once-a-second JSON performance samples (see [performance.md](performance.md)). |
 | `SSO_CRASH_AT` | unset | Test hook that kills the process at a named crash point; not an operator setting. |
 
@@ -175,40 +175,59 @@ server {
 
 ## Accounts, roles, and auditing
 
-Roles live on the `accounts` table, not on character names:
+Staff are accounts with a **role**. A role has an id (such as `moderator`), a display name (`Moderator`), a rank and a set of permissions. An account holds at most one role, and an account with none is an ordinary player. Roles belong to the account, not to a character name. The roles are kept in the database's `roles` table, and you edit them in the game, not in files.
 
-- **`player`**: standard gameplay.
-- **`moderator`**: an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute`, `/pardon`, `/iplookup` and `/banlist`, plus `/location`, `/inventory`, `/save` and `/refresh`, and can read and post staff chat (`-text`). Bans, jails, mutes and pardons reach players only, never another moderator, an immortal or themselves; a moderator also cannot kick or look up the IP of an immortal. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except that the per-address login limit never refuses them. `/BanIP`, `/unbanip`, `/chatlog`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and Server Settings windows remain immortal-only.
-- **`immortal`**: full command access, staff chat (`-text`), the immortals-only Admin Chat room, World Editor, NPC Editor, Settings, Newspaper editor, and Assassin's Game controls. An immortal can ban, jail or mute anyone but themselves and change or lift any ban, IP ban, jail or mute, and IP bans never stop an immortal's login. Immortals take no damage of any kind, never get hungry, cannot be pushed, stay off the high scores and skip the chat and broadcast waits.
+A new server starts with two roles:
 
-### Bootstrapping an immortal
+- **`moderator`** (Moderator, rank 1): an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute`, `/pardon`, `/iplookup` and `/banlist`, plus `/location`, `/inventory`, `/save` and `/refresh`, and can read and post staff chat (`-text`). Bans, jails, mutes and pardons reach players only, never another moderator, an administrator or themselves; a moderator also cannot kick or look up the IP of an administrator. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except that the per-address login limit never refuses them. `/BanIP`, `/unbanip`, `/chatlog`, `/drop`, `/setclass`, `/roster`, `/spawn`, and the editor and Server Settings windows are administrators'.
+- **`administrator`** (Admin, rank 2): every permission. Full command access, staff chat, the Admin Chat room, World Editor, NPC Editor, Server Settings (including the roles), and Assassin's Game controls. An administrator can ban, jail or mute anyone but themselves and change or lift any ban, IP ban, jail or mute, and IP bans never stop an administrator's login. Administrators take no damage of any kind, never get hungry, cannot be pushed, stay off the high scores, drop on every death and skip the chat and broadcast waits.
+
+Every one of these is a permission you can turn on or off for each role, and you can add roles of your own, such as a helper who can only `/mute`. Any role makes an account staff: it reads and posts staff chat and can be sent IMs by jailed and muted players, so roles are for staff, not for perks. Staff act only on accounts of lower rank, unless their role has the **Overrule** permission.
+
+### Editing roles and giving them out
+
+Open **Admin → Settings** and choose:
+
+- **Roles** to edit a role's display name, rank and permissions, add a role (**New role…**) or delete one. **Save** applies the role at once to everyone online who holds it. Deleting a role leaves its accounts with no role. At least one role must keep every permission, so the server can always be run.
+- **Staff** to see every account with a role, change one with its picker (or **No role** to take it away), or type a character's name and **Give role**. Changes apply at once, also to anyone online. You cannot change your own role here.
+
+Both pages need the **Server Settings** permission (administrators by default). There is no in-game chat command for roles. Every role edit, deletion and assignment is recorded in the audit log.
+
+**Upgrading from 1.10.0 or earlier:** `immortal` accounts become `administrator`, `player` accounts have no role, and moderators keep their role with the permissions above, so they lose the warps and `/pardon` or `/warp` on themselves. `/role` is gone: give roles on the Staff page or with `bun run admin:role`. Scripts that set `accounts.role` must write a role id (`administrator`, `moderator`) or `NULL`. The moderation tables' `actor_rank` column is now `actor_role` and holds the role's display name (`Admin`, `Moderator`).
+
+The Chat and mail page's `roleTags` setting (off by default) shows the speaker's role name before their name in chat, as in `[Admin] Berlyn says "hi"`.
+
+### Bootstrapping an administrator
 
 1. Start the server and create an account and character on the title screen.
-2. Grant the **account name** (not the character display name) the `immortal` role against the same database file:
+2. Give the account (by its account name or its character's name) the `administrator` role against the same database file:
 
    ```sh
    # Docker Compose:
-   docker compose exec -T second-star-online bun run admin:role <account-name> immortal
+   docker compose exec -T second-star-online bun run admin:role <name> administrator
 
    # From source:
-   SSO_DB=sso.sqlite bun run admin:role <account-name> immortal
+   SSO_DB=sso.sqlite bun run admin:role <name> administrator
    ```
 
-3. Log out and log in again in the browser. CLI role changes take effect at the account's next login, whereas the in-game `/role` command updates an online target immediately.
+   `bun run admin:role <name> none` takes a role away, and `bun run admin:role --list` lists the roles, their permissions and who holds them.
+3. Log out and log in again in the browser. Command-line role changes take effect at the account's next login, whereas the Staff page updates an online account immediately.
+
+The command line is also the way back in if you ever leave no one able to open Server Settings.
 
 ### Bans, jails, mutes and IP bans
 
-Every ban, unban, IP ban, jail, release, mute, unmute and pardon is written to the `moderation_log` table with its reason, who made it, their rank at that moment and when it ends. The in-force bans, IP bans, jails and mutes are in `account_bans`, `ip_bans`, `jails` and `mutes`; a row whose `expires_at` has passed no longer applies.
+Every ban, unban, IP ban, jail, release, mute, unmute and pardon is written to the `moderation_log` table with its reason, who made it, the name of their role at that moment and when it ends. The in-force bans, IP bans, jails and mutes are in `account_bans`, `ip_bans`, `jails` and `mutes`; a row whose `expires_at` has passed no longer applies.
 
 - **Duration and reason.** `/ban`, `/jail`, `/mute` and `/banip` take an optional duration after the name, then an optional reason: `/ban Berlyn 3d being a rude person`. A duration is a number with `m`, `h`, `d` or `w` (`30m`, `12h`, `7d`, `2w`, or combined, such as `1d12h`), up to 10 years, or `perm`. Without one, the `banLength`, `ipBanLength`, `jailSentence` and `muteLength` settings apply. Write `perm` or a duration first if a reason starts with something like `1d`. `/unban`, `/unjail`, `/unmute`, `/unbanip` and `/pardon` take a reason too.
 - **What the player sees.** A banned player reads the original alert and the ban's end, such as `Banned until 2026-11-20 14:00 UTC.` or `This ban is permanent.` A jailed or muted player is told in the chat box until when, at once and at each login. The reason is never shown to the player; it is for staff, through `/banlist`.
-- **Who may change an action.** Only the staff member who made a ban, jail or mute, or an immortal, can change its length or lift it. Re-running `/ban`, `/jail` or `/mute` on someone already banned, jailed or muted replaces the length. Moderators who disagree with each other's bans settle it with the team.
+- **Who may change an action.** Only the staff member who made a ban, jail or mute, or a role with **Overrule** (administrators), can change its length or lift it. Re-running `/ban`, `/jail` or `/mute` on someone already banned, jailed or muted replaces the length. Moderators who disagree with each other's bans settle it with the team.
 - **Jail.** A sentence runs in real time, including while the prisoner is offline, and works on offline characters: they arrive in jail at their next login, and a sentence that ended while they were away sends them to their respawn point (see [Respawn points](#respawn-points)). A prisoner can talk only with local chat and `/me`, which reach the jail map, and send IMs to staff; broadcasts, IMs to other players, guild chat, chat rooms, mail and board posts are refused. Staff warps cannot take a prisoner out or put a player in; use `/jail` and `/unjail`.
 - **Mutes.** A muted player cannot talk at all (local chat, `/me`, broadcasts, IMs, guild chat, chat rooms, mail and board posts), except to send an IM to staff to ask why. A mute is on the account, runs in real time, works on offline characters, and ends by itself or with `/unmute`.
-- **Staff.** Any role above player is staff: staff read and post staff chat and can receive IMs from jailed and muted players.
-- **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Immortals are never stopped by IP bans, so an operator cannot lock themselves out.
-- **Login addresses.** The server keeps the addresses each account logs in from for `addressHistory` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only immortals can read them.
-- **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, made at the rank the banner has now (at least moderator, or immortal if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
+- **Staff.** Any account with a role is staff: staff read and post staff chat and can receive IMs from jailed and muted players.
+- **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Administrators (any role with the IP-ban bypass) are never stopped by IP bans, so an operator cannot lock themselves out.
+- **Login addresses.** The server keeps the addresses each account logs in from for `addressHistory` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only roles with `/banip` (administrators) can read them.
+- **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, made at the rank the banner had then (at least moderator, or administrator if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
 
 ### The chat log
 
@@ -216,7 +235,7 @@ The server logs every line a player writes to other players in the `chat_log` ta
 
 Each line records the time (UTC, to the second), the channel, the sender's account and character, where it went (the map, the IM's recipient, the guild or the room), the exact text, and what became of it: delivered, refused by the cooldown, the house rule, jail or a mute, an IM dropped by the recipient's ignore list or sent to someone not online, `/g` with no guild, a room line out of a room, staff chat from a player, or a Bio refused for a `:` or `/`. For say, `/me` and broadcasts it also counts how many others read the line, how many ignore the speaker, and how many heard only the muffled voice.
 
-- **In game.** `/chatlog <name> [count] [channel]` shows a character's newest lines (20 by default, up to 100), including the IMs sent to them. Only immortals can use it, and they can read every channel, IMs and staff chat included. Every lookup is recorded in the audit log.
+- **In game.** `/chatlog <name> [count] [channel]` shows a character's newest lines (20 by default, up to 100), including the IMs sent to them. Only roles with `/chatlog` (administrators) can use it, and they can read every channel, IMs and staff chat included. Every lookup is recorded in the audit log.
 - **Command line.** `admin:chatlog` reads the same log with filters for name, channel and time:
 
   ```sh
@@ -232,7 +251,7 @@ Each line records the time (UTC, to the second), the channel, the sender's accou
 
 ### Reading the audit log
 
-Actions that change state or reveal privileged information (effective admin commands, World Editor and NPC Editor saves, setting changes, and role changes) are recorded in `audit_log`, as is each `/cheatfile` look, since its lines show players' addresses. `/location` and `/inventory`, which show only the staff member's own place and bag, and refused or no-target command attempts are not logged. Immortals read it in game, merged with the moderation log, with `/auditlog <name> [count]`. From the command line, inspect the newest entries (default `50`):
+Actions that change state or reveal privileged information (effective admin commands, World Editor and NPC Editor saves, setting changes, and role edits and assignments) are recorded in `audit_log`, as is each `/cheatfile` look, since its lines show players' addresses. `/location` and `/inventory`, which show only the staff member's own place and bag, and refused or no-target command attempts are not logged. Administrators read it in game, merged with the moderation log, with `/auditlog <name> [count]`. From the command line, inspect the newest entries (default `50`):
 
 ```sh
 # Docker Compose:
@@ -248,44 +267,43 @@ Audit rows are kept forever by default. Set `auditLogRetention` to delete rows o
 
 Chat commands are parsed on the server. Most single-target commands read word 2 (space-delimited) as the target name, so character names containing spaces cannot be targeted by those commands; `/drop`, `/roster`, `/setclass`, and `/warp` parse further arguments as noted below.
 
-Anyone whose role is below a command's minimum gets “Unknown command "/word".”, the same reply as a typo, so players cannot discover staff commands by trying them.
+Anyone whose role lacks a command's permission gets “Unknown command "/word".”, the same reply as a typo, so players cannot discover staff commands by trying them.
 
-See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser details, house/muffle quirks, and staff chat (`-text`, which both staff roles can read and post).
+See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser details, house/muffle quirks, and staff chat (`-text`, which every staff role can read and post).
 
-| Command | Min role | Target / arguments | Observable result |
+| Command | Default role | Target / arguments | Observable result |
 |---|---|---|---|
 | `/location` | `moderator` | None | Prints `You are at map: <map> at position: <x>-<y>`. |
-| `/iplookup <name>` | `moderator` | Online player (word 2) | Prints the target's IP address (refuses if a moderator targets an immortal). |
-| `/kick <name>` | `moderator` | Online player (word 2) | Sends kick notice and disconnects the target (refuses if a moderator targets an immortal). |
-| `/warp <name> <map> <x> <y>` | `immortal` | Online player, `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Warps target to `<map>` at `(x, y)` (single-space split, cut at `*`). A map that does not exist is refused: "There is no map …". |
+| `/iplookup <name>` | `moderator` | Online player (word 2) | Prints the target's IP address (refuses a target who outranks you). |
+| `/kick <name>` | `moderator` | Online player (word 2) | Sends kick notice and disconnects the target (refuses a target who outranks you). |
+| `/warp <name> <map> <x> <y>` | `administrator` | Online player, `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Warps target to `<map>` at `(x, y)` (single-space split, cut at `*`). A map that does not exist is refused: "There is no map …". |
 | `/jail <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Jails the player in the seeded jail (`x0y0` at `4, 4`) for the duration or `jailSentence`, then sends them to their respawn point. Moderators can jail players only. |
-| `/unjail <name> [reason]` | `moderator` | Character name (word 2) | Ends the sentence early and sends an online prisoner to their respawn point, as a sentence's end does (only the jailer or an immortal). |
-| `/mute <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Mutes the account for the duration or `muteLength` (moderators can mute players only): no chat, IMs except to staff, mail or board posts. Re-muting replaces the length (only the staff member who muted them or an immortal). |
-| `/unmute <name> [reason]` | `moderator` | Character name (word 2) | Lifts the mute (only the staff member who muted them or an immortal). |
-| `/warptome <name>` | `immortal` | Online player (word 2) | Warps target to your current map and tile. |
-| `/warpmeto <name>` | `immortal` | Online player (word 2) | Warps you to the target's current map and tile. |
+| `/unjail <name> [reason]` | `moderator` | Character name (word 2) | Ends the sentence early and sends an online prisoner to their respawn point, as a sentence's end does (only the jailer or an administrator). |
+| `/mute <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Mutes the account for the duration or `muteLength` (moderators can mute players only): no chat, IMs except to staff, mail or board posts. Re-muting replaces the length (only the staff member who muted them or an administrator). |
+| `/unmute <name> [reason]` | `moderator` | Character name (word 2) | Lifts the mute (only the staff member who muted them or an administrator). |
+| `/warptome <name>` | `administrator` | Online player (word 2) | Warps target to your current map and tile. |
+| `/warpmeto <name>` | `administrator` | Online player (word 2) | Warps you to the target's current map and tile. |
 | `/save` | `moderator` | None | Saves all online characters and dirty maps immediately. |
 | `/refresh` | `moderator` | None | Reloads settings overrides from the database and applies them to everyone online. |
-| `/cheatfile` | `immortal` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. Each look is audited. |
+| `/cheatfile` | `administrator` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. Each look is audited. |
 | `/inventory` | `moderator` | None | Prints your 15 bag lines as held by the server (`Name-qty`). |
-| `/banip <name\|ip> [latest\|all] [duration] [reason]` | `immortal` | Character name, else an IPv4 or IPv6 address (word 2) | Bans the character's last address (`latest`, the default) or every address it has used, or the typed address (an IPv6 address bans its /64), for the duration or `ipBanLength`. Disconnects matching sessions except immortals'. |
-| `/unbanip <name\|ip> [reason]` | `immortal` | Character name or address (word 2) | Lifts every IP ban made on the character's addresses, or the ban on that address. |
-| `/ban <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Bans the target's account for the duration or `banLength` (cannot ban yourself; moderators can ban players only) and kicks if online. Re-banning replaces the length (only the banner or an immortal). |
-| `/unban <name> [reason]` | `moderator` | Character name (word 2) | Lifts the ban on the target's account (only the banner or an immortal). |
-| `/banlist [page\|name\|ip]` | `moderator` | None, a page number, a character name, or (immortals) an address | Lists the bans, jails and mutes in force, 10 a page, and for immortals the IP bans; with a name, that character's standing, last 10 actions and (immortals) addresses; with an address, its ban and the characters seen there. |
-| `/chatlog <name> [count] [channel]` | `immortal` | Character name (word 2), online or offline; a count up to `100` and a channel (`say`, `emote`, `broadcast`, `im`, `awayReply`, `away`, `guild`, `room`, `staff`, `bio`) in either order | Prints the character's newest logged lines (default 20) and the IMs sent to them, oldest first. Each lookup is audited. See [The chat log](#the-chat-log). |
-| `/auditlog <name> [count]` | `immortal` | Character name (word 2), online or offline; a count (default `10`, up to `100`) | Prints the newest staff actions by that character's account or done to that character, oldest first: admin commands, editor saves, setting and role changes, and bans, jails, IP bans and pardons with their reasons and ends. Each lookup is audited. |
+| `/banip <name\|ip> [latest\|all] [duration] [reason]` | `administrator` | Character name, else an IPv4 or IPv6 address (word 2) | Bans the character's last address (`latest`, the default) or every address it has used, or the typed address (an IPv6 address bans its /64), for the duration or `ipBanLength`. Disconnects matching sessions except administrators'. |
+| `/unbanip <name\|ip> [reason]` | `administrator` | Character name or address (word 2) | Lifts every IP ban made on the character's addresses, or the ban on that address. |
+| `/ban <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Bans the target's account for the duration or `banLength` (cannot ban yourself; moderators can ban players only) and kicks if online. Re-banning replaces the length (only the banner or an administrator). |
+| `/unban <name> [reason]` | `moderator` | Character name (word 2) | Lifts the ban on the target's account (only the banner or an administrator). |
+| `/banlist [page\|name\|ip]` | `moderator` | None, a page number, a character name, or (administrators) an address | Lists the bans, jails and mutes in force, 10 a page, and for administrators the IP bans; with a name, that character's standing, last 10 actions and (administrators) addresses; with an address, its ban and the characters seen there. |
+| `/chatlog <name> [count] [channel]` | `administrator` | Character name (word 2), online or offline; a count up to `100` and a channel (`say`, `emote`, `broadcast`, `im`, `awayReply`, `away`, `guild`, `room`, `staff`, `bio`) in either order | Prints the character's newest logged lines (default 20) and the IMs sent to them, oldest first. Each lookup is audited. See [The chat log](#the-chat-log). |
+| `/auditlog <name> [count]` | `administrator` | Character name (word 2), online or offline; a count (default `10`, up to `100`) | Prints the newest staff actions by that character's account or done to that character, oldest first: admin commands, editor saves, setting changes, role edits and assignments, and bans, jails, IP bans and pardons with their reasons and ends. Each lookup is audited. |
 | `/pardon <name> [reason]` | `moderator` | Online player (word 2) | Clears the target's murder/wanted flag and saves the character (moderators can pardon players only, never themselves). Does not end a jail sentence. |
-| `/warpscript <word\|OFF>` | `immortal` | Keyword (word 2) or `OFF` | Matches `<word>` as a whole token in broadcast message content, ignoring case; the first matching staff member in login order warps the speaker (`OFF` disables). |
-| `/role <name> <role>` | `immortal` | Character name, `player` / `moderator` / `immortal` | Updates the account's role (cannot change your own) and applies immediately if online. |
-| `/setclass <name> <class>` | `immortal` | Character name, class name or number `1`–`26` | Changes the character's class in the database. |
-| `/drop <item>` | `immortal` | `<n> gold`, item name, or `<n> <item>` (1–9999) | Places the pile on the tile you face; admin drops never decay. |
-| `/roster [slot species\|clear]` | `immortal` | None, or slot `1`–`4` + species name or `clear` | Lists the current map's 4 monster/NPC slots, or sets/clears a slot (saving the map). |
-| `/spawn <1-4>` | `immortal` | Slot `1`–`4` | Immediately spawns the rostered creature in that slot on the tile you face. |
+| `/warpscript <word\|OFF>` | `administrator` | Keyword (word 2) or `OFF` | Matches `<word>` as a whole token in broadcast message content, ignoring case; the first matching staff member in login order warps the speaker (`OFF` disables). |
+| `/setclass <name> <class>` | `administrator` | Character name, class name or number `1`–`26` | Changes the character's class in the database. |
+| `/drop <item>` | `administrator` | `<n> gold`, item name, or `<n> <item>` (1–9999) | Places the pile on the tile you face; admin drops never decay. |
+| `/roster [slot species\|clear]` | `administrator` | None, or slot `1`–`4` + species name or `clear` | Lists the current map's 4 monster/NPC slots, or sets/clears a slot (saving the map). |
+| `/spawn <1-4>` | `administrator` | Slot `1`–`4` | Immediately spawns the rostered creature in that slot on the tile you face. |
 
 ## Server settings
 
-Immortals open **Admin → Settings** from the top menu bar. The window has a sidebar of pages (World, Chat and mail, Items, Moderation, Logins and Logs) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
+Administrators open **Admin → Settings** from the top menu bar. The window has a sidebar of pages (World, Chat and mail, Items, Moderation, Logins, Logs, and the [Roles and Staff](#editing-roles-and-giving-them-out) pages) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
 
 Each page is saved on its own. Clicking **SAVE** validates the page's fields on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values. Only the open page can hold unsaved changes: leaving it for another page or a search result, or closing the window, asks first, and the changes are discarded if you go on.
 
@@ -314,8 +332,8 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `chatMaxChars` | Longest chat line | `200` | `1`–`500` chars | Maximum typed chat line length; longer lines are truncated. |
-| `broadcastCooldown` | Broadcast wait | `50s` | `0`–`1h` | Minimum wait between `'` broadcasts (`0` disables). Immortals skip it. |
-| `chatCooldown` | Chat wait | `3s` | `0`–`1h` | Minimum wait between local chat lines and emotes, also applied to IMs, guild and room lines, mail and board posts (`0` disables). Immortals skip it. |
+| `broadcastCooldown` | Broadcast wait | `50s` | `0`–`1h` | Minimum wait between `'` broadcasts (`0` disables). Roles with the matching skip permission (administrators) skip it. |
+| `chatCooldown` | Chat wait | `3s` | `0`–`1h` | Minimum wait between local chat lines and emotes, also applied to IMs, guild and room lines, mail and board posts (`0` disables). Roles with the matching skip permission (administrators) skip it. |
 | `mailBodyMax` | Longest mail | `2000` | `1`–`4000` chars | Maximum mail body length; longer bodies are truncated. |
 | `mailboxMax` | Messages per mailbox | `50` | `1`–`1000` | Maximum messages kept per mailbox; newer mail drops the oldest. |
 | `boardPostsMax` | Posts per board | `200` | `1`–`1000` | Maximum posts kept per message board; newer posts evict the oldest (there is no board moderation tool). |
@@ -323,6 +341,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | `artBytesMax` | Largest painting or photo | `16384` | `1024`–`65536` bytes | Maximum byte size for a saved 64×64 PNG painting or photo. |
 | `announcePresence` | Announce logons | `true` | `true` / `false` | Broadcasts logon/logoff updates to clients (used by Friends list). |
 | `presenceChatLines` | Logon lines in chat | `false` | `true` / `false` | Also prints `<name> has logged on/off.` in everyone's chat when `announcePresence` is on. |
+| `roleTags` | Role tags in chat | `false` | `true` / `false` | Puts a staff member's role name before their name in local chat, `/me`, broadcasts, chat rooms, guild chat and staff chat (`[Admin] Berlyn says "hi"`). IMs keep the plain name; players get no tag. |
 | `news` | Login news | `Welcome to First Star Online!` | Up to `1000` chars | Printed on login once per browser whenever the text changes; empty disables. |
 
 ### Items
@@ -330,7 +349,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `lootDecay` | Loot lasts | `30m` | `1m`–`7d` | How long before monster loot disappears from the ground (player drops and `/drop` items never decay). |
-| `deathDrops` | Drops on death | `wanted` | `off`, `wanted`, `pvp`, `everyone` | Whose deaths drop some gold or one random bag item (never crystals) where they died. `off`: nobody. `wanted` (Wanted only): characters wanted for murder. `pvp` (Killed by a player): anyone another player kills, and wanted characters however they die. `everyone`: every death outside an arena, as in 1.6. Faction heads on PvP maps drop regardless, and an immortal always drops. Replaces the old on/off `dropOnDeath`; a server that had it off is set to `off`. |
+| `deathDrops` | Drops on death | `wanted` | `off`, `wanted`, `pvp`, `everyone` | Whose deaths drop some gold or one random bag item (never crystals) where they died. `off`: nobody. `wanted` (Wanted only): characters wanted for murder. `pvp` (Killed by a player): anyone another player kills, and wanted characters however they die. `everyone`: every death outside an arena, as in 1.6. Faction heads on PvP maps drop regardless, and a role with the drop-on-every-death permission (administrators) always drops. Replaces the old on/off `dropOnDeath`; a server that had it off is set to `off`. |
 | `deathDropKind` | What drops on death | `either` | `either`, `gold`, `items` | `either` (Gold or an item): a coin toss when the character carries gold, as in 1.6. `gold`: gold only; a death without gold drops nothing. `items`: bag items only. |
 | `deathDropGoldCap` | Most gold dropped on death | `200` | `0`–`1000000000` | The most gold a death drops unless the character is wanted (a wanted character can drop up to all they carry). `0` means no cap. |
 | `deathDropMinLevel` | No drops below level | `0` | `0`–`100000` | Characters below this level drop nothing on death unless wanted, so new players keep their first gear. `0` protects no one. |
@@ -350,7 +369,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `loginFailsPerIp` | Failed logins per address | `20` | `0`–`1000` | Failed logins per address (IPv6 `/64`) in 5 minutes before refusal (`0` disables; moderators and immortals are not refused). |
+| `loginFailsPerIp` | Failed logins per address | `20` | `0`–`1000` | Failed logins per address (IPv6 `/64`) in 5 minutes before refusal (`0` disables; roles with the login-limit bypass, moderators and administrators by default, are not refused). |
 | `loginFailsPerAccount` | Failed logins per account | `5` | `0`–`1000` | Wrong passwords per address+account pair in 5 minutes before refusal (`0` disables; no role exemption). |
 | `createsPerIp` | New characters per address | `3` | `0`–`1000` | Character creations per address (IPv6 `/64`) per hour (`0` disables; no role exemption). |
 

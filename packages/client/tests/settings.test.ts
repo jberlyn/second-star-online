@@ -7,6 +7,13 @@ import { describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
 import type { ServerMsg, SettingPage, SettingRow } from "@secondstaronline/shared";
+import {
+  ADMINISTRATOR,
+  LOCKOUT_TEXT,
+  MODERATOR,
+  PERMISSIONS,
+  roleToData,
+} from "@secondstaronline/shared";
 
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -99,12 +106,16 @@ const ROWS: SettingRow[] = [
   },
 ];
 
+/** The Roles and Staff pages' actions, unused here. */
+const NO_ROLES = { saveRole: () => {}, deleteRole: () => {}, assignRole: () => {} };
+
 function win() {
   const saves: Record<string, unknown>[] = [];
   let loads = 0;
   const layer = createWindowLayer();
   document.body.append(layer.el);
   const w = createSettingsWindow(layer, {
+    ...NO_ROLES,
     save: (v) => saves.push(v),
     load: () => {
       loads += 1;
@@ -447,7 +458,11 @@ describe("the Server Settings window", () => {
     const layer = createWindowLayer();
     document.body.append(layer.el);
     const saves: Record<string, unknown>[] = [];
-    const w = createSettingsWindow(layer, { save: (v) => saves.push(v), load: () => {} });
+    const w = createSettingsWindow(layer, {
+      ...NO_ROLES,
+      save: (v) => saves.push(v),
+      load: () => {},
+    });
     w.show([{ id: "items", title: "Items", kind: "rows" }], [prizes]);
     const t = w.window.el.querySelector("textarea") as HTMLTextAreaElement;
     expect(t.value).toBe("Long Sword\n1000 Gold\n500 Gold\nKnife");
@@ -469,7 +484,11 @@ describe("the Server Settings window", () => {
     expect(valueText(news, "")).toBe("none");
     const layer = createWindowLayer();
     document.body.append(layer.el);
-    const w = createSettingsWindow(layer, { save: () => {}, load: () => {} });
+    const w = createSettingsWindow(layer, {
+      ...NO_ROLES,
+      save: () => {},
+      load: () => {},
+    });
     w.show([{ id: "chat", title: "Chat and mail", kind: "rows" }], [news]);
     const t = w.window.el.querySelector("textarea") as HTMLTextAreaElement;
     expect(t.value).toBe("Welcome to First Star Online!");
@@ -512,18 +531,18 @@ describe("admin messages in the app", () => {
     const c = conn();
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage(SNAPSHOT);
     menuClick(root, "Admin", "Server Settings");
     expect(c.sent).toContainEqual({ t: "settingsOpen" });
-    c.onMessage({ t: "settings", pages: PAGES, rows: ROWS });
+    c.onMessage({ t: "settings", pages: PAGES, rows: ROWS, roles: [], staff: [] });
     const w = root.querySelector(".settings")?.closest<HTMLElement>(".sso-window");
     expect(w?.hidden).toBe(false);
     expect(w?.textContent).toContain("Server Settings");
     c.onMessage({ t: "settingsResult", ok: true });
     expect(w?.querySelector(".settings-status")?.textContent).toBe(SETTINGS_SAVED);
     // A demotion closes it and hides the Admin section.
-    c.onMessage({ t: "role", role: "moderator" });
+    c.onMessage({ t: "permissions", permissions: [...MODERATOR.permissions] });
     expect(w?.hidden).toBe(true);
     app.stop();
   });
@@ -536,8 +555,8 @@ describe("admin messages in the app", () => {
     const c = conn();
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
-    c.onMessage({ t: "role", role: "immortal" });
-    c.onMessage({ t: "settings", pages: PAGES, rows: ROWS });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
+    c.onMessage({ t: "settings", pages: PAGES, rows: ROWS, roles: [], staff: [] });
     const w = root.querySelector(".settings")?.closest<HTMLElement>(".sso-window");
     expect(w?.hidden).toBe(false);
     c.onMessage({ t: "chat", text: "*** You are being kicked.", color: 0 });
@@ -564,7 +583,7 @@ describe("admin messages in the app", () => {
     const c = conn();
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage(SNAPSHOT);
     const click = (text: string) => menuClick(root, "Admin", text);
     click("Begin Assassin's Game");
@@ -591,5 +610,69 @@ describe("admin messages in the app", () => {
     c.onMessage({ t: "restore", text: "-hi" });
     expect(input.value).toBe("-hi");
     app.stop();
+  });
+});
+
+describe("the Roles and Staff pages", () => {
+  const roles = [
+    { ...roleToData(ADMINISTRATOR), holders: 1 },
+    { ...roleToData(MODERATOR), holders: 0 },
+  ];
+  const staff = [{ name: "Berlyn", role: "administrator" }];
+  function open(kind: "roles" | "staff") {
+    const calls: unknown[][] = [];
+    const layer = createWindowLayer();
+    document.body.append(layer.el);
+    const w = createSettingsWindow(layer, {
+      save: () => {},
+      load: () => {},
+      saveRole: (...a) => calls.push(["saveRole", ...a]),
+      deleteRole: (...a) => calls.push(["deleteRole", ...a]),
+      assignRole: (...a) => calls.push(["assignRole", ...a]),
+    });
+    w.show([{ id: kind, title: kind, kind }], [], { roles, staff });
+    const q = <T extends Element>(sel: string) => w.window.el.querySelector(sel) as T;
+    const status = () => q<HTMLElement>(".settings-status").textContent;
+    return { w, q, calls, status };
+  }
+
+  test("a role opens with no unsaved changes, and an edit is sent as the role", () => {
+    const { q, calls, status } = open("roles");
+    expect(status()).toBe("No unsaved changes");
+    const pick = q<HTMLSelectElement>('[data-action="roles-pick"]');
+    pick.value = "moderator";
+    pick.dispatchEvent(new Event("change"));
+    expect(status()).toBe("No unsaved changes");
+    q<HTMLInputElement>('[data-permission="warp"]').click();
+    expect(status()).toBe("1 unsaved change");
+    q<HTMLButtonElement>('[data-action="settings-save"]').click();
+    expect(calls).toEqual([
+      [
+        "saveRole",
+        {
+          ...roleToData(MODERATOR),
+          permissions: PERMISSIONS.filter((p) => p === "warp" || MODERATOR.permissions.has(p)),
+        },
+        false,
+      ],
+    ]);
+  });
+
+  test("the last role with every permission cannot lose one; nothing is sent", () => {
+    const { q, calls, status } = open("roles");
+    q<HTMLInputElement>('[data-permission="kick"]').click();
+    q<HTMLButtonElement>('[data-action="settings-save"]').click();
+    expect(status()).toBe(LOCKOUT_TEXT);
+    expect(calls).toEqual([]);
+  });
+
+  test("a staff picker sends the change and shows the server's role until it answers", () => {
+    const { q, calls } = open("staff");
+    const sel = q<HTMLSelectElement>('[data-action="staff-row-role"]');
+    sel.value = "";
+    sel.dispatchEvent(new Event("change"));
+    expect(calls).toEqual([["assignRole", "Berlyn", null]]);
+    expect(sel.value).toBe("administrator");
+    expect(q<HTMLButtonElement>('[data-action="settings-save"]').hidden).toBe(true);
   });
 });

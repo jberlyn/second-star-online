@@ -6,7 +6,7 @@ import type { GuildAlignment, GuildScreen } from "../rules/social/guilds.ts";
 
 /**
  * Admin menu → Begin Assassin's Game (`GO`), Begin Lightning Assassin's Game (`LIGHTNING`) or End
- * Assassin's Game (`STOP`): sent at once with no confirmation. Immortals only; anyone else is
+ * Assassin's Game (`STOP`): sent at once with no confirmation. The `assassinGame` permission only; anyone else is
  * silently refused.
  */
 export const assassinGameSchema = z.strictObject({

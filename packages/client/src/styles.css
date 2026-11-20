@@ -614,6 +614,104 @@ body {
   background: #a9c4ff;
 }
 
+/* Settings → Roles and Staff (ui/settings-roles.ts). */
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+}
+.roles-top,
+.staff-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.roles-pick {
+  flex: 1;
+  min-width: 0;
+}
+.roles-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.roles-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+}
+.roles-field-label {
+  font-size: 13px;
+}
+.settings .roles-id,
+.settings .roles-name {
+  width: 112px;
+}
+.settings .roles-id:read-only {
+  color: #9a9a9a;
+}
+.settings .roles-rank {
+  width: 56px;
+}
+.roles .settings-help {
+  margin: 0;
+}
+.roles-group {
+  margin: 0;
+  padding: 6px 10px 8px;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+.roles-group legend {
+  padding: 0 4px;
+  color: #fff;
+  font-weight: 600;
+}
+.roles-perms {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px 12px;
+}
+.roles-group:not(:first-of-type) .roles-perms {
+  grid-template-columns: 1fr;
+}
+.roles-perm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.settings-btn.roles-delete {
+  color: #ff8a80;
+}
+.settings-btn.roles-delete[hidden] {
+  display: none;
+}
+.settings .staff-name {
+  flex: 1;
+  min-width: 0;
+}
+.staff-list {
+  display: flex;
+  flex-direction: column;
+}
+.staff-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid #2e2e2e;
+}
+.staff-row-name {
+  color: #fff;
+}
+.settings-btn[hidden] {
+  display: none;
+}
+
 /* Who's Online (WhoWindow sub-movie, 120×240). */
 .who-stage {
   position: absolute;

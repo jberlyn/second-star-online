@@ -1,5 +1,5 @@
 /**
- * Bot script: Alice, an immortal mage, places a Slime; fails to read a Meteor Book (Dex), reads
+ * Bot script: Alice, an administrator mage, places a Slime; fails to read a Meteor Book (Dex), reads
  * Fireball, Minor Heal, Hold, Summon Creature and Identify books; casts a fireball at the Slime
  * (refused again inside the cast delay), heals Bob, holds him, summons a Pig; runs out of crystals;
  * then after a relog her spellbook is kept in full, Identify included.
@@ -131,7 +131,7 @@ describe("spells", () => {
     bot.close();
     const db = server.db;
     db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     db.run(
       "UPDATE characters SET x = 6, y = 6, dex = 20, sp = 200, sp_max = 200 WHERE name = 'Alice'",

@@ -332,7 +332,11 @@ describe("what an Airship cannot do", () => {
     };
     s.map.flags.canFight = "X";
     rng.calls.length = 0;
-    const r = monsterAttack(s.map, slot, s.ann, { rng, npcs: ARCHIVE_NPCS, immortal: () => false });
+    const r = monsterAttack(s.map, slot, s.ann, {
+      rng,
+      npcs: ARCHIVE_NPCS,
+      invulnerable: () => false,
+    });
     expect(r).toBeNull();
     expect(rng.calls[0]).toBe(10);
   });
@@ -487,7 +491,7 @@ describe("death", () => {
     return checkDeath(s.room, s.ann, rng, {
       item: s.ctx(),
       rules: DEFAULT_DEATH_DROPS,
-      immortal: false,
+      everyDeath: false,
     });
   };
   test("kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops", () => {
@@ -509,7 +513,7 @@ describe("death", () => {
     const r = checkDeath(s.room, s.ann, rngByN(), {
       item: s.ctx(),
       rules: DEFAULT_DEATH_DROPS,
-      immortal: false,
+      everyDeath: false,
     });
     expect(r.kind).toBe("death");
     expect(s.ann.vehicle).toBeNull();
@@ -523,7 +527,7 @@ describe("death", () => {
     const r = checkDeath(s.room, s.ann, rngByN(), {
       item: s.ctx(),
       rules: DEFAULT_DEATH_DROPS,
-      immortal: false,
+      everyDeath: false,
     });
     expect(r.kind).toBe("arena");
     expect(s.ann.vehicle).toBe("Airship");

@@ -1,12 +1,13 @@
 /**
- * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; both staff roles read and post
+ * Bot script: Alice, an administrator, makes Mo a moderator on the Server Settings window's Staff
+ * page; both staff roles read and post
  * `-` lines in green. Alice warps Bob; Mo cannot. Alice sets `jailSentence` in Settings and jails Bob in the seeded
  * jail map x0y0: he is told until when, his shout fails, and when the wall clock passes his sentence he is on the start
  * point. Her `/warpscript` pulls Bob over when he broadcasts the keyword. `/warpmeto`,
  * `/Location`, `/IPlookup`, a counted `/drop`, a forged editor save that lands in `/CheatFile`, and
  * `/setclass`. She kicks Bob, bans him for a day (his login is refused with the end, never the
  * reason), unbans him, bans his IP (which disconnects Mo, on the same address) and unbans it; Mo
- * cannot ban an immortal. Every admin action is in the audit log.
+ * cannot ban an administrator. Every admin action is in the audit log.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -86,7 +87,7 @@ describe("admin commands, roles, bans and settings", () => {
     }
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
     server.db.run("UPDATE characters SET x = 9, y = 6 WHERE name = 'Bob'");
@@ -99,10 +100,13 @@ describe("admin commands, roles, bans and settings", () => {
     await server.stop();
   });
 
-  test("/role makes Mo a moderator at once; both staff roles post and read staff chat in CHAT_COLOR.staff", async () => {
-    await say(alice, "/role mo moderator");
-    expect(lines(alice)).toContain("Mo is now a moderator.");
-    await mo.waitFor((m) => m.t === "role" && m.role === "moderator");
+  test("the Staff page makes Mo a moderator at once; both staff roles post and read staff chat in CHAT_COLOR.staff", async () => {
+    alice.send({ t: "roleAssign", name: "mo", role: "moderator" });
+    await alice.waitFor((m) => m.t === "roleResult" && m.ok && m.text === "Mo is now Moderator.");
+    await mo.waitFor(
+      (m) =>
+        m.t === "permissions" && m.permissions.includes("kick") && !m.permissions.includes("warp"),
+    );
     bob.clear();
     await say(alice, "-  meeting at noon");
     await mo.waitFor(
@@ -267,13 +271,13 @@ describe("admin commands, roles, bans and settings", () => {
     await settle();
   });
 
-  test("/BanIP disconnects and refuses that address, except an immortal; /unbanIP lets it in", async () => {
+  test("/BanIP disconnects and refuses that address, except an administrator; /unbanIP lets it in", async () => {
     alice.clear();
     await say(alice, "/IPlookup Mo");
     const ip = lines(alice)[1]?.replace("The IP is: ", "") ?? "";
     await say(alice, `/BanIP ${ip}`);
     expect(lines(alice)).toContain(`Banning ${ip}...`);
-    // Every bot shares the address: Mo is disconnected, Alice (an immortal) is not.
+    // Every bot shares the address: Mo is disconnected, Alice (an administrator) is not.
     const notice = banNotice(ADMIN_TEXT.ipBanned, new Date(wall + 30 * 86_400_000).toISOString());
     expect(await mo.waitFor((m) => m.t === "kicked")).toEqual({ t: "kicked", text: notice });
     expect(alice.inbox.some((m) => m.t === "kicked")).toBe(false);
@@ -290,7 +294,7 @@ describe("admin commands, roles, bans and settings", () => {
   test("every admin action is in the audit log", () => {
     const cmds = recentAudit(server.db, 100).map((r) => r.command);
     for (const c of [
-      "/role",
+      "role assign",
       "/warp",
       "settings",
       "/jail",

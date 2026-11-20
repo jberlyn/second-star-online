@@ -375,11 +375,11 @@ describe("login, creation and socket limits", () => {
     expect((await tryLogin("Ben", "secret")).t).toBe("welcome");
   });
 
-  test("an immortal is never refused by the per-address count", async () => {
+  test("an administrator is never refused by the per-address count", async () => {
     const acc = server.db
       .query<{ account_id: string }, []>("SELECT account_id FROM characters WHERE name = 'Cat'")
       .get();
-    setRole(server.db, acc?.account_id ?? "", "immortal", "2026-11-10T00:00:00.000Z");
+    setRole(server.db, acc?.account_id ?? "", "administrator", "2026-11-10T00:00:00.000Z");
     // 20 bad names from this address (the per-address limit), then Cat still gets in.
     for (let i = 0; i < 20; i++) {
       await tryLogin(`Nobody${i}`, "x");

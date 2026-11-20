@@ -1,5 +1,5 @@
 /**
- * Bot script: Alice, an immortal, paints two `J2` pads through the World Editor's SAVE and drops an
+ * Bot script: Alice, an administrator, paints two `J2` pads through the World Editor's SAVE and drops an
  * Airship Deed beside herself. She uses it facing a pad (the airship appears, the deed is gone);
  * Bob, standing next to it, is told it is not his; Alice boards with Ctrl (body 57 for Bob), flies
  * over water in 8-frame steps, is refused a drop "from the sky" and a landing off a pad, parks on
@@ -77,7 +77,7 @@ describe("the Airship", () => {
     }
     bot.close();
     server.db.run(
-      "UPDATE accounts SET role = 'immortal' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
+      "UPDATE accounts SET role = 'administrator' WHERE id = (SELECT account_id FROM characters WHERE name = 'Alice')",
     );
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
     server.db.run("UPDATE characters SET x = 6, y = 4 WHERE name = 'Bob'");

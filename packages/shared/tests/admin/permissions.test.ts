@@ -1,40 +1,120 @@
-/** Roles and permissions: the built-in roles grant exactly what the fixed roles did. */
+/** Roles and permissions: the default roles, the role checks and the chat tag. */
 import { describe, expect, test } from "bun:test";
 
 import {
-  BUILTIN_ROLES,
+  ADMINISTRATOR,
   can,
+  DEFAULT_ROLES,
   EXEMPTIONS,
+  hasEveryPermission,
   isStaff,
+  LOCKOUT_TEXT,
+  MODERATOR,
+  PERMISSION_GROUPS,
   PERMISSIONS,
+  permissionInfo,
+  type RoleData,
+  roleDataError,
+  roleFromData,
+  rolesError,
+  roleToData,
   TOOL_PERMISSIONS,
+  taggedName,
 } from "../../src/index.ts";
 
-describe("the built-in roles", () => {
-  test("an immortal holds every permission and a player none", () => {
+describe("the default roles", () => {
+  test("an administrator holds every permission and an account with no role none", () => {
     for (const p of PERMISSIONS) {
-      expect(can("immortal", p)).toBe(true);
-      expect(can("player", p)).toBe(false);
+      expect(can(ADMINISTRATOR, p)).toBe(true);
+      expect(can(null, p)).toBe(false);
     }
+    expect(hasEveryPermission(ADMINISTRATOR)).toBe(true);
   });
 
   test("a moderator has no tools or gameplay exemptions except the login-limit bypass", () => {
-    expect(TOOL_PERMISSIONS.filter((p) => can("moderator", p))).toEqual([]);
-    expect(EXEMPTIONS.filter((p) => can("moderator", p))).toEqual(["bypassLoginLimits"]);
+    expect(TOOL_PERMISSIONS.filter((p) => can(MODERATOR, p))).toEqual([]);
+    expect(EXEMPTIONS.filter((p) => can(MODERATOR, p))).toEqual(["bypassLoginLimits"]);
   });
 
-  test("staff are the roles above a player", () => {
-    expect(isStaff("player")).toBe(false);
-    expect(isStaff("moderator")).toBe(true);
-    expect(isStaff("immortal")).toBe(true);
+  test("any role is staff; no role is a player", () => {
+    expect(isStaff(null)).toBe(false);
+    expect(isStaff(MODERATOR)).toBe(true);
+    expect(isStaff(ADMINISTRATOR)).toBe(true);
+    // A role with no permissions at all is still staff (staff chat, IMs from prisoners).
+    expect(isStaff(roleFromData({ id: "helper", name: "Helper", rank: 1, permissions: [] }))).toBe(
+      true,
+    );
   });
 
-  test("every permission is named once", () => {
+  test("every permission is named once, grouped and labelled", () => {
     expect(new Set(PERMISSIONS).size).toBe(PERMISSIONS.length);
-    for (const r of Object.values(BUILTIN_ROLES)) {
+    const groups = new Set<string>(PERMISSION_GROUPS.map((g) => g.id));
+    for (const p of PERMISSIONS) {
+      const info = permissionInfo(p);
+      expect(groups.has(info.group)).toBe(true);
+      expect(info.label).not.toBe("");
+    }
+    for (const r of DEFAULT_ROLES) {
       for (const p of r.permissions) {
         expect(PERMISSIONS).toContain(p);
       }
     }
+  });
+
+  test("the roles migration seeds the default roles", async () => {
+    const sql = await Bun.file(
+      new URL("../../../server/migrations/20261120_42_roles.sql", import.meta.url),
+    ).text();
+    for (const r of DEFAULT_ROLES) {
+      const d = roleToData(r);
+      expect(sql).toContain(
+        `('${d.id}', '${d.name}', ${d.rank},\n    '${JSON.stringify(d.permissions)}'`,
+      );
+    }
+  });
+});
+
+describe("role definitions", () => {
+  const ok: RoleData = { id: "helper", name: "Helper", rank: 1, permissions: ["kick"] };
+
+  test("a well-formed role passes and round-trips", () => {
+    expect(roleDataError(ok)).toBeNull();
+    expect(roleToData(roleFromData(ok))).toEqual(ok);
+  });
+
+  test("ids, names, ranks and permissions are checked", () => {
+    expect(roleDataError({ ...ok, id: "" })).not.toBeNull();
+    expect(roleDataError({ ...ok, id: "Helper" })).not.toBeNull();
+    expect(roleDataError({ ...ok, id: "a".repeat(21) })).not.toBeNull();
+    expect(roleDataError({ ...ok, id: "none" })).toBe("A role cannot be called none.");
+    expect(roleDataError({ ...ok, id: "player" })).not.toBeNull();
+    expect(roleDataError({ ...ok, name: "" })).not.toBeNull();
+    expect(roleDataError({ ...ok, name: " Helper" })).not.toBeNull();
+    expect(roleDataError({ ...ok, name: "[Help]" })).not.toBeNull();
+    expect(roleDataError({ ...ok, rank: 0 })).not.toBeNull();
+    expect(roleDataError({ ...ok, rank: 1.5 })).not.toBeNull();
+    expect(roleDataError({ ...ok, permissions: ["fly"] })).toBe(
+      "There is no permission called fly.",
+    );
+  });
+
+  test("a stored permission the server no longer has is dropped", () => {
+    expect([...roleFromData({ ...ok, permissions: ["kick", "role"] }).permissions]).toEqual([
+      "kick",
+    ]);
+  });
+
+  test("some role must keep every permission", () => {
+    expect(rolesError([MODERATOR, ADMINISTRATOR])).toBeNull();
+    expect(rolesError([MODERATOR])).toBe(LOCKOUT_TEXT);
+    expect(rolesError([])).toBe(LOCKOUT_TEXT);
+  });
+});
+
+describe("role tags in chat", () => {
+  test("the tag is the role's name, only when the setting is on and the speaker has a role", () => {
+    expect(taggedName("Berlyn", ADMINISTRATOR, true)).toBe("[Admin] Berlyn");
+    expect(taggedName("Berlyn", ADMINISTRATOR, false)).toBe("Berlyn");
+    expect(taggedName("Bob", null, true)).toBe("Bob");
   });
 });

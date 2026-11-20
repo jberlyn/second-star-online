@@ -129,7 +129,7 @@ describe("regen", () => {
 });
 
 describe("hunger", () => {
-  test("random(3) = 1 takes one; immortals never get hungry", () => {
+  test("random(3) = 1 takes one; administrators never get hungry", () => {
     expect(hungerTick(100, false, minRng).hunger).toBe(99);
     expect(hungerTick(100, false, maxRng).hunger).toBe(100);
     expect(hungerTick(100, true, minRng).hunger).toBe(100);

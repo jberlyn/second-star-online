@@ -4,7 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { type ServerMsg, skillIndex } from "@secondstaronline/shared";
+import { ADMINISTRATOR, type ServerMsg, skillIndex } from "@secondstaronline/shared";
 
 import { seededRng } from "../src/rng.ts";
 import { onArenaTile, setAttackHeld } from "../src/systems/combat/melee.ts";
@@ -319,7 +319,7 @@ describe("kept bugs in the monster tables", () => {
       monsterAttack(map, map.slots[0] as MonsterSlot, a, {
         rng,
         npcs: ARCHIVE_NPCS,
-        immortal: () => false,
+        invulnerable: () => false,
       }),
     ).toBeNull();
     expect(rng.calls).toEqual([]);
@@ -340,7 +340,7 @@ describe("kept bugs in the monster tables", () => {
     const r = monsterAttack(map, map.slots[0] as MonsterSlot, a, {
       rng: rngByN({ 10: [1], 60: [1, 1] }),
       npcs: ARCHIVE_NPCS,
-      immortal: () => false,
+      invulnerable: () => false,
     });
     expect([r?.text, r?.lines]).toEqual(["Parry", ["You have advanced in the art of Parry!"]]);
     expect(a.char.skills[skillIndex("Parry")]).toBe(61);
@@ -357,7 +357,7 @@ describe("kept bugs in the monster tables", () => {
     const r = monsterAttack(map, map.slots[0] as MonsterSlot, a, {
       rng: rngByN({ 10: [1], 60: [2], 90: [5, 5, 1], 5: [1] }),
       npcs: ARCHIVE_NPCS,
-      immortal: () => false,
+      invulnerable: () => false,
     });
     expect([r?.text, r?.lines]).toEqual(["Block", ["You have advanced in the art of Block!"]]);
     expect(a.char.skills[skillIndex("Block")]).toBe(6);
@@ -396,7 +396,7 @@ describe("kept bugs in the monster tables", () => {
     monsterAttack(map, map.slots[0] as MonsterSlot, a, {
       rng: rngByN({ 10: [1] }),
       npcs: ARCHIVE_NPCS,
-      immortal: () => false,
+      invulnerable: () => false,
     });
     expect(a.lastToHitMe).toBe("a Slime");
     expect(a.char.vitals.hp).toBe(20);
@@ -404,7 +404,7 @@ describe("kept bugs in the monster tables", () => {
     monsterAttack(map, map.slots[0] as MonsterSlot, a, {
       rng: rngByN({ 10: [1] }),
       npcs: ARCHIVE_NPCS,
-      immortal: () => false,
+      invulnerable: () => false,
     });
     expect(a.lastToHitMe).toBe("a Orc");
   });
@@ -596,11 +596,11 @@ describe("monster attacks and death", () => {
     expect(world.players.size).toBe(2);
   });
 
-  test("immortals take no monster damage", () => {
+  test("administrators take no monster damage", () => {
     const map = testMap("x1000y992");
     const { join, run } = setup([map], undefined, rngByN({ 10: [1] }));
     const a = player("a", map, 5, 5);
-    a.role = "immortal";
+    a.role = ADMINISTRATOR;
     a.flicker = 0;
     join(a);
     live(map, 1, "Slime", 5, 6);

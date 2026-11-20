@@ -47,7 +47,7 @@ export function blocksMonster(name: string): boolean {
 }
 
 /**
- * A fixture the world placed (the world editor or an immortal's `/drop`) that stands in the way
+ * A fixture the world placed (the world editor or a staff `/drop`) that stands in the way
  * (`ground.blocks`, or a skill platform) is never picked up by a player. The same item dropped by a
  * player, such as a crafted Table, can be.
  */

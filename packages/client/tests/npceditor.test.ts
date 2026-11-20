@@ -7,7 +7,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { NPC_EDITOR_MONSTERS, NPC_EDITOR_NPCS, type ServerMsg } from "@secondstaronline/shared";
+import {
+  MODERATOR,
+  NPC_EDITOR_MONSTERS,
+  NPC_EDITOR_NPCS,
+  PERMISSIONS,
+  type ServerMsg,
+} from "@secondstaronline/shared";
 
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -147,7 +153,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     const c = conn();
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage(SNAPSHOT);
     expect(menuTexts(root, "Admin")).toEqual([
       "World Editor",
@@ -183,7 +189,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     app.stop();
   });
 
-  test("the Admin menu shows only for an immortal on the desktop", () => {
+  test("the Admin menu shows only for an administrator on the desktop", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -192,13 +198,13 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
     c.onMessage(SNAPSHOT);
-    for (const role of ["player", "moderator"] as const) {
-      c.onMessage({ t: "role", role });
+    for (const permissions of [[], [...MODERATOR.permissions]]) {
+      c.onMessage({ t: "permissions", permissions });
       expect(titles(root)).toEqual(["Game", "Chat", "Options"]);
     }
-    c.onMessage({ t: "role", role: "immortal" });
+    c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     expect(titles(root)).toEqual(["Game", "Chat", "Admin", "Options"]);
-    c.onMessage({ t: "role", role: "moderator" });
+    c.onMessage({ t: "permissions", permissions: [...MODERATOR.permissions] });
     expect(titles(root)).not.toContain("Admin");
     app.stop();
   });

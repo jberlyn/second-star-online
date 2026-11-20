@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
+import { ADMINISTRATOR } from "@secondstaronline/shared";
 
 import { adminWarp } from "../src/systems/admin/commands.ts";
 import { openEditor } from "../src/systems/admin/worldedit.ts";
@@ -460,7 +461,7 @@ describe("a dropped connection", () => {
   test("openEditor mid-hand while opponent is in reconnect grace credits addGoldOffline and clears table", () => {
     const t = scene([10, 9, 10, 8]);
     const { a, b } = t.dealt(50, 30);
-    a.role = "immortal";
+    a.role = ADMINISTRATOR;
     casinoLeave(t.world, b, t.deps);
     t.world.players.delete("Bob");
     const out = openEditor(

@@ -49,8 +49,8 @@ export type ChatCommand =
    */
   | { kind: "guildAnswer"; accept: boolean; say: string }
   /**
-   * SSO operator stand-in: `/roster [slot species|clear]`. Not 1.6 grammar: for anyone but an
-   * immortal the server says the line as local chat, as 1.6 would.
+   * SSO operator stand-in: `/roster [slot species|clear]`. Not 1.6 grammar: for anyone without the
+   * permission the server says the line as local chat, as 1.6 would.
    */
   | { kind: "roster"; args: string; line: string }
   /** SSO operator stand-in: `/spawn <1-4>`, like `/roster`. */
@@ -61,13 +61,13 @@ export type ChatCommand =
    */
   | { kind: "bank"; text: string }
   /**
-   * `/drop <item>` / `/drop <n> gold`: word 1 deleted, then one leading space. Anyone but an
-   * immortal: nothing happens.
+   * `/drop <item>` / `/drop <n> gold`: word 1 deleted, then one leading space. Anyone without the
+   * `drop` permission: nothing happens.
    */
   | { kind: "drop"; item: string }
   /**
    * `-text`: `typed` is the line after its one leading space; the server strips the `-` and spaces
-   * (`formatStaffChat`). Staff (`immortal` and `moderator`) post to staff chat; players
+   * (`formatStaffChat`). Staff (any account with a role) post to staff chat; players
    * receive an explicit refusal and their input clears.
    */
   | { kind: "staffChat"; typed: string }
@@ -113,7 +113,6 @@ const ADMIN_WORD1: Readonly<Record<string, AdminCmd>> = {
   "/pardon": "pardon",
   "/warptome": "warptome",
   "/warpmeto": "warpmeto",
-  "/role": "role",
   "/unban": "unban",
   "/setclass": "setclass",
   "/unjail": "unjail",

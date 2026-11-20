@@ -5,7 +5,7 @@
  * - Starts an isolated Compose project on an ephemeral loopback port, waits for `healthy`, checks
  *   `/`, emitted JS/CSS, representative PNG/WAV assets, security headers, and 404 traversal rules.
  * - Exercises WebSocket account/character creation, `admin:role` promotion, `admin:audit`,
- *   immortal World Editor save, graceful SIGTERM stop (< 30 s grace), container recreate
+ *   administrator World Editor save, graceful SIGTERM stop (< 30 s grace), container recreate
  *   persistence, backup/restore into a second fresh volume, and intact first volume.
  * - Exercises a temporary single trusted nginx TLS reverse proxy (`https://` + `wss://`) with
  *   forwarded client IP verification and confirms Bun is bound to loopback only.
@@ -13,7 +13,7 @@
 import { expect } from "bun:test";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { ServerMsg } from "@secondstaronline/shared";
+import { PERMISSIONS, type ServerMsg } from "@secondstaronline/shared";
 
 import { connectBot } from "../packages/server/e2e/harness.ts";
 
@@ -230,7 +230,7 @@ async function main(): Promise<void> {
       "run",
       "admin:role",
       "SmokeHero",
-      "immortal",
+      "administrator",
     ]);
     const auditOut = run([
       ...compose1,
@@ -242,13 +242,13 @@ async function main(): Promise<void> {
       "admin:audit",
       "10",
     ]).stdout;
-    expect(auditOut).toContain('cli admin:role SmokeHero "player" -> "immortal"');
+    expect(auditOut).toContain('cli admin:role SmokeHero null -> "administrator"');
 
     {
       const bot = await connectBot(wsUrl1);
       bot.send({ t: "login", name: "SmokeHero", password: "secret" });
-      const roleMsg = await bot.waitFor((m) => m.t === "role");
-      expect(roleMsg).toEqual({ t: "role", role: "immortal" });
+      const roleMsg = await bot.waitFor((m) => m.t === "permissions");
+      expect(roleMsg).toEqual({ t: "permissions", permissions: [...PERMISSIONS] });
       await bot.waitFor((m) => m.t === "snapshot");
       bot.send({ t: "mapReady" });
       bot.send({ t: "editOpen" });
@@ -283,8 +283,8 @@ async function main(): Promise<void> {
     {
       const bot = await connectBot(wsUrl1);
       bot.send({ t: "login", name: "SmokeHero", password: "secret" });
-      const roleMsg = await bot.waitFor((m) => m.t === "role");
-      expect(roleMsg).toEqual({ t: "role", role: "immortal" });
+      const roleMsg = await bot.waitFor((m) => m.t === "permissions");
+      expect(roleMsg).toEqual({ t: "permissions", permissions: [...PERMISSIONS] });
       const snap = await bot.waitFor(
         (m): m is Extract<ServerMsg, { t: "snapshot" }> => m.t === "snapshot",
       );
@@ -340,8 +340,8 @@ async function main(): Promise<void> {
     {
       const bot = await connectBot(`ws://127.0.0.1:${port2}/ws`);
       bot.send({ t: "login", name: "SmokeHero", password: "secret" });
-      const roleMsg = await bot.waitFor((m) => m.t === "role");
-      expect(roleMsg).toEqual({ t: "role", role: "immortal" });
+      const roleMsg = await bot.waitFor((m) => m.t === "permissions");
+      expect(roleMsg).toEqual({ t: "permissions", permissions: [...PERMISSIONS] });
       const snap = await bot.waitFor(
         (m): m is Extract<ServerMsg, { t: "snapshot" }> => m.t === "snapshot",
       );

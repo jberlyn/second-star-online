@@ -5,7 +5,7 @@
  *   standing player on the target tile, in sprite order; each hit sends that player a push message
  *   with a direction and a strength. A standing player always blocks the step, so the roll comes
  *   with a blocked step.
- * - The shove, on the victim's side: immortals and players under 1.6's client-side input lock are
+ * - The shove, on the victim's side: `unpushable` roles and players under 1.6's client-side input lock are
  *   immune. If the pusher's strength is lower the victim reads "… is too weak" and stays (a bug
  *   fixed: 1.6 fell through, printed "… shoves you out of the way." and moved the victim anyway).
  *   Otherwise the victim reads the shove line and its own move runs. That move runs the normal

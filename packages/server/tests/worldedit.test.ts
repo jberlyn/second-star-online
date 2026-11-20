@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { blankMap, EDGE_BLOCKED_TEXT, NO_FOG } from "@secondstaronline/shared";
+import { ADMINISTRATOR, blankMap, EDGE_BLOCKED_TEXT, NO_FOG } from "@secondstaronline/shared";
 
 import { openDatabase } from "../src/persistence/database.ts";
 import {
@@ -77,12 +77,12 @@ describe("exits", () => {
 });
 
 describe("opening, saving and closing", () => {
-  test("a player cannot open the editor; an immortal leaves the room and stops ticking", () => {
+  test("a player cannot open the editor; an administrator leaves the room and stops ticking", () => {
     const a = testMap("x1000y992");
     const { world, join, run } = setup([a]);
     const p = player("p", a, 5, 5);
     const imm = player("imm", a, 6, 6);
-    imm.role = "immortal";
+    imm.role = ADMINISTRATOR;
     join(p);
     join(imm);
     const casino = { graceTicks: 600, addGoldOffline: () => {} };

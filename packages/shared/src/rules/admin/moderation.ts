@@ -3,13 +3,12 @@
  * moderation commands, IP address validation and the lines staff read. Pure: the server passes the
  * time in.
  *
- * Every ban, IP ban and jail stores the rank of the staff member who made it at that moment. A
- * moderator may act on players only; an immortal on anyone but themselves. Only the staff member who
- * made an action, or an immortal, may change or lift it, so moderators settle each other's bans with
- * the team rather than overriding them.
+ * Every ban, IP ban, jail and mute stores the role name of the staff member who made it at that
+ * moment. Staff act on those they outrank, and a role with `overrule` (administrators) on anyone
+ * but themselves. Only the staff member who made an action, or a role with `overrule`, may change
+ * or lift it, so moderators settle each other's bans with the team rather than overriding them.
  */
-import type { Role } from "./admin.ts";
-import { can, outranks } from "./permissions.ts";
+import { can, outranks, type Role } from "./permissions.ts";
 
 /**
  * Whether `actor` may ban, jail, pardon or IP-ban a character whose account has `target`'s role:
@@ -19,11 +18,12 @@ export function mayTarget(actor: Role, target: Role): boolean {
   return can(actor, "overrule") || outranks(actor, target);
 }
 
-/** A stored ban, IP ban or jail: who made it, at what rank, and until when. */
+/** A stored ban, IP ban, jail or mute: who made it, in what role, and until when. */
 export interface ModerationRecord {
   actorId: string;
   actorName: string;
-  actorRank: Role;
+  /** The actor's role name when they acted (`Moderator`). */
+  actorRole: string;
   reason: string;
   createdAt: string;
   /** ISO time it ends, or null for permanent. */
@@ -36,7 +36,8 @@ export function isActive(r: { expiresAt: string | null } | null, now: string): b
 }
 
 /**
- * Whether `actor` may change or lift `existing`: the staff member who made it, or any immortal. A
+ * Whether `actor` may change or lift `existing`: the staff member who made it, or a role with
+ * `overrule`. A
  * lapsed action blocks nobody; the caller checks `isActive` first.
  */
 export function mayChange(actor: { id: string; role: Role }, existing: ModerationRecord): boolean {
@@ -276,7 +277,7 @@ export function banNotice(alert: string, expiresAt: string | null): string {
 export function banListLine(who: string, r: ModerationRecord, extra = ""): string {
   const until = r.expiresAt === null ? "permanent" : `until ${formatUtc(r.expiresAt)}`;
   const reason = r.reason === "" ? "" : `: ${r.reason}`;
-  return `${who} - ${until} - ${r.actorName} (${r.actorRank})${extra}${reason}`;
+  return `${who} - ${until} - ${r.actorName} (${r.actorRole})${extra}${reason}`;
 }
 
 /** One moderation action, as the server logs and applies it. */
@@ -293,7 +294,8 @@ export interface ModerationEntry {
   sourceAccountId?: string | null;
   actorId: string;
   actorName: string;
-  actorRank: Role;
+  /** The actor's role name now. */
+  actorRole: string;
   reason: string;
   expiresAt: string | null;
   createdAt: string;
@@ -335,13 +337,13 @@ export interface ModerationLogRow {
   /** The address for an IP ban, else null. */
   address: string | null;
   actorName: string;
-  actorRank: Role;
+  actorRole: string;
   reason: string;
   createdAt: string;
   expiresAt: string | null;
 }
 
-/** A `/banlist <name>` history line: `2026-11-10 09:00 UTC ban 3d by Alice (moderator): spam`. */
+/** A `/banlist <name>` history line: `2026-11-10 09:00 UTC ban 3d by Alice (Moderator): spam`. */
 export function historyLine(r: ModerationLogRow): string {
   const timed =
     r.action === "ban" || r.action === "jail" || r.action === "ipban" || r.action === "mute";
@@ -352,7 +354,7 @@ export function historyLine(r: ModerationLogRow): string {
       : ` ${durationText(Date.parse(r.expiresAt) - Date.parse(r.createdAt))}`;
   const what = r.address === null ? r.action : `${r.action} ${r.address}`;
   const reason = r.reason === "" ? "" : `: ${r.reason}`;
-  return `${formatUtc(r.createdAt)} ${what}${length} by ${r.actorName} (${r.actorRank})${reason}`;
+  return `${formatUtc(r.createdAt)} ${what}${length} by ${r.actorName} (${r.actorRole})${reason}`;
 }
 
 /** A length in the duration grammar: `3d`, `1d12h`, `45m`. */
@@ -375,7 +377,7 @@ export function durationText(ms: number): string {
 
 /** The moderation commands' texts (the 1.6 echoes stay in `ADMIN_TEXT`). */
 export const MODERATION_TEXT = {
-  staffTarget: "Only an immortal can do that to staff.",
+  staffTarget: "You can only do that to someone you outrank.",
   jailSelf: "You cannot jail yourself.",
   badDuration:
     "A duration is a number with m, h, d or w (30m, 12h, 7d, 2w, 1d12h) up to 10 years, or perm.",
@@ -390,12 +392,12 @@ export const MODERATION_TEXT = {
   banChanged: (name: string, expiresAt: string | null, was: string | null) =>
     `${name} is now banned ${untilText(expiresAt)} (was ${untilText(was)}).`,
   notYourBan: (name: string, by: string) =>
-    `${name} was banned by ${by}; ask ${by} or an immortal.`,
+    `${name} was banned by ${by}; ask ${by} or a senior staff member.`,
   jailed: (name: string, expiresAt: string | null) => `${name} is jailed ${untilText(expiresAt)}.`,
   jailChanged: (name: string, expiresAt: string | null, was: string | null) =>
     `${name} is now jailed ${untilText(expiresAt)} (was ${untilText(was)}).`,
   notYourJail: (name: string, by: string) =>
-    `${name} was jailed by ${by}; ask ${by} or an immortal.`,
+    `${name} was jailed by ${by}; ask ${by} or a senior staff member.`,
   notJailed: (name: string) => `${name} is not jailed.`,
   unjailed: (name: string) => `${name} is released from jail.`,
   /** What the prisoner reads when jailed, and at login while the sentence runs. */
@@ -409,7 +411,7 @@ export const MODERATION_TEXT = {
   muteChanged: (name: string, expiresAt: string | null, was: string | null) =>
     `${name} is now muted ${untilText(expiresAt)} (was ${untilText(was)}).`,
   notYourMute: (name: string, by: string) =>
-    `${name} was muted by ${by}; ask ${by} or an immortal.`,
+    `${name} was muted by ${by}; ask ${by} or a senior staff member.`,
   notMuted: (name: string) => `${name} is not muted.`,
   unmuted: (name: string) => `${name} is no longer muted.`,
   /** What a muted player reads when muted and whenever they try to talk. */
@@ -423,7 +425,7 @@ export const MODERATION_TEXT = {
   /** A staff warp of a player onto the jail map. */
   useJail: "Use /jail to put a player in jail.",
   noSuchTarget: (word: string) => `There is no character or address called ${word}.`,
-  ipImmortal: "IP bans do not apply to immortals.",
+  ipBypassed: "IP bans do not apply to that player's role.",
   noAddresses: (name: string) => `${name} has no known addresses.`,
   ipBanned: (address: string, expiresAt: string | null) =>
     `Banned ${address} ${untilText(expiresAt)}.`,
@@ -434,7 +436,7 @@ export const MODERATION_TEXT = {
   ipUnbanned: (address: string) => `${address} is no longer banned.`,
   ipUnbannedFor: (n: number, name: string) =>
     `Lifted ${n} IP ${n === 1 ? "ban" : "bans"} on addresses used by ${name}.`,
-  addressesImmortal: "Only an immortal can look up addresses.",
+  addressesDenied: "Only staff who can /banip can look up addresses.",
   listBans: (page: number, pages: number) => `* Bans (page ${page} of ${pages}):`,
   listJails: "* Jailed:",
   listMutes: "* Muted:",
