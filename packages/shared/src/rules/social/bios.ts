@@ -40,7 +40,8 @@ export function bioTitle(skills: readonly number[]): string {
 }
 
 /**
- * The score: every skill, HPmax and SPmax summed, with no cap. 1.6's second sum line assigned to a
+ * The score: every skill on its list (`bios.score.counted`: 33 skills), HPmax and SPmax summed,
+ * with no cap. 1.6's second sum line assigned to a
  * misspelt variable, so Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and
  * Wind never counted (a bug fixed).
  */

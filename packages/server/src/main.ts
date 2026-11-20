@@ -73,6 +73,8 @@ export interface ServerOptions {
   onLag?: (line: string) => void;
   /** Bytes waiting on a socket (tests make one look behind; default the socket's own). */
   backlogOf?: GatewayOptions["backlogOf"];
+  /** Ends the process after too many failed ticks (tests record it; default `process.exit`). */
+  exit?: (code: number) => void;
 }
 
 /** Consecutive throwing ticks (1 s) after which the server saves and exits. */
@@ -132,6 +134,7 @@ export function startServer(options: ServerOptions): RunningServer {
     backlogOf: options.backlogOf,
   });
   let failures = 0;
+  const exit = options.exit ?? ((code: number) => process.exit(code));
   let windowTicks = 0;
   const onLag = options.onLag ?? ((line: string) => console.warn(line));
   const loop: TickLoop = new TickLoop({
@@ -160,7 +163,7 @@ export function startServer(options: ServerOptions): RunningServer {
       failures += 1;
       if (failures >= TICK_FAILURE_LIMIT) {
         console.error(`${failures} ticks in a row failed: saving and exiting`);
-        void stop().then(() => process.exit(1));
+        void stop().then(() => exit(1));
       }
     },
   });

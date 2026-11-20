@@ -373,6 +373,17 @@ describe("placed containers", () => {
     expect(bob.container).toBeNull();
   });
 
+  test("SSO: Alice's own House Vault does not open from two tiles away", () => {
+    const s = scene();
+    const alice = s.join("Alice", 5, 10);
+    const vault = s.put("Alice's House Vault", 5, 8);
+    const out = pickupIntent(s.ctx(), s.room(), alice, vault.id);
+    expect(chat(out, "Alice")).toEqual([
+      "You see Alice's House Vault, but you must be standing in front of it to use it.",
+    ]);
+    expect(alice.container).toBeNull();
+  });
+
   test("Bob's Drop into Alice's vault is refused before the drop line; nothing is taken", () => {
     const s = scene();
     const bob = s.join("Bob", 5, 9);

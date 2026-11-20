@@ -18,7 +18,7 @@ import {
 const e = (name: string, points: number): AssassinEntry => ({ id: name, name, points });
 
 describe("high scores", () => {
-  test("the points are the bio score: every skill, HPmax and SPmax", () => {
+  test("the points are the bio score: its listed skills, HPmax and SPmax", () => {
     const skills = Array.from({ length: 38 }, () => 0);
     skills[skillIndex("Slash")] = 3;
     skills[skillIndex("Cooking")] = 4;

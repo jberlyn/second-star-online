@@ -42,4 +42,20 @@ describe("the client's messages", () => {
       expect(ok({ t: "attack", seq: 1, held: true, ...extra })).toBe(false);
     }
   });
+
+  test("SSO: no client message reports a result: hit points, damage, XP, level, a kill or a monster's state", () => {
+    for (const t of types) {
+      expect(t).not.toMatch(/hp|health|damage|xp|exp|level|kill|score|monster|result/i);
+    }
+  });
+
+  test("SSO: no client message sets a body, makes food or fires an effect; a cast names only the spell and the point", () => {
+    for (const t of types) {
+      expect(t).not.toMatch(/body|food|fireball|effect|^fx|portal|summon/i);
+    }
+    expect(ok({ t: "cast", spell: "Fireball", x: 100, y: 100 })).toBe(true);
+    for (const extra of [{ body: 57 }, { item: "Apple" }, { target: "Bob" }, { dmg: 9 }]) {
+      expect(ok({ t: "cast", spell: "Fireball", x: 100, y: 100, ...extra })).toBe(false);
+    }
+  });
 });

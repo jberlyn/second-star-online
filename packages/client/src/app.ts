@@ -536,8 +536,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   // or a player (the player-click script, which opens the player menu).
   action(playfield.canvas, "playfield"); // its clicks: tests/playfield-clicks.test.ts
   /**
-   * The movie `mouseDown` → the spell cast: with the cursor armed, any mouse-down
-   * at stage `8 < H < 580`, `5 < V < 420` casts there. The stage point comes from
+   * The movie `mouseDown` → the spell cast: with the cursor armed, a mouse-down on the playfield
+   * (`inCastBounds`, as the server checks) casts there; 1.6 took any point at stage
+   * `8 < H < 580`, `5 < V < 420`. The stage point comes from
    * the playfield's own box, whatever the frame is scaled to.
    */
   const stagePoint = (e: MouseEvent): { x: number; y: number } | null => {

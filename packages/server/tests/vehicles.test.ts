@@ -155,6 +155,24 @@ describe("boarding", () => {
     expect(s.ann.vehicleDirty).toBe(true);
     expect(s.ann.forceYou).toBe(true);
   });
+  test("SSO: ownership follows the character id, not the name: a renamed owner still boards", () => {
+    const s = built();
+    expect(airshipAt(s.map, 6, 5)?.ownerId).toBe(s.ann.id);
+    // Bob takes the name on the item; the id still says it is Ann's.
+    s.bob.name = "Ann";
+    s.ann.name = "Annabel";
+    s.bob.x = 5;
+    s.bob.y = 5;
+    s.ann.x = 5;
+    s.ann.y = 4;
+    s.bob.facing = "E";
+    expect(chat(actionIntent(s.ctx(), s.room, s.bob), "Bob")).toEqual([VEHICLE_TEXT.notYours]);
+    s.bob.x = 1;
+    s.ann.x = 5;
+    s.ann.y = 5;
+    s.ann.facing = "E";
+    expect(chat(actionIntent(s.ctx(), s.room, s.ann), "Ann")).toEqual([VEHICLE_TEXT.board]);
+  });
   test("a click on it boards the same way", () => {
     const s = built();
     const g = airshipAt(s.map, 6, 5);

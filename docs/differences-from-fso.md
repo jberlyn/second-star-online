@@ -116,7 +116,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The ground list has no fixed slot limit, those refusals are removed and loot always drops. Monster loot decays instead, as described under “Monster loot decays”.
 - **Why:** The old limit came from Director sprite channels.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`addGround`)
-- **Pinned by:** `design change: loot drops on a map already holding more than 20 ground items` (packages/server/tests/ledger-pins-d.test.ts)
+- **Pinned by:** `design change: loot drops on a map already holding more than 20 ground items` (packages/server/tests/ledger-pins-d.test.ts); `design change: a give onto a map already holding 25 ground items lands and is grabbed`; `design change: a felled tree drops its logs on a map already holding 25 ground items` (packages/server/tests/ledger-pins-e.test.ts)
 
 #### Monster loot decays
 - **Kind:** Limit lifted
@@ -399,7 +399,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Each icon bitmap is centered in its box. The 15×14 markers are centered on rows and placed eight pixels outside both sides; the boxes themselves do not click. The preview moves so the bare character's drawn pixels sit at stage x 676–710, y 306–359 in the middle box; added gear does not move it.
 - **Why:** The user requested centered icons. Director drew unstretched sprites at their own bitmap size and registration point, not the score's stale 32×32 size.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
-- **Pinned by:** `design change: each icon's bitmap is centred in its box; the × markers centre on the rows, 8 px out` (packages/client/tests/ledger-pins-d.test.ts); `the × beside a box takes the item off; the icon does not click (score frame 63: channels 354-359 carry the remove-button names, sprites 75-80 nothing)`; `the Head × is shown and works` (packages/client/tests/panel.test.ts)
+- **Pinned by:** `design change: each icon's bitmap is centred in its box; the × markers centre on the rows, 8 px out` (packages/client/tests/ledger-pins-d.test.ts); `the × beside a box takes the item off; the icon does not click (score frame 63: channels 354-359 carry the remove-button names, sprites 75-80 nothing)`; `the Head × is shown and works` (packages/client/tests/panel.test.ts); `design change: the bare character's pixels sit centred in x 676-710, y 306-359; gear does not move it` (packages/client/tests/ledger-pins-e.test.ts)
 
 #### Stats icons centred on their rows and evenly spaced
 - **Kind:** Platform
@@ -3079,7 +3079,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `highScorePoints` is the bio score, which now counts every skill on its list, and `rankHighScore` ranks ties after the tied entry and keeps a personal best.
 - **Why:** The board should reflect a whole character and keep each player's best.
 - **In the code:** `packages/shared/src/rules/social/highscores.ts` (`highScorePoints`, `rankHighScore`), `packages/server/src/systems/social/highscores.ts` (`submitHighScore`)
-- **Pinned by:** `the points are the bio score: every skill, HPmax and SPmax`; `rankHighScore places ties right after the tied slot and keeps a higher existing score` (packages/shared/tests/social/highscores.test.ts)
+- **Pinned by:** `the points are the bio score: its listed skills, HPmax and SPmax`; `rankHighScore places ties right after the tied slot and keeps a higher existing score` (packages/shared/tests/social/highscores.test.ts)
 
 #### Any friend can be removed
 - **Kind:** Bug fixed
@@ -3473,7 +3473,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Each account's role grants permissions, and the server checks the permission for each command and editor. Editor writes are validated and versioned. Admin commands that act on a player or the world (not `/inventory`, `/location` or `/banlist`, and `/iplookup` only when the player is online), world and NPC editor saves, setting changes and role changes are recorded in `audit_log` with actor, command, target, before and after; newspaper saves are not recorded; `bun run admin:audit [n]` reads it.
 - **Why:** Without server checks anyone could rewrite the world and ban lists.
 - **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`can`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
-- **Pinned by:** `an administrator holds every permission and an account with no role none` (packages/shared/tests/admin/permissions.test.ts); `SSO: a player's admin command is answered as an unknown one, privately, and does nothing` (packages/server/tests/admin.test.ts); `a role edit applies to everyone online who holds it at once, and is audited` (packages/server/tests/roles.test.ts); `a map round-trips exits, signs, fog and header; versions are kept` (packages/server/tests/worldedit.test.ts); `a save writes the file and its old version and drops the stored ledger; a restart loads it` (packages/server/tests/npcedit.test.ts); `every admin action is in the audit log` (packages/server/e2e/admin-and-settings.test.ts); `SSO: /inventory, /location, /banlist and an offline /iplookup are not audited; an online /iplookup is` (packages/server/tests/ledger-pins-a.test.ts)
+- **Pinned by:** `an administrator holds every permission and an account with no role none` (packages/shared/tests/admin/permissions.test.ts); `SSO: a player's admin command is answered as an unknown one, privately, and does nothing` (packages/server/tests/admin.test.ts); `a role edit applies to everyone online who holds it at once, and is audited` (packages/server/tests/roles.test.ts); `a map round-trips exits, signs, fog and header; versions are kept` (packages/server/tests/worldedit.test.ts); `a save writes the file and its old version and drops the stored ledger; a restart loads it` (packages/server/tests/npcedit.test.ts); `every admin action is in the audit log` (packages/server/e2e/admin-and-settings.test.ts); `SSO: /inventory, /location, /banlist and an offline /iplookup are not audited; an online /iplookup is` (packages/server/tests/ledger-pins-a.test.ts); `SSO: World Editor and NPC Editor saves are in audit_log; a newspaper save is not` (packages/server/tests/ledger-pins-e.test.ts)
 
 #### Login and account-creation limits
 - **Kind:** Exploit closed
@@ -3518,7 +3518,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Loot, gathering, crafting, shops, quests and admin create items using their own rules. An administrator's `/drop` and World Editor placements accept `N gold` or an Inventory cast member that is a catalogue item with an icon or a fixture such as a vault, chest, sign or door. They refuse non-item cast members; like 1.6 they refuse singular crystal names and items without Inventory members such as Gold Armor and Rune Sword.
 - **Why:** An arbitrary client request could mint items, and non-item cast members would produce objects the game cannot use.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`droppableName`, `handleDrop`), `packages/server/src/systems/crafting/craft.ts` (`craftStep`)
-- **Pinned by:** `only administrators drop items or gold; moderators and players do nothing`; `/drop takes only Inventory cast members; the shop whitelist's singular crystals are not`; `SSO: a count from 1 to 9,999 on any stacking Inventory item` (packages/server/tests/inventory.test.ts); `placed items take /drop's names; a counted pile round-trips` (packages/server/tests/worldedit.test.ts)
+- **Pinned by:** `only administrators drop items or gold; moderators and players do nothing`; `/drop takes only Inventory cast members; the shop whitelist's singular crystals are not`; `SSO: a count from 1 to 9,999 on any stacking Inventory item` (packages/server/tests/inventory.test.ts); `placed items take /drop's names; a counted pile round-trips` (packages/server/tests/worldedit.test.ts); `SSO: every item intent names bag slots, counts or ground ids, never an item`; `SSO: the only free text a client sends is chat, mail, names and the editors' fields` (packages/shared/tests/ledger-pins-e.test.ts)
 
 #### Peer sigils replaced by server events; peer kicks, warps and gold removed
 - **Kind:** Exploit closed
@@ -3796,7 +3796,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Data is addressed by ID rather than arbitrary paths, and character viewing is omitted. The Server Settings window is a plain SSO panel on the Admin menu, where the File Editor was; the original had no settings screen. Each page is saved on its own: Save validates the page's values in the window and again on the server, refuses the whole save with the error on the setting, and applies successful changes to everyone online immediately, as `/Refresh` does. Leaving a page or closing the window with unsaved changes asks first and discards them. Revert reloads server values. Server infrastructure (save interval, reconnect grace, connections per address) is set with `SSO_*` environment variables instead.
 - **Why:** Arbitrary server file reads and writes let a client expose or alter data. Explanations remain visible rather than relying on hover.
 - **In the code:** `packages/client/src/ui/settings.ts` (`createSettingsWindow`), `packages/server/src/settings.ts` (`applySettingValues`)
-- **Pinned by:** `Settings: an administrator's save is stored, audited and applied at once; rules go to everyone`; `Settings: a bad value refuses the whole save with its key and label` (packages/server/tests/admin.test.ts); `Save sends only the open page's values; Revert asks again`; `leaving a page with unsaved changes asks; Keep editing stays, Discard goes`; `closing with unsaved changes asks; Keep editing stays open, Discard closes` (packages/client/tests/settings.test.ts); `server infrastructure is not a setting: no row, and stored values are ignored` (packages/server/tests/world.test.ts)
+- **Pinned by:** `Settings: an administrator's save is stored, audited and applied at once; rules go to everyone`; `Settings: a bad value refuses the whole save with its key and label` (packages/server/tests/admin.test.ts); `Save sends only the open page's values; Revert asks again`; `leaving a page with unsaved changes asks; Keep editing stays, Discard goes`; `closing with unsaved changes asks; Keep editing stays open, Discard closes` (packages/client/tests/settings.test.ts); `server infrastructure is not a setting: no row, and stored values are ignored` (packages/server/tests/world.test.ts); `SSO: no client message carries a file path or asks to view a character` (packages/shared/tests/ledger-pins-e.test.ts); `SSO: an NPC Editor load names an NPC by id; a path names nothing and reads nothing` (packages/server/tests/ledger-pins-e.test.ts)
 
 #### IP bans and lookups use the socket
 - **Kind:** Exploit closed
@@ -3841,7 +3841,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Intents, ticks, map entry and exit run in SQL transactions. A thrown error rolls back its writes, is logged to the server's error output with the message type and the player's name (not to the cheat log, since a bug is not cheating) and logs out the affected player; their next login reloads the database state. A failed tick is logged and the next tick runs; 20 consecutive tick errors save and exit the server.
 - **Why:** The shared server must survive errors without committing a half-completed action.
 - **In the code:** `packages/server/src/game.ts` (`createGame`)
-- **Pinned by:** `the sender is logged out with the new text and nothing is written; the other bot plays on`; `a throw that escapes the game in the gateway logs the player out, no ghost`; `a throwing tick returns false, tickNow says so, and the next tick runs` (packages/server/e2e/hostile-messages.test.ts)
+- **Pinned by:** `the sender is logged out with the new text and nothing is written; the other bot plays on`; `a throw that escapes the game in the gateway logs the player out, no ghost`; `a throwing tick returns false, tickNow says so, and the next tick runs` (packages/server/e2e/hostile-messages.test.ts); `SSO: an intent that throws logs its sender out with the server-error text; nothing is written`; `SSO: 20 throwing ticks in a row save everyone and exit; a good tick resets the count` (packages/server/tests/ledger-pins-e.test.ts)
 
 #### Client anti-cheat replaced by server validation
 - **Kind:** Architecture
@@ -3937,23 +3937,23 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Cauldrons get unique ids
 - **Kind:** Architecture
-- **What you notice:** A World Editor placed or crafted Cauldron has its own container ID and retains it on later saves.
+- **What you notice:** A Cauldron placed in the World Editor has its own container ID and retains it on later saves.
 - **1.6:** A World Editor save gave a bare Cauldron a random ID and kept an existing one; random IDs could collide. A carried Cauldron kept no ID and opened the shared Cauldron file. No Cauldron was placed in archived maps.
-- **SSO:** A placed or crafted Cauldron receives a unique minted ID. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed and crafted ones are guaranteed unique. A purchase of several puts each Cauldron on its own line under a random ID not already in use (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)).
+- **SSO:** A placed Cauldron receives a unique minted ID, and so would a crafted one, though no recipe makes a Cauldron today. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed ones are guaranteed unique. A purchase of several puts each Cauldron on its own line under a random ID not already in use (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)).
 - **Why:** Container ownership needs a separate container for each placed or crafted Cauldron.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`)
-- **Pinned by:** `an exact Cauldron gets an id on save; one with an id keeps it` (packages/server/tests/craft.test.ts); `bug fixed: each bought container gets its own line and its own unused id` (packages/server/tests/economy.test.ts); `SSO: two bare Cauldrons placed in one World Editor save get different minted ids` (packages/server/tests/ledger-pins-b.test.ts)
+- **Pinned by:** `an exact Cauldron gets an id on save; one with an id keeps it` (packages/server/tests/craft.test.ts); `bug fixed: each bought container gets its own line and its own unused id` (packages/server/tests/economy.test.ts); `SSO: two bare Cauldrons placed in one World Editor save get different minted ids` (packages/server/tests/ledger-pins-b.test.ts); `SSO: a crafted Cauldron enters the bag with a minted id; a second gets a new one` (packages/server/tests/ledger-pins-e.test.ts)
 
 ### Server-side economy
 
 #### Guild vault access is checked at each take
 - **Kind:** Exploit closed
-- **What you notice:** If you leave a guild while its vault is open, the window closes when you try to take something. A carried crate or cabinet behaves the same after it leaves your bag.
+- **What you notice:** If you leave a guild while its vault is open, the window closes when you try to take something. A carried crate or cabinet behaves the same once it leaves your bag, for example after you give it away.
 - **1.6:** A guild vault stayed usable after leaving the guild because the client decided who could open it. A storage window continued to name a crate after its owner gave, traded, sold or dropped it, so the old owner could still take its contents.
 - **SSO:** Every take checks whether the player may still use the container. If access has gone, nothing is taken and the window closes.
 - **Why:** A forged client could otherwise keep withdrawing from a former guild vault or a container it had handed over.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
-- **Pinned by:** `a take re-checks the guild: a member expelled with the vault open takes nothing` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `a take re-checks the guild: a member expelled with the vault open takes nothing` (packages/server/tests/craft.test.ts); `SSO: a carried Cabinet or Crate given away: the giver's open window takes nothing and closes` (packages/server/tests/ledger-pins-e.test.ts)
 
 #### Promotions charge gold on the server
 - **Kind:** Exploit closed
@@ -4025,7 +4025,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The faced tile must contain the vault or mailbox. Another player's House Vault says “You can't open a vault that's not yours!”, modeled on “You can't check mail that's not yours!”.
 - **Why:** A forged remote request could steal items or read another player's mail.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`openContainer`), `packages/server/src/systems/mail/mail.ts` (`mailOpen`)
-- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `a click not in front gives the line and pauses 40` (packages/server/tests/doors.test.ts); `out of place, a stranger hears the position line first`; `in front but not the owner: 'not yours'` (packages/server/tests/mail-boards.test.ts)
+- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `a click not in front gives the line and pauses 40` (packages/server/tests/doors.test.ts); `out of place, a stranger hears the position line first`; `in front but not the owner: 'not yours'` (packages/server/tests/mail-boards.test.ts); `SSO: Alice's own House Vault does not open from two tiles away` (packages/server/tests/doors.test.ts)
 
 #### Promotion leaves the skills page in order
 - **Kind:** Architecture
@@ -4377,7 +4377,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server computes those results and clients send their intended actions.
 - **Why:** Server authority makes every player use the same game state and prevents clients from supplying their own results.
 - **In the code:** `packages/server/src/systems/movement/movement.ts` (`movePlayer`), `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`)
-- **Pinned by:** `a held arrow steps every 8 ticks and peers are told 16 calls` (packages/server/tests/world.test.ts); `gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30` (packages/server/tests/monsters.test.ts)
+- **Pinned by:** `a held arrow steps every 8 ticks and peers are told 16 calls` (packages/server/tests/world.test.ts); `gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30` (packages/server/tests/monsters.test.ts); `SSO: no client message reports a result: hit points, damage, XP, level, a kill or a monster's state`; `SSO: the attack intent is the key's hold state only: no damage, power, target, position or weapon` (packages/shared/tests/ledger-pins-a.test.ts); `a fireball at a monster is placed next frame and hits in that frame's actor passes on FireballU-1 for 4 + P + random(3)` (packages/server/tests/spells.test.ts); `a seeded Slime fight: bare hands kill it, the kill gives 23 XP at level 1` (packages/server/tests/monsters.test.ts)
 
 #### Server-authoritative tile movement
 - **Kind:** Exploit closed
@@ -4554,7 +4554,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server triggers effects only from validated state.
 - **Why:** A forged client could teleport for free, change another player's body, create items or deal free damage.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `swingFireballs`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `setBody`), `packages/server/src/systems/world/tick.ts` (`portal`)
-- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent`; `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent`; `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts); `SSO: no client message sets a body, makes food or fires an effect; a cast names only the spell and the point` (packages/shared/tests/ledger-pins-a.test.ts)
 
 #### Monster spells and summons authored by the server
 - **Kind:** Exploit closed
@@ -4619,7 +4619,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server builds, boards and parks the Airship, the only vehicle currently implemented, and converts it to the owner's item. Ownership is recorded by character ID while the item's name remains `<name>'s Airship`. Items without an owner ID, such as an operator drop or World Editor placement, use the original name test.
 - **Why:** A client could create arbitrary items, while name-only ownership could let a renamed or look-alike character board someone else's airship.
 - **In the code:** `packages/server/src/systems/vehicles/airship.ts` (`airshipClick`, `unboardAirship`)
-- **Pinned by:** `builds on the faced J2, consumes one deed, owner id recorded, no text`; `Ctrl facing it: you hop onto its tile, no step, body 57, the text`; `Ctrl on a pad parks the airship under you, the paperdoll returns, no text`; `another player's airship: not yours; facing away: you see`; `an item with no owner id falls back to the 1.6 name test` (packages/server/tests/vehicles.test.ts)
+- **Pinned by:** `builds on the faced J2, consumes one deed, owner id recorded, no text`; `Ctrl facing it: you hop onto its tile, no step, body 57, the text`; `Ctrl on a pad parks the airship under you, the paperdoll returns, no text`; `another player's airship: not yours; facing away: you see`; `an item with no owner id falls back to the 1.6 name test` (packages/server/tests/vehicles.test.ts); `SSO: ownership follows the character id, not the name: a renamed owner still boards` (packages/server/tests/vehicles.test.ts)
 
 ### Server-side world
 
