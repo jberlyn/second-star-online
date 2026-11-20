@@ -97,6 +97,7 @@ export function player(id: string, map: WorldMap, x: number, y: number): Player 
     role: null,
     broadcastIn: 0,
     chatIn: 0,
+    unsentLogIn: 0,
     char: defaultCharacter(),
     ...sessionCombatState(),
     ip: "127.0.0.1",

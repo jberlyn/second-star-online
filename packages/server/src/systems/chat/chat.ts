@@ -124,8 +124,14 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       logChat(world, p, "staff", staffChatText(cmd.typed), hush.outcome);
       return [{ to: p.id, msg: line(hush.text) }];
     }
-    const outcome = isStaff(p.role) ? "delivered" : "denied";
-    logChat(world, p, "staff", staffChatText(cmd.typed), outcome);
+    if (isStaff(p.role)) {
+      logChat(world, p, "staff", staffChatText(cmd.typed), "delivered");
+    } else if (p.unsentLogIn === 0) {
+      // A refused line is logged at most once per chat cooldown (`unsentLogIn`), so it cannot
+      // flood the log; the player's own cooldown is untouched.
+      logChat(world, p, "staff", staffChatText(cmd.typed), "denied");
+      p.unsentLogIn = deps.chatCooldownFrames;
+    }
     return staffChat(world, p, cmd.typed);
   }
   // A command the typist may not use gets the same reply as one that does not exist (1.6 swallowed

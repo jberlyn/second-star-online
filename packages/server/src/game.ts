@@ -1799,6 +1799,7 @@ export function createGame(deps: GameDeps): Game {
         forceYou: false,
         broadcastIn: 0,
         chatIn: 0,
+        unsentLogIn: 0,
         char: {
           classCode: c.classCode,
           vitals: { ...c.vitals },

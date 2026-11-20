@@ -173,7 +173,12 @@ export function roomSay(
   const room = p.room;
   const said = stripReturns(line.text);
   if (!room) {
-    logChat(world, p, "room", said, "noRoom");
+    // Said nowhere, but logged: at most once per chat cooldown (`unsentLogIn`), so the log cannot
+    // be flooded; the player's own cooldown is untouched.
+    if (p.unsentLogIn === 0) {
+      logChat(world, p, "room", said, "noRoom");
+      p.unsentLogIn = deps.chatCooldownFrames;
+    }
     return [];
   }
   // The log names the room by its key, a guild's with the guild: `general`, `guild:Knights`.

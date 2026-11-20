@@ -219,7 +219,7 @@ describe("moderation in the game (real SQLite)", () => {
     expect((await game().login("Bob", "pw", "10.0.0.5")).ok).toBe(true);
   });
 
-  test("a ban keeps its maker's rank at the time: a demoted administrator's ban stays theirs", async () => {
+  test("a ban keeps its maker's role name at the time, and a demoted administrator's ban stays theirs", async () => {
     const { game, make, say } = await start();
     const alice = await make("Alice", "administrator");
     const mo = await make("Mo", "moderator");

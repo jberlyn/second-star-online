@@ -610,6 +610,9 @@ export function tick(world: World, deps: TickDeps): TickResult {
     if (p.chatIn > 0) {
       p.chatIn -= 1;
     }
+    if (p.unsentLogIn > 0) {
+      p.unsentLogIn -= 1;
+    }
     // The award line follows this tick's skill changes, before the sheet is sent.
     out.push(...medalCheck(p));
     const s = selfState(p);

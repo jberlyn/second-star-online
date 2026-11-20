@@ -304,6 +304,11 @@ export interface Player {
   broadcastIn: number;
   /** Frames until the next local chat line or emote is allowed. */
   chatIn: number;
+  /**
+   * Frames until the next line delivered nowhere (an away text, a room line out of a room, staff
+   * chat refused to a player) is logged; a log-only timer, so it never delays what the player says.
+   */
+  unsentLogIn: number;
 
   // ---- combat, monsters and progression --------------------------------------
   char: CharacterState;

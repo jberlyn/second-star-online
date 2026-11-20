@@ -175,6 +175,11 @@ export function setAway(world: World, p: Player, text: string | null, deps: ImDe
     return [tell(p, CHAT_SOCIAL_TEXT.awayOff)];
   }
   p.away = away;
-  logChat(world, p, "away", away, "delivered");
+  // Logged at most once per chat cooldown, on a log-only timer (`unsentLogIn`) so setting an away
+  // text never delays the player's next line; repeated away texts cannot flood the log.
+  if (p.unsentLogIn === 0) {
+    logChat(world, p, "away", away, "delivered");
+    p.unsentLogIn = deps.chatCooldownFrames;
+  }
   return [tell(p, CHAT_SOCIAL_TEXT.awayOn)];
 }
