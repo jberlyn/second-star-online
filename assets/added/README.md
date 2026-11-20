@@ -69,4 +69,14 @@ Sound (nothing else is allowed; the channel belongs to the content row that play
 
 New art or sound that changes what players see or hear gets a `docs/differences-from-fso.md` entry.
 
+## Generated art
+
+Some added art is made by a script instead of drawn by hand. Change the script and run it again
+rather than editing its output:
+
+- `bodies/55-*` (Boat) and `bodies/56-*` (Battleship) rider frames:
+  `bun packages/data/build/art/ships.ts`, then `bun run data:build`. Add `--preview <dir>` for a
+  contact sheet and previews on water.
+- The Battleship cannonball (not yet in the game): `bun packages/data/build/art/cannonball.ts <dir>`.
+
 The original art is in `../original/`, listed in `../original/usage.md`. Worked examples are in [the modding guide](../../docs/modding.md). The sidecar schema is `packages/data/schema/added-asset.ts`.
