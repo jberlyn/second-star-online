@@ -8,6 +8,7 @@ import {
   CHAT_COLOR,
   CHAT_SOCIAL_TEXT,
   type ClientMsg,
+  can,
   type Dir,
   hidesName,
   houseType,
@@ -16,6 +17,7 @@ import {
   newsIsNew,
   PLAYFIELD_RECT,
   type RestoreTarget,
+  type Role,
   type ServerMsg,
   TICK_MS,
 } from "@secondstaronline/shared";
@@ -147,7 +149,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   // ---- menus (In-game menu) ----------------------------------------------------------------
   // The classic layout draws 1.6's menu bar above the stage.
   let sfxOn = pref(PREFS.sfx) !== "0";
-  let role: "player" | "moderator" | "immortal" = "player";
+  let role: Role = "player";
   let editor: WorldEditor | null = null;
   let npcEditor: NpcEditor | null = null;
   /** Which editor is up; either opens from the other. */
@@ -158,7 +160,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   const menuState: MenuState = {
     inPlay: () => model.self !== null,
     atTitle: () => atTitle,
-    immortal: () => role === "immortal",
+    can: (permission) => can(role, permission),
     sharp: () => sharp,
     sfx: () => sfxOn,
   };
@@ -917,7 +919,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         // Sent at entry and when an immortal's `/role` changes yours.
         role = msg.role;
         menuBar.refresh();
-        if (role !== "immortal") {
+        if (!can(role, "settings")) {
           settingsWin.window.close();
         }
         return;

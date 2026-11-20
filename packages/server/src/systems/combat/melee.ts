@@ -16,6 +16,7 @@ import {
   attackPower,
   bowRefusal,
   type CrystalColour,
+  can,
   checkLevelUp,
   crystalSlotIn,
   damagedForm,
@@ -322,7 +323,7 @@ function pvpSwing(
       v.deadLock > 0 ||
       v.loading > 0 ||
       v.flicker > 0 ||
-      v.role === "immortal"
+      can(v.role, "invulnerable")
     ) {
       continue;
     }

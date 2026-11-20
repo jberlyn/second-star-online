@@ -2,13 +2,15 @@
  * The menu bar above the stage, regrouped from 1.6's menus 500 and 502 by what each item is for.
  *
  * 1.6 had File, Edit, Game and Plugins, plus Admin for an immortal. SSO's bar is Game (your
- * character and the people you know), Chat (rooms), Admin for an immortal (tools and events) and
+ * character and the people you know), Chat (rooms), Admin for staff with tools (tools and events) and
  * Options (browser preferences). Quit Game is dropped (a page cannot close its tab) and so is
- * Plugins. Admin Chat sits with the other rooms, shown to an immortal only.
+ * Plugins. Admin Chat sits with the other rooms, shown only to a role that may use it.
  *
  * Out of the game only what works there shows: Options always, and on the login and creation
  * screens Game with Return To Title Screen alone. The rest appears once a character is in play.
  */
+
+import type { Permission } from "@secondstaronline/shared";
 
 import type { Menu, MenuItem } from "./menubar.ts";
 
@@ -17,7 +19,8 @@ export interface MenuState {
   inPlay(): boolean;
   /** The title screen is up: Return To Title Screen has nowhere to go. */
   atTitle(): boolean;
-  immortal(): boolean;
+  /** Whether your role holds a permission (the server still checks every request). */
+  can(permission: Permission): boolean;
   sharp(): boolean;
   sfx(): boolean;
 }
@@ -43,7 +46,10 @@ export interface MenuActions {
 
 const SEP: MenuItem = { kind: "sep" };
 
-/** The desktop bar's menus: Game, Chat, Admin (immortals), Options. */
+/** The permissions behind the Admin menu's items: any one shows the menu. */
+const ADMIN_MENU: readonly Permission[] = ["worldEditor", "npcEditor", "settings", "assassinGame"];
+
+/** The desktop bar's menus: Game, Chat, Admin (for roles with an admin tool), Options. */
 export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
   const play = () => state.inPlay();
   const item = (label: string, run: () => void): Extract<MenuItem, { kind: "item" }> => ({
@@ -53,6 +59,10 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
   });
   const inGame = (label: string, run: () => void) => ({ ...item(label, run), visible: play });
   const room = (label: string, r: Room) => inGame(label, () => act.enterRoom(r));
+  const gated = (label: string, run: () => void, permission: Permission) => ({
+    ...item(label, run),
+    visible: () => state.can(permission),
+  });
   return [
     {
       title: "Game",
@@ -75,7 +85,7 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         room("New Player Chat", "newPlayer"),
         room("Trading Post Chat", "tradingPost"),
         room("Guild Chat", "guild"),
-        { ...room("Admin Chat", "admin"), visible: () => play() && state.immortal() },
+        { ...room("Admin Chat", "admin"), visible: () => play() && state.can("adminChat") },
         SEP,
         item("Clear Chat Text", act.clearChat),
       ],
@@ -83,17 +93,20 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
     // Server Settings stands in the File Editor's place.
     {
       title: "Admin",
-      visible: () => play() && state.immortal(),
+      visible: () => play() && ADMIN_MENU.some((p) => state.can(p)),
       items: [
-        item("World Editor", act.worldEditor),
-        item("NPC Editor", act.npcEditor),
-        item("Return To Game", act.returnToGame),
+        gated("World Editor", act.worldEditor, "worldEditor"),
+        gated("NPC Editor", act.npcEditor, "npcEditor"),
+        {
+          ...item("Return To Game", act.returnToGame),
+          visible: () => state.can("worldEditor") || state.can("npcEditor"),
+        },
         SEP,
-        item("Server Settings", act.serverSettings),
+        gated("Server Settings", act.serverSettings, "settings"),
         SEP,
-        item("Begin Assassin's Game", () => act.assassin("GO")),
-        item("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING")),
-        item("End Assassin's Game", () => act.assassin("STOP")),
+        gated("Begin Assassin's Game", () => act.assassin("GO"), "assassinGame"),
+        gated("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING"), "assassinGame"),
+        gated("End Assassin's Game", () => act.assassin("STOP"), "assassinGame"),
       ],
     },
     // SSO's own: the browser preferences, in 1.6's Title Case.

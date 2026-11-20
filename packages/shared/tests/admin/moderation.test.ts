@@ -16,9 +16,9 @@ import {
   type ModerationRecord,
   mayChange,
   mayTarget,
+  outranks,
   parseDuration,
   parseModerationArgs,
-  rankAtLeast,
 } from "../../src/index.ts";
 
 const NOW = "2026-11-17T09:00:00.000Z";
@@ -34,10 +34,11 @@ const rec = (over: Partial<ModerationRecord> = {}): ModerationRecord => ({
 
 describe("ranks", () => {
   test("player < moderator < immortal", () => {
-    expect(rankAtLeast("immortal", "moderator")).toBe(true);
-    expect(rankAtLeast("moderator", "moderator")).toBe(true);
-    expect(rankAtLeast("moderator", "immortal")).toBe(false);
-    expect(rankAtLeast("player", "moderator")).toBe(false);
+    expect(outranks("immortal", "moderator")).toBe(true);
+    expect(outranks("moderator", "player")).toBe(true);
+    expect(outranks("moderator", "moderator")).toBe(false);
+    expect(outranks("moderator", "immortal")).toBe(false);
+    expect(outranks("player", "moderator")).toBe(false);
   });
 
   test("a moderator acts on players only; an immortal on anyone", () => {

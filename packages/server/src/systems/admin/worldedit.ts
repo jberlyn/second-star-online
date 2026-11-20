@@ -14,6 +14,7 @@
 import {
   airshipWalkGrid,
   blankMap,
+  can,
   type DeltaEvent,
   type EditorMap,
   type EditorMob,
@@ -121,7 +122,7 @@ export function openEditor(
   coords: { mx: number; my: number } | null,
   casino: CasinoDeps,
 ): Outgoing[] {
-  if (p.role !== "immortal" || p.editing === "world" || !coords) {
+  if (!can(p.role, "worldEditor") || p.editing === "world" || !coords) {
     return [];
   }
   const out = leaveForEditor(world, p, "world", casino);

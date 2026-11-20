@@ -13,6 +13,7 @@
  * left over from play.
  */
 import {
+  can,
   checkNpcFile,
   editorLines,
   lingoEq,
@@ -30,7 +31,7 @@ import { leaveForEditor } from "./worldedit.ts";
 
 /** Admin menu → NPC Editor. Anyone but an immortal gets nothing. */
 export function openNpcEditor(world: World, p: Player, casino: CasinoDeps): Outgoing[] {
-  if (p.role !== "immortal" || p.editing === "npc") {
+  if (!can(p.role, "npcEditor") || p.editing === "npc") {
     return [];
   }
   const out = leaveForEditor(world, p, "npc", casino);
@@ -38,7 +39,7 @@ export function openNpcEditor(world: World, p: Player, casino: CasinoDeps): Outg
   return out;
 }
 
-const inEditor = (p: Player) => p.role === "immortal" && p.editing === "npc";
+const inEditor = (p: Player) => can(p.role, "npcEditor") && p.editing === "npc";
 
 /** The shop ledger an NPC has now (in memory or saved), or null: never makes one. */
 export type LedgerOf = (npc: string) => ShopLedger | null;

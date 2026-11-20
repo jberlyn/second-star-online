@@ -9,20 +9,14 @@
  * the team rather than overriding them.
  */
 import type { Role } from "./admin.ts";
-
-/** player < moderator < immortal. */
-export const RANK: Readonly<Record<Role, number>> = { player: 0, moderator: 1, immortal: 2 };
-
-export function rankAtLeast(role: Role, needed: Role): boolean {
-  return RANK[role] >= RANK[needed];
-}
+import { can, outranks } from "./permissions.ts";
 
 /**
- * Whether `actor` may ban, jail, pardon or IP-ban a character whose account has `target`'s role. A
- * moderator acts on players only; an immortal on anyone. Acting on yourself is refused separately.
+ * Whether `actor` may ban, jail, pardon or IP-ban a character whose account has `target`'s role:
+ * anyone they outrank, or anyone at all with `overrule`. Acting on yourself is refused separately.
  */
 export function mayTarget(actor: Role, target: Role): boolean {
-  return actor === "immortal" || (actor === "moderator" && target === "player");
+  return can(actor, "overrule") || outranks(actor, target);
 }
 
 /** A stored ban, IP ban or jail: who made it, at what rank, and until when. */
@@ -46,7 +40,7 @@ export function isActive(r: { expiresAt: string | null } | null, now: string): b
  * lapsed action blocks nobody; the caller checks `isActive` first.
  */
 export function mayChange(actor: { id: string; role: Role }, existing: ModerationRecord): boolean {
-  return actor.role === "immortal" || existing.actorId === actor.id;
+  return can(actor.role, "overrule") || existing.actorId === actor.id;
 }
 
 // ---- durations ---------------------------------------------------------------------------------

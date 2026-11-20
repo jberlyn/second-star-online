@@ -16,7 +16,8 @@ Shared rules calculate outcomes; server systems apply them to world and player s
 - [packages/server/src/systems/admin/spawn.ts](../../packages/server/src/systems/admin/spawn.ts): handles privileged spawning.
 - [packages/server/src/systems/admin/worldedit.ts](../../packages/server/src/systems/admin/worldedit.ts): loads, validates and applies map edits.
 - [packages/server/src/persistence/moderation.ts](../../packages/server/src/persistence/moderation.ts): stores the moderation log, bans, IP bans, jails and login addresses.
-- [packages/shared/src/rules/admin/admin.ts](../../packages/shared/src/rules/admin/admin.ts): defines role permissions and command helpers.
+- [packages/shared/src/rules/admin/admin.ts](../../packages/shared/src/rules/admin/admin.ts): lists the admin commands and their helpers.
+- [packages/shared/src/rules/admin/permissions.ts](../../packages/shared/src/rules/admin/permissions.ts): defines the roles, their ranks and permissions.
 - [packages/shared/src/rules/admin/moderation.ts](../../packages/shared/src/rules/admin/moderation.ts): decides who may ban, jail or pardon whom, and reads durations, reasons and addresses.
 - [packages/shared/src/rules/admin/npcfile.ts](../../packages/shared/src/rules/admin/npcfile.ts): parses and validates NPC files.
 - [packages/shared/src/rules/admin/worldedit.ts](../../packages/shared/src/rules/admin/worldedit.ts): defines editor data and map validation.
@@ -24,11 +25,11 @@ Shared rules calculate outcomes; server systems apply them to world and player s
 Entry points:
 
 - `packages/server/src/systems/admin/commands.ts` (`handleAdmin`).
-- `packages/shared/src/rules/admin/admin.ts` (`mayRun`).
+- `packages/shared/src/rules/admin/permissions.ts` (`can`).
 
 ## How it works
 
-The server routes administration requests through `handleAdmin` and checks permissions using `mayRun`. The three roles are player, moderator and immortal; client flags do not grant authority. Commands also record audit information. Login limits track attempts by IP and account and limit character creation.
+The server routes administration requests through `handleAdmin` and checks permissions using `can`. The three roles are player, moderator and immortal. Each is a rank and a set of permissions: one per admin command and tool, plus the gameplay exemptions (immortals take no damage, never get hungry, cannot be pushed, stay off the high scores, ignore IP bans and drop on every death). Nothing checks a role by name, and client flags do not grant authority. Staff (any role above player) use staff chat, and a staff member cannot act on someone who outranks them. Commands also record audit information. Login limits track attempts by IP and account and limit character creation.
 
 A roster reports map contents; spawn and drop requests validate their names and amounts. World and NPC editors are restricted and validate submitted data before saving it. World editor saves apply to the server's map state; NPC edits check the file and refresh windows that display the edited NPC. Read paths expose information without giving the reader permission to edit it. The historical monster-drop editor and Justicars are not revived.
 

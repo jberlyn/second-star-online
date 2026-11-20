@@ -13,6 +13,7 @@ export * from "./rules/admin/auditlog.ts";
 export * from "./rules/admin/chatlog.ts";
 export * from "./rules/admin/moderation.ts";
 export * from "./rules/admin/npcfile.ts";
+export * from "./rules/admin/permissions.ts";
 export * from "./rules/admin/worldedit.ts";
 export * from "./rules/casino/blackjack.ts";
 export * from "./rules/casino/casino.ts";

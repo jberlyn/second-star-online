@@ -16,7 +16,7 @@
  * later), all rolls before any shove. The input lock is set while a window holds the keys (the Bio
  * window and the vault), and a player still `loading` its map counts as locked.
  */
-import { attemptMove, type Dir, pushLines } from "@secondstaronline/shared";
+import { attemptMove, can, type Dir, pushLines } from "@secondstaronline/shared";
 
 import { isCrafting, stopCraftsOnMove } from "../crafting/craft.ts";
 import { type Player, type Room, statsOf } from "../world/world.ts";
@@ -42,7 +42,7 @@ export function rollPushes(
 
 /** The shove on the victim's side. */
 export function pushOnMe(room: Room, victim: Player, dir: Dir, pusher: Player, ctx: MoveCtx): void {
-  if (victim.role === "immortal" || isKeyLocked(victim)) {
+  if (can(victim.role, "unpushable") || isKeyLocked(victim)) {
     return;
   }
   // Already pushed off the screen this tick: the map change comes first.

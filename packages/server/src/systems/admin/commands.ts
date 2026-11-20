@@ -2,8 +2,8 @@
  * Admin commands typed in chat, and staff chat (`-text`).
  *
  * 1.6 parsed these in the client (`ChatSend`) and checked the sender's role there; most server
- * subjects checked nothing. SSO parses the same lines on the server, checks the account role
- * against the moderator/immortal table (`ADMIN_ROLES` in shared/rules/admin/admin.ts) and keeps
+ * subjects checked nothing. SSO parses the same lines on the server, checks the account role's
+ * permissions (`can` in shared/rules/admin/permissions.ts) and keeps
  * 1.6's texts: the echo the admin saw ("*** Warping Bob..."), the refusals, the replies. What 1.6
  * never told the admin (an offline name, a missing jail) gets an SSO line after the echo.
  *
@@ -17,12 +17,14 @@ import {
   type AuditTrailRow,
   auditlogLine,
   BANLIST_PAGE,
+  BUILTIN_ROLES,
   banListLine,
   banNotice,
   CHAT_COLOR,
   CHATLOG_TEXT,
   type ChatChannel,
   type ChatLogRow,
+  can,
   canonicalIp,
   chatlogLine,
   cheatFileLines,
@@ -36,6 +38,7 @@ import {
   ipKey,
   isActive,
   isJailMap,
+  isStaff,
   JAIL,
   keyLabel,
   lingoEq,
@@ -45,9 +48,9 @@ import {
   type ModerationLogRow,
   type ModerationRecord,
   mayChange,
-  mayRun,
   mayTarget,
   type NamedRecord,
+  outranks,
   pardoningLine,
   parseAuditlogArgs,
   parseChatlogArgs,
@@ -56,7 +59,6 @@ import {
   type Role,
   type ServerMsg,
   TEXT,
-  usesStaffChat,
   WARPSCRIPT_OFF,
   warpscriptMatches,
 } from "@secondstaronline/shared";
@@ -190,14 +192,14 @@ export function handleAdmin(
 ): Outgoing[] {
   // The chat handler answers a command the typist may not use as an unknown one; this guard
   // keeps any other caller honest.
-  if (!mayRun(cmd, p.role)) {
+  if (!can(p.role, cmd)) {
     return [];
   }
   const audit = (target: string | null, before?: unknown, after?: unknown) =>
     deps.audit({ actor: p.accountId, command: `/${cmd}`, target, before, after });
-  // SSO's own rule: a moderator's /iplookup, /jail, /warp and /warptome refuse an immortal
-  // target, as /kick does. 1.6 sent them as messages the target's client obeyed.
-  const shieldedFrom = (t: Player) => t.role === "immortal" && p.role !== "immortal";
+  // SSO's own rule: /iplookup, /warp and /warptome refuse a target who outranks the staff
+  // member, as /kick does. 1.6 sent them as messages the target's client obeyed.
+  const shieldedFrom = (t: Player) => outranks(t.role, p.role);
 
   switch (cmd) {
     // ---- immortal-only ------------------------------------------------------------------
@@ -251,7 +253,7 @@ export function handleAdmin(
       if (!t) {
         return [...out, ...tell(p, ADMIN_TEXT.notOnline(w2))];
       }
-      if (t.role === "immortal" && p.role !== "immortal") {
+      if (shieldedFrom(t)) {
         return [...out, ...tell(p, ADMIN_TEXT.kickImmortal)];
       }
       audit(t.name);
@@ -420,7 +422,7 @@ export function handleAdmin(
     }
     case "role": {
       const role = lingoWord(typed, 3).toLowerCase();
-      if (w2 === "" || !["player", "moderator", "immortal"].includes(role)) {
+      if (w2 === "" || !Object.hasOwn(BUILTIN_ROLES, role)) {
         return tell(p, ADMIN_TEXT.roleUsage);
       }
       const c = deps.findCharacter(w2);
@@ -436,12 +438,12 @@ export function handleAdmin(
       const t = world.players.get(c.characterId);
       if (t) {
         t.role = role as Role;
-        if (!mayRun("warpscript", t.role)) {
+        if (!can(t.role, "warpscript")) {
           t.warpscript = null;
         }
         out.push({ to: t.id, msg: { t: "role", role: t.role } });
-        // The editors are an immortal's: a demoted operator goes back to the game.
-        if (role !== "immortal" && t.editing) {
+        // A demoted operator leaves an editor they may no longer use.
+        if (t.editing && !can(t.role, t.editing === "world" ? "worldEditor" : "npcEditor")) {
           out.push(...closeEditor(world, t));
         }
       }
@@ -496,7 +498,7 @@ function jailWarpRefusal(t: Player, map: string): string | null {
   if (t.jailUntil !== null) {
     return MODERATION_TEXT.prisoner(t.name);
   }
-  if (t.role === "player" && isJailMap(map)) {
+  if (!isStaff(t.role) && isJailMap(map)) {
     return MODERATION_TEXT.useJail;
   }
   return null;
@@ -691,7 +693,7 @@ function banIp(world: World, p: Player, w2: string, typed: string, deps: AdminDe
     if (c.accountId === p.accountId) {
       return [...out, ...tell(p, ADMIN_TEXT.banSelf)];
     }
-    if (c.role === "immortal") {
+    if (can(c.role, "bypassIpBan")) {
       return [...out, ...tell(p, MODERATION_TEXT.ipImmortal)];
     }
     const seen = deps.moderation.addresses(c.accountId);
@@ -729,7 +731,7 @@ function banIp(world: World, p: Player, w2: string, typed: string, deps: AdminDe
     expiresAt,
   });
   for (const o of world.players.values()) {
-    if (o.role !== "immortal" && keys.has(ipKey(o.ip))) {
+    if (!can(o.role, "bypassIpBan") && keys.has(ipKey(o.ip))) {
       deps.kick(o.id, banNotice(ADMIN_TEXT.ipBanned, expiresAt));
     }
   }
@@ -799,7 +801,8 @@ function unbanIp(p: Player, w2: string, typed: string, deps: AdminDeps): Outgoin
  */
 function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
   const now = deps.now();
-  const immortal = p.role === "immortal";
+  // IP bans and addresses are for those who may make IP bans.
+  const immortal = can(p.role, "banip");
   const m = deps.moderation;
   const rows = (lines: string[]) => (lines.length > 0 ? lines : [MODERATION_TEXT.listNone]);
   if (w2 === "" || /^\d+$/.test(w2)) {
@@ -893,13 +896,13 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
  * Non-staff receive an explicit denial and their input clears.
  */
 export function staffChat(world: World, p: Player, typed: string): Outgoing[] {
-  if (!usesStaffChat(p.role)) {
+  if (!isStaff(p.role)) {
     return tell(p, ADMIN_TEXT.staffChatDenied);
   }
   const text = formatStaffChat(p.name, typed);
   const out: Outgoing[] = [];
   for (const o of world.players.values()) {
-    if (usesStaffChat(o.role)) {
+    if (isStaff(o.role)) {
       out.push({ to: o.id, msg: { t: "chat", text, color: CHAT_COLOR.staff } });
     }
   }
@@ -921,14 +924,14 @@ export function warpscriptOnBroadcast(
   for (const staff of world.players.values()) {
     // The check follows the ignore test: a staff member ignoring the speaker never reads the
     // broadcast, so never warps them.
-    if (!mayRun("warpscript", staff.role) || staff.editing || !hears(staff, speaker.name)) {
+    if (!can(staff.role, "warpscript") || staff.editing || !hears(staff, speaker.name)) {
       continue;
     }
-    if (speaker.role === "immortal" && staff.role !== "immortal") {
+    if (outranks(speaker.role, staff.role)) {
       continue;
     }
     // A player goes to jail only by /jail.
-    if (speaker.role === "player" && isJailMap(staff.map.name)) {
+    if (!isStaff(speaker.role) && isJailMap(staff.map.name)) {
       continue;
     }
     if (!warpscriptMatches(staff.warpscript, message)) {

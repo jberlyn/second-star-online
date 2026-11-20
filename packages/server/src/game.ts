@@ -12,6 +12,7 @@ import {
   AIRSHIP_BODY,
   banNotice,
   type CreateMsg,
+  can,
   cheatLine,
   creationError,
   type EditorMap,
@@ -22,10 +23,12 @@ import {
   ipKey,
   isActive,
   isJailMap,
+  isStaff,
   JAIL,
   mapName,
   NO_FOG,
   PASSWORD_TEXT,
+  type Permission,
   parseHouseMapName,
   parseMapName,
   questLineUnanswerable,
@@ -403,17 +406,17 @@ const EDITOR_INTENTS = new Set([
  * Access") and the NPC editor's ("Attempting to get Admin access"). Settings take the World
  * Editor's.
  */
-const ADMIN_INTENTS: Readonly<Record<string, string>> = {
-  editOpen: "Attempted Admin Access",
-  editLoad: "Attempted Admin Access",
-  editSave: "Attempted Admin Access",
-  npcEditOpen: "Attempting to get Admin access",
-  npcLoad: "Attempting to get Admin access",
-  npcSave: "Attempting to get Admin access",
-  settingsOpen: "Attempted Admin Access",
-  settingsSave: "Attempted Admin Access",
+const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: string }>> = {
+  editOpen: { permission: "worldEditor", reason: "Attempted Admin Access" },
+  editLoad: { permission: "worldEditor", reason: "Attempted Admin Access" },
+  editSave: { permission: "worldEditor", reason: "Attempted Admin Access" },
+  npcEditOpen: { permission: "npcEditor", reason: "Attempting to get Admin access" },
+  npcLoad: { permission: "npcEditor", reason: "Attempting to get Admin access" },
+  npcSave: { permission: "npcEditor", reason: "Attempting to get Admin access" },
+  settingsOpen: { permission: "settings", reason: "Attempted Admin Access" },
+  settingsSave: { permission: "settings", reason: "Attempted Admin Access" },
   // Menu 502's Assassin items: 1.6's server just ignored a non-immortal.
-  assassinGame: "Attempted Admin Access",
+  assassinGame: { permission: "assassinGame", reason: "Attempted Admin Access" },
 };
 
 /** LOAD and SAVE belong to the editor they are sent from. */
@@ -1033,9 +1036,9 @@ export function createGame(deps: GameDeps): Game {
   };
   chatDeps.admin = adminDeps;
 
-  /** Server Settings window SAVE: immortals only; every changed value audited. */
+  /** Server Settings window SAVE: the `settings` permission only; every changed value audited. */
   const settingsSave = (p: Player, values: Record<string, unknown>) => {
-    if (p.role !== "immortal") {
+    if (!can(p.role, "settings")) {
       cheat(p.name, p.ip, "Attempted Admin Access");
       return;
     }
@@ -1296,7 +1299,7 @@ export function createGame(deps: GameDeps): Game {
   });
 
   const editSave = (p: Player, m: EditorMap) => {
-    if (p.role !== "immortal" || p.editing !== "world") {
+    if (!can(p.role, "worldEditor") || p.editing !== "world") {
       return;
     }
     const error = saveError(m);
@@ -1400,13 +1403,13 @@ export function createGame(deps: GameDeps): Game {
     const b = ipBan(db, ipKey(ip));
     return isActive(b, isoNow()) ? banNotice(ADMIN_TEXT.ipBanned, b?.expiresAt ?? null) : null;
   };
-  /** Why an account may not play: its ban, or its address's (never for an immortal). */
+  /** Why an account may not play: its ban, or its address's (unless its role bypasses IP bans). */
   const banRefusal = (accountId: string, role: Role, ip: string): string | null => {
     const b = accountBan(db, accountId);
     if (isActive(b, isoNow())) {
       return banNotice(ADMIN_TEXT.banned, b?.expiresAt ?? null);
     }
-    return role === "immortal" ? null : ipBanRefusal(ip);
+    return can(role, "bypassIpBan") ? null : ipBanRefusal(ip);
   };
 
   const core: Game = {
@@ -1418,9 +1421,9 @@ export function createGame(deps: GameDeps): Game {
 
     async login(name, password, ip = "") {
       const account = findAccountByUsername(db, name);
-      // SSO's login limits: a moderator or immortal is never refused by the per-address count (an
-      // operator behind a shared address must still get in).
-      const exempt = account !== null && account.role !== "player";
+      // SSO's login limits: a role with `bypassLoginLimits` is never refused by the per-address
+      // count (an operator behind a shared address must still get in).
+      const exempt = account !== null && can(account.role, "bypassLoginLimits");
       if (!exempt && !allowLoginFromIp(limits, ip, nowMs(), settings.loginFailsPerIp)) {
         return { ok: false, text: TEXT.tooManyLogins };
       }
@@ -1567,7 +1570,7 @@ export function createGame(deps: GameDeps): Game {
         map = jailMap;
         x = JAIL.x;
         y = JAIL.y;
-      } else if (jailUntil === null && isJailMap(map.name) && account.role === "player") {
+      } else if (jailUntil === null && isJailMap(map.name) && !isStaff(account.role)) {
         const to = respawnTarget(c.respawn, tickDeps);
         if (to) {
           ({ map, x, y } = to);
@@ -1698,12 +1701,13 @@ export function createGame(deps: GameDeps): Game {
     },
 
     canEdit(characterId) {
-      return world.players.get(characterId)?.role === "immortal";
+      const p = world.players.get(characterId);
+      return p !== undefined && (can(p.role, "worldEditor") || can(p.role, "npcEditor"));
     },
 
     canModerate(characterId) {
-      const role = world.players.get(characterId)?.role;
-      return role === "moderator" || role === "immortal";
+      const p = world.players.get(characterId);
+      return p !== undefined && can(p.role, "bypassLoginLimits");
     },
 
     canUpload(characterId) {
@@ -1721,10 +1725,11 @@ export function createGame(deps: GameDeps): Game {
       if (p.editing && !EDITOR_INTENTS.has(msg.t)) {
         return;
       }
-      // The editors and Settings are an immortal's; 1.6's own gates logged these too.
-      const adminReason = ADMIN_INTENTS[msg.t];
-      if (adminReason && (p.role !== "immortal" || !editingOk(p, msg.t))) {
-        cheat(p.name, p.ip, adminReason);
+      // The editors, Settings and the Assassin's Game need their permission; 1.6's own gates
+      // logged these too.
+      const gate = ADMIN_INTENTS[msg.t];
+      if (gate && (!can(p.role, gate.permission) || !editingOk(p, msg.t))) {
+        cheat(p.name, p.ip, gate.reason);
         return;
       }
       switch (msg.t) {
@@ -1890,7 +1895,7 @@ export function createGame(deps: GameDeps): Game {
         case "roomEnter":
           // Admin Chat is an immortal's (menu 502); anyone else is ignored, not disconnected as 1.6
           // did, and logged.
-          if (msg.room === "admin" && p.role !== "immortal") {
+          if (msg.room === "admin" && !can(p.role, "adminChat")) {
             cheat(p.name, p.ip, "Attempted Admin Access");
             return;
           }

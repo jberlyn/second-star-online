@@ -26,6 +26,7 @@
 import {
   CANNOT_FIGHT_TEXT,
   CHAT_COLOR,
+  can,
   DEFAULT_DEATH_DROPS,
   type DeathDropRules,
   type DeltaEvent,
@@ -167,7 +168,7 @@ export const SLOT_SAVE_TICKS = 600;
 /** Colour of the death line. */
 export const DEATH_TEXT_COLOR = CHAT_COLOR.death;
 
-const isImmortal = (p: Player) => p.role === "immortal";
+const isInvulnerable = (p: Player) => can(p.role, "invulnerable");
 
 /** The players whose client rolls are emulated: everyone, or a random 15. */
 function emulated(room: Room, rng: Rng): Player[] {
@@ -258,7 +259,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
             const o = monsterAttack(map, slot, p, {
               rng,
               npcs: room.npcs,
-              immortal: isImmortal,
+              immortal: isInvulnerable,
             });
             if (o) {
               all({ e: "phit", id: o.victim.id, text: o.text, color: o.color, splat: o.splat });
@@ -392,7 +393,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
           respawns.push(p);
         }
       }
-      const warning = hungerStep(p, isImmortal(p), rng);
+      const warning = hungerStep(p, can(p.role, "noHunger"), rng);
       if (warning) {
         tell(p, warning);
       }
@@ -438,7 +439,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       const death = checkDeath(room, p, rng, {
         item: itemCtx,
         rules: deps.deathDrops ?? DEFAULT_DEATH_DROPS,
-        immortal: isImmortal(p),
+        immortal: can(p.role, "dropOnEveryDeath"),
         lightningGame: lightningOn(world),
       });
       if (death.kind === "death") {

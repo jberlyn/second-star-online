@@ -2,7 +2,7 @@
  * The High Score Statue's table on the server: a ranking of every player's score, checked with each
  * periodic save. 1.6 kept it with its casino scripts; it has nothing to do with the casino.
  */
-import { highScorePoints, rankHighScore, SCORES_SIZE } from "@secondstaronline/shared";
+import { can, highScorePoints, rankHighScore, SCORES_SIZE } from "@secondstaronline/shared";
 
 import type { Player, World } from "../world/world.ts";
 
@@ -12,7 +12,7 @@ import type { Player, World } from "../world/world.ts";
  * scores of five digits or more).
  */
 export function submitHighScore(world: World, p: Player): void {
-  if (p.role === "immortal") {
+  if (can(p.role, "noHighScores")) {
     return;
   }
   const v = p.char.vitals;

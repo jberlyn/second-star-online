@@ -9,75 +9,36 @@ export type Role = "player" | "moderator" | "immortal";
 
 /**
  * The admin commands of 1.6's `ChatSend` grammar, plus SSO's `/role`, `/unban`, `/setclass`,
- * `/unjail`, `/banlist` and `/chatlog`.
+ * `/unjail`, `/banlist`, `/chatlog` and `/auditlog`. Each is also the permission that runs it
+ * (`permissions.ts`).
  */
-export type AdminCmd =
-  | "save"
-  | "refresh"
-  | "cheatfile"
-  | "unbanip"
-  | "inventory"
-  | "banip"
-  | "location"
-  | "iplookup"
-  | "kick"
-  | "warpscript"
-  | "ban"
-  | "warp"
-  | "jail"
-  | "pardon"
-  | "warptome"
-  | "warpmeto"
-  | "role"
-  | "unban"
-  | "setclass"
-  | "unjail"
-  | "banlist"
-  | "chatlog"
-  | "auditlog";
+export const ADMIN_COMMANDS = [
+  "save",
+  "refresh",
+  "cheatfile",
+  "unbanip",
+  "inventory",
+  "banip",
+  "location",
+  "iplookup",
+  "kick",
+  "warpscript",
+  "ban",
+  "warp",
+  "jail",
+  "pardon",
+  "warptome",
+  "warpmeto",
+  "role",
+  "unban",
+  "setclass",
+  "unjail",
+  "banlist",
+  "chatlog",
+  "auditlog",
+] as const;
 
-/**
- * Who may run each command.
- * Moderators share most of the 1.6 admin commands, `/unban`, `/unjail` and `/banlist`; IP bans,
- * `/role`, `/setclass`, `/chatlog`, `/auditlog` and `/cheatfile` remain immortal-only. Item creation (`/drop`) is immortal-only too, checked in `handleDrop`.
- */
-export const ADMIN_ROLES: Readonly<Record<AdminCmd, readonly Role[]>> = {
-  save: ["immortal", "moderator"],
-  refresh: ["immortal", "moderator"],
-  cheatfile: ["immortal"], // SSO: every player's address and suspected cheat
-  unbanip: ["immortal"], // an IP ban can lock out an immortal or the whole proxy
-  inventory: ["immortal", "moderator"],
-  banip: ["immortal"], // an IP ban can lock out an immortal or the whole proxy
-  location: ["immortal", "moderator"],
-  iplookup: ["immortal", "moderator"],
-  kick: ["immortal", "moderator"],
-  warpscript: ["immortal", "moderator"],
-  ban: ["immortal", "moderator"],
-  warp: ["immortal", "moderator"],
-  jail: ["immortal", "moderator"],
-  pardon: ["immortal", "moderator"],
-  warptome: ["immortal", "moderator"],
-  warpmeto: ["immortal", "moderator"],
-  role: ["immortal"], // SSO
-  unban: ["immortal", "moderator"], // SSO
-  setclass: ["immortal"], // SSO
-  unjail: ["immortal", "moderator"], // SSO
-  banlist: ["immortal", "moderator"], // SSO
-  chatlog: ["immortal"], // SSO: every channel, IMs and staff chat included
-  auditlog: ["immortal"], // SSO: what staff did, moderators included
-};
-
-export function mayRun(cmd: AdminCmd, role: Role): boolean {
-  return ADMIN_ROLES[cmd].includes(role);
-}
-
-/**
- * Who may read and post to staff chat (`-text`): both staff roles (immortals and
- * moderators).
- */
-export function usesStaffChat(role: Role): boolean {
-  return role === "immortal" || role === "moderator";
-}
+export type AdminCmd = (typeof ADMIN_COMMANDS)[number];
 
 /** The exact texts of the admin commands. */
 export const ADMIN_TEXT = {

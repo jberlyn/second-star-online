@@ -9,6 +9,7 @@
 import {
   CHAT_COLOR,
   CHAT_SOCIAL_TEXT,
+  can,
   chatRefusal,
   parseRoomLine,
   type RoomKey,
@@ -88,7 +89,7 @@ export function enterRoom(world: World, p: Player, key: RoomKey): Outgoing[] {
   return out;
 }
 
-/** Whether `p` may still be in its room: its guild's, or an immortal's. */
+/** Whether `p` may still be in its room: its guild's, or Admin Chat while they may use it. */
 function stillMember(p: Player): boolean {
   const room = p.room;
   if (!room) {
@@ -98,7 +99,7 @@ function stillMember(p: Player): boolean {
     return p.guild !== "" && roomGroup("guild", p.guild) === room.group;
   }
   if (room.key === "admin") {
-    return p.role === "immortal";
+    return can(p.role, "adminChat");
   }
   return true;
 }

@@ -6,6 +6,7 @@
  */
 import { itemsData } from "@secondstaronline/data";
 import {
+  can,
   FACING_DELTA,
   ID_CONTAINERS,
   isWalkable,
@@ -92,7 +93,7 @@ export function dropText(g: { item: string; qty?: number }): string {
 export function handleDrop(ctx: ItemCtx, room: Room, p: Player, item: string): Outgoing[] {
   const io = new ItemOut(room);
   // Creating items from nothing stays immortal-only: moderators must not mint gold or stacks.
-  if (item === "" || p.role !== "immortal") {
+  if (item === "" || !can(p.role, "drop")) {
     return io.out;
   }
   // a positive integer followed by the word "gold", or a known name.

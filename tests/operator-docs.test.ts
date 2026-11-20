@@ -7,12 +7,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { SETTINGS } from "../packages/server/src/settings.ts";
-import { ADMIN_ROLES } from "../packages/shared/src/rules/admin/admin.ts";
+import { ADMIN_COMMANDS } from "../packages/shared/src/rules/admin/admin.ts";
 
 const ROOT = join(import.meta.dir, "..");
 const DOC_PATH = join(ROOT, "docs", "running-a-server.md");
 
-/** Privileged chat commands handled outside `ADMIN_ROLES`. */
+/** Privileged chat commands that are not `ADMIN_COMMANDS`. */
 const SUPPLEMENTAL_COMMANDS = ["drop", "roster", "spawn"] as const;
 
 /** Extracts every inline backticked span (`...`) from Markdown text. */
@@ -34,7 +34,7 @@ describe("operator documentation", () => {
         .filter((s) => s.startsWith("/"))
         .map((s) => s.slice(1).split(/\s+/)[0]?.toLowerCase() ?? ""),
     );
-    const expected = [...Object.keys(ADMIN_ROLES), ...SUPPLEMENTAL_COMMANDS];
+    const expected = [...ADMIN_COMMANDS, ...SUPPLEMENTAL_COMMANDS];
     const missing = expected.filter((cmd) => !documentedCommands.has(cmd.toLowerCase()));
     expect(missing).toEqual([]);
   });

@@ -2,14 +2,14 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  ADMIN_ROLES,
+  ADMIN_COMMANDS,
   ADMIN_TEXT,
+  can,
   cheatFileLines,
   cheatLine,
   findClass,
   formatStaffChat,
   inventoryLines,
-  mayRun,
   parseChatLine,
   parseWarpLine,
   WARPSCRIPT_OFF,
@@ -18,10 +18,7 @@ import {
 
 describe("the moderator/immortal table", () => {
   test("moderators keep the moderation commands; IP bans, /role, /setclass and /cheatfile stay immortal-only", () => {
-    const mod = Object.entries(ADMIN_ROLES)
-      .filter(([, roles]) => roles.includes("moderator"))
-      .map(([c]) => c)
-      .sort();
+    const mod: string[] = ADMIN_COMMANDS.filter((c) => can("moderator", c)).sort();
     expect(mod).toEqual(
       [
         "ban",
@@ -42,13 +39,13 @@ describe("the moderator/immortal table", () => {
         "warptome",
       ].sort(),
     );
-    expect(mayRun("banip", "moderator")).toBe(false);
-    expect(mayRun("unbanip", "moderator")).toBe(false);
-    expect(mayRun("role", "moderator")).toBe(false);
-    expect(mayRun("setclass", "moderator")).toBe(false);
-    for (const cmd of Object.keys(ADMIN_ROLES)) {
-      expect(mayRun(cmd as keyof typeof ADMIN_ROLES, "immortal")).toBe(true);
-      expect(mayRun(cmd as keyof typeof ADMIN_ROLES, "player")).toBe(false);
+    expect(can("moderator", "banip")).toBe(false);
+    expect(can("moderator", "unbanip")).toBe(false);
+    expect(can("moderator", "role")).toBe(false);
+    expect(can("moderator", "setclass")).toBe(false);
+    for (const cmd of ADMIN_COMMANDS) {
+      expect(can("immortal", cmd)).toBe(true);
+      expect(can("player", cmd)).toBe(false);
     }
   });
 });

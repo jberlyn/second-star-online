@@ -21,14 +21,15 @@ import {
   broadcastRefusal,
   CHAT_COLOR,
   CHAT_TEXT,
+  can,
   chatRefusal,
   formatBroadcast,
   formatEmote,
   formatSay,
   heardSqa,
   isJailMap,
+  isStaff,
   lingoWord,
-  mayRun,
   PASSWORD_MAX,
   PASSWORD_TEXT,
   parseChatLine,
@@ -37,7 +38,6 @@ import {
   sayRefusedInHouse,
   staffChatText,
   unknownCommandText,
-  usesStaffChat,
   whoCountLine,
 } from "@secondstaronline/shared";
 
@@ -116,7 +116,7 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
   }
   let cmd = parsed;
   if (cmd.kind === "staffChat") {
-    const outcome = usesStaffChat(p.role) ? "delivered" : "denied";
+    const outcome = isStaff(p.role) ? "delivered" : "denied";
     logChat(world, p, "staff", staffChatText(cmd.typed), outcome);
     return staffChat(world, p, cmd.typed);
   }
@@ -132,14 +132,14 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
     return unknown();
   }
   if (cmd.kind === "admin") {
-    if (!mayRun(cmd.cmd, p.role)) {
+    if (!can(p.role, cmd.cmd)) {
       return unknown();
     }
     return deps.admin ? handleAdmin(world, p, cmd.cmd, cmd.w2, cmd.line, deps.admin) : [];
   }
   if (
     (cmd.kind === "drop" || cmd.kind === "spawn" || cmd.kind === "roster") &&
-    p.role !== "immortal"
+    !can(p.role, cmd.kind)
   ) {
     return unknown();
   }
@@ -167,7 +167,7 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
     return bankChat(world.npcs, p, cmd.text);
   }
   if (cmd.kind === "spawn") {
-    if (p.role === "immortal" && deps.itemCtx) {
+    if (can(p.role, "spawn") && deps.itemCtx) {
       const r = handleSpawn(world, p, cmd.args, deps.itemCtx().rng);
       if (r.changed) {
         deps.saveSlots?.(r.changed);
@@ -191,7 +191,7 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
     cmd = { kind: "say", text: cmd.say };
   }
   if (cmd.kind === "roster") {
-    if (p.role === "immortal") {
+    if (can(p.role, "roster")) {
       const r = handleRoster(world, p, cmd.args);
       if (r.changed) {
         deps.saveSlots?.(r.changed);
