@@ -6,10 +6,6 @@ Second Star Online brings First Star Online 1.6 to the web: a multiplayer RPG wh
 
 Open source and ready to host, Second Star Online gives you the tools to create a community and make the world your own.
 
-![Seven adventurers in varied armor and robes fishing, chopping wood, casting a fireball, and fighting monsters in a forest beside a lake.](docs/images/gameplay.png)
-
-*Willowbrook Wilds, the starter landscape, shown with a staged party fishing, gathering, and fighting monsters.*
-
 ## Find your adventure
 
 - **Explore and grow.** Venture across maps, face monsters, learn skills and spells, and gather resources for your next expedition.
@@ -39,10 +35,6 @@ Each new server begins in Willowbrook Wilds, a forest-and-lake seed world that y
 
 ## Make it your own
 
-![The Willowbrook Wilds map in the World Editor, showing the tile palette, map layers, monsters, items, and world settings.](docs/images/world-editor.png)
-
-*The same forest in the built-in World Editor. Shape the map, place monsters and items, and save your changes in-game.*
-
 Use the in-game World Editor, NPC Editor, and server settings to shape your server. For deeper changes, the [modding guide](docs/modding.md) explains how to customize game data, add art and sound, and build your own image.
 
 Want to work on the game itself? Clone this repository, install [Bun](https://bun.sh/), and run:
@@ -60,3 +52,16 @@ See the [contributor command guide](docs/scripts.md) for build and verification 
 - [Game system guides](docs/guides/README.md) — how the world and its mechanics work.
 - [Report an issue](https://github.com/jberlyn/second-star-online/issues) — share a bug or suggest an improvement.
 - [LICENSE](LICENSE) and [NOTICE](NOTICE) — the SSO code license and attribution for original art, sounds, and other material.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><a href="docs/images/title-screen.png"><img src="docs/images/title-screen.png" alt="The Second Star Online title screen, with Load Character and New Character options over a red curtain."></a></td>
+    <td width="50%"><a href="docs/images/gameplay.png"><img src="docs/images/gameplay.png" alt="Adventurers fishing, chopping wood, casting a fireball at an orc, and chatting in Willowbrook Wilds, a forest beside a lake."></a></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/images/world-editor.png"><img src="docs/images/world-editor.png" alt="The Willowbrook Wilds map in the World Editor, showing the tile palette, map layers, monsters, items, and map settings."></a></td>
+    <td width="50%"><a href="docs/images/server-settings.png"><img src="docs/images/server-settings.png" alt="The Server Settings window open on its World page, with the starting map, fallback map, and NPC chatter settings."></a></td>
+  </tr>
+</table>
