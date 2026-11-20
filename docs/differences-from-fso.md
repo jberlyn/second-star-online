@@ -4497,7 +4497,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** The cast area extended far enough beyond the 17×12 playfield that clicking its right or bottom edge could place a monster on column 18 or row 13.
 - **SSO:** A cast click must be on the playfield, and a summon whose tile is off the map is refused before anything is spent; a pig dropped toward an edge stays in the bag.
 - **Why:** Server monsters live on map tiles; an off-map monster could not be reached or saved.
-- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `inCastBounds`, `planSummon`, `summonPig`), `packages/server/src/systems/inventory/items.ts` (`pigDrop`)
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `planSummon`, `summonPig`), `packages/shared/src/rules/spells/spells.ts` (`inCastBounds`), `packages/server/src/systems/inventory/items.ts` (`pigDrop`)
 - **Pinned by:** `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts); `bug fixed: Raise Dead on a grave in the bottom row is refused before anything is spent: the Zombie would be off the map` (packages/server/tests/spells.test.ts); `bug fixed: a faced tile off the map at the side, bottom or top → "You can't drop an animal here!", the pig kept` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 ### Server-side vehicles
