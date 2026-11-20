@@ -57,6 +57,29 @@ describe("staff chat and moderation", () => {
       out.some((o) => o.to === "Adm" && o.msg.t === "chat" && o.msg.color === CHAT_COLOR.staff),
     ).toBe(true);
   });
+
+  test("SSO: a mute stops player-shop commands too; a prisoner still runs them", () => {
+    const { world, mod } = staff();
+    let ran = 0;
+    const shopDeps: ChatDeps = {
+      maxChars: 200,
+      broadcastCooldownFrames: 0,
+      chatCooldownFrames: 0,
+      helpLines,
+      shop: () => {
+        ran++;
+        return { ran: true, out: [] };
+      },
+    };
+    mod.muteUntil = Date.parse("2030-01-01T00:00:00.000Z");
+    const out = handleChat(world, mod, "register", shopDeps);
+    expect(ran).toBe(0);
+    expect(texts(out, "Mod")).toEqual([MODERATION_TEXT.youAreMuted(endIso(mod.muteUntil))]);
+    mod.muteUntil = null;
+    mod.jailUntil = Date.parse("2030-01-01T00:00:00.000Z");
+    handleChat(world, mod, "register", shopDeps);
+    expect(ran).toBe(1);
+  });
 });
 
 describe("Password= and the chat cap", () => {

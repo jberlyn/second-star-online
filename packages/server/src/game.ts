@@ -131,6 +131,7 @@ import {
   activeMutes,
   characterJail,
   charactersAt,
+  expireModeration,
   ipBan,
   ipBansFrom,
   moderationHistory,
@@ -496,6 +497,8 @@ export function createGame(deps: GameDeps): Game {
   pruneLogs();
   /** The logs are pruned again an hour after the last time. */
   let logPruneAt = nowMs() + 3_600_000;
+  /** Lapsed bans, IP bans, sentences and mutes are logged as ended once a minute. */
+  let moderationExpireAt = nowMs() + 60_000;
   /** Writes the lines logged since the last write (`world.chatLog`). */
   const flushChatLog = () => {
     if (world.chatLog.length > 0) {
@@ -2440,6 +2443,10 @@ export function createGame(deps: GameDeps): Game {
           if (nowMs() >= logPruneAt) {
             logPruneAt = nowMs() + 3_600_000;
             pruneLogs();
+          }
+          if (nowMs() >= moderationExpireAt) {
+            moderationExpireAt = nowMs() + 60_000;
+            expireModeration(db, isoNow());
           }
         })();
       } catch (err) {

@@ -348,15 +348,95 @@ export function moderationHistory(db: Db, accountId: string, limit: number): Mod
     }));
 }
 
+/** The actor of a row the server writes itself, such as an expiry. */
+export const SYSTEM_ACTOR = {
+  actorId: "system",
+  actorName: "system",
+  actorRole: "System",
+} as const;
+
 /**
- * Startup housekeeping: lapsed bans, IP bans, sentences and mutes leave the active tables (the log keeps
- * them), and addresses not seen for `addressDays` days are forgotten (0 keeps them).
+ * Every ban, IP ban, sentence and mute whose end has passed leaves its active table with a lift row
+ * in `moderation_log` (`unban`, `unipban`, `unjail`, `unmute` by `system`, reason "Expired"), dated
+ * when it ended, so the log shows every end, whether the player was online or not. Returns how
+ * many ended.
+ */
+export function expireModeration(db: Db, now: string): number {
+  const base = { ...SYSTEM_ACTOR, reason: "Expired", expiresAt: null };
+  const ended: ModerationEntry[] = [
+    ...db
+      .query<{ account_id: string; expires_at: string }, [string]>(
+        "SELECT account_id, expires_at FROM account_bans WHERE expires_at IS NOT NULL AND expires_at <= ?",
+      )
+      .all(now)
+      .map((r) => ({
+        ...base,
+        action: "unban" as const,
+        accountId: r.account_id,
+        createdAt: r.expires_at,
+      })),
+    ...db
+      .query<{ account_id: string; expires_at: string }, [string]>(
+        "SELECT account_id, expires_at FROM mutes WHERE expires_at IS NOT NULL AND expires_at <= ?",
+      )
+      .all(now)
+      .map((r) => ({
+        ...base,
+        action: "unmute" as const,
+        accountId: r.account_id,
+        createdAt: r.expires_at,
+      })),
+    ...db
+      .query<
+        {
+          character_id: string;
+          account_id: string | null;
+          name: string | null;
+          expires_at: string;
+        },
+        [string]
+      >(
+        `SELECT j.character_id, c.account_id, c.name, j.expires_at
+         FROM jails j LEFT JOIN characters c ON c.id = j.character_id
+         WHERE j.expires_at IS NOT NULL AND j.expires_at <= ?`,
+      )
+      .all(now)
+      .map((r) => ({
+        ...base,
+        action: "unjail" as const,
+        characterId: r.character_id,
+        accountId: r.account_id,
+        characterName: r.name,
+        createdAt: r.expires_at,
+      })),
+    ...db
+      .query<{ ip_key: string; address: string; expires_at: string }, [string]>(
+        "SELECT ip_key, address, expires_at FROM ip_bans WHERE expires_at IS NOT NULL AND expires_at <= ?",
+      )
+      .all(now)
+      .map((r) => ({
+        ...base,
+        action: "unipban" as const,
+        ipKey: r.ip_key,
+        address: r.address,
+        createdAt: r.expires_at,
+      })),
+  ];
+  db.transaction(() => {
+    for (const e of ended) {
+      recordModeration(db, e);
+    }
+  })();
+  return ended.length;
+}
+
+/**
+ * Startup housekeeping: lapsed bans, IP bans, sentences and mutes end with a lift row
+ * (`expireModeration`), and addresses not seen for `addressDays` days are forgotten (0 keeps them).
  */
 export function pruneModeration(db: Db, now: string, addressDays: number): void {
   db.transaction(() => {
-    for (const table of ["account_bans", "jails", "mutes", "ip_bans"]) {
-      db.query(`DELETE FROM ${table} WHERE expires_at IS NOT NULL AND expires_at <= ?`).run(now);
-    }
+    expireModeration(db, now);
     pruneAddresses(db, now, addressDays);
   })();
 }

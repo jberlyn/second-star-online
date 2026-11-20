@@ -335,6 +335,64 @@ describe("moderation in the game (real SQLite)", () => {
     expect(say(bob.characterId, "hello")).toEqual(['Bob says "hello"']);
   });
 
+  test("SSO: a ban, sentence or mute that runs out is logged as ended by the server, online or not", async () => {
+    const { game, make, say, restart } = await start();
+    const alice = await make("Alice", "administrator");
+    const bob = await make("Bob");
+    const carol = await make("Carol");
+    say(alice.characterId, "/mute Bob 10m flooding");
+    say(alice.characterId, "/jail Carol 30m");
+    game().leave(carol.characterId);
+    say(alice.characterId, "/ban Carol 1h spamming");
+    const ends = () =>
+      db
+        .query(
+          "SELECT action, actor_name, reason, created_at FROM moderation_log WHERE actor_id = 'system' ORDER BY created_at",
+        )
+        .all();
+    // The tick's once-a-minute sweep logs Bob's mute while he is online.
+    wall += 11 * 60_000;
+    game().tick();
+    game().tick();
+    expect(ends()).toEqual([
+      {
+        action: "unmute",
+        actor_name: "system",
+        reason: "Expired",
+        created_at: "2026-11-17T09:10:00.000Z",
+      },
+    ]);
+    // Carol's sentence and ban end offline; the startup sweep logs them, dated when they ended.
+    wall += 60 * 60_000;
+    restart();
+    expect(ends()).toEqual([
+      {
+        action: "unmute",
+        actor_name: "system",
+        reason: "Expired",
+        created_at: "2026-11-17T09:10:00.000Z",
+      },
+      {
+        action: "unjail",
+        actor_name: "system",
+        reason: "Expired",
+        created_at: "2026-11-17T09:30:00.000Z",
+      },
+      {
+        action: "unban",
+        actor_name: "system",
+        reason: "Expired",
+        created_at: "2026-11-17T10:00:00.000Z",
+      },
+    ]);
+    expect(db.query("SELECT COUNT(*) AS n FROM mutes").get()).toEqual({ n: 0 });
+    expect(accountBan(db, carol.accountId)).toBeNull();
+    expect(characterJail(db, carol.characterId)).toBeNull();
+    // Nothing is logged twice.
+    restart();
+    expect(ends()).toHaveLength(3);
+  });
+
   test("a prisoner is told the sentence at login", async () => {
     const { game, make, say } = await start();
     const alice = await make("Alice", "administrator");

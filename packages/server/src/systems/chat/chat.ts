@@ -256,6 +256,13 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       // The house rule applies to plain talk, `/me` and shop commands alike: a shop is run from
       // where you can talk to its keeper.
       const houseRefused = sayRefusedInHouse(p.map.name, p.y);
+      // A mute stops shop commands too: a player is muted from everything typed into chat.
+      const channel = cmd.kind;
+      const hush = silenced(p, channel);
+      if (hush) {
+        logChat(world, p, channel, cmd.text, hush.outcome, p.map.name);
+        return [{ to: p.id, msg: line(hush.text) }];
+      }
       // A shop command is handled before the line is said and is never said aloud, so it costs no
       // chat cooldown (1.6 said it to the room first, and ran it even where talk was refused).
       if (cmd.kind === "say" && deps.shop && !houseRefused) {
@@ -263,12 +270,6 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
         if (s.ran) {
           return s.out;
         }
-      }
-      const channel = cmd.kind;
-      const hush = silenced(p, channel);
-      if (hush) {
-        logChat(world, p, channel, cmd.text, hush.outcome, p.map.name);
-        return [{ to: p.id, msg: line(hush.text) }];
       }
       const refused = chatRefusal(chatWait(p));
       if (refused) {
