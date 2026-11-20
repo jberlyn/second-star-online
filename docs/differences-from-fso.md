@@ -44,17 +44,17 @@ By system (the code folder that holds the change):
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [26](#combat) | [7](#server-side-combat) |
-| core | [1](#core) | [9](#server-side-core) |
+| core | [3](#core) | [9](#server-side-core) |
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [34](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
-| inventory | [33](#inventory) | [11](#server-side-inventory) |
+| inventory | [32](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
 | progression | [10](#progression) | [4](#server-side-progression) |
 | social | [22](#social) | [9](#server-side-social) |
-| spells | [25](#spells) | [9](#server-side-spells) |
+| spells | [24](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
 
@@ -1297,6 +1297,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/client/src/audio.ts` (`createAudio`)
 - **Pinned by:** `divergence: off silences everything, 1.6's ungated sounds too` (packages/client/tests/sound.test.ts)
 
+#### The church bell leaves channel 5's volume alone
+- **Kind:** Bug fixed
+- **What you notice:** After the church bell, the damage-number sound and the rest of channel 5 play at their normal volume.
+- **1.6:** The bell set channel 5's volume to 200 and nothing reset it, so every later sound on that channel played at the bell's volume for the rest of the session.
+- **SSO:** A volume sent with a sound applies to that sound alone.
+- **Why:** The bell's volume was meant for the bell.
+- **In the code:** `packages/client/src/audio.ts` (`playAll`, `createAudio`)
+- **Pinned by:** `bug fixed: a sound's own volume plays that sound alone at it; the channel keeps its volume` (packages/client/tests/sound.test.ts)
+
+#### Characters face away holding their weapon in the right hand
+- **Kind:** Bug fixed
+- **What you notice:** Walking north, your character holds the shield in the left hand and swings with the right, matching the other three facings. Most monsters and NPCs turn the same way from behind: the Orc and Orc Lord raise their right arm to attack.
+- **1.6:** The back views were drawn as if seen from the front. Facing north the shield showed in the right hand and the sword in the left, and the body's attack arm was on the wrong side, so every character looked left-handed from behind. Most monster and NPC back views had the same mirror.
+- **SSO:** The asset build flips every north frame marked `"mirrored": true` before packing the atlas. Original art is marked in `assets/original-sidecars.json`, which holds the same correction fields as an added file's sidecar. Every original paperdoll layer's north frames are marked; a layer flips about the body's centre line. The north frames of 34 bodies are marked; each body flips about the centre line of its standing north frame, so it faces away from where it stood, and its hit rects move with it. The Lizard Warrior, Elf and Dwarf already held their weapon correctly from behind and are not marked, nor are the bodies whose north frame copies the south one (the Slimes, Dragon Hatchling, Death, Demons, Ghoul, Snared Loah, Ghost, Illusionary Spikes, Web, Holy Shield, Squid, Mutant Worm, Snow Demon and the bush). Asymmetric back-of-head details, such as some hairstyles, flip with the body. Added art drawn the 1.6 way is marked in its own sidecar, as the boot and bare-feet layers are.
+- **Why:** One character should not change hands when it turns around.
+- **In the code:** `assets/original-sidecars.json`; `packages/data/build/assets-lib/mirror.ts` (`mirrorPaperdoll`, `centreLine2`, `mirrorBody`, `checkMirroredFlags`), `packages/data/build/assets-lib/original-sidecars.ts` (`checkOriginalSidecars`), `packages/data/build/assets.ts` (`buildAssets`), `packages/data/build/data.ts` (`renderRects`)
+- **Pinned by:** `bug fixed: from behind, a character holds the shield in the left hand and the weapon in the right`, `original sidecars: every paperdoll north frame and the listed bodies' north frames are mirrored, nothing else` and `added art marked mirrored is flipped in the atlas and its hit rect` (packages/data/tests/assets.test.ts)
+
 ### crafting
 
 #### A tool's first success takes the full number of hits
@@ -2231,15 +2249,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Worn boots should be seen.
 - **In the code:** `packages/shared/src/rules/inventory/paperdoll.ts` (`normaliseLook`, `paperdollLayers`)
 - **Pinned by:** `bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot` and `SSO: with no boots the feet are bare, over whatever shoes the body paints` (packages/shared/tests/inventory/inventory.test.ts); `every frame of the default body has bare feet to cover its painted shoes` (packages/data/tests/assets.test.ts)
-
-#### Characters face away holding their weapon in the right hand
-- **Kind:** Bug fixed
-- **What you notice:** Walking north, your character holds the shield in the left hand and swings with the right, matching the other three facings. Most monsters and NPCs turn the same way from behind: the Orc and Orc Lord raise their right arm to attack.
-- **1.6:** The back views were drawn as if seen from the front. Facing north the shield showed in the right hand and the sword in the left, and the body's attack arm was on the wrong side, so every character looked left-handed from behind. Most monster and NPC back views had the same mirror.
-- **SSO:** The asset build flips every north frame marked `"mirrored": true` before packing the atlas. Original art is marked in `assets/original-sidecars.json`, which holds the same correction fields as an added file's sidecar. Every original paperdoll layer's north frames are marked; a layer flips about the body's centre line. The north frames of 34 bodies are marked; each body flips about the centre line of its standing north frame, so it faces away from where it stood, and its hit rects move with it. The Lizard Warrior, Elf and Dwarf already held their weapon correctly from behind and are not marked, nor are the bodies whose north frame copies the south one (the Slimes, Dragon Hatchling, Death, Demons, Ghoul, Snared Loah, Ghost, Illusionary Spikes, Web, Holy Shield, Squid, Mutant Worm, Snow Demon and the bush). Asymmetric back-of-head details, such as some hairstyles, flip with the body. Added art drawn the 1.6 way is marked in its own sidecar, as the boot and bare-feet layers are.
-- **Why:** One character should not change hands when it turns around.
-- **In the code:** `assets/original-sidecars.json`; `packages/data/build/assets-lib/mirror.ts` (`mirrorPaperdoll`, `centreLine2`, `mirrorBody`, `checkMirroredFlags`), `packages/data/build/assets-lib/original-sidecars.ts` (`checkOriginalSidecars`), `packages/data/build/assets.ts` (`buildAssets`), `packages/data/build/data.ts` (`renderRects`)
-- **Pinned by:** `bug fixed: from behind, a character holds the shield in the left hand and the weapon in the right`, `original sidecars: every paperdoll north frame and the listed bodies' north frames are mirrored, nothing else` and `added art marked mirrored is flipped in the atlas and its hit rect` (packages/data/tests/assets.test.ts)
 
 #### Crystals are dropped or given by the button you chose
 - **Kind:** Bug fixed
@@ -3262,15 +3271,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
 - **Pinned by:** `bug fixed: a spell heal stops at the monster's own hit points: a Pig stays at 1` (packages/server/tests/spells.test.ts)
 
-#### The church bell leaves channel 5's volume alone
-- **Kind:** Bug fixed
-- **What you notice:** After the church bell, the damage-number sound and the rest of channel 5 play at their normal volume.
-- **1.6:** The bell set channel 5's volume to 200 and nothing reset it, so every later sound on that channel played at the bell's volume for the rest of the session.
-- **SSO:** A volume sent with a sound applies to that sound alone.
-- **Why:** The bell's volume was meant for the bell.
-- **In the code:** `packages/client/src/audio.ts` (`playAll`, `createAudio`)
-- **Pinned by:** `bug fixed: a sound's own volume plays that sound alone at it; the channel keeps its volume` (packages/client/tests/sound.test.ts)
-
 #### An Overlord killed by a spell is announced
 - **Kind:** Bug fixed
 - **What you notice:** Killing the Overlord with a spell sends "*** ** * All hail <you> who has rid the world of an evil overlord!" to everyone, as a melee kill does.
@@ -3574,7 +3574,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** `/banlist` lists the bans, jails and mutes in force (and, for administrators, IP bans); bans page 10 at a time, while jails, mutes and IP bans show the first 10; `/banlist <name>` shows a character's standing, last ten moderation actions with their reasons and, for administrators, their login addresses; `/banlist <address>` (administrators) shows an address's ban and who has played from it.
 - **1.6:** The bans lived in character files and a bans file, with no history and no in-game list.
-- **SSO:** Every staff ban, unban, IP ban, jail, release, mute, unmute and pardon is a row in `moderation_log`, kept after the action ends. A jail or mute that runs out on its own writes no row.
+- **SSO:** Every staff ban, unban, IP ban, jail, release, mute, unmute and pardon is a row in `moderation_log`, kept after the action ends. A jail or mute that runs out on its own writes no row of its own: the row that set it already holds its end time.
 - **Why:** Staff need to see why someone was banned and by whom before changing it.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/persistence/moderation.ts` (`moderationHistory`)
 - **Pinned by:** `moderators see bans and jails; administrators also see IP bans`, `/banlist <name>: standing, history and (administrators) addresses` (packages/server/tests/admin.test.ts)
