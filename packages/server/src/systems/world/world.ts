@@ -400,6 +400,11 @@ export interface Player {
    * Loaded from the stored sentence at login and set by `/jail`; `jailTick` releases at the time.
    */
   jailUntil: number | null;
+  /**
+   * When the mute ends (wall-clock ms; `Infinity` for a permanent one), or null. Loaded at login
+   * and set by `/mute`; `muteTick` lifts it at the time.
+   */
+  muteUntil: number | null;
   /** An immortal's `/warpscript` keyword, or null until set. */
   warpscript: string | null;
 
@@ -634,6 +639,7 @@ export function sessionCombatState(): Pick<
   | "spell"
   | "editing"
   | "jailUntil"
+  | "muteUntil"
   | "warpscript"
   | "gather"
   | "told"
@@ -698,6 +704,7 @@ export function sessionCombatState(): Pick<
     spell: newSpellState(),
     editing: null,
     jailUntil: null,
+    muteUntil: null,
     warpscript: null,
     gather: newGatherCounters(),
     told: null,

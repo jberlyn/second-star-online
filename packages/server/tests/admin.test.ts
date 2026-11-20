@@ -22,11 +22,15 @@ import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/se
 import type { AdminDeps, CharacterAccount } from "../src/systems/admin/commands.ts";
 import { openEditor } from "../src/systems/admin/worldedit.ts";
 import { type ChatDeps, handleChat } from "../src/systems/chat/chat.ts";
+import { setAway } from "../src/systems/chat/im.ts";
+import { enterRoom, roomSay } from "../src/systems/chat/rooms.ts";
+import { broadcastWait, chatWait } from "../src/systems/chat/speech.ts";
 import type { Player, WorldMap } from "../src/systems/world/world.ts";
 import { fakeModeration, testClock } from "./helpers/moderation.ts";
 import { NEVER_PUSH, player, setup, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
+const ROOM_DEPS = { maxChars: 200, chatCooldownFrames: 0 };
 const texts = (out: Out, id: string) =>
   out.flatMap((o) => (o.to === id && o.msg.t === "chat" ? [o.msg.text] : []));
 
@@ -84,7 +88,7 @@ function scene(withJail = true) {
     setRole: (id, role) => roles.set(id, role),
     moderation: m.store,
     now: clock.iso,
-    durations: () => ({ banMinutes: 0, ipBanMinutes: 43_200, jailMinutes: 10 }),
+    durations: () => ({ banMinutes: 0, ipBanMinutes: 43_200, jailMinutes: 10, muteMinutes: 10 }),
     setClass: (id, code) => classes.set(id, code),
     cheatLines: () => ["Bob - at IP 9.9.9.9 - Attempted Admin Access"],
     audit: (e) => audits.push(`${e.command} ${e.target ?? ""}`.trim()),
@@ -188,8 +192,16 @@ describe("the role table (moderator command set)", () => {
       "Looking up IP address for bob...",
       "The IP is: 127.0.0.1",
     ]);
-    say(mod, "/warp Bob x1000y992 9 9");
-    expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 9, 9]);
+    // A moderator moves no one, themselves included.
+    for (const line of [
+      "/warp Bob x1000y992 9 9",
+      "/warptome Bob",
+      "/warpmeto Bob",
+      "/warpscript help",
+    ]) {
+      expect(texts(say(mod, line), "Mod")).toEqual([unknownCommandText(line.split(" ")[0] ?? "")]);
+    }
+    expect([bob.map.name, mod.map.name]).toEqual(["x1001y992", "x1000y992"]);
     bob.char.wanted = true;
     expect(texts(say(mod, "/Pardon Bob"), "Mod")).toEqual(["Pardoning Bob..."]);
     expect(bob.char.wanted).toBe(false);
@@ -424,11 +436,14 @@ describe("the jail", () => {
     expect(bob.map.name).toBe("x1000y992");
   });
 
-  test("a jailed moderator cannot /warpmeto out", () => {
-    const { imm, mod, say } = scene();
-    say(imm, "/jail Mod 1h");
-    expect(texts(say(mod, "/warpmeto Imm"), "Mod")[1]).toBe(MODERATION_TEXT.prisoner("Mod"));
-    expect(mod.map.name).toBe("x0y0");
+  test("a jailed immortal cannot /warpmeto out", () => {
+    const { imm, seed, join, say } = scene();
+    const imm2 = player("Imm2", seed, 7, 5);
+    imm2.role = "immortal";
+    join(imm2);
+    say(imm, "/jail Imm2 1h");
+    expect(texts(say(imm2, "/warpmeto Imm"), "Imm2")[1]).toBe(MODERATION_TEXT.prisoner("Imm2"));
+    expect(imm2.map.name).toBe("x0y0");
   });
 
   test("an offline character can be jailed; the sentence waits for their login", () => {
@@ -465,11 +480,140 @@ describe("the jail", () => {
   });
 });
 
+describe("prisoners' chat", () => {
+  test("divergence: a prisoner is told the sentence, talks only on the jail map, and may IM staff", () => {
+    const { imm, bob, other, join, say, world } = scene();
+    const cal = player("Cal", other, 4, 4);
+    join(cal);
+    const jailed = say(imm, "/jail Bob 1h");
+    expect(texts(jailed, "Bob")).toContain(
+      MODERATION_TEXT.youAreJailed("2026-11-17T10:00:00.000Z"),
+    );
+    // Local chat and /me reach the jail map.
+    expect(texts(say(bob, "let me out"), "Bob")).toEqual(['Bob says "let me out"']);
+    expect(texts(say(bob, "/me rattles the bars"), "Bob")).toHaveLength(1);
+    // An IM to staff goes through; to a player it is refused.
+    expect(say(bob, "/msg Imm why?").some((o) => o.to === "Imm")).toBe(true);
+    const toCal = say(bob, "/msg Cal help");
+    expect(texts(toCal, "Bob")).toEqual([MODERATION_TEXT.prisonerSilenced]);
+    expect(texts(toCal, "Cal")).toEqual([]);
+    // A room line is refused, and a broadcast keeps 1.6's jail refusal.
+    enterRoom(world, bob, "general");
+    expect(
+      texts(
+        roomSay(world, bob, "hello", ROOM_DEPS, () => []),
+        "Bob",
+      ),
+    ).toEqual([MODERATION_TEXT.prisonerSilenced]);
+    expect(texts(say(bob, "'anyone?"), "Bob")).toEqual(["You shout but no one can hear you!"]);
+  });
+});
+
+describe("mutes", () => {
+  test("SSO: /mute silences a player everywhere but IMs to staff, until it lapses", () => {
+    const { mod, bob, other, join, say, world, runMinutes, m } = scene();
+    const cal = player("Cal", other, 4, 4);
+    join(cal);
+    const muted = say(mod, "/mute Bob spam");
+    expect(texts(muted, "Mod")).toEqual(["Bob is muted until 2026-11-17 09:10 UTC."]);
+    const notice = MODERATION_TEXT.youAreMuted("2026-11-17T09:10:00.000Z");
+    // The reason is for staff; Bob reads only the end.
+    expect(texts(muted, "Bob")).toEqual([notice]);
+    expect(m.mutes.get("Bob")?.reason).toBe("spam");
+    for (const line of ["hello", "/me waves", "'everyone!", "/msg Cal hi"]) {
+      const out = say(bob, line);
+      expect(texts(out, "Bob")).toEqual([notice]);
+      expect(out.filter((o) => o.to !== "Bob")).toEqual([]);
+    }
+    enterRoom(world, bob, "general");
+    expect(
+      texts(
+        roomSay(world, bob, "hi", ROOM_DEPS, () => []),
+        "Bob",
+      ),
+    ).toEqual([notice]);
+    // An IM to staff still reaches them, to ask why.
+    expect(say(bob, "/msg Mod why?").some((o) => o.to === "Mod")).toBe(true);
+    // Bob's away text answers staff, but not a player.
+    setAway(world, bob, "brb", ROOM_DEPS);
+    expect(say(cal, "/msg Bob hi").some((o) => o.to === "Cal" && o.msg.t === "im")).toBe(false);
+    expect(say(mod, "/msg Bob hi").some((o) => o.to === "Mod" && o.msg.t === "im")).toBe(true);
+    const lapse = runMinutes(10);
+    expect(texts(lapse, "Bob")).toEqual([MODERATION_TEXT.youAreUnmuted]);
+    expect(bob.muteUntil).toBeNull();
+    expect(texts(say(bob, "hello again"), "Bob")).toEqual(['Bob says "hello again"']);
+  });
+
+  test("only the staff member who muted, or an immortal, changes or lifts a mute; staff are out of reach", () => {
+    const { imm, mod, bob, seed, join, say } = scene();
+    const mod2 = player("Mod2", seed, 7, 5);
+    mod2.role = "moderator";
+    join(mod2);
+    say(mod, "/mute Bob 1h");
+    expect(texts(say(mod2, "/unmute Bob"), "Mod2")).toEqual([
+      MODERATION_TEXT.notYourMute("Bob", "Mod"),
+    ]);
+    expect(texts(say(mod2, "/mute Bob 2h"), "Mod2")).toEqual([
+      MODERATION_TEXT.notYourMute("Bob", "Mod"),
+    ]);
+    expect(texts(say(mod2, "/mute Mod"), "Mod2")).toEqual([MODERATION_TEXT.staffTarget]);
+    expect(texts(say(mod, "/mute Mod"), "Mod")).toEqual([MODERATION_TEXT.muteSelf]);
+    const lifted = say(imm, "/unmute Bob");
+    expect(texts(lifted, "Imm")).toEqual([MODERATION_TEXT.unmuted("Bob")]);
+    expect(texts(lifted, "Bob")).toEqual([MODERATION_TEXT.youAreUnmuted]);
+    expect(texts(say(imm, "/unmute Bob"), "Imm")).toEqual([MODERATION_TEXT.notMuted("Bob")]);
+    expect(texts(say(imm, "/mute"), "Imm")).toEqual([MODERATION_TEXT.muteUsage]);
+  });
+
+  test("an offline account can be muted; /banlist shows mutes; players cannot /mute", () => {
+    const { mod, bob, say, offline, m } = scene();
+    offline.set("Zed", "player");
+    expect(texts(say(mod, "/mute Zed perm"), "Mod")).toEqual(["Zed is muted permanently."]);
+    expect(m.mutes.get("Zed")?.expiresAt).toBeNull();
+    expect(texts(say(mod, "/banlist"), "Mod").slice(-2)).toEqual([
+      "* Muted:",
+      "Zed - permanent - Mod (moderator)",
+    ]);
+    expect(texts(say(mod, "/banlist Zed"), "Mod")[0]).toBe(
+      "* Zed: muted - permanent - Mod (moderator)",
+    );
+    expect(texts(say(bob, "/mute Zed"), "Bob")).toEqual([unknownCommandText("/mute")]);
+  });
+});
+
+describe("moderators play as ordinary players", () => {
+  test("divergence: a moderator cannot pardon or warp themselves; an immortal can", () => {
+    const { imm, mod, say } = scene();
+    mod.char.wanted = true;
+    expect(texts(say(mod, "/pardon Mod"), "Mod")).toEqual([
+      "Pardoning Mod...",
+      MODERATION_TEXT.pardonSelf,
+    ]);
+    expect(mod.char.wanted).toBe(true);
+    imm.char.wanted = true;
+    say(imm, "/pardon Imm");
+    expect(imm.char.wanted).toBe(false);
+    say(imm, "/warp Imm x1001y992 2 2");
+    expect([imm.map.name, imm.x, imm.y]).toEqual(["x1001y992", 2, 2]);
+  });
+
+  test("divergence: an immortal skips the chat and broadcast cooldowns; everyone else waits", () => {
+    const { imm, bob } = scene();
+    for (const p of [imm, bob]) {
+      p.chatIn = 40;
+      p.broadcastIn = 900;
+    }
+    expect([chatWait(imm), broadcastWait(imm)]).toEqual([0, 0]);
+    expect([chatWait(bob), broadcastWait(bob)]).toEqual([40, 900]);
+  });
+});
+
 describe("/warpscript", () => {
-  test("a player's /warpscript is an unknown command; moderators can set it", () => {
-    const { bob, mod, say } = scene();
+  test("divergence: /warpscript is an unknown command to players and moderators; immortals set it", () => {
+    const { bob, mod, imm, say } = scene();
     expect(texts(say(bob, "/warpscript help"), "Bob")).toEqual([unknownCommandText("/warpscript")]);
-    expect(texts(say(mod, "/warpscript help"), "Mod")).toEqual(["Warpscript set to: help"]);
+    expect(texts(say(mod, "/warpscript help"), "Mod")).toEqual([unknownCommandText("/warpscript")]);
+    expect(texts(say(imm, "/warpscript help"), "Imm")).toEqual(["Warpscript set to: help"]);
   });
 
   test("a broadcast containing the whole keyword warps the speaker to the staff member", () => {
@@ -496,23 +640,16 @@ describe("/warpscript", () => {
   });
 
   test("multiple matching staff: deterministic single winner (first in login order)", () => {
-    const { imm, mod, bob, say } = scene();
+    const { imm, other, join, bob, say } = scene();
+    const imm2 = player("Imm2", other, 8, 8);
+    imm2.role = "immortal";
+    join(imm2);
     say(imm, "/warpscript help");
-    say(mod, "/warpscript help");
+    say(imm2, "/warpscript help");
     const out = say(bob, "'help!");
     expect(texts(out, "Imm")).toContain("*** Warping Bob...");
-    expect(texts(out, "Mod")).not.toContain("*** Warping Bob...");
+    expect(texts(out, "Imm2")).not.toContain("*** Warping Bob...");
     expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 5, 5]);
-  });
-
-  test("a moderator's warp keyword moves players but cannot warp an immortal", () => {
-    const { imm, mod, bob, say } = scene();
-    say(mod, "/warpscript help");
-    say(bob, "'help");
-    expect([bob.map.name, bob.x, bob.y]).toEqual([mod.map.name, mod.x, mod.y]);
-    const out = say(imm, "'help");
-    expect([imm.x, imm.y]).toEqual([5, 5]);
-    expect(texts(out, "Mod")).not.toContain("*** Warping Imm...");
   });
 
   test("OFF prints the word it stores and disables matching", () => {
@@ -559,7 +696,7 @@ describe("kicks, bans, roles and classes", () => {
     expect(bans.size).toBe(0);
   });
 
-  test("SSO: a moderator cannot look up, jail or warp an immortal", () => {
+  test("SSO: a moderator cannot look up, jail or mute an immortal", () => {
     const { imm, mod, bob, say, audits } = scene();
     const lines = (typed: string) => texts(say(mod, typed), "Mod");
     expect(lines("/iplookup Imm")).toEqual([
@@ -567,13 +704,12 @@ describe("kicks, bans, roles and classes", () => {
       ADMIN_TEXT.immortalTarget,
     ]);
     expect(lines("/jail Imm")[1]).toBe(MODERATION_TEXT.staffTarget);
-    expect(lines("/warp Imm x1001y992 3 3")[1]).toBe(ADMIN_TEXT.immortalTarget);
-    expect(lines("/warptome Imm")[1]).toBe(ADMIN_TEXT.immortalTarget);
-    expect([imm.map.name, imm.x, imm.y]).toEqual(["x1000y992", 5, 5]);
+    expect(lines("/mute Imm")).toEqual([MODERATION_TEXT.staffTarget]);
+    expect([imm.map.name, imm.x, imm.y, imm.muteUntil]).toEqual(["x1000y992", 5, 5, null]);
     expect(audits).toEqual([]);
     // A player target still works for a moderator; an immortal may act on an immortal.
-    expect(lines("/warptome Bob")).toEqual(["*** Warping Bob..."]);
-    expect(bob.map.name).toBe("x1000y992");
+    expect(lines("/iplookup Bob")[1]).toMatch(/^The IP is: /);
+    expect(bob.map.name).toBe("x1001y992");
     expect(texts(say(imm, "/iplookup imm"), "Imm")[1]).toMatch(/^The IP is: /);
   });
 
@@ -844,6 +980,8 @@ describe("/banlist", () => {
       "* Bans (page 1 of 1):",
       "Bob - until 2026-11-20 09:00 UTC - Mod (moderator): spam",
       "* Jailed:",
+      "(none)",
+      "* Muted:",
       "(none)",
     ]);
     expect(texts(say(imm, "/banlist"), "Imm").slice(-2)).toEqual([

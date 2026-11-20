@@ -168,7 +168,8 @@ export const SETTINGS = {
     label: "Broadcast wait",
     ...duration(0, HOUR, "off"),
     default: 50,
-    tooltip: "How long a player must wait between broadcasts (lines starting with ').",
+    tooltip:
+      "How long a player must wait between broadcasts (lines starting with '). Immortals skip it.",
     source:
       "1.6's broadcast cooldown of 1000 frames (50 s), unused in 1.6 because the registered flag was always 1; SSO applies it to everyone.",
   }),
@@ -178,7 +179,7 @@ export const SETTINGS = {
     ...duration(0, HOUR, "off"),
     default: 3,
     tooltip:
-      "How long a player must wait between local chat lines and emotes. Also paces IMs, guild and room lines, mail and board posts.",
+      "How long a player must wait between local chat lines and emotes. Also paces IMs, guild and room lines, mail and board posts. Immortals skip it.",
     source: "SSO addition. The original had no local chat limit.",
   }),
   mailBodyMax: def({
@@ -397,6 +398,15 @@ export const SETTINGS = {
       "How long a /jail without a duration lasts. The sentence runs in real time, while the prisoner is offline too; when it ends they go to their respawn point (the Fallback map if its map is gone).",
     source:
       '1.6\'s server settings file had "Jail Sentence Time (1800 = 1 minute):8000" in frames, counted only while online and restarted on every entry. SSO stores sentences and counts them in real time.',
+  }),
+  muteLength: def({
+    page: "moderation",
+    label: "Mute length",
+    ...duration(MINUTE, TEN_YEARS),
+    default: 10 * MINUTE,
+    tooltip:
+      "How long a /mute without a duration lasts. It runs in real time, while the player is offline too. A muted player cannot chat, IM, post or mail, except an IM to staff.",
+    source: "SSO addition. 1.6 had no mute.",
   }),
   banLength: def({
     page: "moderation",

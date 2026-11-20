@@ -23,6 +23,7 @@ import {
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { hears } from "./ignore.ts";
 import { logChat } from "./log.ts";
+import { chatWait, silenced } from "./speech.ts";
 
 export interface ImDeps {
   /** Setting `chatMaxChars`. */
@@ -66,7 +67,8 @@ export function deliverIm(
   logChat(world, from, channel, text, "delivered", to.name);
   if (awayAnswers(to.away)) {
     const out: Outgoing[] = [{ to: to.id, msg: { t: "im", from: from.name, text, away: true } }];
-    if (to !== from && !autoReply) {
+    // A muted or jailed player's away text is speech too: it answers staff only.
+    if (to !== from && !autoReply && !silenced(to, "im", from)) {
       out.push(...deliverIm(world, to, from, to.away ?? "", true));
     }
     return out;
@@ -91,7 +93,12 @@ export function msgCommand(
   if (!m) {
     return [{ to: p.id, msg: { t: "restore", text: typed, ...(restoreTo ? { restoreTo } : {}) } }];
   }
-  const refused = chatRefusal(p.chatIn);
+  const hush = silenced(p, "im", online(world, m.name));
+  if (hush) {
+    logChat(world, p, "im", m.text, hush.outcome, m.name);
+    return [tell(p, hush.text)];
+  }
+  const refused = chatRefusal(chatWait(p));
   if (refused) {
     logChat(world, p, "im", m.text, "cooldown", m.name);
     return [
@@ -135,7 +142,12 @@ export function imIntent(
   if (text === "" || to === "") {
     return [];
   }
-  const refused = chatRefusal(p.chatIn);
+  const hush = silenced(p, "im", online(world, to));
+  if (hush) {
+    logChat(world, p, "im", text, hush.outcome, to);
+    return [tell(p, hush.text)];
+  }
+  const refused = chatRefusal(chatWait(p));
   if (refused) {
     logChat(world, p, "im", text, "cooldown", to);
     const restoreTo: RestoreTarget = via === "send" ? { kind: "imSend", to } : { kind: "im", to };

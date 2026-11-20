@@ -37,8 +37,10 @@ export const CHAT_OUTCOMES = [
   "cooldown",
   /** Refused by the house rule. */
   "house",
-  /** A broadcast refused in jail. */
+  /** A broadcast refused in jail, or a prisoner's line beyond their own map. */
   "jail",
+  /** Refused because the speaker is muted. */
+  "muted",
   /** An IM dropped by the recipient's ignore list. */
   "ignored",
   /** An IM to someone not online. */
@@ -112,6 +114,7 @@ const OUTCOME_TEXT: Readonly<Record<ChatOutcome, string>> = {
   cooldown: "refused: cooldown",
   house: "refused: house rule",
   jail: "refused: jail",
+  muted: "refused: muted",
   ignored: "ignored by recipient",
   notOnline: "recipient not online",
   noGuild: "refused: no guild",

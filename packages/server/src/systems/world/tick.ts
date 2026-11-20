@@ -37,6 +37,7 @@ import {
   isWalkable,
   JAIL,
   lingoEq,
+  MODERATION_TEXT,
   neighbourMapName,
   type Rng,
   STEPFRAMES_PER_FRAME,
@@ -575,6 +576,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       out.push(...released);
       saves.add(p);
     }
+    out.push(...muteTick(world, deps, p));
   }
   deps.phase?.("world");
 
@@ -843,6 +845,15 @@ export function jailTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
     return [];
   }
   return releaseFromJail(world, p, deps);
+}
+
+/** A mute ends at its wall-clock time, checked once a second, and the player is told. */
+export function muteTick(world: World, deps: TickDeps, p: Player): Outgoing[] {
+  if (p.muteUntil === null || !deps.now || world.tickNo % 20 !== 0 || deps.now() < p.muteUntil) {
+    return [];
+  }
+  p.muteUntil = null;
+  return [{ to: p.id, msg: { t: "chat", text: MODERATION_TEXT.youAreUnmuted, color: 0 } }];
 }
 
 /**

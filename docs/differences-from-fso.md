@@ -478,6 +478,42 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 ### Other design changes
 
+#### Moderators play by the same rules as players
+- **Kind:** Other
+- **What you notice:** A moderator moderates other players but gets no advantage in play: `/warp`, `/warptome`, `/warpmeto` and `/warpscript` are unknown commands to them, and they cannot pardon themselves. An immortal can still warp and pardon anyone, themselves included.
+- **1.6:** Moderators could warp themselves anywhere, pull players to them, follow a friend with `/warpmeto` and clear their own murder flag with `/pardon`.
+- **SSO:** Each role is a set of permissions (`BUILTIN_ROLES`). The moderator's leaves out the warps, and pardoning or warping yourself needs its own permission (`pardonSelf`, `warpSelf`) that only immortals hold. Moderators keep one exemption: the per-address login limit never refuses them, so staff behind a shared address can still log in during a flood of bad logins.
+- **Why:** Moderators are players who moderate. Warps and self-pardons let them travel or escape the murder penalty in a way other players cannot.
+- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`BUILTIN_ROLES`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `a moderator has no tools or gameplay exemptions except the login-limit bypass` (packages/shared/tests/admin/permissions.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `divergence: /warpscript is an unknown command to players and moderators; immortals set it`, `divergence: a moderator cannot pardon or warp themselves; an immortal can` (packages/server/tests/admin.test.ts)
+
+#### Mutes
+- **Kind:** Other
+- **What you notice:** Staff can `/mute <name> [duration] [reason]` a player (10 minutes by default, the `muteLength` setting) and `/unmute` them. A muted player is told in the chat box until when, and again each time they try to talk or log in. They cannot use local chat, `/me`, broadcasts, IMs, guild chat, chat rooms, mail or board posts, but can still send an IM to staff to ask why. Their away text answers staff only. They are told when it ends.
+- **1.6:** There was no way to silence a player short of a ban or the jail.
+- **SSO:** A mute is stored on the account like a ban and runs in real time like a sentence, offline too; it follows the same rank and ownership rules as bans and jails (`mayTarget`, `mayChange`), and `/banlist` lists it. Every way of talking asks `silenced` first.
+- **Why:** Spam and abuse in chat call for something lighter than a ban that still stops it at once.
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`mute`, `unmute`), `packages/server/src/systems/chat/speech.ts` (`silenced`), `packages/server/src/systems/world/tick.ts` (`muteTick`), `packages/server/src/persistence/moderation.ts` (`accountMute`)
+- **Pinned by:** `SSO: /mute silences a player everywhere but IMs to staff, until it lapses`, `only the staff member who muted, or an immortal, changes or lifts a mute; staff are out of reach`, `an offline account can be muted; /banlist shows mutes; players cannot /mute` (packages/server/tests/admin.test.ts); `a mute survives logout and restart and is told at login; one that ends offline is gone` (packages/server/tests/moderation-db.test.ts)
+
+#### Prisoners are told their sentence and talk only nearby
+- **Kind:** Other
+- **What you notice:** A jailed player reads "You have been jailed until …" when jailed and at each login. In jail they can talk with local chat and `/me`, which reach others in the jail, and send IMs to staff. Broadcasts still fail as in 1.6, and IMs to other players, guild chat, chat rooms, mail and board posts are refused with "You are in jail: only those near you and staff can hear you."
+- **1.6:** The prisoner was moved without a word, and only broadcasts were stopped.
+- **SSO:** `silenced` refuses a prisoner's lines beyond the jail map, except IMs to staff.
+- **Why:** A prisoner should know why they were moved and for how long, and should be cut off from the world while still able to ask staff about it.
+- **In the code:** `packages/server/src/systems/chat/speech.ts` (`silenced`), `packages/server/src/systems/admin/commands.ts` (`jail`)
+- **Pinned by:** `divergence: a prisoner is told the sentence, talks only on the jail map, and may IM staff` (packages/server/tests/admin.test.ts); `a prisoner is told the sentence at login` (packages/server/tests/moderation-db.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
+
+#### Immortals skip the chat and broadcast waits
+- **Kind:** Other
+- **What you notice:** An immortal can talk, IM, post and broadcast without waiting for the chat or broadcast cooldown. Everyone else, moderators included, waits as before.
+- **1.6:** The waits applied to everyone, so an operator making announcements waited 50 seconds between broadcasts.
+- **SSO:** `chatWait` and `broadcastWait` read 0 for a role with `bypassChatCooldown` or `bypassBroadcastCooldown`.
+- **Why:** The waits stop players flooding chat; operators making announcements or answering many players at once are not the problem they solve.
+- **In the code:** `packages/server/src/systems/chat/speech.ts` (`chatWait`, `broadcastWait`)
+- **Pinned by:** `divergence: an immortal skips the chat and broadcast cooldowns; everyone else waits` (packages/server/tests/admin.test.ts); `delivered to the room, refused by the cooldown, and out of a room; an immortal skips the cooldown` (packages/server/tests/chatlog.test.ts)
+
 #### The fishing allowance belongs to the tile you fish from
 - **Kind:** Other
 - **What you notice:** A tile gives at most 5 catches. After that, a cast from it catches nothing and gains no skill, and the chat says "The fish have stopped biting here. Try fishing from another spot." once each time you start fishing. Fishing from any other tile, on this map or another, starts with 5 again. Turning on the spot and logging out and back in don't refill it.
@@ -629,12 +665,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Moderators share the original moderation commands and staff chat
 - **Kind:** Bug fixed
-- **What you notice:** Moderators can use `/ban`, `/unban`, `/unjail` and `/pardon` on players, `/banlist`, `/Inventory`, `/save`, `/Refresh`, `/warpscript`, and `-text` staff chat, in addition to kick, warp, jail, IP lookup, and location. `/BanIP`, `/unbanip`, `/CheatFile`, `/chatlog`, `/auditlog`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and editors remain immortal-only, and moderators still cannot act on immortals.
+- **What you notice:** Moderators can use `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute` and `/pardon` on players, `/banlist`, `/Inventory`, `/save`, `/Refresh`, and `-text` staff chat, in addition to kick, IP lookup, and location. `/BanIP`, `/unbanip`, `/CheatFile`, `/chatlog`, `/auditlog`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, the warps and editors remain immortal-only, and moderators still cannot act on immortals. (Moderators lost the warps on purpose: see [Moderators play by the same rules as players](#moderators-play-by-the-same-rules-as-players).)
 - **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
-- **SSO:** `BUILTIN_ROLES` grants moderators the original moderation command set, `isStaff` gives them staff chat, and `warpscriptOnBroadcast` honours their `/warpscript`, while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: the moderator's permissions leave out `drop` and `banip`, and `/unban` lifts only a ban the moderator made (`mayChange`).
+- **SSO:** `BUILTIN_ROLES` grants moderators the moderation command set and `isStaff` gives them staff chat, while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: the moderator's permissions leave out `drop` and `banip`, and `/unban` lifts only a ban the moderator made (`mayChange`).
 - **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an immortal's ban.
 - **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`BUILTIN_ROLES`, `can`, `isStaff`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `staffChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
-- **Pinned by:** `moderators keep the moderation commands; IP bans, /role, /setclass and /cheatfile stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
+- **Pinned by:** `moderators keep the moderation commands; IP bans, warps, /role, /setclass and /cheatfile stay immortal-only` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans, /role or /setclass`, `SSO: a moderator may not lift a ban an immortal made`, `a moderator cannot lift a ban an immortal made` (packages/server/tests/admin.test.ts); `only immortals drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
 
 #### World editor Fat brush reaches the full 17 × 12 map
 - **Kind:** Bug fixed
@@ -1109,14 +1145,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/combat/armour.ts` (`rollArmourBreak`)
 - **Pinned by:** `bug fixed: the armour exclusion list matches "a <name>"` (packages/shared/tests/inventory/inventory.test.ts)
 
-#### Immortals take no damage from players
+#### Immortals take no damage of any kind
 - **Kind:** Bug fixed
-- **What you notice:** Another player's swing does nothing to an immortal, just as monsters do nothing.
-- **1.6:** The monster hit handler exited for immortals; the player-versus-player one had no such check.
-- **SSO:** `pvpSwing` skips immortal victims.
-- **Why:** Immortality should be the same against everyone.
-- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pvpSwing`)
-- **Pinned by:** `bug fixed: immortals take no PvP damage` (packages/server/tests/inventory.test.ts); `immortals take no monster damage` (packages/server/tests/monsters.test.ts)
+- **What you notice:** Another player's swing, a harmful spell, a Whirlwind and starving do nothing to an immortal, just as monsters do nothing.
+- **1.6:** The monster hit handler exited for immortals; the player-versus-player one and the spell collision had no such check, so an immortal could be killed by a player or a spell.
+- **SSO:** Every source of damage asks whether the victim's role has the `invulnerable` permission: `pvpSwing` skips such a victim, `playerCollision` lands no harmful spell or Whirlwind on them, and `regenStep` takes no HP for starving.
+- **Why:** Immortality should be the same against everything.
+- **In the code:** `packages/server/src/systems/combat/melee.ts` (`pvpSwing`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`), `packages/server/src/systems/progression/vitals.ts` (`regenStep`)
+- **Pinned by:** `bug fixed: immortals take no PvP damage` (packages/server/tests/inventory.test.ts); `immortals take no monster damage` (packages/server/tests/monsters.test.ts); `bug fixed: a role that takes no damage is untouched by harmful spells and Whirlwind` (packages/server/tests/spells.test.ts); `costs a player HP, and an invulnerable role none` (packages/server/tests/invulnerable.test.ts)
 
 #### Weapon attack power matches the right weapons
 - **Kind:** Bug fixed

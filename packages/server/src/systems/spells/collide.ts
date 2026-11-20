@@ -3,6 +3,7 @@
  * monsters, run once on the server against its own state.
  */
 import {
+  can,
   checkLevelUp,
   createFood,
   type DeltaEvent,
@@ -95,7 +96,13 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
   const v = p.char.vitals;
   const off = pvpOff(room, p);
   const target = (): SpellTarget => ({ equip: p.char.equip, magicShield: p.spell.magicDef > 0 });
+  // A role that takes no damage is untouched by harmful spells (a bug fixed: SSO's immortals,
+  // safe from monsters and melee, could still be killed by a spell).
+  const invulnerable = can(p.role, "invulnerable");
   const damage = (fx: SpellFx, dmg: number) => {
+    if (invulnerable) {
+      return;
+    }
     v.hp = v.hp <= dmg ? 0 : v.hp - dmg;
     p.lastToHitMe = fx.owner;
     // A monster's spell has no owner id.
@@ -143,7 +150,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       damage(fx, playerSpellAmount("Arrows", P, target(), ctx.rng));
     }
     if (has("Whirlwind")) {
-      if (spared(fx)) {
+      if (spared(fx) || invulnerable) {
         continue;
       }
       if (v.sp > 0) {

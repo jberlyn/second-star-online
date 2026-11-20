@@ -63,6 +63,7 @@ import type { Outgoing, Player, World, WorldMap } from "../world/world.ts";
 import { hears, ignoreCommand } from "./ignore.ts";
 import { msgCommand } from "./im.ts";
 import { audienceCounts, logChat } from "./log.ts";
+import { broadcastWait, chatWait, silenced } from "./speech.ts";
 
 export interface ChatDeps {
   /** Setting `chatMaxChars`. */
@@ -255,7 +256,12 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
         }
       }
       const channel = cmd.kind;
-      const refused = chatRefusal(p.chatIn);
+      const hush = silenced(p, channel);
+      if (hush) {
+        logChat(world, p, channel, cmd.text, hush.outcome, p.map.name);
+        return [{ to: p.id, msg: line(hush.text) }];
+      }
+      const refused = chatRefusal(chatWait(p));
       if (refused) {
         logChat(world, p, channel, cmd.text, "cooldown", p.map.name);
         return [{ to: p.id, msg: { ...line(refused), restore: typed } }];
@@ -289,7 +295,12 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       return [...said, ...rumours()];
     }
     case "broadcast": {
-      const refused = broadcastRefusal(p.broadcastIn);
+      const hush = silenced(p, "broadcast");
+      if (hush) {
+        logChat(world, p, "broadcast", cmd.text, hush.outcome);
+        return [{ to: p.id, msg: line(hush.text) }];
+      }
+      const refused = broadcastRefusal(broadcastWait(p));
       if (refused) {
         logChat(world, p, "broadcast", cmd.text, "cooldown");
         // The original exits without clearing the input.

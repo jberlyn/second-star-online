@@ -33,6 +33,7 @@ const live = (r: { expiresAt: string | null }, now: string) =>
 export function fakeModeration(nameOf: (accountId: string) => string) {
   const bans = new Map<string, NamedRecord>();
   const jails = new Map<string, NamedRecord>();
+  const mutes = new Map<string, NamedRecord>();
   const ipBans = new Map<string, IpBanRecord>();
   const log: ModerationEntry[] = [];
   /** Addresses per account, the latest first. */
@@ -48,6 +49,7 @@ export function fakeModeration(nameOf: (accountId: string) => string) {
   const store: ModerationStore = {
     accountBan: (id) => bans.get(id) ?? null,
     jail: (id) => jails.get(id) ?? null,
+    mute: (id) => mutes.get(id) ?? null,
     ipBan: (key) => ipBans.get(key) ?? null,
     ipBansFrom: (id) => [...ipBans.values()].filter((b) => b.sourceAccountId === id),
     record: (e) => {
@@ -64,6 +66,12 @@ export function fakeModeration(nameOf: (accountId: string) => string) {
           return;
         case "unjail":
           jails.delete(e.characterId ?? "");
+          return;
+        case "mute":
+          mutes.set(e.accountId ?? "", { ...rec(e), name: e.characterName ?? "" });
+          return;
+        case "unmute":
+          mutes.delete(e.accountId ?? "");
           return;
         case "ipban":
           ipBans.set(e.ipKey ?? "", {
@@ -87,6 +95,7 @@ export function fakeModeration(nameOf: (accountId: string) => string) {
       ),
     activeBans: (now) => [...bans.values()].filter((b) => live(b, now)).reverse(),
     activeJails: (now) => [...jails.values()].filter((j) => live(j, now)).reverse(),
+    activeMutes: (now) => [...mutes.values()].filter((u) => live(u, now)).reverse(),
     activeIpBans: (now) =>
       [...ipBans.values()]
         .filter((b) => live(b, now))
@@ -106,5 +115,5 @@ export function fakeModeration(nameOf: (accountId: string) => string) {
           expiresAt: e.expiresAt,
         })),
   };
-  return { store, bans, jails, ipBans, log, addresses };
+  return { store, bans, jails, mutes, ipBans, log, addresses };
 }

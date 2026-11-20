@@ -16,6 +16,7 @@ import {
   stripMailTo,
 } from "@secondstaronline/shared";
 
+import { chatWait, silenced } from "../chat/speech.ts";
 import { onlineNamed } from "../social/presence.ts";
 import type { GroundItem, Outgoing, Player, World } from "../world/world.ts";
 
@@ -124,7 +125,11 @@ export function mailSend(
   if (tooMany) {
     return [chat(p, MAIL_TEXT.tooMany)];
   }
-  const refused = chatRefusal(p.chatIn);
+  const hush = silenced(p, "mail");
+  if (hush) {
+    return [chat(p, hush.text)];
+  }
+  const refused = chatRefusal(chatWait(p));
   if (refused) {
     return [chat(p, refused)];
   }

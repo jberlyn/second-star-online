@@ -3,6 +3,7 @@
  */
 import {
   ARENA_TEXT,
+  can,
   DEATH_HUNGER,
   DEATH_LOCK_FRAMES,
   DEATH_PAUSE_FRAMES,
@@ -31,9 +32,14 @@ import { type Outgoing, type Player, type Room, statsOf } from "../world/world.t
 export function regenStep(p: Player): void {
   const v = p.char.vitals;
   const before = `${v.hp}/${v.sp}`;
+  const hp = v.hp;
   const adventurer = p.char.faction.id === 3 ? p.char.faction.f3Bonus : null;
   const target = regenTarget(statsOf(p).spd, adventurer);
   p.regenCounter = regenTick(p.regenCounter, target, p.char.hunger, v);
+  // Starving costs no HP for a role that takes no damage.
+  if (v.hp < hp && can(p.role, "invulnerable")) {
+    v.hp = hp;
+  }
   if (`${v.hp}/${v.sp}` !== before) {
     p.vitalsDirty = true;
   }

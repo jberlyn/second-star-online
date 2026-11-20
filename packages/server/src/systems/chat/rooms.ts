@@ -22,6 +22,7 @@ import {
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { type ImDeps, msgCommand } from "./im.ts";
 import { logChat } from "./log.ts";
+import { chatWait, silenced } from "./speech.ts";
 
 const tell = (p: Player, text: string): Outgoing => ({
   to: p.id,
@@ -176,7 +177,12 @@ export function roomSay(
   }
   // The log names the room by its key, a guild's with the guild: `general`, `guild:Knights`.
   const title = room.key === "guild" ? `guild:${p.guild}` : room.key;
-  const refused = chatRefusal(p.chatIn);
+  const hush = silenced(p, "room");
+  if (hush) {
+    logChat(world, p, "room", said, hush.outcome, title);
+    return [{ to: p.id, msg: { t: "chat", text: hush.text, color: 0 } }];
+  }
+  const refused = chatRefusal(chatWait(p));
   if (refused) {
     logChat(world, p, "room", said, "cooldown", title);
     return [

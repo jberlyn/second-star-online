@@ -16,6 +16,7 @@ import {
   standingInFront,
 } from "@secondstaronline/shared";
 
+import { chatWait, silenced } from "../chat/speech.ts";
 import type { GroundItem, Outgoing, Player } from "../world/world.ts";
 
 export interface BoardStore {
@@ -104,7 +105,11 @@ export function boardPostIntent(
   if (!postHasText(text)) {
     return [{ to: p.id, msg: { t: "alert", text: BOARD_TEXT.empty } }];
   }
-  const refused = chatRefusal(p.chatIn);
+  const hush = silenced(p, "board");
+  if (hush) {
+    return [chat(p, hush.text)];
+  }
+  const refused = chatRefusal(chatWait(p));
   if (refused) {
     return [chat(p, refused)];
   }

@@ -28,6 +28,7 @@ import {
 
 import { hears } from "../chat/ignore.ts";
 import { logChat } from "../chat/log.ts";
+import { chatWait, silenced } from "../chat/speech.ts";
 import type { GroundItem, GuildRow, Outgoing, Player, World } from "../world/world.ts";
 
 export interface GuildDeps {
@@ -394,7 +395,12 @@ export function guildChat(
     logChat(world, p, "guild", text, "noGuild");
     return [chat(p, GUILD_TEXT.noGuild)];
   }
-  const refused = chatRefusal(p.chatIn);
+  const hush = silenced(p, "guild");
+  if (hush) {
+    logChat(world, p, "guild", text, hush.outcome, p.guild);
+    return [chat(p, hush.text)];
+  }
+  const refused = chatRefusal(chatWait(p));
   if (refused) {
     logChat(world, p, "guild", text, "cooldown", p.guild);
     return [

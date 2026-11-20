@@ -1,5 +1,5 @@
 /**
- * Moderation rows: the moderation log, the bans, IP bans and jails in force, and the addresses each
+ * Moderation rows: the moderation log, the bans, IP bans, jails and mutes in force, and the addresses each
  * account has played from. Plain functions taking the `Db` first. A row whose `expires_at` has
  * passed is no longer in force; the readers return it anyway and the rules (`isActive`) decide.
  */
@@ -64,6 +64,14 @@ export function characterJail(db: Db, characterId: string): ModerationRecord | n
   const row = db
     .query<RecordRow, [string]>(`SELECT ${RECORD_COLUMNS} FROM jails WHERE character_id = ?`)
     .get(characterId);
+  return row ? toRecord(row) : null;
+}
+
+/** The account's mute, in force or lapsed, or null. */
+export function accountMute(db: Db, accountId: string): ModerationRecord | null {
+  const row = db
+    .query<RecordRow, [string]>(`SELECT ${RECORD_COLUMNS} FROM mutes WHERE account_id = ?`)
+    .get(accountId);
   return row ? toRecord(row) : null;
 }
 
@@ -140,6 +148,15 @@ export function recordModeration(db: Db, e: ModerationEntry): string {
       case "unjail":
         db.query("DELETE FROM jails WHERE character_id = ?").run(need(e.characterId));
         return;
+      case "mute":
+        db.query(
+          `INSERT OR REPLACE INTO mutes (account_id, ${RECORD_COLUMNS})
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(need(e.accountId), ...values);
+        return;
+      case "unmute":
+        db.query("DELETE FROM mutes WHERE account_id = ?").run(need(e.accountId));
+        return;
       case "ipban":
         db.query(
           `INSERT OR REPLACE INTO ip_bans (ip_key, address, source_account_id, ${RECORD_COLUMNS})
@@ -174,6 +191,9 @@ function currentLogId(db: Db, e: ModerationEntry): string | null {
     case "jail":
     case "unjail":
       return get("SELECT log_id FROM jails WHERE character_id = ?", e.characterId);
+    case "mute":
+    case "unmute":
+      return get("SELECT log_id FROM mutes WHERE account_id = ?", e.accountId);
     case "ipban":
     case "unipban":
       return get("SELECT log_id FROM ip_bans WHERE ip_key = ?", e.ipKey);
@@ -265,6 +285,20 @@ export function activeJails(db: Db, now: string): NamedRecord[] {
     .map((r) => ({ ...toRecord(r), name: r.name }));
 }
 
+/** The mutes in force at `now`, the newest first. */
+export function activeMutes(db: Db, now: string): NamedRecord[] {
+  return db
+    .query<RecordRow & { name: string }, [string]>(
+      `SELECT c.name, m.log_id, m.actor_id, m.actor_name, m.actor_rank, m.reason, m.created_at,
+              m.expires_at
+       FROM mutes m JOIN characters c ON c.account_id = m.account_id
+       WHERE m.expires_at IS NULL OR m.expires_at > ?
+       ORDER BY m.created_at DESC, c.name`,
+    )
+    .all(now)
+    .map((r) => ({ ...toRecord(r), name: r.name }));
+}
+
 /** The IP bans in force at `now`, the newest first, with the name of the account they came from. */
 export function activeIpBans(db: Db, now: string): (IpBanRecord & { sourceName: string | null })[] {
   return db
@@ -316,12 +350,12 @@ export function moderationHistory(db: Db, accountId: string, limit: number): Mod
 }
 
 /**
- * Startup housekeeping: lapsed bans, IP bans and sentences leave the active tables (the log keeps
+ * Startup housekeeping: lapsed bans, IP bans, sentences and mutes leave the active tables (the log keeps
  * them), and addresses not seen for `addressDays` days are forgotten (0 keeps them).
  */
 export function pruneModeration(db: Db, now: string, addressDays: number): void {
   db.transaction(() => {
-    for (const table of ["account_bans", "jails", "ip_bans"]) {
+    for (const table of ["account_bans", "jails", "mutes", "ip_bans"]) {
       db.query(`DELETE FROM ${table} WHERE expires_at IS NOT NULL AND expires_at <= ?`).run(now);
     }
     pruneAddresses(db, now, addressDays);

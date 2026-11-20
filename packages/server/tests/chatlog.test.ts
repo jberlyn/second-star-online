@@ -220,7 +220,7 @@ describe("instant messages", () => {
 });
 
 describe("chat rooms", () => {
-  test("delivered to the room, refused by the cooldown, and out of a room", () => {
+  test("delivered to the room, refused by the cooldown, and out of a room; an immortal skips the cooldown", () => {
     const { alice, bob, world, logged } = scene();
     alice.role = "immortal";
     enterRoom(world, alice, "admin");
@@ -230,6 +230,7 @@ describe("chat rooms", () => {
     roomSay(world, alice, "staff only\rhere", deps, who);
     roomSay(world, alice, "again", deps, who);
     roomSay(world, bob, "hi all", deps, who);
+    roomSay(world, bob, "again", deps, who);
     bob.room = null;
     bob.chatIn = 0;
     roomSay(world, bob, "anyone?", deps, who);
@@ -237,8 +238,9 @@ describe("chat rooms", () => {
     roomSay(world, bob, "who", deps, who);
     expect(logged().map((e) => [e.sender, e.target, e.text, e.outcome])).toEqual([
       ["Alice", "admin", "staff onlyhere", "delivered"],
-      ["Alice", "admin", "again", "cooldown"],
+      ["Alice", "admin", "again", "delivered"],
       ["Bob", "general", "hi all", "delivered"],
+      ["Bob", "general", "again", "cooldown"],
       ["Bob", null, "anyone?", "noRoom"],
     ]);
   });

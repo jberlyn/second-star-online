@@ -9,7 +9,7 @@ export type Role = "player" | "moderator" | "immortal";
 
 /**
  * The admin commands of 1.6's `ChatSend` grammar, plus SSO's `/role`, `/unban`, `/setclass`,
- * `/unjail`, `/banlist`, `/chatlog` and `/auditlog`. Each is also the permission that runs it
+ * `/unjail`, `/banlist`, `/chatlog`, `/auditlog`, `/mute` and `/unmute`. Each is also the permission that runs it
  * (`permissions.ts`).
  */
 export const ADMIN_COMMANDS = [
@@ -36,6 +36,8 @@ export const ADMIN_COMMANDS = [
   "banlist",
   "chatlog",
   "auditlog",
+  "mute",
+  "unmute",
 ] as const;
 
 export type AdminCmd = (typeof ADMIN_COMMANDS)[number];

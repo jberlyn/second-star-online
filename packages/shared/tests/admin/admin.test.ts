@@ -17,7 +17,7 @@ import {
 } from "../../src/index.ts";
 
 describe("the moderator/immortal table", () => {
-  test("moderators keep the moderation commands; IP bans, /role, /setclass and /cheatfile stay immortal-only", () => {
+  test("moderators keep the moderation commands; IP bans, warps, /role, /setclass and /cheatfile stay immortal-only", () => {
     const mod: string[] = ADMIN_COMMANDS.filter((c) => can("moderator", c)).sort();
     expect(mod).toEqual(
       [
@@ -28,21 +28,20 @@ describe("the moderator/immortal table", () => {
         "jail",
         "kick",
         "location",
+        "mute",
         "pardon",
         "refresh",
         "save",
         "unban",
         "unjail",
-        "warp",
-        "warpmeto",
-        "warpscript",
-        "warptome",
+        "unmute",
       ].sort(),
     );
     expect(can("moderator", "banip")).toBe(false);
     expect(can("moderator", "unbanip")).toBe(false);
     expect(can("moderator", "role")).toBe(false);
     expect(can("moderator", "setclass")).toBe(false);
+    expect(can("moderator", "warp")).toBe(false);
     for (const cmd of ADMIN_COMMANDS) {
       expect(can("immortal", cmd)).toBe(true);
       expect(can("player", cmd)).toBe(false);

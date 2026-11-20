@@ -1,7 +1,7 @@
 /**
  * Bot script: Alice, an immortal, makes Mo a moderator with `/role`; both staff roles read and post
- * `-` lines in green. Mo warps Bob. Alice sets `jailSentence` in Settings and jails Bob in the seeded
- * jail map x0y0: his shout fails, and when the wall clock passes his sentence he is on the start
+ * `-` lines in green. Alice warps Bob; Mo cannot. Alice sets `jailSentence` in Settings and jails Bob in the seeded
+ * jail map x0y0: he is told until when, his shout fails, and when the wall clock passes his sentence he is on the start
  * point. Her `/warpscript` pulls Bob over when he broadcasts the keyword. `/warpmeto`,
  * `/Location`, `/IPlookup`, a counted `/drop`, a forged editor save that lands in `/CheatFile`, and
  * `/setclass`. She kicks Bob, bans him for a day (his login is refused with the end, never the
@@ -124,9 +124,12 @@ describe("admin commands, roles, bans and settings", () => {
     expect(lines(bob)).toEqual([]);
   });
 
-  test("Mo warps Bob; Mo cannot ban Alice; Bob's /ban and -chat are denied", async () => {
-    bob.clear();
+  test("Alice warps Bob and Mo cannot; Mo cannot ban Alice; Bob's /ban and -chat are denied", async () => {
+    mo.clear();
     await say(mo, "/warp Bob x1000y992 12 8");
+    expect(lines(mo)).toEqual([unknownCommandText("/warp")]);
+    bob.clear();
+    await say(alice, "/warp Bob x1000y992 12 8");
     await bob.waitFor(isSnapshot);
     expect(where(bob)).toEqual(["x1000y992", 12, 8]);
     mo.clear();
@@ -165,6 +168,7 @@ describe("admin commands, roles, bans and settings", () => {
     await bob.waitFor(isSnapshot);
     bob.send({ t: "mapReady" });
     expect(where(bob)).toEqual(["x0y0", 4, 4]);
+    expect(lines(bob)).toContain(MODERATION_TEXT.youAreJailed("2026-11-04T00:02:00.000Z"));
     bob.clear();
     await say(bob, "'let me out");
     expect(lines(bob)).toEqual(["You shout but no one can hear you!"]);
@@ -185,7 +189,7 @@ describe("admin commands, roles, bans and settings", () => {
     await say(alice, "/warpscript help");
     expect(lines(alice)).toEqual(["Warpscript set to: help"]);
     server.db.run("UPDATE characters SET x = 1 WHERE name = 'Bob'");
-    await say(mo, "/warp Bob x1000y992 15 10");
+    await say(alice, "/warp Bob x1000y992 15 10");
     bob.clear();
     await say(bob, "'can someone HELP me");
     await bob.waitFor(isSnapshot);
@@ -193,7 +197,7 @@ describe("admin commands, roles, bans and settings", () => {
     expect(lines(alice)).toContain("*** Warping Bob...");
     await say(alice, "/warpscript OFF");
 
-    await say(mo, "/warp Bob x1000y992 15 10");
+    await say(alice, "/warp Bob x1000y992 15 10");
     alice.clear();
     await say(alice, "/warpmeto bob");
     await alice.waitFor(isSnapshot);

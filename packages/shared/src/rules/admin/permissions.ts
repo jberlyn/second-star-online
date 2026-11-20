@@ -2,8 +2,7 @@
  * Roles and permissions. A role is a rank and a set of permissions; the server asks `can` before
  * every privileged action and every gameplay exemption, and never checks a role by name. Pure.
  *
- * The built-in roles reproduce SSO's three fixed roles exactly. Operator-defined roles replace
- * this table later (issue #7).
+ * Operator-defined roles replace the built-in table later (issue #7).
  */
 import { ADMIN_COMMANDS, type AdminCmd, type Role } from "./admin.ts";
 
@@ -25,13 +24,17 @@ export const TOOL_PERMISSIONS = [
   "adminChat",
   /** Admin menu → Begin (Lightning) Assassin's Game. */
   "assassinGame",
-  /** Change or lift any staff member's ban or jail, and act on staff of your own rank. */
+  /** Change or lift any staff member's ban, jail or mute, and act on staff of your own rank. */
   "overrule",
+  /** `/pardon` your own character. */
+  "pardonSelf",
+  /** `/warp` your own character. */
+  "warpSelf",
 ] as const;
 
 /** Exemptions from the rules every character plays by. */
 export const EXEMPTIONS = [
-  /** Takes no damage from monsters or melee. */
+  /** Takes no damage: monsters, melee, spells and starving. */
   "invulnerable",
   /** Never gets hungry. */
   "noHunger",
@@ -45,6 +48,10 @@ export const EXEMPTIONS = [
   "bypassLoginLimits",
   /** Drops on every death, whatever the death-drop settings say (for testing them). */
   "dropOnEveryDeath",
+  /** Not held back by the chat cooldown. */
+  "bypassChatCooldown",
+  /** Not held back by the broadcast cooldown. */
+  "bypassBroadcastCooldown",
 ] as const;
 
 export type ToolPermission = (typeof TOOL_PERMISSIONS)[number];
@@ -65,7 +72,10 @@ export interface RoleDef {
   permissions: ReadonlySet<Permission>;
 }
 
-/** The commands moderators share with immortals (the original moderation set and SSO's). */
+/**
+ * A moderator is an ordinary player who moderates others: no warps, nothing on themselves and no
+ * gameplay exemptions.
+ */
 const MODERATOR_PERMISSIONS: readonly Permission[] = [
   "save",
   "refresh",
@@ -73,15 +83,13 @@ const MODERATOR_PERMISSIONS: readonly Permission[] = [
   "location",
   "iplookup",
   "kick",
-  "warpscript",
   "ban",
-  "warp",
-  "jail",
-  "pardon",
-  "warptome",
-  "warpmeto",
   "unban",
+  "jail",
   "unjail",
+  "mute",
+  "unmute",
+  "pardon",
   "banlist",
   // An operator behind a shared address must still get in.
   "bypassLoginLimits",

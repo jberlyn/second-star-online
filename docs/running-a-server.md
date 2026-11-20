@@ -178,8 +178,8 @@ server {
 Roles live on the `accounts` table, not on character names:
 
 - **`player`**: standard gameplay.
-- **`moderator`**: can run the original moderation commands, `/unban`, `/unjail` and `/banlist`, and can read and post staff chat (`-text`). Bans, jails and pardons reach players only, never another moderator or an immortal; a moderator also cannot kick, warp, or look up the IP of an immortal. `/BanIP`, `/unbanip`, `/chatlog`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and Server Settings windows remain immortal-only.
-- **`immortal`**: full command access, staff chat (`-text`), the immortals-only Admin Chat room, World Editor, NPC Editor, Settings, Newspaper editor, and Assassin's Game controls. An immortal can ban or jail anyone but themselves and change or lift any ban, IP ban or jail, and IP bans never stop an immortal's login.
+- **`moderator`**: an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute`, `/pardon`, `/iplookup` and `/banlist`, plus `/location`, `/inventory`, `/save` and `/refresh`, and can read and post staff chat (`-text`). Bans, jails, mutes and pardons reach players only, never another moderator, an immortal or themselves; a moderator also cannot kick or look up the IP of an immortal. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except that the per-address login limit never refuses them. `/BanIP`, `/unbanip`, `/chatlog`, `/drop`, `/role`, `/setclass`, `/roster`, `/spawn`, and the editor and Server Settings windows remain immortal-only.
+- **`immortal`**: full command access, staff chat (`-text`), the immortals-only Admin Chat room, World Editor, NPC Editor, Settings, Newspaper editor, and Assassin's Game controls. An immortal can ban, jail or mute anyone but themselves and change or lift any ban, IP ban, jail or mute, and IP bans never stop an immortal's login. Immortals take no damage of any kind, never get hungry, cannot be pushed, stay off the high scores and skip the chat and broadcast waits.
 
 ### Bootstrapping an immortal
 
@@ -196,14 +196,16 @@ Roles live on the `accounts` table, not on character names:
 
 3. Log out and log in again in the browser. CLI role changes take effect at the account's next login, whereas the in-game `/role` command updates an online target immediately.
 
-### Bans, jails and IP bans
+### Bans, jails, mutes and IP bans
 
-Every ban, unban, IP ban, jail, release and pardon is written to the `moderation_log` table with its reason, who made it, their rank at that moment and when it ends. The in-force bans, IP bans and jails are in `account_bans`, `ip_bans` and `jails`; a row whose `expires_at` has passed no longer applies.
+Every ban, unban, IP ban, jail, release, mute, unmute and pardon is written to the `moderation_log` table with its reason, who made it, their rank at that moment and when it ends. The in-force bans, IP bans, jails and mutes are in `account_bans`, `ip_bans`, `jails` and `mutes`; a row whose `expires_at` has passed no longer applies.
 
-- **Duration and reason.** `/ban`, `/jail` and `/banip` take an optional duration after the name, then an optional reason: `/ban Berlyn 3d being a rude person`. A duration is a number with `m`, `h`, `d` or `w` (`30m`, `12h`, `7d`, `2w`, or combined, such as `1d12h`), up to 10 years, or `perm`. Without one, the `banLength`, `ipBanLength` and `jailSentence` settings apply. Write `perm` or a duration first if a reason starts with something like `1d`. `/unban`, `/unjail`, `/unbanip` and `/pardon` take a reason too.
-- **What the player sees.** A banned player reads the original alert and the ban's end, such as `Banned until 2026-11-20 14:00 UTC.` or `This ban is permanent.` The reason is never shown to the player; it is for staff, through `/banlist`.
-- **Who may change an action.** Only the staff member who made a ban or jail, or an immortal, can change its length or lift it. Re-running `/ban` or `/jail` on someone already banned or jailed replaces the length. Moderators who disagree with each other's bans settle it with the team.
-- **Jail.** A sentence runs in real time, including while the prisoner is offline, and works on offline characters: they arrive in jail at their next login, and a sentence that ended while they were away sends them to their respawn point (see [Respawn points](#respawn-points)). Staff warps cannot take a prisoner out or put a player in; use `/jail` and `/unjail`.
+- **Duration and reason.** `/ban`, `/jail`, `/mute` and `/banip` take an optional duration after the name, then an optional reason: `/ban Berlyn 3d being a rude person`. A duration is a number with `m`, `h`, `d` or `w` (`30m`, `12h`, `7d`, `2w`, or combined, such as `1d12h`), up to 10 years, or `perm`. Without one, the `banLength`, `ipBanLength`, `jailSentence` and `muteLength` settings apply. Write `perm` or a duration first if a reason starts with something like `1d`. `/unban`, `/unjail`, `/unmute`, `/unbanip` and `/pardon` take a reason too.
+- **What the player sees.** A banned player reads the original alert and the ban's end, such as `Banned until 2026-11-20 14:00 UTC.` or `This ban is permanent.` A jailed or muted player is told in the chat box until when, at once and at each login. The reason is never shown to the player; it is for staff, through `/banlist`.
+- **Who may change an action.** Only the staff member who made a ban, jail or mute, or an immortal, can change its length or lift it. Re-running `/ban`, `/jail` or `/mute` on someone already banned, jailed or muted replaces the length. Moderators who disagree with each other's bans settle it with the team.
+- **Jail.** A sentence runs in real time, including while the prisoner is offline, and works on offline characters: they arrive in jail at their next login, and a sentence that ended while they were away sends them to their respawn point (see [Respawn points](#respawn-points)). A prisoner can talk only with local chat and `/me`, which reach the jail map, and send IMs to staff; broadcasts, IMs to other players, guild chat, chat rooms, mail and board posts are refused. Staff warps cannot take a prisoner out or put a player in; use `/jail` and `/unjail`.
+- **Mutes.** A muted player cannot talk at all (local chat, `/me`, broadcasts, IMs, guild chat, chat rooms, mail and board posts), except to send an IM to staff to ask why. A mute is on the account, runs in real time, works on offline characters, and ends by itself or with `/unmute`.
+- **Staff.** Any role above player is staff: staff read and post staff chat and can receive IMs from jailed and muted players.
 - **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Immortals are never stopped by IP bans, so an operator cannot lock themselves out.
 - **Login addresses.** The server keeps the addresses each account logs in from for `addressHistory` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only immortals can read them.
 - **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, made at the rank the banner has now (at least moderator, or immortal if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
@@ -212,7 +214,7 @@ Every ban, unban, IP ban, jail, release and pardon is written to the `moderation
 
 The server logs every line a player writes to other players in the `chat_log` table, including lines that were refused: local say, `/me`, broadcasts, IMs (from `/msg`, the IMsend window and IM windows), the automatic away replies, away texts, guild chat (`/g`), chat rooms (Guild Chat, Admin Chat and the Game menu rooms), staff chat (`-text`) and saved Bio profiles. Commands and `Password=` lines are not logged. Mail, board posts, art and newspapers are already stored in their own tables.
 
-Each line records the time (UTC, to the second), the channel, the sender's account and character, where it went (the map, the IM's recipient, the guild or the room), the exact text, and what became of it: delivered, refused by the cooldown, the house rule or jail, an IM dropped by the recipient's ignore list or sent to someone not online, `/g` with no guild, a room line out of a room, staff chat from a player, or a Bio refused for a `:` or `/`. For say, `/me` and broadcasts it also counts how many others read the line, how many ignore the speaker, and how many heard only the muffled voice.
+Each line records the time (UTC, to the second), the channel, the sender's account and character, where it went (the map, the IM's recipient, the guild or the room), the exact text, and what became of it: delivered, refused by the cooldown, the house rule, jail or a mute, an IM dropped by the recipient's ignore list or sent to someone not online, `/g` with no guild, a room line out of a room, staff chat from a player, or a Bio refused for a `:` or `/`. For say, `/me` and broadcasts it also counts how many others read the line, how many ignore the speaker, and how many heard only the muffled voice.
 
 - **In game.** `/chatlog <name> [count] [channel]` shows a character's newest lines (20 by default, up to 100), including the IMs sent to them. Only immortals can use it, and they can read every channel, IMs and staff chat included. Every lookup is recorded in the audit log.
 - **Command line.** `admin:chatlog` reads the same log with filters for name, channel and time:
@@ -255,11 +257,13 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/location` | `moderator` | None | Prints `You are at map: <map> at position: <x>-<y>`. |
 | `/iplookup <name>` | `moderator` | Online player (word 2) | Prints the target's IP address (refuses if a moderator targets an immortal). |
 | `/kick <name>` | `moderator` | Online player (word 2) | Sends kick notice and disconnects the target (refuses if a moderator targets an immortal). |
-| `/warp <name> <map> <x> <y>` | `moderator` | Online player, `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Warps target to `<map>` at `(x, y)` (single-space split, cut at `*`). A map that does not exist is refused: "There is no map …". |
+| `/warp <name> <map> <x> <y>` | `immortal` | Online player, `x<mx>y<my>`, `x` 1–17, `y` 1–12 | Warps target to `<map>` at `(x, y)` (single-space split, cut at `*`). A map that does not exist is refused: "There is no map …". |
 | `/jail <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Jails the player in the seeded jail (`x0y0` at `4, 4`) for the duration or `jailSentence`, then sends them to their respawn point. Moderators can jail players only. |
 | `/unjail <name> [reason]` | `moderator` | Character name (word 2) | Ends the sentence early and sends an online prisoner to their respawn point, as a sentence's end does (only the jailer or an immortal). |
-| `/warptome <name>` | `moderator` | Online player (word 2) | Warps target to your current map and tile (refuses if a moderator targets an immortal). |
-| `/warpmeto <name>` | `moderator` | Online player (word 2) | Warps you to the target's current map and tile. |
+| `/mute <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Mutes the account for the duration or `muteLength` (moderators can mute players only): no chat, IMs except to staff, mail or board posts. Re-muting replaces the length (only the staff member who muted them or an immortal). |
+| `/unmute <name> [reason]` | `moderator` | Character name (word 2) | Lifts the mute (only the staff member who muted them or an immortal). |
+| `/warptome <name>` | `immortal` | Online player (word 2) | Warps target to your current map and tile. |
+| `/warpmeto <name>` | `immortal` | Online player (word 2) | Warps you to the target's current map and tile. |
 | `/save` | `moderator` | None | Saves all online characters and dirty maps immediately. |
 | `/refresh` | `moderator` | None | Reloads settings overrides from the database and applies them to everyone online. |
 | `/cheatfile` | `immortal` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. Each look is audited. |
@@ -268,11 +272,11 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/unbanip <name\|ip> [reason]` | `immortal` | Character name or address (word 2) | Lifts every IP ban made on the character's addresses, or the ban on that address. |
 | `/ban <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Bans the target's account for the duration or `banLength` (cannot ban yourself; moderators can ban players only) and kicks if online. Re-banning replaces the length (only the banner or an immortal). |
 | `/unban <name> [reason]` | `moderator` | Character name (word 2) | Lifts the ban on the target's account (only the banner or an immortal). |
-| `/banlist [page\|name\|ip]` | `moderator` | None, a page number, a character name, or (immortals) an address | Lists the bans and jails in force, 10 a page, and for immortals the IP bans; with a name, that character's standing, last 10 actions and (immortals) addresses; with an address, its ban and the characters seen there. |
+| `/banlist [page\|name\|ip]` | `moderator` | None, a page number, a character name, or (immortals) an address | Lists the bans, jails and mutes in force, 10 a page, and for immortals the IP bans; with a name, that character's standing, last 10 actions and (immortals) addresses; with an address, its ban and the characters seen there. |
 | `/chatlog <name> [count] [channel]` | `immortal` | Character name (word 2), online or offline; a count up to `100` and a channel (`say`, `emote`, `broadcast`, `im`, `awayReply`, `away`, `guild`, `room`, `staff`, `bio`) in either order | Prints the character's newest logged lines (default 20) and the IMs sent to them, oldest first. Each lookup is audited. See [The chat log](#the-chat-log). |
 | `/auditlog <name> [count]` | `immortal` | Character name (word 2), online or offline; a count (default `10`, up to `100`) | Prints the newest staff actions by that character's account or done to that character, oldest first: admin commands, editor saves, setting and role changes, and bans, jails, IP bans and pardons with their reasons and ends. Each lookup is audited. |
-| `/pardon <name> [reason]` | `moderator` | Online player (word 2) | Clears the target's murder/wanted flag and saves the character (moderators can pardon players only). Does not end a jail sentence. |
-| `/warpscript <word\|OFF>` | `moderator` | Keyword (word 2) or `OFF` | Matches `<word>` as a whole token in broadcast message content, ignoring case; the first matching staff member in login order warps the speaker (`OFF` disables). |
+| `/pardon <name> [reason]` | `moderator` | Online player (word 2) | Clears the target's murder/wanted flag and saves the character (moderators can pardon players only, never themselves). Does not end a jail sentence. |
+| `/warpscript <word\|OFF>` | `immortal` | Keyword (word 2) or `OFF` | Matches `<word>` as a whole token in broadcast message content, ignoring case; the first matching staff member in login order warps the speaker (`OFF` disables). |
 | `/role <name> <role>` | `immortal` | Character name, `player` / `moderator` / `immortal` | Updates the account's role (cannot change your own) and applies immediately if online. |
 | `/setclass <name> <class>` | `immortal` | Character name, class name or number `1`–`26` | Changes the character's class in the database. |
 | `/drop <item>` | `immortal` | `<n> gold`, item name, or `<n> <item>` (1–9999) | Places the pile on the tile you face; admin drops never decay. |
@@ -310,8 +314,8 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `chatMaxChars` | Longest chat line | `200` | `1`–`500` chars | Maximum typed chat line length; longer lines are truncated. |
-| `broadcastCooldown` | Broadcast wait | `50s` | `0`–`1h` | Minimum wait between `'` broadcasts (`0` disables). |
-| `chatCooldown` | Chat wait | `3s` | `0`–`1h` | Minimum wait between local chat lines and emotes, also applied to IMs, guild and room lines, mail and board posts (`0` disables). |
+| `broadcastCooldown` | Broadcast wait | `50s` | `0`–`1h` | Minimum wait between `'` broadcasts (`0` disables). Immortals skip it. |
+| `chatCooldown` | Chat wait | `3s` | `0`–`1h` | Minimum wait between local chat lines and emotes, also applied to IMs, guild and room lines, mail and board posts (`0` disables). Immortals skip it. |
 | `mailBodyMax` | Longest mail | `2000` | `1`–`4000` chars | Maximum mail body length; longer bodies are truncated. |
 | `mailboxMax` | Messages per mailbox | `50` | `1`–`1000` | Maximum messages kept per mailbox; newer mail drops the oldest. |
 | `boardPostsMax` | Posts per board | `200` | `1`–`1000` | Maximum posts kept per message board; newer posts evict the oldest (there is no board moderation tool). |
@@ -337,6 +341,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `jailSentence` | Jail sentence | `10m` | `1m`–`3650d` (10 years) | Length of a `/jail` without a duration. Sentences run in real time, offline too, then send the prisoner to their respawn point. |
+| `muteLength` | Mute length | `10m` | `1m`–`3650d` (10 years) | Length of a `/mute` without a duration. Mutes run in real time, offline too. |
 | `banLength` | Ban length | `0` (permanent) | `0`–`3650d` | Length of a `/ban` without a duration (`0` is permanent until `/unban`). |
 | `ipBanLength` | IP ban length | `30d` | `0`–`3650d` | Length of a `/banip` without a duration (`0` is permanent). Addresses are reassigned, so permanent IP bans can catch someone else later. |
 | `addressHistory` | Keep login addresses | `180d` | `0`–`3650d` | How long an account's login addresses are kept after their last use, for `/banip <name>` and `/banlist` (`0` keeps them forever). |

@@ -247,6 +247,16 @@ export function formatUtc(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
+/** When a stored action ends, in wall-clock ms: `Infinity` for a permanent one. */
+export function endMs(expiresAt: string | null): number {
+  return expiresAt === null ? Number.POSITIVE_INFINITY : Date.parse(expiresAt);
+}
+
+/** `endMs` back to the stored end: null for a permanent one. */
+export function endIso(ms: number): string | null {
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
 /** `until 2026-11-20 14:00 UTC` or `permanently`. */
 export function untilText(expiresAt: string | null): string {
   return expiresAt === null ? "permanently" : `until ${formatUtc(expiresAt)}`;
@@ -308,7 +318,16 @@ export interface AddressSeen {
 }
 
 /** The moderation log's actions. */
-export type ModerationAction = "ban" | "unban" | "ipban" | "unipban" | "jail" | "unjail" | "pardon";
+export type ModerationAction =
+  | "ban"
+  | "unban"
+  | "ipban"
+  | "unipban"
+  | "jail"
+  | "unjail"
+  | "mute"
+  | "unmute"
+  | "pardon";
 
 /** One row of a character's moderation history. */
 export interface ModerationLogRow {
@@ -324,7 +343,8 @@ export interface ModerationLogRow {
 
 /** A `/banlist <name>` history line: `2026-11-10 09:00 UTC ban 3d by Alice (moderator): spam`. */
 export function historyLine(r: ModerationLogRow): string {
-  const timed = r.action === "ban" || r.action === "jail" || r.action === "ipban";
+  const timed =
+    r.action === "ban" || r.action === "jail" || r.action === "ipban" || r.action === "mute";
   const length = !timed
     ? ""
     : r.expiresAt === null
@@ -378,6 +398,26 @@ export const MODERATION_TEXT = {
     `${name} was jailed by ${by}; ask ${by} or an immortal.`,
   notJailed: (name: string) => `${name} is not jailed.`,
   unjailed: (name: string) => `${name} is released from jail.`,
+  /** What the prisoner reads when jailed, and at login while the sentence runs. */
+  youAreJailed: (expiresAt: string | null) => `You have been jailed ${untilText(expiresAt)}.`,
+  /** A prisoner's IM to a player, or their guild, room, mail or board line. */
+  prisonerSilenced: "You are in jail: only those near you and staff can hear you.",
+  muteSelf: "You cannot mute yourself.",
+  muteUsage: "Usage: /mute <name> [duration] [reason]",
+  unmuteUsage: "Usage: /unmute <name> [reason]",
+  muted: (name: string, expiresAt: string | null) => `${name} is muted ${untilText(expiresAt)}.`,
+  muteChanged: (name: string, expiresAt: string | null, was: string | null) =>
+    `${name} is now muted ${untilText(expiresAt)} (was ${untilText(was)}).`,
+  notYourMute: (name: string, by: string) =>
+    `${name} was muted by ${by}; ask ${by} or an immortal.`,
+  notMuted: (name: string) => `${name} is not muted.`,
+  unmuted: (name: string) => `${name} is no longer muted.`,
+  /** What a muted player reads when muted and whenever they try to talk. */
+  youAreMuted: (expiresAt: string | null) =>
+    `You are muted ${untilText(expiresAt)}. You can still send an IM to staff.`,
+  youAreUnmuted: "You are no longer muted.",
+  pardonSelf: "You cannot pardon yourself.",
+  warpSelf: "You cannot warp yourself.",
   /** A staff warp of a prisoner. */
   prisoner: (name: string) => `${name} is jailed; use /unjail.`,
   /** A staff warp of a player onto the jail map. */
@@ -397,9 +437,10 @@ export const MODERATION_TEXT = {
   addressesImmortal: "Only an immortal can look up addresses.",
   listBans: (page: number, pages: number) => `* Bans (page ${page} of ${pages}):`,
   listJails: "* Jailed:",
+  listMutes: "* Muted:",
   listIpBans: "* IP bans:",
   listNone: "(none)",
-  notModerated: (name: string) => `* ${name}: not banned or jailed.`,
+  notModerated: (name: string) => `* ${name}: not banned, jailed or muted.`,
   historyAddresses: "* Addresses:",
   addressSeenWith: "* Seen with:",
 } as const;

@@ -120,6 +120,8 @@ const ADMIN_WORD1: Readonly<Record<string, AdminCmd>> = {
   "/banlist": "banlist",
   "/chatlog": "chatlog",
   "/auditlog": "auditlog",
+  "/mute": "mute",
+  "/unmute": "unmute",
 };
 
 /**

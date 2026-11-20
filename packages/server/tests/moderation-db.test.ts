@@ -1,6 +1,6 @@
 /**
  * Moderation through the real database: the migration that carries old bans over, timed bans at
- * login, IP bans by /64, login address history and stored jail sentences.
+ * login, IP bans by /64, login address history, stored jail sentences and mutes.
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
@@ -43,7 +43,8 @@ describe("the moderation migration", () => {
     const all = loadMigrations();
     runMigrations(
       db,
-      all.filter((m) => m.name !== MINE),
+      // Every other migration; the mutes one rebuilds a table this one makes, so it waits too.
+      all.filter((m) => m.name !== MINE && m.name !== "20261120_41_mutes.sql"),
     );
     const now = "2026-11-10T00:00:00.000Z";
     const acct = (username: string, role: "player" | "moderator" | "immortal" = "player") =>
@@ -302,6 +303,41 @@ describe("moderation in the game (real SQLite)", () => {
     game().enter(bob.characterId, false, "10.0.0.1");
     const q = game().world.players.get(bob.characterId);
     expect([q?.map.name, q?.jailUntil]).toEqual(["x1000y992", null]);
+  });
+
+  test("a mute survives logout and restart and is told at login; one that ends offline is gone", async () => {
+    const { game, make, say, restart } = await start();
+    const alice = await make("Alice", "immortal");
+    const bob = await make("Bob");
+    say(alice.characterId, "/mute Bob 30m flooding");
+    game().leave(bob.characterId);
+    restart();
+    sent.length = 0;
+    game().enter(bob.characterId, false, "10.0.0.1");
+    const notice = MODERATION_TEXT.youAreMuted("2026-11-17T09:30:00.000Z");
+    expect(texts(sent, bob.characterId)).toContain(notice);
+    expect(say(bob.characterId, "hello")).toEqual([notice]);
+    expect(
+      db.query("SELECT action, reason FROM moderation_log WHERE action = 'mute'").all(),
+    ).toEqual([{ action: "mute", reason: "flooding" }]);
+    game().leave(bob.characterId);
+    wall += 31 * 60_000;
+    game().enter(bob.characterId, false, "10.0.0.1");
+    expect(game().world.players.get(bob.characterId)?.muteUntil).toBeNull();
+    expect(say(bob.characterId, "hello")).toEqual(['Bob says "hello"']);
+  });
+
+  test("a prisoner is told the sentence at login", async () => {
+    const { game, make, say } = await start();
+    const alice = await make("Alice", "immortal");
+    const bob = await make("Bob");
+    game().leave(bob.characterId);
+    say(alice.characterId, "/jail Bob 2h");
+    sent.length = 0;
+    game().enter(bob.characterId, false, "10.0.0.1");
+    expect(texts(sent, bob.characterId)).toContain(
+      MODERATION_TEXT.youAreJailed("2026-11-17T11:00:00.000Z"),
+    );
   });
 
   test("an offline /jail puts the prisoner in jail at login", async () => {

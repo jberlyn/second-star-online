@@ -11,11 +11,14 @@ import {
   ADMIN_TEXT,
   AIRSHIP_BODY,
   banNotice,
+  CHAT_COLOR,
   type CreateMsg,
   can,
   cheatLine,
   creationError,
   type EditorMap,
+  endIso,
+  endMs,
   factionIdOf,
   findNewQuest,
   type InGameMsg,
@@ -25,6 +28,7 @@ import {
   isJailMap,
   isStaff,
   JAIL,
+  MODERATION_TEXT,
   mapName,
   NO_FOG,
   PASSWORD_TEXT,
@@ -112,9 +116,11 @@ import {
 import {
   accountAddresses,
   accountBan,
+  accountMute,
   activeBans,
   activeIpBans,
   activeJails,
+  activeMutes,
   characterJail,
   charactersAt,
   ipBan,
@@ -991,6 +997,7 @@ export function createGame(deps: GameDeps): Game {
     moderation: {
       accountBan: (accountId) => accountBan(db, accountId),
       jail: (characterId) => characterJail(db, characterId),
+      mute: (accountId) => accountMute(db, accountId),
       ipBan: (key) => ipBan(db, key),
       ipBansFrom: (accountId) => ipBansFrom(db, accountId),
       record: (e) => {
@@ -1000,6 +1007,7 @@ export function createGame(deps: GameDeps): Game {
       charactersAt: (key) => charactersAt(db, key),
       activeBans: (now) => activeBans(db, now),
       activeJails: (now) => activeJails(db, now),
+      activeMutes: (now) => activeMutes(db, now),
       activeIpBans: (now) => activeIpBans(db, now),
       history: (accountId, limit) => moderationHistory(db, accountId, limit),
     },
@@ -1013,6 +1021,7 @@ export function createGame(deps: GameDeps): Game {
       banMinutes: settings.banLength / 60,
       ipBanMinutes: settings.ipBanLength / 60,
       jailMinutes: settings.jailSentence / 60,
+      muteMinutes: settings.muteLength / 60,
     }),
     setClass: (characterId, code) => {
       setClassCode(db, characterId, code, isoNow());
@@ -1560,11 +1569,9 @@ export function createGame(deps: GameDeps): Game {
       const now = isoNow();
       noteAddress(db, account.id, ip, now, settings.addressHistory / DAY_SECONDS);
       const sentence = characterJail(db, c.id);
-      const jailUntil = isActive(sentence, now)
-        ? sentence?.expiresAt
-          ? Date.parse(sentence.expiresAt)
-          : Number.POSITIVE_INFINITY
-        : null;
+      const jailUntil = isActive(sentence, now) ? endMs(sentence?.expiresAt ?? null) : null;
+      const mute = accountMute(db, account.id);
+      const muteUntil = isActive(mute, now) ? endMs(mute?.expiresAt ?? null) : null;
       const jailMap = jailUntil !== null && !isJailMap(map.name) ? loadMap(JAIL.map) : null;
       if (jailMap) {
         map = jailMap;
@@ -1626,6 +1633,7 @@ export function createGame(deps: GameDeps): Game {
         spell: { ...newSpellState(loadSpellbook(db, c.id)), body: c.vehicle ? AIRSHIP_BODY : null },
       };
       p.jailUntil = jailUntil;
+      p.muteUntil = muteUntil;
       p.ignore = loadIgnores(db, c.accountId);
       p.buddies = loadBuddies(db, c.accountId);
       const kept = keptSocial.get(c.id);
@@ -1657,6 +1665,15 @@ export function createGame(deps: GameDeps): Game {
         // it.
         if (settings.news !== "") {
           send(p.id, { t: "news", text: settings.news });
+        }
+        // A prisoner or a muted player is told why, and until when, each time they log in.
+        if (p.jailUntil !== null) {
+          const text = MODERATION_TEXT.youAreJailed(endIso(p.jailUntil));
+          send(p.id, { t: "chat", text, color: CHAT_COLOR.normal });
+        }
+        if (p.muteUntil !== null) {
+          const text = MODERATION_TEXT.youAreMuted(endIso(p.muteUntil));
+          send(p.id, { t: "chat", text, color: CHAT_COLOR.normal });
         }
       }
       // The clock's minute (the first clock request at entry).

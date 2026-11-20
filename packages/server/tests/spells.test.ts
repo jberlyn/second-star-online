@@ -333,6 +333,21 @@ describe("players", () => {
     expect(b.char.vitals.hp).toBe(20 - (8 + 3 + 3));
     expect(b.lastToHitMe).toBe("Ann");
   });
+  test("bug fixed: a role that takes no damage is untouched by harmful spells and Whirlwind", () => {
+    const { a, b, run, cast } = scene();
+    b.role = "immortal";
+    a.spell.book = ["Firebolt", "Whirlwind"];
+    give(a, "Red Crystals", 20);
+    give(a, "Purple Crystals", 10);
+    const t = at(9, 6);
+    cast(a, "Firebolt", t.h, t.v);
+    run(17);
+    expect([b.char.vitals.hp, b.flicker, b.lastToHitMe]).toEqual([20, 0, null]);
+    a.timers.actionDelay = 0;
+    cast(a, "Whirlwind", t.h, t.v);
+    run(11);
+    expect(b.char.vitals.sp).toBe(200);
+  });
   test("Hold: the hold counter = P·8, no step while it runs, the text", () => {
     const { a, b, run, cast } = scene();
     a.spell.book = ["Hold"];

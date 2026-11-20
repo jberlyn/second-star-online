@@ -28,6 +28,7 @@ import {
   canonicalIp,
   chatlogLine,
   cheatFileLines,
+  endMs,
   expiryOf,
   findClass,
   formatStaffChat,
@@ -86,6 +87,7 @@ export interface CharacterAccount {
 export interface ModerationStore {
   accountBan(accountId: string): ModerationRecord | null;
   jail(characterId: string): ModerationRecord | null;
+  mute(accountId: string): ModerationRecord | null;
   ipBan(key: string): IpBanRecord | null;
   ipBansFrom(accountId: string): IpBanRecord[];
   /** Logs one action and applies it. */
@@ -95,6 +97,7 @@ export interface ModerationStore {
   charactersAt(key: string): { name: string; lastSeen: string }[];
   activeBans(now: string): NamedRecord[];
   activeJails(now: string): NamedRecord[];
+  activeMutes(now: string): NamedRecord[];
   activeIpBans(now: string): (IpBanRecord & { sourceName: string | null })[];
   history(accountId: string, limit: number): ModerationLogRow[];
 }
@@ -116,8 +119,16 @@ export interface AdminDeps {
   moderation: ModerationStore;
   /** Wall-clock ISO time: when actions start and whether they have ended. */
   now(): string;
-  /** The default lengths in minutes (settings `banLength`, `ipBanLength`, `jailSentence`). */
-  durations(): { banMinutes: number; ipBanMinutes: number; jailMinutes: number };
+  /**
+   * The default lengths in minutes (settings `banLength`, `ipBanLength`, `jailSentence`,
+   * `muteLength`).
+   */
+  durations(): {
+    banMinutes: number;
+    ipBanMinutes: number;
+    jailMinutes: number;
+    muteMinutes: number;
+  };
   setClass(characterId: string, code: number): void;
   /** The chat log's newest lines for a name, oldest first (written up to now first). */
   chatLog?(q: { name: string; channel: ChatChannel | null; limit: number }): ChatLogRow[];
@@ -276,6 +287,9 @@ export function handleAdmin(
       if (!t) {
         return [...out, ...tell(p, ADMIN_TEXT.notOnline(w2))];
       }
+      if (t === p && !can(p.role, "warpSelf")) {
+        return [...out, ...tell(p, MODERATION_TEXT.warpSelf)];
+      }
       if (shieldedFrom(t)) {
         return [...out, ...tell(p, ADMIN_TEXT.immortalTarget)];
       }
@@ -298,6 +312,10 @@ export function handleAdmin(
     }
     case "unjail":
       return w2 === "" ? tell(p, MODERATION_TEXT.unjailUsage) : unjail(world, p, w2, typed, deps);
+    case "mute":
+      return w2 === "" ? tell(p, MODERATION_TEXT.muteUsage) : mute(world, p, w2, typed, deps);
+    case "unmute":
+      return w2 === "" ? tell(p, MODERATION_TEXT.unmuteUsage) : unmute(world, p, w2, typed, deps);
     case "pardon": {
       // An immortal's P2P `PRDN` to word 2 and "Pardoning <name>...". The target's client cleared its murder flag and said who pardoned it; SSO does
       // it on the server and says when the name is not online.
@@ -308,6 +326,9 @@ export function handleAdmin(
       const t = onlineByName(world, w2);
       if (!t) {
         return [...out, ...tell(p, ADMIN_TEXT.notOnline(w2))];
+      }
+      if (t === p && !can(p.role, "pardonSelf")) {
+        return [...out, ...tell(p, MODERATION_TEXT.pardonSelf)];
       }
       if (t !== p && !mayTarget(p.role, t.role)) {
         return [...out, ...tell(p, MODERATION_TEXT.staffTarget)];
@@ -487,9 +508,6 @@ const live = <T extends ModerationRecord>(r: T | null, now: string): T | null =>
   isActive(r, now) ? r : null;
 
 /** A permanent sentence never ends: `Infinity`. */
-const jailEnd = (expiresAt: string | null) =>
-  expiresAt === null ? Number.POSITIVE_INFINITY : Date.parse(expiresAt);
-
 /**
  * Why a staff warp may not move `t` to `map`: a prisoner leaves jail only by `/unjail` or the end
  * of the sentence, and a player goes to jail only by `/jail`.
@@ -619,10 +637,95 @@ function jail(world: World, p: Player, w2: string, typed: string, deps: AdminDep
   );
   const t = world.players.get(c.characterId);
   if (t) {
-    t.jailUntil = jailEnd(expiresAt);
+    t.jailUntil = endMs(expiresAt);
     if (!isJailMap(t.map.name)) {
       out.push(...adminWarp(world, t, JAIL.map, JAIL.x, JAIL.y, deps));
     }
+    out.push(...tell(t, MODERATION_TEXT.youAreJailed(expiresAt)));
+  }
+  return out;
+}
+
+/** The online character of an account, if any. */
+const onlineAccount = (world: World, accountId: string): Player | undefined =>
+  [...world.players.values()].find((o) => o.accountId === accountId);
+
+/**
+ * `/mute <name> [duration] [reason]`, online or offline: the account can't chat, IM (except to
+ * staff), post or mail until it ends. It runs in real time, as a sentence does.
+ */
+function mute(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
+  const args = parseModerationArgs(typed);
+  if (!args) {
+    return tell(p, MODERATION_TEXT.badDuration);
+  }
+  const c = deps.findCharacter(w2);
+  if (!c) {
+    return tell(p, ADMIN_TEXT.noSuchCharacter(w2));
+  }
+  if (c.accountId === p.accountId) {
+    return tell(p, MODERATION_TEXT.muteSelf);
+  }
+  if (!mayTarget(p.role, c.role)) {
+    return tell(p, MODERATION_TEXT.staffTarget);
+  }
+  const base = by(p, deps);
+  const was = live(deps.moderation.mute(c.accountId), base.createdAt);
+  if (was && !mayChange({ id: p.accountId, role: p.role }, was)) {
+    return tell(p, MODERATION_TEXT.notYourMute(c.name, was.actorName));
+  }
+  const expiresAt = expiryOf(args.duration, deps.durations().muteMinutes, base.createdAt);
+  deps.moderation.record({
+    ...base,
+    action: "mute",
+    accountId: c.accountId,
+    characterName: c.name,
+    reason: args.reason,
+    expiresAt,
+  });
+  auditOf(p, deps, "/mute")(c.name, was?.expiresAt ?? null, expiresAt ?? "permanent");
+  const out = tell(
+    p,
+    was
+      ? MODERATION_TEXT.muteChanged(c.name, expiresAt, was.expiresAt)
+      : MODERATION_TEXT.muted(c.name, expiresAt),
+  );
+  const t = onlineAccount(world, c.accountId);
+  if (t) {
+    t.muteUntil = endMs(expiresAt);
+    out.push(...tell(t, MODERATION_TEXT.youAreMuted(expiresAt)));
+  }
+  return out;
+}
+
+/** `/unmute <name> [reason]`: only the staff member who muted them, or an immortal. */
+function unmute(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
+  const c = deps.findCharacter(w2);
+  if (!c) {
+    return tell(p, ADMIN_TEXT.noSuchCharacter(w2));
+  }
+  const base = by(p, deps);
+  const was = live(deps.moderation.mute(c.accountId), base.createdAt);
+  if (!was) {
+    return tell(p, MODERATION_TEXT.notMuted(c.name));
+  }
+  if (!mayChange({ id: p.accountId, role: p.role }, was)) {
+    return tell(p, MODERATION_TEXT.notYourMute(c.name, was.actorName));
+  }
+  deps.moderation.record({
+    ...base,
+    action: "unmute",
+    accountId: c.accountId,
+    characterName: c.name,
+    reason: parseModerationArgs(typed, { duration: false })?.reason ?? "",
+    expiresAt: null,
+  });
+  auditOf(p, deps, "/unmute")(c.name, was.expiresAt ?? "permanent", null);
+  const out = tell(p, MODERATION_TEXT.unmuted(c.name));
+  const t = onlineAccount(world, c.accountId);
+  if (t) {
+    t.muteUntil = null;
+    out.push(...tell(t, MODERATION_TEXT.youAreUnmuted));
   }
   return out;
 }
@@ -795,7 +898,7 @@ function unbanIp(p: Player, w2: string, typed: string, deps: AdminDeps): Outgoin
 }
 
 /**
- * `/banlist [page]`: the bans, jails and (for immortals) IP bans in force. `/banlist <name>`: that
+ * `/banlist [page]`: the bans, jails, mutes and (for immortals) IP bans in force. `/banlist <name>`: that
  * character's standing, history and (for immortals) addresses. `/banlist <address>` (immortals):
  * the address's ban and who has played from it.
  */
@@ -823,6 +926,13 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
           .slice(0, BANLIST_PAGE)
           .map((j) => banListLine(j.name, j)),
       ),
+      MODERATION_TEXT.listMutes,
+      ...rows(
+        m
+          .activeMutes(now)
+          .slice(0, BANLIST_PAGE)
+          .map((u) => banListLine(u.name, u)),
+      ),
     ];
     if (immortal) {
       lines.push(
@@ -843,9 +953,11 @@ function banList(p: Player, w2: string, deps: AdminDeps): Outgoing[] {
   if (c) {
     const b = live(m.accountBan(c.accountId), now);
     const j = live(m.jail(c.characterId), now);
+    const u = live(m.mute(c.accountId), now);
     const lines = [
       ...(b ? [`* ${banListLine(`${c.name}: banned`, b)}`] : []),
       ...(j ? [`* ${banListLine(`${c.name}: jailed`, j)}`] : []),
+      ...(u ? [`* ${banListLine(`${c.name}: muted`, u)}`] : []),
     ];
     if (lines.length === 0) {
       lines.push(MODERATION_TEXT.notModerated(c.name));
