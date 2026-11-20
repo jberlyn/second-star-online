@@ -385,6 +385,13 @@ export function editorMobName(name: string): string | null {
   );
 }
 
+/** Why an exit cannot be saved, or null: it needs a whole-number map and a tile on the map. */
+export function exitError(e: MapExit | null): string | null {
+  return e && !(Number.isInteger(e.mx) && Number.isInteger(e.my) && inTile(e.x, e.y))
+    ? "An exit needs a whole-number map and a tile on the map."
+    : null;
+}
+
 const inTile = (x: number, y: number) =>
   Number.isInteger(x) &&
   Number.isInteger(y) &&
@@ -421,8 +428,9 @@ export function editorMapError(m: EditorMap, itemOk: (name: string) => boolean):
     return "A header or sign is too long.";
   }
   for (const e of [m.exit1, m.exit2]) {
-    if (e && !(Number.isInteger(e.mx) && Number.isInteger(e.my) && inTile(e.x, e.y))) {
-      return "An exit needs a whole-number map and a tile on the map.";
+    const bad = exitError(e);
+    if (bad) {
+      return bad;
     }
   }
   const fog = m.fog;
@@ -477,7 +485,9 @@ export function exitFromFields(f: ExitFields): MapExit | null {
   // A house's exit shows as `H1<mx>`/`H1<my>` (or H2), as the build wrote it.
   const hx = /^H([12])(-?\d+)$/i.exec(f[0].trim());
   const hy = /^H([12])(-?\d+)$/i.exec(f[1].trim());
-  const [, , x, y] = f.map((v) => Number(v.trim()));
+  // A blank field among filled ones is no number (not 0), so the save check refuses the exit.
+  const num = (v: string) => (v.trim() === "" ? Number.NaN : Number(v.trim()));
+  const [, , x, y] = f.map(num);
   if (hx && hy && hx[1] === hy[1]) {
     return {
       mx: Number(hx[2]),
@@ -487,6 +497,6 @@ export function exitFromFields(f: ExitFields): MapExit | null {
       house: hx[1] === "1" ? 1 : 2,
     };
   }
-  const [mx, my] = f.map((v) => Number(v.trim()));
+  const [mx, my] = f.map(num);
   return { mx: mx ?? Number.NaN, my: my ?? Number.NaN, x: x ?? Number.NaN, y: y ?? Number.NaN };
 }

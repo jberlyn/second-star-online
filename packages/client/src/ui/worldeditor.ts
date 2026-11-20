@@ -34,6 +34,7 @@ import {
   type EditorMob,
   EMPTY_EXIT_FIELDS,
   type ExitFields,
+  exitError,
   exitFieldsAfterLoad,
   exitFromFields,
   type FactionBoxes,
@@ -243,7 +244,12 @@ export function createWorldEditor(
   add(loadBtn, { x: 457, y: 5, w: 52, h: 24 }, 3);
   const saveBtn = hitButton("Save", editorAction("Save"), () => {
     const m = current();
-    if (m) {
+    // An exit with a blank or non-number field is refused here, as the server would: sent as is,
+    // it would not even be a valid message.
+    const bad = m && (exitError(m.exit1) ?? exitError(m.exit2));
+    if (bad) {
+      addChat(bad);
+    } else if (m) {
       actions.save(m);
     }
   });

@@ -71,6 +71,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The editor shows and saves only placed items, including operator placements and `/drop`, at most 20; loot and player drops are untouched.
 - **Why:** The 20-item ground limit is lifted and saving a map should not destroy players' items.
 - **In the code:** `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
+- **Pinned by:** `save: the placed monsters become the roster and live monsters at full HP; loot stays` (packages/server/tests/worldedit.test.ts); `design change: the editor shows and replaces only placed items, at most 20; loot and drops stay` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### No per-swing target slot limit
 - **Kind:** Limit lifted
@@ -79,6 +80,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Every monster in the map instance is a candidate.
 - **Why:** The per-screen sprite caps have been lifted.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`)
+- **Pinned by:** `design change: a swing considers every live monster in the map instance` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### No per-screen cap on players, monsters or ground items
 - **Kind:** Limit lifted
@@ -87,6 +89,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** No fixed player or ground-item cap replaces the original limits: the map's tiles and server capacity are the practical limits. Every player on a map is drawn. The monster roster has up to four slots, each allowing one live monster with the original spawn odds. See [performance](performance.md) for measurements.
 - **Why:** The original limits came from Director sprite channels rather than game design. The explicit monster population rule preserves the density that players saw.
 - **In the code:** `packages/client/src/playfield.ts` (`createPlayfield`), `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`)
+- **Pinned by:** `design change: every one of 36 other players and 40 ground items on a map can be clicked` (packages/client/tests/ledger-pins-d.test.ts); `kept on purpose: slot 5 never spawns: a roster has four slots` (packages/server/tests/monsters.test.ts); `design change: a slot with a live monster never spawns a second` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### Shop window lists every SEL line
 - **Kind:** Limit lifted
@@ -95,6 +98,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The window lists every `SEL|` line and buying names the listed line. The List and Prices fields show about 13 lines and scroll when longer.
 - **Why:** Operators author shops, and a hidden but buyable line was a window-size limitation.
 - **In the code:** `packages/server/src/systems/economy/intents.ts` (`shopListIntent`), `packages/server/src/systems/economy/shop.ts` (`buyList`)
+- **Pinned by:** `design change: a SEL line past file line 30 is listed and bought by its line` (packages/server/tests/ledger-pins-d.test.ts); `design change: a 40-line list shows every row and OK buys the clicked row's line` (packages/client/tests/ledger-pins-d.test.ts)
 
 #### Houses build regardless of ground items
 - **Kind:** Limit lifted
@@ -112,6 +116,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The ground list has no fixed slot limit, those refusals are removed and loot always drops. Monster loot decays instead, as described under “Monster loot decays”.
 - **Why:** The old limit came from Director sprite channels.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`addGround`)
+- **Pinned by:** `design change: loot drops on a map already holding more than 20 ground items` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### Monster loot decays
 - **Kind:** Limit lifted
@@ -129,6 +134,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** An authored roster has at most four slots and each holds at most one live monster. Spawn attempts reproduce per-client rolls once per player, up to 15 players, with the same refill maths: two passes a tick, each passing a 1-in-80 gate (solo; the odds fall as more players share the screen, flattening at 7) and then a 1-in-5 roll, so about 10/q seconds on average solo, where q is the share of tiles the slot's monster may stand on. With more than 15 players, a random 15 roll each tick. There is no sprite cap.
 - **Why:** The sprite cap was technical, but one live monster per slot preserved the density players saw. Without it an idle screen would gain roughly 12 monsters a minute indefinitely.
 - **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`, `spawnLadder`), `packages/server/src/systems/world/tick.ts` (`emulated`, `MAX_EMULATED_PLAYERS`, `actorPass`)
+- **Pinned by:** `design change: a slot with a live monster never spawns a second`; `design change: spawn rolls run per player, two passes a tick, capped at 15 players` (packages/server/tests/ledger-pins-d.test.ts); `bug fixed: ladders: spawn 80…1300 by players, move 30…600 and 600 from the 8th on`; `gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30`; `kept on purpose: slot 5 never spawns: a roster has four slots` (packages/server/tests/monsters.test.ts)
 
 #### No 11-spell FX cap
 - **Kind:** Limit lifted
@@ -136,7 +142,8 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** Each client had eleven spell sprite channels.
 - **SSO:** There is no fixed spell-effect cap.
 - **Why:** The old limit came from Director sprite channels.
-- **In the code:** `packages/server/src/systems/spells/fx.ts` (`freeSlot`, `placeQueued`)
+- **In the code:** `packages/server/src/systems/spells/fx.ts` (`freeSlot`, `placeQueued`), `packages/client/src/model.ts` (`applySnapshot`)
+- **Pinned by:** `design change: fifteen effects on one map take fifteen slots, none replaced` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### Airship item caps removed
 - **Kind:** Limit lifted
@@ -192,6 +199,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several gives each container its own line and ID (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)). A bare crystal name is a pile of one; the World Editor shows and saves the count.
 - **Why:** Operators can stock the world without dropping items one at a time, and bare crystal piles work.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`parseDrop`, `handleDrop`)
+- **Pinned by:** `SSO: a count from 1 to 9,999 on any stacking Inventory item`; `SSO: a bare crystal name is a pile of 1`; `/drop 20 Apple is one pile that adds 20 to the stack` (packages/server/tests/inventory.test.ts); `placed items take /drop's names; a counted pile round-trips` (packages/server/tests/worldedit.test.ts)
 
 #### New characters start on the operator's start point
 - **Kind:** World content
@@ -209,6 +217,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Their stats, loot and experience remain in the monster data, but the editor does not offer them.
 - **Why:** An invisible monster never worked as a visible feature; an operator can enable one if art is added.
 - **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`), `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
+- **Pinned by:** `design change: the editor lists offer no art-less body; their data stays` (packages/server/tests/ledger-pins-d.test.ts); `an administrator lists, sets and clears slots; the change is saved` (packages/server/tests/monsters-db.test.ts)
 
 #### The seed map keeps its archived Slime roster
 - **Kind:** World content
@@ -217,6 +226,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Willowbrook Wilds, the forest-and-lake seed map at the same grid position, starts with that roster; operators can change it with `/roster`. The [seed roster migration](../packages/server/migrations/20261105_03_monsters.sql) inserts it.
 - **Why:** Although archived maps are not shipped, the roster is the original one for that map position.
 - **In the code:** `packages/server/src/persistence/migrations.ts` (`runMigrations`)
+- **Pinned by:** `x1000y992 keeps its original roster, slot 1 Slime` (packages/server/tests/monsters-db.test.ts); `the seed map is named Willowbrook Wilds; a title already given is kept` (packages/server/tests/migrations.test.ts)
 
 #### Archived maps not shipped; seeded starter, jail and church
 - **Kind:** World content
@@ -234,6 +244,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Treasure map lists, portal destinations and the hazard map are settings, empty by default. The item roll, dig and hazard rules are unchanged.
 - **Why:** Those original map references do not exist in an operator-built world.
 - **In the code:** `packages/server/src/settings.ts` (`defaultSettings`), `packages/server/src/systems/crafting/gather.ts` (`resetTreasure`)
+- **Pinned by:** `design change: treasure maps, portal targets and the hazard map are empty by default` (packages/server/tests/ledger-pins-d.test.ts); `another map never finds it, and no list means no treasure` (packages/server/tests/gather.test.ts); `bug fixed: Portal with no destination is refused before SP and crystals are spent` (packages/server/tests/spells.test.ts)
 
 #### Optional logon/logoff chat lines
 - **Kind:** World content
@@ -280,6 +291,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The game uses one layout. Instant messages, biographies, Who, trade, the newspaper and other sub-windows become floating draggable windows. The frame scales to fit, including fractional scales when a whole number will not fit; the sharp-pixels setting restricts it to whole numbers. Small windows scale the same frame down. Live browser text uses the original font, size and colour, so glyphs differ slightly from Windows bitmap text.
 - **Why:** A browser page cannot be a Windows projector; one classic layout keeps the game faithful to 1.6.
 - **In the code:** `packages/client/src/app.ts` (`relayout`), `packages/client/src/ui/window.ts` (`createWindowLayer`)
+- **Pinned by:** `desktop scale fills the window; sharp pixels forces whole numbers`; `a window smaller than 800×600 gets the classic layout scaled down: 700×400 → scale 400/620` (packages/client/tests/shells.test.ts); `floats at the original size scaled with the frame` (packages/client/tests/chat.test.ts); `design change: a sub-movie window floats in its own layer and drags by its title bar` (packages/client/tests/ledger-pins-d.test.ts)
 
 #### A connection that falls far behind is reconnected
 - **Kind:** Platform
@@ -297,6 +309,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The title shows only Load Character and New Character; Game Setup, Exit, Server Editor and the advert are not offered, and the unFun Games credits and version line are replaced by a footer crediting the original. Sound is controlled in the in-game menu. A page connects to the server that served it, so the server picker has no screen. Messages use the original text in an in-page OK box without the alert beep. The unreachable credits, unavailable post-creation movie and unreachable later frames are omitted.
 - **Why:** A browser page cannot quit or launch local tools, the advertised site no longer exists, the remake carries its own name while crediting the game it recreates, and native browser alerts block the page and vary by browser.
 - **In the code:** `packages/client/src/ui/screens.ts` (`titleScreen`), `packages/client/src/ui/alert.ts` (`showAlert`), `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `the title offers only its two choices and credits the original instead of unFun Games`; `title actions call their corresponding callbacks` (packages/client/tests/ui-actions.test.ts); `design change: a login message is an in-page box with OK, never the browser's alert` (packages/client/tests/ledger-pins-d.test.ts)
 
 #### In-game sound effects switch
 - **Kind:** Platform
@@ -305,6 +318,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The menu option defaults to on and is saved per browser.
 - **Why:** SSO does not offer the original Game Setup and a browser player needs to mute without logging out.
 - **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`), `packages/client/src/audio.ts` (`createAudio`)
+- **Pinned by:** `design change: Sound Effects defaults to on on the title screen and the browser remembers it` (packages/client/tests/ledger-pins-d.test.ts); `divergence: off silences everything, 1.6's ungated sounds too` (packages/client/tests/sound.test.ts); `out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
 
 #### In-game menu
 - **Kind:** Platform
@@ -331,6 +345,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Audio files load with the page. The first gesture starts audio, and later presses resume audio paused by the browser in the background. Earlier sounds are skipped rather than played late.
 - **Why:** Browsers require a gesture before audio, and skipping delayed sounds keeps them in step with their causes.
 - **In the code:** `packages/client/src/audio.ts` (`createAudio`)
+- **Pinned by:** `every sound loads at page load; nothing plays before the first gesture, whose own click is heard`; `a sound not yet decoded, or not built, is skipped, never played late` (packages/client/tests/sound.test.ts)
 
 #### Security headers and production mode
 - **Kind:** Platform
@@ -339,6 +354,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `bun run start` sends `X-Content-Type-Options: nosniff` and a narrow Content Security Policy on every response, allowing only its own scripts and no plugins or `<base>`. An operator may add `frame-ancestors` with `SSO_FRAME_ANCESTORS`. `bun run dev` uses live reload and sends no CSP.
 - **Why:** Framing and injected content are risks for a public web page.
 - **In the code:** `packages/server/src/gateway/server.ts` (`securityHeaders`, `startGateway`)
+- **Pinned by:** `serves /, /index.html, JS, CSS, PNG and /assets/ with MIME types and security headers` (packages/server/tests/gateway.test.ts); `design change: the CSP allows only own scripts, no plugins or <base>; frame-ancestors only when set`; `design change: production puts the headers on every response, a 404 too; development sends no CSP` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### Repeated identical chat lines collapse
 - **Kind:** Platform
@@ -383,6 +399,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Each icon bitmap is centered in its box. The 15×14 markers are centered on rows and placed eight pixels outside both sides; the boxes themselves do not click. The preview moves so the bare character's drawn pixels sit at stage x 676–710, y 306–359 in the middle box; added gear does not move it.
 - **Why:** The user requested centered icons. Director drew unstretched sprites at their own bitmap size and registration point, not the score's stale 32×32 size.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
+- **Pinned by:** `design change: each icon's bitmap is centred in its box; the × markers centre on the rows, 8 px out` (packages/client/tests/ledger-pins-d.test.ts); `the × beside a box takes the item off; the icon does not click (score frame 63: channels 354-359 carry the remove-button names, sprites 75-80 nothing)`; `the Head × is shown and works` (packages/client/tests/panel.test.ts)
 
 #### Stats icons centred on their rows and evenly spaced
 - **Kind:** Platform
@@ -427,6 +444,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A browser download uses the second word as its filename, or `chatlog.txt` when absent, and prints “Logging the chat to file.”
 - **Why:** Browsers have no Director preferences folder.
 - **In the code:** `packages/client/src/app.ts` (`saveTextFile`, `runApp`)
+- **Pinned by:** `design change: /logchat downloads the main chat as chatlog.txt or the named file, then says so` (packages/client/tests/ledger-pins-d.test.ts); `Enter sends the line; /logchat saves the room log; closing leaves` (packages/client/tests/im.test.ts)
 
 #### Sub-movie windows as floating windows
 - **Kind:** Platform
@@ -435,6 +453,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Those screens use draggable floating windows with original art. Mail, message boards, the paint screen and painting viewer draw at their stage positions; the newspaper reader and editor are floating windows with close boxes only.
 - **Why:** Browsers have no Director movie windows; floating windows fill that role.
 - **In the code:** `packages/client/src/ui/window.ts` (`createWindowLayer`)
+- **Pinned by:** `design change: a sub-movie window floats in its own layer and drags by its title bar` (packages/client/tests/ledger-pins-d.test.ts); `floats at the original size scaled with the frame` (packages/client/tests/chat.test.ts); `the paint screen is 414×293 at (91, 72), the 4× image 256×256 at (242, 81), the viewer 229×87 at (330, 166)` (packages/client/tests/art-news.test.ts)
 
 #### Local MP3 player dropped
 - **Kind:** Platform
@@ -782,7 +801,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** Page 10 stopped at member 589; its last 11 slots retained whichever tiles had previously occupied those sprites and could still be painted.
 - **SSO:** Empty slots on every page are blank and unclickable. Added tiles without a member fill page 10's slots 50–60 first, followed by pages of 60. Without added tiles, only those last 11 page-10 slots visibly change.
 - **Why:** Stale slots duplicated tiles from earlier pages and depended on the route to page 10.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
+- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`), `packages/shared/src/rules/admin/worldedit.ts` (`palettePageOf`, `palettePagesOf`)
 - **Pinned by:** `empty palette slots are blank and unclickable on every page; added tiles fill page 10 first` (packages/client/tests/worldeditor.test.ts)
 
 #### The World Editor's sign panel leaves the exit fields alone
@@ -3088,7 +3107,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** The cast took any click with 8 < H < 580 and 5 < V < 420, a band of up to 22 pixels around the playfield [30, 31, 574, 415].
 - **SSO:** The client and the server both take a click only inside the playfield rectangle.
 - **Why:** The margin was a loose bounds check, not a place to aim; clicks there named tiles off the map.
-- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`inCastBounds`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`inCastBounds`), `packages/server/src/systems/spells/cast.ts` (`castIntent`), `packages/client/src/app.ts` (`runApp`)
 - **Pinned by:** `bug fixed: a cast click must be on the playfield [30, 31, 574, 415]` (packages/shared/tests/spells/spells.test.ts); `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts); `bug fixed: the point must be on the playfield, not 1.6's wider 8 < H < 580, 5 < V < 420` (packages/client/tests/cast.test.ts)
 
 #### A refused cast costs nothing
@@ -3445,6 +3464,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Only the server applies these effects after validating the action or command.
 - **Why:** Peers could otherwise teleport, jail or disconnect other players.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminWarp`, `handleAdmin`), `packages/server/src/systems/movement/push.ts` (`pushOnMe`)
+- **Pinned by:** `SSO: a player's admin command is answered as an unknown one, privately, and does nothing`; `/warp echoes and moves the target to the map and tile`; `/kick echoes, then the target reads the kick line and is disconnected with 1.6's kick alert` (packages/server/tests/admin.test.ts); `a hit prints the shove line to the victim only and moves it one step` (packages/server/tests/push.test.ts); `SSO: no client message warps, pushes, jails, kicks or pays another player` (packages/shared/tests/ledger-pins-a.test.ts)
 
 #### Server-side roles, admin commands and editors
 - **Kind:** Exploit closed
@@ -3453,6 +3473,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Each account's role grants permissions, and the server checks the permission for each command and editor. Editor writes are validated and versioned. Admin commands that act on a player or the world (not `/inventory`, `/location` or `/banlist`, and `/iplookup` only when the player is online), world and NPC editor saves, setting changes and role changes are recorded in `audit_log` with actor, command, target, before and after; newspaper saves are not recorded; `bun run admin:audit [n]` reads it.
 - **Why:** Without server checks anyone could rewrite the world and ban lists.
 - **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`can`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
+- **Pinned by:** `an administrator holds every permission and an account with no role none` (packages/shared/tests/admin/permissions.test.ts); `SSO: a player's admin command is answered as an unknown one, privately, and does nothing` (packages/server/tests/admin.test.ts); `a role edit applies to everyone online who holds it at once, and is audited` (packages/server/tests/roles.test.ts); `a map round-trips exits, signs, fog and header; versions are kept` (packages/server/tests/worldedit.test.ts); `a save writes the file and its old version and drops the stored ledger; a restart loads it` (packages/server/tests/npcedit.test.ts); `every admin action is in the audit log` (packages/server/e2e/admin-and-settings.test.ts); `SSO: /inventory, /location, /banlist and an offline /iplookup are not audited; an online /iplookup is` (packages/server/tests/ledger-pins-a.test.ts)
 
 #### Login and account-creation limits
 - **Kind:** Exploit closed
@@ -3470,14 +3491,16 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server chooses who receives and can post to staff chat (both staff roles), and delivers it in `CHAT_COLOR.staff`.
 - **Why:** Other players could otherwise listen to staff conversations.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`)
+- **Pinned by:** `a player's - line gets an explicit denial and clears input (no restore)`; `both administrators and moderators post to staff in CHAT_COLOR.staff; players excluded` (packages/server/tests/admin.test.ts); `the Staff page makes Mo a moderator at once; both staff roles post and read staff chat in CHAT_COLOR.staff` (packages/server/e2e/admin-and-settings.test.ts)
 
 #### World editor exits and texts are checked
 - **Kind:** Exploit closed
 - **What you notice:** The world editor refuses invalid exits, long signs and headers, and unavailable tiles or monsters.
 - **1.6:** Exit fields, signs and headers were free text written into the map file. An exit could name any map or tile, including one off screen.
-- **SSO:** An exit is empty or has whole-number map coordinates and a tile on the map (1–17, 1–12). House-map coordinates may instead use matching `H1` or `H2` prefixes. Signs have at most 1,000 characters and headers 200. Tiles must be on the palette and monsters on the editor's lists.
+- **SSO:** An exit is empty or has whole-number map coordinates and a tile on the map (1–17, 1–12). House-map coordinates may instead use matching `H1` or `H2` prefixes. Signs have at most 1,000 characters and headers 200. Tiles must be on the palette and monsters on the editor's lists. An exit with one field left blank is refused rather than read as 0, and the editor refuses it before sending, with the server's line (“An exit needs a whole-number map and a tile on the map.”).
 - **Why:** The server validates editor writes before they change the world.
-- **In the code:** `packages/server/src/systems/admin/worldedit.ts` (`saveError`, `applySave`)
+- **In the code:** `packages/server/src/systems/admin/worldedit.ts` (`saveError`, `applySave`), `packages/shared/src/rules/admin/worldedit.ts` (`exitFromFields`, `exitError`), `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
+- **Pinned by:** `SSO: an exit needs whole-number map coordinates and a tile on the map, or matching H1/H2 prefixes`; `SSO: signs hold at most 1,000 characters and the header 200`; `SSO: tiles off the palette and monsters off the editor's lists are refused` (packages/server/tests/ledger-pins-a.test.ts); `the save is checked: palette codes, 12 rows of 17, listed monsters, ≤ 20 items, fog` (packages/shared/tests/admin/worldedit.test.ts); `bug fixed: an exit with one field left blank is no number, not map 0` (packages/shared/tests/admin/worldedit.test.ts); `bug fixed: an exit with a blank map field is refused before sending, with the server's line` (packages/client/tests/worldeditor.test.ts)
 
 #### NPC editor checks its files
 - **Kind:** Exploit closed
@@ -3486,6 +3509,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Load and save require an administrator in the editor and a name on its monster or NPC list; selecting no name sends nothing. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After “NPC has been successfully saved.”, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
 - **Why:** Server validation prevents arbitrary file access and invalid data; warnings make silent original rules visible to operators.
 - **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`, `saveNpc`), `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
+- **Pinned by:** `refused: backtick, * and ^`; `refused: unknown or lower-case tags, a second |, more than 100 lines, long lines`; `refused: unknown items, bad numbers, two GLD| lines`; `accepted: archived spellings, N Gold, N crystals, fixtures, BUY's ignored third field`; `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts); `a list name with no file loads empty; unlisted names, no name and players outside the editor get nothing`; `a refused save says why and changes nothing`; `a save replaces the file, drops the ledger, closes the NPC's windows and lists warnings under the alert`; `a save writes the file and its old version and drops the stored ledger; a restart loads it`; `a player's npcSave is ignored` (packages/server/tests/npcedit.test.ts)
 
 #### Only server systems create items
 - **Kind:** Exploit closed
@@ -3494,6 +3518,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Loot, gathering, crafting, shops, quests and admin create items using their own rules. An administrator's `/drop` and World Editor placements accept `N gold` or an Inventory cast member that is a catalogue item with an icon or a fixture such as a vault, chest, sign or door. They refuse non-item cast members; like 1.6 they refuse singular crystal names and items without Inventory members such as Gold Armor and Rune Sword.
 - **Why:** An arbitrary client request could mint items, and non-item cast members would produce objects the game cannot use.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`droppableName`, `handleDrop`), `packages/server/src/systems/crafting/craft.ts` (`craftStep`)
+- **Pinned by:** `only administrators drop items or gold; moderators and players do nothing`; `/drop takes only Inventory cast members; the shop whitelist's singular crystals are not`; `SSO: a count from 1 to 9,999 on any stacking Inventory item` (packages/server/tests/inventory.test.ts); `placed items take /drop's names; a counted pile round-trips` (packages/server/tests/worldedit.test.ts)
 
 #### Peer sigils replaced by server events; peer kicks, warps and gold removed
 - **Kind:** Exploit closed
@@ -3502,6 +3527,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Typed server events replace those messages; the dangerous peer sigils are gone.
 - **Why:** Any player could otherwise kick, warp or give gold to anyone.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`adminWarp`), `packages/server/src/systems/inventory/items.ts` (`goldIntent`)
+- **Pinned by:** `SSO: no client message warps, pushes, jails, kicks or pays another player` (packages/shared/tests/ledger-pins-a.test.ts); `SSO: a player's admin command is answered as an unknown one, privately, and does nothing` (packages/server/tests/admin.test.ts); `bug fixed: a gold give says "A is giving you 50 Gold."`; `more than you have: 'You don't have enough gold!' for both paths` (packages/server/tests/inventory.test.ts)
 
 #### No IP addresses exposed
 - **Kind:** Exploit closed
@@ -3510,6 +3536,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Addresses stay server-side and lookup is restricted to staff. The login addresses the server keeps for IP bans are shown only to administrators.
 - **Why:** Players' network addresses are private.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `SSO: a player's admin command is answered as an unknown one, privately, and does nothing`; `a moderator may run the moderation commands, but not IP bans or /setclass`; `moderators see bans and jails; administrators also see IP bans`; `/banlist <name>: standing, history and (administrators) addresses` (packages/server/tests/admin.test.ts)
 
 #### NPC edits apply at once
 - **Kind:** Architecture
@@ -3527,6 +3554,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** These inert tools are not implemented and rain is not offered. The NPC editor supplies monster-drop editing through `INV|` lines.
 - **Why:** Original features that never worked remain omitted.
 - **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`saveNpc`)
+- **Pinned by:** `SSO: 1.6's inert admin tools have no message: SaveMonDrops, RPG, LoadMiniMap, ClearChest` (packages/shared/tests/ledger-pins-a.test.ts); `a save applies at once: flags, drops, an empty file` (packages/server/tests/npcedit.test.ts); `the Slime's drops are its INV| lines: INV|5 Gold:1 always drops 5 Gold` (packages/server/e2e/npc-editor.test.ts)
 
 #### Admin set-class tool
 - **Kind:** Architecture
@@ -3535,6 +3563,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The command accepts any of the 26 classes without regard to case and changes only the class code, not skills. Promotion rules are unchanged.
 - **Why:** The raw file editor is removed, so operators need a replacement for the only original route to those classes.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `SSO: /setclass takes all 26 classes in any case, records before and after, and leaves skills alone` (packages/server/tests/ledger-pins-a.test.ts); `by name ignoring case and spaces, or by code` (packages/shared/tests/admin/admin.test.ts); `/setclass sets the class code by name or number`; `/setclass writes the class code, online or not` (packages/server/tests/admin.test.ts)
 
 #### Admin commands say when a name is not online
 - **Kind:** Architecture
@@ -3543,6 +3572,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The original echo is followed as applicable by “Bob is not online.”, “There is no character called Bob.”, warp usage for a non-tile coordinate, “You cannot ban yourself.”, “You cannot kick someone who outranks you.”, “You cannot do that to someone who outranks you.” or “You can only do that to someone you outrank.” Staff cannot kick someone who outranks them, nor use IP lookup, warp or warptome on them, and can ban, jail, mute or pardon only those they outrank (a role with `overrule` excepted); warpmeto still moves the staff member. `/ban` and `/jail` work on offline characters. IP bans are administrators' by default, and only the staff member who made a ban or jail, or a role with `overrule`, can change or lift it.
 - **Why:** The server can report failed actions, and a senior staff member's address and editor session should not be controlled by a junior one.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `SSO: an offline name and a bad line get a line after the echo`; `SSO: a moderator cannot kick or ban an administrator`; `SSO: a moderator cannot look up, jail or mute an administrator`; `/ban flags the account and disconnects with the login refusal's text`; `an offline character can be jailed; the sentence waits for their login`; `a moderator changes only their own ban; an administrator changes any`; `a moderator may not ban, jail or pardon another moderator` (packages/server/tests/admin.test.ts)
 
 #### Operators define the staff roles; unban is a chat command
 - **Kind:** Architecture
@@ -3560,6 +3590,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The account is flagged, an online player is disconnected with the alert, and later logins are refused with it after the password check. A timed ban lifts itself when it ends.
 - **Why:** The server kick is reliable and the alert explains it; the end tells the player when to come back, while the reason stays an internal staff record.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/game.ts` (`login`)
+- **Pinned by:** `/ban flags the account and disconnects with the login refusal's text`; `a banned account's login is refused with 1.6's alert until /unban` (packages/server/tests/admin.test.ts); `a timed ban refuses login with its end, and lapses on time` (packages/server/tests/moderation-db.test.ts)
 
 #### Bans and jails carry a reason, a length and the maker's role
 - **Kind:** Exploit closed
@@ -3624,6 +3655,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server accepts a pull only while the panel is open and idle and settles it 30 ticks later.
 - **Why:** Trusting client timing allowed requests to be spammed and load the server.
 - **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotPull`, `slotTick`)
+- **Pinned by:** `the FX is queued at the player; the result comes 30 ticks later, not 29`; `a second pull mid-spin and a pull with the panel closed are ignored` (packages/server/tests/casino.test.ts)
 
 ### Server-side chat
 
@@ -3634,6 +3666,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server stamps the speaker and controls faction, guild and room membership. Each reader's ignore list filters what the ignored player's client sent in 1.6: say, `/me`, broadcasts, IMs, guild chat, the Overlord line, Radar and Inxition read-outs, and faction announcements. Staff chat is not filtered, so staff always hear each other. It also filters NPC replies relayed by that player, including quest slots 2–4, treasure rumours, faction-leader replies and their shop's stock list.
 - **Why:** Client-supplied names and group joins allowed impersonation and eavesdropping.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/chat/rooms.ts` (`enterRoom`), `packages/server/src/systems/chat/ignore.ts` (`hears`)
+- **Pinned by:** `goes to everyone on the map, the speaker included, in white` (packages/server/tests/chat.test.ts); `say and /me: the ignorer misses them, everyone else hears`; `broadcasts, by the speaker`; `an ignored sender's IM vanishes; the sender sees only the echo`; `a relayed aqs line (quests, rumours, leaders, shop list): the asker's ignorers miss it`; `the faction announcement, Radar and Inxition lines and the like`; `divergence: Guild Chat is your guild's room; losing the guild drops you silently` (packages/server/tests/im.test.ts); `staff chat has no house sender restriction, no muffling, and no ignore filtering` (packages/server/tests/admin.test.ts)
 
 #### Chat rate limits
 - **Kind:** Exploit closed
@@ -3698,6 +3731,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The client sends whether attack is held; the server rolls attack power and damage and credits the kill.
 - **Why:** A modified client could otherwise deal arbitrary damage or give someone else credit.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`, `workAttack`)
+- **Pinned by:** `SSO: the attack intent is the key's hold state only: no damage, power, target, position or weapon` (packages/shared/tests/ledger-pins-a.test.ts); `a seeded Slime fight: bare hands kill it, the kill gives 23 XP at level 1` (packages/server/tests/monsters.test.ts)
 
 #### Server owns positions in hit tests
 - **Kind:** Exploit closed
@@ -3706,6 +3740,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Hit tests use server positions, facing and equipment.
 - **Why:** A forged position or weapon could let someone attack from anywhere or impersonate an elemental weapon.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`, `pvpSwing`)
+- **Pinned by:** `SSO: the attack intent is the key's hold state only: no damage, power, target, position or weapon` (packages/shared/tests/ledger-pins-a.test.ts); `bug fixed: a victim part-way through a step is hit on the tile it is leaving`; `bug fixed: a swing at (4,4) no longer hits a victim stepping from (9,4)` (packages/server/tests/melee.test.ts)
 
 #### Server-side cooldowns and power bar
 - **Kind:** Exploit closed
@@ -3714,6 +3749,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server counts ticks; an attack pressed a few ticks early can be latched for the next permitted attack.
 - **Why:** Client-controlled timing allowed speed and power hacks.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`), `packages/shared/src/rules/combat/combat.ts` (`tickAttackTimers`, `startSwing`)
+- **Pinned by:** `SSO: a tap is latched for ${ATTACK_LATCH_TICKS} ticks: it swings if the attack re-arms by then`; `SSO: a tap older than the latch is lost, as 1.6's keyPressed poll lost it` (packages/server/tests/melee.test.ts); `bug fixed: holding attack swings every AtDelay = 14 frames, not 15`; `tiers come from the member windows: +0 until t+38, +3, +5 from t+63, +7 from t+88`; `the bar value resets on a swing, its member does not` (packages/shared/tests/combat/combat.test.ts)
 
 #### Server checks crystals before shots and casts
 - **Kind:** Exploit closed
@@ -3722,6 +3758,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server checks and removes the crystal with the shot or cast.
 - **Why:** A modified client could otherwise shoot or cast without spending crystals.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `bug fixed: a bow with arrows but no crystal is refused before the swing, keeping the bar`; `a bow with Blue Arrows and a crystal shoots an arrow and spends the crystal, hitting nothing in melee` (packages/server/tests/melee.test.ts); `not enough SP and too few crystals: the messages`; `SP and crystals are taken from the last crystal line` (packages/server/tests/spells.test.ts)
 
 #### Server rolls equipment breaks
 - **Kind:** Exploit closed
@@ -3730,6 +3767,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server makes the roll using the original odds.
 - **Why:** A modified client could omit break reports.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`smash`), `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`)
+- **Pinned by:** `a weapon break on a monster hit: the damaged form and the line` (packages/server/tests/inventory.test.ts); `SSO: a monster's hit rolls the armour break on the server with the original odds` (packages/server/tests/ledger-pins-a.test.ts); `odds 1 + 3·Sta + 600 (+500 weapons) plus the hunger terms` (packages/shared/tests/inventory/inventory.test.ts)
 
 #### Loot rolled by the server on observed kills
 - **Kind:** Exploit closed
@@ -3738,6 +3776,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server runs the same algorithm once per kill, using the killed monster's species and tile.
 - **Why:** A forged client could repeatedly create loot from any table without killing a monster.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`smash`), `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
+- **Pinned by:** `a killed Slime drops 2 Gold on its tile, as loot that decays after 30 minutes`; `bug fixed: loot lands on the tile the monster is drawn nearest` (packages/server/tests/inventory.test.ts); `bug fixed: a spell kill drops the loot on the tile the monster is drawn nearest` (packages/server/tests/spells.test.ts)
 
 #### Bow lock clears immediately
 - **Kind:** Architecture
@@ -3746,6 +3785,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The crystal is removed in the same tick and attack delay controls the cadence.
 - **Why:** The server has no inventory round trip to wait for.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`)
+- **Pinned by:** `SSO: a bow spends its crystal in the tick it shoots, and its attack delay alone sets the cadence` (packages/server/tests/ledger-pins-a.test.ts); `a bow with Blue Arrows and a crystal shoots an arrow and spends the crystal, hitting nothing in melee` (packages/server/tests/melee.test.ts)
 
 ### Server-side core
 
@@ -3756,6 +3796,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Data is addressed by ID rather than arbitrary paths, and character viewing is omitted. The Server Settings window is a plain SSO panel on the Admin menu, where the File Editor was; the original had no settings screen. Each page is saved on its own: Save validates the page's values in the window and again on the server, refuses the whole save with the error on the setting, and applies successful changes to everyone online immediately, as `/Refresh` does. Leaving a page or closing the window with unsaved changes asks first and discards them. Revert reloads server values. Server infrastructure (save interval, reconnect grace, connections per address) is set with `SSO_*` environment variables instead.
 - **Why:** Arbitrary server file reads and writes let a client expose or alter data. Explanations remain visible rather than relying on hover.
 - **In the code:** `packages/client/src/ui/settings.ts` (`createSettingsWindow`), `packages/server/src/settings.ts` (`applySettingValues`)
+- **Pinned by:** `Settings: an administrator's save is stored, audited and applied at once; rules go to everyone`; `Settings: a bad value refuses the whole save with its key and label` (packages/server/tests/admin.test.ts); `Save sends only the open page's values; Revert asks again`; `leaving a page with unsaved changes asks; Keep editing stays, Discard goes`; `closing with unsaved changes asks; Keep editing stays open, Discard closes` (packages/client/tests/settings.test.ts); `server infrastructure is not a setting: no row, and stored values are ignored` (packages/server/tests/world.test.ts)
 
 #### IP bans and lookups use the socket
 - **Kind:** Exploit closed
@@ -3764,6 +3805,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** `/BanIP` and `/unbanIP` work and are administrators' by default. A banned address is refused with the original unshown “You are banned from playing on this server.” (when and how is in [IP bans are checked, cover an IPv6 /64 and act at once](#ip-bans-are-checked-cover-an-ipv6-64-and-act-at-once)). The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` needs its permission, which moderators and administrators hold by default.
 - **Why:** Trusting a client address allowed ban evasion and exposed IP addresses; an ineffective ban provided no protection.
 - **In the code:** `packages/server/src/gateway/server.ts` (`clientIp`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `0 hops is the socket; a forged header is ignored`; `1 hop is the right-most entry, which the client cannot forge`; `2 hops is the second from the right; too few entries fall back to the socket` (packages/server/tests/login-limits.test.ts); `divergence: an IP ban refuses a login from that address after the password`; `a moderator may run the moderation commands, but not IP bans or /setclass` (packages/server/tests/admin.test.ts)
 
 #### Character state server-owned; no character upload
 - **Kind:** Exploit closed
@@ -3772,6 +3814,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Character state belongs to the server; the client sends intents.
 - **Why:** An uploaded sheet could set arbitrary character values.
 - **In the code:** `packages/server/src/game.ts` (`createGame`)
+- **Pinned by:** `SSO: no in-game message carries character state, so a character cannot be uploaded` (packages/shared/tests/ledger-pins-b.test.ts); `garbage is dropped, not fatal` (packages/server/e2e/login-and-walk.test.ts)
 
 #### All amounts are validated positive integers
 - **Kind:** Exploit closed
@@ -3789,6 +3832,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The character leaves the map immediately and is saved when a connection drops. For the configured `SSO_RECONNECT_GRACE`, 30 seconds by default, the client can reconnect with a token and no password as a resumed session rather than a login. A new login to an online account disconnects the older connection with “You logged in from somewhere else.”
 - **Why:** Wi-Fi interruptions, network changes and sleeping tabs should not force a full login or leave a forgotten session blocking the account.
 - **In the code:** `packages/server/src/game.ts` (`createGame`)
+- **Pinned by:** `a dropped connection can resume with its token, keeping its facing`; `an expired resume token is refused`; `a second login to the same account replaces the first` (packages/server/e2e/login-and-walk.test.ts)
 
 #### Server errors log the player out
 - **Kind:** Architecture
@@ -3797,6 +3841,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Intents, ticks, map entry and exit run in SQL transactions. A thrown error rolls back its writes, is logged to the server's error output with the message type and the player's name (not to the cheat log, since a bug is not cheating) and logs out the affected player; their next login reloads the database state. A failed tick is logged and the next tick runs; 20 consecutive tick errors save and exit the server.
 - **Why:** The shared server must survive errors without committing a half-completed action.
 - **In the code:** `packages/server/src/game.ts` (`createGame`)
+- **Pinned by:** `the sender is logged out with the new text and nothing is written; the other bot plays on`; `a throw that escapes the game in the gateway logs the player out, no ghost`; `a throwing tick returns false, tickNow says so, and the next tick runs` (packages/server/e2e/hostile-messages.test.ts)
 
 #### Client anti-cheat replaced by server validation
 - **Kind:** Architecture
@@ -3805,6 +3850,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Schema validation, per-tick gates, rate limits and a server-written cheat log replace those client self-bans. `/CheatFile` shows the original “<name> - at IP <ip> - <reason>” format. The log records editor or Settings intents from roles without the permission, editor load/save outside the editor, malformed frames and flooding. Its reasons include “Attempted Admin Access”, “Attempting to get Admin access”, “Sending bad messages” and “Flooding”. There are no automatic kicks. `/CheatFile` is administrators' by default, and each look is written to the audit log, since the lines show players' addresses.
 - **Why:** The client has no authoritative state to protect.
 - **In the code:** `packages/server/src/game.ts` (`editingOk`, `createGame`)
+- **Pinned by:** `the cheat log: admin intents from anyone else are refused and written`; `/Inventory, /CheatFile, /save and /Refresh; SSO audits /CheatFile, whose lines show addresses` (packages/server/tests/admin.test.ts); `SSO: flooding and malformed frames are written to the cheat log with the sender's name` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### Monster persistence restored after restart
 - **Kind:** Architecture
@@ -3813,6 +3859,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Per-map monster slots are stored in the database and restored on startup; AI ticks only when players are present.
 - **Why:** This preserves the observable behaviour without client-written files.
 - **In the code:** `packages/server/src/persistence/monsters.ts` (`loadSlots`, `saveSlots`)
+- **Pinned by:** `a damaged Slime comes back where it was, with its HP` (packages/server/tests/monsters-db.test.ts); `SSO: monster AI runs only on a map with players; an empty map spawns nothing` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### House interiors are named maps
 - **Kind:** Architecture
@@ -3821,6 +3868,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A map row at the outdoor map's grid position has house slot 1 or 2 and the same name. An exit may name a house map and the editor shows and accepts the `H1<mx>` form. The map header appears under the playfield, as in 1.6.
 - **Why:** Maps are database rows keyed by grid position.
 - **In the code:** `packages/server/src/persistence/maps.ts` (`findMapByCoords`), `packages/server/src/systems/admin/worldedit.ts` (`editorView`)
+- **Pinned by:** `a Small House on x1000y992: exit field, items, tiles, interior, deed and records in one write` (packages/server/tests/houses-db.test.ts); `SSO: an exit to a house map shows as H1<mx>/H1<my> and is read back as that house` (packages/shared/tests/ledger-pins-b.test.ts)
 
 ### Server-side crafting
 
@@ -3831,6 +3879,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The client sends attack and craft intents; the server checks the tool, station, inputs, skill and timer and makes the rolls.
 - **Why:** Client-controlled checks allowed free items, faster crafting and selecting the best masterwork pool.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftIntent`, `craftStep`), `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
+- **Pinned by:** `starts with the line, the lock and Swordhit3; done on the 500th frame`; `mid-step there is no anvil in front`; `bug fixed: carpentry needs Carpentry 1` (packages/server/tests/craft.test.ts); `bug fixed: 18 swings fell a tree, as the table says: the stump, treefalling, logs and the skill line` (packages/server/tests/gather.test.ts)
 
 #### Treasure is found on the exact map and the dug tile
 - **Kind:** Exploit closed
@@ -3839,6 +3888,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A successful dig on the exact treasure map rolls `random(5)` and drops on the dug tile. The ground cap and its slots 1–8 restriction are lifted; `treasureMaps` supplies the operator's map list.
 - **Why:** A forged client could claim any map and position.
 - **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`, `resetTreasure`)
+- **Pinned by:** `a dig on the treasure's map finds it on random(5) = 1 and hides a new one`; `another map never finds it, and no list means no treasure` (packages/server/tests/gather.test.ts)
 
 #### A repair needs its chunk at completion
 - **Kind:** Exploit closed
@@ -3856,6 +3906,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server advances per-character state at 20 ticks per second, keeping the original frame counts.
 - **Why:** The server owns the game state.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftStep`), `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
+- **Pinned by:** `starts with the line, the lock and Swordhit3; done on the 500th frame`; `divergence: a craft ends at logout; a new session starts with none` (packages/server/tests/craft.test.ts); `bug fixed: 18 swings fell a tree, as the table says: the stump, treefalling, logs and the skill line` (packages/server/tests/gather.test.ts)
 
 #### Regrowth rolls run on the server
 - **Kind:** Architecture
@@ -3864,6 +3915,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server makes the draw itself, once per map per frame, and sends the tile changes (see "Regrowth runs at one rate on every map").
 - **Why:** The server owns tile changes.
 - **In the code:** `packages/server/src/systems/crafting/gather.ts` (`regrowthStep`)
+- **Pinned by:** `bug fixed: one random(600) per map per frame, however many players are there`; `bug fixed: a stump regrows on a roll under 6, even right after a death or exit warp` (packages/server/tests/gather.test.ts)
 
 #### Built containers get server ids
 - **Kind:** Architecture
@@ -3872,6 +3924,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server mints a unique increasing ID; World Editor Cauldrons use the same minter. Only built and placed containers are minted: a bare container added to a bag from a purchase, loot or gift gets a random ID instead, and a purchase rolls again for an ID already in use (see [Cauldrons get unique ids](#cauldrons-get-unique-ids) and [Every bought container gets its own id](#every-bought-container-gets-its-own-id)).
 - **Why:** Each container needs its own contents and clients must not choose server file names.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`)
+- **Pinned by:** `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id`; `an exact Cauldron gets an id on save; one with an id keeps it` (packages/server/tests/craft.test.ts); `bug fixed: each bought container gets its own line and its own unused id` (packages/server/tests/economy.test.ts); `SSO: the server mints unique increasing container ids, whatever the clock says` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### Crafts end at logout
 - **Kind:** Architecture
@@ -3889,6 +3942,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A placed or crafted Cauldron receives a unique minted ID. Other bare Cauldrons added to a bag, such as purchases, loot or gifts, instead get a random ID as crates and cabinets do, so only placed and crafted ones are guaranteed unique. A purchase of several puts each Cauldron on its own line under a random ID not already in use (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)).
 - **Why:** Container ownership needs a separate container for each placed or crafted Cauldron.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`mintContainerId`), `packages/shared/src/rules/inventory/inventory.ts` (`invAdd`)
+- **Pinned by:** `an exact Cauldron gets an id on save; one with an id keeps it` (packages/server/tests/craft.test.ts); `bug fixed: each bought container gets its own line and its own unused id` (packages/server/tests/economy.test.ts); `SSO: two bare Cauldrons placed in one World Editor save get different minted ids` (packages/server/tests/ledger-pins-b.test.ts)
 
 ### Server-side economy
 
@@ -3899,6 +3953,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Every take checks whether the player may still use the container. If access has gone, nothing is taken and the window closes.
 - **Why:** A forged client could otherwise keep withdrawing from a former guild vault or a container it had handed over.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
+- **Pinned by:** `a take re-checks the guild: a member expelled with the vault open takes nothing` (packages/server/tests/craft.test.ts)
 
 #### Promotions charge gold on the server
 - **Kind:** Exploit closed
@@ -3907,6 +3962,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server checks the NPC roster, training line, class, requirement and gold and writes the price and new class together.
 - **Why:** The client intended to charge for eligible promotions, but the original allowed free or illegal promotions.
 - **In the code:** `packages/server/src/systems/economy/intents.ts` (`trainIntent`)
+- **Pinned by:** `a promotion writes class, gold and stats; texts, then heal2, then processed`; `a refused one changes nothing and still sends processed; no branch sends only processed`; `refused when the NPC left the roster, or with no train list open` (packages/server/tests/promotion-db.test.ts); `noFunds: price = gold + 1 refuses, price = gold passes` (packages/shared/tests/progression/promotion.test.ts)
 
 #### Shop prices come from the server
 - **Kind:** Exploit closed
@@ -3915,6 +3971,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The client sends the NPC, line and count; the server supplies the price.
 - **Why:** A modified client could manipulate prices.
 - **In the code:** `packages/server/src/systems/economy/intents.ts` (`buyIntent`, `sellIntent`)
+- **Pinned by:** `price × count from the line, charged from GLD into the NPC's gold`; `pays the BUY price from GLD, takes the count, returns the stock and thanks` (packages/server/tests/economy.test.ts); `SSO: a buy, sell or train names the line and count; a client price is refused` (packages/shared/tests/ledger-pins-b.test.ts)
 
 #### Bank accounts belong to their character
 - **Kind:** Exploit closed
@@ -3923,6 +3980,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The bank account belongs to the session character.
 - **Why:** A forged file name could withdraw from another player's account.
 - **In the code:** `packages/server/src/systems/economy/intents.ts` (`bankChat`), `packages/server/src/systems/economy/bank.ts` (`runBank`)
+- **Pinned by:** `SSO: the bank account is the session character's own; another's deposit is not yours` (packages/server/tests/ledger-pins-b.test.ts); `after a relog: gold, bag, bank, vault and Amber's stock persist` (packages/server/e2e/npcs-shops-trade.test.ts)
 
 #### House vault access
 - **Kind:** Exploit closed
@@ -3931,6 +3989,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, and only a disbanded guild's last leader may found its name again, getting its vault back (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. A forbidden house or guild vault answers with the SSO refusal, modeled on the mailbox's ownership line; standing away from it gives the original standing-in-front line instead. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
 - **Why:** Anyone could otherwise read and loot any vault.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `openContainer`, `depositContainer`, `withdrawContainer`), `packages/server/src/systems/economy/vault.ts` (`openVault`)
+- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `Bob's Drop into Alice's vault is refused before the drop line; nothing is taken`; `a guild vault refuses anyone outside the guild, and opens for a member`; `a click not in front gives the line and pauses 40` (packages/server/tests/doors.test.ts); `a carried crate is the carrier's: once it leaves the bag its window takes nothing` (packages/server/tests/craft.test.ts); `a House Key opens and closes only its holder's door` (packages/shared/tests/housing/doors.test.ts)
 
 #### Trades are server sessions with two accepts
 - **Kind:** Exploit closed
@@ -3939,6 +3998,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server holds a trade between two players on the same map and keeps each submitted offer within what that player holds. Both players press Accept once both offers are in (see "Both traders accept, and may change their offers"). One transaction moves both sides or neither.
 - **Why:** A forged trade could steal gold or move items without the other player's consent.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`offerTrade`, `acceptTrade`, `settle`)
+- **Pinned by:** `bug fixed: A offers, B offers, both accept: one move, and both are told it is complete`; `bug fixed: either side can change its offer, which clears both acceptances`; `a failed move changes nothing and tells both` (packages/server/tests/npcs-trade.test.ts); `a trade offering more gold than A has, then A spends it: nothing is created` (packages/server/e2e/races.test.ts)
 
 #### A trade cannot be taken over
 - **Kind:** Exploit closed
@@ -3947,6 +4007,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A player in a trade cannot be offered another.
 - **Why:** Other players could interfere with or redirect a trade.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`offerTrade`)
+- **Pinned by:** `a third player cannot take B over; a trader leaving ends it for both` (packages/server/tests/npcs-trade.test.ts)
 
 #### Player shops are owned by id and validated
 - **Kind:** Exploit closed
@@ -3964,6 +4025,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The faced tile must contain the vault or mailbox. Another player's House Vault says “You can't open a vault that's not yours!”, modeled on “You can't check mail that's not yours!”.
 - **Why:** A forged remote request could steal items or read another player's mail.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`openContainer`), `packages/server/src/systems/mail/mail.ts` (`mailOpen`)
+- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `a click not in front gives the line and pauses 40` (packages/server/tests/doors.test.ts); `out of place, a stranger hears the position line first`; `in front but not the owner: 'not yours'` (packages/server/tests/mail-boards.test.ts)
 
 #### Promotion leaves the skills page in order
 - **Kind:** Architecture
@@ -3972,6 +4034,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The skills panel is a fixed table indexed by skill. A promotion raises each granted skill to at least random(10) in its own row, so nothing can misalign.
 - **Why:** There are no separate lists to misalign.
 - **In the code:** `packages/server/src/systems/economy/intents.ts` (`trainIntent`), `packages/shared/src/rules/progression/promotion.ts` (`promoteClass`)
+- **Pinned by:** `bug fixed: each promotion raises its skills to a roll of 1-10`; `a grant never lowers a skill already above the roll` (packages/shared/tests/progression/promotion.test.ts)
 
 #### Trades end when a trader leaves
 - **Kind:** Architecture
@@ -3980,6 +4043,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A map change, including death's respawn, a disconnect or closing the window ends the server-held trade.
 - **Why:** A trade held by the server cannot outlive one of its traders.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`leaveTrade`, `cancelTrade`)
+- **Pinned by:** `a third player cannot take B over; a trader leaving ends it for both`; `bug fixed: Cancel: whoever cancels hears 'You cancel the trade.', the partner 'Trade cancelled.'` (packages/server/tests/npcs-trade.test.ts); `a trade ends for Alice when Bob leaves` (packages/server/e2e/npcs-shops-trade.test.ts); `SSO: a map change ends the server-held trade for both traders` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### Shop presence is the map's roster
 - **Kind:** Architecture
@@ -3988,6 +4052,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Shop OK does nothing unless the originally opened NPC remains in the current map's roster.
 - **Why:** A line-based purchase needs that NPC; another map's stale client slot was a peer-to-peer artefact.
 - **In the code:** `packages/server/src/systems/economy/intents.ts` (`inRoster`, `buyIntent`)
+- **Pinned by:** `SSO: Shop OK does nothing once the opened NPC has left the map's roster` (packages/server/tests/ledger-pins-b.test.ts); `refused when the NPC left the roster, or with no train list open` (packages/server/tests/promotion-db.test.ts)
 
 #### Quest chests refill on the server's save clock
 - **Kind:** Architecture
@@ -3996,6 +4061,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Each online player has a server-side periodic save clock; periodic saves roll for refill, but event saves do not.
 - **Why:** The server owns the character sheet and receives no character uploads.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`saveClockStep`)
+- **Pinned by:** `bug fixed: after 400 frames a 1-in-350 save rolls 1 in 4000; the refill is added to the chest` (packages/server/tests/doors.test.ts); `a quest chest refill is written with the tick` (packages/server/tests/doors-db.test.ts)
 
 #### Quests are server rows
 - **Kind:** Architecture
@@ -4004,6 +4070,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A 40-line quests table is seeded from the archived file at first start and turn-ins reroll lines as in 1.6. There is no settings form because the game rewrites the lines itself; the server takes the NPC from the map rather than a client message.
 - **Why:** Quest state belongs to the server.
 - **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`), `packages/server/src/persistence/social.ts` (`loadQuestLines`, `saveQuestLine`)
+- **Pinned by:** `the first start seeds the archive's powers and quest lines`; `a quest turn-in writes the bag and the rerolled line, which survive a restart` (packages/server/tests/factions-db.test.ts); `a quest item: the reward, thanks to the map, the line rerolled` (packages/server/tests/factions.test.ts)
 
 #### Shop decay deletes the shopkeeper and its till
 - **Kind:** Architecture
@@ -4023,6 +4090,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server gets the date using `houseDecayTimeZone`, UTC by default. An owner's houses are refreshed at login and every 1,230 frames while they are online; the sweep runs once a day (see "House decay sweeps once a day").
 - **Why:** A forged client could otherwise wipe players' houses.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`monthCheck`, `houseClockStep`)
+- **Pinned by:** `bug fixed: the sweep runs once a day, not on every clock check`; `an owner's own login refreshes their entries before the sweep` (packages/server/tests/houses-db.test.ts); `SSO: an online player's house clock is due every 1,230 frames`; `SSO: house decay reads the date in the operator's houseDecayTimeZone` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### Houses, maps and items written only by the server
 - **Kind:** Exploit closed
@@ -4031,6 +4099,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server validates use, house-placement and key intents and performs the writes.
 - **Why:** Unchecked writes allowed arbitrary world edits, item creation and forced demolition.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`placeHouseIntent`), `packages/server/src/systems/housing/doors.ts` (`useKey`)
+- **Pinned by:** `a refusal keeps placement on and builds nothing` (packages/server/tests/houses-db.test.ts); `the wrong key, no door, or mid-step: silent and nothing spent` (packages/server/tests/doors.test.ts); `only doors and switches are renamed (exploit 3 closed)` (packages/shared/tests/housing/doors.test.ts); `SSO: a placement click without the deed's Use first builds nothing and spends nothing` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### The header names its owner exactly
 - **Kind:** Exploit closed
@@ -4039,6 +4108,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A personal header must begin with “<name>'s ”; a guild hall header must equal “Hall of the <guild>”, so a guild its last leader founds again under that name matches the old hall (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)).
 - **Why:** One player's name inside another's allowed theft of furniture.
 - **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`)
+- **Pinned by:** `your guild's hall is 0` (packages/shared/tests/housing/houses.test.ts); `SSO: the header must begin with '<name>'s ' or equal 'Hall of the <guild>'` (packages/shared/tests/ledger-pins-b.test.ts)
 
 #### Door relock is one server timer per map
 - **Kind:** Architecture
@@ -4047,6 +4117,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** One timer per map: every door or switch change sets it to 200. Arriving and refused switch clicks set nothing, and the timer keeps running while the map is empty (see the "Bug fixed" entries below).
 - **Why:** The server model has no peers running separate countdowns.
 - **In the code:** `packages/server/src/systems/housing/doors.ts` (`switchClick`, `relockStep`)
+- **Pinned by:** `a Steel Door opened by key shuts 200 frames later, and every client sees it`; `bug fixed: arriving on a map leaves a running relock alone`; `bug fixed: doors on a map nobody is on still close on time`; `bug fixed: a refused switch click leaves the relock alone` (packages/server/tests/doors.test.ts)
 
 #### Decay deletes the demolished house's interior and vault
 - **Kind:** Architecture
@@ -4055,6 +4126,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The sweep also deletes the interior, its items and the house vault contents. An occupied interior waits until its occupant leaves, while a logged-out character saved there moves to the fallback map (see [Every character has a respawn point](#every-character-has-a-respawn-point)).
 - **Why:** The contents were unreachable either way; the server need not keep unreachable rows forever.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`demolish`)
+- **Pinned by:** `a stale owner's house is demolished by the day's sweep: tiles revert, Exit and mailbox go, the interior is deleted`; `SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point` (packages/server/tests/houses-db.test.ts); `SSO: decay deletes the House Vault's contents, and an occupied interior waits for its occupant` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### Demolition shows at once
 - **Kind:** Architecture
@@ -4074,6 +4146,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The client names a bag slot. The server reads the item, derives the equipment slot using the original rules and checks strength, two-handed equipment and the murder flag.
 - **Why:** A forged slot and substring ownership check allowed arbitrary items in equipment slots.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`equipIntent`)
+- **Pinned by:** `SSO: the server derives the slot and refuses gear the strength, hands or murder flag do not allow` (packages/server/tests/ledger-pins-c.test.ts); `the slot table: Knife LeftHand, Leather Armor Body, Apple No`; `strength comes first`; `two-handed rules`; `murder gear needs the flag` (packages/shared/tests/inventory/inventory.test.ts)
 
 #### Removals address an exact item in a named slot
 - **Kind:** Exploit closed
@@ -4082,6 +4155,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Removals use the bag-slot index and exact name; selling to an NPC takes the first bag line whose name matches exactly, ignoring case. The game rule tables retain their original substring semantics.
 - **Why:** Substring deletion could destroy or rename the wrong item and create a name outside the catalogue.
 - **In the code:** `packages/shared/src/rules/inventory/inventory.ts` (`invDelSlot`), `packages/server/src/systems/economy/trade.ts` (`take`), `packages/server/src/systems/economy/shop.ts` (`npcSell`)
+- **Pinned by:** `removal is by slot, blanking at 0` (packages/shared/tests/inventory/inventory.test.ts); `SSO: a sale to an NPC takes the first line whose name matches exactly, ignoring case` (packages/server/tests/ledger-pins-c.test.ts); `bug fixed: picking up takes the one entry and leaves its twins on the tile` (packages/server/tests/inventory.test.ts)
 
 #### Map, ground and container files are resolved by the server
 - **Kind:** Exploit closed
@@ -4090,6 +4164,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server resolves the relevant state from the character's map, position, faced entity and account.
 - **Why:** Client-supplied file names enabled remote pickup, vault looting, bank theft and path traversal.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`pickupIntent`), `packages/server/src/systems/economy/containers.ts` (`openContainer`)
+- **Pinned by:** `SSO: a pickup finds the item id only on the player's own map` (packages/server/tests/ledger-pins-c.test.ts); `Alice opens her House Vault; Bob gets the refusal` (packages/server/tests/doors.test.ts)
 
 #### Pickup and give require adjacency on the current map
 - **Kind:** Exploit closed
@@ -4098,6 +4173,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Pickup uses the orthogonally adjacent or faced tile on the player's map; a player receiving a give must stand on the faced tile. A quest NPC can receive a give from one or two tiles ahead.
 - **Why:** A forged client could take items from any map.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `giveIntent`)
+- **Pinned by:** `click pickup needs an orthogonal neighbour, never your own tile`; `give with no one in front` (packages/server/tests/inventory.test.ts); `SSO: a give reaches only a player on the faced tile; a quest NPC takes it from two tiles ahead` (packages/server/tests/ledger-pins-c.test.ts)
 
 #### Peer messages cannot grant gold or items
 - **Kind:** Exploit closed
@@ -4106,6 +4182,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** There are no peer-to-peer state messages.
 - **Why:** The server owns game state.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`giveIntent`, `goldIntent`)
+- **Pinned by:** `give: one unit on the target's tile, grabbed 60 frames later`; `divergence: Drop or Give asking for more than the stack holds is refused`; `more than you have: 'You don't have enough gold!' for both paths` (packages/server/tests/inventory.test.ts)
 
 #### Consumable effects and item breaks are rolled by the server
 - **Kind:** Exploit closed
@@ -4114,6 +4191,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server applies effects and break rolls; the right-hand clearing request is removed.
 - **Why:** The server owns character and equipment state.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`useIntent`), `packages/server/src/systems/combat/melee.ts` (`smash`)
+- **Pinned by:** `eating an apple: one unit spent, HP up, hunger up, the line`; `a weapon break on a monster hit: the damaged form and the line` (packages/server/tests/inventory.test.ts)
 
 #### Newspaper stands only on K2 tiles
 - **Kind:** Exploit closed
@@ -4131,6 +4209,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server resolves the action in the same tick and the reply ends the pause as before.
 - **Why:** The delay waited on network latency rather than being a designed timer.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`useIntent`, `equipIntent`)
+- **Pinned by:** `SSO: Use and Equip are resolved at once and leave no item pause` (packages/server/tests/ledger-pins-c.test.ts)
 
 #### Ground items sit on whole tiles
 - **Kind:** Architecture
@@ -4139,6 +4218,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Ground items are stored by tile and every Ray is drawn at the editor offset.
 - **Why:** The server stores tiles rather than pixels; Rays are scenery normally placed in the editor.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`addGround`), `packages/shared/src/rules/inventory/ground.ts` (`groundDrawOffset`)
+- **Pinned by:** `drop puts one unit on the faced tile` (packages/server/tests/inventory.test.ts); `Rays sit 15 px right and 10 px up of their tile` (packages/shared/tests/admin/worldedit.test.ts)
 
 #### No click pause after picking up an item
 - **Kind:** Architecture
@@ -4147,6 +4227,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** There is no pause after a pickup. A guild hall's board keeps its 40-frame click pause (see [A guild board opens for its members, in front of it](#a-guild-board-opens-for-its-members-in-front-of-it)). The server processes one item action per character at a time and answers in the same tick; container and switch pauses and Ctrl's 40-frame pause remain.
 - **Why:** The old pause waited for the network and play feels the same without it.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `actionIntent`), `packages/server/src/systems/mail/boards.ts` (`boardOpen`)
+- **Pinned by:** `bug fixed: picking up takes the one entry and leaves its twins on the tile`; `Ctrl sets ItemActionPause 40: Use waits it out` (packages/server/tests/inventory.test.ts); `bug fixed: a hall's board opens for its members from in front, locks, pause 40` (packages/server/tests/mail-boards.test.ts)
 
 #### Ground items and containers have server ids
 - **Kind:** Architecture
@@ -4155,6 +4236,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Ground items and containers are server entities with IDs; their names remain for display.
 - **Why:** Server IDs allow safe addressing of authoritative state.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`addGround`), `packages/server/src/systems/economy/containers.ts` (`openContainer`)
+- **Pinned by:** `bug fixed: picking up takes the one entry and leaves its twins on the tile` (packages/server/tests/inventory.test.ts); `bug fixed: each bought container gets its own line and its own unused id` (packages/server/tests/economy.test.ts)
 
 ### Server-side mail
 
@@ -4174,6 +4256,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server looks up the character name without regard to case and drops mail to a missing character silently.
 - **Why:** Arbitrary names allowed path traversal and unbounded mailboxes for nonexistent characters.
 - **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`)
+- **Pinned by:** `the sender is stamped, an unknown name is dropped and mailSent still goes` (packages/server/tests/mail-boards.test.ts); `names are found ignoring case, with the stored spelling`; `a send through the game reaches a character who is offline` (packages/server/tests/mail-boards-db.test.ts)
 
 #### Boards open only from the board clicked
 - **Kind:** Exploit closed
@@ -4182,6 +4265,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server opens only the board that was clicked or faced, from the tile in front of it (a hall's board for its guild's members only), and posts only to the open board.
 - **Why:** A forged request could read or write a hall board from a distance.
 - **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`, `boardPostIntent`)
+- **Pinned by:** `bug fixed: Town Square by click needs you in front: locks, no pause`; `bug fixed: a hall's board is refused to a non-member and from away`; `a post goes to the board that is open` (packages/server/tests/mail-boards.test.ts)
 
 #### Mail sender stamped, mailbox writes restricted
 - **Kind:** Exploit closed
@@ -4190,6 +4274,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server stamps the sender and restricts deletes to the player's own messages.
 - **Why:** A forged sender or mailbox write enabled impersonation and mailbox wiping.
 - **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`, `mailDelete`)
+- **Pinned by:** `the sender is stamped, an unknown name is dropped and mailSent still goes`; `only your own message; another's id does nothing` (packages/server/tests/mail-boards.test.ts); `delete removes only the owner's own row` (packages/server/tests/mail-boards-db.test.ts)
 
 #### Message boards are append-only
 - **Kind:** Exploit closed
@@ -4198,6 +4283,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server appends the post.
 - **Why:** Whole-board overwrites allowed vandalism and lost posts.
 - **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`)
+- **Pinned by:** `bug fixed: a post is appended in 1.6's format and the open board reloads with it`; `a post is cut to 300 and a board keeps 200` (packages/server/tests/mail-boards.test.ts)
 
 #### Uploaded images validated
 - **Kind:** Exploit closed
@@ -4224,6 +4310,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Operator defaults are 2,000 characters per mail body, 50 messages per mailbox, 200 posts per board and 300 characters per board post. Longer bodies and posts are cut; the oldest messages and posts are dropped. Newspaper fields are schema-bounded, with one paper per character: photo IDs 20 characters, body 4,000 and each of the other five fields 500.
 - **Why:** Unbounded stored content and payloads served to other players could exhaust resources.
 - **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`), `packages/server/src/systems/mail/boards.ts` (`boardPostIntent`), `packages/shared/src/protocol/mail.ts` (`newspaperSaveSchema`)
+- **Pinned by:** `the body is cut to 2,000 characters`; `the 51st message drops the oldest`; `a post is cut to 300 and a board keeps 200` (packages/server/tests/mail-boards.test.ts); `SSO: a newspaper save holds photo ids of 20 characters, a 4,000-character body and 500 for each other field` (packages/shared/tests/ledger-pins-c.test.ts); `bug fixed: a player saves to their own paper, loads it, and their stand shows it` (packages/server/tests/art-news.test.ts)
 
 #### One painting or photo per canvas or film
 - **Kind:** Exploit closed
@@ -4261,6 +4348,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Only the server spawns, moves, damages, kills and persists monsters.
 - **Why:** A modified client could otherwise spawn, teleport or delete monsters for everyone.
 - **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`), `packages/server/src/systems/monsters/ai.ts` (`moverPass`)
+- **Pinned by:** `gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30`; `blocked steps are skipped at no cost; a started step sets the pause to 90`; `a seeded Slime fight: bare hands kill it, the kill gives 23 XP at level 1` (packages/server/tests/monsters.test.ts); `a damaged Slime comes back where it was, with its HP` (packages/server/tests/monsters-db.test.ts)
 
 #### Monster damage, monster attacks, XP and level computed on the server
 - **Kind:** Exploit closed
@@ -4269,6 +4357,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server performs those calculations using the original formulas.
 - **Why:** Modified clients could award themselves rewards or ignore hits.
 - **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`), `packages/server/src/systems/combat/melee.ts` (`smash`)
+- **Pinned by:** `a Slime next to you hits on random(10) = 1; the floatie is colour 6 with i-frames after`; `a seeded Slime fight: bare hands kill it, the kill gives 23 XP at level 1`; `bug fixed: XP overflow carries over and a kill can raise several levels` (packages/server/tests/monsters.test.ts)
 
 #### One monster walk grid for every player
 - **Kind:** Architecture
@@ -4277,6 +4366,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server's monster uses the on-foot grid regardless of players' vehicles.
 - **Why:** One authoritative monster needs one grid; on foot is how most players saw its movement.
 - **In the code:** `packages/server/src/systems/monsters/ai.ts` (`nextStep`)
+- **Pinned by:** `SSO: a monster walks the on-foot grid even with an Airship rider on the map` (packages/server/tests/ledger-pins-c.test.ts)
 
 ### Server-side movement
 
@@ -4287,6 +4377,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server computes those results and clients send their intended actions.
 - **Why:** Server authority makes every player use the same game state and prevents clients from supplying their own results.
 - **In the code:** `packages/server/src/systems/movement/movement.ts` (`movePlayer`), `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`)
+- **Pinned by:** `a held arrow steps every 8 ticks and peers are told 16 calls` (packages/server/tests/world.test.ts); `gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30` (packages/server/tests/monsters.test.ts)
 
 #### Server-authoritative tile movement
 - **Kind:** Exploit closed
@@ -4295,6 +4386,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server evaluates movement from input at 20 ticks a second.
 - **Why:** Trusting the client allowed players to move too fast, pass through walls and teleport.
 - **In the code:** `packages/server/src/systems/movement/movement.ts` (`movePlayer`)
+- **Pinned by:** `a tick is 50 ms` (packages/server/tests/tick-loop.test.ts); `a held arrow steps every 8 ticks and peers are told 16 calls`; `a press shorter than one tick still steps once (the step impulse)` (packages/server/tests/world.test.ts)
 
 #### Movement relay queue removed
 - **Kind:** Exploit closed
@@ -4303,6 +4395,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server broadcasts moves; the relay queue is removed.
 - **Why:** Anyone could forge another player's movement.
 - **In the code:** `packages/server/src/systems/movement/movement.ts` (`movePlayer`)
+- **Pinned by:** `a held arrow steps every 8 ticks and peers are told 16 calls` (packages/server/tests/world.test.ts); `others see the pushed player's step` (packages/server/tests/push.test.ts)
 
 #### Turn-in-place visible to others immediately
 - **Kind:** Architecture
@@ -4311,6 +4404,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server broadcasts facing changes.
 - **Why:** The server owns facing for attacks and Ctrl actions, so it sends the current direction.
 - **In the code:** `packages/server/src/systems/movement/movement.ts` (`announce`)
+- **Pinned by:** `turn in place is broadcast; the mover gets 'you', not a delta` (packages/server/tests/world.test.ts); `turn in place: no step, and the other player sees the new facing` (packages/server/e2e/login-and-walk.test.ts)
 
 ### Server-side progression
 
@@ -4321,6 +4415,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** These calculations run on the server.
 - **Why:** A modified client could ignore damage, Hold or death.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
+- **Pinned by:** `a melee hit starts the victim's i-frames; no sprite is hidden on anyone's screen` (packages/server/tests/melee.test.ts); `bug fixed: armour and Magic Shield change the spell damage you take`; `damage only where PvP is on; the victim flickers 40 frames` (packages/server/tests/spells.test.ts); `death: HP and SP 1, facing south, then the death text to everyone and the respawn warp` (packages/server/tests/monsters.test.ts)
 
 #### Character creation validated by the UI rules
 - **Kind:** Exploit closed
@@ -4329,6 +4424,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server enforces stats from 1 to 20, a five-stat total at most 55, Agility, Speed and Aim of 1, and the name rules.
 - **Why:** A modified client could create a 66-point or otherwise arbitrary character.
 - **In the code:** `packages/shared/src/rules/progression/creation.ts` (`creationError`)
+- **Pinned by:** `letters only, any case`; `50 points, each of the five stats 1..20`; `other fields and the starting bag` (packages/shared/tests/progression/creation.test.ts); `creation re-checks the screen's rules on the server` (packages/server/tests/world.test.ts)
 
 #### Regen, hunger, food and death run on the server
 - **Kind:** Exploit closed
@@ -4337,6 +4433,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server ticks each online character and applies death, penalties and drops.
 - **Why:** A modified client could skip penalties, regenerate at will or avoid starvation.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`regenStep`, `hungerStep`, `checkDeath`)
+- **Pinned by:** `regen every 74 frames at target 149` (packages/server/tests/retime.test.ts); `SSO: the server tick spends hunger on random(3) = 1, and only then` (packages/server/tests/ledger-pins-c.test.ts); `eating an apple: one unit spent, HP up, hunger up, the line` (packages/server/tests/inventory.test.ts); `death: HP and SP 1, facing south, then the death text to everyone and the respawn warp` (packages/server/tests/monsters.test.ts); `wanted, no gold: a random bag line is picked; one unit goes on the death tile` (packages/server/tests/inventory.test.ts)
 
 #### The regen counter restarts at login, not on a resumed connection
 - **Kind:** Architecture
@@ -4345,6 +4442,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The counter belongs to the play session and resets at login, not a resumed session.
 - **Why:** There is no timer sprite on the server; login is the equivalent boundary.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`regenStep`), `packages/server/src/systems/world/world.ts` (`sessionCombatState`)
+- **Pinned by:** `a resumed session keeps the regen counter; a login resets it` (packages/server/tests/monsters-db.test.ts)
 
 ### Server-side social
 
@@ -4364,6 +4462,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server holds membership, timer, bonuses and faction powers. Heads come only from deaths and loot. A rival head refreshes every online player's bonus, like the original faction broadcast made clients request again.
 - **Why:** Forged messages and items could grant free bonuses or alter faction power.
 - **In the code:** `packages/server/src/systems/social/factions.ts` (`giveHead`, `refreshBonuses`)
+- **Pinned by:** `a rival head to Angela: said to the map, power moved, joined, announced to the Mages, bonuses for all`; `a member drops its head on a PvP-X map before its item drop, whatever killed it`; `the count drains per frame, warns at 20000 and kicks at 1, leaving the channel` (packages/server/tests/factions.test.ts)
 
 #### Murder flag and pardons are server-only
 - **Kind:** Exploit closed
@@ -4372,6 +4471,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** On an innocent player's non-arena death, at the end of the death lock, the server credits the recorded last player to hit them by player ID and applies the flag, even if another cause dealt the final blow, provided the hit landed within 40 ticks (2 seconds) of the death (see [A death long after the last hit credits no one](#a-death-long-after-the-last-hit-credits-no-one)). A player who has logged off is not flagged, nor is anyone during a Lightning Assassin's game. A staff `/Pardon` says “<name> is not online.” if the named player is absent.
 - **Why:** Forged messages could frame an innocent player or pardon oneself.
 - **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`, `pardon`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
+- **Pinned by:** `an unflagged victim flags its killer at the end of the lock, naming the victim`; `a death within the credit window still credits the hit`; `a killer who has left is not flagged (1.6's message to an absent name was lost)` (packages/server/tests/factions.test.ts); `bug fixed: the kill pays 10 after the death line and flags no one` (packages/server/tests/assassin.test.ts); `SSO: /Pardon of a name that is not online says "<name> is not online."` (packages/server/tests/ledger-pins-c.test.ts)
 
 #### Assassin points computed by the server
 - **Kind:** Exploit closed
@@ -4380,6 +4480,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server applies the original comparison to the recorded last player to hit the victim, by player ID, at the end of the death lock. The hit must have landed within 40 ticks of the death, even if something else dealt the final blow; a player who has logged off earns nothing. The one-hit Lightning flag comes from the server's game mode.
 - **Why:** Forged scores could win prizes.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`scoreKill`, `lightningOn`)
+- **Pinned by:** `a normal game pays CompareAss on the victim's rating; the total adds up; a wanted victim counts`; `a killer who has logged off earns nothing; nor does a monster or yourself` (packages/server/tests/assassin.test.ts); `a death within the credit window earns the attacker Assassin points`; `bug fixed: a death long after the last hit earns its old attacker no Assassin points` (packages/server/tests/factions.test.ts); `one landed melee hit kills: HP held at 1, no drop, head, penalty or exile` (packages/server/tests/assassin.test.ts)
 
 #### Bios composed by the server
 - **Kind:** Exploit closed
@@ -4415,6 +4516,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Server rows store the game, current and all-time tables, player scores and legends; ordered entries keep character IDs and name copies. Prizes come from the `assassinPrizes` setting, and an offline winner's prize is written to the stored bag. No old all-time standings are seeded.
 - **Why:** The server owns the state, and the archive's all-time names belonged to players without characters on this server.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`setAssassinMode`, `endGame`)
+- **Pinned by:** `nothing seeded: STOP and empty tables; the state round-trips in order`; `an end writes an offline winner's prize into its stored bag` (packages/server/tests/assassin-db.test.ts); `the end: lines, a win, STOP, prizes 1-3 (online ones added to the bag, offline ones written)` (packages/server/tests/assassin.test.ts)
 
 #### High-score points computed by the server
 - **Kind:** Exploit closed
@@ -4434,6 +4536,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server validates the spell and target intent and computes spell power.
 - **Why:** A forged client could cast as another player at arbitrary power.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]`; `bug fixed: Fireball and Wind Wave cast with their school bonus` (packages/server/tests/spells.test.ts)
 
 #### Server-side spell learning
 - **Kind:** Exploit closed
@@ -4442,6 +4545,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server performs the Dexterity check, appends the spell and consumes the book.
 - **Why:** A modified client could grant itself any spell.
 - **In the code:** `packages/server/src/systems/spells/learn.ts` (`readBook`)
+- **Pinned by:** `Dex too low: the refusal, the book kept`; `read and learned, the book used up` (packages/server/tests/spells.test.ts)
 
 #### No effect triggers without a cast
 - **Kind:** Exploit closed
@@ -4450,6 +4554,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server triggers effects only from validated state.
 - **Why:** A forged client could teleport for free, change another player's body, create items or deal free damage.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `swingFireballs`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `setBody`), `packages/server/src/systems/world/tick.ts` (`portal`)
+- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent`; `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts)
 
 #### Monster spells and summons authored by the server
 - **Kind:** Exploit closed
@@ -4458,6 +4563,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Only the server creates them.
 - **Why:** Any client could otherwise cast as a monster or spawn monsters.
 - **In the code:** `packages/server/src/systems/spells/monsterspells.ts` (`monsterSpells`)
+- **Pinned by:** `the Server Spirit casts only into the hazard map's room`; `kept on purpose: an unprovoked Passive Acrostia casts Major Heal at you`; `Summon Creature: a Pig in the first free slot; Cow at Sorcery > 39` (packages/server/tests/spells.test.ts)
 
 #### Hold cannot target players on safe maps
 - **Kind:** Exploit closed
@@ -4466,6 +4572,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Hold is refused like a harmful spell when the caster is off an arena tile on a safe map; fight maps are unchanged.
 - **Why:** Repeatedly holding another player in town enabled griefing.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`)
+- **Pinned by:** `harmful spells and Hold are refused on a safe map before SP is spent`; `a player's Hold roots another player where PvP is on` (packages/server/tests/spells.test.ts)
 
 #### One authoritative monster HP and one roll per hit
 - **Kind:** Architecture
@@ -4474,6 +4581,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Each map has a single authoritative monster instance.
 - **Why:** The server owns monster state.
 - **In the code:** `packages/server/src/systems/spells/collide.ts` (`monsterHits`), `packages/server/src/systems/combat/melee.ts` (`smash`)
+- **Pinned by:** `a fireball at a monster is placed next frame and hits in that frame's actor passes on FireballU-1 for 4 + P + random(3)`; `a second Meteor inside the lockout still misses: only the FX that set it hits again` (packages/server/tests/spells.test.ts); `a seeded Slime fight: bare hands kill it, the kill gives 23 XP at level 1` (packages/server/tests/monsters.test.ts)
 
 #### Server collision geometry
 - **Kind:** Architecture
@@ -4482,6 +4590,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server evaluates the same rectangle tests once, using member rectangles and registration points from asset metadata.
 - **Why:** Collision is server-authoritative.
 - **In the code:** `packages/server/src/systems/spells/geometry.ts` (`playerRect`, `monsterRect`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `monsterHits`)
+- **Pinned by:** `a hit rect for a standing rider cycles F2, F3, F1 with the tick` (packages/server/tests/vehicles.test.ts); `a fireball at a monster is placed next frame and hits in that frame's actor passes on FireballU-1 for 4 + P + random(3)` (packages/server/tests/spells.test.ts)
 
 #### Hazard timer on ticks
 - **Kind:** Architecture
@@ -4490,6 +4599,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The hazard timer runs every seven ticks.
 - **Why:** The simulation runs at 20 ticks a second.
 - **In the code:** `packages/server/src/systems/spells/hazards.ts` (`serverTimer`)
+- **Pinned by:** `SSO: the hazard timer runs once every seven ticks` (packages/server/tests/ledger-pins-c.test.ts)
 
 #### Summons stay on the map
 - **Kind:** Architecture
@@ -4509,6 +4619,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server builds, boards and parks the Airship, the only vehicle currently implemented, and converts it to the owner's item. Ownership is recorded by character ID while the item's name remains `<name>'s Airship`. Items without an owner ID, such as an operator drop or World Editor placement, use the original name test.
 - **Why:** A client could create arbitrary items, while name-only ownership could let a renamed or look-alike character board someone else's airship.
 - **In the code:** `packages/server/src/systems/vehicles/airship.ts` (`airshipClick`, `unboardAirship`)
+- **Pinned by:** `builds on the faced J2, consumes one deed, owner id recorded, no text`; `Ctrl facing it: you hop onto its tile, no step, body 57, the text`; `Ctrl on a pad parks the airship under you, the paperdoll returns, no text`; `another player's airship: not yours; facing away: you see`; `an item with no owner id falls back to the 1.6 name test` (packages/server/tests/vehicles.test.ts)
 
 ### Server-side world
 
@@ -4519,6 +4630,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server evaluates the same rules and determines the destinations.
 - **Why:** Players could set arbitrary respawn points and farm portal warps.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`respawn`, `portal`)
+- **Pinned by:** `SSO: a death or release goes to your respawn point, else the fallback point; a lost place goes to the fallback point`; `SSO: the server records the respawn point on entering an O-O-O map; the client sends none` (packages/server/tests/world.test.ts); `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts)
 
 #### Respawn point derived by the server
 - **Kind:** Exploit closed
@@ -4536,6 +4648,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server holds a loading state until the client says the map is ready or 100 ticks pass; a loading player cannot be hit.
 - **Why:** The server owns the input gate.
 - **In the code:** `packages/server/src/systems/world/world.ts` (`enterRoom`), `packages/server/src/systems/world/tick.ts` (`tick`)
+- **Pinned by:** `loading: no movement until mapReady or 100 ticks` (packages/server/tests/world.test.ts); `SSO: a player still loading the map is not hit by a monster beside it` (packages/server/tests/ledger-pins-c.test.ts)
 
 #### Exactly two actor passes per frame
 - **Kind:** Architecture
@@ -4553,6 +4666,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** One authoritative map instance makes each roll once per player on the map, up to 15, targeting that player.
 - **Why:** This preserves aggregate rates and per-player targeting without client authority.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`emulated`, `tick`)
+- **Pinned by:** `SSO: each player on the map makes the spawn roll, up to 15` (packages/server/tests/ledger-pins-c.test.ts); `bug fixed: ladders: spawn 80…1300 by players, move 30…600 and 600 from the 8th on` (packages/server/tests/monsters.test.ts)
 
 #### The death save holds the respawn tile
 - **Kind:** Architecture
@@ -4561,6 +4675,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server moves the player and saves the respawn place in one step.
 - **Why:** The old file state was a race between client save and server warp; the server now owns position.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`respawn`)
+- **Pinned by:** `SSO: the tick that moves a dead player to the respawn tile also saves them` (packages/server/tests/ledger-pins-c.test.ts)
 
 ## Not in SSO
 

@@ -166,6 +166,12 @@ describe("LOAD and SAVE", () => {
     expect(exitFromFields(cleared)).toBeNull();
     expect(exitFromFields(prev)).toEqual({ mx: 3, my: 4, x: 5, y: 6 });
   });
+  test("bug fixed: an exit with one field left blank is no number, not map 0", () => {
+    const e = exitFromFields(["1001", "", "5", "5"]);
+    expect(e?.mx).toBe(1001);
+    expect(Number.isNaN(e?.my)).toBe(true);
+    expect(Number.isInteger(e?.my)).toBe(false);
+  });
   test("the save is checked: palette codes, 12 rows of 17, listed monsters, ≤ 20 items, fog", () => {
     const ok = () => true;
     expect(editorMapError(blankMap(1, 1), ok)).toBeNull();

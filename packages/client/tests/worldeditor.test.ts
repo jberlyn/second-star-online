@@ -119,6 +119,25 @@ describe("the World Editor screen (frames 262-288)", () => {
     expect(e.saves[0]?.items).toEqual([{ name: "Exit", x: 8, y: 6 }]);
   });
 
+  test("bug fixed: an exit with a blank map field is refused before sending, with the server's line", () => {
+    const e = editor();
+    e.ed.show(blankMap(1, 1), false);
+    e.pickList("Items", "Exit");
+    e.click(8, 6);
+    const fields = ["Exit map X", "Exit map Y", "Exit tile X", "Exit tile Y"].map(
+      (l) =>
+        e.root.querySelectorAll<HTMLInputElement>(`[aria-label="${l}"]`)[0] as HTMLInputElement,
+    );
+    ["1001", "", "5", "5"].forEach((v, i) => {
+      (fields[i] as HTMLInputElement).value = v;
+    });
+    e.byLabel<HTMLButtonElement>("Save").click();
+    expect(e.saves).toEqual([]);
+    expect(e.byLabel("Chat").textContent).toContain(
+      "An exit needs a whole-number map and a tile on the map.",
+    );
+  });
+
   test("Delete removes a clicked item; a sign's OK keeps its text", () => {
     const e = editor();
     e.ed.show(blankMap(1, 1), false);
