@@ -6,6 +6,7 @@ import {
   can,
   checkLevelUp,
   createFood,
+  DEFAULT_HULL_RULES,
   type DeltaEvent,
   EFFECT_TEXT,
   FLICKER_FRAMES,
@@ -70,10 +71,11 @@ const tell = (out: Outgoing[], p: Player, text: string) =>
 
 /**
  * Whether player-versus-player spells are off here: the map's `CanPeeVeePee`, or "X" on a `6P` tile
- * (the same field test as the arena death, rows 1-9 only).
+ * (the same field test as the arena death, rows 1-9 only). A rider follows the map's flag alone:
+ * arenas are for players on foot (an SSO rule).
  */
 function pvpOff(room: Room, p: Player): boolean {
-  return room.map.flags.canPvp === "O" && !onArenaTile(room, p.x, p.y);
+  return room.map.flags.canPvp === "O" && (p.vehicle !== null || !onArenaTile(room, p.x, p.y));
 }
 
 /**
@@ -99,11 +101,23 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
   // A role that takes no damage is untouched by harmful spells (a bug fixed: SSO's early immortals,
   // safe from monsters and melee, could still be killed by a spell).
   const invulnerable = can(p.role, "invulnerable");
-  const damage = (fx: SpellFx, dmg: number) => {
+  const hullHit = (ctx.item.hulls ?? DEFAULT_HULL_RULES).hitDamage;
+  const damage = (fx: SpellFx, spellDmg: number) => {
     if (invulnerable) {
       return;
     }
-    v.hp = v.hp <= dmg ? 0 : v.hp - dmg;
+    // Aboard, the hit wears the hull by a fixed amount instead (an SSO addition); with no hull
+    // damage set, the rider is untouched.
+    const aboard = p.vehicle !== null && p.hull !== null;
+    const dmg = aboard ? hullHit : spellDmg;
+    if (aboard && dmg <= 0) {
+      return;
+    }
+    if (aboard && p.hull !== null) {
+      p.hull = p.hull <= dmg ? 0 : p.hull - dmg;
+    } else {
+      v.hp = v.hp <= dmg ? 0 : v.hp - dmg;
+    }
     p.lastToHitMe = fx.owner;
     // A monster's spell has no owner id.
     p.lastToHitId = fx.ownerId ?? null;

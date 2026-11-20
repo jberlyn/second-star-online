@@ -255,6 +255,7 @@ describe("saving skills (open skill count)", () => {
         wanted: rec.wanted,
         stats,
         vehicle: rec.vehicle,
+        hull: rec.hull,
       },
     };
   }

@@ -21,6 +21,7 @@ import {
   endMs,
   factionIdOf,
   findNewQuest,
+  hullMax,
   type InGameMsg,
   invAdd,
   ipKey,
@@ -162,6 +163,7 @@ import {
   applySettingValues,
   DAY_SECONDS,
   deathDropRules,
+  hullRules,
   resolveSettings,
   type Settings,
   secondsToTicks,
@@ -304,6 +306,7 @@ import {
   removePlayer,
   sessionCombatState,
   toWorldMap,
+  vitalsView,
   type World,
   type WorldMap,
 } from "./systems/world/world.ts";
@@ -577,6 +580,9 @@ export function createGame(deps: GameDeps): Game {
       y: g.y,
       kind: g.kind,
       expiresAt: g.expiresAt === null ? null : Date.parse(g.expiresAt),
+      ...(g.ownerId ? { ownerId: g.ownerId } : {}),
+      ...(g.hull != null ? { hull: g.hull } : {}),
+      ...(g.parkedAt ? { parkedAt: Date.parse(g.parkedAt) } : {}),
     }));
   }
 
@@ -645,6 +651,7 @@ export function createGame(deps: GameDeps): Game {
     lootDecayMinutes: settings.lootDecay / 60,
     npcChatterSeconds: settings.npcChatter,
     deathDrops: deathDropRules(settings),
+    hulls: hullRules(settings),
     portalTargets: settings.portalTargets,
     hazardMap: settings.hazardMap,
     saveIntervalTicks: secondsToTicks(config.saveInterval),
@@ -767,6 +774,7 @@ export function createGame(deps: GameDeps): Game {
     art: artStore,
     newspapers: newspaperStore,
     slotsChanged: (m) => saveMapSlots(m),
+    hulls: hullRules(settings),
   });
 
   /**
@@ -828,6 +836,8 @@ export function createGame(deps: GameDeps): Game {
               kind: g.kind,
               expiresAt: g.expiresAt === null ? null : new Date(g.expiresAt).toISOString(),
               ownerId: g.ownerId ?? null,
+              hull: g.hull ?? null,
+              parkedAt: g.parkedAt == null ? null : new Date(g.parkedAt).toISOString(),
             },
             now,
           );
@@ -855,6 +865,7 @@ export function createGame(deps: GameDeps): Game {
             p.id,
             {
               vehicle: p.vehicle,
+              hull: p.hull,
               position: { mapId: p.map.id, x: p.x, y: p.y, facing: p.facing },
             },
             now,
@@ -959,6 +970,7 @@ export function createGame(deps: GameDeps): Game {
       lootDecayMinutes: settings.lootDecay / 60,
       npcChatterSeconds: settings.npcChatter,
       deathDrops: deathDropRules(settings),
+      hulls: hullRules(settings),
       portalTargets: settings.portalTargets,
       hazardMap: settings.hazardMap,
     });
@@ -1314,6 +1326,7 @@ export function createGame(deps: GameDeps): Game {
         wanted: p.char.wanted,
         stats: p.char.stats,
         vehicle: p.vehicle,
+        hull: p.hull,
       },
       isoNow(),
     );
@@ -1769,6 +1782,7 @@ export function createGame(deps: GameDeps): Game {
         facing: resumed ? c.position.facing : "S",
         stepFrames: 0,
         vehicle: c.vehicle,
+        hull: c.vehicle ? (c.hull ?? hullMax(c.vehicle, hullRules(settings))) : null,
         held: null,
         heldTurn: false,
         pending: null,
@@ -2186,7 +2200,7 @@ export function createGame(deps: GameDeps): Game {
           }
           if (p.vitalsDirty) {
             p.vitalsDirty = false;
-            send(p.id, { t: "vitals", vitals: { ...p.char.vitals } });
+            send(p.id, { t: "vitals", vitals: vitalsView(p, hullRules(settings)) });
           }
           if (p.spell.bookDirty) {
             send(p.id, { t: "spellbook", spells: [...p.spell.book] });
@@ -2248,7 +2262,7 @@ export function createGame(deps: GameDeps): Game {
           deliver(r.out);
           if (p.vitalsDirty) {
             p.vitalsDirty = false;
-            send(p.id, { t: "vitals", vitals: { ...p.char.vitals } });
+            send(p.id, { t: "vitals", vitals: vitalsView(p, hullRules(settings)) });
           }
           if (r.slotsChanged) {
             saveMapSlots(p.map);

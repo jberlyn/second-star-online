@@ -16,6 +16,9 @@ export interface StoredGroundItem {
   expiresAt: string | null;
   /** The character who built or parked an Airship, else null. */
   ownerId?: string | null;
+  /** A parked vehicle's hull (null: full) and when it was parked (ISO), for its repair. */
+  hull?: number | null;
+  parkedAt?: string | null;
 }
 
 interface Row {
@@ -28,6 +31,8 @@ interface Row {
   kind: GroundKind;
   expires_at: string | null;
   owner_id: string | null;
+  hull: number | null;
+  parked_at: string | null;
 }
 
 /** A map's ground items in creation order, after deleting the ones already decayed. */
@@ -37,7 +42,7 @@ export function loadGround(db: Db, mapId: string, now: string): StoredGroundItem
   ).run(mapId, now);
   return db
     .query<Row, [string]>(
-      "SELECT id, map_id, x, y, item, qty, kind, expires_at, owner_id FROM ground_items WHERE map_id = ? ORDER BY id",
+      "SELECT id, map_id, x, y, item, qty, kind, expires_at, owner_id, hull, parked_at FROM ground_items WHERE map_id = ? ORDER BY id",
     )
     .all(mapId)
     .map((r) => ({
@@ -50,13 +55,28 @@ export function loadGround(db: Db, mapId: string, now: string): StoredGroundItem
       kind: r.kind,
       expiresAt: r.expires_at,
       ownerId: r.owner_id,
+      hull: r.hull,
+      parkedAt: r.parked_at,
     }));
 }
 
 export function insertGround(db: Db, g: StoredGroundItem, now: string): void {
   db.query(
-    "INSERT INTO ground_items (id, map_id, x, y, item, qty, kind, expires_at, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  ).run(g.id, g.mapId, g.x, g.y, g.item, g.qty, g.kind, g.expiresAt, g.ownerId ?? null, now);
+    "INSERT INTO ground_items (id, map_id, x, y, item, qty, kind, expires_at, owner_id, hull, parked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    g.id,
+    g.mapId,
+    g.x,
+    g.y,
+    g.item,
+    g.qty,
+    g.kind,
+    g.expiresAt,
+    g.ownerId ?? null,
+    g.hull ?? null,
+    g.parkedAt ?? null,
+    now,
+  );
 }
 
 export function deleteGround(db: Db, id: string): void {

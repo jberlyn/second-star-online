@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 62 |
+| [Design changes](#design-changes) | 64 |
 | [Fixed bugs](#fixed-bugs) | 287 |
 | [Kept on purpose](#kept-on-purpose) | 11 |
 | [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **534** |
+| **Total** | **536** |
 
 By system (the code folder that holds the change):
 
@@ -638,6 +638,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Levelling is the only way to raise maximum HP and SP, and near the top levels cost too much to win them back, so one unlucky death could undo long-term progress, exile a faction member or block a promotion. Permanent loss is a poor experience in an online game, and PvP risk comes from death drops instead (see [Operators choose whose deaths drop](#operators-choose-whose-deaths-drop-and-by-default-only-a-wanted-characters-do)).
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`); `packages/server/migrations/20261119_39_restore_death_penalty.sql`
 - **Pinned by:** `divergence: a death never lowers HPmax or SPmax, wanted or not` (packages/shared/tests/progression/progression.test.ts); `death: HP and SP 1, facing south, then the death text to everyone and the respawn warp` (packages/server/tests/monsters.test.ts); `divergence: restore_death_penalty raises max HP and SP to 19 + level, never lowering them` (packages/server/tests/migrations.test.ts)
+
+#### Vehicles have their own hull
+- **Kind:** Other
+- **What you notice:** Riding an airship, your HP bar shows the airship's hull ("Hull 78 / 80"). An arrow or harmful spell that hits you takes a fixed 2 off the hull and never touches your HP, however strong the attacker. When the hull runs out you die as if killed aboard: the airship is lost and everyone reads "\*\*\* Bob's airship was shot down by Ann. Bob fell from the sky." in place of the death line. A parked airship slowly repairs, 1 point a minute, and you board it with the hull it has regained.
+- **1.6:** Riders took hits on their own HP, so a high-level character's airship was as tough as the character.
+- **SSO:** `characters.hull` holds a rider's hull and `ground_items.hull` and `parked_at` a parked vehicle's. The World settings `airshipHull` (80), `hullHitDamage` (2) and `hullRepairPerMinute` (1) set the full hull, the damage per hit and the repair. A sinking counts as a kill: the attacker is credited and flagged as for any player kill.
+- **Why:** A vehicle is something you own and protect, not a reflection of your level, and its fights should depend on the vehicle and not on who rides it. Issue #2 builds boats and battleships on the same hulls.
+- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`boardingHull`, `sunkText`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts`, `packages/server/migrations/20261120_43_vehicle_hulls.sql`
+- **Pinned by:** `SSO: a new airship boards with a full hull, and the HP bar shows it`; `SSO: parking keeps the hull and the time; boarding again repairs a point a minute`; `SSO: a player's spell wears a rider's hull by a fixed 2, never the rider's HP`; `SSO: with hull damage per hit at 0, spells leave riders alone`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts); `SSO: a parked hull regains repairPerMinute for each whole minute, up to full`; `SSO: the shot-down line names the attacker when there is one` (packages/shared/tests/vehicles/vehicles.test.ts)
+
+#### Arenas are for players on foot
+- **Kind:** Other
+- **What you notice:** An airship over arena tiles is not in the arena. On a map with PvP off, players cannot hurt you there, a death there is a normal death that loses the airship, and `quit` does nothing.
+- **1.6:** Arena tiles turned PvP on for whoever stood on them, a rider included, and an arena defeat kept the airship.
+- **SSO:** A rider is judged by the map's PvP flag alone (`pvpOff`), its death skips the arena defeat (`checkDeath`), and `quitCheck` is silent aboard. Riders still cannot challenge.
+- **Why:** An arena is a fight between players on foot. Vehicles mixing into it raised edge cases (a ship shelling the arena from outside, a rider's defeat on a tile it only flew over) with no good answer.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`pvpOff`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/shared/src/rules/combat/arena.ts` (`quitCheck`)
+- **Pinned by:** `divergence: over an arena tile a rider follows the map's PvP flag alone`; `divergence: over an arena tile a rider dies a normal death and loses the airship` (packages/server/tests/vehicles.test.ts); `divergence: a death aboard over an arena tile is a normal death, not an arena defeat` (packages/server/tests/arena.test.ts); `divergence: a rider over a 6P tile is not in the arena, so quit is silent` (packages/shared/tests/combat/arena.test.ts)
 
 #### Operators choose whose deaths drop, and by default only a wanted character's do
 - **Kind:** Other
@@ -2766,12 +2784,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A rider must land before challenging
 - **Kind:** Bug fixed
-- **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are. If you fly onto an arena tile and are defeated there, or type quit, you leave the arena still flying, with your airship.
+- **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are.
 - **1.6:** Challenge never looked at vehicles, so a rider entered the arena still flying, where it could not swing or cast and monster melee could not reach it.
-- **SSO:** The challenge is refused aboard; the line is SSO's own. An arena defeat stays penalty-free, so it keeps the airship as it keeps everything else, and the exit is drawn from the tiles an Airship may stand on.
-- **Why:** An arena fight is meant to be on foot; the arena exit running before the vehicle was cleared is right for a penalty-free defeat.
-- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`challengeCheck`), `packages/server/src/systems/combat/arena.ts` (`challenge`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`)
-- **Pinned by:** `bug fixed: a rider must land before making a challenge` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a rider cannot challenge; one who flew onto the arena quits still flying`; `a rider's exit is drawn from the Airship grid` (packages/server/tests/arena.test.ts); `an arena death keeps the airship, as it keeps everything` (packages/server/tests/vehicles.test.ts)
+- **SSO:** The challenge is refused aboard; the line is SSO's own. A rider over arena tiles is not in the arena at all (see [Arenas are for players on foot](#arenas-are-for-players-on-foot)).
+- **Why:** An arena fight is meant to be on foot.
+- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`challengeCheck`), `packages/server/src/systems/combat/arena.ts` (`challenge`)
+- **Pinned by:** `bug fixed: a rider must land before making a challenge` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a rider cannot challenge; over an arena tile, quit does nothing` (packages/server/tests/arena.test.ts)
 
 #### Spare XP carries over a level-up
 - **Kind:** Bug fixed
@@ -3298,12 +3316,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 ### Dying aboard an airship loses it
 - **Kind:** Kept on purpose
-- **What you notice:** If you die while riding an airship, the airship is gone and no deed comes back. Your bag and gold stay with you. A faction head still drops on a PvP map. An arena defeat keeps the airship.
+- **What you notice:** If you die while riding an airship, or its hull runs out, the airship is gone and no deed comes back. Your bag and gold stay with you. A faction head still drops on a PvP map.
 - **1.6:** Death cleared the vehicle and switched the item and gold drop off. The body reverted to the walker late on each player's screen.
 - **SSO:** The same, except the body reverts at once for everyone, on the server.
 - **Why:** Flying an airship through a PvP area, or past monsters that cast spells, is a risk the rider takes; losing it is the price of dying there.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts` (`vehicleDeath`)
-- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `a Lightning death clears it too`; `an arena death keeps the airship, as it keeps everything` (packages/server/tests/vehicles.test.ts)
+- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `a Lightning death clears it too`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts)
 
 ### Killing a wanted player never flags you
 - **Kind:** Kept on purpose

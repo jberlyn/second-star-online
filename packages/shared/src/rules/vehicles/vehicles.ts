@@ -126,3 +126,55 @@ export function unboardCheck(a: {
   }
   return { kind: "park" };
 }
+
+/**
+ * A vehicle's hull (issue #2, an SSO addition: 1.6 had none). Hits on a rider wear the hull, never
+ * the rider. A fixed amount per hit, whatever the attacker's level or power. At 0 the vehicle is
+ * lost and the rider dies.
+ */
+export interface HullRules {
+  /** The Airship's full hull (setting `airshipHull`). */
+  airship: number;
+  /** What one arrow or harmful spell takes off a hull (setting `hullHitDamage`). */
+  hitDamage: number;
+  /** Hull a parked vehicle regains per whole minute parked (setting `hullRepairPerMinute`). */
+  repairPerMinute: number;
+}
+
+export const DEFAULT_HULL_RULES: HullRules = { airship: 80, hitDamage: 2, repairPerMinute: 1 };
+
+/** A vehicle's full hull under these rules. */
+export function hullMax(vehicle: Vehicle, rules: HullRules): number {
+  switch (vehicle) {
+    case "Airship":
+      return rules.airship;
+  }
+}
+
+/**
+ * The hull a rider boards with. A parked vehicle's hull (null: never damaged, or parked before
+ * hulls existed, so full) gains `repairPerMinute` for each whole minute since `parkedAt`, and never
+ * exceeds the current full hull (an operator may have lowered it since).
+ */
+export function boardingHull(
+  parked: { hull: number | null; parkedAt: number | null },
+  max: number,
+  now: number,
+  repairPerMinute: number,
+): number {
+  if (parked.hull === null) {
+    return max;
+  }
+  const minutes = parked.parkedAt === null ? 0 : Math.floor((now - parked.parkedAt) / 60_000);
+  return Math.min(max, parked.hull + Math.max(0, minutes) * repairPerMinute);
+}
+
+/** The line everyone sees when a rider's vehicle is destroyed, in place of the death line. */
+export function sunkText(name: string, vehicle: Vehicle, killer: string | null): string {
+  switch (vehicle) {
+    case "Airship":
+      return killer
+        ? `*** ${name}'s airship was shot down by ${killer}. ${name} fell from the sky.`
+        : `*** ${name}'s airship was shot down. ${name} fell from the sky.`;
+  }
+}

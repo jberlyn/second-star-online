@@ -152,6 +152,8 @@ export interface VitalsView {
   spMax: number;
   exp: number;
   expNeeded: number;
+  /** Aboard a vehicle: its hull, which hits wear instead of HP. The HP bar shows it. */
+  hull?: { hp: number; max: number };
 }
 
 export interface MapView {

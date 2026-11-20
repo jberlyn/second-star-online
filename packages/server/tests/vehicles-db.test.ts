@@ -126,3 +126,55 @@ describe("the Airship across sessions", () => {
     expect(q?.map.walkAir).toEqual(airshipWalkGrid(q?.map.layers[1] ?? []));
   });
 });
+
+describe("migration 43 (vehicle hulls)", () => {
+  test("SSO: a parked hull and its parking time round-trip; none means full", async () => {
+    const g = game();
+    const id = await makeChar(g, "Alice");
+    expect(findCharacterById(db, id)?.hull).toBeNull();
+    const row = {
+      mapId: seedMapId(),
+      y: 3,
+      item: "Alice's Airship",
+      qty: 1,
+      kind: "drop" as const,
+      expiresAt: null,
+      ownerId: id,
+    };
+    insertGround(db, { ...row, id: Bun.randomUUIDv7(), x: 3, hull: 50, parkedAt: now }, now);
+    insertGround(db, { ...row, id: Bun.randomUUIDv7(), x: 4 }, now);
+    expect(loadGround(db, seedMapId(), now)).toMatchObject([
+      { x: 3, hull: 50, parkedAt: now },
+      { x: 4, hull: null, parkedAt: null },
+    ]);
+    expect(() => db.query("UPDATE characters SET hull = -1 WHERE id = ?").run(id)).toThrow();
+  });
+
+  test("SSO: a rider's hull is saved and a login comes back with it", async () => {
+    const g = game();
+    const id = await makeChar(g, "Alice");
+    g.enter(id, false);
+    g.intent(id, { t: "mapReady" });
+    g.tick();
+    const p = g.world.players.get(id);
+    if (!p) {
+      throw new Error("no player");
+    }
+    p.facing = "N";
+    const padY = p.y - 1;
+    const cells = (p.map.layers[0][padY - 1] ?? "").split(" ");
+    cells[p.x - 1] = "J2";
+    p.map.layers[0][padY - 1] = cells.join(" ");
+    p.char.bag[0] = { item: "Airship Deed", qty: 1 };
+    g.intent(id, { t: "use", slot: 1 });
+    p.itemPause = 0;
+    g.intent(id, { t: "action" });
+    expect(findCharacterById(db, id)?.hull).toBe(80);
+    p.hull = 33;
+    g.leave(id);
+    expect(findCharacterById(db, id)?.hull).toBe(33);
+    const g2 = game();
+    g2.enter(id, false);
+    expect(g2.world.players.get(id)?.hull).toBe(33);
+  });
+});

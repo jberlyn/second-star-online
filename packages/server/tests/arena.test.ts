@@ -163,7 +163,7 @@ describe("Challenge and quit", () => {
     expect([s.bob.x, s.bob.y]).toEqual([3, 1]);
   });
 
-  test("bug fixed: a rider cannot challenge; one who flew onto the arena quits still flying", () => {
+  test("bug fixed: a rider cannot challenge; over an arena tile, quit does nothing", () => {
     const s = scene({ rng: rngByN({ 17: [4], 12: [4] }) });
     s.bob.vehicle = "Airship";
     s.bob.spell.body = 57;
@@ -173,29 +173,20 @@ describe("Challenge and quit", () => {
     expect([s.bob.x, s.bob.y]).toEqual([8, 8]);
     s.bob.x = 4;
     s.bob.y = 4;
-    s.say(s.bob, "quit");
-    expect(s.bob.vehicle).toBe("Airship");
-    expect(s.bob.spell.body).toBe(57);
-    expect(s.bob.x === 4 && s.bob.y === 4).toBe(false);
+    expect(s.say(s.bob, "quit")).toEqual([]);
+    expect([s.bob.x, s.bob.y, s.bob.vehicle]).toEqual([4, 4, "Airship"]);
   });
 
-  test("a rider's exit is drawn from the Airship grid", () => {
-    // Everything but the arena tile is a tree: blocked on foot, open to the Airship.
+  test("the arena exit is drawn from the tiles a walker can stand on", () => {
+    // Everything but the arena tile is a tree: blocked on foot.
     const walker = scene({ arena: [[4, 4]], everyTreeButArena: true });
     walker.bob.x = 4;
     walker.bob.y = 4;
     expect(walker.say(walker.bob, "quit")).toEqual([]);
     expect([walker.bob.x, walker.bob.y]).toEqual([4, 4]);
-
-    const rider = scene({ arena: [[4, 4]], everyTreeButArena: true, rng: rngByN({ 201: [1] }) });
-    rider.bob.x = 4;
-    rider.bob.y = 4;
-    rider.bob.vehicle = "Airship";
-    rider.say(rider.bob, "quit");
-    expect([rider.bob.x, rider.bob.y]).toEqual([1, 1]);
   });
 
-  test("an arena death aboard exits on the Airship grid", () => {
+  test("divergence: a death aboard over an arena tile is a normal death, not an arena defeat", () => {
     const s = scene({ arena: [[4, 4]], everyTreeButArena: true, rng: rngByN({ 201: [2] }) });
     s.bob.x = 4;
     s.bob.y = 4;
@@ -206,7 +197,8 @@ describe("Challenge and quit", () => {
       rules: DEFAULT_DEATH_DROPS,
       everyDeath: false,
     });
-    expect(r).toMatchObject({ kind: "arena", tile: { x: 2, y: 1 } });
+    expect(r.kind).toBe("death");
+    expect(s.bob.vehicle).toBeNull();
   });
 
   test("divergence: an arena death with no passing tile keeps the player in place, at HP and SP 1, and says the line", () => {

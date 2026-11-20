@@ -6,7 +6,7 @@ import type { ServerMsg } from "@secondstaronline/shared";
 import { type Rng, scriptedRng } from "../../src/rng.ts";
 import type { CasinoDeps } from "../../src/systems/casino/index.ts";
 import { archiveNpcStore } from "../../src/systems/monsters/npcfiles.ts";
-import { tick } from "../../src/systems/world/tick.ts";
+import { type TickDeps, tick } from "../../src/systems/world/tick.ts";
 import {
   addPlayer,
   createWorld,
@@ -84,6 +84,7 @@ export function player(id: string, map: WorldMap, x: number, y: number): Player 
     facing: "N",
     stepFrames: 0,
     vehicle: null,
+    hull: null,
     held: null,
     heldTurn: false,
     pending: null,
@@ -112,7 +113,7 @@ export function setup(
 ) {
   const byName = new Map(maps.map((m) => [m.name, m]));
   const world: World = createWorld();
-  const deps = {
+  const deps: TickDeps = {
     loadMap: (n: string) => byName.get(n) ?? null,
     loadMapById: (id: string) => maps.find((m) => m.id === id) ?? null,
     fallbackPoint,
@@ -132,5 +133,5 @@ export function setup(
     }
     return all;
   };
-  return { world, join, run };
+  return { world, join, run, deps };
 }

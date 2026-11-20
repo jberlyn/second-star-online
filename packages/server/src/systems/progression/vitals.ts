@@ -97,24 +97,22 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   const lightningHit = p.lightningDeath;
   p.lightningDeath = false;
   const lightning = lightningHit || (drop?.lightningGame ?? false);
-  if ((v.hp >= 1 && !lightningHit) || p.dontHitMeAgain) {
+  // A rider dies when the hull runs out (an SSO addition: hits wear the hull, not HP).
+  const hullGone = p.vehicle !== null && p.hull !== null && p.hull <= 0;
+  if ((v.hp >= 1 && !lightningHit && !hullGone) || p.dontHitMeAgain) {
     return { kind: "none" };
   }
   if (p.hitAge > KILL_CREDIT_TICKS) {
     p.lastToHitMe = null;
     p.lastToHitId = null;
   }
-  if (onArenaTile(room, p.x, p.y)) {
+  // A rider over an arena tile is not in the arena: its death is a normal one (an SSO rule).
+  if (!p.vehicle && onArenaTile(room, p.x, p.y)) {
     v.hp = 1;
     v.sp = 1;
     p.vitalsDirty = true;
-    // The rider's exit is drawn from the Airship grid; `null` = no passing tile.
-    const tile = pickArenaExit(
-      room.map.layers[0],
-      p.vehicle === "Airship" ? room.map.walkAir : room.map.walk,
-      rng,
-      arenaTileTaken(room, p),
-    );
+    // `null` = no passing tile.
+    const tile = pickArenaExit(room.map.layers[0], room.map.walk, rng, arenaTileTaken(room, p));
     const text = ARENA_TEXT.defeated(p.name, p.lastToHitMe ?? "");
     return { kind: "arena", tile, text };
   }
@@ -126,9 +124,8 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   const lines: string[] = [];
   const out: Outgoing[] = [];
   const pvpMap = lingoEq(room.map.flags.canPvp, "X");
-  // Dying aboard loses the airship, after the arena exit above (an arena death keeps it, as it
-  // keeps everything); the Lightning death clears it too. Kept on purpose: flying into danger is a
-  // risk the rider takes.
+  // Dying aboard, or the hull running out, loses the airship; the Lightning death clears it too.
+  // Kept on purpose: flying into danger is a risk the rider takes.
   const aboard = p.vehicle !== null;
   if (aboard) {
     out.push(...vehicleDeath(room, p));

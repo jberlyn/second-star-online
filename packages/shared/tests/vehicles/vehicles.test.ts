@@ -2,10 +2,14 @@ import { describe, expect, test } from "bun:test";
 
 import {
   boardCheck,
+  boardingHull,
+  DEFAULT_HULL_RULES,
   deedCheck,
+  hullMax,
   isDock,
   layer1Tile,
   ownerName,
+  sunkText,
   unboardCheck,
   VEHICLE_TEXT,
   vehicleOfBody,
@@ -132,5 +136,33 @@ describe("body 57 means the Airship", () => {
     expect(vehicleOfBody(57)).toBe("Airship");
     expect(vehicleOfBody(30)).toBeNull();
     expect(vehicleOfBody(null)).toBeNull();
+  });
+});
+
+describe("hulls", () => {
+  test("SSO: a vehicle never damaged, or parked before hulls, boards full", () => {
+    expect(boardingHull({ hull: null, parkedAt: null }, 80, 0, 1)).toBe(80);
+  });
+  test("SSO: a parked hull regains repairPerMinute for each whole minute, up to full", () => {
+    const parked = { hull: 50, parkedAt: 1_000_000 };
+    expect(boardingHull(parked, 80, 1_000_000 + 59_999, 1)).toBe(50);
+    expect(boardingHull(parked, 80, 1_000_000 + 10 * 60_000 + 59_999, 1)).toBe(60);
+    expect(boardingHull(parked, 80, 1_000_000 + 600 * 60_000, 1)).toBe(80);
+    expect(boardingHull(parked, 80, 1_000_000 + 600 * 60_000, 0)).toBe(50);
+  });
+  test("SSO: a hull above a lowered full hull is cut to it", () => {
+    expect(boardingHull({ hull: 70, parkedAt: 0 }, 40, 0, 1)).toBe(40);
+  });
+  test("SSO: the full hull comes from the rules", () => {
+    expect(hullMax("Airship", DEFAULT_HULL_RULES)).toBe(80);
+    expect(hullMax("Airship", { ...DEFAULT_HULL_RULES, airship: 120 })).toBe(120);
+  });
+  test("SSO: the shot-down line names the attacker when there is one", () => {
+    expect(sunkText("Bob", "Airship", "Ann")).toBe(
+      "*** Bob's airship was shot down by Ann. Bob fell from the sky.",
+    );
+    expect(sunkText("Bob", "Airship", null)).toBe(
+      "*** Bob's airship was shot down. Bob fell from the sky.",
+    );
   });
 });

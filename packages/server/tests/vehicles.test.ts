@@ -29,7 +29,7 @@ import { checkDeath } from "../src/systems/progression/vitals.ts";
 import { bioSource } from "../src/systems/social/bios.ts";
 import { castIntent } from "../src/systems/spells/cast.ts";
 import { playerRect } from "../src/systems/spells/geometry.ts";
-import type { Player, Room, WorldMap } from "../src/systems/world/world.ts";
+import { type Player, type Room, vitalsView, type WorldMap } from "../src/systems/world/world.ts";
 import { ARCHIVE_NPCS, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
@@ -54,7 +54,7 @@ function setL2(map: WorldMap, x: number, y: number, code: string) {
 function scene(opts: { pads?: [number, number][]; rng?: ReturnType<typeof rngByN> } = {}) {
   const map = padMap(opts.pads ?? [[6, 5]]);
   const rng = opts.rng ?? rngByN();
-  const { world, join, run } = setup([map], undefined, rng);
+  const { world, join, run, deps } = setup([map], undefined, rng);
   const ann = player("Ann", map, 5, 5);
   const bob = player("Bob", map, 8, 8);
   for (const p of [ann, bob]) {
@@ -69,7 +69,7 @@ function scene(opts: { pads?: [number, number][]; rng?: ReturnType<typeof rngByN
   const clear = (p: Player) => {
     p.itemPause = 0;
   };
-  return { map, world, room, ann, bob, run, rng, ctx, clear };
+  return { map, world, room, ann, bob, run, rng, ctx, clear, deps };
 }
 
 const give = (p: Player, slot: number, item: string, qty = 1) => {
@@ -518,7 +518,7 @@ describe("death", () => {
     expect(r.kind).toBe("death");
     expect(s.ann.vehicle).toBeNull();
   });
-  test("an arena death keeps the airship, as it keeps everything", () => {
+  test("divergence: over an arena tile a rider dies a normal death and loses the airship", () => {
     const s = aboard();
     const row = (s.map.layers[0][4] ?? "").split(" ");
     row[5] = "6P";
@@ -529,8 +529,89 @@ describe("death", () => {
       rules: DEFAULT_DEATH_DROPS,
       everyDeath: false,
     });
-    expect(r.kind).toBe("arena");
-    expect(s.ann.vehicle).toBe("Airship");
-    expect(s.ann.spell.body).toBe(57);
+    expect(r.kind).toBe("death");
+    expect(s.ann.vehicle).toBeNull();
+  });
+});
+
+describe("hulls", () => {
+  /** Bob rides an airship with `hull` left; Ann can cast Firebolt at him. */
+  const target = (hull: number) => {
+    const s = scene();
+    s.bob.vehicle = "Airship";
+    s.bob.spell.body = 57;
+    s.bob.hull = hull;
+    s.ann.spell.book = ["Firebolt"];
+    give(s.ann, 1, "Red Crystals", 20);
+    const fire = () => {
+      s.ann.timers.actionDelay = 0;
+      const t = tileLoc(8, 8);
+      castIntent(s.room, s.ann, "Firebolt", t.h, t.v, { rng: s.rng });
+      return s.run(17);
+    };
+    return { ...s, fire };
+  };
+  test("SSO: a new airship boards with a full hull, and the HP bar shows it", () => {
+    const s = aboard();
+    expect(s.ann.hull).toBe(80);
+    expect(vitalsView(s.ann).hull).toEqual({ hp: 80, max: 80 });
+    expect(vitalsView(s.bob).hull).toBeUndefined();
+  });
+  test("SSO: parking keeps the hull and the time; boarding again repairs a point a minute", () => {
+    const s = aboard();
+    s.ann.hull = 50;
+    actionIntent({ ...s.ctx(), now: 1_000_000 }, s.room, s.ann);
+    s.clear(s.ann);
+    const g = airshipAt(s.map, 6, 5);
+    expect([g?.hull, g?.parkedAt, s.ann.hull]).toEqual([50, 1_000_000, null]);
+    expect(vitalsView(s.ann).hull).toBeUndefined();
+    s.ann.x = 5;
+    s.ann.facing = "E";
+    actionIntent({ ...s.ctx(), now: 1_000_000 + 10 * 60_000 + 59_999 }, s.room, s.ann);
+    expect([s.ann.vehicle, s.ann.hull]).toEqual(["Airship", 60]);
+  });
+  test("SSO: a full hull and the repair follow the World settings", () => {
+    const s = built();
+    const hulls = { airship: 120, hitDamage: 2, repairPerMinute: 1 };
+    actionIntent({ ...s.ctx(), hulls }, s.room, s.ann);
+    expect(s.ann.hull).toBe(120);
+    expect(vitalsView(s.ann, hulls).hull).toEqual({ hp: 120, max: 120 });
+  });
+  test("SSO: a player's spell wears a rider's hull by a fixed 2, never the rider's HP", () => {
+    const s = target(80);
+    s.fire();
+    expect([s.bob.hull, s.bob.char.vitals.hp, s.bob.lastToHitMe]).toEqual([78, 20, "Ann"]);
+  });
+  test("SSO: with hull damage per hit at 0, spells leave riders alone", () => {
+    const s = target(80);
+    s.deps.hulls = { airship: 80, hitDamage: 0, repairPerMinute: 1 };
+    s.fire();
+    expect([s.bob.hull, s.bob.char.vitals.hp, s.bob.lastToHitMe]).toEqual([80, 20, null]);
+  });
+  test("SSO: the hull running out kills the rider; the airship is lost and everyone hears it", () => {
+    const s = target(2);
+    const out = [...s.fire(), ...s.run(40)];
+    expect([s.bob.vehicle, s.bob.hull, s.bob.spell.body]).toEqual([null, null, null]);
+    expect(chat(out, "Ann")).toContain(
+      "*** Bob's airship was shot down by Ann. Bob fell from the sky.",
+    );
+    expect(chat(out, "Ann").some((t) => t.includes("was just killed"))).toBe(false);
+    expect(s.ann.char.wanted).toBe(true);
+    expect(s.bob.sunk).toBeNull();
+  });
+  test("divergence: over an arena tile a rider follows the map's PvP flag alone", () => {
+    const s = target(80);
+    s.map.flags.canPvp = "O";
+    const row = (s.map.layers[0][7] ?? "").split(" ");
+    row[7] = "6P";
+    s.map.layers[0][7] = row.join(" ");
+    s.fire();
+    expect(s.bob.hull).toBe(80);
+    s.bob.vehicle = null;
+    s.bob.hull = null;
+    s.bob.spell.body = null;
+    s.bob.flicker = 0;
+    s.fire();
+    expect(s.bob.char.vitals.hp).toBeLessThan(20);
   });
 });

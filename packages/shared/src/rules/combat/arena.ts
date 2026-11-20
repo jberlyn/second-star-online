@@ -153,16 +153,20 @@ export function challengeCheck(a: {
   return { kind: "go" };
 }
 
-/** The quit command's checks; Hold and the death wait refuse it as they do a challenge. */
+/**
+ * The quit command's checks; Hold and the death wait refuse it as they do a challenge. A rider is
+ * never in the arena, even over its tiles (an SSO rule: arenas are for players on foot).
+ */
 export function quitCheck(a: {
   stepFrames: number;
   held: boolean;
   dead: boolean;
+  riding: boolean;
   layer1: readonly string[];
   x: number;
   y: number;
 }): ArenaCheck {
-  if (a.dead) {
+  if (a.dead || a.riding) {
     return { kind: "silent" };
   }
   if (a.stepFrames > 0) {

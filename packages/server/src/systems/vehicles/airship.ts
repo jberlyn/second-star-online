@@ -10,8 +10,11 @@
 import {
   AIRSHIP_BODY,
   boardCheck,
+  boardingHull,
+  DEFAULT_HULL_RULES,
   deedCheck,
   FACING_DELTA,
+  hullMax,
   invDelSlot,
   lingoEq,
   ownerName,
@@ -112,6 +115,15 @@ export function airshipClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem)
   }
   // Board: the airship leaves the ground, the rider hops onto its tile with no step.
   removeGround(ctx, room, io, g.id);
+  const rules = ctx.hulls ?? DEFAULT_HULL_RULES;
+  // The hull it was parked with, repaired for the time it stood (an SSO addition).
+  p.hull = boardingHull(
+    { hull: g.hull ?? null, parkedAt: g.parkedAt ?? null },
+    hullMax("Airship", rules),
+    ctx.now,
+    rules.repairPerMinute,
+  );
+  p.vitalsDirty = true;
   p.vehicle = "Airship";
   p.x = g.x;
   p.y = g.y;
@@ -149,8 +161,12 @@ export function unboardAirship(ctx: ItemCtx, room: Room, p: Player): Outgoing[] 
     kind: "drop",
     expiresAt: null,
     ownerId: p.id,
+    hull: p.hull,
+    parkedAt: ctx.now,
   });
   p.vehicle = null;
+  p.hull = null;
+  p.vitalsDirty = true;
   p.spell.body = null;
   io.all({ e: "body", id: p.id, body: null });
   p.forceYou = true;
@@ -161,11 +177,16 @@ export function unboardAirship(ctx: ItemCtx, room: Room, p: Player): Outgoing[] 
 
 /**
  * The airship is lost at death: the body reverts for everyone and nothing parks. Returns the body
- * event for the map.
+ * event for the map. A death because the hull ran out is remembered for the respawn line.
  */
 export function vehicleDeath(room: Room, p: Player): Outgoing[] {
   const io = new ItemOut(room);
+  if (p.vehicle && p.hull !== null && p.hull <= 0) {
+    p.sunk = p.vehicle;
+  }
   p.vehicle = null;
+  p.hull = null;
+  p.vitalsDirty = true;
   p.spell.body = null;
   p.vehicleDirty = true;
   p.invDirty = true;

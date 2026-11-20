@@ -14,6 +14,7 @@ import {
   type Bag,
   type ChatChannel,
   type ChatOutcome,
+  DEFAULT_HULL_RULES,
   type DeltaEvent,
   type Dir,
   type Equipment,
@@ -30,6 +31,8 @@ import {
   type GroundView,
   HOUSE_CLOCK_FRAMES,
   type HouseListEntry,
+  type HullRules,
+  hullMax,
   type InventoryView,
   isJailMap,
   type MapExit,
@@ -52,6 +55,7 @@ import {
   tileAt,
   type Vehicle,
   type Vitals,
+  type VitalsView,
   withTile,
 } from "@secondstaronline/shared";
 
@@ -114,6 +118,9 @@ export interface GroundItem {
   expiresAt: number | null;
   /** The character who built or parked an Airship; null or absent otherwise. */
   ownerId?: string | null;
+  /** A parked vehicle's hull (null or absent: full) and the wall-clock ms it was parked at. */
+  hull?: number | null;
+  parkedAt?: number | null;
 }
 
 export function groundView(g: GroundItem): GroundView {
@@ -266,6 +273,10 @@ export interface Player {
   vehicle: Vehicle | null;
   /** The vehicle or the airship's ground row changed: write both in this tick's transaction. */
   vehicleDirty: boolean;
+  /** Aboard: the vehicle's hull, which hits wear instead of HP. Null on foot. */
+  hull: number | null;
+  /** The vehicle destroyed at this death, named in the respawn line; cleared at the respawn. */
+  sunk: Vehicle | null;
   /** Latest held arrow and Turn modifier from `move`. */
   held: Dir | null;
   heldTurn: boolean;
@@ -625,6 +636,7 @@ export function sessionCombatState(): Pick<
   | "vitalsDirty"
   | "invDirty"
   | "vehicleDirty"
+  | "sunk"
   | "lookDirty"
   | "invSaveDue"
   | "lastSheet"
@@ -690,6 +702,7 @@ export function sessionCombatState(): Pick<
     vitalsDirty: true,
     invDirty: true,
     vehicleDirty: false,
+    sunk: null,
     lookDirty: false,
     invSaveDue: false,
     lastSheet: "",
@@ -1046,6 +1059,14 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     guildsDirty: new Set(),
     guildFields: new Map(),
   };
+}
+
+/** My HP, SP and XP for my own client, with the hull while aboard (the HP bar shows it). */
+export function vitalsView(p: Player, hulls: HullRules = DEFAULT_HULL_RULES): VitalsView {
+  const v = { ...p.char.vitals };
+  return p.vehicle && p.hull !== null
+    ? { ...v, hull: { hp: p.hull, max: hullMax(p.vehicle, hulls) } }
+    : v;
 }
 
 export function playerView(p: Player): PlayerView {

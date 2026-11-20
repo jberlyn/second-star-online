@@ -136,13 +136,19 @@ describe("the challenge checks", () => {
   });
 
   test("quit is silent off a 6P tile, and its stand-still text comes first", () => {
-    const q = { layer1: l[0] as string[], x: 8, y: 8, held: false, dead: false };
+    const q = { layer1: l[0] as string[], x: 8, y: 8, held: false, dead: false, riding: false };
     expect(quitCheck({ ...q, stepFrames: 2 })).toEqual({
       kind: "text",
       text: "You should stand still before exiting the arena.",
     });
     expect(quitCheck({ ...q, stepFrames: 0 })).toEqual({ kind: "silent" });
     expect(quitCheck({ ...q, stepFrames: 0, x: 4, y: 4 })).toEqual({ kind: "go" });
+  });
+
+  test("divergence: a rider over a 6P tile is not in the arena, so quit is silent", () => {
+    const q = { layer1: l[0] as string[], held: false, dead: false, stepFrames: 0 };
+    expect(quitCheck({ ...q, x: 4, y: 4, riding: false })).toEqual({ kind: "go" });
+    expect(quitCheck({ ...q, x: 4, y: 4, riding: true })).toEqual({ kind: "silent" });
   });
 
   test("bug fixed: Hold and the death wait stop the arena words", () => {

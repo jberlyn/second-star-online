@@ -129,11 +129,14 @@ export function createBars(a: Assets): Bars {
   const bars: Bars = {
     el,
     setVitals(v) {
-      hpFillBox.style.width = fillWidth(v.hp, v.hpMax);
+      // Aboard a vehicle the HP bar shows its hull, which hits wear instead of HP.
+      const hull = v.hull;
+      hpFillBox.style.width = hull ? fillWidth(hull.hp, hull.max) : fillWidth(v.hp, v.hpMax);
       spFillBox.style.width = fillWidth(v.sp, v.spMax);
-      hpText.textContent = `${v.hp} / ${v.hpMax}`;
+      hpText.textContent = hull ? `Hull ${hull.hp} / ${hull.max}` : `${v.hp} / ${v.hpMax}`;
       spText.textContent = `${v.sp} / ${v.spMax}`;
-      sr.textContent = `HP ${v.hp} of ${v.hpMax}, SP ${v.sp} of ${v.spMax}, level ${v.level}`;
+      const first = hull ? `Hull ${hull.hp} of ${hull.max}` : `HP ${v.hp} of ${v.hpMax}`;
+      sr.textContent = `${first}, SP ${v.sp} of ${v.spMax}, level ${v.level}`;
     },
     setPower(bar, member) {
       at(power, 874 - 2 * bar - 81, 101 - 2, 63);

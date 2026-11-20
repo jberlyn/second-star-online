@@ -67,6 +67,8 @@ export interface CharacterRecord {
   profile: string;
   /** What the character is riding. */
   vehicle: Vehicle | null;
+  /** Aboard: the vehicle's hull; null on foot, or a rider saved before hulls (a full hull). */
+  hull: number | null;
 }
 
 /** `Fctnme` (0 none, 1 Mage, 2 Warrior, 3 Adventurer) and `Fctcnt` in frames. */
@@ -110,12 +112,13 @@ interface CharacterRow {
   wanted: number;
   profile: string;
   vehicle: Vehicle | null;
+  hull: number | null;
 }
 
 const COLUMNS =
   "id, account_id, name, sex, head, class_code, level, hp, hp_max, sp, sp_max, exp, exp_needed, " +
   "str, sta, agi, dex, int, wis, spd, aim, hunger, map_id, x, y, facing, respawn_map_id, respawn_x, respawn_y, " +
-  "faction, faction_count, wanted, profile, vehicle";
+  "faction, faction_count, wanted, profile, vehicle, hull";
 
 /**
  * Inserts a new character with one row per skill and starting bag. Its first respawn point is
@@ -219,6 +222,7 @@ export interface CharacterProgress {
   wanted: boolean;
   stats: Omit<StoredStats, "aim">;
   vehicle: Vehicle | null;
+  hull: number | null;
 }
 
 /** Writes a session's progress. Synchronous: callers batch it in one transaction. */
@@ -228,7 +232,7 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     `UPDATE characters SET map_id = ?, x = ?, y = ?, facing = ?, level = ?, hp = ?, hp_max = ?,
       sp = ?, sp_max = ?, exp = ?, exp_needed = ?, hunger = ?, respawn_map_id = ?, respawn_x = ?,
       respawn_y = ?, faction = ?, faction_count = ?, wanted = ?, str = ?, sta = ?, agi = ?, dex = ?,
-      int = ?, wis = ?, spd = ?, vehicle = ?, updated_at = ? WHERE id = ?`,
+      int = ?, wis = ?, spd = ?, vehicle = ?, hull = ?, updated_at = ? WHERE id = ?`,
   ).run(
     p.mapId,
     p.x,
@@ -256,6 +260,7 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     c.stats.wis,
     c.stats.spd,
     c.vehicle,
+    c.vehicle ? c.hull : null,
     now,
     id,
   );
@@ -308,13 +313,13 @@ export function savePromotion(
 export function saveVehicle(
   db: Db,
   id: string,
-  c: { vehicle: Vehicle | null; position: Position },
+  c: { vehicle: Vehicle | null; hull: number | null; position: Position },
   now: string,
 ): void {
   const p = c.position;
   db.query(
-    "UPDATE characters SET vehicle = ?, map_id = ?, x = ?, y = ?, facing = ?, updated_at = ? WHERE id = ?",
-  ).run(c.vehicle, p.mapId, p.x, p.y, p.facing, now, id);
+    "UPDATE characters SET vehicle = ?, hull = ?, map_id = ?, x = ?, y = ?, facing = ?, updated_at = ? WHERE id = ?",
+  ).run(c.vehicle, c.vehicle ? c.hull : null, p.mapId, p.x, p.y, p.facing, now, id);
 }
 
 /** The saved profile, written at once. */
@@ -387,5 +392,6 @@ function toRecord(row: CharacterRow): CharacterRecord {
     wanted: row.wanted === 1,
     profile: row.profile,
     vehicle: row.vehicle,
+    hull: row.hull,
   };
 }
