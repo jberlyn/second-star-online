@@ -10,7 +10,7 @@ Second Star Online is a remake of First Star Online 1.6 that fixes its exploits 
 - **Keep some bugs on purpose.** When fixing a bug would be a design change rather than a correction, it is kept and listed under [Kept on purpose](#kept-on-purpose) with the reason.
 - **Record design changes.** Deliberate changes to how the game plays are listed under [Design changes](#design-changes).
 
-Record a difference in the same change as the code, as **Bug fixed** or under Kept on purpose when it resolves a 1.6 bug. Name its pinning tests `bug fixed: …` or `kept on purpose: …`.
+Record a difference in the same change as the code, as **Bug fixed** or under Kept on purpose when it resolves a 1.6 bug. Name its pinning tests `bug fixed: …` or `kept on purpose: …`. A pin in `packages/server/e2e/` names a step of a scripted scenario: each e2e file plays one story in order, so run the whole file to check that step, not the step alone by name.
 
 Kinds are **Bug fixed**, **Kept on purpose**, **Architecture** (server authority and related design), **Exploit closed**, **Limit lifted**, **World content**, **Platform** (the move to a browser and a modern server), and **Other** for a remaining deliberate change.
 
@@ -4377,7 +4377,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server computes those results and clients send their intended actions.
 - **Why:** Server authority makes every player use the same game state and prevents clients from supplying their own results.
 - **In the code:** `packages/server/src/systems/movement/movement.ts` (`movePlayer`), `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`)
-- **Pinned by:** `a held arrow steps every 8 ticks and peers are told 16 calls` (packages/server/tests/world.test.ts); `gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30` (packages/server/tests/monsters.test.ts); `SSO: no client message reports a result: hit points, damage, XP, level, a kill or a monster's state`; `SSO: the attack intent is the key's hold state only: no damage, power, target, position or weapon` (packages/shared/tests/ledger-pins-a.test.ts); `a fireball at a monster is placed next frame and hits in that frame's actor passes on FireballU-1 for 4 + P + random(3)` (packages/server/tests/spells.test.ts); `a seeded Slime fight: bare hands kill it, the kill gives 23 XP at level 1` (packages/server/tests/monsters.test.ts)
+- **Pinned by:** `a held arrow steps every 8 ticks and peers are told 16 calls` (packages/server/tests/world.test.ts); `gate, tile, random(5), pause: a Slime spawns on its rolled tile with pause 30` (packages/server/tests/monsters.test.ts); `SSO: no client message reports a result: hit points, damage, XP, level, a kill or a monster's state`; `SSO: the attack intent is the key's hold state only: no damage, power, target, position or weapon` (packages/shared/tests/ledger-pins-a.test.ts); `a fireball at a monster is placed next frame and hits in that frame's actor passes on FireballU-1 for 4 + P + random(3)` (packages/server/tests/spells.test.ts); `a seeded Slime fight: bare hands kill it, the kill gives 23 XP at level 1` (packages/server/tests/monsters.test.ts); `SSO: no client message field carries a result: hit points, damage, XP, level, a kill or a score` (packages/shared/tests/ledger-pins-e.test.ts)
 
 #### Server-authoritative tile movement
 - **Kind:** Exploit closed
@@ -4554,7 +4554,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server triggers effects only from validated state.
 - **Why:** A forged client could teleport for free, change another player's body, create items or deal free damage.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `swingFireballs`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `setBody`), `packages/server/src/systems/world/tick.ts` (`portal`)
-- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent`; `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts); `SSO: no client message sets a body, makes food or fires an effect; a cast names only the spell and the point` (packages/shared/tests/ledger-pins-a.test.ts)
+- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent`; `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts); `SSO: no client message sets a body, makes food or fires an effect; a cast names only the spell and the point` (packages/shared/tests/ledger-pins-a.test.ts); `SSO: no client message field sets a body, makes food or fires an effect` (packages/shared/tests/ledger-pins-e.test.ts)
 
 #### Monster spells and summons authored by the server
 - **Kind:** Exploit closed

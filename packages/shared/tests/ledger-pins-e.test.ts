@@ -206,4 +206,42 @@ describe("File editor and path-based file access removed", () => {
         .success,
     ).toBe(false);
   });
+
+  test("SSO: no client message field carries a result: hit points, damage, XP, level, a kill or a score", () => {
+    const named = messages.flatMap(({ t, schema }) => {
+      const out: string[] = [];
+      leaves(schema, "", out);
+      return out.map((leaf) => `${t}.${leaf.split(":")[0]}`);
+    });
+    const last = (f: string) =>
+      f
+        .split(".")
+        .pop()
+        ?.replace(/\[\]|\{\}/g, "") ?? "";
+    expect(
+      named.filter((f) =>
+        /^(hp|hpmax|sp|spmax|health|dmg|damage|xp|exp|level|kill|kills|score)$/i.test(last(f)),
+      ),
+    ).toEqual([]);
+  });
+
+  test("SSO: no client message field sets a body, makes food or fires an effect", () => {
+    const named = messages.flatMap(({ t, schema }) => {
+      const out: string[] = [];
+      leaves(schema, "", out);
+      return out.map((leaf) => `${t}.${leaf.split(":")[0]}`);
+    });
+    const last = (f: string) =>
+      f
+        .split(".")
+        .pop()
+        ?.replace(/\[\]|\{\}/g, "") ?? "";
+    expect(
+      named.filter(
+        // `mailSend.body` is a letter's text, not a character's body.
+        (f) =>
+          f !== "mailSend.body" && /^(body|food|fx|effect|fireball|summon|portal)$/i.test(last(f)),
+      ),
+    ).toEqual([]);
+  });
 });
