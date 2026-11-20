@@ -33,7 +33,7 @@ See the [crafting guide](../crafting.md).
 
 - [Gathering at skill 0 drops items](../../differences-from-fso.md#gathering-at-skill-0-drops-items).
 - [Gathering and crafting skills rise from 0](../../differences-from-fso.md#gathering-and-crafting-skills-rise-from-0).
-- [The bio score counts every skill](../../differences-from-fso.md#the-bio-score-counts-every-skill): Lumberjacking did not count in 1.6.
+- [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills): Lumberjacking did not count in 1.6.
 
 ## Balance notes
 

@@ -29,7 +29,7 @@ Adds to the power of Minor Heal, Major Heal, Bless, Haste and Diminish Hunger: +
 ## Differences from 1.6
 
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills): Priest now grants Blessing.
-- [The bio score counts every skill](../../differences-from-fso.md#the-bio-score-counts-every-skill): Blessing did not count in 1.6.
+- [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills): Blessing did not count in 1.6.
 
 ## Balance notes
 

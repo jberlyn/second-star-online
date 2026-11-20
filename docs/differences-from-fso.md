@@ -46,14 +46,14 @@ By system (the code folder that holds the change):
 | combat | [26](#combat) | [7](#server-side-combat) |
 | core | [3](#core) | [9](#server-side-core) |
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
-| economy | [34](#economy) | [15](#server-side-economy) |
+| economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
 | inventory | [32](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
-| monsters | [18](#monsters) | [3](#server-side-monsters) |
+| monsters | [19](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
-| progression | [10](#progression) | [4](#server-side-progression) |
-| social | [22](#social) | [9](#server-side-social) |
+| progression | [9](#progression) | [4](#server-side-progression) |
+| social | [21](#social) | [9](#server-side-social) |
 | spells | [24](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
@@ -128,7 +128,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** Monster sprites occupied slots 180–184. Each slot spawned only its own roster entry, the fifth never spawned, and monsters did not despawn, so a screen saturated at four or fewer.
 - **SSO:** An authored roster has at most four slots and each holds at most one live monster. Spawn attempts reproduce per-client rolls once per player, up to 15 players, with the same refill maths: two passes a tick, each passing a 1-in-80 gate (solo; the odds fall as more players share the screen, flattening at 7) and then a 1-in-5 roll, so about 10/q seconds on average solo, where q is the share of tiles the slot's monster may stand on. With more than 15 players, a random 15 roll each tick. There is no sprite cap.
 - **Why:** The sprite cap was technical, but one live monster per slot preserved the density players saw. Without it an idle screen would gain roughly 12 monsters a minute indefinitely.
-- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`, `spawnLadder`)
+- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`, `spawnLadder`), `packages/server/src/systems/world/tick.ts` (`emulated`, `MAX_EMULATED_PLAYERS`, `actorPass`)
 
 #### No 11-spell FX cap
 - **Kind:** Limit lifted
@@ -588,7 +588,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Character creation stores the `startPoint` tile as the respawn point. A death or jail release goes there, or to the `fallbackPoint` setting if its map was deleted. A lost place always goes to `fallbackPoint`. `startPoint` is used only for new characters. Travel someone chooses (an exit, an edge, `/warp`, a Portal) never falls back: it is refused. Operators can list exits and setting points that lead nowhere with `bun run maps:check`. A migration renames the old `respawnPoint` setting to `fallbackPoint` and gives characters without a respawn point its tile.
 - **Why:** Operators built tutorial islands that new characters start on, left through a main-world shrine. A server-wide death point could only serve one side: pointed at the island it sent veterans back with main-world items, and pointed at the main world it let new players skip the island. Starting with a respawn point keeps each player on their side. A lost place uses the fallback map rather than the respawn point, so it can never carry a player back to where they started.
 - **In the code:** `packages/server/src/persistence/characters.ts` (`insertCharacter`), `packages/server/src/systems/world/tick.ts` (`respawnTarget`, `fallbackTarget`, `releaseFromJail`), `packages/server/src/game.ts` (`deleteInterior`), `packages/server/src/cli/map-check.ts` (`mapCheck`)
-- **Pinned by:** `SSO: a death or release goes to your respawn point, else the fallback point; a lost place goes to the fallback point`, `SSO: a tutorial island keeps new players until they leave through a shrine, and nothing sends them back`, `SSO: new characters start on the operator's start point setting, default x1000y992 (6, 4) on the seed map` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point` (packages/server/tests/houses-db.test.ts); `divergence: the sentence is stored and ends at its time, then releases to the respawn point` (packages/server/tests/admin.test.ts); `fallback_point renames the Respawn point setting` (packages/server/tests/migrations.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
+- **Pinned by:** `SSO: a death or release goes to your respawn point, else the fallback point; a lost place goes to the fallback point`, `SSO: a tutorial island keeps new players until they leave through a shrine, and nothing sends them back`, `SSO: new characters start on the operator's start point setting, default x1000y992 (6, 4) on the seed map` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point` (packages/server/tests/houses-db.test.ts); `divergence: the sentence is stored and ends at its time, then releases to the respawn point` (packages/server/tests/admin.test.ts); `fallback_point renames the Respawn point setting and gives characters without a respawn point its tile` (packages/server/tests/migrations.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
 
 #### Class stat points come from your current class
 - **Kind:** Other
@@ -1396,7 +1396,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `finishCraft` takes every material by exact name at completion. Failures use them up the same way for cooking, alchemy and carpentry. If a material is gone by then, the craft ends silently, as a repair with no chunk already did. A burn whose burned food has no room in the bag is treated like a success with no room: "Your inventory is too crowded!", and nothing is taken.
 - **Why:** Failures should cost the same in every craft, and crafts that end early should lose nothing.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`, `startCraft`)
-- **Pinned by:** `bug fixed: a burned meal uses up its raw food and makes its burned form`; `a burn on a full bag says so, makes nothing and keeps the raw stack`; `a failed brew uses up the bottle and the crystal`; `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts); `kept on purpose: alchemy takes the bottle and crystal at completion; the sand stays in hand`; `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `bug fixed: a burned meal uses up its raw food and makes its burned form`; `a burn on a full bag says so, makes nothing and keeps the raw stack`; `a failed brew uses up the bottle and the crystal`; `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: alchemy takes the bottle and crystal at completion; the sand stays in hand`; `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id` (packages/server/tests/craft.test.ts)
 
 #### Yeti Meat cooks into a Yeti Burger
 - **Kind:** Bug fixed
@@ -1877,6 +1877,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`register`, `shopStockLines`)
 - **Pinned by:** `bug fixed: Register pays from a till line past line 30`; `bug fixed: Inventory reports a till line past line 30` (packages/shared/tests/economy/playershop-till.test.ts)
 
+#### Handing in a head takes the head you gave
+- **Kind:** Bug fixed
+- **What you notice:** Giving a faction leader a head takes it from the bag slot you chose.
+- **1.6:** The chosen slot only had to hold a head; one was taken from the first slot that contained one.
+- **SSO:** The head comes off the chosen slot.
+- **Why:** Players choose what they give.
+- **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`)
+- **Pinned by:** `bug fixed: turn-in takes the head you gave, not the first in the bag` (packages/server/tests/factions.test.ts)
+
 ### housing
 
 #### Unbuildable deeds say so
@@ -2065,7 +2074,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Riding an airship, Ctrl picks up or uses the item or Pig in front of you, as on foot. With nothing in front, Ctrl unboards.
 - **1.6:** Ctrl tested for the airship before anything else and only ever tried to unboard; only a mouse click could pick anything up.
-- **SSO:** Ctrl first uses or takes the item on the faced tile, then tries to grab a Pig or Snow Demon there; it unboards when neither happens. A monster Ctrl cannot grab does not stop the unboarding, and for a wide monster only its anchor tile counts.
+- **SSO:** Ctrl first grabs a Pig or Snow Demon on the faced tile; failing that it uses or takes the item there, and it unboards when there is neither. A monster Ctrl cannot grab does not stop the unboarding, and for a wide monster only its anchor tile counts.
 - **Why:** The key did one thing aboard and another on foot for no reason a player could see.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/systems/vehicles/airship.ts` (`unboardAirship`)
 - **Pinned by:** `bug fixed: Ctrl aboard an airship takes what is in front, and unboards when nothing is` (packages/server/tests/vehicles.test.ts); `bug fixed: Ctrl aboard takes a Pig in front; any other monster with no item lets Ctrl unboard` (packages/server/tests/vehicles.test.ts)
@@ -2155,7 +2164,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A Dragon Sword goes in the left hand with Strength 26, hits for 12 plus up to 8, and is drawn with the Fire Sword's art.
 - **1.6:** No rule gave the Dragon Sword a slot, attack power or picture, so Equip refused it.
-- **SSO:** `item-rules.json` gives it a slot, a strength requirement and a paperdoll alias, `attpower.json` an attack row (the last in the file), and `classes.json` a kill skill-gain row (Slash, Thrust, Swordsmanship, Fencing). The Dragon Sword still only appears if an operator hands one out.
+- **SSO:** `item-rules.json` gives it a slot, a strength requirement and a paperdoll alias, `attpower.json` an attack row (the last of its `contains` rows), and `classes.json` a kill skill-gain row (Slash, Thrust, Swordsmanship, Fencing). The Dragon Sword still only appears if an operator hands one out.
 - **Why:** An item that exists should be usable for what it is.
 - **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`, `strengthRequirement`)
 - **Pinned by:** `bug fixed: the Dragon Sword is wielded in the left hand` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: the Dragon Sword and Steel Scimitar train the sword skills` (packages/shared/tests/progression/weapon-skills.test.ts); `bug fixed: the Dragon Sword hits for 12 plus up to 8 and is drawn with the Fire Sword's art` (packages/shared/tests/inventory/inventory.test.ts)
@@ -2729,7 +2738,16 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A monster's damage floatie carries the splat flag, so the client draws the splat and plays `hitsound` on channel 5.
 - **Why:** Monster damage should be as visible and audible as player damage.
 - **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`), `packages/server/src/systems/world/tick.ts` (`tick`), `packages/client/src/model.ts` (`applyDelta`)
-- **Pinned by:** `divergence: a monster's hit on you shows the number with the splat and hitsound` and `a Parry, Block or Shield floatie has no splat and no sound` (packages/client/tests/combat.test.ts); `a Slime next to you hits on random(10) = 1` (packages/server/tests/monsters.test.ts)
+- **Pinned by:** `divergence: a monster's hit on you shows the number with the splat and hitsound` and `a Parry, Block or Shield floatie has no splat and no sound` (packages/client/tests/combat.test.ts); `a Slime next to you hits on random(10) = 1; the floatie is colour 6 with i-frames after` (packages/server/tests/monsters.test.ts)
+
+#### A death drop is a random item from your bag
+- **Kind:** Bug fixed
+- **What you notice:** When a death drops an item, it is one of the items in their bag at random, from any line. Crystals never drop; an item that only has the word in its name, such as a Crystal Axe, can.
+- **1.6:** The game counted the filled lines among 1 to 8 and picked a line number up to that count, so with gaps in your bag the pick could land on an empty line and nothing dropped, and lines 9 to 15 never dropped. A crystal stack picked dropped nothing, by an explicit check.
+- **SSO:** The pick is one of the bag's lines other than the six colours of crystal (matched by whole name, not by "contains"), every line counting, with the same single draw; one unit of it drops.
+- **Why:** The count was meant to pick among the items you carry. The crystal check was deliberate and stays, but a crystal stack no longer uses up the drop.
+- **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`, `isCrystal`)
+- **Pinned by:** `bug fixed: the death drop picks one of the bag's items at random; crystals never` (packages/shared/tests/inventory/inventory.test.ts)
 
 ### movement
 
@@ -2852,20 +2870,11 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
 - **Pinned by:** `bug fixed: the skills list stops at its first and last rows` (packages/client/tests/panel.test.ts)
 
-#### A death drop is a random item from your bag
-- **Kind:** Bug fixed
-- **What you notice:** When a death drops an item, it is one of the items in their bag at random, from any line. Crystals never drop; an item that only has the word in its name, such as a Crystal Axe, can.
-- **1.6:** The game counted the filled lines among 1 to 8 and picked a line number up to that count, so with gaps in your bag the pick could land on an empty line and nothing dropped, and lines 9 to 15 never dropped. A crystal stack picked dropped nothing, by an explicit check.
-- **SSO:** The pick is one of the bag's lines other than the six colours of crystal (matched by whole name, not by "contains"), every line counting, with the same single draw; one unit of it drops.
-- **Why:** The count was meant to pick among the items you carry. The crystal check was deliberate and stays, but a crystal stack no longer uses up the drop.
-- **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`, `isCrystal`)
-- **Pinned by:** `bug fixed: the death drop picks one of the bag's items at random; crystals never` (packages/shared/tests/inventory/inventory.test.ts)
-
 #### Every wieldable sword trains its skills on a kill
 - **Kind:** Bug fixed
 - **What you notice:** Killing a monster with a Steel Scimitar, a Dragon Sword or a masterwork such as Knight's Sword +2 can raise Slash, Thrust, Swordsmanship and the weapon's other skills, as its plain or sister weapon does.
 - **1.6:** The kill skill-gain table named some weapons exactly. The Steel Scimitar had no row, and an exact row such as Knight's Sword missed the `+1` to `+4` masterworks a repair makes, so those weapons trained nothing on a kill.
-- **SSO:** `classes.json` `skillGain.weaponSkills` has Steel Scimitar and Dragon Sword rows (Slash, Thrust, Swordsmanship, Fencing, as the Star and Pharaoh Swords), and an exact row also covers the masterworks made from its weapon, read from `craft.json` `smith.masterwork`.
+- **SSO:** `classes.json` `skillGain.weaponSkills` has Steel Scimitar and Dragon Sword rows (Slash, Thrust, Swordsmanship, Fencing, as the Star and Pharaoh Swords), and an exact row also covers the masterworks made from its weapon, read from `craft.json` `stations.smith.masterwork`.
 - **Why:** A better copy of a weapon, or a weapon the game hands out, training nothing was never intended.
 - **In the code:** `packages/shared/src/rules/progression/skillgain.ts` (`weaponSkillList`), `packages/shared/src/rules/crafting/masterwork.ts` (`weaponIs`, `masterworkBase`)
 - **Pinned by:** `bug fixed: the Dragon Sword and Steel Scimitar train the sword skills`; `bug fixed: a masterwork trains what its base weapon trains` (packages/shared/tests/progression/weapon-skills.test.ts)
@@ -3035,20 +3044,20 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/social/bios.ts` (`medalStrip`), `packages/client/src/ui/bio.ts` (`createBioWindow`)
 - **Pinned by:** `bug fixed: each bio clears all 14 slots and draws from slot 1` (packages/shared/tests/social/friends-bios-medals.test.ts); `bug fixed: a bio with fewer medals clears slots 11-14 too` (packages/client/tests/friends-bio.test.ts)
 
-#### The bio score counts every skill
+#### The bio score counts all its listed skills
 - **Kind:** Bug fixed
 - **What you notice:** A bio's score now includes Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and Wind, so scores rise for anyone with those skills. The High Score table scores by the bio score, so it changes the same way (see the next entry).
 - **1.6:** The second line of the score's sum assigned to a misspelt variable, so those eight skills never counted.
-- **SSO:** The score sums every skill, HPmax and SPmax (`bios.score.counted` in `social.json`).
+- **SSO:** The score sums every skill on its list (`bios.score.counted` in `social.json`: 33 skills, HPmax and SPmax). Meditation, Terrain Navigating, Item Identification, Shoveling and Farming were never on 1.6's list and still do not count.
 - **Why:** A misspelt variable, not a design.
 - **In the code:** `packages/shared/src/rules/social/bios.ts` (`bioScore`), `packages/shared/src/rules/social/highscores.ts` (`highScorePoints`)
-- **Pinned by:** `bug fixed: the score counts every skill, HPmax and SPmax` (packages/shared/tests/social/friends-bios-medals.test.ts)
+- **Pinned by:** `bug fixed: the score counts every listed skill, HPmax and SPmax` (packages/shared/tests/social/friends-bios-medals.test.ts)
 
-#### High scores count every skill and rank ties after the tied entry
+#### High scores count the bio score's skills and rank ties after the tied entry
 - **Kind:** Bug fixed
-- **What you notice:** The High Score Statue's points count every skill, HPmax and SPmax, the same sum as the bio score. A tie ranks right after the entry it ties, and your own lower score never replaces your higher entry.
+- **What you notice:** The High Score Statue's points are the bio score's sum: every skill on its list, HPmax and SPmax. A tie ranks right after the entry it ties, and your own lower score never replaces your higher entry.
 - **1.6:** The score left out eight skills (Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and Wind) through a misspelt variable, ties failed to rank, and blanking your own entry let a lower score overwrite it.
-- **SSO:** `highScorePoints` is the bio score, which now counts every skill, and `rankHighScore` ranks ties after the tied entry and keeps a personal best.
+- **SSO:** `highScorePoints` is the bio score, which now counts every skill on its list, and `rankHighScore` ranks ties after the tied entry and keeps a personal best.
 - **Why:** The board should reflect a whole character and keep each player's best.
 - **In the code:** `packages/shared/src/rules/social/highscores.ts` (`highScorePoints`, `rankHighScore`), `packages/server/src/systems/social/highscores.ts` (`submitHighScore`)
 - **Pinned by:** `the points are the bio score: every skill, HPmax and SPmax`; `rankHighScore places ties right after the tied slot and keeps a higher existing score` (packages/shared/tests/social/highscores.test.ts)
@@ -3061,15 +3070,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Loop bounds, not a limit anyone chose; SSO's own cap of 199 names is separate.
 - **In the code:** `packages/shared/src/rules/social/buddies.ts` (`buddyRemove`)
 - **Pinned by:** `bug fixed: any name on the list can be removed, the 190th and later too`; `bug fixed: a removal keeps every other name, in order, past the 199th too` (packages/shared/tests/social/friends-bios-medals.test.ts)
-
-#### Handing in a head takes the head you gave
-- **Kind:** Bug fixed
-- **What you notice:** Giving a faction leader a head takes it from the bag slot you chose.
-- **1.6:** The chosen slot only had to hold a head; one was taken from the first slot that contained one.
-- **SSO:** The head comes off the chosen slot.
-- **Why:** Players choose what they give.
-- **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`)
-- **Pinned by:** `bug fixed: turn-in takes the head you gave, not the first in the bag` (packages/server/tests/factions.test.ts)
 
 ### spells
 
@@ -3427,10 +3427,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Kept on purpose
 - **What you notice:** You mix a potion and the sand is still in your hand afterwards. The Potion Bottle and the crystal are used up.
 - **1.6:** The sand only had to be held, which can look like a bug in a game where every other ingredient is used up.
-- **SSO:** The same. Every craft uses up its materials and keeps its tool: the Blacksmith Hammer, the Saw, and for alchemy the held sand. Shops price sand at 100 to 150 gold against 23 to 35 for a potion, which fits a tool rather than a material. Operators can change those prices.
+- **SSO:** The same. Every craft uses up its materials and keeps its tool: the Blacksmith Hammer, the Saw, and for alchemy the held sand. Shops price sand at 100 to 200 gold against 23 to 35 for a potion, which fits a tool rather than a material. Operators can change those prices.
 - **Why:** Using up the sand on every mix would make alchemy cost far more than it earns.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startMix`, `finishCraft`)
-- **Pinned by:** `kept on purpose: completion takes the bottle and the crystal; the held sand is a tool` (packages/shared/tests/crafting/craft.test.ts); `kept on purpose: alchemy takes the bottle and crystal at completion; the sand stays in hand` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `kept on purpose: completion takes the bottle and the crystal; the held sand is a tool` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: alchemy takes the bottle and crystal at completion; the sand stays in hand` (packages/server/tests/craft.test.ts)
 
 ## Server authority and exploits
 
@@ -4164,7 +4164,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** The compose pane, and therefore its send action, was available only after loading mail at a mailbox.
 - **SSO:** The server refuses a send unless the player's mailbox is open (from opening it until the list's CLOSE or a map change, which also closes the mail screen), and logs a cheat line. A pane's CLOSE or REPLY leaves it open.
 - **Why:** A forged client could otherwise send mail from anywhere.
-- **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`, `mailUiIntent`), `packages/server/src/systems/world/world.ts` (`enterRoom`), `packages/client/src/app.ts` (`runApp`)
+- **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`, `mailUiIntent`), `packages/server/src/game.ts` (`createGame`, the cheat line), `packages/server/src/systems/world/world.ts` (`enterRoom`), `packages/client/src/app.ts` (`runApp`)
 - **Pinned by:** `SSO: closing the mailbox ends sending until it is opened again`; `a pane's CLOSE or REPLY keeps the mailbox open`; `SSO: a map change ends the mailbox session, so a send from elsewhere is refused` (packages/server/tests/mail-gate.test.ts); `a send with no mailbox opened this session stores nothing` (packages/server/tests/mail-boards.test.ts)
 
 #### Mail reaches existing characters only
@@ -4371,7 +4371,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** Any client could send wanted or pardon messages to any player. A message to an absent killer was lost.
 - **SSO:** On an innocent player's non-arena death, at the end of the death lock, the server credits the recorded last player to hit them by player ID and applies the flag, even if another cause dealt the final blow, provided the hit landed within 40 ticks (2 seconds) of the death (see [A death long after the last hit credits no one](#a-death-long-after-the-last-hit-credits-no-one)). A player who has logged off is not flagged, nor is anyone during a Lightning Assassin's game. A staff `/Pardon` says “<name> is not online.” if the named player is absent.
 - **Why:** Forged messages could frame an innocent player or pardon oneself.
-- **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`, `pardon`)
+- **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`, `pardon`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
 #### Assassin points computed by the server
 - **Kind:** Exploit closed
@@ -4497,7 +4497,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** The cast area extended far enough beyond the 17×12 playfield that clicking its right or bottom edge could place a monster on column 18 or row 13.
 - **SSO:** A cast click must be on the playfield, and a summon whose tile is off the map is refused before anything is spent; a pig dropped toward an edge stays in the bag.
 - **Why:** Server monsters live on map tiles; an off-map monster could not be reached or saved.
-- **In the code:** `packages/server/src/systems/spells/cast.ts` (`planSummon`, `summonPig`)
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `inCastBounds`, `planSummon`, `summonPig`), `packages/server/src/systems/inventory/items.ts` (`pigDrop`)
 - **Pinned by:** `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts); `bug fixed: Raise Dead on a grave in the bottom row is refused before anything is spent: the Zombie would be off the map` (packages/server/tests/spells.test.ts); `bug fixed: a faced tile off the map at the side, bottom or top → "You can't drop an animal here!", the pig kept` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 ### Server-side vehicles

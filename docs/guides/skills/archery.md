@@ -47,4 +47,4 @@ A Steel Bow adds a further +1 above 70, 80 and 90. Thrust and the power bar are 
 
 - Below 30, the "set" rows replace everything added before them, so the bow, arrows, ring, Strength and faction make no difference until Archery 30.
 - Archery is the only weapon skill that ignores both the faction cap and the monster cap; its limit is crystals.
-- Crossbows also train [Martial Arts](martial-arts.md) on each shot, and their power depends on Martial Arts as well.
+- Crossbows also train [Martial Arts](martial-arts.md) on each shot, and the Wooden and Silver Crossbows' power depends on Martial Arts as well (the plain Crossbow's does not).

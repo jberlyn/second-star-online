@@ -31,7 +31,7 @@ Fire is the Fire Mage's element. It strengthens the fire spells, and it is the o
 - [Fireball and Wind Wave get their school bonus](../../differences-from-fso.md#fireball-and-wind-wave-get-their-school-bonus).
 - [Bolt and Wind Wave train their school; free fireballs train nothing](../../differences-from-fso.md#bolt-and-wind-wave-train-their-school-free-fireballs-train-nothing).
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills).
-- [The bio score counts every skill](../../differences-from-fso.md#the-bio-score-counts-every-skill): Fire did not count in 1.6.
+- [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills): Fire did not count in 1.6.
 
 ## Balance notes
 

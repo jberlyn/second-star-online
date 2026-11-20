@@ -20,7 +20,7 @@ Musicianship is the Bard's skill. It shows in the skill panel and the Bard promo
 ## Differences from 1.6
 
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills): Bard now grants Musicianship.
-- [The bio score counts every skill](../../differences-from-fso.md#the-bio-score-counts-every-skill): Musicianship did not count in 1.6.
+- [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills): Musicianship did not count in 1.6.
 
 ## Balance notes
 

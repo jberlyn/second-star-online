@@ -300,7 +300,7 @@ describe("crafts in the frame script", () => {
     expect(k.a.keyLock).toBe(false);
   });
 
-  test("kept on purpose: alchemy takes the bottle and crystal at completion; the sand stays in hand", () => {
+  test("bug fixed: alchemy takes the bottle and crystal at completion; the sand stays in hand", () => {
     const k = bench("Alchemy Lab", rngByN({ 15: [1] }));
     setSkill(k.a, "Alchemy", 1);
     k.a.char.equip.offHand = "Red Sand";

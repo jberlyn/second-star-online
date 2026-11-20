@@ -5,7 +5,7 @@
  *
  * - an Exit or Exit2 whose target map does not exist;
  * - an `Exit` or `Exit2` tile on a map with no such exit set;
- * - a start point, respawn point or Portal target setting whose map does not exist.
+ * - a start point, fallback point or Portal target setting whose map does not exist.
  *
  * Builders may add an exit before its map, so the World Editor saves it regardless.
  *

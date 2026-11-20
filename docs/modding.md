@@ -46,7 +46,7 @@ The original engine classified items, monsters, and spells by testing their name
 - **Every match adds:** all matching rows' numeric bonuses or effects are summed.
 - **In order:** every matching row applies, one after another in file order (`paperdoll.aliases`, where each row can rename the result of the one before).
 
-Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystals`, `Long Sword+3`, `Damaged Helm`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name. Two tables also extend `exact` to masterworks: an exact row in `classes.json` `skillGain.weaponSkills` or an exact skill block in `attpower.json` also matches the `+1` to `+N` masterworks that `craft.json` `smith.masterwork` makes from that weapon.
+Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystals`, `Long Sword+3`, `Damaged Helm`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name. Two tables also extend `exact` to masterworks: an exact row in `classes.json` `skillGain.weaponSkills` or an exact skill block in `attpower.json` also matches the `+1` to `+N` masterworks that `craft.json` `stations.smith.masterwork` makes from that weapon.
 
 ## Items (`items.json`, `item-rules.json`, `attpower.json`)
 
@@ -102,7 +102,7 @@ Notes carried over from the code:
 
 ### Adding an item
 
-Add a catalogue entry to `packages/data/content/items.json`, plus rows in `item-rules.json` and `attpower.json` for any behaviour its name does not already match. Most rows match a specific weapon name, not a word: `equip.slots` has a `contains` row for each sword ("Long Sword", "Short Sword", …) and no row for "Sword" alone. So `"Elven Long Sword"` inherits the Long Sword's slot, attack power, skill blocks, Strength and kill training through those `contains` rows (it still needs a `paperdoll.aliases` row to be drawn as one), but `"Elven Sword"` matches no slot row and cannot be equipped until you add one; a novel name like `"Moonblade"` needs every row. Run `bun run content:report "<name>"` to see which rows a name picks up.
+Add a catalogue entry to `packages/data/content/items.json`, plus rows in `item-rules.json` and `attpower.json` for any behaviour its name does not already match. Most rows match a specific weapon name, not a word: `equip.slots` has a `contains` row for each sword ("Long Sword", "Short Sword", …) and no row for "Sword" alone. So `"Elven Long Sword"` inherits the Long Sword's slot, attack power, Strength and kill training through those `contains` rows, and the generic Sword skill block, but not the Long Sword's Heavy Arms tiers, which are an `exact` block (it still needs a `paperdoll.aliases` row to be drawn as one), but `"Elven Sword"` matches no slot row and cannot be equipped until you add one; a novel name like `"Moonblade"` needs every row. Run `bun run content:report "<name>"` to see which rows a name picks up.
 
 What still needs code: a new mechanic (an item that does something no table expresses), a new carried container's bag picture and sell swap, a new owner-named fixture, and anything whose name is built at run time.
 
@@ -143,7 +143,7 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
    ```
 
 **Intentional omissions in this example:**
-- **Skill bonus to attack:** `attpower.json` `skillBlocks` adds Slash and sword-skill tiers to names containing "Sword", so `"Moonblade"` gets only its base roll unless renamed (e.g. `"Moonblade Sword"`) or given a `skillBlocks` entry.
+- **Skill bonus to attack:** `attpower.json` `skillBlocks` adds Slash and sword-skill tiers to names containing "Sword", so `"Moonblade"` gets only its base roll, the Strength tiers and the Thrust block every weapon gets, unless renamed (e.g. `"Moonblade Sword"`) or given a `skillBlocks` entry.
 - **Kill training:** which skills a kill trains comes from `classes.json` `skillGain.weaponSkills`; with no row there, a kill with `"Moonblade"` trains nothing. Add `{ "weapon": "Moonblade", "match": "exact", "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"] }`.
 - **Breaking:** items break only if listed in `breaks.weapon.items` and `breaks.damaged`.
 
@@ -248,7 +248,7 @@ Give a new species one of these numbers only if you want that rule.
    { "name": "Frost Wolf", "text": "BIO|Name: Frost Wolf\rPRO|A fierce wolf of the snow.\rINV|5 Gold:1" }
    ```
 
-Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the generated `rects.ts` would leave the monster invisible.
+Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the atlases would leave the monster invisible (its `<body>-f2-s` key is also missing from the generated `rects.ts`, which is a quick way to check).
 
 `npc-files.json` is not only a seed: the server loads it at every start as the base NPC store, then applies the `npc_files` rows saved by the NPC Editor on top. So a rebuilt image changes every NPC that has no saved NPC Editor edit, on existing servers too.
 

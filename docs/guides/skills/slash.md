@@ -43,4 +43,4 @@ Slash also gates other gains: Thrust can rise from kills only with Slash above 3
 ## Balance notes
 
 - Axes, hammers, the Katana, Scimitar, Bo, Dark Scimitar and Unholy Lance train Slash but gain no attack power from it.
-- Fighters start at 20, so they already have the first two sword tiers.
+- Fighters start at 20, so they already have the first sword tier (above 10); the second needs Slash above 20.

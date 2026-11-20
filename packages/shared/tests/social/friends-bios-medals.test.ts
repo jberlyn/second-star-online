@@ -167,7 +167,7 @@ describe("bios", () => {
     expect(bioTitle(skills({ Magery: 95, Archery: 96 }))).toBe("Master Archer");
   });
 
-  test("bug fixed: the score counts every skill, HPmax and SPmax", () => {
+  test("bug fixed: the score counts every listed skill, HPmax and SPmax", () => {
     const s = skills({
       Slash: 10,
       Lumberjacking: 50,

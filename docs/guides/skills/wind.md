@@ -30,4 +30,4 @@ Adds to the power of Wind Wave and Whirlwind: +2 above 0, then +1 above 10, 20, 
 - [Bolt and Wind Wave train their school; free fireballs train nothing](../../differences-from-fso.md#bolt-and-wind-wave-train-their-school-free-fireballs-train-nothing).
 - [Standing in a Whirlwind drains 1 SP a frame](../../differences-from-fso.md#standing-in-a-whirlwind-drains-1-sp-a-frame) (kept on purpose).
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills).
-- [The bio score counts every skill](../../differences-from-fso.md#the-bio-score-counts-every-skill): Wind did not count in 1.6.
+- [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills): Wind did not count in 1.6.

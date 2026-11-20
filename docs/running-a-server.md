@@ -182,7 +182,7 @@ A new server starts with two roles:
 - **`moderator`** (Moderator, rank 1): an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute`, `/pardon`, `/iplookup` and `/banlist`, plus `/location`, `/inventory`, `/save` and `/refresh`, and can read and post staff chat (`-text`). Bans, jails, mutes and pardons reach players only, never another moderator, an administrator or themselves; a moderator also cannot kick or look up the IP of an administrator. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except for the login-limit bypass (see `loginFailsPerIp`). `/BanIP`, `/unbanip`, `/chatlog`, `/auditlog`, `/cheatfile`, `/drop`, `/setclass`, `/roster`, `/spawn`, the Admin Chat room, the Assassin's Game controls, and the editor and Server Settings windows are administrators'.
 - **`administrator`** (Admin, rank 2): every permission. Full command access, staff chat, the Admin Chat room, World Editor, NPC Editor, Server Settings (including the roles), and Assassin's Game controls. An administrator can ban, jail or mute anyone but themselves and change or lift any ban, IP ban, jail or mute, and IP bans never stop an administrator's login. Administrators take no damage of any kind, never get hungry, cannot be pushed, stay off the high scores, drop on every death and skip the chat and broadcast waits.
 
-Every one of these is a permission you can turn on or off for each role, and you can add roles of your own, such as a helper who can only `/mute`. Any role makes an account staff: it reads and posts staff chat and can be sent IMs by jailed and muted players, so roles are for staff, not for perks. Bans, jails, mutes and pardons reach only accounts of lower rank, unless the staff member's role has the **Overrule** permission. `/kick`, `/iplookup` and the warps are looser: they refuse only a target whose rank is higher than yours, so a moderator can kick or look up another moderator.
+Every one of these is a permission you can turn on or off for each role, and you can add roles of your own, such as a helper who can only `/mute`. Any role makes an account staff: it reads and posts staff chat and can be sent IMs by jailed and muted players, so roles are for staff, not for perks. Bans, jails, mutes and pardons reach only accounts of lower rank, unless the staff member's role has the **Overrule** permission. `/kick`, `/iplookup`, `/warp` and `/warptome` are looser: they refuse only a target whose rank is higher than yours, so a moderator can kick or look up another moderator. `/warpmeto` has no rank check (it refuses only a jailed caller), and `/warpscript` never warps a speaker whose rank is higher than the staff member's.
 
 ### Editing roles and giving them out
 
@@ -231,7 +231,7 @@ Every ban, unban, IP ban, IP unban, jail, `/unjail`, mute, `/unmute` and pardon 
 
 ### The chat log
 
-The server logs every line a player writes to other players in the `chat_log` table, including lines that were refused: local say, `/me`, broadcasts, IMs (from `/msg`, the IMsend window and IM windows), the automatic away replies, away texts, guild chat (`/g`), chat rooms (Guild Chat, Admin Chat and the Game menu rooms), staff chat (`-text`) and saved Bio profiles. Commands and `Password=` lines are not logged. Mail, board posts, art and newspapers are already stored in their own tables.
+The server logs every line a player writes to other players in the `chat_log` table, including lines that were refused: local say, `/me`, broadcasts, IMs (from `/msg`, the IMsend window and IM windows), the automatic away replies, away texts, guild chat (`/g`), chat rooms (Guild Chat, Admin Chat and the Game menu rooms), staff chat (`-text`) and saved Bio profiles. Commands and `Password=` lines are not logged, except that a muted player's player-shop command is logged as a refused say line (outcome `muted`). Mail, board posts, art and newspapers are already stored in their own tables.
 
 Each line records the time (UTC, to the second), the channel, the sender's account and character, where it went (the map, the IM's recipient, the guild or the room), the exact text, and what became of it: delivered, refused by the cooldown, the house rule, jail or a mute, an IM dropped by the recipient's ignore list or sent to someone not online, `/g` with no guild, a room line out of a room, staff chat from a player, or a Bio refused for a `:` or `/`. For say, `/me` and broadcasts it also counts how many others read the line, how many ignore the speaker, and how many heard only the muffled voice.
 
@@ -261,11 +261,11 @@ SSO_DB=sso.sqlite bun run maps:check
 bun run content:report "<name>"
 ```
 
-`maps:check` lists exits, `Exit` tiles and start, respawn or Portal points that lead to a map that does not exist, and exits non-zero when it finds any. `content:report` shows which content rules and NPC seed text match a name (it reads the generated data, not your database).
+`maps:check` lists exits whose target map does not exist, `Exit` or `Exit2` tiles on a map with no such exit set, and start point, fallback point or Portal target settings whose map does not exist, and exits non-zero when it finds any. `content:report` shows which content rules and NPC seed text match a name (it reads the generated data, not your database).
 
 ### Reading the audit log
 
-Actions that change state or reveal privileged information (effective admin commands, World Editor and NPC Editor saves, setting changes, and role edits and assignments) are recorded in `audit_log`, as is each `/cheatfile` look, since its lines show players' addresses. `/location` and `/inventory`, which show only the staff member's own place and bag, and refused or no-target command attempts are not logged. Administrators read it in game, merged with the moderation log, with `/auditlog <name> [count]`. From the command line, inspect the newest entries (default `50`):
+Actions that change state or reveal privileged information (effective admin commands, World Editor and NPC Editor saves, setting changes, and role edits and assignments) are recorded in `audit_log`, as is each `/cheatfile` look, since its lines show players' addresses. `/location` and `/inventory`, which show only the staff member's own place and bag, `/banlist`, and refused or no-target command attempts are not logged. Administrators read it in game, merged with the moderation log, with `/auditlog <name> [count]`. From the command line, inspect the newest entries (default `50`):
 
 ```sh
 # Docker Compose:
@@ -275,7 +275,7 @@ docker compose exec -T second-star-online bun run admin:audit 50
 SSO_DB=sso.sqlite bun run admin:audit 50
 ```
 
-Audit rows are kept forever by default. Set `auditLogRetention` to delete rows older than that, at startup and every hour. Bans, IP bans, jails, mutes and pardons live in their own moderation log, which `/banlist` and `/auditlog` read and which is never pruned, since current bans refer back to it. `admin:audit` prints only `audit_log`.
+Audit rows are kept forever by default. Set `auditLogRetention` to delete rows older than that, at startup and every hour. Bans, IP bans, jails, mutes and pardons also live in their own moderation log, which `/banlist` and `/auditlog` read and which is never pruned, since current bans refer back to it. They are written to `audit_log` too, so `admin:audit` prints them; `/auditlog` shows them once, from the moderation log.
 
 ## In-game commands
 

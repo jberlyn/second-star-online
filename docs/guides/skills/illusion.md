@@ -27,4 +27,4 @@ Adds to the power of Morph and Illusionary Spikes: +2 above 0, then +1 above 10,
 ## Differences from 1.6
 
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills): Illusionist now grants Illusion.
-- [The bio score counts every skill](../../differences-from-fso.md#the-bio-score-counts-every-skill): Illusion did not count in 1.6.
+- [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills): Illusion did not count in 1.6.
