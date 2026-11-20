@@ -146,6 +146,32 @@ describe("Lightning", () => {
     expect(chat(s.run(40), "Alice")).toContain("*** Alice just received 10 assassin points!");
   });
 
+  test("bug fixed: a Lightning game's death drops no faction head and exiles no one", () => {
+    const s = scene();
+    setAssassinMode(s.world, "LIGHTNING", s.game);
+    // A faction member on a PvP-X map, HPmax below the exile line: outside Lightning, both apply.
+    s.bob.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    s.bob.char.vitals.hpMax = 30;
+    s.bob.char.vitals.hp = 0;
+    s.bob.lastToHitMe = "Alice";
+    s.bob.lastToHitId = s.alice.id;
+    s.run(1);
+    expect(s.bob.deadLock).toBeGreaterThan(0);
+    expect(s.bob.char.faction.id).toBe(1);
+    expect(s.map.ground.some((g) => g.item.includes("Head"))).toBe(false);
+  });
+
+  test("outside a Lightning game a faction member's death drops the head and exiles", () => {
+    const s = scene();
+    s.bob.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    s.bob.char.vitals.hpMax = 30;
+    s.bob.char.vitals.hp = 0;
+    s.run(1);
+    expect(s.bob.deadLock).toBeGreaterThan(0);
+    expect(s.bob.char.faction.id).toBe(0);
+    expect(s.map.ground.some((g) => g.item.includes("Head"))).toBe(true);
+  });
+
   test("outside a Lightning game the same death takes every penalty", () => {
     const s = scene({ 2: [1] });
     s.bob.char.vitals.hp = 0;
@@ -212,6 +238,16 @@ describe("scoring", () => {
     scoreKill(s.world, s.bob);
     expect(s.world.assassin.scores.get(s.alice.id)).toBe(20);
     expect(s.world.assassin.current).toEqual([{ id: s.alice.id, name: "Alice", points: 20 }]);
+  });
+
+  test("bug fixed: a player named like a monster earns points like anyone", () => {
+    const s = scene();
+    const orc = s.join("Orc", 9, 9);
+    setAssassinMode(s.world, "GO", s.game);
+    s.bob.lastToHitId = orc.id;
+    const out = scoreKill(s.world, s.bob);
+    expect(chat(out, "Bob")[0]).toMatch(/^\*\*\* Orc just received \d+ assassin points!$/);
+    expect(s.world.assassin.scores.get(orc.id)).toBeGreaterThan(0);
   });
 
   test("a killer who has logged off earns nothing; nor does a monster or yourself", () => {
@@ -298,6 +334,23 @@ describe("start and end", () => {
     setAssassinMode(s.world, "STOP", s.game);
     expect(s.alice.char.bag.some((l) => l?.item === "Long Sword")).toBe(false);
     expect(s.bob.char.gold).toBe(gold + 1000);
+  });
+
+  test("an end with one scorer prints the missing places blank and gives them nothing", () => {
+    const s = scene();
+    setAssassinMode(s.world, "GO", s.game);
+    s.world.assassin.current = [{ id: s.alice.id, name: "Alice", points: 40 }];
+    const gold = s.bob.char.gold;
+    const out = setAssassinMode(s.world, "STOP", s.game);
+    expect(chat(out, "Bob")).toEqual([
+      "*** The assassin's game has ended!!!",
+      "*** Alice has won first place with 40 points!",
+      "***  has won second place and  has come in third.",
+      "*** Check back soon for yet another assassin's game.",
+    ]);
+    expect(s.alice.char.bag.some((l) => l?.item === "Long Sword")).toBe(true);
+    expect(s.given).toEqual([]);
+    expect(s.bob.char.gold).toBe(gold);
   });
 
   test("an end nobody scored in names no winner, counts no win and gives nothing", () => {

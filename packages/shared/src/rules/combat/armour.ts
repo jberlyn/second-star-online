@@ -59,8 +59,9 @@ export function armourRows(power: number, e: Equipment, handler: "HitMe" | "HitM
 }
 
 /**
- * Elemental armour (HitMe vs the last weapon seen; HitMe2 vs the last monster to hit me, after
- * the HP loss, so it only changes the number shown). Exact `=` on both sides.
+ * Elemental armour (HitMe vs the last weapon seen; HitMe2 vs the last monster to hit me). Exact
+ * `=` on both sides. Both apply before the HP loss (1.6 ran HitMe2 after it, so it only changed
+ * the number shown).
  */
 export function elementalRows(
   power: number,

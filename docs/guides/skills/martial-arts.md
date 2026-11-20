@@ -1,6 +1,6 @@
 # Martial Arts
 
-Martial Arts is the ninja's skill. It boosts bare hands, the Katana, Scimitar, Bo and crossbows, and it sets the strength of Smoke Bomb. Casting and crossbow shots raise it to 100 whatever your faction.
+Martial Arts is the ninja's skill. It boosts bare hands, the Katana, Scimitar, Bo and the Wooden and Silver Crossbows (not the plain Crossbow), and it sets the strength of Smoke Bomb. Casting and crossbow shots raise it to 100 whatever your faction.
 
 | | |
 |---|---|

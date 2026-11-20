@@ -119,6 +119,17 @@ describe("spawning", () => {
     expect(placeMonster("Not In The Data", 4, 4, rngByN()).hp).toBe(1);
   });
 
+  test("bug fixed: a slot's new monster starts at its species' hit points, not the last occupant's", () => {
+    const map = withRoster(testMap("x1"), "Slime");
+    const slot = map.slots[0] as MonsterSlot;
+    slot.live = placeMonster("Slime", 4, 4, rngByN());
+    slot.live.hp = 3; // wounded, then killed
+    slot.live = null;
+    const rng = rngByN({ 80: [1], 17: [7], 12: [3], 5: [1], 4: [2] });
+    expect(spawnPass(map, { rng, players: 1, minute: 0 })).toHaveLength(1);
+    expect(slot.live).toMatchObject({ name: "Slime", hp: 14 });
+  });
+
   test("bug fixed: the footprint test runs wherever the anchor is", () => {
     const map = testMap("x1", [[14, 3]]);
     expect(refusesTile(map, "Overlord", 13, 4)).toBe(true); // (14,3) is the (+1,−1) cell
@@ -594,6 +605,23 @@ describe("monster attacks and death", () => {
     expect([a.x, a.y, a.char.hunger]).toEqual([6, 4, 40000]);
     expect(a.deathPause).toBe(90 - 27);
     expect(world.players.size).toBe(2);
+  });
+
+  test("divergence: a wanted player's deaths never lower HPmax or SPmax, on a PvP map or not", () => {
+    for (const pvp of ["X", "O"]) {
+      const map = testMap("x1000y992");
+      map.flags.canPvp = pvp;
+      // random(5) = 1 every time: 1.6's one-in-five penalty roll would always hit.
+      const { join, run } = setup([map], undefined, rngByN({ 5: [1, 1, 1, 1, 1, 1, 1, 1] }));
+      const a = player("a", map, 9, 9);
+      join(a);
+      a.char.wanted = true;
+      a.char.vitals = { ...a.char.vitals, hp: 0, hpMax: 40, spMax: 30 };
+      a.lastToHitMe = "a Slime";
+      run(1);
+      expect(a.deadLock).toBe(27);
+      expect(a.char.vitals).toMatchObject({ hp: 1, sp: 1, hpMax: 40, spMax: 30 });
+    }
   });
 
   test("administrators take no monster damage", () => {

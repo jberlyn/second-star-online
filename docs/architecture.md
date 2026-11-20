@@ -10,6 +10,8 @@ Second Star Online is a server-authoritative browser remake of First Star Online
 - `packages/data` contains editable content, strict schemas, generated game modules and the asset build.
 - `packages/perf` contains load bots and performance scenarios.
 
+Outside the packages, `tests/` holds repository-wide checks (import boundaries, documentation paths and tables, pinning-test names), which `bun run test` runs first, and `tools/` holds maintenance scripts that are not part of the game (see [tools](../tools/README.md)).
+
 Bun runs the server, bundles the client and runs tests. A single production process serves the prebuilt client and WebSocket from the same origin; the container runs as a non-root user. See [running a server](running-a-server.md) for deployment, proxy settings and operational details.
 
 Rules and simulation use plain functions with dependencies passed in. The gateway owns sockets and message validation; persistence modules own SQL; startup wires the database, clock, random source and send functions together. Systems receive their dependencies rather than importing gateway or persistence modules. Shared imports only data and Zod; the client does not import the server. Tests enforce these boundaries. Test fixtures are not production dependencies.
@@ -26,7 +28,7 @@ Passwords use Bun's Argon2id support. Sessions can resume after a temporary disc
 
 SQLite uses WAL mode and migrations. Database access is synchronous and grouped by area in plain persistence modules. Primary keys use UUIDv7 except for parent-keyed value tables and migration bookkeeping. Accounts and characters are separate; current play creates one character with its account. Gold or item movement is atomic. Economy changes, deaths and progression are written through; vitals and position also receive periodic saves.
 
-Stored data includes characters, inventory, maps and versions, NPC files and versions, shops, houses, guilds, mail, boards, social lists, settings and administrative logs. Editor saves are validated, and saved NPC files override the seed data. Settings have typed defaults and are applied when saved. Admin commands, world and NPC editor saves, setting changes and role changes are audited; newspaper saves are not.
+Stored data includes characters, inventory, maps and versions, NPC files and versions, shops, houses, guilds, mail, boards, social lists, settings and administrative logs. Editor saves are validated, and saved NPC files override the seed data. Settings have typed defaults and are applied when saved. Admin commands (except `/inventory`, `/location` and `/banlist`, which only show the staff member their own bag, place or the ban list), world and NPC editor saves, setting changes, role changes and Assassin's Game mode changes are audited; newspaper saves are not. Bans, jails, IP bans, mutes, pardons and their lifting go to a separate moderation log, which `/auditlog` reads alongside the audit log.
 
 ## Content and assets
 
@@ -42,4 +44,4 @@ The client uses a 544×384 logical canvas for the playfield and DOM components f
 
 `bun run gate` runs type checking, lint, tests and generated-data checks. The suite includes rule tests, seeded simulation replays, real in-memory SQLite tests, happy-dom client tests and bot end-to-end tests against a server. Differences from 1.6 have named pinning tests linked from the differences document. Changes to the interface should also be checked in a browser.
 
-Prefer web-platform and Bun built-ins. Zod is the runtime validation dependency; TypeScript, Biome, Bun types and happy-dom are development dependencies. Add a dependency only with its reason documented here.
+Prefer web-platform and Bun built-ins. Zod is the runtime validation dependency (and a development dependency of `packages/data`, whose build validates content with it); TypeScript, Biome, Bun types, happy-dom and its global registrator (`@happy-dom/global-registrator`, which installs the DOM for client tests) are development dependencies. Add a dependency only with its reason documented here.

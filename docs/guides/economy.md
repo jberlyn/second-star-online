@@ -41,7 +41,7 @@ After a buy or sale, the [game dispatcher](../../packages/server/src/game.ts) fl
 
 ### Trading and quests
 
-The initiator opens a trade, sends an offer, and thereby opens the recipient's window. Each submitted offer is locked; the recipient's submission is consent, and the initiator can then accept. The server checks the partner is still on the same map, verifies both offers against current holdings and tests whether the resulting bags fit before applying the transfer. Cancel, departure or a map change ends the session. Quest hand-ins use the NPC on the map and server quest rows, then give a reward or response through the quest rules.
+The initiator opens a trade, sends an offer, and thereby opens the recipient's window. Either player can send or resend an offer, which clears both acceptances, and the trade happens only once both press Accept. The server checks the partner is still on the same map, verifies both offers against current holdings and tests whether the resulting bags fit before applying the transfer. Cancel, departure or a map change ends the session. Quest hand-ins use the NPC on the map and server quest rows, then give a reward or response through the quest rules.
 
 ## Differences from 1.6
 

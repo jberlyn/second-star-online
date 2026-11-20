@@ -33,4 +33,4 @@ Attack power with any weapon whose name contains "Hammer": +1 above 10, 15, 20, 
 ## Balance notes
 
 - The War Hammer benefits from the skill but cannot train it.
-- High Stamina slows gains; with Stamina above 40 + skill + W it cannot rise from kills.
+- High Stamina slows gains; with Stamina at or above 40 + skill + W it cannot rise from kills.

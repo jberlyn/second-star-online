@@ -118,6 +118,12 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
   }
   let cmd = parsed;
   if (cmd.kind === "staffChat") {
+    // A muted staff member is silenced here too (staff chat is not a way round a mute).
+    const hush = isStaff(p.role) ? silenced(p, "staff") : null;
+    if (hush) {
+      logChat(world, p, "staff", staffChatText(cmd.typed), hush.outcome);
+      return [{ to: p.id, msg: line(hush.text) }];
+    }
     const outcome = isStaff(p.role) ? "delivered" : "denied";
     logChat(world, p, "staff", staffChatText(cmd.typed), outcome);
     return staffChat(world, p, cmd.typed);
@@ -220,7 +226,9 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
     case "password": {
       // Nothing is said aloud or relayed, and the typed line is not echoed (1.6 put the new
       // password into the chat; SSO never shows it).
-      if (cmd.password === "" || cmd.password.length > PASSWORD_MAX) {
+      // A line longer than the chat cap is refused rather than cut: a cut line would store a
+      // shorter password than the one typed.
+      if (cmd.password === "" || cmd.password.length > PASSWORD_MAX || raw.length > deps.maxChars) {
         return [{ to: p.id, msg: line(PASSWORD_TEXT.refused) }];
       }
       deps.changePassword?.(p, cmd.password);
@@ -283,6 +291,9 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
         ];
       };
       if (houseRefused) {
+        // A refused line still costs the cooldown: it is logged and can rouse the NPCs, so
+        // without one it could be sent as fast as the connection allows.
+        p.chatIn = deps.chatCooldownFrames;
         logChat(world, p, channel, cmd.text, "house", p.map.name);
         return [{ to: p.id, msg: line(CHAT_TEXT.houseRefused) }, ...rumours()];
       }

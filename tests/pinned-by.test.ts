@@ -29,7 +29,8 @@ function checkPinnedBy(doc: string): void {
       if (l.startsWith("```")) {
         fenced = !fenced;
       }
-      return !fenced && l.startsWith("- **Pinned by:**");
+      // A bullet under Not in SSO carries its pins as a nested bullet.
+      return !fenced && l.trimStart().startsWith("- **Pinned by:**");
     });
   const titles = new Map<string, string>();
   const bad: string[] = [];

@@ -22,7 +22,7 @@ One folder per game system. Each folder has a [same-name guide](../../../../docs
 - [`vehicles/`](../../../../docs/guides/vehicles.md): the airship.
 - [`world/`](../../../../docs/guides/world.md): the map rooms, who sees what, and the tick order every system shares.
 
-The shared rules in `packages/shared/src/rules/` use the same folder names, plus [core](../../../../docs/guides/core.md).
+The shared rules in `packages/shared/src/rules/` use the same folder names, except `world/` (the world has no pure rules of its own), plus [core](../../../../docs/guides/core.md).
 
 Systems are pure sim logic. They never import `gateway/` or `persistence/`; those arrive as
 arguments (`Db`, `Clock`, `Rng`, `Send`). The import-rule test (`tests/import-rules.test.ts`)

@@ -236,7 +236,7 @@ export function handleAdmin(
   const shieldedFrom = (t: Player) => outranks(t.role, p.role);
 
   switch (cmd) {
-    // ---- administrators' by default ---------------------------------------------------------
+    // ---- 1.6's immortal-only commands (who holds each now: DEFAULT_ROLES in permissions.ts) ---
     case "save": // every client saved; nothing printed
       deps.saveAll();
       audit(null);
@@ -258,7 +258,7 @@ export function handleAdmin(
     case "unbanip":
       return unbanIp(p, w2, typed, deps);
 
-    // ---- moderators' and administrators' by default ------------------------------------------
+    // ---- 1.6's moderator and immortal commands ----------------------------------------------
     case "location": // the admin's own map and tile
       return tell(p, ADMIN_TEXT.location(p.map.name, p.x, p.y));
     case "iplookup": {
@@ -421,7 +421,7 @@ export function handleAdmin(
       return [...tell(p, ADMIN_TEXT.banning(w2)), ...ban(world, p, w2, typed, deps)];
     }
 
-    // ---- SSO additions (said as local chat by anyone else, in chat.ts) ---------------------
+    // ---- SSO additions (an unknown command to anyone without the permission, in chat.ts) --
     case "unban":
       return w2 === "" ? tell(p, MODERATION_TEXT.unbanUsage) : unban(p, w2, typed, deps);
     case "banlist":

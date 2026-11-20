@@ -71,7 +71,7 @@ describe("local say", () => {
     expect(texts(handleChat(world, a, "/me waves", deps), "a")[0]).toMatch(/cannot chat yet/);
   });
 
-  test("in a house at y > 10 neither talk nor /me goes, and neither starts the cooldown", () => {
+  test("in a house at y > 10 neither talk nor /me goes", () => {
     const house = testMap("x5H1y2");
     const s = setup([house]);
     const a = player("a", house, 5, 11);
@@ -79,11 +79,20 @@ describe("local say", () => {
     expect(texts(handleChat(s.world, a, "hi", deps), "a")).toEqual([
       "You need to enter this building to talk",
     ]);
-    expect(a.chatIn).toBe(0);
+    a.chatIn = 0;
     expect(texts(handleChat(s.world, a, "/me waves", deps), "a")).toEqual([
       "You need to enter this building to talk",
     ]);
-    expect(a.chatIn).toBe(0);
+  });
+
+  test("SSO: a line the house rule refuses still starts the cooldown", () => {
+    const house = testMap("x5H1y2");
+    const s = setup([house]);
+    const a = player("a", house, 5, 11);
+    s.join(a);
+    handleChat(s.world, a, "hi", deps);
+    expect(a.chatIn).toBe(deps.chatCooldownFrames);
+    expect(texts(handleChat(s.world, a, "quest", deps), "a")[0]).toMatch(/cannot chat yet/);
   });
 
   test("a line of only spaces sends nothing and starts no cooldown", () => {

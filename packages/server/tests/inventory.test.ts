@@ -30,6 +30,7 @@ import {
   goldIntent,
   type ItemCtx,
   pickupIntent,
+  receiveGive,
   TILE_ITEM_CAP,
   unequipIntent,
   useIntent,
@@ -348,6 +349,21 @@ describe("drop, pickup and give", () => {
     expect(chat(pickupIntent(s.ctx(), s.room(), a, "g3"), "A")).toEqual([
       "You see the Pear, but you are carrying too much to pick it up!",
     ]);
+  });
+  test("bug fixed: a full bag receives a given item it holds a stack of", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.char.bag = a.char.bag.map((_, i) => ({ item: i === 0 ? "Apple" : `Rock${i}`, qty: 1 }));
+    const apple = { id: "g1", item: "Apple", x: 5, y: 5, kind: "drop" as const, expiresAt: null };
+    const pear = { id: "g2", item: "Pear", x: 5, y: 5, kind: "drop" as const, expiresAt: null };
+    s.map.ground.push(apple, pear);
+    receiveGive(s.ctx(), s.room(), a, apple, "B");
+    expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
+    expect(s.map.ground).not.toContain(apple);
+    // Nothing to stack on: the give stays on the ground.
+    receiveGive(s.ctx(), s.room(), a, pear, "B");
+    expect(a.char.bag.some((l) => l?.item === "Pear")).toBe(false);
+    expect(s.map.ground).toContain(pear);
   });
   test("bug fixed: a fixture the world placed is not picked up by a click or Ctrl; a player's is", () => {
     const s = scene();
@@ -683,7 +699,7 @@ describe("ground items block by name", () => {
     s.run(1);
     expect(a.x).toBe(6);
   });
-  test("a blocking item on the anchor tile aborts a monster's path", () => {
+  test("bug fixed: a blocking item on the anchor tile aborts a monster's path: a statue, Holy Water, a newspaper stand", () => {
     const s = scene();
     const slot = s.map.slots[0] as MonsterSlot;
     slot.species = "Slime";
@@ -711,6 +727,10 @@ describe("ground items block by name", () => {
     expect(slot.live.queue).toEqual([]);
     // Bug fixed: Holy Water stops a monster as it stops a player.
     s.map.ground[0]!.item = "Holy Water";
+    slot.live.queue = ["R"];
+    expect(nextStep(s.map, slot, { players: [], rng: s.rng })).toBeNull();
+    // And a newspaper stand.
+    s.map.ground[0]!.item = "Ann's Newspaper";
     slot.live.queue = ["R"];
     expect(nextStep(s.map, slot, { players: [], rng: s.rng })).toBeNull();
     s.map.ground[0]!.item = "Apple";

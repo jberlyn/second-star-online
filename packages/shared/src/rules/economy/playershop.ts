@@ -221,7 +221,7 @@ export function parseShopCommand(
 
 // ---- the server's file rules (SV) -----------------------------------------------------------
 
-/** The lines the register and profile commands read (the first 30 lines). */
+/** The lines the profile command reads (the first 30 lines). */
 export const SHOP_LINES = 30;
 
 /** Most items a player shop can sell. */
@@ -315,8 +315,9 @@ export function removeItem(
 }
 
 /**
- * Taking gold from the till: not the owner → the steal line; every `GLD|` line among 1-30 loses
- * the amount, and a till below 0 refuses. With no `GLD|` line 1.6 paid the owner from nothing; SSO
+ * Taking gold from the till: not the owner → the steal line; every `GLD|` line, wherever it is,
+ * loses the amount (a bug fixed: 1.6 read it only among lines 1-30, while a sale credits it
+ * anywhere), and a till below 0 refuses. With no `GLD|` line 1.6 paid the owner from nothing; SSO
  * refuses that too. Returns the new lines and the gold paid, or null lines when nothing moves.
  */
 export function register(
@@ -331,7 +332,7 @@ export function register(
   const out = [...lines];
   let till: number | null = null;
   out.forEach((l, i) => {
-    if (i < SHOP_LINES && tag(l, "GLD")) {
+    if (tag(l, "GLD")) {
       till = (lingoInteger(l.slice(4)) ?? 0) - amount;
       out[i] = `GLD|${till}`;
     }
@@ -343,8 +344,8 @@ export function register(
 }
 
 /**
- * `Inventory`: nothing for anyone but the owner, who gets one till line per `GLD|` line among 1-30
- * and then one line per item for sale. Only the owner hears them (1.6 said the stock to the room).
+ * `Inventory`: nothing for anyone but the owner, who gets one till line per `GLD|` line, wherever
+ * it is (1.6 read lines 1-30 only), and then one line per item for sale. Only the owner hears them (1.6 said the stock to the room).
  */
 export function shopStockLines(lines: readonly string[], owner: boolean, npc: string): string[] {
   if (!owner) {
@@ -352,7 +353,6 @@ export function shopStockLines(lines: readonly string[], owner: boolean, npc: st
   }
   return [
     ...lines
-      .slice(0, SHOP_LINES)
       .filter((l) => tag(l, "GLD"))
       .map((l) => SHOP_TEXT.till(npc, lingoInteger(l.slice(4)) ?? 0)),
     ...lines

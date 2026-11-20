@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 
 import { spellsData } from "@secondstaronline/data";
 
+import { castSchema } from "../../src/protocol/spells.ts";
 import {
   type Faction,
   type Fighter,
@@ -64,6 +65,25 @@ const caster = (set: Record<string, number> = {}, body = "NOTHING"): Caster => (
   skills: skills(set),
   equip: { ...NO_EQUIPMENT, body },
   faction: { ...NO_FACTION },
+});
+
+describe("costs", () => {
+  test("SSO: every spell costs a whole SP amount of at least 0 in any armour and a crystal count of at least 1; the cast message carries no cost", () => {
+    const bodies = [
+      "NOTHING",
+      ...spellsData.spells.flatMap((s) => (s.spByBody ?? []).map((r) => r.pattern)),
+    ];
+    for (const s of spellsData.spells) {
+      for (const body of bodies) {
+        const sp = spCost(s.name, body);
+        expect(Number.isInteger(sp) && sp >= 0).toBe(true);
+      }
+      if (s.crystals) {
+        expect(Number.isInteger(s.crystals.count) && s.crystals.count >= 1).toBe(true);
+      }
+    }
+    expect(Object.keys(castSchema.shape).sort()).toEqual(["spell", "t", "x", "y"]);
+  });
 });
 
 describe("the cast checks", () => {
@@ -349,7 +369,7 @@ describe("FX", () => {
 });
 
 describe("spell hits lifted out of the collision handlers", () => {
-  test("spellHitOnMonster: Splash on a body containing 36- heals 10 + P + random(5), the last branch wins", () => {
+  test("spellHitOnMonster: Splash on body 36 heals 10 + P + random(5), the last branch wins", () => {
     const rng = queue([4]);
     expect(spellHitOnMonster("splash-18", "36-1", 0, 7, rng)).toEqual({
       n: 21,

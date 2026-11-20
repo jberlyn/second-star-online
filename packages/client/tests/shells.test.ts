@@ -92,10 +92,31 @@ describe("the classic layout at every size", () => {
 describe("the mail screen's windows", () => {
   test("divergence: the stage places the mail and board at their rects, and nothing blocks the chat entry", () => {
     const p = parts();
-    const view = createGameView(fakeAssets, p);
+    createGameView(fakeAssets, p);
     const at = (el: HTMLElement) => [el.style.left, el.style.top, el.style.width, el.style.height];
     expect(at(p.mail)).toEqual(["154px", "28px", "350px", "350px"]);
     expect(at(p.board)).toEqual(["185px", "14px", "350px", "303px"]);
-    expect(view.root.querySelector(".chat-blocker")).toBeNull();
+    // Neither screen's box overlaps the chat entry's, and nothing above the entry covers it
+    // except the item menu's layer, which is empty until a bag click.
+    const box = (el: HTMLElement) => {
+      const [l, t, w, h] = at(el).map((v) => Number.parseFloat(v));
+      return { l, t, r: (l ?? 0) + (w ?? 0), b: (t ?? 0) + (h ?? 0) };
+    };
+    const entry = box(p.chatInput);
+    const overlaps = (el: HTMLElement) => {
+      const o = box(el);
+      return (
+        (o.l ?? 0) < entry.r && o.r > (entry.l ?? 0) && (o.t ?? 0) < entry.b && o.b > (entry.t ?? 0)
+      );
+    };
+    expect(overlaps(p.mail)).toBe(false);
+    expect(overlaps(p.board)).toBe(false);
+    const z = (el: HTMLElement) => Number(el.style.zIndex || 0);
+    const covering = Object.entries(p)
+      .filter(([k, el]) => k !== "chatInput" && el instanceof HTMLElement && el.style.top !== "")
+      .filter(([, el]) => overlaps(el as HTMLElement) && z(el as HTMLElement) > z(p.chatInput))
+      .map(([k]) => k);
+    expect(covering).toEqual(["menuLayer"]);
+    expect(p.menuLayer.childElementCount).toBe(0);
   });
 });

@@ -67,7 +67,7 @@ Skills rise one point at a time. Most rolls take the form "draw `random(n)` and 
 
 ### Melee kills
 
-When a melee swing kills a monster, `rollKillSkillGain` ([skillgain.ts](../../../packages/shared/src/rules/progression/skillgain.ts)) rolls each skill the weapon trains. The weapon's list is the **last** matching row of `skillGain.weaponSkills` in classes.json, so a weapon matched by two rows trains only the later row's skills. Monsters killed by spells or arrows train nothing this way. Each skill rolls only if it is above 0, below its cap (see below) and below the killed monster's cap, and then needs `random(n) = 1`:
+When a melee swing kills a monster, `rollKillSkillGain` ([skillgain.ts](../../../packages/shared/src/rules/progression/skillgain.ts)) rolls each skill the weapon trains. The weapon's list is the **last** matching row of `skillGain.weaponSkills` in classes.json, so a weapon matched by two rows trains only the later row's skills. An `exact` row also matches the masterworks made from its weapon (Knight's Sword +2 trains like Knight's Sword). Monsters killed by spells or arrows train nothing this way. Each skill rolls only if it is above 0, below its cap (see below) and below the killed monster's cap, and then needs `random(n) = 1`:
 
 | Skill | n | Also needs |
 |---|---|---|

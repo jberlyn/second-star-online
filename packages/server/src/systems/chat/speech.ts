@@ -2,8 +2,9 @@
  * Who may speak, and when: mutes, the prisoner's limits and the cooldowns, checked in one place for
  * every way a player talks.
  *
- * A muted player says nothing anywhere; a prisoner is heard only on their own map (local chat and
- * `/me`). Either may still send an IM to staff, to ask why. A role may skip the chat and broadcast
+ * A muted player says nothing anywhere, staff chat included; a prisoner is heard only on their own
+ * map (local chat and `/me`), though a jailed staff member keeps staff chat. Either may still send
+ * an IM to staff, to ask why. A role may skip the chat and broadcast
  * cooldowns (`bypassChatCooldown`, `bypassBroadcastCooldown`).
  */
 import { can, endIso, isStaff, MODERATION_TEXT } from "@secondstaronline/shared";
@@ -19,7 +20,8 @@ export type SpeechChannel =
   | "room"
   | "guild"
   | "mail"
-  | "board";
+  | "board"
+  | "staff";
 
 /** Why `p` is silenced on `channel`, with the chat log's outcome, or null. */
 export function silenced(
@@ -34,7 +36,8 @@ export function silenced(
     return { text: MODERATION_TEXT.youAreMuted(endIso(p.muteUntil)), outcome: "muted" };
   }
   const local = channel === "say" || channel === "emote" || channel === "broadcast";
-  if (p.jailUntil !== null && !local) {
+  // Staff chat reaches only staff, like an IM to staff, so the jail leaves it.
+  if (p.jailUntil !== null && !local && channel !== "staff") {
     return { text: MODERATION_TEXT.prisonerSilenced, outcome: "jail" };
   }
   return null;

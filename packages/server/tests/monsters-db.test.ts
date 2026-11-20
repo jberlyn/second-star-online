@@ -143,6 +143,60 @@ describe("/roster", () => {
     expect(texts(id).at(-1)).toBe('Unknown command "/roster".');
   });
 
+  test("/spawn: an administrator places a slot's species on the faced tile at once; the slot is saved", async () => {
+    const g = game();
+    const id = await makeChar(g, "Gm");
+    const acc = findCharacterById(db, id)?.accountId ?? "";
+    setRole(db, acc, "administrator", NOW);
+    g.enter(id, false);
+    const p = g.world.players.get(id);
+    if (!p) {
+      throw new Error("not in");
+    }
+    p.x = 6;
+    p.y = 4;
+    p.facing = "E";
+    g.intent(id, { t: "chat", text: "/roster 2 Orc Lord" });
+    g.intent(id, { t: "chat", text: "/spawn" });
+    g.intent(id, { t: "chat", text: "/spawn 3" });
+    g.intent(id, { t: "chat", text: "/spawn 2" });
+    g.intent(id, { t: "chat", text: "/spawn 2" });
+    expect(texts(id).slice(-4)).toEqual([
+      "Usage: /spawn <1-4>",
+      "Roster slot 3 is empty.",
+      "Spawned an Orc Lord in roster slot 2.",
+      "Roster slot 2 already has a Orc Lord.",
+    ]);
+    expect(p.map.slots[1]?.live).toMatchObject({ name: "Orc Lord", x: 7, y: 4 });
+    g.saveAll();
+    const m = findMapByCoords(db, 1000, 992);
+    expect(loadSlots(db, m?.id ?? "")[1]).toMatchObject({
+      species: "Orc Lord",
+      live: { name: "Orc Lord", x: 7, y: 4 },
+    });
+  });
+
+  test("/spawn: facing off the map is refused; anyone else is told it is an unknown command", async () => {
+    const g = game();
+    const gm = await makeChar(g, "Gm");
+    setRole(db, findCharacterById(db, gm)?.accountId ?? "", "administrator", NOW);
+    g.enter(gm, false);
+    const p = g.world.players.get(gm);
+    if (!p) {
+      throw new Error("not in");
+    }
+    p.x = 1;
+    p.y = 4;
+    p.facing = "W";
+    g.intent(gm, { t: "chat", text: "/roster 2 Slime" });
+    g.intent(gm, { t: "chat", text: "/spawn 2" });
+    expect(texts(gm).at(-1)).toBe("You must face a tile on the map.");
+    const bob = await makeChar(g, "Bob");
+    g.enter(bob, false);
+    g.intent(bob, { t: "chat", text: "/spawn 1" });
+    expect(texts(bob).at(-1)).toBe('Unknown command "/spawn".');
+  });
+
   test("bun run admin:role gives an operator a role, or takes it away", async () => {
     const path = join(tmpdir(), `sso-role-${process.pid}-${Date.now()}.sqlite`);
     const file = openDatabase(path);

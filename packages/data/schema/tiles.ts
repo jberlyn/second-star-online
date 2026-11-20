@@ -11,8 +11,8 @@ export const whitelistTokenSchema = z.strictObject({ code: z.string().length(2) 
  * Tile meanings tested by code:
  * - `sea` (layer 1): deep water where sea creatures spawn and move.
  * - `airshipBlock` (layer 2): tiles that block an Airship.
- * - `dock` (layer 1): Airship landing pads.
- * - `arena` (layer 1, rows 1-9, and raw record contains " 6P "): arena challenge tiles.
+ * - `dock` (layer 1, all 12 rows): Airship landing pads.
+ * - `arena` (layer 1, all 12 rows): arena challenge tiles.
  * - `grave` (layer 2): graves for Raise Dead.
  */
 export const tileFlagSchema = z.enum(["sea", "airshipBlock", "dock", "arena", "grave"]);

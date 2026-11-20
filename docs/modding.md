@@ -1,6 +1,6 @@
 # Modding
 
-Game data lives as JSON files in [packages/data/content/](../packages/data/content/README.md). Each file is validated against its strict Zod schema in [packages/data/schema/](../packages/data/schema/) (unknown or missing fields fail the build) and compiled into committed TypeScript modules in `packages/data/src/generated/`.
+Game data lives as JSON files in [packages/data/content/](../packages/data/content/README.md). Each file is validated against its strict Zod schema in [packages/data/schema/](../packages/data/schema/) (unknown or missing fields fail the build) and compiled into committed TypeScript modules in `packages/data/src/generated/`. A few rules that span files or rows are checked by the tests in `packages/data/tests/` rather than by the build (noted below), so run the gate after editing.
 
 The [public image](running-a-server.md#docker-compose-recommended) is ready to host the standard game. In-game map, NPC, and settings edits persist in your database without rebuilding. To change the content files, assets, or code described below, clone the repository and build a custom image; these files are baked into the image and are not hot-reloaded at runtime.
 
@@ -38,14 +38,15 @@ Release baseline rows are fingerprinted in `packages/data/tests/content-baseline
 
 ## Ordered name tables
 
-The original engine classified items, monsters, and spells by testing their names in script order using case-insensitive exact equality (`exact`) or substring matching (`contains`). In SSO, those tests are stored as ordered `{ "match": "exact" | "contains", "pattern": "...", ...result }` rows. Each table uses one of four combination rules:
+The original engine classified items, monsters, and spells by testing their names in script order using case-insensitive exact equality (`exact`) or substring matching (`contains`). In SSO, those tests are stored as ordered `{ "match": "exact" | "contains", "pattern": "...", ...result }` rows. Each table uses one of five combination rules:
 
 - **First match wins:** the first matching row supplies the result.
 - **Last match wins:** every row is tested in order and the last match overrides earlier ones.
 - **Any match:** the table acts as a boolean list (`true` if any row matches).
 - **Every match adds:** all matching rows' numeric bonuses or effects are summed.
+- **In order:** every matching row applies, one after another in file order (`paperdoll.aliases`, where each row can rename the result of the one before).
 
-Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystals`, `Long Sword+3`, `Damaged Helm`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name.
+Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystals`, `Long Sword+3`, `Damaged Helm`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name. Two tables also extend `exact` to masterworks: an exact row in `classes.json` `skillGain.weaponSkills` or an exact skill block in `attpower.json` also matches the `+1` to `+N` masterworks that `craft.json` `smith.masterwork` makes from that weapon.
 
 ## Items (`items.json`, `item-rules.json`, `attpower.json`)
 
@@ -53,7 +54,8 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 |---|---|---|---|
 | `equip.slots` | Equipment slot | Last | `slot` (`LeftHand` is weapon hand); default `No` (not equippable) |
 | `equip.strength` | Strength needed to equip | Last | `strength`; default `0` |
-| `equip.twoHanded`, `equip.murder` | Two-handed weapons; items requiring murder flag | Any | Boolean |
+| `equip.twoHanded` | Two-handed weapons | Any | Boolean |
+| `equip.murder` | The item that needs the murder flag (a single row, not a list) | Match | Boolean |
 | `use.usable`, `use.effects`, `use.messages` | Food and potion use behaviour | See schema | Healing/messages |
 | `use.silent` | Use does and says nothing (keys, deeds, seeds, `Map`) | Any | Boolean |
 | `use.refusals` | The line Use shows for an item it does not accept (burned food) | Last | `text`; default "You cannot use the X." |
@@ -100,7 +102,7 @@ Notes carried over from the code:
 
 ### Adding an item
 
-Add a catalogue entry to `packages/data/content/items.json`, plus rows in `item-rules.json` and `attpower.json` for any behaviour its name does not already match. For example, `"Elven Sword"` already inherits sword slot, skill block, and swing sound because its name contains "Sword", whereas a novel name like `"Moonblade"` needs explicit rows.
+Add a catalogue entry to `packages/data/content/items.json`, plus rows in `item-rules.json` and `attpower.json` for any behaviour its name does not already match. Most rows match a specific weapon name, not a word: `equip.slots` has a `contains` row for each sword ("Long Sword", "Short Sword", …) and no row for "Sword" alone. So `"Elven Long Sword"` inherits the Long Sword's slot, attack power, skill blocks, Strength and kill training through those `contains` rows (it still needs a `paperdoll.aliases` row to be drawn as one), but `"Elven Sword"` matches no slot row and cannot be equipped until you add one; a novel name like `"Moonblade"` needs every row. Run `bun run content:report "<name>"` to see which rows a name picks up.
 
 What still needs code: a new mechanic (an item that does something no table expresses), a new carried container's bag picture and sell swap, a new owner-named fixture, and anything whose name is built at run time.
 
@@ -141,7 +143,8 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
    ```
 
 **Intentional omissions in this example:**
-- **Skill training:** `attpower.json` `skillBlocks` keys Slash tiers on names containing "Sword", so `"Moonblade"` gets only its base roll unless renamed (e.g. `"Moonblade Sword"`) or given a `skillBlocks` entry.
+- **Skill bonus to attack:** `attpower.json` `skillBlocks` adds Slash and sword-skill tiers to names containing "Sword", so `"Moonblade"` gets only its base roll unless renamed (e.g. `"Moonblade Sword"`) or given a `skillBlocks` entry.
+- **Kill training:** which skills a kill trains comes from `classes.json` `skillGain.weaponSkills`; with no row there, a kill with `"Moonblade"` trains nothing. Add `{ "weapon": "Moonblade", "match": "exact", "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"] }`.
 - **Breaking:** items break only if listed in `breaks.weapon.items` and `breaks.damaged`.
 
 ## Tiles (`tiles.json`)
@@ -154,8 +157,8 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 |---|---|---|---|
 | `sea` | 1 | Deep water where sea creatures spawn and move | `W1`, `N1`, `D2`, `I2`, `V2` |
 | `airshipBlock` | 2 | Tiles that block an Airship | `D8`, `I8`, `E8`, `J8`, `K8`, `L8` |
-| `dock` | 1 (rows 1–9) | Airship landing pad | `J2` |
-| `arena` | 1 (rows 1–9) and raw record contains " 6P " | Forced-PvP arena tile | `6P` |
+| `dock` | 1 (any row) | Airship landing pad | `J2` |
+| `arena` | 1 (any row) | Forced-PvP arena tile | `6P` |
 | `grave` | 2 | Grave tile for Raise Dead | `Q8`, `9A`, `9B` |
 
 | Default (`defaults`) | Used for | Original code |
@@ -166,6 +169,7 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 | `editorTile` | Initial selected tile when opening the World Editor | `G1` |
 
 - **Walk whitelist (`walkable`):** every code in `walkable` must be exactly 2 characters.
+- **Checked by tests, not the build:** the schema accepts any non-empty tile `code`; the rule that an added tile's code is 2 characters and unique in any case is enforced by `packages/data/tests/data.test.ts`, so run `bun run test` (or `bun run gate`) as well as `data:build`.
 - **Other tile codes live with their systems:** tool tile changes and fishing water in `gather.json`, the newspaper stand (`K2`) in `social.json`, and rough terrain and house tiles in `houses.json`.
 - **Palette order:** original tiles (with `member`) fill World Editor pages `1`–`10` in member order (stopping at member `589`, leaving slots `50`–`60` on page `10` free). Added tiles (without `member`) fill page `10` slots `50`–`60` first in `catalogue` order, then pages `11+` at `60` tiles per page. Every slot with no tile is blank and cannot be clicked (stale slots on page `10` are not kept).
 
@@ -187,7 +191,7 @@ With no other added tiles in `catalogue`, `Z9` appears on World Editor **palette
 
 ## Monsters and NPCs (`monsters.json`, `npc-files.json`)
 
-`packages/data/content/monsters.json` defines species stats, `editorLists`, ordered `rules`, `casting`, and `skillCaps`. See [Monsters guide](guides/monsters.md) for runtime behaviour and NPC script tags.
+`packages/data/content/monsters.json` defines species stats (`monsters`), `editorLists`, ordered `rules`, `casting` (`spells`, the `SPL|` monster spell definitions, and `neverCasts`), `meleeAffinities` (weapon-against-monster damage changes), `skillCaps`, and `generic` (the body, hit points and defense a name not in `monsters` falls back to). See [Monsters guide](guides/monsters.md) for runtime behaviour and NPC script tags.
 
 | Table (`monsters.json`) | Decides | Wins | Result and default |
 |---|---|---|---|
@@ -198,14 +202,14 @@ With no other added tiles in `catalogue`, `Z9` appears on World Editor **palette
 | `rules.sparesInnocent` | Never hits an innocent player | Any | Default attacks anyone |
 | `rules.clearsBlock` | Never blocks a player's step (`blockPCCheck`); clears no other block | Any | Default blocks its tile |
 | `rules.killXp` | Melee/spell kill XP override after the ring | First | `xp`; default species `xpMelee`/`xpSpell` |
-| `rules.killBroadcasts` | Server broadcast on melee kill (`{}` = killer name) | First | `text`; default none |
+| `rules.killBroadcasts` | Server broadcast when a player kills the monster, by melee or spell (`{}` = killer name) | First | `text`; default none |
 | `rules.namesSelf` | Click says `"This is <name>."` instead of opening Bio | Any | Default opens Bio |
 | `rules.noQuests` | Gives no quests in `askForQuest` | Any | Default checks quest lines |
 | `casting.neverCasts` | Never casts monster spells (`contains`) | Any | Default casts its `SPL|` tags |
 
 Two lists in `editorLists` also drive gameplay:
 - `worldEditor.monsters`: a whole entry (ignoring case) walks toward players; add species that should chase but stay off the editor list to `rules.hostile`. A name the list contains as text (`contains`) gets no quests and gives no treasure rumours, so `"Dragon"` is caught there through `"Dragon Hatchling"`.
-- `npcEditor.npcs`: spawns only when `random(60) <= 2`.
+- `npcEditor.npcs`: spawns only when `random(60) <= 2`. The test is `contains` over the whole list, so a name that appears inside a longer entry is caught too.
 
 Every species row needs an `hp`. Its `attack` may be `null`: the species never melees.
 
@@ -219,23 +223,22 @@ Every species row needs an `hp`. Its `attack` may be `null`: the species never m
 
 ### Body-number traps
 
-These body numbers have rules of their own, tested by equality: `90` (Spikes) and `99` (Holy Shield) never move and are not clickable, `91` is the Pig (a click or Ctrl on the faced tile grabs it), and `92` (Web) never moves, is not clickable and never attacks.
+These body numbers have rules of their own, all tested by equality (1.6 tested the member name as text, so a body ending in the same digits matched too; SSO compares the number):
 
-The spell code still tests a monster's `body` number as `"<body>-"` using substring matching (`contains`), not exact equality:
+- `90` (Spikes) and `99` (Holy Shield) never move and are not clickable; `92` (Web) never moves, is not clickable, never attacks and traps players who walk into it; `91` is the Pig (a click or Ctrl on the faced tile grabs it).
+- `90` is destroyed by Dispel Illusions.
+- `99` protects an innocent player standing on it from melee (`HitMe`); spells never test it.
+- `61` is hurt by Minor Heal and Major Heal instead of healed.
+- `36` is healed by Splash, `47` by Crush and `45` by Firebolt; Fireball does only `random(3)` to `45`.
 
-- `"90-"`: dispelled by Dispel Illusions
-- `"99-"`: a Holy Shield's protection
-- `"61-"`: Minor Heal hurts instead of healing
-- `"36-"`, `"45-"`, `"47-"`: spells heal instead of hurting
-
-Because `"<body>-"` is a substring check there, numbers ending in those digits (such as `190` or `445`) also match. Choose a new body number that does not end in any of those digits unless you want that effect.
+Give a new species one of these numbers only if you want that rule.
 
 ### Example: Frost Wolf
 
 1. Append a species row to `monsters.json` `monsters`:
 
    ```json
-   { "name": "Frost Wolf", "body": 2, "bodyInMainChars": true, "hp": 16, "attack": 4, "defense": 1, "xpMelee": 18, "xpSpell": 18, "spawnMinute": null }
+   { "name": "Frost Wolf", "body": 32, "bodyInMainChars": true, "hp": 16, "attack": 4, "defense": 1, "xpMelee": 18, "xpSpell": 18, "spawnMinute": null }
    ```
 
 2. Append `"Frost Wolf"` to `editorLists.worldEditor.monsters` and `editorLists.npcEditor.monsters` in `monsters.json`.
@@ -245,7 +248,33 @@ Because `"<body>-"` is a substring check there, numbers ending in those digits (
    { "name": "Frost Wolf", "text": "BIO|Name: Frost Wolf\rPRO|A fierce wolf of the snow.\rINV|5 Gold:1" }
    ```
 
-Remember that `npc-files.json` only seeds fresh databases; on an existing server, `npc_files` rows saved by the NPC Editor override the seed file.
+Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the generated `rects.ts` would leave the monster invisible.
+
+`npc-files.json` is not only a seed: the server loads it at every start as the base NPC store, then applies the `npc_files` rows saved by the NPC Editor on top. So a rebuilt image changes every NPC that has no saved NPC Editor edit, on existing servers too.
+
+### Shops and other NPC lines
+
+An NPC's shop is lines in its NPC file (`npc-files.json`, or the NPC Editor on a running server), one `TAG|data` per line:
+
+- `SEL|<item>:<price>:<stock>`: an item the NPC sells, at `price` gold, with `stock` left (the server lowers it as players buy).
+- `BUY|<item>:<price>`: an item the NPC buys from players for `price` gold.
+- `GLD|<n>`: the shopkeeper's till; purchases and gifts fill it and sales pay from it. Without one it starts at 0.
+- `TRN|<class>:<price>`: a class promotion the NPC trains.
+- The other tags: `BIO|` and `PRO|` (Bio window), `INV|` (monster drops), `RND|` (chatter), `FLG|` (`Still`, `Passive`), `SPL|` (monster spells), `BNK|` (banker) and `OWN|`.
+
+The NPC Editor checks these forms when you save; see the [economy guide](guides/economy.md) for how shops trade.
+
+## Other content files
+
+These files have no worked example here; their schemas in [packages/data/schema/](../packages/data/schema/) document every field, and the matching [system guide](guides/README.md) describes what they do in play.
+
+- **`gather.json`:** `gathering` (tools, the tiles they work on, finds by skill, regrowth, fishing water) and `skillGain` (the gathering and crafting skill rolls: chance, the skill range and the advance line).
+- **`craft.json`:** `stations`: what each crafting station makes, from what, and at what skill.
+- **`houses.json`:** house deeds and types, placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
+- **`social.json`:** factions and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
+- **`casino.json`:** the Slot Machine, Blackjack and Checkers tables, including their sounds.
+- **`quests.json`:** the quest lines that seed a fresh database's `quests` table (`current`) and the pools a replacement quest is drawn from (`pools`).
+- **`help.json`:** the help topics `/help <topic>` shows, with their lines.
 
 ## Spells (`spells.json`)
 
@@ -254,7 +283,7 @@ Each entry in `packages/data/content/spells.json` defines one spell's data:
 - `name` (unique, case-insensitive) and `id` (1.6's save id, or `null`; SSO saves spellbooks by name, so every spell is kept).
 - `effect`: the spell whose effect code this row runs (`"Firebolt"`, `"Fireball"`, etc.).
 - `sp`: base SP cost (`null` or `0` cannot be cast), plus optional `spByBody` (`{ match, pattern, sp }[]`, last match wins) for body-armour overrides (such as Smoke Bomb).
-- `crystals`: `{ colour, count }` (one of the six colours) or `null`.
+- `crystals`: `{ colour, count }` (one of the six colours: Blue, Red, Green, Yellow, Purple, White; checked by `packages/data/tests/data.test.ts`, not the schema) or `null`.
 - `harmful`: whether the spell is blocked on safe maps (Hold is also blocked by effect name).
 - `book`: `{ match, pattern }` or `null`. `spells.json` is walked in **file order** and the **last match wins** (so `"Ice Bolt Book"` must appear after `"Bolt"`). Append new spells at the end.
 - `info`: Spellbook Info text, or `null`.
@@ -262,9 +291,9 @@ Each entry in `packages/data/content/spells.json` defines one spell's data:
 - `fx`: array of FX runs (`member` unique across all rows, `effect` naming a run of the spell's `effect`, `frames`, `lastFrame`, `projectile`, `sounds` as `{ name, ch }[]`).
 
 To add a new spell with an existing effect, you also need:
-- a unique `id` (or it will not persist across saves);
-- a book item in `items.json` with a non-null `icon` (items without an icon exit silently when used), and optionally a `use.books` Mysticism requirement in `item-rules.json`;
-- FX art `<member>-<n>` and hit rects (`fx/` under `assets/added/`; rects are generated after `bun run data:build`);
+- an `id` that no other spell uses, or `null` (spellbooks are saved by name, so either persists; the schema only refuses a repeated non-null id);
+- a book item in `items.json` (its `icon` can be `null`; a book is read whatever its icon), and optionally a `use.books` Mysticism requirement in `item-rules.json`;
+- FX art `<member>-<n>` and hit rects (`fx/` under `assets/added/`; rects are generated by `bun run data:build`);
 - sounds whose `name` is in the built sound list (`packages/data/build/assets-lib/select.ts` `SOUNDS`) or added under `sounds/` in `assets/added/`.
 
 - **Validation:** [packages/data/schema/spells.ts](../packages/data/schema/spells.ts) restricts `effect` to `IMPLEMENTED_SPELL_EFFECTS` (the 36 original implemented effects) and requires every `fx[].effect` on a new spell to name an FX run of that original spell. Arbitrary `effect` names are rejected at `data:build`.
@@ -296,7 +325,7 @@ Add to the end of `spells.json` `spells`:
 }
 ```
 
-And add its book item to `items.json` `items` (items with `icon: null` do nothing when used):
+And add its book item to `items.json` `items` (`"icon": "added"` gives it a picture; `null` would leave it without one, but it can still be read):
 
 ```json
 {
@@ -322,11 +351,16 @@ Reusing an existing `effect` is data-only. Creating a brand-new effect requires 
 
 ## Skills (`classes.json`)
 
-`packages/data/content/classes.json` defines `skills` (1-based `index` and `skill`), `skillPanel` (`name` and 1-based `index` shown on the Skills page), and each starting class's `creation.startingSkills`.
+`packages/data/content/classes.json` defines:
 
-- Shorter `startingSkills` arrays are padded to `skills.length` with `NEW_SKILL_VALUE` (`1`).
+- `classes`: each class's `code`, `name`, optional `statBonus` and `promotion` (its `skillGrants`, and `statChanges`, an SPmax floor applied before the grants);
+- `skills` (1-based `index` and `skill`) and `skillPanel` (`name` and 1-based `index` shown on the Skills page);
+- `creation`: the new-character screen's data, including `creation.startingSkills["1"|"2"|"3"].values`, the starting skills of each starting class;
+- `skillGain.weaponSkills`: which skills a kill trains for each weapon (`weapon`, `match`, `skills`).
+
+- Shorter `startingSkills` `values` arrays are padded to `skills.length` with `NEW_SKILL_VALUE` (`1`).
 - Existing characters saved with fewer skill rows load `1` for any newly added skill and persist it on their next save.
-- Kill-gain and cast-gain rules live in code (`packages/shared/src/rules/progression/skillgain.ts` and `packages/shared/src/rules/spells/spells.ts`); an added skill rises only via an `item-rules.json` `use.skillBooks` row, a promotion's `skillGrants`, or code.
+- Which skills a weapon trains is data (`classes.json` `skillGain.weaponSkills`), as are the gathering and crafting gain rows (`gather.json` `skillGain`), but each skill's roll is a handler in code (`RULES` in `packages/shared/src/rules/progression/skillgain.ts`, the cast gains in `packages/shared/src/rules/spells/spells.ts`, and the gathering and crafting systems that name their skill). So an added skill rises only via an `item-rules.json` `use.skillBooks` row, a promotion's `skillGrants`, or code.
 - A class's `statBonus` (for example `{ "dex": 3 }`) is added to the stats of every character in that class while they are in it; change it and every such character follows.
 - A class's `promotion.skillGrants` lists skills (by `skill` name) that the promotion raises to a roll of 1 to 10; a skill already higher keeps its value. `data:build` refuses a name not in `skills`.
 
@@ -355,10 +389,10 @@ Place new art and audio in [assets/added/](../assets/added/README.md) with a mat
 - **Item icons:** `"icon": "added"` in `items.json`, PNG + sidecar in `items/`.
 - **Spell FX:** `fx/<member>-<n>.png` (and `fx/x<member>-<n>.png` for trails listed in `TRAILS` in `packages/shared/src/rules/spells/spellfx.ts`).
 - **Tiles:** 32×32 PNG + sidecar in `tiles/` plus a `tiles.json` row.
-- **Sounds:** WAV or MP3 + sidecar in `sounds/`, referenced by name in `spells.json`, `gather.json`, or `item-rules.json` `swing.sounds`.
+- **Sounds:** WAV or MP3 + sidecar in `sounds/`, referenced by name in `spells.json`, `gather.json`, `casino.json` or `item-rules.json` `swing.sounds`.
 - **North frames:** draw paperdoll layers and bodies as seen from behind, with the right hand on the viewer's right. A north frame copied from an original keeps 1.6's mirror; set `"mirrored": true` on every north frame of that layer or body and the build flips them.
 
-Hit rectangles for `fx`, `bodies`, and `items` are computed automatically from the images and their registration points when you run `bun run data:build` and `bun run assets:build`.
+Hit rectangles for `fx`, `bodies`, and `items` are computed from the images and their registration points by `bun run data:build` (which writes `rects.ts`; `assets:build` only builds the atlases). After adding art, run both; `data:check` in the gate fails on a stale `rects.ts`.
 
 ## The content report
 

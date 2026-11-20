@@ -13,6 +13,7 @@ Shared rules calculate outcomes; server systems apply them to world and player s
 - [packages/shared/src/rules/core/maps.ts](../../packages/shared/src/rules/core/maps.ts): handles grid and house map names.
 - [packages/shared/src/rules/core/patterns.ts](../../packages/shared/src/rules/core/patterns.ts): matches ordered name rules.
 - [packages/shared/src/rules/core/tiles.ts](../../packages/shared/src/rules/core/tiles.ts): provides tile flags.
+- [packages/shared/src/rules/core/timelength.ts](../../packages/shared/src/rules/core/timelength.ts): parses and prints lengths of time.
 - [packages/shared/src/rules/core/walk.ts](../../packages/shared/src/rules/core/walk.ts): builds and queries movement grids.
 
 Entry points:

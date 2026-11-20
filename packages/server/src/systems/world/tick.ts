@@ -288,12 +288,26 @@ export function tick(world: World, deps: TickDeps): TickResult {
         if (slot.slot === 1) {
           // The mover's spell test, once (per-client copies are a P2P artefact).
           if (map.slots.some((s) => s.live)) {
-            const hits: CollideOut = { events: [], out: [], portals: [], slotsChanged: false };
+            const hits: CollideOut = {
+              events: [],
+              out: [],
+              portals: [],
+              slotsChanged: false,
+              broadcasts: [],
+            };
             monsterHits(room, collideCtx, hits);
             for (const ev of hits.events) {
               all(ev);
             }
             out.push(...hits.out);
+            // A spell kill's broadcast goes out as a melee kill's does.
+            for (const b of hits.broadcasts) {
+              for (const o of world.players.values()) {
+                if (hears(o, b.from)) {
+                  tell(o, b.text);
+                }
+              }
+            }
             if (hits.slotsChanged) {
               slotEvent = true;
             }
@@ -370,7 +384,13 @@ export function tick(world: World, deps: TickDeps): TickResult {
       ),
     );
     for (const p of players) {
-      const spells: CollideOut = { events: [], out: [], portals: [], slotsChanged: false };
+      const spells: CollideOut = {
+        events: [],
+        out: [],
+        portals: [],
+        slotsChanged: false,
+        broadcasts: [],
+      };
       smokeBombStep(room, p, spells);
       playerCollision(room, p, collideCtx, spells);
       for (const ev of spells.events) {

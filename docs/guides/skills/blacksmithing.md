@@ -51,5 +51,5 @@ See the [crafting guide](../crafting.md).
 
 ## Balance notes
 
-- The gold medal ties with Farming's as the second-largest (4 stat points), and Blacksmithing has no bio title.
+- The gold medal ties with Farming's and Martial Arts' as the second-largest (4 stat points), and Blacksmithing has no bio title.
 - The masterwork pool does not improve until above 50: up to then a Knight's Sword masterwork is 4 in 250.

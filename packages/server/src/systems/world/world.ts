@@ -497,7 +497,7 @@ export interface Player {
   // ---- mail and message boards -----------------------------------------------
   /** The mail list (sprite 362) is up: set when the list is built, cleared by the list's CLOSE. */
   mailList: boolean;
-  /** A mail pane has opened since login: gates `mailUi` (the client's flags start hidden). */
+  /** The mailbox is open (from opening it until the list's CLOSE): gates `mailUi` and SEND. */
   mailUi: boolean;
   /** The open board, which posts go to, until Close or a map change. */
   board: string | null;
@@ -1150,11 +1150,14 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   p.monDropIn = 45;
   p.npcAttackFlag = false;
   // Drawing the map's items clears the input lock, and a map change ends any running craft and
-  // closes an open vault, container or message board (its window closes on the client too).
+  // closes an open vault, container, message board or mailbox (its window closes on the client
+  // too), so a mailbox opened on one map never sends mail from another.
   p.keyLock = false;
   p.vaultOpen = false;
   p.container = null;
   p.board = null;
+  p.mailList = false;
+  p.mailUi = false;
   const stopped = cancelCrafts(p);
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;

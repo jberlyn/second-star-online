@@ -32,5 +32,5 @@ Adds to the power of Hold, Raise Dead and Weaken: +1 above 10, 20, 30, 70 and 90
 
 ## Balance notes
 
-- The smallest school bonus (+5, against +10 for Blessing, Wrath and Illusion and +12 for the elements), though the robe doubles it.
+- The smallest school bonus (+5, against +10 for Blessing, Wrath and Illusion and +13 for the elements), though the robe doubles it.
 - Weaken gets power from Black Arts but does not train it.

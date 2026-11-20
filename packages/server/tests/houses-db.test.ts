@@ -365,6 +365,22 @@ describe("decay", () => {
     check();
     expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
     expect(g.world.houseSweepDay).toBe("2027-01-01");
+    // A stale entry that appears later that day waits for the next day's first check.
+    const stale = {
+      ownerId: "zed",
+      ownerName: "Zed",
+      map: "x900y900",
+      interior: "x900y900-zed",
+      month: "2020-01",
+    };
+    g.world.houseList.push(stale);
+    now = "2027-01-01T05:00:00.000Z";
+    check();
+    expect(g.world.houseList).toContainEqual(stale);
+    now = "2027-01-02T00:30:00.000Z";
+    check();
+    expect(g.world.houseList).not.toContainEqual(stale);
+    expect(g.world.houseSweepDay).toBe("2027-01-02");
   });
 
   test("an owner's own login refreshes their entries before the sweep", async () => {

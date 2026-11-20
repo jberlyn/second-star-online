@@ -35,8 +35,8 @@ export interface ShopLedger {
   /** Changed since the last write. */
   dirty: boolean;
   /**
-   * The file line of `GLD|`, or null: gifts add to it only among lines 1-60. Not stored: it comes
-   * from the file.
+   * The file line of `GLD|`, or null: gifts add to it wherever it is. Not stored: it comes from
+   * the file.
    */
   goldLine?: number | null;
 }

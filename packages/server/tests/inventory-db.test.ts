@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
-import { ADMINISTRATOR } from "@secondstaronline/shared";
+import { ADMINISTRATOR, skillIndex } from "@secondstaronline/shared";
 
 import { createGame, type Game } from "../src/game.ts";
 import { setRole } from "../src/persistence/accounts.ts";
@@ -63,6 +63,40 @@ async function makeChar(g: Game, name: string): Promise<string> {
 }
 
 const seedMapId = () => findMapByCoords(db, 1000, 992)?.id ?? "";
+
+describe("crafts and logout", () => {
+  test("divergence: a craft ends at logout and takes nothing; the next session starts with none", async () => {
+    const g = game();
+    const id = await makeChar(g, "Alice");
+    g.enter(id, false);
+    g.intent(id, { t: "mapReady" });
+    const p = g.world.players.get(id);
+    if (!p) {
+      throw new Error("not in");
+    }
+    p.char.skills[skillIndex("Carpentry")] = 1;
+    p.char.bag[5] = { item: "Logs", qty: 1 };
+    p.char.equip.offHand = "Saw";
+    p.invDirty = true;
+    g.intent(id, { t: "craft", slot: 6 });
+    expect(Object.keys(p.craft.timers)).not.toEqual([]);
+    g.leave(id);
+    g.enter(id, false);
+    const again = g.world.players.get(id);
+    expect(again).not.toBe(p);
+    expect(again?.craft.timers).toEqual({});
+    expect(again?.keyLock).toBe(false);
+    for (let i = 0; i < 400; i++) {
+      g.tick();
+    }
+    // Nothing was taken or made, in the session or the database.
+    expect(again?.char.bag.some((l) => l?.item === "Logs")).toBe(true);
+    expect(again?.char.bag.some((l) => l?.item.startsWith("Crate"))).toBe(false);
+    const bag = loadInventory(db, id).bag;
+    expect(bag.some((l) => l?.item === "Logs")).toBe(true);
+    expect(bag.some((l) => l?.item.startsWith("Crate"))).toBe(false);
+  });
+});
 
 describe("inventory persistence", () => {
   test("the starting kit loads: Apple-2, Knife-1, nothing worn", async () => {

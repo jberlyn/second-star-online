@@ -12,6 +12,7 @@ import { type AttPowerTier, attPowerData } from "@secondstaronline/data";
 
 import { type Fighter, skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoDiv, lingoEq, type Rng } from "../core/lingo.ts";
+import { weaponIs } from "../crafting/masterwork.ts";
 import { gearBonus } from "./gear.ts";
 
 const AP = attPowerData.attPower;
@@ -68,8 +69,8 @@ export interface AttackPowerResult {
   /** The attack power before the power-bar bonus. */
   power: number;
   /**
-   * A bow with arrows but no crystal of that colour: the swing is wasted after the cooldown and bar
-   * reset (the leave-combat flag is set). The text is printed.
+   * A bow with arrows but no crystal of that colour: the text to print. The server refuses the
+   * shot before the swing (`bowRefusal`), so no cooldown or bar is spent (1.6 wasted the swing).
    */
   outOfCrystals: string | null;
   /** A bow shot that spends one crystal of this colour. */
@@ -202,12 +203,12 @@ export function attackPower(
   if (power < 1) {
     power = rng.random(2);
   }
-  // Skill blocks in source order, the Thrust tiers last.
+  // Skill blocks in source order, the Thrust tiers last; an exact block covers its masterworks.
   for (const block of AP.skillBlocks) {
     const hit =
       block.weaponMatch === "any" ||
       (block.weaponMatch === "contains" && lingoContains(w, block.pattern ?? "")) ||
-      (block.weaponMatch === "exact" && lingoEq(w, block.pattern ?? ""));
+      (block.weaponMatch === "exact" && weaponIs(w, block.pattern ?? ""));
     if (!hit) {
       continue;
     }

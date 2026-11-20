@@ -1,6 +1,6 @@
 # Repository guidance
 
-Second Star Online is a server-authoritative browser game. `packages/shared` contains pure game rules and protocol schemas; `packages/server` owns authoritative simulation and persistence; `packages/client` contains the browser interface; `packages/data` builds editable content and assets; `packages/perf` supplies load scenarios.
+Second Star Online is a server-authoritative browser game. `packages/shared` contains pure game rules and protocol schemas; `packages/server` owns authoritative simulation and persistence; `packages/client` contains the browser interface; `packages/data` builds editable content and assets; `packages/perf` supplies load scenarios. The root `tests/` folder holds repository-wide checks (import rules, doc paths, pinning-test names) and `tools/` holds maintenance scripts.
 
 Use Bun: `bun run dev`, `bun run build`, `bun run test`, and `bun run gate`. Keep game rules pure where practical, validate client intents at the server, and pass I/O dependencies to systems. See [architecture](docs/architecture.md) and the [system guides](docs/guides/README.md).
 

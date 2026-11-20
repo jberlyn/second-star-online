@@ -13,7 +13,7 @@ Fencing is the top tier of sword skill. It adds attack power to swords at high v
 
 ## How it rises
 
-- **Melee kills** with the Bo, Dark Scimitar, Dark Sword, Fire Sword, Gold Sword, Ice Sword, Katana, Laser Sword, Long Sword, Pharaoh Sword, Rune Sword, Scimitar, Short Sword, Star Sword, Sword of Hope or Unholy Lance. The chance is 1 in (25 − Stamina + Fencing + W), and a gain also needs Swordsmanship above 20. See [melee kills](README.md#melee-kills).
+- **Melee kills** with the Bo, Dark Scimitar, Dark Sword, Dragon Sword, Fire Sword, Gold Sword, Ice Sword, Katana, Laser Sword, Long Sword, Pharaoh Sword, Rune Sword, Scimitar, Short Sword, Star Sword, Steel Scimitar, Sword of Hope or Unholy Lance. The chance is 1 in (25 − Stamina + Fencing + W), and a gain also needs Swordsmanship above 20. See [melee kills](README.md#melee-kills).
 - **Promotion to Paladin or Dragoon** raises Fencing to a roll of 1 to 10 if it is lower.
 
 ## What it does

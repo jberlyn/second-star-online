@@ -6,14 +6,15 @@
 import { classesData, monstersData } from "@secondstaronline/data";
 
 import { type Faction, type Fighter, skillIndex } from "../core/fighter.ts";
-import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
+import { lingoContains, type Rng } from "../core/lingo.ts";
+import { weaponIs } from "../crafting/masterwork.ts";
 
-/** The skills the weapon trains: the last matching row wins. */
+/** The skills the weapon trains: the last matching row wins; an exact row covers its masterworks. */
 export function weaponSkillList(weapon: string): readonly string[] {
   let out: readonly string[] = [];
   for (const row of classesData.skillGain.weaponSkills) {
     const hit =
-      row.match === "exact" ? lingoEq(weapon, row.weapon) : lingoContains(weapon, row.weapon);
+      row.match === "exact" ? weaponIs(weapon, row.weapon) : lingoContains(weapon, row.weapon);
     if (hit) {
       out = row.skills;
     }

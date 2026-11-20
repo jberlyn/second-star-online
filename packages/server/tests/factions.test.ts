@@ -110,6 +110,25 @@ describe("the murder flag", () => {
     expect(chat(msgs, "Bob")).toContain("*** Alice was just killed by Bob.");
   });
 
+  test("bug fixed: a death long after the last hit earns its old attacker no Assassin points", () => {
+    const { a, b, world, run } = murderScene();
+    world.assassin.mode = "GO";
+    a.char.vitals.hp = 20;
+    run(200);
+    a.char.vitals.hp = 0;
+    const msgs = run(28);
+    expect(world.assassin.scores.has(b.id)).toBe(false);
+    expect(chat(msgs, "Bob").some((t) => t.includes("assassin points"))).toBe(false);
+  });
+
+  test("a death within the credit window earns the attacker Assassin points", () => {
+    const { b, world, run } = murderScene();
+    world.assassin.mode = "GO";
+    const msgs = run(28);
+    expect(world.assassin.scores.get(b.id)).toBeGreaterThan(0);
+    expect(chat(msgs, "Bob").some((t) => t.includes("assassin points"))).toBe(true);
+  });
+
   test("an arena death never flags", () => {
     const map = testMap("x1000y992", [], (_x, y) => (y <= 9 ? "6P" : "G1"));
     const s = setup([map]);

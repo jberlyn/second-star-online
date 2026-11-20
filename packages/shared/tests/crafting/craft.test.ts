@@ -6,6 +6,7 @@ import { describe, expect, test } from "bun:test";
 
 import { craftData, itemsData } from "@secondstaronline/data";
 
+import { damagedForm } from "../../src/rules/combat/armour.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
   burnedResult,
@@ -203,6 +204,8 @@ describe("Smith", () => {
   });
 
   test("bug fixed: a broken Knight's Sword repairs, under either damaged name", () => {
+    // It breaks into the name that has art and a repair.
+    expect(damagedForm("Knight's Sword")).toBe("Damaged Sword, Knight");
     expect(repairResult("Damaged Sword, Knight")).toBe("Knight's Sword");
     expect(repairResult("Damaged Sword, Knight's")).toBe("Knight's Sword");
     expect(smithChunk("Damaged Sword, Knight's")).toBe("Chunk of Steel");
@@ -313,6 +316,13 @@ describe("Cook", () => {
     expect(next.lines).toEqual(["Your Trout Fillet is ready!"]);
   });
 
+  test("every item with a Cook button has a recipe, so the no-recipe refusal never shows", () => {
+    const cooks = itemsData.items.filter((i) => craftKind(i.name) === "Cook").map((i) => i.name);
+    expect(cooks.length).toBeGreaterThan(0);
+    expect(cooks.filter((n) => cookResult(n) === null)).toEqual([]);
+    expect(CRAFT_TEXT.cantCook).toBe("You don't know how to cook that.");
+  });
+
   test("Raw Meat cooks into Cooked Meat and burns into Burned Meat", () => {
     expect(cookResult("Raw Meat")).toBe("Cooked Meat");
     const v = view({ bag: bagOf(["Raw Meat", 1]), facing: at("Stove"), skills: { Cooking: 1 } });
@@ -381,7 +391,7 @@ describe("Mix", () => {
     expect(bag[1]).toEqual({ item: "Red Crystals", qty: 3 });
   });
 
-  test("completion takes the bottle and the crystal; the held sand is a tool", () => {
+  test("kept on purpose: completion takes the bottle and the crystal; the held sand is a tool", () => {
     const i = inv(bagOf(["Potion Bottle", 1], ["Red Crystals", 1]));
     expect(finishCraft(i, job, 0, rngByN())).toMatchObject({
       reached: true,

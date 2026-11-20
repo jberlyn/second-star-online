@@ -85,7 +85,8 @@ export function mailOpen(
  * The screen's own buttons mirror the input lock, which only the client set in 1.6: the list's
  * CLOSE unlocks and takes the list down; REPLY and a pane's CLOSE leave the keys locked while the
  * list is up (1.6's pane CLOSE unlocked with the list still on screen). Ignored until a pane has
- * opened.
+ * opened. The list's CLOSE takes every pane down, so it also ends the mailbox session: SEND is
+ * refused again until the next mailbox is opened.
  */
 export function mailUiIntent(p: Player, act: "close" | "reply" | "composeClose"): void {
   if (!p.mailUi) {
@@ -93,6 +94,7 @@ export function mailUiIntent(p: Player, act: "close" | "reply" | "composeClose")
   }
   if (act === "close") {
     p.mailList = false;
+    p.mailUi = false;
   }
   p.keyLock = p.mailList;
 }

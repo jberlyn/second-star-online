@@ -13,7 +13,7 @@ Slash is the basic edged-weapon skill. Almost every blade, axe and hammer trains
 
 ## How it rises
 
-- **Melee kills** with any of these weapons: Axe (and any name containing "Axe"), Bo, Broad Sword, Dagger, Dark Scimitar, Dark Sword, Fire Sword, Gold Sword, Hammer, Ice Sword, Katana, Knife, Knight's Sword, Laser Sword, Long Sword, Pharaoh Sword, Rune Sword, Scimitar, Short Sword, Star Sword, Sword of Hope, Thor's Hammer, Unholy Lance. The chance is 1 in (Slash + W); see [melee kills](README.md#melee-kills).
+- **Melee kills** with any of these weapons: Axe (and any name containing "Axe"), Bo, Broad Sword, Dagger, Dark Scimitar, Dark Sword, Dragon Sword, Fire Sword, Gold Sword, Hammer, Ice Sword, Katana, Knife, Knight's Sword, Laser Sword, Long Sword, Pharaoh Sword, Rune Sword, Scimitar, Short Sword, Star Sword, Steel Scimitar, Sword of Hope, Thor's Hammer, Unholy Lance. The chance is 1 in (Slash + W); see [melee kills](README.md#melee-kills).
 - **The Slash Book** adds 1 to 5 while Slash is below 77.
 
 ## What it does
@@ -42,5 +42,5 @@ Slash also gates other gains: Thrust can rise from kills only with Slash above 3
 
 ## Balance notes
 
-- Axes, hammers, the Katana, Scimitar and Bo train Slash but gain no attack power from it.
+- Axes, hammers, the Katana, Scimitar, Bo, Dark Scimitar and Unholy Lance train Slash but gain no attack power from it.
 - Fighters start at 20, so they already have the first two sword tiers.

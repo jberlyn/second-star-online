@@ -59,7 +59,7 @@ export const spellSchema = z.strictObject({
   /** The 1.6 spell whose effect code this row runs. */
   effect: z.string().min(1),
   /** SP cost from the cost cascade; null when the cascade sets none. */
-  sp: int.nullable(),
+  sp: int.nonnegative().nullable(),
   /** Body-armour SP overrides, checked in order (last match wins). Absent = none. */
   spByBody: z.array(spellSpByBodySchema).optional(),
   /** Crystal colour and count required to cast, or null for none. */

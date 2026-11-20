@@ -193,6 +193,13 @@ describe("commands", () => {
     sent = [];
     g.intent(carol, { t: "chat", text: "Zumu set Fish=5,2" });
     expect(chats(carol).map((c) => c.text)).toEqual([`Zumu says "OK boss, I've added the item!"`]);
+    // With no cooldown running, a command starts none: the next plain line is said at once.
+    p.chatIn = 0;
+    g.intent(carol, { t: "chat", text: "Zumu set Fish=6,2" });
+    expect(p.chatIn).toBe(0);
+    sent = [];
+    g.intent(carol, { t: "chat", text: "hello again" });
+    expect(chats(carol).map((c) => c.text)).toContain(`Carol says "hello again"`);
   });
 
   test("a command's file and ledger rewrite keeps the stock and till, and survives a restart", async () => {

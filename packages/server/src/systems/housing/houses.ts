@@ -259,8 +259,8 @@ export function monthCheck(world: World, p: Player, month: string, day: string):
 }
 
 /**
- * The five-minute countdown: every 1230 frames the client asks the time and sends its month report.
- * True when this frame sends one.
+ * The five-minute countdown per player: every 1230 frames 1.6's client asked the time and sent its
+ * month report; SSO's server takes the month from its own clock. True when this frame is due.
  */
 export function houseClockStep(p: Player): boolean {
   p.houseClock -= 1;

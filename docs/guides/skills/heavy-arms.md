@@ -25,6 +25,8 @@ Attack power with these weapons:
 | Any "Axe", any "Hammer", Long Sword, Sword of Hope, Gold Sword | +1 | +1 | | +1 | +1 | +1 | +1 | +6 |
 | Broad Sword | +1 | +1 | +1 | | +1 | +1 | +1 | +6 |
 
+A masterwork such as Sword of Hope +1 counts as its base weapon.
+
 ## Connected systems
 
 - **Combat:** attack power (`skillBlocks` in [attpower.json](../../../packages/data/content/attpower.json)).

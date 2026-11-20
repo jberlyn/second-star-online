@@ -283,7 +283,7 @@ describe("the playthrough", () => {
     await turn(king, "L");
     await say(king, "/spawn 3"); // west (5,4)
     await turn(king, "U");
-    expect(chats(king)).toContain("Spawned a Amber in roster slot 1.");
+    expect(chats(king)).toContain("Spawned an Amber in roster slot 1.");
     const here = who("King").map;
     expect(here.ground.map((g) => g.item)).toEqual(
       expect.arrayContaining(["Stove", "Anvil", "Alchemy Lab", "Universal Mail", "Vault"]),

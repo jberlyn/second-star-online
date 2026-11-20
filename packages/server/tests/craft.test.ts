@@ -143,6 +143,30 @@ describe("smithing", () => {
     expect(k.a.keyLock).toBe(false);
   });
 
+  test("divergence: a chunk gone at completion rolls no skill, though a finished repair on the same rolls does", () => {
+    const always = (): ReturnType<typeof rngByN> => ({
+      calls: [],
+      random: (n) => (n >= 1 ? 1 : 0),
+    });
+    const repair = (keepChunk: boolean) => {
+      const k = bench("Anvil", always());
+      setSkill(k.a, "Blacksmithing", 5);
+      k.a.char.equip.weapon = "Blacksmith Hammer";
+      k.a.char.bag[0] = { item: "Damaged Sword, Long", qty: 1 };
+      k.a.char.bag[1] = { item: "Chunk of Iron", qty: 1 };
+      k.craft(1);
+      if (!keepChunk) {
+        k.a.char.bag[1] = null;
+      }
+      const said = lines(k.run(500), "a");
+      return { said, skill: k.a.char.skills[skillIndex("Blacksmithing")] };
+    };
+    expect(repair(false)).toEqual({ said: [], skill: 5 });
+    const done = repair(true);
+    expect(done.skill).toBe(6);
+    expect(done.said.some((l) => l.includes("advanced"))).toBe(true);
+  });
+
   test("mid-step there is no anvil in front", () => {
     const k = bench("Anvil");
     k.a.char.equip.weapon = "Blacksmith Hammer";
@@ -276,7 +300,7 @@ describe("crafts in the frame script", () => {
     expect(k.a.keyLock).toBe(false);
   });
 
-  test("alchemy: the bottle and crystal are taken at completion; the sand stays in hand", () => {
+  test("kept on purpose: alchemy takes the bottle and crystal at completion; the sand stays in hand", () => {
     const k = bench("Alchemy Lab", rngByN({ 15: [1] }));
     setSkill(k.a, "Alchemy", 1);
     k.a.char.equip.offHand = "Red Sand";
@@ -506,7 +530,7 @@ describe("the Cauldron", () => {
     expect(c.a.keyLock).toBe(true);
   });
 
-  test("bug fixed: Storage on a Crate, Cabinet or Cauldron says what it opened", () => {
+  test("bug fixed: Storage on a Crate, Cabinet, Wind Cabinet or Cauldron says what it opened", () => {
     const c = cauldron();
     c.a.char.bag[0] = { item: "Crate#5", qty: 1 };
     c.a.char.bag[1] = { item: "Cabinet#6", qty: 1 };
@@ -524,8 +548,39 @@ describe("the Cauldron", () => {
       "You open the Cauldron to see what's inside...",
     ]);
     c.a.keyLock = false;
+    c.a.char.bag[4] = { item: "Wind Cabinet#9", qty: 1 };
+    expect(lines(storageIntent(c.world, c.a, 5), "a")).toEqual([
+      "You open the Wind Cabinet to see what's inside...",
+    ]);
+    c.a.keyLock = false;
     c.a.char.bag[2] = { item: "Pie", qty: 1 };
     expect(storageIntent(c.world, c.a, 3)).toEqual([]); // no Storage button for a Pie
+  });
+});
+
+describe("withdrawing from a container", () => {
+  test("bug fixed: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' is refused and keeps the Pie", () => {
+    const c = cauldron();
+    c.world.containers.set("Cauldron#7", ["Pie"]);
+    actionIntent(c.ictx, c.room, c.a);
+    c.a.char.bag = c.a.char.bag.map((_, i) => ({
+      item: i === 0 ? "Orc Pot Pie" : `Rock${i}`,
+      qty: 1,
+    }));
+    const out = withdrawContainer(c.world, c.a, 1, c.ictx.rng);
+    expect(lines(out, "a")).toEqual(["You are carrying too much to withdraw this item."]);
+    expect(c.world.containers.get("Cauldron#7")).toEqual(["Pie"]);
+    expect(c.a.char.bag.some((l) => l?.item === "Pie")).toBe(false);
+  });
+
+  test("bug fixed: a crystal line comes back out of a container as the same crystals", () => {
+    const c = cauldron();
+    c.world.containers.set("Cauldron#7", ["Blue Crystals"]);
+    actionIntent(c.ictx, c.room, c.a);
+    withdrawContainer(c.world, c.a, 1, c.ictx.rng);
+    expect(c.a.char.bag.some((l) => l?.item === "Blue Crystals")).toBe(true);
+    expect(c.a.char.bag.some((l) => l !== null && l.item.trim() === "Crystals")).toBe(false);
+    expect(c.world.containers.get("Cauldron#7")).toEqual([]);
   });
 });
 

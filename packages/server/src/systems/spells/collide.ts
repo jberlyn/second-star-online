@@ -2,6 +2,7 @@
  * Spell collision and effects: the collision test on players and the hit and death checks on
  * monsters, run once on the server against its own state.
  */
+import { monstersData } from "@secondstaronline/data";
 import {
   can,
   checkLevelUp,
@@ -10,6 +11,7 @@ import {
   EFFECT_TEXT,
   FLICKER_FRAMES,
   filledLines,
+  firstMatch,
   fxEffect,
   fxMember,
   HULL_HIT_DAMAGE,
@@ -64,6 +66,8 @@ export interface CollideOut {
   portals: Player[];
   /** A monster died: write the slots. */
   slotsChanged: boolean;
+  /** Kill broadcasts for every player who hears the killer, as a melee kill sends them. */
+  broadcasts: { from: string; text: string }[];
 }
 
 const tell = (out: Outgoing[], p: Player, text: string) =>
@@ -71,8 +75,8 @@ const tell = (out: Outgoing[], p: Player, text: string) =>
 
 /**
  * Whether player-versus-player spells are off here: the map's `CanPeeVeePee`, or "X" on a `6P` tile
- * (the same field test as the arena death, rows 1-9 only). A rider follows the map's flag alone:
- * arenas are for players on foot (an SSO rule).
+ * (the same field test as the arena death, on any of the map's 12 rows). A rider follows the map's
+ * flag alone: arenas are for players on foot (an SSO rule).
  */
 function pvpOff(room: Room, p: Player): boolean {
   return room.map.flags.canPvp === "O" && (p.vehicle !== null || !onArenaTile(room, p.x, p.y));
@@ -356,8 +360,9 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
 /**
  * The death check: above 0 HP is capped at the species' own hit points (a bug fixed: 1.6 capped it
  * from a table that defaulted to 200, so a heal lifted a 1 HP Pig to 200); below 0 the monster
- * dies for everyone. Only the FX's owner, a player on this map, sends `M<k>Cncl`, drops the loot
- * and gains the spell table's XP; a monster's or the Server Spirit's kill gives nothing.
+ * dies for everyone. Only the FX's owner, a player on this map, sends `M<k>Cncl`, drops the loot,
+ * gains the spell table's XP and sends the kill broadcast (a bug fixed: 1.6 announced an
+ * Overlord's death only after a melee kill); a monster's or the Server Spirit's kill gives nothing.
  */
 function checkForDead(
   room: Room,
@@ -406,6 +411,10 @@ function checkForDead(
     return true;
   }
   const xp = meleeKillXp(sp?.xpSpell ?? 30, m.name, owner.char.equip.ring);
+  const broadcast = firstMatch(monstersData.rules.killBroadcasts, m.name);
+  if (broadcast) {
+    res.broadcasts.push({ from: owner.name, text: broadcast.text.replace("{}", owner.name) });
+  }
   v.exp += xpGained(xp, v.level);
   owner.vitalsDirty = true;
   // One line for each level gained.

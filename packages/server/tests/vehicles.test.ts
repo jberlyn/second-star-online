@@ -408,6 +408,44 @@ describe("what an Airship cannot do", () => {
     pickupIntent(s.ctx(), s.room, s.ann, "ap3");
     expect(s.ann.char.bag.find((l) => l?.item === "Apple")?.qty).toBe(2);
   });
+  test("bug fixed: Ctrl aboard takes a Pig in front; any other monster with no item lets Ctrl unboard", () => {
+    const put = (s: ReturnType<typeof aboard>, name: string) => {
+      const slot = s.map.slots[0] as MonsterSlot;
+      slot.species = name;
+      slot.pause = 10_000;
+      slot.live = {
+        name,
+        hp: species(name)?.hp ?? 1,
+        x: 7,
+        y: 6,
+        facing: "S",
+        anim: 0,
+        fromX: 7,
+        fromY: 6,
+        queue: [],
+        hitCountb: 0,
+      };
+    };
+    // A Pig in front: grabbed into the bag, still aboard.
+    const s = aboard();
+    s.ann.x = 7;
+    s.ann.y = 5;
+    s.ann.facing = "S";
+    put(s, "Pig");
+    actionIntent(s.ctx(), s.room, s.ann);
+    expect(s.ann.char.bag.some((l) => l?.item === "Pig")).toBe(true);
+    expect(s.map.slots[0]?.live).toBeNull();
+    expect(s.ann.vehicle).not.toBeNull();
+    // A Slime in front and no item: Ctrl tries to unboard (refused off a pad), the Slime stays.
+    const t = aboard();
+    t.ann.x = 7;
+    t.ann.y = 5;
+    t.ann.facing = "S";
+    put(t, "Slime");
+    expect(chat(actionIntent(t.ctx(), t.room, t.ann), "Ann")).toEqual([VEHICLE_TEXT.cannotGetOff]);
+    expect(t.map.slots[0]?.live?.name).toBe("Slime");
+    expect(t.ann.char.bag.some((l) => l?.item === "Slime")).toBe(false);
+  });
   test("the bio reads the vehicle, so the Robe's disguise is skipped aboard", () => {
     const s = aboard();
     expect(bioSource(s.world, s.ann).inVehicle).toBe(true);
@@ -506,7 +544,7 @@ describe("death", () => {
     expect(s.map.ground.some((g) => g.item.includes("Head"))).toBe(true);
     expect(s.map.ground.some((g) => g.item === "Apple")).toBe(false);
   });
-  test("a Lightning death clears it too", () => {
+  test("kept on purpose: a Lightning death aboard loses the airship too", () => {
     const s = aboard();
     s.ann.lightningDeath = true;
     s.ann.char.vitals.hp = 20;

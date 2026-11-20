@@ -45,6 +45,7 @@ The UI files are:
 - [packages/client/src/ui/placement.ts](../../packages/client/src/ui/placement.ts): house placement mode.
 - [packages/client/src/ui/screens.ts](../../packages/client/src/ui/screens.ts): title, login and character creation.
 - [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): Server Settings window.
+- [packages/client/src/ui/settings-roles.ts](../../packages/client/src/ui/settings-roles.ts): Server Settings window's Roles and Staff pages.
 - [packages/client/src/ui/shells.ts](../../packages/client/src/ui/shells.ts): game screen shell.
 - [packages/client/src/ui/shop.ts](../../packages/client/src/ui/shop.ts): shop and vault window.
 - [packages/client/src/ui/sign.ts](../../packages/client/src/ui/sign.ts): sign display.
@@ -58,7 +59,7 @@ The UI files are:
 
 ## How it works
 
-The input layer resolves multiple held arrows left, right, up, then down. A new press emits a step intent; changes to held direction or turning emit a move intent. Focus and chat suppress game input where appropriate. The connection sends messages to the server, receives snapshots and updates, and attempts to resume with a token after an unexpected disconnect, with a delay between attempts; logout, kick and other final close codes do not resume. Messages sent while disconnected are queued. The model predicts ordinary steps with the shared rules, then reconciles its position and facing with server updates; map edges wait for the server snapshot. The application applies incoming state, and the playfield draws the game while DOM screens provide controls and windows.
+The input layer resolves multiple held arrows left, right, up, then down. A new press emits a step intent; changes to held direction or turning emit a move intent. Game keys are ignored while typing in any input, text area or select, and focusing the chat entry, losing window focus, or pressing Meta (or any key with Meta held) releases every held key. The connection sends messages to the server, receives snapshots and updates, and attempts to resume with a token after an unexpected disconnect, every 1000 ms for up to 25 attempts before "Disconnected!"; the final close codes 4001-4006 (logout, kick, flooding and the like) do not resume, while 4007 (fell behind) does and gets a fresh snapshot, and a `denied` reply to a resume ends the session. Messages sent while disconnected are queued and flushed after the resume message. The model predicts ordinary steps with the shared rules, then reconciles its position and facing with server updates; map edges wait for the server snapshot. The application applies incoming state, and the playfield draws the game while DOM screens provide controls and windows.
 
 The stage, panel, placement, window and shell modules arrange screens. Assets use retained layout metadata and sprite images. Audio uses eight channels; a new sound replaces the sound on its channel, and each channel has its own volume. Muting stops all channels. A pointer or key gesture unlocks playback; a sound requested before unlock or before its buffer loads is skipped rather than played late.
 

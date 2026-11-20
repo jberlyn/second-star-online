@@ -118,7 +118,7 @@ That source-build configuration sets `SSO_PROXY_HOPS=1` for a host reverse proxy
 |---|---|---|
 | `PORT` | `3000` | HTTP and WebSocket listening port. |
 | `SSO_DB` | `sso.sqlite` | SQLite database path relative to the working directory (`/data/sso.sqlite` in the container). `:memory:` runs a throwaway database that is lost on exit. |
-| `NODE_ENV` | unset | Only `development` selects development serving. Any other value (or unset) serves the prebuilt `dist/client` bundle with strict security headers. |
+| `NODE_ENV` | unset | Only `development` selects development serving (Bun's live-reloading page, which carries no CSP). Any other value (or unset) serves the prebuilt `dist/client` bundle, and every response carries `X-Content-Type-Options: nosniff` and a CSP of `script-src 'self'; object-src 'none'; base-uri 'none'` (plus `frame-ancestors` when `SSO_FRAME_ANCESTORS` is set). |
 | `SSO_CLIENT_DIR` | `dist/client` | Optional override for the prebuilt production client directory (used by tests). |
 | `SSO_PROXY_HOPS` | `0` | Number of trusted reverse proxies in front of the server (whole number `>= 0`; invalid values refuse startup). The recommended Compose example sets `0`; use `1` behind a single reverse proxy. |
 | `SSO_FRAME_ANCESTORS` | unset | Optional CSP `frame-ancestors` directive value. Unset adds no `frame-ancestors` directive. |
@@ -179,14 +179,14 @@ Staff are accounts with a **role**. A role has an id (such as `moderator`), a di
 
 A new server starts with two roles:
 
-- **`moderator`** (Moderator, rank 1): an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute`, `/pardon`, `/iplookup` and `/banlist`, plus `/location`, `/inventory`, `/save` and `/refresh`, and can read and post staff chat (`-text`). Bans, jails, mutes and pardons reach players only, never another moderator, an administrator or themselves; a moderator also cannot kick or look up the IP of an administrator. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except that the per-address login limit never refuses them. `/BanIP`, `/unbanip`, `/chatlog`, `/drop`, `/setclass`, `/roster`, `/spawn`, and the editor and Server Settings windows are administrators'.
+- **`moderator`** (Moderator, rank 1): an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute`, `/pardon`, `/iplookup` and `/banlist`, plus `/location`, `/inventory`, `/save` and `/refresh`, and can read and post staff chat (`-text`). Bans, jails, mutes and pardons reach players only, never another moderator, an administrator or themselves; a moderator also cannot kick or look up the IP of an administrator. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except for the login-limit bypass (see `loginFailsPerIp`). `/BanIP`, `/unbanip`, `/chatlog`, `/auditlog`, `/cheatfile`, `/drop`, `/setclass`, `/roster`, `/spawn`, the Admin Chat room, the Assassin's Game controls, and the editor and Server Settings windows are administrators'.
 - **`administrator`** (Admin, rank 2): every permission. Full command access, staff chat, the Admin Chat room, World Editor, NPC Editor, Server Settings (including the roles), and Assassin's Game controls. An administrator can ban, jail or mute anyone but themselves and change or lift any ban, IP ban, jail or mute, and IP bans never stop an administrator's login. Administrators take no damage of any kind, never get hungry, cannot be pushed, stay off the high scores, drop on every death and skip the chat and broadcast waits.
 
-Every one of these is a permission you can turn on or off for each role, and you can add roles of your own, such as a helper who can only `/mute`. Any role makes an account staff: it reads and posts staff chat and can be sent IMs by jailed and muted players, so roles are for staff, not for perks. Staff act only on accounts of lower rank, unless their role has the **Overrule** permission.
+Every one of these is a permission you can turn on or off for each role, and you can add roles of your own, such as a helper who can only `/mute`. Any role makes an account staff: it reads and posts staff chat and can be sent IMs by jailed and muted players, so roles are for staff, not for perks. Bans, jails, mutes and pardons reach only accounts of lower rank, unless the staff member's role has the **Overrule** permission. `/kick`, `/iplookup` and the warps are looser: they refuse only a target whose rank is higher than yours, so a moderator can kick or look up another moderator.
 
 ### Editing roles and giving them out
 
-Open **Admin → Settings** and choose:
+Open **Admin → Server Settings** and choose:
 
 - **Roles** to edit a role's display name, rank and permissions, add a role (**New role…**) or delete one. **Save** applies the role at once to everyone online who holds it. Deleting a role leaves its accounts with no role. At least one role must keep every permission, so the server can always be run.
 - **Staff** to see every account with a role, change one with its picker (or **No role** to take it away), or type a character's name and **Give role**. Changes apply at once, also to anyone online. You cannot change your own role here.
@@ -217,7 +217,7 @@ The command line is also the way back in if you ever leave no one able to open S
 
 ### Bans, jails, mutes and IP bans
 
-Every ban, unban, IP ban, jail, release, mute, unmute and pardon is written to the `moderation_log` table with its reason, who made it, the name of their role at that moment and when it ends. The in-force bans, IP bans, jails and mutes are in `account_bans`, `ip_bans`, `jails` and `mutes`; a row whose `expires_at` has passed no longer applies.
+Every ban, unban, IP ban, IP unban, jail, `/unjail`, mute, `/unmute` and pardon is written to the `moderation_log` table with its reason, who made it, the name of their role at that moment and when it ends. The in-force bans, IP bans, jails and mutes are in `account_bans`, `ip_bans`, `jails` and `mutes`; a row whose `expires_at` has passed no longer applies. A ban, jail or mute that runs out by itself writes no `moderation_log` row; only a staff member's lifting does.
 
 - **Duration and reason.** `/ban`, `/jail`, `/mute` and `/banip` take an optional duration after the name, then an optional reason: `/ban Berlyn 3d being a rude person`. A duration is a number with `m`, `h`, `d` or `w` (`30m`, `12h`, `7d`, `2w`, or combined, such as `1d12h`), up to 10 years, or `perm`. Without one, the `banLength`, `ipBanLength`, `jailSentence` and `muteLength` settings apply. Write `perm` or a duration first if a reason starts with something like `1d`. `/unban`, `/unjail`, `/unmute`, `/unbanip` and `/pardon` take a reason too.
 - **What the player sees.** A banned player reads the original alert and the ban's end, such as `Banned until 2026-11-20 14:00 UTC.` or `This ban is permanent.` A jailed or muted player is told in the chat box until when, at once and at each login. The reason is never shown to the player; it is for staff, through `/banlist`.
@@ -225,9 +225,9 @@ Every ban, unban, IP ban, jail, release, mute, unmute and pardon is written to t
 - **Jail.** A sentence runs in real time, including while the prisoner is offline, and works on offline characters: they arrive in jail at their next login, and a sentence that ended while they were away sends them to their respawn point (see [Respawn points](#respawn-points)). A prisoner can talk only with local chat and `/me`, which reach the jail map, and send IMs to staff; broadcasts, IMs to other players, guild chat, chat rooms, mail and board posts are refused. Staff warps cannot take a prisoner out or put a player in; use `/jail` and `/unjail`.
 - **Mutes.** A muted player cannot talk at all (local chat, `/me`, broadcasts, IMs, guild chat, chat rooms, mail and board posts), except to send an IM to staff to ask why. A mute is on the account, runs in real time, works on offline characters, and ends by itself or with `/unmute`.
 - **Staff.** Any account with a role is staff: staff read and post staff chat and can receive IMs from jailed and muted players.
-- **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Administrators (any role with the IP-ban bypass) are never stopped by IP bans, so an operator cannot lock themselves out.
+- **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. `/banip <name>` refuses your own account and a character whose role has the IP-ban bypass ("IP bans do not apply to that player's role."). An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Administrators (any role with the IP-ban bypass) are never stopped by IP bans, so an operator cannot lock themselves out.
 - **Login addresses.** The server keeps the addresses each account logs in from for `addressHistory` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only roles with `/banip` (administrators) can read them.
-- **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, made at the rank the banner had then (at least moderator, or administrator if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
+- **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, recorded under the role the banner held then (`Moderator` or `Admin` in `actor_role`; `Admin` if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
 
 ### The chat log
 
@@ -249,6 +249,20 @@ Each line records the time (UTC, to the second), the channel, the sender's accou
 - **Retention.** Lines older than `chatLogRetention` (default 90 days) are deleted at startup and every hour; `0` keeps them forever.
 - **Telling your players.** SSO does not show players a notice that their chat is logged. If you run a public server, say so in your privacy policy or terms of service, including that private messages are logged and readable by your staff, and how long you keep them.
 
+### Checking content and maps
+
+Two more command-line checks help when editing the world (see [scripts](scripts.md)):
+
+```sh
+# Docker Compose:
+docker compose exec -T second-star-online bun run maps:check
+# From source:
+SSO_DB=sso.sqlite bun run maps:check
+bun run content:report "<name>"
+```
+
+`maps:check` lists exits, `Exit` tiles and start, respawn or Portal points that lead to a map that does not exist, and exits non-zero when it finds any. `content:report` shows which content rules and NPC seed text match a name (it reads the generated data, not your database).
+
 ### Reading the audit log
 
 Actions that change state or reveal privileged information (effective admin commands, World Editor and NPC Editor saves, setting changes, and role edits and assignments) are recorded in `audit_log`, as is each `/cheatfile` look, since its lines show players' addresses. `/location` and `/inventory`, which show only the staff member's own place and bag, and refused or no-target command attempts are not logged. Administrators read it in game, merged with the moderation log, with `/auditlog <name> [count]`. From the command line, inspect the newest entries (default `50`):
@@ -261,7 +275,7 @@ docker compose exec -T second-star-online bun run admin:audit 50
 SSO_DB=sso.sqlite bun run admin:audit 50
 ```
 
-Audit rows are kept forever by default. Set `auditLogRetention` to delete rows older than that, at startup and every hour. Bans, jails and pardons live in their own moderation log, which `/banlist` reads and which is never pruned, since current bans refer back to it.
+Audit rows are kept forever by default. Set `auditLogRetention` to delete rows older than that, at startup and every hour. Bans, IP bans, jails, mutes and pardons live in their own moderation log, which `/banlist` and `/auditlog` read and which is never pruned, since current bans refer back to it. `admin:audit` prints only `audit_log`.
 
 ## In-game commands
 
@@ -287,13 +301,13 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 | `/refresh` | `moderator` | None | Reloads settings overrides from the database and applies them to everyone online. |
 | `/cheatfile` | `administrator` | None | Prints `* Cheater Log:` followed by up to 300 entries from `cheat_log`. Each look is audited. |
 | `/inventory` | `moderator` | None | Prints your 15 bag lines as held by the server (`Name-qty`). |
-| `/banip <name\|ip> [latest\|all] [duration] [reason]` | `administrator` | Character name, else an IPv4 or IPv6 address (word 2) | Bans the character's last address (`latest`, the default) or every address it has used, or the typed address (an IPv6 address bans its /64), for the duration or `ipBanLength`. Disconnects matching sessions except administrators'. |
-| `/unbanip <name\|ip> [reason]` | `administrator` | Character name or address (word 2) | Lifts every IP ban made on the character's addresses, or the ban on that address. |
+| `/banip <name\|ip> [latest\|all] [duration] [reason]` | `administrator` | Character name, else an IPv4 or IPv6 address (word 2) | Bans the character's last address (`latest`, the default) or every address it has used, or the typed address (an IPv6 address bans its /64), for the duration or `ipBanLength`. Disconnects matching sessions except administrators'. Refuses your own account and a character whose role bypasses IP bans. |
+| `/unbanip <name\|ip> [reason]` | `administrator` | Character name or address (word 2) | With a name, lifts the IP bans made with `/banip <name>` on that character; a ban typed as an address stays, even on an address the character used (lift it with `/unbanip <address>`). With an address, lifts the ban on that address. |
 | `/ban <name> [duration] [reason]` | `moderator` | Character name (word 2), online or offline | Bans the target's account for the duration or `banLength` (cannot ban yourself; moderators can ban players only) and kicks if online. Re-banning replaces the length (only the banner or an administrator). |
 | `/unban <name> [reason]` | `moderator` | Character name (word 2) | Lifts the ban on the target's account (only the banner or an administrator). |
-| `/banlist [page\|name\|ip]` | `moderator` | None, a page number, a character name, or (administrators) an address | Lists the bans, jails and mutes in force, 10 a page, and for administrators the IP bans; with a name, that character's standing, last 10 actions and (administrators) addresses; with an address, its ban and the characters seen there. |
+| `/banlist [page\|name\|ip]` | `moderator` | None, a page number, a character name, or (administrators) an address | Lists the bans in force, 10 a page, then the first 10 jails, mutes and (administrators) IP bans, which do not page; with a name, that character's standing, last 10 actions and (administrators) addresses; with an address, its ban and the characters seen there. |
 | `/chatlog <name> [count] [channel]` | `administrator` | Character name (word 2), online or offline; a count up to `100` and a channel (`say`, `emote`, `broadcast`, `im`, `awayReply`, `away`, `guild`, `room`, `staff`, `bio`) in either order | Prints the character's newest logged lines (default 20) and the IMs sent to them, oldest first. Each lookup is audited. See [The chat log](#the-chat-log). |
-| `/auditlog <name> [count]` | `administrator` | Character name (word 2), online or offline; a count (default `10`, up to `100`) | Prints the newest staff actions by that character's account or done to that character, oldest first: admin commands, editor saves, setting changes, role edits and assignments, and bans, jails, IP bans and pardons with their reasons and ends. Each lookup is audited. |
+| `/auditlog <name> [count]` | `administrator` | Character name (word 2), online or offline; a count (default `10`, up to `100`) | Prints the newest staff actions by that character's account or done to that character, oldest first: admin commands, editor saves, setting changes, role edits and assignments, and bans, jails, mutes, IP bans and pardons (and their lifting) with their reasons and ends. Each lookup is audited. |
 | `/pardon <name> [reason]` | `moderator` | Online player (word 2) | Clears the target's murder/wanted flag and saves the character (moderators can pardon players only, never themselves). Does not end a jail sentence. |
 | `/warpscript <word\|OFF>` | `administrator` | Keyword (word 2) or `OFF` | Matches `<word>` as a whole token in broadcast message content, ignoring case; the first matching staff member in login order warps the speaker (`OFF` disables). |
 | `/setclass <name> <class>` | `administrator` | Character name, class name or number `1`–`26` | Changes the character's class in the database. |
@@ -303,7 +317,7 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 
 ## Server settings
 
-Administrators open **Admin → Settings** from the top menu bar. The window has a sidebar of pages (World, Chat and mail, Items, Moderation, Logins, Logs, and the [Roles and Staff](#editing-roles-and-giving-them-out) pages) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
+Administrators open **Admin → Server Settings** from the top menu bar. The window has a sidebar of pages (World, Chat and mail, Items, Moderation, Logins, Logs, and the [Roles and Staff](#editing-roles-and-giving-them-out) pages) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
 
 Each page is saved on its own. Clicking **SAVE** validates the page's fields on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values. Only the open page can hold unsaved changes: leaving it for another page or a search result, or closing the window, asks first, and the changes are discarded if you go on.
 
@@ -338,7 +352,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | `mailboxMax` | Messages per mailbox | `50` | `1`–`1000` | Maximum messages kept per mailbox; newer mail drops the oldest. |
 | `boardPostsMax` | Posts per board | `200` | `1`–`1000` | Maximum posts kept per message board; newer posts evict the oldest (there is no board moderation tool). |
 | `boardPostMax` | Longest board post | `300` | `1`–`4000` chars | Maximum message board post length; longer posts are truncated. |
-| `artBytesMax` | Largest painting or photo | `16384` | `1024`–`65536` bytes | Maximum byte size for a saved 64×64 PNG painting or photo. |
+| `artBytesMax` | Largest painting or photo | `16384` | `1024`–`16384` bytes | Maximum byte size for a saved 64×64 PNG painting or photo. |
 | `announcePresence` | Announce logons | `true` | `true` / `false` | Broadcasts logon/logoff updates to clients (used by Friends list). |
 | `presenceChatLines` | Logon lines in chat | `false` | `true` / `false` | Also prints `<name> has logged on/off.` in everyone's chat when `announcePresence` is on. |
 | `roleTags` | Role tags in chat | `false` | `true` / `false` | Puts a staff member's role name before their name in local chat, `/me`, broadcasts, chat rooms, guild chat and staff chat (`[Admin] Berlyn says "hi"`). IMs keep the plain name; players get no tag. |
@@ -369,7 +383,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
-| `loginFailsPerIp` | Failed logins per address | `20` | `0`–`1000` | Failed logins per address (IPv6 `/64`) in 5 minutes before refusal (`0` disables; roles with the login-limit bypass, moderators and administrators by default, are not refused). |
+| `loginFailsPerIp` | Failed logins per address | `20` | `0`–`1000` | Failed logins per address (IPv6 `/64`) in 5 minutes before refusal (`0` disables). A role with the login-limit bypass (moderators and administrators by default) still gets one try per account from an address over the limit, so an operator behind a shared address can log in, but a wrong password ends that too until the window passes. |
 | `loginFailsPerAccount` | Failed logins per account | `5` | `0`–`1000` | Wrong passwords per address+account pair in 5 minutes before refusal (`0` disables; no role exemption). |
 | `createsPerIp` | New characters per address | `3` | `0`–`1000` | Character creations per address (IPv6 `/64`) per hour (`0` disables; no role exemption). |
 

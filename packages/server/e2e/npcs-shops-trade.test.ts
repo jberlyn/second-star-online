@@ -104,7 +104,7 @@ describe("NPCs, shops, bank and trade", () => {
     await say(alice, "/spawn 2"); // west: (5, 6)
     await turn(alice, "R");
     await say(alice, "/spawn 3"); // east: (7, 6)
-    expect(chatTexts(alice)).toContain("Spawned a Amber in roster slot 1.");
+    expect(chatTexts(alice)).toContain("Spawned an Amber in roster slot 1.");
     expect(chatTexts(alice)).toContain("Spawned a Fire God in roster slot 3.");
   });
 

@@ -222,11 +222,13 @@ export const SETTINGS = {
   artBytesMax: def({
     page: "chat",
     label: "Largest painting or photo",
-    form: { kind: "int", min: 1024, max: 65536 },
-    schema: z.number().int().min(1024).max(65536),
+    // The upload message's base64 field (`png` in protocol/mail.ts) holds at most 16,384 bytes,
+    // so a larger limit would never take effect.
+    form: { kind: "int", min: 1024, max: 16384 },
+    schema: z.number().int().min(1024).max(16384),
     default: 16384,
     tooltip:
-      "The most bytes a saved painting or photo (a 64x64 PNG) may take. A bigger image is dropped.",
+      "The most bytes a saved painting or photo (a 64x64 PNG) may take, up to 16384. A bigger image is dropped.",
     source: "SSO addition. 1.6 stored whatever the client sent, any size and format.",
   }),
   announcePresence: def({

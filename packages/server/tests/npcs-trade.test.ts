@@ -336,6 +336,24 @@ describe("trade", () => {
     expect(b.trade).toBeNull();
   });
 
+  test("bug fixed: an accept checks that the partner is still on your map", () => {
+    const { s, a, b } = two();
+    openTrade(s.world, a, "B");
+    offerTrade(s.world, a, { t: "tradeOffer", gold: 10, items: [] });
+    offerTrade(s.world, b, { t: "tradeOffer", gold: 0, items: [{ slot: 3, qty: 1 }] });
+    b.map = testMap("x1001y992");
+    const out = acceptTrade(s.world, a);
+    expect(out).toEqual([
+      {
+        to: "A",
+        msg: { t: "chat", text: "B is no longer in your area, you cannot trade.", color: 0 },
+      },
+    ]);
+    expect(a.char.gold).toBe(100);
+    expect(b.char.bag[2]).toEqual({ item: "Knife", qty: 1 });
+    expect(a.trade).not.toBeNull();
+  });
+
   test("bug fixed: either side can change its offer, which clears both acceptances", () => {
     const { s, a, b } = two();
     openTrade(s.world, a, "B");

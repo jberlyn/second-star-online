@@ -669,7 +669,8 @@ export function createGame(deps: GameDeps): Game {
     saveBuddies: (accountId, items) => db.transaction(() => saveBuddies(db, accountId, items))(),
     // `Password=`: hashed off the tick, through the server-wide hash queue. The reply comes once
     // the hash is stored (or says it failed), one change in flight per account, and a change ends
-    // the account's other resume tokens.
+    // the character's other resume tokens (an account logs in to its first character only, so
+    // these are all the account's sessions).
     changePassword: (p, password) => {
       if (passwordBusy.has(p.accountId)) {
         return;
@@ -1611,10 +1612,15 @@ export function createGame(deps: GameDeps): Game {
 
     async login(name, password, ip = "") {
       const account = findAccountByUsername(db, name);
-      // SSO's login limits: a role with `bypassLoginLimits` is never refused by the per-address
-      // count (an operator behind a shared address must still get in).
+      // SSO's login limits. An address over its per-address count is refused, except for a role
+      // with `bypassLoginLimits` (an operator behind a shared address must still get in), and
+      // then only while that account has no failure from the address in the window: one honest
+      // try, not a free run of guesses at a staff password once the address is spent.
       const exempt = account !== null && can(roleOf(account.role), "bypassLoginLimits");
-      if (!exempt && !allowLoginFromIp(limits, ip, nowMs(), settings.loginFailsPerIp)) {
+      if (
+        !allowLoginFromIp(limits, ip, nowMs(), settings.loginFailsPerIp) &&
+        !(exempt && account && allowLoginToAccount(limits, account.id, ip, nowMs(), 1))
+      ) {
         return { ok: false, text: TEXT.tooManyLogins };
       }
       if (!account) {

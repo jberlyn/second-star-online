@@ -24,8 +24,9 @@ import { setAttackHeld } from "../src/systems/combat/melee.ts";
 import { resetTreasure } from "../src/systems/crafting/gather.ts";
 import { type ItemCtx, useIntent } from "../src/systems/inventory/items.ts";
 import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
+import { warp } from "../src/systems/world/tick.ts";
 import { type Player, removePlayer, type WorldMap } from "../src/systems/world/world.ts";
-import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
+import { NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
 type Out = { to: string; msg: ServerMsg }[];
 
@@ -355,10 +356,18 @@ describe("regrowth", () => {
   test("bug fixed: a stump regrows on a roll under 6, even right after a death or exit warp", () => {
     const map = testMap("x1000y992");
     setLayer(map, 1, 3, 4, "P3");
+    const other = testMap("x1001y992");
     const rng = rngByN({ 600: [5], 17: [3], 12: [4] });
-    const s = setup([map], undefined, rng);
+    const s = setup([map, other], undefined, rng);
+    // One player has just died here; another has just come in by an exit warp.
     const a = player("a", map, 9, 9);
     s.join(a);
+    a.deadLock = 27;
+    a.deathPause = 400;
+    const b = player("b", other, 5, 5);
+    s.join(b);
+    warp(s.world, b, map, 5, 5, NO_CASINO);
+    b.loading = 0;
     const out = s.run(1);
     expect(tileAt(map.layers[1], 3, 4)).toBe("S3");
     expect(events(out, "a")).toContainEqual({ e: "tile", layer: 2, x: 3, y: 4, code: "S3" });

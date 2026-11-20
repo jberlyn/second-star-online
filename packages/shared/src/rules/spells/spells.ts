@@ -338,6 +338,15 @@ export function spellPower(spell: string, c: Caster): number {
 }
 
 /**
+ * The body number of a monster member name (`"<body>-<frame>-<facing>"`). The original tested the
+ * member name for text such as `"45-"`, so a Shark (body 445) took Firebolt and Fireball as a
+ * Ghoul (body 45) does; SSO compares the number (a bug fixed).
+ */
+export function memberBody(member: string): number {
+  return Number.parseInt(member, 10);
+}
+
+/**
  * What a spell effect does to a monster, in the original's monster hit check: the cascade of
  * independent `if`s on the effect's member name, where the last true branch wins, so a later branch
  * overwrites an earlier one. `member` is the FX member name, `body` the monster's body member name,
@@ -361,7 +370,7 @@ export function spellHitOnMonster(
     }
     hit = { n, heal: false, splat: true };
   }
-  const undead = lingoContains(body, "61-");
+  const undead = memberBody(body) === 61;
   if (is("minor heal-3")) {
     hit = undead
       ? { n: 1 + P + r.random(2), heal: false, splat: true }
@@ -377,28 +386,31 @@ export function spellHitOnMonster(
       hit = { n: 15 + P + r.random(3), heal: false, splat: true };
     }
   }
-  if (lingoContains(body, "90-") && is("Dispel Illusions-8")) {
+  if (memberBody(body) === 90 && is("Dispel Illusions-8")) {
     hit = { n: 2000, heal: false, splat: true };
   }
   if (is("splash-18")) {
-    hit = lingoContains(body, "36-")
-      ? { n: 10 + P + r.random(5), heal: true, splat: true }
-      : { n: 20 + P + r.random(3), heal: false, splat: true };
+    hit =
+      memberBody(body) === 36
+        ? { n: 10 + P + r.random(5), heal: true, splat: true }
+        : { n: 20 + P + r.random(3), heal: false, splat: true };
   }
   if (is("crush-18")) {
-    hit = lingoContains(body, "47-")
-      ? { n: 8 + P + r.random(3), heal: true, splat: true }
-      : { n: 6 + P + r.random(3), heal: false, splat: true };
+    hit =
+      memberBody(body) === 47
+        ? { n: 8 + P + r.random(3), heal: true, splat: true }
+        : { n: 6 + P + r.random(3), heal: false, splat: true };
   }
   if (is("Firebolt-12")) {
-    hit = lingoContains(body, "45-")
-      ? { n: 6 + P + r.random(3), heal: true, splat: true }
-      : { n: 6 + P + r.random(3), heal: false, splat: true };
+    hit =
+      memberBody(body) === 45
+        ? { n: 6 + P + r.random(3), heal: true, splat: true }
+        : { n: 6 + P + r.random(3), heal: false, splat: true };
   }
   for (const n of ["FireballL-1", "FireballR-1", "FireballU-1", "FireballD-1"]) {
     if (is(n)) {
       let dmg = 4 + P + r.random(3);
-      if (lingoContains(body, "45-")) {
+      if (memberBody(body) === 45) {
         dmg = r.random(3);
       }
       hit = { n: dmg, heal: false, splat: true };

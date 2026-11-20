@@ -193,7 +193,7 @@ describe("spell sounds", () => {
 });
 
 describe("the church bell", () => {
-  test("bug fixed: the church bell plays at 200 and leaves channel 5's volume alone", () => {
+  test("the church bell's sound carries its own volume, 200, to play", () => {
     const calls: string[] = [];
     const audio = {
       play: (s: Sfx) => calls.push(`play ${s.name} ${s.ch} ${s.volume ?? "channel"}`),

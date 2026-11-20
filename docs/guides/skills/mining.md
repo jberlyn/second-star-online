@@ -23,7 +23,7 @@ Each mining tool breaks its own rock on layer 2:
 
 Each swing at the rock counts down the hammer's hits ([gathering hits](README.md#gathering-hits)), and the last one breaks it. A rock broken with the Mining Hammer drops something one time in five (`rollMiningFind`). What it drops:
 
-- **Crystals**, by default. The count rises with skill: 1 above 0, 2 above 10, 3 above 20, 4 above 50, 5 above 70 and 6 above 90. The colour is drawn from a list that shortens as skill rises, from 30 entries to 12, so rarer colours come up more: at skill 0 about half are Blue and 1 in 30 White; above 90, 1 in 4 Blue and 1 in 12 White.
+- **Crystals**, by default. The count is a random 1 up to a top that rises with skill: 1 above 0, 2 above 10, 3 above 20, 4 above 50, 5 above 70 and 6 above 90. The colour is drawn from a list that shortens as skill rises, from 30 entries to 12, so rarer colours come up more: at skill 0 every crystal is Blue; from 1 to 10 about half are Blue and 1 in 30 White; above 90, 1 in 4 Blue and 1 in 12 White.
 - **Ore**, which replaces the crystals when a roll hits: a Chunk of Iron at 1 in the Iron pool, a Chunk of Steel at 1 in (pool + 30) and a Chunk of Star at 1 in (pool + 130), the rarest winning. The pool falls from 100 below 10 through 95, 90, 80, 75, 60, 50, 40 and 30 to 25 from 90 up (`orePool`).
 
 The Ice and Fire Hammers' chunk chance does not depend on skill.

@@ -1038,6 +1038,26 @@ export const classesData: ClassesData = {
         ]
       },
       {
+        "weapon": "Steel Scimitar",
+        "match": "exact",
+        "skills": [
+          "Slash",
+          "Thrust",
+          "Swordsmanship",
+          "Fencing"
+        ]
+      },
+      {
+        "weapon": "Dragon Sword",
+        "match": "exact",
+        "skills": [
+          "Slash",
+          "Thrust",
+          "Swordsmanship",
+          "Fencing"
+        ]
+      },
+      {
         "weapon": "Wooden Staff",
         "match": "exact",
         "skills": [

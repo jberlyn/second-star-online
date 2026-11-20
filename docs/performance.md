@@ -17,9 +17,9 @@ Intel i5-4690 (4 cores, 3.5 GHz, no SMT), 31 GB, Linux, Bun 1.4.0. The server ra
 
 **What the bots do not do:** buy, sell, craft (needs authored stations), use houses, vehicles or the casino, or play PvP outside the `pvp` scenario (PvP is off on every other map, because one Fireball that kills a player is announced to everyone online, and a crowd of bots doing that measures the kill message, not the server). Gatherers swing at a tree and pick up what falls. Monsters: four Slime slots on the maps of `hunt`, `world100`, `world200` and `burst`; none elsewhere.
 
-## Results (3 minutes measured after a 60 s ramp)
+## Results (3 minutes measured after the ramp)
 
-Tick time is the whole `game.tick()`: the sim, encoding and sending every message, the SQL writes and the commit.
+Each run logs in its bots over a ramp (60 s for `town`, `world100` and `world200`; 30 s for `hunt`, `pvp` and `craft`; 5 s for `burst`), then measures for 3 minutes. Tick time is the whole `game.tick()`: the sim, encoding and sending every message, the SQL writes and the commit.
 
 | scenario | players | profile | tick p50 / p99 / worst ms | dropped | snaps per minute of walking while predicting |
 |---|---|---|---|---|---|
@@ -48,9 +48,9 @@ Tick time is the whole `game.tick()`: the sim, encoding and sending every messag
 
 ## Running it
 
-`bun run perf <scenario> [--profile lan|home|p150|mobile] [--seconds s] [--ramp s] [--seed n] [--docker | --image <ref>]` runs one scenario; `bun run perf all` runs the whole matrix (about 90 minutes); `bun run perf soak [--hours h]` runs the soak; `bun run perf browser` runs the frame-time check (needs Docker). Scenarios: `town`, `hunt`, `pvp`, `craft`, `world100`, `world200`, `burst`, `behind`. Output goes to `perf-results/<time>/` (git-ignored): `report.md`, `report.json` and the raw lines. `PERF_SERVER_CORE` and `PERF_BOT_CORES` move the pinning; `PERF_GC_LOG=1` logs the JavaScript collector.
+`bun run perf <scenario> [--profile lan|home|p150|mobile] [--seconds s] [--ramp s] [--seed n] [--docker | --image <ref>]` runs one scenario (at the `home` profile unless `--profile` says otherwise; with no scenario it runs `town`); `bun run perf all` runs the whole matrix (about 90 minutes); `bun run perf soak [--hours h]` runs the soak; `bun run perf browser` runs the frame-time check (needs Docker). Scenarios: `town`, `hunt`, `pvp`, `craft`, `world100`, `world200`, `burst`, `behind`. `behind` gives one of its bots the `slow` profile (the `home` delay with downloads capped at 4 KB/s); `slow` is for that bot, not a `--profile` choice. Output goes to `perf-results/<time>/` (git-ignored): `report.md`, `report.json` and the raw lines. `PERF_SERVER_CORE` and `PERF_BOT_CORES` move the pinning; `PERF_GC_LOG=1` logs the JavaScript collector.
 
-Passing `--docker` (or `--image <ref>`, default `second-star-online:local`) runs the game server inside the container image instead of as a host process: it stages a fresh scratch database only under `perf-results/`, sets ownership for the non-root `bun` user (`1000:1000`) via a disposable helper container, pins the container with `--cpuset-cpus` from `PERF_SERVER_CORE`, keeps bots and the delay relay on host `PERF_BOT_CORES`, and stops (`SIGTERM`) and removes the scratch container on exit.
+Passing `--docker` (or `--image <ref>`, default `second-star-online:local`) runs the game server inside the container image instead of as a host process: it stages a fresh scratch database only under `perf-results/`, sets ownership for the non-root `bun` user (`1000:1000`) via a disposable helper container, pins the container with `--cpuset-cpus` from `PERF_SERVER_CORE`, keeps bots and the delay relay on host `PERF_BOT_CORES`, and stops (`SIGTERM`) and removes the scratch container on exit. `soak` and `browser` refuse `--docker` and `--image`.
 
 ## Container check (2026-11-14)
 
@@ -61,7 +61,7 @@ Short environment check (`town @ home`, 15 s ramp, 30 s measured) comparing host
 | Host | town | home | 40 | 2.4 / 7.1 / 18.8 | 0 | 9.4 | 86.6 | 0.1 / 12 / 1.1 | 122 / 351 |
 | Image (`0ffe809dce62`) | town | home | 40 | 2.8 / 8.7 / 13 | 0 | 10.4 | 95.5 | 0.1 / 15.4 / 1.2 | 122 / 377 |
 
-Wall-clock numbers are never in the test gate (they would flake). The gate pins what does not depend on the machine: `packages/server/e2e/traffic.test.ts` runs a seeded 20-player crowd for 200 ticks in process and fails when messages, bytes or rows written go over 120 % of 4,700 messages, 1.146 MB and 43 rows. A change that lowers them passes; lower the pin in the same change.
+Wall-clock numbers are never in the test gate (they would flake). The gate pins what does not depend on the machine: `packages/server/e2e/traffic.test.ts` runs a seeded 20-player crowd for 200 ticks in process and fails when messages, bytes or rows written go over 120 % of the recorded 4,830 messages, 1.136 MB and 163 rows (re-recorded 2026-11-18, when each chat line became a chat-log row). A change that lowers them passes; lower the pin in the same change.
 
 ## The soak
 
@@ -77,4 +77,4 @@ Three hours (2026-11-10 23:31 to 02:30), 200 bots on `world200` at the `home` pr
 - The `behind` scenario (one player on a 4 KB/s link) cannot reach the 1 MB limit within a run on loopback, for the reason above; the close and the resume are pinned by `fell-behind.test.ts`, which makes one socket look behind.
 - The bots keep the town busy: players wander across the grid's edges, so the town ends up with 90-100 players, more than the 40 planned. That makes `world200` a harder test than 40-in-town.
 
-Load scenarios use a fixed grass-and-trees benchmark arena, independent of the playable starter landscape. This keeps scenario placements and historical measurements comparable when the seed map changes.
+Load scenarios replace the ground and object layers (`layer1`, `layer2`) of the seed map with a fixed grass-and-trees arena, so scenario placements and historical measurements stay comparable when the seed map's landscape changes. The seed map's other layers, settings and monster roster are still copied as they are (the `Slime` fill only takes empty slots), so a change to those can still move the numbers.

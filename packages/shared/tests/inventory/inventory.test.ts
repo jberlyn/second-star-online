@@ -167,6 +167,14 @@ describe("equip", () => {
     });
     expect(strengthRequirement("Dragon Sword")).toBe(26);
   });
+  test("bug fixed: the Dragon Sword hits for 12 plus up to 8 and is drawn with the Fire Sword's art", () => {
+    // Every draw but random(8) answers 1; no skills, Strength 1: nothing else adds.
+    const rolls = (eight: number): Rng => ({ random: (n) => (n === 8 ? eight : n >= 1 ? 1 : 0) });
+    const f = fighter({ str: 1, skills: zeroSkills(), equip: gear({ weapon: "Dragon Sword" }) });
+    expect(attackPower(f, rolls(1)).power).toBe(12 + 1);
+    expect(attackPower(f, rolls(8)).power).toBe(12 + 8);
+    expect(normaliseLook(gear({ weapon: "Dragon Sword" })).weapon).toBe("Fire Sword");
+  });
   test('bug fixed: "You cannot equip the ..." ends with a full stop', () => {
     expect(checkEquip("Apple", { str: 99, wanted: false, equip: gear({}) })).toEqual({
       ok: false,

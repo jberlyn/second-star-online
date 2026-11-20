@@ -156,6 +156,28 @@ describe("Canvas", () => {
     expect(artSaveIntent(a, "painting", PNG_B64, s.art, s.deps)).toEqual([]);
     expect(s.arts.size).toBe(1);
   });
+  test("divergence: an armed save whose Canvas or Film has left the bag is ignored", () => {
+    const s = scene();
+    const a = s.join("Alice");
+    s.give(a, "Canvas");
+    useIntent(s.ctx(), s.room(), a, 1);
+    expect(a.canvas).toBe(true);
+    a.char.bag[0] = null; // given away or dropped while the screen is open
+    expect(artSaveIntent(a, "painting", PNG_B64, s.art, s.deps)).toEqual([]);
+    const b = s.join("Bob");
+    b.char.equip.offHand = "Camera";
+    s.give(b, "Film");
+    useIntent(s.ctx(), s.room(), b, 1);
+    expect(b.film).toBe(true);
+    b.char.bag[0] = null;
+    expect(artSaveIntent(b, "photo", PNG_B64, s.art, s.deps)).toEqual([]);
+    expect(s.arts.size).toBe(0);
+    for (const p of [a, b]) {
+      expect(
+        p.char.bag.some((l) => l?.item.startsWith("Painting") || l?.item.startsWith("Photo")),
+      ).toBe(false);
+    }
+  });
   test("divergence: a full bag is refused with the line and the canvas kept", () => {
     const s = scene();
     const a = s.join("Alice");

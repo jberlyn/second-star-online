@@ -1,6 +1,7 @@
 /**
  * Operator command line: prints the newest rows of the audit log, which records every admin
- * command, world and NPC editor save, setting change and role change. Newspaper saves are not recorded. There is no in-game view.
+ * command, world and NPC editor save, setting change and role change. Newspaper saves are not
+ * recorded. In the game, `/auditlog` shows the same rows to a role that holds it.
  *
  * Run: `bun run admin:audit [n]` (default 50; SSO_DB as for the server).
  */

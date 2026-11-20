@@ -15,11 +15,22 @@ Base every claim on the code as it was **at the tag being described**, not the w
 2. Read every commit since it, bodies included: `git log <tag>..HEAD --format='%h %s%n%b'`. Commit bodies often list several user-facing fixes; read them all.
 3. Look for things operators must act on. Check each of these over the range (`git diff <tag>..HEAD -- <path>`):
    - `packages/server/migrations/`: new migrations. Say what they do to existing data.
-   - The settings and command tables in `docs/running-a-server.md`: settings added, removed or renamed, new commands, and roles gaining or losing commands.
+   - The settings and command tables in `docs/running-a-server.md`: settings added, removed or renamed, and new commands.
+   - `packages/shared/src/rules/admin/permissions.ts`: what each role may do. Staff roles live in the database and operators edit them, so the code holds only the permission list (`TOOL_PERMISSIONS`, `EXEMPTIONS`) and the roles a fresh database is seeded with (`MODERATOR`, `ADMINISTRATOR`, `DEFAULT_ROLES`). A new permission, or a change to a seeded role, reaches existing servers only through a migration, so read the role migrations too (`*_roles.sql` and any later migration that writes the `roles` table) and say whether existing roles gain the permission or the operator must grant it.
    - `docker-compose.yml`, `Dockerfile` and environment variables: renamed services or volumes, and new or changed variables.
    - Changes to content data (`packages/data/content/`) that shift the economy, such as payouts or prices.
 4. New entry headings in `docs/differences-from-fso.md` give a reliable list of behaviour changes and fixed bugs. Entries are `####` headings (`###` under Kept on purpose). Compare heading lists rather than the diff, because entries move between sections: `comm -13 <(git show <tag>:docs/differences-from-fso.md | grep -E '^#{3,4} ' | sort) <(grep -E '^#{3,4} ' docs/differences-from-fso.md | sort)`. Before the file existed it was `docs/divergences.md`, with `###` entry headings; use that path for the tag side when it is older.
-5. Leave out changes that affect neither operators nor players: tests, internal refactors, documentation-only commits and repository images.
+5. Check the pending upgrade items below and carry each one into the first release it ships in, then delete it from this list.
+6. Leave out changes that affect neither operators nor players: tests, internal refactors, documentation-only commits and repository images.
+
+### Pending upgrade items
+
+Changes already on `main` that the next release after `v1.10.0` must list under Upgrade Notes (confirm each in the code at the tag):
+
+- The `immortal` role becomes `administrator`, and staff roles become database rows an operator edits (migration `20261120_42_roles.sql`). Existing immortal accounts are moved to the new role.
+- The `/role` chat command is gone; roles are assigned from the settings panel or the `admin:role` CLI.
+- Moderation history records the acting staff member's role (`actor_role`) instead of a rank (`actor_rank`).
+- Mutes are new (migration `20261120_41_mutes.sql`), and moderators lose commands outside moderation.
 
 ## 2. Choose the version
 
@@ -70,9 +81,9 @@ Writing rules:
 ## 4. Publish
 
 1. Show the maintainer the draft notes and the recommended version, then wait for approval.
-2. Pushing a `v*` tag publishes the container image (`.github/workflows/publish-image.yml`), so only tag once approved:
+2. Tags carry a `v` prefix (`v1.10.0`); only a `v*` tag publishes the container image (`.github/workflows/publish-image.yml`), so only tag once approved:
    ```sh
-   git tag <version> && git push origin <version>
-   gh release create <version> --title <version> --notes-file <notes.md>
+   git tag v<version> && git push origin v<version>
+   gh release create v<version> --title v<version> --notes-file <notes.md>
    ```
 3. To rewrite an existing release, save its current notes first (`gh release view <tag> --json body -q .body`), then run `gh release edit <tag> --notes-file <notes.md>`.

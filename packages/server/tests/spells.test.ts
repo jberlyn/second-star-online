@@ -126,11 +126,20 @@ describe("the cast", () => {
     expect(casts(29, 100)).toBe(false);
     expect(casts(100, 415)).toBe(false);
   });
-  test("bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish and Holy Weapon are refused before anything is spent", () => {
+  test("bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent", () => {
     const { a, room, cast } = scene();
-    a.spell.book = ["Bless", "Poison Dart"];
+    const inert = [
+      "Bless",
+      "Weaken",
+      "Haste",
+      "Poison Dart",
+      "Replenish",
+      "Holy Weapon",
+      "Identify",
+    ];
+    a.spell.book = [...inert];
     give(a, "Blue Crystals", 4);
-    for (const spell of ["Bless", "Poison Dart"]) {
+    for (const spell of inert) {
       const r = cast(a, spell, 200, 200);
       expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.inert, color: 0 });
     }
@@ -270,7 +279,34 @@ describe("FX and monsters", () => {
     expect(chat(out, "Ann")).toContain(LEVEL_UP_TEXT);
     expect(LEVEL_UP_TEXT).toBe("You have become more powerful!");
   });
-  test("minor heal heals a monster (cap 200) and hurts an undead 61- body", () => {
+  test("bug fixed: a spell kill drops the loot on the tile the monster is drawn nearest", () => {
+    const killMidStep = (anim: number, aimX: number) => {
+      const { a, map, run, cast } = scene(rngByN({ 4: [1] }));
+      a.spell.book = ["Fireball"];
+      give(a, "Red Crystals", 10);
+      const m = live(map, 1, "Slime", 6, 4, 1);
+      (map.slots[0] as MonsterSlot).pause = 10_000;
+      m.fromX = 5;
+      m.facing = "E";
+      m.anim = anim; // mid-step from (5,4) into (6,4)
+      const t = at(aimX, 4);
+      cast(a, "Fireball", t.h, t.v);
+      run(2);
+      expect(map.slots[0]?.live).toBeNull();
+      const on = (x: number, y: number) =>
+        map.ground.filter((g) => g.x === x && g.y === y).map((g) => g.item);
+      return on;
+    };
+    // Just set off: still drawn on (5,4).
+    const early = killMidStep(16, 5);
+    expect(early(5, 4)).toEqual(["2 Gold"]);
+    expect(early(6, 4)).toEqual([]);
+    // Most of the way there: drawn on (6,4).
+    const late = killMidStep(4, 6);
+    expect(late(6, 4)).toEqual(["2 Gold"]);
+    expect(late(5, 4)).toEqual([]);
+  });
+  test("minor heal heals a monster up to its own hit points, a Slime's 14", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Minor Heal"];
     give(a, "Blue Crystals", 10);
@@ -495,6 +531,30 @@ describe("summons", () => {
       expect(map.slots[0]?.live).toMatchObject({ name: "Zombie", x: 5, y: 4 });
     }
   });
+  test("bug fixed: Raise Dead on a grave in the bottom row is refused before anything is spent: the Zombie would be off the map", () => {
+    const { a, map, cast } = scene();
+    const row = map.layers[1][11]?.split(" ") ?? [];
+    row[4] = "Q8"; // a grave at (5, 12)
+    map.layers[1][11] = row.join(" ");
+    a.spell.book = ["Raise Dead"];
+    give(a, "Purple Crystals", 20);
+    const t = centre(5, 12);
+    cast(a, "Raise Dead", t.h, t.v);
+    expect(map.slots.every((sl) => sl.live === null)).toBe(true);
+    expect(a.char.vitals.sp).toBe(200);
+    expect(a.char.bag.find((l) => l?.item === "Purple Crystals")?.qty).toBe(20);
+    expect(a.timers.actionDelay).toBe(0);
+    // The control: a grave one row up raises its Zombie on the bottom row.
+    const c = scene();
+    const up = c.map.layers[1][10]?.split(" ") ?? [];
+    up[4] = "Q8"; // a grave at (5, 11)
+    c.map.layers[1][10] = up.join(" ");
+    c.a.spell.book = ["Raise Dead"];
+    give(c.a, "Purple Crystals", 20);
+    const u = centre(5, 11);
+    c.cast(c.a, "Raise Dead", u.h, u.v);
+    expect(c.map.slots[0]?.live).toMatchObject({ name: "Zombie", x: 5, y: 12 });
+  });
   test("bug fixed: Raise Dead is refused where fighting is off; Summon Creature is not", () => {
     const { a, map, cast } = scene();
     map.flags.canFight = "O";
@@ -687,17 +747,45 @@ describe("the Holy Shield", () => {
 
 describe("arrows and the Fire Staff", () => {
   test("bug fixed: a Fire Staff fireball trains no skill", () => {
-    const { a, room, run } = scene(rngByN({ 3: [3], 6: [6] }));
+    // random(7) = 1 every time: any training roll would succeed.
+    const { a, room, run } = scene(rngByN({ 3: [3], 6: [6], 7: [1, 1, 1, 1, 1, 1] }));
     a.char.equip.weapon = "Fire Staff";
     a.char.skills[skillIndex("StaffFighting")] = 30;
-    a.char.skills[skillIndex("Magery")] = 5;
-    a.char.skills[skillIndex("Fire")] = 5;
+    a.char.skills[skillIndex("Magery")] = 7;
+    a.char.skills[skillIndex("Fire")] = 7;
     a.attackHeld = true;
     a.timers.canAttack = true;
     const out = run(2);
     expect(room.fx.some((f) => f.name.startsWith("Fireball"))).toBe(true);
     expect(chat(out, "Ann").filter((l) => l.includes("advanced"))).toEqual([]);
-    expect(a.char.skills[skillIndex("Magery")]).toBe(5);
+    expect(a.char.skills[skillIndex("Magery")]).toBe(7);
+    expect(a.char.skills[skillIndex("Fire")]).toBe(7);
+  });
+  test("bug fixed: a Firesword fireball trains no skill; a cast Fireball with the same rolls does", () => {
+    const rolls = () => rngByN({ 7: [1, 1, 1, 1, 1, 1] });
+    const { a, room, run } = scene(rolls());
+    a.char.equip.weapon = "Long Sword";
+    a.spell.fireSword = 100;
+    a.char.skills[skillIndex("Magery")] = 7;
+    a.char.skills[skillIndex("Fire")] = 7;
+    a.attackHeld = true;
+    a.timers.canAttack = true;
+    const out = run(2);
+    expect(room.fx.some((f) => f.name.startsWith("Fireball"))).toBe(true);
+    expect(chat(out, "Ann").filter((l) => l.includes("advanced"))).toEqual([]);
+    expect(a.char.skills[skillIndex("Magery")]).toBe(7);
+    expect(a.char.skills[skillIndex("Fire")]).toBe(7);
+    // The control: a cast Fireball trains Magery and Fire on the same rolls.
+    const c = scene(rolls());
+    c.a.spell.book = ["Fireball"];
+    give(c.a, "Red Crystals", 10);
+    c.a.char.skills[skillIndex("Magery")] = 7;
+    c.a.char.skills[skillIndex("Fire")] = 7;
+    const t = at(6, 3);
+    c.cast(c.a, "Fireball", t.h, t.v);
+    c.run(2);
+    expect(c.a.char.skills[skillIndex("Magery")]).toBe(8);
+    expect(c.a.char.skills[skillIndex("Fire")]).toBe(8);
   });
   test("a Fire Staff fireball goes when random(SPower) + (StaffFighting = 100 ? 2 : 0) > 2", () => {
     const { a, room, run } = scene(rngByN({ 3: [3], 6: [6] }));
@@ -740,6 +828,33 @@ describe("players and monsters", () => {
     cast(a, "Hold", t.h, t.v);
     run(4);
     expect(b.spell.hold).toBe(0);
+  });
+  test("a player's Hold roots another player where PvP is on", () => {
+    const { a, b, map, run, cast } = scene();
+    map.flags.canPvp = "X";
+    a.spell.book = ["Hold"];
+    give(a, "Purple Crystals", 10);
+    const t = at(9, 6);
+    cast(a, "Hold", t.h, t.v);
+    run(4);
+    expect(b.spell.hold).toBeGreaterThan(0);
+  });
+  test("bug fixed: a monster's Hold still roots a player where PvP is off", () => {
+    const { b, map, room, run } = scene();
+    map.flags.canPvp = "O";
+    const me = playerLoc(b);
+    queueCast(room, {
+      owner: "180",
+      ownerId: null,
+      name: "Hold",
+      casterH: me.h,
+      casterV: me.v,
+      h: me.h,
+      v: me.v,
+      power: 2,
+    });
+    run(4);
+    expect(b.spell.hold).toBeGreaterThan(0);
   });
   test("bug fixed: Meteor hits a monster on both its hit frames, 13 and 19", () => {
     const { a, map, run, cast } = scene();

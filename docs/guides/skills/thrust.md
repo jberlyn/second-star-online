@@ -36,4 +36,4 @@ Thrust above 60 is needed for [Heavy Arms](heavy-arms.md) to rise from kills.
 ## Balance notes
 
 - Thrust is the only skill that boosts every weapon, bows and fists included.
-- High Stamina slows Thrust gains. When Stamina is above 40 + Thrust + W, the draw bound is 0 or less and Thrust cannot rise from kills at all.
+- High Stamina slows Thrust gains. When Stamina is at or above 40 + Thrust + W, the draw bound is 0 or less and Thrust cannot rise from kills at all.

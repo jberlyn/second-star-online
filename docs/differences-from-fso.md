@@ -29,34 +29,34 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 64 |
-| [Fixed bugs](#fixed-bugs) | 287 |
-| [Kept on purpose](#kept-on-purpose) | 11 |
-| [Server authority and exploits](#server-authority-and-exploits) | 133 |
+| [Design changes](#design-changes) | 68 |
+| [Fixed bugs](#fixed-bugs) | 291 |
+| [Kept on purpose](#kept-on-purpose) | 12 |
+| [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 41 |
-| **Total** | **536** |
+| **Total** | **544** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [12](#admin) | [19](#server-side-admin) |
-| casino | [15](#casino) | [3](#server-side-casino) |
+| admin | [14](#admin) | [19](#server-side-admin) |
+| casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
-| combat | [24](#combat) | [7](#server-side-combat) |
-| core | [18](#core) | [9](#server-side-core) |
-| crafting | [27](#crafting) | [8](#server-side-crafting) |
-| economy | [33](#economy) | [15](#server-side-economy) |
+| combat | [26](#combat) | [7](#server-side-combat) |
+| core | [1](#core) | [9](#server-side-core) |
+| crafting | [28](#crafting) | [8](#server-side-crafting) |
+| economy | [34](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
-| inventory | [31](#inventory) | [11](#server-side-inventory) |
-| mail | [16](#mail) | [11](#server-side-mail) |
+| inventory | [33](#inventory) | [11](#server-side-inventory) |
+| mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [18](#monsters) | [3](#server-side-monsters) |
-| movement | [7](#movement) | [4](#server-side-movement) |
-| progression | [8](#progression) | [4](#server-side-progression) |
-| social | [22](#social) | [10](#server-side-social) |
-| spells | [23](#spells) | [9](#server-side-spells) |
+| movement | [5](#movement) | [4](#server-side-movement) |
+| progression | [10](#progression) | [4](#server-side-progression) |
+| social | [22](#social) | [9](#server-side-social) |
+| spells | [25](#spells) | [9](#server-side-spells) |
 | vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
-| world | [1](#world) | [6](#server-side-world) |
+| world | [2](#world) | [6](#server-side-world) |
 
 ## Design changes
 
@@ -120,12 +120,13 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Loot and gathering drops, including logs, crystals, chunks, fish, produce and treasure, expire after an operator-set time. Player drops and admin placements never expire.
 - **Why:** Without the ground-item cap, generated loot would accumulate without bound. Gathering also creates items from nothing, and 1.6's fishing allowance could be refilled forever by pressing an arrow key. Player drops remain because players used house floors for storage.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`decayLoot`), `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
+- **Pinned by:** `a killed Slime drops 2 Gold on its tile, as loot that decays after 30 minutes` (packages/server/tests/inventory.test.ts); `loot past its time is deleted when its map loads` (packages/server/tests/inventory-db.test.ts)
 
 #### Monster population: one live monster per roster slot, sprite cap removed
 - **Kind:** Limit lifted
 - **What you notice:** Monsters refill each map's authored roster without a sprite-channel cap, while the original maximum density remains.
 - **1.6:** Monster sprites occupied slots 180–184. Each slot spawned only its own roster entry, the fifth never spawned, and monsters did not despawn, so a screen saturated at four or fewer.
-- **SSO:** An authored roster has at most four slots and each holds at most one live monster. Spawn attempts reproduce per-client rolls once per player, up to 15 players, with the same refill maths (mean 20/q seconds solo); additional players count as 15. There is no sprite cap.
+- **SSO:** An authored roster has at most four slots and each holds at most one live monster. Spawn attempts reproduce per-client rolls once per player, up to 15 players, with the same refill maths: two passes a tick, each passing a 1-in-80 gate (solo; the odds fall as more players share the screen, flattening at 7) and then a 1-in-5 roll, so about 10/q seconds on average solo, where q is the share of tiles the slot's monster may stand on. With more than 15 players, a random 15 roll each tick. There is no sprite cap.
 - **Why:** The sprite cap was technical, but one live monster per slot preserved the density players saw. Without it an idle screen would gain roughly 12 monsters a minute indefinitely.
 - **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`, `spawnLadder`)
 
@@ -148,7 +149,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### High scores have no upper limit
 - **Kind:** Limit lifted
-- **What you notice:** Every player's score can reach the High Score Statue, however large. Administrators are still left off.
+- **What you notice:** Every player's score can reach the High Score Statue, however large. Roles holding `noHighScores` (administrators by default) are still left off.
 - **1.6:** A score of five digits or more was never submitted.
 - **SSO:** No limit. A legitimate character can't come near 10,000 with the shipped caps, so this changes nothing on a stock server; on a server whose operator raises skill levels or caps, the board shows the higher scores.
 - **Why:** The limit only guarded against edited characters, which the server's own score makes impossible, and it would hide the best players on a server with higher caps.
@@ -158,7 +159,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 ### World content and operator tools
 
 #### Seeded jail and enforced confinement
-- **Kind:** World content and server authority
+- **Kind:** World content
 - **What you notice:** `/jail` works on a fresh server. The stone jail at x0y0 has barred cells, an enclosed perimeter, no exits, and no landing pads. Prisoners arrive at tile 4,4 and remain until their sentence ends or staff use `/unjail`.
 - **1.6:** Used the archived Jail map. Portal and death respawn could bypass the sentence.
 - **SSO:** A migration adds a validated jail landscape if x0y0 is absent, preserving operator-authored jails. Portal, map exits and edge crossings cannot leave x0y0. Death revives prisoners at 4,4 and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal.
@@ -173,14 +174,16 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `/roster` lists the roster, `/roster <1-4> <species>` sets a slot and `/roster <1-4> clear` clears it. For anyone else they are an unknown command. The command remains useful for species the editor's lists do not offer; a slot set through it has no editor tile and appears on row 1 under its slot number. The first administrator comes from `bun run admin:role`.
 - **Why:** Operators needed a way to place monsters before the editor existed.
 - **In the code:** `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
+- **Pinned by:** `an administrator lists, sets and clears slots; the change is saved`; `SSO: anyone else is told it is an unknown command; nothing is said` (packages/server/tests/monsters-db.test.ts)
 
 #### Spawn chat command for operators
 - **Kind:** World content
 - **What you notice:** An administrator can spawn a roster slot's species immediately on the faced tile with `/spawn <1-4>`.
 - **1.6:** There was no spawn command. NPCs in a roster spawned at one thirtieth of a monster's rate, taking about ten minutes on average for a player alone on the map.
-- **SSO:** The command reports “Spawned a <name> in roster slot <n>.” For anyone other than an administrator it is an unknown command.
+- **SSO:** The command reports “Spawned a <name> in roster slot <n>.” (“an” before a vowel) For anyone other than an administrator it is an unknown command.
 - **Why:** Operators needed a way to place shopkeepers and bankers before the NPC editor existed.
 - **In the code:** `packages/server/src/systems/admin/spawn.ts` (`handleSpawn`)
+- **Pinned by:** `/spawn: an administrator places a slot's species on the faced tile at once; the slot is saved`; `/spawn: facing off the map is refused; anyone else is told it is an unknown command` (packages/server/tests/monsters-db.test.ts)
 
 #### Staff /drop takes a count
 - **Kind:** World content
@@ -239,6 +242,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Presence events go to everyone while `announcePresence` is on, its default. The separate `presenceChatLines` setting is off by default; when enabled it prints “<name> has logged on.” or “<name> has logged off.” Turning `announcePresence` off leaves the Friends window populated only at game entry.
 - **Why:** Operators may choose visible announcements while the default matches 1.6.
 - **In the code:** `packages/server/src/systems/social/presence.ts` (`presenceOut`)
+- **Pinned by:** `presenceChatLines prints logon and logoff lines`; `announcePresence off sends no presence events at all` (packages/server/e2e/chat-and-presence.test.ts)
 
 #### Seeded church bell map
 - **Kind:** World content
@@ -251,7 +255,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Burned food and Cooked Meat
 - **Kind:** World content
-- **What you notice:** A burned meal leaves a charred version of its raw food: Burned Orc Meat, Burned Cyclops Meat, Burned Yeti Meat, Burned Meat, Burned Fish, Burned Trout, Burned Catfish, Burned Swordfish, Burned Squid or Burned Pig. Burned food stacks, cannot be cooked and has no use yet; trying to eat it says "That doesn't look very tasty." and keeps it. Raw Meat now has an icon, is dropped by Wolves (1 in 5), can be eaten raw ("You eat some raw meat. You're disgusting.") and cooks into Cooked Meat.
+- **What you notice:** A burned meal leaves a charred version of its raw food: Burned Orc Meat, Burned Cyclops Meat, Burned Yeti Meat, Burned Meat, Burned Fish, Burned Trout, Burned Catfish, Burned Swordfish, Burned Squid or Burned Pig. Burned food stacks, cannot be cooked and has no use yet; trying to eat it says "That doesn't look very tasty." and keeps it. Raw Meat now has an icon, is dropped by Wolves (one of a Wolf's five loot lines, which rolls 1 in 5, so about 1 in 25 kills), can be eaten raw ("You eat some raw meat. You're disgusting.") and cooks into Cooked Meat.
 - **1.6:** A burn printed its line and kept the raw food (see [Every craft takes its materials when it finishes](#every-craft-takes-its-materials-when-it-finishes)). There was no burned food. Raw Meat had no icon, no source and no recipe, though the item menu offered Cook for any name containing "Meat".
 - **SSO:** Each cooking recipe in `craft.json` names its `burned` result, which a burn adds through the same full-bag check as a success. The burned icons, Raw Meat's and Cooked Meat's are the original raw-food icons recoloured (`tools/recolour-icon.ts`). The item menu offers Cook to the four meats by exact name, so burned meat has no Cook button. The new `use.refusals` table in `item-rules.json` gives burned food its line. Cooked Meat restores 9 + random(5) HP and 3200 Hunger, and Raw Meat 3 + random(3) HP and 1800 Hunger, like the other raw meats. The Wolf drop is in the seed NPC file, so a server whose Wolf file was saved in the NPC Editor keeps its own drops.
 - **Why:** A burn should cost the raw food and leave something to show for it, and every item with a Cook button should cook.
@@ -347,7 +351,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Chat and spellbook scroll with the browser's bar, in Director's place
 - **Kind:** Platform
-- **What you notice:** Chat and the spellbook have always-visible browser scrollbars beside their text fields; the bars use the browser's appearance.
+- **What you notice:** Chat and the spellbook use browser scrollbars beside their text fields, in Director's place; the bars use the browser's appearance and show only when there is text to scroll (see [Scroll bars appear only when there is text to scroll](#scroll-bars-appear-only-when-there-is-text-to-scroll)).
 - **1.6:** Director drew an always-on bar outside each field: chat at x 765–780 and y 455–545, and spellbook at x 775–790.
 - **SSO:** Each box is 19 pixels wider than its text field, leaving a 3-pixel gap and a 16-pixel bar in the same place; Firefox supplies its own bar width. Clicking the gap beside the spellbook field does nothing, as it was outside the original sprite. Previously the browser bar sat inside the field and left an empty strip outside.
 - **Why:** Browser scrolling already supports the wheel, and its bar belongs where the original frame leaves room.
@@ -465,7 +469,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Both lists are stored per account. Ignores persist across logins using the original text form and quirks; buddies preserve the original list items and tests, and the server keeps Friends-window lines from sessions. The windows remain.
 - **Why:** Browsers lack Director's local preferences file, and persistent ignores protect players from repeat harassment.
 - **In the code:** `packages/server/src/systems/social/friends.ts` (`friendsEntry`, `friendsCommand`), `packages/server/src/systems/chat/ignore.ts` (`ignoreCommand`)
-- **Pinned by:** `divergence: the list follows the account across logins and fills the window at entry; others are untouched` (packages/server/tests/buddies-db.test.ts)
+- **Pinned by:** `divergence: the list follows the account across logins and fills the window at entry; others are untouched` (packages/server/tests/buddies-db.test.ts); `the list follows the account across logins; other accounts are untouched` (packages/server/tests/ignores-db.test.ts)
 
 #### Death busy-wait becomes a 27-frame input lock
 - **Kind:** Platform
@@ -498,12 +502,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Mutes
 - **Kind:** Other
-- **What you notice:** Staff can `/mute <name> [duration] [reason]` a player (10 minutes by default, the `muteLength` setting) and `/unmute` them. A muted player is told in the chat box until when, and again each time they try to talk or log in. They cannot use local chat, `/me`, broadcasts, IMs, guild chat, chat rooms, mail or board posts, but can still send an IM to staff to ask why. Their away text answers staff only. They are told when it ends.
+- **What you notice:** Staff can `/mute <name> [duration] [reason]` a player (10 minutes by default, the `muteLength` setting) and `/unmute` them. A muted player is told in the chat box until when, and again each time they try to talk or log in. They cannot use local chat, `/me`, broadcasts, IMs, guild chat, chat rooms, staff chat, mail or board posts, but can still send an IM to staff to ask why. Player-shop commands still run: they are never said aloud. Their away text answers staff only. They are told when it ends.
 - **1.6:** There was no way to silence a player short of a ban or the jail.
-- **SSO:** A mute is stored on the account like a ban and runs in real time like a sentence, offline too; it follows the same rank and ownership rules as bans and jails (`mayTarget`, `mayChange`), and `/banlist` lists it. Every way of talking asks `silenced` first.
+- **SSO:** A mute is stored on the account like a ban and runs in real time like a sentence, offline too; it follows the same rank and ownership rules as bans and jails (`mayTarget`, `mayChange`), and `/banlist` lists it. Every way of talking asks `silenced` first. Staff chat asks it too: a muted staff member cannot post there, while a jailed one still can (it reaches only staff, like an IM to staff).
 - **Why:** Spam and abuse in chat call for something lighter than a ban that still stops it at once.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`mute`, `unmute`), `packages/server/src/systems/chat/speech.ts` (`silenced`), `packages/server/src/systems/world/tick.ts` (`muteTick`), `packages/server/src/persistence/moderation.ts` (`accountMute`)
-- **Pinned by:** `SSO: /mute silences a player everywhere but IMs to staff, until it lapses`, `only the staff member who muted, or an administrator, changes or lifts a mute; staff are out of reach`, `an offline account can be muted; /banlist shows mutes; players cannot /mute` (packages/server/tests/admin.test.ts); `mutes and unmutes come from the moderation log, once each, with their reasons` (packages/server/tests/auditlog.test.ts); `a mute survives logout and restart and is told at login; one that ends offline is gone` (packages/server/tests/moderation-db.test.ts)
+- **In the code:** `packages/server/src/systems/admin/commands.ts` (`mute`, `unmute`), `packages/server/src/systems/chat/speech.ts` (`silenced`), `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/world/tick.ts` (`muteTick`), `packages/server/src/persistence/moderation.ts` (`accountMute`)
+- **Pinned by:** `SSO: /mute silences a player everywhere but IMs to staff, until it lapses`, `only the staff member who muted, or an administrator, changes or lifts a mute; staff are out of reach`, `an offline account can be muted; /banlist shows mutes; players cannot /mute` (packages/server/tests/admin.test.ts); `mutes and unmutes come from the moderation log, once each, with their reasons` (packages/server/tests/auditlog.test.ts); `a mute survives logout and restart and is told at login; one that ends offline is gone` (packages/server/tests/moderation-db.test.ts); `SSO: a muted staff member cannot post staff chat`; `a jailed staff member keeps staff chat, like an IM to staff` (packages/server/tests/staff-chat-moderation.test.ts)
 
 #### Prisoners are told their sentence and talk only nearby
 - **Kind:** Other
@@ -534,7 +538,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### No hit blink
 - **Kind:** Other
-- **What you notice:** After a hit your character stays drawn; the damage number shows the hit. For about 2 seconds (40 calls) further monster hits are still ignored.
+- **What you notice:** After a hit your character stays drawn; the damage number shows the hit. For about 1 second (40 calls, two a tick) further monster hits are still ignored.
 - **1.6:** Each call for the player sprite while the hit counter ran flipped its visibility on your own screen. With two calls a frame the flips mostly cancelled, so a hit either hid your character for the whole second or showed no blink at all.
 - **SSO:** The counter still gives the same immunity, but nothing hides your sprite, and the `you` message no longer carries a hidden flag.
 - **Why:** The blink was distracting and, as 1.6 drew it, unreliable; the damage numbers already show the hit.
@@ -554,9 +558,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Other
 - **What you notice:** A password change confirms success only after the new hash is stored; failure says “Your password could not be changed. Please try again.”
 - **1.6:** The command printed its reply immediately.
-- **SSO:** Hashing completes before the success line; a password change also ends the account's other resume tokens.
+- **SSO:** Hashing completes before the success line; a password change also ends the character's other resume tokens. An account logs in only to its first character, so these are all of the account's sessions.
 - **Why:** The reply reflects the actual result, and a stolen session cannot outlive a password change.
 - **In the code:** `packages/server/src/game.ts` (`changePassword`)
+- **Pinned by:** `Password= changes the account password and never echoes it` (packages/server/tests/password-db.test.ts)
 
 #### Train button on the NPC Bio window
 - **Kind:** Other
@@ -576,15 +581,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/data/build/assets-lib/key.ts` (`ruleForUsage`), `packages/client/src/ui/amount.ts` (`createAmountDialog`), `packages/client/src/styles.css` (`.amount-dialog .amount-title`)
 - **Pinned by:** `UI rule follows the most-used score appearance, then keyHint` (packages/data/tests/assets.test.ts); `divergence: the title fills the top box's interior, not 1.6's high-left field` (packages/client/tests/panel.test.ts)
 
-#### Alchemy sand is a tool and is never used up
-- **Kind:** Other
-- **What you notice:** You mix a potion and the sand is still in your hand afterwards. The Potion Bottle and the crystal are used up.
-- **1.6:** The same: the sand only had to be held.
-- **SSO:** The same, on purpose. Every craft uses up its materials and keeps its tool: the Blacksmith Hammer, the Saw, and for alchemy the held sand. Shops price sand at 100 to 150 gold against 23 to 35 for a potion, which fits a tool rather than a material. Operators can change those prices.
-- **Why:** Using up the sand on every mix would make alchemy cost far more than it earns.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startMix`, `finishCraft`)
-- **Pinned by:** `completion takes the bottle and the crystal; the held sand is a tool` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand` (packages/server/tests/craft.test.ts)
-
 #### Every character has a respawn point
 - **Kind:** Other
 - **What you notice:** A new character's respawn point is the tile they started on, so dying before you find a respawn map returns you to the starting map. Entering a map flagged no fighting, indoors and no PvP (O-O-O) replaces it, as in 1.6. A death or the end of a jail sentence takes you to your respawn point. If your place is gone (you log in after your saved map was deleted, or you were saved inside a house that decayed) you go to the server's fallback map instead, never to your respawn point.
@@ -592,7 +588,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Character creation stores the `startPoint` tile as the respawn point. A death or jail release goes there, or to the `fallbackPoint` setting if its map was deleted. A lost place always goes to `fallbackPoint`. `startPoint` is used only for new characters. Travel someone chooses (an exit, an edge, `/warp`, a Portal) never falls back: it is refused. Operators can list exits and setting points that lead nowhere with `bun run maps:check`. A migration renames the old `respawnPoint` setting to `fallbackPoint` and gives characters without a respawn point its tile.
 - **Why:** Operators built tutorial islands that new characters start on, left through a main-world shrine. A server-wide death point could only serve one side: pointed at the island it sent veterans back with main-world items, and pointed at the main world it let new players skip the island. Starting with a respawn point keeps each player on their side. A lost place uses the fallback map rather than the respawn point, so it can never carry a player back to where they started.
 - **In the code:** `packages/server/src/persistence/characters.ts` (`insertCharacter`), `packages/server/src/systems/world/tick.ts` (`respawnTarget`, `fallbackTarget`, `releaseFromJail`), `packages/server/src/game.ts` (`deleteInterior`), `packages/server/src/cli/map-check.ts` (`mapCheck`)
-- **Pinned by:** `SSO: a death or release goes to your respawn point, else the fallback point; a lost place goes to the fallback point`, `SSO: a tutorial island keeps new players until they leave through a shrine, and nothing sends them back`, `SSO: new characters start on the operator's start point setting` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point` (packages/server/tests/houses-db.test.ts); `divergence: the sentence is stored and ends at its time, then releases to the respawn point` (packages/server/tests/admin.test.ts); `fallback_point renames the Respawn point setting` (packages/server/tests/migrations.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
+- **Pinned by:** `SSO: a death or release goes to your respawn point, else the fallback point; a lost place goes to the fallback point`, `SSO: a tutorial island keeps new players until they leave through a shrine, and nothing sends them back`, `SSO: new characters start on the operator's start point setting, default x1000y992 (6, 4) on the seed map` (packages/server/tests/world.test.ts); `SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point` (packages/server/tests/houses-db.test.ts); `divergence: the sentence is stored and ends at its time, then releases to the respawn point` (packages/server/tests/admin.test.ts); `fallback_point renames the Respawn point setting` (packages/server/tests/migrations.test.ts); `lists dangling exits, Exit tiles with no exit set and setting points on missing maps` (packages/server/tests/map-check.test.ts)
 
 #### Class stat points come from your current class
 - **Kind:** Other
@@ -637,7 +633,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** No death lowers either maximum. The upgrade raises maximum HP and SP to 19 + level wherever they are lower, the value a character never weakened has, since both start at 20 and only a level raises them; nothing is lowered. Faction exile is still checked on death, but only a maximum already below a faction's line can trigger it.
 - **Why:** Levelling is the only way to raise maximum HP and SP, and near the top levels cost too much to win them back, so one unlucky death could undo long-term progress, exile a faction member or block a promotion. Permanent loss is a poor experience in an online game, and PvP risk comes from death drops instead (see [Operators choose whose deaths drop](#operators-choose-whose-deaths-drop-and-by-default-only-a-wanted-characters-do)).
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`); `packages/server/migrations/20261119_39_restore_death_penalty.sql`
-- **Pinned by:** `divergence: a death never lowers HPmax or SPmax, wanted or not` (packages/shared/tests/progression/progression.test.ts); `death: HP and SP 1, facing south, then the death text to everyone and the respawn warp` (packages/server/tests/monsters.test.ts); `divergence: restore_death_penalty raises max HP and SP to 19 + level, never lowering them` (packages/server/tests/migrations.test.ts)
+- **Pinned by:** `divergence: a death never lowers HPmax or SPmax, wanted or not` (packages/shared/tests/progression/progression.test.ts); `death: HP and SP 1, facing south, then the death text to everyone and the respawn warp` (packages/server/tests/monsters.test.ts); `divergence: restore_death_penalty raises max HP and SP to 19 + level, never lowering them` (packages/server/tests/migrations.test.ts); `divergence: a wanted player's deaths never lower HPmax or SPmax, on a PvP map or not` (packages/server/tests/monsters.test.ts)
 
 #### Vehicles have their own hull
 - **Kind:** Other
@@ -685,7 +681,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** `/warpscript` triggers only on whole-word/token matches inside the broadcast message itself, and at most one matching staff member warps the speaker.
 - **1.6:** Tested substring inclusion against `<name> broadcasts "<text>"`, so speaker names, `"broadcasts"`, and partial words matched, and every matching immortal warped in login order.
-- **SSO:** `warpscriptMatches` performs case-insensitive whole-token matching on the broadcast message content only, and `warpscriptOnBroadcast` stops after the first matching online non-editing staff member in login order.
+- **SSO:** `warpscriptMatches` performs case-insensitive whole-token matching on the broadcast message content only, and `warpscriptOnBroadcast` stops after the first matching online staff member in login order who holds the `warpscript` permission, is not in an editor, does not ignore the speaker and is not outranked by them, and (for a speaker who is not staff) is not on the jail map.
 - **Why:** Prevents accidental warps from names, protocol text, or substrings, and avoids multiple warps on one broadcast.
 - **In the code:** `packages/shared/src/rules/admin/admin.ts` (`warpscriptMatches`), `packages/server/src/systems/admin/commands.ts` (`warpscriptOnBroadcast`), `packages/server/src/systems/chat/chat.ts` (`handleChat`)
 - **Pinned by:** `matches whole keyword tokens ignoring case in the broadcast message content`, `prevents accidental substring triggers` (packages/shared/tests/admin/admin.test.ts); `speaker name, protocol wrapper, and substrings do not trigger /warpscript`, `multiple matching staff: deterministic single winner (first in login order)` (packages/server/tests/admin.test.ts)
@@ -780,6 +776,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`parseNpcFile`, `checkNpcFile`, `NPC_MAX_LINES`); `packages/shared/src/rules/monsters/loot.ts` (`rollLoot`)
 - **Pinned by:** `bug fixed: INV| counts on any line, past line 80 too`; `bug fixed: RND| counts on any line, past line 20 too`; `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts); `bug fixed: a chatter line past line 20 saves with no warning, and is said` (packages/server/e2e/npc-editor.test.ts)
 
+#### World Editor palette: empty slots are blank
+- **Kind:** Bug fixed
+- **What you notice:** Empty World Editor palette slots are blank and cannot be clicked.
+- **1.6:** Page 10 stopped at member 589; its last 11 slots retained whichever tiles had previously occupied those sprites and could still be painted.
+- **SSO:** Empty slots on every page are blank and unclickable. Added tiles without a member fill page 10's slots 50–60 first, followed by pages of 60. Without added tiles, only those last 11 page-10 slots visibly change.
+- **Why:** Stale slots duplicated tiles from earlier pages and depended on the route to page 10.
+- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
+- **Pinned by:** `empty palette slots are blank and unclickable on every page; added tiles fill page 10 first` (packages/client/tests/worldeditor.test.ts)
+
+#### The World Editor's sign panel leaves the exit fields alone
+- **Kind:** Bug fixed
+- **What you notice:** Clicking the sign panel while exit panel 1 is open no longer hides exit 1's map X field or its neighbours.
+- **1.6:** The sign panel's background had a script that swapped exit 1's map X sprite to a blank picture and hid it and two neighbouring fields until you left the editor.
+- **SSO:** The sign panel's background is plain art with no click.
+- **Why:** The exit fields should stay editable while signs are edited.
+- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
+- **Pinned by:** `divergence: the sign panel's background leaves exit 1's map X field alone` (packages/client/tests/worldeditor.test.ts)
+
 ### casino
 
 #### A taken casino seat is refused
@@ -789,7 +803,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Each side holds one player and a second player is refused.
 - **Why:** A single server-held seat cannot have the conflicting peer-to-peer occupants.
 - **In the code:** `packages/server/src/systems/casino/blackjack.ts` (`bjSit`), `packages/server/src/systems/casino/checkers.ts` (`ckSit`)
-- **Pinned by:** `divergence: a taken seat, a third player, a longer name, and an open casino screen all refuse` (packages/server/tests/blackjack.test.ts)
+- **Pinned by:** `divergence: a taken seat, a third player, a longer name, and an open casino screen all refuse` (packages/server/tests/blackjack.test.ts); `a taken seat, a third player, a longer name, an open screen all refuse` (packages/server/tests/checkers.test.ts)
 
 #### A slot pull whose gold is gone by the result
 - **Kind:** Bug fixed
@@ -798,6 +812,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The result settles once at the end. Insufficient gold costs nothing, returns the lever and stops the reels while leaving the panel open.
 - **Why:** The stuck panel was a peer-to-peer timing artefact; each pull still changes gold once.
 - **In the code:** `packages/server/src/systems/casino/slots.ts` (`slotTick`)
+- **Pinned by:** `gold gone during the spin charges nothing, prints the line, reels null` (packages/server/tests/casino.test.ts)
 
 #### Three Pigs (4-4-4) pays 80 and 2-3-2 pays 50
 - **Kind:** Bug fixed
@@ -916,6 +931,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/casino/casino.ts` (`isSlotMachine`); `packages/server/src/systems/casino/slots.ts` (`slotOpen`, `slotPull`)
 - **Pinned by:** `any item containing 'Slot Machine' opens and plays, including 'Slot Machine 2'` (packages/server/tests/casino.test.ts)
 
+#### The slot machine sound has a channel of its own
+- **Kind:** Bug fixed
+- **What you notice:** Pulling a slot machine no longer cuts off a spell, a monster hit or the church bell.
+- **1.6:** The pull's sound played on a random one of channels 1-4, cutting off whatever was playing there.
+- **SSO:** The pull's sound plays on channel 6, which nothing else uses.
+- **Why:** A slot machine should not silence other sounds.
+- **In the code:** `packages/client/src/sfx.ts` (`spellSounds`)
+- **Pinned by:** `divergence: the Slot Machine sound plays on its own channel 6 and rolls only random(2)` (packages/client/tests/slots.test.ts)
+
 ### chat
 
 #### Away auto-reply loop broken
@@ -997,7 +1021,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `handleChat` applies the house rule to both say and `/me`. A player's `/g` line is filtered by each reader's ignore list; the guild system's own lines are not.
 - **Why:** Talking restrictions and ignore choices should not be bypassed by another chat route.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/social/guilds.ts` (`guildChat`)
-- **Pinned by:** `in a house at y > 10 neither talk nor /me goes, and neither starts the cooldown` (packages/server/tests/chat.test.ts); `guild chat is filtered by each member's ignore list` (packages/server/tests/guilds.test.ts)
+- **Pinned by:** `in a house at y > 10 neither talk nor /me goes` (packages/server/tests/chat.test.ts); `guild chat is filtered by each member's ignore list` (packages/server/tests/guilds.test.ts)
 
 #### A broadcast cooldown covers its whole 1000 frames
 - **Kind:** Bug fixed
@@ -1014,7 +1038,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** It stripped the spaces but still sent the line with an empty quote. SSO did the same.
 - **SSO:** A local-chat line that is empty after whitespace is dropped and does not start the chat cooldown.
 - **Why:** An empty quote is noise and costs the sender a cooldown.
-- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`parseChatLine`, `formatSay`)
+- **In the code:** `packages/shared/src/rules/chat/chat.ts` (`parseChatLine`)
 - **Pinned by:** `a line of only spaces sends nothing` (packages/shared/tests/chat/chat.test.ts); `a line of only spaces sends nothing and starts no cooldown` (packages/server/tests/chat.test.ts)
 
 #### Password= removes every forbidden character
@@ -1111,7 +1135,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Parry and block work from the first skill point
 - **Kind:** Bug fixed
-- **What you notice:** Against monsters, a new character parries or blocks about 1 hit in 90 until the skill passes 20, as against players. Against players, Block 0 can block, and the Adventurer's bonus raises the odds against players as much as against monsters. This is a large PvP balance shift: an Adventurer with Parry and Block above 96 avoids about 57% of player hits, against about 9% in 1.6.
+- **What you notice:** Against monsters, a new character parries or blocks about 1 hit in 90 until the skill passes 20, as against players. Against players, Block 0 can block, and the Adventurer's bonus now helps against players too (minus 10 on block, as against monsters, and minus 4 on parry, against minus 10 against monsters). This is a large PvP balance shift: an Adventurer with Parry and Block above 96 avoids about 57% of player hits, against about 9% in 1.6.
 - **1.6:** Against monsters the draws were out of 3000 until the skill was over 10. Against players Block had no starting draw, so Block 0 never blocked, and the Adventurer's subtraction re-rolled a result below 1 as a fresh draw out of 90 instead of clamping it to 1.
 - **SSO:** `dodgeRoll` starts from `random(90)`. `pvpDodgeRoll` gives parry and block the same starting draw and clamps the Adventurer's result to 1.
 - **Why:** The ladders were meant to start from a small chance, not none, and the faction bonus was meant to help in both fights.
@@ -1219,7 +1243,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Hold and the death wait stop the arena words
 - **Kind:** Bug fixed
-- **What you notice:** A Held player who types `Challenge` or `quit` is told "You cannot do that while you are held." A player waiting to respawn is ignored.
+- **What you notice:** A Held player who types `Challenge`, or `quit` while standing on an arena tile, is told "You cannot do that while you are held." (`quit` off an arena tile is ignored as before). A player waiting to respawn is ignored.
 - **1.6:** The arena commands tested only whether you were mid-step, so a Held player could quit out of the Hold and a dead one could challenge.
 - **SSO:** `challengeCheck` and `quitCheck` refuse while Held or dead.
 - **Why:** Typing a word should not escape a Hold or a death.
@@ -1233,7 +1257,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `monsterDrawnTile` picks the tile for melee and spell kills.
 - **Why:** Loot should appear where you saw the monster die.
 - **In the code:** `packages/shared/src/rules/movement/movement.ts` (`monsterDrawnTile`); `packages/server/src/systems/combat/melee.ts` (`smash`); `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
-- **Pinned by:** `bug fixed: loot lands on the tile the monster is drawn nearest` (packages/server/tests/inventory.test.ts)
+- **Pinned by:** `bug fixed: loot lands on the tile the monster is drawn nearest` (packages/server/tests/inventory.test.ts); `bug fixed: a spell kill drops the loot on the tile the monster is drawn nearest` (packages/server/tests/spells.test.ts)
 
 #### Every death in a Lightning game is penalty-free
 - **Kind:** Bug fixed
@@ -1242,7 +1266,25 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `checkDeath` runs the penalty-free death for any death while `lightningGame` is set.
 - **Why:** The game announces that all death penalties are off.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`); `packages/server/src/systems/world/tick.ts`
-- **Pinned by:** `bug fixed: during a Lightning game every death is penalty-free, not only a melee hit`; `outside a Lightning game the same death takes every penalty` (packages/server/tests/assassin.test.ts)
+- **Pinned by:** `bug fixed: during a Lightning game every death is penalty-free, not only a melee hit`; `outside a Lightning game the same death takes every penalty` (packages/server/tests/assassin.test.ts); `bug fixed: a Lightning game's death drops no faction head and exiles no one`; `outside a Lightning game a faction member's death drops the head and exiles` (packages/server/tests/assassin.test.ts)
+
+#### A rider must land before challenging
+- **Kind:** Bug fixed
+- **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are.
+- **1.6:** Challenge never looked at vehicles, so a rider entered the arena still flying, where it could not swing or cast and monster melee could not reach it.
+- **SSO:** The challenge is refused aboard; the line is SSO's own. A rider over arena tiles is not in the arena at all (see [Arenas are for players on foot](#arenas-are-for-players-on-foot)).
+- **Why:** An arena fight is meant to be on foot.
+- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`challengeCheck`), `packages/server/src/systems/combat/arena.ts` (`challenge`)
+- **Pinned by:** `bug fixed: a rider must land before making a challenge` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a rider cannot challenge; over an arena tile, quit does nothing` (packages/server/tests/arena.test.ts)
+
+#### A masterwork keeps its weapon's skill bonus
+- **Kind:** Bug fixed
+- **What you notice:** A Sword of Hope +1 hits as hard from Heavy Arms as a plain Sword of Hope.
+- **1.6:** The attack-power skill blocks for the Long Sword, Sword of Hope, Gold Sword, Broad Sword, Katana, Scimitar, Bo and Unholy Lance named the weapon exactly, so the Sword of Hope +1 lost its Heavy Arms tiers.
+- **SSO:** An exact skill block also covers the masterworks made from its weapon.
+- **Why:** The masterwork is meant to be the better sword, not a weaker one.
+- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`attackPower`), `packages/shared/src/rules/crafting/masterwork.ts` (`weaponIs`)
+- **Pinned by:** `bug fixed: Sword of Hope +1 gets the Heavy Arms bonus of the Sword of Hope` (packages/shared/tests/progression/weapon-skills.test.ts)
 
 ### core
 
@@ -1255,166 +1297,13 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/client/src/audio.ts` (`createAudio`)
 - **Pinned by:** `divergence: off silences everything, 1.6's ungated sounds too` (packages/client/tests/sound.test.ts)
 
-#### World Editor palette: empty slots are blank
-- **Kind:** Bug fixed
-- **What you notice:** Empty World Editor palette slots are blank and cannot be clicked.
-- **1.6:** Page 10 stopped at member 589; its last 11 slots retained whichever tiles had previously occupied those sprites and could still be painted.
-- **SSO:** Empty slots on every page are blank and unclickable. Added tiles without a member fill page 10's slots 50–60 first, followed by pages of 60. Without added tiles, only those last 11 page-10 slots visibly change.
-- **Why:** Stale slots duplicated tiles from earlier pages and depended on the route to page 10.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
-- **Pinned by:** `empty palette slots are blank and unclickable on every page; added tiles fill page 10 first` (packages/client/tests/worldeditor.test.ts)
-
-#### The World Editor's sign panel leaves the exit fields alone
-- **Kind:** Bug fixed
-- **What you notice:** Clicking the sign panel while exit panel 1 is open no longer hides exit 1's map X field or its neighbours.
-- **1.6:** The sign panel's background had a script that swapped exit 1's map X sprite to a blank picture and hid it and two neighbouring fields until you left the editor.
-- **SSO:** The sign panel's background is plain art with no click.
-- **Why:** The exit fields should stay editable while signs are edited.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
-- **Pinned by:** `divergence: the sign panel's background leaves exit 1's map X field alone` (packages/client/tests/worldeditor.test.ts)
-
-#### A monster's hit on you shows the splat and plays the hit sound
-- **Kind:** Bug fixed
-- **What you notice:** When a monster hits you, the number floats up over a splat and the hit sound plays, as for a player's hit. Shield, Parry and Block stay silent.
-- **1.6:** The monster-hit message was one field short of the player-hit message, so the floating text read the wrong fields and only the number showed.
-- **SSO:** A monster's damage floatie carries the splat flag, so the client draws the splat and plays `hitsound` on channel 5.
-- **Why:** Monster damage should be as visible and audible as player damage.
-- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`), `packages/server/src/systems/world/tick.ts` (`tick`), `packages/client/src/model.ts` (`applyDelta`)
-- **Pinned by:** `divergence: a monster's hit on you shows the number with the splat and hitsound` and `a Parry, Block or Shield floatie has no splat and no sound` (packages/client/tests/combat.test.ts); `a Slime next to you hits on random(10) = 1` (packages/server/tests/monsters.test.ts)
-
-#### A shop shows only the OK for the open list
-- **Kind:** Bug fixed
-- **What you notice:** After a sell list, a buy list shows the buy OK alone, so pressing OK buys.
-- **1.6:** The buy and sell lists each showed their own OK and neither hid the other, so a sell OK stayed drawn over a later buy list and answered "Error in trying to sell!".
-- **SSO:** A buy or train list shows the buy OK and hides the sell OK; a sell list does the reverse; the vault hides the sell OK.
-- **Why:** The OK on screen should act on the list on screen.
-- **In the code:** `packages/client/src/ui/shop.ts` (`createShopWindow`)
-- **Pinned by:** `divergence: each list shows only its own OK, so a buy list after a sell list buys` (packages/client/tests/npcs.test.ts)
-
-#### The × beside an empty Ring box is silent
-- **Kind:** Bug fixed
-- **What you notice:** Clicking the × beside any empty equipment box, the Ring box included, makes no sound.
-- **1.6:** The Ring box's × played the click before testing for an empty slot; the other five tested first.
-- **SSO:** Every × exits silently on an empty slot, then clicks after its locks.
-- **Why:** The six boxes should behave alike.
-- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
-- **Pinned by:** `divergence: the empty Ring × is silent like the other boxes, sending nothing` (packages/client/tests/panel.test.ts)
-
-#### Item menu buttons click only when the action goes ahead
-- **Kind:** Bug fixed
-- **What you notice:** Use, Equip, Drop, Give and the Cook, Mix, Build, Smith and Storage buttons click when their action goes ahead. They are silent under the key lock or the item pause, for Use while the mail compose pane is up, and for a craft button with nothing behind it. Give now clicks like the others.
-- **1.6:** Each handler played the click as its first statement, before the key lock, the item pause and every refusal; Give never clicked.
-- **SSO:** A button checks the client's own refusal first, then sends the action, and clicks only when the key lock and the item pause allow it. The server still makes its own checks.
-- **Why:** The click should confirm an action, not a refusal.
-- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`), `packages/client/src/app.ts` (`runApp`)
-- **Pinned by:** `divergence: the item menu clicks only past its locks and the client's refusals; Give too` and `divergence: a Use the client refuses makes no click` (packages/client/tests/panel.test.ts)
-
-#### Buying and selling in a shop play the cash sound
-- **Kind:** Bug fixed
-- **What you notice:** A completed purchase or sale plays the cash sound after the OK's click. A refused one plays only the click.
-- **1.6:** The cash sound was wired only to messages the server never sent, or to a handler nothing called.
-- **SSO:** The server's `processed` reply carries `ok` for a completed buy or sale, and the shop window plays `cash` on channel 4 for it.
-- **Why:** A completed deal should be heard.
-- **In the code:** `packages/server/src/systems/economy/intents.ts` (`buyIntent`, `sellIntent`), `packages/client/src/ui/shop.ts` (`createShopWindow`)
-- **Pinned by:** `divergence: a completed buy and sale play cash; a refused one only the OK click` (packages/client/tests/npcs.test.ts); `buying three Apples from Amber, then selling one back, each answered processed ok` (packages/server/e2e/npcs-shops-trade.test.ts)
-
-#### The slot machine sound has a channel of its own
-- **Kind:** Bug fixed
-- **What you notice:** Pulling a slot machine no longer cuts off a spell, a monster hit or the church bell.
-- **1.6:** The pull's sound played on a random one of channels 1-4, cutting off whatever was playing there.
-- **SSO:** The pull's sound plays on channel 6, which nothing else uses.
-- **Why:** A slot machine should not silence other sounds.
-- **In the code:** `packages/client/src/sfx.ts` (`spellSounds`)
-- **Pinned by:** `divergence: the Slot Machine sound plays on its own channel 6 and rolls only random(2)` (packages/client/tests/slots.test.ts)
-
-#### Closing the mail list closes its panes
-- **Kind:** Bug fixed
-- **What you notice:** Closing the mail list with the compose or read pane open closes those panes too. The Use button keeps working, and the next mailbox opens on the list alone.
-- **1.6:** The list's CLOSE kept the panes' flags on. The Use button quietly exited while the compose flag was on, and the panes came back at the next open.
-- **SSO:** The list's CLOSE clears both panes' flags and the draft.
-- **Why:** A closed mailbox should leave nothing behind.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `divergence: list CLOSE closes both panes and drops the draft; reopen shows the list alone` (packages/client/tests/mail-boards.test.ts)
-
-#### Deleting a message clears the selection and its read pane
-- **Kind:** Bug fixed
-- **What you notice:** After DELETE, no line is selected, so a second DELETE removes nothing until you pick another message. A read pane showing the deleted message closes.
-- **1.6:** DELETE rebuilt the list without clearing the selection or the read pane, so a second DELETE removed the next message.
-- **SSO:** DELETE clears the selection, and closes the read pane when it shows the deleted message. A read pane showing another message stays.
-- **Why:** One DELETE should remove one message.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `divergence: DELETE clears the selection and closes the read pane showing that message` (packages/client/tests/mail-boards.test.ts)
-
-#### WRITE starts an empty draft
-- **Kind:** Bug fixed
-- **What you notice:** Pressing WRITE opens an empty compose pane. While the pane is already open, WRITE keeps what is in it, and a send the server refuses also keeps it.
-- **1.6:** The three fields were cleared only by a send, so WRITE showed whatever was left from before.
-- **SSO:** WRITE clears the fields when the compose pane is not already up. Closing the list also drops the draft.
-- **Why:** A new message should start blank.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
-- **Pinned by:** `divergence: WRITE starts an empty draft; a second WRITE keeps the open one` and `a refused send (no mailSent) keeps the draft with the compose open` (packages/client/tests/mail-boards.test.ts)
-
-#### The read pane labels the sender FROM:
-- **Kind:** Bug fixed
-- **What you notice:** When you read a message, the sender's name sits on a line labelled FROM:.
-- **1.6:** The read pane reused the compose pane's art, so the sender sat under its TO: label.
-- **SSO:** A patch of the pane's purple with FROM: in white outlined capitals covers the art's TO:.
-- **Why:** The label should name what the line shows.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/styles.css` (`.mail-read-label`)
-- **Pinned by:** `READ with nothing selected does nothing; with a line it fills the read pane` (packages/client/tests/mail-boards.test.ts)
-
-#### The mail list scrolls
-- **Kind:** Bug fixed
-- **What you notice:** The Subject column has a scroll bar and the From column scrolls with it, so all of a full mailbox can be reached.
-- **1.6:** The columns were fixed boxes with no scroll bar, so only about 20 of up to 50 messages could be seen.
-- **SSO:** Both 271-pixel columns scroll; Subject shows a thin bar and From follows it line for line.
-- **Why:** Every stored message should be reachable without deleting the ones above it.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/styles.css` (`.mail-lines`)
-- **Pinned by:** `divergence: the 271-px list columns scroll, the From column following the Subject bar` (packages/client/tests/mail-boards.test.ts)
-
-#### The mail list leaves the chat entry usable
-- **Kind:** Bug fixed
-- **What you notice:** With the mail list up you can still click into the chat entry box.
-- **1.6:** A blocker (Internal #203, channel 366) covered the chat entry while the list was up.
-- **SSO:** No blocker is drawn.
-- **Why:** Reading mail should not stop you chatting.
-- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/ui/shells.ts` (`createGameView`)
-- **Pinned by:** `CLOSE unlocks, leaves frame 72 and tells the server` (packages/client/tests/mail-boards.test.ts); `divergence: the stage places the mail and board at their rects, and nothing blocks the chat entry` (packages/client/tests/shells.test.ts)
-
-#### A photo leaves a cancelled painting alone
-- **Kind:** Bug fixed
-- **What you notice:** Cancel a painting, take a photo, and the next Canvas still reopens your painting.
-- **1.6:** The photo was written into the same image a cancelled canvas keeps.
-- **SSO:** A photo is cropped into an image of its own and saved from there. A viewed painting has an image of its own too (see [A viewed painting stays out of your canvas](#a-viewed-painting-stays-out-of-your-canvas)).
-- **Why:** Taking a photo should not destroy unrelated work.
-- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
-- **Pinned by:** `divergence: a photo leaves a cancelled painting alone` and `a good shot hides the lens, redraws, crops 64×64 around the tap and saves a photo` (packages/client/tests/art-news.test.ts)
-
-#### A painting in the viewer cannot be painted on
-- **Kind:** Bug fixed
-- **What you notice:** Holding the mouse down on a painting you are viewing does nothing to it.
-- **1.6:** The viewer's picture kept the paint screen's paint behaviour, so the current tool painted on it.
-- **SSO:** The viewer's picture takes no pointer input; a mouse release anywhere still closes the viewer.
-- **Why:** Viewing should not change the picture.
-- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
-- **Pinned by:** `divergence: a pointer down on the viewed image paints nothing` (packages/client/tests/art-news.test.ts)
-
-#### The colour picker reads only the palette and the painting
-- **Kind:** Bug fixed
-- **What you notice:** The held picker takes a colour from the palette strip, the preview or the large painting. Dragged over the tools, the frame or anything else, it keeps the current colour.
-- **1.6:** The picker read the colour straight from the screen, wherever the pointer was.
-- **SSO:** The picker reads the art inside the palette strip's border (stage 132-230 × 328-355), or the painting's pixel under the preview or the 4× image, and nothing else.
-- **Why:** Picking a colour should not pick up the screen's decoration.
-- **In the code:** `packages/client/src/ui/paint.ts` (`PAINT_RECTS`, `createPaintUi`)
-- **Pinned by:** `divergence: the colour pick reads only the palette strip, the preview and the 4× image` (packages/client/tests/art-news.test.ts)
-
 ### crafting
 
 #### A tool's first success takes the full number of hits
 - **Kind:** Bug fixed
-- **What you notice:** Gathering takes the number of hits per success that the skill table gives, the first time too. Each tool keeps its own count, so swapping hammers does not finish another hammer's count.
+- **What you notice:** Gathering takes the number of hits per success that the skill table gives, the first time too. Each gathering tool keeps its own count, so swapping hammers does not finish another hammer's count. Every axe counts as the one Axe tool, so the Axe and Gold Axe share a count.
 - **1.6:** There was one counter per tool family. It was reloaded only when it dropped below 1, and success came at exactly 1, so the first success came one hit early. All three hammers shared one mining counter.
-- **SSO:** The count is loaded when it is empty, each hit takes one, and the hit that empties it succeeds. Counts are kept per tool name and start empty at each login.
+- **SSO:** The count is loaded when it is empty, each hit takes one, and the hit that empties it succeeds. Counts are kept per entry in the gathering-tool table (an entry can match several items, as Axe does) and start empty at each login.
 - **Why:** Every success should cost what the table says, and one tool's work should not carry over to another.
 - **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`hitCounter`, `newGatherCounters`)
 - **Pinned by:** `bug fixed: every success takes exactly the table's number of hits, the first too`; `bug fixed: each hammer keeps its own count` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: 18 swings fell a tree, as the table says: the stump, treefalling, logs and the skill line` (packages/server/tests/gather.test.ts)
@@ -1489,7 +1378,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** `finishCraft` takes every material by exact name at completion. Failures use them up the same way for cooking, alchemy and carpentry. If a material is gone by then, the craft ends silently, as a repair with no chunk already did. A burn whose burned food has no room in the bag is treated like a success with no room: "Your inventory is too crowded!", and nothing is taken.
 - **Why:** Failures should cost the same in every craft, and crafts that end early should lose nothing.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`, `startCraft`)
-- **Pinned by:** `bug fixed: a burned meal uses up its raw food and makes its burned form`; `a burn on a full bag says so, makes nothing and keeps the raw stack`; `a failed brew uses up the bottle and the crystal`; `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts); `alchemy: the bottle and crystal are taken at completion; the sand stays in hand`; `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `bug fixed: a burned meal uses up its raw food and makes its burned form`; `a burn on a full bag says so, makes nothing and keeps the raw stack`; `a failed brew uses up the bottle and the crystal`; `bug fixed: 'You built a Chair!'; a failure says so and uses the Logs` (packages/shared/tests/crafting/craft.test.ts); `kept on purpose: alchemy takes the bottle and crystal at completion; the sand stays in hand`; `carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id` (packages/server/tests/craft.test.ts)
 
 #### Yeti Meat cooks into a Yeti Burger
 - **Kind:** Bug fixed
@@ -1506,7 +1395,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** Chain Helm and Steel Shield gave +1 on two rolls. The table had a Leather Armor +1 row, but Leather Armor never breaks, so it could never come up. A Knight's Sword broke into "Damaged Sword, Knight's", but the repair looked for "Damaged Sword, Knight", so it ended with "Your  is ready!" and kept its inputs.
 - **SSO:** Each masterwork bonus has one roll, and the dead Leather Armor row is gone. The armour break uses the "Damaged Sword, Knight" name that has art, and the old name has its own chunk and repair rows. The Smith button refuses an item with no repair.
 - **Why:** Every masterwork row should be reachable, and every damaged item that breaks should be repairable.
-- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`masterwork`, `repairResult`, `smithChunk`)
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`masterwork`, `repairResult`, `smithChunk`); `packages/data/content/item-rules.json` (`breaks`)
 - **Pinned by:** `bug fixed: each masterwork bonus has one roll, and every row can come up`; `bug fixed: a broken Knight's Sword repairs, under either damaged name`; `an item with no repair cannot be started` (packages/shared/tests/crafting/craft.test.ts)
 
 #### Only alchemy sand mixes a potion
@@ -1561,7 +1450,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The failure roll happens once, at completion. The Cook button refuses an item with no recipe ("You don't know how to cook that."); every Cook button has one, now that Raw Meat cooks into Cooked Meat (see [Burned food](#burned-food-and-cooked-meat)).
 - **Why:** One failure should not doom later cooks, and an uncookable item should say so.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startCraft`, `cookResult`)
-- **Pinned by:** `bug fixed: each cook rolls its own burn` (packages/shared/tests/crafting/craft.test.ts)
+- **Pinned by:** `bug fixed: each cook rolls its own burn` (packages/shared/tests/crafting/craft.test.ts); `every item with a Cook button has a recipe, so the no-recipe refusal never shows` (packages/shared/tests/crafting/craft.test.ts)
 
 #### Building says "You built a ..."
 - **Kind:** Bug fixed
@@ -1653,6 +1542,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`asksAboutTreasure`)
 - **Pinned by:** `bug fixed: the keywords, including a line starting "the treasure"` (packages/shared/tests/crafting/gather.test.ts)
 
+#### The cauldron no longer fizzles on every deposit
+- **Kind:** Bug fixed
+- **What you notice:** Putting an ingredient in a cauldron that completes nothing just shows the drop line; a completed recipe still says so.
+- **1.6:** Every deposit that completed no recipe, even the first ingredient, printed "The cauldron bubbles...but then fizzles out."
+- **SSO:** Only a brew prints a cauldron line.
+- **Why:** The fizzle read as a failure when nothing had gone wrong.
+- **In the code:** `packages/server/src/systems/economy/containers.ts` (`depositContainer`); `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`)
+- **Pinned by:** `bug fixed: a deposit that completes nothing does not fizzle` (packages/server/tests/craft.test.ts)
+
 ### economy
 
 #### Trade accept checks the partner's map
@@ -1662,6 +1560,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** That line is used only if the partner is no longer on the map; in practice a map change ends the trade first.
 - **Why:** The client-slot check made one-on-one trades impossible.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`acceptTrade`, `leaveTrade`)
+- **Pinned by:** `bug fixed: an accept checks that the partner is still on your map` (packages/server/tests/npcs-trade.test.ts)
 
 #### Quest chests add their refill, and a Wind Chest takes drops
 - **Kind:** Bug fixed
@@ -1787,7 +1686,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Withdrawal uses the exact-name room rule, and the stored line is removed only once the item is in the bag.
 - **Why:** Storage should never destroy an item.
 - **In the code:** `packages/server/src/systems/economy/vault.ts` (`withdrawVault`); `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
-- **Pinned by:** `bug fixed: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' is refused and keeps the Pie` (packages/server/tests/economy.test.ts)
+- **Pinned by:** `bug fixed: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' is refused and keeps the Pie` (packages/server/tests/economy.test.ts); `bug fixed: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' is refused and keeps the Pie` (packages/server/tests/craft.test.ts)
 
 #### A vault stays where you opened it
 - **Kind:** Bug fixed
@@ -1861,15 +1760,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`SHOP_TEXT`)
 - **Pinned by:** `bug fixed: the till line has its closing quote; the stock lines name each item as it is` (packages/shared/tests/economy/playershop.test.ts)
 
-#### The cauldron no longer fizzles on every deposit
-- **Kind:** Bug fixed
-- **What you notice:** Putting an ingredient in a cauldron that completes nothing just shows the drop line; a completed recipe still says so.
-- **1.6:** Every deposit that completed no recipe, even the first ingredient, printed "The cauldron bubbles...but then fizzles out."
-- **SSO:** Only a brew prints a cauldron line.
-- **Why:** The fizzle read as a failure when nothing had gone wrong.
-- **In the code:** `packages/server/src/systems/economy/containers.ts` (`depositContainer`); `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`)
-- **Pinned by:** `bug fixed: a deposit that completes nothing does not fizzle` (packages/server/tests/craft.test.ts)
-
 #### Storage on a carried container says what it opened
 - **Kind:** Bug fixed
 - **What you notice:** Pressing Storage on a carried Crate, Cabinet, Wind Cabinet or Cauldron prints "You open the <kind> to see what's inside...".
@@ -1877,7 +1767,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Every kind gets the line, with its id stripped.
 - **Why:** Consistent feedback.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`storageIntent`)
-- **Pinned by:** `bug fixed: Storage on a Crate, Cabinet or Cauldron says what it opened` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `bug fixed: Storage on a Crate, Cabinet, Wind Cabinet or Cauldron says what it opened` (packages/server/tests/craft.test.ts)
 
 #### Player shops can stock crystals
 - **Kind:** Bug fixed
@@ -1895,25 +1785,16 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The stored line is added unchanged.
 - **Why:** Storage should return what was stored.
 - **In the code:** `packages/server/src/systems/economy/vault.ts` (`withdrawVault`); `packages/server/src/systems/economy/containers.ts` (`withdrawContainer`)
-- **Pinned by:** `bug fixed: a crystal line comes back as the same crystals` (packages/server/tests/economy.test.ts)
+- **Pinned by:** `bug fixed: a crystal line comes back as the same crystals` (packages/server/tests/economy.test.ts); `bug fixed: a crystal line comes back out of a container as the same crystals` (packages/server/tests/craft.test.ts)
 
 #### Quest replies are heard by the whole map
 - **Kind:** Bug fixed
-- **What you notice:** Asking for a quest, every NPC's "Bring me a…" reply is heard by everyone on the map, as your question was, and closes its quote.
-- **1.6:** Slot 1's reply went to the asker alone while slots 2-4 and slot 1's "Sorry…" went to the map, and "Bring me a…" had no closing quote.
-- **SSO:** Every reply goes to the map. An NPC answers only for quest lines that name it exactly.
+- **What you notice:** Asking for a quest, every NPC's "Bring me a…" reply is heard by everyone on the map, as your question was, and closes its quote; "Sorry but I don't need anything right now." ends with a full stop.
+- **1.6:** Slot 1's reply went to the asker alone while slots 2-4 and slot 1's "Sorry…" went to the map, "Bring me a…" had no closing quote, and the "Sorry…" line no full stop.
+- **SSO:** Every reply goes to the map, and the texts in `social.json` are complete. An NPC answers only for quest lines that name it exactly.
 - **Why:** One rule for every NPC.
 - **In the code:** `packages/shared/src/rules/economy/quests.ts` (`sayQuest`); `packages/server/src/systems/economy/quests.ts` (`askForQuest`)
 - **Pinned by:** `bug fixed: every quest reply is heard by the map, closes its quote and ends its sentence` (packages/shared/tests/social/factions.test.ts); `bug fixed: SayQuest: every slot's reply is heard by the map, with its closing quote` (packages/server/tests/factions.test.ts)
-
-#### Handing in a head takes the head you gave
-- **Kind:** Bug fixed
-- **What you notice:** Giving a faction leader a head takes it from the bag slot you chose.
-- **1.6:** The chosen slot only had to hold a head; one was taken from the first slot that contained one.
-- **SSO:** The head comes off the chosen slot.
-- **Why:** Players choose what they give.
-- **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`)
-- **Pinned by:** `bug fixed: turn-in takes the head you gave, not the first in the bag` (packages/server/tests/factions.test.ts)
 
 #### Quest lines match exactly, and the first match wins
 - **Kind:** Bug fixed
@@ -1950,6 +1831,33 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A quest nobody can hand in is a dead line.
 - **In the code:** `packages/shared/src/rules/economy/quests.ts` (`findNewQuest`, `questLineUnanswerable`); `packages/server/src/game.ts` (`createGame`)
 - **Pinned by:** `bug fixed: FindNewQuest always names an NPC, each named one equally likely` (packages/shared/tests/social/factions.test.ts); `a quest turn-in writes the bag and the rerolled line, which survive a restart` (packages/server/tests/factions-db.test.ts)
+
+#### A shop shows only the OK for the open list
+- **Kind:** Bug fixed
+- **What you notice:** After a sell list, a buy list shows the buy OK alone, so pressing OK buys.
+- **1.6:** The buy and sell lists each showed their own OK and neither hid the other, so a sell OK stayed drawn over a later buy list and answered "Error in trying to sell!".
+- **SSO:** A buy or train list shows the buy OK and hides the sell OK; a sell list does the reverse; the vault hides the sell OK.
+- **Why:** The OK on screen should act on the list on screen.
+- **In the code:** `packages/client/src/ui/shop.ts` (`createShopWindow`)
+- **Pinned by:** `divergence: each list shows only its own OK, so a buy list after a sell list buys` (packages/client/tests/npcs.test.ts)
+
+#### Buying and selling in a shop play the cash sound
+- **Kind:** Bug fixed
+- **What you notice:** A completed purchase or sale plays the cash sound after the OK's click. A refused one plays only the click.
+- **1.6:** The cash sound was wired only to messages the server never sent, or to a handler nothing called.
+- **SSO:** The server's `processed` reply carries `ok` for a completed buy or sale, and the shop window plays `cash` on channel 4 for it.
+- **Why:** A completed deal should be heard.
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`buyIntent`, `sellIntent`), `packages/client/src/ui/shop.ts` (`createShopWindow`)
+- **Pinned by:** `divergence: a completed buy and sale play cash; a refused one only the OK click` (packages/client/tests/npcs.test.ts); `buying three Apples from Amber, then selling one back, each answered processed ok` (packages/server/e2e/npcs-shops-trade.test.ts)
+
+#### A player shop's till counts anywhere in the file
+- **Kind:** Bug fixed
+- **What you notice:** `register` and `inventory` find the shop's gold wherever its `GLD|` line sits.
+- **1.6:** Both commands read the `GLD|` line only among the file's first 30 lines, while a sale credited it anywhere.
+- **SSO:** Both read every `GLD|` line in the file, as the NPC till does. New shop files still put it on line 5. The profile command still reads lines 1–30.
+- **Why:** The till a sale pays into should be the till the owner can see and take.
+- **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`register`, `shopStockLines`)
+- **Pinned by:** `bug fixed: Register pays from a till line past line 30`; `bug fixed: Inventory reports a till line past line 30` (packages/shared/tests/economy/playershop-till.test.ts)
 
 ### housing
 
@@ -2054,7 +1962,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### The dead do not rest
 - **Kind:** Bug fixed
-- **What you notice:** Resting near the top of a house map no longer heals you while you are dead.
+- **What you notice:** Resting on a house map (rows 1 to 10) no longer heals you while you are dead.
 - **1.6:** The house rest-healing had no death check.
 - **SSO:** Rest regeneration skips a player in the death lock.
 - **Why:** Healing a corpse made no sense and changed what the respawn restored.
@@ -2139,10 +2047,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Riding an airship, Ctrl picks up or uses the item or Pig in front of you, as on foot. With nothing in front, Ctrl unboards.
 - **1.6:** Ctrl tested for the airship before anything else and only ever tried to unboard; only a mouse click could pick anything up.
-- **SSO:** Ctrl unboards only when the faced tile holds no item and no monster.
+- **SSO:** Ctrl first uses or takes the item on the faced tile, then tries to grab a Pig or Snow Demon there; it unboards when neither happens. A monster Ctrl cannot grab does not stop the unboarding, and for a wide monster only its anchor tile counts.
 - **Why:** The key did one thing aboard and another on foot for no reason a player could see.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/systems/vehicles/airship.ts` (`unboardAirship`)
-- **Pinned by:** `bug fixed: Ctrl aboard an airship takes what is in front, and unboards when nothing is` (packages/server/tests/vehicles.test.ts)
+- **Pinned by:** `bug fixed: Ctrl aboard an airship takes what is in front, and unboards when nothing is` (packages/server/tests/vehicles.test.ts); `bug fixed: Ctrl aboard takes a Pig in front; any other monster with no item lets Ctrl unboard` (packages/server/tests/vehicles.test.ts)
 
 #### The Experience Platform names the level it checks
 - **Kind:** Bug fixed
@@ -2187,13 +2095,13 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Players and monsters share one list (`ground.blocks` in `item-rules.json`).
 - **Why:** The two lists were meant to match; the missing rows were an omission.
 - **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`blocksMonster`)
-- **Pinned by:** `bug fixed: Holy Water and newspapers stop monsters as they stop players` (packages/shared/tests/inventory/inventory.test.ts); `a blocking item on the anchor tile aborts a monster's path` (packages/server/tests/inventory.test.ts)
+- **Pinned by:** `bug fixed: Holy Water and newspapers stop monsters as they stop players` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: a blocking item on the anchor tile aborts a monster's path: a statue, Holy Water, a newspaper stand` (packages/server/tests/inventory.test.ts)
 
 #### A refused Pig stays in the bag
 - **Kind:** Bug fixed
 - **What you notice:** Dropping a Pig where it cannot stand, including off any edge of the map, says "You can't drop an animal here!" and the Pig stays in your bag.
 - **1.6:** The Pig left the bag before the summon checked the tile, so a pig dropped on a tile monsters cannot stand on, or north from the top row, was silently lost. Off the other edges the drop did nothing and said nothing.
-- **SSO:** Every test the summon makes runs before the Pig leaves the bag, and each refusal says the blocked line.
+- **SSO:** Every test the summon makes runs before the Pig leaves the bag. A blocked tile says the line above; a map whose four monster slots are all live says "It's too crowded to drop any pigs here!".
 - **Why:** Losing a pig without a word was never meant.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`pigDrop`), `packages/server/src/systems/spells/cast.ts` (`summonPig`)
 - **Pinned by:** `bug fixed: a faced tile off the map at the side, bottom or top → "You can't drop an animal here!", the pig kept` (packages/server/tests/pigs-orbs-webs.test.ts)
@@ -2229,10 +2137,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A Dragon Sword goes in the left hand with Strength 26, hits for 12 plus up to 8, and is drawn with the Fire Sword's art.
 - **1.6:** No rule gave the Dragon Sword a slot, attack power or picture, so Equip refused it.
-- **SSO:** `item-rules.json` gives it a slot, a strength requirement and a paperdoll alias, and `attpower.json` an attack row, between the Star Sword and the Pharaoh Sword. The Dragon Sword still only appears if an operator hands one out.
+- **SSO:** `item-rules.json` gives it a slot, a strength requirement and a paperdoll alias, `attpower.json` an attack row (the last in the file), and `classes.json` a kill skill-gain row (Slash, Thrust, Swordsmanship, Fencing). The Dragon Sword still only appears if an operator hands one out.
 - **Why:** An item that exists should be usable for what it is.
 - **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`equipSlotFor`, `strengthRequirement`)
-- **Pinned by:** `bug fixed: the Dragon Sword is wielded in the left hand` (packages/shared/tests/inventory/inventory.test.ts)
+- **Pinned by:** `bug fixed: the Dragon Sword is wielded in the left hand` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: the Dragon Sword and Steel Scimitar train the sword skills` (packages/shared/tests/progression/weapon-skills.test.ts); `bug fixed: the Dragon Sword hits for 12 plus up to 8 and is drawn with the Fire Sword's art` (packages/shared/tests/inventory/inventory.test.ts)
 
 #### "You cannot equip the …" ends with a full stop
 - **Kind:** Bug fixed
@@ -2268,7 +2176,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Click, Ctrl and a received give share one bag test.
 - **Why:** Ctrl and the click disagreed about the same bag.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`bagFull`, `pickupIntent`, `receiveGive`)
-- **Pinned by:** `bug fixed: a full bag takes a clicked item it holds a stack of, as Ctrl does` (packages/server/tests/inventory.test.ts)
+- **Pinned by:** `bug fixed: a full bag takes a clicked item it holds a stack of, as Ctrl does` (packages/server/tests/inventory.test.ts); `bug fixed: a full bag receives a given item it holds a stack of` (packages/server/tests/inventory.test.ts)
 
 #### Picking up takes one item
 - **Kind:** Bug fixed
@@ -2404,6 +2312,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A player's name should not decide whether their paper can be read.
 - **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`ctrlGate`)
 - **Pinned by:** `bug fixed: Ctrl reads Doorman's Newspaper; the newspaper test comes before door/exit` (packages/shared/tests/mail/art-news.test.ts); `bug fixed: Ctrl reads 'Doorman's Newspaper' as a click does` (packages/server/tests/art-news.test.ts)
+
+#### The × beside an empty Ring box is silent
+- **Kind:** Bug fixed
+- **What you notice:** Clicking the × beside any empty equipment box, the Ring box included, makes no sound.
+- **1.6:** The Ring box's × played the click before testing for an empty slot; the other five tested first.
+- **SSO:** Every × exits silently on an empty slot, then clicks after its locks.
+- **Why:** The six boxes should behave alike.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
+- **Pinned by:** `divergence: the empty Ring × is silent like the other boxes, sending nothing` (packages/client/tests/panel.test.ts)
+
+#### Item menu buttons click only when the action goes ahead
+- **Kind:** Bug fixed
+- **What you notice:** Use, Equip, Drop, Give and the Cook, Mix, Build, Smith and Storage buttons click when their action goes ahead. They are silent under the key lock or the item pause, for Use while the mail compose pane is up, and for a craft button with nothing behind it. Give now clicks like the others.
+- **1.6:** Each handler played the click as its first statement, before the key lock, the item pause and every refusal; Give never clicked.
+- **SSO:** A button checks the client's own refusal first, then sends the action, and clicks only when the key lock and the item pause allow it. The server still makes its own checks.
+- **Why:** The click should confirm an action, not a refusal.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`), `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `divergence: the item menu clicks only past its locks and the client's refusals; Give too` and `divergence: a Use the client refuses makes no click` (packages/client/tests/panel.test.ts)
 
 ### mail
 
@@ -2551,6 +2477,87 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`newspaperLoadIntent`, `newspaperSaveIntent`), `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
 - **Pinned by:** `bug fixed: a player saves to their own paper, loads it, and their stand shows it` (packages/server/tests/art-news.test.ts); `the Game and Chat items: Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms, Clear Chat Text` (packages/client/tests/npceditor.test.ts)
 
+#### Closing the mail list closes its panes
+- **Kind:** Bug fixed
+- **What you notice:** Closing the mail list with the compose or read pane open closes those panes too. The Use button keeps working, and the next mailbox opens on the list alone.
+- **1.6:** The list's CLOSE kept the panes' flags on. The Use button quietly exited while the compose flag was on, and the panes came back at the next open.
+- **SSO:** The list's CLOSE clears both panes' flags and the draft.
+- **Why:** A closed mailbox should leave nothing behind.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `divergence: list CLOSE closes both panes and drops the draft; reopen shows the list alone` (packages/client/tests/mail-boards.test.ts)
+
+#### Deleting a message clears the selection and its read pane
+- **Kind:** Bug fixed
+- **What you notice:** After DELETE, no line is selected, so a second DELETE removes nothing until you pick another message. A read pane showing the deleted message closes.
+- **1.6:** DELETE rebuilt the list without clearing the selection or the read pane, so a second DELETE removed the next message.
+- **SSO:** DELETE clears the selection, and closes the read pane when it shows the deleted message. A read pane showing another message stays.
+- **Why:** One DELETE should remove one message.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `divergence: DELETE clears the selection and closes the read pane showing that message` (packages/client/tests/mail-boards.test.ts)
+
+#### WRITE starts an empty draft
+- **Kind:** Bug fixed
+- **What you notice:** Pressing WRITE opens an empty compose pane. While the pane is already open, WRITE keeps what is in it, and a send the server refuses also keeps it.
+- **1.6:** The three fields were cleared only by a send, so WRITE showed whatever was left from before.
+- **SSO:** WRITE clears the fields when the compose pane is not already up. Closing the list also drops the draft.
+- **Why:** A new message should start blank.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`)
+- **Pinned by:** `divergence: WRITE starts an empty draft; a second WRITE keeps the open one` and `a refused send (no mailSent) keeps the draft with the compose open` (packages/client/tests/mail-boards.test.ts)
+
+#### The read pane labels the sender FROM:
+- **Kind:** Bug fixed
+- **What you notice:** When you read a message, the sender's name sits on a line labelled FROM:.
+- **1.6:** The read pane reused the compose pane's art, so the sender sat under its TO: label.
+- **SSO:** A patch of the pane's purple with FROM: in white outlined capitals covers the art's TO:.
+- **Why:** The label should name what the line shows.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/styles.css` (`.mail-read-label`)
+- **Pinned by:** `READ with nothing selected does nothing; with a line it fills the read pane` (packages/client/tests/mail-boards.test.ts)
+
+#### The mail list scrolls
+- **Kind:** Bug fixed
+- **What you notice:** The Subject column has a scroll bar and the From column scrolls with it, so all of a full mailbox can be reached.
+- **1.6:** The columns were fixed boxes with no scroll bar, so only about 20 of up to 50 messages could be seen.
+- **SSO:** Both 271-pixel columns scroll; Subject shows a thin bar and From follows it line for line.
+- **Why:** Every stored message should be reachable without deleting the ones above it.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/styles.css` (`.mail-lines`)
+- **Pinned by:** `divergence: the 271-px list columns scroll, the From column following the Subject bar` (packages/client/tests/mail-boards.test.ts)
+
+#### The mail list leaves the chat entry usable
+- **Kind:** Bug fixed
+- **What you notice:** With the mail list up you can still click into the chat entry box.
+- **1.6:** A blocker (Internal #203, channel 366) covered the chat entry while the list was up.
+- **SSO:** No blocker is drawn.
+- **Why:** Reading mail should not stop you chatting.
+- **In the code:** `packages/client/src/ui/mail.ts` (`createMailScreen`), `packages/client/src/ui/shells.ts` (`createGameView`)
+- **Pinned by:** `divergence: with every pane up, nothing in the mail screen reaches the chat entry` (packages/client/tests/mail-boards.test.ts); `divergence: the stage places the mail and board at their rects, and nothing blocks the chat entry` (packages/client/tests/shells.test.ts)
+
+#### A photo leaves a cancelled painting alone
+- **Kind:** Bug fixed
+- **What you notice:** Cancel a painting, take a photo, and the next Canvas still reopens your painting.
+- **1.6:** The photo was written into the same image a cancelled canvas keeps.
+- **SSO:** A photo is cropped into an image of its own and saved from there. A viewed painting has an image of its own too (see [A viewed painting stays out of your canvas](#a-viewed-painting-stays-out-of-your-canvas)).
+- **Why:** Taking a photo should not destroy unrelated work.
+- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
+- **Pinned by:** `divergence: a photo leaves a cancelled painting alone` and `a good shot hides the lens, redraws, crops 64×64 around the tap and saves a photo` (packages/client/tests/art-news.test.ts)
+
+#### A painting in the viewer cannot be painted on
+- **Kind:** Bug fixed
+- **What you notice:** Holding the mouse down on a painting you are viewing does nothing to it.
+- **1.6:** The viewer's picture kept the paint screen's paint behaviour, so the current tool painted on it.
+- **SSO:** The viewer's picture takes no pointer input; a mouse release anywhere still closes the viewer.
+- **Why:** Viewing should not change the picture.
+- **In the code:** `packages/client/src/ui/paint.ts` (`createPaintUi`)
+- **Pinned by:** `divergence: a pointer down on the viewed image paints nothing` (packages/client/tests/art-news.test.ts)
+
+#### The colour picker reads only the palette and the painting
+- **Kind:** Bug fixed
+- **What you notice:** The held picker takes a colour from the palette strip, the preview or the large painting. Dragged over the tools, the frame or anything else, it keeps the current colour.
+- **1.6:** The picker read the colour straight from the screen, wherever the pointer was.
+- **SSO:** The picker reads the art inside the palette strip's border (stage 132-230 × 328-355), or the painting's pixel under the preview or the 4× image, and nothing else.
+- **Why:** Picking a colour should not pick up the screen's decoration.
+- **In the code:** `packages/client/src/ui/paint.ts` (`PAINT_RECTS`, `createPaintUi`)
+- **Pinned by:** `divergence: the colour pick reads only the palette strip, the preview and the 4× image` (packages/client/tests/art-news.test.ts)
+
 ### monsters
 
 #### A monster with only loot lines opens no window
@@ -2605,7 +2612,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Every species row in `monsters.json` must have an `hp`; the rows 1.6's table missed have 1. A name not in the data at all starts with 1 too (`DEFAULT_HP`), and so does a player shop's new shopkeeper, which 1.6's NPC creator gave 128. The slot no longer keeps the last occupant's hit points, and the `last_hp` column is dropped.
 - **Why:** A monster that arrives already below zero, or with a dead monster's leftovers, was never meant.
 - **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`spawnHp`, `DEFAULT_HP`), `packages/shared/src/rules/economy/playershop.ts` (`SHOPKEEPER`), `packages/server/migrations/20261118_31_drop_last_hp.sql`
-- **Pinned by:** `bug fixed: every species has hit points; 1.6's unlisted ones and unknown names get 1` (packages/server/tests/monsters.test.ts)
+- **Pinned by:** `bug fixed: every species has hit points; 1.6's unlisted ones and unknown names get 1` (packages/server/tests/monsters.test.ts); `a Small Shop's build writes its shopkeeper: file, owner and roster slot 1 at (10, 4) with 1 HP` (packages/server/tests/playershop-db.test.ts); `bug fixed: a slot's new monster starts at its species' hit points, not the last occupant's` (packages/server/tests/monsters.test.ts)
 
 #### Hostile monsters are listed by name
 - **Kind:** Bug fixed
@@ -2656,10 +2663,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Clicking a Snow Demon, or pressing Ctrl facing one, does nothing pig-like.
 - **1.6:** The click looked for "91-" anywhere in a monster's picture name, and the Snow Demon's picture 891 contains it, so it ran the Pig grab, and Ctrl grabbed a faced Snow Demon into your bag as a Pig.
-- **SSO:** The Pig, Spikes, Web and Holy Shield click rules, and the never-moves rule for Spikes, Web and Holy Shield, test the body number for equality.
+- **SSO:** The Pig, Spikes, Web and Holy Shield click rules, the never-moves rule for Spikes, Web and Holy Shield, the web trap a walker is caught in, and the melee Holy Shield test all compare the body number exactly.
 - **Why:** The text test caught a body number it was never written for.
-- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `ctrlPig`), `packages/server/src/systems/monsters/slots.ts` (`neverMoves`, `BODY`)
-- **Pinned by:** `bug fixed: a Snow Demon is no Pig: a click opens nothing and Ctrl grabs nothing` (packages/server/tests/npcs-trade.test.ts)
+- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `ctrlPig`), `packages/server/src/systems/monsters/slots.ts` (`neverMoves`, `BODY`), `packages/shared/src/rules/movement/movement.ts` (`isWebBody`), `packages/server/src/systems/spells/geometry.ts` (`onHolyShield`)
+- **Pinned by:** `bug fixed: a Snow Demon is no Pig: a click opens nothing and Ctrl grabs nothing` (packages/server/tests/npcs-trade.test.ts); `bug fixed: only body 92 is a Web` (packages/shared/tests/spells/body-numbers.test.ts)
 
 #### Clicking a Pig grabs that Pig
 - **Kind:** Bug fixed
@@ -2706,14 +2713,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`)
 - **Pinned by:** `bug fixed: a roll ignored while you blink names no one` (packages/server/tests/monsters.test.ts)
 
-#### A death drop is a random item from your bag
+#### A monster's hit on you shows the splat and plays the hit sound
 - **Kind:** Bug fixed
-- **What you notice:** When a death drops an item, it is one of the items in their bag at random, from any line. Crystals never drop; an item that only has the word in its name, such as a Crystal Axe, can.
-- **1.6:** The game counted the filled lines among 1 to 8 and picked a line number up to that count, so with gaps in your bag the pick could land on an empty line and nothing dropped, and lines 9 to 15 never dropped. A crystal stack picked dropped nothing, by an explicit check.
-- **SSO:** The pick is one of the bag's lines other than the six colours of crystal (matched by whole name, not by "contains"), every line counting, with the same single draw; one unit of it drops.
-- **Why:** The count was meant to pick among the items you carry. The crystal check was deliberate and stays, but a crystal stack no longer uses up the drop.
-- **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`, `isCrystal`)
-- **Pinned by:** `bug fixed: the death drop picks one of the bag's items at random; crystals never` (packages/shared/tests/inventory/inventory.test.ts)
+- **What you notice:** When a monster hits you, the number floats up over a splat and the hit sound plays, as for a player's hit. Shield, Parry and Block stay silent.
+- **1.6:** The monster-hit message was one field short of the player-hit message, so the floating text read the wrong fields and only the number showed.
+- **SSO:** A monster's damage floatie carries the splat flag, so the client draws the splat and plays `hitsound` on channel 5.
+- **Why:** Monster damage should be as visible and audible as player damage.
+- **In the code:** `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`), `packages/server/src/systems/world/tick.ts` (`tick`), `packages/client/src/model.ts` (`applyDelta`)
+- **Pinned by:** `divergence: a monster's hit on you shows the number with the splat and hitsound` and `a Parry, Block or Shield floatie has no splat and no sound` (packages/client/tests/combat.test.ts); `a Slime next to you hits on random(10) = 1` (packages/server/tests/monsters.test.ts)
 
 ### movement
 
@@ -2725,15 +2732,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The check printed its refusal and so plainly meant to stop the shove.
 - **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`), `packages/shared/src/rules/chat/chat.ts` (`pushLines`)
 - **Pinned by:** `bug fixed: a weaker pusher is 'too weak' and does not shove` (packages/server/tests/push.test.ts); `bug fixed: a weaker pusher's line says only that they are too weak` (packages/shared/tests/chat/chat.test.ts)
-
-#### Walking off the screen's edge is stopped by a wall or a missing map
-- **Kind:** Bug fixed
-- **What you notice:** You cannot walk off the edge of the screen when the matching tile on the next map is a wall or water, or when there is no map beyond the edge; you turn to face the edge and stay, as you would at a wall, and read "You cannot go that way." once for the key press.
-- **1.6:** The step that crossed the edge never checked the tile it landed on, so you could arrive inside a wall or on water. With no map beyond, the server's empty map reply warped you to the start point and reloaded the map.
-- **SSO:** The server checks that the next map exists and that the wrapped tile is walkable on it (the Airship grid when you ride one). Otherwise the crossing is refused; others see you turn. The line, SSO's own, prints once a press like the web line, so a player at the edge of the world knows it is not a bug.
-- **Why:** Every other step checks its destination; skipping the check on an edge let players walk into walls, and the edge of the world should feel like a wall rather than a teleport.
-- **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
-- **Pinned by:** `bug fixed: an unwalkable wrapped tile refuses the crossing, as a wall would`; `bug fixed: an edge with no map beyond is refused, as a wall would`; `SSO: a refused edge says why, once a press`; `walking off an edge onto an existing neighbour keeps the wrapped tile` (packages/server/tests/world.test.ts); `bug fixed: walking off an edge with no map beyond is refused, as a wall would` (packages/server/e2e/login-and-walk.test.ts)
 
 #### Only an Overlord or Mutant Worm blocks three tiles wide
 - **Kind:** Bug fixed
@@ -2781,15 +2779,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A pair of opposite arrows that both go forward is a slip, not a feature.
 - **In the code:** `packages/shared/src/rules/progression/creation.ts` (`nextHead`, `prevHead`), `packages/client/src/ui/screens.ts` (`creationScreen`)
 - **Pinned by:** `bug fixed: the left arrow steps back through the cycle` (packages/shared/tests/progression/creation.test.ts)
-
-#### A rider must land before challenging
-- **Kind:** Bug fixed
-- **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are.
-- **1.6:** Challenge never looked at vehicles, so a rider entered the arena still flying, where it could not swing or cast and monster melee could not reach it.
-- **SSO:** The challenge is refused aboard; the line is SSO's own. A rider over arena tiles is not in the arena at all (see [Arenas are for players on foot](#arenas-are-for-players-on-foot)).
-- **Why:** An arena fight is meant to be on foot.
-- **In the code:** `packages/shared/src/rules/combat/arena.ts` (`challengeCheck`), `packages/server/src/systems/combat/arena.ts` (`challenge`)
-- **Pinned by:** `bug fixed: a rider must land before making a challenge` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a rider cannot challenge; over an arena tile, quit does nothing` (packages/server/tests/arena.test.ts)
 
 #### Spare XP carries over a level-up
 - **Kind:** Bug fixed
@@ -2843,7 +2832,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Every hit restarts a short window (`KILL_CREDIT_TICKS`, 40 ticks); a death after it has passed forgets the last attacker before the death line, the murder flag and the Assassin points. In SSO starving stops at 1 HP, as in 1.6, so this guards any death no hit caused.
 - **Why:** A kill should be credited to the hit that caused it.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`, `ageLastHit`, `KILL_CREDIT_TICKS`), `packages/server/src/systems/social/murder.ts` (`flagKiller`)
-- **Pinned by:** `bug fixed: a death long after the last hit credits no one`; `a death within the credit window still credits the hit` (packages/server/tests/factions.test.ts)
+- **Pinned by:** `bug fixed: a death long after the last hit credits no one`; `a death within the credit window still credits the hit` (packages/server/tests/factions.test.ts); `bug fixed: a death long after the last hit earns its old attacker no Assassin points`; `a death within the credit window earns the attacker Assassin points` (packages/server/tests/factions.test.ts)
 
 #### The skills list stops at its first and last rows
 - **Kind:** Bug fixed
@@ -2853,6 +2842,24 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Scrolling past the list's ends shows nothing; the missing bound was an oversight.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
 - **Pinned by:** `bug fixed: the skills list stops at its first and last rows` (packages/client/tests/panel.test.ts)
+
+#### A death drop is a random item from your bag
+- **Kind:** Bug fixed
+- **What you notice:** When a death drops an item, it is one of the items in their bag at random, from any line. Crystals never drop; an item that only has the word in its name, such as a Crystal Axe, can.
+- **1.6:** The game counted the filled lines among 1 to 8 and picked a line number up to that count, so with gaps in your bag the pick could land on an empty line and nothing dropped, and lines 9 to 15 never dropped. A crystal stack picked dropped nothing, by an explicit check.
+- **SSO:** The pick is one of the bag's lines other than the six colours of crystal (matched by whole name, not by "contains"), every line counting, with the same single draw; one unit of it drops.
+- **Why:** The count was meant to pick among the items you carry. The crystal check was deliberate and stays, but a crystal stack no longer uses up the drop.
+- **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`rollDeathDrop`, `isCrystal`)
+- **Pinned by:** `bug fixed: the death drop picks one of the bag's items at random; crystals never` (packages/shared/tests/inventory/inventory.test.ts)
+
+#### Every wieldable sword trains its skills on a kill
+- **Kind:** Bug fixed
+- **What you notice:** Killing a monster with a Steel Scimitar, a Dragon Sword or a masterwork such as Knight's Sword +2 can raise Slash, Thrust, Swordsmanship and the weapon's other skills, as its plain or sister weapon does.
+- **1.6:** The kill skill-gain table named some weapons exactly. The Steel Scimitar had no row, and an exact row such as Knight's Sword missed the `+1` to `+4` masterworks a repair makes, so those weapons trained nothing on a kill.
+- **SSO:** `classes.json` `skillGain.weaponSkills` has Steel Scimitar and Dragon Sword rows (Slash, Thrust, Swordsmanship, Fencing, as the Star and Pharaoh Swords), and an exact row also covers the masterworks made from its weapon, read from `craft.json` `smith.masterwork`.
+- **Why:** A better copy of a weapon, or a weapon the game hands out, training nothing was never intended.
+- **In the code:** `packages/shared/src/rules/progression/skillgain.ts` (`weaponSkillList`), `packages/shared/src/rules/crafting/masterwork.ts` (`weaponIs`, `masterworkBase`)
+- **Pinned by:** `bug fixed: the Dragon Sword and Steel Scimitar train the sword skills`; `bug fixed: a masterwork trains what its base weapon trains` (packages/shared/tests/progression/weapon-skills.test.ts)
 
 ### social
 
@@ -2872,6 +2879,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A kill is credited by player ID. A player with a monster-list name can be flagged; monsters never are.
 - **Why:** A name chosen at creation should not make a player immune to the murder flag.
 - **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`), `packages/server/src/systems/social/assassin.ts` (`scoreKill`)
+- **Pinned by:** `a player named like a monster is flagged like anyone` (packages/server/tests/factions.test.ts); `bug fixed: a player named like a monster earns points like anyone` (packages/server/tests/assassin.test.ts)
 
 #### A normal Assassin's game ends Lightning
 - **Kind:** Bug fixed
@@ -2880,6 +2888,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The current game mode determines whether Lightning is active, so a normal start ends it.
 - **Why:** A game announced as normal should play as a normal game.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`setAssassinMode`, `lightningOn`)
+- **Pinned by:** `a normal start ends Lightning; one hit no longer kills` (packages/server/tests/assassin.test.ts)
 
 #### An Assassin's game with no scorer awards nothing
 - **Kind:** Bug fixed
@@ -2888,6 +2897,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The end prints “*** The assassin's game has ended!!!” and “*** Check back soon for yet another assassin's game.” only. With one or two scorers, missing places still print blank as in 1.6 and get nothing.
 - **Why:** A game with no scorer should not award an empty-name win.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`endGame`)
+- **Pinned by:** `an end nobody scored in names no winner, counts no win and gives nothing`; `an end with one scorer prints the missing places blank and gives them nothing` (packages/server/tests/assassin.test.ts)
 
 
 #### A guild line keeps its first character
@@ -2953,23 +2963,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/social/factions.ts` (`joinFaction`, `exileAtDeath`)
 - **Pinned by:** `bug fixed: the Warriors take no one below their exile line of 60`; `no faction's join line is below its exile line` (packages/shared/tests/social/factions.test.ts)
 
-#### Faction leader and quest lines close their quotes
+#### Faction leader lines close their quotes
 - **Kind:** Bug fixed
-- **What you notice:** Angela, Trianus and Corin's answers about their faction's power end with a closing quote, and a quest giver's "Sorry but I don't need anything right now." ends with a full stop.
-- **1.6:** The three power lines had no closing quote, and the quest giver's line no full stop.
+- **What you notice:** Angela, Trianus and Corin's answers about their faction's power end with a closing quote.
+- **1.6:** The three power lines had no closing quote.
 - **SSO:** The texts in `social.json` are complete.
 - **Why:** Typos.
-- **In the code:** `packages/shared/src/rules/social/factions.ts` (`sayFaction`), `packages/shared/src/rules/economy/quests.ts` (`sayQuest`)
-- **Pinned by:** `bug fixed: faction leader lines close their quote`; `bug fixed: every quest reply is heard by the map, closes its quote and ends its sentence` (packages/shared/tests/social/factions.test.ts)
-
-#### An exile on death leaves the faction channel
-- **Kind:** Bug fixed
-- **What you notice:** Once a death exiles you from a faction, you stop hearing its announcements at once.
-- **1.6:** The death exile never left the @Faction channel, so you kept hearing it until you logged in again.
-- **SSO:** A faction's channel is its current members, so the exile ends it with the membership.
-- **Why:** Leaving the channel was forgotten on that one path; the loyalty kick did it.
-- **In the code:** `packages/shared/src/rules/social/factions.ts` (`exileAtDeath`), `packages/server/src/systems/social/factions.ts` (`toFactionChannel`)
-- **Pinned by:** `bug fixed: exile below the line on death also leaves the faction channel` (packages/server/tests/factions.test.ts)
+- **In the code:** `packages/shared/src/rules/social/factions.ts` (`sayFaction`)
+- **Pinned by:** `bug fixed: faction leader lines close their quote` (packages/shared/tests/social/factions.test.ts)
 
 #### Assassin points follow the bands at equal ratings and 1800 or more
 - **Kind:** Bug fixed
@@ -3027,7 +3028,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### The bio score counts every skill
 - **Kind:** Bug fixed
-- **What you notice:** A bio's score now includes Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and Wind, so scores rise for anyone with those skills. The High Score table already counted them and is unchanged.
+- **What you notice:** A bio's score now includes Lumberjacking, Archery, Blessing, Musicianship, Illusion, Punch, Fire and Wind, so scores rise for anyone with those skills. The High Score table scores by the bio score, so it changes the same way (see the next entry).
 - **1.6:** The second line of the score's sum assigned to a misspelt variable, so those eight skills never counted.
 - **SSO:** The score sums every skill, HPmax and SPmax (`bios.score.counted` in `social.json`).
 - **Why:** A misspelt variable, not a design.
@@ -3051,6 +3052,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Loop bounds, not a limit anyone chose; SSO's own cap of 199 names is separate.
 - **In the code:** `packages/shared/src/rules/social/buddies.ts` (`buddyRemove`)
 - **Pinned by:** `bug fixed: any name on the list can be removed, the 190th and later too`; `bug fixed: a removal keeps every other name, in order, past the 199th too` (packages/shared/tests/social/friends-bios-medals.test.ts)
+
+#### Handing in a head takes the head you gave
+- **Kind:** Bug fixed
+- **What you notice:** Giving a faction leader a head takes it from the bag slot you chose.
+- **1.6:** The chosen slot only had to hold a head; one was taken from the first slot that contained one.
+- **SSO:** The head comes off the chosen slot.
+- **Why:** Players choose what they give.
+- **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`)
+- **Pinned by:** `bug fixed: turn-in takes the head you gave, not the first in the bag` (packages/server/tests/factions.test.ts)
 
 ### spells
 
@@ -3097,7 +3107,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** They stay learnable and listed, but the cast is refused before anything is spent. No effect is invented for them.
 - **Why:** Taking a player's SP and crystals for a spell that cannot do anything is a bug; giving them effects 1.6 never had would be new content.
 - **In the code:** `packages/shared/src/rules/spells/spells.ts` (`isInert`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
-- **Pinned by:** `bug fixed: the spells 1.6 gave no effect are inert, by name or effect` (packages/shared/tests/spells/spells.test.ts); `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish and Holy Weapon are refused before anything is spent` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `bug fixed: the spells 1.6 gave no effect are inert, by name or effect` (packages/shared/tests/spells/spells.test.ts); `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent` (packages/server/tests/spells.test.ts)
 
 #### Smoke Bomb in a body named "Ninja" costs 25
 - **Kind:** Bug fixed
@@ -3124,7 +3134,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A directional name trains its base spell's school, and the weapons' fireballs skip the skill gain.
 - **Why:** Every spell lists its school in the skill gain; free swings were never meant to train magic.
 - **In the code:** `packages/shared/src/rules/spells/spells.ts` (`baseSpell`, `spellImp`), `packages/server/src/systems/spells/cast.ts` (`swingFireballs`), `packages/server/src/systems/spells/fx.ts` (`placeQueued`)
-- **Pinned by:** `bug fixed: Bolt and Wind Wave raise their school from their directional names` (packages/shared/tests/spells/spells.test.ts); `bug fixed: a Fire Staff fireball trains no skill` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `bug fixed: Bolt and Wind Wave raise their school from their directional names` (packages/shared/tests/spells/spells.test.ts); `bug fixed: a Fire Staff fireball trains no skill` (packages/server/tests/spells.test.ts); `bug fixed: a Firesword fireball trains no skill; a cast Fireball with the same rolls does` (packages/server/tests/spells.test.ts)
 
 #### Armour and Magic Shield change spell damage
 - **Kind:** Bug fixed
@@ -3142,7 +3152,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A player's Hold is spared where PvP is off, like the harmful spells; a monster's Hold still lands.
 - **Why:** Rooting another player is player-versus-player play.
 - **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
-- **Pinned by:** `bug fixed: Hold obeys the PvP flag: a player's Hold roots no one where PvP is off` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `bug fixed: Hold obeys the PvP flag: a player's Hold roots no one where PvP is off` (packages/server/tests/spells.test.ts); `a player's Hold roots another player where PvP is on`; `bug fixed: a monster's Hold still roots a player where PvP is off` (packages/server/tests/spells.test.ts)
 
 #### Your own spell no longer shields you from others
 - **Kind:** Bug fixed
@@ -3182,7 +3192,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A summon that cannot go ahead costs nothing
 - **Kind:** Bug fixed
-- **What you notice:** A summon on a full map (four live monsters), on a tile a monster cannot stand on, where fighting is off, or (Raise Dead) away from a grave says "You cannot summon here!" and spends nothing.
+- **What you notice:** A summon on a full map (four live monsters) or on a tile a monster cannot stand on, a Raise Dead away from a grave or where fighting is off, says "You cannot summon here!" and spends nothing. Summon Creature still works where fighting is off, and Web, Illusionary Spikes and Holy Shield, which are harmful spells, get "You cannot cast harmful spells here!" there instead.
 - **1.6:** Each summon's tests ran after SP and crystals were taken, and most failed silently.
 - **SSO:** The summon is planned before the cost and refused with the existing line.
 - **Why:** A summon that never appears should not be paid for.
@@ -3238,7 +3248,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Levelling up from a spell kill prints the same line as a melee kill.
 - **1.6:** The spell path had its own line with a stray "a": "You have become a more powerful!"
-- **SSO:** Both paths use the melee line. The spell XP table and the missing kill skill gain are unchanged.
+- **SSO:** Both paths use the melee line. The spell XP table and the missing kill skill gain are unchanged; the kill broadcast is a separate fix (see [An Overlord killed by a spell is announced](#an-overlord-killed-by-a-spell-is-announced)).
 - **Why:** A typo.
 - **In the code:** `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
 - **Pinned by:** `bug fixed: a spell kill pays the spell XP table and the melee level-up line` (packages/server/tests/spells.test.ts)
@@ -3259,7 +3269,25 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** A volume sent with a sound applies to that sound alone.
 - **Why:** The bell's volume was meant for the bell.
 - **In the code:** `packages/client/src/audio.ts` (`playAll`, `createAudio`)
-- **Pinned by:** `bug fixed: the church bell plays at 200 and leaves channel 5's volume alone` (packages/client/tests/spells.test.ts); `bug fixed: a sound's own volume plays that sound alone at it; the channel keeps its volume` (packages/client/tests/sound.test.ts)
+- **Pinned by:** `bug fixed: a sound's own volume plays that sound alone at it; the channel keeps its volume` (packages/client/tests/sound.test.ts)
+
+#### An Overlord killed by a spell is announced
+- **Kind:** Bug fixed
+- **What you notice:** Killing the Overlord with a spell sends "*** ** * All hail <you> who has rid the world of an evil overlord!" to everyone, as a melee kill does.
+- **1.6:** Only the melee kill routine sent the kill broadcast; the spell kill routine paid XP and dropped loot but announced nothing.
+- **SSO:** The spell death check sends the `monsters.json` `rules.killBroadcasts` line to every player who does not ignore the killer, as the melee kill does. Kill skill gain stays with melee, since it follows the weapon.
+- **Why:** The announcement celebrates the Overlord's death, not the way it died.
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`checkForDead`), `packages/server/src/systems/world/tick.ts` (`tick`)
+- **Pinned by:** `bug fixed: an Overlord killed by a spell is announced to everyone who hears the killer` (packages/server/tests/spell-kill-broadcast.test.ts)
+
+#### A Shark is not a Ghoul to fire spells
+- **Kind:** Bug fixed
+- **What you notice:** Firebolt hurts a Shark instead of healing it, and a Fireball does full damage to it.
+- **1.6:** The monster hit check looked for text such as "45-" in the monster's picture name. The Shark's picture 445 contains "45-", so it healed from Firebolt and took only `random(3)` from a Fireball, like the Ghoul (body 45). The same text tests for "36-", "47-", "61-" and "90-" would have caught any body ending in those digits.
+- **SSO:** The hit check compares the body number exactly.
+- **Why:** The text test caught a body number it was never written for.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spellHitOnMonster`, `memberBody`)
+- **Pinned by:** `bug fixed: a Shark (body 445) is not healed by Firebolt like a Ghoul (body 45)`; `bug fixed: a Shark takes a Fireball's full damage; a Ghoul takes random(3)` (packages/shared/tests/spells/body-numbers.test.ts)
 
 ### vehicles
 
@@ -3282,6 +3310,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** An unfinished or broken exit should not teleport players across the world.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`takeExit`)
 - **Pinned by:** `bug fixed: an exit with no target, or to a missing map, leaves you on it and says so once` (packages/server/tests/worldedit.test.ts)
+
+#### Walking off the screen's edge is stopped by a wall or a missing map
+- **Kind:** Bug fixed
+- **What you notice:** You cannot walk off the edge of the screen when the matching tile on the next map is a wall or water, or when there is no map beyond the edge; you turn to face the edge and stay, as you would at a wall, and read "You cannot go that way." once for the key press.
+- **1.6:** The step that crossed the edge never checked the tile it landed on, so you could arrive inside a wall or on water. With no map beyond, the server's empty map reply warped you to the start point and reloaded the map.
+- **SSO:** The server checks that the next map exists and that the wrapped tile is walkable on it (the Airship grid when you ride one). Otherwise the crossing is refused; others see you turn. The line, SSO's own, prints once a press like the web line, so a player at the edge of the world knows it is not a bug.
+- **Why:** Every other step checks its destination; skipping the check on an edge let players walk into walls, and the edge of the world should feel like a wall rather than a teleport.
+- **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
+- **Pinned by:** `bug fixed: an unwalkable wrapped tile refuses the crossing, as a wall would`; `bug fixed: an edge with no map beyond is refused, as a wall would`; `SSO: a refused edge says why, once a press`; `walking off an edge onto an existing neighbour keeps the wrapped tile` (packages/server/tests/world.test.ts); `bug fixed: walking off an edge with no map beyond is refused, as a wall would` (packages/server/e2e/login-and-walk.test.ts); `bug fixed: a refused crossing is a turn the others on the map see`; `bug fixed: a rider's crossing tests the wrapped tile on the Airship grid` (packages/server/tests/world.test.ts)
 
 ## Kept on purpose
 
@@ -3321,7 +3358,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The same, except the body reverts at once for everyone, on the server.
 - **Why:** Flying an airship through a PvP area, or past monsters that cast spells, is a risk the rider takes; losing it is the price of dying there.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts` (`vehicleDeath`)
-- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `a Lightning death clears it too`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts)
+- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `kept on purpose: a Lightning death aboard loses the airship too`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts)
 
 ### Killing a wanted player never flags you
 - **Kind:** Kept on purpose
@@ -3386,6 +3423,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/spells/monsterspells.ts` (`castOne`)
 - **Pinned by:** `kept on purpose: a monster's Fireball flies in a random(4) direction from it, not at you` (packages/server/tests/spells.test.ts)
 
+### Alchemy sand is a tool and is never used up
+- **Kind:** Kept on purpose
+- **What you notice:** You mix a potion and the sand is still in your hand afterwards. The Potion Bottle and the crystal are used up.
+- **1.6:** The sand only had to be held, which can look like a bug in a game where every other ingredient is used up.
+- **SSO:** The same. Every craft uses up its materials and keeps its tool: the Blacksmith Hammer, the Saw, and for alchemy the held sand. Shops price sand at 100 to 150 gold against 23 to 35 for a potion, which fits a tool rather than a material. Operators can change those prices.
+- **Why:** Using up the sand on every mix would make alchemy cost far more than it earns.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startMix`, `finishCraft`)
+- **Pinned by:** `kept on purpose: completion takes the bottle and the crystal; the held sand is a tool` (packages/shared/tests/crafting/craft.test.ts); `kept on purpose: alchemy takes the bottle and crystal at completion; the sand stays in hand` (packages/server/tests/craft.test.ts)
+
 ## Server authority and exploits
 
 Changes that move authority from the client to the server and close exploits that let a player harm the server or other players, by system.
@@ -3404,17 +3450,18 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Administrative commands and editing are available according to your account's role; operators can inspect an audit trail.
 - **1.6:** Administrative gates lived in the client, while the server accepted map, item, tile and ban-list writes without checking authority.
-- **SSO:** Account roles and server-parsed commands control access. Editor writes are validated and versioned. Admin commands, world and NPC editor saves, setting changes and role changes are recorded in `audit_log` with actor, command, target, before and after; newspaper saves are not recorded; `bun run admin:audit [n]` reads it.
+- **SSO:** Each account's role grants permissions, and the server checks the permission for each command and editor. Editor writes are validated and versioned. Admin commands that act on a player or the world (not `/inventory`, `/location` or `/banlist`, and `/iplookup` only when the player is online), world and NPC editor saves, setting changes and role changes are recorded in `audit_log` with actor, command, target, before and after; newspaper saves are not recorded; `bun run admin:audit [n]` reads it.
 - **Why:** Without server checks anyone could rewrite the world and ban lists.
-- **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
+- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`can`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
 
 #### Login and account-creation limits
 - **Kind:** Exploit closed
 - **What you notice:** Too many login failures, new characters or simultaneous connections from an address cause a temporary refusal.
 - **1.6:** The game scripts did not limit password attempts or character creation. The Multiuser Server had a configurable total connection limit subject to its license; the archived configuration left that setting commented out.
-- **SSO:** Failed logins are counted per address (IPv6 per /64) and account-and-address for five minutes, creations per address for an hour, and open connections per address. The settings `loginFailsPerIp` (20), `loginFailsPerAccount` (5) and `createsPerIp` (3), and the environment variable `SSO_SOCKETS_PER_IP` (10), set the limits; zero disables one. The respective messages are “Too many failed logins. Please wait a few minutes and try again.”, “Too many new characters from this address. Please try again later.” and “Too many connections from this address.” The last also closes the socket with code 4006. Moderators and administrators bypass the per-address login refusal and stop counting toward open sockets after login. Only two password hashes run at once. Counters are in memory and reset on restart; an attempt counts before hashing, so simultaneous sockets cannot evade a limit. The original missing-name and wrong-password replies remain distinct.
+- **SSO:** Failed logins are counted per address (IPv6 per /64) and account-and-address for five minutes, creations per address for an hour, and open connections per address. The settings `loginFailsPerIp` (20), `loginFailsPerAccount` (5) and `createsPerIp` (3), and the environment variable `SSO_SOCKETS_PER_IP` (10), set the limits; zero disables one. The respective messages are “Too many failed logins. Please wait a few minutes and try again.”, “Too many new characters from this address. Please try again later.” and “Too many connections from this address.” The last also closes the socket with code 4006. A role with `bypassLoginLimits` (moderators and administrators by default) gets past a spent address only while its account has no failed login from that address in the window: one honest try, not a run of guesses at a staff password. Such a role also stops counting toward open sockets after login. Only two password hashes run at once. Counters are in memory and reset on restart; an attempt counts before hashing, so simultaneous sockets cannot evade a limit. The original missing-name and wrong-password replies remain distinct.
 - **Why:** Limits hinder password guessing, mass account creation and exhausting memory with password hashes.
-- **In the code:** `packages/server/src/systems/admin/login-limits.ts` (`allowLoginFromIp`, `allowLoginToAccount`, `allowCreate`)
+- **In the code:** `packages/server/src/systems/admin/login-limits.ts` (`allowLoginFromIp`, `allowLoginToAccount`, `allowCreate`), `packages/server/src/game.ts` (`login`)
+- **Pinned by:** `SSO: a staff account still gets in from a spent address`; `SSO: a spent address gets one try at a staff account, not a run of guesses` (packages/server/tests/login-limits-staff.test.ts); `20 failures from one address refuse the 21st, any account; the window ends them`; `5 wrong passwords lock the pair; another address and another account are free; a success clears` (packages/server/tests/login-limits.test.ts)
 
 #### Staff chat membership enforced
 - **Kind:** Exploit closed
@@ -3471,7 +3518,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server holds NPC files, so a save changes all uses immediately. Open Bio windows and shop lists for that NPC close because their lines may no longer exist. A player shop's `set` and `remove` close them too when they move lines.
 - **Why:** Per-client NPC copies were a peer-to-peer artefact; a stale list could otherwise buy by a line number the file no longer contains.
 - **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`saveNpc`, `closeNpcWindows`), `packages/server/src/systems/economy/playershop.ts` (`shopCommand`)
-- **Pinned by:** `divergence: set closes the shopkeeper's open lists and Bio windows` (packages/server/tests/playershop-db.test.ts)
+- **Pinned by:** `divergence: set closes the shopkeeper's open lists and Bio windows` (packages/server/tests/playershop-db.test.ts); `a save applies at once: flags, drops, an empty file` (packages/server/tests/npcedit.test.ts)
 
 #### Inert admin tools
 - **Kind:** Architecture
@@ -3514,20 +3561,20 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** The server kick is reliable and the alert explains it; the end tells the player when to come back, while the reason stays an internal staff record.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/game.ts` (`login`)
 
-#### Bans and jails carry a reason, a length and the maker's rank
+#### Bans and jails carry a reason, a length and the maker's role
 - **Kind:** Exploit closed
 - **What you notice:** `/ban`, `/jail` and `/banip` take an optional duration (`30m`, `12h`, `7d`, `2w`, `perm`) and reason after the name, such as `/ban Berlyn 3d being a rude person`; without a duration the server settings decide. Bans, jails and pardons by a moderator reach players only. Only the staff member who made a ban or jail, or an administrator, can change its length or lift it.
 - **1.6:** A ban was a prefix on the character file with no reason, end or author; any administrator could add or remove it.
-- **SSO:** Each action stores its maker's account, name and rank at that moment, the reason and the end. A re-ban by its maker or an administrator replaces the length; anyone else is refused with “Bob was banned by Alice; ask Alice or a senior staff member.” A lapsed ban or jail stops nobody.
-- **Why:** Moderators could otherwise overwrite an administrator's ban with their own and then lift it, and changes of role later would change who may lift an old ban. Staff with different views settle them together rather than overriding each other.
+- **SSO:** Each action stores its maker's account, name and role at that moment, the reason and the end; who may change it is decided by the maker's account, not the stored role. A re-ban by its maker or an administrator replaces the length; anyone else is refused with “Bob was banned by Alice; ask Alice or a senior staff member.” A lapsed ban or jail stops nobody.
+- **Why:** Moderators could otherwise overwrite an administrator's ban with their own and then lift it, and tying the right to the maker's account means a later change of role does not change who may lift an old ban. Staff with different views settle them together rather than overriding each other.
 - **In the code:** `packages/shared/src/rules/admin/moderation.ts` (`mayTarget`, `mayChange`, `parseModerationArgs`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/persistence/moderation.ts` (`recordModeration`)
 - **Pinned by:** `regression: a moderator's /ban cannot overwrite an administrator's ban to lift it`, `a moderator changes only their own ban; an administrator changes any`, `a moderator may not ban, jail or pardon another moderator` (packages/server/tests/admin.test.ts); `a ban keeps its maker's rank at the time: a demoted administrator's ban stays theirs` (packages/server/tests/moderation-db.test.ts)
 
 #### Moderation history and /banlist
 - **Kind:** Architecture
-- **What you notice:** `/banlist` lists the bans and jails in force (and, for administrators, IP bans); `/banlist <name>` shows a character's standing, last ten moderation actions with their reasons and, for administrators, their login addresses; `/banlist <address>` (administrators) shows an address's ban and who has played from it.
+- **What you notice:** `/banlist` lists the bans, jails and mutes in force (and, for administrators, IP bans); bans page 10 at a time, while jails, mutes and IP bans show the first 10; `/banlist <name>` shows a character's standing, last ten moderation actions with their reasons and, for administrators, their login addresses; `/banlist <address>` (administrators) shows an address's ban and who has played from it.
 - **1.6:** The bans lived in character files and a bans file, with no history and no in-game list.
-- **SSO:** Every ban, unban, IP ban, jail, release and pardon is a row in `moderation_log`, kept after the action ends.
+- **SSO:** Every staff ban, unban, IP ban, jail, release, mute, unmute and pardon is a row in `moderation_log`, kept after the action ends. A jail or mute that runs out on its own writes no row.
 - **Why:** Staff need to see why someone was banned and by whom before changing it.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/persistence/moderation.ts` (`moderationHistory`)
 - **Pinned by:** `moderators see bans and jails; administrators also see IP bans`, `/banlist <name>: standing, history and (administrators) addresses` (packages/server/tests/admin.test.ts)
@@ -3568,7 +3615,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server holds the board and turn and accepts only a legal move by the seated side on its turn, enforcing forced capture, multi-jump continuation, blocked-side loss, single start line, and Black moving first.
 - **Why:** A forged message could move the other player's pieces or impersonate a seat.
 - **In the code:** `packages/server/src/systems/casino/checkers.ts` (`ckMove`)
-- **Pinned by:** `only on your turn, only the legal move; the new turn goes to both views` (packages/server/tests/checkers.test.ts)
+- **Pinned by:** `only on your turn, only the legal move; the new turn goes to both views` (packages/server/tests/checkers.test.ts); `forced capture and multi-jump: steps are blocked when a jump exists, and jumpFrom restricts to the jumping piece`; `men move forward only, kings four ways`; `the loser is the side with no piece on the board or no legal move` (packages/shared/tests/casino/checkers.test.ts)
 
 #### Slot pulls paced by the 30-frame spin
 - **Kind:** Exploit closed
@@ -3584,7 +3631,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Chat names and channel membership come from the server; an ignored player's messages are filtered for the reader.
 - **1.6:** Clients built their own “X says …” text and could join administrator, guild and faction groups by hand.
-- **SSO:** The server stamps the speaker and controls faction, guild and room membership. Each reader's ignore list filters what the ignored player's client sent in 1.6: say, `/me`, admin lines, broadcasts, IMs, guild chat, the Overlord line, Radar and Inxition read-outs, and faction announcements. It also filters NPC replies relayed by that player, including quest slots 2–4, treasure rumours, faction-leader replies and their shop's stock list.
+- **SSO:** The server stamps the speaker and controls faction, guild and room membership. Each reader's ignore list filters what the ignored player's client sent in 1.6: say, `/me`, broadcasts, IMs, guild chat, the Overlord line, Radar and Inxition read-outs, and faction announcements. Staff chat is not filtered, so staff always hear each other. It also filters NPC replies relayed by that player, including quest slots 2–4, treasure rumours, faction-leader replies and their shop's stock list.
 - **Why:** Client-supplied names and group joins allowed impersonation and eavesdropping.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/chat/rooms.ts` (`enterRoom`), `packages/server/src/systems/chat/ignore.ts` (`hears`)
 
@@ -3592,10 +3639,10 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Repeated chat, IM, room, mail and board actions may be refused temporarily, with remaining time shown and the original input retained where applicable.
 - **1.6:** Broadcasting had no cooldown because registration was forced on, and there was no flood control. A refused broadcast remained typed.
-- **SSO:** Everyone uses the original unregistered broadcast cooldown of 1,000 frames (50 seconds) and its refusal. Local chat, `/me`, guild chat, IM, room lines, mail sends and board posts share a new 60-frame (3-second) cooldown. A refusal says “You cannot chat yet - N seconds remaining.” with seconds rounded up. Refused chat, IM and room text returns to its input; refused mail and board text stays open. A player-shop command is never said aloud, so it costs no cooldown and runs under one. Away replies do not use the cooldown. Lines are capped at 200 characters, there is no profanity filter, and all limits are operator settings.
+- **SSO:** Everyone uses the original unregistered broadcast cooldown of 1,000 frames (50 seconds) and its refusal. Local chat, `/me`, guild chat, IM, room lines, mail sends and board posts share a new 60-frame (3-second) cooldown. A line the house rule refuses still starts it, since it is logged and can rouse the NPCs' quest, treasure and faction replies. A refusal says “You cannot chat yet - N seconds remaining.” with seconds rounded up. Refused chat, IM and room text returns to its input; refused mail and board text stays open. A player-shop command is never said aloud, so it costs no cooldown and runs under one. Away replies do not use the cooldown. Lines are capped at 200 characters, there is no profanity filter, and all limits are operator settings.
 - **Why:** Spam harms players and the server.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/chat/im.ts` (`imIntent`)
-- **Pinned by:** `bug fixed: a command costs no chat cooldown and runs under one` (packages/server/tests/playershop-db.test.ts); `divergence: it shares the chat cooldown` (packages/server/tests/guilds.test.ts); `divergence: it shares the chat cooldown; a refused line goes back` and `divergence: room lines share the chat cooldown, refused back into the room's input` (packages/server/tests/im.test.ts)
+- **Pinned by:** `bug fixed: a command costs no chat cooldown and runs under one` (packages/server/tests/playershop-db.test.ts); `SSO: a line the house rule refuses still starts the cooldown` (packages/server/tests/chat.test.ts); `divergence: it shares the chat cooldown` (packages/server/tests/guilds.test.ts); `divergence: it shares the chat cooldown; a refused line goes back` and `divergence: room lines share the chat cooldown, refused back into the room's input` (packages/server/tests/im.test.ts)
 
 #### Rooms check membership on the server
 - **Kind:** Exploit closed
@@ -3635,11 +3682,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Password change via account flow
 - **Kind:** Architecture
-- **What you notice:** `Password=<new>` changes your account password without displaying it. Empty passwords or those longer than 64 characters are refused.
+- **What you notice:** `Password=<new>` changes your account password without displaying it. Empty passwords, those longer than 64 characters, and a line longer than the chat cap (`chatMaxChars`) are refused rather than cut. Spaces, `/`, `:` and `\` are removed, as in 1.6 (see [Password= removes every forbidden character](#password-removes-every-forbidden-character)).
 - **1.6:** The command edited a local field, echoed the new password in chat and uploaded it with the character sheet.
-- **SSO:** The already logged-in session changes the account password without asking for the old password. Success says “Password has been changed.”; an empty or too-long password says “Your password was not changed.”
+- **SSO:** The already logged-in session changes the account password without asking for the old password. Success says “Password has been changed.”; an empty or too-long password, or a line the chat cap would cut, says “Your password was not changed.”
 - **Why:** Passwords no longer live in character data, and echoing one would leak it into chat logs.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`)
+- **Pinned by:** `an empty or 65-character Password= is refused` (packages/server/tests/password-db.test.ts); `SSO: a Password= line longer than the chat cap is refused, not cut` (packages/server/tests/staff-chat-moderation.test.ts)
 
 ### Server-side combat
 
@@ -3711,9 +3759,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### IP bans and lookups use the socket
 - **Kind:** Exploit closed
-- **What you notice:** A banned address is refused at login, while IP lookup is available to moderators and administrators.
+- **What you notice:** IP bans use the real connection address, and IP lookup is available only to staff holding `/iplookup`.
 - **1.6:** IP sorting trusted the client-reported address and used substring matching; anyone could call the server's IP lookup. The IP ban did nothing because its response had no client handler and its marker files were never read.
-- **SSO:** `/BanIP` and `/unbanIP` work and are administrators' by default. A banned address is refused before the password check with the original unshown “You are banned from playing on this server.”; existing sessions are not kicked. The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` is restricted to moderators and administrators.
+- **SSO:** `/BanIP` and `/unbanIP` work and are administrators' by default. A banned address is refused with the original unshown “You are banned from playing on this server.” (when and how is in [IP bans are checked, cover an IPv6 /64 and act at once](#ip-bans-are-checked-cover-an-ipv6-64-and-act-at-once)). The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` needs its permission, which moderators and administrators hold by default.
 - **Why:** Trusting a client address allowed ban evasion and exposed IP addresses; an ineffective ban provided no protection.
 - **In the code:** `packages/server/src/gateway/server.ts` (`clientIp`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 
@@ -3732,7 +3780,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Counts and amounts are whole numbers at least 1, with banking allowing zero and gold drops limited to 9,999. The schema and transaction both check them; trade gold can be zero.
 - **Why:** Negative amounts could mint gold or items.
 - **In the code:** `packages/shared/src/protocol/economy.ts` (`buySchema`, `sellSchema`, `tradeOfferSchema`), `packages/shared/src/protocol/inventory.ts` (`goldSchema`)
-- **Pinned by:** `SSO: counts and amounts are integers ≥ 1 at the schema, gold drop ≤ 9999, trade gold ≥ 0` (packages/shared/tests/protocol/protocol.test.ts)
+- **Pinned by:** `SSO: counts and amounts are integers ≥ 1 at the schema, gold drop ≤ 9999, trade gold ≥ 0` (packages/shared/tests/protocol/protocol.test.ts); `commands by word 1, any case; the amount after one space; bad amounts read as none` (packages/server/tests/economy.test.ts); `register below 1 is silent` (packages/shared/tests/economy/playershop.test.ts); `SSO: every spell costs a whole SP amount of at least 0 in any armour and a crystal count of at least 1; the cast message carries no cost` (packages/shared/tests/spells/spells.test.ts)
 
 #### Dropped connections resume for 30 seconds; a second login replaces the first
 - **Kind:** Architecture
@@ -3799,7 +3847,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A missing chunk ends completion silently, just as a missing damaged item already did. Nothing is taken.
 - **Why:** The original could create chunks from nothing.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftStep`)
-- **Pinned by:** `divergence: a chunk dropped mid-craft repairs nothing and says nothing` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `divergence: a chunk dropped mid-craft repairs nothing and says nothing` (packages/server/tests/craft.test.ts); `divergence: a chunk gone at completion rolls no skill, though a finished repair on the same rolls does` (packages/server/tests/craft.test.ts)
 
 #### Crafting and gather state lives on the server
 - **Kind:** Architecture
@@ -3832,7 +3880,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server runs the craft during the session and ends it at logout. Every craft takes its materials when it finishes (see "Every craft takes its materials when it finishes"), so an ended craft loses nothing.
 - **Why:** Craft state is not kept across sessions in the saved character.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`craftStep`), `packages/server/src/systems/world/world.ts` (`removePlayer`)
-- **Pinned by:** `divergence: a craft ends at logout; a new session starts with none` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `divergence: a craft ends at logout and takes nothing; the next session starts with none` (packages/server/tests/inventory-db.test.ts)
 
 #### Cauldrons get unique ids
 - **Kind:** Architecture
@@ -3880,7 +3928,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** You can open and use a personal, house or guild vault only when its rules allow you; a refused house or guild vault says “You can't open a vault that's not yours!”
 - **1.6:** Chest and vault requests had no ownership or position check. A house door was its only protection.
-- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, and only a disbanded guild's last leader may found its name again, getting its vault back (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. For a forbidden house or guild vault the original standing-in-front line appears before the SSO refusal, modeled on the mailbox's ownership line. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
+- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, and only a disbanded guild's last leader may found its name again, getting its vault back (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. A forbidden house or guild vault answers with the SSO refusal, modeled on the mailbox's ownership line; standing away from it gives the original standing-in-front line instead. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
 - **Why:** Anyone could otherwise read and loot any vault.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `openContainer`, `depositContainer`, `withdrawContainer`), `packages/server/src/systems/economy/vault.ts` (`openVault`)
 
@@ -3898,7 +3946,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** Another player's offer could replace an open trade's partner, another sender could fill the initiator's column, and selecting someone else during a trade redirected later messages and the server move.
 - **SSO:** A player in a trade cannot be offered another.
 - **Why:** Other players could interfere with or redirect a trade.
-- **In the code:** `packages/server/src/systems/economy/trade.ts` (`openTrade`)
+- **In the code:** `packages/server/src/systems/economy/trade.ts` (`offerTrade`)
 
 #### Player shops are owned by id and validated
 - **Kind:** Exploit closed
@@ -3921,9 +3969,9 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Your skills page remains aligned after a promotion.
 - **1.6:** A promotion appended each granted skill and value to one list while leaving the separate amounts list unchanged, misaligning the panel until restart.
-- **SSO:** The skills panel is a fixed table and promotion changes no skill.
+- **SSO:** The skills panel is a fixed table indexed by skill. A promotion raises each granted skill to at least random(10) in its own row, so nothing can misalign.
 - **Why:** There are no separate lists to misalign.
-- **In the code:** `packages/server/src/systems/economy/intents.ts` (`trainIntent`)
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`trainIntent`), `packages/shared/src/rules/progression/promotion.ts` (`promoteClass`)
 
 #### Trades end when a trader leaves
 - **Kind:** Architecture
@@ -4031,7 +4079,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Removing an item from your bag addresses the selected slot and exact item name.
 - **1.6:** Inventory deletion and its callers matched item names by substring.
-- **SSO:** Removals use the bag-slot index and exact name; the game rule tables retain their original substring semantics.
+- **SSO:** Removals use the bag-slot index and exact name; selling to an NPC takes the first bag line whose name matches exactly, ignoring case. The game rule tables retain their original substring semantics.
 - **Why:** Substring deletion could destroy or rename the wrong item and create a name outside the catalogue.
 - **In the code:** `packages/shared/src/rules/inventory/inventory.ts` (`invDelSlot`), `packages/server/src/systems/economy/trade.ts` (`take`), `packages/server/src/systems/economy/shop.ts` (`npcSell`)
 
@@ -4092,13 +4140,13 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** The server stores tiles rather than pixels; Rays are scenery normally placed in the editor.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`addGround`), `packages/shared/src/rules/inventory/ground.ts` (`groundDrawOffset`)
 
-#### No click pause after picking up or opening a board
+#### No click pause after picking up an item
 - **Kind:** Architecture
-- **What you notice:** Picking up a ground item or opening your own board does not delay the next item click; walking is unaffected.
+- **What you notice:** Picking up a ground item does not delay the next item click; walking is unaffected. Clicking a guild hall's board still pauses item clicks for 40 frames, as in 1.6.
 - **1.6:** A ground item or own-board click set a pause up to 40 frames, usually ended by the server's reply after one round trip. The town Message Boards exited before setting it, and walking was never held.
-- **SSO:** There is no pause on those two paths. The server processes one item action per character at a time and answers in the same tick; container and switch pauses and Ctrl's 40-frame pause remain.
+- **SSO:** There is no pause after a pickup. A guild hall's board keeps its 40-frame click pause (see [A guild board opens for its members, in front of it](#a-guild-board-opens-for-its-members-in-front-of-it)). The server processes one item action per character at a time and answers in the same tick; container and switch pauses and Ctrl's 40-frame pause remain.
 - **Why:** The old pause waited for the network and play feels the same without it.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `actionIntent`)
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `actionIntent`), `packages/server/src/systems/mail/boards.ts` (`boardOpen`)
 
 #### Ground items and containers have server ids
 - **Kind:** Architecture
@@ -4112,11 +4160,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Mail is sent only from a mailbox
 - **Kind:** Exploit closed
-- **What you notice:** You must open your mailbox before sending mail.
+- **What you notice:** You must have your mailbox open to send mail; once you close it, open it again to send more.
 - **1.6:** The compose pane, and therefore its send action, was available only after loading mail at a mailbox.
-- **SSO:** The server refuses a send unless the player opened their mailbox in the session, and logs a cheat line.
+- **SSO:** The server refuses a send unless the player's mailbox is open (from opening it until the list's CLOSE or a map change, which also closes the mail screen), and logs a cheat line. A pane's CLOSE or REPLY leaves it open.
 - **Why:** A forged client could otherwise send mail from anywhere.
-- **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`)
+- **In the code:** `packages/server/src/systems/mail/mail.ts` (`mailSend`, `mailUiIntent`), `packages/server/src/systems/world/world.ts` (`enterRoom`), `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `SSO: closing the mailbox ends sending until it is opened again`; `a pane's CLOSE or REPLY keeps the mailbox open`; `SSO: a map change ends the mailbox session, so a send from elsewhere is refused` (packages/server/tests/mail-gate.test.ts); `a send with no mailbox opened this session stores nothing` (packages/server/tests/mail-boards.test.ts)
 
 #### Mail reaches existing characters only
 - **Kind:** Exploit closed
@@ -4154,9 +4203,10 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Paintings and photos must be valid 64×64 PNG images to save.
 - **1.6:** Raw image media of any size was written directly to the art directory.
-- **SSO:** The server accepts only non-interlaced PNGs exactly 64×64, with 8-bit RGB or RGBA channels, checked chunks and CRCs, and at most the operator's `artBytesMax` limit, 16,384 bytes by default. It gives each image a unique ID and silently drops invalid uploads.
+- **SSO:** The server accepts only non-interlaced PNGs exactly 64×64, with 8-bit RGB or RGBA channels, checked chunks and CRCs, and at most the operator's `artBytesMax` limit, 16,384 bytes by default and at most. It gives each image a unique ID and silently drops invalid uploads.
 - **Why:** Unbounded or malformed images could abuse disk and memory or be served to other players.
-- **In the code:** `packages/server/src/systems/mail/upload-check.ts` (`isPng`), `packages/server/src/systems/mail/art.ts` (`artSaveIntent`)
+- **In the code:** `packages/server/src/systems/mail/upload-check.ts` (`isPng`), `packages/server/src/systems/mail/art.ts` (`artSaveIntent`), `packages/server/src/settings.ts` (`artBytesMax`)
+- **Pinned by:** `the largest artBytesMax fits the upload message, so the setting always takes effect` (packages/server/tests/art-limit.test.ts)
 
 #### A newspaper is saved under its writer's name
 - **Kind:** Exploit closed
@@ -4182,7 +4232,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Using a Canvas or Film arms one save on the server; the save takes one Canvas or Film from the bag, a save that is not armed or finds none in the bag is ignored, and the arming clears on game entry.
 - **Why:** A modified client could otherwise store unlimited images for free.
 - **In the code:** `packages/server/src/systems/mail/art.ts` (`useCanvas`, `useFilm`, `artSaveIntent`)
-- **Pinned by:** `divergence: a second save and a save with no canvas are ignored` (packages/server/tests/art-news.test.ts)
+- **Pinned by:** `divergence: a second save and a save with no canvas are ignored` (packages/server/tests/art-news.test.ts); `divergence: an armed save whose Canvas or Film has left the bag is ignored` (packages/server/tests/art-news.test.ts)
 
 #### Art is never lost to a full bag
 - **Kind:** Exploit closed
@@ -4298,14 +4348,6 @@ Changes that move authority from the client to the server and close exploits tha
 
 ### Server-side social
 
-#### Murder flags come from the server
-- **Kind:** Exploit closed
-- **What you notice:** A murder flag follows an innocent player's death according to the game's server rules; pardons are also server-controlled.
-- **1.6:** Any peer could send a wanted or pardon message to any player.
-- **SSO:** On an innocent player's non-arena death, the server may flag the recorded last player to hit them, even if that hit was long ago and something else caused the death. Pardons are server-controlled.
-- **Why:** A forged message could frame a player or pardon the sender.
-- **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`, `pardon`)
-
 #### Guilds stored as server rows
 - **Kind:** Exploit closed
 - **What you notice:** Guild actions use current membership and leadership, and accepting an invitation requires the inviter to remain online and in charge.
@@ -4325,9 +4367,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Murder flag and pardons are server-only
 - **Kind:** Exploit closed
-- **What you notice:** A credited killer can become wanted; a moderator or administrator can pardon an online player.
+- **What you notice:** A credited killer can become wanted; staff with `/pardon` can pardon an online player they outrank.
 - **1.6:** Any client could send wanted or pardon messages to any player. A message to an absent killer was lost.
-- **SSO:** At the end of the victim's death lock the server credits the recorded last player to hit them by player ID and applies the flag, even if another cause killed them later. A player who has logged off is not flagged. A staff `/Pardon` says “<name> is not online.” if the named player is absent.
+- **SSO:** On an innocent player's non-arena death, at the end of the death lock, the server credits the recorded last player to hit them by player ID and applies the flag, even if another cause dealt the final blow, provided the hit landed within 40 ticks (2 seconds) of the death (see [A death long after the last hit credits no one](#a-death-long-after-the-last-hit-credits-no-one)). A player who has logged off is not flagged, nor is anyone during a Lightning Assassin's game. A staff `/Pardon` says “<name> is not online.” if the named player is absent.
 - **Why:** Forged messages could frame an innocent player or pardon oneself.
 - **In the code:** `packages/server/src/systems/social/murder.ts` (`flagKiller`, `pardon`)
 
@@ -4335,7 +4377,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Assassin points come from deaths credited by the server and are announced just after the death line.
 - **1.6:** A client could submit any number of points or forge the score message. A message to a killer who had left was lost.
-- **SSO:** The server applies the original comparison to the recorded last player to hit the victim, by player ID, at the end of the death lock. That credit can be stale if something else killed the victim later; a player who has logged off earns nothing. The one-hit Lightning flag comes from the server's game mode.
+- **SSO:** The server applies the original comparison to the recorded last player to hit the victim, by player ID, at the end of the death lock. The hit must have landed within 40 ticks of the death, even if something else dealt the final blow; a player who has logged off earns nothing. The one-hit Lightning flag comes from the server's game mode.
 - **Why:** Forged scores could win prizes.
 - **In the code:** `packages/server/src/systems/social/assassin.ts` (`scoreKill`, `lightningOn`)
 
@@ -4456,7 +4498,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** A cast click must be on the playfield, and a summon whose tile is off the map is refused before anything is spent; a pig dropped toward an edge stays in the bag.
 - **Why:** Server monsters live on map tiles; an off-map monster could not be reached or saved.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`planSummon`, `summonPig`)
-- **Pinned by:** `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts); `bug fixed: Raise Dead on a grave in the bottom row is refused before anything is spent: the Zombie would be off the map` (packages/server/tests/spells.test.ts); `bug fixed: a faced tile off the map at the side, bottom or top → "You can't drop an animal here!", the pig kept` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 ### Server-side vehicles
 
@@ -4480,9 +4522,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Respawn point derived by the server
 - **Kind:** Exploit closed
-- **What you notice:** Entering an O-O-O map records your respawn point at its entry tile.
+- **What you notice:** Entering an O-O-O map other than the jail records your respawn point at its entry tile.
 - **1.6:** The client could write an arbitrary respawn destination.
-- **SSO:** The server records the point when a player enters an O-O-O map.
+- **SSO:** The server records the point when a player enters an O-O-O map, except the jail map.
 - **Why:** A modified client could otherwise set an arbitrary respawn teleport.
 - **In the code:** `packages/server/src/systems/world/world.ts` (`enterRoom`)
 - **Pinned by:** `SSO: the server records the respawn point on entering an O-O-O map; the client sends none` (packages/server/tests/world.test.ts)
@@ -4532,7 +4574,7 @@ What 1.6 did that cannot happen under server authority, and what 1.6 built but n
 - **Other players' steps were batched through a relay queue.** 1.6 sent a step directly only when exactly one other player was present; with two or more it relayed steps in 350 ms batches, duplicating some and dropping others when the queue was long. SSO's server broadcasts each step in the tick it happens, so nothing is needed.
 - **Sprite-slot miscounts in the player and monster lists.** 1.6 counted players, blocked tiles and clicked names by reading fixed sprite slots, and a few slots were miscounted or wired to the wrong name field. SSO has no sprite slots, so nothing is needed.
 - **The warp's input lock sat in a local variable.** 1.6 set its keyboard lock for a warp in a variable that did nothing outside that one routine; it was harmless because the hidden playfield blocked moves anyway. SSO's server holds a loading lock while you change map, so nothing is needed.
-- **Several admin commands misbehaved in small ways.** 1.6 warped an admin twice for some flag pairs, showed location and IP lookups twice to someone flagged both immortal and moderator, needed an extra server access level to kick, overwrote the admin's own IP during a lookup, left a kick reply with no handler, stacked the banned prefix on repeated bans, made a file for a ban on a name that does not exist, and left stray `**` gaps in the IP ban list. SSO has a single role check and the server does the kicking and banning, so none of this exists.
+- **Several admin commands misbehaved in small ways.** 1.6 warped an admin twice for some flag pairs, showed location and IP lookups twice to someone flagged both immortal and moderator, needed an extra server access level to kick, overwrote the admin's own IP during a lookup, left a kick reply with no handler, stacked the banned prefix on repeated bans, made a file for a ban on a name that does not exist, and left stray `**` gaps in the IP ban list. SSO checks each command's permission once and the server does the kicking and banning, so none of this exists.
 - **Each screen kept its own monster hit points.** 1.6 had every client apply melee damage and roll spell damage to its own copy of a monster's hit points, so the copies drifted apart and two players could each be awarded the kill. SSO has one authoritative monster, one roll and one killer.
 - **Each client rolled monster attacks against itself.** 1.6 had every client roll monster attacks and spells against its own player. SSO's server rolls once per monster and player pair, with the same probabilities.
 - **A twelfth spell effect cancelled an older one.** 1.6 had eleven spell-effect sprite slots; with all busy, a new spell reused the first and cancelled the old effect. SSO has [no such cap on effects](#no-11-spell-fx-cap).
@@ -4574,4 +4616,4 @@ These were built into 1.6 but could never be reached in play, so SSO does the sa
 
 - **The boat tile-collision bypass was never reachable.** 1.6 had a complete boat flow (building, boarding, movement and unboarding) and the server accepted a dropped `'s Boat` or `'s Battleship`, but the deed handler exited before it called the boat builder, no NPC sold either deed, and the character cast had no body-55 or body-56 frames. Staging a boat by hand shows the ground `BoatPic` and lets its owner click it, but boarding raises a Script Error after the server has already removed the boat from the map. SSO does the same and does not build boats.
 - **The elemental orb war never worked.** 1.6 was designed so that an orb dropped on an elemental platform shifted the balance of power between the four mage classes, but nothing connected it: no platform existed, nothing saved the balance and no monster dropped an orb, so an orb dropped as an ordinary item. SSO does the same and does not build the war; it is a candidate to build after release.
-- **Pinned by:** `orb drop: a Water Orb lands on the floor like any item`; `orb drop: an orb goes into a container on the faced tile`; `orb drop: aboard an Airship "You can't drop this from the sky!"` (packages/server/tests/pigs-orbs-webs.test.ts)
+  - **Pinned by:** `orb drop: a Water Orb lands on the floor like any item`; `orb drop: an orb goes into a container on the faced tile`; `orb drop: aboard an Airship "You can't drop this from the sky!"` (packages/server/tests/pigs-orbs-webs.test.ts)

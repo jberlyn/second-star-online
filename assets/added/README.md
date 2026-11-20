@@ -13,7 +13,7 @@ to them by name. Never edit an atlas by hand.
 | `paperdoll/` | worn-item layers | the `paperdoll` atlas |
 | `fx/` | spell and effect frames (`<member>-<n>.png`, `x<member>-<n>.png` for a trail) | the `fx` atlas |
 | `items/` | item pictures: bag icons and ground items | the `items` atlas |
-| `sounds/` | `<name>.wav` or `<name>.mp3` | `packages/data/assets/sounds/`, listed in `index.sounds` |
+| `sounds/` | `<name>.wav` or `<name>.mp3` | `packages/data/assets/sounds/` (git-ignored build output that `assets:build` creates), listed in `index.sounds` |
 
 An unknown folder, a file with no sidecar, a sidecar with no file, a sidecar whose `group` is not
 its folder, or a sound that is not really a WAV or MP3 fails the build with the file's path.

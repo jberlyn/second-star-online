@@ -824,8 +824,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           shop.close();
           model.storageOpen = false;
         }
-        // And an open message board.
+        // And an open message board or mailbox.
         board.reset();
+        mail.reset();
         // Drawing the map's items clears the key lock.
         model.keyLock = false;
         void playfield.setMap(msg.map).then(() => {

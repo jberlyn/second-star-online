@@ -123,7 +123,7 @@ export const OCARINA = {
 /** How many items one tile holds before a player's drop finds the floor too crowded. */
 export const TILE_ITEM_CAP = 10;
 
-/** Frames between a give's drop and the target's grab: 180 ticks of 1/60 s. */
+/** Ticks between a give's drop and the target's grab: 3 s, as 1.6's 180 frames of 1/60 s. */
 export const GIVE_GRAB_FRAMES = 60;
 
 export interface ItemCtx {

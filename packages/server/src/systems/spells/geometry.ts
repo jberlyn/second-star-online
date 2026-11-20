@@ -18,7 +18,7 @@ import {
   walkFrame,
 } from "@secondstaronline/shared";
 
-import { bodyOf, MONSTER_STEP_FRAMES, type MonsterSlot } from "../monsters/slots.ts";
+import { BODY, bodyOf, MONSTER_STEP_FRAMES, type MonsterSlot } from "../monsters/slots.ts";
 import type { Player } from "../world/world.ts";
 
 export type Rect = { left: number; top: number; right: number; bottom: number };
@@ -121,8 +121,8 @@ export function monsterMember(slot: MonsterSlot): string {
 
 /**
  * The Holy Shield test of `HitMe`/`HitMe2`: an innocent (`gnL = 0`) whose sprite 112 has exactly
- * the loc of a monster sprite whose member contains "99-". Spells never test it (the spell
- * collision has no "99-" check).
+ * the loc of a Holy Shield (body 99). The original tested the member name for "99-", which any
+ * body ending in 99 would also pass; SSO compares the body (a bug fixed). Spells never test it.
  */
 export function onHolyShield(p: Player, slots: readonly MonsterSlot[]): boolean {
   if (p.char.wanted) {
@@ -131,6 +131,12 @@ export function onHolyShield(p: Player, slots: readonly MonsterSlot[]): boolean 
   const me = playerLoc(p);
   return slots.some((s) => {
     const at = monsterLoc(s);
-    return !!at && monsterMember(s).includes("99-") && at.h === me.h && at.v === me.v;
+    return (
+      !!at &&
+      s.live !== null &&
+      bodyOf(s.live.name) === BODY.holyShield &&
+      at.h === me.h &&
+      at.v === me.v
+    );
   });
 }

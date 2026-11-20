@@ -179,6 +179,24 @@ describe("the list", () => {
     expect(m.el.querySelector<HTMLElement>(".mail-read")?.hidden).toBe(true);
   });
 
+  test("divergence: with every pane up, nothing in the mail screen reaches the chat entry", () => {
+    const { m, btn } = mailScreen();
+    m.show(MSGS);
+    btn("Write message").click();
+    const px = (v: string) => Number.parseFloat(v || "0");
+    // Every placed piece, on the stage: the screen's origin plus its own box.
+    const boxes = [...m.el.querySelectorAll<HTMLElement>("*")]
+      .filter((e) => e.style.top !== "")
+      .map((e) => ({
+        bottom: 28 + px(e.style.top) + px(e.style.height),
+        right: 154 + px(e.style.left) + px(e.style.width),
+      }));
+    expect(boxes.length).toBeGreaterThan(0);
+    // The chat entry is the stage's (21, 556) 760×20 box: nothing reaches down to it.
+    expect(boxes.filter((b) => b.bottom > 556)).toEqual([]);
+    expect(Math.max(...boxes.map((b) => b.bottom))).toBeLessThanOrEqual(28 + 350);
+  });
+
   test("CLOSE unlocks, leaves frame 72 and tells the server", () => {
     const { m, btn, state, log } = mailScreen();
     m.show(MSGS);

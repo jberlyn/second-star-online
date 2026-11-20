@@ -12,7 +12,7 @@ For modding workflows, rule precedence, and worked examples, see the [Modding gu
 | `tiles.json` | the tile catalogue (`code`, `member`, `flags`), the walk whitelist (`walkable`), and single-tile `defaults` | movement, housing, spells, the map editor, the client draw |
 | `items.json` | the item catalogue (name, archived spellings, icon: an original member or added art), fixtures, the World Editor's item list, the player-shop whitelist | inventory, shops, drops, the World Editor |
 | `attpower.json`, `item-rules.json` | weapon power; the item rules: equip, use, armour, breaks, the item menu, the paperdoll, ground items, containers, gear bonuses, the swing | combat, inventory, spells, the paperdoll |
-| `classes.json` | classes and promotions, the skills, the Skills page rows, starting skills | creation, promotion, the Skills tab |
+| `classes.json` | classes, their stat bonuses and promotions, the skills, the Skills page rows, starting skills, the skills each weapon trains on a kill | creation, promotion, skill gain, the Skills tab |
 | `monsters.json` | monster stats, `editorLists`, name-matched `rules`, `casting`, melee affinities, skill caps, `generic` | the monster, combat, quest and editor systems |
 | `spells.json` | spell rows: cost, crystals, harmful, book, Info, summon, FX runs with frames and sounds; `effect` | spells, client audio, spellbook |
 | `gather.json`, `craft.json` | gathering and crafting tables | gathering, crafting |
@@ -21,7 +21,7 @@ For modding workflows, rule precedence, and worked examples, see the [Modding gu
 | `casino.json`, `quests.json`, `help.json` | the casino tables, quest pools, help topics | casino, quests, help |
 | `npc-files.json` | each NPC script `<Name>.txt` as one string (lines joined by CR) | the NPC file store |
 
-- **NPC files** are only the seed for a fresh database. The in-game NPC Editor saves its edits to the `npc_files` table, which the server reads on top of this file (`packages/server/src/systems/monsters/npcfiles.ts`), so on a running server an edit here shows only where the database has no saved version of that NPC.
+- **NPC files** are loaded at every server start as the base NPC store, not only when seeding. The in-game NPC Editor saves its edits to the `npc_files` table, which the server applies on top of this file (`packages/server/src/systems/monsters/npcfiles.ts`), so on a running server an edit here shows wherever the database has no saved version of that NPC.
 - **Fixed sizes.** Lists may grow, except where the code or the art needs a count: a map is 12 rows of 17 tokens in 4 layers, there are 3 start classes, 3 factions, 5 chat rooms, 4 paint tools, 24 checkers squares, and the Bio strip has room for 14 medals.
 - **Release baseline rows** are fingerprinted in `../tests/content-baseline.json`; `content-baseline.test.ts` detects changed, removed or reordered baseline rows. Review intentional changes and update the affected fingerprints and behavior docs.
 ## Commands

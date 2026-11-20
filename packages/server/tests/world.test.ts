@@ -455,6 +455,39 @@ describe("movement sim", () => {
     expect(out.some((o) => o.to === "a" && o.msg.t === "snapshot")).toBe(false);
   });
 
+  test("bug fixed: a refused crossing is a turn the others on the map see", () => {
+    const seed = testMap("x1000y992");
+    const east = testMap(mapName(1001, 992), [[1, 5]]); // a tree on the arrival tile
+    const { join, run } = setup([seed, east]);
+    const a = player("a", seed, 17, 5);
+    a.facing = "N";
+    const b = player("b", seed, 3, 3);
+    join(a);
+    join(b);
+    pressStep(a, "R", false);
+    const out = run(1);
+    const seen = out.flatMap((o) => (o.to === "b" && o.msg.t === "delta" ? o.msg.events : []));
+    expect(seen).toContainEqual({ e: "turn", id: "a", facing: "E" });
+  });
+
+  test("bug fixed: a rider's crossing tests the wrapped tile on the Airship grid", () => {
+    // Water on the arrival tile: the Airship crosses, a walker does not.
+    const water = (x: number, y: number) => (x === 1 && y === 5 ? "W1" : "G1");
+    const cross = (vehicle: "Airship" | null) => {
+      const seed = testMap("x1000y992");
+      const east = testMap(mapName(1001, 992), [], water);
+      const { join, run } = setup([seed, east]);
+      const a = player("a", seed, 17, 5);
+      a.vehicle = vehicle;
+      join(a);
+      pressStep(a, "R", false);
+      run(1);
+      return a.map.name;
+    };
+    expect(cross(null)).toBe("x1000y992");
+    expect(cross("Airship")).toBe("x1001y992");
+  });
+
   test("bug fixed: an edge with no map beyond is refused, as a wall would", () => {
     const seed = testMap("x1000y992");
     const { join, run } = setup([seed]);
