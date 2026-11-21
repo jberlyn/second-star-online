@@ -187,6 +187,47 @@ describe("sailing", () => {
   });
 });
 
+describe("facing at the mooring", () => {
+  test("SSO: a new ship faces out to sea, the way its builder looked", () => {
+    const s = scene();
+    give(s.ann, 1, "Boat Deed");
+    const out = useIntent(s.ctx(), s.room, s.ann, 1);
+    expect(parked(s.map, 8, 5)?.facing).toBe("E");
+    expect(events(out, "Bob")).toContainEqual({
+      e: "gadd",
+      item: { id: parked(s.map, 8, 5)?.id ?? "", name: "Ann's Boat", x: 8, y: 5, facing: "E" },
+    });
+  });
+  test("SSO: a ship parks facing the way it was left, and boarding takes that facing", () => {
+    const s = aboard();
+    s.ann.facing = "W";
+    ctrl(s, s.ann);
+    expect(parked(s.map, 8, 5)?.facing).toBe("W");
+    // Ashore at (7, 5), Ann turns east to face it; aboard she faces west, as it lay.
+    expect([s.ann.x, s.ann.y]).toEqual([7, 5]);
+    s.ann.facing = "E";
+    ctrl(s, s.ann);
+    expect(s.ann.vehicle).toBe("Boat");
+    expect(s.ann.facing as string).toBe("W");
+  });
+  test("SSO: a ship parked before facing was kept, or placed by an operator, faces east", () => {
+    const s = scene();
+    s.map.ground.push({
+      id: "old",
+      item: "Ann's Boat",
+      ownerId: "Ann",
+      x: 8,
+      y: 5,
+      kind: "drop",
+      expiresAt: null,
+    });
+    s.ann.facing = "E";
+    s.ann.itemPause = 0;
+    actionIntent(s.ctx(), s.room, s.ann);
+    expect([s.ann.vehicle, s.ann.facing]).toEqual(["Boat", "E"]);
+  });
+});
+
 describe("getting off", () => {
   test("onto the faced shore: you step ashore and the boat parks with its hull", () => {
     const s = aboard();

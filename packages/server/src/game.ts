@@ -585,6 +585,7 @@ export function createGame(deps: GameDeps): Game {
       ...(g.ownerId ? { ownerId: g.ownerId } : {}),
       ...(g.hull != null ? { hull: g.hull } : {}),
       ...(g.parkedAt ? { parkedAt: Date.parse(g.parkedAt) } : {}),
+      ...(g.facing ? { facing: g.facing } : {}),
     }));
   }
 
@@ -839,6 +840,7 @@ export function createGame(deps: GameDeps): Game {
               ownerId: g.ownerId ?? null,
               hull: g.hull ?? null,
               parkedAt: g.parkedAt == null ? null : new Date(g.parkedAt).toISOString(),
+              facing: g.facing ?? null,
             },
             now,
           );

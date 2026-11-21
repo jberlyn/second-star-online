@@ -14,7 +14,7 @@ import {
   type Intent,
   lenOf,
 } from "../src/model.ts";
-import { bodyFrame, SHIP_SWELL_TICKS } from "../src/playfield.ts";
+import { bodyFrame, mooredShipMember, SHIP_SWELL_TICKS } from "../src/playfield.ts";
 
 const rows = (code: string) => Array.from({ length: 12 }, () => Array(17).fill(code).join(" "));
 const map: MapView = {
@@ -135,6 +135,19 @@ describe("the rider's frames", () => {
   test("mid-step an 8-frame step shows F1, F2, F3, F2 (counters 8, 6, 4, 2)", () => {
     const { m } = setup(57);
     expect([7, 5, 3, 1].map((left) => bodyFrame(m, 57, left))).toEqual(["F1", "F2", "F3", "F2"]);
+  });
+  test("SSO: a moored ship bobs on the riders' swell, facing the way it was left", () => {
+    expect([0, 8, 16, 24, 32].map((t) => mooredShipMember("Ann's Boat", undefined, t))).toEqual([
+      "55-F1-E",
+      "55-F2-E",
+      "55-F3-E",
+      "55-F4-E",
+      "55-F1-E",
+    ]);
+    expect(mooredShipMember("Ann's Battleship", "N", 17)).toBe("56-F3-N");
+    expect(mooredShipMember("Ann's Boat", "W", 0)).toBe("55-F1-W");
+    expect(mooredShipMember("Ann's Airship", "N", 0)).toBeNull();
+    expect(mooredShipMember("Apple", undefined, 0)).toBeNull();
   });
   test("SSO: a ship rides a slow swell, F1 to F4 every 0.4 s, standing or sailing", () => {
     const { m } = setup(55);

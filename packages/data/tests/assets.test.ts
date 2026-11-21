@@ -753,3 +753,40 @@ describe("original assets (assets/original/)", () => {
     expect(sounds.filter((r) => (r[SSO] as string).includes("nothing plays")).length).toBe(13);
   });
 });
+
+describe("ship rider frames (assets/added/bodies/55-*, 56-*)", () => {
+  const ASSETS = join(import.meta.dir, "../../../assets");
+  test("the east frame lands on the docked picture's pixels, so boarding moves nothing", () => {
+    for (const [body, pic] of [
+      [55, "319491_BoatPic.png"],
+      [56, "319492_BattleshipPic.png"],
+    ] as const) {
+      const docked = decodePng(readFileSync(join(ASSETS, "original/main/bitmaps", pic)));
+      const rider = decodePng(readFileSync(join(ASSETS, `added/bodies/${body}-f1-e.png`)));
+      const { regX, regY } = JSON.parse(
+        readFileSync(join(ASSETS, `added/bodies/${body}-f1-e.json`), "utf8"),
+      );
+      // The rider's point is (16, -2) from the tile; a ground picture is pasted at (1, 1).
+      const offX = 16 - regX - 1;
+      const offY = -2 - regY - 1;
+      let mismatched = 0;
+      for (let y = 0; y < docked.height; y++) {
+        for (let x = 0; x < docked.width; x++) {
+          const d = (y * docked.width + x) * 4;
+          const rgb = [docked.data[d], docked.data[d + 1], docked.data[d + 2]];
+          if (rgb.join() === "0,255,0") {
+            continue;
+          }
+          const rx = x - offX;
+          const ry = y - offY;
+          const r = (ry * rider.width + rx) * 4;
+          const got = [rider.data[r], rider.data[r + 1], rider.data[r + 2], rider.data[r + 3]];
+          if (got.join() !== [...rgb, 255].join()) {
+            mismatched++;
+          }
+        }
+      }
+      expect({ body, mismatched }).toEqual({ body, mismatched: 0 });
+    }
+  });
+});

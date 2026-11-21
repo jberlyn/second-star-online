@@ -113,6 +113,8 @@ export function vehicleDeed(
     kind: "drop",
     expiresAt: null,
     ownerId: p.id,
+    // A new ship faces out to sea, the way its builder looks.
+    ...(isShip(vehicle) ? { facing: p.facing } : {}),
   });
   invDelSlot(p.char.bag, slot - 1, 1);
   p.invDirty = true;
@@ -162,6 +164,10 @@ export function vehicleClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem)
   p.x = g.x;
   p.y = g.y;
   p.stepFrames = 0;
+  // Aboard a ship you face the way it was moored, so boarding moves no pixel of it.
+  if (isShip(vehicle)) {
+    p.facing = g.facing ?? "E";
+  }
   const body = VEHICLE_BODY[vehicle];
   p.spell.body = body;
   io.all({ e: "body", id: p.id, body });
@@ -218,6 +224,8 @@ export function unboardVehicle(ctx: ItemCtx, room: Room, p: Player): Outgoing[] 
     ownerId: p.id,
     hull: p.hull,
     parkedAt: ctx.now,
+    // A ship stays facing the way it was left.
+    ...(isShip(vehicle) ? { facing: p.facing } : {}),
   });
   p.vehicle = null;
   p.hull = null;

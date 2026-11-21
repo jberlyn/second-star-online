@@ -102,6 +102,8 @@ export interface GroundView {
   name: string;
   x: number;
   y: number;
+  /** The way a parked Boat or Battleship faces; absent faces east. */
+  facing?: FacingWire;
 }
 
 /** Your gold, 15 bag lines and equipment (the `inx` reply). */

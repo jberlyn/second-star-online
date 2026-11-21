@@ -14,8 +14,9 @@
  *   stays put and shimmers on F2 and F4.
  * - The Battleship's `fire1-3` frames add a broadside of smoke along its sides to F1.
  *
- * Every frame is drawn on its 32 px tile, where the docked item sits, so the registration point is
- * the rider's (16, -2) from the tile's top left; `--preview` writes a 6x contact sheet.
+ * Every frame is drawn on the docked picture's 32 px grid, so the east frames land on the docked
+ * ship's pixels; the client also draws a parked ship with them, so it bobs at its mooring.
+ * `--preview` writes a 6x contact sheet.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -32,9 +33,14 @@ if (previewAt > 0 && !PREVIEW) {
 }
 
 const T = 32;
-/** The rider's registration point from its tile's top left (`walkerPixel`: X*32-16, Y*32-34). */
-const REG_X = 16;
-const REG_Y = -2;
+/**
+ * The rider's registration point in the frame's 32 px grid. The rider's point is (16, -2) from its
+ * tile's top left (`walkerPixel`), and 1.6 pastes a ground picture at (1, 1) of the tile
+ * (`groundPictureTopLeft`), so the grid starts 1 px right of and below the tile: the docked ship
+ * and the boarded one land on the same pixels.
+ */
+const REG_X = 15;
+const REG_Y = -3;
 
 type Px = readonly [number, number, number];
 type Grid = (Px | null)[][];

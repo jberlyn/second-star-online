@@ -152,6 +152,28 @@ describe("migration 43 (vehicle hulls)", () => {
     expect(() => db.query("UPDATE characters SET hull = -1 WHERE id = ?").run(id)).toThrow();
   });
 
+  test("SSO: a parked ship's facing round-trips; none faces east; nothing else is allowed", async () => {
+    const g = game();
+    const id = await makeChar(g, "Alice");
+    const row = {
+      mapId: seedMapId(),
+      y: 3,
+      item: "Alice's Boat",
+      qty: 1,
+      kind: "drop" as const,
+      expiresAt: null,
+      ownerId: id,
+    };
+    const ship = Bun.randomUUIDv7();
+    insertGround(db, { ...row, id: ship, x: 3, facing: "N" }, now);
+    insertGround(db, { ...row, id: Bun.randomUUIDv7(), x: 4 }, now);
+    expect(loadGround(db, seedMapId(), now)).toMatchObject([
+      { x: 3, facing: "N" },
+      { x: 4, facing: null },
+    ]);
+    expect(() => db.query("UPDATE ground_items SET facing = 'X' WHERE id = ?").run(ship)).toThrow();
+  });
+
   test("SSO: a rider's hull is saved and a login comes back with it", async () => {
     const g = game();
     const id = await makeChar(g, "Alice");

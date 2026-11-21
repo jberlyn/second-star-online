@@ -44,7 +44,9 @@ import {
   paperdollLayers,
   showsClockFace,
   trailFrames,
+  VEHICLE_BODY,
   vehicleOfBody,
+  vehicleOfItem,
   walkFrame,
 } from "@secondstaronline/shared";
 
@@ -96,10 +98,27 @@ const RIDER_FRAMES = ["F2", "F3", "F1"] as const;
 const SWELL_FRAMES = ["F1", "F2", "F3", "F4"] as const;
 /** Ticks a ship holds each swell frame: 8 is 0.4 s, a full swell 1.6 s. */
 export const SHIP_SWELL_TICKS = 8;
+/** The swell frame on a tick, shared by riders and moored ships so boarding keeps the phase. */
+export function swellFrame(tick: number): BodyFrame {
+  return SWELL_FRAMES[Math.floor(tick / SHIP_SWELL_TICKS) % 4] ?? "F1";
+}
+/**
+ * A parked Boat or Battleship bobs at its mooring: it draws as its rider's frame on the swell,
+ * facing the way it was left (east, the docked picture on the same pixels, when unknown;
+ * `packages/data/build/art/ships.ts`).
+ */
+export function mooredShipMember(
+  name: string,
+  facing: "N" | "S" | "E" | "W" | undefined,
+  tick: number,
+): string | null {
+  const vehicle = vehicleOfItem(name);
+  return isShip(vehicle) ? `${VEHICLE_BODY[vehicle]}-${swellFrame(tick)}-${facing ?? "E"}` : null;
+}
 export function bodyFrame(model: Model, body: number | null, frames: number): BodyFrame {
   const vehicle = vehicleOfBody(body);
   if (isShip(vehicle)) {
-    return SWELL_FRAMES[Math.floor(model.tick / SHIP_SWELL_TICKS) % 4] ?? "F1";
+    return swellFrame(model.tick);
   }
   if (vehicle !== null && frames <= 0) {
     return RIDER_FRAMES[model.tick % 3] ?? "F2";
@@ -283,7 +302,10 @@ export function createPlayfield(assets: Assets): Playfield {
           const px = at.px + off.dx;
           const py = at.py + off.dy;
           const pic = groundPicture(g.name);
-          if (pic !== g.name) {
+          const moored = mooredShipMember(g.name, g.facing, model.tick);
+          if (moored) {
+            drawSprite(ctx, assets, "bodies", moored, px, py);
+          } else if (pic !== g.name) {
             // A custom picture is pasted into a 32×32 scratch member (reg 16, -2) at (1, 1),
             // ignoring the picture's own regpoint.
             const tl = groundPictureTopLeft(px, py);

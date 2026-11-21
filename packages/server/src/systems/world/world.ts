@@ -122,10 +122,12 @@ export interface GroundItem {
   /** A parked vehicle's hull (null or absent: full) and the wall-clock ms it was parked at. */
   hull?: number | null;
   parkedAt?: number | null;
+  /** The way a parked ship faces; null or absent faces east, as its docked picture. */
+  facing?: Facing | null;
 }
 
 export function groundView(g: GroundItem): GroundView {
-  return { id: g.id, name: g.item, x: g.x, y: g.y };
+  return { id: g.id, name: g.item, x: g.x, y: g.y, ...(g.facing ? { facing: g.facing } : {}) };
 }
 
 /** Map field 12 items 1, 2, 3 and 5. */
