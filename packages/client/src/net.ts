@@ -10,8 +10,11 @@ export interface Connection {
   close(): void;
   /** Replaced by the app: called for every server message. */
   onMessage: (msg: ServerMsg) => void;
-  /** Called when the connection is gone for good (logout, kick, resume refused). */
-  onGone: (text: string | null) => void;
+  /**
+   * Called when the connection is gone for good (logout, kick, resume refused). `relogin` marks a
+   * refused resume: the player meant to stay, so the app reopens Load Character, not the title.
+   */
+  onGone: (text: string | null, relogin?: boolean) => void;
   /** The token from the last `welcome`, used to resume. */
   token: string | null;
 }
@@ -34,6 +37,17 @@ export function connect(url: string = wsUrl()): Promise<Connection> {
     let closedByUs = false;
     let attempts = 0;
     let resolved = false;
+    /** A resume was sent on this socket and has not been answered yet. */
+    let resuming = false;
+    /** `onGone` has run: the closes that follow are ours to ignore. */
+    let ended = false;
+    const end = (text: string | null, relogin = false) => {
+      if (ended) {
+        return;
+      }
+      ended = true;
+      conn.onGone(text, relogin);
+    };
 
     const conn: Connection = {
       token: null,
@@ -59,6 +73,7 @@ export function connect(url: string = wsUrl()): Promise<Connection> {
           resolved = true;
           resolve(conn);
         } else if (conn.token) {
+          resuming = true;
           sock.send(JSON.stringify({ t: "resume", token: conn.token }));
         }
         for (const m of queue) {
@@ -69,11 +84,19 @@ export function connect(url: string = wsUrl()): Promise<Connection> {
       sock.addEventListener("message", (e) => {
         const msg = JSON.parse(String(e.data)) as ServerMsg;
         if (msg.t === "welcome") {
+          resuming = false;
           conn.token = msg.token;
         }
-        if (msg.t === "denied" && conn.token && msg.text) {
-          // A refused resume ends the session.
+        if (msg.t === "denied" && resuming) {
+          // A refused resume (the grace ran out, or a ban since the drop) ends the session: this
+          // socket was never in game, so the app must go back to the title, not stay on a dead
+          // game screen whose Log out the server ignores. It reopens Load Character to log in again.
+          resuming = false;
           conn.token = null;
+          closedByUs = true;
+          sock.close();
+          end(msg.text, true);
+          return;
         }
         conn.onMessage(msg);
       });
@@ -82,12 +105,15 @@ export function connect(url: string = wsUrl()): Promise<Connection> {
           reject(new Error("could not connect"));
           return;
         }
+        if (ended) {
+          return;
+        }
         if (closedByUs || FINAL_CODES.has(e.code) || !conn.token) {
-          conn.onGone(null);
+          end(null);
           return;
         }
         if (attempts >= RESUME_ATTEMPTS) {
-          conn.onGone("Disconnected!"); // 1.6's text for a lost connection
+          end("Disconnected!"); // 1.6's text for a lost connection
           return;
         }
         attempts += 1;
@@ -99,4 +125,25 @@ export function connect(url: string = wsUrl()): Promise<Connection> {
     };
     wire(ws);
   });
+}
+
+/**
+ * Connects, retrying every `RESUME_DELAY_MS` while the server is unreachable (a restart takes it
+ * away for a moment), so a fresh start after a lost session never strands the client without a
+ * connection. Resolves null once `stopped()` turns true.
+ */
+export async function connectRetrying(
+  stopped: () => boolean,
+  url: string = wsUrl(),
+): Promise<Connection | null> {
+  for (;;) {
+    try {
+      return await connect(url);
+    } catch {
+      if (stopped()) {
+        return null;
+      }
+      await new Promise((r) => setTimeout(r, RESUME_DELAY_MS));
+    }
+  }
 }

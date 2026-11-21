@@ -35,7 +35,7 @@ import {
   onRespawnDrawn,
   pressAction,
 } from "./model.ts";
-import { type Connection, connect } from "./net.ts";
+import { type Connection, connect, connectRetrying } from "./net.ts";
 import { createPlayfield, type Pick, PLAYFIELD_H, PLAYFIELD_W } from "./playfield.ts";
 import { type Sfx, SOUND } from "./sfx.ts";
 import { action } from "./ui/action.ts";
@@ -1125,11 +1125,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
     }
   };
-  conn.onGone = (text) => {
+  conn.onGone = (text, relogin = false) => {
     if (kickAlert) {
       const shown = kickAlert;
       kickAlert = null;
-      void shown.then(() => conn.onGone(text));
+      void shown.then(() => conn.onGone(text, relogin));
       return;
     }
     game = null;
@@ -1173,16 +1173,22 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     if (text) {
       void showAlert(root, text);
     }
-    // Start over with a fresh connection.
-    void connect().then((c) => {
-      if (stopped) {
+    // Start over with a fresh connection, waiting out a server restart.
+    void connectRetrying(() => stopped).then((c) => {
+      if (!c || stopped) {
         return;
       }
       conn.send = c.send;
       conn.close = c.close;
       c.onMessage = conn.onMessage;
       c.onGone = conn.onGone;
-      toTitle();
+      // A refused resume (the session ran out while away) goes straight back to Load Character,
+      // with the name filled in; every other ending goes to the title.
+      if (relogin) {
+        toLogin(lastName || myName);
+      } else {
+        toTitle();
+      }
     });
   };
 
