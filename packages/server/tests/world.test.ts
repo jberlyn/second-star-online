@@ -34,7 +34,7 @@ import {
   settingPages,
   settingRows,
 } from "../src/settings.ts";
-import { pressStep, setHeld } from "../src/systems/movement/movement.ts";
+import { pressStep, scheduleStep, setHeld } from "../src/systems/movement/movement.ts";
 import { fallbackTarget, respawnTarget, tick, warp } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld } from "../src/systems/world/world.ts";
 import { NEVER_PUSH, NO_CASINO, player, rngByN, setup, testMap } from "./helpers/sim.ts";
@@ -537,6 +537,36 @@ describe("movement sim", () => {
     a.y = 1;
     setHeld(a, "U", false);
     expect(lines(run(2))).toEqual([EDGE_BLOCKED_TEXT]);
+  });
+
+  test("SSO: a refused edge is not said again on release, by steps still queued", () => {
+    const seed = testMap("x1000y992");
+    const { join, run } = setup([seed]); // no map beyond the east edge
+    const a = player("a", seed, 17, 5);
+    join(a);
+    const lines = (out: ReturnType<typeof run>) =>
+      out.flatMap((o) => (o.to === "a" && o.msg.t === "chat" ? [o.msg.text] : []));
+    const step = (seq: number) =>
+      scheduleStep(a, {
+        t: "step",
+        seq,
+        dir: "R",
+        turn: false,
+        at: { map: seed.name, n: a.n, x: a.x, y: a.y },
+      });
+    // A scheduled client holds the key at the edge: it sends a step each tick.
+    setHeld(a, "R", false, true);
+    step(1);
+    step(2);
+    step(3);
+    expect(lines(run(1))).toEqual([EDGE_BLOCKED_TEXT]);
+    // The key comes up while two of those steps are still queued: no second line.
+    setHeld(a, null, false, true);
+    expect(lines(run(3))).toEqual([]);
+    // The next press says it again.
+    setHeld(a, "R", false, true);
+    step(4);
+    expect(lines(run(1))).toEqual([EDGE_BLOCKED_TEXT]);
   });
 
   test("loading: no movement until mapReady or 100 ticks", () => {

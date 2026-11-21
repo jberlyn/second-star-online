@@ -64,8 +64,12 @@ export function setHeld(p: Player, held: Dir | null, turn: boolean, scheduled = 
   }
   // Pushes also read the current Turn modifier, even for scheduled clients.
   p.heldTurn = turn;
-  // A new press or a release: the next refusal prints its line again.
-  p.told = null;
+  // A new press: the next refusal prints its line again. A release does not clear it: a scheduled
+  // client's queue still holds the steps it sent while the key was down, and each would print the
+  // line again after the key came up (as the attack refusal is said once a press, not on release).
+  if (held !== null) {
+    p.told = null;
+  }
   if (p.walkQueue) {
     p.held = null;
     return;
