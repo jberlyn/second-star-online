@@ -139,6 +139,18 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
 }
+.chat-log.chat-size-small {
+  font-size: 11px;
+  line-height: 14px;
+}
+.chat-log.chat-size-large {
+  font-size: 14px;
+  line-height: 18px;
+}
+.chat-ts {
+  color: #9e9e9e;
+  font-size: 0.92em;
+}
 /*
  * Director #scroll fields (chat on the desktop stage, the spellbook): the box is DIRECTOR_BAR_W
  * (19 px) wider than the field, and the bar is 16 px wide, 3 px clear of the text, at the x where
@@ -712,6 +724,114 @@ body {
   display: none;
 }
 
+/* Player Settings additions (ui/player-settings.ts): keybinds, volume sliders, ignore list. */
+.pset-group-title {
+  margin: 14px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8fb3ff;
+}
+.pset-warning {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid #8a6d2b;
+  border-radius: 4px;
+  background: #2f2614;
+  color: #f4d38c;
+  font-size: 12px;
+}
+.pset-undo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px solid #3c5480;
+  border-radius: 4px;
+  background: #222c3f;
+  color: #dce8ff;
+  font-size: 12px;
+}
+.pset-undo-btn {
+  margin-top: 0;
+  font-weight: 600;
+}
+.pset-key-slots {
+  gap: 8px;
+}
+.pset-key-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.pset-key-btn {
+  min-width: 74px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: #fff;
+  background: #2a2a2a;
+  border: 1px solid #4f4f4f;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pset-key-btn:hover {
+  background: #363636;
+  border-color: #6b6b6b;
+}
+.pset-key-btn.unset {
+  color: #888;
+}
+.pset-key-btn.listening {
+  color: #0b1a3a;
+  background: #8fb3ff;
+  border-color: #8fb3ff;
+}
+.pset-key-clear {
+  width: 20px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #242424;
+  color: #aaa;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pset-key-clear:hover {
+  color: #ff8a80;
+  border-color: #ff8a80;
+}
+.pset-key-clear[hidden] {
+  display: none;
+}
+.pset-range {
+  width: 120px;
+  padding: 0;
+  accent-color: #8fb3ff;
+}
+.pset-range-val {
+  min-width: 34px;
+  text-align: right;
+  font-size: 12px;
+  color: #ccc;
+}
+.pset-ignore-add {
+  margin-top: 8px;
+}
+.pset-ignore-list {
+  margin-top: 8px;
+}
+.settings-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* Who's Online (WhoWindow sub-movie, 120×240). */
 .who-stage {
   position: absolute;
@@ -810,6 +930,34 @@ body {
   display: block;
   width: 205px;
   height: 100%;
+}
+/* Accessibility: colour-blind-safe high-contrast Amber/Gold (HP) and Sky-Cyan (SP) fills. */
+.bars-colorblind .bar-fill-img {
+  display: none;
+}
+.bars-colorblind .hp-fill {
+  background: linear-gradient(90deg, #ffb703 0%, #e07a00 100%);
+}
+.bars-colorblind .sp-fill {
+  background: linear-gradient(90deg, #62d4ff 0%, #1c88d1 100%);
+}
+/* Display: low health warning (HP or vehicle hull at or below 25%). */
+@keyframes low-hp-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(255, 68, 68, 0.9);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(255, 190, 90, 0.95);
+  }
+}
+.bar-track.bar-low {
+  animation: low-hp-pulse 0.9s ease-in-out infinite;
+}
+.pf-low-hp .playfield {
+  box-shadow: inset 0 0 22px rgba(220, 32, 32, 0.55);
+  outline: 2px solid rgba(220, 32, 32, 0.6);
+  outline-offset: -2px;
 }
 .bar-hover {
   pointer-events: auto;
@@ -1063,6 +1211,25 @@ body {
   font-weight: bold;
   font-size: 10px;
   line-height: 12px;
+}
+/* Subtle bound hotkey hint on panel tab tooltips. */
+.menu-layer .hover-tip .hover-tip-key {
+  margin-left: 5px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 8px;
+}
+/* Accessibility: larger hover tips. */
+.menu-layer .hover-tip.hover-tip-large {
+  font-size: 12px;
+  line-height: 15px;
+  padding: 2px 6px;
+}
+.menu-layer .hover-tip.hover-tip-large .hover-tip-first {
+  font-size: 13px;
+  line-height: 16px;
+}
+.menu-layer .hover-tip.hover-tip-large .hover-tip-key {
+  font-size: 10px;
 }
 .menu-layer .hover-tip[hidden] {
   display: none;
@@ -1476,11 +1643,14 @@ body {
 }
 .menu-item {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   font: inherit;
   height: 17px;
   line-height: 17px;
-  padding: 0 20px 0 18px;
+  padding: 0 12px 0 18px;
   text-align: left;
   white-space: nowrap;
   color: #000;
@@ -1488,6 +1658,11 @@ body {
   border: 0;
   margin: 0;
   cursor: default;
+}
+.menu-item[data-shortcut]::after {
+  content: attr(data-shortcut);
+  color: #555;
+  font-size: 10px;
 }
 .menu-item[aria-checked="true"]::before {
   content: attr(data-mark);
@@ -1497,6 +1672,9 @@ body {
 .menu-item:hover {
   background: #0a246a;
   color: #fff;
+}
+.menu-item[data-shortcut]:hover::after {
+  color: #d8e4ff;
 }
 .menu-item[aria-disabled="true"] {
   color: #808080;

@@ -20,9 +20,11 @@ import {
   guildFileLines,
   guildScreenFields,
   guildScreenFor,
+  isBuddy,
   leaveGuild,
   lingoEq,
   loadGuildOutcome,
+  PRIVACY_TEXT,
   sanitiseGuildName,
   taggedName,
 } from "@secondstaronline/shared";
@@ -339,6 +341,14 @@ export function guildInvite(world: World, p: Player, name: string): Outgoing[] {
   }
   if (target.guild !== "") {
     out.push(chat(p, GUILD_TEXT.alreadyIn(target.name)));
+    return out;
+  }
+  if (target.prefs.guildInvitesFrom === "none") {
+    out.push(chat(p, PRIVACY_TEXT.guildNone(target.name)));
+    return out;
+  }
+  if (target.prefs.guildInvitesFrom === "friends" && !isBuddy(target.buddies, p.name)) {
+    out.push(chat(p, PRIVACY_TEXT.guildFriendsOnly(target.name)));
     return out;
   }
   target.guildInvite = { guildId: g.id, inviterId: p.id };

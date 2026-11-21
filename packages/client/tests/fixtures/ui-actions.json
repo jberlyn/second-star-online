@@ -829,6 +829,81 @@
     "hidden": 0,
     "disabled": 0
   },
+  "player-settings-bind": {
+    "count": 30,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-confirm": {
+    "count": 4,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-control-set": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-discard": {
+    "count": 4,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-ignore-add": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-ignore-name": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-ignore-remove": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-page": {
+    "count": 24,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-reset": {
+    "count": 27,
+    "hidden": 27,
+    "disabled": 0
+  },
+  "player-settings-revert": {
+    "count": 4,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-save": {
+    "count": 4,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-search": {
+    "count": 4,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-stay": {
+    "count": 4,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "player-settings-unbind": {
+    "count": 30,
+    "hidden": 13,
+    "disabled": 0
+  },
+  "player-settings-value": {
+    "count": 11,
+    "hidden": 0,
+    "disabled": 0
+  },
   "playfield": {
     "count": 1,
     "hidden": 0,
@@ -1070,12 +1145,12 @@
     "disabled": 0
   },
   "window-close": {
-    "count": 31,
+    "count": 35,
     "hidden": 0,
     "disabled": 0
   },
   "window-drag": {
-    "count": 31,
+    "count": 35,
     "hidden": 0,
     "disabled": 0
   }

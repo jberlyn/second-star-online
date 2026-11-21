@@ -4,7 +4,8 @@
  *
  * A floating window at the sub-movie's original size, scaled with the 800×600 frame, with a
  * plain title bar (drag to move) and a close button standing in for the OS window chrome. It
- * opens centred on the screen.
+ * opens centred on the screen, or at its saved browser position (clamped to the viewport) when
+ * "Remember floating window positions" is enabled.
  *
  * One `WindowLayer` holds every window; windows are built once and only re-parented.
  */
@@ -20,11 +21,19 @@ export interface GameWindow {
   setTitle(title: string): void;
 }
 
+export interface WindowPosStore {
+  shouldRemember(): boolean;
+  load(name: string): { x: number; y: number } | null;
+  save(name: string, pos: { x: number; y: number }): void;
+}
+
 export interface WindowLayer {
   readonly el: HTMLElement;
   /** The frame's current scale. */
   setScale(scale: number): void;
   create(opts: WindowOptions): GameWindow;
+  /** Clears cached positions on closed windows (e.g. when Remember positions is turned off). */
+  resetPositions(): void;
 }
 
 /**
@@ -47,6 +56,8 @@ export interface WindowOptions {
   title: string;
   /** Short class name for per-window CSS, e.g. `who`. */
   name: string;
+  /** Optional storage key for saved window position (defaults to `name`). */
+  posKey?: string;
   /** The sub-movie's stage size. */
   width: number;
   height: number;
@@ -62,7 +73,7 @@ export interface WindowOptions {
   movie?: string;
 }
 
-export function createWindowLayer(): WindowLayer {
+export function createWindowLayer(store?: WindowPosStore): WindowLayer {
   const el = document.createElement("div");
   el.className = "window-layer";
   el.dataset.shell = "desktop";
@@ -70,14 +81,20 @@ export function createWindowLayer(): WindowLayer {
   const windows: { win: HTMLElement; opts: WindowOptions; pos: { x: number; y: number } | null }[] =
     [];
 
+  const posKey = (opts: WindowOptions) => opts.posKey ?? opts.name;
+
   const place = (w: (typeof windows)[number]) => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const pw = w.win.offsetWidth * scale || w.opts.width * scale;
     const ph = w.win.offsetHeight * scale || (w.opts.height + 20) * scale;
-    const pos = w.pos ?? { x: (vw - pw) / 2, y: (vh - ph) / 2 };
-    pos.x = Math.max(0, Math.min(pos.x, vw - pw));
-    pos.y = Math.max(0, Math.min(pos.y, vh - ph));
+    let seed = w.pos;
+    if (!seed && store?.shouldRemember()) {
+      seed = store.load(posKey(w.opts));
+    }
+    const pos = seed ? { x: seed.x, y: seed.y } : { x: (vw - pw) / 2, y: (vh - ph) / 2 };
+    pos.x = Math.max(0, Math.min(pos.x, Math.max(0, vw - pw)));
+    pos.y = Math.max(0, Math.min(pos.y, Math.max(0, vh - ph)));
     w.pos = pos;
     w.win.style.left = `${pos.x}px`;
     w.win.style.top = `${pos.y}px`;
@@ -91,6 +108,13 @@ export function createWindowLayer(): WindowLayer {
       for (const w of windows) {
         if (!w.win.hidden) {
           place(w);
+        }
+      }
+    },
+    resetPositions() {
+      for (const w of windows) {
+        if (w.win.hidden) {
+          w.pos = null;
         }
       }
     },
@@ -143,6 +167,9 @@ export function createWindowLayer(): WindowLayer {
           bar.removeEventListener("pointermove", move);
           bar.removeEventListener("pointerup", up);
           bar.removeEventListener("pointercancel", up);
+          if (entry.pos && store?.shouldRemember()) {
+            store.save(posKey(opts), entry.pos);
+          }
         };
         bar.addEventListener("pointermove", move);
         bar.addEventListener("pointerup", up);
@@ -156,8 +183,12 @@ export function createWindowLayer(): WindowLayer {
           return !win.hidden;
         },
         open() {
+          const wasClosed = win.hidden;
           win.hidden = false;
           el.append(win); // on top
+          if (wasClosed && store && !store.shouldRemember()) {
+            entry.pos = null;
+          }
           place(entry);
         },
         close() {
@@ -165,6 +196,11 @@ export function createWindowLayer(): WindowLayer {
             return;
           }
           win.hidden = true;
+          if (store && !store.shouldRemember()) {
+            entry.pos = null;
+            win.style.left = "";
+            win.style.top = "";
+          }
           opts.onClose?.();
         },
         setTitle(t) {

@@ -325,29 +325,26 @@ describe("presence and the login greeting", () => {
     ]);
   });
 
-  test("presenceChatLines prints '<name> has logged on/off.'; announcePresence off sends nothing", async () => {
-    const { game, make } = await gameWith({ presenceChatLines: true });
+  test("per-player presenceChatLines prints '<name> has logged on/off.' for everyone or friends only", async () => {
+    const { game, make } = await gameWith();
     const a = await make("Alice");
     const b = await make("Bob");
+    const c = await make("Carol");
     game.enter(a.characterId, false);
+    game.intent(a.characterId, { t: "prefsSave", prefs: { presenceChatLines: "everyone" } });
     game.enter(b.characterId, false);
     game.leave(b.characterId);
     expect(texts(sent, a.characterId)).toContain("Bob has logged on.");
     expect(texts(sent, a.characterId)).toContain("Bob has logged off.");
 
     sent.length = 0;
-    saveSettingOverride(db, "announcePresence", false, NOW);
-    const g2 = createGame({
-      db,
-      send: (to, msg) => sent.push({ to, msg }),
-      isoNow: () => NOW,
-      rng: NEVER_PUSH,
-    });
-    g2.enter(a.characterId, false);
-    g2.enter(b.characterId, false);
-    expect(sent.some((o) => o.msg.t === "presence" || /logged/.test(JSON.stringify(o.msg)))).toBe(
-      false,
-    );
+    game.intent(a.characterId, { t: "prefsSave", prefs: { presenceChatLines: "friends" } });
+    game.intent(a.characterId, { t: "chat", text: "/friends add Carol" });
+    sent.length = 0;
+    game.enter(b.characterId, false);
+    game.enter(c.characterId, false);
+    expect(texts(sent, a.characterId)).not.toContain("Bob has logged on.");
+    expect(texts(sent, a.characterId)).toContain("Carol has logged on.");
   });
 
   test("a real login gets the Help.txt greeting; a resumed session does not", async () => {

@@ -3321,6 +3321,1457 @@
     "errors": []
   },
   {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-control-set",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-bind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [
+      {
+        "action": "onCaptureStart",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-unbind",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-discard",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-discard",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-value",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-ignore-name",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-ignore-add",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-ignore-remove",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "ignoreRemove",
+        "args": ["Spammer"]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "player-settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-discard",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "editor-map",
     "tag": "CANVAS",
     "events": ["pointercancel", "pointerdown", "pointermove", "pointerup"],
@@ -5882,6 +7333,132 @@
   },
   {
     "action": "settings-discard",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-search",
+    "tag": "INPUT",
+    "events": ["input", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-revert",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-stay",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "player-settings-discard",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,

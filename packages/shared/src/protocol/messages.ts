@@ -102,6 +102,13 @@ import {
   viewCloseSchema,
 } from "./mail.ts";
 import {
+  ignoreAddSchema,
+  ignoreRemoveSchema,
+  type PreferencesServerMsg,
+  prefsSaveSchema,
+  whoOpenSchema,
+} from "./preferences.ts";
+import {
   assassinGameSchema,
   bioRequestSchema,
   friendRemoveSchema,
@@ -195,6 +202,10 @@ export const inGameSchema = z.discriminatedUnion("t", [
   bioRequestSchema,
   profileSaveSchema,
   friendRemoveSchema,
+  prefsSaveSchema,
+  ignoreAddSchema,
+  ignoreRemoveSchema,
+  whoOpenSchema,
 ]);
 
 export type LoginMsg = z.infer<typeof loginSchema>;
@@ -236,4 +247,5 @@ export type ServerMsg =
   | AdminServerMsg
   | SocialServerMsg
   | CasinoServerMsg
-  | MailServerMsg;
+  | MailServerMsg
+  | PreferencesServerMsg;

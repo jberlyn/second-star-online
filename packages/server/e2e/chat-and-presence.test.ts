@@ -11,7 +11,6 @@ import { ADMIN_TEXT, type CreateMsg, type ServerMsg } from "@secondstaronline/sh
 
 import { setRole } from "../src/persistence/accounts.ts";
 import type { Db } from "../src/persistence/database.ts";
-import { saveSettingOverride } from "../src/persistence/settings.ts";
 import { type Bot, connectBot, settle, startTestServer, type TestServer } from "./harness.ts";
 
 const NOW = "2026-11-05T00:00:00.000Z";
@@ -255,33 +254,34 @@ describe("chat, help, who, pushing and presence", () => {
 });
 
 describe("presence settings", () => {
-  test("presenceChatLines prints logon and logoff lines", async () => {
-    const server = startTestServer({
-      prepare: (db) => saveSettingOverride(db, "presenceChatLines", true, NOW),
-    });
+  test("per-player presenceChatLines prints logon and logoff lines for everyone or friends only", async () => {
+    const server = startTestServer();
     try {
-      await createAll(server, [make("Dana"), make("Eli")]);
+      await createAll(server, [make("Dana"), make("Eli"), make("Finn")]);
       const dana = await login(server, "Dana");
+      dana.send({ t: "prefsSave", prefs: { presenceChatLines: "everyone" } });
+      await settle();
       const eli = await login(server, "Eli");
+      await settle();
       expect(chatTexts(dana)).toContain("Eli has logged on.");
       eli.send({ t: "logout" });
       await eli.closed;
       await settle();
       expect(chatTexts(dana)).toContain("Eli has logged off.");
-    } finally {
-      await server.stop();
-    }
-  });
 
-  test("announcePresence off sends no presence events at all", async () => {
-    const server = startTestServer({
-      prepare: (db) => saveSettingOverride(db, "announcePresence", false, NOW),
-    });
-    try {
-      await createAll(server, [make("Finn"), make("Gwen")]);
+      // Switch to friends-only: only buddies print chat lines.
+      dana.inbox.length = 0;
+      dana.send({ t: "chat", text: "/friends add Finn" });
+      dana.send({ t: "prefsSave", prefs: { presenceChatLines: "friends" } });
+      await settle();
+      dana.inbox.length = 0;
+      const eli2 = await login(server, "Eli");
       const finn = await login(server, "Finn");
-      await login(server, "Gwen");
-      expect(finn.inbox.some((m) => m.t === "presence")).toBe(false);
+      await settle();
+      expect(chatTexts(dana)).not.toContain("Eli has logged on.");
+      expect(chatTexts(dana)).toContain("Finn has logged on.");
+      eli2.close();
+      finn.close();
     } finally {
       await server.stop();
     }

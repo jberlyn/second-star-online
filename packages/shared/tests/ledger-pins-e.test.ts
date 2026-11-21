@@ -170,6 +170,25 @@ describe("Only server systems create items", () => {
       bioRequest: ["id:string", "name:string"],
       profileSave: ["text:string"],
       friendRemove: ["name:string"],
+      prefsSave: [
+        "prefs.keyBindings.moveUp[]:string",
+        "prefs.keyBindings.moveDown[]:string",
+        "prefs.keyBindings.moveLeft[]:string",
+        "prefs.keyBindings.moveRight[]:string",
+        "prefs.keyBindings.turn[]:string",
+        "prefs.keyBindings.attack[]:string",
+        "prefs.keyBindings.action[]:string",
+        "prefs.keyBindings.chat[]:string",
+        "prefs.keyBindings.commandChat[]:string",
+        "prefs.keyBindings.tabStats[]:string",
+        "prefs.keyBindings.tabInventory[]:string",
+        "prefs.keyBindings.tabSkills[]:string",
+        "prefs.keyBindings.tabSpellbook[]:string",
+        "prefs.keyBindings.windowFriends[]:string",
+        "prefs.keyBindings.windowWho[]:string",
+      ],
+      ignoreAdd: ["name:string"],
+      ignoreRemove: ["name:string"],
     });
   });
 });

@@ -212,6 +212,7 @@ export function createImWindows(
     const win = layer.create({
       title: "",
       name: "imwin",
+      posKey: `imwin-${slot}`,
       movie: "IMwin1",
       width: IMWIN_STAGE.w,
       height: IMWIN_STAGE.h,

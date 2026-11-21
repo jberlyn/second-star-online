@@ -182,20 +182,33 @@ describe("Title and login screens in a browser", () => {
 });
 
 describe("In-game sound effects switch", () => {
-  const sfxItem = (root: HTMLElement) =>
-    [...(openMenu(root, "Options")?.querySelectorAll<HTMLElement>(".menu-item") ?? [])].find(
-      (e) => e.textContent === "Sound Effects",
-    );
+  const openSoundToggle = (root: HTMLElement) => {
+    const item = [
+      ...(openMenu(root, "Options")?.querySelectorAll<HTMLElement>(".menu-item") ?? []),
+    ].find((e) => e.textContent === "Settings…");
+    item?.click();
+    const win = root.querySelector<HTMLElement>(".window-player-settings");
+    win?.querySelector<HTMLButtonElement>('.settings-link[data-page="sound"]')?.click();
+    return {
+      box: win?.querySelector<HTMLInputElement>('[aria-label="Sound effects"]') ?? null,
+      save: win?.querySelector<HTMLButtonElement>(".settings-save") ?? null,
+    };
+  };
 
   test("design change: Sound Effects defaults to on on the title screen and the browser remembers it", () => {
     localStorage.clear();
     const a = start();
-    expect(sfxItem(a.root)?.getAttribute("aria-checked")).toBe("true");
-    sfxItem(a.root)?.click();
-    expect(sfxItem(a.root)?.getAttribute("aria-checked")).toBe("false");
+    const first = openSoundToggle(a.root);
+    expect(first.box?.checked).toBe(true);
+    if (first.box) {
+      first.box.checked = false;
+      first.box.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    first.save?.click();
+    expect(openSoundToggle(a.root).box?.checked).toBe(false);
     // A new page in the same browser keeps it off.
     const b = start();
-    expect(sfxItem(b.root)?.getAttribute("aria-checked")).toBe("false");
+    expect(openSoundToggle(b.root).box?.checked).toBe(false);
     localStorage.clear();
   });
 });

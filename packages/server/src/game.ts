@@ -30,11 +30,13 @@ import {
   JAIL,
   MODERATION_TEXT,
   mapName,
+  mergePlayerPrefs,
   NO_FOG,
   PASSWORD_TEXT,
   type Permission,
   parseHouseMapName,
   parseMapName,
+  prefsEqual,
   questLineUnanswerable,
   ROLE_TEXT,
   type Role,
@@ -144,6 +146,7 @@ import { loadSlots, saveSlots } from "./persistence/monsters.ts";
 import { loadNewspaper, saveNewspaper } from "./persistence/newspapers.ts";
 import { insertNpcFileVersion, loadNpcFiles, saveNpcFile } from "./persistence/npcfiles.ts";
 import { deletePlayerShops, insertPlayerShop, loadPlayerShops } from "./persistence/playershops.ts";
+import { loadAccountPreferencesRecord, saveAccountPreferences } from "./persistence/preferences.ts";
 import {
   deleteRole,
   loadRoles,
@@ -204,6 +207,7 @@ import { ckClose, ckMove } from "./systems/casino/checkers.ts";
 import { type CasinoDeps, casinoLeave, casinoReturn } from "./systems/casino/index.ts";
 import { slotClose, slotPull } from "./systems/casino/slots.ts";
 import { type ChatDeps, handleChat, helpReply, whoReply } from "./systems/chat/chat.ts";
+import { ignoreModify } from "./systems/chat/ignore.ts";
 import { imIntent, setAway } from "./systems/chat/im.ts";
 import { enterRoom, leaveRoom, rejoinRoom, roomMembership, roomSay } from "./systems/chat/rooms.ts";
 import { setAttackHeld } from "./systems/combat/melee.ts";
@@ -287,7 +291,7 @@ import {
   guildLogin,
   guildView,
 } from "./systems/social/guilds.ts";
-import { presenceOut } from "./systems/social/presence.ts";
+import { presenceOut, whoNames } from "./systems/social/presence.ts";
 import { castIntent } from "./systems/spells/cast.ts";
 import {
   fallbackTarget,
@@ -424,6 +428,11 @@ const EDITOR_INTENTS = new Set([
   "bioRequest",
   "profileSave",
   "friendRemove",
+  // Player settings and Who's Online work over editors too.
+  "prefsSave",
+  "ignoreAdd",
+  "ignoreRemove",
+  "whoOpen",
 ]);
 
 /**
@@ -956,10 +965,6 @@ export function createGame(deps: GameDeps): Game {
     boardPostsMax: settings.boardPostsMax,
     boardPostMax: settings.boardPostMax,
   };
-  const presenceDeps = {
-    announcePresence: settings.announcePresence,
-    presenceChatLines: settings.presenceChatLines,
-  };
 
   /**
    * Puts new settings in force at once: every reader takes its value from these deps, and clients
@@ -991,10 +996,6 @@ export function createGame(deps: GameDeps): Game {
       chatCooldownFrames: secondsToTicks(settings.chatCooldown),
       boardPostsMax: settings.boardPostsMax,
       boardPostMax: settings.boardPostMax,
-    });
-    Object.assign(presenceDeps, {
-      announcePresence: settings.announcePresence,
-      presenceChatLines: settings.presenceChatLines,
     });
     world.roleTags = settings.roleTags;
     if (JSON.stringify(settings.treasureMaps) !== JSON.stringify(world.treasureMaps)) {
@@ -1833,6 +1834,9 @@ export function createGame(deps: GameDeps): Game {
       p.muteUntil = muteUntil;
       p.ignore = loadIgnores(db, c.accountId);
       p.buddies = loadBuddies(db, c.accountId);
+      const prefRec = loadAccountPreferencesRecord(db, c.accountId);
+      p.prefs = prefRec.prefs;
+      p.prefsStored = prefRec.stored;
       const kept = keptSocial.get(c.id);
       if (resumed) {
         p.regenCounter = keptRegen.get(c.id) ?? p.regenCounter;
@@ -1841,6 +1845,7 @@ export function createGame(deps: GameDeps): Game {
       keptRegen.delete(c.id);
       keptSocial.delete(c.id);
       send(p.id, permissionsMsg(p.role));
+      send(p.id, { t: "prefs", prefs: p.prefs, ignores: [...p.ignore], stored: p.prefsStored });
       deliver(addPlayer(world, p));
       // The guild loads with the character; a resumed session greets nobody.
       deliver(guildLogin(world, p, loadCharacterGuild(db, c.id), resumed));
@@ -1854,7 +1859,7 @@ export function createGame(deps: GameDeps): Game {
       flushChanged(tablePlayers(world, p)); // a hand that settled while away
       // Frame 50 fills the Friends window; it opens only from the menu.
       deliver(friendsEntry(world, p));
-      deliver(presenceOut(world, p, true, presenceDeps));
+      deliver(presenceOut(world, p, true));
       // Loading the character sends Help.txt as the greeting. A resumed session is not a login.
       if (!resumed) {
         deliver(helpReply(p, "Help", chatDeps));
@@ -1907,7 +1912,7 @@ export function createGame(deps: GameDeps): Game {
       save(r.player);
       keptRegen.set(r.player.id, r.player.regenCounter);
       deliver(r.out);
-      deliver(presenceOut(world, r.player, false, presenceDeps));
+      deliver(presenceOut(world, r.player, false));
     },
 
     isOnline(characterId) {
@@ -2147,6 +2152,62 @@ export function createGame(deps: GameDeps): Game {
               chatDeps.saveBuddies?.(id, items),
             ),
           );
+          return;
+        case "prefsSave": {
+          const next = mergePlayerPrefs(msg.prefs, p.prefs);
+          const req = msg.requestId !== undefined ? { requestId: msg.requestId } : {};
+          if (p.prefsStored && prefsEqual(next, p.prefs)) {
+            send(p.id, {
+              t: "prefsResult",
+              ok: true,
+              text: "Settings saved.",
+              ...req,
+              prefs: p.prefs,
+            });
+            return;
+          }
+          try {
+            db.transaction(() => saveAccountPreferences(db, p.accountId, next, isoNow()))();
+          } catch {
+            send(p.id, {
+              t: "prefsResult",
+              ok: false,
+              text: "Could not save settings.",
+              ...req,
+              prefs: p.prefs,
+            });
+            return;
+          }
+          for (const o of world.players.values()) {
+            if (o.accountId === p.accountId) {
+              o.prefs = next;
+              o.prefsStored = true;
+              send(o.id, { t: "prefs", prefs: next, ignores: [...o.ignore], stored: true });
+            }
+          }
+          send(p.id, {
+            t: "prefsResult",
+            ok: true,
+            text: "Settings saved.",
+            ...req,
+            prefs: next,
+          });
+          return;
+        }
+        case "ignoreAdd":
+          deliver(
+            ignoreModify(world, p, "add", msg.name, (id, list) => chatDeps.saveIgnores?.(id, list)),
+          );
+          return;
+        case "ignoreRemove":
+          deliver(
+            ignoreModify(world, p, "remove", msg.name, (id, list) =>
+              chatDeps.saveIgnores?.(id, list),
+            ),
+          );
+          return;
+        case "whoOpen":
+          send(p.id, { t: "who", names: whoNames(world) });
           return;
         case "chat":
           deliver(handleChat(world, p, msg.text, chatDeps));

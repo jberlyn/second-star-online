@@ -2,63 +2,158 @@
  * The input layer: the keyboard becomes intents, `move{held, turn}` on every change and
  * `step{dir, turn}` on each press.
  *
- * Two fixed layouts, read from a table so a later Settings window can rebind them:
+ * Supports the Modern preset (default, physical `e.code`), Classic 1.6 preset (arrows, Alt, Tab,
+ * Ctrl matched by `e.key`), and Custom per-action rebinds (`e.code`, primary + secondary key).
  *
- * - Classic (1.6): arrows move, Alt/Option + arrow turns in place, Tab attacks while held,
- *   Ctrl picks up or uses. Matched by the typed key (`e.key`), as 1.6 did.
- * - Modern (the default, an SSO addition): W A S D move, Shift + W A S D turns, Space attacks
- *   while held, E picks up or uses. Matched by the physical key (`e.code`), so the keys sit in
- *   the same place on AZERTY or Dvorak. Ctrl is no key here: next to W, Ctrl+W closes the tab.
- *   Tab and Alt are swallowed with no action, so Tab cannot move focus to a button that Space
- *   would then press, and Alt cannot open the browser's menu bar.
- *
- * In both, several directions held resolve Left > Right > Up > Down, on the client and again
- * on the server, and the attack is one hold state: `attack{held}` on every change; held repeats.
+ * In every layout, several directions held resolve Left > Right > Up > Down on the client and
+ * again on the server, and attack is one hold state: `attack{held}` on every change; held repeats.
  */
-import { type Dir, resolveHeld } from "@secondstaronline/shared";
+import {
+  bindingsEqual,
+  type ControlSet,
+  type Dir,
+  effectiveBindings,
+  type KeyAction,
+  type KeyBindings,
+  presetBindings,
+  resolveHeld,
+} from "@secondstaronline/shared";
 
-export type ControlLayout = "modern" | "classic";
+export type ControlLayout = ControlSet;
 
 export const DEFAULT_LAYOUT: ControlLayout = "modern";
 
 /** Reads a saved layout; anything else (nothing saved, an old value) is the default. */
 export function parseLayout(saved: string | null): ControlLayout {
-  return saved === "classic" || saved === "modern" ? saved : DEFAULT_LAYOUT;
+  return saved === "classic" || saved === "modern" || saved === "custom" ? saved : DEFAULT_LAYOUT;
 }
 
-interface Layout {
-  /** Which event field the keys below name. */
-  by: "key" | "code";
+interface ClassicTable {
+  by: "key";
   dirs: Readonly<Record<string, Dir>>;
   attack: readonly string[];
   action: readonly string[];
   turn: readonly string[];
-  /** The modifier flag that, held with a direction, turns in place. */
-  turnFlag: "altKey" | "shiftKey";
+  turnFlag: "altKey";
+  swallow: readonly string[];
+}
+
+interface CodeTable {
+  by: "code";
+  dirs: Readonly<Record<string, Dir>>;
+  attack: readonly string[];
+  action: readonly string[];
+  turn: readonly string[];
   /** Keys taken from the browser with no action. */
   swallow: readonly string[];
 }
 
-export const LAYOUTS: Readonly<Record<ControlLayout, Layout>> = {
+type ActiveTable = ClassicTable | CodeTable;
+
+export const LAYOUTS = {
   classic: {
-    by: "key",
-    dirs: { ArrowLeft: "L", ArrowRight: "R", ArrowUp: "U", ArrowDown: "D" },
-    attack: ["Tab"],
-    action: ["Control"],
-    turn: ["Alt"],
-    turnFlag: "altKey",
-    swallow: [],
+    by: "key" as const,
+    dirs: { ArrowLeft: "L", ArrowRight: "R", ArrowUp: "U", ArrowDown: "D" } as Readonly<
+      Record<string, Dir>
+    >,
+    attack: ["Tab"] as readonly string[],
+    action: ["Control"] as readonly string[],
+    turn: ["Alt"] as readonly string[],
+    turnFlag: "altKey" as const,
+    swallow: [] as readonly string[],
   },
   modern: {
-    by: "code",
-    dirs: { KeyA: "L", KeyD: "R", KeyW: "U", KeyS: "D" },
-    attack: ["Space"],
-    action: ["KeyE"],
-    turn: ["ShiftLeft", "ShiftRight"],
-    turnFlag: "shiftKey",
-    swallow: ["Tab", "AltLeft", "AltRight"],
+    by: "code" as const,
+    dirs: { KeyA: "L", KeyD: "R", KeyW: "U", KeyS: "D" } as Readonly<Record<string, Dir>>,
+    attack: ["Space"] as readonly string[],
+    action: ["KeyE"] as readonly string[],
+    turn: ["ShiftLeft", "ShiftRight"] as readonly string[],
+    turnFlag: "shiftKey" as const,
+    swallow: ["Tab", "AltLeft", "AltRight"] as readonly string[],
   },
-};
+} as const;
+
+const nonNull = (slot: readonly [string | null, string | null]): string[] =>
+  slot.filter((c): c is string => c !== null);
+
+function modifierFlagFor(code: string): "altKey" | "shiftKey" | "ctrlKey" | null {
+  if (code === "AltLeft" || code === "AltRight") {
+    return "altKey";
+  }
+  if (code === "ShiftLeft" || code === "ShiftRight") {
+    return "shiftKey";
+  }
+  if (code === "ControlLeft" || code === "ControlRight") {
+    return "ctrlKey";
+  }
+  return null;
+}
+
+function buildCodeTable(bindings: KeyBindings): CodeTable {
+  const dirs: Record<string, Dir> = {};
+  for (const c of nonNull(bindings.moveLeft)) {
+    dirs[c] = "L";
+  }
+  for (const c of nonNull(bindings.moveRight)) {
+    dirs[c] = "R";
+  }
+  for (const c of nonNull(bindings.moveUp)) {
+    dirs[c] = "U";
+  }
+  for (const c of nonNull(bindings.moveDown)) {
+    dirs[c] = "D";
+  }
+  const attack = nonNull(bindings.attack);
+  const action = nonNull(bindings.action);
+  const turn = nonNull(bindings.turn);
+  // Collect all bound codes across every action so we only swallow unbound Tab / Alt.
+  const allBound = new Set<string>();
+  for (const slot of Object.values(bindings)) {
+    for (const c of slot) {
+      if (c) {
+        allBound.add(c);
+      }
+    }
+  }
+  const swallow = ["Tab", "AltLeft", "AltRight"].filter((c) => !allBound.has(c));
+  return {
+    by: "code",
+    dirs,
+    attack,
+    action,
+    turn,
+    swallow,
+  };
+}
+
+/** Fallback `e.key` → `e.code` for synthetic tests that omit `code`. */
+function fallbackCode(e: KeyPress): string {
+  if (e.code) {
+    return e.code;
+  }
+  if (e.key === " ") {
+    return "Space";
+  }
+  if (e.key === "/") {
+    return "Slash";
+  }
+  if (/^[a-zA-Z]$/.test(e.key)) {
+    return `Key${e.key.toUpperCase()}`;
+  }
+  if (/^[0-9]$/.test(e.key)) {
+    return `Digit${e.key}`;
+  }
+  if (e.key === "Shift") {
+    return "ShiftLeft";
+  }
+  if (e.key === "Alt") {
+    return "AltLeft";
+  }
+  if (e.key === "Control") {
+    return "ControlLeft";
+  }
+  return e.key;
+}
 
 /** The parts of a KeyboardEvent the input layer reads. */
 export interface KeyPress {
@@ -66,6 +161,7 @@ export interface KeyPress {
   code?: string;
   altKey?: boolean;
   shiftKey?: boolean;
+  ctrlKey?: boolean;
   metaKey?: boolean;
   repeat?: boolean;
 }
@@ -81,28 +177,66 @@ export interface InputSink {
 
 export interface InputState {
   layout: ControlLayout;
+  bindings: KeyBindings;
+  /** Compiled lookup table for movement/attack/action/turn. */
+  table: ActiveTable;
   keys: Partial<Record<Dir, boolean>>;
-  /** The turn modifier (Alt in Classic, Shift in Modern) held. */
+  /** Physical key IDs currently held per direction (supports primary + secondary binds). */
+  heldDirKeys: Record<Dir, Set<string>>;
+  /** Physical key IDs currently held for Attack (supports primary + secondary binds). */
+  heldAttackKeys: Set<string>;
+  /** Bound turn keys currently held (tracks both modifier and non-modifier turn keys). */
+  heldTurnKeys: Set<string>;
+  /** The turn modifier (Alt in Classic, Shift in Modern, or custom turn key) held. */
   turnKey: boolean;
   /** The attack key held. */
   attackKey: boolean;
 }
 
-export function createInputState(layout: ControlLayout = "classic"): InputState {
+function compileTable(layout: ControlLayout, bindings: KeyBindings): ActiveTable {
+  if (layout === "classic") {
+    return LAYOUTS.classic;
+  }
+  return buildCodeTable(effectiveBindings({ controlSet: layout, keyBindings: bindings }));
+}
+
+export function createInputState(
+  layout: ControlLayout = "classic",
+  bindings?: KeyBindings,
+): InputState {
+  const b = bindings
+    ? effectiveBindings({ controlSet: layout, keyBindings: bindings })
+    : presetBindings(layout === "classic" ? "classic" : "modern");
   return {
     layout,
+    bindings: b,
+    table: compileTable(layout, b),
     keys: {},
+    heldDirKeys: { L: new Set(), R: new Set(), U: new Set(), D: new Set() },
+    heldAttackKeys: new Set(),
+    heldTurnKeys: new Set(),
     turnKey: false,
     attackKey: false,
   };
 }
 
-/** Switches layout, releasing anything held under the old one first. */
-export function setLayout(s: InputState, sink: InputSink, layout: ControlLayout): void {
-  if (s.layout !== layout) {
-    releaseAll(s, sink);
-    s.layout = layout;
+/** Switches layout, releasing anything held under the old one only when controls actually change. */
+export function setLayout(
+  s: InputState,
+  sink: InputSink,
+  layout: ControlLayout,
+  bindings?: KeyBindings,
+): void {
+  const nextBindings = bindings
+    ? effectiveBindings({ controlSet: layout, keyBindings: bindings })
+    : presetBindings(layout === "classic" ? "classic" : "modern");
+  if (s.layout === layout && bindingsEqual(s.bindings, nextBindings)) {
+    return;
   }
+  releaseAll(s, sink);
+  s.layout = layout;
+  s.bindings = nextBindings;
+  s.table = compileTable(layout, nextBindings);
 }
 
 function setAttack(s: InputState, sink: InputSink, down: boolean): void {
@@ -140,7 +274,31 @@ function update(
   }
 }
 
-const name = (l: Layout, e: KeyPress) => (l.by === "code" ? (e.code ?? "") : e.key);
+const keyId = (t: ActiveTable, e: KeyPress) => (t.by === "code" ? fallbackCode(e) : e.key);
+
+/** Prunes held modifier codes whose keyup was missed (only when the flag is explicitly false). */
+function pruneStaleTurnModifiers(heldTurnKeys: Set<string>, e: KeyPress): void {
+  if (e.shiftKey === false) {
+    heldTurnKeys.delete("ShiftLeft");
+    heldTurnKeys.delete("ShiftRight");
+  }
+  if (e.altKey === false) {
+    heldTurnKeys.delete("AltLeft");
+    heldTurnKeys.delete("AltRight");
+  }
+  if (e.ctrlKey === false) {
+    heldTurnKeys.delete("ControlLeft");
+    heldTurnKeys.delete("ControlRight");
+  }
+}
+
+function isTurnHeld(t: ActiveTable, heldTurnKeys: Set<string>, e: KeyPress): boolean {
+  if (t.by === "key") {
+    return e[t.turnFlag] === true;
+  }
+  pruneStaleTurnModifiers(heldTurnKeys, e);
+  return heldTurnKeys.size > 0;
+}
 
 /** Returns true when the game used the key, so the caller stops the browser's own action. */
 export function keyDown(s: InputState, sink: InputSink, e: KeyPress): boolean {
@@ -150,40 +308,43 @@ export function keyDown(s: InputState, sink: InputSink, e: KeyPress): boolean {
     releaseAll(s, sink);
     return false;
   }
-  const l = LAYOUTS[s.layout];
-  const k = name(l, e);
-  if (l.action.includes(k)) {
+  const t = s.table;
+  const k = keyId(t, e);
+  if (t.action.includes(k)) {
     if (!e.repeat) {
       sink.action();
     }
     return true;
   }
-  if (l.attack.includes(k)) {
+  if (t.attack.includes(k)) {
     if (!e.repeat) {
+      s.heldAttackKeys.add(k);
       setAttack(s, sink, true);
     }
     return true; // and no focus change or button press
   }
-  if (l.swallow.includes(k)) {
+  if (t.swallow.includes(k)) {
     return true;
   }
   const before = { held: heldDir(s), turn: turnActive(s) };
-  if (l.turn.includes(k)) {
+  if (t.turn.includes(k)) {
     if (!e.repeat) {
+      s.heldTurnKeys.add(k);
       s.turnKey = true;
       update(s, sink, before, false);
     }
     return true;
   }
-  const dir = Object.hasOwn(l.dirs, k) ? l.dirs[k] : undefined;
+  const dir = Object.hasOwn(t.dirs, k) ? t.dirs[k] : undefined;
   if (!dir) {
     return false;
   }
   if (e.repeat) {
     return true;
   }
-  s.turnKey = e[l.turnFlag] === true;
+  s.turnKey = isTurnHeld(t, s.heldTurnKeys, e);
   const isNew = !s.keys[dir];
+  s.heldDirKeys[dir].add(k);
   s.keys[dir] = true;
   update(s, sink, before, isNew);
   return true;
@@ -194,27 +355,34 @@ export function keyUp(s: InputState, sink: InputSink, e: KeyPress): boolean {
     releaseAll(s, sink);
     return false;
   }
-  const l = LAYOUTS[s.layout];
-  const k = name(l, e);
-  if (l.attack.includes(k)) {
-    setAttack(s, sink, false);
+  const t = s.table;
+  const k = keyId(t, e);
+  if (t.attack.includes(k)) {
+    s.heldAttackKeys.delete(k);
+    if (s.heldAttackKeys.size === 0) {
+      setAttack(s, sink, false);
+    }
     return true;
   }
-  if (l.action.includes(k) || l.swallow.includes(k)) {
+  if (t.action.includes(k) || t.swallow.includes(k)) {
     return true;
   }
   const before = { held: heldDir(s), turn: turnActive(s) };
-  if (l.turn.includes(k)) {
-    // If the other modifier key is still down, keep turning.
-    s.turnKey = e[l.turnFlag] === true;
+  if (t.turn.includes(k)) {
+    s.heldTurnKeys.delete(k);
+    // Keep turning while another bound turn key is still down.
+    s.turnKey = isTurnHeld(t, s.heldTurnKeys, e);
     update(s, sink, before, false);
     return true;
   }
-  const dir = Object.hasOwn(l.dirs, k) ? l.dirs[k] : undefined;
+  const dir = Object.hasOwn(t.dirs, k) ? t.dirs[k] : undefined;
   if (!dir) {
     return false;
   }
-  s.keys[dir] = false;
+  s.heldDirKeys[dir].delete(k);
+  if (s.heldDirKeys[dir].size === 0) {
+    delete s.keys[dir];
+  }
   update(s, sink, before, false);
   return true;
 }
@@ -223,7 +391,91 @@ export function keyUp(s: InputState, sink: InputSink, e: KeyPress): boolean {
 export function releaseAll(s: InputState, sink: InputSink): void {
   const before = { held: heldDir(s), turn: turnActive(s) };
   s.keys = {};
+  for (const dir of ["L", "R", "U", "D"] as const) {
+    s.heldDirKeys[dir].clear();
+  }
+  s.heldAttackKeys.clear();
+  s.heldTurnKeys.clear();
   s.turnKey = false;
   update(s, sink, before, false);
   setAttack(s, sink, false);
+}
+
+export type OneShotAction =
+  | "chat"
+  | "commandChat"
+  | "tabStats"
+  | "tabInventory"
+  | "tabSkills"
+  | "tabSpellbook"
+  | "windowFriends"
+  | "windowWho";
+
+const ONE_SHOT_ACTIONS: readonly OneShotAction[] = [
+  "chat",
+  "commandChat",
+  "tabStats",
+  "tabInventory",
+  "tabSkills",
+  "tabSpellbook",
+  "windowFriends",
+  "windowWho",
+];
+
+function isCodeBoundAnywhere(bindings: KeyBindings, code: string): boolean {
+  for (const slot of Object.values(bindings)) {
+    if (slot[0] === code || slot[1] === code) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Matches a non-movement hotkey (chat, slash-chat, panel tabs, Friends/Who windows). Returns null
+ * when browser modifiers (Ctrl/Alt/Meta) are held unless the action itself is bound to one.
+ */
+export function matchOneShotAction(s: InputState, e: KeyPress): OneShotAction | null {
+  if (e.metaKey || e.key === "Meta") {
+    return null;
+  }
+  const bindings = s.bindings;
+  const hasCode = Boolean(e.code);
+  const code = fallbackCode(e);
+  // Ignore modified shortcuts (Ctrl+I, Alt+F, etc.) unless the key itself IS a modifier.
+  if ((e.ctrlKey || e.altKey) && modifierFlagFor(code) === null) {
+    return null;
+  }
+  // Exact physical code match first (honours Custom rebinds cleanly).
+  for (const act of ONE_SHOT_ACTIONS) {
+    const slot = bindings[act];
+    if (slot[0] === code || slot[1] === code) {
+      return act;
+    }
+  }
+  // Layout-independent `/` shortcut (issue #20) when `commandChat` includes `Slash`:
+  // in Custom mode, never hijack a physical key that the player bound to another action.
+  if (
+    e.key === "/" &&
+    !e.ctrlKey &&
+    !e.altKey &&
+    bindings.commandChat.includes("Slash") &&
+    (s.layout !== "custom" || !hasCode || !isCodeBoundAnywhere(bindings, code))
+  ) {
+    return "commandChat";
+  }
+  // Synthetic tests without `e.code`: match key "Enter" when either Enter key is bound to chat.
+  if (
+    !hasCode &&
+    e.key === "Enter" &&
+    (bindings.chat.includes("Enter") || bindings.chat.includes("NumpadEnter"))
+  ) {
+    return "chat";
+  }
+  return null;
+}
+
+export function actionBindingLabel(s: InputState, act: KeyAction): string {
+  const [first, second] = s.bindings[act];
+  return first ?? second ?? "";
 }

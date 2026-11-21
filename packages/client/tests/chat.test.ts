@@ -170,6 +170,7 @@ afterEach(() => {
   app = null;
   document.body.replaceChildren();
   localStorage.removeItem("sso.controls");
+  localStorage.removeItem("sso.prefs");
 });
 
 function inGame() {

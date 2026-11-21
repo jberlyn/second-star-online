@@ -17,7 +17,6 @@ const texts = (out: Out, id: string) =>
   out.flatMap((o) => (o.to === id && o.msg.t === "chat" ? [o.msg.text] : []));
 const of = <T extends ServerMsg["t"]>(out: Out, id: string, t: T) =>
   out.flatMap((o) => (o.to === id && o.msg.t === t ? [o.msg as Extract<ServerMsg, { t: T }>] : []));
-const PRESENCE = { announcePresence: true, presenceChatLines: false };
 
 function scene() {
   const map = testMap("x1000y992");
@@ -42,11 +41,11 @@ function scene() {
   const logOn = (p: Player): Out => {
     addPlayer(s.world, p);
     p.loading = 0;
-    return [...friendsEntry(s.world, p), ...presenceOut(s.world, p, true, PRESENCE)];
+    return [...friendsEntry(s.world, p), ...presenceOut(s.world, p, true)];
   };
   const logOff = (p: Player): Out => {
     removePlayer(s.world, p.id);
-    return presenceOut(s.world, p, false, PRESENCE);
+    return presenceOut(s.world, p, false);
   };
   return { ...s, map, alice, bob, make, say, saved, logOn, logOff, deps };
 }
@@ -112,15 +111,17 @@ describe("/friends and the Friends window", () => {
     expect(bob.friends).toEqual([]);
   });
 
-  test("presence off: logons no longer reach the window", () => {
-    const { world, alice, say, make } = scene();
+  test("presence updates Friends window and honours each player's presenceChatLines setting", () => {
+    const { world, alice, bob, say, make } = scene();
     say(alice, "/friends add Carol");
+    alice.prefs = { ...alice.prefs, presenceChatLines: "friends" };
+    bob.prefs = { ...bob.prefs, presenceChatLines: "friends" };
     const carol = make("Carol");
     addPlayer(world, carol);
-    expect(
-      presenceOut(world, carol, true, { announcePresence: false, presenceChatLines: false }),
-    ).toEqual([]);
-    expect(alice.friends).toEqual([]);
+    const out = presenceOut(world, carol, true);
+    expect(alice.friends).toEqual(["Carol"]);
+    expect(texts(out, "Alice")).toEqual(["Carol has logged on."]);
+    expect(texts(out, "Bob")).toEqual([]);
   });
 
   test("a dead buddy answers like anyone (the dead flag never blocks it)", () => {

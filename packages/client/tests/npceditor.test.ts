@@ -221,6 +221,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     c.onMessage({ t: "chat", text: "old line", color: 0 });
     expect(menuTexts(root, "Game")).toEqual([
       "Open Friend's List",
+      "Who's Online",
       "Send Instant Message",
       "Edit Newspaper",
       "-",
@@ -240,6 +241,8 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     expect(root.querySelector(".window-friends")?.hasAttribute("hidden")).toBe(true);
     menuClick(root, "Game", "Open Friend's List");
     expect(root.querySelector(".window-friends")?.hasAttribute("hidden")).toBe(false);
+    menuClick(root, "Game", "Who's Online");
+    expect(c.sent).toContainEqual({ t: "whoOpen" });
     menuClick(root, "Game", "Send Instant Message");
     expect(root.querySelector(".window-imsend")?.hasAttribute("hidden")).toBe(false);
     // bug fixed: any player may write the paper their stand shows.

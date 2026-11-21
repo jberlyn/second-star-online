@@ -3,16 +3,15 @@
  *
  * 1.6 had File, Edit, Game and Plugins, plus Admin for an immortal (1.6's staff). SSO's bar is Game (your
  * character and the people you know), Chat (rooms), Admin for staff with tools (tools and events) and
- * Options (browser preferences). Quit Game is dropped (a page cannot close its tab) and so is
+ * Options (player settings). Quit Game is dropped (a page cannot close its tab) and so is
  * Plugins. Admin Chat sits with the other rooms, shown only to a role that may use it.
  *
  * Out of the game only what works there shows: Options always, and on the login and creation
  * screens Game with Return To Title Screen alone. The rest appears once a character is in play.
  */
 
-import type { Permission } from "@secondstaronline/shared";
+import type { KeyAction, Permission } from "@secondstaronline/shared";
 
-import type { ControlLayout } from "../input.ts";
 import type { Menu, MenuItem } from "./menubar.ts";
 
 export interface MenuState {
@@ -22,9 +21,8 @@ export interface MenuState {
   atTitle(): boolean;
   /** Whether your role holds a permission (the server still checks every request). */
   can(permission: Permission): boolean;
-  sharp(): boolean;
-  sfx(): boolean;
-  controls(): ControlLayout;
+  /** Primary bound key label for an action (shown right-aligned on menu items), or "". */
+  shortcut(action: KeyAction): string;
 }
 
 export type Room = "general" | "newPlayer" | "tradingPost" | "guild" | "admin";
@@ -34,17 +32,16 @@ export interface MenuActions {
   returnToTitle(): void;
   clearChat(): void;
   openFriends(): void;
+  openWho(): void;
   sendIm(): void;
   enterRoom(room: Room): void;
   worldEditor(): void;
   npcEditor(): void;
   serverSettings(): void;
+  playerSettings(): void;
   editNewspaper(): void;
   returnToGame(): void;
   assassin(mode: AssassinMode): void;
-  setSharp(on: boolean): void;
-  setSfx(on: boolean): void;
-  setControls(layout: ControlLayout): void;
 }
 
 const SEP: MenuItem = { kind: "sep" };
@@ -60,7 +57,11 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
     label,
     run,
   });
-  const inGame = (label: string, run: () => void) => ({ ...item(label, run), visible: play });
+  const inGame = (label: string, run: () => void, key?: KeyAction) => ({
+    ...item(label, run),
+    visible: play,
+    ...(key ? { shortcut: () => state.shortcut(key) } : {}),
+  });
   const room = (label: string, r: Room) => inGame(label, () => act.enterRoom(r));
   const gated = (label: string, run: () => void, permission: Permission) => ({
     ...item(label, run),
@@ -71,7 +72,8 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
       title: "Game",
       visible: () => play() || !state.atTitle(),
       items: [
-        inGame("Open Friend's List", act.openFriends),
+        inGame("Open Friend's List", act.openFriends, "windowFriends"),
+        inGame("Who's Online", act.openWho, "windowWho"),
         inGame("Send Instant Message", act.sendIm),
         // Anyone may write the paper their stand shows (1.6 offered it to immortals only).
         inGame("Edit Newspaper", act.editNewspaper),
@@ -112,39 +114,10 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         gated("End Assassin's Game", () => act.assassin("STOP"), "assassinGame"),
       ],
     },
-    // SSO's own: the browser preferences, in 1.6's Title Case.
+    // SSO's own: player settings window (controls, display, sound, chat, social, accessibility).
     {
       title: "Options",
-      items: [
-        {
-          kind: "item",
-          label: "Sharp Pixels Only",
-          checked: state.sharp,
-          run: () => act.setSharp(!state.sharp()),
-        },
-        {
-          kind: "item",
-          label: "Sound Effects",
-          checked: state.sfx,
-          run: () => act.setSfx(!state.sfx()),
-        },
-        SEP,
-        // The control layout, one of the pair checked (input.ts).
-        {
-          kind: "item",
-          label: "Modern Controls",
-          radio: true,
-          checked: () => state.controls() === "modern",
-          run: () => act.setControls("modern"),
-        },
-        {
-          kind: "item",
-          label: "Classic Controls",
-          radio: true,
-          checked: () => state.controls() === "classic",
-          run: () => act.setControls("classic"),
-        },
-      ],
+      items: [item("Settings…", act.playerSettings)],
     },
   ];
 }

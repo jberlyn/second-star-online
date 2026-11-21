@@ -13,9 +13,14 @@ import {
   hidesName,
   houseType,
   inCastBounds,
+  type KeyAction,
+  localSyncPatch,
   logchatFile,
+  mergePlayerPrefs,
   newsIsNew,
   PLAYFIELD_RECT,
+  type PlayerPreferences,
+  primaryKeyLabel,
   type RestoreTarget,
   type ServerMsg,
   TICK_MS,
@@ -24,12 +29,11 @@ import {
 import { type Assets, loadAssets } from "./assets.ts";
 import { createAudio, playAll } from "./audio.ts";
 import {
-  type ControlLayout,
   createInputState,
   type InputSink,
   keyDown,
   keyUp,
-  parseLayout,
+  matchOneShotAction,
   releaseAll,
   setLayout,
 } from "./input.ts";
@@ -47,6 +51,15 @@ import {
 } from "./model.ts";
 import { type Connection, connect, connectRetrying } from "./net.ts";
 import { createPlayfield, type Pick, PLAYFIELD_H, PLAYFIELD_W } from "./playfield.ts";
+import {
+  getStored,
+  loadLocalPrefsState,
+  loadWindowPos,
+  PREF_STORAGE_KEYS,
+  saveLocalPrefs,
+  saveWindowPos,
+  setStored,
+} from "./prefs.ts";
 import { type Sfx, SOUND } from "./sfx.ts";
 import { action } from "./ui/action.ts";
 import { showAlert } from "./ui/alert.ts";
@@ -69,8 +82,9 @@ import { createMenuBar, MENU_BAR_H } from "./ui/menubar.ts";
 import { createNewspaper } from "./ui/newspaper.ts";
 import { createNpcEditor, type NpcEditor } from "./ui/npceditor.ts";
 import { createPaintUi } from "./ui/paint.ts";
-import { createPanel } from "./ui/panel.ts";
+import { createPanel, type Tab } from "./ui/panel.ts";
 import { type Ghost, ghostTile, placementClick } from "./ui/placement.ts";
+import { createPlayerSettingsWindow } from "./ui/player-settings.ts";
 import { creationScreen, loginScreen, type Screen, titleScreen } from "./ui/screens.ts";
 import { createSettingsWindow } from "./ui/settings.ts";
 import { createGameView, type GameView } from "./ui/shells.ts";
@@ -83,27 +97,12 @@ import { createWhoWindow } from "./ui/who.ts";
 import { createWindowLayer } from "./ui/window.ts";
 import { createWorldEditor, type WorldEditor } from "./ui/worldeditor.ts";
 
-const PREFS = {
-  sharp: "sso.sharpPixels",
-  sfx: "sso.sfx",
-  news: "sso.news",
-  controls: "sso.controls",
-} as const;
-
-function pref(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function setPref(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // private mode: keep the default
-  }
-}
+const TAB_KEY_ACTION: Readonly<Record<Tab, KeyAction>> = {
+  stats: "tabStats",
+  inventory: "tabInventory",
+  skills: "tabSkills",
+  spellbook: "tabSpellbook",
+};
 
 export interface App {
   stop(): void;
@@ -161,7 +160,17 @@ export function hoverText(model: Model, hits: readonly Pick[]): string[] {
 }
 
 export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App {
-  let sharp = pref(PREFS.sharp) === "1";
+  const initialLocal = loadLocalPrefsState();
+  let prefs: PlayerPreferences = initialLocal.prefs;
+  let confirmedPrefs: PlayerPreferences = initialLocal.prefs;
+  let localPendingSync = initialLocal.pendingSync;
+  let inFlightPrefsId: number | null = null;
+  let nextAutoPrefsReqId = 1_000_000;
+  let ignores: string[] = [];
+  let lowHpActive = false;
+  let onlineFriends = new Set<string>();
+  let friendsReady = false;
+  let lastPresenceOn: string | null = null;
   let screen: Screen | null = null;
   let game: GameView | null = null;
   /** The kick alert still open: the game stays behind it until OK. */
@@ -171,9 +180,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
 
   // ---- menus (In-game menu) ----------------------------------------------------------------
   // The classic layout draws 1.6's menu bar above the stage.
-  let sfxOn = pref(PREFS.sfx) !== "0";
-  /** Modern unless this browser chose Classic. */
-  let controls: ControlLayout = parseLayout(pref(PREFS.controls));
   /** Your role's permissions as the server last sent them (it still checks every request). */
   let permissions: ReadonlySet<string> = new Set();
   let editor: WorldEditor | null = null;
@@ -187,9 +193,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     inPlay: () => model.self !== null,
     atTitle: () => atTitle,
     can: (permission) => permissions.has(permission),
-    sharp: () => sharp,
-    sfx: () => sfxOn,
-    controls: () => controls,
+    shortcut: (act) => primaryKeyLabel(input.bindings, act),
   };
   const menuActions: MenuActions = {
     // Game > Return To Title Screen: in play it is today's Log out.
@@ -197,6 +201,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     clearChat: () => chat.clear(),
     // Open Friend's List only reopens the window, without refilling it.
     openFriends: () => friends.window.open(),
+    openWho: () => send({ t: "whoOpen" }),
     sendIm: () => ims.openSend(""),
     enterRoom: (r) => send({ t: "roomEnter", room: r }),
     worldEditor: () => {
@@ -210,6 +215,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       }
     },
     serverSettings: () => conn.send({ t: "settingsOpen" }),
+    playerSettings: () => {
+      releaseAll(input, sink);
+      playerSettingsWin.open(prefs, ignores, menuState.inPlay());
+    },
     editNewspaper: () => {
       news.openEditor();
       conn.send({ t: "newspaperLoad" });
@@ -221,22 +230,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     },
     // Sent at once with no confirmation.
     assassin: (mode) => conn.send({ t: "assassinGame", mode }),
-    setSharp: (on) => {
-      sharp = on;
-      setPref(PREFS.sharp, on ? "1" : "0");
-      relayout();
-    },
-    // 1.6's SFX preference.
-    setSfx: (on) => {
-      sfxOn = on;
-      audio.enabled = on;
-      setPref(PREFS.sfx, on ? "1" : "0");
-    },
-    setControls: (layout) => {
-      controls = layout;
-      setLayout(input, sink, layout);
-      setPref(PREFS.controls, layout);
-    },
   };
 
   // ---- game parts, built once ---------------------------------------------------------------
@@ -251,7 +244,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   const playfield = createPlayfield(assets);
   const chat = createChatLog();
   const chatInput = createChatInput();
-  const windows = createWindowLayer();
+  const windows = createWindowLayer({
+    shouldRemember: () => prefs.rememberWindowPositions,
+    load: loadWindowPos,
+    save: saveWindowPos,
+  });
   const ims = createImWindows(assets, windows, {
     send: (to, text, via) => send({ t: "im", to, text, via }),
     me: () => myName,
@@ -282,15 +279,24 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   });
   /** Your character's name (the IM reply echo). */
   let myName = "";
-  const bars = createBars(assets);
-  const audio = createAudio(assets, sfxOn);
+  const syncLowHp = () => {
+    game?.root.classList.toggle("pf-low-hp", lowHpActive);
+  };
+  const bars = createBars(assets, (low) => {
+    lowHpActive = low;
+    syncLowHp();
+  });
+  const audio = createAudio(assets, prefs.sfxEnabled, undefined, undefined, undefined, () => {
+    model.sounds.length = 0;
+  });
   const sound = (s: Sfx) => audio.play(s);
   // Browsers start audio only from a gesture; pointerdown and keydown come before the click
   // or key that plays a sound, so the first one is heard (audio.ts).
-  window.addEventListener("pointerdown", () => audio.unlock(), true);
-  window.addEventListener("keydown", () => audio.unlock(), true);
+  const onAudioUnlock = () => audio.unlock();
+  window.addEventListener("pointerdown", onAudioUnlock, true);
+  window.addEventListener("keydown", onAudioUnlock, true);
   const intent: Intent = { held: null, turn: false, pending: null };
-  const input = createInputState(controls);
+  const input = createInputState(prefs.controlSet, prefs.keyBindings);
   let seq = 0;
   const send = (m: ClientMsg) => conn.send(m);
   const sink: InputSink = {
@@ -358,6 +364,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       return !model.keyLock || model.storageOpen;
     },
     say: (text) => chat.add(text, 0),
+    tabShortcut: (tab) => primaryKeyLabel(input.bindings, TAB_KEY_ACTION[tab]),
   });
 
   // ---- NPC Bio, shop and vault, the player menu, trade ---------------------------------------
@@ -550,6 +557,52 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     assignRole: (name, role) => send({ t: "roleAssign", name, role }),
     load: () => send({ t: "settingsOpen" }),
   });
+  const applyPrefs = (next: PlayerPreferences) => {
+    prefs = next;
+    setLayout(input, sink, next.controlSet, next.keyBindings);
+    audio.setSettings({
+      enabled: next.sfxEnabled,
+      masterVolume: next.masterVolume,
+      combatVolume: next.combatVolume,
+      spellsVolume: next.spellsVolume,
+      worldVolume: next.worldVolume,
+      backgroundAudio: next.backgroundAudio,
+    });
+    playfield.showDamageNumbers = next.showDamageNumbers;
+    bars.setOptions({
+      colorblind: next.colorblindBars,
+      lowHealthWarning: next.lowHealthWarning,
+    });
+    chat.setTextSize(next.chatTextSize);
+    chat.setTimestamps(next.chatTimestamps);
+    panel.tips.setLarge(next.largerHoverTips);
+    if (!next.rememberWindowPositions) {
+      windows.resetPositions();
+    }
+    relayout();
+  };
+  const playerSettingsWin = createPlayerSettingsWindow(windows, {
+    save: (patch, requestId) => {
+      const next = mergePlayerPrefs(patch, prefs);
+      applyPrefs(next);
+      if (menuState.inPlay()) {
+        inFlightPrefsId = requestId;
+        send({ t: "prefsSave", prefs: patch, requestId });
+      } else {
+        confirmedPrefs = next;
+        localPendingSync = true;
+        saveLocalPrefs(next, true);
+        playerSettingsWin.saveResult(
+          true,
+          "Saved on this browser. First-time accounts import these on login.",
+          requestId,
+        );
+      }
+    },
+    ignoreAdd: (name) => send({ t: "ignoreAdd", name }),
+    ignoreRemove: (name) => send({ t: "ignoreRemove", name }),
+    onCaptureStart: () => releaseAll(input, sink),
+  });
   const trade = createTradeWindow(assets, windows, {
     offer: (gold, items) => send({ t: "tradeOffer", gold, items }),
     accept: () => send({ t: "tradeAccept" }),
@@ -708,7 +761,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     const w = window.innerWidth;
     const h = window.innerHeight;
     if (!rebuild && screenStage) {
-      const s = fitScale(w, h, sharp, MENU_BAR_H);
+      const s = fitScale(w, h, prefs.gameSize === "sharp", MENU_BAR_H);
       menuBar.setScale(s);
       screenStage.style.transform = `scale(${s})`;
       const holder = screenStage.parentElement;
@@ -716,6 +769,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         holder.style.width = `${800 * s}px`;
         holder.style.height = `${600 * s}px`;
       }
+      windows.setScale(s);
       return;
     }
     const focused = document.activeElement;
@@ -813,13 +867,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       viewer: paintUi.viewer,
     });
     game = view;
+    syncLowHp();
     container.replaceChildren(view.root);
     relayout();
   };
 
   function relayout() {
     if (game) {
-      game.fit(window.innerWidth, window.innerHeight, sharp);
+      game.fit(window.innerWidth, window.innerHeight, prefs.gameSize === "sharp");
       windows.setScale(game.scale);
     } else {
       renderScreen();
@@ -845,6 +900,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         chatInput.maxLength = msg.rules.chatMaxChars;
         room.setMaxChars(msg.rules.chatMaxChars);
         myName = msg.name;
+        friendsReady = false;
+        onlineFriends = new Set();
+        lastPresenceOn = null;
         if (!game) {
           enterGame();
         }
@@ -896,6 +954,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "delta":
         applyDelta(model, msg.events);
+        if (!audio.canPlay()) {
+          model.sounds.length = 0;
+        }
         return;
       case "inv":
         model.inv = msg.inv;
@@ -956,6 +1017,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         panel.spellbook.setSpells(msg.spells);
         return;
       case "sound":
+        if (!audio.canPlay()) {
+          return;
+        }
         model.sounds.push(
           msg.volume === undefined
             ? { name: msg.name, ch: msg.ch }
@@ -982,6 +1046,58 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "settingsResult":
         settingsWin.result(msg);
+        return;
+      case "prefs":
+        ignores = [...msg.ignores];
+        if (msg.stored === false && localPendingSync && inFlightPrefsId === null) {
+          // First login for an uninitialized account: import migrated legacy / pre-login edits.
+          const importPatch = localSyncPatch(prefs);
+          const merged = mergePlayerPrefs(importPatch, msg.prefs);
+          confirmedPrefs = msg.prefs;
+          applyPrefs(merged);
+          const reqId = ++nextAutoPrefsReqId;
+          inFlightPrefsId = reqId;
+          send({ t: "prefsSave", prefs: importPatch, requestId: reqId });
+          playerSettingsWin.sync(merged, ignores, true);
+          return;
+        }
+        confirmedPrefs = msg.prefs;
+        localPendingSync = false;
+        saveLocalPrefs(msg.prefs, false);
+        if (inFlightPrefsId === null) {
+          applyPrefs(msg.prefs);
+          playerSettingsWin.sync(msg.prefs, ignores, true);
+        }
+        return;
+      case "prefsResult": {
+        if (
+          msg.requestId !== undefined &&
+          inFlightPrefsId !== null &&
+          msg.requestId !== inFlightPrefsId
+        ) {
+          return;
+        }
+        if (msg.requestId === undefined || msg.requestId === inFlightPrefsId) {
+          inFlightPrefsId = null;
+        }
+        if (msg.ok) {
+          const authoritative = msg.prefs ?? prefs;
+          confirmedPrefs = authoritative;
+          localPendingSync = false;
+          saveLocalPrefs(authoritative, false);
+          applyPrefs(authoritative);
+          playerSettingsWin.sync(authoritative, ignores, true);
+        } else {
+          const fallback = msg.prefs ?? confirmedPrefs;
+          confirmedPrefs = fallback;
+          applyPrefs(fallback);
+        }
+        playerSettingsWin.saveResult(msg.ok, msg.text, msg.requestId, msg.prefs ?? confirmedPrefs);
+        return;
+      }
+      case "ignores":
+        ignores = [...msg.list];
+        playerSettingsWin.setIgnores(ignores, msg.text, msg.ok);
         return;
       case "rules":
         chatInput.maxLength = msg.rules.chatMaxChars;
@@ -1117,9 +1233,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         // The news is printed only when it differs from the last one this computer kept (the news
         // preference). Its key lock is undone by the map load that follows game entry, so it locks
         // nothing.
-        if (newsIsNew(msg.text, pref(PREFS.news))) {
+        if (newsIsNew(msg.text, getStored(PREF_STORAGE_KEYS.news))) {
           chat.add(msg.text, CHAT_COLOR.normal);
-          setPref(PREFS.news, msg.text);
+          setStored(PREF_STORAGE_KEYS.news, msg.text);
         }
         return;
       case "sign":
@@ -1141,6 +1257,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           away.log(msg.from, msg.text);
         } else {
           ims.receive(msg.from, msg.text);
+          if (prefs.imChime) {
+            audio.playChime("im");
+          }
         }
         return;
       case "imEcho":
@@ -1159,13 +1278,27 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         who.show(msg.names);
         return;
       case "presence":
-        // Logon/logoff print nothing (1.6's `934`/`935`); the Friends window's lines come in
-        // `friends`.
+        // Remember who just logged on so a newly added Friends entry plays the logon chime.
+        lastPresenceOn = msg.on ? msg.name.toLowerCase() : null;
         return;
-      case "friends":
+      case "friends": {
         // Only Open Friend's List opens the window (1.6's frame 50 opened it at every game entry).
+        const nextSet = new Set(msg.names.map((n) => n.toLowerCase()));
+        if (
+          friendsReady &&
+          prefs.friendLogonSound &&
+          lastPresenceOn &&
+          nextSet.has(lastPresenceOn) &&
+          !onlineFriends.has(lastPresenceOn)
+        ) {
+          audio.playChime("friendLogon");
+        }
+        lastPresenceOn = null;
+        onlineFriends = nextSet;
+        friendsReady = true;
         friends.setNames(msg.names);
         return;
+      }
       case "playerBio":
         bio.showPlayer(msg);
         return;
@@ -1215,6 +1348,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     checkers.reset();
     bio.window.close();
     settingsWin.window.close();
+    playerSettingsWin.window.close();
+    inFlightPrefsId = null;
+    bars.reset();
+    ignores = [];
+    friendsReady = false;
+    onlineFriends = new Set();
+    lastPresenceOn = null;
     model.peers.clear();
     model.map = null;
     if (text) {
@@ -1291,21 +1431,67 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       releaseAll(input, sink);
     }
   };
+  const hasConfirmModal = () =>
+    playerSettingsWin.isConfirmOpen() ||
+    root.querySelector(".settings-confirm:not([hidden])") !== null;
   const onKeyDown = (e: KeyboardEvent) => {
-    if (!game || typingIn(e.target)) {
+    if (!game || typingIn(e.target) || playerSettingsWin.isCapturing() || hasConfirmModal()) {
       return;
     }
-    if (e.key === "Enter") {
+    const oneShot = matchOneShotAction(input, e);
+    if (oneShot === "chat") {
       e.preventDefault();
       chatInput.focus();
       return;
     }
-    // An SSO addition: `/` opens the chat input with the slash typed, ready for a command.
-    if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (oneShot === "commandChat") {
       e.preventDefault(); // and no quick find in Firefox
       chatInput.focus();
       chatInput.value += "/";
       chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+      return;
+    }
+    if (
+      oneShot === "tabStats" ||
+      oneShot === "tabInventory" ||
+      oneShot === "tabSkills" ||
+      oneShot === "tabSpellbook"
+    ) {
+      e.preventDefault();
+      if (!e.repeat && !model.keyLock) {
+        const tab: Tab =
+          oneShot === "tabStats"
+            ? "stats"
+            : oneShot === "tabInventory"
+              ? "inventory"
+              : oneShot === "tabSkills"
+                ? "skills"
+                : "spellbook";
+        sound(SOUND.tab);
+        panel.setTab(tab);
+      }
+      return;
+    }
+    if (oneShot === "windowFriends") {
+      e.preventDefault();
+      if (!e.repeat) {
+        if (friends.window.isOpen) {
+          friends.window.close();
+        } else {
+          friends.window.open();
+        }
+      }
+      return;
+    }
+    if (oneShot === "windowWho") {
+      e.preventDefault();
+      if (!e.repeat) {
+        if (who.window.isOpen) {
+          who.window.close();
+        } else {
+          send({ t: "whoOpen" });
+        }
+      }
       return;
     }
     // Stop the page scrolling, a focused button's press and the Alt menu bar.
@@ -1314,7 +1500,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
   };
   const onKeyUp = (e: KeyboardEvent) => {
-    if (!game || typingIn(e.target)) {
+    if (!game || typingIn(e.target) || playerSettingsWin.isCapturing() || hasConfirmModal()) {
       return;
     }
     if (keyUp(input, sink, e)) {
@@ -1368,7 +1554,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       }
     }
     if (game) {
-      playAll(audio, model.sounds.splice(0));
+      if (audio.canPlay()) {
+        playAll(audio, model.sounds.splice(0));
+      } else {
+        model.sounds.length = 0;
+      }
       const t = model.self?.timers;
       if (t) {
         bars.setPower(t.bar, t.barMember);
@@ -1384,18 +1574,23 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   };
   raf = requestAnimationFrame(frame);
 
+  applyPrefs(prefs);
   toTitle();
   return {
     stop() {
       stopped = true;
       cancelAnimationFrame(raf);
+      window.removeEventListener("pointerdown", onAudioUnlock, true);
+      window.removeEventListener("keydown", onAudioUnlock, true);
       window.removeEventListener("focus", onTextFocus, true);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onButtonDown, true);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("resize", onResize);
+      audio.dispose();
       menuBar.dispose();
+      playerSettingsWin.dispose();
       conn.close();
     },
   };

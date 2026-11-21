@@ -235,10 +235,11 @@ export function chatterTick(
 }
 
 /** An NPC chat line → `sqa` to the map, heard by each as ordinary chat. */
-export function chatterOut(room: Room, text: string, from?: string): Outgoing[] {
+export function chatterOut(room: Room, text: string, from?: string, ambient = false): Outgoing[] {
   // `from`: the player whose client sent the line (Radar, Inxition), whose ignorers miss it.
+  // `ambient`: an NPC's periodic `RND|` chatter, skipped for players who hid NPC chatter.
   return room.players
-    .filter((o) => from === undefined || hears(o, from))
+    .filter((o) => (from === undefined || hears(o, from)) && (!ambient || o.prefs.showNpcChatter))
     .map((o) => ({
       to: o.id,
       msg: { t: "chat", text: heardSqa(text, o.map.name, o.y), color: 0 },

@@ -83,6 +83,8 @@ export interface PanelActions {
   slotClicked?(): boolean;
   /** A chat line for you alone (the spellbook's Info). */
   say(text: string): void;
+  /** Optional primary bound key label for a panel tab, shown subtly in its hover tip. */
+  tabShortcut?(tab: Tab): string;
 }
 
 export interface Panel {
@@ -293,7 +295,10 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     b.className = "tab-hit";
     b.setAttribute("aria-label", tabLabels[t]);
     // An SSO addition: 1.6's tabs are pictures with no name on them.
-    tips.attach(b, tabLabels[t]);
+    tips.attach(b, () => {
+      const shortcut = act.tabShortcut?.(t) ?? "";
+      return shortcut ? { label: tabLabels[t], shortcut } : tabLabels[t];
+    });
     at(
       b,
       Math.round(tab.x - TAB_HIT.w / 2),

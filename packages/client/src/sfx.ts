@@ -1,5 +1,8 @@
 import { fxRun } from "@secondstaronline/shared";
 
+/** Volume mixer categories in Player Settings → Sound. */
+export type SoundCategory = "combat" | "spells" | "world";
+
 /**
  * Every sound SSO plays, with its 1.6 member and Director sound channel. A sound on a busy channel
  * cuts off the one playing there, as `puppetSound` did.
@@ -11,6 +14,55 @@ export interface Sfx {
   ch: number;
   /** This sound's own volume, 0-255 (the church bell's 200); the channel's is left alone. */
   volume?: number;
+  /** Optional explicit mixer category (falls back to `soundCategory(s)`). */
+  category?: SoundCategory;
+}
+
+const COMBAT_SOUNDS = new Set([
+  "swordswing",
+  "lasersword",
+  "hitsound",
+  "fx",
+  "monsterdeath",
+  "cannonball",
+]);
+const SPELL_SOUNDS = new Set([
+  "crush",
+  "fireballs",
+  "firebolt",
+  "fx2",
+  "fx3",
+  "heal1",
+  "heal2",
+  "lightning",
+  "raindrop",
+  "stone-skin",
+  "whirlwind",
+  "clear",
+  "clear2",
+  "land",
+]);
+
+/** Side-channel category overrides for shared audio samples (e.g. spell `fx` / Meteor `monsterdeath`). */
+const sfxCategoryMap = new WeakMap<Sfx, SoundCategory>();
+
+/** Maps any sound effect to its volume slider category: combat, spells or world. */
+export function soundCategory(s: Pick<Sfx, "name" | "category">): SoundCategory {
+  if (s.category) {
+    return s.category;
+  }
+  const mapped = sfxCategoryMap.get(s as Sfx);
+  if (mapped) {
+    return mapped;
+  }
+  const n = s.name.toLowerCase();
+  if (COMBAT_SOUNDS.has(n)) {
+    return "combat";
+  }
+  if (SPELL_SOUNDS.has(n)) {
+    return "spells";
+  }
+  return "world";
 }
 
 export const SOUND = {
@@ -41,6 +93,9 @@ export const SOUND = {
   spellKill: { name: "fx", ch: 1 },
 } as const satisfies Record<string, Sfx>;
 
+// Spell kills share the `fx` sample with melee kills; route them through the Spells slider.
+sfxCategoryMap.set(SOUND.spellKill, "spells");
+
 const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 /**
  * A random roll from 1 through n. A sound's own roll is the client's, as each
@@ -62,7 +117,11 @@ export function spellSounds(name: string, random: (n: number) => number = lingoR
   const on4 = (sound: string) => out.push({ name: sound, ch: 4 });
   const run = fxRun(name);
   if (run) {
-    out.push(...run.sounds);
+    for (const s of run.sounds) {
+      const copy: Sfx = { ...s };
+      sfxCategoryMap.set(copy, "spells");
+      out.push(copy);
+    }
     return out;
   }
   if (has(name, "Cannonball")) {

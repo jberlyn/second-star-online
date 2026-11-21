@@ -6,6 +6,7 @@ import type { AssetIndex } from "@secondstaronline/data";
 import {
   ADMINISTRATOR,
   blankMap,
+  defaultPlayerPrefs,
   emptyBag,
   NO_EQUIPMENT,
   roleToData,
@@ -25,6 +26,7 @@ import { createFriendsWindow } from "../src/ui/friends.ts";
 import { createImWindows } from "../src/ui/im.ts";
 import { createNpcEditor } from "../src/ui/npceditor.ts";
 import { createPanel } from "../src/ui/panel.ts";
+import { createPlayerSettingsWindow } from "../src/ui/player-settings.ts";
 import { creationScreen, loginScreen, titleScreen } from "../src/ui/screens.ts";
 import { createSettingsWindow } from "../src/ui/settings.ts";
 import { createShopWindow } from "../src/ui/shop.ts";
@@ -250,6 +252,19 @@ function buildAll(): HTMLElement[] {
   };
   createSettingsWindow(layer, noop).show([{ id: "r", title: "R", kind: "roles" }], [], lists);
   createSettingsWindow(layer, noop).show([{ id: "s", title: "S", kind: "staff" }], [], lists);
+
+  // Player Settings on Controls (keybinds), Sound (sliders/checkboxes), and Social (choices + ignore list).
+  const pControls = createPlayerSettingsWindow(layer, noop);
+  pControls.open(defaultPlayerPrefs(), ["Spammer"], true);
+  pControls.dispose();
+  const pSound = createPlayerSettingsWindow(layer, noop);
+  pSound.open(defaultPlayerPrefs(), ["Spammer"], true);
+  pSound.window.el.querySelector<HTMLButtonElement>('.settings-link[data-page="sound"]')?.click();
+  pSound.dispose();
+  const pSocial = createPlayerSettingsWindow(layer, noop);
+  pSocial.open(defaultPlayerPrefs(), ["Spammer"], true);
+  pSocial.window.el.querySelector<HTMLButtonElement>('.settings-link[data-page="social"]')?.click();
+  pSocial.dispose();
 
   // The World Editor with a map shown, every panel open; the sign panel in play.
   const editor = createWorldEditor(fakeAssets, noop);

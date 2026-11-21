@@ -21,15 +21,21 @@ export const TIP_DY = 20;
 /** The gap above the pointer when the tip flips up at the stage's bottom edge. */
 const TIP_FLIP_GAP = 2;
 
-/** A tip's text: one line, or a list of lines; null or empty shows nothing. */
-export type TipText = string | readonly string[] | null;
+/** A labelled tip with an optional subtle keyboard shortcut badge (panel tabs). */
+export interface KeyedTip {
+  label: string;
+  shortcut?: string;
+}
+
+/** A tip's text: one line, a keyed line, or a list of lines; null or empty shows nothing. */
+export type TipText = string | KeyedTip | readonly string[] | null;
 
 export interface HoverTips {
   /**
    * Shows the tip while the mouse is over `target`. `text` is read on each move, so it can follow
    * changing state; null or "" shows nothing.
    */
-  attach(target: HTMLElement, text: string | (() => string | null)): void;
+  attach(target: HTMLElement, text: TipText | (() => TipText)): void;
   /**
    * Shows `text` for `owner` at the pointer (client coordinates), or hides the tip if `owner` holds
    * it and `text` is null. For places with no element per thing, such as the playfield canvas. A
@@ -41,10 +47,16 @@ export interface HoverTips {
   release(owner: object): void;
   /** Hides the tip, whoever holds it. */
   hide(): void;
+  /** Player Settings → Accessibility → Larger hover tips. */
+  setLarge(on: boolean): void;
   /** While this returns true no tip shows (the item menu is open, an item is being dragged). */
   blocked: () => boolean;
   /** The tip element. */
   el: HTMLElement;
+}
+
+function isKeyedTip(v: TipText): v is KeyedTip {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
 /** `frame` is the URL of the item menu's background, whose border is the tip's frame. */
@@ -76,7 +88,25 @@ export function createHoverTips(layer: HTMLElement, frame: string): HoverTips {
   };
   /** What the tip shows now, to skip rebuilding it on every move. */
   let shown = "";
-  const render = (lines: readonly string[]) => {
+  const render = (value: Exclude<TipText, null>) => {
+    if (isKeyedTip(value)) {
+      const shortcut = value.shortcut?.trim() ?? "";
+      const key = shortcut ? `k:${value.label}\u0000${shortcut}` : value.label;
+      if (key === shown) {
+        return;
+      }
+      shown = key;
+      if (!shortcut) {
+        tip.textContent = value.label;
+        return;
+      }
+      const badge = document.createElement("span");
+      badge.className = "hover-tip-key";
+      badge.textContent = shortcut;
+      tip.replaceChildren(document.createTextNode(value.label), badge);
+      return;
+    }
+    const lines = typeof value === "string" ? [value] : value;
     const key = lines.join("\n");
     if (key === shown) {
       return;
@@ -96,15 +126,19 @@ export function createHoverTips(layer: HTMLElement, frame: string): HoverTips {
     );
   };
   const show = (who: object, text: TipText, clientX: number, clientY: number) => {
-    const lines = text === null ? [] : typeof text === "string" ? [text] : text;
-    if (lines.length === 0 || !lines[0] || tips.blocked()) {
+    const empty =
+      text === null ||
+      (typeof text === "string" && text === "") ||
+      (Array.isArray(text) && (text.length === 0 || !text[0])) ||
+      (isKeyedTip(text) && text.label === "");
+    if (empty || tips.blocked()) {
       if (owner === who) {
         hide();
       }
       return;
     }
     owner = who;
-    render(lines);
+    render(text);
     tip.hidden = false;
     place(clientX, clientY);
   };
@@ -112,8 +146,11 @@ export function createHoverTips(layer: HTMLElement, frame: string): HoverTips {
   const tips: HoverTips = {
     el: tip,
     blocked: () => false,
+    setLarge(on) {
+      tip.classList.toggle("hover-tip-large", on);
+    },
     attach(target, text) {
-      const read = () => (typeof text === "string" ? text : text());
+      const read = () => (typeof text === "function" ? text() : text);
       const move = (e: PointerEvent) => {
         if (e.pointerType === "mouse") {
           show(target, read(), e.clientX, e.clientY);

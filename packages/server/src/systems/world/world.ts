@@ -16,6 +16,7 @@ import {
   type ChatOutcome,
   type DeltaEvent,
   type Dir,
+  defaultPlayerPrefs,
   type Equipment,
   effectiveStats,
   emptyAssassinState,
@@ -43,6 +44,7 @@ import {
   newAttackTimers,
   newGatherCounters,
   type Piece,
+  type PlayerPreferences,
   type PlayerView,
   type Powers,
   QUEST_SAVE_BLOCK,
@@ -560,6 +562,10 @@ export interface Player {
   buddies: string[];
   /** The Friends window's lines: online buddies in the server's spelling (BUD). */
   friends: string[];
+  /** Per-account player settings, loaded at login and shared by online characters of the account. */
+  prefs: PlayerPreferences;
+  /** Whether the account already has a persisted row in `account_preferences`. */
+  prefsStored: boolean;
   /**
    * The skills the medal line check last saw, to print a medal's line when a skill reaches 90 in
    * play. Null until the session's first tick records them.
@@ -710,6 +716,8 @@ export function sessionCombatState(): Pick<
   | "room"
   | "buddies"
   | "friends"
+  | "prefs"
+  | "prefsStored"
   | "awardSkills"
 > {
   return {
@@ -779,6 +787,8 @@ export function sessionCombatState(): Pick<
     room: null,
     buddies: [],
     friends: [],
+    prefs: defaultPlayerPrefs(),
+    prefsStored: false,
     awardSkills: null,
   };
 }

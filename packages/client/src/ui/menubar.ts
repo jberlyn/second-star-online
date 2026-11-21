@@ -16,6 +16,8 @@ export type MenuItem =
       checked?(): boolean;
       /** A radio bullet instead of a check mark. */
       radio?: boolean;
+      /** Optional right-aligned keyboard shortcut hint (e.g. "F"). */
+      shortcut?(): string;
       run(): void;
     }
   | { kind: "sep"; visible?(): boolean };
@@ -117,6 +119,11 @@ export function createMenuBar(menus: readonly Menu[]): MenuBar {
       }
       if (!enabled) {
         b.setAttribute("aria-disabled", "true");
+      }
+      const shortcut = it.shortcut?.() ?? "";
+      if (shortcut) {
+        b.dataset.shortcut = shortcut;
+        b.setAttribute("aria-keyshortcuts", shortcut);
       }
       b.textContent = it.label;
       b.addEventListener("click", () => {

@@ -536,7 +536,7 @@ describe("admin messages in the app", () => {
     menuClick(root, "Admin", "Server Settings");
     expect(c.sent).toContainEqual({ t: "settingsOpen" });
     c.onMessage({ t: "settings", pages: PAGES, rows: ROWS, roles: [], staff: [] });
-    const w = root.querySelector(".settings")?.closest<HTMLElement>(".sso-window");
+    const w = root.querySelector<HTMLElement>(".window-settings");
     expect(w?.hidden).toBe(false);
     expect(w?.textContent).toContain("Server Settings");
     c.onMessage({ t: "settingsResult", ok: true });
@@ -557,7 +557,7 @@ describe("admin messages in the app", () => {
     c.onMessage(welcome);
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage({ t: "settings", pages: PAGES, rows: ROWS, roles: [], staff: [] });
-    const w = root.querySelector(".settings")?.closest<HTMLElement>(".sso-window");
+    const w = root.querySelector<HTMLElement>(".window-settings");
     expect(w?.hidden).toBe(false);
     c.onMessage({ t: "chat", text: "*** You are being kicked.", color: 0 });
     c.onMessage({ t: "kicked", text: "You have been kicked from the game." });

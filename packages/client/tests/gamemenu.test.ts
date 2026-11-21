@@ -1,7 +1,7 @@
 /**
  * The menu bar on the classic layout (ui/gamemenu.ts).
  */
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
 import type { ServerMsg } from "@secondstaronline/shared";
@@ -10,7 +10,7 @@ import { MODERATOR, PERMISSIONS } from "@secondstaronline/shared";
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
-import { menuClick, menuTexts, SNAPSHOT, titles } from "./helpers/menu-helpers.ts";
+import { menuClick, menuTexts, openMenu, SNAPSHOT, titles } from "./helpers/menu-helpers.ts";
 
 const fakeAssets: Assets = {
   index: { version: 1, inputHash: "", atlases: {} as AssetIndex["atlases"], ui: {}, sounds: {} },
@@ -40,6 +40,12 @@ const welcome: ServerMsg = {
   resumed: false,
   rules: { chatMaxChars: 200 },
 };
+
+afterEach(() => {
+  localStorage.clear();
+  document.body.replaceChildren();
+});
+
 function start(w = 1024, h = 768) {
   window.innerWidth = w;
   window.innerHeight = h;
@@ -50,14 +56,32 @@ function start(w = 1024, h = 768) {
   return { root, c, app };
 }
 
+function openSettingsPage(root: ParentNode, page: string): HTMLElement {
+  menuClick(root, "Options", "Settings…");
+  const win = root.querySelector<HTMLElement>(".window-player-settings");
+  if (!win) {
+    throw new Error("no player settings window");
+  }
+  win.querySelector<HTMLButtonElement>(`.settings-link[data-page="${page}"]`)?.click();
+  return win;
+}
+
 describe("the desktop menu bar", () => {
   test("out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen", () => {
     const { root, app } = start();
     expect(titles(root)).toEqual(["Options"]);
-    menuClick(root, "Options", "Sound Effects");
-    expect(localStorage.getItem("sso.sfx")).toBe("0");
-    menuClick(root, "Options", "Sound Effects");
-    expect(localStorage.getItem("sso.sfx")).toBe("1");
+    expect(menuTexts(root, "Options")).toEqual(["Settings…"]);
+    const win = openSettingsPage(root, "sound");
+    const box = win.querySelector<HTMLInputElement>('[aria-label="Sound effects"]');
+    expect(box?.checked).toBe(true);
+    if (box) {
+      box.checked = false;
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    win.querySelector<HTMLButtonElement>(".settings-save")?.click();
+    expect(JSON.parse(localStorage.getItem("sso.prefs") ?? "{}").sfxEnabled).toBe(false);
+    win.querySelector<HTMLButtonElement>(".window-close")?.click();
+
     for (const screen of ["Load Character", "New Character"]) {
       (root.querySelector(`[aria-label="${screen}"]`) as HTMLElement).click();
       expect(titles(root)).toEqual(["Game", "Options"]);
@@ -78,17 +102,27 @@ describe("the desktop menu bar", () => {
     app.stop();
   });
 
-  test("Game and Chat: their order and what each item sends", () => {
+  test("Game and Chat: their order, shortcuts and what each item sends", () => {
     const { root, c, app } = start();
     c.onMessage(welcome);
     c.onMessage(SNAPSHOT);
     expect(menuTexts(root, "Game")).toEqual([
       "Open Friend's List",
+      "Who's Online",
       "Send Instant Message",
       "Edit Newspaper",
       "-",
       "Return To Title Screen",
     ]);
+    // Modern controls show F and O right-aligned on Friend's List and Who's Online.
+    const drop = openMenu(root, "Game");
+    const shortcutOf = (label: string) =>
+      [...(drop?.querySelectorAll<HTMLElement>(".menu-item") ?? [])].find(
+        (e) => e.textContent === label,
+      )?.dataset.shortcut;
+    expect(shortcutOf("Open Friend's List")).toBe("F");
+    expect(shortcutOf("Who's Online")).toBe("O");
+
     expect(menuTexts(root, "Chat")).toEqual([
       "General Chat",
       "New Player Chat",
@@ -102,6 +136,8 @@ describe("the desktop menu bar", () => {
     expect(root.querySelector(".chat-log")?.childElementCount).toBe(0);
     menuClick(root, "Game", "Open Friend's List");
     expect(root.querySelector(".window-friends")?.hasAttribute("hidden")).toBe(false);
+    menuClick(root, "Game", "Who's Online");
+    expect(c.sent).toContainEqual({ t: "whoOpen" });
     menuClick(root, "Game", "Send Instant Message");
     expect(root.querySelector(".window-imsend")?.hasAttribute("hidden")).toBe(false);
     for (const r of ["General Chat", "New Player Chat", "Trading Post Chat", "Guild Chat"]) {
@@ -178,42 +214,51 @@ describe("the desktop menu bar", () => {
     app.stop();
   });
 
-  test("Options offers Modern and Classic Controls, Modern by default, and remembers the choice", () => {
-    localStorage.removeItem("sso.controls");
+  test("Options → Settings… offers Modern, Classic and Custom Controls, Modern by default, and remembers the choice", () => {
     const a = start();
-    expect(menuTexts(a.root, "Options")).toEqual([
-      "Sharp Pixels Only",
-      "Sound Effects",
-      "-",
-      "Modern Controls",
-      "Classic Controls",
-    ]);
-    const marks = (root: ParentNode) => {
-      menuTexts(root, "Options");
-      return [...root.querySelectorAll<HTMLElement>(".menu-drop [role=menuitemradio]")].map(
-        (e) => `${e.textContent} ${e.getAttribute("aria-checked")}`,
-      );
-    };
-    expect(marks(a.root)).toEqual(["Modern Controls true", "Classic Controls false"]);
-    menuClick(a.root, "Options", "Classic Controls");
-    expect(localStorage.getItem("sso.controls")).toBe("classic");
+    expect(menuTexts(a.root, "Options")).toEqual(["Settings…"]);
+    const winA = openSettingsPage(a.root, "controls");
+    const selA = winA.querySelector<HTMLSelectElement>('[aria-label="Control set"]');
+    expect(selA?.value).toBe("modern");
+    if (selA) {
+      selA.value = "classic";
+      selA.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    winA.querySelector<HTMLButtonElement>(".settings-save")?.click();
+    expect(JSON.parse(localStorage.getItem("sso.prefs") ?? "{}").controlSet).toBe("classic");
     a.app.stop();
+
     const b = start();
-    expect(marks(b.root)).toEqual(["Modern Controls false", "Classic Controls true"]);
-    menuClick(b.root, "Options", "Modern Controls");
-    expect(localStorage.getItem("sso.controls")).toBe("modern");
+    const winB = openSettingsPage(b.root, "controls");
+    const selB = winB.querySelector<HTMLSelectElement>('[aria-label="Control set"]');
+    expect(selB?.value).toBe("classic");
+    if (selB) {
+      selB.value = "modern";
+      selB.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    winB.querySelector<HTMLButtonElement>(".settings-save")?.click();
+    expect(JSON.parse(localStorage.getItem("sso.prefs") ?? "{}").controlSet).toBe("modern");
     b.app.stop();
-    localStorage.removeItem("sso.controls");
   });
 
   test("the bar scales with the stage", () => {
     const a = start(1600, 1240);
-    menuClick(a.root, "Options", "Sharp Pixels Only");
+    const win = openSettingsPage(a.root, "display");
+    const sel = win.querySelector<HTMLSelectElement>('[aria-label="Game size"]');
+    if (sel) {
+      sel.value = "sharp";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    win.querySelector<HTMLButtonElement>(".settings-save")?.click();
     const holder = a.root.querySelector(".menu-bar-holder") as HTMLElement;
     expect(holder.style.width).toBe("1600px");
     expect(holder.style.height).toBe("40px");
     expect((a.root.querySelector(".stage") as HTMLElement).style.transform).toBe("scale(2)");
-    menuClick(a.root, "Options", "Sharp Pixels Only");
+    if (sel) {
+      sel.value = "fit";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    win.querySelector<HTMLButtonElement>(".settings-save")?.click();
     a.app.stop();
     const b = start(800, 600);
     const s = 600 / 620;

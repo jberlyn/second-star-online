@@ -5,8 +5,8 @@
  * pushes the window's lines whenever they change:
  * - at game entry, from everyone online (frame 50's `getusers`), and again at Return To Game
  *   (re-enters frame 50); 1.6 also opened the window there, SSO never does;
- * - at a buddy's logon and logoff (`934`/`935`), with the presence events behind
- *   `announcePresence`;
+ * - at a buddy's logon and logoff (`934`/`935`), always pushed live while chat logon/logoff lines
+ *   follow each player's own preference;
  * - after `/friends add` when the name is online (1.6 asked the other client, which answered; the
  *   name is appended in the server's spelling, with no test) and after a removal. A dead player is
  *   no different: 1.6's dead-player gate never closed (nothing set the flag to 1).

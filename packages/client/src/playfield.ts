@@ -73,6 +73,8 @@ export const SHADOW_ALPHA = 70 / 255;
 
 export interface Playfield {
   canvas: HTMLCanvasElement;
+  /** Whether floating combat numbers (`model.floaties`) are drawn on the playfield. */
+  showDamageNumbers: boolean;
   /** Re-renders the static layers for a new map; resolves when its sheets are drawn. */
   setMap(map: MapView): Promise<void>;
   draw(model: Model): void;
@@ -242,6 +244,7 @@ export function createPlayfield(assets: Assets): Playfield {
 
   const playfield: Playfield = {
     canvas,
+    showDamageNumbers: true,
     async setMap(map) {
       await Promise.all([
         assets.loadGroup("tiles"),
@@ -427,17 +430,19 @@ export function createPlayfield(assets: Assets): Playfield {
           });
         }
       }
-      for (const f of model.floaties) {
-        sprites.push({
-          z: f.py + 10,
-          order: order++,
-          draw: () => {
-            ctx.font = FLOATIE_FONT;
-            ctx.textBaseline = "top";
-            ctx.fillStyle = PALETTE_RGB[f.color] ?? "#FFFFFF";
-            ctx.fillText(f.text, f.px, f.py);
-          },
-        });
+      if (playfield.showDamageNumbers) {
+        for (const f of model.floaties) {
+          sprites.push({
+            z: f.py + 10,
+            order: order++,
+            draw: () => {
+              ctx.font = FLOATIE_FONT;
+              ctx.textBaseline = "top";
+              ctx.fillStyle = PALETTE_RGB[f.color] ?? "#FFFFFF";
+              ctx.fillText(f.text, f.px, f.py);
+            },
+          });
+        }
       }
       sprites.sort((a, b) => a.z - b.z || a.order - b.order);
       for (const s of sprites) {

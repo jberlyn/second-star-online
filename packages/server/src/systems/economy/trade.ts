@@ -14,7 +14,9 @@
 import {
   addSlotFor,
   type Bag,
+  isBuddy,
   lingoEq,
+  PRIVACY_TEXT,
   type TradeOfferMsg,
   type TradeView,
 } from "@secondstaronline/shared";
@@ -72,6 +74,16 @@ function end(world: World, t: Trade): void {
   }
 }
 
+function tradeRefusal(sender: Player, target: Player): string | null {
+  if (target.prefs.tradeFrom === "none") {
+    return PRIVACY_TEXT.tradeNone(target.name);
+  }
+  if (target.prefs.tradeFrom === "friends" && !isBuddy(target.buddies, sender.name)) {
+    return PRIVACY_TEXT.tradeFriendsOnly(target.name);
+  }
+  return null;
+}
+
 /** The menu's Trade on another player. */
 export function openTrade(world: World, p: Player, targetId: string): Outgoing[] {
   if (targetId === p.id) {
@@ -81,6 +93,10 @@ export function openTrade(world: World, p: Player, targetId: string): Outgoing[]
   // A trade already in progress exits silently; so does a player not on your map.
   if (!b || b.map !== p.map || p.trade) {
     return [];
+  }
+  const refused = tradeRefusal(p, b);
+  if (refused) {
+    return [tell(p, refused)];
   }
   const t: Trade = {
     id: Bun.randomUUIDv7(),
@@ -143,6 +159,13 @@ export function offerTrade(world: World, p: Player, msg: TradeOfferMsg): Outgoin
     return [...both(), tell(other, TRADE_TEXT.changed(p.name))];
   }
   if (isA) {
+    // Re-check recipient's current trade privacy before notifying/locking them (they may have
+    // changed Trade requests to No one or removed the initiator from friends while A drafted).
+    const refused = tradeRefusal(p, other);
+    if (refused) {
+      end(world, t);
+      return [view(p, null), tell(p, refused)];
+    }
     // B must not be in another trade: in 1.6 A's first send took B over (closed).
     if (other.trade !== null && other.trade !== t.id) {
       end(world, t);

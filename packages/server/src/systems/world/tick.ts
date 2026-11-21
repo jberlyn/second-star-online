@@ -383,7 +383,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
     for (const slot of map.slots) {
       const said = chatterTick(room.npcs, slot, (deps.npcChatterSeconds ?? 150) * TICK_HZ, rng);
       if (said) {
-        out.push(...chatterOut(room, said));
+        out.push(...chatterOut(room, said, undefined, true));
       }
     }
     // The door-lock countdown: one timer per map, the earliest client's; at 0 the open coloured and

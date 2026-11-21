@@ -12,10 +12,12 @@
  */
 import {
   CHAT_COLOR,
+  IGNORE_ADD_MAX,
   ignoreAdd,
   ignoreListLines,
   ignoreRemove,
   ignores,
+  stripReturns,
 } from "@secondstaronline/shared";
 
 import type { Outgoing, Player, World } from "../world/world.ts";
@@ -29,6 +31,27 @@ const tell = (p: Player, text: string): Outgoing => ({
   to: p.id,
   msg: { t: "chat", text, color: CHAT_COLOR.normal },
 });
+
+function applyIgnoreChange(
+  world: World,
+  p: Player,
+  next: readonly string[],
+  save: (accountId: string, list: readonly string[]) => void,
+): { changed: boolean; out: Outgoing[] } {
+  const changed = next.length !== p.ignore.length || next.some((e, i) => e !== p.ignore[i]);
+  if (!changed) {
+    return { changed: false, out: [] };
+  }
+  const out: Outgoing[] = [];
+  for (const o of world.players.values()) {
+    if (o.accountId === p.accountId) {
+      o.ignore = [...next];
+      out.push({ to: o.id, msg: { t: "ignores", list: [...next] } });
+    }
+  }
+  save(p.accountId, next);
+  return { changed: true, out };
+}
 
 /**
  * `/ignore`, `/unignore` and `/ignorelist`. The account's list changes for every character of it
@@ -45,13 +68,51 @@ export function ignoreCommand(
   }
   const r =
     cmd.kind === "ignore" ? ignoreAdd(p.ignore, cmd.rest) : ignoreRemove(p.ignore, cmd.rest);
-  if (r.list.length !== p.ignore.length || r.list.some((e, i) => e !== p.ignore[i])) {
-    for (const o of world.players.values()) {
-      if (o.accountId === p.accountId) {
-        o.ignore = [...r.list];
-      }
+  const { out } = applyIgnoreChange(world, p, r.list, save);
+  return [...out, tell(p, r.line)];
+}
+
+/**
+ * Settings → Social & privacy → Ignore list: adds or removes one entry, returning the updated
+ * list and status line without printing to chat.
+ */
+export function ignoreModify(
+  world: World,
+  p: Player,
+  kind: "add" | "remove",
+  name: string,
+  save: (accountId: string, list: readonly string[]) => void,
+): Outgoing[] {
+  let target = name;
+  if (kind === "add") {
+    target = stripReturns(name).trim();
+    if (target === "") {
+      return [
+        {
+          to: p.id,
+          msg: { t: "ignores", list: [...p.ignore], ok: false, text: "Enter a player name." },
+        },
+      ];
     }
-    save(p.accountId, r.list);
+    if (target.length > IGNORE_ADD_MAX) {
+      return [
+        {
+          to: p.id,
+          msg: {
+            t: "ignores",
+            list: [...p.ignore],
+            ok: false,
+            text: `Names can be at most ${IGNORE_ADD_MAX} characters.`,
+          },
+        },
+      ];
+    }
   }
-  return [tell(p, r.line)];
+  const r = kind === "add" ? ignoreAdd(p.ignore, target) : ignoreRemove(p.ignore, target);
+  const { changed, out } = applyIgnoreChange(world, p, r.list, save);
+  const others = out.filter((o) => o.to !== p.id);
+  return [
+    ...others,
+    { to: p.id, msg: { t: "ignores", list: [...r.list], ok: changed, text: r.line } },
+  ];
 }

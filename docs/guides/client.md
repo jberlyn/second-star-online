@@ -13,6 +13,7 @@ Pressing an arrow sends movement intent. The client can show the input promptly,
 - [packages/client/src/input.ts](../../packages/client/src/input.ts): translates keyboard changes into intents.
 - [packages/client/src/assets.ts](../../packages/client/src/assets.ts): loads asset metadata and images.
 - [packages/client/src/playfield.ts](../../packages/client/src/playfield.ts): draws the playfield.
+- [packages/client/src/prefs.ts](../../packages/client/src/prefs.ts): caches player preferences and floating window positions in the browser.
 - [packages/client/src/fog.ts](../../packages/client/src/fog.ts): draws fog.
 - [packages/client/src/audio.ts](../../packages/client/src/audio.ts): manages audio playback.
 - [packages/client/src/sfx.ts](../../packages/client/src/sfx.ts): maps sound effects to playback.
@@ -44,6 +45,7 @@ The UI files are:
 - [packages/client/src/ui/paint.ts](../../packages/client/src/ui/paint.ts): painting, viewer and camera screens.
 - [packages/client/src/ui/panel.ts](../../packages/client/src/ui/panel.ts): stats, inventory and skills panel.
 - [packages/client/src/ui/placement.ts](../../packages/client/src/ui/placement.ts): house placement mode.
+- [packages/client/src/ui/player-settings.ts](../../packages/client/src/ui/player-settings.ts): Player Settings window (controls, display, sound, chat, social & privacy, accessibility).
 - [packages/client/src/ui/screens.ts](../../packages/client/src/ui/screens.ts): title, login and character creation.
 - [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): Server Settings window.
 - [packages/client/src/ui/settings-roles.ts](../../packages/client/src/ui/settings-roles.ts): Server Settings window's Roles and Staff pages.

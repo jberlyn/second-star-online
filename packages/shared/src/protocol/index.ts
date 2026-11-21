@@ -8,5 +8,6 @@ export * from "./housing.ts";
 export * from "./inventory.ts";
 export * from "./mail.ts";
 export * from "./messages.ts";
+export * from "./preferences.ts";
 export * from "./social.ts";
 export * from "./spells.ts";

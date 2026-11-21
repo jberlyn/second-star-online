@@ -231,26 +231,6 @@ export const SETTINGS = {
       "The most bytes a saved painting or photo (a 64x64 PNG) may take, up to 16384. A bigger image is dropped.",
     source: "SSO addition. 1.6 stored whatever the client sent, any size and format.",
   }),
-  announcePresence: def({
-    page: "chat",
-    label: "Announce logons",
-    form: { kind: "bool" },
-    schema: z.boolean(),
-    default: true,
-    tooltip:
-      "Tell every player when someone logs on or off. Used by the Friends list; prints nothing unless the next setting is on.",
-    source: "1.6 sent 934/935 to @AllUsers; the operator toggle is an SSO addition.",
-  }),
-  presenceChatLines: def({
-    page: "chat",
-    label: "Logon lines in chat",
-    form: { kind: "bool" },
-    schema: z.boolean(),
-    default: false,
-    tooltip:
-      'Also print "<name> has logged on." and "<name> has logged off." in everyone\'s chat. Off in First Star Online 1.6.',
-    source: "SSO addition. 1.6 printed nothing.",
-  }),
   roleTags: def({
     page: "chat",
     label: "Role tags in chat",

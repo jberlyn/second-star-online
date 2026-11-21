@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 75 |
+| [Design changes](#design-changes) | 76 |
 | [Fixed bugs](#fixed-bugs) | 297 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **556** |
+| **Total** | **557** |
 
 By system (the code folder that holds the change):
 
@@ -248,12 +248,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Optional logon/logoff chat lines
 - **Kind:** World content
-- **What you notice:** By default login and logout update the Friends window without printing a chat line; an operator can turn announcements on.
+- **What you notice:** By default login and logout update the Friends window without printing a chat line; players can opt into logon/logoff lines for friends only or for everyone in Settings → Chat.
 - **1.6:** Presence messages updated an open Friends window but printed nothing in chat.
-- **SSO:** Presence events go to everyone while `announcePresence` is on, its default. The separate `presenceChatLines` setting is off by default; when enabled it prints “<name> has logged on.” or “<name> has logged off.” Turning `announcePresence` off leaves the Friends window populated only at game entry.
-- **Why:** Operators may choose visible announcements while the default matches 1.6.
-- **In the code:** `packages/server/src/systems/social/presence.ts` (`presenceOut`)
-- **Pinned by:** `presenceChatLines prints logon and logoff lines`; `announcePresence off sends no presence events at all` (packages/server/e2e/chat-and-presence.test.ts)
+- **SSO:** Presence events always update the Friends window, and each player's `presenceChatLines` preference (`off`, `friends`, or `everyone`, default `off`) decides whether “<name> has logged on.” and “<name> has logged off.” also print in chat.
+- **Why:** Players can choose visible announcements (or restrict them to friends) while the default matches 1.6.
+- **In the code:** `packages/server/src/systems/social/presence.ts` (`presenceOut`), `packages/shared/src/rules/core/preferences.ts` (`defaultPlayerPrefs`)
+- **Pinned by:** `per-player presenceChatLines prints logon and logoff lines for everyone or friends only` (packages/server/e2e/chat-and-presence.test.ts)
 
 #### Seeded church bell map
 - **Kind:** World content
@@ -313,19 +313,19 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### In-game sound effects switch
 - **Kind:** Platform
-- **What you notice:** Options → Sound Effects switches sound immediately, including on the title screen, and the browser remembers the setting.
+- **What you notice:** Options → Settings… → Sound switches sound effects on or off (including on the title screen), alongside Master, Combat, Spells and World volume sliders, IM and friend-logon chimes, and a background-tab toggle.
 - **1.6:** Sound effects were switched in the title screen's Game Setup and stored in local preferences per server; the default was on.
-- **SSO:** The menu option defaults to on and is saved per browser.
-- **Why:** SSO does not offer the original Game Setup and a browser player needs to mute without logging out.
-- **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`), `packages/client/src/audio.ts` (`createAudio`)
+- **SSO:** Sound effects default to on, save per account on the server and cache in the browser for pre-login screens.
+- **Why:** SSO does not offer the original Game Setup and a browser player needs volume and mute controls without logging out.
+- **In the code:** `packages/client/src/ui/player-settings.ts` (`createPlayerSettingsWindow`), `packages/client/src/audio.ts` (`createAudio`)
 - **Pinned by:** `design change: Sound Effects defaults to on on the title screen and the browser remembers it` (packages/client/tests/ledger-pins-d.test.ts); `divergence: off silences everything, 1.6's ungated sounds too` (packages/client/tests/sound.test.ts); `out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
 
 #### In-game menu
 - **Kind:** Platform
-- **What you notice:** The game has a Windows-style menu above the game, with Game, Chat and Options, plus Admin for administrators. The items are regrouped by what they are for, and there is no Quit Game.
+- **What you notice:** The game has a Windows-style menu above the game, with Game, Chat and Options, plus Admin for administrators. The items are regrouped by what they are for, items with hotkeys show their keybind on the right, and there is no Quit Game.
 - **1.6:** The projector had a native Windows menu above the stage from program start, with File, Edit, Game and Plugins. Immortals received an Admin menu. Return To Title Screen and Quit were in File; preferences were on the title-screen Game Setup.
-- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Send Instant Message, Edit Newspaper and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an administrator, then Clear Chat Text. Admin, for an administrator, sits between Chat and Options and contains World Editor, NPC Editor, Return To Game, Server Settings and three Assassin commands, which are sent without confirmation. Options adds Sharp Pixels Only, Sound Effects, and the Modern Controls and Classic Controls pair. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Options alone, and the login and creation screens add Game with Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
-- **Why:** Browser scaling and logout need controls. A page cannot close its own tab, so Quit Game could only log out to a screen asking the player to close it, which Return To Title Screen and the tab's own close button already cover. With Quit Game gone, File and Edit would each hold a single item, so the items are grouped by purpose: chat rooms (including Admin Chat) together, and Admin keeping only tools and events. Server Settings is named for what it changes. Items that need a character are hidden rather than greyed before entry, so the title screen offers nothing that cannot work there.
+- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Who's Online, Send Instant Message, Edit Newspaper and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an administrator, then Clear Chat Text. Admin, for an administrator, sits between Chat and Options and contains World Editor, NPC Editor, Return To Game, Server Settings and three Assassin commands, which are sent without confirmation. Options contains Settings…, which opens the Player Settings window. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Options alone, and the login and creation screens add Game with Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
+- **Why:** Browser scaling, controls and player preferences need a clean home. A page cannot close its own tab, so Quit Game could only log out to a screen asking the player to close it, which Return To Title Screen and the tab's own close button already cover. With Quit Game gone, File and Edit would each hold a single item, so the items are grouped by purpose: chat rooms (including Admin Chat) together, and Admin keeping only tools and events. Server Settings is named for what it changes. Items that need a character are hidden rather than greyed before entry, so the title screen offers nothing that cannot work there.
 - **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
 - **Pinned by:** `no menu offers Quit Game: a page cannot close its own tab`, `an administrator gets Admin between Chat and Options, and Admin Chat among the rooms`, `out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
 
@@ -383,14 +383,23 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/client/src/ui/shells.ts` (`createGameView`)
 - **Pinned by:** `the stage puts the playfield and chat at their rects (frame 63)` (packages/client/tests/shells.test.ts)
 
-#### Modern controls by default, with Classic a menu choice
+#### Modern controls by default, with Classic and Custom rebinds in Settings
 - **Kind:** Platform
-- **What you notice:** By default you walk with W A S D, turn in place with Shift + W A S D, attack with Space and pick up or use with E, keeping the right hand on the mouse. Options → Classic Controls brings back 1.6's arrows, Alt + arrow, Tab and Ctrl exactly, and the browser remembers the choice.
-- **1.6:** Arrows walked, Alt + arrow turned, Tab attacked and Ctrl picked up or used, so both hands sat on the keyboard and clicking an NPC, a container or the inventory meant leaving the arrows.
-- **SSO:** Two fixed layouts, Modern (the default) and Classic, chosen in the Options menu and saved per browser. Modern reads the physical key position, so the keys sit in the same place on AZERTY. It does not also accept the classic keys: Ctrl next to W would make Ctrl+W close the tab, which a page cannot block. Modern swallows Tab and Alt with no action, so Tab cannot move focus to a button and Alt cannot open the browser's menu bar. In both layouts several directions held still resolve Left > Right > Up > Down, attacks still hit the faced tile, clicking and spell casting are unchanged, and the server receives and checks the same intents. Switching layout releases any key held under the old one.
-- **Why:** Most players now expect to move with W A S D and keep a hand on the mouse, and SSO is already played in a browser. The layout changes which keys send the intents, not the game's rules, so the 1.6 feel is kept, and Classic stays for players who want the original keys.
-- **In the code:** `packages/client/src/input.ts` (`LAYOUTS`, `keyDown`), `packages/client/src/ui/gamemenu.ts` (`desktopMenus`), `packages/client/src/app.ts` (`runApp`)
-- **Pinned by:** `W A S D walk, with the same L > R > U > D priority`, `Shift + W A S D turns in place`, `Space is one attack hold state`, `E sends the action once per press`, `keys are read by position, so AZERTY's Z, Q, S, D walk`, `the classic keys do nothing; Tab and Alt are kept from the browser`, `nothing saved, or an unknown value, is Modern`, `switching layout releases what the old one held` (packages/client/tests/input.test.ts); `Options offers Modern and Classic Controls, Modern by default, and remembers the choice` (packages/client/tests/gamemenu.test.ts)
+- **What you notice:** By default you walk with W A S D, turn in place with Shift + W A S D, attack with Space, pick up or use with E, and open tabs/windows with C, I, K, B, F and O, keeping the right hand on the mouse. Options → Settings… → Controls lets you switch back to Classic 1.6 (arrows, Alt + arrow, Tab, Ctrl, with extra hotkeys unbound) or rebind any action to Custom primary and secondary keys.
+- **1.6:** Arrows walked, Alt + arrow turned, Tab attacked and Ctrl picked up or used, so both hands sat on the keyboard and clicking an NPC, a container or the inventory meant leaving the arrows. Keys could not be rebound.
+- **SSO:** Modern (the default), Classic and Custom control sets are stored per account on the server and cached in the browser. Modern and Custom read physical key positions (`e.code`), so keys sit in the same place on AZERTY; Classic matches 1.6 by key name. Rebinding steals conflicts cleanly with an Undo link, reserves Meta and Escape, warns when Ctrl is paired with W, T or N, and displays active hotkeys subtly on tab tooltips and right-aligned in the top menu bar. In every layout directions resolve Left > Right > Up > Down, attacks hit the faced tile, clicking and spell casting are unchanged, and switching layout releases held keys.
+- **Why:** Most players now expect W A S D and key rebinding in a browser game. Remapping inputs does not alter the server's game rules, keeping the 1.6 feel intact while preserving Classic verbatim.
+- **In the code:** `packages/shared/src/rules/core/preferences.ts` (`rebindKey`), `packages/client/src/input.ts` (`LAYOUTS`, `keyDown`, `matchOneShotAction`), `packages/client/src/ui/player-settings.ts` (`createPlayerSettingsWindow`), `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `W A S D walk, with the same L > R > U > D priority`, `Shift + W A S D turns in place`, `Space is one attack hold state`, `E sends the action once per press`, `keys are read by position, so AZERTY's Z, Q, S, D walk`, `the classic keys do nothing; Tab and Alt are kept from the browser`, `nothing saved, or an unknown value, is Modern`, `switching layout releases what the old one held` (packages/client/tests/input.test.ts); `Options → Settings… offers Modern, Classic and Custom Controls, Modern by default, and remembers the choice` (packages/client/tests/gamemenu.test.ts); `key rebinding steals duplicate keys with Undo, warns on Ctrl+W, and rejects Meta`, `Modern hotkeys switch tabs, toggle Friends/Who, and tab tooltips show subtle key hints` (packages/client/tests/player-settings.test.ts)
+
+#### Player Settings window
+- **Kind:** Platform
+- **What you notice:** Options → Settings… opens a six-page Player Settings window (Controls, Display, Sound, Chat, Social & privacy, Accessibility) with search, per-option descriptions, Save and Revert, and per-account persistence across browsers.
+- **1.6:** The title screen's Game Setup offered only basic local switches (sound effects and server address); there were no volume sliders, chat sizing/timestamps, NPC chatter filter, privacy restrictions, ignore-list UI, low-health alert, colour-blind bars or larger tooltips.
+- **SSO:** Preferences are stored per account (`account_preferences`) and mirrored to `localStorage` for pre-login screens, with floating window positions cached per browser and clamped to the viewport. The server enforces `imFrom` (staff always allowed), `tradeFrom`, `guildInvitesFrom`, `showNpcChatter`, `presenceChatLines` and live ignore-list sync; the client applies game size, damage numbers, low-health warning (≤25% HP/hull, default on), master/combat/spells/world volumes, IM/friend-logon chimes, background-tab audio, chat text size/timestamps, colour-blind Amber/Sky-Cyan health & spell bars and larger hover tips.
+- **Why:** Gives players modern comfort, privacy and accessibility controls without changing 1.6's underlying gameplay rules.
+- **In the code:** `packages/shared/src/rules/core/preferences.ts`, `packages/server/src/persistence/preferences.ts`, `packages/client/src/ui/player-settings.ts` (`createPlayerSettingsWindow`)
+- **Pinned by:** `prefsSave persists per account, replies prefsResult, and reloads on next login`, `imFrom=friends blocks strangers with a notice, allows friends, and always allows staff`, `tradeFrom blocks strangers or everyone and informs the requester`, `guildInvitesFrom blocks strangers or everyone and tells the guild leader`, `showNpcChatter hides ambient NPC chatter without hiding Radar/Inxition readouts` (packages/server/tests/preferences.test.ts); `lists all 6 pages, searches across options and keybinds, and confirms unsaved changes`, `bars apply colour-blind palette and low health warning at <= 25% HP`, `chat applies text size and retroactive timestamps without altering /logchat text`, `audio applies master + category volumes, background tab mute, and notification chimes` (packages/client/tests/player-settings.test.ts)
 
 #### Clicking a game button leaves the keyboard available for play
 - **Kind:** Platform

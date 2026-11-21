@@ -14,7 +14,10 @@ import {
   CHAT_COLOR,
   CHAT_SOCIAL_TEXT,
   chatRefusal,
+  isBuddy,
+  isStaff,
   lingoEq,
+  PRIVACY_TEXT,
   parseMsg,
   type RestoreTarget,
   stripReturns,
@@ -63,6 +66,17 @@ export function deliverIm(
   if (!hears(to, from.name)) {
     logChat(world, from, channel, text, "ignored", to.name);
     return [];
+  }
+  // Friends-only IM privacy: staff can always message, and auto-replies / self-IMs still pass.
+  if (
+    !autoReply &&
+    to !== from &&
+    to.prefs.imFrom === "friends" &&
+    !isStaff(from.role) &&
+    !isBuddy(to.buddies, from.name)
+  ) {
+    logChat(world, from, channel, text, "refused", to.name);
+    return [tell(from, PRIVACY_TEXT.imFriendsOnly(to.name))];
   }
   logChat(world, from, channel, text, "delivered", to.name);
   if (awayAnswers(to.away)) {
