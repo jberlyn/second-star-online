@@ -7,7 +7,7 @@ name: Publish image
   workflow_dispatch:
     inputs:
       push:
-        description: "Publish this tag after a fresh build and healthcheck (tag refs only)"
+        description: "Publish after a fresh build and healthcheck (a tag ref publishes its version; main moves edge)"
         required: false
         type: boolean
         default: false
@@ -44,21 +44,15 @@ jobs:
           case "$EVENT_NAME" in
             push)
               case "$REF" in
-                refs/heads/main) run_mode=main; publish=false ;;
+                refs/heads/main) run_mode=main; publish=true ;;
                 refs/tags/*) run_mode=tag; publish=true ;;
                 *) echo "::error::Unsupported push ref: $REF"; exit 1 ;;
               esac
               ;;
             workflow_dispatch)
               case "$REF" in
-                refs/heads/main)
-                  if [ "$DISPATCH_PUSH" = "true" ]; then
-                    echo "::error::workflow_dispatch push=true is only allowed on a tag ref"; exit 1
-                  fi
-                  run_mode=main; publish=false
-                  ;;
-                refs/tags/*)
-                  run_mode=tag
+                refs/heads/main|refs/tags/*)
+                  if [ "$REF" = refs/heads/main ]; then run_mode=main; else run_mode=tag; fi
                   if [ "$DISPATCH_PUSH" = "true" ]; then publish=true; else publish=false; fi
                   ;;
                 *)
@@ -152,6 +146,7 @@ jobs:
             echo "PEELED_TAG=$PEELED"
             echo "VERSION=$version"
             echo "VERSION_LABEL=$version"
+            echo "PUBLISH_TAG=$version"
             echo "LOCAL_REF=$IMAGE:$version"
             echo "IS_PRERELEASE=$is_prerelease"
           } >> "$GITHUB_ENV"
@@ -162,13 +157,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # edge is a moving tag with no history, so its version label is fixed;
+          # the revision label records the commit.
           {
             echo "VERSION="
-            echo "VERSION_LABEL=ci-$C"
-            echo "LOCAL_REF=second-star-online:ci"
+            echo "VERSION_LABEL=edge"
+            echo "PUBLISH_TAG=edge"
+            echo "LOCAL_REF=$IMAGE:edge"
             echo "IS_PRERELEASE=false"
           } >> "$GITHUB_ENV"
-          echo "- branch: main (unpublished CI build)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$PUBLISH" = true ]; then
+            echo "- branch: main (publishes edge)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- branch: main (build and healthcheck only)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Set up Buildx
         if: success()
@@ -245,8 +247,55 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish the healthchecked version
-        if: success() && env.PUBLISH == 'true'
+      - name: Check that edge only moves forward
+        if: success() && env.PUBLISH == 'true' && env.RUN_MODE == 'main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A re-run or dispatch of an older main commit must not move edge backwards.
+          rm -f edge.err
+          if edge_json=$(docker buildx imagetools inspect "$IMAGE:edge" --format '{{json .}}' 2>edge.err); then
+            edge_revision=$(python3 - "$edge_json" <<'PY'
+          import json
+          import sys
+
+          data = json.loads(sys.argv[1])
+          image = data.get("image")
+          if isinstance(image, dict) and "config" in image:
+              config = image
+          elif isinstance(image, dict):
+              config = image.get("linux/amd64") or {}
+          else:
+              config = {}
+          labels = config.get("config", {}).get("Labels") or {}
+          print(labels.get("org.opencontainers.image.revision", ""))
+          PY
+            )
+          elif grep -Eqi 'manifest unknown|not found|no such manifest|NAME_UNKNOWN|does not exist' edge.err; then
+            edge_revision=""
+          else
+            cat edge.err
+            echo "::error::Registry query for edge failed; refusing to move the tag"; exit 1
+          fi
+          skip=false
+          if [ -z "$edge_revision" ]; then
+            disposition="absent; first publish"
+          elif [ "$edge_revision" = "$C" ]; then
+            disposition="rebuilt at the same commit"
+          elif ! git cat-file -e "$edge_revision^{commit}" 2>/dev/null; then
+            echo "::warning::Current edge revision $edge_revision is not in this repository's history; replacing it"
+            disposition="replaced unknown revision $edge_revision"
+          elif git merge-base --is-ancestor "$C" "$edge_revision"; then
+            skip=true
+            disposition="kept $edge_revision (this commit is older)"
+          else
+            disposition="advanced from $edge_revision"
+          fi
+          echo "EDGE_SKIP=$skip" >> "$GITHUB_ENV"
+          echo "- edge: $disposition" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the healthchecked image
+        if: success() && env.PUBLISH == 'true' && env.EDGE_SKIP != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -260,21 +309,24 @@ jobs:
             printf '%s\n' "$output" >&2
             return 2
           }
-          set +e
-          registry_absent "$IMAGE:$VERSION"
-          version_state=$?
-          set -e
-          case "$version_state" in
-            0) ;;
-            1) echo "::error::$IMAGE:$VERSION already exists; refusing to overwrite"; exit 1 ;;
-            *) echo "::error::Registry query failed; refusing to publish"; exit 1 ;;
-          esac
+          # A release version is immutable; edge is meant to be replaced.
+          if [ "$RUN_MODE" = tag ]; then
+            set +e
+            registry_absent "$IMAGE:$PUBLISH_TAG"
+            version_state=$?
+            set -e
+            case "$version_state" in
+              0) ;;
+              1) echo "::error::$IMAGE:$PUBLISH_TAG already exists; refusing to overwrite"; exit 1 ;;
+              *) echo "::error::Registry query failed; refusing to publish"; exit 1 ;;
+            esac
+          fi
           local_config_id=$(docker image inspect --format '{{.Id}}' "$LOCAL_REF")
           if [ "$local_config_id" != "$CONFIG_ID" ]; then
             echo "::error::Loaded image changed after its healthcheck"; exit 1
           fi
-          docker push "$IMAGE:$VERSION"
-          D=$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{.Manifest.Digest}}')
+          docker push "$IMAGE:$PUBLISH_TAG"
+          D=$(docker buildx imagetools inspect "$IMAGE:$PUBLISH_TAG" --format '{{.Manifest.Digest}}')
           if [ -z "$D" ]; then
             echo "::error::Could not read the published manifest digest"; exit 1
           fi
@@ -316,7 +368,7 @@ jobs:
           if [ "$registry_source" != "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" ]; then
             echo "::error::Published image source label is wrong"; exit 1
           fi
-          if [ "$registry_revision" != "$C" ] || [ "$registry_version" != "$VERSION" ]; then
+          if [ "$registry_revision" != "$C" ] || [ "$registry_version" != "$VERSION_LABEL" ]; then
             echo "::error::Published image revision/version labels are wrong"; exit 1
           fi
           printf '%s\n' "$D" > published/digest.txt
@@ -324,21 +376,21 @@ jobs:
             echo "D=$D"
           } >> "$GITHUB_ENV"
           {
-            echo "### Published $IMAGE:$VERSION"
+            echo "### Published $IMAGE:$PUBLISH_TAG"
             echo "- source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
-            echo "- tag: $VERSION"
+            echo "- tag: $PUBLISH_TAG"
             echo "- commit: $C"
             echo "- image config: $CONFIG_ID"
             echo "- manifest digest: $D"
             echo "- platform: linux/amd64"
-            echo "- version tag: $IMAGE:$VERSION"
+            echo "- image tag: $IMAGE:$PUBLISH_TAG"
             if [ "$IS_PRERELEASE" = true ]; then
               echo "- latest: not moved for a prerelease"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Promote latest for a stable version
-        if: success() && env.PUBLISH == 'true' && env.IS_PRERELEASE == 'false'
+        if: success() && env.PUBLISH == 'true' && env.RUN_MODE == 'tag' && env.IS_PRERELEASE == 'false'
         shell: bash
         run: |
           set -euo pipefail
@@ -409,3 +461,41 @@ jobs:
             echo "- latest: $latest_disposition" >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "- latest digest: $latest_digest" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete superseded edge images
+        if: success() && env.PUBLISH == 'true' && env.RUN_MODE == 'main' && env.EDGE_SKIP != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # edge keeps no history: once it moves, the image it pointed at has no tag.
+          # Every release image keeps its version tag, so only untagged versions go.
+          owner="${GITHUB_REPOSITORY_OWNER}"
+          package="${GITHUB_REPOSITORY#*/}"
+          package="${package,,}"
+          if [ "$(gh api "/users/$owner" --jq .type)" = Organization ]; then
+            base="/orgs/$owner/packages/container/$package/versions"
+          else
+            base="/users/$owner/packages/container/$package/versions"
+          fi
+          mapfile -t untagged < <(gh api --paginate "$base?per_page=100" \
+            --jq '.[] | select((.metadata.container.tags | length) == 0) | "\(.id) \(.name)"')
+          deleted=0
+          failed=0
+          for entry in "${untagged[@]}"; do
+            id="${entry%% *}"
+            digest="${entry#* }"
+            # The package API can lag the registry; never delete the new edge image.
+            if [ "$digest" = "$D" ]; then continue; fi
+            if gh api --method DELETE "$base/$id" >/dev/null; then
+              deleted=$((deleted + 1))
+            else
+              failed=$((failed + 1))
+              echo "::warning::Could not delete untagged image $digest"
+            fi
+          done
+          echo "- superseded edge images deleted: $deleted" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$failed" -gt 0 ]; then
+            echo "- superseded edge images left in place: $failed (check the package's Actions access)" >> "$GITHUB_STEP_SUMMARY"
+          fi

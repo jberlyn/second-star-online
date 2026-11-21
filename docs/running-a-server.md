@@ -43,7 +43,10 @@ If you used the README's `docker run` quick start, it uses a volume named `sso-d
 
 - `latest` follows the newest stable release. Pulling it downloads an update; an already running container keeps its current image until you recreate it.
 - For controlled upgrades, replace `latest` with a published version, such as `ghcr.io/jberlyn/second-star-online:1.0.0`, or pin a digest with `ghcr.io/jberlyn/second-star-online@sha256:<digest>`.
-- Release image tags omit the Git tag's leading `v`. Prereleases use their full version (for example, `1.1.0-rc.1`) and do not move `latest`. Builds of `main` are checked in CI but are not published.
+- Release image tags omit the Git tag's leading `v`. Prereleases use their full version (for example, `1.1.0-rc.1`) and do not move `latest`.
+- `edge` is the newest build of `main`, published after it passes the image healthcheck. It is unreleased, untested beyond CI, and **not recommended for production servers**. It moves with every commit to `main` and keeps no history: earlier `edge` images are deleted, so you cannot pin or roll back to one.
+
+**Moving to `edge` is one way.** An `edge` build can migrate your world database ahead of any release, and going back to `latest` or a version tag is not supported. If you try `edge`, back up your world first (see [Docker volume backup, restore, and upgrade](#docker-volume-backup-restore-and-upgrade)); any return to a stable image is at your own risk.
 
 Find available tags and digests on the [container package page](https://github.com/jberlyn/second-star-online/pkgs/container/second-star-online). Back up your world before upgrading; see [Docker volume backup, restore, and upgrade](#docker-volume-backup-restore-and-upgrade).
 

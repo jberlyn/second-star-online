@@ -78,7 +78,7 @@ Writing rules:
 ## 4. Publish
 
 1. Show the maintainer the draft notes and the recommended version, then wait for approval.
-2. Tags carry a `v` prefix (`v1.10.0`); only a `v*` tag publishes the container image (`.github/workflows/publish-image.yml`), so only tag once approved:
+2. Tags carry a `v` prefix (`v1.10.0`); only a `v*` tag publishes a version image and moves `latest` (`.github/workflows/publish-image.yml`; pushes to `main` only move `edge`), so only tag once approved:
    ```sh
    git tag v<version> && git push origin v<version>
    gh release create v<version> --title v<version> --notes-file <notes.md>
