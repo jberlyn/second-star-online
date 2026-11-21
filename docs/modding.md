@@ -155,7 +155,7 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 
 | Flag (`catalogue[].flags`) | Layer tested | What it does | Original codes |
 |---|---|---|---|
-| `sea` | 1 | Deep water where sea creatures spawn and move | `W1`, `N1`, `D2`, `I2`, `V2` |
+| `sea` | 1 | Deep water where sea creatures spawn and move, and where Boats and Battleships are built and sail | `W1`, `N1`, `D2`, `I2`, `V2` |
 | `airshipBlock` | 2 | Tiles that block an Airship | `D8`, `I8`, `E8`, `J8`, `K8`, `L8` |
 | `dock` | 1 (any row) | Airship landing pad | `J2` |
 | `arena` | 1 (any row) | Forced-PvP arena tile | `6P` |

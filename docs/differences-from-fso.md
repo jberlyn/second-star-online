@@ -665,7 +665,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Arenas are for players on foot
 - **Kind:** Other
-- **What you notice:** An airship over arena tiles is not in the arena. On a map with PvP off, players cannot hurt you there, a death there is a normal death that loses the airship, and `quit` does nothing.
+- **What you notice:** An airship, boat or battleship over arena tiles is not in the arena. On a map with PvP off, players cannot hurt you there, a death there is a normal death that loses the vehicle, and `quit` does nothing.
 - **1.6:** Arena tiles turned PvP on for whoever stood on them, a rider included, and an arena defeat kept the airship.
 - **SSO:** A rider is judged by the map's PvP flag alone (`pvpOff`), its death skips the arena defeat (`checkDeath`), and `quitCheck` is silent aboard. Riders still cannot challenge.
 - **Why:** An arena is a fight between players on foot. Vehicles mixing into it raised edge cases (a ship shelling the arena from outside, a rider's defeat on a tile it only flew over) with no good answer.
@@ -2725,7 +2725,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Players and monsters block monsters
 - **Kind:** Bug fixed
-- **What you notice:** A monster no longer walks through you, another monster or a static NPC. A hostile monster that reaches you stops beside you. Airship riders block nothing, as they block no player.
+- **What you notice:** A monster no longer walks through you, another monster or a static NPC. A hostile monster that reaches you stops beside you. Riders block nothing, as they block no player.
 - **1.6:** A monster's step checked only blocked tiles, the screen edge and water, so monsters passed through players and each other and could share a tile.
 - **SSO:** A step onto a tile where a player stands, or that another monster covers (all six tiles of an Overlord or Mutant Worm), is skipped like a step into a wall; a big monster's own footprint is tested too.
 - **Why:** Walking through solid things broke the picture the rest of the game draws, where players cannot walk through monsters.
@@ -3381,12 +3381,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 ### Dying aboard an airship loses it
 - **Kind:** Kept on purpose
-- **What you notice:** If you die while riding an airship, or its hull runs out, the airship is gone and no deed comes back. Your bag and gold stay with you. A faction head still drops on a PvP map.
+- **What you notice:** If you die while riding an airship, boat or battleship, or its hull runs out, the vehicle is gone and no deed comes back. Your bag and gold stay with you. A faction head still drops on a PvP map.
 - **1.6:** Death cleared the vehicle and switched the item and gold drop off. The body reverted to the walker late on each player's screen.
 - **SSO:** The same, except the body reverts at once for everyone, on the server.
-- **Why:** Flying an airship through a PvP area, or past monsters that cast spells, is a risk the rider takes; losing it is the price of dying there.
+- **Why:** Taking a vehicle through a PvP area, or past monsters that cast spells, is a risk the rider takes; losing it is the price of dying there.
 - **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/vehicles.ts` (`vehicleDeath`)
-- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `kept on purpose: a Lightning death aboard loses the airship too`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts); `SSO: the hull running out sinks the boat and everyone hears it` (packages/server/tests/ships.test.ts)
+- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `kept on purpose: a Lightning death aboard loses the airship too`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts); `SSO: the hull running out sinks the boat and everyone hears it`; `a death aboard loses the ship and drops nothing` (packages/server/tests/ships.test.ts)
 
 ### Killing a wanted player never flags you
 - **Kind:** Kept on purpose

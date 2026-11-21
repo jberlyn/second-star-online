@@ -27,7 +27,7 @@ Entry points:
 
 The shared fighter types describe equipment and faction data and support skill lookup. Lingo helpers preserve case-insensitive comparisons and the original word, integer, division and random conventions. Pattern rows are ordered: some callers select the first match and others the last, so overlapping item names can behave differently.
 
-Map helpers parse grid names and house interiors. Tile flags describe categories such as water and arena tiles; walk helpers build separate foot and Airship grids. These are shared calculations, with callers deciding when and how to apply their results. There is no server core folder.
+Map helpers parse grid names and house interiors. Tile flags describe categories such as water and arena tiles; walk helpers build separate foot, Airship and ship grids (a ship's is layer-1 sea water). These are shared calculations, with callers deciding when and how to apply their results. There is no server core folder.
 
 ### Names, values and movement
 
