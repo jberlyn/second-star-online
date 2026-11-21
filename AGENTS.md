@@ -4,6 +4,8 @@ Second Star Online is a server-authoritative browser game. `packages/shared` con
 
 Use Bun: `bun run dev`, `bun run build`, `bun run test`, and `bun run gate`. Keep game rules pure where practical, validate client intents at the server, and pass I/O dependencies to systems. See [architecture](docs/architecture.md) and the [system guides](docs/guides/README.md).
 
+When killing processes during development, make sure each one is yours and not owned by another person or session. Other sessions run their own dev servers, and a hosted server can run as the same user with the same command line (`bun packages/server/src/main.ts`), so `pkill -f`, `killall` or a PID found with `pgrep`/`ps` can stop someone else's server. Stop only what you started, by the PID you got when you launched it, by stopping your background task, or by your own port (`fuser -k <port>/tcp`).
+
 Edit game data in `packages/data/content/`, validate it against the schemas, and regenerate committed modules with `bun run data:build`. Build atlases with `bun run assets:build`; do not edit generated atlases. Preserve retained art geometry and annotate interactive DOM controls with semantic actions.
 
 Second Star Online is a remake that fixes 1.6's exploits and bugs but keeps the feel of the original; do not preserve a 1.6 bug just because the original had it. Add meaningful regression tests for behavior changes. Record every deliberate difference from 1.6, including fixed bugs and bugs kept on purpose, in [differences from 1.6](docs/differences-from-fso.md), alongside the code and pinning tests. Check relevant interactions in a browser when changing the interface.
