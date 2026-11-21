@@ -337,9 +337,9 @@ describe("drop, pickup and give", () => {
     const a = s.join("A", 5, 5);
     a.facing = "E";
     a.char.bag = a.char.bag.map((_, i) => ({ item: i === 0 ? "Apple" : `Rock${i}`, qty: 1 }));
+    s.map.ground.push({ id: "g3", item: "Pear", x: 6, y: 5, kind: "drop", expiresAt: null });
     s.map.ground.push({ id: "g1", item: "Apple", x: 6, y: 5, kind: "drop", expiresAt: null });
     s.map.ground.push({ id: "g2", item: "Apple", x: 6, y: 5, kind: "drop", expiresAt: null });
-    s.map.ground.push({ id: "g3", item: "Pear", x: 6, y: 5, kind: "drop", expiresAt: null });
     expect(chat(pickupIntent(s.ctx(), s.room(), a, "g1"), "A")).toEqual([]);
     expect(a.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
     actionIntent(s.ctx(), s.room(), a);
@@ -423,6 +423,18 @@ describe("drop, pickup and give", () => {
     s.map.ground.push({ id: "g1", item: "Fire Pot", x: 6, y: 5, kind: "drop", expiresAt: null });
     expect(chat(actionIntent(s.ctx(), s.room(), a), "A")).toEqual(["I bet that's hot."]);
     expect(a.itemPause).toBe(4);
+  });
+  test("bug fixed: Ctrl takes the newest item on the faced tile, as a click does, passing over an exit", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.facing = "E";
+    s.map.ground.push({ id: "g0", item: "Apple", x: 6, y: 5, kind: "drop", expiresAt: null });
+    s.map.ground.push({ id: "g1", item: "Knife", x: 6, y: 5, kind: "drop", expiresAt: null });
+    s.map.ground.push({ id: "g2", item: "Exit", x: 6, y: 5, kind: "admin", expiresAt: null });
+    actionIntent(s.ctx(), s.room(), a);
+    // 1.6 took the Apple, the oldest; the Knife is drawn on top and is what a click takes.
+    expect(a.char.bag[0]).toEqual({ item: "Knife", qty: 1 });
+    expect(s.map.ground.map((g) => g.id)).toEqual(["g0", "g2"]);
   });
   test("a crystal pile becomes n crystals", () => {
     const s = scene();

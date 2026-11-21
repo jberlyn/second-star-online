@@ -27,6 +27,7 @@ import {
   FACING_DELTA,
   filledLines,
   fixedInPlace,
+  groundLayer,
   headDrop,
   invAdd,
   invDelSlot,
@@ -946,7 +947,11 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   p.actionQueued = false;
   p.itemPause = ACTION_PAUSE;
   const t = faced(p);
-  const g = room.map.ground.find((x) => x.x === t.x && x.y === t.y);
+  // The newest item on the faced tile, the one drawn on top and the one a click takes (1.6's Ctrl
+  // took the oldest, so a pile answered Click and Ctrl with different items, and an item dropped on
+  // an exit was out of Ctrl's reach). An exit, under the map, is taken only when nothing else is.
+  const here = room.map.ground.filter((x) => x.x === t.x && x.y === t.y);
+  const g = here.findLast((x) => groundLayer(x.item) !== "hidden") ?? here.at(-1);
   // Aboard a vehicle Ctrl unboards unless something is in front to act on: a pig or an item is
   // taken as on foot (1.6's Airship only ever unboarded).
   if (p.vehicle && !g && !room.map.slots.some((s) => s.live?.x === t.x && s.live?.y === t.y)) {

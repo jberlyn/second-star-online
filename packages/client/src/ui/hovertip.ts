@@ -21,6 +21,9 @@ export const TIP_DY = 20;
 /** The gap above the pointer when the tip flips up at the stage's bottom edge. */
 const TIP_FLIP_GAP = 2;
 
+/** A tip's text: one line, or a list of lines; null or empty shows nothing. */
+export type TipText = string | readonly string[] | null;
+
 export interface HoverTips {
   /**
    * Shows the tip while the mouse is over `target`. `text` is read on each move, so it can follow
@@ -29,9 +32,11 @@ export interface HoverTips {
   attach(target: HTMLElement, text: string | (() => string | null)): void;
   /**
    * Shows `text` for `owner` at the pointer (client coordinates), or hides the tip if `owner` holds
-   * it and `text` is null. For places with no element per thing, such as the playfield canvas.
+   * it and `text` is null. For places with no element per thing, such as the playfield canvas. A
+   * list of two or more shows one per line, the first bold and a size larger (the thing a click
+   * acts on) and the rest below it.
    */
-  showFor(owner: object, text: string | null, clientX: number, clientY: number): void;
+  showFor(owner: object, text: TipText, clientX: number, clientY: number): void;
   /** Hides the tip if `owner` holds it. */
   release(owner: object): void;
   /** Hides the tip, whoever holds it. */
@@ -69,17 +74,37 @@ export function createHoverTips(layer: HTMLElement, frame: string): HoverTips {
     owner = null;
     tip.hidden = true;
   };
-  const show = (who: object, text: string | null, clientX: number, clientY: number) => {
-    if (!text || tips.blocked()) {
+  /** What the tip shows now, to skip rebuilding it on every move. */
+  let shown = "";
+  const render = (lines: readonly string[]) => {
+    const key = lines.join("\n");
+    if (key === shown) {
+      return;
+    }
+    shown = key;
+    if (lines.length === 1) {
+      tip.textContent = lines[0] ?? "";
+      return;
+    }
+    tip.replaceChildren(
+      ...lines.map((line, i) => {
+        const row = document.createElement("div");
+        row.className = i === 0 ? "hover-tip-first" : "hover-tip-more";
+        row.textContent = line;
+        return row;
+      }),
+    );
+  };
+  const show = (who: object, text: TipText, clientX: number, clientY: number) => {
+    const lines = text === null ? [] : typeof text === "string" ? [text] : text;
+    if (lines.length === 0 || !lines[0] || tips.blocked()) {
       if (owner === who) {
         hide();
       }
       return;
     }
     owner = who;
-    if (tip.textContent !== text) {
-      tip.textContent = text;
-    }
+    render(lines);
     tip.hidden = false;
     place(clientX, clientY);
   };

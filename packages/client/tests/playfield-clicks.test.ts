@@ -97,21 +97,31 @@ describe("playfield clicks", () => {
     expect(name("self")).toBe("Me");
     expect(name("ground")).toBe("Apple");
   });
-  test("design change: hover lists each ground item on the tile, newest first, then the player on it", () => {
+  test("design change: a player standing on items takes the click and the tip alone", () => {
     const { model } = world();
     const field = createPlayfield(assets);
-    model.ground.set("g2", { id: "g2", name: "Exit", x: 9, y: 3 });
-    model.ground.set("g3", { id: "g3", name: "15 Gold", x: 9, y: 3 });
-    model.ground.set("g4", { id: "g4", name: "Painting#4", x: 9, y: 3 });
+    model.ground.set("g2", { id: "g2", name: "Long Sword", x: 9, y: 3 });
     const p = walkerPixel(9, 3, "S", 0);
     const hits = field.pickAll(model, p.px, p.py + 10);
-    // The exit lies under the map; the click still takes the newest item first.
-    expect(hits.map((h) => (h.kind === "monster" ? h.slot : h.id))).toEqual(["g4", "g3", "ann"]);
-    expect(field.pick(model, p.px, p.py + 10)).toEqual({ kind: "ground", id: "g4" });
-    expect(hoverText(model, hits)).toBe("Painting\n15 Gold\nAnn");
+    // 1.6 took the item under the player; the click opens the player menu instead.
+    expect(hits).toEqual([{ kind: "player", id: "ann", name: "Ann" }]);
+    expect(hoverText(model, hits)).toEqual(["Ann"]);
+  });
+  test("design change: hover lists each named ground item on the tile, newest first", () => {
+    const { model } = world();
+    const field = createPlayfield(assets);
+    model.ground.set("g2", { id: "g2", name: "Exit", x: 6, y: 6 });
+    model.ground.set("g3", { id: "g3", name: "15 Gold", x: 6, y: 6 });
+    model.ground.set("g4", { id: "g4", name: "Painting#4", x: 6, y: 6 });
+    const at = { x: 5 * 32 + 16, y: 5 * 32 + 16 };
+    const hits = field.pickAll(model, at.x, at.y);
+    // The exit lies under the map; the click takes the newest item.
+    expect(hits.map((h) => (h.kind === "ground" ? h.id : h.kind))).toEqual(["g4", "g3", "g1"]);
+    expect(field.pick(model, at.x, at.y)).toEqual({ kind: "ground", id: "g4" });
+    expect(hoverText(model, hits)).toEqual(["Painting", "15 Gold", "Apple"]);
     // A tile holding only unnamed things shows no tip.
     model.ground.set("g5", { id: "g5", name: "Left Ray", x: 3, y: 9 });
-    expect(hoverText(model, field.pickAll(model, 2 * 32 + 16, 8 * 32 + 16))).toBeNull();
+    expect(hoverText(model, field.pickAll(model, 2 * 32 + 16, 8 * 32 + 16))).toEqual([]);
   });
   test('hover: a player in an "Invis" body shows ???', () => {
     const { model } = world();

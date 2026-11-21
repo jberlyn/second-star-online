@@ -142,12 +142,12 @@ export function hoverName(model: Model, hit: Pick): string | null {
 }
 
 /**
- * The hover tip's text for everything under the mouse (`Playfield.pickAll`), one line each in the
- * click's order, so the top line is what a click acts on; null when none of it is named.
+ * The hover tip's lines for everything under the mouse (`Playfield.pickAll`): a monster's or
+ * player's name alone, or the named ground items on the tile, newest first, so the first line is
+ * what a click or Ctrl takes. Empty when none of it is named.
  */
-export function hoverText(model: Model, hits: readonly Pick[]): string | null {
-  const lines = hits.map((h) => hoverName(model, h)).filter((t): t is string => !!t);
-  return lines.length > 0 ? lines.join("\n") : null;
+export function hoverText(model: Model, hits: readonly Pick[]): string[] {
+  return hits.map((h) => hoverName(model, h)).filter((t): t is string => !!t);
 }
 
 export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App {
@@ -633,7 +633,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
   });
   // The name of the monster, NPC, player or yourself under the mouse, in the hover tip (an SSO
-  // change: 1.6 floated the bare name above the pointer, sprite 156), and of the ground items
+  // change: 1.6 floated the bare name above the pointer, sprite 156), or else the ground items
   // there, one line each (1.6 named nothing on the ground). The mouse position is kept,
   // so someone walking out from under it loses the tip too.
   let hoverAt: { x: number; y: number } | null = null;

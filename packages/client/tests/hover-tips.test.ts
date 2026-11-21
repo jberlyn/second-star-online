@@ -1,6 +1,6 @@
 /**
- * The hover tip over the playfield, in the running app: it names the character and the ground items
- * under the mouse and keeps out from under the player menu that a click opens at the pointer.
+ * The hover tip over the playfield, in the running app: it names the character, or else the ground
+ * items, under the mouse and keeps out from under the player menu that a click opens at the pointer.
  */
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 
@@ -127,19 +127,27 @@ describe("the playfield's hover tip", () => {
     expect(s.tip.hidden).toBe(true);
   });
 
-  test("design change: the ground items under the mouse are named one per line, above the player on them", async () => {
+  test("design change: a pile is listed one item per line, the one a click takes first in bold", async () => {
     const s = await onMap([
-      { id: "a", name: "Exit", x: 5, y: 5 },
-      { id: "b", name: "Long Sword", x: 5, y: 5 },
+      { id: "a", name: "Exit", x: 13, y: 10 },
+      { id: "b", name: "Long Sword", x: 13, y: 10 },
       { id: "c", name: "Open Wooden Door", x: 13, y: 10 },
       { id: "d", name: "5 Blue Crystals", x: 5, y: 5 },
     ]);
-    s.at("pointermove", s.you);
-    s.frame();
-    expect([s.tip.hidden, s.tip.textContent]).toEqual([false, "5 Blue Crystals\nLong Sword\nMe"]);
     s.at("pointermove", s.grass);
     s.frame();
-    expect([s.tip.hidden, s.tip.textContent]).toEqual([false, "Wooden Door"]);
+    const rows = [...s.tip.children].map((r) => [r.className, r.textContent]);
+    expect([s.tip.hidden, rows]).toEqual([
+      false,
+      [
+        ["hover-tip-first", "Wooden Door"],
+        ["hover-tip-more", "Long Sword"],
+      ],
+    ]);
+    // You stand on the crystals: the tip names you alone, as a single plain line.
+    s.at("pointermove", s.you);
+    s.frame();
+    expect([s.tip.hidden, s.tip.children.length, s.tip.textContent]).toEqual([false, 0, "Me"]);
   });
 
   test("design change: the player menu a click opens hides the tip until it closes", async () => {

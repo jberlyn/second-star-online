@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 71 |
-| [Fixed bugs](#fixed-bugs) | 295 |
+| [Design changes](#design-changes) | 72 |
+| [Fixed bugs](#fixed-bugs) | 296 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **550** |
+| **Total** | **552** |
 
 By system (the code folder that holds the change):
 
@@ -48,7 +48,7 @@ By system (the code folder that holds the change):
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [20](#housing) | [6](#server-side-housing) |
-| inventory | [32](#inventory) | [11](#server-side-inventory) |
+| inventory | [33](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [19](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
@@ -595,10 +595,19 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Other
 - **What you notice:** Resting the mouse on one of the four panel tabs, an item in your bag or equipment boxes, another player, an NPC, a monster or yourself shows its name in a small purple-framed box just below the pointer. A stack adds its size, such as `Apple (2)`. The box follows the mouse and goes when the pointer leaves the thing it names. A touch shows nothing.
 - **1.6:** Only the playfield had hover text: the bare name of the player or monster under the mouse, in bold 12 px white Arial floating above the pointer (sprite 156). The tabs, bag items, worn items and ground items had no names anywhere, so a new player had to click each tab or item to learn what it was.
-- **SSO:** One hover tip serves the whole game and replaces sprite 156's floating name. It is built from 1.6's own parts: the item menu's purple frame (Inventory #50) around a half see-through black middle, with the whole box slightly see-through, and 9 px white Arial with a 1 px black shadow, a size under the item menu's title. Its top-left corner sits level with the pointer and 20 px below it; at the stage's right edge it slides left, and at the bottom it flips above the pointer. It hides while the item menu or the player menu is open or an item is pressed or dragged, and a player in an Invis body is still `???`. On the playfield it also names the ground items under the mouse, which 1.6 never named: loose items with their quantity (`15 Gold`), parked vehicles with their owner, and the fixtures and scenery a player can see and click. When a tile holds several things, the tip lists each on its own line in the click's order, newest item first and the player standing there last, so the top line is what a click acts on. It never names map links, overlays or markers (`Exit`, `Exit2`, the Rays, `Cloud`, `Chimney`, `Dragon Rock`, `DungeonAlpha`, a `Lair`; `ground.tipless`), and it tidies some names (`ground.tipNames`): the `#id` goes (`Painting#12` is "Painting"), `Sign 1` is "Sign", `BlueCrystal` is "Blue Crystal", and an open door is named as the door.
+- **SSO:** One hover tip serves the whole game and replaces sprite 156's floating name. It is built from 1.6's own parts: the item menu's purple frame (Inventory #50) around a half see-through black middle, with the whole box slightly see-through, and 9 px white Arial with a 1 px black shadow, a size under the item menu's title. Its top-left corner sits level with the pointer and 20 px below it; at the stage's right edge it slides left, and at the bottom it flips above the pointer. It hides while the item menu or the player menu is open or an item is pressed or dragged, and a player in an Invis body is still `???`. On the playfield it also names the ground items under the mouse, which 1.6 never named: loose items with their quantity (`15 Gold`), parked vehicles with their owner, and the fixtures and scenery a player can see and click. A player or monster under the mouse is named alone, even standing on items. When a tile holds several items, the tip lists each on its own line, newest first: the first line, the item a click or Ctrl takes, is bold and a size larger (10 px), and the rest stay at 9 px below it. It never names map links, overlays or markers (`Exit`, `Exit2`, the Rays, `Cloud`, `Chimney`, `Dragon Rock`, `DungeonAlpha`, a `Lair`; `ground.tipless`), and it tidies some names (`ground.tipNames`): the `#id` goes (`Painting#12` is "Painting"), `Sign 1` is "Sign", `BlueCrystal` is "Blue Crystal", and an open door is named as the door.
 - **Why:** New players could not tell what the tab icons or items were. A small box drawn from the original menu art keeps the tips part of the interface, and using the same box everywhere is clearer than two styles.
-- **In the code:** `packages/client/src/ui/hovertip.ts` (`createHoverTips`), `packages/client/src/ui/panel.ts` (`createPanel`), `packages/client/src/app.ts` (`runApp`, `hoverName`, `hoverText`), `packages/client/src/playfield.ts` (`pickAll`), `packages/shared/src/rules/inventory/ground.ts` (`groundTipName`), `packages/data/content/item-rules.json` (`tipless`, `tipNames`), `packages/client/src/styles.css` (`.hover-tip`)
-- **Pinned by:** `design change: hovering a tab or a bag item shows its name in a purple box below the pointer`; `design change: a touch shows no tip, and a press, the item menu or a drag hides it`; `design change: a worn item names itself in its equipment box; an empty box names nothing`; `design change: the tip stays on the stage, sliding left at the right edge and flipping up at the bottom` (packages/client/tests/panel.test.ts); `design change: the character under the mouse is named in the hover tip, not drawn on the map`; `design change: the player menu a click opens hides the tip until it closes`; `design change: the ground items under the mouse are named one per line, above the player on them` (packages/client/tests/hover-tips.test.ts); `hover: monsters, players, yourself and ground items show a name`; `design change: hover lists each ground item on the tile, newest first, then the player on it`; `hover: a player in an "Invis" body shows ???` (packages/client/tests/playfield-clicks.test.ts); `design change: loose items, vehicles and fixtures are named as they are, quantity included`; `design change: exits, Rays, clouds, chimneys and markers are never named`; `design change: tidied names drop the #id, the sign number and the open state` (packages/shared/tests/inventory/ground.test.ts)
+- **In the code:** `packages/client/src/ui/hovertip.ts` (`createHoverTips`), `packages/client/src/ui/panel.ts` (`createPanel`), `packages/client/src/app.ts` (`runApp`, `hoverName`, `hoverText`), `packages/client/src/playfield.ts` (`pickAll`), `packages/shared/src/rules/inventory/ground.ts` (`groundTipName`), `packages/data/content/item-rules.json` (`tipless`, `tipNames`), `packages/client/src/styles.css` (`.hover-tip`, `.hover-tip-first`)
+- **Pinned by:** `design change: hovering a tab or a bag item shows its name in a purple box below the pointer`; `design change: a touch shows no tip, and a press, the item menu or a drag hides it`; `design change: a worn item names itself in its equipment box; an empty box names nothing`; `design change: the tip stays on the stage, sliding left at the right edge and flipping up at the bottom` (packages/client/tests/panel.test.ts); `design change: the character under the mouse is named in the hover tip, not drawn on the map`; `design change: the player menu a click opens hides the tip until it closes`; `design change: a pile is listed one item per line, the one a click takes first in bold` (packages/client/tests/hover-tips.test.ts); `hover: monsters, players, yourself and ground items show a name`; `design change: hover lists each named ground item on the tile, newest first`; `hover: a player in an "Invis" body shows ???` (packages/client/tests/playfield-clicks.test.ts); `design change: loose items, vehicles and fixtures are named as they are, quantity included`; `design change: exits, Rays, clouds, chimneys and markers are never named`; `design change: tidied names drop the #id, the sign number and the open state` (packages/shared/tests/inventory/ground.test.ts)
+
+#### A click on a player standing on items opens the player menu
+- **Kind:** Other
+- **What you notice:** Clicking a player who stands on items opens the player menu, as it does anywhere else. The items under them can be taken with Ctrl, or by clicking once the player moves.
+- **1.6:** A click tested the ground items' sprites before the players', so clicking a player standing on an item picked up the item, or did nothing for a silent one such as a Ray.
+- **SSO:** A click tests monsters, then players, then the ground items on the tile, newest first. The hover tip follows the same order and names a player alone.
+- **Why:** A click should act on what is drawn under the mouse and named in the tip; a player on top of an item hid it.
+- **In the code:** `packages/client/src/playfield.ts` (`pick`, `pickAll`)
+- **Pinned by:** `design change: a player standing on items takes the click and the tip alone` (packages/client/tests/playfield-clicks.test.ts)
 
 #### Password= replies after the change
 - **Kind:** Other
@@ -2403,6 +2412,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The click should confirm an action, not a refusal.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`), `packages/client/src/app.ts` (`runApp`)
 - **Pinned by:** `divergence: the item menu clicks only past its locks and the client's refusals; Give too` and `divergence: a Use the client refuses makes no click` (packages/client/tests/panel.test.ts)
+
+#### Ctrl takes the top item of a pile, as a click does
+- **Kind:** Bug fixed
+- **What you notice:** On a tile holding several items, Ctrl takes the one drawn on top, the same one a click takes and the hover tip names first. An item dropped on a map's exit tile can be taken with Ctrl.
+- **1.6:** Ctrl acted on the first item in the map's list, the oldest on the tile, while a click took the newest, so the two answered with different items. An exit, the oldest item on its tile, kept Ctrl silent there whatever lay on top of it.
+- **SSO:** Ctrl acts on the newest item on the faced tile, passing over an exit unless nothing else is there.
+- **Why:** Ctrl and a click on the same pile should take the same item, the one a player can see.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`)
+- **Pinned by:** `bug fixed: Ctrl takes the newest item on the faced tile, as a click does, passing over an exit` (packages/server/tests/inventory.test.ts)
 
 ### mail
 

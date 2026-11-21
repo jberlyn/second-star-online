@@ -76,15 +76,15 @@ export interface Playfield {
   setMap(map: MapView): Promise<void>;
   draw(model: Model): void;
   /**
-   * What a click at playfield pixel (x, y) lands on, top sprite first: a monster (channels
-   * 180-183, the highest slot on top), else a ground item (158-177, the newest on top), else
-   * a player (112-157).
+   * What a click at playfield pixel (x, y) lands on: a monster (channels 180-183, the highest slot
+   * on top), else a player (112-157), else the newest ground item on the tile. 1.6 put ground items
+   * before players, so a click on a player standing on an item took the item.
    */
   pick(model: Model, x: number, y: number): Pick | null;
   /**
-   * Everything under the point, in the click's order: a monster alone (it takes the click before
-   * anything else), or the ground items on the tile, newest first, then the player there. The first
-   * is `pick`'s answer. The hover tip lists them.
+   * Everything under the point, in the click's order: a monster or a player alone, or else the
+   * ground items on the tile, newest first. The first is `pick`'s answer, and the one Ctrl takes
+   * from the faced tile. The hover tip lists them.
    */
   pickAll(model: Model, x: number, y: number): Pick[];
 }
@@ -483,13 +483,6 @@ export function createPlayfield(assets: Assets): Playfield {
           return [{ kind: "monster", slot: m.slot, name: m.name }];
         }
       }
-      const tx = Math.floor(x / 32) + 1;
-      const ty = Math.floor(y / 32) + 1;
-      // An exit lies under the map, where no click reaches it.
-      const hits: Pick[] = [...model.ground.values()]
-        .filter((g) => g.x === tx && g.y === ty && groundLayer(g.name) !== "hidden")
-        .reverse()
-        .map((g) => ({ kind: "ground", id: g.id }));
       // A character is the 46×45 composite at its registration point (PAPERDOLL_SIZE).
       const onChar = (px: number, py: number) =>
         x >= px - PAPERDOLL_REG.x &&
@@ -514,17 +507,23 @@ export function createPlayfield(assets: Assets): Playfield {
         }
         const { px, py } = walkerPixel(p.x, p.y, p.facing, p.frames, lenOf(p.body));
         if (onWalker(p.body, p.frames, p.facing, px, py)) {
-          return [...hits, { kind: "player", id: p.id, name: p.name }];
+          return [{ kind: "player", id: p.id, name: p.name }];
         }
       }
       const me = model.self;
       if (me) {
         const { px, py } = walkerPixel(me.x, me.y, me.facing, me.stepFrames, lenOf(me.body));
         if (onWalker(me.body, me.stepFrames, me.facing, px, py)) {
-          return [...hits, { kind: "player", id: me.id, name: me.name }];
+          return [{ kind: "player", id: me.id, name: me.name }];
         }
       }
-      return hits;
+      const tx = Math.floor(x / 32) + 1;
+      const ty = Math.floor(y / 32) + 1;
+      // An exit lies under the map, where no click reaches it.
+      return [...model.ground.values()]
+        .filter((g) => g.x === tx && g.y === ty && groundLayer(g.name) !== "hidden")
+        .reverse()
+        .map((g) => ({ kind: "ground", id: g.id }));
     },
   };
   return playfield;

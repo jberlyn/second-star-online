@@ -1040,8 +1040,7 @@ body {
 .menu-layer .hover-tip {
   position: absolute;
   z-index: 60;
-  /* One line per name: several ground items, or an item and the player on it. */
-  white-space: pre;
+  white-space: nowrap;
   color: #fff;
   font:
     9px Arial,
@@ -1058,6 +1057,12 @@ body {
   opacity: 0.9;
   image-rendering: pixelated;
   pointer-events: none;
+}
+/* A pile's tip: the item a click or Ctrl takes first, bold and a size up, the rest below. */
+.menu-layer .hover-tip .hover-tip-first {
+  font-weight: bold;
+  font-size: 10px;
+  line-height: 12px;
 }
 .menu-layer .hover-tip[hidden] {
   display: none;
