@@ -106,7 +106,7 @@ describe("opening a mailbox", () => {
       { t: "mail", messages: [{ id: 1, from: "Bob", subject: "Hi", body: "Yo" }], lock: true },
     ]);
     expect(a.keyLock).toBe(true);
-    expect(a.itemPause).toBe(40);
+    expect(a.itemPause).toBe(4);
     expect(a.mailList).toBe(true);
   });
 
@@ -147,7 +147,7 @@ describe("opening a mailbox", () => {
     const first = actionIntent(s.ctx(), s.room(), a);
     expect(chat(first, "Alice")).toEqual(["You check your mail..."]);
     expect(a.keyLock).toBe(true);
-    expect(a.itemPause).toBe(40);
+    expect(a.itemPause).toBe(4);
     a.itemPause = 0;
     expect(actionIntent(s.ctx(), s.room(), a)).toEqual([]);
     expect(a.itemPause).toBe(0);
@@ -388,16 +388,16 @@ describe("boards", () => {
     expect(a.board).toBe("Town Square");
   });
 
-  test("Town Square by Ctrl keeps Ctrl's 40-frame pause", () => {
+  test("Town Square by Ctrl keeps Ctrl's pause", () => {
     const s = scene();
     s.put("b", "Message Boards", 5, 5);
     const a = s.join("Alice");
     actionIntent(s.ctx(), s.room(), a);
-    expect(a.itemPause).toBe(40);
+    expect(a.itemPause).toBe(4);
     expect(a.board).toBe("Town Square");
   });
 
-  test("bug fixed: a hall's board opens for its members from in front, locks, pause 40", () => {
+  test("bug fixed: a hall's board opens for its members from in front, locks, pause 4", () => {
     const s = scene();
     s.put("g", "The Knights's Board", 5, 5);
     const c = s.join("Carol");
@@ -408,7 +408,7 @@ describe("boards", () => {
       board: { topic: "The Knights's Board", lock: true },
     });
     expect(c.keyLock).toBe(true);
-    expect(c.itemPause).toBe(40);
+    expect(c.itemPause).toBe(4);
   });
 
   test("bug fixed: a hall's board is refused to a non-member and from away", () => {
@@ -428,7 +428,7 @@ describe("boards", () => {
       "You see the message board, but you must be standing in front of it to read it.",
     ]);
     expect(k.board).toBeNull();
-    expect(k.itemPause).toBe(40);
+    expect(k.itemPause).toBe(4);
   });
 
   test("bug fixed: a post is appended in 1.6's format and the open board reloads with it", () => {

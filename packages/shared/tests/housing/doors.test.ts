@@ -112,7 +112,7 @@ describe("keys", () => {
       expect(keyConsumed({ coloured: true, opening: false }, k)).toBe(false);
     }
     expect(keyPause({ coloured: true })).toBe(KEY_PAUSE);
-    expect(KEY_PAUSE).toBe(425);
+    expect(KEY_PAUSE).toBe(100);
   });
 
   test("bug fixed: House and Guild Keys are kept and pause 100 after each turn", () => {

@@ -390,7 +390,7 @@ describe("the Assassin Statue", () => {
     );
     expect(lines[2]?.split("\n")[1]).toBe("                         Current Top Assassins");
     expect(lines[2]?.split("\n")[3]?.startsWith("1. Alice - 10 points")).toBe(true);
-    expect(s.bob.itemPause).toBe(20);
+    expect(s.bob.itemPause).toBe(4);
     // Never picked up.
     expect(s.map.ground).toHaveLength(1);
   });

@@ -394,11 +394,14 @@ export interface Player {
   /** Item 2 of the last Attack message on this map. */
   lastWeaponSeen: string;
   /**
-   * The item-action pause from Ctrl: 40 frames, counted down in the frame script. Use, Equip, Drop
-   * and a click pickup refuse while it runs; 1.6 also made the client wait 425 or 325 frames for a
-   * server reply, which SSO has no use for, so those waits do not exist here.
+   * The item-action pause, counted down in the frame script: `ACTION_PAUSE` after Ctrl or a click,
+   * longer after a switch or key. Use, Equip, Drop and a click pickup refuse while it runs; 1.6 also
+   * made the client wait 40, 425 or 325 frames for a server reply, which SSO has no use for, so
+   * those waits do not exist here.
    */
   itemPause: number;
+  /** A Ctrl pressed during a short item-action pause, run when the pause ends. */
+  actionQueued: boolean;
 
   // ---- NPCs, shops, bank, vault and trade -------------------------------------
   /**
@@ -670,6 +673,7 @@ export function sessionCombatState(): Pick<
   | "attackBonus"
   | "lastWeaponSeen"
   | "itemPause"
+  | "actionQueued"
   | "keyLock"
   | "piggie"
   | "bio"
@@ -738,6 +742,7 @@ export function sessionCombatState(): Pick<
     attackBonus: 0,
     lastWeaponSeen: "",
     itemPause: 0,
+    actionQueued: false,
     keyLock: false,
     piggie: 0,
     bio: null,

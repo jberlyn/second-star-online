@@ -5,6 +5,7 @@
  */
 import { houseData } from "@secondstaronline/data";
 import {
+  ACTION_PAUSE,
   addSlotFor,
   amountPath,
   arrangeBag,
@@ -788,7 +789,7 @@ function bagFull(p: Player, name: string): boolean {
 }
 
 /**
- * The Assassin Statue: "You view the top Assassins of FSO...", a 20-frame item-action pause, then
+ * The Assassin Statue: "You view the top Assassins of FSO...", the statue's item-action pause, then
  * the server's all-time and current tables as two chat blocks.
  */
 function viewStatue(ctx: ItemCtx, io: ItemOut, p: Player): void {
@@ -799,7 +800,7 @@ function viewStatue(ctx: ItemCtx, io: ItemOut, p: Player): void {
 }
 
 /**
- * The High Score Statue: "You read the high score list...", a 20-frame item-action pause, then the
+ * The High Score Statue: "You read the high score list...", its item-action pause, then the
  * server's table as one chat entry.
  */
 function viewScores(io: ItemOut, p: Player, world: World): void {
@@ -833,7 +834,7 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
   if (gate.kind === "vehicle") {
     return vehicleClick(ctx, room, p, g);
   }
-  // A container: a 40-frame item-action pause, then the chest click, whose open ends the pause.
+  // A container: the click's item-action pause, then the chest click, whose open ends the pause.
   if (gate.kind === "open") {
     p.itemPause = houseData.containers.clickPause;
     return openContainer(ctx.world, p, g);
@@ -866,7 +867,7 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
     }
     return io.out;
   }
-  // The Guild Center click after the click's 40-frame item-action pause.
+  // The Guild Center click after the click's item-action pause.
   if (gate.kind === "guildCenter") {
     p.itemPause = houseData.containers.clickPause;
     io.out.push(...guildCenterClick(ctx.world, p, g));
@@ -933,11 +934,17 @@ export function signNumber(name: string): 1 | 2 | 3 | null {
 
 export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   const io = new ItemOut(room);
-  // The click timer and the item-action pause gate Ctrl to one action per 40 frames.
+  // The item-action pause gates Ctrl to one action per `ACTION_PAUSE` frames. A press inside that
+  // short pause is kept and runs when it ends (`actionQueued`), so a quick second press is not lost;
+  // one during a longer pause (a switch, a key) is dropped as in 1.6.
   if (paused(p)) {
+    if (!busy(p) && !p.keyLock && p.itemPause <= ACTION_PAUSE) {
+      p.actionQueued = true;
+    }
     return io.out;
   }
-  p.itemPause = 40;
+  p.actionQueued = false;
+  p.itemPause = ACTION_PAUSE;
   const t = faced(p);
   const g = room.map.ground.find((x) => x.x === t.x && x.y === t.y);
   // Aboard a vehicle Ctrl unboards unless something is in front to act on: a pig or an item is

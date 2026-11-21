@@ -169,7 +169,7 @@ describe("texts", () => {
 
   test("the Statue: its line and pause", () => {
     expect(STATUE_TEXT).toBe("You view the top Assassins of FSO...");
-    expect(STATUE_PAUSE).toBe(20);
+    expect(STATUE_PAUSE).toBe(4);
     expect(clickGate("Assassin Statue")).toEqual({ kind: "statue" });
     expect(ctrlGate("Assassin Statue", STRANGER)).toEqual({ kind: "statue" });
   });

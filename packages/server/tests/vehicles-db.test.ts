@@ -4,7 +4,7 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
-import { airshipWalkGrid, type ServerMsg } from "@secondstaronline/shared";
+import { ACTION_PAUSE, airshipWalkGrid, type ServerMsg } from "@secondstaronline/shared";
 
 import { createGame, type Game } from "../src/game.ts";
 import { findCharacterById } from "../src/persistence/characters.ts";
@@ -12,6 +12,7 @@ import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { insertGround, loadGround } from "../src/persistence/ground.ts";
 import { findMapByCoords } from "../src/persistence/maps.ts";
 import { migrate } from "../src/persistence/migrations.ts";
+import type { Player } from "../src/systems/world/world.ts";
 import { rngByN } from "./helpers/sim.ts";
 
 let db: Db;
@@ -214,5 +215,66 @@ describe("migration 44 (ship vehicles)", () => {
     expect(() =>
       db.query("UPDATE characters SET vehicle = 'Canoe' WHERE id = ?").run(id),
     ).toThrow();
+  });
+});
+
+describe("the Ctrl pause around boarding", () => {
+  /** Alice on her start tile facing north, with her Airship parked on a pad straight ahead. */
+  async function aliceByAirship(): Promise<{ g: Game; id: string; p: Player }> {
+    const g = game();
+    const id = await makeChar(g, "Alice");
+    g.enter(id, false);
+    g.intent(id, { t: "mapReady" });
+    g.tick();
+    const p = g.world.players.get(id);
+    if (!p) {
+      throw new Error("no player");
+    }
+    p.facing = "N";
+    const padY = p.y - 1;
+    const cells = (p.map.layers[0][padY - 1] ?? "").split(" ");
+    cells[p.x - 1] = "J2";
+    p.map.layers[0][padY - 1] = cells.join(" ");
+    p.char.bag[0] = { item: "Airship Deed", qty: 1 };
+    g.intent(id, { t: "use", slot: 1 });
+    p.itemPause = 0;
+    return { g, id, p };
+  }
+
+  test("SSO: Ctrl pauses ACTION_PAUSE frames, so boarding and getting off take a fifth of a second", async () => {
+    const { g, id, p } = await aliceByAirship();
+    g.intent(id, { t: "action" });
+    expect(p.vehicle).toBe("Airship");
+    expect(p.itemPause).toBe(ACTION_PAUSE);
+    expect(ACTION_PAUSE).toBe(4);
+    for (let i = 0; i < ACTION_PAUSE; i++) {
+      g.tick();
+    }
+    g.intent(id, { t: "action" });
+    expect(p.vehicle).toBeNull();
+  });
+
+  test("SSO: a Ctrl pressed inside the short action pause runs when it ends", async () => {
+    const { g, id, p } = await aliceByAirship();
+    g.intent(id, { t: "action" });
+    g.intent(id, { t: "action" }); // pressed again at once: kept, not dropped
+    expect(p.vehicle).toBe("Airship");
+    expect(p.actionQueued).toBe(true);
+    for (let i = 0; i < ACTION_PAUSE; i++) {
+      g.tick();
+    }
+    expect(p.vehicle).toBeNull();
+    expect(p.actionQueued).toBe(false);
+  });
+
+  test("SSO: a Ctrl pressed during a long pause (a switch or a key) is dropped, as in 1.6", async () => {
+    const { g, id, p } = await aliceByAirship();
+    p.itemPause = 100;
+    g.intent(id, { t: "action" });
+    expect(p.actionQueued).toBe(false);
+    for (let i = 0; i < 100; i++) {
+      g.tick();
+    }
+    expect(p.vehicle).toBeNull();
   });
 });

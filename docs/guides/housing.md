@@ -33,7 +33,7 @@ The shared map helpers generate the interior name from the outdoor coordinates a
 
 ### Doors and switches
 
-A key acts on the faced door and changes only that door. House and guild keys remain in the bag and pause 100 frames; a coloured key is spent when it opens its door (closing is free) and pauses 425. A switch must be faced while standing still; a refused click changes nothing. A switch flips only itself and opens or closes every switch door on the map. Every door change sets the map's relock to 200 frames, after which coloured, switch, player and guild doors close and ON switches turn off. The timer keeps running while the map is empty.
+A key acts on the faced door and changes only that door. House and guild keys remain in the bag and pause 100 frames; a coloured key is spent when it opens its door (closing is free) and also pauses 100. A switch must be faced while standing still; a refused click changes nothing. A switch flips only itself and opens or closes every switch door on the map. Every door change sets the map's relock to 200 frames, after which coloured, switch, player and guild doors close and ON switches turn off. The timer keeps running while the map is empty.
 
 ## Differences from 1.6
 

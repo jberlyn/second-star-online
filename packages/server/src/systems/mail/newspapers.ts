@@ -6,7 +6,13 @@
  * by the stand clicked or faced, from the tile in front of it: the server reads the author from the
  * item's name, never from a typed name.
  */
-import { CHAT_COLOR, NEWS_TEXT, newspaperAuthor, standingInFront } from "@secondstaronline/shared";
+import {
+  ACTION_PAUSE,
+  CHAT_COLOR,
+  NEWS_TEXT,
+  newspaperAuthor,
+  standingInFront,
+} from "@secondstaronline/shared";
 
 import type { GroundItem, Outgoing, Player } from "../world/world.ts";
 import type { ArtStore } from "./art.ts";
@@ -23,7 +29,7 @@ export interface NewspaperStore {
 }
 
 /** The click's and Ctrl's item-action pause for a newspaper. */
-const READ_PAUSE = 20;
+const READ_PAUSE = ACTION_PAUSE;
 
 const blank = (n: number) => Array.from({ length: n }, () => "");
 
@@ -33,7 +39,7 @@ const chat = (to: Player, text: string): Outgoing => ({
 });
 
 /**
- * Reads the stand: the 20-frame pause; away from the tile in front of it, facing it, "You see the
+ * Reads the stand: the item-action pause; away from the tile in front of it, facing it, "You see the
  * newspaper, but…" (1.6 read from any distance); else "You view the newspaper", then the author's
  * file (blank with none) and each photo id's PNG when it is all digits and stored (any other slot
  * stays hidden). No lock.

@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 70 |
-| [Fixed bugs](#fixed-bugs) | 294 |
+| [Design changes](#design-changes) | 71 |
+| [Fixed bugs](#fixed-bugs) | 295 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **548** |
+| **Total** | **550** |
 
 By system (the code folder that holds the change):
 
@@ -47,7 +47,7 @@ By system (the code folder that holds the change):
 | core | [3](#core) | [9](#server-side-core) |
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
-| housing | [19](#housing) | [6](#server-side-housing) |
+| housing | [20](#housing) | [6](#server-side-housing) |
 | inventory | [32](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [19](#monsters) | [3](#server-side-monsters) |
@@ -500,6 +500,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Pinned by:** `death: the dying player gets { t: "death" } after the tick's vitals, once, and nobody else does` (packages/server/tests/monsters.test.ts); `death: black for one draw, then frozen until the respawn map is drawn` (packages/client/tests/death-stage.test.ts)
 
 ### Other design changes
+
+#### Ctrl and item clicks answer at once
+- **Kind:** Other
+- **What you notice:** After Ctrl, or a click on a container, mailbox, casino table, Guild Center, guild board, newspaper stand, statue or high score list, your next item action waits only a fifth of a second (4 frames). Boarding and getting off an airship, boat or battleship no longer hold Ctrl for 2 seconds. A Ctrl pressed during that short pause is kept and runs when it ends. A Ctrl during a switch's or key's longer pause is still ignored.
+- **1.6:** Ctrl and those clicks set a 40-frame pause (20 for newspapers, statues and high scores), and Ctrl also waited for the server's reply before it would act again. A pickup's inventory reply ended the pause after one round trip, but presses with no reply, such as boarding, getting off, signs and lamps, waited the full 2 seconds, and any press inside it was ignored.
+- **SSO:** Ctrl and those clicks pause `ACTION_PAUSE` (4) frames. The client sends one action per key press, the server answers in the same tick and checks every action, and the gateway limits message rates, so the long pause had nothing left to guard. The 4 frames absorb a double press. A Ctrl pressed during it sets `actionQueued`, and the press runs when the pause ends. The click pauses are the data values `containers.clickPause` and the statues' `pause`.
+- **Why:** The 2-second wait came from waiting on the network. Without the network round trip it made boarding and quick actions feel unresponsive and dropped presses with no message.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`ACTION_PAUSE`), `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/game.ts` (`tick`), `packages/client/src/model.ts` (`pressAction`)
+- **Pinned by:** `SSO: Ctrl pauses ACTION_PAUSE frames, so boarding and getting off take a fifth of a second`, `SSO: a Ctrl pressed inside the short action pause runs when it ends`, `SSO: a Ctrl pressed during a long pause (a switch or a key) is dropped, as in 1.6` (packages/server/tests/vehicles-db.test.ts); `SSO: Ctrl sets the 4-frame item-action pause: Use waits it out` (packages/server/tests/inventory.test.ts)
 
 #### Staff can wear their role in chat
 - **Kind:** Other
@@ -2044,12 +2053,21 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Coloured keys are spent only when they open
 - **Kind:** Bug fixed
-- **What you notice:** A coloured key is used up when it opens its door; closing the door with it is free. The 425-frame pause stays.
+- **What you notice:** A coloured key is used up when it opens its door; closing the door with it is free. Each turn pauses 100 frames (see [A coloured key pauses like a house key](#a-coloured-key-pauses-like-a-house-key)).
 - **1.6:** The key routine spent the key on every use, so one door cost two keys.
 - **SSO:** Only an opening turn spends the key.
 - **Why:** Doors relock by themselves, so a second key to close one was pure loss.
 - **In the code:** `packages/shared/src/rules/housing/doors.ts` (`keyConsumed`), `packages/server/src/systems/housing/doors.ts` (`useKey`)
-- **Pinned by:** `bug fixed: a coloured key is spent opening its door, not closing it; Keys.txt has no Inf` (packages/shared/tests/housing/doors.test.ts); `bug fixed: a coloured key is spent opening its door, not closing it; it pauses 425` (packages/server/tests/doors.test.ts)
+- **Pinned by:** `bug fixed: a coloured key is spent opening its door, not closing it; Keys.txt has no Inf` (packages/shared/tests/housing/doors.test.ts); `bug fixed: a coloured key is spent opening its door, not closing it; it pauses 100` (packages/server/tests/doors.test.ts)
+
+#### A coloured key pauses like a house key
+- **Kind:** Bug fixed
+- **What you notice:** After a coloured key (Steel, Emerald, Fire, Gold or Wooden) turns its door, your next item action waits 100 frames (5 seconds), as after a house key or a switch, not 21 seconds.
+- **1.6:** A coloured key set a 425-frame pause that the server's reply to the spent key ended one round trip later. A key the server never spends (`:Inf` in `Keys.txt`) got no reply and held you for the full 21 seconds.
+- **SSO:** Coloured keys pause `keys.colouredPause` (100), the same as `keys.housePause`.
+- **Why:** The 425 frames were a wait for a network reply, not a designed delay; with nothing to end it the pause held your bag for 21 seconds. The 100 frames still stop rapid door flipping.
+- **In the code:** `packages/shared/src/rules/housing/doors.ts` (`keyPause`), `packages/server/src/systems/housing/doors.ts` (`useKey`)
+- **Pinned by:** `bug fixed: a coloured key is spent opening its door, not closing it; it pauses 100` (packages/server/tests/doors.test.ts)
 
 #### A key or switch changes only what you use it on
 - **Kind:** Bug fixed
@@ -2458,7 +2476,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The server tests the tile in front, then membership of the guild named on the board (`The <guild>'s Board`), and locks the keys.
 - **Why:** Anyone could read a guild's board from the top of any map.
 - **In the code:** `packages/server/src/systems/mail/boards.ts` (`boardOpen`), `packages/shared/src/rules/mail/mail.ts` (`boardMember`, `standingInFront`)
-- **Pinned by:** `bug fixed: a hall's board opens for its members from in front, locks, pause 40`, `bug fixed: a hall's board is refused to a non-member and from away` (packages/server/tests/mail-boards.test.ts); `bug fixed: a hall's board belongs to its guild's members` (packages/shared/tests/mail/mail-boards.test.ts); `the Knights' board: Carol is refused from away, King until he joins; then it locks and posts` (packages/server/e2e/mail-and-boards.test.ts)
+- **Pinned by:** `bug fixed: a hall's board opens for its members from in front, locks, pause 4`, `bug fixed: a hall's board is refused to a non-member and from away` (packages/server/tests/mail-boards.test.ts); `bug fixed: a hall's board belongs to its guild's members` (packages/shared/tests/mail/mail-boards.test.ts); `the Knights' board: Carol is refused from away, King until he joins; then it locks and posts` (packages/server/e2e/mail-and-boards.test.ts)
 
 #### Town Square's board opens from in front of it
 - **Kind:** Bug fixed
@@ -2489,12 +2507,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A Film is spent when the photo is saved
 - **Kind:** Bug fixed
-- **What you notice:** Using a Film shows the lens and leaves the Film in your bag. Cancelling the shot with a bag click, or shooting with a full bag, keeps it; a saved photo takes one Film.
-- **1.6:** Use removed the Film before the shot, so a cancelled or refused photo lost it.
-- **SSO:** The Film leaves the bag only when a photo is saved.
+- **What you notice:** Using a Film shows the lens and leaves the Film in your bag. Cancelling the shot with a bag click, or shooting with a full bag, keeps it; a saved photo takes one Film. Using a Film sets no item-action pause, so your bag works at once.
+- **1.6:** Use removed the Film before the shot, so a cancelled or refused photo lost it. Use also set a 425-frame pause that the server's reply to the spent Film ended one round trip later.
+- **SSO:** The Film leaves the bag only when a photo is saved. With no reply to end it, the 425-frame pause would have held the bag for 21 seconds, so Use on a Film sets none.
 - **Why:** Players lost film for photos they never got.
 - **In the code:** `packages/server/src/systems/mail/art.ts` (`useFilm`, `artSaveIntent`)
-- **Pinned by:** `bug fixed: with a Camera ('camera' passes) the Film is kept, the lens appears, pause 425`, `bug fixed: using a second Film spends nothing; one saved photo spends one Film`, `bug fixed: a full bag refuses the photo and keeps the Film` (packages/server/tests/art-news.test.ts)
+- **Pinned by:** `bug fixed: with a Camera ('camera' passes) the Film is kept, the lens appears, no pause`, `bug fixed: using a second Film spends nothing; one saved photo spends one Film`, `bug fixed: a full bag refuses the photo and keeps the Film` (packages/server/tests/art-news.test.ts)
 
 #### A viewed painting stays out of your canvas
 - **Kind:** Bug fixed
@@ -2521,7 +2539,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The click and Ctrl share the in-front test.
 - **Why:** A stand anywhere on the map could be read.
 - **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`readNewspaper`)
-- **Pinned by:** `bug fixed: a click from away is refused with the line and pause 20`, `a click from in front reads: the line, pause 20, the fields, null for a missing or non-numeric photo` (packages/server/tests/art-news.test.ts)
+- **Pinned by:** `bug fixed: a click from away is refused with the line and pause 4`, `a click from in front reads: the line, pause 4, the fields, null for a missing or non-numeric photo` (packages/server/tests/art-news.test.ts)
 
 #### Players write their own newspaper
 - **Kind:** Bug fixed
@@ -4034,7 +4052,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, and only a disbanded guild's last leader may found its name again, getting its vault back (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. A forbidden house or guild vault answers with the SSO refusal, modeled on the mailbox's ownership line; standing away from it gives the original standing-in-front line instead. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
 - **Why:** Anyone could otherwise read and loot any vault.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `openContainer`, `depositContainer`, `withdrawContainer`), `packages/server/src/systems/economy/vault.ts` (`openVault`)
-- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `Bob's Drop into Alice's vault is refused before the drop line; nothing is taken`; `a guild vault refuses anyone outside the guild, and opens for a member`; `a click not in front gives the line and pauses 40` (packages/server/tests/doors.test.ts); `a carried crate is the carrier's: once it leaves the bag its window takes nothing` (packages/server/tests/craft.test.ts); `a House Key opens and closes only its holder's door` (packages/shared/tests/housing/doors.test.ts)
+- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `Bob's Drop into Alice's vault is refused before the drop line; nothing is taken`; `a guild vault refuses anyone outside the guild, and opens for a member`; `a click not in front gives the line and pauses 4` (packages/server/tests/doors.test.ts); `a carried crate is the carrier's: once it leaves the bag its window takes nothing` (packages/server/tests/craft.test.ts); `a House Key opens and closes only its holder's door` (packages/shared/tests/housing/doors.test.ts)
 
 #### Trades are server sessions with two accepts
 - **Kind:** Exploit closed
@@ -4070,7 +4088,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The faced tile must contain the vault or mailbox. Another player's House Vault says “You can't open a vault that's not yours!”, modeled on “You can't check mail that's not yours!”.
 - **Why:** A forged remote request could steal items or read another player's mail.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`openContainer`), `packages/server/src/systems/mail/mail.ts` (`mailOpen`)
-- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `a click not in front gives the line and pauses 40` (packages/server/tests/doors.test.ts); `out of place, a stranger hears the position line first`; `in front but not the owner: 'not yours'` (packages/server/tests/mail-boards.test.ts); `SSO: Alice's own House Vault does not open from two tiles away` (packages/server/tests/doors.test.ts)
+- **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `a click not in front gives the line and pauses 4` (packages/server/tests/doors.test.ts); `out of place, a stranger hears the position line first`; `in front but not the owner: 'not yours'` (packages/server/tests/mail-boards.test.ts); `SSO: Alice's own House Vault does not open from two tiles away` (packages/server/tests/doors.test.ts)
 
 #### Promotion leaves the skills page in order
 - **Kind:** Architecture
@@ -4267,12 +4285,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### No click pause after picking up an item
 - **Kind:** Architecture
-- **What you notice:** Picking up a ground item does not delay the next item click; walking is unaffected. Clicking a guild hall's board still pauses item clicks for 40 frames, as in 1.6.
+- **What you notice:** Picking up a ground item does not delay the next item click; walking is unaffected. Clicking a guild hall's board pauses item clicks for only a fifth of a second.
 - **1.6:** A ground item or own-board click set a pause up to 40 frames, usually ended by the server's reply after one round trip. The town Message Boards exited before setting it, and walking was never held.
-- **SSO:** There is no pause after a pickup. A guild hall's board keeps its 40-frame click pause (see [A guild board opens for its members, in front of it](#a-guild-board-opens-for-its-members-in-front-of-it)). The server processes one item action per character at a time and answers in the same tick; container and switch pauses and Ctrl's 40-frame pause remain.
+- **SSO:** There is no pause after a pickup. A guild hall's board keeps a 4-frame click pause (see [A guild board opens for its members, in front of it](#a-guild-board-opens-for-its-members-in-front-of-it)). The server processes one item action per character at a time and answers in the same tick; the switch and key pauses remain, and Ctrl's and the other click pauses are 4 frames (see [Ctrl and item clicks answer at once](#ctrl-and-item-clicks-answer-at-once)).
 - **Why:** The old pause waited for the network and play feels the same without it.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`pickupIntent`, `actionIntent`), `packages/server/src/systems/mail/boards.ts` (`boardOpen`)
-- **Pinned by:** `bug fixed: picking up takes the one entry and leaves its twins on the tile`; `Ctrl sets ItemActionPause 40: Use waits it out` (packages/server/tests/inventory.test.ts); `bug fixed: a hall's board opens for its members from in front, locks, pause 40` (packages/server/tests/mail-boards.test.ts)
+- **Pinned by:** `bug fixed: picking up takes the one entry and leaves its twins on the tile`; `SSO: Ctrl sets the 4-frame item-action pause: Use waits it out` (packages/server/tests/inventory.test.ts); `bug fixed: a hall's board opens for its members from in front, locks, pause 4` (packages/server/tests/mail-boards.test.ts)
 
 #### Ground items and containers have server ids
 - **Kind:** Architecture

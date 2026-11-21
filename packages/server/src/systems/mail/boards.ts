@@ -6,6 +6,7 @@
  * (1.6 let any client overwrite a board, or read and write any board by name from anywhere.)
  */
 import {
+  ACTION_PAUSE,
   BOARD_TEXT,
   boardKind,
   boardMember,
@@ -35,7 +36,7 @@ export interface BoardDeps {
 }
 
 /** The click's item-action pause, set for every name past `Message Boards`. */
-const CLICK_PAUSE = 40;
+const CLICK_PAUSE = ACTION_PAUSE;
 
 const chat = (to: Player, text: string): Outgoing => ({
   to: to.id,
@@ -48,8 +49,8 @@ const boardMsg = (p: Player, name: string, store: BoardStore): Outgoing => ({
 });
 
 /**
- * Opens a board by click (`via` "click") or Ctrl ("ctrl", whose 40-frame pause the caller set).
- * A hall's board click sets the 40-frame pause first; Town Square's sets none. Either way you must
+ * Opens a board by click (`via` "click") or Ctrl ("ctrl", whose pause the caller set).
+ * A hall's board click sets the click's pause first; Town Square's sets none. Either way you must
  * stand still in front of the board, facing it ("You see the message board, but…"), and a hall's
  * board opens only for a member of its guild. Then the keys lock and "You view the message board"
  * shows with the board. (1.6 opened Town Square's board from any distance, and a hall's for anyone

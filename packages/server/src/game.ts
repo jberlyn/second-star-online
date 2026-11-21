@@ -2458,14 +2458,24 @@ export function createGame(deps: GameDeps): Game {
       } catch (err) {
         fault("chat log", err);
       }
+      let ok: boolean;
       try {
         db.transaction(() => inner.tick())();
         deps.probe?.end();
-        return true;
+        ok = true;
       } catch (err) {
         fault("tick", err);
-        return false;
+        ok = false;
       }
+      // A Ctrl pressed during the short item-action pause runs once the pause ends, through the
+      // same guarded intent path as a fresh press.
+      for (const p of [...world.players.values()]) {
+        if (p.actionQueued && p.itemPause === 0) {
+          p.actionQueued = false;
+          core.intent(p.id, { t: "action" });
+        }
+      }
+      return ok;
     },
   });
 }

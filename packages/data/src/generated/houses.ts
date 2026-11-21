@@ -1529,7 +1529,7 @@ export const houseData: HouseData = {
         "open": "Open Wooden Door"
       }
     ],
-    "colouredPause": 425,
+    "colouredPause": 100,
     "keysTxt": [
       "Fire Key:1",
       "Emerald Key:1",
@@ -1579,7 +1579,7 @@ export const houseData: HouseData = {
     ]
   },
   "containers": {
-    "clickPause": 40,
+    "clickPause": 4,
     "drop": [
       {
         "name": "'s House Vault",

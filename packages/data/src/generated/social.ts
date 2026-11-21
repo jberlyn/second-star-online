@@ -324,7 +324,7 @@ export const socialData: SocialData = {
     "statue": {
       "item": "Assassin Statue",
       "text": "You view the top Assassins of FSO...",
-      "pause": 20,
+      "pause": 4,
       "allTimeHeader": "                        * Top All-Time Assassins *",
       "currentHeader": "                         Current Top Assassins",
       "entry": "{N}. {NAME} - {POINTS} points",
@@ -337,7 +337,7 @@ export const socialData: SocialData = {
       "text": "High Score Statue"
     },
     "text": "You read the high score list...",
-    "pause": 20,
+    "pause": 4,
     "header": "                         Top FSO Player Scores",
     "entry": "{N}. {NAME} - {POINTS} points",
     "perLine": 4,

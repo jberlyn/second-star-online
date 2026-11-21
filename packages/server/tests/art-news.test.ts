@@ -233,7 +233,7 @@ describe("Film and the camera", () => {
     expect(a.char.bag[0]?.item).toBe("Film");
     expect(a.film).toBe(false);
   });
-  test("bug fixed: with a Camera ('camera' passes) the Film is kept, the lens appears, pause 425", () => {
+  test("bug fixed: with a Camera ('camera' passes) the Film is kept, the lens appears, no pause", () => {
     const s = scene();
     const a = s.join("Alice");
     a.char.equip.offHand = "camera";
@@ -243,7 +243,7 @@ describe("Film and the camera", () => {
     expect(a.char.bag[0]?.item).toBe("Film");
     expect(a.film).toBe(true);
     expect(a.keyLock).toBe(false);
-    expect(a.itemPause).toBe(425);
+    expect(a.itemPause).toBe(0);
   });
   test("a photo save adds Photo#<id> and OKPaint unlocks the keys too", () => {
     const s = scene();
@@ -370,7 +370,7 @@ describe("newspapers", () => {
     photos: ["101", "Photo Number", "999"],
     texts: ["T1", "T2", "T3", "T4", "T5", "T6"],
   });
-  test("bug fixed: a click from away is refused with the line and pause 20", () => {
+  test("bug fixed: a click from away is refused with the line and pause 4", () => {
     const s = scene();
     const b = s.join("Bob", 1, 1);
     s.papers.set("king", paper());
@@ -380,9 +380,9 @@ describe("newspapers", () => {
       "You see the newspaper, but you must be standing in front of it to read it.",
     ]);
     expect(of(out, "Bob", "newspaper")).toEqual([]);
-    expect(b.itemPause).toBe(20);
+    expect(b.itemPause).toBe(4);
   });
-  test("a click from in front reads: the line, pause 20, the fields, null for a missing or non-numeric photo", () => {
+  test("a click from in front reads: the line, pause 4, the fields, null for a missing or non-numeric photo", () => {
     const s = scene();
     const b = s.join("Bob");
     s.papers.set("king", paper());
@@ -397,7 +397,7 @@ describe("newspapers", () => {
         photos: [PNG_B64, null, null],
       },
     ]);
-    expect(b.itemPause).toBe(20);
+    expect(b.itemPause).toBe(4);
     expect(b.keyLock).toBe(false);
   });
   test("Ctrl reads the faced stand the same way", () => {
@@ -407,7 +407,7 @@ describe("newspapers", () => {
     s.put("n", "King's Newspaper", 5, 5);
     const out = actionIntent(s.ctx(), s.room(), b);
     expect(of(out, "Bob", "newspaper")).toHaveLength(1);
-    expect(b.itemPause).toBe(20);
+    expect(b.itemPause).toBe(4);
   });
   test("bug fixed: Ctrl reads 'Doorman's Newspaper' as a click does", () => {
     const s = scene();

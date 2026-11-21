@@ -20,6 +20,14 @@ export function tilePixel(x: number, y: number): { px: number; py: number } {
 const G = itemRulesData.ground;
 
 /**
+ * The item-action pause after Ctrl: 4 frames (200 ms). 1.6 set 40 frames on every Ctrl and held
+ * the client until the server's inventory reply ended it, so a pickup waited one round trip while
+ * a press with no reply (boarding, unboarding, a sign) waited the full 2 seconds. SSO answers in
+ * the same tick and needs no wait, so the pause only absorbs a double press.
+ */
+export const ACTION_PAUSE = 4;
+
+/**
  * Does a ground item stop a player on foot stepping onto its tile? `ground.blocks` is the list; the
  * skill platforms (`ground.platforms`) block unless the skill (Slash, Magery, MartialArts) or the
  * level reaches the row's `atLeast`.

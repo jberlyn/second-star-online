@@ -96,7 +96,7 @@ Some keywords are handled directly in game logic or formulas without a table row
 Notes carried over from the code:
 
 - **`use.silent`:** `Map` stays although no item has `"Map"` in its name, so its Use text can never show. The Ocarina is not on the list: the server plays its tune.
-- **Platforms (`ground.platforms`):** the Experience Platform's step gate is level `21`, and its text says so. All four platforms' Ctrl text ends Ctrl's 40-frame pause (`unpause`), as does the Street Lamp's.
+- **Platforms (`ground.platforms`):** the Experience Platform's step gate is level `21`, and its text says so. All four platforms' Ctrl text ends Ctrl's pause (`unpause`), as does the Street Lamp's.
 - **Book table order:** the book Dexterity table (`use.books`) is `contains` and the last match wins, so `"Firebolt"` comes after `"Bolt"`.
 - **Spell defense (`armour.spell`):** each row adds its `delta` to the spell damage a player wearing the item takes (positive for metal, negative for robes), and `magicShield` is added while Magic Shield runs.
 

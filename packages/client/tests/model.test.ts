@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { MapView, PlayerView, SelfState } from "@secondstaronline/shared";
-import { NO_EQUIPMENT, NO_FOG } from "@secondstaronline/shared";
+import { ACTION_PAUSE, NO_EQUIPMENT, NO_FOG } from "@secondstaronline/shared";
 
 import {
   animObjFrame,
@@ -12,6 +12,7 @@ import {
   createModel,
   type Intent,
   PREDICTION_TIMEOUT_TICKS,
+  pressAction,
   walkerPixel,
 } from "../src/model.ts";
 
@@ -340,5 +341,17 @@ describe("animated-object cycle", () => {
     const frames = Array.from({ length: 26 }, (_, t) => animObjFrame(t));
     expect(frames.slice(0, 13)).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4]);
     expect(frames.slice(13)).toEqual(frames.slice(0, 13));
+  });
+});
+
+describe("the Ctrl pause", () => {
+  test("SSO: Ctrl holds the bag buttons for the server's 4-frame pause, not 40", () => {
+    const { m, intent } = setup();
+    pressAction(m);
+    expect(m.itemPause).toBe(ACTION_PAUSE);
+    for (let i = 0; i < ACTION_PAUSE; i++) {
+      clientTick(m, intent);
+    }
+    expect(m.itemPause).toBe(0);
   });
 });

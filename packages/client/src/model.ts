@@ -10,6 +10,7 @@
  * there on its side).
  */
 import {
+  ACTION_PAUSE,
   ATTACK_ANIM_FRAMES,
   ATTACK_LATCH_TICKS,
   type AttackTimers,
@@ -939,11 +940,11 @@ export function walkerPixel(
 }
 
 /**
- * Ctrl or the Action button: the server starts the 40-frame pause unless one is running, a window
- * holds the keys or the map is loading.
+ * Ctrl or the Action button: the server starts the `ACTION_PAUSE` pause unless one is running, a
+ * window holds the keys or the map is loading.
  */
 export function pressAction(m: Model): void {
   if (m.itemPause === 0 && !m.keyLock && !m.loading) {
-    m.itemPause = 40;
+    m.itemPause = ACTION_PAUSE;
   }
 }

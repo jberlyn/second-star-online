@@ -37,9 +37,6 @@ export interface ArtDeps {
   rng: Rng;
 }
 
-/** The item-action pause after Use Film's shared tail. */
-const FILM_PAUSE = 425;
-
 const chat = (to: Player, text: string): Outgoing => ({
   to: to.id,
   msg: { t: "chat", text, color: CHAT_COLOR.normal },
@@ -67,8 +64,9 @@ export function useCanvas(p: Player): ArtUse {
 }
 
 /**
- * Use on a Film: no camera in the right hand (exact name) is refused; else the lens appears and
- * Use's tail sets the 425-frame pause. No lock. Nothing is consumed: the photo's save spends the
+ * Use on a Film: no camera in the right hand (exact name) is refused; else the lens appears. No
+ * lock and no pause: 1.6's 425-frame pause waited for the reply to the Film being spent, which SSO
+ * defers to the save, so nothing would end it. Nothing is consumed: the photo's save spends the
  * Film.
  */
 export function useFilm(p: Player): ArtUse {
@@ -76,7 +74,6 @@ export function useFilm(p: Player): ArtUse {
     return { consume: false, out: [chat(p, ART_TEXT.needCamera)] };
   }
   p.film = true;
-  p.itemPause = FILM_PAUSE;
   return { consume: false, out: [{ to: p.id, msg: { t: "lens" } }] };
 }
 

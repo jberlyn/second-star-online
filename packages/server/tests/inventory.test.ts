@@ -387,16 +387,16 @@ describe("drop, pickup and give", () => {
     actionIntent(s.ctx(), s.room(), a);
     expect(a.char.bag[0]).toEqual({ item: "Table", qty: 1 });
   });
-  test("Ctrl sets ItemActionPause 40: Use waits it out", () => {
+  test("SSO: Ctrl sets the 4-frame item-action pause: Use waits it out", () => {
     const s = scene({ 3: [1] });
     const a = s.join("A", 5, 5);
     a.char.hunger = 1000;
     give(a, 1, "Apple", 2);
     actionIntent(s.ctx(), s.room(), a);
-    expect(a.itemPause).toBe(40);
+    expect(a.itemPause).toBe(4);
     useIntent(s.ctx(), s.room(), a, 1);
     expect(a.char.bag[0]?.qty).toBe(2);
-    s.run(40);
+    s.run(4);
     useIntent(s.ctx(), s.room(), a, 1);
     expect(a.char.bag[0]?.qty).toBe(1);
   });
@@ -416,13 +416,13 @@ describe("drop, pickup and give", () => {
     expect(a.itemPause).toBe(0);
     expect(s.map.ground).toHaveLength(1);
   });
-  test("Ctrl on a Fire Pot says its line and keeps the 40-frame pause", () => {
+  test("Ctrl on a Fire Pot says its line and keeps Ctrl's pause", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
     s.map.ground.push({ id: "g1", item: "Fire Pot", x: 6, y: 5, kind: "drop", expiresAt: null });
     expect(chat(actionIntent(s.ctx(), s.room(), a), "A")).toEqual(["I bet that's hot."]);
-    expect(a.itemPause).toBe(40);
+    expect(a.itemPause).toBe(4);
   });
   test("a crystal pile becomes n crystals", () => {
     const s = scene();

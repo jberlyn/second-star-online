@@ -100,8 +100,8 @@ describe("the Guild Center click", () => {
     expect(of(out, "Alice", "guild")).toEqual([{ t: "guild", screen: { mode: "create" } }]);
     expect(of(out, "Alice", "guildList")).toEqual([{ t: "guildList", names: [] }]);
     expect(a.keyLock).toBe(true);
-    // The click's 40-frame pause came first.
-    expect(a.itemPause).toBe(40);
+    // The click's pause came first.
+    expect(a.itemPause).toBe(4);
   });
 
   test("anywhere else, or facing away: the standing-in-front line", () => {

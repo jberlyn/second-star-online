@@ -69,7 +69,7 @@ describe("high scores", () => {
     expect(lines[0]).toBe("You read the high score list...");
     expect(lines[1]).toContain("1. Bob - 77 points");
     expect(lines[1]).toContain(`${" ".repeat(25)}Top FSO Player Scores`);
-    expect(a.itemPause).toBe(20);
+    expect(a.itemPause).toBe(4);
   });
 
   test("submitted on the save tick only; administrators skipped; five-digit scores count", () => {

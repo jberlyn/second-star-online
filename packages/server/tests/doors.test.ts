@@ -135,7 +135,7 @@ describe("keys", () => {
     expect(alice.char.bag[0]).toEqual({ item: "Guild Key", qty: 1 });
   });
 
-  test("bug fixed: a coloured key is spent opening its door, not closing it; it pauses 425", () => {
+  test("bug fixed: a coloured key is spent opening its door, not closing it; it pauses 100", () => {
     const s = scene();
     const p = s.join("Alice", 5, 5);
     const door = s.put("Steel Door", 5, 4);
@@ -143,12 +143,12 @@ describe("keys", () => {
     useIntent(s.ctx(), s.room(), p, 2);
     expect(door.item).toBe("Open Steel Door");
     expect(p.char.bag[1]).toEqual({ item: "Steel Key", qty: 1 });
-    expect(p.itemPause).toBe(425);
+    expect(p.itemPause).toBe(100);
     p.itemPause = 0;
     useIntent(s.ctx(), s.room(), p, 2);
     expect(door.item).toBe("Steel Door");
     expect(p.char.bag[1]).toEqual({ item: "Steel Key", qty: 1 });
-    expect(p.itemPause).toBe(425);
+    expect(p.itemPause).toBe(100);
   });
 
   test("bug fixed: no key is on the usable list; Use sends a key to the door rule only", () => {
@@ -419,7 +419,7 @@ describe("placed containers", () => {
     ]);
   });
 
-  test("a click not in front gives the line and pauses 40", () => {
+  test("a click not in front gives the line and pauses 4", () => {
     const s = scene();
     const p = s.join("Alice", 2, 2);
     const chest = s.put("Gold Chest", 5, 4);
@@ -427,7 +427,7 @@ describe("placed containers", () => {
     expect(chat(out, "Alice")).toEqual([
       "You see the Gold Chest, but you must be standing in front of it to use it.",
     ]);
-    expect(p.itemPause).toBe(40);
+    expect(p.itemPause).toBe(4);
   });
 
   test("a click opens a chest in front and ends the pause", () => {
