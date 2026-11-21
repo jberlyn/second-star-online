@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 69 |
+| [Design changes](#design-changes) | 70 |
 | [Fixed bugs](#fixed-bugs) | 294 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **547** |
+| **Total** | **548** |
 
 By system (the code folder that holds the change):
 
