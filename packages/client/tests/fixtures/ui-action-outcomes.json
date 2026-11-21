@@ -361,7 +361,7 @@
   {
     "action": "panel-tab-stats",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -380,7 +380,7 @@
   {
     "action": "panel-tab-inventory",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -399,7 +399,7 @@
   {
     "action": "panel-tab-skills",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -418,7 +418,7 @@
   {
     "action": "panel-tab-spellbook",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -451,7 +451,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click", "pointerdown"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -465,7 +465,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click", "pointerdown"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -479,7 +479,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click", "pointerdown"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -493,7 +493,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click", "pointerdown"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -507,7 +507,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click", "pointerdown"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -521,7 +521,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click", "pointerdown"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -535,7 +535,7 @@
   {
     "action": "inventory-select-slot",
     "tag": "BUTTON",
-    "events": ["click", "pointerdown"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -4542,7 +4542,7 @@
   {
     "action": "panel-tab-stats",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -4551,7 +4551,7 @@
   {
     "action": "panel-tab-inventory",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -4560,7 +4560,7 @@
   {
     "action": "panel-tab-skills",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -4569,7 +4569,7 @@
   {
     "action": "panel-tab-spellbook",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [],

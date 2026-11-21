@@ -1034,6 +1034,33 @@ body {
   top: 0;
   pointer-events: none;
 }
+/* Hover tips (hovertip.ts): the item menu's purple frame (#50, set as the border image in code)
+   around a see-through black middle, with the menu title's lettering a size smaller. The whole
+   box is a little see-through too, so the playfield shows behind it. */
+.menu-layer .hover-tip {
+  position: absolute;
+  z-index: 60;
+  white-space: nowrap;
+  color: #fff;
+  font:
+    9px Arial,
+    Helvetica,
+    sans-serif;
+  line-height: 11px;
+  text-shadow: 1px 1px 0 #000;
+  padding: 0 4px;
+  border: 3px solid transparent;
+  border-image-slice: 4;
+  border-image-repeat: stretch;
+  background: rgb(0 0 0 / 50%);
+  background-clip: padding-box;
+  opacity: 0.9;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.menu-layer .hover-tip[hidden] {
+  display: none;
+}
 .menu-layer .item-menu {
   pointer-events: auto;
 }

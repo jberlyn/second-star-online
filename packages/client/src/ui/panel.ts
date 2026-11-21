@@ -41,6 +41,7 @@ import {
 import { type Assets, drawSprite } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
 import { action as tagAction } from "./action.ts";
+import { createHoverTips, type HoverTips } from "./hovertip.ts";
 import { createSpellbook, type Spellbook } from "./spellbook.ts";
 import { artImg } from "./stage.ts";
 
@@ -98,6 +99,8 @@ export interface Panel {
   setSkills(skills: readonly number[]): void;
   /** The Spellbook page (frame 67). */
   spellbook: Spellbook;
+  /** The hover tip, in the menu layer; the playfield shows it too. */
+  tips: HoverTips;
 }
 
 const PANEL_X = 566;
@@ -243,6 +246,12 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   bg.classList.add("panel-bg");
   el.append(bg);
 
+  // The menu is drawn in stage coordinates, above everything (locZ 7000-7005); the shell places
+  // this layer. The hover tips share it, framed by the item menu's own background (#50).
+  const menuLayer = document.createElement("div");
+  menuLayer.className = "menu-layer";
+  const tips = createHoverTips(menuLayer, a.ui("inventory", 50));
+
   // ---- tabs (Internal #130-133; highlights #206-#209 at their tab) ----------------------
   // The build cuts each bitmap out of its wood with a mask and erases the four copies baked into #186, so
   // each crop can sit on the common row without dragging a rectangle of wood with it. The
@@ -283,6 +292,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     b.type = "button";
     b.className = "tab-hit";
     b.setAttribute("aria-label", tabLabels[t]);
+    // An SSO addition: 1.6's tabs are pictures with no name on them.
+    tips.attach(b, tabLabels[t]);
     at(
       b,
       Math.round(tab.x - TAB_HIT.w / 2),
@@ -477,10 +488,6 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   el.append(statsPage, invPage, skillsPage);
 
   // ---- the item menu (Inventory #50-56; sprites 95-100) -----------------------------------
-  // The menu is drawn in stage coordinates, above everything (locZ 7000-7005); the shell places
-  // this layer.
-  const menuLayer = document.createElement("div");
-  menuLayer.className = "menu-layer";
   const menu = document.createElement("div");
   menu.className = "item-menu";
   menu.hidden = true;
@@ -503,6 +510,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   let menuSlot = 0;
   const openMenu = (slot: number, name: string, qty: number, x: number, y: number) => {
     menuSlot = slot;
+    tips.hide();
     menu.replaceChildren();
     // Background at (mouseH − 60, mouseV) with reg (64, 32); buttons share its loc.
     const lx = x - 60;
@@ -648,6 +656,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     source: HTMLElement;
   } | null = null;
   let swallowClick = false;
+  // No tip while the item menu is up or an item is pressed for a drag: both sit at the pointer.
+  tips.blocked = () => !menu.hidden || drag !== null;
   /** Panel-local stage coordinates of a pointer position, whatever the panel is scaled to. */
   const local = (clientX: number, clientY: number) => {
     const r = panel.el.getBoundingClientRect();
@@ -675,6 +685,30 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       return sx >= bx && sx < bx + BOX_SIZE && y >= by && y < by + BOX_SIZE;
     })?.slot;
   };
+  // Worn items name themselves too (an SSO addition). Their pictures take no pointer (sprites
+  // 75-80 have no behaviour), so the boxes are hit-tested by position, as a drop on them is.
+  const equipTip = {};
+  document.addEventListener("pointermove", (e) => {
+    const over =
+      e.pointerType === "mouse" &&
+      !invPage.hidden &&
+      e.target instanceof Node &&
+      el.contains(e.target);
+    if (!over) {
+      tips.release(equipTip);
+      return;
+    }
+    const p = local(e.clientX, e.clientY);
+    const slot = equipBoxAt(p.x, p.y);
+    const field = EQUIP_BOX.find((b) => b.slot === slot)?.field;
+    const item = field ? inventory?.equip[field] : undefined;
+    tips.showFor(
+      equipTip,
+      item && item !== "NOTHING" ? displayName(item) : null,
+      e.clientX,
+      e.clientY,
+    );
+  });
   const endDrag = () => {
     if (drag) {
       drag.ghost?.remove();
@@ -832,6 +866,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     menuLayer,
     tab: "stats",
     spellbook,
+    tips,
     setTab(t) {
       if (t !== "spellbook") {
         // Leaving frame 67 ends sprite 44's span: member 199 again (an assumption: 1.6's files do
@@ -852,6 +887,9 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       inventory = inv;
       headNo = head;
       gold.textContent = String(inv.gold);
+      // The slots are rebuilt, so one under the mouse never sees it leave; its next move shows the
+      // tip again.
+      tips.hide();
       bagLayer.replaceChildren();
       inv.bag.forEach((line, i) => {
         const x = BAG_X(i);
@@ -866,6 +904,9 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
           line ? `${displayName(line.item)}, ${line.qty}` : `Empty slot ${i + 1}`,
         );
         if (line) {
+          // An SSO addition: the item's name, and a stack's size.
+          const name = displayName(line.item);
+          tips.attach(hit, line.qty > 1 ? `${name} (${line.qty})` : name);
           const picture = spriteCanvas(a, "items", bagPicture(line.item), x, y);
           bagLayer.append(picture);
           if (line.qty > 1) {

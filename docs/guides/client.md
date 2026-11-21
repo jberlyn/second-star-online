@@ -34,6 +34,7 @@ The UI files are:
 - [packages/client/src/ui/friends.ts](../../packages/client/src/ui/friends.ts): buddy list window.
 - [packages/client/src/ui/gamemenu.ts](../../packages/client/src/ui/gamemenu.ts): game menus and actions.
 - [packages/client/src/ui/guildcenter.ts](../../packages/client/src/ui/guildcenter.ts): guild center screen.
+- [packages/client/src/ui/hovertip.ts](../../packages/client/src/ui/hovertip.ts): hover tips for tabs, items and the playfield.
 - [packages/client/src/ui/im.ts](../../packages/client/src/ui/im.ts): instant message windows.
 - [packages/client/src/ui/mail.ts](../../packages/client/src/ui/mail.ts): mail list and compose panes.
 - [packages/client/src/ui/menubar.ts](../../packages/client/src/ui/menubar.ts): generic menu bar widget.

@@ -123,7 +123,8 @@ export function closeCasinoOnMapChange(
 }
 
 /**
- * The hover name for what the pointer is over (sprite 156). Another player in
+ * The hover name for what the pointer is over (1.6's sprite 156; SSO shows it in the hover
+ * tip). Another player in
  * a body armour containing "Invis" shows "???"; your own name always shows. Ground items have
  * no hover (their click script reacts to the mouse-up only), so they give null.
  */
@@ -617,11 +618,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       charMenu.open(hit.id, pt.x, pt.y);
     }
   });
-  // The name of the monster, player or yourself under the mouse (sprite 156). The mouse
-  // position is kept, so someone walking out from under it loses the tag too.
+  // The name of the monster, NPC, player or yourself under the mouse, in the hover tip (an SSO
+  // change: 1.6 floated the bare name above the pointer, sprite 156). The mouse position is kept,
+  // so someone walking out from under it loses the tip too.
   let hoverAt: { x: number; y: number } | null = null;
+  let hoverClient = { x: 0, y: 0 };
+  const playfieldTip = {};
   playfield.canvas.addEventListener("pointermove", (e) => {
     hoverAt = e.pointerType === "mouse" ? playfieldPoint(e) : null;
+    hoverClient = { x: e.clientX, y: e.clientY };
     // The lens follows the mouse.
     const lp = playfieldPoint(e);
     if (paintUi.lensUp && lp) {
@@ -634,15 +639,24 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   });
   playfield.canvas.addEventListener("pointerleave", (e) => {
     hoverAt = null;
+    panel.tips.release(playfieldTip);
     // Leaving the playfield ends placement (`mouseLeave`).
     if (e.pointerType === "mouse") {
       leavePlacement();
     }
   });
-  const updateNameTag = () => {
-    const hit = hoverAt ? playfield.pick(model, hoverAt.x, hoverAt.y) : null;
-    const text = hoverAt && hit ? hoverName(model, hit) : null;
-    model.nameTag = hoverAt && text !== null ? { text, x: hoverAt.x, y: hoverAt.y } : null;
+  const updateHoverTip = () => {
+    if (!hoverAt) {
+      return;
+    }
+    // The player menu opens at the pointer; the tip would sit under its edge.
+    if (charMenu.isOpen) {
+      panel.tips.release(playfieldTip);
+      return;
+    }
+    const hit = playfield.pick(model, hoverAt.x, hoverAt.y);
+    const text = hit ? hoverName(model, hit) : null;
+    panel.tips.showFor(playfieldTip, text, hoverClient.x, hoverClient.y);
   };
   // ---- screens -----------------------------------------------------------------------------
   const container = document.createElement("div");
@@ -1159,7 +1173,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     charMenu.close();
     model.keyLock = false;
     model.storageOpen = false;
-    model.nameTag = null;
+    hoverAt = null;
+    panel.tips.hide();
     panel.spellbook.disarm();
     model.fx = [];
     trade.show(null, null);
@@ -1291,7 +1306,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       if (t) {
         bars.setPower(t.bar, t.barMember);
       }
-      updateNameTag();
+      updateHoverTip();
       const title = model.map?.title ?? "";
       if (header.textContent !== title) {
         header.textContent = title;

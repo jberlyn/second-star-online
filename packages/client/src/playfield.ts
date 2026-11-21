@@ -87,17 +87,6 @@ export type Pick =
   | { kind: "player"; id: string; name: string };
 
 /**
- * The monster name tag (sprite 156, Chars #725): Arial 12 bold white, centred in 118 px, at the
- * mouse −50/−15 while the pointer is over a monster.
- */
-export const NAME_TAG = {
-  dx: -50,
-  dy: -15,
-  w: 118,
-  font: "bold 12px Arial, Helvetica, sans-serif",
-};
-
-/**
  * The frame a body shows. A Boat or Battleship rides a slow swell, F1 to F4, each held
  * `SHIP_SWELL_TICKS` on the client's own counter, standing or sailing. A standing Airship rider
  * cycles F2, F3, F1 a tick (its propeller); everyone else, and an Airship mid-step, shows the walk
@@ -441,15 +430,6 @@ export function createPlayfield(assets: Assets): Playfield {
       }
       // The placement ghost, sprite 360 at locZ 3000.
       drawGhost(ctx, model.ghost);
-      const tag = model.nameTag;
-      if (tag) {
-        ctx.font = NAME_TAG.font;
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(tag.text, tag.x + NAME_TAG.dx + NAME_TAG.w / 2, tag.y + NAME_TAG.dy);
-        ctx.textAlign = "start";
-      }
       if (black) {
         // The picture stays until the respawn map is drawn.
         model.deathStage = "frozen";

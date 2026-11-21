@@ -202,8 +202,6 @@ export interface Model {
   keyLock: boolean;
   /** A vault or container window is open: the keys are locked but the bag can still Drop into it. */
   storageOpen: boolean;
-  /** The monster name under the mouse and where the mouse is, in playfield pixels. */
-  nameTag: { text: string; x: number; y: number } | null;
   /** Your spellbook's lines, as the server last sent them. */
   spellbook: string[];
   /** Spell FX on the map, stepped every frame like the original's FX script. */
@@ -251,7 +249,6 @@ export function createModel(): Model {
     ground: new Map(),
     keyLock: false,
     storageOpen: false,
-    nameTag: null,
     spellbook: [],
     fx: [],
     tileChanges: [],

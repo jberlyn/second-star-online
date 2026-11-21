@@ -18,6 +18,7 @@ import {
   parseAmount,
   stackTitle,
 } from "../src/ui/amount.ts";
+import { createHoverTips } from "../src/ui/hovertip.ts";
 import { createPanel } from "../src/ui/panel.ts";
 
 const fakeAssets: Assets = {
@@ -76,6 +77,131 @@ describe("the right panel (frames 50-65)", () => {
     expect(panel.tab).toBe("inventory");
     expect(panel.el.querySelector<HTMLElement>(".page-inventory")?.hidden).toBe(false);
     expect(panel.el.querySelector<HTMLElement>(".page-stats")?.hidden).toBe(true);
+  });
+  test("design change: hovering a tab or a bag item shows its name in a purple box below the pointer", () => {
+    const { panel } = panelWith([
+      { item: "Apple", qty: 2 },
+      { item: "Knife", qty: 1 },
+    ]);
+    const tip = panel.tips.el;
+    expect(tip.hidden).toBe(true);
+    // The box is framed by the item menu's own background, Inventory #50.
+    expect(tip.style.borderImageSource).toContain("/assets/ui/inventory-50.png");
+    const hover = (el: Element | null, x: number, y: number) =>
+      el?.dispatchEvent(
+        new PointerEvent("pointermove", { pointerType: "mouse", clientX: x, clientY: y }),
+      );
+    const leave = (el: Element | null) =>
+      el?.dispatchEvent(new PointerEvent("pointerleave", { pointerType: "mouse" }));
+    const names: string[] = [];
+    for (const tab of TAB_ART) {
+      const b = panel.el.querySelector(`[data-action="panel-tab-${tab.tab}"]`);
+      hover(b, tab.x, 34);
+      names.push(tip.textContent ?? "");
+      // Its top-left corner sits level with the pointer, just below the arrow.
+      expect([tip.style.left, tip.style.top]).toEqual([`${tab.x}px`, "54px"]);
+      leave(b);
+      expect(tip.hidden).toBe(true);
+    }
+    const slots = panel.el.querySelectorAll(".bag-slot");
+    hover(slots[0] ?? null, 617, 137);
+    names.push(tip.textContent ?? "");
+    // It follows the pointer.
+    hover(slots[0] ?? null, 620, 140);
+    expect([tip.style.left, tip.style.top]).toEqual(["620px", "160px"]);
+    hover(slots[1] ?? null, 654, 137);
+    names.push(tip.textContent ?? "");
+    leave(slots[1] ?? null);
+    // An empty slot names nothing.
+    hover(slots[2] ?? null, 691, 137);
+    expect(tip.hidden).toBe(true);
+    expect(names).toEqual(["Stats", "Inventory", "Skills", "Spellbook", "Apple (2)", "Knife"]);
+  });
+  test("design change: a touch shows no tip, and a press, the item menu or a drag hides it", () => {
+    const { panel } = panelWith([{ item: "Apple", qty: 2 }]);
+    // The drag ends on the document's pointer-up, as in the game.
+    document.body.append(panel.el, panel.menuLayer);
+    const tip = panel.tips.el;
+    const slot = panel.el.querySelector(".bag-slot");
+    const ev = (type: string, pointerType = "mouse") =>
+      slot?.dispatchEvent(
+        new PointerEvent(type, {
+          pointerType,
+          pointerId: 1,
+          button: 0,
+          clientX: 617,
+          clientY: 137,
+          bubbles: true,
+        }),
+      );
+    ev("pointermove", "touch");
+    expect(tip.hidden).toBe(true);
+    ev("pointermove");
+    expect(tip.hidden).toBe(false);
+    // A press may start a drag: no tip until it ends.
+    ev("pointerdown");
+    expect(tip.hidden).toBe(true);
+    ev("pointermove");
+    expect(tip.hidden).toBe(true);
+    ev("pointerup");
+    // The click opens the item menu, which sits at the pointer: no tip while it is up.
+    slot?.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 617, clientY: 137 }));
+    expect(panel.menu.hidden).toBe(false);
+    ev("pointermove");
+    expect(tip.hidden).toBe(true);
+    panel.menu.hidden = true;
+    ev("pointermove");
+    expect(tip.hidden).toBe(false);
+    panel.el.remove();
+    panel.menuLayer.remove();
+  });
+  test("design change: a worn item names itself in its equipment box; an empty box names nothing", () => {
+    // panelWith wields a Knife (the LeftHand box, stage [626, 318] to [661, 353]).
+    const { panel } = panelWith([]);
+    document.body.append(panel.el, panel.menuLayer);
+    panel.setTab("inventory");
+    const tip = panel.tips.el;
+    // happy-dom does no layout: panel-local coordinates are client coordinates.
+    const move = (stageX: number, stageY: number, pointerType = "mouse") =>
+      panel.el.dispatchEvent(
+        new PointerEvent("pointermove", {
+          pointerType,
+          clientX: stageX - 566,
+          clientY: stageY,
+          bubbles: true,
+        }),
+      );
+    move(643, 335, "touch");
+    expect(tip.hidden).toBe(true);
+    move(643, 335);
+    expect([tip.hidden, tip.textContent]).toEqual([false, "Knife"]);
+    // The Head box above it is empty.
+    move(643, 297);
+    expect(tip.hidden).toBe(true);
+    move(643, 335);
+    // Another tab hides the boxes.
+    panel.setTab("stats");
+    move(643, 335);
+    expect(tip.hidden).toBe(true);
+    panel.el.remove();
+    panel.menuLayer.remove();
+  });
+  test("design change: the tip stays on the stage, sliding left at the right edge and flipping up at the bottom", () => {
+    const layer = document.createElement("div");
+    const tips = createHoverTips(layer, "/frame.png");
+    // happy-dom does no layout: give the box a size.
+    Object.defineProperty(tips.el, "offsetWidth", { value: 60 });
+    Object.defineProperty(tips.el, "offsetHeight", { value: 17 });
+    const owner = {};
+    tips.showFor(owner, "Spellbook", 780, 34);
+    expect([tips.el.style.left, tips.el.style.top]).toEqual(["740px", "54px"]);
+    tips.showFor(owner, "Slime", 300, 590);
+    expect([tips.el.style.left, tips.el.style.top]).toEqual(["300px", "571px"]);
+    // Nothing under the pointer hides it; another owner's release leaves it be.
+    tips.release({});
+    expect(tips.el.hidden).toBe(false);
+    tips.showFor(owner, null, 300, 590);
+    expect(tips.el.hidden).toBe(true);
   });
   test("the four tab icons share a row and an even pitch", () => {
     const { panel } = panelWith([]);
