@@ -25,12 +25,9 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 ### Pending upgrade items
 
-Changes already on `main` that the next release after `v1.10.0` must list under Upgrade Notes (confirm each in the code at the tag):
+Changes already on `main` that the next release after `v1.11.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- The `immortal` role becomes `administrator`, and staff roles become database rows an operator edits (migration `20261120_42_roles.sql`). Existing immortal accounts are moved to the new role.
-- The `/role` chat command is gone; roles are assigned from the settings panel or the `admin:role` CLI.
-- Moderation history records the acting staff member's role (`actor_role`) instead of a rank (`actor_rank`).
-- Mutes are new (migration `20261120_41_mutes.sql`), and moderators lose commands outside moderation.
+- None yet.
 
 ## 2. Choose the version
 
