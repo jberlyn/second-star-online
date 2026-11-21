@@ -81,6 +81,12 @@ export interface Playfield {
    * a player (112-157).
    */
   pick(model: Model, x: number, y: number): Pick | null;
+  /**
+   * Everything under the point, in the click's order: a monster alone (it takes the click before
+   * anything else), or the ground items on the tile, newest first, then the player there. The first
+   * is `pick`'s answer. The hover tip lists them.
+   */
+  pickAll(model: Model, x: number, y: number): Pick[];
 }
 
 export type Pick =
@@ -233,7 +239,7 @@ export function createPlayfield(assets: Assets): Playfield {
     t.restore();
   };
 
-  return {
+  const playfield: Playfield = {
     canvas,
     async setMap(map) {
       await Promise.all([
@@ -458,6 +464,9 @@ export function createPlayfield(assets: Assets): Playfield {
       }
     },
     pick(model, x, y) {
+      return playfield.pickAll(model, x, y)[0] ?? null;
+    },
+    pickAll(model, x, y) {
       const inRect = (group: "bodies" | "items", name: string, px: number, py: number) => {
         const s = assets.sprite(group, name);
         if (!s) {
@@ -471,18 +480,16 @@ export function createPlayfield(assets: Assets): Playfield {
         const { px, py } = monsterPixel(m);
         const member = `${m.body}-${walkFrame(m.frames, MONSTER_STEP_FRAMES)}-${m.facing}`;
         if (inRect("bodies", member, px, py)) {
-          return { kind: "monster", slot: m.slot, name: m.name };
+          return [{ kind: "monster", slot: m.slot, name: m.name }];
         }
       }
       const tx = Math.floor(x / 32) + 1;
       const ty = Math.floor(y / 32) + 1;
       // An exit lies under the map, where no click reaches it.
-      const ground = [...model.ground.values()]
+      const hits: Pick[] = [...model.ground.values()]
         .filter((g) => g.x === tx && g.y === ty && groundLayer(g.name) !== "hidden")
-        .pop();
-      if (ground) {
-        return { kind: "ground", id: ground.id };
-      }
+        .reverse()
+        .map((g) => ({ kind: "ground", id: g.id }));
       // A character is the 46×45 composite at its registration point (PAPERDOLL_SIZE).
       const onChar = (px: number, py: number) =>
         x >= px - PAPERDOLL_REG.x &&
@@ -507,17 +514,18 @@ export function createPlayfield(assets: Assets): Playfield {
         }
         const { px, py } = walkerPixel(p.x, p.y, p.facing, p.frames, lenOf(p.body));
         if (onWalker(p.body, p.frames, p.facing, px, py)) {
-          return { kind: "player", id: p.id, name: p.name };
+          return [...hits, { kind: "player", id: p.id, name: p.name }];
         }
       }
       const me = model.self;
       if (me) {
         const { px, py } = walkerPixel(me.x, me.y, me.facing, me.stepFrames, lenOf(me.body));
         if (onWalker(me.body, me.stepFrames, me.facing, px, py)) {
-          return { kind: "player", id: me.id, name: me.name };
+          return [...hits, { kind: "player", id: me.id, name: me.name }];
         }
       }
-      return null;
+      return hits;
     },
   };
+  return playfield;
 }

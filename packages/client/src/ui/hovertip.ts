@@ -6,7 +6,8 @@
  * (Arial, white, a 1 px black shadow) a size smaller.
  *
  * One tip serves the whole game: the panel's controls attach to it, and the playfield shows it for
- * the player, NPC or monster under the mouse (it replaces 1.6's floating hover name, sprite 156).
+ * the player, NPC, monster or ground items under the mouse, one per line (it replaces 1.6's
+ * floating hover name, sprite 156).
  * The tip lives in the 800×600 stage-coordinate menu layer so it can cross any frame's edge, and it
  * is kept on the stage: it slides left at the right edge and flips above the pointer at the
  * bottom. Only a mouse shows it: a touch has no hover, and its tap must not leave a box behind.

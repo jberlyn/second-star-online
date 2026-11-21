@@ -9,6 +9,7 @@ import {
   CHAT_SOCIAL_TEXT,
   type ClientMsg,
   type Dir,
+  groundTipName,
   hidesName,
   houseType,
   inCastBounds,
@@ -133,7 +134,20 @@ export function hoverName(model: Model, hit: Pick): string | null {
     const peer = model.peers.get(hit.id);
     return peer && hidesName(peer.equip) ? "???" : hit.name;
   }
-  return hit.kind === "monster" ? hit.name : null;
+  if (hit.kind === "ground") {
+    const item = model.ground.get(hit.id);
+    return item ? groundTipName(item.name) : null;
+  }
+  return hit.name;
+}
+
+/**
+ * The hover tip's text for everything under the mouse (`Playfield.pickAll`), one line each in the
+ * click's order, so the top line is what a click acts on; null when none of it is named.
+ */
+export function hoverText(model: Model, hits: readonly Pick[]): string | null {
+  const lines = hits.map((h) => hoverName(model, h)).filter((t): t is string => !!t);
+  return lines.length > 0 ? lines.join("\n") : null;
 }
 
 export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App {
@@ -619,7 +633,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
   });
   // The name of the monster, NPC, player or yourself under the mouse, in the hover tip (an SSO
-  // change: 1.6 floated the bare name above the pointer, sprite 156). The mouse position is kept,
+  // change: 1.6 floated the bare name above the pointer, sprite 156), and of the ground items
+  // there, one line each (1.6 named nothing on the ground). The mouse position is kept,
   // so someone walking out from under it loses the tip too.
   let hoverAt: { x: number; y: number } | null = null;
   let hoverClient = { x: 0, y: 0 };
@@ -654,8 +669,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       panel.tips.release(playfieldTip);
       return;
     }
-    const hit = playfield.pick(model, hoverAt.x, hoverAt.y);
-    const text = hit ? hoverName(model, hit) : null;
+    const text = hoverText(model, playfield.pickAll(model, hoverAt.x, hoverAt.y));
     panel.tips.showFor(playfieldTip, text, hoverClient.x, hoverClient.y);
   };
   // ---- screens -----------------------------------------------------------------------------

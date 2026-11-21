@@ -114,6 +114,13 @@ export const itemRulesDataSchema = z.strictObject({
     layers: z.array(strictRow({ layer: z.enum(["hidden", "overChars", "overLayer3"]) })),
     /** The pixel offset from the tile, first match. */
     offsets: z.array(strictRow({ dx: int, dy: int })),
+    /** Ground items the hover tip never names (map links, overlays, markers), any match. */
+    tipless: z.array(z.strictObject(pattern)),
+    /**
+     * The hover tip's name for a ground item, first match: an exact row names the whole item, a
+     * contains row replaces the matched part. Unmatched names show as they are.
+     */
+    tipNames: z.array(strictRow({ name: z.string().min(1) })),
   }),
   pickup: z.strictObject({
     /** The one-line text a Ctrl on a fixture says, first match. */

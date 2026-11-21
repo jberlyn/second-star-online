@@ -174,6 +174,10 @@ export const TABLES: Record<string, TableInfo> = {
     decides: "blocks until a skill (or the level) reaches the row's threshold",
     wins: "any",
   },
+  [`item-rules.json ground.tipless`]: {
+    decides: "ground items the hover tip never names",
+    wins: "any",
+  },
   [`item-rules.json containers.uniqueIds`]: {
     decides: "containers that get a #id in a bag",
     wins: "any",
@@ -187,6 +191,10 @@ export const TABLES: Record<string, TableInfo> = {
   [`item-rules.json ground.layers`]: { decides: "the draw layer of a ground item", wins: "first" },
   [`item-rules.json ground.offsets`]: {
     decides: "the pixel offset from the tile",
+    wins: "first",
+  },
+  [`item-rules.json ground.tipNames`]: {
+    decides: "the hover tip's name for a ground item",
     wins: "first",
   },
   [`item-rules.json pickup.ctrlTexts`]: {

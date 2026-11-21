@@ -1040,7 +1040,8 @@ body {
 .menu-layer .hover-tip {
   position: absolute;
   z-index: 60;
-  white-space: nowrap;
+  /* One line per name: several ground items, or an item and the player on it. */
+  white-space: pre;
   color: #fff;
   font:
     9px Arial,

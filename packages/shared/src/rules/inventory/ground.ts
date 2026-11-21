@@ -209,6 +209,29 @@ export function groundOverlay(name: string): string | null {
   return firstMatch(G.overlays, name)?.overlay ?? null;
 }
 
+/**
+ * What the hover tip calls a ground item (an SSO addition: 1.6 named nothing on the ground), or
+ * null for one it never names (`ground.tipless`: exits, Rays, clouds, chimneys and other markers or
+ * overlays). The `#id` a container or picture carries is dropped ("Painting#12" is "Painting"),
+ * then the first `ground.tipNames` row tidies the rest: "Sign 1" is "Sign", "BlueCrystal" is "Blue
+ * Crystal", an open door is named as the door.
+ */
+export function groundTipName(name: string): string | null {
+  const base = (name.split("#")[0] ?? name).trim();
+  if (!base || anyMatch(G.tipless, base)) {
+    return null;
+  }
+  const row = firstMatch(G.tipNames, base);
+  if (!row) {
+    return base;
+  }
+  if (row.match === "exact") {
+    return row.name;
+  }
+  const at = base.toLowerCase().indexOf(row.pattern.toLowerCase());
+  return base.slice(0, at) + row.name + base.slice(at + row.pattern.length);
+}
+
 export const PICKUP_TEXT = {
   /** Click (`#…` stripped) and Ctrl (full name). */
   full: (name: string) => `You see the ${name}, but you are carrying too much to pick it up!`,

@@ -3445,6 +3445,122 @@
         "dx": 15,
         "dy": -10
       }
+    ],
+    "tipless": [
+      {
+        "match": "exact",
+        "pattern": "Exit"
+      },
+      {
+        "match": "exact",
+        "pattern": "Exit2"
+      },
+      {
+        "match": "contains",
+        "pattern": " Ray"
+      },
+      {
+        "match": "exact",
+        "pattern": "Cloud"
+      },
+      {
+        "match": "exact",
+        "pattern": "Chimney"
+      },
+      {
+        "match": "contains",
+        "pattern": "Dragon Rock"
+      },
+      {
+        "match": "exact",
+        "pattern": "DungeonAlpha"
+      },
+      {
+        "match": "contains",
+        "pattern": "Lair"
+      }
+    ],
+    "tipNames": [
+      {
+        "match": "exact",
+        "pattern": "Sign 1",
+        "name": "Sign"
+      },
+      {
+        "match": "exact",
+        "pattern": "Sign 2",
+        "name": "Sign"
+      },
+      {
+        "match": "exact",
+        "pattern": "Sign 3",
+        "name": "Sign"
+      },
+      {
+        "match": "exact",
+        "pattern": "BlueCrystal",
+        "name": "Blue Crystal"
+      },
+      {
+        "match": "exact",
+        "pattern": "RedCrystal",
+        "name": "Red Crystal"
+      },
+      {
+        "match": "exact",
+        "pattern": "GreenCrystal",
+        "name": "Green Crystal"
+      },
+      {
+        "match": "exact",
+        "pattern": "YellowCrystal",
+        "name": "Yellow Crystal"
+      },
+      {
+        "match": "exact",
+        "pattern": "PurpleCrystal",
+        "name": "Purple Crystal"
+      },
+      {
+        "match": "exact",
+        "pattern": "WhiteCrystal",
+        "name": "White Crystal"
+      },
+      {
+        "match": "exact",
+        "pattern": "Open Wooden Door",
+        "name": "Wooden Door"
+      },
+      {
+        "match": "exact",
+        "pattern": "Open Steel Door",
+        "name": "Steel Door"
+      },
+      {
+        "match": "exact",
+        "pattern": "Open Emerald Door",
+        "name": "Emerald Door"
+      },
+      {
+        "match": "exact",
+        "pattern": "Open Fire Door",
+        "name": "Fire Door"
+      },
+      {
+        "match": "exact",
+        "pattern": "Open Gold Door",
+        "name": "Gold Door"
+      },
+      {
+        "match": "exact",
+        "pattern": "Open Switch Door",
+        "name": "Switch Door"
+      },
+      {
+        "match": "contains",
+        "pattern": "'s Opened Door",
+        "name": "'s Door"
+      }
     ]
   },
   "pickup": {

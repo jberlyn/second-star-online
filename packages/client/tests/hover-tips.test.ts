@@ -1,11 +1,17 @@
 /**
- * The hover tip over the playfield, in the running app: it names the character under the mouse
- * and keeps out from under the player menu that a click opens at the pointer.
+ * The hover tip over the playfield, in the running app: it names the character and the ground items
+ * under the mouse and keeps out from under the player menu that a click opens at the pointer.
  */
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { type ClientMsg, NO_EQUIPMENT, NO_FOG, type ServerMsg } from "@secondstaronline/shared";
+import {
+  type ClientMsg,
+  type GroundView,
+  NO_EQUIPMENT,
+  NO_FOG,
+  type ServerMsg,
+} from "@secondstaronline/shared";
 
 import { type App, runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -33,7 +39,7 @@ afterEach(() => {
 });
 
 /** You, standing on tile (5, 5) of a grass map, with the frames run by hand. */
-async function onMap() {
+async function onMap(ground: GroundView[] = []) {
   let nextFrame: FrameRequestCallback | undefined;
   raf = spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
     nextFrame = cb;
@@ -84,7 +90,7 @@ async function onMap() {
     self: { n: 0, x: 5, y: 5, facing: "S", frames: 0 },
     players: [],
     monsters: [],
-    ground: [],
+    ground,
   });
   await Bun.sleep(0);
   // The playfield drawn at 1:1 from the page's top-left (happy-dom does no layout).
@@ -119,6 +125,21 @@ describe("the playfield's hover tip", () => {
     s.at("pointermove", s.grass);
     s.frame();
     expect(s.tip.hidden).toBe(true);
+  });
+
+  test("design change: the ground items under the mouse are named one per line, above the player on them", async () => {
+    const s = await onMap([
+      { id: "a", name: "Exit", x: 5, y: 5 },
+      { id: "b", name: "Long Sword", x: 5, y: 5 },
+      { id: "c", name: "Open Wooden Door", x: 13, y: 10 },
+      { id: "d", name: "5 Blue Crystals", x: 5, y: 5 },
+    ]);
+    s.at("pointermove", s.you);
+    s.frame();
+    expect([s.tip.hidden, s.tip.textContent]).toEqual([false, "5 Blue Crystals\nLong Sword\nMe"]);
+    s.at("pointermove", s.grass);
+    s.frame();
+    expect([s.tip.hidden, s.tip.textContent]).toEqual([false, "Wooden Door"]);
   });
 
   test("design change: the player menu a click opens hides the tip until it closes", async () => {

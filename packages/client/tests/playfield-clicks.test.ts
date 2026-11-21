@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { AssetIndex } from "@secondstaronline/data";
 import { NO_EQUIPMENT } from "@secondstaronline/shared";
 
-import { hoverName } from "../src/app.ts";
+import { hoverName, hoverText } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import { createModel, type Model, type Peer, type Self, walkerPixel } from "../src/model.ts";
 import { createPlayfield, type Pick } from "../src/playfield.ts";
@@ -86,7 +86,7 @@ describe("playfield clicks", () => {
     expect(pick("self")).toMatchObject({ kind: "player", id: "me" });
   });
 
-  test("hover: monsters, players and yourself show a name; ground items none", () => {
+  test("hover: monsters, players, yourself and ground items show a name", () => {
     const { model } = world();
     const name = (where: "monster" | "ground" | "player" | "ghost" | "self") => {
       const hit = pick(where);
@@ -95,7 +95,23 @@ describe("playfield clicks", () => {
     expect(name("monster")).toBe("Slime");
     expect(name("player")).toBe("Ann");
     expect(name("self")).toBe("Me");
-    expect(name("ground")).toBeNull();
+    expect(name("ground")).toBe("Apple");
+  });
+  test("design change: hover lists each ground item on the tile, newest first, then the player on it", () => {
+    const { model } = world();
+    const field = createPlayfield(assets);
+    model.ground.set("g2", { id: "g2", name: "Exit", x: 9, y: 3 });
+    model.ground.set("g3", { id: "g3", name: "15 Gold", x: 9, y: 3 });
+    model.ground.set("g4", { id: "g4", name: "Painting#4", x: 9, y: 3 });
+    const p = walkerPixel(9, 3, "S", 0);
+    const hits = field.pickAll(model, p.px, p.py + 10);
+    // The exit lies under the map; the click still takes the newest item first.
+    expect(hits.map((h) => (h.kind === "monster" ? h.slot : h.id))).toEqual(["g4", "g3", "ann"]);
+    expect(field.pick(model, p.px, p.py + 10)).toEqual({ kind: "ground", id: "g4" });
+    expect(hoverText(model, hits)).toBe("Painting\n15 Gold\nAnn");
+    // A tile holding only unnamed things shows no tip.
+    model.ground.set("g5", { id: "g5", name: "Left Ray", x: 3, y: 9 });
+    expect(hoverText(model, field.pickAll(model, 2 * 32 + 16, 8 * 32 + 16))).toBeNull();
   });
   test('hover: a player in an "Invis" body shows ???', () => {
     const { model } = world();

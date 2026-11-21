@@ -68,6 +68,8 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `ground.overlays` | Animated overlay on a ground item | First | `overlay`; default none |
 | `ground.layers` | Draw layer | First | `hidden`, `overChars`, or `overLayer3`; default items layer |
 | `ground.offsets` | Pixel offset from tile | First | `dx`, `dy`; default `0, 0` |
+| `ground.tipless` | Ground items the hover tip never names (exits, overlays, markers) | Any | Boolean |
+| `ground.tipNames` | The hover tip's name for a ground item, after any `#id` is dropped | First | `name`: an `exact` row replaces the whole name, a `contains` row the matched part; default the name |
 | `pickup.ctrlTexts` | Line Ctrl says on a fixture | First | `text`; `unpause` ends Ctrl's pause |
 | `containers.capacity` | Lines a container holds | Last | `capacity`; default `containers.defaultCapacity` |
 | `containers.uniqueIds` | Containers assigned a `#id` in a bag | Any | Boolean |

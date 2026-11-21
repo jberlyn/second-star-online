@@ -6,6 +6,7 @@ import {
   clockFace,
   ctrlGate,
   groundOverlay,
+  groundTipName,
   showsClockFace,
 } from "../../src/rules/inventory/ground.ts";
 
@@ -133,5 +134,47 @@ describe("ground overlays", () => {
     expect(groundOverlay("Big Campfire")).toBeNull();
     expect(groundOverlay("Chimney")).toBe("CM");
     expect(groundOverlay("Apple")).toBeNull();
+  });
+});
+
+describe("the hover tip's name for a ground item", () => {
+  test("design change: loose items, vehicles and fixtures are named as they are, quantity included", () => {
+    expect(groundTipName("Long Sword")).toBe("Long Sword");
+    expect(groundTipName("15 Gold")).toBe("15 Gold");
+    expect(groundTipName("5 Blue Crystals")).toBe("5 Blue Crystals");
+    expect(groundTipName("Zieg's Boat")).toBe("Zieg's Boat");
+    expect(groundTipName("Slim's House Vault")).toBe("Slim's House Vault");
+    expect(groundTipName("Wooden Door")).toBe("Wooden Door");
+    expect(groundTipName("Experience Platform")).toBe("Experience Platform");
+    expect(groundTipName("ON Switch")).toBe("ON Switch");
+  });
+  test("design change: exits, Rays, clouds, chimneys and markers are never named", () => {
+    for (const name of [
+      "Exit",
+      "Exit2",
+      "exit",
+      "Left Ray",
+      "RIGHT RAY",
+      "Cloud",
+      "Chimney",
+      "Dragon Rock",
+      "DungeonAlpha",
+      "Dragon Lair",
+    ]) {
+      expect(groundTipName(name)).toBeNull();
+    }
+    // Only the exact names: an item merely containing "Exit" is named.
+    expect(groundTipName("Exit Sign")).toBe("Exit Sign");
+  });
+  test("design change: tidied names drop the #id, the sign number and the open state", () => {
+    expect(groundTipName("Painting#12")).toBe("Painting");
+    expect(groundTipName("Crate#3")).toBe("Crate");
+    expect(groundTipName("Sign 1")).toBe("Sign");
+    expect(groundTipName("sign 3")).toBe("Sign");
+    expect(groundTipName("BlueCrystal")).toBe("Blue Crystal");
+    expect(groundTipName("WhiteCrystal")).toBe("White Crystal");
+    expect(groundTipName("Open Wooden Door")).toBe("Wooden Door");
+    expect(groundTipName("Open Switch Door")).toBe("Switch Door");
+    expect(groundTipName("Slim's Opened Door")).toBe("Slim's Door");
   });
 });
