@@ -12,6 +12,7 @@ import {
   PERMISSIONS,
   ROLE_TEXT,
   type RoleData,
+  type RoleDef,
   roleToData,
   type ServerMsg,
 } from "@secondstaronline/shared";
@@ -65,6 +66,52 @@ describe("the roles migration", () => {
     ]);
     // Characters, bans and the rest still point at the rebuilt accounts table.
     expect(db.query("PRAGMA foreign_key_check").all()).toEqual([]);
+  });
+});
+
+describe("the moderator defaults migration", () => {
+  const DEFAULTS = "20261121_45_moderator_defaults.sql";
+  const V1_11 = [
+    "save",
+    "refresh",
+    "inventory",
+    "location",
+    "iplookup",
+    "kick",
+    "ban",
+    "jail",
+    "pardon",
+    "unban",
+    "unjail",
+    "banlist",
+    "mute",
+    "unmute",
+    "bypassLoginLimits",
+  ];
+  const before = (permissions: string[]) => {
+    const db = openDatabase();
+    runMigrations(
+      db,
+      loadMigrations().filter((m) => m.name < DEFAULTS),
+    );
+    db.run("UPDATE roles SET permissions = ? WHERE id = 'moderator'", [
+      JSON.stringify(permissions),
+    ]);
+    migrate(db);
+    return loadRoles(db).find((r) => r.id === "moderator");
+  };
+
+  test("divergence: an untouched moderator role loses /pardon, /iplookup, /save and /refresh", () => {
+    expect(roleToData(before(V1_11) as RoleDef)).toEqual(roleToData(MODERATOR));
+    // Saved again from the Roles page, the same permissions may be stored in another order.
+    expect(roleToData(before([...V1_11].reverse()) as RoleDef)).toEqual(roleToData(MODERATOR));
+  });
+
+  test("a moderator role the operator has edited is left as it is", () => {
+    const edited = V1_11.filter((p) => p !== "kick");
+    expect(roleToData(before(edited) as RoleDef).permissions.sort()).toEqual(edited.sort());
+    const added = [...V1_11, "drop"];
+    expect(roleToData(before(added) as RoleDef).permissions.sort()).toEqual(added.sort());
   });
 });
 

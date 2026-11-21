@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 68 |
+| [Design changes](#design-changes) | 69 |
 | [Fixed bugs](#fixed-bugs) | 294 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **546** |
+| **Total** | **547** |
 
 By system (the code folder that holds the change):
 
@@ -512,12 +512,21 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Moderators play by the same rules as players
 - **Kind:** Other
-- **What you notice:** A moderator moderates other players but gets no advantage in play: `/warp`, `/warptome`, `/warpmeto` and `/warpscript` are unknown commands to them, and they cannot pardon themselves. An administrator can still warp and pardon anyone, themselves included.
+- **What you notice:** A moderator moderates other players but gets no advantage in play: `/warp`, `/warptome`, `/warpmeto` and `/warpscript` are unknown commands to them, and a moderator role that an operator grants `/pardon` still cannot pardon themselves. An administrator can still warp and pardon anyone, themselves included.
 - **1.6:** Moderators could warp themselves anywhere, pull players to them, follow a friend with `/warpmeto` and clear their own murder flag with `/pardon`.
 - **SSO:** Each role is a set of permissions (`DEFAULT_ROLES` are the ones a new server starts with). The default moderator's leaves out the warps, and pardoning or warping yourself needs its own permission (`pardonSelf`, `warpSelf`) that only administrators hold by default. Moderators keep one exemption: the per-address login limit never refuses them, so staff behind a shared address can still log in during a flood of bad logins.
 - **Why:** Moderators are players who moderate. Warps and self-pardons let them travel or escape the murder penalty in a way other players cannot.
 - **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`DEFAULT_ROLES`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 - **Pinned by:** `a moderator has no tools or gameplay exemptions except the login-limit bypass` (packages/shared/tests/admin/permissions.test.ts); `a moderator may run the moderation commands, but not IP bans or /setclass`, `divergence: /warpscript is an unknown command to players and moderators; administrators set it`, `divergence: a moderator cannot pardon or warp themselves; an administrator can` (packages/server/tests/admin.test.ts)
+
+#### Pardons, IP lookups, saves and settings reloads are administrators'
+- **Kind:** Other
+- **What you notice:** By default `/pardon`, `/IPlookup`, `/save` and `/Refresh` are unknown commands to a moderator. Administrators keep them, and an operator can grant any of them to a role on the Roles page. A server upgraded from v1.11.0 loses them from its Moderator role only if the operator never changed that role's permissions.
+- **1.6:** Moderators could look up any player's address with `/IPlookup` and clear murder flags with `/pardon`.
+- **SSO:** The default `MODERATOR` role leaves out `pardon`, `iplookup`, `save` and `refresh`. The `20261121_45_moderator_defaults.sql` migration removes them from a stored `moderator` role whose permissions are still exactly the v1.11.0 seed, in any order, and leaves an edited role alone.
+- **Why:** A pardon undoes the murder penalty and an IP lookup shows a player's address, so both are trusted actions. Saving and reloading settings are server upkeep, not moderation.
+- **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`MODERATOR`), `packages/server/migrations/20261121_45_moderator_defaults.sql`
+- **Pinned by:** `moderators keep the moderation commands; IP bans, warps, /setclass, /cheatfile, /pardon, /iplookup, /save and /refresh are administrators'` (packages/shared/tests/admin/admin.test.ts); `divergence: /pardon, /IPlookup, /save and /Refresh are administrators' by default` (packages/server/tests/admin.test.ts); `divergence: an untouched moderator role loses /pardon, /iplookup, /save and /refresh`, `a moderator role the operator has edited is left as it is` (packages/server/tests/roles.test.ts)
 
 #### Mutes
 - **Kind:** Other
@@ -707,12 +716,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Moderators share the original moderation commands and staff chat
 - **Kind:** Bug fixed
-- **What you notice:** Moderators can use `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute` and `/pardon` on players, `/banlist`, `/Inventory`, `/save`, `/Refresh`, and `-text` staff chat, in addition to kick, IP lookup, and location. `/BanIP`, `/unbanip`, `/CheatFile`, `/chatlog`, `/auditlog`, `/drop`, `/setclass`, `/roster`, `/spawn`, the warps and editors are administrators' by default, and moderators still cannot act on administrators. (Moderators lost the warps on purpose: see [Moderators play by the same rules as players](#moderators-play-by-the-same-rules-as-players).)
+- **What you notice:** Moderators can use `/ban`, `/unban`, `/jail`, `/unjail`, `/mute` and `/unmute` on players, `/banlist`, `/Inventory`, and `-text` staff chat, in addition to kick and location. `/BanIP`, `/unbanip`, `/CheatFile`, `/chatlog`, `/auditlog`, `/drop`, `/setclass`, `/roster`, `/spawn`, the warps and editors are administrators' by default, and moderators still cannot act on administrators. (Moderators lost the warps, `/pardon` and `/IPlookup` on purpose: see [Moderators play by the same rules as players](#moderators-play-by-the-same-rules-as-players) and [Pardons, IP lookups, saves and settings reloads are administrators'](#pardons-ip-lookups-saves-and-settings-reloads-are-administrators).)
 - **1.6:** Only a subset of admin commands worked for moderators, and `-text` was immortal-only.
 - **SSO:** The default `MODERATOR` role grants the moderation command set and `isStaff` gives them staff chat, while keeping server authority and player denials. Item creation and IP bans are too dangerous for a moderator role: the moderator's permissions leave out `drop` and `banip`, and `/unban` lifts only a ban the moderator made (`mayChange`).
 - **Why:** Completes the moderator moderation toolkit without letting moderators mint items, change IP bans, or undo an administrator's ban.
 - **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`MODERATOR`, `can`, `isStaff`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`, `staffChat`), `packages/server/src/systems/admin/drop.ts` (`handleDrop`), `packages/shared/src/rules/admin/moderation.ts` (`mayChange`)
-- **Pinned by:** `moderators keep the moderation commands; IP bans, warps, /setclass and /cheatfile are administrators'` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans or /setclass`, `SSO: a moderator may not lift a ban an administrator made`, `a moderator cannot lift a ban an administrator made` (packages/server/tests/admin.test.ts); `only administrators drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
+- **Pinned by:** `moderators keep the moderation commands; IP bans, warps, /setclass, /cheatfile, /pardon, /iplookup, /save and /refresh are administrators'` (packages/shared/tests/admin/admin.test.ts); `a moderator may run the moderation commands, but not IP bans or /setclass`, `SSO: a moderator may not lift a ban an administrator made`, `a moderator cannot lift a ban an administrator made` (packages/server/tests/admin.test.ts); `only administrators drop items or gold; moderators and players do nothing` (packages/server/tests/inventory.test.ts)
 
 #### World editor Fat brush reaches the full 17 × 12 map
 - **Kind:** Bug fixed

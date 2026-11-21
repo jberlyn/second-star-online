@@ -19,21 +19,17 @@ import {
 } from "../../src/index.ts";
 
 describe("the default roles' commands", () => {
-  test("moderators keep the moderation commands; IP bans, warps, /setclass and /cheatfile are administrators'", () => {
+  test("moderators keep the moderation commands; IP bans, warps, /setclass, /cheatfile, /pardon, /iplookup, /save and /refresh are administrators'", () => {
     const mod: string[] = ADMIN_COMMANDS.filter((c) => can(MODERATOR, c)).sort();
     expect(mod).toEqual(
       [
         "ban",
         "banlist",
         "inventory",
-        "iplookup",
         "jail",
         "kick",
         "location",
         "mute",
-        "pardon",
-        "refresh",
-        "save",
         "unban",
         "unjail",
         "unmute",

@@ -134,14 +134,11 @@ export type Role = RoleDef | null;
 
 /**
  * A moderator is an ordinary player who moderates others: no warps, nothing on themselves and no
- * gameplay exemptions.
+ * gameplay exemptions. `/pardon`, `/iplookup`, `/save` and `/Refresh` are administrators' too.
  */
 const MODERATOR_PERMISSIONS: readonly Permission[] = [
-  "save",
-  "refresh",
   "inventory",
   "location",
-  "iplookup",
   "kick",
   "ban",
   "unban",
@@ -149,7 +146,6 @@ const MODERATOR_PERMISSIONS: readonly Permission[] = [
   "unjail",
   "mute",
   "unmute",
-  "pardon",
   "banlist",
   // An operator behind a shared address must still get in.
   "bypassLoginLimits",

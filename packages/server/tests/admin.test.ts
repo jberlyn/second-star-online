@@ -11,6 +11,8 @@ import {
   MODERATION_TEXT,
   MODERATOR,
   PERMISSIONS,
+  type Permission,
+  type RoleDef,
   type ServerMsg,
   TEXT,
   unknownCommandText,
@@ -36,6 +38,12 @@ type Out = { to: string; msg: ServerMsg }[];
 const ROOM_DEPS = { maxChars: 200, chatCooldownFrames: 0 };
 const texts = (out: Out, id: string) =>
   out.flatMap((o) => (o.to === id && o.msg.t === "chat" ? [o.msg.text] : []));
+
+/** The default moderator with commands an operator has granted on the Roles page. */
+const moderatorWith = (...extra: Permission[]): RoleDef => ({
+  ...MODERATOR,
+  permissions: new Set([...MODERATOR.permissions, ...extra]),
+});
 
 /** A world of three maps (the seed, a neighbour, the jail) and a fake database. */
 function scene(withJail = true) {
@@ -188,10 +196,6 @@ describe("the role table (moderator command set)", () => {
     expect(texts(say(mod, "/Location"), "Mod")).toEqual([
       "You are at map: x1000y992 at position: 6-5",
     ]);
-    expect(texts(say(mod, "/IPlookup bob"), "Mod")).toEqual([
-      "Looking up IP address for bob...",
-      "The IP is: 127.0.0.1",
-    ]);
     // A moderator moves no one, themselves included.
     for (const line of [
       "/warp Bob x1000y992 9 9",
@@ -202,9 +206,6 @@ describe("the role table (moderator command set)", () => {
       expect(texts(say(mod, line), "Mod")).toEqual([unknownCommandText(line.split(" ")[0] ?? "")]);
     }
     expect([bob.map.name, mod.map.name]).toEqual(["x1001y992", "x1000y992"]);
-    bob.char.wanted = true;
-    expect(texts(say(mod, "/Pardon Bob"), "Mod")).toEqual(["Pardoning Bob..."]);
-    expect(bob.char.wanted).toBe(false);
     // IP bans can lock out an administrator or the whole proxy, so they stay administrator-only.
     expect(texts(say(mod, "/BanIP 2.3.4.5"), "Mod")).toEqual([unknownCommandText("/BanIP")]);
     expect(texts(say(mod, "/unbanip 1.2.3.4"), "Mod")).toEqual([unknownCommandText("/unbanip")]);
@@ -219,10 +220,33 @@ describe("the role table (moderator command set)", () => {
     // The cheat log shows every player's address: an administrator's.
     expect(texts(say(mod, "/CheatFile"), "Mod")).toEqual([unknownCommandText("/CheatFile")]);
     expect(texts(say(mod, "/Inventory"), "Mod")).toHaveLength(15);
-    say(mod, "/save");
-    say(mod, "/Refresh");
+  });
+
+  test("divergence: /pardon, /IPlookup, /save and /Refresh are administrators' by default", () => {
+    const { imm, mod, say, bob, audits } = scene();
+    bob.char.wanted = true;
+    for (const line of ["/Pardon Bob", "/IPlookup Bob", "/save", "/Refresh"]) {
+      const w1 = line.split(" ")[0] as string;
+      expect(texts(say(mod, line), "Mod")).toEqual([unknownCommandText(w1)]);
+    }
+    expect(bob.char.wanted).toBe(true);
+    expect(audits).toEqual([]);
+    expect(texts(say(imm, "/IPlookup bob"), "Imm")).toEqual([
+      "Looking up IP address for bob...",
+      "The IP is: 127.0.0.1",
+    ]);
+    expect(texts(say(imm, "/Pardon Bob"), "Imm")).toEqual(["Pardoning Bob..."]);
+    expect(bob.char.wanted).toBe(false);
+    say(imm, "/save");
+    say(imm, "/Refresh");
     expect(audits).toContain("saved");
     expect(audits).toContain("reloaded");
+    // An operator may still grant them to the moderator role.
+    mod.role = moderatorWith("iplookup");
+    expect(texts(say(mod, "/IPlookup bob"), "Mod")).toEqual([
+      "Looking up IP address for bob...",
+      "The IP is: 127.0.0.1",
+    ]);
   });
 
   test("SSO: a moderator may not lift a ban an administrator made", () => {
@@ -586,6 +610,7 @@ describe("mutes", () => {
 describe("moderators play as ordinary players", () => {
   test("divergence: a moderator cannot pardon or warp themselves; an administrator can", () => {
     const { imm, mod, say } = scene();
+    mod.role = moderatorWith("pardon");
     mod.char.wanted = true;
     expect(texts(say(mod, "/pardon Mod"), "Mod")).toEqual([
       "Pardoning Mod...",
@@ -700,6 +725,7 @@ describe("kicks, bans, roles and classes", () => {
 
   test("SSO: a moderator cannot look up, jail or mute an administrator", () => {
     const { imm, mod, bob, say, audits } = scene();
+    mod.role = moderatorWith("iplookup");
     const lines = (typed: string) => texts(say(mod, typed), "Mod");
     expect(lines("/iplookup Imm")).toEqual([ADMIN_TEXT.lookingUpIp("Imm"), ADMIN_TEXT.outranked]);
     expect(lines("/jail Imm")[1]).toBe(MODERATION_TEXT.staffTarget);
@@ -833,6 +859,7 @@ describe("moderation: who may change what, durations and reasons", () => {
 
   test("a moderator may not ban, jail or pardon another moderator", () => {
     const sc = scene();
+    sc.mod.role = moderatorWith("pardon");
     const mo2 = withMo2(sc);
     expect(texts(sc.say(sc.mod, "/ban Mo2"), "Mod")[1]).toBe(MODERATION_TEXT.staffTarget);
     expect(texts(sc.say(sc.mod, "/jail Mo2"), "Mod")[1]).toBe(MODERATION_TEXT.staffTarget);
@@ -924,6 +951,7 @@ describe("moderation: who may change what, durations and reasons", () => {
 
   test("a moderator may not pardon an administrator; pardons are logged", () => {
     const { imm, mod, bob, say, m } = scene();
+    mod.role = moderatorWith("pardon");
     imm.char.wanted = true;
     expect(texts(say(mod, "/pardon Imm"), "Mod")[1]).toBe(MODERATION_TEXT.staffTarget);
     expect(imm.char.wanted).toBe(true);

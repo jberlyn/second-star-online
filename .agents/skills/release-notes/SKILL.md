@@ -27,7 +27,7 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 Changes already on `main` that the next release after `v1.11.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- None yet.
+- `/pardon`, `/iplookup`, `/save` and `/refresh` are administrators' by default (migration `20261121_45_moderator_defaults.sql`). A Moderator role still holding exactly the v1.11.0 permissions loses them; an edited one is left alone, and operators can untick them on the Roles page.
 
 ## 2. Choose the version
 

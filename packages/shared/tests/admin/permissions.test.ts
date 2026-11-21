@@ -61,16 +61,21 @@ describe("the default roles", () => {
     }
   });
 
-  test("the roles migration seeds the default roles", async () => {
-    const sql = await Bun.file(
-      new URL("../../../server/migrations/20261120_42_roles.sql", import.meta.url),
-    ).text();
-    for (const r of DEFAULT_ROLES) {
-      const d = roleToData(r);
-      expect(sql).toContain(
-        `('${d.id}', '${d.name}', ${d.rank},\n    '${JSON.stringify(d.permissions)}'`,
-      );
-    }
+  test("the migrations seed the default roles", async () => {
+    const migration = (name: string) =>
+      Bun.file(new URL(`../../../server/migrations/${name}`, import.meta.url)).text();
+    const roles = await migration("20261120_42_roles.sql");
+    const admin = roleToData(ADMINISTRATOR);
+    expect(roles).toContain(
+      `('${admin.id}', '${admin.name}', ${admin.rank},\n    '${JSON.stringify(admin.permissions)}'`,
+    );
+    // The moderator seed lost /pardon, /iplookup, /save and /Refresh in a later migration.
+    const mod = roleToData(MODERATOR);
+    expect(roles).toContain(`('${mod.id}', '${mod.name}', ${mod.rank},`);
+    expect(await migration("20261121_45_moderator_defaults.sql")).toContain(
+      `SET permissions = '${JSON.stringify(mod.permissions)}'`,
+    );
+    expect(DEFAULT_ROLES).toEqual([MODERATOR, ADMINISTRATOR]);
   });
 });
 

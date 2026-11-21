@@ -43,13 +43,14 @@ describe("the moderation migration", () => {
     const all = loadMigrations();
     runMigrations(
       db,
-      // Every other migration; the mutes and roles ones rebuild tables this one makes, so they
-      // wait too.
+      // Every other migration; the mutes and roles ones rebuild tables this one makes, and the
+      // moderator defaults one edits the roles table, so they wait too.
       all.filter(
         (m) =>
           m.name !== MINE &&
           m.name !== "20261120_41_mutes.sql" &&
-          m.name !== "20261120_42_roles.sql",
+          m.name !== "20261120_42_roles.sql" &&
+          m.name !== "20261121_45_moderator_defaults.sql",
       ),
     );
     const now = "2026-11-10T00:00:00.000Z";
