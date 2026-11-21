@@ -123,6 +123,19 @@ describe("playfield clicks", () => {
     model.ground.set("g5", { id: "g5", name: "Left Ray", x: 3, y: 9 });
     expect(hoverText(model, field.pickAll(model, 2 * 32 + 16, 8 * 32 + 16))).toEqual([]);
   });
+  test("bug fixed: a click passes over a Ray to the item under it", () => {
+    const { model } = world();
+    const field = createPlayfield(assets);
+    model.ground.set("g6", { id: "g6", name: "Knife", x: 3, y: 9 });
+    model.ground.set("g7", { id: "g7", name: "Left Ray", x: 3, y: 9 });
+    const at = { x: 2 * 32 + 16, y: 8 * 32 + 16 };
+    // 1.6's click hit the Ray, the newest, and said nothing; the tip names the Knife.
+    expect(field.pick(model, at.x, at.y)).toEqual({ kind: "ground", id: "g6" });
+    expect(hoverText(model, field.pickAll(model, at.x, at.y))).toEqual(["Knife"]);
+    // With nothing named on the tile the Ray still takes the click, which stays silent.
+    model.ground.delete("g6");
+    expect(field.pick(model, at.x, at.y)).toEqual({ kind: "ground", id: "g7" });
+  });
   test('hover: a player in an "Invis" body shows ???', () => {
     const { model } = world();
     const hit = pick("ghost");

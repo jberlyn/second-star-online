@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 72 |
-| [Fixed bugs](#fixed-bugs) | 296 |
+| [Fixed bugs](#fixed-bugs) | 297 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **552** |
+| **Total** | **553** |
 
 By system (the code folder that holds the change):
 
@@ -48,7 +48,7 @@ By system (the code folder that holds the change):
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [20](#housing) | [6](#server-side-housing) |
-| inventory | [33](#inventory) | [11](#server-side-inventory) |
+| inventory | [34](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [19](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
@@ -2421,6 +2421,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Ctrl and a click on the same pile should take the same item, the one a player can see.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`)
 - **Pinned by:** `bug fixed: Ctrl takes the newest item on the faced tile, as a click does, passing over an exit` (packages/server/tests/inventory.test.ts)
+
+#### Click and Ctrl pass over a Ray to the item under it
+- **Kind:** Bug fixed
+- **What you notice:** An item lying where a Ray or another unnamed marker was placed after it can be clicked or taken with Ctrl, and it is the item the hover tip names.
+- **1.6:** A click and (on a tile with no exit) Ctrl acted on the newest thing on the tile. A Ray placed on top of an item answered both with silence, so the item under it could not be picked up while the Ray stayed.
+- **SSO:** Click and Ctrl act on the newest item the hover tip names, passing over the markers it never names (`tipless`). On a tile holding only markers they act on the newest, as before.
+- **Why:** A marker players cannot see should not hide the item they can.
+- **In the code:** `packages/client/src/playfield.ts` (`pickAll`), `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/data/content/item-rules.json` (`tipless`)
+- **Pinned by:** `bug fixed: a click passes over a Ray to the item under it` (packages/client/tests/playfield-clicks.test.ts); `bug fixed: Ctrl passes over a Ray to the item under it` (packages/server/tests/inventory.test.ts)
 
 ### mail
 

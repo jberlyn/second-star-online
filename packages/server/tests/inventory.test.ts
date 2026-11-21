@@ -436,6 +436,17 @@ describe("drop, pickup and give", () => {
     expect(a.char.bag[0]).toEqual({ item: "Knife", qty: 1 });
     expect(s.map.ground.map((g) => g.id)).toEqual(["g0", "g2"]);
   });
+  test("bug fixed: Ctrl passes over a Ray to the item under it", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.facing = "E";
+    s.map.ground.push({ id: "g0", item: "Knife", x: 6, y: 5, kind: "drop", expiresAt: null });
+    s.map.ground.push({ id: "g1", item: "Left Ray", x: 6, y: 5, kind: "admin", expiresAt: null });
+    actionIntent(s.ctx(), s.room(), a);
+    // 1.6 stopped at the Ray, which Ctrl answers with silence.
+    expect(a.char.bag[0]).toEqual({ item: "Knife", qty: 1 });
+    expect(s.map.ground.map((g) => g.id)).toEqual(["g1"]);
+  });
   test("a crystal pile becomes n crystals", () => {
     const s = scene();
     const a = s.join("A", 5, 5);

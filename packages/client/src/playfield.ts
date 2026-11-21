@@ -33,6 +33,7 @@ import {
   groundOverlay,
   groundPicture,
   groundPictureTopLeft,
+  groundTipName,
   isShip,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -83,8 +84,8 @@ export interface Playfield {
   pick(model: Model, x: number, y: number): Pick | null;
   /**
    * Everything under the point, in the click's order: a monster or a player alone, or else the
-   * ground items on the tile, newest first. The first is `pick`'s answer, and the one Ctrl takes
-   * from the faced tile. The hover tip lists them.
+   * ground items on the tile, newest first with unnamed markers (`ground.tipless`) last. The first
+   * is `pick`'s answer, and the one Ctrl takes from the faced tile. The hover tip lists them.
    */
   pickAll(model: Model, x: number, y: number): Pick[];
 }
@@ -519,11 +520,15 @@ export function createPlayfield(assets: Assets): Playfield {
       }
       const tx = Math.floor(x / 32) + 1;
       const ty = Math.floor(y / 32) + 1;
-      // An exit lies under the map, where no click reaches it.
-      return [...model.ground.values()]
+      // An exit lies under the map, where no click reaches it. The named items come newest first;
+      // a Ray or other unnamed marker (`ground.tipless`) goes after them, so a click passes over it
+      // to the item the tip names, and takes it only on a tile with nothing named.
+      const here = [...model.ground.values()]
         .filter((g) => g.x === tx && g.y === ty && groundLayer(g.name) !== "hidden")
-        .reverse()
-        .map((g) => ({ kind: "ground", id: g.id }));
+        .reverse();
+      const named = here.filter((g) => groundTipName(g.name) !== null);
+      const unnamed = here.filter((g) => groundTipName(g.name) === null);
+      return [...named, ...unnamed].map((g) => ({ kind: "ground", id: g.id }));
     },
   };
   return playfield;
