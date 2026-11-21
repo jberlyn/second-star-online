@@ -25,9 +25,9 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 ### Pending upgrade items
 
-Changes already on `main` that the next release after `v1.13.0` must list under Upgrade Notes (confirm each in the code at the tag):
+Changes that the next release after `v1.13.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- None yet.
+- **Carpentry Bench.** Players must face this station to build furniture. Back up the database before upgrading. If a world has no bench, add a Carpentry Bench from the World Editor’s Items list and save the map.
 
 ## 2. Choose the version
 

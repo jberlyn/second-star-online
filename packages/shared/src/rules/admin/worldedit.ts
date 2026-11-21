@@ -108,7 +108,7 @@ export const EDITOR_MONSTERS: readonly string[] = monstersData.editorLists.world
 export const EDITOR_NPCS: readonly string[] = monstersData.editorLists.worldEditor.npcs;
 
 /**
- * The ITEM list (field `ITEM`), 46 lines in order: "Delete", then
+ * The ITEM list (field `ITEM`): "Delete", then
  * the item content's `editorItems`. "Delete" is not an item: with it selected, clicking a placed
  * item removes it and clicking the map places nothing.
  */

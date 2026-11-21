@@ -24,6 +24,24 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(second.skipped).toEqual(first.applied);
   });
 
+  test("renames an operator-placed Workbench without moving it", () => {
+    const db = openDatabase();
+    const migrations = loadMigrations().filter((m) => !m.name.endsWith("_carpentry_bench.sql"));
+    runMigrations(db, migrations);
+    db.run(`
+      INSERT INTO ground_items (id, map_id, x, y, item, kind, created_at)
+      SELECT 'bench', id, 5, 6, 'workbench', 'admin', '2026-11-21'
+      FROM maps WHERE mx = 1000 AND my = 992 AND slot = 0
+    `);
+    migrate(db);
+    expect(db.query("SELECT item, x, y, kind FROM ground_items WHERE id = 'bench'").get()).toEqual({
+      item: "Carpentry Bench",
+      x: 5,
+      y: 6,
+      kind: "admin",
+    });
+  });
+
   test("applies pending migrations in name order, each in its own transaction", () => {
     const db = openDatabase();
     runMigrations(db, [

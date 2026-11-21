@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
-import { ADMINISTRATOR, skillIndex } from "@secondstaronline/shared";
+import { ADMINISTRATOR, FACING_DELTA, skillIndex } from "@secondstaronline/shared";
 
 import { createGame, type Game } from "../src/game.ts";
 import { setRole } from "../src/persistence/accounts.ts";
@@ -74,6 +74,15 @@ describe("crafts and logout", () => {
     if (!p) {
       throw new Error("not in");
     }
+    const [dx, dy] = FACING_DELTA[p.facing];
+    p.map.ground.push({
+      id: "carpentry bench",
+      item: "Carpentry Bench",
+      x: p.x + dx,
+      y: p.y + dy,
+      kind: "admin",
+      expiresAt: null,
+    });
     p.char.skills[skillIndex("Carpentry")] = 1;
     p.char.bag[5] = { item: "Logs", qty: 1 };
     p.char.equip.offHand = "Saw";

@@ -1346,6 +1346,12 @@ export const houseData: HouseData = {
   },
   "clickFixtures": [
     {
+      "item": "Carpentry Bench",
+      "match": "exact",
+      "text": "This is a carpentry bench, used for carpentry.",
+      "action": null
+    },
+    {
       "item": "Slash Master Platform",
       "match": "exact",
       "text": "This is a slash master's platform, only a master of slash can pass through this.",

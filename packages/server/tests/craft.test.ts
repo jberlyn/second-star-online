@@ -243,7 +243,7 @@ describe("crafts in the frame script", () => {
   });
 
   test("bug fixed: a crafter can be shoved, which ends the craft and frees the keys", () => {
-    const k = bench(null);
+    const k = bench("Carpentry Bench");
     setSkill(k.a, "Carpentry", 1);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
     k.a.char.equip.offHand = "Saw";
@@ -251,7 +251,7 @@ describe("crafts in the frame script", () => {
     expect(k.a.keyLock).toBe(true);
     const told: string[] = [];
     const sent: Out = [];
-    pushOnMe(k.room, k.a, "U", k.b, {
+    pushOnMe(k.room, k.a, "D", k.b, {
       rng: rngByN({ 25: [1] }),
       emit: () => {},
       tell: (_to, text) => told.push(text),
@@ -282,7 +282,7 @@ describe("crafts in the frame script", () => {
   test("a window's key lock still stops a shove", () => {
     const k = bench(null);
     k.a.keyLock = true; // a vault or a shop holds the keys
-    pushOnMe(k.room, k.a, "U", k.b, {
+    pushOnMe(k.room, k.a, "D", k.b, {
       rng: rngByN({ 25: [1] }),
       emit: () => {},
       tell: () => {},
@@ -318,7 +318,7 @@ describe("crafts in the frame script", () => {
   });
 
   test("divergence: a craft ends at logout; a new session starts with none", () => {
-    const k = bench(null);
+    const k = bench("Carpentry Bench");
     setSkill(k.a, "Carpentry", 1);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
     k.a.char.equip.offHand = "Saw";
@@ -328,7 +328,7 @@ describe("crafts in the frame script", () => {
   });
 
   test("bug fixed: carpentry needs Carpentry 1", () => {
-    const k = bench(null);
+    const k = bench("Carpentry Bench");
     setSkill(k.a, "Carpentry", 0);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
     k.a.char.equip.offHand = "Saw";
@@ -337,7 +337,7 @@ describe("crafts in the frame script", () => {
   });
 
   test("carpentry: Logs taken at completion, 'You built a Crate!', the result minted an id", () => {
-    const k = bench(null, rngByN({ 4: [1] }));
+    const k = bench("Carpentry Bench", rngByN({ 4: [1] }));
     setSkill(k.a, "Carpentry", 40);
     k.a.char.bag[0] = { item: "Logs", qty: 1 };
     k.a.char.equip.offHand = "Saw";

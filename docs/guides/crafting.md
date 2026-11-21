@@ -31,6 +31,8 @@ A swing passes through common action timing and then selects a tool rule. Axe, s
 
 ### Crafting jobs
 
+Operators must place a **Carpentry Bench** from the World Editor’s Items list and save the map before players can use carpentry. This applies to new and existing worlds. Place it where players can stand on an adjacent tile and face it.
+
 A craft is selected from the bag and started only when its station, tool, skill and recipe allow it; starting takes nothing. The server maintains per-player timers and advances the jobs in their defined order. At completion `finishCraft` takes the materials by exact name, rolls the failure (cooking, alchemy, carpentry), and adds the result only if it fits in the bag; a failure uses up the materials. A burn adds the recipe's `burned` food instead, under the same full-bag check; a failed brew or build adds nothing. The held tool (Blacksmith Hammer, Saw, alchemy sand) is never used up. Masterwork changes an eligible item according to its roll. Cauldrons use the contents of a container, and built containers receive server IDs. The recipe and tool values live in the editable content files linked above; the code handles the order and effects. A crafter cannot walk or turn while a craft runs; logging out, a map change or being shoved off the spot ends it.
 
 ## Differences from 1.6

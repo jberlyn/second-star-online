@@ -1,6 +1,6 @@
 # Carpentry
 
-Carpentry builds furniture from Logs with a Saw. Higher skill builds faster, fails less and unlocks the containers.
+Carpentry builds furniture from Logs with a Saw at a Carpentry Bench. Higher skill builds faster, fails less and unlocks the containers.
 
 | | |
 |---|---|
@@ -13,7 +13,7 @@ Carpentry builds furniture from Logs with a Saw. Higher skill builds faster, fai
 
 ## How it works
 
-Hold a Saw in your right hand and use Logs. Building needs Carpentry 1 and no station. It takes the [crafting timer's](README.md#crafting-time-and-failure) frames, then rolls for failure; a failed build uses the Logs and makes nothing. What you build depends on your skill (`carpentryResult`, `stations.build.bands` in [craft.json](../../../packages/data/content/craft.json)):
+Face a Carpentry Bench, hold a Saw in your right hand and use Logs. Building needs Carpentry 1. It takes the [crafting timer's](README.md#crafting-time-and-failure) frames, then rolls for failure; a failed build uses the Logs and makes nothing. What you build depends on your skill (`carpentryResult`, `stations.build.bands` in [craft.json](../../../packages/data/content/craft.json)):
 
 | Carpentry | Result |
 |---|---|
@@ -41,6 +41,7 @@ See the [crafting guide](../crafting.md).
 
 ## Differences from 1.6
 
+- [Building furniture requires facing a Carpentry Bench](../../differences-from-fso.md#building-furniture-requires-facing-a-carpentry-bench).
 - [Building furniture needs Carpentry 1](../../differences-from-fso.md#building-furniture-needs-carpentry-1).
 - [Built containers get server ids](../../differences-from-fso.md#built-containers-get-server-ids).
 - [Every craft takes its materials when it finishes](../../differences-from-fso.md#every-craft-takes-its-materials-when-it-finishes).
@@ -50,4 +51,3 @@ See the [crafting guide](../crafting.md).
 ## Balance notes
 
 - Below 30 the result is fixed. From 30 the band picks at random, so a higher skill makes containers possible but not certain.
-- Building needs no station; a workbench is tracked in [issue #4](https://github.com/jberlyn/second-star-online/issues/4).

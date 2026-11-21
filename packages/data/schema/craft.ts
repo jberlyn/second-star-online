@@ -73,6 +73,7 @@ export const craftDataSchema = z.strictObject({
         .min(1),
     }),
     build: z.strictObject({
+      station: z.string(),
       /** RightHand, exactly. */
       tool: z.string(),
       /** Carpentry below this cannot build. */

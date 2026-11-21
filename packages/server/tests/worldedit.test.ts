@@ -3,7 +3,13 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { ADMINISTRATOR, blankMap, EDGE_BLOCKED_TEXT, NO_FOG } from "@secondstaronline/shared";
+import {
+  ADMINISTRATOR,
+  blankMap,
+  EDGE_BLOCKED_TEXT,
+  EDITOR_ITEMS,
+  NO_FOG,
+} from "@secondstaronline/shared";
 
 import { openDatabase } from "../src/persistence/database.ts";
 import {
@@ -17,6 +23,7 @@ import { loadSlots, saveSlots } from "../src/persistence/monsters.ts";
 import {
   applySave,
   closeEditor,
+  editorItemOk,
   editorView,
   openEditor,
   saveError,
@@ -77,6 +84,17 @@ describe("exits", () => {
 });
 
 describe("opening, saving and closing", () => {
+  test("the World Editor can place and save a Carpentry Bench", () => {
+    expect(EDITOR_ITEMS).toContain("Carpentry Bench");
+    expect(editorItemOk("Carpentry Bench")).toBe(true);
+    const map = testMap("x1000y992");
+    const { world } = setup([map]);
+    const m = editorView(map, 1000, 992);
+    m.items = [{ name: "Carpentry Bench", x: 3, y: 3 }];
+    applySave(world, map, m, () => "carpentry bench");
+    expect(map.ground[0]).toMatchObject({ item: "Carpentry Bench", x: 3, y: 3, kind: "admin" });
+  });
+
   test("a player cannot open the editor; an administrator leaves the room and stops ticking", () => {
     const a = testMap("x1000y992");
     const { world, join, run } = setup([a]);

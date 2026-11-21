@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 76 |
+| [Design changes](#design-changes) | 77 |
 | [Fixed bugs](#fixed-bugs) | 297 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **557** |
+| **Total** | **558** |
 
 By system (the code folder that holds the change):
 
@@ -536,6 +536,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Pinned by:** `death: the dying player gets { t: "death" } after the tick's vitals, once, and nobody else does` (packages/server/tests/monsters.test.ts); `death: black for one draw, then frozen until the respawn map is drawn` (packages/client/tests/death-stage.test.ts)
 
 ### Other design changes
+
+#### Building furniture requires facing a Carpentry Bench
+- **Kind:** Other
+- **What you notice:** Building from Logs requires facing a Carpentry Bench while standing still. Operators place the bench in the World Editor before players can build.
+- **1.6:** Building required a Saw and Logs and could start anywhere.
+- **SSO:** Build checks the Carpentry Bench before checking the Saw and Carpentry skill. The Carpentry Bench is a fixed station with a four-frame animated saw.
+- **Why:** Carpentry needs a workstation like the other crafts.
+- **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startBuild`)
+- **Pinned by:** `design change: carpentry requires facing a Carpentry Bench before checking the Saw` (packages/shared/tests/crafting/craft.test.ts)
 
 #### Ctrl and item clicks answer at once
 - **Kind:** Other
@@ -1518,7 +1527,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Building furniture needs Carpentry 1
 - **Kind:** Bug fixed
-- **What you notice:** With Carpentry below 1 the Build button reads "You aren't skilled in carpentry, you'd just ruin the logs". New characters start at 1. Building still needs no station: a workbench is tracked as a feature in [issue #4](https://github.com/jberlyn/second-star-online/issues/4).
+- **What you notice:** With Carpentry below 1 the Build button reads "You aren't skilled in carpentry, you'd just ruin the logs". New characters start at 1.
 - **1.6:** Build checked only the Saw, so any Carpentry skill could build.
 - **SSO:** Carpentry follows cooking's rule: the skill must be at least `minSkill` (1).
 - **Why:** Carpentry should need the skill, like the other crafts.

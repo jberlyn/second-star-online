@@ -419,14 +419,25 @@ describe("Mix", () => {
 });
 
 describe("Build", () => {
-  test("bug fixed: carpentry needs the Saw and Carpentry 1, like cooking's skill rule", () => {
-    expect(startCraft(view({ bag: bagOf(["Logs", 2]) }), 1).lines).toEqual([CRAFT_TEXT.noSaw]);
+  test("design change: carpentry requires facing a Carpentry Bench before checking the Saw", () => {
     const bag = bagOf(["Logs", 2]);
-    expect(startCraft(view({ bag, rightHand: "Saw" }), 1)).toEqual({
+    for (const facing of [at("Table"), at("Carpentry Bench#1")]) {
+      expect(startCraft(view({ bag, facing }), 1)).toEqual({
+        lines: [CRAFT_TEXT.noCarpentryBench],
+        started: null,
+      });
+    }
+  });
+
+  test("bug fixed: carpentry needs the Saw and Carpentry 1, like cooking's skill rule", () => {
+    const facing = at("Carpentry Bench");
+    const bag = bagOf(["Logs", 2]);
+    expect(startCraft(view({ bag, facing }), 1).lines).toEqual([CRAFT_TEXT.noSaw]);
+    expect(startCraft(view({ bag, facing, rightHand: "Saw" }), 1)).toEqual({
       lines: ["You aren't skilled in carpentry, you'd just ruin the logs"],
       started: null,
     });
-    const r = startCraft(view({ bag, rightHand: "Saw", skills: { Carpentry: 1 } }), 1);
+    const r = startCraft(view({ bag, facing, rightHand: "Saw", skills: { Carpentry: 1 } }), 1);
     expect(r.lines).toEqual(["You begin to build something..."]);
     expect(r.started?.job).toEqual({ kind: "Build", logs: "Logs" });
     expect(bag[0]).toEqual({ item: "Logs", qty: 2 }); // taken at completion

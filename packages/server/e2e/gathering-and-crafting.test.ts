@@ -167,7 +167,8 @@ describe("gathering and crafting", () => {
         setTile(db, 1, 10, 5, "W1");
         setTile(db, 2, 10, 5, "G3");
         setTile(db, 2, 13, 5, "TL");
-        // The part 2 stations, each north of its crafter on row 10.
+        fixture(db, "Carpentry Bench", 6, 6); // East of Alice’s logging spot.
+        // The other part 2 stations are north of their crafters on row 10.
         fixture(db, "Stove", 2, 9);
         fixture(db, "Alchemy Lab", 4, 9);
         fixture(db, "Anvil", 6, 9);
@@ -321,6 +322,12 @@ describe("gathering and crafting", () => {
     await tick(1);
     expect(lines(alice)).not.toContain("You begin to build something...");
     await tick(40);
+    alice.send({ t: "craft", slot: 1 });
+    await tick(1);
+    expect(lines(alice)).toContain(
+      "You have to be standing in front of a carpentry bench to build something!",
+    );
+    face(server, "Alice", "E");
     alice.send({ t: "craft", slot: 1 });
     await tick(1);
     expect(lines(alice)).toContain("You begin to build something...");

@@ -2750,6 +2750,7 @@ export const itemsData: ItemsData = {
   "fixtures": [
     "Assassin Statue",
     "BlueCrystal",
+    "Carpentry Bench",
     "Clock",
     "Clock1",
     "Clock10",
@@ -2846,6 +2847,7 @@ export const itemsData: ItemsData = {
     "Stove",
     "Alchemy Lab",
     "Anvil",
+    "Carpentry Bench",
     "Cauldron",
     "Holy Water",
     "Slash Master Platform",

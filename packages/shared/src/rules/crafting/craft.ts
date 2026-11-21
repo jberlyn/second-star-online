@@ -36,6 +36,7 @@ const fill = (key: string, ...args: string[]): string => {
 /** Every crafting line, from the generated crafting data. */
 export const CRAFT_TEXT = {
   noAnvil: t("noAnvil"),
+  noCarpentryBench: t("noCarpentryBench"),
   crowded: t("crowded"),
   noHammer: t("noHammer"),
   needChunk: (chunk: string) => fill("needChunk", chunk),
@@ -309,6 +310,9 @@ function startMix(v: CraftView, item: string): CraftStartResult {
 }
 
 function startBuild(v: CraftView, item: string): CraftStartResult {
+  if (!v.facing(ST.build.station)) {
+    return none([CRAFT_TEXT.noCarpentryBench]);
+  }
   if (!lingoEq(v.rightHand, ST.build.tool)) {
     return none([CRAFT_TEXT.noSaw]);
   }

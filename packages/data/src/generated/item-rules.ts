@@ -3260,6 +3260,10 @@ export const itemRulesData: ItemRulesData = {
       },
       {
         "match": "exact",
+        "pattern": "Carpentry Bench"
+      },
+      {
+        "match": "exact",
         "pattern": "Table"
       },
       {
@@ -3377,6 +3381,11 @@ export const itemRulesData: ItemRulesData = {
         "match": "exact",
         "pattern": "Alchemy Lab",
         "overlay": "AL"
+      },
+      {
+        "match": "exact",
+        "pattern": "Carpentry Bench",
+        "overlay": "WB"
       },
       {
         "match": "exact",
@@ -3569,6 +3578,12 @@ export const itemRulesData: ItemRulesData = {
   },
   "pickup": {
     "ctrlTexts": [
+      {
+        "match": "exact",
+        "pattern": "Carpentry Bench",
+        "text": "This is a carpentry bench, used for carpentry.",
+        "unpause": false
+      },
       {
         "match": "contains",
         "pattern": "Piano",

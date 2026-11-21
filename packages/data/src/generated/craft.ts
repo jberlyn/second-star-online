@@ -674,6 +674,7 @@ export const craftData: CraftData = {
       ]
     },
     "build": {
+      "station": "Carpentry Bench",
       "tool": "Saw",
       "minSkill": 1,
       "timer": {
@@ -996,6 +997,9 @@ export const craftData: CraftData = {
       },
       "potionReady": {
         "text": "Your potion is ready!"
+      },
+      "noCarpentryBench": {
+        "text": "You have to be standing in front of a carpentry bench to build something!"
       },
       "noSaw": {
         "text": "You need a carpentry tool equipped to build with!"

@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import {
   bagPicture,
+  blocksMonster,
+  blocksPlayer,
   clickGate,
   clockFace,
   ctrlGate,
+  fixedInPlace,
   groundOverlay,
   groundTipName,
   showsClockFace,
@@ -127,7 +130,20 @@ describe("bag icons for containers and art (bag-line drawing)", () => {
 });
 
 describe("ground overlays", () => {
-  test("the animated overlays: Crystal piles CC, then eight fixtures by `=`", () => {
+  test("a Carpentry Bench animates, blocks movement and stays fixed in place", () => {
+    const text = "This is a carpentry bench, used for carpentry.";
+    expect(groundOverlay("Carpentry Bench")).toBe("WB");
+    expect(blocksPlayer("Carpentry Bench", { level: 1, skills: [] })).toBe(true);
+    expect(blocksMonster("Carpentry Bench")).toBe(true);
+    expect(fixedInPlace("Carpentry Bench", true)).toBe(true);
+    expect(clickGate("Carpentry Bench")).toEqual({ kind: "text", text });
+    expect(ctrlGate("Carpentry Bench", { ...STRANGER, mine: true })).toEqual({
+      kind: "text",
+      text,
+    });
+  });
+
+  test("the animated overlays match Crystal piles or exact fixture names", () => {
     expect(groundOverlay("5 Blue Crystals")).toBe("CC");
     expect(groundOverlay("Campfire")).toBe("CF");
     expect(groundOverlay("campfire")).toBe("CF");

@@ -208,6 +208,7 @@ describe("the playthrough", () => {
         { name: "Anvil", x: 4, y: 10 },
         { name: "Alchemy Lab", x: 6, y: 10 },
         { name: "Cauldron", x: 8, y: 10 },
+        { name: "Carpentry Bench", x: 12, y: 10 },
         { name: "Universal Mail", x: 13, y: 5 },
         { name: "Message Boards", x: 14, y: 5 },
         { name: "Assassin Statue", x: 15, y: 5 },
@@ -936,7 +937,7 @@ describe("the playthrough", () => {
     await supply(dave, "Dave", "Red Sand");
     await supply(bob, "Bob", "Chunk of Star");
     await supply(bob, "Bob", "Silver Crown");
-    await atStation(alice, 12); // anywhere: building needs only the Saw and the Logs
+    await atStation(alice, 12); // Carpentry Bench
     await atStation(carol, 2); // Stove
     await atStation(dave, 6); // Alchemy Lab
     await atStation(bob, 8); // Cauldron
