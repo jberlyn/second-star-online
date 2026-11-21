@@ -6,9 +6,9 @@ export const houseData: HouseData = {
   "deeds": [
     {
       "deed": "Boat Deed",
-      "use": "nothing",
+      "use": "boat",
       "house": null,
-      "text": "Boats cannot be built yet, so this deed can't be used."
+      "text": null
     },
     {
       "deed": "Airship Deed",
@@ -18,9 +18,9 @@ export const houseData: HouseData = {
     },
     {
       "deed": "Battleship Deed",
-      "use": "nothing",
+      "use": "battleship",
       "house": null,
-      "text": "Battleships cannot be built yet, so this deed can't be used."
+      "text": null
     },
     {
       "deed": "Small House Deed",

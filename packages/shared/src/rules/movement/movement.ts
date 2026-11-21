@@ -130,12 +130,21 @@ export const FACINGS: readonly Facing[] = ["N", "S", "E", "W"];
  */
 export const STEP_FRAMES = 16;
 
-/** The vehicles a player can ride. Only the Airship was ever reachable in 1.6. */
-export type Vehicle = "Airship";
+/**
+ * The vehicles a player can ride. Only the Airship was ever reachable in 1.6; its Boat and
+ * Battleship were written but never switched on (SSO builds them, issue #2).
+ */
+export type Vehicle = "Airship" | "Boat" | "Battleship";
+
+/** A vehicle that sails on water: the Boat or the Battleship. */
+export function isShip(vehicle: Vehicle | null): vehicle is "Boat" | "Battleship" {
+  return vehicle === "Boat" || vehicle === "Battleship";
+}
 
 /**
  * `stepFrame` calls in one step for a walker: 16 on foot, 8 aboard an Airship (the step counter starts at 8
- * against 16). 4 frames aboard.
+ * against 16). 4 frames aboard. A ship steps at walking pace, as 1.6 wrote it (only the Airship
+ * set the shorter step).
  */
 export function stepLengthFor(vehicle: Vehicle | null): number {
   return vehicle === "Airship" ? STEP_FRAMES / 2 : STEP_FRAMES;

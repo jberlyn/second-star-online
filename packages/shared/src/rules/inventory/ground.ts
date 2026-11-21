@@ -213,8 +213,8 @@ export type PickupGate =
   | { kind: "switch"; state: "on" | "off" }
   /** The Assassin Statue's assassin score display. */
   | { kind: "statue" }
-  /** Clicking the airship: board it, or say whose it is. */
-  | { kind: "airship" }
+  /** Clicking a vehicle: board it, or say whose it is. */
+  | { kind: "vehicle" }
   /** The High Score Statue's score display. */
   | { kind: "scores" }
   /** `SlotMachineClick` / `BlackJackTableClick` / `CheckersTableClick`. */
@@ -289,11 +289,11 @@ export function clickGate(name: string): PickupGate {
   if (eq("Assassin Statue")) {
     return { kind: "statue" };
   }
-  // The Airship is boarded; the Boat and Battleship stay silent fixtures.
-  if (has("'s Airship")) {
-    return { kind: "airship" };
+  // A vehicle is boarded (1.6's BoatClick and AirshipClick).
+  if (has("'s Airship") || has("'s Boat") || has("'s Battleship")) {
+    return { kind: "vehicle" };
   }
-  if (has("'s Boat") || has("'s Battleship") || has("Lair")) {
+  if (has("Lair")) {
     return { kind: "silent" };
   }
   if (eq("Cauldron") || has("Cauldron#")) {
@@ -364,9 +364,9 @@ export function ctrlGate(name: string, who: { str: number; mine: boolean }): Pic
   if (eq("Assassin Statue")) {
     return { kind: "statue" };
   }
-  // The airship click on the faced Airship, between the statues and the mail.
-  if (has("'s Airship")) {
-    return { kind: "airship" };
+  // The vehicle click on the faced Airship, Boat or Battleship, between the statues and the mail.
+  if (has("'s Airship") || has("'s Boat") || has("'s Battleship")) {
+    return { kind: "vehicle" };
   }
   if (has("Universal Mail")) {
     return { kind: "mail", universal: true };

@@ -13,14 +13,10 @@ import {
 const STRANGER = { str: 50, mine: false };
 
 describe("vehicle item gates", () => {
-  test("'s Airship is boarded by click and by Ctrl", () => {
-    expect(clickGate("Ann's Airship")).toEqual({ kind: "airship" });
-    expect(ctrlGate("Ann's Airship", STRANGER)).toEqual({ kind: "airship" });
-  });
-  test("'s Boat and 's Battleship stay silent fixtures (B2 pin unchanged)", () => {
-    for (const n of ["Ann's Boat", "Ann's Battleship"]) {
-      expect(clickGate(n)).toEqual({ kind: "silent" });
-      expect(ctrlGate(n, STRANGER)).toEqual({ kind: "silent" });
+  test("a parked Airship, Boat or Battleship is boarded by click and by Ctrl", () => {
+    for (const n of ["Ann's Airship", "Ann's Boat", "Ann's Battleship"]) {
+      expect(clickGate(n)).toEqual({ kind: "vehicle" });
+      expect(ctrlGate(n, STRANGER)).toEqual({ kind: "vehicle" });
     }
   });
 });

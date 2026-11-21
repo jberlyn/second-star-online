@@ -25,7 +25,7 @@ import {
 import { arenaTileTaken } from "../combat/arena.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
-import { vehicleDeath } from "../vehicles/airship.ts";
+import { vehicleDeath } from "../vehicles/vehicles.ts";
 import { type Outgoing, type Player, type Room, statsOf } from "../world/world.ts";
 
 /** The timer sprite (channel 4) for one player: the HP and SP regeneration counter. */
@@ -124,7 +124,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   const lines: string[] = [];
   const out: Outgoing[] = [];
   const pvpMap = lingoEq(room.map.flags.canPvp, "X");
-  // Dying aboard, or the hull running out, loses the airship; the Lightning death clears it too.
+  // Dying aboard, or the hull running out, loses the vehicle; the Lightning death clears it too.
   // Kept on purpose: flying into danger is a risk the rider takes.
   const aboard = p.vehicle !== null;
   if (aboard) {

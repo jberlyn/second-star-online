@@ -54,7 +54,7 @@ export const houseDataSchema = z
       .array(
         z.strictObject({
           deed: text,
-          use: z.enum(["nothing", "airship", "place"]),
+          use: z.enum(["nothing", "airship", "boat", "battleship", "place"]),
           house: text.nullable(),
           /** What Use says for a deed that builds nothing; the deed is kept. */
           text: text.nullable(),

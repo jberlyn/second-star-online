@@ -30,10 +30,10 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 68 |
-| [Fixed bugs](#fixed-bugs) | 291 |
+| [Fixed bugs](#fixed-bugs) | 292 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
-| [Not in SSO](#not-in-sso) | 41 |
+| [Not in SSO](#not-in-sso) | 40 |
 | **Total** | **544** |
 
 By system (the code folder that holds the change):
@@ -55,7 +55,7 @@ By system (the code folder that holds the change):
 | progression | [9](#progression) | [4](#server-side-progression) |
 | social | [21](#social) | [9](#server-side-social) |
 | spells | [24](#spells) | [9](#server-side-spells) |
-| vehicles | [1](#vehicles) | [1](#server-side-vehicles) |
+| vehicles | [2](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
 
 ## Design changes
@@ -147,11 +147,11 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Airship item caps removed
 - **Kind:** Limit lifted
-- **What you notice:** You can build or park an airship even if 20 items are on the ground.
-- **1.6:** Building or parking an airship was refused when the map had 20 ground items, with a too-many-items message.
-- **SSO:** Neither the deed nor unboarding has that cap.
+- **What you notice:** You can build or park an airship, boat or battleship even if 20 items are on the ground.
+- **1.6:** Building or parking a vehicle was refused when the map had 20 ground items, with a too-many-items message.
+- **SSO:** Neither the deeds nor unboarding has that cap.
 - **Why:** The cap came from ground-item sprite channels.
-- **In the code:** `packages/server/src/systems/vehicles/airship.ts` (`airshipDeed`, `unboardAirship`)
+- **In the code:** `packages/server/src/systems/vehicles/vehicles.ts` (`vehicleDeed`, `unboardVehicle`)
 - **Pinned by:** `SSO: no 20-item cap at the deed or at the unboard` (packages/server/tests/vehicles.test.ts)
 
 #### High scores have no upper limit
@@ -656,12 +656,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Vehicles have their own hull
 - **Kind:** Other
-- **What you notice:** Riding an airship, your HP bar shows the airship's hull ("Hull 78 / 80"). An arrow or harmful spell that hits you takes a fixed 2 off the hull and never touches your HP, however strong the attacker. When the hull runs out you die as if killed aboard: the airship is lost and everyone reads "\*\*\* Bob's airship was shot down by Ann. Bob fell from the sky." in place of the death line. A parked airship slowly repairs, 1 point a minute, and you board it with the hull it has regained.
+- **What you notice:** Riding an airship, boat or battleship, your HP bar shows its hull ("Hull 78 / 80"). An arrow or harmful spell that hits you takes a fixed 2 off the hull and never touches your HP, however strong the attacker. When the hull runs out you die as if killed aboard: the airship is lost and everyone reads "\*\*\* Bob's airship was shot down by Ann. Bob fell from the sky." in place of the death line; a ship's line is "\*\*\* Bob's boat was sunk by Ann. Bob was claimed by the waters." A parked vehicle slowly repairs, 1 point a minute, and you board it with the hull it has regained.
 - **1.6:** Riders took hits on their own HP, so a high-level character's airship was as tough as the character.
-- **SSO:** `characters.hull` holds a rider's hull and `ground_items.hull` and `parked_at` a parked vehicle's. `HULL_MAX` (an airship's is 80), `HULL_HIT_DAMAGE` (2) and `HULL_REPAIR_PER_MINUTE` (1) set the full hull, the damage per hit and the repair. A sinking counts as a kill: the attacker is credited and flagged as for any player kill.
+- **SSO:** `characters.hull` holds a rider's hull and `ground_items.hull` and `parked_at` a parked vehicle's. `HULL_MAX` (a boat's is 60, an airship's 80 and a battleship's 150), `HULL_HIT_DAMAGE` (2) and `HULL_REPAIR_PER_MINUTE` (1) set the full hull, the damage per hit and the repair. A sinking counts as a kill: the attacker is credited and flagged as for any player kill.
 - **Why:** A vehicle is something you own and protect, not a reflection of your level, and its fights should depend on the vehicle and not on who rides it. Issue #2 builds boats and battleships on the same hulls.
-- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`HULL_MAX`, `boardingHull`, `sunkText`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts`, `packages/server/migrations/20261120_43_vehicle_hulls.sql`
-- **Pinned by:** `SSO: a new airship boards with a full hull, and the HP bar shows it`; `SSO: parking keeps the hull and the time; boarding again repairs a point a minute`; `SSO: a player's spell wears a rider's hull by a fixed 2, never the rider's HP`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts); `SSO: a parked hull regains repairPerMinute for each whole minute, up to full`; `SSO: the shot-down line names the attacker when there is one` (packages/shared/tests/vehicles/vehicles.test.ts)
+- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`HULL_MAX`, `boardingHull`, `sunkText`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/vehicles.ts`, `packages/server/migrations/20261120_43_vehicle_hulls.sql`
+- **Pinned by:** `SSO: a new airship boards with a full hull, and the HP bar shows it`; `SSO: parking keeps the hull and the time; boarding again repairs a point a minute`; `SSO: a player's spell wears a rider's hull by a fixed 2, never the rider's HP`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts); `SSO: the hull running out sinks the boat and everyone hears it` (packages/server/tests/ships.test.ts); `SSO: a parked hull regains repairPerMinute for each whole minute, up to full`; `SSO: the shot-down line names the attacker when there is one` (packages/shared/tests/vehicles/vehicles.test.ts)
 
 #### Arenas are for players on foot
 - **Kind:** Other
@@ -1909,12 +1909,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Unbuildable deeds say so
 - **Kind:** Bug fixed
-- **What you notice:** Using a Boat Deed, a Battleship Deed or a Stone Guild Hall Deed says "Boats cannot be built yet, so this deed can't be used." (or the Battleship or Stone Guild Hall version) and keeps the deed.
-- **1.6:** The Stone Guild Hall had a deed but no house art, template or builder, and the deed handler exited before the boat builder for the Boat and Battleship, so all three did nothing and said nothing.
-- **SSO:** The deeds still build nothing, since there is no art or template to build from, but Use explains why and the deed stays in the bag. The texts are in `houses.json` (`deeds[].text`).
-- **Why:** A silent item reads as a broken click. Building them is planned: boats and battleships in [#2](https://github.com/jberlyn/second-star-online/issues/2), the Stone Guild Hall in [#10](https://github.com/jberlyn/second-star-online/issues/10).
+- **What you notice:** Using a Stone Guild Hall Deed says "The Stone Guild Hall cannot be built yet, so this deed can't be used." and keeps the deed.
+- **1.6:** The Stone Guild Hall had a deed but no house art, template or builder, so it did nothing and said nothing.
+- **SSO:** The deed still builds nothing, since there is no art or template to build from, but Use explains why and the deed stays in the bag. The text is in `houses.json` (`deeds[].text`). The Boat and Battleship Deeds, which 1.6 also left doing nothing, now build their ships (see [Boats and Battleships can be built and sailed](#boats-and-battleships-can-be-built-and-sailed)).
+- **Why:** A silent item reads as a broken click. Building it is planned in [#10](https://github.com/jberlyn/second-star-online/issues/10).
 - **In the code:** `packages/shared/src/rules/housing/houses.ts` (`deedUse`), `packages/server/src/systems/housing/houses.ts` (`useDeed`)
-- **Pinned by:** `bug fixed: Boat and Battleship Deeds say they cannot be built`; `bug fixed: the Stone Guild Hall Deed says it cannot be built` (packages/shared/tests/housing/houses.test.ts); `bug fixed: a Boat Deed says it cannot be built and is kept` (packages/server/tests/houses-db.test.ts)
+- **Pinned by:** `bug fixed: the Stone Guild Hall Deed says it cannot be built` (packages/shared/tests/housing/houses.test.ts)
 
 #### The Small Farm lands where the other houses do
 - **Kind:** Bug fixed
@@ -2082,20 +2082,20 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Nothing is dropped from an airship
 - **Kind:** Bug fixed
-- **What you notice:** Aboard an airship, dropping gold, crystals or a Pig is refused with the same "from the sky" line as any other item. Giving to a player in front still works.
+- **What you notice:** Aboard an airship, dropping gold, crystals or a Pig is refused with the same "from the sky" line as any other item. Aboard a boat or battleship the line is 1.6's "You can't drop this into the ocean!". Giving to a player in front still works.
 - **1.6:** The sky test sat after the gold and crystal handling and after the Pig, so those three still fell from the airship.
 - **SSO:** The gold and crystal dialogs' drop path and the Pig drop make the same vehicle test as Drop.
 - **Why:** The rule is that nothing leaves the bag in the sky; the test was simply in the wrong place.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`, `crystalsIntent`, `goldIntent`)
-- **Pinned by:** `bug fixed: aboard an airship items, gold and crystals are all refused 'from the sky'` (packages/server/tests/vehicles.test.ts); `bug fixed: a pig is refused from an Airship and kept` (packages/server/tests/pigs-orbs-webs.test.ts)
+- **Pinned by:** `bug fixed: aboard an airship items, gold and crystals are all refused 'from the sky'` (packages/server/tests/vehicles.test.ts); `bug fixed: nothing is dropped into the ocean` (packages/server/tests/ships.test.ts); `bug fixed: a pig is refused from an Airship and kept` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 #### Ctrl aboard an airship takes what is in front
 - **Kind:** Bug fixed
-- **What you notice:** Riding an airship, Ctrl picks up or uses the item or Pig in front of you, as on foot. With nothing in front, Ctrl unboards.
+- **What you notice:** Riding an airship, boat or battleship, Ctrl picks up or uses the item or Pig in front of you, as on foot. With nothing in front, Ctrl unboards.
 - **1.6:** Ctrl tested for the airship before anything else and only ever tried to unboard; only a mouse click could pick anything up.
 - **SSO:** Ctrl first grabs a Pig or Snow Demon on the faced tile; failing that it uses or takes the item there, and it unboards when there is neither. A monster Ctrl cannot grab does not stop the unboarding, and for a wide monster only its anchor tile counts.
 - **Why:** The key did one thing aboard and another on foot for no reason a player could see.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/systems/vehicles/airship.ts` (`unboardAirship`)
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/systems/vehicles/vehicles.ts` (`unboardVehicle`)
 - **Pinned by:** `bug fixed: Ctrl aboard an airship takes what is in front, and unboards when nothing is` (packages/server/tests/vehicles.test.ts); `bug fixed: Ctrl aboard takes a Pig in front; any other monster with no item lets Ctrl unboard` (packages/server/tests/vehicles.test.ts)
 
 #### The Experience Platform names the level it checks
@@ -3319,6 +3319,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`layer1Tile`, `isDock`)
 - **Pinned by:** `a J2 pad on rows 10-12 counts for building and unboarding` (packages/shared/tests/vehicles/vehicles.test.ts); `a pad on row 10 counts for building` (packages/server/tests/vehicles.test.ts); `a pad on row 10 lets you off` (packages/server/tests/vehicles.test.ts)
 
+#### Boats and Battleships can be built and sailed
+- **Kind:** Bug fixed
+- **What you notice:** A Boat Deed or Battleship Deed builds the ship on the open water you face. From the shore you face it and press Ctrl or click it to board, as its owner. It sails at walking pace, only on water. To get off, face a free tile of land and press Ctrl: you step ashore and the ship stays parked. A battleship rider is body 56, a boat rider body 55.
+- **1.6:** The whole boat flow was written (building on W1, N1, D2 or I2, boarding, parking, and the lines), but the deed handler exited before calling the builder, so the deeds did nothing. Nothing gave a ship a water-only walk grid, so it could have sailed over land, and the cast had no body-55 or body-56 frames.
+- **SSO:** The deeds build their ships. A ship moves on its own grid: layer-1 tiles flagged `sea` (W1, N1, D2, I2, V2), read as sea monsters read them, so the shoreline art drawn on layer 2 over the water does not stop it. It blocks like a walker, as 1.6 wrote it, and a parked ship blocks too. Getting off needs a tile a walker could step onto: walkable, not an exit, and free of players, monsters and blocking items. 1.6 checked a fixed list of ground tiles. The lines are 1.6's, except that a battleship is called a battleship and not a boat. The rider art is new (`packages/data/build/art/ships.ts`). Hulls, sinking and arenas follow [Vehicles have their own hull](#vehicles-have-their-own-hull) and [Arenas are for players on foot](#arenas-are-for-players-on-foot).
+- **Why:** The ships were designed, written and sold as deeds in 1.6, and stopped short only of being switched on ([#2](https://github.com/jberlyn/second-star-online/issues/2)). Without a water grid a ship would cross land, and a fixed tile list would miss newer tiles.
+- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`shipDeedCheck`, `shipUnboardCheck`, `VEHICLE_BODY`), `packages/shared/src/rules/core/walk.ts` (`shipWalkGrid`), `packages/server/src/systems/vehicles/vehicles.ts`, `packages/server/src/systems/movement/movement.ts` (`walkWorld`), `packages/server/migrations/20261121_44_ship_vehicles.sql`
+- **Pinned by:** `bug fixed: a Boat Deed builds the boat on the faced water and is used up`; `from the shore: you move onto the boat, body 55, a full hull of 60`; `a ship sails only on water, at walking pace`; `onto the faced shore: you step ashore and the boat parks with its hull`; `divergence: a ship crosses a map edge only onto water; an airship onto anything` (packages/server/tests/ships.test.ts); `bug fixed: the Boat and Battleship Deeds build their ships` (packages/shared/tests/housing/houses.test.ts); `SSO: a ship sails on sea tiles, shoreline art on layer 2 included`; `divergence: getting off needs a tile a walker could take, not 1.6's fixed list` (packages/shared/tests/vehicles/vehicles.test.ts); `bug fixed: a Boat Deed away from water says so and is kept` (packages/server/tests/houses-db.test.ts)
+
 ### world
 
 #### An exit to a missing map leaves you where you are
@@ -3334,7 +3343,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** You cannot walk off the edge of the screen when the matching tile on the next map is a wall or water, or when there is no map beyond the edge; you turn to face the edge and stay, as you would at a wall, and read "You cannot go that way." once for the key press.
 - **1.6:** The step that crossed the edge never checked the tile it landed on, so you could arrive inside a wall or on water. With no map beyond, the server's empty map reply warped you to the start point and reloaded the map.
-- **SSO:** The server checks that the next map exists and that the wrapped tile is walkable on it (the Airship grid when you ride one). Otherwise the crossing is refused; others see you turn. The line, SSO's own, prints once a press like the web line, so a player at the edge of the world knows it is not a bug.
+- **SSO:** The server checks that the next map exists and that the wrapped tile is walkable on it (the Airship's grid when you ride one, and water only aboard a boat or battleship). Otherwise the crossing is refused; others see you turn. The line, SSO's own, prints once a press like the web line, so a player at the edge of the world knows it is not a bug.
 - **Why:** Every other step checks its destination; skipping the check on an edge let players walk into walls, and the edge of the world should feel like a wall rather than a teleport.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`crossMapEdge`)
 - **Pinned by:** `bug fixed: an unwalkable wrapped tile refuses the crossing, as a wall would`; `bug fixed: an edge with no map beyond is refused, as a wall would`; `SSO: a refused edge says why, once a press`; `walking off an edge onto an existing neighbour keeps the wrapped tile` (packages/server/tests/world.test.ts); `bug fixed: walking off an edge with no map beyond is refused, as a wall would` (packages/server/e2e/login-and-walk.test.ts); `bug fixed: a refused crossing is a turn the others on the map see`; `bug fixed: a rider's crossing tests the wrapped tile on the Airship grid` (packages/server/tests/world.test.ts)
@@ -3376,8 +3385,8 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** Death cleared the vehicle and switched the item and gold drop off. The body reverted to the walker late on each player's screen.
 - **SSO:** The same, except the body reverts at once for everyone, on the server.
 - **Why:** Flying an airship through a PvP area, or past monsters that cast spells, is a risk the rider takes; losing it is the price of dying there.
-- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/airship.ts` (`vehicleDeath`)
-- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `kept on purpose: a Lightning death aboard loses the airship too`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts)
+- **In the code:** `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/vehicles.ts` (`vehicleDeath`)
+- **Pinned by:** `kept on purpose: dying aboard an airship loses it and drops nothing; the faction head still drops`; `kept on purpose: a Lightning death aboard loses the airship too`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts); `SSO: the hull running out sinks the boat and everyone hears it` (packages/server/tests/ships.test.ts)
 
 ### Killing a wanted player never flags you
 - **Kind:** Kept on purpose
@@ -4614,11 +4623,11 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Vehicles converted by the server
 - **Kind:** Exploit closed
-- **What you notice:** Unboarding turns your airship into your vehicle item. Ownership follows your character, including after a rename.
+- **What you notice:** Unboarding turns your airship, boat or battleship into your vehicle item. Ownership follows your character, including after a rename.
 - **1.6:** Unboarding named the item to create; ownership compared the text before the apostrophe in the item name with the player's name.
-- **SSO:** The server builds, boards and parks the Airship, the only vehicle currently implemented, and converts it to the owner's item. Ownership is recorded by character ID while the item's name remains `<name>'s Airship`. Items without an owner ID, such as an operator drop or World Editor placement, use the original name test.
-- **Why:** A client could create arbitrary items, while name-only ownership could let a renamed or look-alike character board someone else's airship.
-- **In the code:** `packages/server/src/systems/vehicles/airship.ts` (`airshipClick`, `unboardAirship`)
+- **SSO:** The server builds, boards and parks every vehicle and converts it to the owner's item. Ownership is recorded by character ID while the item's name remains `<name>'s Airship` (or `'s Boat`, `'s Battleship`). Items without an owner ID, such as an operator drop or World Editor placement, use the original name test.
+- **Why:** A client could create arbitrary items, while name-only ownership could let a renamed or look-alike character board someone else's vehicle.
+- **In the code:** `packages/server/src/systems/vehicles/vehicles.ts` (`vehicleClick`, `unboardVehicle`)
 - **Pinned by:** `builds on the faced J2, consumes one deed, owner id recorded, no text`; `Ctrl facing it: you hop onto its tile, no step, body 57, the text`; `Ctrl on a pad parks the airship under you, the paperdoll returns, no text`; `another player's airship: not yours; facing away: you see`; `an item with no owner id falls back to the 1.6 name test` (packages/server/tests/vehicles.test.ts); `SSO: ownership follows the character id, not the name: a renamed owner still boards` (packages/server/tests/vehicles.test.ts)
 
 ### Server-side world
@@ -4685,7 +4694,7 @@ What 1.6 did that cannot happen under server authority, and what 1.6 built but n
 
 1.6 ran each player's game on their own computer, so it had quirks that cannot exist when the server is in charge. They need no fix in SSO.
 
-- **The airship picture lingered after death.** 1.6 left a dead rider drawn as the airship until each viewer's screen happened to reset it, a 1-in-50 roll per frame. SSO's server resets it for everyone at the moment of death (`packages/server/src/systems/vehicles/airship.ts`, `vehicleDeath`).
+- **The airship picture lingered after death.** 1.6 left a dead rider drawn as the airship until each viewer's screen happened to reset it, a 1-in-50 roll per frame. SSO's server resets it for everyone at the moment of death (`packages/server/src/systems/vehicles/vehicles.ts`, `vehicleDeath`).
 - **Other players' steps were batched through a relay queue.** 1.6 sent a step directly only when exactly one other player was present; with two or more it relayed steps in 350 ms batches, duplicating some and dropping others when the queue was long. SSO's server broadcasts each step in the tick it happens, so nothing is needed.
 - **Sprite-slot miscounts in the player and monster lists.** 1.6 counted players, blocked tiles and clicked names by reading fixed sprite slots, and a few slots were miscounted or wired to the wrong name field. SSO has no sprite slots, so nothing is needed.
 - **The warp's input lock sat in a local variable.** 1.6 set its keyboard lock for a warp in a variable that did nothing outside that one routine; it was harmless because the hidden playfield blocked moves anyway. SSO's server holds a loading lock while you change map, so nothing is needed.
@@ -4729,6 +4738,5 @@ What 1.6 did that cannot happen under server authority, and what 1.6 built but n
 
 These were built into 1.6 but could never be reached in play, so SSO does the same and does not build them.
 
-- **The boat tile-collision bypass was never reachable.** 1.6 had a complete boat flow (building, boarding, movement and unboarding) and the server accepted a dropped `'s Boat` or `'s Battleship`, but the deed handler exited before it called the boat builder, no NPC sold either deed, and the character cast had no body-55 or body-56 frames. Staging a boat by hand shows the ground `BoatPic` and lets its owner click it, but boarding raises a Script Error after the server has already removed the boat from the map. SSO does the same and does not build boats.
 - **The elemental orb war never worked.** 1.6 was designed so that an orb dropped on an elemental platform shifted the balance of power between the four mage classes, but nothing connected it: no platform existed, nothing saved the balance and no monster dropped an orb, so an orb dropped as an ordinary item. SSO does the same and does not build the war; it is a candidate to build after release.
   - **Pinned by:** `orb drop: a Water Orb lands on the floor like any item`; `orb drop: an orb goes into a container on the faced tile`; `orb drop: aboard an Airship "You can't drop this from the sky!"` (packages/server/tests/pigs-orbs-webs.test.ts)

@@ -9,7 +9,6 @@
 import { helpData } from "@secondstaronline/data";
 import {
   ADMIN_TEXT,
-  AIRSHIP_BODY,
   banNotice,
   CHAT_COLOR,
   type CreateMsg,
@@ -50,6 +49,7 @@ import {
   sortFaction,
   startingCharacter,
   TEXT,
+  VEHICLE_BODY,
 } from "@secondstaronline/shared";
 
 import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "./config.ts";
@@ -1822,7 +1822,10 @@ export function createGame(deps: GameDeps): Game {
         },
         ...sessionCombatState(),
         ip,
-        spell: { ...newSpellState(loadSpellbook(db, c.id)), body: c.vehicle ? AIRSHIP_BODY : null },
+        spell: {
+          ...newSpellState(loadSpellbook(db, c.id)),
+          body: c.vehicle ? VEHICLE_BODY[c.vehicle] : null,
+        },
       };
       p.jailUntil = jailUntil;
       p.muteUntil = muteUntil;

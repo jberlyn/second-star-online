@@ -46,6 +46,7 @@ export {
   footWalkGrid,
   isWalkable,
   isWhitelisted,
+  shipWalkGrid,
   WALK_WHITELIST,
 } from "./rules/core/walk.ts";
 export * from "./rules/crafting/craft.ts";

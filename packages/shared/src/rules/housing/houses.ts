@@ -8,6 +8,7 @@ import type { MapExit } from "../admin/worldedit.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { houseMapName } from "../core/maps.ts";
 import { TILE_DEFAULTS } from "../core/tiles.ts";
+import type { Vehicle } from "../movement/movement.ts";
 
 export type { HouseType };
 
@@ -15,21 +16,23 @@ export type StageRect = { left: number; top: number; right: number; bottom: numb
 
 export type DeedUse =
   | { kind: "nothing"; text: string | null }
-  | { kind: "airship" }
+  | { kind: "vehicle"; vehicle: Vehicle }
   | { kind: "place"; type: HouseType };
 
 /**
- * What a deed's Use does: the airship, placement, or nothing. A deed that builds nothing (the Boat,
- * the Battleship and the Stone Guild Hall, which have no builder, art or template) says why and
- * is kept.
+ * What a deed's Use does: build a vehicle, place a house, or nothing. A deed that builds nothing
+ * (the Stone Guild Hall, which has no art or template) says why and is kept.
  */
 export function deedUse(item: string): DeedUse | null {
   const d = houseData.deeds.find((x) => lingoEq(x.deed, item));
   if (!d) {
     return null;
   }
-  if (d.use === "airship") {
-    return { kind: "airship" };
+  if (d.use === "airship" || d.use === "boat" || d.use === "battleship") {
+    const vehicle = ({ airship: "Airship", boat: "Boat", battleship: "Battleship" } as const)[
+      d.use
+    ];
+    return { kind: "vehicle", vehicle };
   }
   const type = d.use === "place" ? houseType(d.house ?? "") : null;
   return type ? { kind: "place", type } : { kind: "nothing", text: d.text };

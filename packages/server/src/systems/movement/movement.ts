@@ -18,6 +18,7 @@ import {
   DIR_DELTA,
   DIR_FACING,
   type Dir,
+  isShip,
   isWalkable,
   isWebBody,
   type MoveOutcome,
@@ -117,6 +118,23 @@ function refuseHead(p: Player): void {
 }
 
 export function walkWorld(room: Room, self: Player): WalkWorld {
+  if (isShip(self.vehicle)) {
+    // A ship sails only on water and blocks like a walker, as 1.6 wrote it (only the Airship set
+    // "block nothing"): players, other ships, monsters and fixtures such as a parked ship stop it.
+    // Webs are ignored aboard.
+    return {
+      walkable: (x, y) => isWalkable(room.map.walkShip, x, y),
+      pcBlocked: (x, y) =>
+        blockPCCheck(
+          x,
+          y,
+          room.players.filter((o) => o !== self && o.vehicle !== "Airship"),
+          slotsFor(room, self),
+        ),
+      itemBlocks: (x, y) => groundBlocks(room, self, x, y),
+      webAt: () => false,
+    };
+  }
   if (self.vehicle) {
     // An Airship has its own grid and 1.6's "block nothing" flag: fixtures, players and monsters
     // never block it, and there is no push roll.

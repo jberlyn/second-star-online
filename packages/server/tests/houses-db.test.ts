@@ -210,12 +210,14 @@ describe("building a house", () => {
     expect(findMapByCoords(db, 1000, 992, 1)?.name).toBe("xH11000yH1992");
   });
 
-  test("bug fixed: a Boat Deed says it cannot be built and is kept", async () => {
+  test("bug fixed: a Boat Deed away from water says so and is kept", async () => {
     const g = game();
     const id = await makeChar(g, "Bob");
     enterWithDeed(g, id, "Boat Deed");
     g.intent(id, { t: "use", slot: 3 });
-    expect(texts(id)).toContain("Boats cannot be built yet, so this deed can't be used.");
+    expect(texts(id)).toContain(
+      "You have to use this boat deed over water to have your ship built!",
+    );
     expect(g.world.players.get(id)?.char.bag[2]).toEqual({ item: "Boat Deed", qty: 1 });
     expect(g.world.players.get(id)?.placing).toBeNull();
   });

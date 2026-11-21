@@ -23,6 +23,7 @@ import {
   footWalkGrid,
   lingoEq,
   mapName,
+  shipWalkGrid,
   TEXT,
 } from "@secondstaronline/shared";
 
@@ -180,6 +181,7 @@ export function applySave(
   target.layers = [[...m.layers[0]], [...m.layers[1]], [...m.layers[2]], [...m.layers[3]]];
   target.walk = footWalkGrid(target.layers[0], target.layers[1]);
   target.walkAir = airshipWalkGrid(target.layers[1]);
+  target.walkShip = shipWalkGrid(target.layers[0]);
   target.flags = { ...m.flags };
   target.title = m.header;
   target.signs = [...m.signs];

@@ -42,18 +42,12 @@ function input(over: Partial<PlacementInput> & { type: HouseType }): PlacementIn
 }
 
 describe("deeds", () => {
-  test("bug fixed: Boat and Battleship Deeds say they cannot be built", () => {
-    expect(deedUse("Boat Deed")).toEqual({
-      kind: "nothing",
-      text: "Boats cannot be built yet, so this deed can't be used.",
-    });
-    expect(deedUse("Battleship Deed")).toEqual({
-      kind: "nothing",
-      text: "Battleships cannot be built yet, so this deed can't be used.",
-    });
+  test("bug fixed: the Boat and Battleship Deeds build their ships", () => {
+    expect(deedUse("Boat Deed")).toEqual({ kind: "vehicle", vehicle: "Boat" });
+    expect(deedUse("Battleship Deed")).toEqual({ kind: "vehicle", vehicle: "Battleship" });
   });
   test("the Airship Deed runs the airship drop", () => {
-    expect(deedUse("Airship Deed")).toEqual({ kind: "airship" });
+    expect(deedUse("Airship Deed")).toEqual({ kind: "vehicle", vehicle: "Airship" });
   });
   test("bug fixed: the Stone Guild Hall Deed says it cannot be built", () => {
     expect(deedUse("Stone Guild Hall Deed")).toEqual({

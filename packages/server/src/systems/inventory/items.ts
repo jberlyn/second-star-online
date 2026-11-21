@@ -18,6 +18,7 @@ import {
   type DeltaEvent,
   deedUse,
   displayName,
+  dropRefusal,
   EQUIP_FIELD,
   EQUIP_TEXT,
   type EquipSlot,
@@ -52,7 +53,6 @@ import {
   USE_TEXT,
   useDeferred,
   useItem,
-  VEHICLE_TEXT,
 } from "@secondstaronline/shared";
 
 import { bjSit } from "../casino/blackjack.ts";
@@ -76,7 +76,7 @@ import { guildCenterClick } from "../social/guilds.ts";
 import { npcBlocked, summonPig } from "../spells/cast.ts";
 import { argonsFist } from "../spells/collide.ts";
 import { isBook, readBook } from "../spells/learn.ts";
-import { airshipClick, airshipDeed, unboardAirship } from "../vehicles/airship.ts";
+import { unboardVehicle, vehicleClick, vehicleDeed } from "../vehicles/vehicles.ts";
 import {
   type GroundItem,
   groundView,
@@ -218,9 +218,10 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
     }
     return io.out;
   }
-  // The Airship Deed builds on the faced landing pad.
-  if (deedUse(line.item)?.kind === "airship") {
-    return airshipDeed(ctx, room, p, slot);
+  // A vehicle deed builds an Airship on the faced landing pad or a ship on the faced water.
+  const deedKind = deedUse(line.item);
+  if (deedKind?.kind === "vehicle") {
+    return vehicleDeed(ctx, room, p, slot, deedKind.vehicle);
   }
   // A house deed starts placement.
   const deed = useDeed(p, slot, line.item);
@@ -450,10 +451,10 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   if (lingoContains(name, "Crystals")) {
     return io.out;
   }
-  // Aboard an Airship nothing leaves the bag, a Pig included; the gold and crystal dialogs refuse
-  // the same way.
+  // Aboard a vehicle nothing leaves the bag, a Pig included: not from the sky, not into the
+  // ocean. The gold and crystal dialogs refuse the same way.
   if (p.vehicle) {
-    io.tell(p, VEHICLE_TEXT.sky);
+    io.tell(p, dropRefusal(p.vehicle));
     return io.out;
   }
   if (p.stepFrames > 0) {
@@ -659,7 +660,7 @@ export function crystalsIntent(
     return io.out;
   }
   if (p.vehicle) {
-    io.tell(p, VEHICLE_TEXT.sky);
+    io.tell(p, dropRefusal(p.vehicle));
     return io.out;
   }
   if (p.stepFrames > 0) {
@@ -726,9 +727,9 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
     io.out.push(...(giveGoldToNpc(ctx, room, p, n) ?? []));
     return io.out;
   }
-  // Aboard an Airship gold is not dropped from the sky (1.6 let it fall).
+  // Aboard a vehicle gold is not dropped (1.6 let it fall from an Airship).
   if (p.vehicle) {
-    io.tell(p, VEHICLE_TEXT.sky);
+    io.tell(p, dropRefusal(p.vehicle));
     return io.out;
   }
   if (p.stepFrames > 0) {
@@ -828,9 +829,9 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
   if (gate.kind === "silent") {
     return io.out;
   }
-  // The airship click: board it or say whose it is; silent aboard.
-  if (gate.kind === "airship") {
-    return airshipClick(ctx, room, p, g);
+  // The vehicle click: board it or say whose it is; silent aboard.
+  if (gate.kind === "vehicle") {
+    return vehicleClick(ctx, room, p, g);
   }
   // A container: a 40-frame item-action pause, then the chest click, whose open ends the pause.
   if (gate.kind === "open") {
@@ -939,10 +940,10 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   p.itemPause = 40;
   const t = faced(p);
   const g = room.map.ground.find((x) => x.x === t.x && x.y === t.y);
-  // Aboard an Airship Ctrl unboards unless something is in front to act on: a pig or an item is
-  // taken as on foot (1.6 only ever unboarded).
+  // Aboard a vehicle Ctrl unboards unless something is in front to act on: a pig or an item is
+  // taken as on foot (1.6's Airship only ever unboarded).
   if (p.vehicle && !g && !room.map.slots.some((s) => s.live?.x === t.x && s.live?.y === t.y)) {
-    return unboardAirship(ctx, room, p);
+    return unboardVehicle(ctx, room, p);
   }
   // A Pig or Snow Demon on the faced tile is grabbed first.
   const pig = ctrlPig(room, p, ctx.rng);
@@ -954,7 +955,7 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     return io.out;
   }
   if (p.vehicle && !g) {
-    return unboardAirship(ctx, room, p);
+    return unboardVehicle(ctx, room, p);
   }
   if (p.stepFrames > 0 || !g) {
     return io.out;
@@ -974,9 +975,9 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     str: statsOf(p).str,
     mine: headDrop(p.map.title, p.name, p.guild) === 0,
   });
-  // The airship click on the faced Airship.
-  if (gate.kind === "airship") {
-    return airshipClick(ctx, room, p, g);
+  // The vehicle click on the faced Airship, Boat or Battleship.
+  if (gate.kind === "vehicle") {
+    return vehicleClick(ctx, room, p, g);
   }
   // Chests, house and guild vaults, cabinets, crates and the Cauldron open; the switches flip.
   if (gate.kind === "open") {

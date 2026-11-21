@@ -3287,6 +3287,14 @@ export const itemRulesData: ItemRulesData = {
         "pattern": "'s Airship"
       },
       {
+        "match": "contains",
+        "pattern": "'s Boat"
+      },
+      {
+        "match": "contains",
+        "pattern": "'s Battleship"
+      },
+      {
         "match": "exact",
         "pattern": "Street Lamp"
       },

@@ -42,6 +42,7 @@ import {
   type SelfState,
   STEP_FRAMES,
   STEPFRAMES_PER_FRAME,
+  shipWalkGrid,
   stepFx,
   stepLengthFor,
   stepOffsetPx,
@@ -157,6 +158,8 @@ export interface Model {
   walk: boolean[][];
   /** The Airship's grid: the walk grid of a rider (body 57). */
   walkAir: boolean[][];
+  /** The ships' grid: the walk grid of a Boat or Battleship rider (body 55 or 56). */
+  walkShip: boolean[][];
   self: Self | null;
   peers: Map<string, Peer>;
   tick: number;
@@ -228,6 +231,7 @@ export function createModel(): Model {
     map: null,
     walk: [],
     walkAir: [],
+    walkShip: [],
     self: null,
     peers: new Map(),
     tick: 0,
@@ -315,6 +319,7 @@ export function applySnapshot(
   m.map = snap.map;
   m.walk = footWalkGrid(snap.map.layers[0], snap.map.layers[1]);
   m.walkAir = airshipWalkGrid(snap.map.layers[1]);
+  m.walkShip = shipWalkGrid(snap.map.layers[0]);
   m.self = {
     id: snap.you.id,
     name: snap.you.name,
@@ -473,6 +478,7 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
           if (layer < 2) {
             m.walk = footWalkGrid(m.map.layers[0], m.map.layers[1]);
             m.walkAir = airshipWalkGrid(m.map.layers[1]);
+            m.walkShip = shipWalkGrid(m.map.layers[0]);
           }
           m.tileChanges.push({ x: ev.x, y: ev.y });
         }
@@ -677,7 +683,8 @@ export function lenOf(body: number | null | undefined): number {
 }
 
 function walkWorld(m: Model): WalkWorld {
-  if (vehicleOfBody(m.self?.body) !== null) {
+  const vehicle = vehicleOfBody(m.self?.body);
+  if (vehicle === "Airship") {
     // An Airship rider: its own grid, nothing blocks it.
     return {
       walkable: (x, y) => isWalkable(m.walkAir, x, y),
@@ -686,11 +693,14 @@ function walkWorld(m: Model): WalkWorld {
       webAt: () => false,
     };
   }
+  // A ship blocks like a walker on its own grid, Airship riders aside (the server's rule).
+  const ship = vehicle !== null;
   return {
-    walkable: (x, y) => isWalkable(m.walk, x, y),
+    walkable: (x, y) => isWalkable(ship ? m.walkShip : m.walk, x, y),
     itemBlocks: (x, y) => groundBlocks(m, x, y),
     // A Web exactly on my own tile; the server prints the line.
     webAt: (x, y) =>
+      !ship &&
       [...m.monsters.values()].some(
         (mon) => isWebBody(mon.body) && mon.frames === 0 && mon.x === x && mon.y === y,
       ),
@@ -700,7 +710,9 @@ function walkWorld(m: Model): WalkWorld {
       blockPCCheck(
         x,
         y,
-        [...m.peers.values()].filter((p) => vehicleOfBody(p.body) === null),
+        [...m.peers.values()].filter((p) =>
+          ship ? vehicleOfBody(p.body) !== "Airship" : vehicleOfBody(p.body) === null,
+        ),
         m.slotNames.map((name, i) => {
           const mon = m.monsters.get(i + 1);
           return {

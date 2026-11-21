@@ -50,6 +50,7 @@ import {
   type RoomKey,
   type SelfState,
   type ServerMsg,
+  shipWalkGrid,
   tileAt,
   type Vehicle,
   type Vitals,
@@ -79,6 +80,8 @@ export interface WorldMap {
   walk: boolean[][];
   /** The Airship's grid: blocked only by layer-2 D8 I8 E8 J8 K8 L8. */
   walkAir: boolean[][];
+  /** The Boat's and Battleship's grid: layer-1 sea water. */
+  walkShip: boolean[][];
   /** Map field 12 (persistence/maps.ts `MapFlags`). */
   flags: MapFlags;
   /** The four roster slots and their live monsters, kept while the server runs. */
@@ -138,7 +141,16 @@ export const DEFAULT_FLAGS: MapFlags = { canFight: "X", fctSpwn: "X", isIndoors:
 export function toWorldMap(
   m: Omit<
     WorldMap,
-    "walk" | "walkAir" | "flags" | "slots" | "ground" | "exit1" | "exit2" | "signs" | "fog"
+    | "walk"
+    | "walkAir"
+    | "walkShip"
+    | "flags"
+    | "slots"
+    | "ground"
+    | "exit1"
+    | "exit2"
+    | "signs"
+    | "fog"
   > & {
     flags?: MapFlags;
     slots?: MonsterSlot[];
@@ -163,6 +175,7 @@ export function toWorldMap(
     fog: m.fog ?? { ...NO_FOG },
     walk: footWalkGrid(m.layers[0], m.layers[1]),
     walkAir: airshipWalkGrid(m.layers[1]),
+    walkShip: shipWalkGrid(m.layers[0]),
   };
 }
 
@@ -191,6 +204,7 @@ export function setTile(
   if (layer <= 2) {
     m.walk = footWalkGrid(m.layers[0], m.layers[1]);
     m.walkAir = airshipWalkGrid(m.layers[1]);
+    m.walkShip = shipWalkGrid(m.layers[0]);
   }
   world.tileLog.add(m);
   return { e: "tile", layer, x, y, code };
@@ -1226,4 +1240,15 @@ export function removePlayer(world: World, id: string): { player: Player; out: O
   }
   world.players.delete(id);
   return { player: p, out: leaveRoom(world, p) };
+}
+
+/** The grid a player moves on: on foot, aboard an Airship, or aboard a ship. */
+export function walkGridFor(
+  map: Pick<WorldMap, "walk" | "walkAir" | "walkShip">,
+  vehicle: Vehicle | null,
+): boolean[][] {
+  if (vehicle === "Airship") {
+    return map.walkAir;
+  }
+  return vehicle ? map.walkShip : map.walk;
 }

@@ -1,9 +1,9 @@
 /**
- * The Airship's pure checks. I/O-free: the server action (server/systems/vehicles/airship.ts)
- * applies the result.
+ * The vehicles' pure checks: the Airship, the Boat and the Battleship. I/O-free: the server action
+ * (server/systems/vehicles/vehicles.ts) applies the result.
  *
- * Implements the original's airship-drop routine, the airship click, the boarding check and
- * unboarding, the Ctrl/click routing of an inventory item, and the drop refusal while aboard.
+ * Implements the original's airship-drop and boat-drop routines, the airship and boat clicks, the
+ * boarding check and unboarding, and the drop refusal while aboard.
  */
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import { lingoWord } from "../core/lingo.ts";
@@ -14,9 +14,40 @@ import { FACING_DELTA } from "../movement/movement.ts";
 /** The body number every peer sees on a rider (body 57). */
 export const AIRSHIP_BODY = 57;
 
-/** The vehicle a body number means: only 57, the Airship (morphs are 30-41; others 80, 100). */
+/** Each vehicle's rider body, as 1.6's `MyBody`: 55 the Boat, 56 the Battleship, 57 the Airship. */
+export const VEHICLE_BODY: Readonly<Record<Vehicle, number>> = {
+  Boat: 55,
+  Battleship: 56,
+  Airship: AIRSHIP_BODY,
+};
+
+/** The vehicle a body number means: 55-57 (morphs are 30-41; others 80, 100). */
 export function vehicleOfBody(body: number | null | undefined): Vehicle | null {
-  return body === AIRSHIP_BODY ? "Airship" : null;
+  switch (body) {
+    case 55:
+      return "Boat";
+    case 56:
+      return "Battleship";
+    case AIRSHIP_BODY:
+      return "Airship";
+    default:
+      return null;
+  }
+}
+
+/** The vehicle a parked ground item is: `<owner>'s Airship`, `'s Boat` or `'s Battleship`. */
+export function vehicleOfItem(item: string): Vehicle | null {
+  const lower = item.toLowerCase();
+  if (lower.includes("'s airship")) {
+    return "Airship";
+  }
+  if (lower.includes("'s battleship")) {
+    return "Battleship";
+  }
+  if (lower.includes("'s boat")) {
+    return "Boat";
+  }
+  return null;
 }
 
 export const VEHICLE_TEXT = {
@@ -32,6 +63,34 @@ export const VEHICLE_TEXT = {
   parked: "There's already something here, you can't park your Airship here!",
   sky: "You can't drop this from the sky!",
 } as const;
+
+/**
+ * The Boat's and Battleship's lines, from 1.6's boat routines, which said "boat" for both; SSO
+ * names the Battleship as one.
+ */
+export const SHIP_TEXT = {
+  standStill: (noun: string) => `Please stand still before trying to build your ${noun}.`,
+  notWater: (noun: string) =>
+    `You have to use this ${noun} deed over water to have your ship built!`,
+  inTheWay: (noun: string) => `There's something in the way, you can't place your ${noun} here!`,
+  board: (noun: string) => `You board your ${noun}...`,
+  notYours: (noun: string) => `You can't get on a ${noun} that's not yours!`,
+  see: (owner: string, noun: string) => `You see ${owner}'s ${noun}.`,
+  stopMoving: (noun: string) => `Please stop moving before trying to unboard your ${noun}.`,
+  cannotGetOff: "You can't get off here!",
+  parked: (noun: string) => `There's already something here, you can't park your ${noun} here!`,
+  ocean: "You can't drop this into the ocean!",
+} as const;
+
+/** A ship's name in its lines: "boat" or "battleship". */
+export function shipNoun(vehicle: "Boat" | "Battleship"): string {
+  return vehicle === "Boat" ? "boat" : "battleship";
+}
+
+/** The line refusing a drop aboard: from the sky on an Airship, into the ocean on a ship. */
+export function dropRefusal(vehicle: Vehicle): string {
+  return vehicle === "Airship" ? VEHICLE_TEXT.sky : SHIP_TEXT.ocean;
+}
 
 /** Word `x` of layer 1's row `y` (1-based, 1..MAP_HEIGHT). Returns "" outside 1..MAP_HEIGHT. */
 export function layer1Tile(layer1: readonly string[], x: number, y: number): string {
@@ -106,6 +165,61 @@ export function boardCheck(a: {
   return "see";
 }
 
+/**
+ * The boat-drop checks, in 1.6's order (its 20-item cap dropped): stand still, the faced tile on
+ * screen, a tile the ship can sail (`shipWalkable`; 1.6 listed W1 N1 D2 I2), nothing on it.
+ */
+export function shipDeedCheck(a: {
+  noun: string;
+  stepFrames: number;
+  faced: { x: number; y: number };
+  shipWalkable: boolean;
+  itemOnFaced: boolean;
+  playerOnFaced: boolean;
+}): DeedResult {
+  if (a.stepFrames > 0) {
+    return { kind: "text", text: SHIP_TEXT.standStill(a.noun) };
+  }
+  const { x, y } = a.faced;
+  if (x < 1 || x > MAP_WIDTH || y < 1 || y > MAP_HEIGHT) {
+    return { kind: "silent" };
+  }
+  if (!a.shipWalkable) {
+    return { kind: "text", text: SHIP_TEXT.notWater(a.noun) };
+  }
+  if (a.itemOnFaced || a.playerOnFaced) {
+    return { kind: "text", text: SHIP_TEXT.inTheWay(a.noun) };
+  }
+  return { kind: "build" };
+}
+
+/**
+ * Getting off a ship onto the faced tile, which must be one a walker could step onto: walkable on
+ * foot, on screen, not an exit, and free of players, monsters and blocking items (1.6 checked a
+ * fixed list of ground tiles). The ship parks on my own tile, which must hold no item.
+ */
+export function shipUnboardCheck(a: {
+  noun: string;
+  stepFrames: number;
+  faced: { x: number; y: number };
+  footWalkable: boolean;
+  facedTaken: boolean;
+  itemOnMine: boolean;
+}): UnboardResult {
+  if (a.stepFrames > 0) {
+    return { kind: "text", text: SHIP_TEXT.stopMoving(a.noun) };
+  }
+  const { x, y } = a.faced;
+  const onScreen = x >= 1 && x <= MAP_WIDTH && y >= 1 && y <= MAP_HEIGHT;
+  if (!onScreen || !a.footWalkable || a.facedTaken) {
+    return { kind: "text", text: SHIP_TEXT.cannotGetOff };
+  }
+  if (a.itemOnMine) {
+    return { kind: "text", text: SHIP_TEXT.parked(a.noun) };
+  }
+  return { kind: "park" };
+}
+
 export type UnboardResult = { kind: "text"; text: string } | { kind: "park" };
 
 /** Unboarding: mid-step, not a dock (my own tile), item here, park. */
@@ -132,7 +246,11 @@ export function unboardCheck(a: {
  * the rider: a fixed amount per hit, whatever the attacker's level or power. At 0 the vehicle is
  * lost and the rider dies.
  */
-export const HULL_MAX: Readonly<Record<Vehicle, number>> = { Airship: 80 };
+export const HULL_MAX: Readonly<Record<Vehicle, number>> = {
+  Boat: 60,
+  Airship: 80,
+  Battleship: 150,
+};
 
 /** What one arrow or harmful spell takes off a hull. */
 export const HULL_HIT_DAMAGE = 2;
@@ -165,10 +283,9 @@ export function boardingHull(
 
 /** The line everyone sees when a rider's vehicle is destroyed, in place of the death line. */
 export function sunkText(name: string, vehicle: Vehicle, killer: string | null): string {
-  switch (vehicle) {
-    case "Airship":
-      return killer
-        ? `*** ${name}'s airship was shot down by ${killer}. ${name} fell from the sky.`
-        : `*** ${name}'s airship was shot down. ${name} fell from the sky.`;
+  const by = killer ? ` by ${killer}` : "";
+  if (vehicle === "Airship") {
+    return `*** ${name}'s airship was shot down${by}. ${name} fell from the sky.`;
   }
+  return `*** ${name}'s ${shipNoun(vehicle)} was sunk${by}. ${name} was claimed by the waters.`;
 }

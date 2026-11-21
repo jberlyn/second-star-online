@@ -1,17 +1,23 @@
 import { describe, expect, test } from "bun:test";
 
+import { shipWalkGrid } from "../../src/rules/core/walk.ts";
 import {
   boardCheck,
   boardingHull,
   deedCheck,
+  dropRefusal,
   hullMax,
   isDock,
   layer1Tile,
   ownerName,
+  shipDeedCheck,
+  shipUnboardCheck,
   sunkText,
   unboardCheck,
+  VEHICLE_BODY,
   VEHICLE_TEXT,
   vehicleOfBody,
+  vehicleOfItem,
 } from "../../src/rules/vehicles/vehicles.ts";
 
 const row = (code: string, at: number) =>
@@ -162,5 +168,79 @@ describe("hulls", () => {
     expect(sunkText("Bob", "Airship", null)).toBe(
       "*** Bob's airship was shot down. Bob fell from the sky.",
     );
+  });
+});
+
+describe("ships", () => {
+  const sea = (x: number) => (x >= 8 ? "W1" : "G1");
+  const l1 = Array.from({ length: 12 }, () =>
+    Array.from({ length: 17 }, (_, i) => sea(i + 1)).join(" "),
+  );
+  test("SSO: a ship sails on sea tiles, shoreline art on layer 2 included", () => {
+    const g = shipWalkGrid(l1);
+    expect([g[4]?.[7], g[4]?.[6], g[0]?.[9]]).toEqual([true, false, true]);
+  });
+  test("bodies 55 and 56 are the Boat and the Battleship", () => {
+    expect([vehicleOfBody(55), vehicleOfBody(56), vehicleOfBody(57), vehicleOfBody(58)]).toEqual([
+      "Boat",
+      "Battleship",
+      "Airship",
+      null,
+    ]);
+    expect(VEHICLE_BODY).toEqual({ Boat: 55, Battleship: 56, Airship: 57 });
+    expect(vehicleOfItem("Ann's Battleship")).toBe("Battleship");
+    expect(vehicleOfItem("Ann's Boat")).toBe("Boat");
+  });
+  test("the ship deed checks, in 1.6's order", () => {
+    const base = {
+      noun: "boat",
+      stepFrames: 0,
+      faced: { x: 8, y: 5 },
+      shipWalkable: true,
+      itemOnFaced: false,
+      playerOnFaced: false,
+    };
+    expect(shipDeedCheck(base)).toEqual({ kind: "build" });
+    expect(shipDeedCheck({ ...base, stepFrames: 2, shipWalkable: false })).toMatchObject({
+      text: "Please stand still before trying to build your boat.",
+    });
+    expect(shipDeedCheck({ ...base, faced: { x: 18, y: 5 } })).toEqual({ kind: "silent" });
+    expect(shipDeedCheck({ ...base, shipWalkable: false, itemOnFaced: true })).toMatchObject({
+      text: "You have to use this boat deed over water to have your ship built!",
+    });
+    expect(shipDeedCheck({ ...base, playerOnFaced: true })).toMatchObject({
+      text: "There's something in the way, you can't place your boat here!",
+    });
+  });
+  test("divergence: getting off needs a tile a walker could take, not 1.6's fixed list", () => {
+    const base = {
+      noun: "battleship",
+      stepFrames: 0,
+      faced: { x: 7, y: 5 },
+      footWalkable: true,
+      facedTaken: false,
+      itemOnMine: false,
+    };
+    expect(shipUnboardCheck(base)).toEqual({ kind: "park" });
+    for (const bad of [{ footWalkable: false }, { facedTaken: true }, { faced: { x: 0, y: 5 } }]) {
+      expect(shipUnboardCheck({ ...base, ...bad })).toEqual({
+        kind: "text",
+        text: "You can't get off here!",
+      });
+    }
+    expect(shipUnboardCheck({ ...base, itemOnMine: true })).toMatchObject({
+      text: "There's already something here, you can't park your battleship here!",
+    });
+  });
+  test("SSO: a sunk ship's line, and the drop refusal at sea", () => {
+    expect(sunkText("Bob", "Battleship", "Ann")).toBe(
+      "*** Bob's battleship was sunk by Ann. Bob was claimed by the waters.",
+    );
+    expect(sunkText("Bob", "Boat", null)).toBe(
+      "*** Bob's boat was sunk. Bob was claimed by the waters.",
+    );
+    expect(dropRefusal("Boat")).toBe("You can't drop this into the ocean!");
+    expect(dropRefusal("Airship")).toBe("You can't drop this from the sky!");
+    expect([hullMax("Boat"), hullMax("Battleship")]).toEqual([60, 150]);
   });
 });

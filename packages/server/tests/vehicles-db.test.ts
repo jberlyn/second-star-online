@@ -81,7 +81,9 @@ describe("migration 22 (vehicles)", () => {
       now,
     );
     expect(loadGround(db, seedMapId(), now)).toMatchObject([{ ownerId: id }]);
-    expect(() => db.query("UPDATE characters SET vehicle = 'Boat' WHERE id = ?").run(id)).toThrow();
+    expect(() =>
+      db.query("UPDATE characters SET vehicle = 'Canoe' WHERE id = ?").run(id),
+    ).toThrow();
   });
 });
 
@@ -176,5 +178,19 @@ describe("migration 43 (vehicle hulls)", () => {
     const g2 = game();
     g2.enter(id, false);
     expect(g2.world.players.get(id)?.hull).toBe(33);
+  });
+});
+
+describe("migration 44 (ship vehicles)", () => {
+  test("a character can ride a Boat or Battleship, and nothing else new", async () => {
+    const g = game();
+    const id = await makeChar(g, "Alice");
+    for (const v of ["Boat", "Battleship", "Airship"]) {
+      db.query("UPDATE characters SET vehicle = ?, hull = 10 WHERE id = ?").run(v, id);
+      expect(findCharacterById(db, id)).toMatchObject({ vehicle: v, hull: 10, name: "Alice" });
+    }
+    expect(() =>
+      db.query("UPDATE characters SET vehicle = 'Canoe' WHERE id = ?").run(id),
+    ).toThrow();
   });
 });
