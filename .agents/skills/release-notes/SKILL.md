@@ -25,7 +25,7 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 ### Pending upgrade items
 
-Changes already on `main` that the next release after `v1.12.0` must list under Upgrade Notes (confirm each in the code at the tag):
+Changes already on `main` that the next release after `v1.13.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
 - None yet.
 
