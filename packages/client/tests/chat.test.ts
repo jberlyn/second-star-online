@@ -169,6 +169,7 @@ afterEach(() => {
   app?.stop();
   app = null;
   document.body.replaceChildren();
+  localStorage.removeItem("sso.controls");
 });
 
 function inGame() {
@@ -189,8 +190,11 @@ function inGame() {
   if (!input) {
     throw new Error("no chat input");
   }
-  const key = (target: EventTarget, type: "keydown" | "keyup", k: string) =>
-    target.dispatchEvent(new KeyboardEvent(type, { key: k, bubbles: true, cancelable: true }));
+  /** Dispatches a key; returns false when a handler stopped the browser's own action. */
+  const key = (target: EventTarget, type: "keydown" | "keyup", k: string, code = k) =>
+    target.dispatchEvent(
+      new KeyboardEvent(type, { key: k, code, bubbles: true, cancelable: true }),
+    );
   return { ...c, root, input, key };
 }
 
@@ -211,53 +215,139 @@ describe("desktop chat keys", () => {
     expect(document.activeElement).not.toBe(input);
   });
 
-  test("arrows walk while the input is closed, committing the direction on the game tick", async () => {
-    let nextFrame: FrameRequestCallback | undefined;
-    const raf = spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
-      nextFrame = cb;
-      return 1;
-    });
-    try {
-      const { key, sent, receive } = inGame();
-      const rows = (code: string) =>
-        Array.from({ length: 12 }, () => Array(17).fill(code).join(" "));
-      receive({
-        t: "snapshot",
-        map: {
-          name: "x1000y992",
-          title: "",
-          layers: [rows("G1"), rows("G3"), rows("G3"), rows("5A")],
-          signs: ["", "", ""],
-          fog: { ...NO_FOG },
-        },
-        you: {
-          id: "me",
-          name: "Me",
-          head: 1,
-          x: 5,
-          y: 5,
-          facing: "N",
-          step: null,
-          equip: { ...NO_EQUIPMENT },
-          body: null,
-        },
-        self: { n: 0, x: 5, y: 5, facing: "N", frames: 0 },
-        players: [],
-        monsters: [],
-        ground: [],
+  test.each([
+    ["classic", "ArrowLeft", "ArrowLeft"],
+    ["modern", "a", "KeyA"],
+  ])(
+    "%s: %s walks while the input is closed, committing the direction on the game tick",
+    async (layout, k, code) => {
+      localStorage.setItem("sso.controls", layout);
+      let nextFrame: FrameRequestCallback | undefined;
+      const raf = spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+        nextFrame = cb;
+        return 1;
       });
-      await Bun.sleep(0);
-      expect(sent.some((m) => m.t === "mapReady")).toBe(true);
-      key(window, "keydown", "ArrowLeft");
-      expect(sent.some((m) => m.t === "step")).toBe(false);
-      nextFrame?.(performance.now() + 100);
-      expect(sent.filter((m) => m.t === "step")).toMatchObject([
-        { dir: "L", at: { map: "x1000y992", n: 0, x: 5, y: 5 } },
-      ]);
-      expect(sent.filter((m) => m.t === "move")).toMatchObject([{ held: "L", scheduled: true }]);
-    } finally {
-      raf.mockRestore();
+      try {
+        const { key, sent, receive } = inGame();
+        const rows = (code: string) =>
+          Array.from({ length: 12 }, () => Array(17).fill(code).join(" "));
+        receive({
+          t: "snapshot",
+          map: {
+            name: "x1000y992",
+            title: "",
+            layers: [rows("G1"), rows("G3"), rows("G3"), rows("5A")],
+            signs: ["", "", ""],
+            fog: { ...NO_FOG },
+          },
+          you: {
+            id: "me",
+            name: "Me",
+            head: 1,
+            x: 5,
+            y: 5,
+            facing: "N",
+            step: null,
+            equip: { ...NO_EQUIPMENT },
+            body: null,
+          },
+          self: { n: 0, x: 5, y: 5, facing: "N", frames: 0 },
+          players: [],
+          monsters: [],
+          ground: [],
+        });
+        await Bun.sleep(0);
+        expect(sent.some((m) => m.t === "mapReady")).toBe(true);
+        key(window, "keydown", k, code);
+        expect(sent.some((m) => m.t === "step")).toBe(false);
+        nextFrame?.(performance.now() + 100);
+        expect(sent.filter((m) => m.t === "step")).toMatchObject([
+          { dir: "L", at: { map: "x1000y992", n: 0, x: 5, y: 5 } },
+        ]);
+        expect(sent.filter((m) => m.t === "move")).toMatchObject([{ held: "L", scheduled: true }]);
+      } finally {
+        raf.mockRestore();
+      }
+    },
+  );
+
+  test("Modern's A types into the open chat input instead of walking", () => {
+    const { input, key, sent } = inGame();
+    key(window, "keydown", "Enter");
+    sent.length = 0;
+    key(input, "keydown", "a", "KeyA");
+    key(input, "keyup", "a", "KeyA");
+    expect(sent.filter((m) => m.t === "move" || m.t === "step")).toEqual([]);
+  });
+
+  test("/ opens the input with the slash typed, in both layouts", () => {
+    for (const layout of ["modern", "classic"]) {
+      localStorage.setItem("sso.controls", layout);
+      app?.stop();
+      document.body.replaceChildren();
+      const { input, key } = inGame();
+      expect(key(window, "keydown", "/", "Slash")).toBe(false); // no quick find
+      expect(document.activeElement).toBe(input);
+      expect(input.value).toBe("/");
+      expect(input.selectionStart).toBe(1);
     }
+  });
+
+  test("/ after Escape keeps the kept draft and adds the slash", () => {
+    const { input, key } = inGame();
+    key(window, "keydown", "Enter");
+    input.value = "hi ";
+    key(input, "keydown", "Escape");
+    key(window, "keydown", "/", "Slash");
+    expect(input.value).toBe("hi /");
+  });
+
+  test("a clicked game button does not keep focus, so Space cannot press it again", () => {
+    const { root, input, key } = inGame();
+    const tab = root.querySelector<HTMLButtonElement>("button.tab-hit");
+    if (!tab) {
+      throw new Error("no panel tab");
+    }
+    key(window, "keydown", "Enter");
+    expect(document.activeElement).toBe(input);
+    const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+    tab.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true); // the button takes no focus
+    expect(document.activeElement).not.toBe(input); // the click still closes the chat input
+    expect(document.activeElement).not.toBe(tab);
+  });
+
+  test("focusing another game text field releases movement and attack", () => {
+    const { root, key, sent } = inGame();
+    const field = document.createElement("textarea");
+    root.append(field);
+    key(window, "keydown", "w", "KeyW");
+    key(window, "keydown", " ", "Space");
+    field.focus();
+    expect(sent).toMatchObject([
+      { t: "move", held: "U" },
+      { t: "attack", held: true },
+      { t: "move", held: null },
+      { t: "attack", held: false },
+    ]);
+    expect(key(field, "keyup", "w", "KeyW")).toBe(true);
+    expect(key(field, "keydown", " ", "Space")).toBe(true);
+  });
+
+  test("a secondary pointer press on a game button leaves the text field focused", () => {
+    const { root, input } = inGame();
+    input.focus();
+    const down = new PointerEvent("pointerdown", { button: 2, bubbles: true, cancelable: true });
+    root.querySelector("button.tab-hit")?.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(input);
+  });
+
+  test("the chat input itself still takes focus from a click", () => {
+    const { input } = inGame();
+    const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+    input.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(false);
   });
 
   test("Escape closes the input and keeps the text; Enter on an empty line sends nothing", () => {

@@ -12,6 +12,7 @@
 
 import type { Permission } from "@secondstaronline/shared";
 
+import type { ControlLayout } from "../input.ts";
 import type { Menu, MenuItem } from "./menubar.ts";
 
 export interface MenuState {
@@ -23,6 +24,7 @@ export interface MenuState {
   can(permission: Permission): boolean;
   sharp(): boolean;
   sfx(): boolean;
+  controls(): ControlLayout;
 }
 
 export type Room = "general" | "newPlayer" | "tradingPost" | "guild" | "admin";
@@ -42,6 +44,7 @@ export interface MenuActions {
   assassin(mode: AssassinMode): void;
   setSharp(on: boolean): void;
   setSfx(on: boolean): void;
+  setControls(layout: ControlLayout): void;
 }
 
 const SEP: MenuItem = { kind: "sep" };
@@ -124,6 +127,22 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
           label: "Sound Effects",
           checked: state.sfx,
           run: () => act.setSfx(!state.sfx()),
+        },
+        SEP,
+        // The control layout, one of the pair checked (input.ts).
+        {
+          kind: "item",
+          label: "Modern Controls",
+          radio: true,
+          checked: () => state.controls() === "modern",
+          run: () => act.setControls("modern"),
+        },
+        {
+          kind: "item",
+          label: "Classic Controls",
+          radio: true,
+          checked: () => state.controls() === "classic",
+          run: () => act.setControls("classic"),
         },
       ],
     },

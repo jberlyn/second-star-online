@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 72 |
+| [Design changes](#design-changes) | 75 |
 | [Fixed bugs](#fixed-bugs) | 297 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **553** |
+| **Total** | **556** |
 
 By system (the code folder that holds the change):
 
@@ -324,7 +324,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Platform
 - **What you notice:** The game has a Windows-style menu above the game, with Game, Chat and Options, plus Admin for administrators. The items are regrouped by what they are for, and there is no Quit Game.
 - **1.6:** The projector had a native Windows menu above the stage from program start, with File, Edit, Game and Plugins. Immortals received an Admin menu. Return To Title Screen and Quit were in File; preferences were on the title-screen Game Setup.
-- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Send Instant Message, Edit Newspaper and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an administrator, then Clear Chat Text. Admin, for an administrator, sits between Chat and Options and contains World Editor, NPC Editor, Return To Game, Server Settings and three Assassin commands, which are sent without confirmation. Options adds Sharp Pixels Only and Sound Effects. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Options alone, and the login and creation screens add Game with Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
+- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Send Instant Message, Edit Newspaper and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an administrator, then Clear Chat Text. Admin, for an administrator, sits between Chat and Options and contains World Editor, NPC Editor, Return To Game, Server Settings and three Assassin commands, which are sent without confirmation. Options adds Sharp Pixels Only, Sound Effects, and the Modern Controls and Classic Controls pair. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Options alone, and the login and creation screens add Game with Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
 - **Why:** Browser scaling and logout need controls. A page cannot close its own tab, so Quit Game could only log out to a screen asking the player to close it, which Return To Title Screen and the tab's own close button already cover. With Quit Game gone, File and Edit would each hold a single item, so the items are grouped by purpose: chat rooms (including Admin Chat) together, and Admin keeping only tools and events. Server Settings is named for what it changes. Items that need a character are hidden rather than greyed before entry, so the title screen offers nothing that cannot work there.
 - **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
 - **Pinned by:** `no menu offers Quit Game: a page cannot close its own tab`, `an administrator gets Admin between Chat and Options, and Admin Chat among the rooms`, `out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
@@ -382,6 +382,33 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Using the score's text rect put the browser's centred line below the well and its padding to the right, so the entry text did not line up with the frame. The user requested the alignment, then the 2 px downward nudge, equal side insets, and a little more left margin.
 - **In the code:** `packages/client/src/ui/shells.ts` (`createGameView`)
 - **Pinned by:** `the stage puts the playfield and chat at their rects (frame 63)` (packages/client/tests/shells.test.ts)
+
+#### Modern controls by default, with Classic a menu choice
+- **Kind:** Platform
+- **What you notice:** By default you walk with W A S D, turn in place with Shift + W A S D, attack with Space and pick up or use with E, keeping the right hand on the mouse. Options → Classic Controls brings back 1.6's arrows, Alt + arrow, Tab and Ctrl exactly, and the browser remembers the choice.
+- **1.6:** Arrows walked, Alt + arrow turned, Tab attacked and Ctrl picked up or used, so both hands sat on the keyboard and clicking an NPC, a container or the inventory meant leaving the arrows.
+- **SSO:** Two fixed layouts, Modern (the default) and Classic, chosen in the Options menu and saved per browser. Modern reads the physical key position, so the keys sit in the same place on AZERTY. It does not also accept the classic keys: Ctrl next to W would make Ctrl+W close the tab, which a page cannot block. Modern swallows Tab and Alt with no action, so Tab cannot move focus to a button and Alt cannot open the browser's menu bar. In both layouts several directions held still resolve Left > Right > Up > Down, attacks still hit the faced tile, clicking and spell casting are unchanged, and the server receives and checks the same intents. Switching layout releases any key held under the old one.
+- **Why:** Most players now expect to move with W A S D and keep a hand on the mouse, and SSO is already played in a browser. The layout changes which keys send the intents, not the game's rules, so the 1.6 feel is kept, and Classic stays for players who want the original keys.
+- **In the code:** `packages/client/src/input.ts` (`LAYOUTS`, `keyDown`), `packages/client/src/ui/gamemenu.ts` (`desktopMenus`), `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `W A S D walk, with the same L > R > U > D priority`, `Shift + W A S D turns in place`, `Space is one attack hold state`, `E sends the action once per press`, `keys are read by position, so AZERTY's Z, Q, S, D walk`, `the classic keys do nothing; Tab and Alt are kept from the browser`, `nothing saved, or an unknown value, is Modern`, `switching layout releases what the old one held` (packages/client/tests/input.test.ts); `Options offers Modern and Classic Controls, Modern by default, and remembers the choice` (packages/client/tests/gamemenu.test.ts)
+
+#### Clicking a game button leaves the keyboard available for play
+- **Kind:** Platform
+- **What you notice:** Clicking a game button leaves the keyboard available for movement and combat. A text field still takes the keyboard when focused, and focusing one releases held movement and attack keys.
+- **1.6:** This browser focus behavior did not apply to the native projector.
+- **SSO:** A primary pointer press on a game button leaves it unfocused and blurs the active field. A secondary press leaves focus alone.
+- **Why:** A focused browser button can react to Space after a click.
+- **In the code:** `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `a clicked game button does not keep focus, so Space cannot press it again`, `a secondary pointer press on a game button leaves the text field focused`, `focusing another game text field releases movement and attack` (packages/client/tests/chat.test.ts)
+
+#### / opens chat with the slash typed
+- **Kind:** Platform
+- **What you notice:** In either layout, pressing / opens the chat input with the slash already typed, ready for a command such as /who. A draft kept with Escape stays, with the slash added after it.
+- **1.6:** The chat field always had the keyboard, so / was typed straight into it.
+- **SSO:** Since chat opens with Enter, / outside the input would otherwise do nothing (or open Firefox's quick find); it now opens the input and types the slash.
+- **Why:** Commands start with /, and a shortcut keeps them one key away now that letters walk in Modern.
+- **In the code:** `packages/client/src/app.ts` (`runApp`)
+- **Pinned by:** `/ opens the input with the slash typed`, `/ after Escape keeps the kept draft and adds the slash` (packages/client/tests/chat.test.ts)
 
 #### Chat opens with Enter
 - **Kind:** Platform

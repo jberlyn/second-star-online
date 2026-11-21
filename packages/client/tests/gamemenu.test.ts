@@ -178,6 +178,34 @@ describe("the desktop menu bar", () => {
     app.stop();
   });
 
+  test("Options offers Modern and Classic Controls, Modern by default, and remembers the choice", () => {
+    localStorage.removeItem("sso.controls");
+    const a = start();
+    expect(menuTexts(a.root, "Options")).toEqual([
+      "Sharp Pixels Only",
+      "Sound Effects",
+      "-",
+      "Modern Controls",
+      "Classic Controls",
+    ]);
+    const marks = (root: ParentNode) => {
+      menuTexts(root, "Options");
+      return [...root.querySelectorAll<HTMLElement>(".menu-drop [role=menuitemradio]")].map(
+        (e) => `${e.textContent} ${e.getAttribute("aria-checked")}`,
+      );
+    };
+    expect(marks(a.root)).toEqual(["Modern Controls true", "Classic Controls false"]);
+    menuClick(a.root, "Options", "Classic Controls");
+    expect(localStorage.getItem("sso.controls")).toBe("classic");
+    a.app.stop();
+    const b = start();
+    expect(marks(b.root)).toEqual(["Modern Controls false", "Classic Controls true"]);
+    menuClick(b.root, "Options", "Modern Controls");
+    expect(localStorage.getItem("sso.controls")).toBe("modern");
+    b.app.stop();
+    localStorage.removeItem("sso.controls");
+  });
+
   test("the bar scales with the stage", () => {
     const a = start(1600, 1240);
     menuClick(a.root, "Options", "Sharp Pixels Only");

@@ -250,9 +250,9 @@ describe("attack input", () => {
       action: () => {},
     };
     const s = createInputState();
-    expect(keyDown(s, sink, "Tab", false)).toBe(true);
-    keyDown(s, sink, "Tab", false); // key repeat: no change
-    keyUp(s, sink, "Tab");
+    expect(keyDown(s, sink, { key: "Tab" })).toBe(true);
+    keyDown(s, sink, { key: "Tab" }); // key repeat: no change
+    keyUp(s, sink, { key: "Tab" });
     expect(out).toEqual(["attack true", "attack false"]);
   });
 });

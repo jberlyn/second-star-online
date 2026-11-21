@@ -65,34 +65,34 @@ describe("scheduled movement prediction", () => {
         for (let t = 0; t < 90; t++) {
           // Turn near step boundaries, briefly hold opposing arrows, then release all keys.
           if (t === 0) {
-            keyDown(h.input, h.sink, "ArrowRight", false);
+            keyDown(h.input, h.sink, { key: "ArrowRight" });
           }
           if (t === 7) {
-            keyDown(h.input, h.sink, "ArrowUp", false);
+            keyDown(h.input, h.sink, { key: "ArrowUp" });
           }
           if (t === 8) {
-            keyUp(h.input, h.sink, "ArrowRight");
+            keyUp(h.input, h.sink, { key: "ArrowRight" });
           }
           if (t === 15) {
-            keyDown(h.input, h.sink, "ArrowLeft", false);
+            keyDown(h.input, h.sink, { key: "ArrowLeft" });
           }
           if (t === 17) {
-            keyUp(h.input, h.sink, "ArrowLeft");
+            keyUp(h.input, h.sink, { key: "ArrowLeft" });
           }
           if (t === 23) {
-            keyDown(h.input, h.sink, "ArrowRight", false);
+            keyDown(h.input, h.sink, { key: "ArrowRight" });
           }
           if (t === 24) {
-            keyUp(h.input, h.sink, "ArrowUp");
+            keyUp(h.input, h.sink, { key: "ArrowUp" });
           }
           if (t === 31) {
-            keyDown(h.input, h.sink, "ArrowLeft", false);
+            keyDown(h.input, h.sink, { key: "ArrowLeft" });
           }
           if (t === 33) {
-            keyUp(h.input, h.sink, "ArrowRight");
+            keyUp(h.input, h.sink, { key: "ArrowRight" });
           }
           if (t === 40) {
-            keyUp(h.input, h.sink, "ArrowLeft");
+            keyUp(h.input, h.sink, { key: "ArrowLeft" });
           }
           const serverTick = () => {
             while (requests[0] && requests[0].due <= t) {
@@ -388,13 +388,13 @@ describe("scheduled movement under latency", () => {
       h.p.map.walk[5]![2] = false;
       const snaps = runLatency(h, delay, 90, (t, sink) => {
         if (t === 0) {
-          keyDown(h.input, sink, "ArrowRight", false);
+          keyDown(h.input, sink, { key: "ArrowRight" });
         }
         if (t === 20) {
           h.p.map.walk[5]![2] = true;
         }
         if (t === 70) {
-          keyUp(h.input, sink, "ArrowRight");
+          keyUp(h.input, sink, { key: "ArrowRight" });
         }
       });
       // Corrections only while the wall stands and for the requests already in flight.
@@ -418,14 +418,14 @@ describe("scheduled movement under latency", () => {
           const s = h.m.self!;
           path.push(walkerPixel(s.x, s.y, s.facing, s.stepFrames).px);
           if (t === 0) {
-            keyDown(h.input, sink, "ArrowRight", false);
+            keyDown(h.input, sink, { key: "ArrowRight" });
             if (bow) {
-              keyDown(h.input, sink, "Tab", false);
+              keyDown(h.input, sink, { key: "Tab" });
             }
           }
           if (t === 60) {
-            keyUp(h.input, sink, "Tab");
-            keyUp(h.input, sink, "ArrowRight");
+            keyUp(h.input, sink, { key: "Tab" });
+            keyUp(h.input, sink, { key: "ArrowRight" });
           }
         });
         expect(snaps).toEqual([]);
@@ -440,9 +440,9 @@ describe("scheduled movement under latency", () => {
       const h = harness(2);
       const snaps = runLatency(h, delay, 120, (t, sink) => {
         const tab = (down: boolean) =>
-          down ? keyDown(h.input, sink, "Tab", false) : keyUp(h.input, sink, "Tab");
+          down ? keyDown(h.input, sink, { key: "Tab" }) : keyUp(h.input, sink, { key: "Tab" });
         if (t === 0) {
-          keyDown(h.input, sink, "ArrowRight", false);
+          keyDown(h.input, sink, { key: "ArrowRight" });
         }
         // Taps at different points of a step, then a held attack (a swing every 15 ticks).
         if (t === 5 || t === 10 || t === 21) {
@@ -456,7 +456,7 @@ describe("scheduled movement under latency", () => {
         }
         if (t === 100) {
           tab(false);
-          keyUp(h.input, sink, "ArrowRight");
+          keyUp(h.input, sink, { key: "ArrowRight" });
         }
       });
       expect(snaps).toEqual([]);

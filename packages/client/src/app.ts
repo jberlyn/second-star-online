@@ -23,7 +23,16 @@ import {
 
 import { type Assets, loadAssets } from "./assets.ts";
 import { createAudio, playAll } from "./audio.ts";
-import { createInputState, type InputSink, keyDown, keyUp, releaseAll } from "./input.ts";
+import {
+  type ControlLayout,
+  createInputState,
+  type InputSink,
+  keyDown,
+  keyUp,
+  parseLayout,
+  releaseAll,
+  setLayout,
+} from "./input.ts";
 import {
   applyDelta,
   applySnapshot,
@@ -78,6 +87,7 @@ const PREFS = {
   sharp: "sso.sharpPixels",
   sfx: "sso.sfx",
   news: "sso.news",
+  controls: "sso.controls",
 } as const;
 
 function pref(key: string): string | null {
@@ -162,6 +172,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   // ---- menus (In-game menu) ----------------------------------------------------------------
   // The classic layout draws 1.6's menu bar above the stage.
   let sfxOn = pref(PREFS.sfx) !== "0";
+  /** Modern unless this browser chose Classic. */
+  let controls: ControlLayout = parseLayout(pref(PREFS.controls));
   /** Your role's permissions as the server last sent them (it still checks every request). */
   let permissions: ReadonlySet<string> = new Set();
   let editor: WorldEditor | null = null;
@@ -177,6 +189,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     can: (permission) => permissions.has(permission),
     sharp: () => sharp,
     sfx: () => sfxOn,
+    controls: () => controls,
   };
   const menuActions: MenuActions = {
     // Game > Return To Title Screen: in play it is today's Log out.
@@ -218,6 +231,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       sfxOn = on;
       audio.enabled = on;
       setPref(PREFS.sfx, on ? "1" : "0");
+    },
+    setControls: (layout) => {
+      controls = layout;
+      setLayout(input, sink, layout);
+      setPref(PREFS.controls, layout);
     },
   };
 
@@ -272,7 +290,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   window.addEventListener("pointerdown", () => audio.unlock(), true);
   window.addEventListener("keydown", () => audio.unlock(), true);
   const intent: Intent = { held: null, turn: false, pending: null };
-  const input = createInputState();
+  const input = createInputState(controls);
   let seq = 0;
   const send = (m: ClientMsg) => conn.send(m);
   const sink: InputSink = {
@@ -1253,7 +1271,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     chatInput.value = "";
     chatInput.blur();
   };
-  chatInput.addEventListener("focus", () => releaseAll(input, sink));
   chatInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -1269,6 +1286,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     t instanceof HTMLInputElement ||
     t instanceof HTMLTextAreaElement ||
     t instanceof HTMLSelectElement;
+  const onTextFocus = (e: FocusEvent) => {
+    if (game && typingIn(e.target)) {
+      releaseAll(input, sink);
+    }
+  };
   const onKeyDown = (e: KeyboardEvent) => {
     if (!game || typingIn(e.target)) {
       return;
@@ -1278,8 +1300,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       chatInput.focus();
       return;
     }
-    // Stop the page scrolling and the Alt menu bar.
-    if (keyDown(input, sink, e.key, e.altKey, e.repeat, e.metaKey)) {
+    // An SSO addition: `/` opens the chat input with the slash typed, ready for a command.
+    if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault(); // and no quick find in Firefox
+      chatInput.focus();
+      chatInput.value += "/";
+      chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+      return;
+    }
+    // Stop the page scrolling, a focused button's press and the Alt menu bar.
+    if (keyDown(input, sink, e)) {
       e.preventDefault();
     }
   };
@@ -1287,12 +1317,35 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     if (!game || typingIn(e.target)) {
       return;
     }
-    if (keyUp(input, sink, e.key)) {
+    if (keyUp(input, sink, e)) {
       e.preventDefault();
     }
   };
+  // A game button clicked with the mouse does not keep focus, so Space or Enter cannot press it
+  // again (as the menu bar already keeps it). The field being typed in still loses focus, as
+  // the click would have taken it.
+  const onButtonDown = (e: PointerEvent) => {
+    const t = e.target;
+    if (
+      !game ||
+      e.button !== 0 ||
+      !(t instanceof Element) ||
+      !root.contains(t) ||
+      !t.closest("button") ||
+      menuBar.el.contains(t)
+    ) {
+      return;
+    }
+    e.preventDefault();
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && focused !== document.body) {
+      focused.blur();
+    }
+  };
+  window.addEventListener("pointerdown", onButtonDown, true);
   const onBlur = () => releaseAll(input, sink);
   const onResize = () => relayout();
+  window.addEventListener("focus", onTextFocus, true);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("blur", onBlur);
@@ -1336,7 +1389,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     stop() {
       stopped = true;
       cancelAnimationFrame(raf);
+      window.removeEventListener("focus", onTextFocus, true);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onButtonDown, true);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("resize", onResize);

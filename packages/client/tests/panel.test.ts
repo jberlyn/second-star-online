@@ -747,8 +747,8 @@ describe("Ctrl", () => {
     const s = createInputState();
     let n = 0;
     const sink = { move() {}, step() {}, attack() {}, action: () => n++ };
-    keyDown(s, sink, "Control", false);
-    keyDown(s, sink, "Control", false, true);
+    keyDown(s, sink, { key: "Control" });
+    keyDown(s, sink, { key: "Control", repeat: true });
     expect(n).toBe(1);
   });
 });
