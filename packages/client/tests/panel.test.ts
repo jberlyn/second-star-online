@@ -41,6 +41,7 @@ function panelWith(
     give: (s) => sent.push(`give ${s}`),
     unequip: (s) => sent.push(`unequip ${s}`),
     crystals: (s, c) => sent.push(`crystals ${s} ${c}`),
+    oneCrystal: (s, mode) => sent.push(`oneCrystal ${s} ${mode}`),
     stack: (s, name, mode) => sent.push(`stack ${s} ${name} ${mode}`),
     arrange: (from, to) => sent.push(`arrange ${from} ${to}`),
     gold: () => sent.push("gold"),
@@ -241,6 +242,16 @@ describe("the right panel (frames 50-65)", () => {
     panel.menu.querySelector<HTMLButtonElement>('[aria-label="Drop"]')?.click();
     expect(sent).toEqual(["crystals 1 blue"]);
   });
+  test("divergence: Drop and Give on a single crystal go at once, without the amount dialog", () => {
+    const { panel, sent } = panelWith([{ item: "Red Crystals", qty: 1 }]);
+    const pick = (button: string) => {
+      panel.el.querySelector<HTMLButtonElement>(".bag-slot")?.click();
+      panel.menu.querySelector<HTMLButtonElement>(`[aria-label="${button}"]`)?.click();
+    };
+    pick("Drop");
+    pick("Give");
+    expect(sent).toEqual(["oneCrystal 1 drop", "oneCrystal 1 give"]);
+  });
   test("divergence: Drop and Give on a stack of more than one ask how many; a single item goes at once", () => {
     const { panel, sent } = panelWith([
       { item: "Long Sword", qty: 3 },
@@ -380,6 +391,7 @@ describe("panel sounds", () => {
       give: () => {},
       unequip: () => {},
       crystals: () => {},
+      oneCrystal: () => {},
       stack: () => {},
       arrange: () => {},
       gold: () => {},

@@ -4,8 +4,9 @@
  * SSO centres it in the top box),
  * the editable amount field (#124, [254, 253, 348, 269]), OK (#120) and Cancel (#126).
  * - Gold (Internal #118): "How Much Gold Do You Want To Give/Drop?" and the amount set to "0".
- * - Crystals: "Drop how many <colour> crystals?" or "Give how many …", by the bag button that
- *   opened it, which leave the amount as it was; the cast's saved text is "2".
+ * - More than one crystal: "Drop how many <colour> crystals?" or "Give how many …", by the bag
+ *   button that opened it, which leave the amount as it was; the cast's saved text is "2". A single
+ *   crystal goes at once (SSO; 1.6 asked).
  * - Any other stack of more than one (SSO; 1.6 moved one at a time): "Drop how many <item>?" or
  *   "Give how many …", with the amount set to "1".
  *

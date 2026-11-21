@@ -30,6 +30,7 @@ function panelWith(items: string[], locked = false) {
     storage: (s) => sent.push(`storage ${s}`),
     unequip: (s) => sent.push(`unequip ${s}`),
     crystals: () => {},
+    oneCrystal: () => {},
     stack: () => {},
     arrange: () => {},
     gold: () => {},

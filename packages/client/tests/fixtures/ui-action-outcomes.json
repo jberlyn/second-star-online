@@ -835,8 +835,8 @@
         "args": []
       },
       {
-        "action": "crystals",
-        "args": [7, "blue", "drop"]
+        "action": "oneCrystal",
+        "args": [7, "drop"]
       },
       {
         "action": "sound",
@@ -862,8 +862,8 @@
         "args": []
       },
       {
-        "action": "crystals",
-        "args": [7, "blue", "give"]
+        "action": "oneCrystal",
+        "args": [7, "give"]
       },
       {
         "action": "sound",

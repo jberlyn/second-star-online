@@ -58,8 +58,10 @@ export interface PanelActions {
   /** Storage on a carried container. */
   storage?(slot: number): void;
   unequip(slot: EquipSlot): void;
-  /** Drop or Give on crystals opens the amount dialog for that button. */
+  /** Drop or Give on more than one crystal opens the amount dialog for that button. */
   crystals(slot: number, colour: string, mode: "drop" | "give"): void;
+  /** Drop or Give on a single crystal moves it at once (1.6 asked how many). */
+  oneCrystal(slot: number, mode: "drop" | "give"): void;
   /** Drop or Give on any other stack of more than one opens the amount dialog (1.6 moved one). */
   stack(slot: number, name: string, mode: "drop" | "give"): void;
   /** A bag slot dragged onto another: the two change places. */
@@ -611,22 +613,21 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         () => (action === "Storage" ? act.storage : act.craft) !== undefined,
       );
     }
-    // A stack of more than one asks how many; a single item goes at once.
+    // A stack of more than one asks how many; a single item, crystals included, goes at once.
     const many = qty > 1;
-    button("Drop", 53, artImg(a.ui("inventory", 53)), -20, 5, 36, 13, () =>
-      isCrystal
-        ? act.crystals(menuSlot, colour, "drop")
-        : many
-          ? act.stack(menuSlot, displayName(name), "drop")
-          : act.drop(menuSlot),
-    );
-    button("Give", 56, artImg(a.ui("inventory", 56)), -57, 5, 31, 11, () =>
-      isCrystal
-        ? act.crystals(menuSlot, colour, "give")
-        : many
-          ? act.stack(menuSlot, displayName(name), "give")
-          : act.give(menuSlot),
-    );
+    const move = (mode: "drop" | "give") => {
+      if (isCrystal && many) {
+        act.crystals(menuSlot, colour, mode);
+      } else if (isCrystal) {
+        act.oneCrystal(menuSlot, mode);
+      } else if (many) {
+        act.stack(menuSlot, displayName(name), mode);
+      } else {
+        act[mode](menuSlot);
+      }
+    };
+    button("Drop", 53, artImg(a.ui("inventory", 53)), -20, 5, 36, 13, () => move("drop"));
+    button("Give", 56, artImg(a.ui("inventory", 56)), -57, 5, 31, 11, () => move("give"));
     menu.hidden = false;
   };
 

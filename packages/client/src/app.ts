@@ -305,6 +305,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     unequip: (slot) => send({ t: "unequip", slot }),
     crystals: (slot, colour, mode) =>
       amount.open(crystalTitle(colour, mode), null, (n) => send({ t: "crystals", slot, n, mode })),
+    oneCrystal: (slot, mode) => send({ t: "crystals", slot, n: 1, mode }),
     gold: () => amount.open(GOLD_TITLE, "0", (n) => send({ t: "gold", n })),
     // Any other stack asks how many, starting at 1.
     stack: (slot, name, mode) =>
