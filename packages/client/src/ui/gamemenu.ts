@@ -1,13 +1,13 @@
 /**
  * The menu bar above the stage, regrouped from 1.6's menus 500 and 502 by what each item is for.
  *
- * 1.6 had File, Edit, Game and Plugins, plus Admin for an immortal (1.6's staff). SSO's bar is Game (your
- * character and the people you know), Chat (rooms), Admin for staff with tools (tools and events) and
- * Options (player settings). Quit Game is dropped (a page cannot close its tab) and so is
- * Plugins. Admin Chat sits with the other rooms, shown only to a role that may use it.
+ * 1.6 had File, Edit, Game and Plugins, plus Admin for an immortal (1.6's staff). SSO's bar is Game
+ * (your character, the people you know, Settings and Return To Title Screen), Chat (rooms) and
+ * Admin for staff with tools (tools and events). Quit Game is dropped (a page cannot close its tab)
+ * and so is Plugins. Admin Chat sits with the other rooms, shown only to a role that may use it.
  *
- * Out of the game only what works there shows: Options always, and on the login and creation
- * screens Game with Return To Title Screen alone. The rest appears once a character is in play.
+ * Out of the game only what works there shows: Game always (Settings on the title screen, adding
+ * Return To Title Screen on login and creation). The rest appears once a character is in play.
  */
 
 import type { KeyAction, Permission } from "@secondstaronline/shared";
@@ -49,7 +49,7 @@ const SEP: MenuItem = { kind: "sep" };
 /** The permissions behind the Admin menu's items: any one shows the menu. */
 const ADMIN_MENU: readonly Permission[] = ["worldEditor", "npcEditor", "settings", "assassinGame"];
 
-/** The desktop bar's menus: Game, Chat, Admin (for roles with an admin tool), Options. */
+/** The desktop bar's menus: Game, Chat, Admin (for roles with an admin tool). */
 export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
   const play = () => state.inPlay();
   const item = (label: string, run: () => void): Extract<MenuItem, { kind: "item" }> => ({
@@ -70,7 +70,6 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
   return [
     {
       title: "Game",
-      visible: () => play() || !state.atTitle(),
       items: [
         inGame("Open Friend's List", act.openFriends, "windowFriends"),
         inGame("Who's Online", act.openWho, "windowWho"),
@@ -78,8 +77,12 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         // Anyone may write the paper their stand shows (1.6 offered it to immortals only).
         inGame("Edit Newspaper", act.editNewspaper),
         { kind: "sep", visible: play },
+        item("Settings", act.playerSettings),
         // Works before login too: it leaves the login or creation screen.
-        item("Return To Title Screen", act.returnToTitle),
+        {
+          ...item("Return To Title Screen", act.returnToTitle),
+          visible: () => play() || !state.atTitle(),
+        },
       ],
     },
     {
@@ -113,11 +116,6 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         gated("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING"), "assassinGame"),
         gated("End Assassin's Game", () => act.assassin("STOP"), "assassinGame"),
       ],
-    },
-    // SSO's own: player settings window (controls, display, sound, chat, social, accessibility).
-    {
-      title: "Options",
-      items: [item("Settings…", act.playerSettings)],
     },
   ];
 }

@@ -8,9 +8,8 @@
  * depleted part of the slot is plain black rather than 1.6's darker track sprites.
  * The hover field shows `current / max` centred on the bar.
  *
- * Player Settings adds two optional visual adjustments in the same slot geometry:
- * - Colour-blind palette (Amber/Gold HP + Sky-Cyan SP over black, `.bars-colorblind`).
- * - Low health warning (at or below 25% HP/hull while alive, `.bar-low` + optional callback).
+ * Player Settings adds an optional colour-blind palette (Amber/Gold HP + Sky-Cyan SP over black,
+ * `.bars-colorblind`) in the same slot geometry.
  *
  * The power bar keeps 1.6's loader: sprite 63 starts at horizontal position 874 and moves 2 px
  * left per point over its track (Internal #169 at 677, 101); its member shows the tier
@@ -25,8 +24,6 @@ import type { Assets } from "../assets.ts";
 import { artImg } from "./stage.ts";
 
 export const BARS_RECT = { x: 590, y: 60, w: 210, h: 50 } as const;
-/** Ratio at or below which the low health warning activates (while alive). */
-export const LOW_HP_RATIO = 0.25;
 /** The transparent HP/SP slot of Internal #186: stage x 600-789, 189 px wide. */
 const SLOT_X = 600;
 const SLOT_W = 189;
@@ -39,7 +36,6 @@ const OY = BARS_RECT.y;
 
 export interface BarsOptions {
   colorblind: boolean;
-  lowHealthWarning: boolean;
 }
 
 export interface Bars {
@@ -47,10 +43,6 @@ export interface Bars {
   setVitals(v: VitalsView): void;
   setPower(bar: number, member: BarMember): void;
   setOptions(opts: BarsOptions): void;
-  /** Whether the low-health warning cue is currently active. */
-  readonly lowHealth: boolean;
-  /** Clears vitals / low-health warning state (on logout/disconnect). */
-  reset(): void;
 }
 
 function at(el: HTMLElement, x: number, y: number, z: number): void {
@@ -73,7 +65,7 @@ function fillWidth(value: number, max: number): string {
   return `${Math.round(ratio * SLOT_W * 100) / 100}px`;
 }
 
-export function createBars(a: Assets, onLowHealth?: (low: boolean) => void): Bars {
+export function createBars(a: Assets): Bars {
   const el = document.createElement("div");
   el.className = "bars";
   el.setAttribute("role", "group");
@@ -144,29 +136,10 @@ export function createBars(a: Assets, onLowHealth?: (low: boolean) => void): Bar
     475: a.ui("internal", 475),
   };
   let shown: BarMember = 473;
-  let lastVitals: VitalsView | null = null;
-  let lowHealthWarning = true;
-  let lowHealth = false;
-
-  const updateLow = () => {
-    const cur = lastVitals?.hull ? lastVitals.hull.hp : (lastVitals?.hp ?? 0);
-    const max = lastVitals?.hull ? lastVitals.hull.max : (lastVitals?.hpMax ?? 0);
-    const next = lowHealthWarning && max > 0 && cur > 0 && cur / max <= LOW_HP_RATIO;
-    if (next !== lowHealth) {
-      lowHealth = next;
-      hpTrackBox.classList.toggle("bar-low", next);
-      hpFillBox.classList.toggle("bar-low", next);
-      onLowHealth?.(next);
-    }
-  };
 
   const bars: Bars = {
     el,
-    get lowHealth() {
-      return lowHealth;
-    },
     setVitals(v) {
-      lastVitals = v;
       // Aboard a vehicle the HP bar shows its hull, which hits wear instead of HP.
       const hull = v.hull;
       hpFillBox.style.width = hull ? fillWidth(hull.hp, hull.max) : fillWidth(v.hp, v.hpMax);
@@ -175,7 +148,6 @@ export function createBars(a: Assets, onLowHealth?: (low: boolean) => void): Bar
       spText.textContent = `${v.sp} / ${v.spMax}`;
       const first = hull ? `Hull ${hull.hp} of ${hull.max}` : `HP ${v.hp} of ${v.hpMax}`;
       sr.textContent = `${first}, SP ${v.sp} of ${v.spMax}, level ${v.level}`;
-      updateLow();
     },
     setPower(bar, member) {
       at(power, 874 - 2 * bar - 81, 101 - 2, 63);
@@ -186,12 +158,6 @@ export function createBars(a: Assets, onLowHealth?: (low: boolean) => void): Bar
     },
     setOptions(opts) {
       el.classList.toggle("bars-colorblind", opts.colorblind);
-      lowHealthWarning = opts.lowHealthWarning;
-      updateLow();
-    },
-    reset() {
-      lastVitals = null;
-      updateLow();
     },
   };
   bars.setPower(0, 473);

@@ -87,7 +87,7 @@ export const PLAYER_SETTINGS_PAGES: readonly PageMeta[] = [
   {
     id: "display",
     title: "Display",
-    intro: "Scaling, floating windows, combat numbers and low-health alerts.",
+    intro: "Scaling, floating windows and combat numbers.",
   },
   {
     id: "sound",
@@ -152,13 +152,6 @@ export const PLAYER_OPTION_DEFS: readonly OptionDef[] = [
     page: "display",
     label: "Show damage numbers",
     help: "Display floating damage numbers and combat text over players and monsters.",
-    kind: "bool",
-  },
-  {
-    key: "lowHealthWarning",
-    page: "display",
-    label: "Low health warning",
-    help: "Highlight the health bar and edge of the playfield when your health (or vehicle hull) drops to 25% or below.",
     kind: "bool",
   },
 

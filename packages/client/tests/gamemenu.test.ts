@@ -57,7 +57,7 @@ function start(w = 1024, h = 768) {
 }
 
 function openSettingsPage(root: ParentNode, page: string): HTMLElement {
-  menuClick(root, "Options", "Settings…");
+  menuClick(root, "Game", "Settings");
   const win = root.querySelector<HTMLElement>(".window-player-settings");
   if (!win) {
     throw new Error("no player settings window");
@@ -67,10 +67,10 @@ function openSettingsPage(root: ParentNode, page: string): HTMLElement {
 }
 
 describe("the desktop menu bar", () => {
-  test("out of the game only what works there shows: the title has Options alone; login and creation add Game with Return To Title Screen", () => {
+  test("out of the game only what works there shows: the title has Game with Settings; login and creation add Return To Title Screen", () => {
     const { root, app } = start();
-    expect(titles(root)).toEqual(["Options"]);
-    expect(menuTexts(root, "Options")).toEqual(["Settings…"]);
+    expect(titles(root)).toEqual(["Game"]);
+    expect(menuTexts(root, "Game")).toEqual(["Settings"]);
     const win = openSettingsPage(root, "sound");
     const box = win.querySelector<HTMLInputElement>('[aria-label="Sound effects"]');
     expect(box?.checked).toBe(true);
@@ -84,10 +84,11 @@ describe("the desktop menu bar", () => {
 
     for (const screen of ["Load Character", "New Character"]) {
       (root.querySelector(`[aria-label="${screen}"]`) as HTMLElement).click();
-      expect(titles(root)).toEqual(["Game", "Options"]);
-      expect(menuTexts(root, "Game")).toEqual(["Return To Title Screen"]);
+      expect(titles(root)).toEqual(["Game"]);
+      expect(menuTexts(root, "Game")).toEqual(["Settings", "Return To Title Screen"]);
       menuClick(root, "Game", "Return To Title Screen");
-      expect(titles(root)).toEqual(["Options"]);
+      expect(titles(root)).toEqual(["Game"]);
+      expect(menuTexts(root, "Game")).toEqual(["Settings"]);
     }
     app.stop();
   });
@@ -98,7 +99,7 @@ describe("the desktop menu bar", () => {
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     expect(titles(root)).not.toContain("Admin");
     c.onMessage(SNAPSHOT);
-    expect(titles(root)).toEqual(["Game", "Chat", "Admin", "Options"]);
+    expect(titles(root)).toEqual(["Game", "Chat", "Admin"]);
     app.stop();
   });
 
@@ -112,6 +113,7 @@ describe("the desktop menu bar", () => {
       "Send Instant Message",
       "Edit Newspaper",
       "-",
+      "Settings",
       "Return To Title Screen",
     ]);
     // Modern controls show F and O right-aligned on Friend's List and Who's Online.
@@ -152,17 +154,17 @@ describe("the desktop menu bar", () => {
     app.stop();
   });
 
-  test("an administrator gets Admin between Chat and Options, and Admin Chat among the rooms", () => {
+  test("an administrator gets Admin after Chat, and Admin Chat among the rooms", () => {
     const { root, c, app } = start();
     c.onMessage(welcome);
     c.onMessage(SNAPSHOT);
     for (const permissions of [[], [...MODERATOR.permissions]]) {
       c.onMessage({ t: "permissions", permissions });
-      expect(titles(root)).toEqual(["Game", "Chat", "Options"]);
+      expect(titles(root)).toEqual(["Game", "Chat"]);
       expect(menuTexts(root, "Chat")).not.toContain("Admin Chat");
     }
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
-    expect(titles(root)).toEqual(["Game", "Chat", "Admin", "Options"]);
+    expect(titles(root)).toEqual(["Game", "Chat", "Admin"]);
     expect(menuTexts(root, "Chat")).toEqual([
       "General Chat",
       "New Player Chat",
@@ -214,9 +216,9 @@ describe("the desktop menu bar", () => {
     app.stop();
   });
 
-  test("Options → Settings… offers Modern, Classic and Custom Controls, Modern by default, and remembers the choice", () => {
+  test("Game → Settings offers Modern, Classic and Custom Controls, Modern by default, and remembers the choice", () => {
     const a = start();
-    expect(menuTexts(a.root, "Options")).toEqual(["Settings…"]);
+    expect(menuTexts(a.root, "Game")).toEqual(["Settings"]);
     const winA = openSettingsPage(a.root, "controls");
     const selA = winA.querySelector<HTMLSelectElement>('[aria-label="Control set"]');
     expect(selA?.value).toBe("modern");

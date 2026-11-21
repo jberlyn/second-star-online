@@ -145,25 +145,27 @@ describe("Player Settings window UI", () => {
     w.open(base, [], true);
     expect(dmg.checked).toBe(false);
 
-    // An unrelated server sync (e.g. another session toggling lowHealthWarning) updates untouched
-    // rows while preserving the unsaved edit.
-    w.sync({ ...base, lowHealthWarning: false }, [], true);
+    // An unrelated server sync (e.g. another session toggling rememberWindowPositions) updates
+    // untouched rows while preserving the unsaved edit.
+    w.sync({ ...base, rememberWindowPositions: false }, [], true);
     expect(dmg.checked).toBe(false);
     expect(
-      w.window.el.querySelector<HTMLInputElement>('[aria-label="Low health warning"]')?.checked,
+      w.window.el.querySelector<HTMLInputElement>(
+        '[aria-label="Remember floating window positions"]',
+      )?.checked,
     ).toBe(false);
 
     // Open the discard prompt; another sync must not close it.
     w.window.el.querySelector<HTMLButtonElement>('.settings-link[data-page="sound"]')?.click();
     expect(w.isConfirmOpen()).toBe(true);
-    w.sync({ ...base, lowHealthWarning: true }, [], true);
+    w.sync({ ...base, rememberWindowPositions: true }, [], true);
     expect(w.isConfirmOpen()).toBe(true);
     w.window.el.querySelector<HTMLButtonElement>(".settings-stay")?.click();
 
     // Save sends minimal patch, then server rejects -> baseline rolls back, edit stays in DOM.
     w.window.el.querySelector<HTMLButtonElement>(".settings-save")?.click();
     expect(savedReqs).toEqual([{ patch: { showDamageNumbers: false }, id: 1 }]);
-    w.saveResult(false, "Could not save settings.", 1, { ...base, lowHealthWarning: true });
+    w.saveResult(false, "Could not save settings.", 1, { ...base, rememberWindowPositions: true });
     expect(dmg.checked).toBe(false);
     expect(w.window.el.querySelector(".settings-status")?.textContent).toBe(
       "Could not save settings.",
@@ -446,7 +448,7 @@ describe("custom bindings, panel/window hotkeys and tooltips", () => {
 
   test("confirm dialog is not hijacked by gameplay shortcuts and menu shortcuts update after rebind", () => {
     const { root, receive } = startInGame();
-    menuClick(root, "Options", "Settings…");
+    menuClick(root, "Game", "Settings");
     const win = root.querySelector<HTMLElement>(".window-player-settings")!;
     win.querySelector<HTMLButtonElement>('.settings-link[data-page="display"]')?.click();
     const dmg = win.querySelector<HTMLInputElement>('[aria-label="Show damage numbers"]')!;
@@ -522,53 +524,17 @@ describe("custom bindings, panel/window hotkeys and tooltips", () => {
 });
 
 describe("Display, Sound, Chat and Accessibility preferences", () => {
-  test("bars apply colour-blind palette and low health warning at <= 25% HP", () => {
-    const lowEvents: boolean[] = [];
-    const bars = createBars(fakeAssets, (low) => lowEvents.push(low));
+  test("bars apply colour-blind palette while preserving pixelated .art class", () => {
+    const bars = createBars(fakeAssets);
     // Both HP and SP fill images keep the `.art` class (image-rendering: pixelated).
     const fillImgs = [...bars.el.querySelectorAll(".bar-fill-img")];
     expect(fillImgs).toHaveLength(2);
     expect(fillImgs.every((img) => img.classList.contains("art"))).toBe(true);
 
-    bars.setOptions({ colorblind: true, lowHealthWarning: true });
+    bars.setOptions({ colorblind: true });
     expect(bars.el.classList.contains("bars-colorblind")).toBe(true);
-
-    bars.setVitals({ level: 1, hp: 50, hpMax: 100, sp: 10, spMax: 10, exp: 0, expNeeded: 30 });
-    expect(bars.lowHealth).toBe(false);
-    bars.setVitals({ level: 1, hp: 25, hpMax: 100, sp: 10, spMax: 10, exp: 0, expNeeded: 30 });
-    expect(bars.lowHealth).toBe(true);
-    // Boarding a full-hull vehicle clears low health even when character HP is <= 25%.
-    bars.setVitals({
-      level: 1,
-      hp: 25,
-      hpMax: 100,
-      sp: 10,
-      spMax: 10,
-      exp: 0,
-      expNeeded: 30,
-      hull: { hp: 100, max: 100 },
-    });
-    expect(bars.lowHealth).toBe(false);
-    // Low vehicle hull triggers warning; death (hp 0) clears it.
-    bars.setVitals({
-      level: 1,
-      hp: 100,
-      hpMax: 100,
-      sp: 10,
-      spMax: 10,
-      exp: 0,
-      expNeeded: 30,
-      hull: { hp: 20, max: 100 },
-    });
-    expect(bars.lowHealth).toBe(true);
-    bars.setVitals({ level: 1, hp: 0, hpMax: 100, sp: 10, spMax: 10, exp: 0, expNeeded: 30 });
-    expect(bars.lowHealth).toBe(false);
-    // Toggle off also clears active low health.
-    bars.setVitals({ level: 1, hp: 10, hpMax: 100, sp: 10, spMax: 10, exp: 0, expNeeded: 30 });
-    expect(bars.lowHealth).toBe(true);
-    bars.setOptions({ colorblind: true, lowHealthWarning: false });
-    expect(bars.lowHealth).toBe(false);
-    expect(lowEvents).toEqual([true, false, true, false, true, false]);
+    bars.setOptions({ colorblind: false });
+    expect(bars.el.classList.contains("bars-colorblind")).toBe(false);
   });
 
   test("playfield skips drawing floating damage text when showDamageNumbers is false", () => {
@@ -779,9 +745,9 @@ describe("Display, Sound, Chat and Accessibility preferences", () => {
     expect(Number.parseFloat(w.el.style.left)).toBe(440);
   });
 
-  test("app applies larger hover tips, sends minimal prefsSave with requestId, and updates low-health class", () => {
-    const { root, sent, receive } = startInGame();
-    menuClick(root, "Options", "Settings…");
+  test("app applies larger hover tips and sends minimal prefsSave with requestId", () => {
+    const { root, sent } = startInGame();
+    menuClick(root, "Game", "Settings");
     const win = root.querySelector<HTMLElement>(".window-player-settings");
     win?.querySelector<HTMLButtonElement>('.settings-link[data-page="accessibility"]')?.click();
     const large = win?.querySelector<HTMLInputElement>('[aria-label="Larger hover tips"]');
@@ -796,17 +762,5 @@ describe("Display, Sound, Chat and Accessibility preferences", () => {
       prefs: { largerHoverTips: true },
     });
     expect(root.querySelector(".hover-tip")?.classList.contains("hover-tip-large")).toBe(true);
-
-    // Low health warning highlights the game root at <= 25% HP and clears on death (hp 0).
-    receive({
-      t: "vitals",
-      vitals: { level: 1, hp: 5, hpMax: 20, sp: 10, spMax: 20, exp: 0, expNeeded: 30 },
-    });
-    expect(root.querySelector(".game")?.classList.contains("pf-low-hp")).toBe(true);
-    receive({
-      t: "vitals",
-      vitals: { level: 1, hp: 0, hpMax: 20, sp: 10, spMax: 20, exp: 0, expNeeded: 30 },
-    });
-    expect(root.querySelector(".game")?.classList.contains("pf-low-hp")).toBe(false);
   });
 });

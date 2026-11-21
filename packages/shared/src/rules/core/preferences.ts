@@ -144,7 +144,6 @@ export interface PlayerPreferences {
   gameSize: GameSizeMode;
   rememberWindowPositions: boolean;
   showDamageNumbers: boolean;
-  lowHealthWarning: boolean;
 
   // Sound
   sfxEnabled: boolean;
@@ -271,7 +270,6 @@ export function prefsEqual(
     a.gameSize === b.gameSize &&
     a.rememberWindowPositions === b.rememberWindowPositions &&
     a.showDamageNumbers === b.showDamageNumbers &&
-    a.lowHealthWarning === b.lowHealthWarning &&
     a.sfxEnabled === b.sfxEnabled &&
     a.masterVolume === b.masterVolume &&
     a.combatVolume === b.combatVolume &&
@@ -300,7 +298,6 @@ export function localSyncPatch(prefs: Readonly<PlayerPreferences>): PlayerPrefsP
     gameSize: prefs.gameSize,
     rememberWindowPositions: prefs.rememberWindowPositions,
     showDamageNumbers: prefs.showDamageNumbers,
-    lowHealthWarning: prefs.lowHealthWarning,
     sfxEnabled: prefs.sfxEnabled,
     masterVolume: prefs.masterVolume,
     combatVolume: prefs.combatVolume,
@@ -327,7 +324,6 @@ export function defaultPlayerPrefs(): PlayerPreferences {
     gameSize: "fit",
     rememberWindowPositions: true,
     showDamageNumbers: true,
-    lowHealthWarning: true,
 
     sfxEnabled: true,
     masterVolume: 100,
@@ -526,7 +522,6 @@ export const playerPrefsPatchSchema = z.strictObject({
   gameSize: z.enum(["fit", "sharp"]).optional(),
   rememberWindowPositions: z.boolean().optional(),
   showDamageNumbers: z.boolean().optional(),
-  lowHealthWarning: z.boolean().optional(),
   sfxEnabled: z.boolean().optional(),
   masterVolume: volumeSchema.optional(),
   combatVolume: volumeSchema.optional(),
@@ -610,9 +605,6 @@ export function mergePlayerPrefs(
   }
   if (typeof r.showDamageNumbers === "boolean") {
     out.showDamageNumbers = r.showDamageNumbers;
-  }
-  if (typeof r.lowHealthWarning === "boolean") {
-    out.lowHealthWarning = r.lowHealthWarning;
   }
   if (typeof r.sfxEnabled === "boolean") {
     out.sfxEnabled = r.sfxEnabled;

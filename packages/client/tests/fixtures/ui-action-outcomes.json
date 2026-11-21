@@ -5940,7 +5940,7 @@
     "action": "menu-open-game",
     "tag": "BUTTON",
     "events": ["click", "pointerenter"],
-    "hidden": true,
+    "hidden": false,
     "changed": true,
     "calls": [],
     "errors": []
@@ -5959,15 +5959,6 @@
     "tag": "BUTTON",
     "events": ["click", "pointerenter"],
     "hidden": true,
-    "changed": true,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "menu-open-options",
-    "tag": "BUTTON",
-    "events": ["click", "pointerenter"],
-    "hidden": false,
     "changed": true,
     "calls": [],
     "errors": []

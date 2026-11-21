@@ -167,7 +167,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   let inFlightPrefsId: number | null = null;
   let nextAutoPrefsReqId = 1_000_000;
   let ignores: string[] = [];
-  let lowHpActive = false;
   let onlineFriends = new Set<string>();
   let friendsReady = false;
   let lastPresenceOn: string | null = null;
@@ -279,13 +278,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   });
   /** Your character's name (the IM reply echo). */
   let myName = "";
-  const syncLowHp = () => {
-    game?.root.classList.toggle("pf-low-hp", lowHpActive);
-  };
-  const bars = createBars(assets, (low) => {
-    lowHpActive = low;
-    syncLowHp();
-  });
+  const bars = createBars(assets);
   const audio = createAudio(assets, prefs.sfxEnabled, undefined, undefined, undefined, () => {
     model.sounds.length = 0;
   });
@@ -569,10 +562,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       backgroundAudio: next.backgroundAudio,
     });
     playfield.showDamageNumbers = next.showDamageNumbers;
-    bars.setOptions({
-      colorblind: next.colorblindBars,
-      lowHealthWarning: next.lowHealthWarning,
-    });
+    bars.setOptions({ colorblind: next.colorblindBars });
     chat.setTextSize(next.chatTextSize);
     chat.setTimestamps(next.chatTimestamps);
     panel.tips.setLarge(next.largerHoverTips);
@@ -867,7 +857,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       viewer: paintUi.viewer,
     });
     game = view;
-    syncLowHp();
     container.replaceChildren(view.root);
     relayout();
   };
@@ -1350,7 +1339,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     settingsWin.window.close();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
-    bars.reset();
     ignores = [];
     friendsReady = false;
     onlineFriends = new Set();

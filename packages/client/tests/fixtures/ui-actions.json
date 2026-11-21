@@ -721,11 +721,6 @@
   },
   "menu-open-game": {
     "count": 1,
-    "hidden": 1,
-    "disabled": 0
-  },
-  "menu-open-options": {
-    "count": 1,
     "hidden": 0,
     "disabled": 0
   },

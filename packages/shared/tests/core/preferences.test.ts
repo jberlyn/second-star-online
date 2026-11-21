@@ -22,7 +22,6 @@ describe("player preferences rules", () => {
     expect(d.gameSize).toBe("fit");
     expect(d.rememberWindowPositions).toBe(true);
     expect(d.showDamageNumbers).toBe(true);
-    expect(d.lowHealthWarning).toBe(true);
     expect(d.sfxEnabled).toBe(true);
     expect([d.masterVolume, d.combatVolume, d.spellsVolume, d.worldVolume]).toEqual([
       100, 100, 100, 100,
@@ -109,7 +108,7 @@ describe("player preferences rules", () => {
     expect(merged.chatTextSize).toBe("large");
     expect(merged.keyBindings.moveUp).toEqual(["KeyW", null]);
     expect(merged.keyBindings.attack).toEqual([null, null]);
-    expect(merged.lowHealthWarning).toBe(true);
+    expect(merged.showDamageNumbers).toBe(true);
   });
 
   test("playerPrefsPatchSchema validates strictly and rejects unknown keys or out-of-range volumes", () => {
@@ -123,5 +122,12 @@ describe("player preferences rules", () => {
         keyBindings: { ...presetBindings("modern"), attack: ["MetaLeft", null] },
       }).success,
     ).toBe(false);
+  });
+
+  test("unknown legacy preference keys (such as removed lowHealthWarning) are dropped on load and rejected on save", () => {
+    const merged = mergePlayerPrefs({ lowHealthWarning: false, showDamageNumbers: false });
+    expect(merged).not.toHaveProperty("lowHealthWarning");
+    expect(merged.showDamageNumbers).toBe(false);
+    expect(playerPrefsPatchSchema.safeParse({ lowHealthWarning: true }).success).toBe(false);
   });
 });

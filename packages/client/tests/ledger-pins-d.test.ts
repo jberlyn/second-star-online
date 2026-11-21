@@ -184,8 +184,8 @@ describe("Title and login screens in a browser", () => {
 describe("In-game sound effects switch", () => {
   const openSoundToggle = (root: HTMLElement) => {
     const item = [
-      ...(openMenu(root, "Options")?.querySelectorAll<HTMLElement>(".menu-item") ?? []),
-    ].find((e) => e.textContent === "Settings…");
+      ...(openMenu(root, "Game")?.querySelectorAll<HTMLElement>(".menu-item") ?? []),
+    ].find((e) => e.textContent === "Settings");
     item?.click();
     const win = root.querySelector<HTMLElement>(".window-player-settings");
     win?.querySelector<HTMLButtonElement>('.settings-link[data-page="sound"]')?.click();

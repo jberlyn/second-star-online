@@ -200,10 +200,10 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     c.onMessage(SNAPSHOT);
     for (const permissions of [[], [...MODERATOR.permissions]]) {
       c.onMessage({ t: "permissions", permissions });
-      expect(titles(root)).toEqual(["Game", "Chat", "Options"]);
+      expect(titles(root)).toEqual(["Game", "Chat"]);
     }
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
-    expect(titles(root)).toEqual(["Game", "Chat", "Admin", "Options"]);
+    expect(titles(root)).toEqual(["Game", "Chat", "Admin"]);
     c.onMessage({ t: "permissions", permissions: [...MODERATOR.permissions] });
     expect(titles(root)).not.toContain("Admin");
     app.stop();
@@ -225,6 +225,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
       "Send Instant Message",
       "Edit Newspaper",
       "-",
+      "Settings",
       "Return To Title Screen",
     ]);
     expect(menuTexts(root, "Chat")).toEqual([
