@@ -7,7 +7,7 @@ There are three vehicles: the Airship, the Boat and the Battleship.
 - **Airship:** use an Airship Deed while standing still and facing an empty landing pad to build it. Face it and click it or press Ctrl to board; when you reach an empty landing pad, use Ctrl to park and get off.
 - **Boat and Battleship:** use the deed while standing still on the shore and facing open water to build the ship there. Face it from the shore and click it or press Ctrl to board. It sails only on water, at walking pace. To get off, stop beside the shore, face a free tile of land and press Ctrl: you step ashore and the ship stays parked on the water.
 
-Only the owner can board. Hits on a rider wear the vehicle's hull instead of the rider's HP, and the HP bar shows the hull while aboard.
+Only the owner can board. Hits on a rider wear the vehicle's hull instead of the rider's HP, and the HP bar shows the hull while aboard. A player may own any number of vehicles. Building one is one way: a vehicle cannot be turned back into its deed. Where players get deeds and Cannonballs (shops, quests, monster loot) is up to the server's operator; the stock content gives none.
 
 - **The Battleship's cannon:** press the attack key aboard a battleship to fire a cannonball straight ahead. Each shot uses a Cannonball from your bag, and the cannon reloads for about 5 seconds. The ball stops at the first player, monster or vehicle it meets, at a tile an airship could not cross, or at the edge of the screen. The boat has no cannon.
 
