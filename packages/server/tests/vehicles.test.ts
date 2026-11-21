@@ -200,7 +200,7 @@ describe("boarding", () => {
       "You see Ann's Airship.",
     ]);
   });
-  test("already aboard: a click on another airship is silent", () => {
+  test("divergence: already aboard, a click on another airship says whose it is", () => {
     const s = aboard();
     s.map.ground.push({
       id: "z",
@@ -210,7 +210,10 @@ describe("boarding", () => {
       kind: "drop",
       expiresAt: null,
     });
-    expect(pickupIntent(s.ctx(), s.room, s.ann, "z")).toEqual([]);
+    expect(chat(pickupIntent(s.ctx(), s.room, s.ann, "z"), "Ann")).toEqual([
+      "You see Ann's Airship.",
+    ]);
+    expect(s.map.ground.some((g) => g.id === "z")).toBe(true);
   });
   test("an item with no owner id falls back to the 1.6 name test", () => {
     const s = scene();

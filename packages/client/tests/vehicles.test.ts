@@ -14,7 +14,7 @@ import {
   type Intent,
   lenOf,
 } from "../src/model.ts";
-import { bodyFrame } from "../src/playfield.ts";
+import { bodyFrame, SHIP_SWELL_TICKS } from "../src/playfield.ts";
 
 const rows = (code: string) => Array.from({ length: 12 }, () => Array(17).fill(code).join(" "));
 const map: MapView = {
@@ -135,5 +135,26 @@ describe("the rider's frames", () => {
   test("mid-step an 8-frame step shows F1, F2, F3, F2 (counters 8, 6, 4, 2)", () => {
     const { m } = setup(57);
     expect([7, 5, 3, 1].map((left) => bodyFrame(m, 57, left))).toEqual(["F1", "F2", "F3", "F2"]);
+  });
+  test("SSO: a ship rides a slow swell, F1 to F4 every 0.4 s, standing or sailing", () => {
+    const { m } = setup(55);
+    expect(SHIP_SWELL_TICKS).toBe(8);
+    for (const body of [55, 56]) {
+      for (const left of [0, 9]) {
+        const seen: string[] = [];
+        for (let t = 0; t < 40; t++) {
+          m.tick = t;
+          seen.push(bodyFrame(m, body, left));
+        }
+        const held = (f: string) => Array<string>(8).fill(f);
+        expect(seen).toEqual([
+          ...held("F1"),
+          ...held("F2"),
+          ...held("F3"),
+          ...held("F4"),
+          ...held("F1"),
+        ]);
+      }
+    }
   });
 });

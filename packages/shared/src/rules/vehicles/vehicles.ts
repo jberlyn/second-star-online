@@ -137,13 +137,14 @@ export function ownerName(item: string): string {
   return i < 0 ? item : item.slice(0, i);
 }
 
-export type BoardResult = "silent" | "board" | "notYours" | "see";
+export type BoardResult = "board" | "notYours" | "see";
 
 /**
- * The airship click. Aboard already → nothing. The airship must be the tile I face and I must be
- * standing on my own tile (the original compares sprite positions): the tile one step back from the
- * item along my facing is mine. Then the owner boards; anyone else is told it isn't theirs.
- * Otherwise: "You see <owner>'s Airship."
+ * The vehicle click. Aboard already → "You see <owner>'s Airship." (1.6 said nothing; SSO lets a
+ * rider look). The vehicle must be the tile I face and I must be standing on my own tile (the
+ * original compares sprite positions): the tile one step back from the item along my facing is
+ * mine. Then the owner boards; anyone else is told it isn't theirs. Otherwise: "You see <owner>'s
+ * Airship."
  */
 export function boardCheck(a: {
   vehicle: Vehicle | null;
@@ -154,7 +155,7 @@ export function boardCheck(a: {
   isOwner: boolean;
 }): BoardResult {
   if (a.vehicle !== null) {
-    return "silent";
+    return "see";
   }
   const [dx, dy] = FACING_DELTA[a.facing];
   const behindX = a.item.x - dx;

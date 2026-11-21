@@ -1,8 +1,8 @@
 {
   "group": "bodies",
-  "regX": 12,
-  "regY": 13,
+  "regX": 10,
+  "regY": 0,
   "key": "none",
   "prov": "authored",
-  "note": "Battleship rider, south-facing frame 4"
+  "note": "Battleship rider, south-facing swell frame 4, from the docked BattleshipPic"
 }

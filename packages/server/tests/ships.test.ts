@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { rectsData } from "@secondstaronline/data/rects";
 import {
   DEFAULT_DEATH_DROPS,
   type DeltaEvent,
@@ -17,6 +18,7 @@ import {
   actionIntent,
   dropIntent,
   type ItemCtx,
+  pickupIntent,
   useIntent,
 } from "../src/systems/inventory/items.ts";
 import { walkWorld } from "../src/systems/movement/movement.ts";
@@ -251,6 +253,35 @@ describe("aboard", () => {
     const out = dropIntent(s.ctx(), s.room, s.ann, 2, 1);
     expect(chat(out, "Ann")).toEqual(["You can't drop this into the ocean!"]);
     expect(s.ann.char.bag[1]).toEqual({ item: "Apple", qty: 1 });
+  });
+  test("divergence: a click on a parked ship from aboard says whose it is", () => {
+    const s = aboard();
+    s.map.ground.push({
+      id: "bs",
+      item: "Bob's Battleship",
+      ownerId: "Bob",
+      x: 10,
+      y: 5,
+      kind: "drop",
+      expiresAt: null,
+    });
+    s.ann.itemPause = 0;
+    expect(chat(pickupIntent(s.ctx(), s.room, s.ann, "bs"), "Ann")).toEqual([
+      "You see Bob's battleship.",
+    ]);
+    // Ann still rides her own boat; Bob's stays parked.
+    expect([s.ann.vehicle, parked(s.map, 10, 5)?.item]).toEqual(["Boat", "Bob's Battleship"]);
+  });
+  test("every ship frame's rect holds the rider's registration point, where tile-aimed shots go", () => {
+    const frames = Object.entries(rectsData.chars).filter(([k]) => /^5[56]-/.test(k));
+    expect(frames.length).toBe(44);
+    for (const [name, [w, h, regX, regY]] of frames) {
+      expect({ name, inX: regX >= 0 && regX < w, inY: regY >= 0 && regY < h }).toEqual({
+        name,
+        inX: true,
+        inY: true,
+      });
+    }
   });
   test("no swing aboard", () => {
     const s = aboard();

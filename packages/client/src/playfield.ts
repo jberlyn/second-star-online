@@ -33,6 +33,7 @@ import {
   groundOverlay,
   groundPicture,
   groundPictureTopLeft,
+  isShip,
   MAP_HEIGHT,
   MAP_WIDTH,
   type MapView,
@@ -97,13 +98,21 @@ export const NAME_TAG = {
 };
 
 /**
- * The frame a body shows: a standing Airship rider cycles F2, F3, F1 on the client's own counter;
- * everyone else, and a rider mid-step, the walk frame for their step length (an 8-frame step shows
- * F1, F2, F3, F2).
+ * The frame a body shows. A Boat or Battleship rides a slow swell, F1 to F4, each held
+ * `SHIP_SWELL_TICKS` on the client's own counter, standing or sailing. A standing Airship rider
+ * cycles F2, F3, F1 a tick (its propeller); everyone else, and an Airship mid-step, shows the walk
+ * frame for their step length (an 8-frame step shows F1, F2, F3, F2).
  */
 const RIDER_FRAMES = ["F2", "F3", "F1"] as const;
+const SWELL_FRAMES = ["F1", "F2", "F3", "F4"] as const;
+/** Ticks a ship holds each swell frame: 8 is 0.4 s, a full swell 1.6 s. */
+export const SHIP_SWELL_TICKS = 8;
 export function bodyFrame(model: Model, body: number | null, frames: number): BodyFrame {
-  if (vehicleOfBody(body) !== null && frames <= 0) {
+  const vehicle = vehicleOfBody(body);
+  if (isShip(vehicle)) {
+    return SWELL_FRAMES[Math.floor(model.tick / SHIP_SWELL_TICKS) % 4] ?? "F1";
+  }
+  if (vehicle !== null && frames <= 0) {
     return RIDER_FRAMES[model.tick % 3] ?? "F2";
   }
   return walkFrame(frames, lenOf(body));

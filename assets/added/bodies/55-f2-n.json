@@ -1,8 +1,8 @@
 {
   "group": "bodies",
-  "regX": 9,
-  "regY": 7,
+  "regX": 10,
+  "regY": 0,
   "key": "none",
   "prov": "authored",
-  "note": "Boat rider, north-facing frame 2"
+  "note": "Boat rider, north-facing swell frame 2, from the docked BoatPic"
 }

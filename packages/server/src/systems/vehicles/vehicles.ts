@@ -120,9 +120,9 @@ export function vehicleDeed(
 }
 
 /**
- * From a click and from Ctrl on foot: the owner boards, anyone else is told it is not theirs. An
- * item with no owner id (an operator's `/drop` or a World Editor placement) falls back to 1.6's
- * name test.
+ * From a click and from Ctrl: the owner on foot boards, anyone else on foot is told it is not
+ * theirs, and a rider is told whose it is. An item with no owner id (an operator's `/drop` or a
+ * World Editor placement) falls back to 1.6's name test.
  */
 export function vehicleClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem): Outgoing[] {
   const io = new ItemOut(room);
@@ -139,9 +139,6 @@ export function vehicleClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem)
     item: { x: g.x, y: g.y },
     isOwner,
   });
-  if (r === "silent") {
-    return io.out;
-  }
   const ship = isShip(vehicle) ? shipNoun(vehicle) : null;
   if (r === "notYours") {
     io.tell(p, ship ? SHIP_TEXT.notYours(ship) : VEHICLE_TEXT.notYours);

@@ -95,8 +95,9 @@ describe("AirshipClick", () => {
   test("mid-step: the airship is never on my tile, so you only see it", () => {
     expect(boardCheck({ ...base, stepFrames: 4 })).toBe("see");
   });
-  test("already aboard: silent", () => {
-    expect(boardCheck({ ...base, vehicle: "Airship" })).toBe("silent");
+  test("divergence: already aboard, a click only says whose it is", () => {
+    expect(boardCheck({ ...base, vehicle: "Airship" })).toBe("see");
+    expect(boardCheck({ ...base, vehicle: "Boat", isOwner: false })).toBe("see");
   });
   test("ownerName is the text before the first apostrophe", () => {
     expect(ownerName("Ann's Airship")).toBe("Ann");

@@ -829,7 +829,7 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
   if (gate.kind === "silent") {
     return io.out;
   }
-  // The vehicle click: board it or say whose it is; silent aboard.
+  // The vehicle click: board it or say whose it is, aboard too.
   if (gate.kind === "vehicle") {
     return vehicleClick(ctx, room, p, g);
   }

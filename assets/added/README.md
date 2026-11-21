@@ -74,9 +74,9 @@ New art or sound that changes what players see or hear gets a `docs/differences-
 Some added art is made by a script instead of drawn by hand. Change the script and run it again
 rather than editing its output:
 
-- `bodies/55-*` (Boat) and `bodies/56-*` (Battleship) rider frames:
-  `bun packages/data/build/art/ships.ts`, then `bun run data:build`. Add `--preview <dir>` for a
-  contact sheet and previews on water.
+- `bodies/55-*` (Boat) and `bodies/56-*` (Battleship) rider frames, built from the docked
+  `BoatPic` and `BattleshipPic`: `bun packages/data/build/art/ships.ts`, then `bun run data:build`.
+  Add `--preview <dir>` for a contact sheet on water.
 - `fx/CannonballShot*` (the Battleship's shot) and `items/CannonballBag` (the Cannonball's
   13 px icon, shown in place of the 1.6 one): `bun packages/data/build/art/cannonball.ts`, then
   `bun run data:build`. Add `--preview <dir>` for a preview sheet.

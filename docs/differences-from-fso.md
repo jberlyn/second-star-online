@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 68 |
-| [Fixed bugs](#fixed-bugs) | 293 |
+| [Fixed bugs](#fixed-bugs) | 294 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **545** |
+| **Total** | **546** |
 
 By system (the code folder that holds the change):
 
@@ -55,7 +55,7 @@ By system (the code folder that holds the change):
 | progression | [9](#progression) | [4](#server-side-progression) |
 | social | [21](#social) | [9](#server-side-social) |
 | spells | [24](#spells) | [9](#server-side-spells) |
-| vehicles | [3](#vehicles) | [1](#server-side-vehicles) |
+| vehicles | [4](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
 
 ## Design changes
@@ -3323,10 +3323,19 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A Boat Deed or Battleship Deed builds the ship on the open water you face. From the shore you face it and press Ctrl or click it to board, as its owner. It sails at walking pace, only on water. To get off, face a free tile of land and press Ctrl: you step ashore and the ship stays parked. A battleship rider is body 56, a boat rider body 55.
 - **1.6:** The whole boat flow was written (building on W1, N1, D2 or I2, boarding, parking, and the lines), but the deed handler exited before calling the builder, so the deeds did nothing. Nothing gave a ship a water-only walk grid, so it could have sailed over land, and the cast had no body-55 or body-56 frames.
-- **SSO:** The deeds build their ships. A ship moves on its own grid: layer-1 tiles flagged `sea` (W1, N1, D2, I2, V2), read as sea monsters read them, so the shoreline art drawn on layer 2 over the water does not stop it. It blocks like a walker, as 1.6 wrote it, and a parked ship blocks too. Getting off needs a tile a walker could step onto: walkable, not an exit, and free of players, monsters and blocking items. 1.6 checked a fixed list of ground tiles. The lines are 1.6's, except that a battleship is called a battleship and not a boat. The rider art is new (`packages/data/build/art/ships.ts`). Hulls, sinking and arenas follow [Vehicles have their own hull](#vehicles-have-their-own-hull) and [Arenas are for players on foot](#arenas-are-for-players-on-foot).
+- **SSO:** The deeds build their ships. A ship moves on its own grid: layer-1 tiles flagged `sea` (W1, N1, D2, I2, V2), read as sea monsters read them, so the shoreline art drawn on layer 2 over the water does not stop it. It blocks like a walker, as 1.6 wrote it, and a parked ship blocks too. Getting off needs a tile a walker could step onto: walkable, not an exit, and free of players, monsters and blocking items. 1.6 checked a fixed list of ground tiles. The lines are 1.6's, except that a battleship is called a battleship and not a boat. The rider art (`packages/data/build/art/ships.ts`) is built from the docked BoatPic and BattleshipPic, as 1.6's Airship rider frames reuse AirshipPic: east is the docked sprite, west its mirror, and north and south are cut from its own pixels, so a ship looks the same parked and ridden. It rides a slow swell: F1 to F4, each held 0.4 s (`SHIP_SWELL_TICKS`), standing or sailing, where the Airship's frames change every tick. Hulls, sinking and arenas follow [Vehicles have their own hull](#vehicles-have-their-own-hull) and [Arenas are for players on foot](#arenas-are-for-players-on-foot).
 - **Why:** The ships were designed, written and sold as deeds in 1.6, and stopped short only of being switched on ([#2](https://github.com/jberlyn/second-star-online/issues/2)). Without a water grid a ship would cross land, and a fixed tile list would miss newer tiles.
-- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`shipDeedCheck`, `shipUnboardCheck`, `VEHICLE_BODY`), `packages/shared/src/rules/core/walk.ts` (`shipWalkGrid`), `packages/server/src/systems/vehicles/vehicles.ts`, `packages/server/src/systems/movement/movement.ts` (`walkWorld`), `packages/server/migrations/20261121_44_ship_vehicles.sql`
-- **Pinned by:** `bug fixed: a Boat Deed builds the boat on the faced water and is used up`; `from the shore: you move onto the boat, body 55, a full hull of 60`; `a ship sails only on water, at walking pace`; `onto the faced shore: you step ashore and the boat parks with its hull`; `divergence: a ship crosses a map edge only onto water; an airship onto anything` (packages/server/tests/ships.test.ts); `bug fixed: the Boat and Battleship Deeds build their ships` (packages/shared/tests/housing/houses.test.ts); `SSO: a ship sails on sea tiles, shoreline art on layer 2 included`; `divergence: getting off needs a tile a walker could take, not 1.6's fixed list` (packages/shared/tests/vehicles/vehicles.test.ts); `bug fixed: a Boat Deed away from water says so and is kept` (packages/server/tests/houses-db.test.ts)
+- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`shipDeedCheck`, `shipUnboardCheck`, `VEHICLE_BODY`), `packages/shared/src/rules/core/walk.ts` (`shipWalkGrid`), `packages/server/src/systems/vehicles/vehicles.ts`, `packages/server/src/systems/movement/movement.ts` (`walkWorld`), `packages/client/src/playfield.ts` (`bodyFrame`), `packages/server/migrations/20261121_44_ship_vehicles.sql`
+- **Pinned by:** `bug fixed: a Boat Deed builds the boat on the faced water and is used up`; `from the shore: you move onto the boat, body 55, a full hull of 60`; `a ship sails only on water, at walking pace`; `onto the faced shore: you step ashore and the boat parks with its hull`; `divergence: a ship crosses a map edge only onto water; an airship onto anything` (packages/server/tests/ships.test.ts); `bug fixed: the Boat and Battleship Deeds build their ships` (packages/shared/tests/housing/houses.test.ts); `SSO: a ship sails on sea tiles, shoreline art on layer 2 included`; `divergence: getting off needs a tile a walker could take, not 1.6's fixed list` (packages/shared/tests/vehicles/vehicles.test.ts); `bug fixed: a Boat Deed away from water says so and is kept` (packages/server/tests/houses-db.test.ts); `SSO: a ship rides a slow swell, F1 to F4 every 0.4 s, standing or sailing` (packages/client/tests/vehicles.test.ts)
+
+#### A rider can see whose vehicle it is
+- **Kind:** Bug fixed
+- **What you notice:** Riding an airship, boat or battleship, clicking a parked vehicle (or pressing Ctrl facing one) tells you whose it is, "You see Bob's battleship.", as it does on foot. It never boards it.
+- **1.6:** The airship click returned before any text while you rode an airship, so clicking another vehicle from aboard did nothing.
+- **SSO:** `boardCheck` answers `see` for any rider, so the server sends the same line a player on foot gets when not facing the vehicle.
+- **Why:** Looking at things is harmless, and with boats and battleships parked along a shore, a sailor needs to tell whose ship is whose.
+- **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`boardCheck`), `packages/server/src/systems/vehicles/vehicles.ts` (`vehicleClick`)
+- **Pinned by:** `divergence: already aboard, a click only says whose it is` (packages/shared/tests/vehicles/vehicles.test.ts); `divergence: already aboard, a click on another airship says whose it is` (packages/server/tests/vehicles.test.ts); `divergence: a click on a parked ship from aboard says whose it is` (packages/server/tests/ships.test.ts)
 
 #### The Battleship's cannon fires
 - **Kind:** Bug fixed
