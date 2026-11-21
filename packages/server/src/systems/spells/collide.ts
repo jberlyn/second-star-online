@@ -5,6 +5,9 @@
 import { monstersData } from "@secondstaronline/data";
 import {
   can,
+  cannonballSweep,
+  cannonballTile,
+  cannonDamage,
   checkLevelUp,
   createFood,
   type DeltaEvent,
@@ -17,6 +20,7 @@ import {
   HULL_HIT_DAMAGE,
   invAdd,
   inxitionText,
+  isCannonball,
   LEVEL_UP_TEXT,
   lingoContains,
   meleeKillXp,
@@ -31,6 +35,7 @@ import {
   rollLoot,
   type SpellTarget,
   spellHitOnMonster,
+  vehicleOfItem,
   xpGained,
 } from "@secondstaronline/shared";
 
@@ -135,7 +140,8 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
   const spared = (fx: SpellFx) => mine(fx) || (off && fx.ownerId !== null);
   for (const fx of room.fx) {
     const r = fxRect(fx);
-    if (!r || !rectsIntersect(r, me)) {
+    // A cannonball shot is handled by `cannonballHits`.
+    if (!r || !rectsIntersect(r, me) || isCannonball(fx.name)) {
       continue;
     }
     const m = fxMember({ name: fxEffect(fx.name), frame: fx.frame });
@@ -312,6 +318,9 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
       if (!m) {
         break;
       }
+      if (isCannonball(fx.name)) {
+        continue;
+      }
       const fr = fxRect(fx);
       const mr = monsterRect(slot);
       if (!fr || !mr || !rectsIntersect(fr, mr)) {
@@ -355,6 +364,106 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
       });
     }
   }
+}
+
+/**
+ * The Battleship's cannonball shots (an SSO addition), after each FX step: a shot stops at the
+ * first player, monster or parked vehicle its shadow has passed over since the last test
+ * (`cannonballSweep`, from the edge of the rider's tile at first; the vehicle by tile), and everyone sees it go. A player takes
+ * `cannonDamage` off HP, or off the hull aboard, armour or not; a monster the same, whatever its
+ * defense. Players are passed over where the map's PvP is off (a rider's shot is never an arena
+ * hit), as are the shooter and anyone dead or loading. A parked vehicle stops the shot unharmed.
+ */
+export function cannonballHits(room: Room, ctx: CollideCtx, res: CollideOut): void {
+  for (const fx of room.fx) {
+    if (fx.gone || !isCannonball(fx.name)) {
+      continue;
+    }
+    const r = cannonballSweep(fx.sweptTo ?? fx, fx);
+    fx.sweptTo = { h: fx.h, v: fx.v };
+    const pvpOn = room.map.flags.canPvp !== "O";
+    const victim = room.players.find(
+      (p) =>
+        pvpOn &&
+        p.id !== fx.ownerId &&
+        p.deadLock === 0 &&
+        p.loading === 0 &&
+        rectsIntersect(r, playerRect(p, ctx.tick)),
+    );
+    const slot = victim
+      ? undefined
+      : room.map.slots.find((sl) => {
+          const mr = sl.live ? monsterRect(sl) : null;
+          return mr !== null && rectsIntersect(r, mr);
+        });
+    const t = cannonballTile(fx.h, fx.v);
+    const vehicle =
+      victim || slot
+        ? undefined
+        : room.map.ground.find((g) => g.x === t.x && g.y === t.y && vehicleOfItem(g.item));
+    if (!victim && !slot && !vehicle) {
+      continue;
+    }
+    fx.gone = true;
+    res.events.push({ e: "fxend", slot: fx.slot, name: fx.name });
+    if (victim) {
+      shellPlayer(victim, fx, ctx, res);
+    } else if (slot) {
+      shellMonster(room, slot, fx, ctx, res);
+    }
+  }
+  room.fx = room.fx.filter((f) => !f.gone);
+}
+
+/** A cannonball hit on a player: off the hull aboard, off HP on foot. */
+function shellPlayer(p: Player, fx: SpellFx, ctx: CollideCtx, res: CollideOut): void {
+  if (can(p.role, "invulnerable")) {
+    return;
+  }
+  const dmg = cannonDamage(ctx.rng);
+  const v = p.char.vitals;
+  if (p.vehicle !== null && p.hull !== null) {
+    p.hull = p.hull <= dmg ? 0 : p.hull - dmg;
+  } else {
+    v.hp = v.hp <= dmg ? 0 : v.hp - dmg;
+  }
+  p.lastToHitMe = fx.owner;
+  p.lastToHitId = fx.ownerId ?? null;
+  p.hitAge = 0;
+  p.flicker = FLICKER_FRAMES;
+  p.vitalsDirty = true;
+  res.events.push({ e: "phit", id: p.id, text: String(dmg), color: SPELL_HIT_COLOR });
+}
+
+/** A cannonball hit on a monster: a spell's floatie, a Passive monster provoked, the death check. */
+function shellMonster(
+  room: Room,
+  slot: MonsterSlot,
+  fx: SpellFx,
+  ctx: CollideCtx,
+  res: CollideOut,
+): void {
+  const m = slot.live;
+  if (!m) {
+    return;
+  }
+  const dmg = cannonDamage(ctx.rng);
+  m.hp -= dmg;
+  slot.dirty = true;
+  if (fx.ownerId !== null && hasFlag(room.npcs, m.name, "Passive")) {
+    for (const o of room.players) {
+      o.npcAttackFlag = true;
+    }
+  }
+  const kill = checkForDead(room, slot, fx, ctx, res);
+  res.events.push({
+    e: "mspell",
+    slot: slot.slot,
+    text: String(dmg),
+    color: MONSTER_SPELL_HIT_COLOR,
+    splat: true,
+    kill,
+  });
 }
 
 /**

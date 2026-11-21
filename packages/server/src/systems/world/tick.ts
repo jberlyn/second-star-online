@@ -95,6 +95,7 @@ import {
 import {
   type CollideCtx,
   type CollideOut,
+  cannonballHits,
   monsterHits,
   playerCollision,
 } from "../spells/collide.ts";
@@ -338,6 +339,31 @@ export function tick(world: World, deps: TickDeps): TickResult {
 
       // 3b. The spell FX sprites' `stepFrame` (channels 260+).
       advanceFx(room);
+      // 3c. Cannonball shots stop at what they meet (an SSO addition).
+      if (room.fx.length > 0) {
+        const shots: CollideOut = {
+          events: [],
+          out: [],
+          portals: [],
+          slotsChanged: false,
+          broadcasts: [],
+        };
+        cannonballHits(room, collideCtx, shots);
+        for (const ev of shots.events) {
+          all(ev);
+        }
+        out.push(...shots.out);
+        for (const b of shots.broadcasts) {
+          for (const o of world.players.values()) {
+            if (hears(o, b.from)) {
+              tell(o, b.text);
+            }
+          }
+        }
+        if (shots.slotsChanged) {
+          slotEvent = true;
+        }
+      }
     };
 
     // 4. The frame script: the counters. The NPC spell block counts down at its top, then its
@@ -447,6 +473,9 @@ export function tick(world: World, deps: TickDeps): TickResult {
       // The crafting counters: Smith, Cook, Build, Mix.
       out.push(...craftStep(room, p, { world, rng }, itemCtx.now));
       tickAttackTimers(p.timers);
+      if (p.cannonReload > 0) {
+        p.cannonReload -= 1;
+      }
       // Rest regen in a house.
       restRegen(p, rng);
       // The buff counters: Hold and Stone Skin, the attack counter (Argon's Fist, the Purple

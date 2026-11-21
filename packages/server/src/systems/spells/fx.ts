@@ -9,7 +9,11 @@
  *   32 px) stays until its slot is reused.
  */
 import {
+  cannonballDir,
+  cannonballLaunchFrom,
+  cannonballLaunchTiles,
   type DeltaEvent,
+  isWalkable,
   newFx,
   placeFx,
   type Rng,
@@ -97,14 +101,31 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
       ev.caster = caster.id;
     }
     res.events.push(ev);
+    // A cannonball shot whose way out is over a tile an Airship cannot cross stops at once: the
+    // shot is heard and seen fired, and nothing flies.
+    const shot = cannonballDir(q.name);
+    if (shot) {
+      fx.sweptTo = cannonballLaunchFrom({ h: casterH, v: casterV }, shot);
+    }
+    if (shot && cannonballLaunchTiles({ h: casterH, v: casterV }, shot).some(shotBlocked(room))) {
+      fx.gone = true;
+      room.fx = room.fx.filter((f) => f !== fx);
+      res.events.push({ e: "fxend", slot, name: q.name });
+    }
   }
   return res;
 }
 
+/** A tile a cannonball shot cannot pass: one an Airship cannot cross. */
+export function shotBlocked(room: Room): (t: { x: number; y: number }) => boolean {
+  return (t) => !isWalkable(room.map.walkAir, t.x, t.y);
+}
+
 /** Every FX's `stepFrame`, before the frame's scripts; finished ones go. */
 export function advanceFx(room: Room): void {
+  const blocked = shotBlocked(room);
   for (const fx of room.fx) {
-    stepFx(fx);
+    stepFx(fx, (x, y) => blocked({ x, y }));
   }
   room.fx = room.fx.filter((f) => !f.gone);
 }

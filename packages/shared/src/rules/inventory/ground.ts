@@ -101,8 +101,8 @@ export function showsClockFace(picture: string): boolean {
 /**
  * The picture a bag line shows (the bag-line drawing): a name that contains "cabinet" (not "Wind"),
  * "wind cabinet", "Painting", "Photo", "cauldron" or "crate" is drawn from that pool's picture, the
- * last test to match winning; any other name is its own member. The pools hold the carried
- * containers' and art's `Name#n` pictures.
+ * last test to match winning; any other name is its own member, unless SSO has drawn it a new
+ * picture (`ADDED_PICTURES`). The pools hold the carried containers' and art's `Name#n` pictures.
  */
 export function bagPicture(name: string): string {
   let pic = name;
@@ -124,7 +124,18 @@ export function bagPicture(name: string): string {
   if (lingoContains(name, "crate")) {
     pic = "CrateBag";
   }
-  return pic;
+  return ADDED_PICTURES[name.toLowerCase()] ?? pic;
+}
+
+/**
+ * Items whose picture is added art drawn in place of their 1.6 member, which stays in the atlas:
+ * the Cannonball's 13 px icon (issue #2).
+ */
+const ADDED_PICTURES: Readonly<Record<string, string>> = { cannonball: "CannonballBag" };
+
+/** The member an item on the ground shows when it has no custom picture: added art, or the name. */
+export function groundMember(name: string): string {
+  return ADDED_PICTURES[name.toLowerCase()] ?? name;
 }
 
 /** The picture a ground item shows: an atlas name, or the name. */

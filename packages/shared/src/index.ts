@@ -78,4 +78,5 @@ export * from "./rules/social/guilds.ts";
 export * from "./rules/social/highscores.ts";
 export * from "./rules/spells/spellfx.ts";
 export * from "./rules/spells/spells.ts";
+export * from "./rules/vehicles/cannon.ts";
 export * from "./rules/vehicles/vehicles.ts";

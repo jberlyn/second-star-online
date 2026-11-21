@@ -15,8 +15,11 @@ import {
   advancedText,
   attackPower,
   bowRefusal,
+  CANNON_RELOAD_FRAMES,
+  CANNON_TEXT,
   type CrystalColour,
   can,
+  cannonballSlot,
   checkLevelUp,
   crystalSlotIn,
   damagedForm,
@@ -52,7 +55,7 @@ import { addGround, ItemOut } from "../inventory/items.ts";
 import { DODGE_COLOR, fighterOf, HIT_COLOR } from "../monsters/attack.ts";
 import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, isFootprint, type MonsterSlot, species } from "../monsters/slots.ts";
-import { shootArrow, swingFireballs } from "../spells/cast.ts";
+import { fireCannonball, shootArrow, swingFireballs } from "../spells/cast.ts";
 import { onHolyShield } from "../spells/geometry.ts";
 import { type Outgoing, type Player, type Room, statsOf, type World } from "../world/world.ts";
 
@@ -63,6 +66,7 @@ export { ATTACK_ANIM_FRAMES, ATTACK_LATCH_TICKS } from "@secondstaronline/shared
 export function setAttackHeld(p: Player, held: boolean): void {
   if (held && !p.attackHeld) {
     p.attackPress = 0;
+    p.cannonArmed = true;
   }
   if (held !== p.attackHeld) {
     p.attackRefused = null;
@@ -136,7 +140,13 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
   if (p.spell.hold > 0) {
     return ev;
   }
+  if (p.vehicle === "Battleship") {
+    pollCannon(room, p, ev);
+    return ev;
+  }
   if (room.map.flags.canFight === "O" && !onArenaTile(room, p.x, p.y)) {
+    // The press is answered: a tap released before the next tick must not be refused again.
+    p.attackPress = null;
     ev.cannotFight = refuseOnce(p, CANNOT_FIGHT);
     return ev;
   }
@@ -144,6 +154,36 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
     workAttack(room, p, ctx, ev);
   }
   return ev;
+}
+
+/**
+ * The Battleship's cannon (an SSO addition): one shot a press, forward along the facing, when
+ * loaded and with a `Cannonball` in the bag. A rider is never in an arena, so on a no-fight map it
+ * cannot fire even over arena tiles.
+ */
+function pollCannon(room: Room, p: Player, ev: SwingEvents): void {
+  if (room.map.flags.canFight === "O") {
+    p.attackPress = null;
+    ev.cannotFight = refuseOnce(p, CANNOT_FIGHT);
+    return;
+  }
+  if (!p.cannonArmed || p.cannonReload > 0) {
+    return;
+  }
+  const slot = cannonballSlot(p.char.bag);
+  if (slot < 0) {
+    p.attackPress = null;
+    if (refuseOnce(p, CANNON_TEXT.noAmmo)) {
+      ev.lines.push(CANNON_TEXT.noAmmo);
+    }
+    return;
+  }
+  invDelSlot(p.char.bag, slot, 1);
+  p.invDirty = true;
+  p.attackPress = null;
+  p.cannonArmed = false;
+  p.cannonReload = CANNON_RELOAD_FRAMES;
+  fireCannonball(room, p);
 }
 
 /** The no-fight map's refusal, as `attackRefused` records it. */

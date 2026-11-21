@@ -271,6 +271,8 @@ export type DeltaEvent =
    * replaces the old one. `caster` plays the cast frame for 5 frames (its own cast animation counter).
    */
   | { e: "fx"; slot: number; name: string; h: number; v: number; caster?: string }
+  /** A FX the server stopped early: a cannonball shot that hit something. */
+  | { e: "fxend"; slot: number; name: string }
   /** A player's body changes or reverts. */
   | { e: "body"; id: string; body: number | null }
   /**

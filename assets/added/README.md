@@ -77,6 +77,8 @@ rather than editing its output:
 - `bodies/55-*` (Boat) and `bodies/56-*` (Battleship) rider frames:
   `bun packages/data/build/art/ships.ts`, then `bun run data:build`. Add `--preview <dir>` for a
   contact sheet and previews on water.
-- The Battleship cannonball (not yet in the game): `bun packages/data/build/art/cannonball.ts <dir>`.
+- `fx/CannonballShot*` (the Battleship's shot) and `items/CannonballBag` (the Cannonball's
+  13 px icon, shown in place of the 1.6 one): `bun packages/data/build/art/cannonball.ts`, then
+  `bun run data:build`. Add `--preview <dir>` for a preview sheet.
 
 The original art is in `../original/`, listed in `../original/usage.md`. Worked examples are in [the modding guide](../../docs/modding.md). The sidecar schema is `packages/data/schema/added-asset.ts`.

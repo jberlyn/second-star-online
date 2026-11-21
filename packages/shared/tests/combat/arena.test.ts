@@ -13,6 +13,7 @@ import {
   pickArenaExit,
   quitCheck,
   type Rng,
+  type Vehicle,
 } from "../../src/index.ts";
 
 const rows = (cell: (x: number, y: number) => string) =>
@@ -80,7 +81,7 @@ describe("is it an arena", () => {
         stepFrames: 0,
         held: false,
         dead: false,
-        riding: false,
+        riding: null,
         layer1: l[0] as string[],
         x: 8,
         y: 8,
@@ -98,7 +99,14 @@ describe("is it an arena", () => {
 
 describe("the challenge checks", () => {
   const l = layers(at([[4, 4]]));
-  const base = { layer1: l[0] as string[], x: 8, y: 8, held: false, dead: false, riding: false };
+  const base = {
+    layer1: l[0] as string[],
+    x: 8,
+    y: 8,
+    held: false,
+    dead: false,
+    riding: null as Vehicle | null,
+  };
 
   test("the challenge checks in order: stand still, already in battle, not an arena", () => {
     expect(challengeCheck({ ...base, stepFrames: 3, x: 4, y: 4 })).toEqual({
@@ -122,16 +130,27 @@ describe("the challenge checks", () => {
   });
 
   test("bug fixed: a rider must land before making a challenge", () => {
-    expect(challengeCheck({ ...base, stepFrames: 0, riding: true })).toEqual({
+    expect(challengeCheck({ ...base, stepFrames: 0, riding: "Airship" })).toEqual({
       kind: "text",
       text: "You must land your airship before making a challenge.",
     });
     // Moving is still said first, and the death wait stays silent.
-    expect(challengeCheck({ ...base, stepFrames: 2, riding: true })).toMatchObject({
+    expect(challengeCheck({ ...base, stepFrames: 2, riding: "Airship" })).toMatchObject({
       text: "You should stand still before making a challenge.",
     });
-    expect(challengeCheck({ ...base, stepFrames: 0, riding: true, dead: true })).toEqual({
+    expect(challengeCheck({ ...base, stepFrames: 0, riding: "Airship", dead: true })).toEqual({
       kind: "silent",
+    });
+  });
+
+  test("the challenge refusal names the ship a rider is on, not the airship", () => {
+    expect(challengeCheck({ ...base, stepFrames: 0, riding: "Boat" })).toEqual({
+      kind: "text",
+      text: "You must leave your boat before making a challenge.",
+    });
+    expect(challengeCheck({ ...base, stepFrames: 0, riding: "Battleship" })).toEqual({
+      kind: "text",
+      text: "You must leave your battleship before making a challenge.",
     });
   });
 
@@ -157,7 +176,7 @@ describe("the challenge checks", () => {
       text: "You cannot do that while you are held.",
     });
     expect(challengeCheck({ ...base, stepFrames: 0, dead: true })).toEqual({ kind: "silent" });
-    const onArena = { ...base, x: 4, y: 4, stepFrames: 0 };
+    const onArena = { ...base, x: 4, y: 4, stepFrames: 0, riding: false };
     expect(quitCheck({ ...onArena, held: true })).toEqual({
       kind: "text",
       text: "You cannot do that while you are held.",

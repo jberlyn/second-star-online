@@ -497,6 +497,19 @@ describe("melee", () => {
     setAttackHeld(a, true);
     expect(chat(run(5), "a")).toEqual(["You cannot fight here!"]);
   });
+
+  test("bug fixed: on a no-fight map a tap, released before the next tick, says it once", () => {
+    const map = testMap("x1");
+    map.flags.canFight = "O";
+    const { join, run } = setup([map], undefined, rngByN());
+    const a = player("a", map, 5, 5);
+    join(a);
+    setAttackHeld(a, true);
+    const out = run(1);
+    setAttackHeld(a, false);
+    out.push(...run(5));
+    expect(chat(out, "a")).toEqual(["You cannot fight here!"]);
+  });
 });
 
 describe("monster attacks and death", () => {

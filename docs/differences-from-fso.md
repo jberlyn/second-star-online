@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 68 |
-| [Fixed bugs](#fixed-bugs) | 292 |
+| [Fixed bugs](#fixed-bugs) | 293 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **544** |
+| **Total** | **545** |
 
 By system (the code folder that holds the change):
 
@@ -55,7 +55,7 @@ By system (the code folder that holds the change):
 | progression | [9](#progression) | [4](#server-side-progression) |
 | social | [21](#social) | [9](#server-side-social) |
 | spells | [24](#spells) | [9](#server-side-spells) |
-| vehicles | [2](#vehicles) | [1](#server-side-vehicles) |
+| vehicles | [3](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
 
 ## Design changes
@@ -656,7 +656,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Vehicles have their own hull
 - **Kind:** Other
-- **What you notice:** Riding an airship, boat or battleship, your HP bar shows its hull ("Hull 78 / 80"). An arrow or harmful spell that hits you takes a fixed 2 off the hull and never touches your HP, however strong the attacker. When the hull runs out you die as if killed aboard: the airship is lost and everyone reads "\*\*\* Bob's airship was shot down by Ann. Bob fell from the sky." in place of the death line; a ship's line is "\*\*\* Bob's boat was sunk by Ann. Bob was claimed by the waters." A parked vehicle slowly repairs, 1 point a minute, and you board it with the hull it has regained.
+- **What you notice:** Riding an airship, boat or battleship, your HP bar shows its hull ("Hull 78 / 80"). An arrow or harmful spell that hits you takes a fixed 2 off the hull, and a battleship's cannonball 14 to 16, never touching your HP, however strong the attacker. When the hull runs out you die as if killed aboard: the airship is lost and everyone reads "\*\*\* Bob's airship was shot down by Ann. Bob fell from the sky." in place of the death line; a ship's line is "\*\*\* Bob's boat was sunk by Ann. Bob was claimed by the waters." A parked vehicle slowly repairs, 1 point a minute, and you board it with the hull it has regained.
 - **1.6:** Riders took hits on their own HP, so a high-level character's airship was as tough as the character.
 - **SSO:** `characters.hull` holds a rider's hull and `ground_items.hull` and `parked_at` a parked vehicle's. `HULL_MAX` (a boat's is 60, an airship's 80 and a battleship's 150), `HULL_HIT_DAMAGE` (2) and `HULL_REPAIR_PER_MINUTE` (1) set the full hull, the damage per hit and the repair. A sinking counts as a kill: the attacker is credited and flagged as for any player kill.
 - **Why:** A vehicle is something you own and protect, not a reflection of your level, and its fights should depend on the vehicle and not on who rides it. Issue #2 builds boats and battleships on the same hulls.
@@ -1082,12 +1082,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### "You cannot fight here!" is said once per press
 - **Kind:** Bug fixed
-- **What you notice:** Holding attack on a map where fighting is not allowed says "You cannot fight here!" once. Releasing and pressing again says it again.
+- **What you notice:** Holding attack on a map where fighting is not allowed says "You cannot fight here!" once, and so does a quick tap. Releasing and pressing again says it again.
 - **1.6:** The line was sent on every frame the key was held, so SSO's chat showed one line with a climbing ×N count.
-- **SSO:** `pollAttack` records the refusal in `attackRefused` and says it only once until the key is released or pressed again (`setAttackHeld`).
+- **SSO:** `pollAttack` records the refusal in `attackRefused` and says it only once until the key is released or pressed again (`setAttackHeld`). The refusal also answers the press, so a tap released before the next tick, which the press latch keeps for a couple of ticks, is not refused a second time.
 - **Why:** A message repeated thirty times a second is noise, not information.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`, `setAttackHeld`)
-- **Pinned by:** `bug fixed: off an arena tile on a no-fight map, a held key says it once per press` (packages/server/tests/monsters.test.ts)
+- **Pinned by:** `bug fixed: off an arena tile on a no-fight map, a held key says it once per press`; `bug fixed: on a no-fight map a tap, released before the next tick, says it once` (packages/server/tests/monsters.test.ts)
 
 #### Hold stops attacks as well as steps
 - **Kind:** Bug fixed
@@ -1289,12 +1289,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A rider must land before challenging
 - **Kind:** Bug fixed
-- **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are.
+- **What you notice:** Typing Challenge while riding an airship says "You must land your airship before making a challenge." and leaves you where you are. On a boat or battleship it says "You must leave your boat before making a challenge." (or "battleship").
 - **1.6:** Challenge never looked at vehicles, so a rider entered the arena still flying, where it could not swing or cast and monster melee could not reach it.
 - **SSO:** The challenge is refused aboard; the line is SSO's own. A rider over arena tiles is not in the arena at all (see [Arenas are for players on foot](#arenas-are-for-players-on-foot)).
 - **Why:** An arena fight is meant to be on foot.
 - **In the code:** `packages/shared/src/rules/combat/arena.ts` (`challengeCheck`), `packages/server/src/systems/combat/arena.ts` (`challenge`)
-- **Pinned by:** `bug fixed: a rider must land before making a challenge` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a rider cannot challenge; over an arena tile, quit does nothing` (packages/server/tests/arena.test.ts)
+- **Pinned by:** `bug fixed: a rider must land before making a challenge`; `the challenge refusal names the ship a rider is on, not the airship` (packages/shared/tests/combat/arena.test.ts); `bug fixed: a rider cannot challenge; over an arena tile, quit does nothing` (packages/server/tests/arena.test.ts)
 
 #### A masterwork keeps its weapon's skill bonus
 - **Kind:** Bug fixed
@@ -3327,6 +3327,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The ships were designed, written and sold as deeds in 1.6, and stopped short only of being switched on ([#2](https://github.com/jberlyn/second-star-online/issues/2)). Without a water grid a ship would cross land, and a fixed tile list would miss newer tiles.
 - **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`shipDeedCheck`, `shipUnboardCheck`, `VEHICLE_BODY`), `packages/shared/src/rules/core/walk.ts` (`shipWalkGrid`), `packages/server/src/systems/vehicles/vehicles.ts`, `packages/server/src/systems/movement/movement.ts` (`walkWorld`), `packages/server/migrations/20261121_44_ship_vehicles.sql`
 - **Pinned by:** `bug fixed: a Boat Deed builds the boat on the faced water and is used up`; `from the shore: you move onto the boat, body 55, a full hull of 60`; `a ship sails only on water, at walking pace`; `onto the faced shore: you step ashore and the boat parks with its hull`; `divergence: a ship crosses a map edge only onto water; an airship onto anything` (packages/server/tests/ships.test.ts); `bug fixed: the Boat and Battleship Deeds build their ships` (packages/shared/tests/housing/houses.test.ts); `SSO: a ship sails on sea tiles, shoreline art on layer 2 included`; `divergence: getting off needs a tile a walker could take, not 1.6's fixed list` (packages/shared/tests/vehicles/vehicles.test.ts); `bug fixed: a Boat Deed away from water says so and is kept` (packages/server/tests/houses-db.test.ts)
+
+#### The Battleship's cannon fires
+- **Kind:** Bug fixed
+- **What you notice:** Aboard a battleship, the attack key fires a cannonball straight ahead, one shot a press, with the `cannonball` sound and a broadside from the ship. Each shot uses one Cannonball from your bag ("You have no cannonballs!" without one), and the cannon takes about 5 seconds to reload. The ball flies from 48 px in front of the ship until it hits the first player, monster or vehicle in its way, reaches a tile an airship could not cross, or leaves the screen. It takes 14 to 16 off a player's HP, whatever their armour, or off the hull of a vehicle they ride, and the same off a monster. Where the map's PvP is off it passes over players, arena tiles included, and it never hits the ship that fired it. A parked vehicle stops it unharmed. The Cannonball item shows a smaller 13 px icon. A boat has no cannon.
+- **1.6:** The cast handler could place `CannonballL/R/U/D` and `Battleship CannonballL/R/U/D` 48 px from the caster with the `cannonball` sound and a `kill1` flash, and the spell collision took 9 + power + random(3) off a player's HP, but nothing ever cast them, so the battleship never fired.
+- **SSO:** A battleship rider's attack poll fires `CannonballShot<dir>` (`pollCannon`) on a fight map, spending the first Cannonball. The shot moves 5 px a `stepFrame` call (10 px a drawn frame) and is tested along the stretch its shadow has crossed, from the edge of the ship's tile, so it neither steps over something right beside the ship nor hits someone standing in the next row. It never counts as an arena hit, as [arenas are for players on foot](#arenas-are-for-players-on-foot); a sinking it causes is a kill like any other. The numbers are code constants (`CANNON_RELOAD_FRAMES`, `CANNONBALL_OFFSET`, `CANNONBALL_STEP_PX`, `cannonDamage`). The shot's art and the new icon are made by `packages/data/build/art/cannonball.ts` from the 1.6 icon; the 1.6 frames and icon stay in the atlases.
+- **Why:** The battleship was built for its cannon, and 1.6 wrote all but the trigger ([#2](https://github.com/jberlyn/second-star-online/issues/2)). Ammunition and a reload keep shelling costly, and a fixed damage, like the hulls', makes a ship's fight depend on the ship and not on its rider's level.
+- **In the code:** `packages/shared/src/rules/vehicles/cannon.ts`, `packages/shared/src/rules/spells/spellfx.ts` (`placeFx`, `stepFx`), `packages/server/src/systems/combat/melee.ts` (`pollCannon`), `packages/server/src/systems/spells/cast.ts` (`fireCannonball`), `packages/server/src/systems/spells/collide.ts` (`cannonballHits`), `packages/server/src/systems/spells/fx.ts` (`placeQueued`), `packages/client/src/playfield.ts` (`shownFrame`), `assets/added/fx/`, `assets/added/items/CannonballBag.png`
+- **Pinned by:** `bug fixed: the attack key fires a cannonball 48 px out along the facing, spending one`; `SSO: one shot a press, and none again until the 5 second reload ends`; `SSO: with no Cannonball nothing fires, said once a press`; `SSO: it stops at the first player and takes 14-16 HP off them, armour or not`; `SSO: aboard, the shot comes off the hull, and running it out sinks the ship`; `SSO: where the map's PvP is off it passes over players, even on arena tiles`; `SSO: it hits a monster for 14-16, whatever its defense`; `SSO: it hits a monster right beside the ship, short of where the ball appears`; `SSO: it does not hit someone in the next row as it passes`; `SSO: it stops at a tile an Airship cannot cross` (packages/server/tests/cannon.test.ts); `SSO: a cannonball does 14 to 16`; `SSO: the shot moves 5 px a step and spins a frame each drawn frame`; `SSO: the Cannonball shows its 13 px picture in the bag and on the ground` (packages/shared/tests/vehicles/cannon.test.ts); `SSO: a cannonball shot plays cannonball on 4, shows the rider's firing frames and stops on fxend` (packages/client/tests/spells.test.ts)
 
 ### world
 

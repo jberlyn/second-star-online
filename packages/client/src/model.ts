@@ -20,6 +20,7 @@ import {
   blockPCCheck,
   blocksPlayer,
   bowRefusal,
+  CANNON_FIRE_ANIM,
   type DeltaEvent,
   type Dir,
   type EquipView,
@@ -29,6 +30,7 @@ import {
   type GroundView,
   type InventoryView,
   isArenaTile,
+  isCannonball,
   isWalkable,
   isWebBody,
   type MapView,
@@ -515,11 +517,16 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
         if (ev.caster) {
           const who = m.self && ev.caster === m.self.id ? m.self : m.peers.get(ev.caster);
           if (who) {
-            who.spellAnim = 5;
+            // A Battleship's shot shows its three firing frames instead of the cast frame.
+            who.spellAnim = isCannonball(ev.name) ? CANNON_FIRE_ANIM : 5;
           }
         }
         break;
       }
+      case "fxend":
+        // The server stopped it early: a cannonball shot hit something.
+        m.fx = m.fx.filter((f) => !(f.slot === ev.slot && f.name === ev.name));
+        break;
       case "body": {
         const who = m.self && ev.id === m.self.id ? m.self : m.peers.get(ev.id);
         if (who) {
@@ -739,7 +746,7 @@ function actorPass(m: Model): void {
   }
   tickEffects(m);
   for (const fx of m.fx) {
-    stepFx(fx);
+    stepFx(fx, (x, y) => !isWalkable(m.walkAir, x, y));
   }
   m.fx = m.fx.filter((f) => !f.gone);
   const s = m.self;

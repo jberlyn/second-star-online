@@ -8,7 +8,8 @@ import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import type { Rng } from "../core/lingo.ts";
 import { tileHas } from "../core/tiles.ts";
 import { isWalkable } from "../core/walk.ts";
-import { layer1Tile } from "../vehicles/vehicles.ts";
+import type { Vehicle } from "../movement/movement.ts";
+import { layer1Tile, shipNoun } from "../vehicles/vehicles.ts";
 
 /** Every arena text. */
 export const ARENA_TEXT = {
@@ -18,8 +19,11 @@ export const ARENA_TEXT = {
   notAnArena: "This is not an arena!",
   full: "There is no room in the arena!",
   held: "You cannot do that while you are held.",
-  /** SSO's own line: a rider cannot challenge. */
-  landFirst: "You must land your airship before making a challenge.",
+  /** SSO's own lines: a rider cannot challenge, named by the vehicle. */
+  landFirst: (vehicle: Vehicle) =>
+    vehicle === "Airship"
+      ? "You must land your airship before making a challenge."
+      : `You must leave your ${shipNoun(vehicle)} before making a challenge.`,
   entered: (name: string) => `${name} has entered the arena!`,
   stopped: (name: string) => `${name} has stopped fighting.`,
   defeated: (name: string, killer: string) => `${name} was defeated by ${killer}.`,
@@ -124,8 +128,8 @@ export function challengeCheck(a: {
   stepFrames: number;
   held: boolean;
   dead: boolean;
-  /** Aboard a vehicle. */
-  riding: boolean;
+  /** The vehicle ridden, or null on foot. */
+  riding: Vehicle | null;
   layer1: readonly string[];
   x: number;
   y: number;
@@ -139,10 +143,10 @@ export function challengeCheck(a: {
   if (a.stepFrames > 0) {
     return { kind: "text", text: ARENA_TEXT.standStillChallenge };
   }
-  if (a.riding) {
+  if (a.riding !== null) {
     // A bug fixed: 1.6 sent a rider into the arena still flying, where it could not swing or cast
     // and monster melee could not reach it.
-    return { kind: "text", text: ARENA_TEXT.landFirst };
+    return { kind: "text", text: ARENA_TEXT.landFirst(a.riding) };
   }
   if (isArenaTile(a.layer1, a.x, a.y)) {
     return { kind: "text", text: ARENA_TEXT.alreadyInBattle };

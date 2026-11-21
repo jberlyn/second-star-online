@@ -339,6 +339,10 @@ export interface Player {
    * release.
    */
   attackRefused: string | null;
+  /** Frames until the Battleship's cannon can fire again (0: loaded). */
+  cannonReload: number;
+  /** A press of the attack key the cannon has not yet answered with a shot: one shot a press. */
+  cannonArmed: boolean;
   /**
    * The i-frame counter after a hit: monster hits are ignored while it runs. Your sprite stays
    * drawn (a design change: 1.6 flipped its visibility on every call, so it vanished or blinked).
@@ -629,6 +633,8 @@ export interface SpellFx extends FxSprite {
   ownerId: string | null;
   /** The players this Radar has already reported on. */
   radarSeen?: Set<string>;
+  /** A cannonball shot: the loc its last hit test reached, where the next one sweeps from. */
+  sweptTo?: { h: number; v: number };
 }
 
 /** Fresh per-session combat state for a character entering the world. */
@@ -639,6 +645,8 @@ export function sessionCombatState(): Pick<
   | "attackHeld"
   | "attackPress"
   | "attackRefused"
+  | "cannonReload"
+  | "cannonArmed"
   | "flicker"
   | "defenseBonus"
   | "monDropIn"
@@ -704,6 +712,8 @@ export function sessionCombatState(): Pick<
     attackHeld: false,
     attackPress: null,
     attackRefused: null,
+    cannonReload: 0,
+    cannonArmed: false,
     // Login starts the i-frames.
     flicker: 40,
     defenseBonus: 0,

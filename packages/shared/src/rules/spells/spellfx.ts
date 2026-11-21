@@ -10,6 +10,13 @@
  * Mirrors the original's cast handler (placement) and FX sprite sender (trails).
  */
 import { lingoContains, lingoEq } from "../core/lingo.ts";
+import {
+  CANNONBALL_OFFSET,
+  CANNONBALL_STEP_PX,
+  cannonballDir,
+  cannonballFrame,
+  cannonballTile,
+} from "../vehicles/cannon.ts";
 import { fxEffect, fxRun } from "./spells.ts";
 
 /** The stage loc of a character on tile (x, y). */
@@ -73,7 +80,10 @@ const AT_CLICK = [
   "Magic Shield",
 ];
 
-/** Offsets from the caster's sprite. Cannonballs never fire in 1.6 (omitted). */
+/**
+ * Offsets from the caster's sprite. 1.6's cannonballs never fired; SSO's Battleship shot
+ * (`CannonballShot<dir>`) is placed 48 px out, as 1.6 would have placed its own.
+ */
 const FROM_CASTER: Record<string, [number, number]> = {
   fireballl: [-32, 0],
   fireballr: [32, 0],
@@ -87,6 +97,10 @@ const FROM_CASTER: Record<string, [number, number]> = {
   "wind waver": [33, 0],
   "wind waveu": [0, -33],
   "wind waved": [0, 33],
+  cannonballshotl: [-CANNONBALL_OFFSET, 0],
+  cannonballshotr: [CANNONBALL_OFFSET, 0],
+  cannonballshotu: [0, -CANNONBALL_OFFSET],
+  cannonballshotd: [0, CANNONBALL_OFFSET],
 };
 
 /**
@@ -156,10 +170,15 @@ function offEdge(fx: FxSprite, dh: number, dv: number, arrow: boolean): boolean 
   return fx.v > (arrow ? 410 : 400);
 }
 
-/** A placed FX at frame 1. */
+/** A placed FX at frame 1 (a cannonball shot at its spin frame for where it is). */
 export function newFx(name: string, at: { h: number; v: number }): FxSprite {
-  return { name, frame: 1, h: at.h, v: at.v, gone: false };
+  const dir = cannonballDir(name);
+  const frame = dir ? cannonballFrame(at.h, at.v, dir) : 1;
+  return { name, frame, h: at.h, v: at.v, gone: false };
 }
+
+/** Whether a shot cannot pass over map tile (x, y): one an Airship cannot cross. */
+export type ShotBlocked = (x: number, y: number) => boolean;
 
 /**
  * One `stepFrame` of the spell FX script (an actor: two calls a frame). It runs only while the
@@ -169,8 +188,20 @@ export function newFx(name: string, at: { h: number; v: number }): FxSprite {
  * its last position in all four directions; this replaces the earlier reading that it lingered 10
  * frames).
  */
-export function stepFx(fx: FxSprite): void {
+export function stepFx(fx: FxSprite, blocked?: ShotBlocked): void {
   if (fx.gone || fx.v <= 0) {
+    return;
+  }
+  const shot = cannonballDir(fx.name);
+  if (shot) {
+    const [dh, dv] = [shot[0] * CANNONBALL_STEP_PX, shot[1] * CANNONBALL_STEP_PX];
+    fx.h += dh;
+    fx.v += dv;
+    fx.frame = cannonballFrame(fx.h, fx.v, shot);
+    const t = cannonballTile(fx.h, fx.v);
+    if (offEdge(fx, dh, dv, false) || blocked?.(t.x, t.y)) {
+      fx.gone = true;
+    }
     return;
   }
   const run = fxRun(fx.name);

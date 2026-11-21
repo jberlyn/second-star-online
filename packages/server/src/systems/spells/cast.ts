@@ -8,6 +8,7 @@ import {
   boltForm,
   CAST_DELAY,
   CAST_TEXT,
+  cannonballName,
   castEffect,
   crystalLine,
   crystalsFor,
@@ -32,6 +33,7 @@ import {
   spriteRect,
   summonFor,
   tileHas,
+  tileLoc,
 } from "@secondstaronline/shared";
 
 import { onArenaTile } from "../combat/melee.ts";
@@ -395,3 +397,22 @@ export function shootArrow(room: Room, p: Player, colour: string, power: number)
 }
 
 export type { Rect };
+
+/**
+ * A Battleship's shot (an SSO addition): `CannonballShot<dir>`, owned by the rider, placed 48 px out
+ * from the rider's loc along the facing. It trains no skill.
+ */
+export function fireCannonball(room: Room, p: Player): void {
+  const at = tileLoc(p.x, p.y);
+  queueCast(room, {
+    owner: p.name,
+    ownerId: p.id,
+    name: cannonballName(p.facing),
+    casterH: at.h,
+    casterV: at.v,
+    h: at.h,
+    v: at.v,
+    power: 0,
+    train: false,
+  });
+}

@@ -93,7 +93,7 @@ export function challenge(world: World, p: Player, rng: Rng): Outgoing[] {
   const r = challengeCheck({
     stepFrames: p.stepFrames,
     ...arenaState(p),
-    riding: p.vehicle !== null,
+    riding: p.vehicle,
     layer1: p.map.layers[0],
     x: p.x,
     y: p.y,

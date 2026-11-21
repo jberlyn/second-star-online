@@ -23,11 +23,13 @@
 import {
   attackFrame,
   type BodyFrame,
+  cannonFireFrame,
   clockFace,
   type Equipment,
   fxEffect,
   groundDrawOffset,
   groundLayer,
+  groundMember,
   groundOverlay,
   groundPicture,
   groundPictureTopLeft,
@@ -105,6 +107,27 @@ export function bodyFrame(model: Model, body: number | null, frames: number): Bo
     return RIDER_FRAMES[model.tick % 3] ?? "F2";
   }
   return walkFrame(frames, lenOf(body));
+}
+
+/** A Battleship rider's firing frame, `56-fire<n>-<dir>`. */
+type FireFrame = `fire${1 | 2 | 3}`;
+
+/**
+ * The frame a character shows: a Battleship rider's firing frames while its shot's animation runs,
+ * the attack frame while anyone else swings or casts, otherwise its body frame.
+ */
+export function shownFrame(
+  model: Model,
+  body: number | null,
+  facing: "N" | "S" | "E" | "W",
+  atkAnim: number,
+  spellAnim: number,
+  frames: number,
+): BodyFrame | FireFrame {
+  if (vehicleOfBody(body) === "Battleship") {
+    return spellAnim > 0 ? `fire${cannonFireFrame(spellAnim)}` : bodyFrame(model, body, frames);
+  }
+  return atkAnim > 0 || spellAnim > 0 ? attackFrame(facing) : bodyFrame(model, body, frames);
 }
 
 function tileCode(rows: readonly string[], x: number, y: number): string {
@@ -272,7 +295,7 @@ export function createPlayfield(assets: Assets): Playfield {
             // it keeps its own picture.
             drawSprite(ctx, assets, "items", clockFace(model.minute), px, py);
           } else {
-            drawSprite(ctx, assets, "items", g.name, px, py);
+            drawSprite(ctx, assets, "items", groundMember(g.name), px, py);
           }
           const overlay = groundOverlay(g.name);
           if (overlay) {
@@ -295,22 +318,26 @@ export function createPlayfield(assets: Assets): Playfield {
         head: number,
         equip: Equipment | undefined,
         body: number | null,
-        frame: BodyFrame,
+        frame: BodyFrame | FireFrame,
         facing: "N" | "S" | "E" | "W",
         px: number,
         py: number,
       ) =>
         body === null
-          ? drawCharacter(ctx, head, equip, frame, facing, px, py)
+          ? drawCharacter(ctx, head, equip, frame as BodyFrame, facing, px, py)
           : drawSprite(ctx, assets, "bodies", `${body}-${frame}-${facing}`, px, py);
       const self = model.self;
       if (self) {
         const len = lenOf(self.body);
         const { px, py } = walkerPixel(self.x, self.y, self.facing, self.stepFrames, len);
-        const frame =
-          self.timers.atkAnim > 0 || self.spellAnim > 0
-            ? attackFrame(self.facing)
-            : bodyFrame(model, self.body, self.stepFrames);
+        const frame = shownFrame(
+          model,
+          self.body,
+          self.facing,
+          self.timers.atkAnim,
+          self.spellAnim,
+          self.stepFrames,
+        );
         const draw = () =>
           character(self.head, model.inv?.equip, self.body, frame, self.facing, px, py);
         if (vehicleOfBody(self.body)) {
@@ -326,10 +353,7 @@ export function createPlayfield(assets: Assets): Playfield {
         }
         // A step always starts one tile behind the destination, toward its facing.
         const { px, py } = walkerPixel(p.x, p.y, p.facing, p.frames, lenOf(p.body));
-        const frame =
-          p.atkAnim > 0 || p.spellAnim > 0
-            ? attackFrame(p.facing)
-            : bodyFrame(model, p.body, p.frames);
+        const frame = shownFrame(model, p.body, p.facing, p.atkAnim, p.spellAnim, p.frames);
         const draw = () => character(p.head, p.equip, p.body, frame, p.facing, px, py);
         if (vehicleOfBody(p.body)) {
           riders.push(draw);

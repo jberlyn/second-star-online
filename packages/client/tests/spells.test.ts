@@ -5,12 +5,12 @@
 import { describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { NO_FOG } from "@secondstaronline/shared";
+import { CANNON_FIRE_ANIM, NO_EQUIPMENT, NO_FOG } from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";
 import { playAll } from "../src/audio.ts";
-import { applyDelta, clientTick, createModel } from "../src/model.ts";
-import { createPlayfield } from "../src/playfield.ts";
+import { applyDelta, clientTick, createModel, type Peer } from "../src/model.ts";
+import { createPlayfield, shownFrame } from "../src/playfield.ts";
 import { type Sfx, SOUND, spellSounds } from "../src/sfx.ts";
 import { createSpellbook, spellInfo } from "../src/ui/spellbook.ts";
 
@@ -129,6 +129,48 @@ describe("spell FX, bodies and floaties in the model", () => {
     }
     expect(m.fx[0]?.frame).toBe(7);
     clientTick(m, { held: null, turn: false, pending: null });
+    expect(m.fx).toEqual([]);
+  });
+  test("SSO: a cannonball shot plays cannonball on 4, shows the rider's firing frames and stops on fxend", () => {
+    const m = createModel();
+    m.self = null;
+    m.peers.set("ann", {
+      id: "ann",
+      name: "Ann",
+      head: 1,
+      x: 8,
+      y: 5,
+      facing: "E",
+      frames: 0,
+      atkAnim: 0,
+      spellAnim: 0,
+      body: 56,
+      equip: NO_EQUIPMENT,
+    } as unknown as Peer);
+    m.walkAir = Array.from({ length: 12 }, () => Array(17).fill(true));
+    applyDelta(m, [{ e: "fx", slot: 2, name: "CannonballShotR", h: 318, v: 157, caster: "ann" }]);
+    expect(m.sounds).toEqual([{ name: "cannonball", ch: 4 }]);
+    const ann = m.peers.get("ann") as Peer;
+    expect(ann.spellAnim).toBe(CANNON_FIRE_ANIM);
+    expect(shownFrame(m, 56, "E", 0, ann.spellAnim, 0)).toBe("fire1");
+    expect(shownFrame(m, 56, "E", 0, 1, 0)).toBe("fire3");
+    // A walker's cast still shows the attack frame.
+    expect(shownFrame(m, null, "E", 0, 3, 0)).toBe("F4");
+    clientTick(m, { held: null, turn: false, pending: null });
+    expect(m.fx[0]?.h).toBe(328);
+    // Another FX in another slot is left alone.
+    applyDelta(m, [{ e: "fx", slot: 1, name: "Minor Heal", h: 200, v: 150 }]);
+    applyDelta(m, [{ e: "fxend", slot: 2, name: "CannonballShotR" }]);
+    expect(m.fx.map((f) => f.name)).toEqual(["Minor Heal"]);
+  });
+  test("SSO: the client stops a shot over a tile an Airship cannot cross", () => {
+    const m = createModel();
+    m.self = null;
+    m.walkAir = Array.from({ length: 12 }, () => Array.from({ length: 17 }, (_, x) => x + 1 < 10));
+    applyDelta(m, [{ e: "fx", slot: 1, name: "CannonballShotR", h: 270, v: 157 }]);
+    for (let i = 0; i < 20 && m.fx.length > 0; i++) {
+      clientTick(m, { held: null, turn: false, pending: null });
+    }
     expect(m.fx).toEqual([]);
   });
   test("a new FX in a slot replaces the old one", () => {

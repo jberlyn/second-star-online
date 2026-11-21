@@ -1,20 +1,31 @@
 /**
  * The Battleship's cannonball: a shaded iron ball after the 1.6 `Cannonball` bag icon, smaller,
- * with a casting seam and pits that turn frame to frame so the shot rolls instead of gliding.
- * `bun packages/data/build/art/cannonball.ts <out dir>` writes `CannonballShot<L|R|U|D>-<1..4>.png`
- * (11px ball with a shadow on the water), `CannonballIcon.png` (13px) and a 6x preview sheet. The
- * light falls from the upper left, as on the ships. Not yet wired into the game.
+ * with a casting seam and pits that turn frame to frame so the shot spins instead of gliding.
+ * `bun packages/data/build/art/cannonball.ts [--preview <dir>]` writes, with their sidecars:
+ *
+ * - `assets/added/fx/CannonballShot<L|R|U|D>-<1..4>.png`: the 11 px shot with its shadow on the
+ *   water, the frames the `CannonballShot<dir>` FX cycles through;
+ * - `assets/added/items/CannonballBag.png`: the 13 px picture the `Cannonball` item shows (the 1.6
+ *   member stays in the items atlas, unused).
+ *
+ * Then run `bun run data:build`. `--preview` also writes a 6x preview sheet there. The light falls
+ * from the upper left, as on the ships.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { createRgba, decodePng, encodePng } from "../assets-lib/png.ts";
 
-const OUT = process.argv[2];
-if (!OUT) {
-  throw new Error("usage: bun packages/data/build/art/cannonball.ts <out dir>");
+const ROOT = join(import.meta.dir, "../../../..");
+const FX = join(ROOT, "assets/added/fx");
+const ITEMS = join(ROOT, "assets/added/items");
+const previewAt = process.argv.indexOf("--preview");
+const OUT = previewAt > 0 ? process.argv[previewAt + 1] : null;
+if (previewAt > 0 && !OUT) {
+  throw new Error("usage: bun packages/data/build/art/cannonball.ts [--preview <dir>]");
 }
-mkdirSync(OUT, { recursive: true });
+mkdirSync(FX, { recursive: true });
+mkdirSync(ITEMS, { recursive: true });
 type V = [number, number, number];
 const icon = decodePng(
   new Uint8Array(
@@ -182,54 +193,76 @@ for (const [d, [axis, sgn]] of Object.entries(dirs)) {
   }
 }
 const iconImg = ball(13, "z", 0.4, 0);
+const sidecar = (group: string, regX: number, regY: number, note: string) =>
+  `${JSON.stringify({ group, regX, regY, key: "none", prov: "authored", note }, null, 2)}\n`;
+const WORD = { L: "west", R: "east", U: "north", D: "south" } as Record<string, string>;
+// The ball's centre sits 6 px below the FX loc, the height a Battleship rider's loc is drawn at
+// (cannon.ts `cannonballTile`), with its shadow on the water below.
 for (const f of frames) {
-  writeFileSync(join(OUT, `${f.name}.png`), encodePng(f.img));
+  const [, d, n] = /^CannonballShot(.)-(\d)$/.exec(f.name) ?? [];
+  writeFileSync(join(FX, `${f.name}.png`), encodePng(f.img));
+  writeFileSync(
+    join(FX, `${f.name}.json`),
+    sidecar("fx", 5, -1, `Battleship cannonball flying ${WORD[d ?? ""]}, spin frame ${n}`),
+  );
 }
-writeFileSync(join(OUT, "CannonballIcon.png"), encodePng(iconImg));
-// Preview sheet at 6x on sea blue: rows per direction, plus icons old/new.
-const SC = 6,
-  CW = 20,
-  rows = 5,
-  cols = FR + 1;
-const sheet = createRgba(cols * CW * SC, rows * CW * SC);
-for (let p = 0; p < sheet.data.length; p += 4) {
-  sheet.data.set([24, 52, 150, 255], p);
+// Centred where the 1.6 icon's ball is centred, 3 px left of and 15 px below its regpoint.
+writeFileSync(join(ITEMS, "CannonballBag.png"), encodePng(iconImg));
+writeFileSync(
+  join(ITEMS, "CannonballBag.json"),
+  sidecar("items", 9, -9, "Cannonball, a 13 px version of the 1.6 bag icon (cannonball.ts)"),
+);
+if (OUT) {
+  writePreview(OUT);
 }
-const put = (im: { width: number; height: number; data: Uint8Array }, cx: number, cy: number) => {
-  for (let y = 0; y < im.height; y++) {
-    for (let x = 0; x < im.width; x++) {
-      const q = (y * im.width + x) * 4,
-        a = (im.data[q + 3] ?? 0) / 255;
-      if (!a) {
-        continue;
-      }
-      for (let i = 0; i < SC; i++) {
-        for (let j = 0; j < SC; j++) {
-          const d = (((cy + y) * SC + i) * sheet.width + (cx + x) * SC + j) * 4;
-          for (let k = 0; k < 3; k++) {
-            sheet.data[d + k] = (sheet.data[d + k] ?? 0) * (1 - a) + (im.data[q + k] ?? 0) * a;
+
+function writePreview(OUT: string) {
+  mkdirSync(OUT, { recursive: true });
+  // Preview sheet at 6x on sea blue: rows per direction, plus icons old/new.
+  const SC = 6,
+    CW = 20,
+    rows = 5,
+    cols = FR + 1;
+  const sheet = createRgba(cols * CW * SC, rows * CW * SC);
+  for (let p = 0; p < sheet.data.length; p += 4) {
+    sheet.data.set([24, 52, 150, 255], p);
+  }
+  const put = (im: { width: number; height: number; data: Uint8Array }, cx: number, cy: number) => {
+    for (let y = 0; y < im.height; y++) {
+      for (let x = 0; x < im.width; x++) {
+        const q = (y * im.width + x) * 4,
+          a = (im.data[q + 3] ?? 0) / 255;
+        if (!a) {
+          continue;
+        }
+        for (let i = 0; i < SC; i++) {
+          for (let j = 0; j < SC; j++) {
+            const d = (((cy + y) * SC + i) * sheet.width + (cx + x) * SC + j) * 4;
+            for (let k = 0; k < 3; k++) {
+              sheet.data[d + k] = (sheet.data[d + k] ?? 0) * (1 - a) + (im.data[q + k] ?? 0) * a;
+            }
           }
         }
       }
     }
-  }
-};
-Object.keys(dirs).forEach((_d, r) => {
-  for (let f = 0; f < FR; f++) {
-    const fr = frames[r * FR + f];
-    if (fr) {
-      put(fr.img, f * CW + 4, r * CW + 2);
+  };
+  Object.keys(dirs).forEach((_d, r) => {
+    for (let f = 0; f < FR; f++) {
+      const fr = frames[r * FR + f];
+      if (fr) {
+        put(fr.img, f * CW + 4, r * CW + 2);
+      }
+    }
+  });
+  // Last row: the 1.6 icon (bg keyed) then the new icon.
+  const keyed = createRgba(icon.width, icon.height);
+  for (let q = 0; q < icon.data.length; q += 4) {
+    if ([icon.data[q], icon.data[q + 1], icon.data[q + 2]].join() !== bg) {
+      keyed.data.set([icon.data[q] ?? 0, icon.data[q + 1] ?? 0, icon.data[q + 2] ?? 0, 255], q);
     }
   }
-});
-// Last row: the 1.6 icon (bg keyed) then the new icon.
-const keyed = createRgba(icon.width, icon.height);
-for (let q = 0; q < icon.data.length; q += 4) {
-  if ([icon.data[q], icon.data[q + 1], icon.data[q + 2]].join() !== bg) {
-    keyed.data.set([icon.data[q] ?? 0, icon.data[q + 1] ?? 0, icon.data[q + 2] ?? 0, 255], q);
-  }
+  put(keyed, 0 * CW + 0, 4 * CW + 0);
+  put(iconImg, 1 * CW + 4, 4 * CW + 4);
+  writeFileSync(join(OUT, "icon16-keyed.png"), encodePng(keyed));
+  writeFileSync(join(OUT, "cannonball-preview.png"), encodePng(sheet));
 }
-put(keyed, 0 * CW + 0, 4 * CW + 0);
-put(iconImg, 1 * CW + 4, 4 * CW + 4);
-writeFileSync(join(OUT, "icon16-keyed.png"), encodePng(keyed));
-writeFileSync(join(OUT, "cannonball-preview.png"), encodePng(sheet));
