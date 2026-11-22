@@ -25,6 +25,7 @@ See the [modding guide](modding.md) before changing content or adding art. Run `
 | `bun run format` | Formats configured files in place. |
 | `bun run fix` | Runs Biome checks and applies its permitted fixes in place. |
 | `bun run test` | Runs repository-wide tests, then each workspace's tests with its own configuration. This includes client happy-dom tests and server bot end-to-end tests. |
+| `bun run test:sweep` | Runs the content removal sweep over every Classic item and monster with every cleanup option (a few minutes); `bun run test` runs a seeded sample of it. Set `SSO_SWEEP_SEED` to try another seed. |
 | `bun run gate` | Runs typecheck, lint, test and `data:check` in that order. |
 
 Each workspace also has a `test` script; from its directory, `bun run test` runs that package's tests only. Use the root test script for the full suite so the client loads its happy-dom configuration.

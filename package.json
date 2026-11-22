@@ -24,6 +24,7 @@
     "format": "biome format --write .",
     "fix": "biome check --write .",
     "test": "bun test ./tests && bun run --filter './packages/*' test",
+    "test:sweep": "cd packages/server && SSO_SWEEP=full bun test tests/content-removal-sweep.test.ts",
     "perf": "bun packages/perf/src/main.ts",
     "docker:check": "bun tools/docker-smoke.ts",
     "gate": "bun run typecheck && bun run lint && bun run test && bun run data:check"
