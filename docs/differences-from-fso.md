@@ -2407,7 +2407,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Give lines name the gold and crystals
 - **Kind:** Bug fixed
-- **What you notice:** Giving gold reads "*** Offering the 50 gold to Bob." and Bob reads "Alice is giving you 50 Gold.". Giving crystals reads "*** Offering the 4 Red Crystals to Bob.".
+- **What you notice:** Giving gold reads "*** Offering the 50 gold to Bob." and Bob reads "Alice is giving you 50 Gold.". Giving crystals reads "*** Offering the 4 Red Crystal to Bob.".
 - **1.6:** The gold line named only the amount ("Offering the 50 to Bob"), the crystal line left a blank ("Offering the  to Bob"), and the receiver read "a 50 Gold".
 - **SSO:** The lines name the pile, in the wording of the NPC gold line.
 - **Why:** The lines did not say what was given.
