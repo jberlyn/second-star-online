@@ -56,7 +56,7 @@ Find available tags and digests on the [container package page](https://github.c
 - **Existing installations:** Renaming a Compose volume key does not migrate data. If your server already uses a volume such as `<project>_world`, preserve it with `sso-data: { external: true, name: <existing-volume-name> }` in the top-level `volumes` section. Stop the old server before reusing its volume.
 - **Migrating an existing database:** Mount the entire directory containing `sso.sqlite` (and any `-wal`/`-shm` sidecars) at `/data`. Existing migrations run automatically on startup. Never run two game processes against the same database directory.
 - **Health and restarts:** The container uses `restart: unless-stopped`, `stop_grace_period: 30s`, and a dependency-free Bun healthcheck (`GET /`, an emitted JS bundle, and a generated asset every 30 s with a 5 s timeout, 30 s start period, and 3 retries). Docker health status alone does not restart an unhealthy container; verify player readiness over `/ws` after major changes.
-- **Customization:** In-game map, NPC, and settings edits persist in the database. Changes to content JSON, generated modules, art, or the client require a custom image; see [Modding](modding.md).
+- **Customization:** In-game map, NPC, settings and [content](#the-content-page) edits persist in the database. Changes to the Classic pack's source, art, or the client require a custom image; see [Modding](modding.md).
 
 ### Bind mounts (alternative to named volumes)
 
@@ -224,7 +224,21 @@ The command line is also the way back in if you ever leave no one able to open S
 
 Administrators open **Admin → Control Panel** from the top menu bar. The game gives way to a full-page dashboard; **Return to Game** at the top brings you back where you stood. While you are in the Control Panel you stay online but are off the map, as in the World Editor: other players see you leave, and trades, shops and held actions are cancelled. The header also opens Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms and Player Settings as floating windows over the dashboard, and Return To Title Screen logs out. The sidebar lists the admin pages your role may use, with the World Editor and NPC Editor under **Classic tools** until their Control Panel pages arrive.
 
-The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff**, **Control Panel: look up characters (the player hub)** (the [Characters](#the-player-hub) page) and **Control Panel: read the player activity log** (the [Activity Log](#the-activity-log) page). **Control Panel: edit characters** adds the hub's [Edit tab](#editing-a-character). The Roles page also lists **Control Panel: edit items, monsters and NPCs** for the pages still to come; it does nothing yet.
+The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff**, **Control Panel: look up characters (the player hub)** (the [Characters](#the-player-hub) page), **Control Panel: read the player activity log** (the [Activity Log](#the-activity-log) page) and **Control Panel: edit items, monsters and NPCs** (the [Content](#the-content-page) page). **Control Panel: edit characters** adds the hub's [Edit tab](#editing-a-character).
+
+### The content page
+
+Everything the game knows about items, monsters, NPCs, spells, rules and texts comes from the **installed packs** plus **your changes**. Every server runs the **Classic pack** (1.6's content, shipped inside each release and read from it, never copied into your database), so a server with no changes plays exactly as before. **Control Panel → Content** (permission **Control Panel: edit items, monsters and NPCs**) lists:
+
+- **Installed packs**, with the version each runs at. A release that brings a newer Classic says so here once.
+- **Pack updates:** when a newer pack version changes a row you have customised, your version stays live and the row is listed with what the pack changed and how yours differs. **Use Classic's version** replaces yours (as a publish you can undo); **Keep mine** stops the notice. Rows you never changed take the new version on their own.
+- **Draft:** pending changes, shared by every admin and tagged with who made them. Before publishing, the whole store is checked: each dataset against its schema, then the key and name rules (a new item's key is the name it was created with and never changes; display names are unique; a key may not contain `#`, start with a number and a space, or end in `+N`), then references between rows (a deed, quest, editor list or summon naming something that no longer exists). **Publish** makes the draft live for every player at once, without a restart; it is refused if another admin changed the draft since you last looked.
+- **Rows:** pick a dataset and field to list its rows (an item, a monster, an NPC file, or a whole field such as a text table), with whether each is as the pack has it, changed, added or removed. Opening a row shows the pack's version and an editor for its JSON. **Save to draft**, **Remove** (keyed rows) and **Back to the pack's version** all go into the draft. To rename an item or monster, set its `"display"`; players then see the new name everywhere while their copies keep working. Admin `/drop` and NPC file lines accept a display name and store the key. The collision rects are built from the art and cannot be changed here.
+- **Publish history:** each publish with its rows. **Undo** takes a whole publish back, and is refused, naming the rows, if any of them changed since.
+
+Publishes, undos and pack-update answers are in the audit log. Connected players pick up a publish within a moment; a player who was away picks it up at their next login.
+
+**Upgrading to the content store:** back up your database first: migrations only run forward. The upgrade records your server as having the Classic pack installed; your world, characters and bags are unchanged.
 
 **Upgrading from 1.13.0 or earlier:** **Admin → Server Settings** moved into the Control Panel, and the floating Server Settings window is gone. A role that held every permission gets the three new Control Panel permissions, so it still holds every permission; other roles are left as they are.
 

@@ -345,6 +345,12 @@ export type CoreServerMsg =
        * `chatMaxChars`).
        */
       rules: { chatMaxChars: number };
+      /**
+       * The published content store's hash: a client holding another store fetches
+       * `/content/<hash>.json` and installs it before it plays (a deploy or a publish while it
+       * was away). The server always sends it; a message without it checks nothing.
+       */
+      content?: string;
     }
   /** Login or creation refused, with the original alert text where one exists. */
   | { t: "denied"; text: string }

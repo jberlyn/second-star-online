@@ -15,6 +15,7 @@ import {
   FACING_DELTA,
   invAdd,
   isGoldName,
+  itemLabel,
   lastMatch,
   lingoContains,
   lingoEq,
@@ -40,7 +41,7 @@ export const CONTAINER_TEXT = {
   open: (name: string) =>
     lingoContains(name, "House")
       ? `You open ${name} to see what's inside...`
-      : `You open the ${displayName(name)} to see what's inside...`,
+      : `You open the ${itemLabel(name)} to see what's inside...`,
   /** The line for a click from the wrong spot: the `#id` is not stripped. */
   notInFront: (name: string) =>
     lingoContains(name, "House")

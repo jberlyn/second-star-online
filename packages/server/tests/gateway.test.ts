@@ -188,3 +188,59 @@ describe("gateway prebuilt production and development serving", () => {
     }
   });
 });
+
+describe("the release's art follows the Classic pack", () => {
+  let root = "";
+  let gateway: Gateway;
+  let classicInstalled = true;
+
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), "sso-gw-art-"));
+    const atlas = { sheets: ["tiles-0.png"], sprites: { g1: [0, 0, 0, 32, 32, 0, 0] } };
+    writeFileSync(
+      join(root, "index.json"),
+      JSON.stringify({
+        version: 1,
+        inputHash: "x",
+        atlases: { tiles: atlas, bodies: atlas, paperdoll: atlas, fx: atlas, items: atlas },
+        ui: { "internal:1": { file: "ui/internal-1.png", w: 1, h: 1, regX: 0, regY: 0 } },
+        sounds: {},
+      }),
+    );
+    writeFileSync(join(root, "tiles-0.png"), new Uint8Array([137, 80, 78, 71]));
+    const db = openDatabase(":memory:");
+    migrate(db);
+    gateway = startGateway({
+      port: 0,
+      development: false,
+      game: createGame({
+        db,
+        send: () => {},
+        isoNow: () => "2026-11-22T00:00:00.000Z",
+        rng: scriptedRng([1]),
+        kick: () => {},
+        dropOtherSessions: () => {},
+      }),
+      clock: systemClock,
+      assetsDir: root,
+      releaseArt: () => classicInstalled,
+    });
+  });
+
+  afterAll(async () => {
+    await gateway.stop();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("with Classic installed the atlases are served; without it no 1.6 art is", async () => {
+    const index = async () => (await fetch(new URL("/assets/index.json", gateway.url))).json();
+    expect((await index()).atlases.tiles.sheets).toEqual(["tiles-0.png"]);
+    expect((await fetch(new URL("/assets/tiles-0.png", gateway.url))).status).toBe(200);
+    classicInstalled = false;
+    const bare = await index();
+    expect(bare.atlases.tiles).toEqual({ sheets: [], sprites: {} });
+    // The interface's own art is the engine's.
+    expect(bare.ui["internal:1"]).toBeDefined();
+    expect((await fetch(new URL("/assets/tiles-0.png", gateway.url))).status).toBe(404);
+  });
+});

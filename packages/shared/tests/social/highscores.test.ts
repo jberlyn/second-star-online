@@ -3,7 +3,9 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { socialData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { social: socialData } = classicData;
 
 import {
   type AssassinEntry,

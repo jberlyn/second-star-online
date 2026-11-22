@@ -59,6 +59,12 @@ export interface ContentData {
 
 export type DatasetId = keyof ContentData;
 
+/**
+ * The format of the store file the server sends clients (`/content/<hash>.json`). A client built
+ * for another format reloads to get the matching client.
+ */
+export const CONTENT_FORMAT = 1;
+
 /** The datasets only the server reads. */
 export const SERVER_ONLY_DATASETS = ["npcFiles", "rects"] as const satisfies readonly DatasetId[];
 
@@ -86,8 +92,14 @@ export const DATASET_IDS = [
 export interface ContentStore extends ContentData {
   /** Identifies this exact content (the hash of the client copy); "" for a fixture without one. */
   readonly hash: string;
-  /** The catalogue item with this name (case ignored), or undefined. */
+  /** The catalogue item with this key (case ignored), or undefined. */
   item(name: string): Item | undefined;
+  /**
+   * The item text written by an operator names (an NPC file line, an admin command): its key, or
+   * else the display name it was renamed to (case ignored). Resolve it to the key when saving, so
+   * a later rename never breaks the text.
+   */
+  itemNamed(text: string): Item | undefined;
   /** The monster with this name (case ignored), or undefined. */
   monster(name: string): Monster | undefined;
 }
@@ -100,6 +112,12 @@ export function buildContentStore(data: ContentData, hash = ""): ContentStore {
       items.set(i.name.toLowerCase(), i);
     }
   }
+  const displays = new Map<string, Item>();
+  for (const i of data.items.items) {
+    if (i.display && !displays.has(i.display.toLowerCase())) {
+      displays.set(i.display.toLowerCase(), i);
+    }
+  }
   const monsters = new Map<string, Monster>();
   for (const m of data.monsters.monsters) {
     if (!monsters.has(m.name.toLowerCase())) {
@@ -110,6 +128,7 @@ export function buildContentStore(data: ContentData, hash = ""): ContentStore {
     ...data,
     hash,
     item: (name) => items.get(name.toLowerCase()),
+    itemNamed: (text) => items.get(text.toLowerCase()) ?? displays.get(text.toLowerCase()),
     monster: (name) => monsters.get(name.toLowerCase()),
   };
 }

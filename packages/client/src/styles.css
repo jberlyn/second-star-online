@@ -904,6 +904,135 @@ body {
   justify-content: flex-end;
   gap: 8px;
 }
+/* The Content page (ui/content-page.ts): packs, pack updates, the draft, rows and the history. */
+.content-section {
+  margin: 0;
+  padding: 16px 20px 8px;
+}
+.content-section[hidden] {
+  display: none;
+}
+.content-section-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+.content-section-intro {
+  margin: 0 0 8px;
+  color: #aaa;
+}
+.content-status {
+  margin: 12px 20px 0;
+  padding: 6px 10px;
+  background: #23324f;
+  border: 1px solid #3c5a93;
+  border-radius: 4px;
+}
+.content-status[hidden],
+.content-editor[hidden],
+.content-page .control-panel-btn[hidden],
+.content-editor-pack[hidden] {
+  display: none;
+}
+.content-problems {
+  margin: 4px 0;
+  padding-left: 20px;
+  color: #ffb0a8;
+}
+.content-checks-ok {
+  color: #9fd89f;
+}
+.content-publish,
+.content-pickers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+.content-publish .control-panel-field {
+  flex: 1 1 280px;
+}
+.content-pickers .control-panel-field {
+  flex: 0 1 200px;
+}
+.content-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.content-editor {
+  margin-top: 12px;
+  padding: 12px;
+  background: #222;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+}
+.content-editor-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #fff;
+}
+.content-editor-state {
+  margin: 0 0 8px;
+  color: #aaa;
+}
+.content-editor-error {
+  color: #ffb0a8;
+}
+.content-json {
+  width: 100%;
+  box-sizing: border-box;
+  font:
+    12px / 1.4 ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+  white-space: pre;
+}
+.content-editor-pack pre,
+.content-diff pre {
+  max-height: 320px;
+  overflow: auto;
+  margin: 4px 0 0;
+  padding: 8px;
+  background: #161616;
+  border: 1px solid #333;
+  font:
+    12px / 1.4 ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+}
+.content-notice {
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #2a2618;
+  border: 1px solid #6b5a22;
+  border-radius: 4px;
+}
+.content-diffs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 8px;
+}
+.content-diff {
+  margin: 0;
+}
+.content-diff figcaption {
+  color: #aaa;
+}
+.content-diff-add {
+  color: #9fd89f;
+}
+.content-diff-del {
+  color: #ffb0a8;
+}
+.content-diff-same {
+  color: #888;
+}
+
 /* The Activity Log page (ui/activity-log.ts). */
 .activity-modes {
   display: flex;

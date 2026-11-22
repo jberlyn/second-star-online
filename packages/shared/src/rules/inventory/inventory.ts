@@ -186,10 +186,46 @@ export function filledLines(bag: Bag): number {
   return bag.filter((l) => l !== null).length;
 }
 
-/** The item a bag slot shows: `#id` stripped for display. */
+/**
+ * A stored item name without its `#id` (`Crate#12` is `Crate`): the item's key, which rules and
+ * logs go by. Players see `itemLabel`, which also follows a rename.
+ */
 export function displayName(item: string): string {
   const i = item.indexOf("#");
   return i < 0 ? item : item.slice(0, i);
+}
+
+/** The name players see for an item key: its `display` when an operator renamed it. */
+function labelOfKey(key: string): string {
+  return content().item(key)?.display ?? key;
+}
+
+/**
+ * The name players see for a stored item name: the `#id` dropped, and the key replaced by the
+ * item's display name when an operator renamed it, keeping the count (`15 Gold`) and the
+ * masterwork level (`Long Sword+2`) the stored name carries. A rename changes only this: copies
+ * players hold keep their key, so none is stranded.
+ */
+export function itemLabel(item: string): string {
+  const base = displayName(item);
+  const direct = content().item(base);
+  if (direct) {
+    return direct.display ?? base;
+  }
+  const count = /^(\d+) (.+)$/.exec(base);
+  if (count) {
+    return `${count[1]} ${labelOfKey(count[2] as string)}`;
+  }
+  const level = /^(.+?)(\+\d+)$/.exec(base);
+  if (level) {
+    return `${labelOfKey(level[1] as string)}${level[2]}`;
+  }
+  return base;
+}
+
+/** The atlas art for an item key: its `sprite` when it has one, else the key itself. */
+export function itemSprite(key: string): string {
+  return content().item(key)?.sprite ?? key;
 }
 
 /** An empty equipment set as `Equipment`. */

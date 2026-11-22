@@ -10,7 +10,15 @@ const strings = z.array(z.string());
  * tables, which match items by name,.
  */
 export const itemSchema = z.strictObject({
+  /**
+   * The item's permanent key: the name it was created with (the 1.6 name for Classic). Stored
+   * data, map files, NPC files and rule tables refer to it, so it never changes.
+   */
   name: z.string().min(1),
+  /** The name players see, when an operator has renamed the item; the key otherwise. */
+  display: z.string().min(1).max(40).optional(),
+  /** The Inventory and paperdoll art to draw, when it differs from the key. */
+  sprite: z.string().min(1).optional(),
   /** Other spellings of the name seen in the archive. */
   variants: strings.optional(),
   /**

@@ -18,7 +18,7 @@
  * and the list 219. Only CANCEL closes the window. A buy or sale the server completes plays `cash`
  * (1.6 never played it).
  */
-import type { ShopRow } from "@secondstaronline/shared";
+import { itemLabel, type ShopRow } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
@@ -254,7 +254,8 @@ export function createShopWindow(a: Assets, act: ShopActions): ShopWindow {
       selected = 0;
       fillRows(
         list,
-        rows.map((x) => [x.item, String(x.price)]),
+        // Training rows name skills; every other row names an item, shown as players know it.
+        rows.map((x) => [trainMode ? x.item : itemLabel(x.item), String(x.price)]),
       );
       list.hidden = false;
       vault.hidden = true;
@@ -271,7 +272,7 @@ export function createShopWindow(a: Assets, act: ShopActions): ShopWindow {
       selected = 0;
       fillRows(
         vault,
-        items.map((x) => [x]),
+        items.map((x) => [itemLabel(x)]),
       );
       vault.hidden = false;
       list.hidden = true;

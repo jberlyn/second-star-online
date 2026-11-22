@@ -4,7 +4,10 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { rectsData } from "@secondstaronline/data/rects";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { rects: rectsData } = classicData;
+
 import {
   DEFAULT_DEATH_DROPS,
   type DeltaEvent,

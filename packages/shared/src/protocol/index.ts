@@ -2,6 +2,7 @@ export * from "./admin.ts";
 export * from "./casino.ts";
 export * from "./chat.ts";
 export * from "./combat.ts";
+export * from "./content.ts";
 export * from "./core.ts";
 export * from "./economy.ts";
 export * from "./housing.ts";

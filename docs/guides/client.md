@@ -10,6 +10,7 @@ Pressing an arrow sends movement intent. The client can show the input promptly,
 - [packages/client/src/app.ts](../../packages/client/src/app.ts): connects screens, input, messages and game state.
 - [packages/client/src/model.ts](../../packages/client/src/model.ts): maintains client-side game state.
 - [packages/client/src/net.ts](../../packages/client/src/net.ts): connects, sends messages and resumes after an unexpected disconnect.
+- [packages/client/src/content.ts](../../packages/client/src/content.ts): fetches the server's content store and follows it across logins and publishes.
 - [packages/client/src/input.ts](../../packages/client/src/input.ts): translates keyboard changes into intents.
 - [packages/client/src/assets.ts](../../packages/client/src/assets.ts): loads asset metadata and images.
 - [packages/client/src/playfield.ts](../../packages/client/src/playfield.ts): draws the playfield.
@@ -51,6 +52,7 @@ The UI files are:
 - [packages/client/src/ui/control-panel-kit.ts](../../packages/client/src/ui/control-panel-kit.ts): the Control Panel's shared table, form field and confirmation.
 - [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): the Control Panel's Server Settings page.
 - [packages/client/src/ui/activity-log.ts](../../packages/client/src/ui/activity-log.ts): the Control Panel's Activity Log page.
+- [packages/client/src/ui/content-page.ts](../../packages/client/src/ui/content-page.ts): the Control Panel's Content page.
 - [packages/client/src/ui/characters.ts](../../packages/client/src/ui/characters.ts): the Control Panel's Characters page and player hub.
 - [packages/client/src/ui/character-editor.ts](../../packages/client/src/ui/character-editor.ts): the player hub's character editor and edit log.
 - [packages/client/src/ui/settings-roles.ts](../../packages/client/src/ui/settings-roles.ts): Server Settings' Roles and Staff pages.
@@ -66,6 +68,8 @@ The UI files are:
 - [packages/client/src/ui/worldeditor.ts](../../packages/client/src/ui/worldeditor.ts): world editor.
 
 ## How it works
+
+The client bundles no game content. At start it fetches the server's published content store (`/content/current.json` for the hash, then `/content/<hash>.json`, which the browser caches) and installs it before anything is shown. Every server message passes through the content sync: a `welcome` or a publish (`content`) naming another hash fetches that store first, and the messages behind it wait until it is installed, so nothing is handled against the old content. A store in a format the client was not built for reloads the page. Item names shown to players go through `itemLabel` and item art through `itemSprite`, so an operator's rename or new art shows at once.
 
 The input layer resolves multiple held arrows left, right, up, then down. A new press emits a step intent; changes to held direction or turning emit a move intent. Game keys are ignored while typing in any input, text area or select, and focusing the chat entry, losing window focus, or pressing Meta (or any key with Meta held) releases every held key. The connection sends messages to the server, receives snapshots and updates, and attempts to resume with a token after an unexpected disconnect, every 1000 ms for up to 25 attempts before "Disconnected!"; the final close codes 4001-4006 (logout, kick, flooding and the like) do not resume, while 4007 (fell behind) does and gets a fresh snapshot, and a `denied` reply to a resume (the grace ran out, or a ban since the drop) closes that socket and ends the session, showing the server's text and reopening Load Character with the name filled in. Messages sent while disconnected are queued and flushed after the resume message. After a session ends, the fresh connection for the title or Load Character retries every 1000 ms while the server is unreachable (a restart). The model predicts ordinary steps with the shared rules, then reconciles its position and facing with server updates; map edges wait for the server snapshot. The application applies incoming state, and the playfield draws the game while DOM screens provide controls and windows.
 

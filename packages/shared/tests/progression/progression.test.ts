@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { classesData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { classes: classesData } = classicData;
 
 import {
   type Fighter,

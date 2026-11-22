@@ -45,8 +45,11 @@ COPY --chown=bun:bun packages/shared/package.json ./packages/shared/package.json
 COPY --chown=bun:bun packages/shared/src ./packages/shared/src
 COPY --chown=bun:bun packages/data/package.json ./packages/data/package.json
 COPY --chown=bun:bun packages/data/content ./packages/data/content
+COPY --chown=bun:bun packages/data/schema ./packages/data/schema
 
 COPY --from=builder --chown=bun:bun /app/packages/data/src ./packages/data/src
+# The Classic pack, read from the image at every start (never copied into the database).
+COPY --from=builder --chown=bun:bun /app/packages/data/packs ./packages/data/packs
 COPY --from=builder --chown=bun:bun /app/packages/data/assets ./packages/data/assets
 COPY --from=builder --chown=bun:bun /app/dist/client ./dist/client
 

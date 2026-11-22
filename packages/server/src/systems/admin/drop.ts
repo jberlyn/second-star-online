@@ -38,11 +38,12 @@ export interface DropPile {
 
 /**
  * The catalogue spelling of a name that is an Inventory cast member: an item with an icon
- * (items.json `icon`: an original Inventory member, or added art). Director's member lookup ignores
- * case (`"Cash"` finds `cash`).
+ * (items.json `icon`: an original Inventory member, or added art), by its key or the display name it
+ * was renamed to. Director's member lookup ignores case (`"Cash"` finds `cash`).
  */
 function inventoryItem(name: string): string | null {
-  const item = content().item(name);
+  // A renamed item may be typed by the name players see; it is put down by its key.
+  const item = content().itemNamed(name);
   return item && item.icon !== null ? item.name : null;
 }
 

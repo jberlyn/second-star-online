@@ -7,7 +7,10 @@ const int = z.number().int();
 const patternEntry = z.strictObject(patternRow);
 
 export const monsterSchema = z.strictObject({
+  /** The species' permanent key: the name it was created with (the 1.6 name for Classic). */
   name: z.string().min(1),
+  /** The name players see, when an operator has renamed the species; the key otherwise. */
+  display: z.string().min(1).max(40).optional(),
   /** Cast line 1: the `Chars` body number; the sprite member is `<body>-F2-<dir>`. */
   body: int,
   /** False for the bodies with no `Chars` bitmap (hidden from the editor). */

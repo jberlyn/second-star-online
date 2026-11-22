@@ -4,12 +4,19 @@ import { classicData } from "@secondstaronline/data/classic";
 
 import {
   BJ_MAX_BID,
+  bagPicture,
   buildContentStore,
   type ContentData,
   content,
+  displayName,
   EDITOR_ITEMS,
+  groundMember,
+  groundTipName,
   installContent,
+  itemLabel,
+  itemSprite,
   onContent,
+  resolveNpcItemNames,
   skillIndex,
   tileName,
   WALK_WHITELIST,
@@ -62,5 +69,61 @@ describe("the content store holder", () => {
       content().monster(classicData.monsters.monsters[0]?.name.toUpperCase() as string),
     ).toBeDefined();
     expect(content().item("no such item")).toBeUndefined();
+  });
+});
+
+describe("renamed items", () => {
+  /** Classic with Long Sword shown as "Longblade", drawn with Knife's art. */
+  const renamed = () =>
+    buildContentStore(
+      changed((d) => {
+        const sword = d.items.items.find(
+          (i) => i.name === "Long Sword",
+        ) as (typeof d.items.items)[0];
+        sword.display = "Longblade";
+        sword.sprite = "Knife";
+      }),
+    );
+
+  test("players see the display name, keeping a stored name's count, id and level", () => {
+    installContent(renamed());
+    expect(itemLabel("Long Sword")).toBe("Longblade");
+    expect(itemLabel("long sword")).toBe("Longblade");
+    expect(itemLabel("Long Sword+3")).toBe("Longblade+3");
+    expect(itemLabel("2 Long Sword")).toBe("2 Longblade");
+    expect(itemLabel("Ale")).toBe("Ale");
+    expect(groundTipName("Long Sword")).toBe("Longblade");
+    // Rules and logs still go by the key.
+    expect(displayName("Long Sword")).toBe("Long Sword");
+  });
+
+  test("the art follows the sprite key, not the name", () => {
+    installContent(renamed());
+    expect(itemSprite("Long Sword")).toBe("Knife");
+    expect(bagPicture("Long Sword")).toBe("Knife");
+    expect(groundMember("Long Sword")).toBe("Knife");
+    installContent(classic);
+    expect(bagPicture("Long Sword")).toBe("Long Sword");
+    // The Cannonball's added icon is its sprite key (issue #2).
+    expect(bagPicture("Cannonball")).toBe("CannonballBag");
+  });
+
+  test("text an operator writes resolves a display name to the key when saved", () => {
+    installContent(renamed());
+    expect(content().itemNamed("longblade")?.name).toBe("Long Sword");
+    expect(content().itemNamed("Long Sword")?.name).toBe("Long Sword");
+    expect(
+      resolveNpcItemNames([
+        "SEL|Longblade:100:5",
+        "BUY|longblade:50",
+        "INV|2 Longblade:10",
+        "BIO|Longblade",
+      ]),
+    ).toEqual([
+      "SEL|Long Sword:100:5",
+      "BUY|Long Sword:50",
+      "INV|2 Long Sword:10",
+      "BIO|Longblade",
+    ]);
   });
 });

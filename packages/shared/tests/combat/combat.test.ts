@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { classesData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { classes: classesData } = classicData;
 
 import { STEPFRAMES_PER_FRAME } from "../../src/constants.ts";
 import { attackPower, bowRefusal, evalValue } from "../../src/rules/combat/attpower.ts";

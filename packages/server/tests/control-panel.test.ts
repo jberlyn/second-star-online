@@ -54,6 +54,8 @@ const roleWith = (...permissions: Permission[]): RoleDef => ({
 describe("who may open the Control Panel", () => {
   test("any Control Panel permission opens it; a player and a moderator cannot", () => {
     expect(CONTROL_PANEL_PERMISSIONS).toContain("settings");
+    // The Content page (issue #27).
+    expect(CONTROL_PANEL_PERMISSIONS).toContain("contentEditor");
     expect(canOpenControlPanel(null)).toBe(false);
     expect(canOpenControlPanel(MODERATOR)).toBe(false);
     expect(canOpenControlPanel(ADMINISTRATOR)).toBe(true);

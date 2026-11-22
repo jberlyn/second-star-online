@@ -69,6 +69,8 @@ import {
 } from "@secondstaronline/shared";
 
 import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "./config.ts";
+import { CONTENT_INTENTS, contentIntent } from "./content/page.ts";
+import type { ContentService } from "./content/service.ts";
 import {
   findAccountById,
   findAccountByUsername,
@@ -369,6 +371,12 @@ export type Send = (playerId: string, msg: ServerMsg) => void;
 
 export interface GameDeps {
   db: Db;
+  /**
+   * The live content store's service (packs, operator layer, draft and publish), for the Control
+   * Panel's Content page. Absent in tests that build a game alone: the page then answers that
+   * there is no content service.
+   */
+  content?: ContentService;
   send: Send;
   /** Wall-clock ISO timestamp for rows (`created_at`, `updated_at`). */
   isoNow(): string;
@@ -447,6 +455,11 @@ export interface Game {
   saveAll(): void;
   /** Writes the buffered chat lines and activity now (shutdown, after the last logouts). */
   flushLogs(): void;
+  /**
+   * A new content store was installed (a publish or an undo): the NPC files are laid over it
+   * again and every player in game is told the new hash, so their clients fetch it.
+   */
+  contentPublished(hash: string): void;
 }
 
 /**
@@ -474,6 +487,7 @@ const EDITOR_INTENTS = new Set([
   "characterModerate",
   "characterEdit",
   "characterUndo",
+  ...CONTENT_INTENTS,
   "assassinGame",
   // IM, Away and chat rooms are their own windows (MIAWs), usable over the editors.
   "im",
@@ -517,6 +531,13 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   characterModerate: { permission: "characterView", reason: "Attempted Admin Access" },
   characterEdit: { permission: "characterEditor", reason: "Attempted Admin Access" },
   characterUndo: { permission: "characterEditor", reason: "Attempted Admin Access" },
+  // The Content page (issue #27).
+  ...Object.fromEntries(
+    CONTENT_INTENTS.map((t) => [
+      t,
+      { permission: "contentEditor", reason: "Attempted Admin Access" },
+    ]),
+  ),
   // Menu 502's Assassin items: 1.6's server just ignored anyone but an immortal.
   assassinGame: { permission: "assassinGame", reason: "Attempted Admin Access" },
 };
@@ -544,11 +565,18 @@ export function createGame(deps: GameDeps): Game {
   const limits = newLoginLimits();
   let settings = resolveSettings(loadSettingOverrides(db));
   const config: ServerConfig = { ...DEFAULT_SERVER_CONFIG, ...deps.config };
-  // The archive's NPC files with the NPC editor's saves on top.
+  // The content store's NPC files with the NPC editor's saves on top, laid again after a publish.
   const npcs = archiveNpcStore();
-  for (const f of loadNpcFiles(db)) {
-    setNpcFile(npcs, npcFileNamed(npcs, f.npc)?.name ?? f.npc, f.text);
-  }
+  const layNpcFiles = () => {
+    npcs.clear();
+    for (const [k, f] of archiveNpcStore()) {
+      npcs.set(k, f);
+    }
+    for (const f of loadNpcFiles(db)) {
+      setNpcFile(npcs, npcFileNamed(npcs, f.npc)?.name ?? f.npc, f.text);
+    }
+  };
+  layNpcFiles();
   const world = createWorld(npcs);
   world.roleTags = settings.roleTags;
   /** The operator's roles by id (persistence/roles.ts), read at start and after every change. */
@@ -2411,7 +2439,10 @@ export function createGame(deps: GameDeps): Game {
 
     canEdit(characterId) {
       const p = world.players.get(characterId);
-      return p !== undefined && (can(p.role, "worldEditor") || can(p.role, "npcEditor"));
+      return (
+        p !== undefined &&
+        (can(p.role, "worldEditor") || can(p.role, "npcEditor") || can(p.role, "contentEditor"))
+      );
     },
 
     canModerate(characterId) {
@@ -2439,6 +2470,21 @@ export function createGame(deps: GameDeps): Game {
       const gate = ADMIN_INTENTS[msg.t];
       if (gate && (!can(p.role, gate.permission) || !editingOk(p, msg.t))) {
         cheat(p.name, p.ip, gate.reason);
+        return;
+      }
+      if ((CONTENT_INTENTS as readonly string[]).includes(msg.t)) {
+        const service = deps.content;
+        const seq = "seq" in msg ? msg.seq : 0;
+        send(
+          p.id,
+          service
+            ? contentIntent(
+                service,
+                { accountId: p.accountId, name: p.name },
+                msg as Parameters<typeof contentIntent>[2],
+              )
+            : { t: "contentResult", seq, ok: false, text: "This server has no content service." },
+        );
         return;
       }
       switch (msg.t) {
@@ -2986,6 +3032,13 @@ export function createGame(deps: GameDeps): Game {
       } catch (err) {
         rollbackLogs();
         throw err;
+      }
+    },
+
+    contentPublished(hash) {
+      layNpcFiles();
+      for (const o of world.players.values()) {
+        send(o.id, { t: "content", hash });
       }
     },
 

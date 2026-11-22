@@ -252,6 +252,28 @@ export function npcEditorName(name: string): string | null {
 
 // ---- the editor's checks ----
 
+/**
+ * The item of a `SEL|`, `BUY|` or `INV|` line written by its display name, rewritten to the item's
+ * key (decision 3 of issue #27: text written by operators is resolved when saved, so a later rename
+ * never breaks it). An `INV|` line's leading count stays. Every other line is unchanged.
+ */
+export function resolveNpcItemNames(lines: readonly string[]): string[] {
+  return lines.map((l) => {
+    const m = /^(SEL|BUY|INV)\|([^:|]*)(:.*)?$/.exec(l);
+    if (!m) {
+      return l;
+    }
+    const [, tag, name = "", rest = ""] = m;
+    const count = tag === "INV" ? /^(\d+ )(.+)$/.exec(name) : null;
+    const bare = count ? (count[2] as string) : name;
+    if (content().item(bare)) {
+      return l;
+    }
+    const item = content().itemNamed(bare);
+    return item ? `${tag}|${count ? count[1] : ""}${item.name}${rest}` : l;
+  });
+}
+
 const catalogue = (name: string) =>
   content().items.items.some(
     (i) => lingoEq(i.name, name) || (i.variants ?? []).some((v) => lingoEq(v, name)),

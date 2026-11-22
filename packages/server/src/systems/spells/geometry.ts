@@ -2,9 +2,9 @@
  * Spell collision geometry: the original's sprite rects, evaluated once on the server instead of on
  * every client (a divergence). Sprite locs are stage pixels (shared/rules/spells/spellfx.ts
  * `tileLoc`); rects come from each member's size and registration point
- * (@secondstaronline/data/rects, from the cast manifest).
+ * (the content store's `rects`, which the data build makes from the art).
  */
-import type { MemberRect } from "@secondstaronline/data/rects";
+import type { MemberRect } from "@secondstaronline/data";
 import {
   content,
   FACING_DELTA,

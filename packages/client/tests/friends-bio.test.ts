@@ -7,7 +7,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { socialData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { social: socialData } = classicData;
 
 import type { Assets } from "../src/assets.ts";
 import { createBioWindow } from "../src/ui/bio.ts";

@@ -4,7 +4,9 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { craftData, itemsData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { craft: craftData, items: itemsData } = classicData;
 
 import { damagedForm } from "../../src/rules/combat/armour.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";

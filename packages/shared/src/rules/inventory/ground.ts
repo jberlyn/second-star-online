@@ -10,7 +10,7 @@ import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
 import { isFurniture } from "../housing/houses.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
-import { leadingInteger } from "./inventory.ts";
+import { itemSprite, leadingInteger } from "./inventory.ts";
 
 /** The pixel anchor of a tile (`32·x + 14`, `32·y − 3`). */
 export function tilePixel(x: number, y: number): { px: number; py: number } {
@@ -110,7 +110,7 @@ export function showsClockFace(picture: string): boolean {
  * The picture a bag line shows (the bag-line drawing): a name that contains "cabinet" (not "Wind"),
  * "wind cabinet", "Painting", "Photo", "cauldron" or "crate" is drawn from that pool's picture, the
  * last test to match winning; any other name is its own member, unless SSO has drawn it a new
- * picture (`ADDED_PICTURES`). The pools hold the carried containers' and art's `Name#n` pictures.
+ * picture (its `sprite`). The pools hold the carried containers' and art's `Name#n` pictures.
  */
 export function bagPicture(name: string): string {
   let pic = name;
@@ -132,18 +132,15 @@ export function bagPicture(name: string): string {
   if (lingoContains(name, "crate")) {
     pic = "CrateBag";
   }
-  return ADDED_PICTURES[name.toLowerCase()] ?? pic;
+  return pic === name ? itemSprite(name) : pic;
 }
 
 /**
- * Items whose picture is added art drawn in place of their 1.6 member, which stays in the atlas:
- * the Cannonball's 13 px icon (issue #2).
+ * The member an item on the ground shows when it has no custom picture: its `sprite` (the
+ * Cannonball's 13 px icon, issue #2), or the name.
  */
-const ADDED_PICTURES: Readonly<Record<string, string>> = { cannonball: "CannonballBag" };
-
-/** The member an item on the ground shows when it has no custom picture: added art, or the name. */
 export function groundMember(name: string): string {
-  return ADDED_PICTURES[name.toLowerCase()] ?? name;
+  return itemSprite(name);
 }
 
 /** The picture a ground item shows: an atlas name, or the name. */
@@ -247,6 +244,11 @@ export function groundTipName(name: string): string | null {
   const base = (name.split("#")[0] ?? name).trim();
   if (!base || anyMatch(G.tipless, base)) {
     return null;
+  }
+  // A renamed item is named as players know it.
+  const renamed = content().item(base)?.display;
+  if (renamed) {
+    return renamed;
   }
   const row = firstMatch(G.tipNames, base);
   if (!row) {

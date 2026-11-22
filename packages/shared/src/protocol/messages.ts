@@ -55,6 +55,17 @@ import {
 } from "./chat.ts";
 import { attackSchema } from "./combat.ts";
 import {
+  type ContentServerMsg,
+  contentDiscardSchema,
+  contentDraftSchema,
+  contentListSchema,
+  contentNoticeSchema,
+  contentOverviewSchema,
+  contentPublishSchema,
+  contentRowSchema,
+  contentUndoSchema,
+} from "./content.ts";
+import {
   type CoreServerMsg,
   createSchema,
   loginSchema,
@@ -180,6 +191,14 @@ export const inGameSchema = z.discriminatedUnion("t", [
   roleDeleteSchema,
   roleAssignSchema,
   activityQuerySchema,
+  contentOverviewSchema,
+  contentListSchema,
+  contentRowSchema,
+  contentDraftSchema,
+  contentDiscardSchema,
+  contentPublishSchema,
+  contentUndoSchema,
+  contentNoticeSchema,
   characterSearchSchema,
   characterOpenSchema,
   characterModerateSchema,
@@ -259,6 +278,7 @@ export type ServerMsg =
   | SpellsServerMsg
   | ChatServerMsg
   | AdminServerMsg
+  | ContentServerMsg
   | SocialServerMsg
   | CasinoServerMsg
   | MailServerMsg

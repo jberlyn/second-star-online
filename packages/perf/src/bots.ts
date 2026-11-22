@@ -3,6 +3,10 @@
  * bots staggered over the ramp and appends one aggregate JSON line a second to `out`. The
  * orchestrator (`main.ts`) starts three of these on the cores the server does not use.
  */
+// The bots play by the shared rules, which read the content store: the Classic pack, as a fresh
+// server with no operator changes runs.
+import "@secondstaronline/server/src/content-classic.ts";
+
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 
 import { type Bot, type BotWindow, startBot } from "./bot.ts";

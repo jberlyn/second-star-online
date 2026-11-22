@@ -2,16 +2,22 @@
  * Operator command: lists every name rule a name matches, so the `contains` pitfalls show before
  * they bite (a player called "Crate" owns a "Crate's Door", which passes every rule for names
  * containing "Crate"). It runs the game's own matching (`ruleMatches` in shared) over the
- * generated content modules, so run it after `bun run data:build`.
+ * Classic pack as `bun run data:build` last built it, so run it after the build.
  *
  * Run: `bun run content:report <name>`.
  */
-import * as content from "@secondstaronline/data";
-import { itemsData, monstersData } from "@secondstaronline/data";
-import { npcFilesData } from "@secondstaronline/data/npcfiles";
+import { classicData } from "@secondstaronline/data/classic";
+import { DATASET_FILES, type SchemaDatasetId } from "@secondstaronline/data/schema";
 import { lingoContains, lingoEq, type PatternRow, ruleMatches } from "@secondstaronline/shared";
 
 type Obj = Record<string, unknown>;
+
+const {
+  items: itemsData,
+  monsters: monstersData,
+  npcFiles: npcFilesData,
+  spells: spellsData,
+} = classicData;
 
 /** Which match decides the answer when several rows of a table match. */
 export type Wins = "first" | "last" | "any" | "adds" | "order";
@@ -36,24 +42,6 @@ interface Row {
 
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
-
-/** The file each generated module comes from, for the table paths. */
-const FILES: Record<string, string> = {
-  itemRulesData: "item-rules.json",
-  attPowerData: "attpower.json",
-  monstersData: "monsters.json",
-  houseData: "houses.json",
-  spellsData: "spells.json",
-  itemsData: "items.json",
-  classesData: "classes.json",
-  craftData: "craft.json",
-  gatherData: "gather.json",
-  casinoData: "casino.json",
-  tilesData: "tiles.json",
-  socialData: "social.json",
-  questData: "quests.json",
-  helpData: "help.json",
-};
 
 /**
  * The `{ match, pattern }` of an object, if it is a name test (houses' fixtures name it `item`).
@@ -130,9 +118,9 @@ export function patternTables(): Map<string, Row[]> {
       }
     }
   };
-  for (const [exportName, data] of Object.entries(content)) {
-    if (exportName.endsWith("Data") && isObj(data)) {
-      walk(data, FILES[exportName] ?? exportName, "", undefined);
+  for (const [id, data] of Object.entries(classicData)) {
+    if (id !== "npcFiles" && id !== "rects" && isObj(data)) {
+      walk(data, `${DATASET_FILES[id as SchemaDatasetId]}.json`, "", undefined);
     }
   }
   return out;
@@ -457,7 +445,7 @@ export function contentReport(name: string): string[] {
       cat.push(`  monsters.json monsters: "${m.name}" (body ${m.body})`);
     }
   }
-  for (const s of content.spellsData.spells) {
+  for (const s of spellsData.spells) {
     if (lingoEq(s.name, name)) {
       cat.push(`  spells.json spells: "${s.name}"`);
     }

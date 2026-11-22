@@ -58,12 +58,25 @@ describe("import rules", () => {
         path: "packages/server/src/x.ts",
         text: 'import { a } from "@secondstaronline/perf/src/bot.ts";',
       },
+      {
+        path: "packages/shared/src/y.ts",
+        text: 'import { tilesData } from "@secondstaronline/data";',
+      },
+      {
+        path: "packages/client/src/w.ts",
+        text: 'import { classicData } from "@secondstaronline/data/classic";',
+      },
+      {
+        path: "packages/server/src/systems/m/c.ts",
+        text: 'import { classicData } from "@secondstaronline/data/classic";',
+      },
     ]).map((v) => v.rule);
     expect(rules).toEqual([
-      "data/src imports nothing (type-only from data/schema allowed)",
-      "data/src imports nothing (type-only from data/schema allowed)",
-      "shared imports only @secondstaronline/data and zod",
+      "data/src imports nothing (type-only from data/schema, and the packs' JSON, allowed)",
+      "data/src imports nothing (type-only from data/schema, and the packs' JSON, allowed)",
+      "shared imports only @secondstaronline/data types and zod",
       "client never imports server",
+      "client imports only the @secondstaronline/data index",
       "test fixtures are only imported by tests",
       "test fixtures are only imported by tests",
       "only server/src/persistence imports bun:sqlite",
@@ -71,6 +84,10 @@ describe("import rules", () => {
       "systems never import gateway/ or persistence/ (they are passed in)",
       "only server/src/gateway touches sockets",
       "nothing imports @secondstaronline/perf",
+      "shared imports only @secondstaronline/data types and zod",
+      "client imports only the @secondstaronline/data index",
+      "only tests and command-line tools import the Classic fixture",
+      "only tests and command-line tools import the Classic fixture",
     ]);
   });
 
@@ -80,7 +97,15 @@ describe("import rules", () => {
         { path: "packages/data/src/x.ts", text: 'import type { T } from "../schema/tiles.ts";' },
         {
           path: "packages/shared/src/x.ts",
-          text: 'import { tilesData } from "@secondstaronline/data";',
+          text: 'import type { TilesData } from "@secondstaronline/data";',
+        },
+        {
+          path: "packages/data/src/classic.ts",
+          text: 'import items from "../packs/classic/data/items.json" with { type: "json" };',
+        },
+        {
+          path: "packages/server/src/cli/report.ts",
+          text: 'import { classicData } from "@secondstaronline/data/classic";',
         },
         {
           path: "packages/server/src/persistence/db.ts",

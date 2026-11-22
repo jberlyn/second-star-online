@@ -11,8 +11,8 @@ These commands are for source development and custom builds. To host the standar
 | `bun run build` | Runs `assets:build`, then `build:client`. |
 | `bun run build:client` | Bundles and minifies the browser client into `dist/client/`. Build assets separately when needed. |
 | `bun run assets:build` | Generates sprite atlases, UI assets, sounds and an index under the data package’s generated assets directory; skips an unchanged build. It also updates `assets/original/usage.md` if its generated inventory differs. Pass `--force` to rebuild. |
-| `bun run data:build` | Validates editable content and regenerates the committed modules in `packages/data/src/generated/`. It replaces that generated directory. |
-| `bun run data:check` | Renders the expected data modules and reports missing, stale or extra files without writing them. |
+| `bun run data:build` | Validates editable content and writes the Classic pack to `packages/data/packs/classic/` (bumping its version in `content/pack.json` when the content changed) and the seed maps' modules to `packages/data/src/generated/`. It replaces both directories. |
+| `bun run data:check` | Renders the expected pack and modules and reports missing, stale or extra files, or a content change without a version bump, without writing them. |
 
 See the [modding guide](modding.md) before changing content or adding art. Run `data:build` after content changes and `assets:build` after art or audio changes.
 

@@ -139,6 +139,7 @@ export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = [
   "settings",
   "characterView",
   "activityLog",
+  "contentEditor",
 ];
 
 /** Whether `role` may open the Control Panel (it holds a permission with a page there). */

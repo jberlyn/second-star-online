@@ -18,12 +18,14 @@
  * Whatever the setting, a minute with a dropped tick or a tick over 25 ms logs one line
  * (`tick lag in the last minute: ...`).
  */
-import "./content-classic.ts";
-
 import { join } from "node:path";
+
+import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
+import { installContent } from "@secondstaronline/shared";
 
 import { type Clock, systemClock } from "./clock.ts";
 import { DEFAULT_SERVER_CONFIG, readServerConfig, type ServerConfig } from "./config.ts";
+import { ContentService } from "./content/service.ts";
 import { createGame, type Game } from "./game.ts";
 import {
   type Gateway,
@@ -75,6 +77,8 @@ export interface ServerOptions {
   onLag?: (line: string) => void;
   /** Bytes waiting on a socket (tests make one look behind; default the socket's own). */
   backlogOf?: GatewayOptions["backlogOf"];
+  /** The folders of the packs the release ships, by id (tests pass a changed copy). */
+  releasePacks?: Readonly<Record<string, string>>;
   /** Ends the process after too many failed ticks (tests record it; default `process.exit`). */
   exit?: (code: number) => void;
 }
@@ -102,6 +106,22 @@ export function startServer(options: ServerOptions): RunningServer {
   migrate(db);
   options.prepare?.(db);
   let gateway: Gateway | null = null;
+  // The content store: the installed packs (Classic, read from the release) with the operator's
+  // published changes on top. It is installed before the game loads anything, and each publish
+  // swaps it in and tells every client.
+  let live: Game | null = null;
+  const isoNow = options.isoNow ?? (() => new Date().toISOString());
+  const content = new ContentService({
+    db,
+    now: isoNow,
+    releasePacks: options.releasePacks ?? RELEASE_PACK_DIRS,
+    log: (line) => console.log(line),
+    onPublish: (store) => {
+      installContent(store);
+      live?.contentPublished(store.hash);
+    },
+  });
+  installContent(content.store());
   // The minute window behind the operator's lag line, and (only with a perf file) the per-phase
   // probe and its one-second window.
   const lagStats = createTickStats();
@@ -115,8 +135,9 @@ export function startServer(options: ServerOptions): RunningServer {
   const game = createGame({
     probe,
     db,
+    content,
     send: (to, msg) => gateway?.send(to, msg),
-    isoNow: options.isoNow ?? (() => new Date().toISOString()),
+    isoNow,
     rng: options.rng ?? systemRng,
     kick: (to, text) => gateway?.kick(to, text),
     dropOtherSessions: (id) => gateway?.dropOtherSessions(id),
@@ -124,10 +145,13 @@ export function startServer(options: ServerOptions): RunningServer {
     crashPoint: options.crashPoint,
     config: { ...DEFAULT_SERVER_CONFIG, ...options.config },
   });
+  live = game;
   gateway = startGateway({
     port: options.port,
     development: options.development,
     game,
+    content: () => content.clientCopy(),
+    releaseArt: () => content.installedPacks().some((p) => p.id === "classic"),
     clock,
     assetsDir: ASSETS_DIR,
     proxyHops: options.proxyHops ?? 0,

@@ -21,6 +21,7 @@ import {
   NPC_EDIT_TEXT,
   NPC_MAX_LINES,
   npcEditorName,
+  resolveNpcItemNames,
 } from "@secondstaronline/shared";
 
 import type { CasinoDeps } from "../casino/index.ts";
@@ -109,7 +110,7 @@ export function saveNpc(
   if (!inEditor(p) || !listed) {
     return { out: [], save: null };
   }
-  const lines = editorLines(text);
+  const lines = resolveNpcItemNames(editorLines(text));
   const check = checkNpcFile(lines);
   if (check.error) {
     return {

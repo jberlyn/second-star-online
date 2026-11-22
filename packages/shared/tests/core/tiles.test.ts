@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { gatherData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { gather: gatherData } = classicData;
 
 import { TILE_DEFAULTS, tileName } from "../../src/rules/core/tiles.ts";
 

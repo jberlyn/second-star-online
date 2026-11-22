@@ -150,6 +150,23 @@ describe("Only server systems create items", () => {
       ],
       // The player hub (characterView permission): a character by name, and a moderation button's
       // length and reason, each read by the chat command's own code. Nothing names an item.
+      // The Content page (contentEditor permission): rows of the content store by dataset, field and
+      // key, a publish's summary and the draft it saw, a publish id. `contentDraft` also carries a
+      // row's JSON (`data`), which changes what an item is, never makes one: the server validates
+      // it against the dataset's schema and the pre-publish checks, and every publish can be undone.
+      contentList: ["dataset:string", "part:string"],
+      contentRow: ["dataset:string", "part:string", "key:string"],
+      contentDraft: ["dataset:string", "part:string", "key:string"],
+      contentDiscard: ["dataset:string", "part:string", "key:string"],
+      contentPublish: [
+        "summary:string",
+        "seen[].dataset:string",
+        "seen[].part:string",
+        "seen[].key:string",
+        "seen[].updatedAt:string",
+      ],
+      contentUndo: ["id:string"],
+      contentNotice: ["dataset:string", "part:string", "key:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
@@ -248,10 +265,12 @@ describe("File editor and path-based file access removed", () => {
     // names match: two editor loads, the Control Panel's player hub (a character by name, read
     // through the server for a role with characterView, never a file), a guild page, closing a
     // painting, a newspaper, the profile. The hub's editor (characterEditor) changes a character
-    // through the server's own checks, never by writing a file.
+    // through the server's own checks, never by writing a file. The Content page's overview
+    // (contentEditor) reads the content store's draft and history, not a file.
     expect(types.filter((t) => /file|transfer|char|view|load/i.test(t))).toEqual([
       "editLoad",
       "npcLoad",
+      "contentOverview",
       "characterSearch",
       "characterOpen",
       "characterModerate",

@@ -3,7 +3,9 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { casinoData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { casino: casinoData } = classicData;
 
 import {
   clickGate,

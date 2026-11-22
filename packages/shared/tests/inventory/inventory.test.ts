@@ -1,7 +1,10 @@
 /** Golden tests for the bag, equipment, use, armour, breaks, ground items and paperdoll rules. */
 import { describe, expect, test } from "bun:test";
 
-import { classesData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { classes: classesData } = classicData;
+
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 
 import {

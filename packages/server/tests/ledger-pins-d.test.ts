@@ -7,7 +7,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { monstersData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { monsters: monstersData } = classicData;
+
 import {
   EDITOR_ITEM_SLOTS,
   EDITOR_MONSTERS,

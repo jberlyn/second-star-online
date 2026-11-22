@@ -1,5 +1,6 @@
 /**
- * @secondstaronline/data: generated, typed game data.
+ * @secondstaronline/data: the content types, the seed maps and the asset index. The Classic pack's
+ * data is not here: the server loads packs from disk and the client fetches the server's store.
  * Imports nothing at runtime.
  */
 
@@ -43,23 +44,5 @@ export type {
 } from "../schema/tiles.ts";
 export type { AssetIndex, AtlasGroup, AtlasIndex, AtlasSprite, UiFile } from "./assets.ts";
 export { ASSET_INDEX_FILE } from "./assets.ts";
-export {
-  attPowerData,
-  casinoData,
-  churchMapData,
-  classesData,
-  craftData,
-  gatherData,
-  helpData,
-  houseData,
-  itemRulesData,
-  itemsData,
-  jailMapData,
-  monstersData,
-  questData,
-  seedMapData,
-  socialData,
-  spellsData,
-  tilesData,
-} from "./generated/index.ts";
+export { churchMapData, jailMapData, seedMapData } from "./generated/index.ts";
 export { type PanelTab, TAB_ART, TAB_HIT, TAB_ROW_Y, type TabArt } from "./panel-tabs.ts";

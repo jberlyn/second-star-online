@@ -4,6 +4,10 @@
  * the relay(s) and three bot processes on cores 1-3, wait, stop everything, and write
  * `perf-results/<run>/report.md` and `report.json`. Raw lines stay beside them.
  */
+// The bots play by the shared rules, which read the content store: the Classic pack, as a fresh
+// server with no operator changes runs.
+import "@secondstaronline/server/src/content-classic.ts";
+
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
 import { join, resolve } from "node:path";

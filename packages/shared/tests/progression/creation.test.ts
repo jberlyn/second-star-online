@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { classesData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { classes: classesData } = classicData;
 
 import { mapName, neighbourMapName, parseMapName } from "../../src/rules/core/maps.ts";
 import { paperdollLayers } from "../../src/rules/inventory/paperdoll.ts";

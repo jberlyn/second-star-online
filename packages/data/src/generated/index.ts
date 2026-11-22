@@ -3,17 +3,3 @@
 export { jailMapData } from "./jail-map.ts";
 export { churchMapData } from "./church-map.ts";
 export { seedMapData } from "./seed-map.ts";
-export { tilesData } from "./tiles.ts";
-export { itemsData } from "./items.ts";
-export { classesData } from "./classes.ts";
-export { attPowerData } from "./attpower.ts";
-export { itemRulesData } from "./item-rules.ts";
-export { monstersData } from "./monsters.ts";
-export { helpData } from "./help.ts";
-export { spellsData } from "./spells.ts";
-export { gatherData } from "./gather.ts";
-export { craftData } from "./craft.ts";
-export { houseData } from "./houses.ts";
-export { socialData } from "./social.ts";
-export { casinoData } from "./casino.ts";
-export { questData } from "./quests.ts";

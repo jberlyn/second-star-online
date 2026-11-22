@@ -1,7 +1,9 @@
 /** The World Editor's rules. */
 import { describe, expect, test } from "bun:test";
 
-import { itemsData, monstersData, tilesData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { items: itemsData, monsters: monstersData, tiles: tilesData } = classicData;
 
 import {
   blankMap,

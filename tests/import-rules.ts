@@ -64,21 +64,42 @@ export function checkImports(files: readonly SourceFile[]): Violation[] {
       const t = target(p, ref.specifier);
       const bad = (rule: string) => out.push({ path: p, specifier: ref.specifier, rule });
 
-      // data imports nothing at runtime; its src may type-import its own build-time schemas.
+      // data imports no code at runtime; its src may type-import its own build-time schemas, and
+      // the Classic fixture reads the built pack's JSON.
       if (p.startsWith("packages/data/src/")) {
         const own = t.startsWith("packages/data/src/");
         const schemaType = ref.typeOnly && t.startsWith("packages/data/schema/");
-        if (!own && !schemaType) {
-          bad("data/src imports nothing (type-only from data/schema allowed)");
+        const packJson = t.startsWith("packages/data/packs/") && t.endsWith(".json");
+        if (!own && !schemaType && !packJson) {
+          bad(
+            "data/src imports nothing (type-only from data/schema, and the packs' JSON, allowed)",
+          );
         }
       }
-      // shared imports only data and zod.
+      // shared imports only data's types and zod: content reaches it through the content store.
       if (p.startsWith("packages/shared/src/")) {
         const ok =
-          t.startsWith("packages/shared/src/") || t === "@secondstaronline/data" || t === "zod";
+          t.startsWith("packages/shared/src/") ||
+          (t === "@secondstaronline/data" && ref.typeOnly) ||
+          t === "zod";
         if (!ok) {
-          bad("shared imports only @secondstaronline/data and zod");
+          bad("shared imports only @secondstaronline/data types and zod");
         }
+      }
+      // The client bundles no content: it fetches the server's store. From data it takes the types,
+      // the asset index and the panel's tab geometry (the package index, which exports no
+      // dataset), never a pack, the Classic fixture or the schemas.
+      if (p.startsWith("packages/client/src/") && t.startsWith("@secondstaronline/data/")) {
+        bad("client imports only the @secondstaronline/data index");
+      }
+      // The Classic fixture is for tests and tools: the server loads packs from their folders.
+      if (
+        t === "@secondstaronline/data/classic" &&
+        !isTest &&
+        !p.startsWith("packages/server/src/cli/") &&
+        !p.startsWith("packages/data/")
+      ) {
+        bad("only tests and command-line tools import the Classic fixture");
       }
       // Test fixtures must never become production dependencies.
       if (
@@ -92,12 +113,6 @@ export function checkImports(files: readonly SourceFile[]): Violation[] {
       if (p.startsWith("packages/client/")) {
         if (t.startsWith("@secondstaronline/server") || t.startsWith("packages/server/")) {
           bad("client never imports server");
-        }
-        if (t === "@secondstaronline/data/rects") {
-          bad("client never imports the server's collision rects");
-        }
-        if (t === "@secondstaronline/data/npcfiles") {
-          bad("client never imports the server's NPC files");
         }
       }
       // nothing imports the load rig: it depends on the packages, not the reverse.

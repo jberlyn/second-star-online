@@ -14,7 +14,14 @@ import { join, resolve } from "node:path";
 import { listAdded } from "../build/assets-lib/added.ts";
 import { createRgba, encodePng } from "../build/assets-lib/png.ts";
 import { SOUNDS } from "../build/assets-lib/select.ts";
-import { findStaleModules, GENERATED_DIR, renderDataModules, renderRects } from "../build/data.ts";
+import {
+  findStaleModules,
+  findStalePack,
+  GENERATED_DIR,
+  renderClassicPack,
+  renderDataModules,
+  renderRects,
+} from "../build/data.ts";
 import npcsData from "../test-fixtures/npc-expectations.json";
 
 const CONTENT_DIR = resolve(import.meta.dir, "../content");
@@ -27,20 +34,21 @@ import { monsterSchema, monstersDataSchema } from "../schema/monsters.ts";
 import { seedMapDataSchema } from "../schema/seed-map.ts";
 import { spellsDataSchema } from "../schema/spells.ts";
 import { tileSchema, tilesDataSchema } from "../schema/tiles.ts";
-import {
-  attPowerData,
-  casinoData,
-  churchMapData,
-  classesData,
-  gatherData,
-  helpData,
-  itemRulesData,
-  itemsData,
-  monstersData,
-  seedMapData,
-  spellsData,
-  tilesData,
-} from "../src/index.ts";
+import { classicData } from "../src/classic.ts";
+import { churchMapData, seedMapData } from "../src/index.ts";
+
+const {
+  attPower: attPowerData,
+  casino: casinoData,
+  classes: classesData,
+  gather: gatherData,
+  help: helpData,
+  itemRules: itemRulesData,
+  items: itemsData,
+  monsters: monstersData,
+  spells: spellsData,
+  tiles: tilesData,
+} = classicData;
 
 type Obj = Record<string, unknown>;
 
@@ -92,8 +100,28 @@ describe("data build v0", () => {
   });
 });
 
+describe("the Classic pack (packages/data/packs/classic/)", () => {
+  test("is current, and its version records the hash of its content", () => {
+    const pack = renderClassicPack();
+    expect(findStalePack(pack.files)).toEqual([]);
+    expect(pack.sourceStale).toBe(false);
+    expect(JSON.parse(pack.files.get("manifest.json") ?? "{}")).toMatchObject({
+      id: "classic",
+      name: "Classic",
+      format: 1,
+    });
+  });
+
+  test("a pack folder that differs is reported", () => {
+    const files = new Map(renderClassicPack().files);
+    files.set("data/items.json", "{}");
+    files.set("data/new.json", "{}");
+    expect(findStalePack(files)).toEqual(["missing: data/new.json", "stale: data/items.json"]);
+  });
+});
+
 describe("content files (packages/data/content/)", () => {
-  test("the build reads content/: a changed value reaches the generated module", () => {
+  test("the build reads content/: a changed value reaches the Classic pack and bumps its version", () => {
     const dir = mkdtempSync(join(tmpdir(), "sso-content-build-"));
     try {
       cpSync(CONTENT_DIR, dir, { recursive: true });
@@ -102,9 +130,14 @@ describe("content files (packages/data/content/)", () => {
       const slime = monsters.monsters.find((m: { name: string }) => m.name === "Slime");
       slime.hp = 9999;
       writeFileSync(file, JSON.stringify(monsters));
-      const text = renderDataModules(dir).get("monsters.ts") ?? "";
-      expect(text).toContain('"hp": 9999');
-      expect(text).toContain("from packages/data/content/monsters.json");
+      const pack = renderClassicPack(dir);
+      expect(pack.files.get("data/monsters.json") ?? "").toContain('"hp": 9999');
+      // The content changed since the version content/pack.json records, so it needs a new one.
+      expect(pack.sourceStale).toBe(true);
+      const now = renderClassicPack();
+      expect(now.sourceStale).toBe(false);
+      expect(pack.manifest.version).not.toBe(now.manifest.version);
+      expect(pack.manifest.contentHash).not.toBe(now.manifest.contentHash);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -142,7 +175,7 @@ describe("content files (packages/data/content/)", () => {
       const spells = JSON.parse(readFileSync(file, "utf8"));
       spells.spells[0].weight = 1;
       writeFileSync(file, JSON.stringify(spells));
-      expect(() => renderDataModules(dir)).toThrow(/does not match its schema/);
+      expect(() => renderClassicPack(dir)).toThrow(/does not match its schema/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -156,10 +189,10 @@ describe("content files (packages/data/content/)", () => {
       const classes = JSON.parse(readFileSync(file, "utf8"));
       classes.skills.push({ index: classes.skills.length + 1, skill: "Tinkering" });
       writeFileSync(file, JSON.stringify(classes));
-      expect(renderDataModules(dir).get("classes.ts")).toContain("Tinkering");
+      expect(renderClassicPack(dir).files.get("data/classes.json")).toContain("Tinkering");
       classes.creation.startingSkills["1"].values.push(1, 1);
       writeFileSync(file, JSON.stringify(classes));
-      expect(() => renderDataModules(dir)).toThrow(/more starting values/);
+      expect(() => renderClassicPack(dir)).toThrow(/more starting values/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -241,7 +274,7 @@ describe("monsters, attack power and class skill gain data", () => {
 
 describe("item rules and loot tables", () => {
   test("the rule tables keep their source order", async () => {
-    const { itemRulesData } = await import("../src/index.ts");
+    const itemRulesData = classicData.itemRules;
     // The 1.6 rows (157 slot rules, 19 STR rules, 35 usable rules, 64 effect rows, 40 armour
     // rows, 36 elemental rows, 33 damaged forms) are checked in content-baseline.test.ts.
     expect(itemRulesData.equip.slots[0]).toEqual({

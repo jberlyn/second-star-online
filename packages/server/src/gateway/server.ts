@@ -15,6 +15,7 @@ import { realpathSync, statSync } from "node:fs";
 import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 import type { ServerWebSocket } from "bun";
 
+import { ASSET_INDEX_FILE, type AssetIndex } from "@secondstaronline/data";
 import {
   CLOSE,
   type ClientMsg,
@@ -29,11 +30,14 @@ import {
 } from "@secondstaronline/shared";
 
 import type { Clock } from "../clock.ts";
+import type { ClientCopy } from "../content/service.ts";
 import type { Game } from "../game.ts";
 import { ipKey } from "../systems/admin/login-limits.ts";
 
 export const WS_PATH = "/ws";
 export const ASSETS_PATH = "/assets/";
+/** Where the content store is served (`current.json`, `<hash>.json`). */
+export const CONTENT_PATH = "/content/";
 
 /** Token bucket: up to 60 messages at once, refilled at 60 per second. */
 const BUCKET_CAPACITY = 60;
@@ -48,6 +52,18 @@ export interface GatewayOptions {
   /** Live reload and unminified client bundle. */
   development: boolean;
   game: Game;
+  /**
+   * The published content store as clients receive it, served at `/content/<hash>.json` (and
+   * its hash at `/content/current.json`). Absent: no content is served (tests of the gateway alone).
+   */
+  content?: () => ClientCopy;
+  /**
+   * Whether the pack that owns the release's atlases (Classic) is installed. While it is not, the
+   * asset index lists no atlases and their sheets are not served, so a server without Classic never
+   * sends 1.6 art; the interface's own art (the UI files) is the engine's and always served.
+   * Absent: always installed.
+   */
+  releaseArt?: () => boolean;
   clock: Clock;
   /** Folder of generated assets (packages/data/assets). */
   assetsDir: string;
@@ -288,6 +304,31 @@ export function startGateway(options: GatewayOptions): Gateway {
   const respond = (body: BodyInit | null, init: ResponseInit = {}) =>
     new Response(body, { ...init, headers: { ...headers, ...(init.headers as object) } });
 
+  /**
+   * `current.json` is the published hash (never cached); `<hash>.json` is that store, cached for
+   * good, since a hash names one store. Only the published hash is served: an old hash is gone.
+   */
+  const contentResponse = (req: Request, file: string, copy: ClientCopy): Response => {
+    if (file === "current.json") {
+      return respond(JSON.stringify({ hash: copy.hash }), {
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      });
+    }
+    if (file !== `${copy.hash}.json`) {
+      return respond("Not found", { status: 404 });
+    }
+    const gzip = /\bgzip\b/.test(req.headers.get("accept-encoding") ?? "");
+    const body = gzip ? copy.gzip : copy.json;
+    return respond(req.method === "HEAD" ? null : body, {
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "public, max-age=31536000, immutable",
+        vary: "accept-encoding",
+        ...(gzip ? { "content-encoding": "gzip" } : {}),
+      },
+    });
+  };
+
   const backlogOf = options.backlogOf ?? ((ws: Ws) => ws.getBufferedAmount());
   let traffic = emptyTraffic();
   const sendWs = (ws: Ws, msg: ServerMsg) => {
@@ -363,6 +404,7 @@ export function startGateway(options: GatewayOptions): Gateway {
       token,
       resumed,
       rules: { chatMaxChars: game.settings.chatMaxChars },
+      ...(options.content ? { content: options.content().hash } : {}),
     });
     if (!game.enter(characterId, resumed, ws.data.ip)) {
       live.delete(characterId);
@@ -525,6 +567,13 @@ export function startGateway(options: GatewayOptions): Gateway {
         }
         return respond("Expected a WebSocket upgrade", { status: 426 });
       }
+      if (
+        url.pathname.startsWith(CONTENT_PATH) &&
+        options.content &&
+        (req.method === "GET" || req.method === "HEAD")
+      ) {
+        return contentResponse(req, url.pathname.slice(CONTENT_PATH.length), options.content());
+      }
       if (url.pathname.startsWith(ASSETS_PATH) && (req.method === "GET" || req.method === "HEAD")) {
         let rel: string;
         try {
@@ -538,6 +587,20 @@ export function startGateway(options: GatewayOptions): Gateway {
         const file = Bun.file(normalize(join(options.assetsDir, rel)));
         if (!(await file.exists())) {
           return respond("Not found", { status: 404 });
+        }
+        if (options.releaseArt && !options.releaseArt()) {
+          if (rel === ASSET_INDEX_FILE) {
+            const index = (await file.json()) as AssetIndex;
+            const atlases = Object.fromEntries(
+              Object.keys(index.atlases).map((g) => [g, { sheets: [], sprites: {} }]),
+            ) as unknown as AssetIndex["atlases"];
+            return respond(req.method === "HEAD" ? null : JSON.stringify({ ...index, atlases }), {
+              headers: { "cache-control": "no-cache", "content-type": "application/json" },
+            });
+          }
+          if (/^(tiles|bodies|paperdoll|fx|items)-\d+\.png$/.test(rel)) {
+            return respond("Not found", { status: 404 });
+          }
         }
         const assetHeaders = {
           "cache-control": "no-cache",

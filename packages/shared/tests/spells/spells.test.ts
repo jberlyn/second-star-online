@@ -1,7 +1,9 @@
 /** Golden tests for the shared spell rules. */
 import { describe, expect, test } from "bun:test";
 
-import { spellsData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { spells: spellsData } = classicData;
 
 import { castSchema } from "../../src/protocol/spells.ts";
 import {

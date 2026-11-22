@@ -1,7 +1,9 @@
 /** Factions, the murder flag's lines and quests. */
 import { describe, expect, test } from "bun:test";
 
-import { socialData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { social: socialData } = classicData;
 
 import {
   ARCHIVED_POWERS,

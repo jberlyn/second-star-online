@@ -4,8 +4,10 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
-import { monstersData } from "@secondstaronline/data";
-import { npcFilesData } from "@secondstaronline/data/npcfiles";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { monsters: monstersData, npcFiles: npcFilesData } = classicData;
+
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 import {
   ADMINISTRATOR,

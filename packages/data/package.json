@@ -5,15 +5,15 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./rects": "./src/rects.ts",
-    "./npcfiles": "./src/npcfiles.ts",
     "./test-fixtures/npc-expectations": "./test-fixtures/npc-expectations.json",
-    "./classic": "./src/classic.ts"
+    "./classic": "./src/classic.ts",
+    "./packs": "./src/packs.ts",
+    "./schema": "./schema/datasets.ts"
   },
   "scripts": {
     "test": "bun test"
   },
-  "devDependencies": {
+  "dependencies": {
     "zod": "^4.6.7"
   }
 }

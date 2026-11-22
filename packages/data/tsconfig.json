@@ -3,7 +3,14 @@
   "compilerOptions": {
     "outDir": ".tsbuild"
   },
-  "include": ["src/**/*", "schema/**/*", "build/**/*", "tests/**/*", "test-fixtures/**/*"],
+  "include": [
+    "src/**/*",
+    "packs/**/*.json",
+    "schema/**/*",
+    "build/**/*",
+    "tests/**/*",
+    "test-fixtures/**/*"
+  ],
   "references": [],
   "files": ["test-fixtures/npc-expectations.json"]
 }

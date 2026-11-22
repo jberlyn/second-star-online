@@ -33,11 +33,11 @@ import { type AtlasGroup, TAB_ART, TAB_HIT, TAB_ROW_Y } from "@secondstaronline/
 import {
   bagPicture,
   content,
-  displayName,
   type EquipSlot,
   type EquipView,
   equipSlotFor,
   type InventoryView,
+  itemLabel,
   lingoContains,
   menuAction,
   PAPERDOLL_SIZE,
@@ -659,7 +659,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     );
     const title = document.createElement("div");
     title.className = "field sel-title";
-    title.textContent = displayName(name);
+    title.textContent = itemLabel(name);
     title.style.position = "absolute";
     title.style.left = `${lx - 103}px`;
     title.style.top = `${ly - 22}px`;
@@ -754,7 +754,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       } else if (isCrystal) {
         act.oneCrystal(menuSlot, mode);
       } else if (many) {
-        act.stack(menuSlot, displayName(name), mode);
+        act.stack(menuSlot, itemLabel(name), mode);
       } else {
         act[mode](menuSlot);
       }
@@ -829,7 +829,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     const item = field ? inventory?.equip[field] : undefined;
     tips.showFor(
       equipTip,
-      item && item !== "NOTHING" ? displayName(item) : null,
+      item && item !== "NOTHING" ? itemLabel(item) : null,
       e.clientX,
       e.clientY,
     );
@@ -1030,11 +1030,11 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         at(hit, x - 16, y + 4, 32, 34);
         hit.setAttribute(
           "aria-label",
-          line ? `${displayName(line.item)}, ${line.qty}` : `Empty slot ${i + 1}`,
+          line ? `${itemLabel(line.item)}, ${line.qty}` : `Empty slot ${i + 1}`,
         );
         if (line) {
           // An SSO addition: the item's name, and a stack's size.
-          const name = displayName(line.item);
+          const name = itemLabel(line.item);
           tips.attach(hit, line.qty > 1 ? `${name} (${line.qty})` : name);
           const picture = spriteCanvas(a, "items", bagPicture(line.item), x, y);
           bagLayer.append(picture);

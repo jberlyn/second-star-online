@@ -4,7 +4,11 @@
  */
 import { describe, expect, spyOn, test } from "bun:test";
 
-import { type AssetIndex, classesData, TAB_ART, TAB_ROW_Y } from "@secondstaronline/data";
+import { type AssetIndex, TAB_ART, TAB_ROW_Y } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { classes: classesData } = classicData;
+
 import { type EquipView, emptyBag, NO_EQUIPMENT } from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";

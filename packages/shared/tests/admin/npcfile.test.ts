@@ -1,7 +1,10 @@
 /** NPC files as the 1.6 readers see them, and the NPC editor's rules. */
 import { describe, expect, test } from "bun:test";
 
-import { monstersData } from "@secondstaronline/data";
+import { classicData } from "@secondstaronline/data/classic";
+
+const { monsters: monstersData } = classicData;
+
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 
 import {

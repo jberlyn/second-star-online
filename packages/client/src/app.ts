@@ -13,6 +13,7 @@ import {
   hidesName,
   houseType,
   inCastBounds,
+  installContent,
   type KeyAction,
   localSyncPatch,
   logchatFile,
@@ -30,6 +31,7 @@ import {
 
 import { type Assets, loadAssets } from "./assets.ts";
 import { createAudio, playAll } from "./audio.ts";
+import { createContentSync, fetchContent } from "./content.ts";
 import {
   createInputState,
   type InputSink,
@@ -77,6 +79,7 @@ import { createCharMenu } from "./ui/charmenu.ts";
 import { createChatInput, createChatLog } from "./ui/chat.ts";
 import { createChatRoomWindow } from "./ui/chatroom.ts";
 import { createCheckersWindow } from "./ui/checkers.ts";
+import { createContentPage } from "./ui/content-page.ts";
 import { createControlPanel } from "./ui/control-panel.ts";
 import { createFriendsWindow } from "./ui/friends.ts";
 import { desktopMenus, type MenuActions, type MenuState } from "./ui/gamemenu.ts";
@@ -115,7 +118,9 @@ export interface App {
 
 export async function startApp(root: HTMLElement): Promise<App> {
   root.replaceChildren();
-  const assets = await loadAssets();
+  // The client bundles no content: it plays with the server's published store (content.ts).
+  const [assets, store] = await Promise.all([loadAssets(), fetchContent()]);
+  installContent(store);
   const conn = await connect();
   return runApp(root, assets, conn);
 }
@@ -593,6 +598,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     },
     can: (permission) => permissions.has(permission),
   });
+  const contentPage = createContentPage({
+    overview: (seq) => send({ t: "contentOverview", seq }),
+    list: (seq, dataset, part) => send({ t: "contentList", seq, dataset, part }),
+    row: (seq, ref) => send({ t: "contentRow", seq, ...ref }),
+    draft: (seq, ref, op, data) => send({ t: "contentDraft", seq, ...ref, op, data }),
+    discard: (seq, ref) => send({ t: "contentDiscard", seq, ...ref }),
+    publish: (seq, summary, seen) => send({ t: "contentPublish", seq, summary, seen }),
+    undo: (seq, id) => send({ t: "contentUndo", seq, id }),
+    notice: (seq, ref, accept) => send({ t: "contentNotice", seq, ...ref, accept }),
+  });
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -619,6 +634,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         group: "Players",
         permission: "activityLog",
         el: activityPage.el,
+      },
+      {
+        id: "content",
+        title: "Content",
+        group: "Game",
+        permission: "contentEditor",
+        el: contentPage.el,
+        onShow: () => contentPage.onShow(),
+        changes: () => contentPage.changes(),
+        discard: () => contentPage.discard(),
       },
     ],
     // The classic editors, until their Control Panel pages arrive (#32, #33).
@@ -1001,10 +1026,17 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       menuBar.refresh();
     }
   };
-  conn.onMessage = (msg: ServerMsg) => {
-    handleMessage(msg);
-    syncMenus();
-  };
+  // Every message goes through the content sync: a login or publish naming another store fetches
+  // it first, and the messages after it wait.
+  const contentSync = createContentSync({
+    handle: (msg) => {
+      handleMessage(msg);
+      syncMenus();
+    },
+    // A new store is live: the Content page shows the publish.
+    installed: () => contentPage.published(),
+  });
+  conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
   const handleMessage = (msg: ServerMsg) => {
     switch (msg.t) {
       case "welcome":
@@ -1154,6 +1186,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (!permissions.has("activityLog")) {
           activityPage.reset();
         }
+        if (!permissions.has("contentEditor")) {
+          contentPage.reset();
+        }
         if (permissions.has("characterView")) {
           charactersPage.permissionsChanged();
         } else {
@@ -1168,6 +1203,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "activity":
         activityPage.receive(msg);
+        return;
+      case "contentOverview":
+      case "contentList":
+      case "contentRow":
+      case "contentResult":
+        contentPage.receive(msg);
+        return;
+      case "content":
+        // The content sync fetches and installs the store; nothing else to do here.
         return;
       case "characterList":
         charactersPage.receiveList(msg);
@@ -1507,6 +1551,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     settingsPanel.discard();
     activityPage.reset();
     charactersPage.reset();
+    contentPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

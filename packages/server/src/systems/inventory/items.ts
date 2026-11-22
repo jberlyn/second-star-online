@@ -35,6 +35,7 @@ import {
   isFurniture,
   isGoldName,
   isWalkable,
+  itemLabel,
   kitTileOk,
   lingoContains,
   lingoEq,
@@ -430,7 +431,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
   if (line && !busy(p) && line.qty < n && !lingoContains(line.item, "Crystals")) {
-    io.tell(p, GIVE_TEXT.notEnoughItems(displayName(line.item)));
+    io.tell(p, GIVE_TEXT.notEnoughItems(itemLabel(line.item)));
     return io.out;
   }
   // With a vault or container window open, Drop puts the item into it (in 1.6 the window's key
@@ -585,7 +586,7 @@ export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
     return io.out;
   }
   if (line.qty < n) {
-    io.tell(p, GIVE_TEXT.notEnoughItems(displayName(line.item)));
+    io.tell(p, GIVE_TEXT.notEnoughItems(itemLabel(line.item)));
     return io.out;
   }
   // A monster or NPC one, then two tiles ahead takes it as a quest give: one item, whatever the
@@ -603,8 +604,8 @@ export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   io.tell(
     p,
     n > 1
-      ? GIVE_TEXT.offerMany(n, displayName(line.item), target.name)
-      : GIVE_TEXT.offer(displayName(line.item), target.name),
+      ? GIVE_TEXT.offerMany(n, itemLabel(line.item), target.name)
+      : GIVE_TEXT.offer(itemLabel(line.item), target.name),
   );
   const g = addGround(ctx, room, io, {
     item: line.item,
@@ -1163,8 +1164,8 @@ export function receiveGive(
     pile
       ? GIVE_TEXT.receivingPile(giverName, g.item)
       : count > 1
-        ? GIVE_TEXT.receivingPile(giverName, `${count} ${displayName(g.item)}`)
-        : GIVE_TEXT.receiving(giverName, displayName(g.item)),
+        ? GIVE_TEXT.receivingPile(giverName, `${count} ${itemLabel(g.item)}`)
+        : GIVE_TEXT.receiving(giverName, itemLabel(g.item)),
   );
   if (!room.map.ground.includes(g) || bagFull(target, g.item)) {
     return io.out;
