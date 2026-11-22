@@ -585,6 +585,11 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     if (!listing?.keyField) {
       return;
     }
+    // A new row has no usage report, and the last row's removal form goes with it.
+    usage = null;
+    usageSeq = -1;
+    usageBox.replaceChildren();
+    removalBox.replaceChildren();
     editing = { dataset: listing.dataset, part: listing.part, key: null };
     editingKeyField = listing.keyField;
     editor.hidden = false;

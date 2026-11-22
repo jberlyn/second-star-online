@@ -368,7 +368,7 @@ export function removalForm(
         // Purging is the strong option: it says what goes, and that no undo brings it back.
         const who = u.characters;
         void confirmBox(host, {
-          text: `Purge ${u.name}? When the draft is published, ${plural(copies, "copy", "copies")}${who > 0 ? ` held by ${plural(who, "character")}` : ""} are deleted from bags, gear, vaults, containers and the ground. Undoing the publish brings the item back, not the copies.`,
+          text: `Purge ${u.name}? When the draft is published, ${plural(copies, "copy", "copies")}${who > 0 ? ` (${plural(who, "character")} among the holders)` : ""} ${copies === 1 ? "is" : "are"} deleted from bags, gear, vaults, containers, the ground and player shops. Undoing the publish brings the item back, not the copies.`,
           confirm: "Purge every copy",
           cancel: "Keep them",
           danger: true,

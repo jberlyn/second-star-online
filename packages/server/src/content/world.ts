@@ -101,4 +101,9 @@ export interface ContentWorld {
   apply(actions: readonly WorldAction[], actor: ContentActor, publishId: string): string[];
   /** Stored references (bags, the ground, spawns) the published content does not resolve. */
   problems(): ContentProblem[];
+  /**
+   * Puts back in memory what the last `apply` changed: the publish failed after it, and the
+   * database rolled back with it.
+   */
+  rollback(): void;
 }

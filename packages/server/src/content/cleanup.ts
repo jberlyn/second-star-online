@@ -34,7 +34,8 @@ function names(r: Reference, spellings: readonly string[]): boolean {
   if (spellings.some((s) => lingoEq(s, n))) {
     return true;
   }
-  const counted = r.kind === "lootItem" ? /^\d+ (.+)$/.exec(n) : null;
+  // Only crystals drop as a counted pile; `INV|50 Gold` is gold, not the Gold item.
+  const counted = r.kind === "lootItem" ? /^\d+ (.+ Crystals)$/i.exec(n) : null;
   return counted !== null && spellings.some((s) => lingoEq(s, (counted[1] as string).trim()));
 }
 
@@ -96,9 +97,12 @@ function npcLineAs(line: string, item: string): string {
     return line;
   }
   const [, tag, name = "", rest = ""] = m;
-  // Only crystals drop as a counted pile (`INV|5 Blue Crystals`); any other item drops one.
-  const count = tag === "INV" && lingoContains(item, " Crystals") ? /^(\d+ )/.exec(name) : null;
-  return `${tag}|${count ? count[1] : ""}${item}${rest}`;
+  // Only crystals drop as a counted pile (`INV|5 Blue Crystals`, one crystal is `1 ...`); any other
+  // item drops one, named bare.
+  if (tag === "INV" && lingoContains(item, " Crystals")) {
+    return `${tag}|${/^(\d+) /.exec(name)?.[1] ?? "1"} ${item}${rest}`;
+  }
+  return `${tag}|${item}${rest}`;
 }
 
 const isPrefix = (a: JsonPath, b: JsonPath) =>
@@ -142,6 +146,16 @@ export function cleanUses(
     if (value === undefined) {
       continue;
     }
+    // A reference whose drop is the whole row (a deed: the row is the item's) removes the row, in
+    // either mode: writing another item into it would change the row's own key.
+    if (rowUses.some((u) => u.drop?.length === 0)) {
+      if (keyField(ref.dataset, ref.part) !== null) {
+        rows.push({ ref, op: "remove", data: null });
+      } else {
+        left.push(...rowUses);
+      }
+      continue;
+    }
     if (mode === "replace") {
       for (const u of rowUses) {
         if (u.npcLine) {
@@ -154,15 +168,6 @@ export function cleanUses(
         }
       }
       rows.push({ ref, op: "set", data: value });
-      continue;
-    }
-    // Remove: a reference whose drop is the whole row removes it (only a keyed row can go).
-    if (rowUses.some((u) => u.drop?.length === 0)) {
-      if (keyField(ref.dataset, ref.part) !== null) {
-        rows.push({ ref, op: "remove", data: null });
-      } else {
-        left.push(...rowUses);
-      }
       continue;
     }
     // Each entry once, deepest first and from the end of each list, and none inside another that
@@ -240,7 +245,7 @@ function lineItem(line: string): string | null {
     return null;
   }
   const name = (m[2] as string).trim();
-  return m[1] === "INV" ? name.replace(/^\d+ /, "") : name;
+  return m[1] === "INV" && /^\d+ .+ Crystals$/i.test(name) ? name.replace(/^\d+ /, "") : name;
 }
 
 /**
@@ -268,7 +273,40 @@ export function npcTextCleaned(
       out.push(npcLineAs(line, replacement));
     }
   }
-  return changed ? out.join("\r") : null;
+  return changed ? (mode === "replace" ? mergeShopLines(out, replacement) : out).join("\r") : null;
+}
+
+/**
+ * One `SEL|` line and one `BUY|` line per item for `item`: a replacement that a shop already sold
+ * joins the line it had (the first line's price, the stocks added), so no shop lists it twice.
+ */
+function mergeShopLines(lines: readonly string[], item: string): string[] {
+  const out: string[] = [];
+  let sel = -1;
+  let buy = false;
+  for (const line of lines) {
+    const m = /^(SEL|BUY)\|([^:|]*)(.*)$/.exec(line);
+    if (!m || !lingoEq((m[2] as string).trim(), item)) {
+      out.push(line);
+      continue;
+    }
+    if (m[1] === "BUY") {
+      if (!buy) {
+        out.push(line);
+        buy = true;
+      }
+      continue;
+    }
+    if (sel < 0) {
+      sel = out.length;
+      out.push(line);
+      continue;
+    }
+    const stock = (l: string) => Number(/:(\d+)$/.exec(l)?.[1] ?? 0);
+    const first = out[sel] as string;
+    out[sel] = first.replace(/:(\d+)$/, `:${stock(first) + stock(line)}`);
+  }
+  return out;
 }
 
 /** How many a shop's `SEL|` lines naming one of `spellings` hold in stock. */

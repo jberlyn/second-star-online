@@ -364,6 +364,17 @@ export function referencesOf(data: ContentData): Reference[] {
   g.treasure.items.forEach((n, i) => {
     gather(["treasure", "items", i], n, ["treasure", "items", i]);
   });
+  // What the quest chests refill with after a save, and Oraku's orb and reward.
+  const questChest = section("houses", "questChest");
+  data.houses.questChest.chests.forEach((c, i) => {
+    c.source.forEach((n, j) => {
+      add(questChest, ["chests", i, "source", j], "item", n, ["chests", i, "source", j]);
+    });
+  });
+  const replies = section("social", "questReplies");
+  const oraku = data.social.questReplies.oraku;
+  add(replies, ["oraku", "item"], "item", oraku.item, null);
+  add(replies, ["oraku", "reward"], "item", oraku.reward, null);
   // A deed is an item: its row goes with it.
   for (const d of data.houses.deeds) {
     add({ dataset: "houses", part: "deeds", key: d.deed }, ["deed"], "item", d.deed, []);

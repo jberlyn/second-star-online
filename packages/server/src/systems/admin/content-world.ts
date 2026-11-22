@@ -30,6 +30,7 @@ import { type EntryKind, npcTextCleaned, shopStockOf } from "../../content/clean
 import type { ContentActor } from "../../content/service.ts";
 import type { ContentProblem } from "../../content/validate.ts";
 import type { ContentWorld, UsagePlace, UsagePlaceKind, WorldAction } from "../../content/world.ts";
+import { mintContainerId } from "../crafting/craft.ts";
 import { ledgerFromTemplate, type ShopLedger } from "../economy/shop.ts";
 import { cancelTrade } from "../economy/trade.ts";
 import { npcFileNamed, setNpcFile } from "../monsters/npcfiles.ts";
@@ -100,6 +101,8 @@ export interface ContentWorldDeps {
   persist(players: readonly Player[]): void;
   /** Wall-clock ISO time, for the rows it writes. */
   now(): string;
+  /** An NPC's shop ledger: in memory, or loaded from the database (null: its file's state). */
+  ledgerOf(npc: string): ShopLedger | null;
 }
 
 /** A tally of one kind of place: copies and who holds them. */
@@ -173,10 +176,95 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
   const offlineGround = (spellings: readonly string[]) =>
     store.groundItems(spellings, loaded()).filter((r) => storedCopyOf(r.item, spellings));
 
+  /**
+   * What the last `apply` may change, as it was before, and how to put it back: the database rolls
+   * back with a failed publish, and memory must go back with it.
+   */
+  let undoLast: (() => void) | null = null;
+  const snapshot = (): (() => void) => {
+    const players = [...world.players.values()].map((p) => ({
+      p,
+      bag: p.char.bag.map((l) => (l ? { ...l } : null)),
+      equip: { ...p.char.equip },
+      vault: [...p.char.vault],
+      gold: p.char.gold,
+      container: p.container,
+      keyLock: p.keyLock,
+    }));
+    const containers = [...world.containers].map(([k, v]) => [k, [...v]] as const);
+    const maps = deps.loadedMaps().map((m) => ({
+      m,
+      ground: m.ground.map((g) => ({ ...g })),
+      slots: m.slots.map((sl) => [sl, { ...sl, live: sl.live ? { ...sl.live } : null }] as const),
+    }));
+    const quests = [...world.questLines];
+    const shops = [...world.playerShops.values()].flatMap((ps) => {
+      const f = npcFileNamed(world.npcs, ps.npc);
+      return f ? [{ name: f.name, text: f.text, ledger: world.shops.get(f.name) }] : [];
+    });
+    const activity = world.activity.length;
+    const groundLog = [...world.groundLog];
+    const containersDirty = new Set(world.containersDirty);
+    const questsDirty = new Set(world.questsDirty);
+    return () => {
+      for (const s of players) {
+        s.p.char.bag.splice(0, s.p.char.bag.length, ...s.bag);
+        Object.assign(s.p.char.equip, s.equip);
+        s.p.char.vault = s.vault;
+        s.p.char.gold = s.gold;
+        s.p.container = s.container;
+        s.p.keyLock = s.keyLock;
+        s.p.invDirty = true;
+        s.p.lookDirty = true;
+      }
+      world.containers.clear();
+      for (const [k, v] of containers) {
+        world.containers.set(k, [...v]);
+      }
+      for (const { m, ground, slots } of maps) {
+        m.ground.splice(0, m.ground.length, ...ground);
+        for (const [sl, was] of slots) {
+          Object.assign(sl, was);
+        }
+      }
+      world.questLines.splice(0, world.questLines.length, ...quests);
+      for (const sh of shops) {
+        setNpcFile(world.npcs, sh.name, sh.text);
+        if (sh.ledger) {
+          world.shops.set(sh.name, sh.ledger);
+        } else {
+          world.shops.delete(sh.name);
+        }
+      }
+      world.activity.length = activity;
+      world.groundLog.splice(0, world.groundLog.length, ...groundLog);
+      world.containersDirty.clear();
+      for (const c of containersDirty) {
+        world.containersDirty.add(c);
+      }
+      world.questsDirty.clear();
+      for (const q of questsDirty) {
+        world.questsDirty.add(q);
+      }
+    };
+  };
+
+  /** Closes every open window on a container. */
+  const closeContainer = (name: string) => {
+    for (const o of world.players.values()) {
+      if (o.container && lingoEq(o.container.name, name)) {
+        o.container = null;
+        o.keyLock = false;
+        deps.deliver([{ to: o.id, msg: { t: "vault", items: [], open: false, closed: true } }]);
+      }
+    }
+  };
+
   /** The text of a player shop as it stands now, its till and stock written in. */
   const shopText = (npc: string): { name: string; text: string } | null => {
     const f = npcFileNamed(world.npcs, npc);
-    return f ? { name: f.name, text: liveNpcText(f, world.shops.get(f.name) ?? null) } : null;
+    // A ledger not yet loaded since the start is read from the database (game.ts `ledgerOf`).
+    return f ? { name: f.name, text: liveNpcText(f, deps.ledgerOf(f.name)) } : null;
   };
 
   function itemUsage(spellings: readonly string[]): UsagePlace[] {
@@ -234,12 +322,12 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     for (const m of deps.loadedMaps()) {
       for (const g of m.ground) {
         if (is(g.item)) {
-          ground.add(m.name, g.qty ?? 1);
+          ground.add(m.name, (g.qty ?? 1) * storedCount(g.item));
         }
       }
     }
     for (const g of offlineGround(spellings)) {
-      ground.add(g.map, g.qty);
+      ground.add(g.map, g.qty * storedCount(g.item));
     }
     world.questLines.forEach((line, i) => {
       const [, wants = "", reward = ""] = questFields(line);
@@ -301,27 +389,74 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     const lines: string[] = [];
     /** Online players whose inventory changed: written with the publish. */
     const touched = new Set<Player>();
+    /**
+     * Player shops: the stock on sale goes, or is the replacement, with the till and stock as they
+     * stand now written into the rewritten file and its new ledger. Returns the stock it touched.
+     */
+    const cleanShops = (mode: "remove" | "replace"): number => {
+      let n = 0;
+      for (const ps of world.playerShops.values()) {
+        const f = shopText(ps.npc);
+        const text = f ? npcTextCleaned(f.text, a.spellings, mode, a.replacement ?? "") : null;
+        if (!f || text === null) {
+          continue;
+        }
+        n += shopStockOf(f.text, a.spellings);
+        const ledger = ledgerFromTemplate(setNpcFile(world.npcs, f.name, text));
+        world.shops.set(f.name, ledger);
+        store.saveShopFile(f.name, text, ledger, actor.accountId, deps.now());
+        deps.deliver(closeNpcWindows(world, f.name));
+      }
+      return n;
+    };
+
     if (a.copies !== "retire") {
       const purge = a.copies === "purge";
-      const as = (stored: string) => storedCopyAs(stored, a.replacement as string);
+      // A replaced container gets a new id of its own (minted, so it is no other container's), and
+      // every copy of the same old one gets the same new name.
+      const renamed = new Map<string, string>();
+      const as = (stored: string) => {
+        const was = renamed.get(stored.toLowerCase());
+        if (was !== undefined) {
+          return was;
+        }
+        let next = storedCopyAs(stored, a.replacement as string);
+        if (next.includes("#")) {
+          next = `${a.replacement}#${mintContainerId(world, Date.parse(deps.now()))}`;
+        }
+        renamed.set(stored.toLowerCase(), next);
+        return next;
+      };
+      /**
+       * A ground pile replaced: crystals carry their count in their name (`5 Blue Crystals`, one
+       * pile), anything else in the pile's quantity.
+       */
+      const groundAs = (stored: string, qty: number): { item: string; qty: number } => {
+        const next = as(stored);
+        const n = Math.min(9999, qty * storedCount(stored));
+        if (/^\d+ /.test(next)) {
+          return { item: next, qty };
+        }
+        return lingoContains(next, " Crystals")
+          ? { item: `${n} ${next}`, qty: 1 }
+          : { item: next, qty: n };
+      };
       // A container's storage goes with it: to the replacement's name (which keeps its `#id`), or,
       // purged, with it.
       let lostInside = 0;
       const moveStorage = (stored: string, next: string | null) => {
+        if (!stored.includes("#")) {
+          return;
+        }
+        // Its window closes for anyone who has it open (a ground crate is not carried), empty or
+        // not, so nothing can be put into storage that has gone.
+        closeContainer(stored);
         const lines = world.containers.get(stored);
-        if (!stored.includes("#") || lines === undefined) {
+        if (lines === undefined) {
           return;
         }
         world.containers.delete(stored);
         world.containersDirty.add(stored);
-        // Its window closes for anyone who has it open (a ground crate is not carried).
-        for (const o of world.players.values()) {
-          if (o.container && lingoEq(o.container.name, stored)) {
-            o.container = null;
-            o.keyLock = false;
-            deps.deliver([{ to: o.id, msg: { t: "vault", items: [], open: false, closed: true } }]);
-          }
-        }
         if (next?.includes("#")) {
           world.containers.set(next, lines);
           world.containersDirty.add(next);
@@ -508,6 +643,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           for (const v of items.filter(is)) {
             moveStorage(v, purge ? null : as(v));
           }
+          // Its lines changed: an open window on it closes (its list named the old lines).
+          closeContainer(name);
           world.containers.set(
             name,
             purge ? items.filter((v) => !is(v)) : items.map((v) => (is(v) ? as(v) : v)),
@@ -540,15 +677,13 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           } else {
             // A pile's count moves to its quantity when the new item is not one that counts in
             // its name (`5 Blue Crystals` replaced by Apple is a pile of 5 Apples).
-            const next = as(g.item);
-            const qty = Math.min(
-              9999,
-              /^\d+ /.test(next) ? (g.qty ?? 1) : (g.qty ?? 1) * storedCount(g.item),
-            );
-            moveStorage(g.item, next);
-            g.item = next;
-            if (qty > 1) {
-              g.qty = qty;
+            const next = groundAs(g.item, g.qty ?? 1);
+            moveStorage(g.item, next.item);
+            g.item = next.item;
+            if (next.qty > 1) {
+              g.qty = next.qty;
+            } else {
+              delete g.qty;
             }
             world.groundLog.push({ mapId: m.id, del: g.id }, { mapId: m.id, add: g });
             for (const o of room?.players ?? []) {
@@ -573,13 +708,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           moveStorage(g.item, null);
           store.deleteGround(g.id);
         } else {
-          const next = as(g.item);
-          moveStorage(g.item, next);
-          store.renameGround(
-            g.id,
-            next,
-            Math.min(9999, /^\d+ /.test(next) ? g.qty : g.qty * storedCount(g.item)),
-          );
+          const next = groundAs(g.item, g.qty);
+          moveStorage(g.item, next.item);
+          store.renameGround(g.id, next.item, next.qty);
         }
       }
       if (onGround > 0) {
@@ -587,23 +718,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           `${purge ? "Deleted" : `Replaced with ${a.replacement}`}: ${onGround} on the ground`,
         );
       }
-      // Player shops: the stock on sale goes, or is the replacement, with the till and stock as they
-      // stand now written into the rewritten file and its new ledger.
-      let inShops = 0;
-      for (const ps of world.playerShops.values()) {
-        const f = shopText(ps.npc);
-        const text = f
-          ? npcTextCleaned(f.text, a.spellings, purge ? "remove" : "replace", a.replacement ?? "")
-          : null;
-        if (!f || text === null) {
-          continue;
-        }
-        inShops += shopStockOf(f.text, a.spellings);
-        const ledger = ledgerFromTemplate(setNpcFile(world.npcs, f.name, text));
-        world.shops.set(f.name, ledger);
-        store.saveShopFile(f.name, text, ledger, actor.accountId, deps.now());
-        deps.deliver(closeNpcWindows(world, f.name));
-      }
+      const inShops = cleanShops(purge ? "remove" : "replace");
       if (inShops > 0) {
         lines.push(
           `${purge ? "Deleted" : `Replaced with ${a.replacement}`}: ${inShops} on sale in player shops`,
@@ -612,6 +727,10 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       if (lostInside > 0) {
         lines.push(`Deleted with the containers that held them: ${lostInside} stored items`);
       }
+    }
+    // A retirement nobody held was published as a removal: shops' empty lines naming it go too.
+    if (a.copies === "retire" && content().item(a.key) === undefined) {
+      cleanShops("remove");
     }
     // Quest lines: a line that wants or rewards it names the replacement, or is rolled again from
     // the (now published) pools, so no quest keeps making a retired or removed item.
@@ -845,6 +964,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       return itemPlaces(spellings).characters;
     },
     apply(actions, actor, publishId) {
+      undoLast = snapshot();
       const lines: string[] = [];
       for (const a of actions) {
         lines.push(...(a.kind === "item" ? applyItem(a, actor, publishId) : applyMonster(a)));
@@ -852,5 +972,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       return lines;
     },
     problems,
+    rollback() {
+      undoLast?.();
+      undoLast = null;
+    },
   };
 }

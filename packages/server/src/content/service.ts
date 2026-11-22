@@ -800,8 +800,15 @@ export class ContentService {
       upsertDraftRow(this.db, row);
       // A row put back or changed is no longer a removal: its world cleanup goes. A retired item
       // stays retired by its own row, so its cleanup stays.
+      // A retired row keeps only a retirement's cleanup: a purge or replace waiting for it goes,
+      // since the item now stays.
       const retired = (data as { retired?: unknown } | null)?.retired === true;
-      if (op !== "remove" && !retired) {
+      const waiting = draftActions(this.db).find((a) => sameRow(entryRef(a.kind, a.key), row));
+      const keepsRetire =
+        retired &&
+        (waiting?.action as WorldAction | undefined)?.kind === "item" &&
+        (waiting?.action as { copies?: string } | undefined)?.copies === "retire";
+      if (op !== "remove" && !keepsRetire) {
         this.dropAction(row);
       }
     })();
@@ -998,6 +1005,7 @@ export class ContentService {
       .filter((c) => c.before !== null || c.after !== null);
     const nextCopy = clientCopyOf(nextData);
     let id = "";
+    let applied = false;
     // One transaction: the content rows, the publish log, the new store and the world's cleanup
     // (which runs once the new store is live, so what it rolls, a quest line, comes from the
     // published content). A crash or a throw part-way leaves none of it written.
@@ -1016,12 +1024,16 @@ export class ContentService {
         }
         this.rebuild();
         if (actions.length > 0 && world) {
+          applied = true;
           const lines = world.apply(actions, actor, id);
           setPublishCleanup(this.db, id, { actions, lines });
         }
       })();
     } catch (e) {
-      // Rolled back: the store that was live goes back in.
+      // Rolled back: the world's memory (if the cleanup ran), then the store that was live, go back.
+      if (applied) {
+        world?.rollback();
+      }
       this.rebuild();
       throw e;
     }
@@ -1237,7 +1249,10 @@ export class ContentService {
         }),
         world: world ? world.usage(kind, spellings) : [],
         characters: world && kind === "item" ? world.holders(spellings) : 0,
-        npcFile: kind === "monster" && rowValue(data, npcFileRef(entry.name)) !== undefined,
+        npcFile:
+          kind === "monster" &&
+          (rowValue(data, npcFileRef(entry.name)) !== undefined ||
+            savedNpcs.has(entry.name.toLowerCase())),
         pending: (pending?.action as WorldAction | undefined) ?? null,
       },
     };
@@ -1262,8 +1277,16 @@ export class ContentService {
       );
     }
     const key = published.name;
-    if (removal.kind === "item" && removal.copies === "retire" && published.retired) {
-      return fail(`${key} is already retired.`);
+    // An item already retired is removed outright once nobody holds a copy; while copies remain,
+    // they are purged or replaced to remove it.
+    const alreadyRetired = removal.kind === "item" && published.retired === true;
+    if (alreadyRetired && removal.kind === "item" && removal.copies === "retire") {
+      const held = world ? world.holders(this.spellings("item", key)) : 0;
+      if (held > 0) {
+        return fail(
+          `${key} is already retired, and ${held} ${held === 1 ? "character still holds" : "characters still hold"} a copy: purge or replace the copies to remove it.`,
+        );
+      }
     }
     const base = this.draftContent();
     const replacement = removal.replacement?.trim() || null;
@@ -1336,7 +1359,7 @@ export class ContentService {
       // settled when it is published (`settleRetirements`).
       const current = (rowValue(base, ref) ?? published) as Record<string, unknown>;
       own.push(
-        removal.copies === "retire"
+        removal.copies === "retire" && !alreadyRetired
           ? { ref, op: "set", data: { ...current, retired: true } }
           : { ref, op: "remove", data: null },
       );
@@ -1448,6 +1471,7 @@ export class ContentService {
           d !== undefined &&
           (d.op === "remove" ||
             (a.kind === "item" &&
+              (a.action as { copies?: string }).copies === "retire" &&
               d.op === "set" &&
               (d.data as { retired?: unknown })?.retired === true))
         );
@@ -1484,6 +1508,9 @@ export class ContentService {
     const draft = this.draft();
     const next = this.draftContent(draft);
     const actions = this.liveActions(draft);
+    const savesAfter = this.npcSavesAfter(actions).flatMap((f) =>
+      f.text === null ? [] : [{ npc: f.npc, text: f.text }],
+    );
     const out: RemovalSummary[] = [];
     for (const d of draft) {
       const kind: EntryKind | null =
@@ -1508,7 +1535,8 @@ export class ContentService {
       const action = actions.find(
         (a) => a.kind === kind && a.key.toLowerCase() === d.key?.toLowerCase(),
       );
-      const left = usesOf(withNpcSaves(next, this.npcSaves()), kind, d.key, spellings);
+      // NPC Editor saves as the waiting cleanups will leave them, as the publish checks them.
+      const left = usesOf(withNpcSaves(next, savesAfter), kind, d.key, spellings);
       const lines = action
         ? actionLines(action, places)
         : places.map(

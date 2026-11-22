@@ -211,8 +211,9 @@ export function storedCopyOf(stored: string, spellings: readonly string[]): bool
   if (count && lingoContains(count[1] as string, " Crystals") && is(count[1] as string)) {
     return true;
   }
+  // A masterwork level, unless the name is a catalogue item of its own (`Plate Armor +1`).
   const level = /^(.+?)\+\d+$/.exec(base);
-  return level !== null && is(level[1] as string);
+  return level !== null && content().item(base) === undefined && is(level[1] as string);
 }
 
 /**

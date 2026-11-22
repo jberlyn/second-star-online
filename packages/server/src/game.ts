@@ -1808,6 +1808,7 @@ export function createGame(deps: GameDeps): Game {
     saveSlots: (m) => saveMapSlots(m),
     persist: (players) => flushChanged(players),
     now: () => isoNow(),
+    ledgerOf: (npc) => ledgerOf(npc),
   });
 
   /**

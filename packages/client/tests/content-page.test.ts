@@ -675,6 +675,15 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
     ]);
   });
 
+  test("Add a row clears the last row's usage report and removal form", () => {
+    const { p, $ } = withAle();
+    $("content-remove").click();
+    expect(p.el.querySelector(".content-removal")).not.toBeNull();
+    $("content-add").click();
+    expect(p.el.querySelector(".content-usage")).toBeNull();
+    expect(p.el.querySelector(".content-removal")).toBeNull();
+  });
+
   test("the draft says what its removals will do", () => {
     expect(
       removalHeadline([
