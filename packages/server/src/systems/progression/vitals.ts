@@ -22,11 +22,12 @@ import {
   rollDeathDrop,
 } from "@secondstaronline/shared";
 
+import { logActivity, logPlaced } from "../admin/activity.ts";
 import { arenaTileTaken } from "../combat/arena.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import { vehicleDeath } from "../vehicles/vehicles.ts";
-import { type Outgoing, type Player, type Room, statsOf } from "../world/world.ts";
+import { type Outgoing, type Player, type Room, statsOf, type World } from "../world/world.ts";
 
 /** The timer sprite (channel 4) for one player: the HP and SP regeneration counter. */
 export function regenStep(p: Player): void {
@@ -106,8 +107,13 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
     p.lastToHitMe = null;
     p.lastToHitId = null;
   }
+  const world = drop?.item.world;
+  const arena = !p.vehicle && onArenaTile(room, p.x, p.y);
+  if (world) {
+    logDeath(world, p, { arena, lightning, vehicle: p.vehicle });
+  }
   // A rider over an arena tile is not in the arena: its death is a normal one (an SSO rule).
-  if (!p.vehicle && onArenaTile(room, p.x, p.y)) {
+  if (arena) {
     v.hp = 1;
     v.sp = 1;
     p.vitalsDirty = true;
@@ -157,7 +163,15 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
     const head = deathHead(p.char.faction.id, pvpMap);
     if (head) {
       const io = new ItemOut(room);
-      addGround(drop.item, room, io, { item: head, x: p.x, y: p.y, kind: "drop", expiresAt: null });
+      addGround(drop.item, room, io, {
+        item: head,
+        x: p.x,
+        y: p.y,
+        kind: "drop",
+        expiresAt: null,
+        droppedBy: { id: p.id, name: p.name },
+      });
+      logPlaced(drop.item.world, p, "deathDrop", head);
       out.push(...io.out);
     }
     if (d.kind === "item") {
@@ -170,7 +184,9 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
           y: p.y,
           kind: "drop",
           expiresAt: null,
+          droppedBy: { id: p.id, name: p.name },
         });
+        logActivity(drop.item.world, p, "deathDrop", { item: line.item, qty: -1 });
         invDelSlot(p.char.bag, d.slot, 1);
         p.invDirty = true;
         out.push(...io.out);
@@ -186,7 +202,9 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
         y: p.y,
         kind: "drop",
         expiresAt: null,
+        droppedBy: { id: p.id, name: p.name },
       });
+      logActivity(drop.item.world, p, "deathDrop", { gold: -d.amount });
       p.char.gold -= d.amount;
       p.invDirty = true;
       out.push(...io.out);
@@ -203,6 +221,37 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   p.deadLock = DEATH_LOCK_FRAMES;
   p.deathPause = DEATH_PAUSE_FRAMES;
   return { kind: "death", lines, out };
+}
+
+/**
+ * A death for the activity log: the victim's, naming the killer, and the killer's player kill when
+ * a player online landed the last hit. A lost vehicle is noted on the death.
+ */
+function logDeath(
+  world: World,
+  p: Player,
+  how: { arena: boolean; lightning: boolean; vehicle: string | null },
+): void {
+  const killer = p.lastToHitId !== null ? world.players.get(p.lastToHitId) : undefined;
+  // A killer who has logged off is still named and linked by id.
+  const other =
+    killer && killer !== p
+      ? killer
+      : p.lastToHitId !== null && p.lastToHitId !== p.id && p.lastToHitMe !== null
+        ? { id: p.lastToHitId, name: p.lastToHitMe }
+        : p.lastToHitMe;
+  const details = {
+    arena: how.arena || null,
+    lightning: how.lightning || null,
+    vehicleLost: how.arena ? null : how.vehicle,
+  };
+  logActivity(world, p, "death", { other, details });
+  if (killer && killer !== p) {
+    logActivity(world, killer, "playerKill", {
+      other: p,
+      details: { arena: how.arena || null, lightning: how.lightning || null },
+    });
+  }
 }
 
 /** What happens when the death lock ends: hunger 40000, then the respawn warp. */

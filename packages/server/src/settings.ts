@@ -444,6 +444,15 @@ export const SETTINGS = {
       "How long the audit log keeps each staff action (admin commands, editor saves, setting changes, role edits and assignments, /chatlog lookups) for admin:audit. 0 keeps them forever. Bans, jails and pardons are kept regardless, for /banlist.",
     source: "SSO addition. 1.6 kept no audit log.",
   }),
+  activityLogRetention: def({
+    page: "records",
+    label: "Keep activity log",
+    ...duration(0, TEN_YEARS, "forever"),
+    default: 180 * DAY,
+    tooltip:
+      "How long the activity log keeps each player action (item and gold movements, kills and deaths, level and skill gains, logins, logouts and map changes) for the Control Panel's Activity Log. 0 keeps them forever. The log grows quickly on a busy server.",
+    source: "SSO addition. 1.6 logged no player actions on the server.",
+  }),
   loginFailsPerIp: def({
     page: "logins",
     label: "Failed logins per address",

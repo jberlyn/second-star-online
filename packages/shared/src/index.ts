@@ -8,6 +8,7 @@ export {
   TILE_PX,
 } from "./constants.ts";
 export * from "./protocol/index.ts";
+export * from "./rules/admin/activity.ts";
 export * from "./rules/admin/admin.ts";
 export * from "./rules/admin/auditlog.ts";
 export * from "./rules/admin/chatlog.ts";

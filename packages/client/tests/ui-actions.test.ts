@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import type { AssetIndex } from "@secondstaronline/data";
 import {
+  type ActivityRow,
   ADMINISTRATOR,
   blankMap,
   defaultPlayerPrefs,
@@ -16,6 +17,7 @@ import {
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
+import { createActivityLogPage } from "../src/ui/activity-log.ts";
 import { showAlert } from "../src/ui/alert.ts";
 import { createAmountDialog } from "../src/ui/amount.ts";
 import { createAwayWindow } from "../src/ui/away.ts";
@@ -282,6 +284,36 @@ function buildAll(): HTMLElement[] {
   };
   panels[1]?.show([{ id: "r", title: "R", kind: "roles" }], [], lists);
   panels[2]?.show([{ id: "s", title: "S", kind: "staff" }], [], lists);
+
+  // The Activity Log page: an item's flow (players linked) and a timeline (items linked), each
+  // with a row, its totals and a further page.
+  const row: ActivityRow = {
+    id: "r1",
+    at: "2026-11-22T09:00:00.000Z",
+    type: "trade",
+    character: "Al",
+    other: "Bo",
+    otherIsPlayer: true,
+    item: "Apple",
+    qty: -1,
+    gold: 0,
+    map: "x1y1",
+    x: 3,
+    y: 4,
+    details: null,
+  };
+  for (const scope of ["item", "character"] as const) {
+    let seq = 0;
+    const page = createActivityLogPage({ query: (q) => (seq = q.seq) });
+    layer.el.append(page.el);
+    page.show(scope, scope === "item" ? "Apple" : "Al");
+    page.receive({
+      seq,
+      rows: [row],
+      more: true,
+      totals: [{ type: "trade", gained: 0, lost: 1, rows: 1 }],
+    });
+  }
 
   // Player Settings on Controls (keybinds), Sound (sliders/checkboxes), and Social (choices + ignore list).
   const pControls = createPlayerSettingsWindow(layer, noop);

@@ -132,7 +132,7 @@ export function permissionInfo(p: Permission): { group: PermissionGroup; label: 
  * server open it. A page's own requests still need its own permission. Each Control Panel page adds its
  * permission here when it arrives.
  */
-export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = ["settings"];
+export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = ["settings", "activityLog"];
 
 /** Whether `role` may open the Control Panel (it holds a permission with a page there). */
 export function canOpenControlPanel(role: Role | undefined): boolean {

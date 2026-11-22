@@ -3297,6 +3297,186 @@
     "errors": []
   },
   {
+    "action": "activity-mode-timeline",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-mode-item",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-name",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-type",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-since",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-until",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-show",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-player",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-player",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-more",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-mode-timeline",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-mode-item",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": true,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-name",
+    "tag": "INPUT",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-type",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-since",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-until",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-show",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-item",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-player",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-more",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "window-drag",
     "tag": "DIV",
     "events": ["pointerdown"],

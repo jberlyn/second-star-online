@@ -21,6 +21,7 @@ import {
   withdrawVault,
 } from "../src/systems/economy/vault.ts";
 import { npcFileNamed } from "../src/systems/monsters/npcfiles.ts";
+import { createWorld } from "../src/systems/world/world.ts";
 import { ARCHIVE_NPCS, player, rngByN, testMap } from "./helpers/sim.ts";
 
 const shop = (name: string): ShopLedger => {
@@ -376,11 +377,11 @@ describe("the personal vault", () => {
     const map = testMap("x1000y992");
     const p = player("Al", map, 6, 4);
     const vault = { id: "v", item: "Vault", x: 6, y: 3, kind: "admin" as const, expiresAt: null };
-    return { p, vault };
+    return { p, vault, world: createWorld() };
   };
 
   test("opens only from in front of it, and sets the key lock", () => {
-    const { p, vault } = scene();
+    const { p, vault, world } = scene();
     p.facing = "E";
     expect(openVault(p, vault)).toEqual([
       { to: "Al", msg: { t: "chat", text: VAULT_TEXT.notInFront, color: 0 } },
@@ -396,39 +397,39 @@ describe("the personal vault", () => {
   });
 
   test("bug fixed: deposit checks the capacity before the drop line; containers refused; an open list is refreshed", () => {
-    const { p, vault } = scene();
+    const { p, vault, world } = scene();
     p.char.bag = bag(["Apple", 2], ["Crate#3", 1]);
-    expect(depositVault(p, 2).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
+    expect(depositVault(world, p, 2).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
       "You cannot store a container!",
     ]);
-    expect(depositVault(p, 1).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
+    expect(depositVault(world, p, 1).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
       "You drop a Apple into the container.",
     ]);
     expect(p.char.vault).toEqual(["Apple"]);
     expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
     openVault(p, vault);
-    expect(depositVault(p, 1).map((o) => o.msg)).toEqual([
+    expect(depositVault(world, p, 1).map((o) => o.msg)).toEqual([
       { t: "chat", text: "You drop a Apple into the container.", color: 0 },
       { t: "vault", items: ["Apple", "Apple"], open: false },
     ]);
     p.char.bag[0] = { item: "Apple", qty: 1 };
     p.char.vault = Array.from({ length: 15 }, () => "Rock");
-    expect(depositVault(p, 1).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
+    expect(depositVault(world, p, 1).map((o) => (o.msg.t === "chat" ? o.msg.text : ""))).toEqual([
       "This is too full to store anything else!",
     ]);
     expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
   });
 
   test("divergence: a deposit with an amount stores that many lines, as many as fit", () => {
-    const { p } = scene();
+    const { p, world } = scene();
     p.char.bag = bag(["Apple", 5]);
     const text = (out: ReturnType<typeof depositVault>) =>
       out.map((o) => (o.msg.t === "chat" ? o.msg.text : ""));
-    expect(text(depositVault(p, 1, 3))).toEqual(["You drop 3 Apple into the container."]);
+    expect(text(depositVault(world, p, 1, 3))).toEqual(["You drop 3 Apple into the container."]);
     expect(p.char.vault).toEqual(["Apple", "Apple", "Apple"]);
     expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
     p.char.vault = Array.from({ length: 14 }, () => "Rock");
-    expect(text(depositVault(p, 1, 2))).toEqual([
+    expect(text(depositVault(world, p, 1, 2))).toEqual([
       "You drop a Apple into the container.",
       "This is too full to store anything else!",
     ]);
@@ -436,11 +437,11 @@ describe("the personal vault", () => {
   });
 
   test("bug fixed: a withdrawal keeps the window open and the keys locked, says so, and stacks on an exact name", () => {
-    const { p, vault } = scene();
+    const { p, vault, world } = scene();
     p.char.vault = ["Apple", "Pie"];
     p.char.bag = bag(["Apple", 1]);
     openVault(p, vault);
-    const out = withdrawVault(p, 1, rng);
+    const out = withdrawVault(world, p, 1, rng);
     expect(p.keyLock).toBe(true);
     expect(p.vaultOpen).toBe(true);
     expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
@@ -451,12 +452,12 @@ describe("the personal vault", () => {
   });
 
   test("bug fixed: withdrawing 'Pie' into a full bag holding 'Orc Pot Pie' is refused and keeps the Pie", () => {
-    const { p, vault } = scene();
+    const { p, vault, world } = scene();
     p.char.vault = ["Pie"];
     p.char.bag = full();
     p.char.bag[0] = { item: "Orc Pot Pie", qty: 1 };
     openVault(p, vault);
-    expect(withdrawVault(p, 1, rng)[0]?.msg).toEqual({
+    expect(withdrawVault(world, p, 1, rng)[0]?.msg).toEqual({
       t: "chat",
       text: "You are carrying too much to withdraw this item.",
       color: 0,
@@ -466,11 +467,11 @@ describe("the personal vault", () => {
   });
 
   test("a full bag with no stack: 'You are carrying too much to withdraw this item.'", () => {
-    const { p, vault } = scene();
+    const { p, vault, world } = scene();
     p.char.vault = ["Apple"];
     p.char.bag = full();
     openVault(p, vault);
-    expect(withdrawVault(p, 1, rng)[0]?.msg).toEqual({
+    expect(withdrawVault(world, p, 1, rng)[0]?.msg).toEqual({
       t: "chat",
       text: "You are carrying too much to withdraw this item.",
       color: 0,
@@ -479,11 +480,11 @@ describe("the personal vault", () => {
   });
 
   test("bug fixed: a crystal line comes back as the same crystals", () => {
-    const { p, vault } = scene();
+    const { p, vault, world } = scene();
     p.char.vault = ["Blue Crystals"];
     p.char.bag = bag(["Blue Crystals", 4]);
     openVault(p, vault);
-    withdrawVault(p, 1, rng);
+    withdrawVault(world, p, 1, rng);
     expect(p.char.bag[0]).toEqual({ item: "Blue Crystals", qty: 5 });
     expect(p.char.vault).toEqual([]);
   });

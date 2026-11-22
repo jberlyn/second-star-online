@@ -224,7 +224,7 @@ The command line is also the way back in if you ever leave no one able to open S
 
 Administrators open **Admin → Control Panel** from the top menu bar. The game gives way to a full-page dashboard; **Return to Game** at the top brings you back where you stood. While you are in the Control Panel you stay online but are off the map, as in the World Editor: other players see you leave, and trades, shops and held actions are cancelled. The header also opens Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms and Player Settings as floating windows over the dashboard, and Return To Title Screen logs out. The sidebar lists the admin pages your role may use, with the World Editor and NPC Editor under **Classic tools** until their Control Panel pages arrive.
 
-The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff**. The Roles page also lists **Control Panel: edit items, monsters and NPCs**, **Control Panel: edit characters** and **Control Panel: read the player activity log** for the pages still to come; they do nothing yet.
+The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff** and **Control Panel: read the player activity log** (the [Activity Log](#the-activity-log) page). The Roles page also lists **Control Panel: edit items, monsters and NPCs** and **Control Panel: edit characters** for the pages still to come; they do nothing yet.
 
 **Upgrading from 1.13.0 or earlier:** **Admin → Server Settings** moved into the Control Panel, and the floating Server Settings window is gone. A role that held every permission gets the three new Control Panel permissions, so it still holds every permission; other roles are left as they are.
 
@@ -241,6 +241,21 @@ Every ban, unban, IP ban, IP unban, jail, `/unjail`, mute, `/unmute` and pardon 
 - **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. `/banip <name>` refuses your own account and a character whose role has the IP-ban bypass ("IP bans do not apply to that player's role."). An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Administrators (any role with the IP-ban bypass) are never stopped by IP bans, so an operator cannot lock themselves out.
 - **Login addresses.** The server keeps the addresses each account logs in from for `addressHistory` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only roles with `/banip` (administrators) can read them.
 - **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, recorded under the role the banner held then (`Moderator` or `Admin` in `actor_role`; `Admin` if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
+
+### The activity log
+
+The server logs what players do in the `activity_log` table, for tracing dupes, scams and real-money trading:
+
+- **Items and gold:** trades (both sides), drops, pickups (naming the player who dropped the item), gives, NPC and player shops, the bank, the vault, house vaults, chests and crates, crafting, gathering, items used up (food, potions, books, keys, deeds, seeds, the crystals a bow shoots, cannonballs and spell reagents), quest hand-ins, training, casino bets and wins, prizes, death drops, items breaking in a fight, monster loot, a new character's starting items, admin `/drop`, and items and gold placed or removed by a World Editor save.
+- **Combat:** monster kills, player kills and deaths, naming the killer.
+- **Progression:** levels, skill gains, class changes and quest hand-ins.
+- **Sessions:** logins and logouts with the address, and map changes (with how: an edge, an exit, a portal, a warp or a respawn). Single steps are not logged.
+
+Items are recorded by name and quantity. Each event is one character's view of it: a trade writes a row for each side, and a quantity or gold amount is the change to what that character carries (bag, worn gear and gold in hand), so a bank deposit is `-500 gold`. Once a tick the server also compares what each player carries with what the log says they should carry; any difference is written as an **Unlogged change**. One means a bug or a dupe, so report it.
+
+Open **Admin → Control Panel → Activity Log** (the `activityLog` permission, administrators by default). **Player timeline** shows a character's events, newest first; a deleted character is still found by name. **Item flow** shows every movement of one item, with totals gained and lost by type. Filter either by event type or group and by UTC day, and choose **Show older** for more. A player or item in a row opens their timeline or flow. Every read, each further page included, is recorded in the audit log. An item's totals add up at most its newest 20,000 events, and the page says when older ones were left out.
+
+Events are written once a tick in a batch. Rows older than `activityLogRetention` (default 180 days) are deleted at startup and every hour; `0` keeps them forever. The log grows quickly on a busy server, so keep an eye on the database size if you raise it.
 
 ### The chat log
 
@@ -403,6 +418,7 @@ Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w
 | Key | Label | Default | Allowed / range | Effect |
 |---|---|---|---|---|
 | `chatLogRetention` | Keep chat log | `90d` | `0`–`3650d` | How long the chat log keeps each line, for `/chatlog` and `admin:chatlog` (`0` keeps them forever). See [The chat log](#the-chat-log). |
+| `activityLogRetention` | Keep activity log | `180d` | `0`–`3650d` | How long the activity log keeps each player action, for the Control Panel's Activity Log (`0` keeps them forever). See [The activity log](#the-activity-log). |
 | `auditLogRetention` | Keep audit log | `0` (forever) | `0`–`3650d` | How long the audit log keeps each staff action, for `admin:audit` (`0` keeps them forever). Bans, jails and pardons are kept regardless. See [Reading the audit log](#reading-the-audit-log). |
 
 ## World Editor and NPC Editor

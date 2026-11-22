@@ -21,6 +21,7 @@ import {
   type TradeView,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import type { Outgoing, Player, Trade, TradeOffer, World } from "../world/world.ts";
 
 export const TRADE_TEXT = {
@@ -293,6 +294,18 @@ export function settle(
   return { a: na, b: nb };
 }
 
+/** What `from` handed `to` in a settled trade, written for both sides. */
+function logTrade(world: World, from: Player, to: Player, o: TradeOffer): void {
+  for (const it of o.items) {
+    logActivity(world, from, "trade", { other: to, item: it.item, qty: -it.qty });
+    logActivity(world, to, "trade", { other: from, item: it.item, qty: it.qty });
+  }
+  if (o.gold > 0) {
+    logActivity(world, from, "trade", { other: to, gold: -o.gold });
+    logActivity(world, to, "trade", { other: from, gold: o.gold });
+  }
+}
+
 /**
  * Accept, from either side once both offers are in. The first acceptance is announced to both;
  * when both have accepted, the trade settles and both are told it is complete (1.6 let only A
@@ -339,6 +352,8 @@ export function acceptTrade(world: World, p: Player): Outgoing[] {
     out.push(tell(p, TRADE_TEXT.problem), tell(o, TRADE_TEXT.problem));
     return out;
   }
+  logTrade(world, a, b, t.aOffer);
+  logTrade(world, b, a, t.bOffer);
   a.char.gold = r.a.gold;
   a.char.bag = r.a.bag;
   b.char.gold = r.b.gold;

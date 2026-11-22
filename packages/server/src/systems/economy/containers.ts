@@ -25,6 +25,7 @@ import {
   type Rng,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import type { GroundItem, Outgoing, Player, World } from "../world/world.ts";
 import { VAULT_TEXT } from "./vault.ts";
 
@@ -173,6 +174,12 @@ export function depositContainer(
     p.char.bag[slot - 1] = null;
   }
   p.invDirty = true;
+  logActivity(world, p, "container", {
+    other: displayName(name),
+    item,
+    qty: -count,
+    details: { container: name, brews: brews || null },
+  });
   out.push(tell(p, count > 1 ? VAULT_TEXT.dropMany(count, item) : VAULT_TEXT.drop(item)));
   for (let i = 0; i < brews; i++) {
     out.push(tell(p, CRAFT_TEXT.puff));
@@ -231,7 +238,12 @@ export function withdrawContainer(world: World, p: Player, index: number, rng: R
   if (addSlotFor(p.char.bag, item) < 0 && !isGoldName(item)) {
     return [tell(p, VAULT_TEXT.carrying)];
   }
-  invAdd(p.char, item, 1, rng);
+  const r = invAdd(p.char, item, 1, rng);
+  logActivity(world, p, "container", {
+    other: displayName(c.name),
+    ...(r.kind === "gold" ? { gold: r.amount } : { item, qty: 1 }),
+    details: { container: c.name },
+  });
   p.invDirty = true;
   lines.splice(at, 1);
   write(world, c.name, lines);

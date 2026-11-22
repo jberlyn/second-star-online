@@ -23,6 +23,7 @@ import {
   statueBlock,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import type { Outgoing, Player, World } from "../world/world.ts";
 
 /** What the end needs from outside: the prize setting and a write for offline winners. */
@@ -84,7 +85,16 @@ function endGame(world: World, s: AssassinState, deps: AssassinDeps): Outgoing[]
     const online = world.players.get(w.id);
     if (online) {
       // A full bag loses the item; gold always lands.
-      invAdd(online.char, prize, 1, deps.rng);
+      const r = invAdd(online.char, prize, 1, deps.rng);
+      const details = { prize: "Assassin", lost: r.kind === "full" ? 1 : null };
+      logActivity(
+        world,
+        online,
+        "reward",
+        r.kind === "gold"
+          ? { gold: r.amount, details }
+          : { item: prize, qty: r.kind === "full" ? 0 : 1, details },
+      );
       online.invDirty = true;
     } else {
       deps.giveOffline(w.id, prize);

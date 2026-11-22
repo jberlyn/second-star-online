@@ -49,6 +49,7 @@ import {
   xpGained,
 } from "@secondstaronline/shared";
 
+import { logActivity, logPlaced, logTransform } from "../admin/activity.ts";
 import { isCrafting } from "../crafting/craft.ts";
 import { type GatherCtx, type GatherEvents, preSwing, toolSwing } from "../crafting/gather.ts";
 import { addGround, ItemOut } from "../inventory/items.ts";
@@ -140,7 +141,7 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
     return ev;
   }
   if (p.vehicle === "Battleship") {
-    pollCannon(room, p, ev);
+    pollCannon(room, p, ctx, ev);
     return ev;
   }
   if (room.map.flags.canFight === "O" && !onArenaTile(room, p.x, p.y)) {
@@ -160,7 +161,7 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
  * loaded and with a `Cannonball` in the bag. A rider is never in an arena, so on a no-fight map it
  * cannot fire even over arena tiles.
  */
-function pollCannon(room: Room, p: Player, ev: SwingEvents): void {
+function pollCannon(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void {
   if (room.map.flags.canFight === "O") {
     p.attackPress = null;
     ev.cannotFight = refuseOnce(p, CANNOT_FIGHT);
@@ -176,6 +177,9 @@ function pollCannon(room: Room, p: Player, ev: SwingEvents): void {
       ev.lines.push(CANNON_TEXT.noAmmo);
     }
     return;
+  }
+  if (ctx.world) {
+    logActivity(ctx.world, p, "use", { item: p.char.bag[slot]?.item, qty: -1 });
   }
   invDelSlot(p.char.bag, slot, 1);
   p.invDirty = true;
@@ -244,7 +248,11 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
   p.attackPress = null;
   if (ap.crystal) {
     // One crystal is removed before the shot.
-    invDelSlot(p.char.bag, crystalSlot(p, ap.crystal), 1);
+    const slot = crystalSlot(p, ap.crystal);
+    if (ctx.world) {
+      logActivity(ctx.world, p, "use", { item: p.char.bag[slot]?.item, qty: -1 });
+    }
+    invDelSlot(p.char.bag, slot, 1);
     p.invDirty = true;
   }
   // 1.6 added its power bar's +0/+3/+5/+7 here; SSO has no power bar.
@@ -463,7 +471,11 @@ function smash(
   const e = p.char.equip;
   if (rollWeaponBreak(e, statsOf(p).sta, p.char.hunger, m.name, ctx.rng)) {
     ev.lines.push(shattersText(e.weapon));
-    e.weapon = damagedForm(e.weapon);
+    const broken = damagedForm(e.weapon);
+    if (ctx.world) {
+      logTransform(ctx.world, p, e.weapon, broken, { broke: true });
+    }
+    e.weapon = broken;
     p.invDirty = true;
     p.lookDirty = true;
   }
@@ -483,6 +495,9 @@ function smash(
   // stage, so the splat and floatie land off-screen.
   slot.live = null;
   ev.hits.push({ slot, dmg, kill: true });
+  if (ctx.world) {
+    logActivity(ctx.world, p, "kill", { other: m.name, details: { by: "melee" } });
+  }
   // The monster's loot drops on the tile it is drawn nearest.
   const loot = rollLoot(npcFileNamed(room.npcs, m.name)?.loot ?? null, ctx.rng);
   if (loot && ctx.world) {
@@ -495,6 +510,10 @@ function smash(
       y: at.y,
       kind: "loot",
       expiresAt: (ctx.now ?? 0) + decayMs,
+    });
+    logPlaced(ctx.world, p, "loot", loot, {
+      other: m.name,
+      at: { map: room.map.name, x: at.x, y: at.y },
     });
     ev.out.push(...io.out);
   }

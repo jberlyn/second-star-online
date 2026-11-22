@@ -21,6 +21,7 @@ import {
   startCraft,
 } from "@secondstaronline/shared";
 
+import { holdingsOf, logBagChange } from "../admin/activity.ts";
 import { queueCast } from "../spells/fx.ts";
 import { playerLoc } from "../spells/geometry.ts";
 import type { Outgoing, Player, Room, World } from "../world/world.ts";
@@ -210,10 +211,15 @@ function finish(p: Player, kind: CraftKind, job: CraftJob, ctx: CraftCtx, now: n
   p.keyLock = false;
   out.push(lock(p, false));
   const skill = skillOf(p, SKILL[kind]);
+  const before = holdingsOf(p.char);
   const r = finishCraft(p.char, job, skill, ctx.rng, withId(ctx, now));
   if (!r.reached) {
     return out;
   }
+  // What went in and what came out, as the bag changed.
+  logBagChange(ctx.world, p, "craft", before, holdingsOf(p.char), {
+    details: { craft: kind, failed: r.added === null ? true : null },
+  });
   // A failure uses up the materials even though nothing is added.
   p.invDirty = true;
   out.push(...r.lines.map((l) => tell(p, l)));

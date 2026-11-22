@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import {
   type AdminServerMsg,
+  activityQuerySchema,
   controlPanelOpenSchema,
   editCloseSchema,
   editLoadSchema,
@@ -173,6 +174,7 @@ export const inGameSchema = z.discriminatedUnion("t", [
   roleSaveSchema,
   roleDeleteSchema,
   roleAssignSchema,
+  activityQuerySchema,
   assassinGameSchema,
   guildCreateSchema,
   guildCloseSchema,

@@ -29,6 +29,7 @@ import {
   tileAt,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import { refreshSnapshot } from "../admin/worldedit.ts";
 import { createShopkeeper } from "../economy/playershop.ts";
 import {
@@ -194,6 +195,11 @@ export function placeHouseIntent(
     ? createShopkeeper(world, interior, p, deps.rng)
     : null;
   // 3. The deed.
+  logActivity(world, p, "use", {
+    item: p.char.bag[slot - 1]?.item,
+    qty: -1,
+    details: { built: type.house },
+  });
   invDelSlot(p.char.bag, slot - 1, 1);
   p.invDirty = true;
   // 4. The tiles, each only where layer 2 still holds `TILE_DEFAULTS.empty`.

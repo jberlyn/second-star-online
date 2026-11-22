@@ -9,6 +9,7 @@ import { monstersData } from "@secondstaronline/data";
 import {
   anyMatch,
   CHAT_COLOR,
+  displayName,
   EDITOR_MONSTERS,
   findNewQuest,
   heardSqa,
@@ -27,6 +28,7 @@ import {
   sayQuest,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import { aqsToMap, giveHead, headRefusal } from "../social/factions.ts";
 import type { Outgoing, Player, World } from "../world/world.ts";
 
@@ -67,6 +69,7 @@ export function questGive(
     if (questTake(p.char.bag, slot) < 0) {
       return [];
     }
+    logQuest(world, p, npc, given, null);
     p.invDirty = true;
     return giveHead(world, p, npc, given)?.out ?? [];
   }
@@ -76,6 +79,7 @@ export function questGive(
     }
     questTake(p.char.bag, slot);
     questReward(p.char.bag, ORAKU.reward);
+    logQuest(world, p, npc, given, ORAKU.reward);
     p.invDirty = true;
     return aqsToMap(world, p, orakuLine());
   }
@@ -98,6 +102,7 @@ export function questGive(
   }
   questTake(p.char.bag, slot);
   questReward(p.char.bag, match.reward);
+  logQuest(world, p, npc, given, match.reward);
   p.invDirty = true;
   const out = aqsToMap(world, p, questThanks(npc));
   // A leader's line is never rerolled, so it can be done again.
@@ -106,6 +111,15 @@ export function questGive(
     world.questsDirty.add(match.index);
   }
   return out;
+}
+
+/** A hand-in: the item given and the reward, each as a quest step with the NPC. */
+function logQuest(world: World, p: Player, npc: string, given: string, reward: string | null) {
+  const step = `Gave ${displayName(given)} to ${npc}`;
+  logActivity(world, p, "quest", { other: npc, item: given, qty: -1, details: { step } });
+  if (reward !== null) {
+    logActivity(world, p, "quest", { other: npc, item: reward, qty: 1, details: { step } });
+  }
 }
 
 const tellNoRoom = (p: Player, npc: string): Outgoing => ({

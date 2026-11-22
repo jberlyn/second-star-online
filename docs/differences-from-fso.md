@@ -32,15 +32,15 @@ An entry uses this shape; `Pinned by` is optional:
 | [Design changes](#design-changes) | 81 |
 | [Fixed bugs](#fixed-bugs) | 297 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
-| [Server authority and exploits](#server-authority-and-exploits) | 132 |
+| [Server authority and exploits](#server-authority-and-exploits) | 133 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **562** |
+| **Total** | **563** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [14](#admin) | [19](#server-side-admin) |
+| admin | [14](#admin) | [20](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [26](#combat) | [7](#server-side-combat) |
@@ -176,9 +176,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Control Panel
 - **Kind:** World content
-- **What you notice:** Admin → Control Panel swaps the game for a full-page dashboard. Its header has Return to Game, Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms, Player Settings and Return To Title Screen; its sidebar lists the admin pages your role may use, starting with Server Settings, then the World Editor and NPC Editor. Floating windows open over it at their own size. You stay online but leave the map while you are there, as in the World Editor, and come back where you stood.
+- **What you notice:** Admin → Control Panel swaps the game for a full-page dashboard. Its header has Return to Game, Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms, Player Settings and Return To Title Screen; its sidebar lists the admin pages your role may use, starting with Server Settings and the Activity Log, then the World Editor and NPC Editor. Floating windows open over it at their own size. You stay online but leave the map while you are there, as in the World Editor, and come back where you stood.
 - **1.6:** There was no admin dashboard. An immortal's admin tools were the Admin menu's World Editor, NPC Editor and File Editor, each a screen or window in the game's 800×600 frame.
-- **SSO:** The Control Panel is part of the client, using the same login and session. It opens for a role holding a permission with a Control Panel page (today the Server Settings permission); the server checks again and logs a refused request to the cheat log. Opening it leaves the map like the editors do: everyone there sees you go, trades, shops and held actions are cancelled and nothing on it ticks for you. Moving between the Control Panel and the classic editors never puts you back on the map in between. The classic menu bar belongs to the 800×600 frame, so it is not shown in the Control Panel. A page with unsaved changes asks before Return to Game, another page or an editor. The Server Settings window became the Control Panel's Server Settings page. Roles also get three permissions for the Control Panel pages still to come: editing content, editing characters and reading the activity log.
+- **SSO:** The Control Panel is part of the client, using the same login and session. It opens for a role holding a permission with a Control Panel page (today Server Settings and the Activity Log; see [The server logs what players do with items, gold and their time](#the-server-logs-what-players-do-with-items-gold-and-their-time)); the server checks again and logs a refused request to the cheat log. Opening it leaves the map like the editors do: everyone there sees you go, trades, shops and held actions are cancelled and nothing on it ticks for you. Moving between the Control Panel and the classic editors never puts you back on the map in between. The classic menu bar belongs to the 800×600 frame, so it is not shown in the Control Panel. A page with unsaved changes asks before Return to Game, another page or an editor. The Server Settings window became the Control Panel's Server Settings page. Roles also get permissions for editing content and editing characters, for the Control Panel pages still to come.
 - **Why:** Admin work needs full-page tables and forms that do not fit a floating window scaled with the game, and the Control Panel is where content, character and log tools will go (issue #22).
 - **In the code:** `packages/client/src/ui/control-panel.ts` (`createControlPanel`), `packages/client/src/ui/control-panel-kit.ts`, `packages/server/src/systems/admin/control-panel.ts` (`openControlPanel`), `packages/server/src/systems/admin/worldedit.ts` (`leaveForEditor`, `mayEdit`), `packages/shared/src/rules/admin/permissions.ts` (`canOpenControlPanel`)
 - **Pinned by:** `a player gets nothing; an admin leaves the room, stops ticking and gets the Control Panel`; `moving between the Control Panel and the editors never puts the admin back on the map`; `a player's controlPanelOpen is refused and written to the cheat log`; `a role that loses its Control Panel permissions is sent back to the game` (packages/server/tests/control-panel.test.ts); `the Control Panel replaces the game and its menu bar; Return to Game brings the game back`; `floating windows open over the Control Panel at their own size, and IMs are counted`; `unsaved changes ask before Return to Game, another page or a classic tool` (packages/client/tests/control-panel.test.ts); `every role that held every permission gets the new ones; the seeded roles match the defaults` (packages/server/tests/roles.test.ts)
@@ -3799,6 +3799,15 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** Administrators need to review moderators' actions and a player's history without shell access to the server.
 - **In the code:** `packages/shared/src/rules/admin/auditlog.ts` (`parseAuditlogArgs`, `auditlogLine`), `packages/server/src/persistence/admin.ts` (`auditTrail`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 - **Pinned by:** `an administrator sees what a moderator did and what was done to a player, with reasons; the lookup is audited`; `/auditlog is an administrator's: a moderator or a player is told it is unknown, and nothing is audited` (packages/server/tests/auditlog.test.ts)
+
+#### The server logs what players do with items, gold and their time
+- **Kind:** Architecture
+- **What you notice:** The Control Panel's **Activity Log** page shows a character's timeline (every item and gold movement, kill, death, level and skill gain, login with its address, logout and map change) and an item's flow (every movement of that item across all players, with totals gained and lost by type). A player or item named in a row opens their own timeline or flow.
+- **1.6:** The server kept no record of what players did. Tracing a dupe, a scam or real-money trading meant asking players or reading character files by hand.
+- **SSO:** Each system that moves a player's items or gold, or decides a kill, a death or a map change, logs one event per change: trades (both sides), drops, pickups (naming the player who dropped the item), gives, NPC and player shops, the bank, the vault, containers, crafting, gathering, using up an item, quest hand-ins, training, casino bets and wins, prizes, death drops, items breaking, monster loot and admin `/drop`. Levels, skills and class changes are compared once a tick. Items are recorded by name and quantity, not as individual copies. Events are buffered and written once a tick, like the chat log, to the `activity_log` table, which outlives deleted characters. Once a tick the server also compares what each player carries with what the log says they carry, and writes any difference as an **Unlogged change**, so a missed source or a dupe still shows up. Reading the log needs the `activityLog` permission, and every read is audited. Rows are kept for `activityLogRetention` (default 180 days).
+- **Why:** Admins need to trace abuse, exploits and real-money trading: who gave what to whom, where an item came from and where gold went (issue #25).
+- **In the code:** `packages/server/src/systems/admin/activity.ts` (`logActivity`, `checkHoldings`, `checkProgress`), `packages/server/src/persistence/activity.ts`, `packages/shared/src/rules/admin/activity.ts`, `packages/client/src/ui/activity-log.ts`, `packages/server/src/game.ts` (`activityQuery`)
+- **Pinned by:** `a change no system logged is written as unlogged, once, and the ledger follows it`; `levels, classes and skills that went up are logged; the first check only notes them`; `a warp logs the map change, where it came from and why`; `a login names the address and a logout follows it, both on the character's timeline`; `reading the log needs its permission: a player or moderator is cheat-logged and gets nothing`; `every read is audited, a further page too` (packages/server/tests/activity.test.ts); `a player named in a row opens their timeline; an item opens its flow` (packages/client/tests/activity-log.test.ts)
 
 ### Server-side casino
 

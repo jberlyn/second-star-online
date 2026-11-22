@@ -5,6 +5,7 @@
  */
 import { lingoEq, promoteClass } from "@secondstaronline/shared";
 
+import { type Holdings, holdingsOf, logActivity, logBagChange } from "../admin/activity.ts";
 import type { ItemCtx } from "../inventory/items.ts";
 import { goldTarget, inMonsterList, NPC_TEXT } from "../monsters/npc.ts";
 import { type NpcStore, npcData, npcFileNamed } from "../monsters/npcfiles.ts";
@@ -107,6 +108,19 @@ function containerInUse(ctx: ItemCtx, name: string): boolean {
   return false;
 }
 
+/**
+ * Logs what a shop sale or purchase moved, as the bag and gold changed: a player's shop names its
+ * owner (their timeline gets the sale through the till), an NPC's names the NPC.
+ */
+function logShop(ctx: ItemCtx, p: Player, npc: string, mode: "buy" | "sell", before: Holdings) {
+  const ps = ctx.world.playerShops.get(npc.toLowerCase());
+  const owner = ps ? ctx.world.houses.get(ps.interior)?.ownerName : undefined;
+  logBagChange(ctx.world, p, ps ? "playerShop" : mode, before, holdingsOf(p.char), {
+    other: ps && owner ? { id: ps.ownerId, name: owner } : npc,
+    details: ps ? { shop: npc, mode } : null,
+  });
+}
+
 function forgetContainer(ctx: ItemCtx, name: string): void {
   for (const k of [...ctx.world.containers.keys()]) {
     if (lingoEq(k, name)) {
@@ -129,9 +143,11 @@ export function buyIntent(ctx: ItemCtx, p: Player, line: number, count: number):
     return [tell(p, r.text), processed(p)];
   }
   keep(ctx, r.ledger);
+  const before = holdingsOf(p.char);
   p.char.gold = r.buyer.gold;
   p.char.bag = r.buyer.bag;
   p.invDirty = true;
+  logShop(ctx, p, shop.npc, "buy", before);
   return [...r.texts.map((t) => tell(p, t)), processed(p, true)];
 }
 
@@ -156,9 +172,11 @@ export function sellIntent(ctx: ItemCtx, p: Player, line: number, count: number)
     // An empty container sold: its storage row goes with it.
     forgetContainer(ctx, r.soldContainer);
   }
+  const before = holdingsOf(p.char);
   p.char.gold = r.buyer.gold;
   p.char.bag = r.buyer.bag;
   p.invDirty = true;
+  logShop(ctx, p, shop.npc, "sell", before);
   return [...r.texts.map((t) => tell(p, t)), processed(p, true)];
 }
 
@@ -197,6 +215,13 @@ export function trainIntent(
   );
   const out: Outgoing[] = r.texts.map((t) => tell(p, t));
   if (r.result) {
+    if (r.result.gold !== c.gold) {
+      logActivity(ctx.world, p, "pay", {
+        other: s.npc,
+        gold: r.result.gold - c.gold,
+        details: { train: train.cls },
+      });
+    }
     c.classCode = r.result.classCode;
     c.gold = r.result.gold;
     c.vitals.spMax = r.result.spMax;
@@ -273,6 +298,7 @@ export function giveGoldToNpc(ctx: ItemCtx, room: Room, p: Player, n: number): O
   if (p.char.gold - n < 0) {
     return out;
   }
+  logActivity(ctx.world, p, "pay", { other: name, gold: -n });
   p.char.gold -= n;
   p.invDirty = true;
   out.push(tell(p, NPC_TEXT.thanksGold(name)));

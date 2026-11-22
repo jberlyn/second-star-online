@@ -30,6 +30,7 @@ import {
   vehicleOfItem,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import { arenaTileTaken } from "../combat/arena.ts";
 import { addGround, type ItemCtx, ItemOut, removeGround } from "../inventory/items.ts";
 import {
@@ -115,6 +116,11 @@ export function vehicleDeed(
     ownerId: p.id,
     // A new ship faces out to sea, the way its builder looks.
     ...(isShip(vehicle) ? { facing: p.facing } : {}),
+  });
+  logActivity(ctx.world, p, "use", {
+    item: p.char.bag[slot - 1]?.item,
+    qty: -1,
+    details: { built: vehicle },
   });
   invDelSlot(p.char.bag, slot - 1, 1);
   p.invDirty = true;

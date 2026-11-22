@@ -139,6 +139,15 @@ describe("Only server systems create items", () => {
       step: ["at.map:string"],
       chat: ["text:string"],
       cast: ["spell:string"],
+      // The Activity Log's query (activityLog permission): read-only filters, never an item made.
+      activityQuery: [
+        "name:string",
+        "types[]:string",
+        "since:string",
+        "until:string",
+        "before.at:string",
+        "before.id:string",
+      ],
       editSave: [
         "map.layers[][]:string",
         "map.flags.canFight:string",

@@ -62,6 +62,7 @@ import {
 } from "./prefs.ts";
 import { type Sfx, SOUND } from "./sfx.ts";
 import { action } from "./ui/action.ts";
+import { createActivityLogPage } from "./ui/activity-log.ts";
 import { showAlert } from "./ui/alert.ts";
 import { createAmountDialog, crystalTitle, GOLD_TITLE, stackTitle } from "./ui/amount.ts";
 import { createAwayWindow } from "./ui/away.ts";
@@ -559,6 +560,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   const settingsPage = document.createElement("div");
   settingsPage.className = "control-panel-settings";
   settingsPage.append(settingsPanel.el);
+  const activityPage = createActivityLogPage({
+    query: (q) => send({ t: "activityQuery", ...q }),
+  });
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -570,6 +574,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onShow: () => send({ t: "settingsOpen" }),
         changes: () => settingsPanel.changes(),
         discard: () => settingsPanel.discard(),
+      },
+      {
+        id: "activity",
+        title: "Activity Log",
+        group: "Players",
+        permission: "activityLog",
+        el: activityPage.el,
       },
     ],
     // The classic editors, until their Control Panel pages arrive (#32, #33).
@@ -1100,12 +1111,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         permissions = new Set(msg.permissions);
         menuBar.refresh();
         controlPanel.refresh();
+        // Without the permission, nothing the log showed stays on the page.
+        if (!permissions.has("activityLog")) {
+          activityPage.reset();
+        }
         return;
       case "settings":
         settingsPanel.show(msg.pages, msg.rows, { roles: msg.roles, staff: msg.staff });
         return;
       case "roleResult":
         settingsPanel.roleResult(msg);
+        return;
+      case "activity":
+        activityPage.receive(msg);
         return;
       case "settingsResult":
         settingsPanel.result(msg);
@@ -1434,6 +1452,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     // A new session (perhaps another account) starts the Control Panel afresh.
     controlPanel.reset();
     settingsPanel.discard();
+    activityPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

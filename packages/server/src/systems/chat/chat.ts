@@ -42,6 +42,7 @@ import {
   whoCountLine,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import {
   type AdminDeps,
   handleAdmin,
@@ -178,7 +179,12 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
     return out;
   }
   if (cmd.kind === "bank") {
-    return bankChat(world.npcs, p, cmd.text);
+    const gold = p.char.gold;
+    const out = bankChat(world.npcs, p, cmd.text);
+    if (p.char.gold !== gold) {
+      logActivity(world, p, "bank", { gold: p.char.gold - gold });
+    }
+    return out;
   }
   if (cmd.kind === "spawn") {
     if (can(p.role, "spawn") && deps.itemCtx) {

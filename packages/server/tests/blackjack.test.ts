@@ -14,6 +14,7 @@ import {
   bjLeave,
   bjSit,
   bjStand,
+  refundHolds,
   savedGold,
   tablePlayers,
 } from "../src/systems/casino/blackjack.ts";
@@ -401,6 +402,56 @@ describe("a dropped connection", () => {
     // Now Bob stands: the held hand settles.
     bjStand(t.world, b2);
     expect(a.char.gold).toBe(70 + 60);
+  });
+
+  test("a hand both stood on while away settles only once both are back, so an away winner is paid", () => {
+    const t = scene([10, 9, 10, 8]);
+    const { a, b } = t.dealt(50, 30);
+    // Alice drops, Bob stands (it waits for her), then Bob drops too.
+    casinoLeave(t.world, a, t.deps);
+    t.world.players.delete("Alice");
+    bjStand(t.world, b);
+    expect(t.tbl().phase).toBe("play");
+    // Alice standing was already held from before she dropped.
+    t.tbl().holds[0] = true;
+    casinoLeave(t.world, b, t.deps);
+    t.world.players.delete("Bob");
+    // Alice comes back first: Bob is still away, so nothing settles.
+    const a2 = player("Alice", t.map, 9, 5);
+    a2.char.gold = 100;
+    t.world.players.set("Alice", a2);
+    casinoReturn(t.world, a2);
+    expect(t.tbl().phase).toBe("play");
+    expect(a2.char.gold).toBe(70); // the 30 stake held again
+    // Bob comes back: the hand settles with both here, and Alice's 19 beats Bob's 18.
+    const b2 = player("Bob", t.map, 11, 5);
+    b2.char.gold = 100;
+    t.world.players.set("Bob", b2);
+    casinoReturn(t.world, b2);
+    expect(t.tbl().phase).toBe("shown");
+    expect([a2.char.gold, b2.char.gold]).toEqual([70 + 60, 70]);
+  });
+
+  test("at shutdown held stakes go back and are logged as refunds, to a player away in the grace too", () => {
+    const t = scene([10, 9, 10, 8]);
+    const { a, b } = t.dealt(50, 30);
+    casinoLeave(t.world, b, t.deps);
+    t.world.players.delete("Bob");
+    const offline: [string, number | undefined][] = [];
+    t.world.activity.length = 0;
+    refundHolds(t.world, {
+      ...t.deps,
+      logOffline: (id, _type, f) => offline.push([id, f.gold]),
+    });
+    // Alice had 30 held (the stake); she gets it back in her purse. Bob's saved purse has his.
+    expect(a.char.gold).toBe(100);
+    expect(savedGold(t.world, a)).toBe(100);
+    expect(t.world.activity.map((e) => [e.character, e.type, e.gold])).toEqual([
+      ["Alice", "casino", 30],
+    ]);
+    expect(offline).toEqual([["Bob", 30]]);
+    expect(t.tbl().held).toEqual([0, 0]);
+    expect(t.tbl().phase).toBe("bids");
   });
 
   test("divergence: past the grace the stake is forfeit: the opponent gains, the dropped player's saved row loses the hold", () => {

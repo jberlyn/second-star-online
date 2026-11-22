@@ -8,6 +8,8 @@
 
 import { helpData } from "@secondstaronline/data";
 import {
+  ACTIVITY_TOTALS_MAX,
+  type ActivityType,
   ADMIN_TEXT,
   banNotice,
   CHAT_COLOR,
@@ -15,6 +17,7 @@ import {
   can,
   canOpenControlPanel,
   cheatLine,
+  className,
   creationError,
   type EditorMap,
   endIso,
@@ -26,6 +29,7 @@ import {
   invAdd,
   ipKey,
   isActive,
+  isActivityType,
   isJailMap,
   isStaff,
   JAIL,
@@ -66,6 +70,13 @@ import {
   UsernameTakenError,
   verifyPassword,
 } from "./persistence/accounts.ts";
+import {
+  type ActivityScope,
+  activityItemTotals,
+  activityRows,
+  insertActivity,
+  pruneActivity,
+} from "./persistence/activity.ts";
 import {
   auditTrail,
   findCharacterAccount,
@@ -174,6 +185,15 @@ import {
   settingPages,
   settingRows,
 } from "./settings.ts";
+import {
+  type ActivityFields,
+  checkPlayer,
+  holdingsOf,
+  logActivity,
+  logBagChange,
+  logEditorPlacements,
+  resetHoldings,
+} from "./systems/admin/activity.ts";
 import { type AdminDeps, applyRole, permissionsMsg } from "./systems/admin/commands.ts";
 import { openControlPanel } from "./systems/admin/control-panel.ts";
 import {
@@ -202,6 +222,7 @@ import {
   bjHit,
   bjLeave,
   bjStand,
+  refundHolds,
   savedGold,
   tablePlayers,
 } from "./systems/casino/blackjack.ts";
@@ -399,6 +420,8 @@ export interface Game {
   tick(): boolean;
   /** Saves everyone online (shutdown). */
   saveAll(): void;
+  /** Writes the buffered chat lines and activity now (shutdown, after the last logouts). */
+  flushLogs(): void;
 }
 
 /**
@@ -420,6 +443,7 @@ const EDITOR_INTENTS = new Set([
   "roleSave",
   "roleDelete",
   "roleAssign",
+  "activityQuery",
   "assassinGame",
   // IM, Away and chat rooms are their own windows (MIAWs), usable over the editors.
   "im",
@@ -456,6 +480,7 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   roleSave: { permission: "settings", reason: "Attempted Admin Access" },
   roleDelete: { permission: "settings", reason: "Attempted Admin Access" },
   roleAssign: { permission: "settings", reason: "Attempted Admin Access" },
+  activityQuery: { permission: "activityLog", reason: "Attempted Admin Access" },
   // Menu 502's Assassin items: 1.6's server just ignored anyone but an immortal.
   assassinGame: { permission: "assassinGame", reason: "Attempted Admin Access" },
 };
@@ -501,9 +526,10 @@ export function createGame(deps: GameDeps): Game {
   // IP bans from before keys get their standard form; lapsed bans and old addresses go.
   normalizeIpBans(db, isoNow());
   pruneModeration(db, isoNow(), settings.addressHistory / DAY_SECONDS);
-  /** Forgets chat lines and audit rows past their retention settings. */
+  /** Forgets chat lines, activity and audit rows past their retention settings. */
   const pruneLogs = () => {
     pruneChatLog(db, isoNow(), settings.chatLogRetention / DAY_SECONDS);
+    pruneActivity(db, isoNow(), settings.activityLogRetention / DAY_SECONDS);
     pruneAudit(db, isoNow(), settings.auditLogRetention / DAY_SECONDS);
   };
   pruneLogs();
@@ -511,11 +537,34 @@ export function createGame(deps: GameDeps): Game {
   let logPruneAt = nowMs() + 3_600_000;
   /** Lapsed bans, IP bans, sentences and mutes are logged as ended once a minute. */
   let moderationExpireAt = nowMs() + 60_000;
-  /** Writes the lines logged since the last write (`world.chatLog`). */
+  /**
+   * The chat lines and activity events written in the open transaction, still kept in memory: they
+   * leave the buffers only once it commits (`commitLogs`), so a rollback writes them again later.
+   */
+  let chatWritten = 0;
+  let activityWritten = 0;
+  /** Writes the chat lines and activity logged since the last write (`world.chatLog`, `.activity`). */
   const flushChatLog = () => {
-    if (world.chatLog.length > 0) {
-      insertChatLog(db, world.chatLog.splice(0), isoNow());
+    if (world.chatLog.length > chatWritten) {
+      insertChatLog(db, world.chatLog.slice(chatWritten), isoNow());
+      chatWritten = world.chatLog.length;
     }
+    if (world.activity.length > activityWritten) {
+      insertActivity(db, world.activity.slice(activityWritten), isoNow());
+      activityWritten = world.activity.length;
+    }
+  };
+  /** The transaction that wrote them committed: they leave the buffers. */
+  const commitLogs = () => {
+    world.chatLog.splice(0, chatWritten);
+    world.activity.splice(0, activityWritten);
+    chatWritten = 0;
+    activityWritten = 0;
+  };
+  /** The transaction rolled back: what it wrote is unwritten and stays to be written again. */
+  const rollbackLogs = () => {
+    chatWritten = 0;
+    activityWritten = 0;
   };
   // Named containers: the Cauldrons and carried crates and cabinets.
   world.containers = loadContainers(db);
@@ -598,6 +647,9 @@ export function createGame(deps: GameDeps): Game {
       ...(g.hull != null ? { hull: g.hull } : {}),
       ...(g.parkedAt ? { parkedAt: Date.parse(g.parkedAt) } : {}),
       ...(g.facing ? { facing: g.facing } : {}),
+      ...(g.droppedById && g.droppedBy
+        ? { droppedBy: { id: g.droppedById, name: g.droppedBy } }
+        : {}),
     }));
   }
 
@@ -652,6 +704,7 @@ export function createGame(deps: GameDeps): Game {
       addGoldOffline(db, id, delta);
       crashPoint("bj:offlineCredit");
     },
+    logOffline: (id, type, f) => logOffline(id, type, f),
   };
 
   const probe = deps.probe;
@@ -853,6 +906,8 @@ export function createGame(deps: GameDeps): Game {
               hull: g.hull ?? null,
               parkedAt: g.parkedAt == null ? null : new Date(g.parkedAt).toISOString(),
               facing: g.facing ?? null,
+              droppedById: g.droppedBy?.id ?? null,
+              droppedBy: g.droppedBy?.name ?? null,
             },
             now,
           );
@@ -1024,6 +1079,13 @@ export function createGame(deps: GameDeps): Game {
       deps.kick?.(k.id, k.text);
     }
   };
+  /** An activity log event for a character who is not online (an offline payout or prize). */
+  const logOffline = (characterId: string, type: ActivityType, f: ActivityFields) => {
+    const c = findCharacterById(db, characterId);
+    if (c) {
+      logActivity(world, { id: c.id, accountId: c.accountId, name: c.name }, type, f);
+    }
+  };
   /** The Assassin's end: the prize setting and offline winners' bags. */
   const assassinDeps: AssassinDeps = {
     rng,
@@ -1034,8 +1096,18 @@ export function createGame(deps: GameDeps): Game {
           return;
         }
         const inv = loadInventory(db, characterId);
-        invAdd(inv, prize, 1, rng);
+        const r = invAdd(inv, prize, 1, rng);
         saveInventory(db, characterId, inv, isoNow());
+        // A full bag loses the prize, as it does online.
+        logOffline(
+          characterId,
+          "reward",
+          r.kind === "gold"
+            ? { gold: r.amount, details: { prize: "Assassin" } }
+            : r.kind === "full"
+              ? { item: prize, details: { prize: "Assassin", lost: 1 } }
+              : { item: prize, qty: 1, details: { prize: "Assassin" } },
+        );
       })();
     },
   };
@@ -1074,7 +1146,16 @@ export function createGame(deps: GameDeps): Game {
       muteMinutes: settings.muteLength / 60,
     }),
     setClass: (characterId, code) => {
+      // An online target's change is logged by the next progress check; an offline one's here.
+      const was = world.players.has(characterId)
+        ? null
+        : (findCharacterById(db, characterId)?.classCode ?? null);
       setClassCode(db, characterId, code, isoNow());
+      if (was !== null && was !== code) {
+        logOffline(characterId, "class", {
+          details: { from: className(was) ?? String(was), to: className(code) ?? String(code) },
+        });
+      }
       // An online target's promotions read the live class.
       for (const o of world.players.values()) {
         if (o.id === characterId) {
@@ -1130,6 +1211,74 @@ export function createGame(deps: GameDeps): Game {
   };
 
   /** The Server Settings window's contents: the pages, the settings, the roles and the staff. */
+  /**
+   * The Activity Log page's query: a page of one character's timeline or one item's flow, newest
+   * first. A character is found by name; one that was deleted is still read by the name it was
+   * logged under. Every read is audited, as `/chatlog` is.
+   */
+  const activityQuery = (
+    p: Player,
+    asked: Extract<InGameMsg, { t: "activityQuery" }>,
+  ): ServerMsg => {
+    const q = { ...asked, name: asked.name.trim(), types: asked.types.filter(isActivityType) };
+    flushChatLog();
+    const c = q.scope === "character" ? findCharacterAccount(db, q.name) : null;
+    const scope: ActivityScope =
+      q.scope === "item" ? { item: q.name } : c ? { characterId: c.characterId } : { name: q.name };
+    const rows = activityRows(db, {
+      scope,
+      types: q.types,
+      since: q.since,
+      until: q.until,
+      before: q.before,
+      limit: q.limit + 1,
+    });
+    const more = rows.length > q.limit;
+    rows.length = Math.min(rows.length, q.limit);
+    const first = q.before === null;
+    // Every read is audited, a further page too (its cursor is the client's, not the server's).
+    insertAudit(
+      db,
+      {
+        actor: p.accountId,
+        command: "activityLog",
+        target: c?.name ?? q.name,
+        after: {
+          scope: q.scope,
+          types: q.types,
+          since: q.since,
+          until: q.until,
+          ...(q.before ? { before: q.before.at } : {}),
+        },
+      },
+      isoNow(),
+    );
+    const error =
+      first &&
+      rows.length === 0 &&
+      q.scope === "character" &&
+      !c &&
+      q.types.length === 0 &&
+      q.since === null &&
+      q.until === null
+        ? ADMIN_TEXT.noSuchCharacter(q.name)
+        : undefined;
+    return {
+      t: "activity",
+      seq: q.seq,
+      rows,
+      more,
+      ...(first && q.scope === "item" ? itemTotals(q.name, q.since, q.until) : {}),
+      ...(error ? { error } : {}),
+    };
+  };
+
+  /** An item's totals, over at most its newest `ACTIVITY_TOTALS_MAX` events (the tick waits for it). */
+  const itemTotals = (item: string, since: string | null, until: string | null) => {
+    const r = activityItemTotals(db, item, since, until, ACTIVITY_TOTALS_MAX);
+    return { totals: r.totals, ...(r.capped ? { totalsCapped: ACTIVITY_TOTALS_MAX } : {}) };
+  };
+
   const settingsMsg = (): ServerMsg => {
     const holders = roleHolders(db);
     return {
@@ -1541,7 +1690,9 @@ export function createGame(deps: GameDeps): Game {
       if (!before) {
         mapCache.set(name, target);
       }
+      const placedBefore = target.ground.filter((g) => g.kind === "admin");
       result = applySave(world, target, m, () => Bun.randomUUIDv7());
+      logEditorPlacements(world, p, target.name, placedBefore, result.added);
       for (const gid of result.removed) {
         deleteGround(db, gid);
       }
@@ -1703,10 +1854,11 @@ export function createGame(deps: GameDeps): Game {
         throw err;
       }
       const now = isoNow();
+      let made: { id: string; accountId: string; name: string } | null = null;
       try {
         db.transaction(() => {
           const account = insertAccount(db, { username: msg.name, passwordHash, now });
-          insertCharacter(db, {
+          const characterId = insertCharacter(db, {
             accountId: account.id,
             start: startingCharacter(choice),
             // Load Character's Facing = "N" is overwritten by the play-entry setup's Facing = "S":
@@ -1715,6 +1867,7 @@ export function createGame(deps: GameDeps): Game {
             position: { mapId: map.id, x: sp.x, y: sp.y, facing: "S" },
             now,
           });
+          made = { id: characterId, accountId: account.id, name: msg.name };
         })();
       } catch (err) {
         if (
@@ -1726,6 +1879,14 @@ export function createGame(deps: GameDeps): Game {
         }
         unnoteCreate(limits, ip, counted);
         throw err;
+      }
+      // What a new character starts with is where those items came from, logged once it exists.
+      if (made) {
+        const who: { id: string; accountId: string; name: string } = made;
+        logBagChange(world, who, "reward", new Map(), holdingsOf(loadInventory(db, who.id)), {
+          details: { start: true },
+        });
+        stampChat();
       }
       return { ok: true };
     },
@@ -1850,6 +2011,8 @@ export function createGame(deps: GameDeps): Game {
       }
       keptRegen.delete(c.id);
       keptSocial.delete(c.id);
+      // The login names the address; the activity ledger starts once a blackjack seat is back.
+      logActivity(world, p, "login", { details: { ip, resumed: resumed || null } });
       send(p.id, permissionsMsg(p.role));
       send(p.id, { t: "prefs", prefs: p.prefs, ignores: [...p.ignore], stored: p.prefsStored });
       deliver(addPlayer(world, p));
@@ -1862,6 +2025,7 @@ export function createGame(deps: GameDeps): Game {
       send(p.id, { t: "spellbook", spells: [...p.spell.book] });
       // A blackjack seat held through the grace reopens as it was.
       deliver(casinoReturn(world, p));
+      resetHoldings(p);
       flushChanged(tablePlayers(world, p)); // a hand that settled while away
       // Frame 50 fills the Friends window; it opens only from the menu.
       deliver(friendsEntry(world, p));
@@ -1904,6 +2068,11 @@ export function createGame(deps: GameDeps): Game {
       }
       // A trade ends when a trader leaves.
       const tradeOut = leaving ? leaveTrade(world, leaving) : [];
+      if (leaving) {
+        // Anything no event explained is logged before they go.
+        checkPlayer(world, leaving);
+        logActivity(world, leaving, "logout", { details: { ip: leaving.ip || null } });
+      }
       if (leaving) {
         keptSocial.set(leaving.id, { away: leaving.away, room: leaving.room });
       }
@@ -1974,6 +2143,9 @@ export function createGame(deps: GameDeps): Game {
           settingsSave(p, msg.values);
           return;
         case "settingsClose":
+          return;
+        case "activityQuery":
+          send(p.id, activityQuery(p, msg));
           return;
         // The Guild Center: each change is written with the fields it set.
         case "guildCreate":
@@ -2063,7 +2235,14 @@ export function createGame(deps: GameDeps): Game {
           viewCloseIntent(p);
           return;
         case "artSave":
-          deliver(artSaveIntent(p, msg.kind, msg.png, artStore, artDeps));
+          {
+            // The Canvas or Film goes in, the Painting or Photo comes out.
+            const before = holdingsOf(p.char);
+            deliver(artSaveIntent(p, msg.kind, msg.png, artStore, artDeps));
+            logBagChange(world, p, "craft", before, holdingsOf(p.char), {
+              details: { craft: msg.kind },
+            });
+          }
           flushChanged([p]); // the Painting or Photo is in the bag: write it now
           return;
         case "newspaperLoad":
@@ -2344,6 +2523,7 @@ export function createGame(deps: GameDeps): Game {
           }
           const r = castIntent(room, p, msg.spell, msg.x, msg.y, {
             rng,
+            world,
             portalOpen: () => portalOpen(tickDeps),
           });
           deliver(r.out);
@@ -2361,6 +2541,9 @@ export function createGame(deps: GameDeps): Game {
           const room = world.rooms.get(p.map.name);
           if (room) {
             const r = clickNpc(room, p, msg.slot, rng);
+            if (r.grabbed) {
+              logActivity(world, p, "pickup", { item: r.grabbed, qty: 1, other: r.grabbed });
+            }
             deliver(r.out);
             if (r.slotsChanged) {
               saveMapSlots(p.map);
@@ -2402,7 +2585,7 @@ export function createGame(deps: GameDeps): Game {
           deliver(
             p.container
               ? withdrawContainer(world, p, msg.index, rng)
-              : withdrawVault(p, msg.index, rng),
+              : withdrawVault(world, p, msg.index, rng),
           );
           flushChanged([p]);
           return;
@@ -2461,7 +2644,25 @@ export function createGame(deps: GameDeps): Game {
     },
 
     saveAll() {
-      saveEveryone();
+      try {
+        // Stakes at the tables go back first, so the saved purses and the log agree.
+        refundHolds(world, casinoDeps);
+        saveEveryone();
+        commitLogs();
+      } catch (err) {
+        rollbackLogs();
+        throw err;
+      }
+    },
+
+    flushLogs() {
+      try {
+        db.transaction(flushChatLog)();
+        commitLogs();
+      } catch (err) {
+        rollbackLogs();
+        throw err;
+      }
     },
   };
 
@@ -2471,39 +2672,65 @@ export function createGame(deps: GameDeps): Game {
   const fault =
     deps.onFault ?? ((where: string, err: unknown) => console.error(`fault in ${where}`, err));
   const inner = { enter: core.enter, leave: core.leave, intent: core.intent, tick: core.tick };
-  /** A logged line takes the time its intent ended, not the time it was written. */
+  /** Forgets `characterId`'s activity events logged since `mark` (a call that threw and evicted them). */
+  const dropActivity = (characterId: string, mark: number) => {
+    const kept = world.activity.slice(mark).filter((e) => e.characterId !== characterId);
+    world.activity.splice(mark, world.activity.length - mark, ...kept);
+  };
+  /** A logged line or event takes the time its intent ended, not the time it was written. */
   const stampChat = () => {
     const now = isoNow();
-    for (let i = world.chatLog.length - 1; i >= 0; i--) {
-      const e = world.chatLog[i];
-      if (!e || e.at !== undefined) {
-        break;
+    for (const log of [world.chatLog, world.activity]) {
+      for (let i = log.length - 1; i >= 0; i--) {
+        const e = log[i];
+        if (!e || e.at !== undefined) {
+          break;
+        }
+        e.at = now;
       }
-      e.at = now;
     }
   };
   return Object.assign(core, {
     enter(characterId: string, resumed: boolean, ip?: string) {
+      const mark = world.activity.length;
       try {
-        return db.transaction(() => inner.enter(characterId, resumed, ip))();
+        const r = db.transaction(() => inner.enter(characterId, resumed, ip))();
+        commitLogs();
+        return r;
       } catch (err) {
+        rollbackLogs();
         fault("enter", err);
         evict(characterId);
+        dropActivity(characterId, mark);
         return false;
+      } finally {
+        stampChat();
       }
     },
     leave(characterId: string) {
+      const mark = world.activity.length;
       try {
         db.transaction(() => inner.leave(characterId))();
+        commitLogs();
       } catch (err) {
+        rollbackLogs();
         fault("leave", err);
         evict(characterId);
+        dropActivity(characterId, mark);
       }
+      stampChat();
     },
     intent(characterId: string, msg: InGameMsg) {
+      const mark = world.activity.length;
       try {
         db.transaction(() => inner.intent(characterId, msg))();
+        commitLogs();
       } catch (err) {
+        // A read (the Activity Log, /chatlog) may have written the buffers: that rolled back too.
+        rollbackLogs();
+        // Their writes rolled back and they reload from SQL, so their events from this call go
+        // too. Others keep theirs: their memory, which is what gets saved, did change.
+        dropActivity(characterId, mark);
         // A server fault is a bug, not cheating: it goes to the error log, naming who it hit, and
         // never to the cheat log.
         const p = world.players.get(characterId);
@@ -2531,18 +2758,31 @@ export function createGame(deps: GameDeps): Game {
             expireModeration(db, isoNow());
           }
         })();
+        commitLogs();
       } catch (err) {
+        rollbackLogs();
         fault("chat log", err);
       }
       let ok: boolean;
       try {
         db.transaction(() => inner.tick())();
-        deps.probe?.end();
+        commitLogs();
         ok = true;
       } catch (err) {
+        rollbackLogs();
         fault("tick", err);
         ok = false;
       }
+      // Whatever no event explained since the last check is logged as unlogged. No SQL: it only
+      // fills the buffer, outside the tick's transaction, and is timed with the tick's last phase.
+      for (const p of world.players.values()) {
+        checkPlayer(world, p);
+      }
+      if (ok) {
+        deps.probe?.end();
+      }
+      // The tick's events take the time it ended.
+      stampChat();
       // A Ctrl pressed during the short item-action pause runs once the pause ends, through the
       // same guarded intent path as a fresh press.
       for (const p of [...world.players.values()]) {

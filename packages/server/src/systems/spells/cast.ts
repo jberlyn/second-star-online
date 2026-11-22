@@ -36,15 +36,18 @@ import {
   tileLoc,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { type MonsterSlot, monsterView } from "../monsters/slots.ts";
 import { placeMonster } from "../monsters/spawn.ts";
-import type { Outgoing, Player, Room } from "../world/world.ts";
+import type { Outgoing, Player, Room, World } from "../world/world.ts";
 import { queueCast } from "./fx.ts";
 import { playerLoc, playerRect, type Rect } from "./geometry.ts";
 
 export interface CastCtx {
   rng: Rng;
+  /** Where a spent reagent is logged (the activity log); absent in unit tests. */
+  world?: World;
   /** Whether Portal has a destination whose map exists (`portalOpen`); absent: it has. */
   portalOpen?: () => boolean;
   /** Frames per player step (setting `stepFrames`). */
@@ -161,6 +164,13 @@ export function castIntent(
 
   t.actionDelay = CAST_DELAY;
   if (need) {
+    if (ctx.world) {
+      logActivity(ctx.world, p, "use", {
+        item: p.char.bag[line]?.item,
+        qty: -need.count,
+        details: { spell },
+      });
+    }
     invDelSlot(p.char.bag, line, need.count);
     p.invDirty = true;
   }

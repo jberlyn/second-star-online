@@ -21,8 +21,9 @@ import {
   skillIndex,
 } from "@secondstaronline/shared";
 
+import { logTransform } from "../admin/activity.ts";
 import { onHolyShield } from "../spells/geometry.ts";
-import { type Player, statsOf, type WorldMap } from "../world/world.ts";
+import { type Player, statsOf, type World, type WorldMap } from "../world/world.ts";
 import { hasFlag, type NpcStore } from "./npcfiles.ts";
 import { isFootprint, type MonsterSlot, species } from "./slots.ts";
 
@@ -56,6 +57,8 @@ export interface MonsterAttackCtx {
   npcs: NpcStore;
   /** True when the victim takes no damage (the `invulnerable` permission). */
   invulnerable(p: Player): boolean;
+  /** Where a broken piece of armour is logged (the activity log); absent in unit tests. */
+  world?: World;
   /** Frames per player step: where the victim's sprite is for the Holy Shield test. */
 }
 
@@ -176,7 +179,11 @@ function hitMe2(
   if (broken) {
     const field = EQUIP_FIELD[broken];
     lines.push(shattersText(p.char.equip[field]));
-    p.char.equip[field] = damagedForm(p.char.equip[field]);
+    const was = p.char.equip[field];
+    p.char.equip[field] = damagedForm(was);
+    if (ctx.world) {
+      logTransform(ctx.world, p, was, p.char.equip[field], { broke: true });
+    }
     p.invDirty = true;
     p.lookDirty = true;
   }

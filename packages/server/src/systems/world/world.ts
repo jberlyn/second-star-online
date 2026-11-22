@@ -60,6 +60,7 @@ import {
   withTile,
 } from "@secondstaronline/shared";
 
+import type { ActivityEntry, Holdings, Progress } from "../admin/activity.ts";
 import {
   type CraftState,
   cancelCrafts,
@@ -131,6 +132,8 @@ export interface GroundItem {
   parkedAt?: number | null;
   /** The way a parked ship faces; null or absent faces east, as its docked picture. */
   facing?: Facing | null;
+  /** The player who dropped or gave it, for the activity log's pickup; absent otherwise. */
+  droppedBy?: { id: string; name: string } | null;
 }
 
 export function groundView(g: GroundItem): GroundView {
@@ -397,6 +400,13 @@ export interface Player {
   lookDirty: boolean;
   /** The inventory was sent and still has to be written. */
   invSaveDue: boolean;
+  /**
+   * What the activity log says this player carries (systems/admin/activity.ts), checked against
+   * the bag, worn gear and gold once a tick. Unset until the first check.
+   */
+  activityHeld?: Holdings;
+  /** The level, class and skills the activity log last saw; unset until the first check. */
+  activityProgress?: Progress;
   /** The stats and skills last sent (`sheet`), to send only on change. */
   lastSheet: string;
   /** The Purple Potion's attack bonus; cleared when the attack counter runs out. */
@@ -887,6 +897,8 @@ export interface World {
    * append through `logChat`; the game stamps and writes them.
    */
   chatLog: ChatLogEntry[];
+  /** Player actions since the last write, in order (the activity log, systems/admin/activity.ts). */
+  activity: ActivityEntry[];
   /** Ground items added or removed since the last write, in order (persistence). */
   /** Ground changes since the last write; `set` renames in place (doors). */
   groundLog: {
@@ -1076,6 +1088,7 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     players: new Map(),
     tickNo: 0,
     chatLog: [],
+    activity: [],
     groundLog: [],
     gives: [],
     shops: new Map(),

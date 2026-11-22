@@ -42,6 +42,7 @@ import {
   wateredTile,
 } from "@secondstaronline/shared";
 
+import { logPlaced } from "../admin/activity.ts";
 import { addGround, ItemOut } from "../inventory/items.ts";
 import { aqsToMap } from "../social/factions.ts";
 import { queueCast } from "../spells/fx.ts";
@@ -85,7 +86,20 @@ function faced(p: Player): { x: number; y: number } {
 }
 
 /** A gathered drop on (x, y): it decays like monster loot (no 20-item gate). */
-function drop(ctx: GatherCtx, room: Room, io: ItemOut, item: string, x: number, y: number): void {
+function drop(
+  ctx: GatherCtx,
+  room: Room,
+  io: ItemOut,
+  item: string,
+  x: number,
+  y: number,
+  by: Player | null = null,
+  details: Record<string, string | boolean> | null = null,
+): void {
+  // The gatherer's activity log names what they found; regrowth has no gatherer.
+  if (by) {
+    logPlaced(ctx.world, by, "gather", item, { at: { map: room.map.name, x, y }, details });
+  }
   addGround({ world: ctx.world, rng: ctx.rng, now: ctx.now }, room, io, {
     item,
     x,
@@ -170,7 +184,7 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
       p.told = FISHING_STOPPED_TEXT;
     }
     if (r.fish) {
-      drop(ctx, room, io, r.fish, t.x, t.y);
+      drop(ctx, room, io, r.fish, t.x, t.y, p);
     }
     if (r.gained) {
       p.char.skills[skillIndex("Fishing")] = skillOf(p, "Fishing") + 1;
@@ -229,10 +243,10 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
       : rollChunk(tool.tool, skill, ctx.rng);
   }
   if (found) {
-    drop(ctx, room, io, found, t.x, t.y);
+    drop(ctx, room, io, found, t.x, t.y, p);
   }
   if (tool.counter === "Dig") {
-    digTreasure(ctx, room, io, ev, t.x, t.y);
+    digTreasure(ctx, room, io, ev, t.x, t.y, p);
   }
   if (tool.successSound) {
     io.out.push(sound(p, tool.successSound.name, tool.successSound.ch));
@@ -255,6 +269,7 @@ function digTreasure(
   ev: GatherEvents,
   x: number,
   y: number,
+  p: Player,
 ): void {
   const tr = ctx.world.treasure;
   if (!tr || !lingoEq(tr.map, room.map.name)) {
@@ -263,7 +278,7 @@ function digTreasure(
   if (ctx.rng.random(TREASURE.chance) !== 1) {
     return;
   }
-  drop(ctx, room, io, tr.item, x, y);
+  drop(ctx, room, io, tr.item, x, y, p, { treasure: true });
   ev.lines.push(TREASURE.text);
   ctx.world.treasure = buildTreasure(ctx.world.treasureMaps, ctx.rng);
 }

@@ -19,6 +19,7 @@ import {
   turnKey,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import type { ItemCtx, ItemOut } from "../inventory/items.ts";
 import type { GroundItem, Player, Room } from "../world/world.ts";
 
@@ -78,6 +79,7 @@ export function useKey(
   const g = onTile.findLast((x) => x.item === door) as GroundItem;
   renameItem(ctx, room, io, g, turn.to);
   if (keyConsumed(turn, item)) {
+    logActivity(ctx.world, p, "use", { item, qty: -1, details: { door } });
     invDelSlot(p.char.bag, slot - 1, 1);
     p.invDirty = true;
   }

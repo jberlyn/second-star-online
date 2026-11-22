@@ -904,6 +904,75 @@ body {
   justify-content: flex-end;
   gap: 8px;
 }
+/* The Activity Log page (ui/activity-log.ts). */
+.activity-modes {
+  display: flex;
+  gap: 6px;
+  padding: 12px 20px 0;
+}
+.activity-modes .control-panel-btn[aria-pressed="true"] {
+  background: #2f3a52;
+  border-color: #8fb3ff;
+  color: #fff;
+}
+.activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 16px;
+  padding: 4px 20px 8px;
+  border-bottom: 1px solid #333;
+}
+.activity-filters .control-panel-field {
+  min-width: 140px;
+}
+.activity-filters .control-panel-field:first-child {
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+.activity-filters > .control-panel-btn {
+  margin-top: 30px;
+}
+.activity-status {
+  margin: 10px 20px;
+  color: #aaa;
+}
+.activity-subtitle {
+  margin: 4px 20px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ccc;
+}
+.activity-totals {
+  margin-bottom: 12px;
+}
+.activity-totals[hidden],
+.activity-log .control-panel-btn[hidden] {
+  display: none;
+}
+.activity-log > .control-panel-btn {
+  margin: 12px 20px 20px;
+}
+.activity-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8fb3ff;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.activity-link:hover {
+  color: #c2d4ff;
+}
+.activity-link:focus-visible {
+  outline: 2px solid #8fb3ff;
+  outline-offset: 1px;
+}
+.activity-unlogged {
+  color: #f0b429;
+}
 @media (max-width: 640px) {
   .control-panel-body {
     flex-direction: column;

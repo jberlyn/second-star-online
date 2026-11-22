@@ -194,6 +194,8 @@ export function startServer(options: ServerOptions): RunningServer {
       }
       game.saveAll();
       await gw.stop();
+      // Closing the sockets logged everyone out: their logouts are written before the close.
+      game.flushLogs();
       // `true` finalizes the statements the persistence modules made with `db.prepare` and closes
       // now. A plain close() leaves the connection open until GC finalizes them, and that late close
       // checkpoints the WAL under an exclusive lock: a process opening the file at that moment gets

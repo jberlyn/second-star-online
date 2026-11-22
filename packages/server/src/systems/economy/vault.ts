@@ -12,7 +12,8 @@ import {
   type Rng,
 } from "@secondstaronline/shared";
 
-import type { GroundItem, Outgoing, Player } from "../world/world.ts";
+import { logActivity } from "../admin/activity.ts";
+import type { GroundItem, Outgoing, Player, World } from "../world/world.ts";
 
 /** "Vault" holds 15 lines (the personal file `<name>.txt` gets the default 15). */
 export const VAULT_CAPACITY = 15;
@@ -62,7 +63,7 @@ export function openVault(p: Player, g: GroundItem): Outgoing[] {
  * vault says so, otherwise one unit goes in, the drop line prints and an open list shows it. (1.6
  * printed the drop line before the capacity test and never refreshed the list.)
  */
-export function depositVault(p: Player, slot: number, n = 1): Outgoing[] {
+export function depositVault(world: World, p: Player, slot: number, n = 1): Outgoing[] {
   const line = p.char.bag[slot - 1];
   if (!line) {
     return [];
@@ -77,6 +78,7 @@ export function depositVault(p: Player, slot: number, n = 1): Outgoing[] {
   if (count <= 0) {
     return [tell(p, VAULT_TEXT.full)];
   }
+  logActivity(world, p, "vault", { item, qty: -count });
   line.qty -= count;
   if (line.qty <= 0) {
     p.char.bag[slot - 1] = null;
@@ -103,7 +105,7 @@ export function depositVault(p: Player, slot: number, n = 1): Outgoing[] {
  * stays (1.6 let "Orc Pot Pie" pass for "Pie", added nothing and deleted the line). A crystal line
  * comes back as itself (1.6 turned every colour into "Crystals ").
  */
-export function withdrawVault(p: Player, index: number, rng: Rng): Outgoing[] {
+export function withdrawVault(world: World, p: Player, index: number, rng: Rng): Outgoing[] {
   if (!p.vaultOpen) {
     return [];
   }
@@ -114,7 +116,8 @@ export function withdrawVault(p: Player, index: number, rng: Rng): Outgoing[] {
   if (addSlotFor(p.char.bag, item) < 0 && !isGoldName(item)) {
     return [tell(p, VAULT_TEXT.carrying)];
   }
-  invAdd(p.char, item, 1, rng);
+  const r = invAdd(p.char, item, 1, rng);
+  logActivity(world, p, "vault", r.kind === "gold" ? { gold: r.amount } : { item, qty: 1 });
   p.invDirty = true;
   p.char.vault.splice(index - 1, 1);
   p.char.storeDirty = true;

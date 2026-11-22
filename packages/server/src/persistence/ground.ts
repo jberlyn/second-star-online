@@ -21,6 +21,9 @@ export interface StoredGroundItem {
   parkedAt?: string | null;
   /** The way a parked ship faces ('N', 'S', 'E', 'W'); null faces east. */
   facing?: "N" | "S" | "E" | "W" | null;
+  /** The player who dropped or gave it (id and name), else null. */
+  droppedById?: string | null;
+  droppedBy?: string | null;
 }
 
 interface Row {
@@ -36,6 +39,8 @@ interface Row {
   hull: number | null;
   parked_at: string | null;
   facing: "N" | "S" | "E" | "W" | null;
+  dropped_by_id: string | null;
+  dropped_by: string | null;
 }
 
 /** A map's ground items in creation order, after deleting the ones already decayed. */
@@ -45,7 +50,7 @@ export function loadGround(db: Db, mapId: string, now: string): StoredGroundItem
   ).run(mapId, now);
   return db
     .query<Row, [string]>(
-      "SELECT id, map_id, x, y, item, qty, kind, expires_at, owner_id, hull, parked_at, facing FROM ground_items WHERE map_id = ? ORDER BY id",
+      "SELECT id, map_id, x, y, item, qty, kind, expires_at, owner_id, hull, parked_at, facing, dropped_by_id, dropped_by FROM ground_items WHERE map_id = ? ORDER BY id",
     )
     .all(mapId)
     .map((r) => ({
@@ -61,12 +66,14 @@ export function loadGround(db: Db, mapId: string, now: string): StoredGroundItem
       hull: r.hull,
       parkedAt: r.parked_at,
       facing: r.facing,
+      droppedById: r.dropped_by_id,
+      droppedBy: r.dropped_by,
     }));
 }
 
 export function insertGround(db: Db, g: StoredGroundItem, now: string): void {
   db.query(
-    "INSERT INTO ground_items (id, map_id, x, y, item, qty, kind, expires_at, owner_id, hull, parked_at, facing, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO ground_items (id, map_id, x, y, item, qty, kind, expires_at, owner_id, hull, parked_at, facing, dropped_by_id, dropped_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   ).run(
     g.id,
     g.mapId,
@@ -80,6 +87,8 @@ export function insertGround(db: Db, g: StoredGroundItem, now: string): void {
     g.hull ?? null,
     g.parkedAt ?? null,
     g.facing ?? null,
+    g.droppedById ?? null,
+    g.droppedBy ?? null,
     now,
   );
 }

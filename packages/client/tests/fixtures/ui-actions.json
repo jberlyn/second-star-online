@@ -9,6 +9,56 @@
     "hidden": 0,
     "disabled": 0
   },
+  "activity-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-mode-item": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-mode-timeline": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-more": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-name": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-player": {
+    "count": 3,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-show": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-since": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-type": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "activity-until": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
   "alert-confirm": {
     "count": 1,
     "hidden": 0,

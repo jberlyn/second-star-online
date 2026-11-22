@@ -9,16 +9,20 @@ import {
   can,
   FACING_DELTA,
   ID_CONTAINERS,
+  isGoldName,
   isWalkable,
+  leadingInteger,
   lingoContains,
   lingoEq,
   lingoWord,
   MAP_HEIGHT,
   MAP_WIDTH,
+  pileToItem,
 } from "@secondstaronline/shared";
 
 import { addGround, DROP_TEXT, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import type { Outgoing, Player, Room } from "../world/world.ts";
+import { logActivity } from "./activity.ts";
 
 /** The original's alert, an alert here too. */
 export const NO_SUCH_ITEM = "This item doesn't exist!";
@@ -127,6 +131,14 @@ export function handleDrop(ctx: ItemCtx, room: Room, p: Player, item: string): O
     y,
     kind: "admin",
     expiresAt: null,
+  });
+  // Made from nothing: the admin does not carry it, so it is logged as placed on the ground.
+  const gold = isGoldName(pile.item) ? leadingInteger(pile.item) : 0;
+  const made = gold > 0 ? null : pileToItem(pile.item);
+  logActivity(ctx.world, p, "admin", {
+    item: made?.item ?? null,
+    at: { map: room.map.name, x, y },
+    details: { placed: made ? made.qty * pile.qty : null, placedGold: gold || null },
   });
   return io.out;
 }

@@ -28,6 +28,7 @@ Base every claim on the code as it was **at the tag being described**, not the w
 Changes that the next release after `v1.13.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
 - **Carpentry Bench.** Players must face this station to build furniture. Back up the database before upgrading. If a world has no bench, add a Carpentry Bench from the World Editor’s Items list and save the map.
+- **Activity log.** A migration adds the `activity_log` table and two columns to `ground_items`. The log records every player's item and gold movements, kills, levels, logins and map changes, so the database grows faster than before: `activityLogRetention` (default 180 days) prunes it hourly. Administrators read it on the Control Panel's Activity Log page; give the `activityLog` permission to any other role that should.
 
 ## 2. Choose the version
 

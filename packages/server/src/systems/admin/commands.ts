@@ -188,7 +188,7 @@ export function adminWarp(
     return [];
   }
   const out = target.editing ? closeEditor(world, target) : [];
-  out.push(...warp(world, target, map, x, y, deps.casino));
+  out.push(...warp(world, target, map, x, y, deps.casino, "admin"));
   return out;
 }
 

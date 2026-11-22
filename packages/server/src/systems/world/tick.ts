@@ -48,6 +48,7 @@ import {
   USE_TEXT,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import { type CasinoDeps, casinoMapChange, casinoTick } from "../casino/index.ts";
 import { slotTick } from "../casino/slots.ts";
 import { hears } from "../chat/ignore.ts";
@@ -265,6 +266,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
               rng,
               npcs: room.npcs,
               invulnerable: isInvulnerable,
+              world,
             });
             if (o) {
               all({ e: "phit", id: o.victim.id, text: o.text, color: o.color, splat: o.splat });
@@ -393,7 +395,11 @@ export function tick(world: World, deps: TickDeps): TickResult {
     out.push(...relock.out);
     // A slot pull's 30-frame spin, settled by the server.
     for (const p of players) {
+      const gold = p.char.gold;
       out.push(...slotTick(rng, p));
+      if (p.char.gold !== gold) {
+        logActivity(world, p, "casino", { gold: p.char.gold - gold, details: { game: "slots" } });
+      }
     }
     const ctx: MoveCtx = {
       rng,
@@ -753,11 +759,11 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
   p.vitalsDirty = true;
   // Death cannot bypass confinement. Revive at the jail arrival; the sentence runs on.
   if (isJailMap(p.map.name)) {
-    out.push(...warp(world, p, p.map, JAIL.x, JAIL.y, deps.casino));
+    out.push(...warp(world, p, p.map, JAIL.x, JAIL.y, deps.casino, "respawn"));
     return out;
   }
   const to = respawnTarget(p.char.respawn, deps);
-  out.push(...warp(world, p, to?.map ?? p.map, to?.x ?? p.x, to?.y ?? p.y, deps.casino));
+  out.push(...warp(world, p, to?.map ?? p.map, to?.x ?? p.x, to?.y ?? p.y, deps.casino, "respawn"));
   return out;
 }
 
@@ -806,7 +812,7 @@ function portal(world: World, deps: TickDeps, p: Player): Outgoing[] {
   }
   const open = openPortalTargets(deps);
   const t = open[deps.rng.random(open.length) - 1];
-  return t ? warp(world, p, t.map, t.x, t.y, deps.casino) : [];
+  return t ? warp(world, p, t.map, t.x, t.y, deps.casino, "portal") : [];
 }
 
 /** The operator's portal targets whose maps exist. */
@@ -859,7 +865,7 @@ function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit
   // A house's exit names its interior (`H1<mx>`).
   const map = e ? deps.loadMap(exitTarget(e)) : null;
   if (e && map) {
-    return warp(world, p, map, e.x, e.y, deps.casino);
+    return warp(world, p, map, e.x, e.y, deps.casino, "exit");
   }
   return refuseTravel(p);
 }
@@ -893,7 +899,7 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
   if (!next || !isWalkable(walkGridFor(next, p.vehicle), o.toX, o.toY)) {
     return refuseTravel(p);
   }
-  return warp(world, p, next, o.toX, o.toY, deps.casino);
+  return warp(world, p, next, o.toX, o.toY, deps.casino, "edge");
 }
 
 /**
@@ -934,7 +940,7 @@ export function releaseFromJail(
     return [];
   }
   const to = respawnTarget(p.char.respawn, deps);
-  return to ? warp(world, p, to.map, to.x, to.y, deps.casino) : [];
+  return to ? warp(world, p, to.map, to.x, to.y, deps.casino, "release") : [];
 }
 
 /**
@@ -948,7 +954,9 @@ export function warp(
   x: number,
   y: number,
   casino: CasinoDeps,
+  via: string = "warp",
 ): Outgoing[] {
+  logActivity(world, p, "map", { at: { map: map.name, x, y }, details: { from: p.map.name, via } });
   // A trade and any open casino game/panel end when a player changes map.
   const out = leaveTrade(world, p);
   out.push(...casinoMapChange(world, p, casino));

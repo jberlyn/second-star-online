@@ -6,6 +6,7 @@
  * past the reconnect grace. Leaving or changing map frees the seat.
  */
 import {
+  type ActivityType,
   BJ_HAND_SIZE,
   BJ_RESET_FRAMES,
   BJ_TEXT,
@@ -20,6 +21,7 @@ import {
 } from "@secondstaronline/shared";
 
 import type { Rng } from "../../rng.ts";
+import { type ActivityFields, logActivity } from "../admin/activity.ts";
 import type { BjTable, GroundItem, Outgoing, Player, World } from "../world/world.ts";
 import {
   bjViews,
@@ -36,6 +38,8 @@ export interface CasinoDeps {
   graceTicks: number;
   /** Gold for a character that is not logged in. */
   addGoldOffline(id: string, delta: number): void;
+  /** An activity log event for a character who is not logged in. */
+  logOffline?(id: string, type: ActivityType, f: ActivityFields): void;
 }
 
 const idx = (side: 1 | 2): 0 | 1 => (side === 1 ? 0 : 1);
@@ -48,8 +52,10 @@ function bjTableOf(world: World, p: Player): { table: BjTable; side: 1 | 2 } | n
   return t?.game === "blackjack" ? { table: t, side: p.casino.side } : null;
 }
 
-const giveGold = (p: Player, n: number): void => {
+/** A bid, a refund or a payout: logged as casino gold for the activity log. */
+const giveGold = (world: World, p: Player, n: number): void => {
   if (n !== 0) {
+    logActivity(world, p, "casino", { gold: n, details: { game: "blackjack" } });
     p.char.gold += n;
     p.invDirty = true;
   }
@@ -78,9 +84,47 @@ function releaseHolds(world: World, table: BjTable): void {
   for (const s of [1, 2] as const) {
     const p = seatPlayer(world, table, s);
     if (p) {
-      giveGold(p, table.held[idx(s)]);
+      giveGold(world, p, table.held[idx(s)]);
       table.held[idx(s)] = 0;
     }
+  }
+}
+
+/**
+ * Shutdown: every stake still held at a table goes back to its owner, so the activity log has the
+ * refund the restart would otherwise give silently (a restart forgets the tables, and the saved
+ * purse already counts the stake). A connected player gets it back in their purse; one away in the
+ * reconnect grace was saved with it, so only the refund is logged. The hands are dropped.
+ */
+export function refundHolds(world: World, deps: CasinoDeps): void {
+  for (const table of world.casinoTables.values()) {
+    if (table.game !== "blackjack") {
+      continue;
+    }
+    for (const s of [1, 2] as const) {
+      const held = table.held[idx(s)];
+      const seat = table.seats[idx(s)];
+      if (held <= 0 || !seat) {
+        continue;
+      }
+      const p = seatPlayer(world, table, s);
+      if (p) {
+        logActivity(world, p, "casino", {
+          gold: held,
+          details: { game: "blackjack", refund: true },
+        });
+        p.char.gold += held;
+        p.invDirty = true;
+        p.invSaveDue = true;
+      } else {
+        deps.logOffline?.(seat.id, "casino", {
+          gold: held,
+          details: { game: "blackjack", refund: true },
+        });
+      }
+      table.held[idx(s)] = 0;
+    }
+    resetTable(table);
   }
 }
 
@@ -155,7 +199,7 @@ function startHand(world: World, table: BjTable, rng: Rng): Outgoing[] {
     const p = seatPlayer(world, table, side);
     const over = table.held[idx(side)] - s;
     if (p && over > 0) {
-      giveGold(p, over);
+      giveGold(world, p, over);
     }
     table.held[idx(side)] = Math.min(table.held[idx(side)], s);
     table.fields[idx(side)] = String(s);
@@ -191,7 +235,7 @@ export function bjBid(world: World, p: Player, text: string, rng: Rng): Outgoing
   if (r.kind === "poor") {
     return [chat(p.id, BJ_TEXT.noGold)];
   }
-  giveGold(p, -r.bid);
+  giveGold(world, p, -r.bid);
   table.held[idx(side)] = r.bid;
   table.locked[idx(side)] = r.bid;
   table.fields[idx(side)] = String(r.bid);
@@ -235,6 +279,7 @@ function settle(world: World, table: BjTable): Outgoing[] {
     const p = seatPlayer(world, table, side);
     if (p) {
       giveGold(
+        world,
         p,
         last === "draw" || last === undefined ? table.held[idx(side)] : last === side ? pot : 0,
       );
@@ -312,10 +357,12 @@ function dropSeat(
     const pot = table.held[0] + table.held[1];
     const oppSeat = table.seats[idx(oppSide)];
     if (opp) {
-      giveGold(opp, pot);
+      giveGold(world, opp, pot);
     } else if (oppSeat) {
-      // The winner is away too: their saved gold already holds their own stake.
+      // The winner is away too: their saved gold already holds their own stake. Their log gets
+      // the whole pot back, as their stake was logged out at the bid.
       deps.addGoldOffline(oppSeat.id, table.held[idx(side)]);
+      deps.logOffline?.(oppSeat.id, "casino", { gold: pot, details: { game: "blackjack" } });
     }
     if (offline && me) {
       deps.addGoldOffline(me.id, -table.held[idx(side)]);
@@ -332,7 +379,7 @@ function dropSeat(
     const mine = table.held[idx(side)];
     const p = seatPlayer(world, table, side);
     if (p) {
-      giveGold(p, mine);
+      giveGold(world, p, mine);
     }
     table.held[idx(side)] = 0;
   }
@@ -401,10 +448,17 @@ export function bjReturn(world: World, p: Player): Outgoing[] {
         seat.name = p.name;
         p.casino = { key: table.key, side };
         p.keyLock = true;
-        // The loaded purse includes the hold; take it out again.
-        giveGold(p, -Math.min(table.held[idx(side)], p.char.gold));
+        // The loaded purse includes the hold; take it out again. Not logged: the stake left at the
+        // bid, and the activity ledger starts after this (game.ts `enter`).
+        const back = Math.min(table.held[idx(side)], p.char.gold);
+        if (back !== 0) {
+          p.char.gold -= back;
+          p.invDirty = true;
+        }
         const out: Outgoing[] = bjViews(world, table).filter((o) => o.to === p.id);
-        if (table.holds[0] && table.holds[1] && table.phase === "play") {
+        // A hand both stood on settles once both are back: settling pays only those here, so
+        // an away winner would lose the pot.
+        if (table.holds[0] && table.holds[1] && table.phase === "play" && bothHere(world, table)) {
           out.push(...settle(world, table));
         }
         return out;

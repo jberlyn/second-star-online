@@ -31,9 +31,10 @@ import {
  * messages, 1.135 MB, 64 rows): a walk off the seed map's edge is now refused instead of warping
  * to the start point, so bots no longer sit out the 100-tick load lock and keep fighting, which
  * saves more kills and skill gains. Rows re-recorded 2026-11-18 (163 over three runs): each of the
- * crowd's 100 chat lines is now a row in the chat log.
+ * crowd's 100 chat lines is now a row in the chat log. Rows re-recorded 2026-11-22 (234 over three
+ * runs): the activity log adds a row for each login, kill, skill gain, pickup and map change.
  */
-const RECORDED = { messages: 4830, bytes: 1136000, rows: 163 };
+const RECORDED = { messages: 4830, bytes: 1136000, rows: 234 };
 const CEILING = 1.2;
 
 const BOTS = 20;

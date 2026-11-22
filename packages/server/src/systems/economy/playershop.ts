@@ -25,6 +25,7 @@ import {
   shopStockLines,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import { closeNpcWindows } from "../admin/npcedit.ts";
 import { npcFileNamed, setNpcFile } from "../monsters/npcfiles.ts";
 import type { Outgoing, Player, PlayerShop, World, WorldMap } from "../world/world.ts";
@@ -189,6 +190,7 @@ export function shopCommand(
         return done([tell(p, r.text)]);
       }
       const file = commit(r.lines);
+      logActivity(world, p, "playerShop", { other: npc, gold: r.paid, details: { till: true } });
       p.char.gold += r.paid;
       p.invDirty = true;
       return done([tell(p, r.text)], { file, gold: true, title: null });

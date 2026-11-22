@@ -2,6 +2,14 @@
 import { z } from "zod";
 
 import {
+  ACTIVITY_PAGE_MAX,
+  ACTIVITY_QUERY_MAX,
+  ACTIVITY_TYPES,
+  type ActivityRow,
+  type ActivityTotal,
+  isActivityType,
+} from "../rules/admin/activity.ts";
+import {
   EDITOR_ITEM_SLOTS,
   type EditorMap,
   HEADER_MAX,
@@ -105,6 +113,34 @@ export const settingsSaveSchema = z.strictObject({
 
 /** The old Server Settings window's close box. No client sends it now; the server ignores it. */
 export const settingsCloseSchema = z.strictObject({ t: z.literal("settingsClose") });
+
+/** An ISO time (`2026-11-22T09:00:00.000Z`), as the activity log's filters send it. */
+const isoTime = z
+  .string()
+  .max(30)
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/);
+
+/**
+ * The Control Panel's Activity Log page asks for a page of rows: one character's timeline
+ * (`character`, by name) or every movement of one item (`item`). `before` is the last row of the
+ * page already shown. `seq` comes back on the reply. Gated by the `activityLog` permission.
+ */
+export const activityQuerySchema = z.strictObject({
+  t: z.literal("activityQuery"),
+  seq: z
+    .number()
+    .int()
+    .min(0)
+    .max(2 ** 31),
+  scope: z.enum(["character", "item"]),
+  name: z.string().min(1).max(ACTIVITY_QUERY_MAX),
+  /** Event types to show (every type when empty); an unknown type refuses the query. */
+  types: z.array(z.string().max(20).refine(isActivityType)).max(ACTIVITY_TYPES.length),
+  since: isoTime.nullable(),
+  until: isoTime.nullable(),
+  before: z.strictObject({ at: isoTime, id: z.string().max(40) }).nullable(),
+  limit: z.number().int().min(1).max(ACTIVITY_PAGE_MAX),
+});
 
 /** A role as the Roles page sends it (shared `RoleData`; the server checks it with `roleDataError`). */
 const roleDataSchema = z.strictObject({
@@ -239,4 +275,19 @@ export type AdminServerMsg =
   | { t: "settingsResult"; ok: true }
   | { t: "settingsResult"; ok: false; key: string | null; text: string }
   /** A role save, delete or assignment: done (the window's `settings` follows) or refused. */
-  | { t: "roleResult"; ok: boolean; text: string };
+  | { t: "roleResult"; ok: boolean; text: string }
+  /**
+   * A page of the activity log, newest first (`activityQuery`'s answer, with its `seq`). `more`
+   * when older rows match. The first page of an item's flow carries its totals by type. `error`
+   * when nothing could be read (no character by that name has ever been logged).
+   */
+  | {
+      t: "activity";
+      seq: number;
+      rows: ActivityRow[];
+      more: boolean;
+      totals?: ActivityTotal[];
+      /** The totals cover only this many newest events: older ones were left out. */
+      totalsCapped?: number;
+      error?: string;
+    };

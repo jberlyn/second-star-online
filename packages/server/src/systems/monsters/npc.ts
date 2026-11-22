@@ -76,6 +76,8 @@ export interface NpcOut {
   out: Outgoing[];
   /** A slot was emptied: write the map's slots. */
   slotsChanged: boolean;
+  /** The monster grabbed into the bag (a Pig), for the activity log. */
+  grabbed?: string;
 }
 
 const say = (p: Player, text: string): Outgoing => ({
@@ -116,7 +118,7 @@ export function grabPig(room: Room, p: Player, slot: MonsterSlot, rng: Rng): Npc
   const out = cancelSlot(room, slot);
   invAdd(p.char, "Pig", 1, rng);
   p.invDirty = true;
-  return { out, slotsChanged: true };
+  return { out, slotsChanged: true, grabbed: "Pig" };
 }
 
 /** Ctrl/Action on the faced tile: a Pig only. */

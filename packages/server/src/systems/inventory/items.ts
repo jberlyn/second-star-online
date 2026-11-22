@@ -58,6 +58,7 @@ import {
   useItem,
 } from "@secondstaronline/shared";
 
+import { logActivity } from "../admin/activity.ts";
 import { bjSit } from "../casino/blackjack.ts";
 import { ckSit } from "../casino/checkers.ts";
 import { slotOpen } from "../casino/slots.ts";
@@ -216,6 +217,7 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
     const r = plantSeeds(ctx.world, room, p, line.item);
     io.out.push(...r.out);
     if (r.planted) {
+      logActivity(ctx.world, p, "use", { item: line.item, qty: -1, details: { planted: true } });
       invDelSlot(p.char.bag, slot - 1, 1);
       changed(p);
     }
@@ -240,6 +242,7 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
     const r = lingoEq(line.item, "Canvas") ? useCanvas(p) : useFilm(p);
     io.out.push(...r.out);
     if (r.consume) {
+      logActivity(ctx.world, p, "use", { item: line.item, qty: -1 });
       invDelSlot(p.char.bag, slot - 1, 1);
       changed(p);
     }
@@ -269,8 +272,12 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   }
   // A book is read.
   if (isBook(line.item)) {
+    const { item, qty } = line;
     for (const text of readBook(p, slot - 1, ctx.rng)) {
       io.tell(p, text);
+    }
+    if (p.char.bag[slot - 1] !== line || line.qty < qty) {
+      logActivity(ctx.world, p, "use", { item, qty: -1 });
     }
     return io.out;
   }
@@ -293,6 +300,7 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   if (r.argon) {
     argonsFist(p);
   }
+  logActivity(ctx.world, p, "use", { item: line.item, qty: -1 });
   invDelSlot(p.char.bag, slot - 1, 1);
   changed(p);
   return io.out;
@@ -394,6 +402,11 @@ function pigDrop(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, slot: number)
     io.tell(p, PIG_TEXT.blocked);
     return io.out;
   }
+  logActivity(ctx.world, p, "drop", {
+    item: p.char.bag[slot - 1]?.item,
+    qty: -1,
+    details: { as: "monster" },
+  });
   invDelSlot(p.char.bag, slot - 1, 1);
   changed(p);
   io.out.push(...r.out);
@@ -424,7 +437,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   // lock made the bag ignore clicks, so nothing could be stored until a take freed the keys).
   if (line && !busy(p) && !lingoContains(line.item, "Crystals")) {
     if (p.vaultOpen) {
-      io.out.push(...depositVault(p, slot, n));
+      io.out.push(...depositVault(ctx.world, p, slot, n));
       return io.out;
     }
     if (p.container) {
@@ -477,7 +490,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   const first = room.map.ground.find((g) => g.x === t.x && g.y === t.y);
   const route = first ? dropRoute(first) : null;
   if (route !== null && lingoEq(route, "Vault")) {
-    io.out.push(...depositVault(p, slot, n));
+    io.out.push(...depositVault(ctx.world, p, slot, n));
     return io.out;
   }
   if (route !== null) {
@@ -515,6 +528,13 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
     y: t.y,
     kind: "drop",
     expiresAt: null,
+    droppedBy: { id: p.id, name: p.name },
+  });
+  logActivity(ctx.world, p, "drop", {
+    item: name,
+    qty: -qty,
+    at: { map: p.map.name, x: t.x, y: t.y },
+    details: { placed: placed === name ? null : placed },
   });
   invDelSlot(p.char.bag, slot - 1, qty);
   changed(p);
@@ -593,7 +613,9 @@ export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
     y: target.y,
     kind: "drop",
     expiresAt: null,
+    droppedBy: { id: p.id, name: p.name },
   });
+  logActivity(ctx.world, p, "give", { other: target, item: line.item, qty: -n });
   invDelSlot(p.char.bag, slot - 1, n);
   changed(p);
   ctx.world.gives.push({
@@ -655,7 +677,9 @@ export function crystalsIntent(
       y: target.y,
       kind: "drop",
       expiresAt: null,
+      droppedBy: { id: p.id, name: p.name },
     });
+    logActivity(ctx.world, p, "give", { other: target, item: line.item, qty: -n });
     invDelSlot(p.char.bag, slot - 1, n);
     changed(p);
     // The give's grab goes at once for crystals.
@@ -677,7 +701,19 @@ export function crystalsIntent(
     io.tell(p, DROP_TEXT.blocked); // no map-edge test on this path
     return io.out;
   }
-  addGround(ctx, room, io, { item: pile, x: t.x, y: t.y, kind: "drop", expiresAt: null });
+  addGround(ctx, room, io, {
+    item: pile,
+    x: t.x,
+    y: t.y,
+    kind: "drop",
+    expiresAt: null,
+    droppedBy: { id: p.id, name: p.name },
+  });
+  logActivity(ctx.world, p, "drop", {
+    item: line.item,
+    qty: -n,
+    at: { map: p.map.name, x: t.x, y: t.y },
+  });
   invDelSlot(p.char.bag, slot - 1, n);
   changed(p);
   return io.out;
@@ -718,7 +754,9 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
       y: target.y,
       kind: "drop",
       expiresAt: null,
+      droppedBy: { id: p.id, name: p.name },
     });
+    logActivity(ctx.world, p, "give", { other: target, gold: -n });
     p.char.gold -= n;
     changed(p);
     // The grab goes at once; gold always passes the bag check.
@@ -746,7 +784,15 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
     io.tell(p, DROP_TEXT.blocked); // no map-edge test on this path
     return io.out;
   }
-  addGround(ctx, room, io, { item: pile, x: t.x, y: t.y, kind: "drop", expiresAt: null });
+  addGround(ctx, room, io, {
+    item: pile,
+    x: t.x,
+    y: t.y,
+    kind: "drop",
+    expiresAt: null,
+    droppedBy: { id: p.id, name: p.name },
+  });
+  logActivity(ctx.world, p, "drop", { gold: -n, at: { map: p.map.name, x: t.x, y: t.y } });
   p.char.gold -= n;
   changed(p);
   return io.out;
@@ -760,21 +806,44 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
  * empty line and no substring match of the name in the bag, the item is destroyed. A
  * counted `/drop` pile gives its count.
  */
-export function grab(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, g: GroundItem): void {
+export function grab(
+  ctx: ItemCtx,
+  room: Room,
+  io: ItemOut,
+  p: Player,
+  g: GroundItem,
+  type: "pickup" | "give" = "pickup",
+): void {
   removeGround(ctx, room, io, g.id);
+  // The activity log names who dropped it (not yourself) and where loot or an admin's drop came from.
+  const by = g.droppedBy && g.droppedBy.id !== p.id ? g.droppedBy : null;
+  const log = { other: by, at: { map: room.map.name, x: g.x, y: g.y } };
+  const from = g.kind === "drop" ? null : g.kind;
   if (isGoldName(g.item)) {
-    invAdd(p.char, g.item, 1, ctx.rng);
+    const r = invAdd(p.char, g.item, 1, ctx.rng);
+    if (r.kind === "gold") {
+      logActivity(ctx.world, p, type, { ...log, gold: r.amount, details: { from } });
+    }
     changed(p);
     return;
   }
   const { item, qty } = pileToItem(g.item);
   const bag = p.char.bag;
   const room4 = filledLines(bag) < bag.length || lingoContains(bagText(bag), `${item}-`);
+  const n = qty * (g.qty ?? 1);
   if (!room4) {
+    // Destroyed: no room in the bag.
+    logActivity(ctx.world, p, type, { ...log, item, details: { from, lost: n } });
     return;
   }
   // A counted `/drop` pile gives its count; every other pile gives 1.
-  invAdd(p.char, item, qty * (g.qty ?? 1), ctx.rng);
+  const r = invAdd(p.char, item, n, ctx.rng);
+  logActivity(ctx.world, p, type, {
+    ...log,
+    item: r.kind === "bag" ? r.item : item,
+    qty: r.kind === "full" ? 0 : n,
+    details: { from, lost: r.kind === "full" ? n : null },
+  });
   changed(p);
 }
 
@@ -966,6 +1035,9 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   // A Pig or Snow Demon on the faced tile is grabbed first.
   const pig = ctrlPig(room, p, ctx.rng);
   if (pig) {
+    if (pig.grabbed) {
+      logActivity(ctx.world, p, "pickup", { item: pig.grabbed, qty: 1, other: pig.grabbed });
+    }
     io.out.push(...pig.out);
     if (pig.slotsChanged) {
       ctx.slotsChanged?.(room.map);
@@ -1097,7 +1169,7 @@ export function receiveGive(
   if (!room.map.ground.includes(g) || bagFull(target, g.item)) {
     return io.out;
   }
-  grab(ctx, room, io, target, g);
+  grab(ctx, room, io, target, g, "give");
   return io.out;
 }
 

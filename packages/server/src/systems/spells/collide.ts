@@ -39,6 +39,7 @@ import {
   xpGained,
 } from "@secondstaronline/shared";
 
+import { logActivity, logPlaced } from "../admin/activity.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import { chatterOut } from "../monsters/npc.ts";
@@ -219,7 +220,14 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       tell(res.out, p, food.text);
       if (food.item) {
         // Stacks, or takes the first empty line.
-        invAdd(p.char, food.item, 1, ctx.rng);
+        const r = invAdd(p.char, food.item, 1, ctx.rng);
+        if (r.kind !== "full") {
+          logActivity(ctx.item.world, p, "spell", {
+            item: food.item,
+            qty: 1,
+            details: { spell: "Create Food" },
+          });
+        }
         p.invDirty = true;
       }
     }
@@ -499,8 +507,18 @@ function checkForDead(
   res.slotsChanged = true;
   const owner = fx.ownerId ? room.players.find((o) => o.id === fx.ownerId) : undefined;
   if (!owner) {
+    // A caster who has left the map still made the kill: logged, though it earns nothing.
+    const away = fx.ownerId ? ctx.item.world.players.get(fx.ownerId) : undefined;
+    if (away) {
+      logActivity(ctx.item.world, away, "kill", {
+        other: m.name,
+        at: { map: room.map.name, x: m.x, y: m.y },
+        details: { by: "spell", away: true },
+      });
+    }
     return true;
   }
+  logActivity(ctx.item.world, owner, "kill", { other: m.name, details: { by: "spell" } });
   // The loot drops on the tile the monster is drawn nearest, then the XP.
   const loot = rollLoot(npcFileNamed(room.npcs, m.name)?.loot ?? null, ctx.rng);
   if (loot) {
@@ -512,6 +530,10 @@ function checkForDead(
       y: at.y,
       kind: "loot",
       expiresAt: ctx.item.now + ctx.lootDecayMinutes * 60_000,
+    });
+    logPlaced(ctx.item.world, owner, "loot", loot, {
+      other: m.name,
+      at: { map: room.map.name, x: at.x, y: at.y },
     });
     res.out.push(...io.out);
   }
