@@ -2,7 +2,7 @@
  * Client tests: the right panel, the crystal dialog, ground items and looks in the model,
  * and Ctrl.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
 import { type AssetIndex, classesData, TAB_ART, TAB_ROW_Y } from "@secondstaronline/data";
 import { type EquipView, emptyBag, NO_EQUIPMENT } from "@secondstaronline/shared";
@@ -534,6 +534,60 @@ describe("the right panel (frames 50-65)", () => {
     expect(lineMiddle(".level-value")).toBe(middles[0]!);
     expect(lineMiddle(".stat-labels")).toBe(middles[1]!);
     expect(lineMiddle(".stat-values")).toBe(middles[1]!);
+  });
+  test("the Level portrait crops the helmet, falls back to hair, and clears between characters", () => {
+    const alpha = new Uint8ClampedArray(46 * 45 * 4);
+    for (let y = 4; y < 19; y++) {
+      for (let x = 8; x < 18; x++) {
+        alpha[(y * 46 + x) * 4 + 3] = 255;
+      }
+    }
+    const sourceXs: number[] = [];
+    const ctx = {
+      clearRect() {},
+      getImageData: () => ({ data: alpha }),
+      drawImage: (_source: CanvasImageSource, x: number) => sourceXs.push(x),
+    };
+    const canvas = spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D,
+    );
+    try {
+      const assets: Assets = {
+        ...fakeAssets,
+        sheets: { paperdoll: [{} as CanvasImageSource] } as unknown as Assets["sheets"],
+        sprite: (group, name) => {
+          if (group !== "paperdoll") {
+            return;
+          }
+          if (name === "Plate Helm-F2-S") {
+            return [0, 200, 0, 46, 45, 0, 0];
+          }
+          if (name === "Head2-F2-S") {
+            return [0, 100, 0, 46, 45, 0, 0];
+          }
+        },
+      };
+      const panel = createPanel(assets, {} as Parameters<typeof createPanel>[1]);
+      const portrait = panel.el.querySelector<HTMLCanvasElement>(".stat-head");
+      const setHelmet = (head: string) =>
+        panel.setInventory({ gold: 12, bag: emptyBag(), equip: { ...NO_EQUIPMENT, head } }, 2);
+      setHelmet("Plate Helm");
+      expect(sourceXs.slice(-2)).toEqual([200, 8]);
+      expect([portrait?.width, portrait?.height]).toEqual([10, 15]);
+      expect([portrait?.style.left, portrait?.style.top]).toEqual(["76px", "126px"]);
+      setHelmet("White Tiara");
+      expect(sourceXs.slice(-2)).toEqual([100, 8]);
+      setHelmet("NOTHING");
+      expect(sourceXs.slice(-2)).toEqual([100, 8]);
+      panel.setLevel(12);
+      panel.resetCharacter();
+      expect([portrait?.width, portrait?.height]).toEqual([0, 0]);
+      expect(panel.el.querySelector(".level-value")?.textContent).toBe("");
+      expect(panel.el.querySelector(".gold-amount")?.textContent).toBe("");
+      expect(panel.el.querySelectorAll(".bag-slot")).toHaveLength(0);
+    } finally {
+      canvas.mockRestore();
+    }
   });
 });
 

@@ -106,6 +106,7 @@ export interface Panel {
   setStats(s: { str: number; sta: number; int: number; wis: number; dex: number }): void;
   /** The Stats tab's Level row, from the server's vitals. */
   setLevel(level: number): void;
+  resetCharacter(): void;
   setSkills(skills: readonly number[]): void;
   /** The Spellbook page (frame 67). */
   spellbook: Spellbook;
@@ -481,8 +482,11 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   at(head, ICON_X + ICON_W / 2, LEVEL_MID, 0, 0);
   statsPage.append(head, levelValue, levelLabel, ...icons, labels, values);
   const drawHead = () => {
-    const look = { head: headNo, equip: inventory?.equip };
     const paint = () => {
+      if (!inventory) {
+        return;
+      }
+      const look = { head: headNo, equip: inventory.equip };
       const scratch = document.createElement("canvas");
       scratch.width = PAPERDOLL_SIZE.w;
       scratch.height = PAPERDOLL_SIZE.h;
@@ -952,8 +956,11 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       return;
     }
     ctx.clearRect(0, 0, doll.width, doll.height);
-    const layers = paperdollLayers({ head: headNo, equip: inventory?.equip }, "F2", "S");
     const paint = () => {
+      if (!inventory) {
+        return;
+      }
+      const layers = paperdollLayers({ head: headNo, equip: inventory.equip }, "F2", "S");
       centreDoll();
       ctx.clearRect(0, 0, doll.width, doll.height);
       for (const l of layers) {
@@ -1085,6 +1092,22 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     },
     setStats(s) {
       values.textContent = `${s.str}\n\n${s.sta}\n\n${s.int}\n\n${s.wis}\n\n${s.dex}`;
+    },
+    resetCharacter() {
+      endDrag();
+      inventory = null;
+      headNo = 1;
+      dollCentred = false;
+      doll.getContext("2d")?.clearRect(0, 0, doll.width, doll.height);
+      head.width = 0;
+      head.height = 0;
+      levelValue.textContent = "";
+      values.textContent = "";
+      gold.textContent = "";
+      goldBox.removeAttribute("aria-label");
+      bagLayer.replaceChildren();
+      equipLayer.replaceChildren();
+      menu.hidden = true;
     },
     setLevel(level) {
       levelValue.textContent = String(level);

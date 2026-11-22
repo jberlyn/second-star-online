@@ -1413,6 +1413,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     model.self = null;
     syncMenus();
     model.inv = null;
+    model.vitals = null;
+    bars.reset();
+    panel.resetCharacter();
     model.ground.clear();
     amount.close();
     shop.close();

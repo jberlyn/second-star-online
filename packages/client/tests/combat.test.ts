@@ -201,8 +201,8 @@ describe("bars", () => {
     const art = [...b.el.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? "");
     expect(art.some((src) => /internal-(169|47[2-5])\.png$/.test(src))).toBe(false);
     // The slot of Internal #186 at y 101-105: stage x 600-789, 41 px below the box's top.
-    expect([q(".xp-track").style.left, q(".xp-track").style.top]).toEqual(["10px", "41px"]);
-    expect([q(".xp-track").style.width, q(".xp-track").style.height]).toEqual(["189px", "5px"]);
+    expect([q(".xp-track").style.left, q(".xp-track").style.top]).toEqual(["10px", "40px"]);
+    expect([q(".xp-track").style.width, q(".xp-track").style.height]).toEqual(["189px", "7px"]);
     expect(q(".xp-fill").querySelector("img")).toBeNull();
     // 1240 / 2000 = 62 % of 189 px.
     expect(q(".xp-fill").style.width).toBe("117.18px");
@@ -250,8 +250,23 @@ describe("bars", () => {
       zone.dispatchEvent(new PointerEvent("pointerleave"));
     }
     expect(b.el.classList.contains("bars-show-values")).toBe(false);
-    // The zones stack without overlapping: HP y 66-80, SP 81-95, XP 96-110 (stage).
-    expect(zones.map((z) => z.style.top)).toEqual(["6px", "21px", "36px"]);
+    expect(zones.map((z) => [z.style.top, z.style.height])).toEqual([
+      ["6px", "15px"],
+      ["21px", "15px"],
+      ["36px", "14px"],
+    ]);
+    const [hp, sp] = zones;
+    hp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "touch" }));
+    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    hp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "mouse" }));
+    hp?.dispatchEvent(new PointerEvent("pointerleave", { relatedTarget: sp }));
+    expect(b.el.classList.contains("bars-show-values")).toBe(true);
+    sp?.dispatchEvent(new PointerEvent("pointercancel"));
+    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    hp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "mouse" }));
+    b.reset();
+    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    expect(b.el.querySelector(".xp-value")?.textContent).toBe("");
   });
 
   test("aboard a vehicle the HP bar shows the hull; SP and XP stay the player's", () => {

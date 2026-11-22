@@ -6212,7 +6212,7 @@
   {
     "action": "bars-show-values",
     "tag": "DIV",
-    "events": ["pointerenter", "pointerleave"],
+    "events": ["pointercancel", "pointerenter", "pointerleave"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -6221,7 +6221,7 @@
   {
     "action": "bars-show-values",
     "tag": "DIV",
-    "events": ["pointerenter", "pointerleave"],
+    "events": ["pointercancel", "pointerenter", "pointerleave"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -6230,7 +6230,7 @@
   {
     "action": "bars-show-values",
     "tag": "DIV",
-    "events": ["pointerenter", "pointerleave"],
+    "events": ["pointercancel", "pointerenter", "pointerleave"],
     "hidden": false,
     "changed": false,
     "calls": [],

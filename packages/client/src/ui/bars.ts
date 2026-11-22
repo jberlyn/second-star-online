@@ -30,9 +30,9 @@ const SLOT_X = 600;
 const SLOT_W = 189;
 const HP_TRACK_Y = 67;
 const SP_TRACK_Y = 84;
-/** The third slot (1.6's power bar): y 101-105. */
-const XP_TRACK_Y = 101;
-const XP_TRACK_H = 5;
+/** The third slot shows y 101–105, with a pixel behind the bezel on either side. */
+const XP_TRACK_Y = 100;
+const XP_TRACK_H = 7;
 const HP_HOVER_Y = 66;
 const SP_HOVER_Y = 81;
 const XP_HOVER_Y = 96;
@@ -46,6 +46,7 @@ export interface BarsOptions {
 export interface Bars {
   el: HTMLElement;
   setVitals(v: VitalsView): void;
+  reset(): void;
   setOptions(opts: BarsOptions): void;
 }
 
@@ -108,16 +109,26 @@ export function createBars(a: Assets): Bars {
     f.setAttribute("aria-hidden", "true");
     return f;
   };
-  const hover = (cls: string, y: number, label: HTMLElement) => {
+  const clearHover = () => el.classList.remove("bars-show-values");
+  const hover = (cls: string, y: number, hgt: number, label: HTMLElement) => {
     const h = action(document.createElement("div"), "bars-show-values");
     h.className = `bar-hover ${cls}`;
     at(h, SLOT_X, y, 321);
     h.style.width = `${SLOT_W}px`;
-    h.style.height = "14px";
+    h.style.height = `${hgt}px`;
     h.append(label);
-    // Hovering any one bar shows all three values.
-    h.addEventListener("pointerenter", () => el.classList.add("bars-show-values"));
-    h.addEventListener("pointerleave", () => el.classList.remove("bars-show-values"));
+    h.addEventListener("pointerenter", (event) => {
+      if (event.pointerType !== "touch") {
+        el.classList.add("bars-show-values");
+      }
+    });
+    h.addEventListener("pointerleave", (event) => {
+      const next = event.relatedTarget;
+      if (!(next instanceof Element && next.parentElement === el && next.matches(".bar-hover"))) {
+        clearHover();
+      }
+    });
+    h.addEventListener("pointercancel", clearHover);
     return h;
   };
   const hpText = field("hp-value");
@@ -133,9 +144,9 @@ export function createBars(a: Assets): Bars {
     hpFillBox,
     spFillBox,
     xpFillBox,
-    hover("hp-hover", HP_HOVER_Y, hpText),
-    hover("sp-hover", SP_HOVER_Y, spText),
-    hover("xp-hover", XP_HOVER_Y, xpText),
+    hover("hp-hover", HP_HOVER_Y, 15, hpText),
+    hover("sp-hover", SP_HOVER_Y, 15, spText),
+    hover("xp-hover", XP_HOVER_Y, 14, xpText),
   );
   const sr = document.createElement("span");
   sr.className = "sr-only";
@@ -144,6 +155,15 @@ export function createBars(a: Assets): Bars {
 
   return {
     el,
+    reset() {
+      clearHover();
+      for (const fill of [hpFillBox, spFillBox, xpFillBox]) {
+        fill.style.width = "0px";
+      }
+      for (const value of [hpText, spText, xpText, sr]) {
+        value.textContent = "";
+      }
+    },
     setVitals(v) {
       // Aboard a vehicle the HP bar shows its hull, which hits wear instead of HP.
       const hull = v.hull;

@@ -47,7 +47,7 @@ export function outOfCrystalsText(colour: CrystalColour): string {
 
 /**
  * Why a bow cannot shoot, or null: no arrows in the off hand, or no crystal of the arrows' colour.
- * The swing is refused before it starts, so no cooldown, bar reset or animation (bugs fixed: 1.6
+ * The swing is refused before it starts, so no cooldown or animation (bugs fixed: 1.6
  * meleed for 1 with no arrows and wasted the swing with no crystal).
  */
 export function bowRefusal(
@@ -66,11 +66,11 @@ export function bowRefusal(
 export type CrystalColour = (typeof ARROW_COLOURS)[number];
 
 export interface AttackPowerResult {
-  /** The attack power before the power-bar bonus. */
+  /** The attack power before target defenses. */
   power: number;
   /**
    * A bow with arrows but no crystal of that colour: the text to print. The server refuses the
-   * shot before the swing (`bowRefusal`), so no cooldown or bar is spent (1.6 wasted the swing).
+   * shot before the swing (`bowRefusal`), so no cooldown starts (1.6 wasted the swing).
    */
   outOfCrystals: string | null;
   /** A bow shot that spends one crystal of this colour. */

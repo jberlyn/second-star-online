@@ -331,8 +331,8 @@ export function summonPig(
 // ---- the other senders ----------------------------------------------------------------
 
 /**
- * The Fire Staff's and Firesword's free fireballs in the attack routine, after the bar reset and
- * before the cooldowns. Their cast message carries the mouse, which a fireball never reads (it
+ * The Fire Staff's and Firesword's free fireballs in the attack routine. Their cast message carries
+ * the mouse, which a fireball never reads (it
  * starts beside the caster and flies by facing), so none is sent here. They train no skill (a bug
  * fixed: 1.6's skill gain ran on any name containing "Fireball", so a free swing trained Magery and
  * Fire).

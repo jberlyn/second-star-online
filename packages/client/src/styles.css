@@ -1285,8 +1285,7 @@ body {
   text-shadow: 0 1px #000;
 }
 /* Hovering any bar shows all three values, each on its own bar. */
-.bars-show-values .bar-value,
-.bars:has(.bar-hover:hover) .bar-value {
+.bars-show-values .bar-value {
   visibility: visible;
 }
 .sr-only {
@@ -1411,13 +1410,13 @@ body {
 }
 .panel-page .gold-box .gold-button {
   display: block;
+  flex: none;
   width: 14px;
   height: 13px;
 }
-.panel-page .gold-box .gold-button img {
-  display: block;
-}
 .panel-page .gold-box .small-gold {
+  flex: none;
+  pointer-events: none;
   margin-left: auto;
   image-rendering: pixelated;
 }
