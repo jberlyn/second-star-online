@@ -52,7 +52,6 @@ function fighter(over: Partial<Fighter> = {}, cls: 1 | 2 | 3 = 1): Fighter {
     sta: 1,
     int: 1,
     wis: 1,
-    spd: 1,
     skills: [...classesData.creation.startingSkills[cls].values],
     equip: { ...NO_EQUIPMENT },
     faction: { ...NO_FACTION },

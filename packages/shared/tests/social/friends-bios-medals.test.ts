@@ -332,7 +332,7 @@ describe("calculated medals", () => {
   });
 
   test("the stats played with are the allocated stats plus the bonus; the input is untouched", () => {
-    const stats = { str: 20, sta: 10, agi: 1, dex: 5, int: 5, wis: 5, spd: 1 };
+    const stats = { str: 20, sta: 10, dex: 5, int: 5, wis: 5 };
     const sk = skills({ Blacksmithing: 90 });
     // Class 1 (Fighter) has no points of its own.
     expect(effectiveStats(stats, 1, sk)).toEqual({ ...stats, str: 22, sta: 12 });

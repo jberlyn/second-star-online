@@ -382,11 +382,9 @@ export type CoreServerMsg =
       stats: {
         str: number;
         sta: number;
-        agi: number;
         dex: number;
         int: number;
         wis: number;
-        spd: number;
       };
       skills: number[];
     }

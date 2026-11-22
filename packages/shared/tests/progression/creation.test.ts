@@ -123,12 +123,21 @@ describe("starting record", () => {
       hunger: 50000,
       breakCount: 100,
       profile: "I have not edited my profile yet",
-      stats: { agi: 1, spd: 1, aim: 1 },
     });
     expect(c.bag).toEqual([
       { item: "Apple", qty: 2 },
       { item: "Knife", qty: 1 },
     ]);
+  });
+
+  test("only the five stats the screen raises are kept", () => {
+    expect(startingCharacter(base).stats).toEqual({
+      str: base.str,
+      sta: base.sta,
+      int: base.int,
+      wis: base.wis,
+      dex: base.dex,
+    });
   });
 });
 

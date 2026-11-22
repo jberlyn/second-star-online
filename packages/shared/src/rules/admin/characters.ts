@@ -63,11 +63,9 @@ export interface CharacterSheet {
   stats: {
     str: number;
     sta: number;
-    agi: number;
     dex: number;
     int: number;
     wis: number;
-    spd: number;
   };
   /** One value per skill in the content store's `classes.skills`, index 0 = Slash. */
   skills: number[];

@@ -30,16 +30,13 @@ export interface StoredVitals {
   expNeeded: number;
 }
 
-/** Line 3: the eight stats. */
+/** Line 3: the stats. */
 export interface StoredStats {
   str: number;
   sta: number;
-  agi: number;
   dex: number;
   int: number;
   wis: number;
-  spd: number;
-  aim: number;
 }
 
 /** What the world needs to put a character on a map. */
@@ -93,12 +90,9 @@ interface CharacterRow {
   exp_needed: number;
   str: number;
   sta: number;
-  agi: number;
   dex: number;
   int: number;
   wis: number;
-  spd: number;
-  aim: number;
   hunger: number;
   map_id: string;
   x: number;
@@ -117,7 +111,7 @@ interface CharacterRow {
 
 const COLUMNS =
   "id, account_id, name, sex, head, class_code, level, hp, hp_max, sp, sp_max, exp, exp_needed, " +
-  "str, sta, agi, dex, int, wis, spd, aim, hunger, map_id, x, y, facing, respawn_map_id, respawn_x, respawn_y, " +
+  "str, sta, dex, int, wis, hunger, map_id, x, y, facing, respawn_map_id, respawn_x, respawn_y, " +
   "faction, faction_count, wanted, profile, vehicle, hull";
 
 /**
@@ -132,9 +126,9 @@ export function insertCharacter(
   const id = Bun.randomUUIDv7();
   db.query(
     `INSERT INTO characters (id, account_id, name, sex, head, class_code, level, hp, hp_max, sp, sp_max,
-      exp, exp_needed, str, sta, agi, dex, int, wis, spd, aim, gold, profile, hunger, break_count,
+      exp, exp_needed, str, sta, dex, int, wis, gold, profile, hunger, break_count,
       map_id, x, y, facing, respawn_map_id, respawn_x, respawn_y, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.accountId,
@@ -151,12 +145,9 @@ export function insertCharacter(
     c.expNeeded,
     c.stats.str,
     c.stats.sta,
-    c.stats.agi,
     c.stats.dex,
     c.stats.int,
     c.stats.wis,
-    c.stats.spd,
-    c.stats.aim,
     c.gold,
     c.profile,
     c.hunger,
@@ -220,7 +211,7 @@ export interface CharacterProgress {
   respawn: { mapId: string; x: number; y: number } | null;
   faction: StoredFaction;
   wanted: boolean;
-  stats: Omit<StoredStats, "aim">;
+  stats: StoredStats;
   vehicle: Vehicle | null;
   hull: number | null;
 }
@@ -231,8 +222,8 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
   db.query(
     `UPDATE characters SET map_id = ?, x = ?, y = ?, facing = ?, level = ?, hp = ?, hp_max = ?,
       sp = ?, sp_max = ?, exp = ?, exp_needed = ?, hunger = ?, respawn_map_id = ?, respawn_x = ?,
-      respawn_y = ?, faction = ?, faction_count = ?, wanted = ?, str = ?, sta = ?, agi = ?, dex = ?,
-      int = ?, wis = ?, spd = ?, vehicle = ?, hull = ?, updated_at = ? WHERE id = ?`,
+      respawn_y = ?, faction = ?, faction_count = ?, wanted = ?, str = ?, sta = ?, dex = ?,
+      int = ?, wis = ?, vehicle = ?, hull = ?, updated_at = ? WHERE id = ?`,
   ).run(
     p.mapId,
     p.x,
@@ -254,11 +245,9 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     c.wanted ? 1 : 0,
     c.stats.str,
     c.stats.sta,
-    c.stats.agi,
     c.stats.dex,
     c.stats.int,
     c.stats.wis,
-    c.stats.spd,
     c.vehicle,
     c.vehicle ? c.hull : null,
     now,
@@ -375,12 +364,9 @@ function toRecord(row: CharacterRow): CharacterRecord {
     stats: {
       str: row.str,
       sta: row.sta,
-      agi: row.agi,
       dex: row.dex,
       int: row.int,
       wis: row.wis,
-      spd: row.spd,
-      aim: row.aim,
     },
     hunger: row.hunger,
     position: { mapId: row.map_id, x: row.x, y: row.y, facing: row.facing },

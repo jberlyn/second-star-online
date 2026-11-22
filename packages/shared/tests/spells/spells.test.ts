@@ -231,7 +231,6 @@ describe("SpellImp", () => {
       sta: 10,
       int: 1,
       wis: 1,
-      spd: 1,
       skills: Array(38).fill(1) as number[],
       equip: { ...NO_EQUIPMENT },
       faction,

@@ -37,7 +37,7 @@ const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
       hpMax: 30,
       sp: 5,
       spMax: 8,
-      stats: { str: 10, sta: 10, agi: 1, dex: 10, int: 10, wis: 10, spd: 1 },
+      stats: { str: 10, sta: 10, dex: 10, int: 10, wis: 10 },
       skills: [3, 1],
       hunger: 0,
       faction: 2,

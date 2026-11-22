@@ -89,11 +89,9 @@ export const promotionSchema = z.strictObject({
 export const statBonusSchema = z.strictObject({
   str: z.number().int().optional(),
   sta: z.number().int().optional(),
-  agi: z.number().int().optional(),
   dex: z.number().int().optional(),
   int: z.number().int().optional(),
   wis: z.number().int().optional(),
-  spd: z.number().int().optional(),
 });
 
 export const classSchema = z.strictObject({

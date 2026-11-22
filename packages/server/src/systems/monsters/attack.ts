@@ -202,7 +202,6 @@ export function fighterOf(p: Player): Fighter {
     sta: s.sta,
     int: s.int,
     wis: s.wis,
-    spd: s.spd,
     skills: p.char.skills,
     equip: p.char.equip,
     faction: p.char.faction,

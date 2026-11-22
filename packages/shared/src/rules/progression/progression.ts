@@ -68,9 +68,11 @@ export function checkLevelUp(v: Vitals): number {
 
 /**
  * The regen target `60 − speed + speed increase`: 90, less 5·(Adventurer bonus + 1) for an Adventurer with
- * Adventurer bonus 0..9.
+ * Adventurer bonus 0..9. Speed is always 1 (1.6 stored a Speed stat that nothing could raise; SSO dropped
+ * it), so the target is 149, or 144 down to 99 for an Adventurer.
  */
-export function regenTarget(speed: number, adventurerBonus: number | null): number {
+export function regenTarget(adventurerBonus: number | null): number {
+  const speed = 1;
   let inc = 90;
   if (adventurerBonus !== null && adventurerBonus >= 0 && adventurerBonus <= 9) {
     inc -= 5 * (adventurerBonus + 1);
@@ -80,7 +82,7 @@ export function regenTarget(speed: number, adventurerBonus: number | null): numb
 
 /**
  * One frame of the regen timer. The counter starts at 1 at login and is raised first; when it
- * reaches the target it acts and starts again from 1, so with speed 1 regen fires every 148 frames.
+ * reaches the target it acts and starts again from 1, so at the usual target of 149 regen fires every 148 frames.
  * Hunger above 500 regenerates 1 HP and SP, below 50 starves 1 of each (floor 1), and in between the
  * period passes with no change (a bug fixed: 1.6 reset the counter only on a regen or a starve and
  * tested for exact equality, so it stalled until the next login). Mutates `v` and returns the new

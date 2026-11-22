@@ -33,7 +33,6 @@ function fighter(weapon: string, skills: Record<string, number> = {}): Fighter {
     sta: 1,
     int: 1,
     wis: 1,
-    spd: 1,
     skills: s,
     equip: { ...NO_EQUIPMENT, weapon },
     faction: { ...NO_FACTION },

@@ -86,9 +86,10 @@ describe("level-up", () => {
 });
 
 describe("regen", () => {
-  test("target 60 − speed + 90 = 149 at speed 1", () => {
-    expect(regenTarget(1, null)).toBe(149);
-    expect(regenTarget(1, 0)).toBe(144);
+  test("no Speed stat: the regen target is 149, less 5·(bonus + 1) for an Adventurer", () => {
+    expect(regenTarget(null)).toBe(149);
+    expect(regenTarget(0)).toBe(144);
+    expect(regenTarget(9)).toBe(99);
   });
   test("the counter starts at 1 and is raised first, so regen fires every 148 frames", () => {
     const v = { ...vitals(), hp: 10, sp: 10 };
@@ -185,7 +186,6 @@ describe("kill skill gain", () => {
     sta: 1,
     int: 1,
     wis: 1,
-    spd: 1,
     skills: [...classesData.creation.startingSkills[1].values],
     equip: { ...NO_EQUIPMENT },
     faction: { ...NO_FACTION },

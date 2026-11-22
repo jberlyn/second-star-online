@@ -20,6 +20,7 @@
 import {
   deriveEdit,
   diffEdit,
+  EDIT_FIELDS,
   EDIT_TEXT,
   type EditableCharacter,
   type EditChange,
@@ -184,8 +185,8 @@ function containerIds(world: World, before: EditableCharacter, after: EditableCh
 
 /** The strength played with: allocated, plus the class's and the held medals' points. */
 function strengthOf(c: EditableCharacter): number {
-  const { str, sta, agi, dex, int, wis, spd } = c;
-  return effectiveStats({ str, sta, agi, dex, int, wis, spd }, c.classCode, c.skills).str;
+  const { str, sta, dex, int, wis } = c;
+  return effectiveStats({ str, sta, dex, int, wis }, c.classCode, c.skills).str;
 }
 
 /**
@@ -281,13 +282,15 @@ export function prepareUndo(
   if (!cur) {
     return { ok: false, text: EDIT_TEXT.noEdit };
   }
-  const conflicts = undoConflicts(cur.now, e.changes);
+  // A field that is no longer saved (Agility, Speed) has nothing to put back.
+  const live = e.changes.filter((c) => EDIT_FIELDS.includes(c.field));
+  const conflicts = undoConflicts(cur.now, live);
   if (conflicts.length > 0) {
     return { ok: false, text: EDIT_TEXT.undoConflict(fieldLabels(conflicts)) };
   }
   const before = cur.now;
   const after = structuredClone(before);
-  for (const c of e.changes) {
+  for (const c of live) {
     (after as unknown as Record<string, unknown>)[c.field] = structuredClone(c.before);
   }
   // The restored state must hold together as it stands now: an HP max put back below the HP
@@ -344,7 +347,7 @@ export function applyLive(world: World, p: Player, e: PreparedEdit, deps: EditDe
     spMax: a.spMax,
   });
   p.vitalsDirty = true;
-  c.stats = { str: a.str, sta: a.sta, agi: a.agi, dex: a.dex, int: a.int, wis: a.wis, spd: a.spd };
+  c.stats = { str: a.str, sta: a.sta, dex: a.dex, int: a.int, wis: a.wis };
   c.skills = [...a.skills];
   c.hunger = a.hunger;
   if (changed.has("faction")) {

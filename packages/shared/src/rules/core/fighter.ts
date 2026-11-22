@@ -45,7 +45,6 @@ export interface Fighter {
   sta: number;
   int: number;
   wis: number;
-  spd: number;
   /** One value per skill, index 0 = Slash. */
   skills: number[];
   equip: Equipment;

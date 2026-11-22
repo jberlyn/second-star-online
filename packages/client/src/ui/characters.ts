@@ -110,12 +110,10 @@ const WORN: readonly [string, string][] = [
 const STAT_LABELS: readonly [keyof CharacterHub["sheet"]["stats"], string][] = [
   ["str", "Strength"],
   ["sta", "Stamina"],
-  ["agi", "Agility"],
   // The game labels Dexterity "Mysticism" on the stats panel and the creation screen.
   ["dex", "Mysticism (dex)"],
   ["int", "Intelligence"],
   ["wis", "Wisdom"],
-  ["spd", "Speed"],
 ];
 
 type Tab = "overview" | "items" | "edit" | "edits" | "moderation" | "chat";

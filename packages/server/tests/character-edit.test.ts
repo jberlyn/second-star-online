@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
   type CharacterHub,
+  changeText,
   deriveEdit,
   EDIT_TEXT,
   type EditableCharacter,
@@ -39,11 +40,9 @@ const base = (): EditableCharacter => ({
   spMax: 24,
   str: 10,
   sta: 10,
-  agi: 1,
   dex: 10,
   int: 10,
   wis: 10,
-  spd: 1,
   skills: [1, 1, 1],
   hunger: 30000,
   faction: 0,
@@ -530,6 +529,24 @@ describe("editing a character from the hub", () => {
     expect(undo(game, god.characterId, id)?.ok).toBe(true);
     const s = loadStoredCharacter(db, al.characterId);
     expect([s?.record.wanted, s?.record.faction.id]).toEqual([false, 0]);
+  });
+
+  test("an old edit that changed Agility or Speed still reads and undoes the rest", async () => {
+    const { game, make } = start();
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    expect(edit(game, god.characterId, { gold: 900 })?.ok).toBe(true);
+    const id = hubOf(game, god.characterId).edits[0]?.id ?? "";
+    // Logged before the stats were dropped.
+    const row = db.query<{ changes: string }, [string]>(
+      "SELECT changes FROM character_edits WHERE id = ?",
+    );
+    const changes = JSON.parse(row.get(id)?.changes ?? "[]");
+    changes.push({ field: "spd", before: 1, after: 5 }, { field: "agi", before: 1, after: 3 });
+    db.run("UPDATE character_edits SET changes = ? WHERE id = ?", [JSON.stringify(changes), id]);
+    expect(changeText({ field: "spd", before: 1, after: 5 } as never)).toBe("Speed: 1 → 5");
+    expect(undo(game, god.characterId, id)?.ok).toBe(true);
+    expect(game.world.players.get(al.characterId)?.char.gold).toBe(0);
   });
 
   test("online class, sex and head edits are saved, and a new head redraws without a warp", async () => {

@@ -27,7 +27,7 @@ import { arenaTileTaken } from "../combat/arena.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
 import { vehicleDeath } from "../vehicles/vehicles.ts";
-import { type Outgoing, type Player, type Room, statsOf, type World } from "../world/world.ts";
+import type { Outgoing, Player, Room, World } from "../world/world.ts";
 
 /** The timer sprite (channel 4) for one player: the HP and SP regeneration counter. */
 export function regenStep(p: Player): void {
@@ -35,7 +35,7 @@ export function regenStep(p: Player): void {
   const before = `${v.hp}/${v.sp}`;
   const hp = v.hp;
   const adventurer = p.char.faction.id === 3 ? p.char.faction.f3Bonus : null;
-  const target = regenTarget(statsOf(p).spd, adventurer);
+  const target = regenTarget(adventurer);
   p.regenCounter = regenTick(p.regenCounter, target, p.char.hunger, v);
   // Starving costs no HP for a role that takes no damage.
   if (v.hp < hp && can(p.role, "invulnerable")) {

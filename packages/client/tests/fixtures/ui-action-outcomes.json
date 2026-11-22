@@ -5541,15 +5541,6 @@
     "errors": []
   },
   {
-    "action": "hub-edit-agi",
-    "tag": "INPUT",
-    "events": ["input"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
     "action": "hub-edit-dex",
     "tag": "INPUT",
     "events": ["input"],
@@ -5569,15 +5560,6 @@
   },
   {
     "action": "hub-edit-wis",
-    "tag": "INPUT",
-    "events": ["input"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "hub-edit-spd",
     "tag": "INPUT",
     "events": ["input"],
     "hidden": false,

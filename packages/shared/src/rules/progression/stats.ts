@@ -7,7 +7,7 @@
 import { content } from "../../content/store.ts";
 import { medalBonus } from "./medals.ts";
 
-export type StatKey = "str" | "sta" | "agi" | "dex" | "int" | "wis" | "spd";
+export type StatKey = "str" | "sta" | "dex" | "int" | "wis";
 
 /** The stat points class `classCode` adds. */
 export function classStatBonus(classCode: number): Partial<Record<StatKey, number>> {

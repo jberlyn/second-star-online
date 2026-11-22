@@ -709,11 +709,6 @@
     "hidden": 0,
     "disabled": 0
   },
-  "hub-edit-agi": {
-    "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
   "hub-edit-bag-1-item": {
     "count": 1,
     "hidden": 0,
@@ -1170,11 +1165,6 @@
     "disabled": 0
   },
   "hub-edit-sp": {
-    "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "hub-edit-spd": {
     "count": 1,
     "hidden": 0,
     "disabled": 0

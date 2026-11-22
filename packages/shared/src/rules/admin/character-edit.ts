@@ -60,11 +60,9 @@ export interface EditableCharacter {
   spMax: number;
   str: number;
   sta: number;
-  agi: number;
   dex: number;
   int: number;
   wis: number;
-  spd: number;
   /** One value per skill in the content store's `classes.skills`, index 0 = Slash. */
   skills: number[];
   hunger: number;
@@ -93,15 +91,8 @@ export type EditField = keyof EditableCharacter;
 /** The fields the game works out from others: never sent by the editor, always recalculated. */
 export const DERIVED_FIELDS = ["expNeeded", "hpMax", "spMax"] as const satisfies EditField[];
 
-export const STAT_FIELDS = [
-  "str",
-  "sta",
-  "agi",
-  "dex",
-  "int",
-  "wis",
-  "spd",
-] as const satisfies (EditField & StatKey)[];
+export const STAT_FIELDS = ["str", "sta", "dex", "int", "wis"] as const satisfies (EditField &
+  StatKey)[];
 
 /** The fields that move what a character carries or keeps: refused while they trade or gamble. */
 export const ITEM_FIELDS = ["gold", "bank", "bag", "equip", "vault"] as const satisfies EditField[];
@@ -152,12 +143,10 @@ export const FIELD_LABELS: Record<EditField, string> = {
   spMax: "SP max",
   str: "Strength",
   sta: "Stamina",
-  agi: "Agility",
   // The game labels Dexterity "Mysticism" on the stats panel and the creation screen.
   dex: "Mysticism (dex)",
   int: "Intelligence",
   wis: "Wisdom",
-  spd: "Speed",
   skills: "Skills",
   hunger: "Hunger",
   faction: "Faction",
@@ -709,11 +698,20 @@ export function editValueText(field: EditField, v: unknown): string {
 }
 
 /**
+ * Fields older edits may name that are no longer saved: Agility and Speed were dropped. Their log
+ * lines keep these labels; an undo passes over them.
+ */
+export const RETIRED_FIELD_LABELS: Readonly<Record<string, string>> = {
+  agi: "Agility",
+  spd: "Speed",
+};
+
+/**
  * A change as one line. Skills name only the skills that moved, and the bag only the lines that
  * changed, so a long list does not hide what the edit did.
  */
 export function changeText(c: EditChange): string {
-  const label = FIELD_LABELS[c.field] ?? c.field;
+  const label = FIELD_LABELS[c.field] ?? RETIRED_FIELD_LABELS[c.field] ?? c.field;
   if (c.field === "skills" && Array.isArray(c.before) && Array.isArray(c.after)) {
     const a = c.after as number[];
     const moved = (c.before as number[]).flatMap((v, i) =>

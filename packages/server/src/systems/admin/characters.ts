@@ -141,15 +141,13 @@ export function housesOf(world: World, characterId: string): CharacterSheet["hou
     .map((h) => ({ map: h.map, interior: h.interior }));
 }
 
-/** The seven stats the game plays with (the saved, unused Aim is left out). */
-const statsOf7 = (s: CharacterSheet["stats"]): CharacterSheet["stats"] => ({
+/** The five stats. */
+const statsOf5 = (s: CharacterSheet["stats"]): CharacterSheet["stats"] => ({
   str: s.str,
   sta: s.sta,
-  agi: s.agi,
   dex: s.dex,
   int: s.int,
   wis: s.wis,
-  spd: s.spd,
 });
 
 const equipOf = (equip: Record<string, string>): Record<string, string> =>
@@ -177,7 +175,7 @@ export function liveSheet(
     hpMax: c.vitals.hpMax,
     sp: c.vitals.sp,
     spMax: c.vitals.spMax,
-    stats: statsOf7(c.stats),
+    stats: statsOf5(c.stats),
     skills: [...c.skills],
     hunger: c.hunger,
     faction: c.faction.id,
@@ -213,7 +211,7 @@ export function storedSheet(world: World, s: StoredCharacter): CharacterSheet {
     hpMax: r.vitals.hpMax,
     sp: r.vitals.sp,
     spMax: r.vitals.spMax,
-    stats: statsOf7(r.stats),
+    stats: statsOf5(r.stats),
     skills: [...s.skills],
     hunger: r.hunger,
     faction: r.faction.id,

@@ -14,11 +14,13 @@ import { setHeld } from "../src/systems/movement/movement.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
 /** Ticks (1-based) on which the player's HP changes while its HP is kept low. */
-function regenTicks(spd: number, ticks: number): number[] {
+function regenTicks(adventurerBonus: number | null, ticks: number): number[] {
   const map = testMap("x1");
   const { join, run } = setup([map], undefined, rngByN());
   const a = player("a", map, 5, 5);
-  a.char.stats.spd = spd;
+  if (adventurerBonus !== null) {
+    a.char.faction = { ...a.char.faction, id: 3, f3Bonus: adventurerBonus };
+  }
   a.char.vitals.hpMax = 1000;
   a.char.vitals.spMax = 1000;
   join(a);
@@ -37,11 +39,11 @@ function regenTicks(spd: number, ticks: number): number[] {
 
 describe("the timer sprite", () => {
   test("regen every 74 frames at target 149", () => {
-    expect(regenTicks(1, 230)).toEqual([74, 148, 222]);
+    expect(regenTicks(null, 230)).toEqual([74, 148, 222]);
   });
-  test("Ring of Quickness target 146 regens 73, 72, 73 frames apart", () => {
-    // Odd calls alternate: fires on calls 145, 290, 435, 580 = ticks 73, 145, 218, 290.
-    expect(regenTicks(4, 300)).toEqual([73, 145, 218, 290]);
+  test("an Adventurer with bonus 0 (target 144) regens 72, 71, 72 frames apart", () => {
+    // Odd calls alternate: fires on calls 143, 286, 429, 572 = ticks 72, 143, 215, 286.
+    expect(regenTicks(0, 300)).toEqual([72, 143, 215, 286]);
   });
 });
 

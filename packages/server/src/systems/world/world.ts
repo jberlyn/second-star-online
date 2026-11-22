@@ -258,11 +258,9 @@ export interface CharacterState {
   stats: {
     str: number;
     sta: number;
-    agi: number;
     dex: number;
     int: number;
     wis: number;
-    spd: number;
   };
   /** One value per skill in `classesData.skills`, index 0 = Slash. */
   skills: number[];
@@ -826,7 +824,7 @@ export function defaultCharacter(): CharacterState {
   return {
     classCode: 1,
     vitals: { level: 1, hp: 20, hpMax: 20, sp: 20, spMax: 20, exp: 0, expNeeded: 30 },
-    stats: { str: 10, sta: 10, agi: 1, dex: 10, int: 10, wis: 10, spd: 1 },
+    stats: { str: 10, sta: 10, dex: 10, int: 10, wis: 10 },
     skills: Array(content().classes.skills.length).fill(1),
     hunger: 50000,
     equip: { ...NO_EQUIPMENT },

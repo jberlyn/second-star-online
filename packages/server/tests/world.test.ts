@@ -242,7 +242,7 @@ describe("saving skills (open skill count)", () => {
     if (!rec) {
       throw new Error("character missing");
     }
-    const { aim: _aim, ...stats } = rec.stats;
+    const stats = rec.stats;
     return {
       id,
       progress: {

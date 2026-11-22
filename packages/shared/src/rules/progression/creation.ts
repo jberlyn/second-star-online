@@ -46,7 +46,7 @@ export const CREATION_POINTS = 50;
 export const STAT_MAX = 20;
 export const STAT_MIN = 1;
 
-/** The five stats the screen lets you raise. Agility, Speed and Aim stay 1. */
+/** The five stats the screen lets you raise. */
 export interface SpentStats {
   str: number;
   sta: number;
@@ -147,7 +147,7 @@ export interface StartingCharacter {
   spMax: number;
   exp: number;
   expNeeded: number;
-  stats: SpentStats & { agi: number; spd: number; aim: number };
+  stats: SpentStats;
   /** One value per skill, skill index 1.. (the classes data's `skills`). */
   skills: number[];
   gold: number;
@@ -188,7 +188,7 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     spMax: 20,
     exp: 0,
     expNeeded: 30,
-    stats: { str: c.str, sta: c.sta, int: c.int, wis: c.wis, dex: c.dex, agi: 1, spd: 1, aim: 1 },
+    stats: { str: c.str, sta: c.sta, int: c.int, wis: c.wis, dex: c.dex },
     skills: padStartingSkills(
       content().classes.creation.startingSkills[c.classCode].values,
       content().classes.skills.length,

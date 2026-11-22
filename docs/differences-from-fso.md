@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 81 |
+| [Design changes](#design-changes) | 82 |
 | [Fixed bugs](#fixed-bugs) | 299 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 137 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **569** |
+| **Total** | **570** |
 
 By system (the code folder that holds the change):
 
@@ -743,6 +743,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A medal marks mastery of a skill, so it should follow the skill; a calculated bonus cannot be missed, duplicated or left behind.
 - **In the code:** `packages/shared/src/rules/progression/medals.ts` (`heldMedals`, `medalField`, `newMedalLines`), `packages/shared/src/rules/progression/stats.ts` (`effectiveStats`), `packages/server/src/systems/world/world.ts` (`statsOf`), `packages/server/src/systems/progression/medals.ts` (`medalCheck`), `packages/server/src/systems/social/bios.ts` (`bioSource`)
 - **Pinned by:** `90 or more holds a medal, 89 does not`; `the stats played with are the allocated stats plus the bonus; the input is untouched` (packages/shared/tests/social/friends-bios-medals.test.ts); `a skill lowered below 90 loses its medal and its point; back at 90 it returns`; `a skill already at 90 or more at login holds its medal and point without a line` (packages/server/tests/friends.test.ts); `a medal and its point come from the saved skill; the stored stats stay as allocated` (packages/server/tests/buddies-db.test.ts); `calculated_medals takes each held medal's points off the stored stats and drops the field` (packages/server/tests/migrations.test.ts)
+
+#### No Agility, Speed or Aim
+- **Kind:** Other
+- **What you notice:** A character has five stats: Strength, Stamina, Mysticism, Intelligence and Wisdom. Hit and spell points regenerate at the rate every character had with Speed 1, which nothing in 1.6 could change.
+- **1.6:** Each character file also saved Agility, Speed and Aim. The creation screen left them at 1 and nothing in the game raised them. Only Speed was read, by the regen timer (`60 − Speed + 90`), so regen ran at its Speed 1 rate for everyone.
+- **SSO:** The three stats are not saved or shown, and the regen timer works as Speed 1: a target of 149, or 144 down to 99 for an Adventurer. A class's stat points no longer include Agility or Speed; the upgrade removes them from the operator's content changes. Editor log lines from before keep their Agility and Speed changes, and an undo passes over them.
+- **Why:** Stats nobody could raise only cluttered the character record and the editor.
+- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`regenTarget`), `packages/shared/src/rules/progression/creation.ts` (`startingCharacter`), `packages/server/migrations/20261122_57_drop_unused_stats.sql`
+- **Pinned by:** `no Speed stat: the regen target is 149, less 5·(bonus + 1) for an Adventurer` (packages/shared/tests/progression/progression.test.ts); `only the five stats the screen raises are kept` (packages/shared/tests/progression/creation.test.ts); `divergence: drop_unused_stats keeps every character and drops Agility, Speed and Aim, class points too` (packages/server/tests/migrations.test.ts); `an old edit that changed Agility or Speed still reads and undoes the rest` (packages/server/tests/character-edit.test.ts)
 
 #### Drop and Give ask how many of a stack
 - **Kind:** Other
@@ -3016,7 +3025,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Hit and spell points regenerate every period while Hunger is above 500, whatever your hunger did before. With Hunger from 50 to 500 a period passes with no change, and starving below 50 still takes 1 of each down to 1.
 - **1.6:** The counter reset only when it exactly equalled its target and a regen (Hunger above 500) or starvation (below 50) happened. A period with Hunger in between, or a target lowered below the counter, left it climbing past the target, so regen and starvation stopped until the next login.
-- **SSO:** The counter resets every time it reaches the target, whatever the hunger. It still starts at 1 at login and is raised first, so regen fires every 148 frames at speed 1.
+- **SSO:** The counter resets every time it reaches the target, whatever the hunger. It still starts at 1 at login and is raised first, so regen fires every 148 frames (target 149).
 - **Why:** The reset was meant to start each period; tying it to the effect was an oversight.
 - **In the code:** `packages/shared/src/rules/progression/progression.ts` (`regenTick`), `packages/server/src/systems/progression/vitals.ts` (`regenStep`)
 - **Pinned by:** `bug fixed: a period with 50 <= Hunger <= 500 passes with no change and regen goes on`; `bug fixed: a counter already past a lowered target fires on the next frame` (packages/shared/tests/progression/progression.test.ts)
@@ -4661,7 +4670,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** A new character's starting stats must fit the character creation rules.
 - **1.6:** The interface allowed at most 50 assigned points and a maximum of 20 per stat, while a separate client-only check allowed a sum up to 66.
-- **SSO:** The server enforces stats from 1 to 20, a five-stat total at most 55, Agility, Speed and Aim of 1, and the name rules.
+- **SSO:** The server enforces stats from 1 to 20, a five-stat total at most 55, and the name rules.
 - **Why:** A modified client could create a 66-point or otherwise arbitrary character.
 - **In the code:** `packages/shared/src/rules/progression/creation.ts` (`creationError`)
 - **Pinned by:** `letters only, any case`; `50 points, each of the five stats 1..20`; `other fields and the starting bag` (packages/shared/tests/progression/creation.test.ts); `creation re-checks the screen's rules on the server` (packages/server/tests/world.test.ts)

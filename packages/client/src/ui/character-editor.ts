@@ -49,11 +49,9 @@ const WORN: readonly [string, string][] = [
 const STAT_LABELS: Record<(typeof STAT_FIELDS)[number], string> = {
   str: "Strength",
   sta: "Stamina",
-  agi: "Agility",
   dex: "Mysticism (dex)",
   int: "Intelligence",
   wis: "Wisdom",
-  spd: "Speed",
 };
 
 let lists = 0;

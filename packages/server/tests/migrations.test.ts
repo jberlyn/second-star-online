@@ -4,8 +4,8 @@ import { join } from "node:path";
 
 import { startingCharacter } from "@secondstaronline/shared";
 
-import { insertCharacter } from "../src/persistence/characters.ts";
-import { openDatabase } from "../src/persistence/database.ts";
+import { insertCharacter as insertCurrent } from "../src/persistence/characters.ts";
+import { type Db, openDatabase } from "../src/persistence/database.ts";
 import {
   appliedMigrations,
   loadMigrations,
@@ -13,6 +13,24 @@ import {
   migrate,
   runMigrations,
 } from "../src/persistence/migrations.ts";
+
+/**
+ * `insertCharacter` writes today's columns. On a schema from before drop_unused_stats, Agility,
+ * Speed and Aim are first given a default of 1 (what 1.6 always saved), so the insert fits.
+ */
+function insertCharacter(db: Db, input: Parameters<typeof insertCurrent>[1]): string {
+  const cols = db.query("PRAGMA table_info(characters)").all() as {
+    name: string;
+    dflt_value: string | null;
+  }[];
+  for (const c of cols) {
+    if (["agi", "spd", "aim"].includes(c.name) && c.dflt_value === null) {
+      db.run(`ALTER TABLE characters DROP COLUMN ${c.name}`);
+      db.run(`ALTER TABLE characters ADD COLUMN ${c.name} INTEGER NOT NULL DEFAULT 1`);
+    }
+  }
+  return insertCurrent(db, input);
+}
 
 describe("migrations (real SQL on in-memory SQLite)", () => {
   test("applies the shipped migrations once", () => {
@@ -680,5 +698,69 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     // content rows are only rewritten the one time).
     db.run((mig as { sql: string }).sql);
     check(false);
+  });
+
+  test("divergence: drop_unused_stats keeps every character and drops Agility, Speed and Aim, class points too", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261122_57"),
+    );
+    const map = db.query("SELECT id FROM maps LIMIT 1").get() as { id: string };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    db.run(
+      `INSERT INTO characters (id, account_id, name, sex, head, class_code, level, hp, hp_max, sp,
+        sp_max, exp, exp_needed, str, sta, agi, dex, int, wis, spd, aim, gold, profile,
+        hunger, break_count, map_id, x, y, facing, created_at, updated_at)
+       VALUES ('c1', 'a1', 'Ann', 1, 1, 1, 1, 20, 20, 20, 20, 0, 30, 12, 11, 3, 10, 9, 8, 5, 1, 0, '',
+        40000, 0, ?, 5, 5, 'S', 'now', 'now')`,
+      [map.id],
+    );
+    // A class change, a draft and an imported pack that gave Speed or Agility points.
+    const cls = JSON.stringify({ code: 50, statBonus: { spd: 2, agi: 1, wis: 1 } });
+    db.run(
+      `INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq,
+        updated_by, updated_at) VALUES ('classes', 'classes', '50', 'set', ?, NULL, NULL, 1, 'op', 'now')`,
+      [cls],
+    );
+    db.run(
+      `INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author,
+        updated_at) VALUES ('classes', 'classes', '50', 'set', ?, 'a1', 'op', 'now')`,
+      [cls],
+    );
+    db.run(
+      `INSERT INTO content_packs (id, name, version, position, source, data, installed_at)
+       VALUES ('extra', 'Extra', '1', 1, 'imported', ?, 'now')`,
+      [
+        JSON.stringify({
+          manifest: { id: "extra" },
+          data: { classes: { classes: [JSON.parse(cls)] } },
+        }),
+      ],
+    );
+    runMigrations(db, all);
+    expect(db.query("SELECT str, sta, dex, int, wis FROM characters").all()).toEqual([
+      { str: 12, sta: 11, dex: 10, int: 9, wis: 8 },
+    ]);
+    const bonus = (sql: string) =>
+      JSON.parse((db.query(sql).get() as { b: string }).b) as Record<string, number>;
+    expect(bonus("SELECT json_extract(data, '$.statBonus') AS b FROM content_rows")).toEqual({
+      wis: 1,
+    });
+    expect(bonus("SELECT json_extract(data, '$.statBonus') AS b FROM content_draft")).toEqual({
+      wis: 1,
+    });
+    expect(
+      bonus(
+        "SELECT json_extract(data, '$.data.classes.classes[0].statBonus') AS b FROM content_packs WHERE id = 'extra'",
+      ),
+    ).toEqual({ wis: 1 });
+    const cols = (db.query("PRAGMA table_info(characters)").all() as { name: string }[]).map(
+      (c) => c.name,
+    );
+    expect(cols.filter((c) => ["agi", "spd", "aim"].includes(c))).toEqual([]);
   });
 });

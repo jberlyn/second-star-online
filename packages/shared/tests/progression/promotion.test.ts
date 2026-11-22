@@ -183,7 +183,7 @@ describe("the 16 branches against classes.json", () => {
 });
 
 describe("class stat points", () => {
-  const base = { str: 10, sta: 10, agi: 1, dex: 10, int: 10, wis: 10, spd: 1 };
+  const base = { str: 10, sta: 10, dex: 10, int: 10, wis: 10 };
   const code = (name: string) => findClass(name)?.code ?? 0;
   test("Druid +3 Dex/Wis/Int, Bard +1 Wis, Barbarian +1 Str; other classes none", () => {
     expect(classStatBonus(code("Druid"))).toEqual({ dex: 3, wis: 3, int: 3 });

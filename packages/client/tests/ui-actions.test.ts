@@ -372,7 +372,7 @@ function buildAll(): HTMLElement[] {
           hpMax: 1,
           sp: 1,
           spMax: 1,
-          stats: { str: 1, sta: 1, agi: 1, dex: 1, int: 1, wis: 1, spd: 1 },
+          stats: { str: 1, sta: 1, dex: 1, int: 1, wis: 1 },
           skills: [1],
           hunger: 0,
           faction: 0,

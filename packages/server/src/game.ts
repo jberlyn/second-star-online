@@ -1385,11 +1385,9 @@ export function createGame(deps: GameDeps): Game {
           stats: {
             str: a.str,
             sta: a.sta,
-            agi: a.agi,
             dex: a.dex,
             int: a.int,
             wis: a.wis,
-            spd: a.spd,
           },
           vehicle: r.vehicle,
           hull: r.hull,
