@@ -11,6 +11,7 @@ export * from "./protocol/index.ts";
 export * from "./rules/admin/activity.ts";
 export * from "./rules/admin/admin.ts";
 export * from "./rules/admin/auditlog.ts";
+export * from "./rules/admin/character-edit.ts";
 export * from "./rules/admin/characters.ts";
 export * from "./rules/admin/chatlog.ts";
 export * from "./rules/admin/moderation.ts";

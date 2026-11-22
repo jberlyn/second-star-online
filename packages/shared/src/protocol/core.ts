@@ -267,7 +267,8 @@ export type DeltaEvent =
    */
   | { e: "gset"; id: string; name: string }
   /** A player's equipment changed. */
-  | { e: "look"; id: string; equip: EquipView }
+  /** New worn gear, or (from the character editor) a new head too. */
+  | { e: "look"; id: string; equip: EquipView; head?: number }
   /**
    * A spell FX appears (the cast handler): member `<name>-1` at the stage loc (h, v); each client
    * then steps it with the shared spell FX rules. `slot` is its FX slot: a new FX in a slot

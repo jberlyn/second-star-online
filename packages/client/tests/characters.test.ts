@@ -6,6 +6,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   type CharacterHub,
+  EDIT_TEXT,
   emptyBag,
   HUB_TEXT,
   type HubAction,
@@ -13,7 +14,7 @@ import {
   type Permission,
 } from "@secondstaronline/shared";
 
-import { createCharactersPage } from "../src/ui/characters.ts";
+import { type CharactersPageOptions, createCharactersPage } from "../src/ui/characters.ts";
 
 const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
   const bag = emptyBag();
@@ -57,6 +58,7 @@ const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
     jail: null,
     mute: null,
     history: [],
+    edits: [],
     ...over,
   };
 };
@@ -73,11 +75,15 @@ function page(perms: Permission[] = ["characterView", "ban", "kick"]) {
       reason: string;
     }[],
     activity: [] as string[],
+    edit: [] as Parameters<CharactersPageOptions["edit"]>[0][],
+    undo: [] as Parameters<CharactersPageOptions["undo"]>[0][],
   };
   const p = createCharactersPage({
     search: (seq, q) => calls.search.push([seq, q]),
     open: (seq, n) => calls.open.push([seq, n]),
     moderate: (r) => calls.moderate.push(r),
+    edit: (r) => calls.edit.push(r),
+    undo: (r) => calls.undo.push(r),
     openActivity: (n) => calls.activity.push(n),
     can: (x) => perms.includes(x),
   });
@@ -389,5 +395,122 @@ describe("moderation", () => {
     expect($("hub-tab-chat").hidden).toBe(true);
     $("hub-tab-moderation").click();
     expect(p.el.textContent).not.toContain("10.0.0.7");
+  });
+});
+
+describe("the editor", () => {
+  const confirm = () =>
+    document.querySelector<HTMLButtonElement>('[data-action="control-panel-confirm-ok"]')?.click();
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  test("Edit shows only with characterEditor", () => {
+    const viewer = page(["characterView"]);
+    viewer.showHub();
+    expect(viewer.$("hub-tab-edit").hidden).toBe(true);
+    expect(viewer.$("hub-tab-edits").hidden).toBe(false);
+    const editor = page(["characterView", "characterEditor"]);
+    editor.showHub();
+    expect(editor.$("hub-tab-edit").hidden).toBe(false);
+  });
+
+  test("Save sends only what changed, with what the hub showed, after asking; then reloads", async () => {
+    const { p, $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub();
+    $("hub-tab-edit").click();
+    $<HTMLInputElement>("hub-edit-gold").value = "5000";
+    $<HTMLInputElement>("hub-edit-bag-1-item").value = "Knife";
+    $<HTMLInputElement>("hub-edit-bag-1-qty").value = "2";
+    $("hub-edit-save").click();
+    // No reason yet.
+    expect(p.el.textContent).toContain(EDIT_TEXT.needReason);
+    expect(document.querySelector(".control-panel-confirm")).toBeNull();
+    $<HTMLInputElement>("hub-edit-reason").value = "refund";
+    $("hub-edit-save").click();
+    expect(document.querySelector(".control-panel-confirm")?.textContent).toContain(
+      "Gold: 1,234 → 5,000",
+    );
+    confirm();
+    await flush();
+    const sent = calls.edit.at(-1);
+    expect(sent?.set.gold).toBe(5000);
+    expect(sent?.seen.gold).toBe(1234);
+    expect(sent?.set.bag?.[0]).toEqual({ item: "Knife", qty: 2 });
+    expect(Object.keys(sent?.set ?? {}).sort()).toEqual(["bag", "gold"]);
+    expect(sent?.reason).toBe("refund");
+    const opens = calls.open.length;
+    p.receiveResult({ seq: sent?.seq ?? 0, ok: true, text: "Saved" });
+    expect(calls.open.length).toBe(opens + 1);
+    expect($<HTMLInputElement>("hub-edit-reason").value).toBe("");
+  });
+
+  test("a value out of the game's limits is named and nothing is sent", () => {
+    const { p, $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub();
+    $("hub-tab-edit").click();
+    $<HTMLInputElement>("hub-edit-str").value = "40";
+    $<HTMLInputElement>("hub-edit-reason").value = "x";
+    $("hub-edit-save").click();
+    expect(p.el.textContent).toContain("Strength: a whole number from 1 to 20.");
+    expect(calls.edit).toEqual([]);
+    $("hub-edit-reset").click();
+    $("hub-edit-save").click();
+    expect(p.el.textContent).toContain(EDIT_TEXT.nothing);
+  });
+
+  test("the log lists each change; Undo needs a reason and asks first", async () => {
+    const { p, $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub(
+      hub({
+        edits: [
+          {
+            id: "e1",
+            at: "2026-11-22T09:00:00.000Z",
+            actorName: "God",
+            reason: "refund",
+            changes: [{ field: "gold", before: 0, after: 1234 }],
+            override: false,
+            undoOf: null,
+            undoneBy: null,
+          },
+        ],
+      }),
+    );
+    $("hub-tab-edits").click();
+    expect(p.el.textContent).toContain("Gold: 0 → 1,234");
+    $("hub-undo").click();
+    expect(p.el.textContent).toContain(EDIT_TEXT.needReason);
+    $<HTMLInputElement>("hub-undo-reason").value = "wrong one";
+    $("hub-undo").click();
+    confirm();
+    await flush();
+    expect(calls.undo).toEqual([
+      { seq: expect.any(Number), name: "Al", id: "e1", reason: "wrong one" },
+    ]);
+    // A viewer sees the log without the button.
+    const viewer = page(["characterView"]);
+    viewer.showHub(hub({ edits: [] }));
+    viewer.$("hub-tab-edits").click();
+    expect(viewer.p.el.querySelector('[data-action="hub-undo"]')).toBeNull();
+  });
+});
+
+describe("one change at a time", () => {
+  test("a second save waits while the first has no answer", async () => {
+    const { $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub();
+    $("hub-tab-edit").click();
+    const save = async (gold: string) => {
+      $<HTMLInputElement>("hub-edit-gold").value = gold;
+      $<HTMLInputElement>("hub-edit-reason").value = "x";
+      $("hub-edit-save").click();
+      document
+        .querySelector<HTMLButtonElement>('[data-action="control-panel-confirm-ok"]')
+        ?.click();
+      await new Promise((r) => setTimeout(r, 0));
+    };
+    await save("5");
+    await save("6");
+    expect(calls.edit).toHaveLength(1);
+    expect(document.body.textContent).toContain(EDIT_TEXT.wait);
   });
 });

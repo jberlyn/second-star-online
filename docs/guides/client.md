@@ -52,6 +52,7 @@ The UI files are:
 - [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): the Control Panel's Server Settings page.
 - [packages/client/src/ui/activity-log.ts](../../packages/client/src/ui/activity-log.ts): the Control Panel's Activity Log page.
 - [packages/client/src/ui/characters.ts](../../packages/client/src/ui/characters.ts): the Control Panel's Characters page and player hub.
+- [packages/client/src/ui/character-editor.ts](../../packages/client/src/ui/character-editor.ts): the player hub's character editor and edit log.
 - [packages/client/src/ui/settings-roles.ts](../../packages/client/src/ui/settings-roles.ts): Server Settings' Roles and Staff pages.
 - [packages/client/src/ui/shells.ts](../../packages/client/src/ui/shells.ts): game screen shell.
 - [packages/client/src/ui/shop.ts](../../packages/client/src/ui/shop.ts): shop and vault window.

@@ -324,6 +324,8 @@ function buildAll(): HTMLElement[] {
       search: (seq) => searches.push(seq),
       open: (seq) => opens.push(seq),
       moderate: () => {},
+      edit: () => {},
+      undo: () => {},
       openActivity: () => {},
       can: () => true,
     });
@@ -391,10 +393,31 @@ function buildAll(): HTMLElement[] {
         jail: null,
         mute: null,
         history: [],
+        edits: [
+          {
+            id: "e1",
+            at: "2026-11-22T09:00:00.000Z",
+            actorName: "God",
+            reason: "refund",
+            changes: [{ field: "gold", before: 0, after: 5 }],
+            override: false,
+            undoOf: null,
+            undoneBy: null,
+          },
+        ],
         chat: [],
         addresses: [],
       },
     });
+    // The Edit and Edits tabs as copies (their controls are kept across tabs), then Moderation.
+    for (const t of ["edit", "edits"]) {
+      chars.el.querySelector<HTMLButtonElement>(`[data-action="hub-tab-${t}"]`)?.click();
+      const copy = chars.el.querySelector(".hub-body")?.cloneNode(true) as HTMLElement;
+      for (const el of copy.querySelectorAll("[data-action]")) {
+        listened.set(el, new Set(el.tagName === "BUTTON" ? ["click"] : ["input"]));
+      }
+      holder([copy]);
+    }
     chars.el.querySelector<HTMLButtonElement>('[data-action="hub-tab-moderation"]')?.click();
   }
 

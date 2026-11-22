@@ -18,6 +18,8 @@ import {
   type CharacterListRow,
   type ChatLogRow,
   classLabel,
+  EDIT_TEXT,
+  type EditableCharacter,
   factionLabel,
   HUB_ACTIONS,
   HUB_TEXT,
@@ -31,6 +33,7 @@ import {
 
 import { action, gameInput } from "./action.ts";
 import { activityTime } from "./activity-log.ts";
+import { createCharacterEditor, createEditLog } from "./character-editor.ts";
 import {
   confirmBox,
   createTable,
@@ -49,6 +52,16 @@ export interface CharactersPageOptions {
     duration: string;
     reason: string;
   }): void;
+  /** The character editor's save, and undo from its log. */
+  edit(req: {
+    seq: number;
+    name: string;
+    set: Partial<EditableCharacter>;
+    seen: Partial<EditableCharacter>;
+    override: boolean;
+    reason: string;
+  }): void;
+  undo(req: { seq: number; name: string; id: string; reason: string }): void;
   /** Opens the character's timeline on the Activity Log page. */
   openActivity(name: string): void;
   /** Whether your role holds a permission, as the server last said. */
@@ -105,10 +118,12 @@ const STAT_LABELS: readonly [keyof CharacterHub["sheet"]["stats"], string][] = [
   ["spd", "Speed"],
 ];
 
-type Tab = "overview" | "items" | "moderation" | "chat";
+type Tab = "overview" | "items" | "edit" | "edits" | "moderation" | "chat";
 const TABS: readonly [Tab, string][] = [
   ["overview", "Overview"],
   ["items", "Items"],
+  ["edit", "Edit"],
+  ["edits", "Edits"],
   ["moderation", "Moderation"],
   ["chat", "Chat"],
 ];
@@ -285,9 +300,9 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     "Kept in the moderation log. Required to ban, jail or mute.",
   );
   const modApply = panelButton("hub-apply", "Apply", () => apply(), "danger");
-  /** The moderation request waiting for its result, and the hub it was made from. */
+  /** The request waiting for its result (a moderation button, an edit or an undo), and its hub. */
   let modSeq = 0;
-  let pendingMod: { seq: number; name: string } | null = null;
+  let pendingMod: { seq: number; name: string; kind: "moderate" | "edit" | "undo" } | null = null;
   /** Answers an open question with Cancel (the hub or the page it was asked on is going). */
   const cancelQuestion = () =>
     root.querySelector(".control-panel-confirm")?.dispatchEvent(new Event("control-panel-cancel"));
@@ -346,8 +361,12 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       if (!yes || !root.isConnected || hub?.name !== h.name || !opts.can(a)) {
         return;
       }
+      if (pendingMod !== null) {
+        modResult.textContent = EDIT_TEXT.wait;
+        return;
+      }
       modSeq += 1;
-      pendingMod = { seq: modSeq, name: h.name };
+      pendingMod = { seq: modSeq, name: h.name, kind: "moderate" };
       modResult.textContent = "Working…";
       opts.moderate({
         seq: modSeq,
@@ -358,6 +377,36 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       });
     });
   };
+
+  // ---- the editor and its log ------------------------------------------------------------------
+  const editor = createCharacterEditor({
+    host: root,
+    save: (req) => {
+      const h = hub;
+      // One change at a time: a second could hide the first's answer.
+      if (!h || !opts.can("characterEditor") || pendingMod !== null) {
+        return false;
+      }
+      modSeq += 1;
+      pendingMod = { seq: modSeq, name: h.name, kind: "edit" };
+      opts.edit({ seq: modSeq, name: h.name, ...req });
+      return true;
+    },
+  });
+  const editLog = createEditLog({
+    host: root,
+    canUndo: () => opts.can("characterEditor"),
+    undo: (id, reason) => {
+      const h = hub;
+      if (!h || pendingMod !== null) {
+        return false;
+      }
+      modSeq += 1;
+      pendingMod = { seq: modSeq, name: h.name, kind: "undo" };
+      opts.undo({ seq: modSeq, name: h.name, id, reason });
+      return true;
+    },
+  });
 
   // ---- behaviour -------------------------------------------------------------------------------
   const search = () => {
@@ -382,6 +431,8 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     modReason.value = "";
     modLength.value = "";
     modResult.textContent = "";
+    editor.clear();
+    editLog.clear();
     searchBox.hidden = true;
     hubBox.hidden = false;
     hubTitle.textContent = name;
@@ -434,7 +485,11 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     activity.hidden = !opts.can("activityLog");
     tabs.hidden = false;
     tabButtons.get("chat")?.toggleAttribute("hidden", h.chat === undefined);
-    if (tab === "chat" && h.chat === undefined) {
+    tabButtons.get("edit")?.toggleAttribute("hidden", !opts.can("characterEditor"));
+    if (
+      (tab === "chat" && h.chat === undefined) ||
+      (tab === "edit" && !opts.can("characterEditor"))
+    ) {
       tab = "overview";
     }
     for (const [t, b] of tabButtons) {
@@ -565,6 +620,11 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
           section("Houses", houses.el),
         ];
       }
+      case "edit":
+        return editor.sections;
+      case "edits":
+        editLog.show(h.name, h.edits);
+        return editLog.sections;
       case "moderation": {
         const now = (label: string, r: ModerationRecord | null) =>
           [
@@ -668,6 +728,8 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       hub = msg.hub;
       openName = msg.hub.name;
       hubStatus.textContent = "";
+      editor.load(msg.hub.name, msg.hub.sheet);
+      editLog.show(msg.hub.name, msg.hub.edits);
       draw();
     },
     receiveResult(msg) {
@@ -680,16 +742,28 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       if (!hub || hub.name !== asked.name) {
         return;
       }
-      modResult.textContent = msg.text;
+      if (asked.kind === "edit") {
+        editor.result(msg.ok, msg.text);
+      } else if (asked.kind === "undo") {
+        editLog.result(msg.ok, msg.text);
+      } else {
+        modResult.textContent = msg.text;
+        if (msg.ok) {
+          modReason.value = "";
+          modLength.value = "";
+        }
+      }
       if (msg.ok) {
-        modReason.value = "";
-        modLength.value = "";
         ask(hub.name);
       }
     },
     openHub,
     permissionsChanged() {
       cancelQuestion();
+      // The server drops an edit the role may no longer make without an answer.
+      if (pendingMod && pendingMod.kind !== "moderate" && !opts.can("characterEditor")) {
+        pendingMod = null;
+      }
       const h = hub;
       if (!h) {
         return;
@@ -722,6 +796,8 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       modReason.value = "";
       modLength.value = "";
       modResult.textContent = "";
+      editor.clear();
+      editLog.clear();
       lastQuery = null;
       openName = null;
       hub = null;

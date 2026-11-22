@@ -568,6 +568,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     search: (seq, query) => send({ t: "characterSearch", seq, query }),
     open: (seq, name) => send({ t: "characterOpen", seq, name }),
     moderate: (req) => send({ t: "characterModerate", ...req }),
+    edit: (req) => send({ t: "characterEdit", ...req }),
+    undo: (req) => send({ t: "characterUndo", ...req }),
     openActivity: (name) => {
       controlPanel.go("activity");
       if (controlPanel.page === "activity") {

@@ -3559,6 +3559,24 @@
     "errors": []
   },
   {
+    "action": "hub-tab-edit",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-tab-edits",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "hub-tab-moderation",
     "tag": "BUTTON",
     "events": ["click"],
@@ -5388,6 +5406,24 @@
     "errors": []
   },
   {
+    "action": "hub-tab-edit",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-tab-edits",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "hub-tab-moderation",
     "tag": "BUTTON",
     "events": ["click"],
@@ -5398,6 +5434,978 @@
   },
   {
     "action": "hub-tab-chat",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-class",
+    "tag": "SELECT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-level",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-exp",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-hp",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-sp",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-hunger",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-faction",
+    "tag": "SELECT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-faction-time",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-wanted",
+    "tag": "SELECT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-str",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-sta",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-agi",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-dex",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-int",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-wis",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-spd",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-1",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-2",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-3",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-4",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-5",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-6",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-7",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-8",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-9",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-10",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-11",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-12",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-13",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-14",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-15",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-16",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-17",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-18",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-19",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-20",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-21",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-22",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-23",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-24",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-25",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-26",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-27",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-28",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-29",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-30",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-31",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-32",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-33",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-34",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-35",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-36",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-37",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-skill-38",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-gold",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bank",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-1-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-1-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-2-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-2-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-3-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-3-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-4-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-4-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-5-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-5-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-6-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-6-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-7-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-7-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-8-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-8-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-9-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-9-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-10-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-10-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-11-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-11-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-12-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-12-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-13-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-13-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-14-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-14-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-15-item",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-bag-15-qty",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-worn-head",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-worn-body",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-worn-weapon",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-worn-off-hand",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-worn-feet",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-worn-ring",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-vault",
+    "tag": "TEXTAREA",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-spellbook",
+    "tag": "TEXTAREA",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-position-map",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-position-x",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-position-y",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-respawn-map",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-respawn-x",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-respawn-y",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-sex",
+    "tag": "SELECT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-head",
+    "tag": "SELECT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-reason",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-override",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-save",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-reset",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-undo-reason",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-undo",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,

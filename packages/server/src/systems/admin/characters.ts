@@ -14,6 +14,7 @@
 import {
   type AddressSeen,
   type Bag,
+  type CharacterEditRow,
   type CharacterHub,
   type CharacterListRow,
   type CharacterSheet,
@@ -100,6 +101,8 @@ export interface HubDeps {
   roleName(roleId: string | null): string | null;
   stored(characterId: string): StoredCharacter | null;
   times(characterId: string): { updatedAt: string; accountCreated: string };
+  /** The character editor's newest log rows for them, newest first. */
+  edits(characterId: string): CharacterEditRow[];
   accountBan(accountId: string): ModerationRecord | null;
   jail(characterId: string): ModerationRecord | null;
   mute(accountId: string): ModerationRecord | null;
@@ -310,6 +313,7 @@ export function characterHub(
     ban: live(deps.accountBan(c.accountId)),
     jail: live(deps.jail(c.characterId)),
     mute: live(deps.mute(c.accountId)),
+    edits: deps.edits(c.characterId),
     history: deps
       .history(c.accountId, HUB_HISTORY)
       .map((r) => (seesAddresses ? r : { ...r, address: null })),

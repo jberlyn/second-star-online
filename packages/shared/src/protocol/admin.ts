@@ -9,6 +9,7 @@ import {
   type ActivityTotal,
   isActivityType,
 } from "../rules/admin/activity.ts";
+import type { SettableField } from "../rules/admin/character-edit.ts";
 import {
   CHARACTER_SEARCH_MAX,
   type CharacterHub,
@@ -183,6 +184,96 @@ export const characterModerateSchema = z.strictObject({
   name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
   action: z.enum(HUB_ACTIONS),
   duration: z.string().max(12),
+  reason: z.string().max(200),
+});
+
+const editPoint = z.strictObject({
+  map: z.string().max(40),
+  x: z.number().int().min(-1000).max(1000),
+  y: z.number().int().min(-1000).max(1000),
+});
+const editInt = z
+  .number()
+  .int()
+  .min(-(2 ** 31))
+  .max(2 ** 31);
+const itemName = z.string().max(80);
+
+/**
+ * The character editor's values, one optional key per field it may set (shared
+ * rules/admin/character-edit.ts `SETTABLE_FIELDS`); the server checks every value against the
+ * game's limits. The shape only bounds the message.
+ */
+const editValues = z
+  .strictObject({
+    classCode: editInt,
+    level: editInt,
+    exp: editInt,
+    hp: editInt,
+    sp: editInt,
+    str: editInt,
+    sta: editInt,
+    agi: editInt,
+    dex: editInt,
+    int: editInt,
+    wis: editInt,
+    spd: editInt,
+    skills: z.array(editInt).max(64),
+    hunger: editInt,
+    faction: editInt,
+    factionCount: editInt,
+    wanted: z.boolean(),
+    respawn: editPoint.nullable(),
+    gold: editInt,
+    bank: editInt.nullable(),
+    bag: z.array(z.strictObject({ item: itemName, qty: editInt }).nullable()).max(15),
+    equip: z.strictObject({
+      weapon: itemName,
+      offHand: itemName,
+      head: itemName,
+      body: itemName,
+      feet: itemName,
+      ring: itemName,
+    }),
+    vault: z.array(itemName).max(30),
+    spellbook: z.array(z.string().max(40)).max(64),
+    position: editPoint,
+    sex: editInt,
+    head: editInt,
+  })
+  .partial();
+
+// The schema names exactly the settable fields (a mismatch is a type error).
+type EditKeys = keyof z.infer<typeof editValues>;
+true satisfies [Exclude<SettableField, EditKeys>, Exclude<EditKeys, SettableField>] extends [
+  never,
+  never,
+]
+  ? true
+  : false;
+
+/**
+ * The player hub's character editor: the new values (`set`) and the values the hub showed for
+ * those same fields (`seen`), so an edit made over a stale hub is refused rather than undoing
+ * whatever changed since. Gated by `characterEditor`; a reason is required.
+ */
+export const characterEditSchema = z.strictObject({
+  t: z.literal("characterEdit"),
+  seq: seqField,
+  name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+  set: editValues,
+  seen: editValues,
+  /** Save worn gear that breaks the wear rules; logged with the edit. */
+  override: z.boolean(),
+  reason: z.string().max(200),
+});
+
+/** Undoes one edit from the character's log, by id, when nothing it set has changed since. */
+export const characterUndoSchema = z.strictObject({
+  t: z.literal("characterUndo"),
+  seq: seqField,
+  name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+  id: z.string().min(1).max(40),
   reason: z.string().max(200),
 });
 

@@ -153,6 +153,36 @@ describe("Only server systems create items", () => {
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
+      // The character editor (characterEditor permission): an admin's new values for one
+      // character, with what the hub showed for them. The server checks every item, spell and map
+      // against the game's own lists and limits; the edit is logged and can be undone.
+      characterEdit: [
+        "name:string",
+        "set.respawn.map:string",
+        "set.bag[].item:string",
+        "set.equip.weapon:string",
+        "set.equip.offHand:string",
+        "set.equip.head:string",
+        "set.equip.body:string",
+        "set.equip.feet:string",
+        "set.equip.ring:string",
+        "set.vault[]:string",
+        "set.spellbook[]:string",
+        "set.position.map:string",
+        "seen.respawn.map:string",
+        "seen.bag[].item:string",
+        "seen.equip.weapon:string",
+        "seen.equip.offHand:string",
+        "seen.equip.head:string",
+        "seen.equip.body:string",
+        "seen.equip.feet:string",
+        "seen.equip.ring:string",
+        "seen.vault[]:string",
+        "seen.spellbook[]:string",
+        "seen.position.map:string",
+        "reason:string",
+      ],
+      characterUndo: ["name:string", "id:string", "reason:string"],
       editSave: [
         "map.layers[][]:string",
         "map.flags.canFight:string",
@@ -217,13 +247,16 @@ describe("File editor and path-based file access removed", () => {
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the
     // names match: two editor loads, the Control Panel's player hub (a character by name, read
     // through the server for a role with characterView, never a file), a guild page, closing a
-    // painting, a newspaper, the profile.
+    // painting, a newspaper, the profile. The hub's editor (characterEditor) changes a character
+    // through the server's own checks, never by writing a file.
     expect(types.filter((t) => /file|transfer|char|view|load/i.test(t))).toEqual([
       "editLoad",
       "npcLoad",
       "characterSearch",
       "characterOpen",
       "characterModerate",
+      "characterEdit",
+      "characterUndo",
       "guildView",
       "viewClose",
       "newspaperLoad",
@@ -256,11 +289,27 @@ describe("File editor and path-based file access removed", () => {
         .split(".")
         .pop()
         ?.replace(/\[\]|\{\}/g, "") ?? "";
+    // Only the character editor's admin edit (characterEditor permission) names a level, XP, HP or
+    // SP: an admin's correction, checked against the game's limits and logged, never a result of
+    // play reported by a client.
+    const admin = (f: string) => f.startsWith("characterEdit.");
     expect(
-      named.filter((f) =>
-        /^(hp|hpmax|sp|spmax|health|dmg|damage|xp|exp|level|kill|kills|score)$/i.test(last(f)),
+      named.filter(
+        (f) =>
+          !admin(f) &&
+          /^(hp|hpmax|sp|spmax|health|dmg|damage|xp|exp|level|kill|kills|score)$/i.test(last(f)),
       ),
     ).toEqual([]);
+    expect(named.filter(admin).filter((f) => /^(hp|sp|exp|level)$/.test(last(f)))).toEqual([
+      "characterEdit.set.level",
+      "characterEdit.set.exp",
+      "characterEdit.set.hp",
+      "characterEdit.set.sp",
+      "characterEdit.seen.level",
+      "characterEdit.seen.exp",
+      "characterEdit.seen.hp",
+      "characterEdit.seen.sp",
+    ]);
   });
 
   test("SSO: no client message field sets a body, makes food or fires an effect", () => {
@@ -276,9 +325,12 @@ describe("File editor and path-based file access removed", () => {
         ?.replace(/\[\]|\{\}/g, "") ?? "";
     expect(
       named.filter(
-        // `mailSend.body` is a letter's text, not a character's body.
+        // `mailSend.body` is a letter's text, not a character's body; the character editor's
+        // `equip.body` is the worn armour's name.
         (f) =>
-          f !== "mailSend.body" && /^(body|food|fx|effect|fireball|summon|portal)$/i.test(last(f)),
+          f !== "mailSend.body" &&
+          !/^characterEdit\.(set|seen)\.equip\.body$/.test(f) &&
+          /^(body|food|fx|effect|fireball|summon|portal)$/i.test(last(f)),
       ),
     ).toEqual([]);
   });

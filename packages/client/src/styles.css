@@ -1024,6 +1024,62 @@ body {
   padding-left: 18px;
   color: #eee;
 }
+/* The hub's character editor and its log (ui/character-editor.ts). */
+.hub-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0 12px;
+  margin: 0 20px;
+}
+.hub-edit-grid input,
+.hub-edit-grid select,
+.hub-edit-grid textarea {
+  min-width: 0;
+}
+.hub-edit-grid textarea {
+  resize: vertical;
+}
+.hub-edit-note {
+  margin: 0 20px 8px;
+}
+.hub-edit-bag {
+  display: grid;
+  gap: 4px;
+  margin: 0 20px 6px;
+}
+.hub-edit-bag-row {
+  display: grid;
+  grid-template-columns: 2em 1fr 6em;
+  align-items: center;
+  gap: 6px;
+}
+.hub-edit-bag-row input {
+  min-width: 0;
+  font: inherit;
+  color: #eee;
+  background: #2a2a2a;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+.hub-edit-bag-line {
+  color: #999;
+  text-align: right;
+}
+.hub-edit-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 20px;
+  color: #ddd;
+}
+.hub-wide {
+  grid-column: 1 / -1;
+}
+.hub-edit-changes {
+  margin: 0;
+  padding-left: 16px;
+}
 @media (max-width: 640px) {
   .control-panel-body {
     flex-direction: column;

@@ -709,6 +709,536 @@
     "hidden": 0,
     "disabled": 0
   },
+  "hub-edit-agi": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-1-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-1-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-10-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-10-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-11-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-11-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-12-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-12-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-13-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-13-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-14-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-14-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-15-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-15-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-2-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-2-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-3-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-3-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-4-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-4-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-5-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-5-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-6-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-6-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-7-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-7-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-8-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-8-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-9-item": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bag-9-qty": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-bank": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 1
+  },
+  "hub-edit-class": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-dex": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-exp": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-faction": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-faction-time": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-gold": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-head": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-hp": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-hunger": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-int": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-level": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-override": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-position-map": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-position-x": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-position-y": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-reason": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-reset": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-respawn-map": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-respawn-x": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-respawn-y": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-save": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-sex": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-1": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-10": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-11": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-12": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-13": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-14": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-15": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-16": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-17": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-18": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-19": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-2": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-20": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-21": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-22": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-23": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-24": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-25": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-26": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-27": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-28": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-29": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-3": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-30": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-31": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-32": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-33": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-34": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-35": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-36": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-37": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-38": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-4": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-5": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-6": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-7": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-8": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-skill-9": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-sp": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-spd": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-spellbook": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-sta": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-str": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-vault": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-wanted": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-wis": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-worn-body": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-worn-feet": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-worn-head": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-worn-off-hand": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-worn-ring": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-worn-weapon": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
   "hub-length": {
     "count": 1,
     "hidden": 0,
@@ -729,6 +1259,16 @@
     "hidden": 0,
     "disabled": 0
   },
+  "hub-tab-edit": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-tab-edits": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
   "hub-tab-items": {
     "count": 2,
     "hidden": 0,
@@ -741,6 +1281,16 @@
   },
   "hub-tab-overview": {
     "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-undo": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-undo-reason": {
+    "count": 1,
     "hidden": 0,
     "disabled": 0
   },

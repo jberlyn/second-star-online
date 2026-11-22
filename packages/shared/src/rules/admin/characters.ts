@@ -5,6 +5,7 @@
  */
 import { classesData } from "@secondstaronline/data";
 
+import type { CharacterEditRow } from "./character-edit.ts";
 import type { ChatLogRow } from "./chatlog.ts";
 import {
   type AddressSeen,
@@ -120,6 +121,8 @@ export interface CharacterHub {
   ipBans?: HubIpBan[];
   /** Their role is not stopped by IP bans; sent with `ipBans`. */
   bypassesIpBans?: boolean;
+  /** The character editor's log for them, newest first (the newest `HUB_EDITS`). */
+  edits: CharacterEditRow[];
 }
 
 /** An IP ban in force on one of the character's addresses. */

@@ -513,6 +513,13 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
         if (p) {
           p.equip = ev.equip;
         }
+        // The character editor's new head, for a peer or yourself.
+        if (ev.head !== undefined) {
+          const who = m.self && ev.id === m.self.id ? m.self : p;
+          if (who) {
+            who.head = ev.head;
+          }
+        }
         break;
       }
       case "fx": {

@@ -224,7 +224,7 @@ The command line is also the way back in if you ever leave no one able to open S
 
 Administrators open **Admin → Control Panel** from the top menu bar. The game gives way to a full-page dashboard; **Return to Game** at the top brings you back where you stood. While you are in the Control Panel you stay online but are off the map, as in the World Editor: other players see you leave, and trades, shops and held actions are cancelled. The header also opens Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms and Player Settings as floating windows over the dashboard, and Return To Title Screen logs out. The sidebar lists the admin pages your role may use, with the World Editor and NPC Editor under **Classic tools** until their Control Panel pages arrive.
 
-The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff**, **Control Panel: look up characters (the player hub)** (the [Characters](#the-player-hub) page) and **Control Panel: read the player activity log** (the [Activity Log](#the-activity-log) page). The Roles page also lists **Control Panel: edit items, monsters and NPCs** and **Control Panel: edit characters** for the pages still to come; they do nothing yet.
+The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff**, **Control Panel: look up characters (the player hub)** (the [Characters](#the-player-hub) page) and **Control Panel: read the player activity log** (the [Activity Log](#the-activity-log) page). **Control Panel: edit characters** adds the hub's [Edit tab](#editing-a-character). The Roles page also lists **Control Panel: edit items, monsters and NPCs** for the pages still to come; it does nothing yet.
 
 **Upgrading from 1.13.0 or earlier:** **Admin → Server Settings** moved into the Control Panel, and the floating Server Settings window is gone. A role that held every permission gets the three new Control Panel permissions, so it still holds every permission; other roles are left as they are.
 
@@ -248,6 +248,8 @@ Open **Admin → Control Panel → Characters** (the **Control Panel: look up ch
 
 - **Overview:** class, level, experience, HP, SP, hunger, faction, wanted, stats and skills, where they are, their respawn point and what they ride, and when the account was made and the character last saved.
 - **Items:** gold carried and in the bank, the bag, worn gear, vault, spellbook and the houses they own.
+- **Edit:** change the character (see [Editing a character](#editing-a-character)), for a role with **Control Panel: edit characters**.
+- **Edits:** every edit an admin made to them, with who, when, why and each value before and after, and **Undo**.
 - **Moderation:** any ban, jail or mute in force, with who made it and why, and the moderation history. A role with `/banip` also sees the addresses the account logged in from and any IP ban in force on them (noting a role that IP bans do not stop); without it, an IP ban in the history shows without its address, as on `/banlist`. The **Act** form kicks, bans, jails or mutes (a ban, jail or mute needs a reason; a kick takes none, as `/kick` does; the length is typed as for the commands, such as `30m`, `7d` or `perm`, or left empty for the server's default) and lifts each. Each action needs the same permission as its command and follows the same rules: who may act on whom, and who may change or lift someone else's ban.
 - **Chat:** their newest 50 chat lines, for a role with `/chatlog`.
 - **Activity Log** opens their timeline, for a role with the activity log permission.
@@ -255,6 +257,20 @@ Open **Admin → Control Panel → Characters** (the **Control Panel: look up ch
 An online character is read from the game as it stands, not from their last save. Every hub opened is recorded in the audit log.
 
 **Upgrading from 1.13.0 or earlier:** a role that held every permission gets the new **Control Panel: look up characters** permission; give it to any other role that should use the hub.
+
+#### Editing a character
+
+The hub's **Edit** tab (the **Control Panel: edit characters** permission, administrators by default) changes a character online or offline. It covers class, level, experience, HP, SP, hunger, faction, wanted, stats, skills, gold, bank, bag, worn gear, vault, spellbook, position, respawn point, sex and head. Change what you need, give a reason, and choose **Save changes**. The page lists the changes and asks before it sends them.
+
+- **Online or offline.** An online player's character changes at once, their screen updates, and the change is saved straight away. Moving them warps them and keeps their respawn point as the editor shows it; a new head redraws for everyone on their map. An offline character's saved record is changed, and they see it at their next login.
+- **Checked like play.** Every value must be one the game could hold: stats 1–20, skills 1–100, items and spells that exist, maps that exist, at most 15 vault lines, and gold up to 2,000,000,000. Experience needed and HP and SP max are not typed: they follow the level, one point of HP and SP max for each level up or down. Worn gear must fit its slot, the character's strength and the two-handed weapon rule. To save gear that breaks those rules, tick **Override the wear rules**; the override is logged.
+- **Refused while busy.** Gold, items and position can't be changed while the player is trading or seated at a casino table, including a seat kept for them after they dropped mid-hand. A player can't be moved while they are in jail (use Jail and Release from jail) or in an editor, and only staff can be put on the jail map. The bank can be edited only once they have an account.
+- **Stale pages.** If anything you changed has moved since the hub was read (the player spent the gold you are correcting, say), the edit is refused. Refresh and make it again.
+- **Undo.** **Edits** lists each edit, newest first. **Undo** puts an edit's old values back, with a reason of its own. It is refused if any value the edit set has changed since, if what it puts back no longer fits the character (an HP max below the HP they have now, say), or if it would put back gear that breaks the wear rules; make a new edit instead.
+- **Items with their own storage.** A Crate, Cabinet or Cauldron added in the editor gets its own storage, as one bought does. One the character already has can be moved to another line but not copied, and an `#id` can't be typed in. As in play, the vault takes no containers and gold is never a bag or vault item.
+- **Logs.** Each edit is kept in the `character_edits` table and the audit log. Gold and items it added or removed are `Admin` events in the Activity Log, so they never show as unlogged; bank and vault changes are logged with their amounts.
+
+Houses can't be revoked or transferred here yet (issue #36).
 
 ### The activity log
 

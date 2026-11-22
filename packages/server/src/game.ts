@@ -11,6 +11,7 @@ import {
   ACTIVITY_TOTALS_MAX,
   type ActivityType,
   ADMIN_TEXT,
+  anyMapName,
   banNotice,
   CHARACTER_SEARCH_LIMIT,
   CHAT_COLOR,
@@ -20,11 +21,15 @@ import {
   cheatLine,
   className,
   creationError,
+  diffEdit,
+  EDIT_TEXT,
   type EditorMap,
+  editableOf,
   endIso,
   endMs,
   factionIdOf,
   findNewQuest,
+  HUB_EDITS,
   HUB_TEXT,
   hubArgs,
   hullMax,
@@ -94,6 +99,12 @@ import { addArt, loadArt } from "./persistence/art.ts";
 import { loadAssassinState, saveAssassinState } from "./persistence/assassin.ts";
 import { addPost, loadBoard } from "./persistence/boards.ts";
 import { loadBuddies, saveBuddies } from "./persistence/buddies.ts";
+import {
+  characterEdits,
+  findCharacterEdit,
+  insertCharacterEdit,
+  saveLookAndClass,
+} from "./persistence/character-edits.ts";
 import {
   findCharacterByAccount,
   findCharacterById,
@@ -199,7 +210,15 @@ import {
   logEditorPlacements,
   resetHoldings,
 } from "./systems/admin/activity.ts";
-import { characterHub, type HubDeps, searchRows } from "./systems/admin/characters.ts";
+import {
+  applyLive,
+  type EditDeps,
+  logEdit,
+  type Prepared,
+  prepareEdit,
+  prepareUndo,
+} from "./systems/admin/character-edit.ts";
+import { characterHub, type HubDeps, liveSheet, searchRows } from "./systems/admin/characters.ts";
 import { type AdminDeps, applyRole, moderate, permissionsMsg } from "./systems/admin/commands.ts";
 import { openControlPanel } from "./systems/admin/control-panel.ts";
 import {
@@ -453,6 +472,8 @@ const EDITOR_INTENTS = new Set([
   "characterSearch",
   "characterOpen",
   "characterModerate",
+  "characterEdit",
+  "characterUndo",
   "assassinGame",
   // IM, Away and chat rooms are their own windows (MIAWs), usable over the editors.
   "im",
@@ -494,6 +515,8 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   characterSearch: { permission: "characterView", reason: "Attempted Admin Access" },
   characterOpen: { permission: "characterView", reason: "Attempted Admin Access" },
   characterModerate: { permission: "characterView", reason: "Attempted Admin Access" },
+  characterEdit: { permission: "characterEditor", reason: "Attempted Admin Access" },
+  characterUndo: { permission: "characterEditor", reason: "Attempted Admin Access" },
   // Menu 502's Assassin items: 1.6's server just ignored anyone but an immortal.
   assassinGame: { permission: "assassinGame", reason: "Attempted Admin Access" },
 };
@@ -627,17 +650,24 @@ export function createGame(deps: GameDeps): Game {
   const mapCache = new Map<string, WorldMap | null>();
 
   const loadMap = (name: string): WorldMap | null => {
-    if (mapCache.has(name)) {
-      return mapCache.get(name) ?? null;
-    }
-    // A house interior is its outdoor map's position and exit slot.
+    // A house interior is its outdoor map's position and exit slot. Names match ignoring case, so
+    // the cache is keyed by the map's own spelling: a second copy of a live map (`X1000Y992`) would
+    // write stale monster slots over the live ones at the next save. A name that is no map at all
+    // is not cached, so typed names cannot grow the cache.
     const h = parseHouseMapName(name);
     const c = h ?? parseMapName(name);
-    const rec = c ? findMapByCoords(db, c.mx, c.my, h ? h.slot : 0) : null;
+    if (!c) {
+      return null;
+    }
+    const key = anyMapName(c.mx, c.my, h ? h.slot : 0);
+    if (mapCache.has(key)) {
+      return mapCache.get(key) ?? null;
+    }
+    const rec = findMapByCoords(db, c.mx, c.my, h ? h.slot : 0);
     const m = rec
       ? toWorldMap({ ...rec, slots: slotsFor(rec.id), ground: groundFor(rec.id) })
       : null;
-    mapCache.set(name, m);
+    mapCache.set(key, m);
     return m;
   };
 
@@ -1196,6 +1226,7 @@ export function createGame(deps: GameDeps): Game {
     roleName: (id) => roleOf(id)?.name ?? null,
     stored: (id) => loadStoredCharacter(db, id),
     times: (id) => characterTimes(db, id),
+    edits: (id) => characterEdits(db, id, HUB_EDITS),
     accountBan: (accountId) => accountBan(db, accountId),
     jail: (characterId) => characterJail(db, characterId),
     mute: (accountId) => accountMute(db, accountId),
@@ -1267,6 +1298,197 @@ export function createGame(deps: GameDeps): Game {
       .join(" ");
     result(done, text);
     deliverKicks();
+  };
+
+  // ---- the character editor (issue #26) ----------------------------------------------------------
+  const editDeps: EditDeps = {
+    findCharacter: adminDeps.findCharacter,
+    stored: (id) => loadStoredCharacter(db, id),
+    loadMap,
+    mapName: (id) => findMapById(db, id)?.name ?? id,
+    jailedOffline: (id) => isActive(characterJail(db, id), isoNow()),
+    writeOffline: (stored, a, mapIds) => {
+      const id = stored.record.id;
+      const now = isoNow();
+      // The vehicle, hull and facing the editor leaves alone, as saved.
+      const r = findCharacterById(db, id);
+      if (!r) {
+        return;
+      }
+      saveProgress(
+        db,
+        id,
+        {
+          position: {
+            mapId: mapIds.position,
+            x: a.position.x,
+            y: a.position.y,
+            facing: r.position.facing,
+          },
+          vitals: {
+            level: a.level,
+            hp: a.hp,
+            hpMax: a.hpMax,
+            sp: a.sp,
+            spMax: a.spMax,
+            exp: a.exp,
+            expNeeded: a.expNeeded,
+          },
+          hunger: a.hunger,
+          skills: a.skills,
+          respawn:
+            a.respawn && mapIds.respawn
+              ? { mapId: mapIds.respawn, x: a.respawn.x, y: a.respawn.y }
+              : null,
+          faction: { id: a.faction, count: a.factionCount },
+          wanted: a.wanted,
+          stats: {
+            str: a.str,
+            sta: a.sta,
+            agi: a.agi,
+            dex: a.dex,
+            int: a.int,
+            wis: a.wis,
+            spd: a.spd,
+          },
+          vehicle: r.vehicle,
+          hull: r.hull,
+        },
+        now,
+      );
+      saveLookAndClass(db, id, { classCode: a.classCode, sex: a.sex, head: a.head }, now);
+      saveInventory(
+        db,
+        id,
+        {
+          gold: a.gold,
+          bag: a.bag.map((l) => (l ? { item: l.item, qty: l.qty } : null)),
+          equip: { ...a.equip },
+        },
+        now,
+      );
+      if (a.bank !== null) {
+        saveBank(db, id, a.bank, now);
+      }
+      saveVault(db, id, a.vault);
+      saveSpellbook(db, id, a.spellbook);
+    },
+    casino: casinoDeps,
+    rng,
+  };
+
+  /**
+   * Applies a checked edit or undo in the intent's transaction: the live character (then written
+   * at once, so a save can never put the old values back) or the saved one, the log row, the
+   * audit row and the activity events. Returns the new edit's id.
+   */
+  const applyEdit = (
+    p: Player,
+    e: Extract<Prepared, { ok: true }>["edit"],
+    reason: string,
+    undoOf: string | null,
+  ): string => {
+    logEdit(world, e, p, "", "before");
+    const t = e.online;
+    const mark = world.activity.length;
+    try {
+      if (t) {
+        deliver(applyLive(world, t, e, editDeps));
+        if (t.vitalsDirty) {
+          t.vitalsDirty = false;
+          send(t.id, { t: "vitals", vitals: vitalsView(t) });
+        }
+        // Progress, class and look now; the inventory, bank, vault and spellbook with
+        // `persistItems`.
+        save(t);
+        saveLookAndClass(
+          db,
+          t.id,
+          { classCode: t.char.classCode, sex: t.char.sex, head: t.head },
+          isoNow(),
+        );
+        t.invSaveDue = true;
+        flushChanged([t]);
+        // A move can set the respawn point on arrival: the log records what the character ends
+        // as, not only what was asked.
+        e.after = editableOf(liveSheet(world, t, editDeps.mapName));
+        e.changes = diffEdit(e.before, e.after);
+      } else if (e.stored) {
+        editDeps.writeOffline(e.stored, e.after, e.mapIds);
+      }
+    } catch (err) {
+      // The writes roll back with the intent, but the live character changed in memory: take
+      // them off so they reload from the database, as the intent's own player is.
+      if (t) {
+        dropActivity(t.id, mark);
+        deps.kick?.(t.id, TEXT.serverError);
+        if (world.players.has(t.id)) {
+          evict(t.id);
+        }
+      }
+      throw err;
+    }
+    const id = insertCharacterEdit(
+      db,
+      {
+        actorAccountId: p.accountId,
+        actorName: p.name,
+        characterId: e.target.characterId,
+        character: e.target.name,
+        reason,
+        changes: e.changes,
+        override: e.override,
+        undoOf,
+      },
+      isoNow(),
+    );
+    logEdit(world, e, p, id, "after");
+    insertAudit(
+      db,
+      {
+        actor: p.accountId,
+        command: undoOf ? "characterUndo" : "characterEdit",
+        target: e.target.name,
+        before: Object.fromEntries(e.changes.map((c) => [c.field, c.before])),
+        after: { edit: id, ...(undoOf ? { undoOf } : {}), reason },
+      },
+      isoNow(),
+    );
+    return id;
+  };
+
+  const characterEdit = (p: Player, msg: Extract<InGameMsg, { t: "characterEdit" }>) => {
+    const result = (ok: boolean, text: string) =>
+      send(p.id, { t: "characterResult", seq: msg.seq, ok, text });
+    const reason = msg.reason.trim().split(/\s+/).join(" ");
+    if (reason === "") {
+      result(false, EDIT_TEXT.needReason);
+      return;
+    }
+    const r = prepareEdit(world, msg, editDeps);
+    if (!r.ok) {
+      result(false, r.text);
+      return;
+    }
+    applyEdit(p, r.edit, reason, null);
+    result(true, EDIT_TEXT.saved(r.edit.target.name, r.edit.changes.length));
+  };
+
+  const characterUndo = (p: Player, msg: Extract<InGameMsg, { t: "characterUndo" }>) => {
+    const result = (ok: boolean, text: string) =>
+      send(p.id, { t: "characterResult", seq: msg.seq, ok, text });
+    const reason = msg.reason.trim().split(/\s+/).join(" ");
+    if (reason === "") {
+      result(false, EDIT_TEXT.needReason);
+      return;
+    }
+    const r = prepareUndo(world, { name: msg.name, edit: findCharacterEdit(db, msg.id) }, editDeps);
+    if (!r.ok) {
+      result(false, r.text);
+      return;
+    }
+    applyEdit(p, r.edit, reason, msg.id);
+    result(true, EDIT_TEXT.undone(r.edit.target.name));
   };
 
   /** Server Settings window SAVE: the `settings` permission only; every changed value audited. */
@@ -2252,6 +2474,12 @@ export function createGame(deps: GameDeps): Game {
           return;
         case "characterModerate":
           characterModerate(p, msg);
+          return;
+        case "characterEdit":
+          characterEdit(p, msg);
+          return;
+        case "characterUndo":
+          characterUndo(p, msg);
           return;
         // The Guild Center: each change is written with the fields it set.
         case "guildCreate":
