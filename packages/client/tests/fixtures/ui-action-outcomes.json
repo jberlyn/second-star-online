@@ -2392,24 +2392,6 @@
     "errors": []
   },
   {
-    "action": "window-drag",
-    "tag": "DIV",
-    "events": ["pointerdown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "window-close",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
     "action": "settings-search",
     "tag": "INPUT",
     "events": ["input", "keydown"],
@@ -2596,24 +2578,6 @@
   },
   {
     "action": "settings-discard",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "window-drag",
-    "tag": "DIV",
-    "events": ["pointerdown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "window-close",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,
@@ -3086,6 +3050,33 @@
     "errors": []
   },
   {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "roles-permission",
+    "tag": "INPUT",
+    "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "settings-revert",
     "tag": "BUTTON",
     "events": ["click"],
@@ -3144,6 +3135,9 @@
               "worldEditor",
               "npcEditor",
               "settings",
+              "contentEditor",
+              "characterEditor",
+              "activityLog",
               "adminChat",
               "assassinGame",
               "overrule",
@@ -3186,24 +3180,6 @@
   },
   {
     "action": "settings-discard",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "window-drag",
-    "tag": "DIV",
-    "events": ["pointerdown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "window-close",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,
@@ -4764,6 +4740,258 @@
   },
   {
     "action": "player-settings-discard",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-return",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "returnToGame",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "control-panel-friends",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "openFriends",
+        "args": [
+          {
+            "NONE": 0,
+            "CAPTURING_PHASE": 1,
+            "AT_TARGET": 2,
+            "BUBBLING_PHASE": 3,
+            "detail": 0,
+            "layerX": 0,
+            "layerY": 0,
+            "pageX": 0,
+            "pageY": 0,
+            "view": null,
+            "altKey": false,
+            "button": 0,
+            "buttons": 0,
+            "clientX": 0,
+            "clientY": 0,
+            "ctrlKey": false,
+            "metaKey": false,
+            "movementX": 0,
+            "movementY": 0,
+            "offsetX": 0,
+            "offsetY": 0,
+            "region": "",
+            "relatedTarget": null,
+            "screenX": 0,
+            "screenY": 0,
+            "shiftKey": false
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "control-panel-who",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "openWho",
+        "args": [
+          {
+            "NONE": 0,
+            "CAPTURING_PHASE": 1,
+            "AT_TARGET": 2,
+            "BUBBLING_PHASE": 3,
+            "detail": 0,
+            "layerX": 0,
+            "layerY": 0,
+            "pageX": 0,
+            "pageY": 0,
+            "view": null,
+            "altKey": false,
+            "button": 0,
+            "buttons": 0,
+            "clientX": 0,
+            "clientY": 0,
+            "ctrlKey": false,
+            "metaKey": false,
+            "movementX": 0,
+            "movementY": 0,
+            "offsetX": 0,
+            "offsetY": 0,
+            "region": "",
+            "relatedTarget": null,
+            "screenX": 0,
+            "screenY": 0,
+            "shiftKey": false
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "control-panel-im",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "sendIm",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "control-panel-room",
+    "tag": "SELECT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-player-settings",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "playerSettings",
+        "args": [
+          {
+            "NONE": 0,
+            "CAPTURING_PHASE": 1,
+            "AT_TARGET": 2,
+            "BUBBLING_PHASE": 3,
+            "detail": 0,
+            "layerX": 0,
+            "layerY": 0,
+            "pageX": 0,
+            "pageY": 0,
+            "view": null,
+            "altKey": false,
+            "button": 0,
+            "buttons": 0,
+            "clientX": 0,
+            "clientY": 0,
+            "ctrlKey": false,
+            "metaKey": false,
+            "movementX": 0,
+            "movementY": 0,
+            "offsetX": 0,
+            "offsetY": 0,
+            "region": "",
+            "relatedTarget": null,
+            "screenX": 0,
+            "screenY": 0,
+            "shiftKey": false
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "control-panel-title",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "returnToTitle",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "control-panel-page",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-tool-link",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-row",
+    "tag": "TR",
+    "events": ["click", "keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-field",
+    "tag": "INPUT",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-confirm-backdrop",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-confirm",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-confirm-cancel",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "control-panel-confirm-ok",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,
@@ -7252,78 +7480,6 @@
   },
   {
     "action": "newspaper-save",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "window-drag",
-    "tag": "DIV",
-    "events": ["pointerdown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "window-close",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "settings-search",
-    "tag": "INPUT",
-    "events": ["input", "keydown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "settings-revert",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "settings-save",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "settings-confirm",
-    "tag": "DIV",
-    "events": ["keydown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "settings-stay",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "settings-discard",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,

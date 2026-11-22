@@ -73,6 +73,7 @@ import { createCharMenu } from "./ui/charmenu.ts";
 import { createChatInput, createChatLog } from "./ui/chat.ts";
 import { createChatRoomWindow } from "./ui/chatroom.ts";
 import { createCheckersWindow } from "./ui/checkers.ts";
+import { createControlPanel } from "./ui/control-panel.ts";
 import { createFriendsWindow } from "./ui/friends.ts";
 import { desktopMenus, type MenuActions, type MenuState } from "./ui/gamemenu.ts";
 import { createGuildCenter } from "./ui/guildcenter.ts";
@@ -86,7 +87,7 @@ import { createPanel, type Tab } from "./ui/panel.ts";
 import { type Ghost, ghostTile, placementClick } from "./ui/placement.ts";
 import { createPlayerSettingsWindow } from "./ui/player-settings.ts";
 import { creationScreen, loginScreen, type Screen, titleScreen } from "./ui/screens.ts";
-import { createSettingsWindow } from "./ui/settings.ts";
+import { createSettingsPanel } from "./ui/settings.ts";
 import { createGameView, type GameView } from "./ui/shells.ts";
 import { createShopWindow } from "./ui/shop.ts";
 import { createSignPanel } from "./ui/sign.ts";
@@ -183,8 +184,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   let permissions: ReadonlySet<string> = new Set();
   let editor: WorldEditor | null = null;
   let npcEditor: NpcEditor | null = null;
-  /** Which editor is up; either opens from the other. */
-  let editing: "world" | "npc" | null = null;
+  /** Which editor, or the Control Panel, is up; each opens from the others. */
+  let editing: "world" | "npc" | "controlPanel" | null = null;
 
   /** The title screen is the screen showing (the menu bar hides Game there). */
   let atTitle = false;
@@ -213,7 +214,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         conn.send({ t: "npcEditOpen" });
       }
     },
-    serverSettings: () => conn.send({ t: "settingsOpen" }),
+    controlPanel: () => {
+      if (editing !== "controlPanel") {
+        conn.send({ t: "controlPanelOpen" });
+      }
+    },
     playerSettings: () => {
       releaseAll(input, sink);
       playerSettingsWin.open(prefs, ignores, menuState.inPlay());
@@ -543,13 +548,78 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       send({ t: "placeCancel" });
     }
   };
-  const settingsWin = createSettingsWindow(windows, {
+  // ---- the Control Panel and its pages ------------------------------------------------------
+  const settingsPanel = createSettingsPanel({
     save: (values) => send({ t: "settingsSave", values }),
     saveRole: (role, create) => send({ t: "roleSave", role, create }),
     deleteRole: (id) => send({ t: "roleDelete", id }),
     assignRole: (name, role) => send({ t: "roleAssign", name, role }),
     load: () => send({ t: "settingsOpen" }),
   });
+  const settingsPage = document.createElement("div");
+  settingsPage.className = "control-panel-settings";
+  settingsPage.append(settingsPanel.el);
+  const controlPanel = createControlPanel({
+    pages: [
+      {
+        id: "settings",
+        title: "Server Settings",
+        group: "Server",
+        permission: "settings",
+        el: settingsPage,
+        onShow: () => send({ t: "settingsOpen" }),
+        changes: () => settingsPanel.changes(),
+        discard: () => settingsPanel.discard(),
+      },
+    ],
+    // The classic editors, until their Control Panel pages arrive (#32, #33).
+    links: [
+      {
+        id: "worldEditor",
+        title: "World Editor",
+        group: "Classic tools",
+        permission: "worldEditor",
+        run: menuActions.worldEditor,
+      },
+      {
+        id: "npcEditor",
+        title: "NPC Editor",
+        group: "Classic tools",
+        permission: "npcEditor",
+        run: menuActions.npcEditor,
+      },
+    ],
+    actions: {
+      returnToGame: menuActions.returnToGame,
+      returnToTitle: menuActions.returnToTitle,
+      openFriends: menuActions.openFriends,
+      openWho: menuActions.openWho,
+      sendIm: menuActions.sendIm,
+      enterRoom: menuActions.enterRoom,
+      playerSettings: menuActions.playerSettings,
+    },
+    can: (permission) => permissions.has(permission),
+  });
+  /** Out of an editor or the Control Panel: open questions close and unsaved drafts go. */
+  const leaveEditing = () => {
+    if (editing === "controlPanel") {
+      controlPanel.close();
+      settingsPanel.discard();
+    }
+    editing = null;
+  };
+  /** Puts the Control Panel in the game's place; the floating windows go to their own size over it. */
+  const showControlPanel = () => {
+    releaseFocus();
+    game = null;
+    screen = null;
+    screenStage = null;
+    atTitle = false;
+    menuBar.refresh();
+    container.replaceChildren(controlPanel.el);
+    windows.setScale(1);
+    controlPanel.open();
+  };
   const applyPrefs = (next: PlayerPreferences) => {
     prefs = next;
     setLayout(input, sink, next.controlSet, next.keyBindings);
@@ -862,7 +932,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   };
 
   function relayout() {
-    if (game) {
+    if (editing === "controlPanel") {
+      windows.setScale(1);
+    } else if (game) {
       game.fit(window.innerWidth, window.innerHeight, prefs.gameSize === "sharp");
       windows.setScale(game.scale);
     } else {
@@ -892,6 +964,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         friendsReady = false;
         onlineFriends = new Set();
         lastPresenceOn = null;
+        // A resumed session is back on the map: the server does not keep an editor or the Control
+        // Panel open across a dropped connection, so neither does the client.
+        if (editing) {
+          leaveEditing();
+        }
         if (!game) {
           enterGame();
         }
@@ -1023,18 +1100,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         // Sent at entry and whenever your role or its definition changes.
         permissions = new Set(msg.permissions);
         menuBar.refresh();
-        if (!permissions.has("settings")) {
-          settingsWin.window.close();
-        }
+        controlPanel.refresh();
         return;
       case "settings":
-        settingsWin.show(msg.pages, msg.rows, { roles: msg.roles, staff: msg.staff });
+        settingsPanel.show(msg.pages, msg.rows, { roles: msg.roles, staff: msg.staff });
         return;
       case "roleResult":
-        settingsWin.roleResult(msg);
+        settingsPanel.roleResult(msg);
         return;
       case "settingsResult":
-        settingsWin.result(msg);
+        settingsPanel.result(msg);
         return;
       case "prefs":
         ignores = [...msg.ignores];
@@ -1104,6 +1179,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
             });
           }
           if (editing !== "world") {
+            leaveEditing();
             editing = "world";
             releaseAll(input, sink);
             sign.close();
@@ -1113,7 +1189,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           editor.show(msg.map, msg.exists);
         } else {
           // The snapshot that follows puts the game back (Return To Game → frame 49).
-          editing = null;
+          leaveEditing();
+        }
+        return;
+      case "controlPanel":
+        if (editing !== "controlPanel") {
+          editing = "controlPanel";
+          releaseAll(input, sink);
+          sign.close();
+          charMenu.close();
+          showControlPanel();
         }
         return;
       case "npcEditor":
@@ -1124,6 +1209,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           });
         }
         if (editing !== "npc") {
+          leaveEditing();
           editing = "npc";
           releaseAll(input, sink);
           sign.close();
@@ -1235,6 +1321,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           editor?.addChat(msg.text);
         }
         chat.add(msg.text, msg.color);
+        // The game's chat log is not on screen in the Control Panel: the line shows there too.
+        if (editing === "controlPanel") {
+          controlPanel.notice(msg.text);
+        }
         // A refused line goes back in the input, as 1.6 left a refused broadcast typed.
         if (msg.restore !== undefined) {
           restoreTo(msg.restore, msg.restoreTo);
@@ -1246,6 +1336,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           away.log(msg.from, msg.text);
         } else {
           ims.receive(msg.from, msg.text);
+          if (editing === "controlPanel") {
+            controlPanel.noteIm();
+          }
           if (prefs.imChime) {
             audio.playChime("im");
           }
@@ -1336,7 +1429,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     blackjack.close();
     checkers.reset();
     bio.window.close();
-    settingsWin.window.close();
+    // A new session (perhaps another account) starts the Control Panel afresh.
+    controlPanel.reset();
+    settingsPanel.discard();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];
@@ -1421,7 +1516,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   };
   const hasConfirmModal = () =>
     playerSettingsWin.isConfirmOpen() ||
-    root.querySelector(".settings-confirm:not([hidden])") !== null;
+    root.querySelector(".settings-confirm:not([hidden]), .control-panel-confirm") !== null;
   const onKeyDown = (e: KeyboardEvent) => {
     if (!game || typingIn(e.target) || playerSettingsWin.isCapturing() || hasConfirmModal()) {
       return;

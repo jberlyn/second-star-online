@@ -365,6 +365,7 @@ body {
 .settings-pane {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -624,6 +625,324 @@ body {
 }
 .settings-save:hover {
   background: #a9c4ff;
+}
+
+/* The Control Panel (ui/control-panel.ts, ui/control-panel-kit.ts): an SSO dashboard over the whole page, not
+   original art (1.6 had none). Colours follow the Server Settings page. The floating windows'
+   layer stays above it. */
+.control-panel {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1c1c1c;
+  color: #ddd;
+  font:
+    13px / 1.4 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+}
+.control-panel-header {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 16px;
+  background: #222;
+  border-bottom: 1px solid #333;
+}
+.control-panel-brand {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+.control-panel-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.control-panel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font: inherit;
+  color: #eee;
+  background: #2f2f2f;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.control-panel-btn:hover {
+  background: #3a3a3a;
+}
+.control-panel-btn:focus-visible,
+.control-panel-link:focus-visible,
+.control-panel-rooms:focus-visible,
+.control-panel-row-open:focus-visible {
+  outline: 2px solid #8fb3ff;
+  outline-offset: 1px;
+}
+.control-panel-btn-primary {
+  color: #0b1a3a;
+  background: #8fb3ff;
+  border-color: #8fb3ff;
+  font-weight: 600;
+}
+.control-panel-btn-primary:hover {
+  background: #a9c4ff;
+}
+.control-panel-btn-danger {
+  color: #2a0b0b;
+  background: #ff8a80;
+  border-color: #ff8a80;
+}
+.control-panel-btn-danger:hover {
+  background: #ffa59d;
+}
+.control-panel-badge {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #f0b429;
+  color: #1c1c1c;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.control-panel-badge[hidden] {
+  display: none;
+}
+.control-panel-rooms {
+  padding: 5px 8px;
+  font: inherit;
+  color: #eee;
+  background: #2f2f2f;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+.control-panel-notice {
+  flex: none;
+  margin: 0;
+  padding: 6px 16px;
+  background: #262626;
+  border-bottom: 1px solid #333;
+  color: #eee;
+}
+.control-panel-notice[hidden] {
+  display: none;
+}
+.control-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.control-panel-sidebar {
+  flex: none;
+  width: 200px;
+  overflow-y: auto;
+  padding: 12px 8px;
+  background: #222;
+  border-right: 1px solid #333;
+}
+.control-panel-group + .control-panel-group {
+  margin-top: 14px;
+}
+.control-panel-group-title {
+  margin: 0 0 4px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+}
+.control-panel-link {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #ccc;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.control-panel-link:hover {
+  background: #2c2c2c;
+  color: #fff;
+}
+.control-panel-link[aria-current="page"] {
+  background: #2f3a52;
+  color: #fff;
+}
+.control-panel-link-out::after {
+  content: " ↗";
+  color: #8a8a8a;
+}
+.control-panel-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+.control-panel-none {
+  margin: 24px;
+  color: #aaa;
+}
+.control-panel-settings {
+  position: absolute;
+  inset: 0;
+}
+.control-panel-settings .settings {
+  background: none;
+}
+.control-panel-heading {
+  padding: 16px 20px 10px;
+  border-bottom: 1px solid #333;
+}
+.control-panel-heading-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+.control-panel-heading-intro {
+  margin: 2px 0 0;
+  color: #aaa;
+}
+.control-panel-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.control-panel-table th,
+.control-panel-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #2e2e2e;
+  text-align: left;
+}
+.control-panel-table th {
+  color: #aaa;
+  font-weight: 600;
+  background: #222;
+  position: sticky;
+  top: 0;
+}
+.control-panel-table .control-panel-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.control-panel-row-open {
+  cursor: pointer;
+}
+.control-panel-row-open:hover {
+  background: #262626;
+}
+.control-panel-table[hidden],
+.control-panel-table-empty[hidden] {
+  display: none;
+}
+.control-panel-table-empty {
+  margin: 12px 10px;
+  color: #aaa;
+}
+.control-panel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+.control-panel-field-label {
+  color: #fff;
+}
+.control-panel-field input,
+.control-panel-field select,
+.control-panel-field textarea {
+  font: inherit;
+  color: #eee;
+  background: #2a2a2a;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.control-panel-field-help {
+  margin: 0;
+  color: #9a9a9a;
+  font-size: 12px;
+}
+.control-panel-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 55%);
+}
+.control-panel-confirm-box {
+  max-width: 400px;
+  padding: 16px;
+  background: #262626;
+  border: 1px solid #555;
+  border-radius: 6px;
+}
+.control-panel-confirm-box p {
+  margin: 0 0 14px;
+  color: #eee;
+}
+.control-panel-confirm-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .control-panel-body {
+    flex-direction: column;
+  }
+  .control-panel-sidebar {
+    width: auto;
+    max-height: 30vh;
+    border-right: 0;
+    border-bottom: 1px solid #333;
+  }
+  .control-panel-tools {
+    margin-left: 0;
+  }
+  /* Server Settings was laid out for a 720px window: on a phone its page list runs across the
+     top and each setting's control goes under its label. */
+  .control-panel .settings {
+    flex-direction: column;
+  }
+  .control-panel .settings-nav {
+    width: auto;
+    border-right: 0;
+    border-bottom: 1px solid #333;
+  }
+  .control-panel .settings-links {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .control-panel .settings-link {
+    flex: none;
+  }
+  .control-panel .settings-head {
+    flex-wrap: wrap;
+  }
+  .control-panel .settings-control {
+    flex-wrap: wrap;
+  }
+  .control-panel .settings-footer {
+    flex-wrap: wrap;
+  }
 }
 
 /* Settings → Roles and Staff (ui/settings-roles.ts). */

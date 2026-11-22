@@ -125,7 +125,7 @@ That source-build configuration sets `SSO_PROXY_HOPS=1` for a host reverse proxy
 | `SSO_CLIENT_DIR` | `dist/client` | Optional override for the prebuilt production client directory (used by tests). |
 | `SSO_PROXY_HOPS` | `0` | Number of trusted reverse proxies in front of the server (whole number `>= 0`; invalid values refuse startup). The recommended Compose example sets `0`; use `1` behind a single reverse proxy. |
 | `SSO_FRAME_ANCESTORS` | unset | Optional CSP `frame-ancestors` directive value. Unset adds no `frame-ancestors` directive. |
-| `SSO_SAVE_INTERVAL` | `30s` | How often online characters are saved, besides saves on logout and map change. A time from `1s` to `1h`, written like the Server Settings window's times (`30s`, `2m`). |
+| `SSO_SAVE_INTERVAL` | `30s` | How often online characters are saved, besides saves on logout and map change. A time from `1s` to `1h`, written like the Server Settings page's times (`30s`, `2m`). |
 | `SSO_RECONNECT_GRACE` | `30s` | How long a dropped connection can resume with its token without logging in again. `0` to `5m`; `0` turns resuming off. |
 | `SSO_SOCKETS_PER_IP` | `10` | Open connections one address (IPv6 `/64`) may hold at once. Whole number `0`–`1000`; `0` turns the limit off. Connections of roles with the login-limit bypass (moderators and administrators by default) stop counting once logged in. |
 | `SSO_PERF_OUT` | unset | Path to append once-a-second JSON performance samples (see [performance.md](performance.md)). |
@@ -182,19 +182,19 @@ Staff are accounts with a **role**. A role has an id (such as `moderator`), a di
 
 A new server starts with two roles:
 
-- **`moderator`** (Moderator, rank 1): an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute` and `/banlist`, plus `/location` and `/inventory`, and can read and post staff chat (`-text`). Bans, jails and mutes reach players only, never another moderator, an administrator or themselves; a moderator also cannot kick an administrator. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except for the login-limit bypass (see `loginFailsPerIp`). `/pardon`, `/iplookup`, `/save`, `/refresh`, `/BanIP`, `/unbanip`, `/chatlog`, `/auditlog`, `/cheatfile`, `/drop`, `/setclass`, `/roster`, `/spawn`, the Admin Chat room, the Assassin's Game controls, and the editor and Server Settings windows are administrators'.
-- **`administrator`** (Admin, rank 2): every permission. Full command access, staff chat, the Admin Chat room, World Editor, NPC Editor, Server Settings (including the roles), and Assassin's Game controls. An administrator can ban, jail or mute anyone but themselves and change or lift any ban, IP ban, jail or mute, and IP bans never stop an administrator's login. Administrators take no damage of any kind, never get hungry, cannot be pushed, stay off the high scores, drop on every death and skip the chat and broadcast waits.
+- **`moderator`** (Moderator, rank 1): an ordinary player who moderates others. A moderator can `/kick`, `/ban`, `/unban`, `/jail`, `/unjail`, `/mute`, `/unmute` and `/banlist`, plus `/location` and `/inventory`, and can read and post staff chat (`-text`). Bans, jails and mutes reach players only, never another moderator, an administrator or themselves; a moderator also cannot kick an administrator. A moderator has no warps (`/warp`, `/warptome`, `/warpmeto`, `/warpscript`) and plays by the same rules as everyone else, except for the login-limit bypass (see `loginFailsPerIp`). `/pardon`, `/iplookup`, `/save`, `/refresh`, `/BanIP`, `/unbanip`, `/chatlog`, `/auditlog`, `/cheatfile`, `/drop`, `/setclass`, `/roster`, `/spawn`, the Admin Chat room, the Assassin's Game controls, the editors and the Control Panel are administrators'.
+- **`administrator`** (Admin, rank 2): every permission. Full command access, staff chat, the Admin Chat room, World Editor, NPC Editor, the Control Panel with Server Settings (including the roles), and Assassin's Game controls. An administrator can ban, jail or mute anyone but themselves and change or lift any ban, IP ban, jail or mute, and IP bans never stop an administrator's login. Administrators take no damage of any kind, never get hungry, cannot be pushed, stay off the high scores, drop on every death and skip the chat and broadcast waits.
 
 Every one of these is a permission you can turn on or off for each role, and you can add roles of your own, such as a helper who can only `/mute`. Any role makes an account staff: it reads and posts staff chat and can be sent IMs by jailed and muted players, so roles are for staff, not for perks. Bans, jails, mutes and pardons reach only accounts of lower rank, unless the staff member's role has the **Overrule** permission. `/kick`, `/iplookup`, `/warp` and `/warptome` are looser: they refuse only a target whose rank is higher than yours, so a moderator can kick or look up another moderator. `/warpmeto` has no rank check (it refuses only a jailed caller), and `/warpscript` never warps a speaker whose rank is higher than the staff member's.
 
 ### Editing roles and giving them out
 
-Open **Admin → Server Settings** and choose:
+Open **Admin → Control Panel**, then **Server Settings**, and choose:
 
 - **Roles** to edit a role's display name, rank and permissions, add a role (**New role…**) or delete one. **Save** applies the role at once to everyone online who holds it. Deleting a role leaves its accounts with no role. At least one role must keep every permission, so the server can always be run.
 - **Staff** to see every account with a role, change one with its picker (or **No role** to take it away), or type a character's name and **Give role**. Changes apply at once, also to anyone online. You cannot change your own role here.
 
-Both pages need the **Server Settings** permission (administrators by default). There is no in-game chat command for roles. Every role edit, deletion and assignment is recorded in the audit log.
+Both pages need the **Server Settings, roles and staff** permission (administrators by default). There is no in-game chat command for roles. Every role edit, deletion and assignment is recorded in the audit log.
 
 **Upgrading from 1.10.0 or earlier:** `immortal` accounts become `administrator`, `player` accounts have no role, and moderators keep their role with the permissions v1.11.0 gave it, so they lose the warps and `/pardon` or `/warp` on themselves. `/role` is gone: give roles on the Staff page or with `bun run admin:role`. Scripts that set `accounts.role` must write a role id (`administrator`, `moderator`) or `NULL`. The moderation tables' `actor_rank` column is now `actor_role` and holds the role's display name (`Admin`, `Moderator`).
 
@@ -219,6 +219,14 @@ The Chat and mail page's `roleTags` setting (off by default) shows the speaker's
 3. Log out and log in again in the browser. Command-line role changes take effect at the account's next login, whereas the Staff page updates an online account immediately.
 
 The command line is also the way back in if you ever leave no one able to open Server Settings.
+
+### The Control Panel
+
+Administrators open **Admin → Control Panel** from the top menu bar. The game gives way to a full-page dashboard; **Return to Game** at the top brings you back where you stood. While you are in the Control Panel you stay online but are off the map, as in the World Editor: other players see you leave, and trades, shops and held actions are cancelled. The header also opens Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms and Player Settings as floating windows over the dashboard, and Return To Title Screen logs out. The sidebar lists the admin pages your role may use, with the World Editor and NPC Editor under **Classic tools** until their Control Panel pages arrive.
+
+The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff**. The Roles page also lists **Control Panel: edit items, monsters and NPCs**, **Control Panel: edit characters** and **Control Panel: read the player activity log** for the pages still to come; they do nothing yet.
+
+**Upgrading from 1.13.0 or earlier:** **Admin → Server Settings** moved into the Control Panel, and the floating Server Settings window is gone. A role that held every permission gets the three new Control Panel permissions, so it still holds every permission; other roles are left as they are.
 
 ### Bans, jails, mutes and IP bans
 
@@ -322,13 +330,13 @@ See [Admin guide](guides/admin.md) and [Chat guide](guides/chat.md) for parser d
 
 ## Server settings
 
-Administrators open **Admin → Server Settings** from the top menu bar. The window has a sidebar of pages (World, Chat and mail, Items, Moderation, Logins, Logs, and the [Roles and Staff](#editing-roles-and-giving-them-out) pages) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
+Administrators open **Admin → Control Panel** from the top menu bar and choose **Server Settings**. The page has its own sidebar of pages (World, Chat and mail, Items, Moderation, Logins, Logs, and the [Roles and Staff](#editing-roles-and-giving-them-out) pages) and a search box that finds a setting on any page by its label, explanation or key; choosing a result opens its page at that setting.
 
-Each page is saved on its own. Clicking **SAVE** validates the page's fields on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values. Only the open page can hold unsaved changes: leaving it for another page or a search result, or closing the window, asks first, and the changes are discarded if you go on.
+Each page is saved on its own. Clicking **SAVE** validates the page's fields on the client and server, writes changed values as JSON overrides in the `settings` table, records each change in `audit_log`, and applies the new settings to everyone online immediately (without requiring `/refresh`). **REVERT** reloads the server's current values. Only the open page can hold unsaved changes: leaving it for another page, a search result, another Control Panel page, a classic editor or the game asks first, and the changes are discarded if you go on.
 
-Server infrastructure (save interval, reconnect grace, open connections per address) is not in the window; set it with [environment variables](#environment-variables).
+Server infrastructure (save interval, reconnect grace, open connections per address) is not in Server Settings; set it with [environment variables](#environment-variables).
 
-Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w` (or words such as `5 min` or `2 hours`), several in a row if needed (`1h 30m`, `1d12h`). The window shows them the same way. Each is stored in whole seconds, so a value in the `settings` table or an audit row is a number of seconds. Where `0` is allowed, the window says what it means (`off`, `permanent` or `forever`). For rate limits, `0` disables the limit; rate-limit counters live in memory and reset on server restart, grouping IPv6 addresses by `/64` prefix.
+Lengths of time are typed as time: a number and a unit, `s`, `m`, `h`, `d` or `w` (or words such as `5 min` or `2 hours`), several in a row if needed (`1h 30m`, `1d12h`). The page shows them the same way. Each is stored in whole seconds, so a value in the `settings` table or an audit row is a number of seconds. Where `0` is allowed, the page says what it means (`off`, `permanent` or `forever`). For rate limits, `0` disables the limit; rate-limit counters live in memory and reset on server restart, grouping IPv6 addresses by `/64` prefix.
 
 **Upgrading from 1.7.0 or earlier:** the duration settings were renamed to drop their unit, and their stored values are converted to seconds when the server starts: `saveIntervalTicks` → `saveInterval`, `broadcastCooldownFrames` → `broadcastCooldown`, `chatCooldownFrames` → `chatCooldown`, `resumeGraceMs` → `resumeGrace`, `npcChatterSeconds` → `npcChatter`, `lootDecayMinutes` → `lootDecay`, `jailMinutes` → `jailSentence`, `banMinutes` → `banLength`, `ipBanMinutes` → `ipBanLength`, `addressHistoryDays` → `addressHistory`, `chatLogRetentionDays` → `chatLogRetention` and `auditLogRetentionDays` → `auditLogRetention`. A frame count rounds to the nearest second (a wait that was on stays at least `1s`), and milliseconds round to the nearest second. Update any scripts that write these keys to the `settings` table.
 

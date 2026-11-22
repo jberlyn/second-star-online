@@ -90,8 +90,9 @@ export function openTrade(world: World, p: Player, targetId: string): Outgoing[]
     return [tell(p, TRADE_TEXT.self)];
   }
   const b = world.players.get(targetId);
-  // A trade already in progress exits silently; so does a player not on your map.
-  if (!b || b.map !== p.map || p.trade) {
+  // A trade already in progress exits silently; so does a player not on your map, or off it in
+  // an editor or the Control Panel (SSO).
+  if (!b || b.editing || b.map !== p.map || p.trade) {
     return [];
   }
   const refused = tradeRefusal(p, b);
@@ -166,8 +167,9 @@ export function offerTrade(world: World, p: Player, msg: TradeOfferMsg): Outgoin
       end(world, t);
       return [view(p, null), tell(p, refused)];
     }
-    // B must not be in another trade: in 1.6 A's first send took B over (closed).
-    if (other.trade !== null && other.trade !== t.id) {
+    // B must still be on A's map (not gone to another map, an editor or the Control Panel, SSO),
+    // and not in another trade: in 1.6 A's first send took B over (closed).
+    if (other.map !== p.map || other.editing || (other.trade !== null && other.trade !== t.id)) {
       end(world, t);
       return [view(p, null), tell(p, TRADE_TEXT.cancelled)];
     }
@@ -200,18 +202,28 @@ export function cancelTrade(world: World, p: Player): Outgoing[] {
 
 /**
  * A trader changed map or left: the trade ends for both, each told "Trade cancelled." (the
- * leaver only if still connected and its window was open).
+ * leaver only if still connected and its window was open). A trade A has opened with the leaver
+ * but not yet sent ends too (SSO): A's first send would otherwise reach a player who has gone.
  */
 export function leaveTrade(world: World, p: Player): Outgoing[] {
-  const t = p.trade ? world.trades.get(p.trade) : undefined;
-  if (!t) {
-    return [];
-  }
+  // Your own trade, and every trade others have opened with you but not sent: several players
+  // can each have one open at once.
+  const own = p.trade ? world.trades.get(p.trade) : undefined;
+  const pending = [...world.trades.values()].filter(
+    (x) => x !== own && x.b === p.id && x.aOffer === null,
+  );
+  return [...(own ? [own] : []), ...pending].flatMap((t) => endFor(world, p, t));
+}
+
+/** Ends `t` because `p` left; tells whoever has its window open. */
+function endFor(world: World, p: Player, t: Trade): Outgoing[] {
   const isA = t.a === p.id;
   const other = world.players.get(isA ? t.b : t.a);
+  // A trade not yet sent to the leaver never opened their window: nothing to tell them.
+  const windowOpen = p.trade === t.id;
   end(world, t);
   const out: Outgoing[] = [];
-  if (world.players.has(p.id)) {
+  if (windowOpen && world.players.has(p.id)) {
     out.push(view(p, null), tell(p, TRADE_TEXT.cancelled));
   }
   if (other && (!isA || t.aOffer !== null)) {

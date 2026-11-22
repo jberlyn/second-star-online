@@ -70,7 +70,7 @@ import { hears } from "../chat/ignore.ts";
 import { pardon } from "../social/murder.ts";
 import { releaseFromJail, warp } from "../world/tick.ts";
 import type { Outgoing, Player, World, WorldMap } from "../world/world.ts";
-import { closeEditor } from "./worldedit.ts";
+import { closeEditor, mayEdit } from "./worldedit.ts";
 
 /** A character and its account (persistence/admin.ts `findCharacterAccount`). */
 export interface CharacterAccount {
@@ -195,8 +195,8 @@ export function adminWarp(
 /**
  * Puts `role` in force for an online player at once (a role assigned in the Server Settings window
  * or with `admin:role`, or the definition of their role changed): they get their new permissions,
- * a `/warpscript` they may no longer use is cleared, and they leave an editor they may no longer
- * use. A room they may no longer be in drops them on the next tick (`roomMembership`).
+ * a `/warpscript` they may no longer use is cleared, and they leave an editor or the Control Panel
+ * they may no longer use. A room they may no longer be in drops them on the next tick (`roomMembership`).
  */
 export function applyRole(world: World, t: Player, role: Role): Outgoing[] {
   t.role = role;
@@ -204,7 +204,7 @@ export function applyRole(world: World, t: Player, role: Role): Outgoing[] {
     t.warpscript = null;
   }
   const out: Outgoing[] = [{ to: t.id, msg: permissionsMsg(role) }];
-  if (t.editing && !can(role, t.editing === "world" ? "worldEditor" : "npcEditor")) {
+  if (t.editing && !mayEdit(role, t.editing)) {
     out.push(...closeEditor(world, t));
   }
   return out;

@@ -145,7 +145,7 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("Admin holds World Editor, NPC Editor, Return To Game, Server Settings, then the three Assassin items; Admin Chat is on Chat; NPC Editor sends npcEditOpen and shows frame 311; the field keeps its text between visits", () => {
+  test("Admin holds Control Panel, World Editor, NPC Editor, Return To Game, then the three Assassin items; Admin Chat is on Chat; NPC Editor sends npcEditOpen and shows frame 311; the field keeps its text between visits", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -156,11 +156,11 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage(SNAPSHOT);
     expect(menuTexts(root, "Admin")).toEqual([
+      "Control Panel",
+      "-",
       "World Editor",
       "NPC Editor",
       "Return To Game",
-      "-",
-      "Server Settings",
       "-",
       "Begin Assassin's Game",
       "Begin Lightning Assassin's Game",

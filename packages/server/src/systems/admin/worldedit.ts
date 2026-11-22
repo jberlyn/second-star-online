@@ -15,6 +15,7 @@ import {
   airshipWalkGrid,
   blankMap,
   can,
+  canOpenControlPanel,
   type DeltaEvent,
   type EditorMap,
   type EditorMob,
@@ -32,6 +33,7 @@ import { mintContainerId } from "../crafting/craft.ts";
 import { leaveTrade } from "../economy/trade.ts";
 import { spawnHp } from "../monsters/spawn.ts";
 import {
+  type Editing,
   enterRoom,
   type GroundItem,
   groundView,
@@ -88,14 +90,14 @@ export function editorMap(
 }
 
 /**
- * Leaving the map for an editor (`##!` + `LeaveGroup`): everyone there sees you go, and nothing on
- * it ticks for you. From the other editor you are already off the map (menu 502 opens either editor
- * from either).
+ * Leaving the map for an editor or the Control Panel (`##!` + `LeaveGroup`): everyone there sees you
+ * go, and nothing on it ticks for you. From another editor or the Control Panel you are already off the
+ * map, so moving between them never puts you back on it (menu 502 opens either editor from either).
  */
 export function leaveForEditor(
   world: World,
   p: Player,
-  which: "world" | "npc",
+  which: Editing,
   casino: CasinoDeps,
 ): Outgoing[] {
   if (p.editing) {
@@ -130,6 +132,18 @@ export function openEditor(
   const { map, exists } = editorMap(loadMap, coords.mx, coords.my);
   out.push({ to: p.id, msg: { t: "editor", editing: true, map, exists } });
   return out;
+}
+
+/** Whether `role` may stay where `editing` is (a role change can take it away). */
+export function mayEdit(role: Player["role"], editing: Editing): boolean {
+  switch (editing) {
+    case "world":
+      return can(role, "worldEditor");
+    case "npc":
+      return can(role, "npcEditor");
+    case "controlPanel":
+      return canOpenControlPanel(role);
+  }
 }
 
 /** Return To Game: back where you were, with the login i-frames. */

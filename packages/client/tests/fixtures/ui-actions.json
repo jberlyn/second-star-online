@@ -139,6 +139,81 @@
     "hidden": 0,
     "disabled": 0
   },
+  "control-panel-confirm": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-confirm-backdrop": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-confirm-cancel": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-confirm-ok": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-field": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-friends": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-im": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-page": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-player-settings": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-return": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-room": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-row": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-title": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-tool-link": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "control-panel-who": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
   "creation-cancel": {
     "count": 1,
     "hidden": 0,
@@ -920,7 +995,7 @@
     "disabled": 0
   },
   "roles-permission": {
-    "count": 44,
+    "count": 47,
     "hidden": 0,
     "disabled": 0
   },
@@ -940,12 +1015,12 @@
     "disabled": 0
   },
   "settings-confirm": {
-    "count": 4,
+    "count": 3,
     "hidden": 0,
     "disabled": 0
   },
   "settings-discard": {
-    "count": 4,
+    "count": 3,
     "hidden": 0,
     "disabled": 0
   },
@@ -960,22 +1035,22 @@
     "disabled": 0
   },
   "settings-revert": {
-    "count": 4,
+    "count": 3,
     "hidden": 0,
     "disabled": 0
   },
   "settings-save": {
-    "count": 4,
+    "count": 3,
     "hidden": 1,
     "disabled": 0
   },
   "settings-search": {
-    "count": 4,
+    "count": 3,
     "hidden": 0,
     "disabled": 0
   },
   "settings-stay": {
-    "count": 4,
+    "count": 3,
     "hidden": 0,
     "disabled": 0
   },
@@ -1140,12 +1215,12 @@
     "disabled": 0
   },
   "window-close": {
-    "count": 35,
+    "count": 31,
     "hidden": 0,
     "disabled": 0
   },
   "window-drag": {
-    "count": 35,
+    "count": 31,
     "hidden": 0,
     "disabled": 0
   }

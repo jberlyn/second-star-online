@@ -1,4 +1,4 @@
-/** The World Editor, the NPC editor and the Server Settings window. */
+/** The World Editor, the NPC editor, the Control Panel and its Server Settings page. */
 import { z } from "zod";
 
 import {
@@ -65,6 +65,12 @@ export const editSaveSchema = z.strictObject({ t: z.literal("editSave"), map: ed
 /** Admin menu → Return To Game. */
 export const editCloseSchema = z.strictObject({ t: z.literal("editClose") });
 
+/**
+ * Admin menu → Control Panel: the admin leaves the map, as for the editors, and the client shows
+ * the Control Panel. Leaving it is Return to Game (`editClose`).
+ */
+export const controlPanelOpenSchema = z.strictObject({ t: z.literal("controlPanelOpen") });
+
 /** A name from the editor's two lists (`NPCed`, `MONed`; the server checks it). */
 const npcName = z.string().max(40);
 
@@ -82,8 +88,8 @@ export const npcSaveSchema = z.strictObject({
 });
 
 /**
- * Admin menu → Server Settings, and the window's LOAD: the settings as the server holds them
- * (SSO's typed settings forms in place of the File Editor).
+ * The Control Panel's Server Settings page opens, and its Revert: the settings as the server holds
+ * them (SSO's typed settings forms in place of the File Editor).
  */
 export const settingsOpenSchema = z.strictObject({ t: z.literal("settingsOpen") });
 
@@ -97,7 +103,7 @@ export const settingsSaveSchema = z.strictObject({
   values: z.record(z.string().max(40), z.unknown()),
 });
 
-/** The Server Settings window closes (its close box). */
+/** The old Server Settings window's close box. No client sends it now; the server ignores it. */
 export const settingsCloseSchema = z.strictObject({ t: z.literal("settingsClose") });
 
 /** A role as the Roles page sends it (shared `RoleData`; the server checks it with `roleDataError`). */
@@ -206,6 +212,8 @@ export type AdminServerMsg =
   | { t: "editor"; editing: false }
   /** The NPC editor opens (frame 311, `go("NPC Editor")`). */
   | { t: "npcEditor" }
+  /** The Control Panel opens. Return to Game closes it with `editor` (`editing: false`). */
+  | { t: "controlPanel" }
   /**
    * LOAD's reply: the file as the server holds it, CR-separated; "" when there is
    * none. The client shows it through `showNpcScript`.

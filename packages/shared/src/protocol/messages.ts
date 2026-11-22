@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import {
   type AdminServerMsg,
+  controlPanelOpenSchema,
   editCloseSchema,
   editLoadSchema,
   editOpenSchema,
@@ -165,6 +166,7 @@ export const inGameSchema = z.discriminatedUnion("t", [
   npcEditOpenSchema,
   npcLoadSchema,
   npcSaveSchema,
+  controlPanelOpenSchema,
   settingsOpenSchema,
   settingsSaveSchema,
   settingsCloseSchema,

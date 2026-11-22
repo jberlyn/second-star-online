@@ -1,15 +1,16 @@
 /**
- * The Server Settings window: the operator's typed settings forms. It takes the File Editor's
- * place in the Admin menu but not its look: 1.6 had no settings screen, so this is a plain SSO
- * panel (the File Editor and its path-based file access are removed).
+ * The Server Settings page of the Control Panel: the operator's typed settings forms. It stands in
+ * for the File Editor but not its look: 1.6 had no settings screen, so this is a plain SSO panel
+ * (the File Editor and its path-based file access are removed). It was a floating window before
+ * the Control Panel; the Control Panel hosts it now (control-panel.ts).
  *
  * - A sidebar lists the pages the server sends (`SettingPage`), grouped by what an operator is
  *   trying to do, with a search over every setting's label and explanation; a result opens its
  *   page at that setting. Each setting's explanation is always shown under it (hover-only hints
  *   never show on a tablet).
  * - Each page is saved on its own. Only the open page can hold changes: leaving it with unsaved
- *   changes (another page, a search result on one, or the close button) asks first, and the
- *   changes are discarded if the operator goes on.
+ *   changes (another page, a search result on one, or another Control Panel page or Return to Game)
+ *   asks first, and the changes are discarded if the operator goes on.
  * - A length of time is typed as time ("30s", "5m", "1d 12h") and sent in whole seconds.
  * - A changed setting is marked and can be reset to its default; the footer counts the page's
  *   unsaved changes and its sidebar link gets a dot.
@@ -32,14 +33,14 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
+import { trapTab } from "./control-panel-kit.ts";
 import {
   type CustomPage,
   createRolesPage,
   createStaffPage,
   type RoleActions,
 } from "./settings-roles.ts";
-import type { GameWindow, WindowLayer } from "./window.ts";
-
+/** The Player Settings window's size (player-settings.ts), which shares this page's look. */
 export const SETTINGS_SIZE = { w: 720, h: 500 } as const;
 
 /** The rows' controls stand for the File Editor's fields (SSO's panel replaces them). */
@@ -56,11 +57,11 @@ export interface SettingsActions extends RoleActions {
 
 export type SettingsResult = { ok: true } | { ok: false; key: string | null; text: string };
 
-export interface SettingsWindow {
-  window: GameWindow;
+export interface SettingsPanel {
+  readonly el: HTMLElement;
   /**
-   * Fills the pages and opens the window (the server's `settings` reply). It stays on the open
-   * page when that page still exists, and the rows show what the server holds.
+   * Fills the pages (the server's `settings` reply). It stays on the open page when that page
+   * still exists, and the rows show what the server holds.
    */
   show(
     pages: readonly SettingPage[],
@@ -75,6 +76,20 @@ export interface SettingsWindow {
   values(): Record<string, unknown>;
   /** The open page's id. */
   readonly page: string | null;
+  /** How many unsaved changes the open page holds. */
+  changes(): number;
+  /**
+   * Runs `go` now, or after the operator agrees to drop the open page's changes. `what` finishes
+   * "If you …, they will be discarded" (by default "leave this page").
+   */
+  leave(go: () => void, what?: string): void;
+  /** Drops the leave question without going on (the Control Panel closed under it). */
+  cancelLeave(): void;
+  /**
+   * Drops the open page's unsaved changes: its rows show what the server last sent again, so a
+   * draft discarded on the way out is not there when the page opens next.
+   */
+  discard(): void;
 }
 
 interface Point {
@@ -573,7 +588,7 @@ function matches(r: SettingRow, query: string): boolean {
   return q !== "" && [r.label, r.tooltip, r.key].some((text) => text.toLowerCase().includes(q));
 }
 
-export function createSettingsWindow(layer: WindowLayer, actions: SettingsActions): SettingsWindow {
+export function createSettingsPanel(actions: SettingsActions): SettingsPanel {
   const stage = document.createElement("div");
   stage.className = "settings";
 
@@ -627,6 +642,7 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
   // Escape in the box is Keep editing.
   const confirmBox = action(document.createElement("div"), "settings-confirm");
   confirmBox.className = "settings-confirm-box";
+  confirmBox.tabIndex = -1; // a click on its text keeps focus here, for Escape and Tab
   confirmBox.setAttribute("aria-modal", "true");
   const confirmText = document.createElement("p");
   confirmText.id = "settings-confirm-text";
@@ -648,6 +664,7 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
     go?.();
   });
   confirmBox.addEventListener("keydown", (e) => {
+    trapTab(confirmBox, e);
     if (e.key === "Escape") {
       e.preventDefault();
       stay.click();
@@ -746,17 +763,13 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
     countChanges();
   };
 
-  /**
-   * Runs `go` now, or after the operator agrees to drop this page's changes. `closing`: the
-   * window is closing, not changing page.
-   */
-  const leave = (go: () => void, closing = false) => {
+  /** Runs `go` now, or after the operator agrees to drop this page's changes. */
+  const leave = (go: () => void, what = "leave this page") => {
     const n = changes();
     if (n === 0) {
       go();
       return;
     }
-    const what = closing ? "close the window" : "leave this page";
     confirmText.textContent = `You have ${n === 1 ? "an unsaved change" : `${n} unsaved changes`} on ${pageTitle(current)}. If you ${what}, ${n === 1 ? "it" : "they"} will be discarded.`;
     pendingLeave = go;
     confirm.hidden = false;
@@ -873,25 +886,8 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
   pane.append(title, intro, list, results, footer);
   stage.append(nav, pane, confirm);
 
-  const win = layer.create({
-    title: "Server Settings",
-    name: "settings",
-    width: SETTINGS_SIZE.w,
-    height: SETTINGS_SIZE.h,
-    body: stage,
-    onClose: closeConfirm,
-    // The close button asks too; a close by script (a demotion) does not.
-    beforeClose: () => {
-      if (changes() === 0) {
-        return true;
-      }
-      leave(() => win.close(), true);
-      return false;
-    },
-  });
-
   return {
-    window: win,
+    el: stage,
     show(nextPages, nextRows, lists) {
       pages = [...nextPages];
       rows = [...nextRows];
@@ -913,16 +909,14 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
           return a;
         }),
       );
-      // After a save or Revert the rows come again: stay on the page and keep the place. Opening
-      // moves the window to the top of the layer, which resets its scroll, so restore it after.
-      const stayOn = win.isOpen && pages.some((p) => p.id === current);
+      // After a save or Revert the rows come again: stay on the page and keep the place.
+      const stayOn = pages.some((p) => p.id === current);
       const top = stayOn ? list.scrollTop : 0;
       closeConfirm();
       render(stayOn && current ? current : (pages[0]?.id ?? ""));
       if (search.value.trim() !== "") {
         showResults();
       }
-      win.open();
       list.scrollTop = top;
     },
     result(r) {
@@ -946,6 +940,16 @@ export function createSettingsWindow(layer: WindowLayer, actions: SettingsAction
     values,
     get page() {
       return current;
+    },
+    changes,
+    leave,
+    cancelLeave: closeConfirm,
+    discard() {
+      closeConfirm();
+      clearSearch();
+      if (current !== null) {
+        render(current);
+      }
     },
   };
 }

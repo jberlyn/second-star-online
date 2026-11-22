@@ -47,8 +47,10 @@ The UI files are:
 - [packages/client/src/ui/placement.ts](../../packages/client/src/ui/placement.ts): house placement mode.
 - [packages/client/src/ui/player-settings.ts](../../packages/client/src/ui/player-settings.ts): Player Settings window (controls, display, sound, chat, social & privacy, accessibility).
 - [packages/client/src/ui/screens.ts](../../packages/client/src/ui/screens.ts): title, login and character creation.
-- [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): Server Settings window.
-- [packages/client/src/ui/settings-roles.ts](../../packages/client/src/ui/settings-roles.ts): Server Settings window's Roles and Staff pages.
+- [packages/client/src/ui/control-panel.ts](../../packages/client/src/ui/control-panel.ts): the Control Panel, which replaces the game view for admin pages.
+- [packages/client/src/ui/control-panel-kit.ts](../../packages/client/src/ui/control-panel-kit.ts): the Control Panel's shared table, form field and confirmation.
+- [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): the Control Panel's Server Settings page.
+- [packages/client/src/ui/settings-roles.ts](../../packages/client/src/ui/settings-roles.ts): Server Settings' Roles and Staff pages.
 - [packages/client/src/ui/shells.ts](../../packages/client/src/ui/shells.ts): game screen shell.
 - [packages/client/src/ui/shop.ts](../../packages/client/src/ui/shop.ts): shop and vault window.
 - [packages/client/src/ui/sign.ts](../../packages/client/src/ui/sign.ts): sign display.

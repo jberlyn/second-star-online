@@ -86,8 +86,13 @@ export function createWindowLayer(store?: WindowPosStore): WindowLayer {
   const place = (w: (typeof windows)[number]) => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const pw = w.win.offsetWidth * scale || w.opts.width * scale;
-    const ph = w.win.offsetHeight * scale || (w.opts.height + 20) * scale;
+    // A window larger than the screen (Player Settings on a phone) shrinks to fit, so its close
+    // button and edges stay reachable; any other window keeps the layer's scale.
+    const baseW = w.win.offsetWidth || w.opts.width;
+    const baseH = w.win.offsetHeight || w.opts.height + 20;
+    const s = Math.min(scale, vw / baseW, vh / baseH);
+    const pw = baseW * s;
+    const ph = baseH * s;
     let seed = w.pos;
     if (!seed && store?.shouldRemember()) {
       seed = store.load(posKey(w.opts));
@@ -98,7 +103,7 @@ export function createWindowLayer(store?: WindowPosStore): WindowLayer {
     w.pos = pos;
     w.win.style.left = `${pos.x}px`;
     w.win.style.top = `${pos.y}px`;
-    w.win.style.transform = `scale(${scale})`;
+    w.win.style.transform = `scale(${s})`;
   };
 
   return {

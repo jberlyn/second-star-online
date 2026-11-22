@@ -10,7 +10,11 @@
  * Return To Title Screen on login and creation). The rest appears once a character is in play.
  */
 
-import type { KeyAction, Permission } from "@secondstaronline/shared";
+import {
+  CONTROL_PANEL_PERMISSIONS,
+  type KeyAction,
+  type Permission,
+} from "@secondstaronline/shared";
 
 import type { Menu, MenuItem } from "./menubar.ts";
 
@@ -37,7 +41,7 @@ export interface MenuActions {
   enterRoom(room: Room): void;
   worldEditor(): void;
   npcEditor(): void;
-  serverSettings(): void;
+  controlPanel(): void;
   playerSettings(): void;
   editNewspaper(): void;
   returnToGame(): void;
@@ -47,7 +51,12 @@ export interface MenuActions {
 const SEP: MenuItem = { kind: "sep" };
 
 /** The permissions behind the Admin menu's items: any one shows the menu. */
-const ADMIN_MENU: readonly Permission[] = ["worldEditor", "npcEditor", "settings", "assassinGame"];
+const ADMIN_MENU: readonly Permission[] = [
+  "worldEditor",
+  "npcEditor",
+  "assassinGame",
+  ...CONTROL_PANEL_PERMISSIONS,
+];
 
 /** The desktop bar's menus: Game, Chat, Admin (for roles with an admin tool). */
 export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
@@ -63,6 +72,8 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
     ...(key ? { shortcut: () => state.shortcut(key) } : {}),
   });
   const room = (label: string, r: Room) => inGame(label, () => act.enterRoom(r));
+  const controlPanel = () => CONTROL_PANEL_PERMISSIONS.some((p) => state.can(p));
+  const editors = () => state.can("worldEditor") || state.can("npcEditor");
   const gated = (label: string, run: () => void, permission: Permission) => ({
     ...item(label, run),
     visible: () => state.can(permission),
@@ -98,20 +109,18 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         item("Clear Chat Text", act.clearChat),
       ],
     },
-    // Server Settings stands in the File Editor's place.
+    // The Control Panel holds Server Settings (in the File Editor's place); each editor moves there
+    // as its Control Panel page arrives.
     {
       title: "Admin",
       visible: () => play() && ADMIN_MENU.some((p) => state.can(p)),
       items: [
+        { ...item("Control Panel", act.controlPanel), visible: controlPanel },
+        { kind: "sep", visible: () => controlPanel() && editors() },
         gated("World Editor", act.worldEditor, "worldEditor"),
         gated("NPC Editor", act.npcEditor, "npcEditor"),
-        {
-          ...item("Return To Game", act.returnToGame),
-          visible: () => state.can("worldEditor") || state.can("npcEditor"),
-        },
-        SEP,
-        gated("Server Settings", act.serverSettings, "settings"),
-        SEP,
+        { ...item("Return To Game", act.returnToGame), visible: editors },
+        { kind: "sep", visible: () => (controlPanel() || editors()) && state.can("assassinGame") },
         gated("Begin Assassin's Game", () => act.assassin("GO"), "assassinGame"),
         gated("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING"), "assassinGame"),
         gated("End Assassin's Game", () => act.assassin("STOP"), "assassinGame"),

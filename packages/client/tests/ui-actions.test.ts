@@ -22,13 +22,15 @@ import { createAwayWindow } from "../src/ui/away.ts";
 import { createBioWindow } from "../src/ui/bio.ts";
 import { createCharMenu } from "../src/ui/charmenu.ts";
 import { createChatRoomWindow } from "../src/ui/chatroom.ts";
+import { createControlPanel } from "../src/ui/control-panel.ts";
+import { confirmBox, createTable, formField } from "../src/ui/control-panel-kit.ts";
 import { createFriendsWindow } from "../src/ui/friends.ts";
 import { createImWindows } from "../src/ui/im.ts";
 import { createNpcEditor } from "../src/ui/npceditor.ts";
 import { createPanel } from "../src/ui/panel.ts";
 import { createPlayerSettingsWindow } from "../src/ui/player-settings.ts";
 import { creationScreen, loginScreen, titleScreen } from "../src/ui/screens.ts";
-import { createSettingsWindow } from "../src/ui/settings.ts";
+import { createSettingsPanel } from "../src/ui/settings.ts";
 import { createShopWindow } from "../src/ui/shop.ts";
 import { createSignPanel } from "../src/ui/sign.ts";
 import { createTradeWindow } from "../src/ui/trade.ts";
@@ -203,8 +205,36 @@ function buildAll(): HTMLElement[] {
   createAwayWindow(fakeAssets, layer, noop);
   createChatRoomWindow(fakeAssets, layer, noop);
   createTradeWindow(fakeAssets, layer, noop);
-  // The Settings window with one row of each kind, each with its Reset shown.
-  createSettingsWindow(layer, noop).show(
+  // The Control Panel with every header tool, a page and a classic-tool link, and a page built
+  // from the shared parts: a table with openable rows, a form field and an open confirmation.
+  const kitPage = document.createElement("div");
+  const table = createTable<{ name: string }>({
+    label: "Rows",
+    columns: [{ label: "Name", cell: (r) => r.name }],
+    empty: "None",
+    key: (r) => r.name,
+    open: { id: "control-panel-row", run: () => {} },
+  });
+  table.setRows([{ name: "Ann" }]);
+  const field = document.createElement("input");
+  field.dataset.action = "control-panel-field";
+  kitPage.append(table.el, formField("Name", field, "A name."));
+  const controlPanel = createControlPanel({
+    pages: [{ id: "p", title: "P", group: "G", permission: "settings", el: kitPage }],
+    links: [
+      { id: "l", title: "L", group: "Classic tools", permission: "worldEditor", run: () => {} },
+    ],
+    actions: noop,
+    can: () => true,
+  });
+  holder([controlPanel.el]);
+  controlPanel.open();
+  void confirmBox(controlPanel.el, { text: "Sure?", confirm: "Yes", cancel: "No" });
+
+  // The Server Settings page with one row of each kind, each with its Reset shown.
+  const panels = [createSettingsPanel(noop), createSettingsPanel(noop), createSettingsPanel(noop)];
+  layer.el.append(...panels.map((p) => p.el));
+  panels[0]?.show(
     [{ id: "g", title: "G", kind: "rows" }],
     [
       { key: "a", page: "g", label: "A", tooltip: "", kind: "bool", value: true, default: false },
@@ -250,8 +280,8 @@ function buildAll(): HTMLElement[] {
     roles: [{ ...roleToData(ADMINISTRATOR), holders: 1 }],
     staff: [{ name: "Al", role: "administrator" }],
   };
-  createSettingsWindow(layer, noop).show([{ id: "r", title: "R", kind: "roles" }], [], lists);
-  createSettingsWindow(layer, noop).show([{ id: "s", title: "S", kind: "staff" }], [], lists);
+  panels[1]?.show([{ id: "r", title: "R", kind: "roles" }], [], lists);
+  panels[2]?.show([{ id: "s", title: "S", kind: "staff" }], [], lists);
 
   // Player Settings on Controls (keybinds), Sound (sliders/checkboxes), and Social (choices + ignore list).
   const pControls = createPlayerSettingsWindow(layer, noop);

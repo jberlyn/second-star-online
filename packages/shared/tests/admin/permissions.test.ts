@@ -66,9 +66,17 @@ describe("the default roles", () => {
       Bun.file(new URL(`../../../server/migrations/${name}`, import.meta.url)).text();
     const roles = await migration("20261120_42_roles.sql");
     const admin = roleToData(ADMINISTRATOR);
+    // The Control Panel's permissions came later, given to every role that held all the others.
+    const controlPanel = ["contentEditor", "characterEditor", "activityLog"];
+    const seeded = admin.permissions.filter((p) => !controlPanel.includes(p));
     expect(roles).toContain(
-      `('${admin.id}', '${admin.name}', ${admin.rank},\n    '${JSON.stringify(admin.permissions)}'`,
+      `('${admin.id}', '${admin.name}', ${admin.rank},\n    '${JSON.stringify(seeded)}'`,
     );
+    const later = await migration("20261121_49_control_panel_permissions.sql");
+    expect(later).toContain(`json_each('${JSON.stringify(seeded)}')`);
+    for (const p of controlPanel) {
+      expect(later).toContain(`'${p}'`);
+    }
     // The moderator seed lost /pardon, /iplookup, /save and /Refresh in a later migration.
     const mod = roleToData(MODERATOR);
     expect(roles).toContain(`('${mod.id}', '${mod.name}', ${mod.rank},`);

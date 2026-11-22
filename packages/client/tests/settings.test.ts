@@ -1,6 +1,6 @@
 /**
- * The Server Settings window (ui/settings.ts) and the admin messages the app handles:
- * `rules`, `restore`, `role`, `settingsResult`.
+ * The Server Settings page (ui/settings.ts) and the admin messages the app handles:
+ * `rules`, `restore`, `role`, `settingsResult`, `controlPanel`.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -20,14 +20,13 @@ import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
 import {
   checkValue,
-  createSettingsWindow,
+  createSettingsPanel,
   parsePoints,
   parsePrizes,
   pointsText,
   SETTINGS_SAVED,
   valueText,
 } from "../src/ui/settings.ts";
-import { createWindowLayer } from "../src/ui/window.ts";
 import { menuClick, SNAPSHOT } from "./helpers/menu-helpers.ts";
 
 const fakeAssets: Assets = {
@@ -112,17 +111,16 @@ const NO_ROLES = { saveRole: () => {}, deleteRole: () => {}, assignRole: () => {
 function win() {
   const saves: Record<string, unknown>[] = [];
   let loads = 0;
-  const layer = createWindowLayer();
-  document.body.append(layer.el);
-  const w = createSettingsWindow(layer, {
+  const w = createSettingsPanel({
     ...NO_ROLES,
     save: (v) => saves.push(v),
     load: () => {
       loads += 1;
     },
   });
+  document.body.append(w.el);
   w.show(PAGES, ROWS);
-  const el = w.window.el;
+  const el = w.el;
   const row = (key: string) => el.querySelector(`[data-key="${key}"]`) as HTMLElement;
   const status = () => el.querySelector(".settings-status")?.textContent;
   const type = (input: HTMLInputElement | HTMLTextAreaElement, v: string) => {
@@ -155,7 +153,7 @@ function win() {
   };
 }
 
-describe("the Server Settings window", () => {
+describe("the Server Settings page", () => {
   test("a sidebar link per page; the first page opens, every explanation shown, not hovered", () => {
     const { el, link, shownKeys } = win();
     expect([...el.querySelectorAll(".settings-link")].map((a) => a.textContent)).toEqual([
@@ -271,37 +269,39 @@ describe("the Server Settings window", () => {
     );
   });
 
-  test("closing with unsaved changes asks; Keep editing stays open, Discard closes", () => {
-    const { w, el, row, type, open, confirm, btn } = win();
-    const closeBox = el.querySelector(".window-close") as HTMLButtonElement;
+  test("leaving with unsaved changes asks; Keep editing stays, Discard goes on", () => {
+    const { w, row, type, open, confirm, btn } = win();
+    let left = 0;
     open("chat");
     type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "1m");
-    closeBox.click();
-    expect(w.window.isOpen).toBe(true);
+    expect(w.changes()).toBe(1);
+    w.leave(() => left++, "return to the game");
+    expect(left).toBe(0);
     expect(confirm().hidden).toBe(false);
     expect(confirm().textContent).toContain(
-      "You have an unsaved change on Chat and mail. If you close the window, it will be discarded.",
+      "You have an unsaved change on Chat and mail. If you return to the game, it will be discarded.",
     );
     btn("settings-stay").click();
-    expect(w.window.isOpen).toBe(true);
+    expect(left).toBe(0);
     expect((row("broadcastCooldown").querySelector("input") as HTMLInputElement).value).toBe("1m");
-    closeBox.click();
+    w.leave(() => left++, "return to the game");
     btn("settings-discard").click();
-    expect(w.window.isOpen).toBe(false);
+    expect(left).toBe(1);
     expect(confirm().hidden).toBe(true);
   });
 
-  test("closing with no changes, or by script, does not ask", () => {
-    const { w, el, row, type, open, confirm } = win();
-    (el.querySelector(".window-close") as HTMLButtonElement).click();
-    expect(w.window.isOpen).toBe(false);
-    w.show(PAGES, ROWS);
+  test("leaving with no changes does not ask; a question the Control Panel drops goes nowhere", () => {
+    const { w, row, type, open, confirm, btn } = win();
+    let left = 0;
+    w.leave(() => left++);
+    expect(left).toBe(1);
     open("chat");
     type(row("broadcastCooldown").querySelector("input") as HTMLInputElement, "1m");
-    // A demotion closes the window by script: it goes at once.
-    w.window.close();
-    expect(w.window.isOpen).toBe(false);
+    w.leave(() => left++);
+    w.cancelLeave();
     expect(confirm().hidden).toBe(true);
+    btn("settings-discard").click();
+    expect(left).toBe(1);
   });
 
   test("an unchanged page, or its own link, never asks", () => {
@@ -455,16 +455,14 @@ describe("the Server Settings window", () => {
       "Line 1: write an item, an amount like 1000 Gold, or leave it empty.",
     );
     expect(valueText(prizes, prizes.default)).toBe("Long Sword, 1000 Gold, 500 Gold, Knife");
-    const layer = createWindowLayer();
-    document.body.append(layer.el);
     const saves: Record<string, unknown>[] = [];
-    const w = createSettingsWindow(layer, {
+    const w = createSettingsPanel({
       ...NO_ROLES,
       save: (v) => saves.push(v),
       load: () => {},
     });
     w.show([{ id: "items", title: "Items", kind: "rows" }], [prizes]);
-    const t = w.window.el.querySelector("textarea") as HTMLTextAreaElement;
+    const t = w.el.querySelector("textarea") as HTMLTextAreaElement;
     expect(t.value).toBe("Long Sword\n1000 Gold\n500 Gold\nKnife");
     expect(t.getAttribute("data-action")).not.toBeNull();
   });
@@ -482,15 +480,13 @@ describe("the Server Settings window", () => {
     expect(checkValue(news, "")).toBeNull();
     expect(checkValue(news, "x".repeat(1001))).toBe("Enter at most 1000 characters.");
     expect(valueText(news, "")).toBe("none");
-    const layer = createWindowLayer();
-    document.body.append(layer.el);
-    const w = createSettingsWindow(layer, {
+    const w = createSettingsPanel({
       ...NO_ROLES,
       save: () => {},
       load: () => {},
     });
     w.show([{ id: "chat", title: "Chat and mail", kind: "rows" }], [news]);
-    const t = w.window.el.querySelector("textarea") as HTMLTextAreaElement;
+    const t = w.el.querySelector("textarea") as HTMLTextAreaElement;
     expect(t.value).toBe("Welcome to First Star Online!");
     expect(t.getAttribute("data-action")).not.toBeNull();
   });
@@ -523,7 +519,7 @@ describe("admin messages in the app", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("Server Settings in the Admin menu asks for the rows; the reply opens the titled window", () => {
+  test("Control Panel asks to open; the Control Panel's Server Settings page asks for the rows and saves", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -533,17 +529,16 @@ describe("admin messages in the app", () => {
     c.onMessage(welcome);
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage(SNAPSHOT);
-    menuClick(root, "Admin", "Server Settings");
+    menuClick(root, "Admin", "Control Panel");
+    expect(c.sent).toContainEqual({ t: "controlPanelOpen" });
+    expect(c.sent).not.toContainEqual({ t: "settingsOpen" });
+    c.onMessage({ t: "controlPanel" });
     expect(c.sent).toContainEqual({ t: "settingsOpen" });
     c.onMessage({ t: "settings", pages: PAGES, rows: ROWS, roles: [], staff: [] });
-    const w = root.querySelector<HTMLElement>(".window-settings");
-    expect(w?.hidden).toBe(false);
-    expect(w?.textContent).toContain("Server Settings");
+    const page = root.querySelector<HTMLElement>(".control-panel-main .settings");
+    expect(page?.querySelector(".settings-title")?.textContent).toBe("World");
     c.onMessage({ t: "settingsResult", ok: true });
-    expect(w?.querySelector(".settings-status")?.textContent).toBe(SETTINGS_SAVED);
-    // A demotion closes it and hides the Admin section.
-    c.onMessage({ t: "permissions", permissions: [...MODERATOR.permissions] });
-    expect(w?.hidden).toBe(true);
+    expect(page?.querySelector(".settings-status")?.textContent).toBe(SETTINGS_SAVED);
     app.stop();
   });
 
@@ -556,14 +551,15 @@ describe("admin messages in the app", () => {
     const app = runApp(root, fakeAssets, c);
     c.onMessage(welcome);
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
+    c.onMessage({ t: "controlPanel" });
     c.onMessage({ t: "settings", pages: PAGES, rows: ROWS, roles: [], staff: [] });
-    const w = root.querySelector<HTMLElement>(".window-settings");
-    expect(w?.hidden).toBe(false);
+    const w = root.querySelector<HTMLElement>(".control-panel");
+    expect(w?.isConnected).toBe(true);
     c.onMessage({ t: "chat", text: "*** You are being kicked.", color: 0 });
     c.onMessage({ t: "kicked", text: "You have been kicked from the game." });
     c.onGone(null);
-    // The connection is gone, but the game (here its open Server Settings window) stays until OK.
-    expect(w?.hidden).toBe(false);
+    // The connection is gone, but the game (here the open Control Panel) stays until OK.
+    expect(w?.isConnected).toBe(true);
     const ok = document.querySelector<HTMLButtonElement>('[role="alertdialog"] .alert-ok');
     expect(ok?.closest("[role=alertdialog]")?.textContent).toContain(
       "You have been kicked from the game.",
@@ -571,7 +567,8 @@ describe("admin messages in the app", () => {
     ok?.click();
     await Promise.resolve();
     await Promise.resolve();
-    expect(w?.hidden).toBe(true);
+    // OK closes the alert; the title screen replaces the Control Panel once the connection is back.
+    expect(document.querySelector('[role="alertdialog"] .alert-ok')).toBeNull();
     app.stop();
   });
 
@@ -621,9 +618,7 @@ describe("the Roles and Staff pages", () => {
   const staff = [{ name: "Berlyn", role: "administrator" }];
   function open(kind: "roles" | "staff") {
     const calls: unknown[][] = [];
-    const layer = createWindowLayer();
-    document.body.append(layer.el);
-    const w = createSettingsWindow(layer, {
+    const w = createSettingsPanel({
       save: () => {},
       load: () => {},
       saveRole: (...a) => calls.push(["saveRole", ...a]),
@@ -631,7 +626,8 @@ describe("the Roles and Staff pages", () => {
       assignRole: (...a) => calls.push(["assignRole", ...a]),
     });
     w.show([{ id: kind, title: kind, kind }], [], { roles, staff });
-    const q = <T extends Element>(sel: string) => w.window.el.querySelector(sel) as T;
+    document.body.append(w.el);
+    const q = <T extends Element>(sel: string) => w.el.querySelector(sel) as T;
     const status = () => q<HTMLElement>(".settings-status").textContent;
     return { w, q, calls, status };
   }

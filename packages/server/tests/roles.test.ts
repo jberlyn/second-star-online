@@ -115,6 +115,50 @@ describe("the moderator defaults migration", () => {
   });
 });
 
+describe("the Control Panel permissions migration", () => {
+  const PANEL = "20261121_49_control_panel_permissions.sql";
+  const NEW = ["contentEditor", "characterEditor", "activityLog"];
+  /** The roles after the migration, from roles stored as they were before it. */
+  const after = (roles: { id: string; permissions: string[] }[]) => {
+    const db = openDatabase();
+    runMigrations(
+      db,
+      loadMigrations().filter((m) => m.name < PANEL),
+    );
+    for (const r of roles) {
+      db.run(
+        `INSERT INTO roles (id, name, rank, permissions, created_at, updated_at)
+         VALUES (?, ?, 3, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET permissions = excluded.permissions`,
+        [r.id, r.id, JSON.stringify(r.permissions), NOW, NOW],
+      );
+    }
+    migrate(db);
+    return new Map(loadRoles(db).map((r) => [r.id, [...r.permissions].sort()]));
+  };
+  const OLD_ALL = PERMISSIONS.filter((p) => !NEW.includes(p));
+
+  test("every role that held every permission gets the new ones; the seeded roles match the defaults", () => {
+    const roles = after([{ id: "owner", permissions: [...OLD_ALL].reverse() }]);
+    expect(roles.get("owner")).toEqual([...PERMISSIONS].sort());
+    expect(roles.get("administrator")).toEqual([...ADMINISTRATOR.permissions].sort());
+    expect(roles.get("moderator")).toEqual([...MODERATOR.permissions].sort());
+  });
+
+  test("a stored non-string entry does not stand in for a missing permission", () => {
+    const short = OLD_ALL.filter((p) => p !== "drop");
+    const roles = after([{ id: "odd", permissions: [...short, null as unknown as string] }]);
+    expect(roles.get("odd")).toEqual([...short].sort());
+  });
+
+  test("a role short of any permission is left as it is", () => {
+    const short = OLD_ALL.filter((p) => p !== "drop");
+    expect(after([{ id: "builder", permissions: short }]).get("builder")).toEqual(
+      [...short].sort(),
+    );
+  });
+});
+
 describe("the Roles and Staff pages (real SQLite)", () => {
   let db: Db;
   const sent: Out = [];

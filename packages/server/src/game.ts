@@ -13,6 +13,7 @@ import {
   CHAT_COLOR,
   type CreateMsg,
   can,
+  canOpenControlPanel,
   cheatLine,
   creationError,
   type EditorMap,
@@ -174,6 +175,7 @@ import {
   settingRows,
 } from "./settings.ts";
 import { type AdminDeps, applyRole, permissionsMsg } from "./systems/admin/commands.ts";
+import { openControlPanel } from "./systems/admin/control-panel.ts";
 import {
   allowCreate,
   allowLoginFromIp,
@@ -400,10 +402,11 @@ export interface Game {
 }
 
 /**
- * The intents an editor takes and the Server Settings window's, whose ≡ menu item stays
- * reachable in an editor; every other intent is ignored while editing.
+ * The intents the editors and the Control Panel take, with its Server Settings page; every
+ * other intent is ignored while editing.
  */
 const EDITOR_INTENTS = new Set([
+  "controlPanelOpen",
   "editOpen",
   "editLoad",
   "editSave",
@@ -1157,7 +1160,7 @@ export function createGame(deps: GameDeps): Game {
     }
   };
 
-  /** A role change from the Server Settings window: refused with why, or applied and audited. */
+  /** A role change from the Server Settings page: refused with why, or applied and audited. */
   const roleChange = (p: Player, change: () => string | { done: string }) => {
     const r = db.transaction(change)();
     if (typeof r === "string") {
@@ -1165,7 +1168,10 @@ export function createGame(deps: GameDeps): Game {
       return;
     }
     refreshRoles();
-    send(p.id, settingsMsg());
+    // An edit to your own role can take Server Settings away: then the lists are not yours to see.
+    if (can(p.role, "settings")) {
+      send(p.id, settingsMsg());
+    }
     send(p.id, { t: "roleResult", ok: true, text: r.done });
   };
 
@@ -2093,6 +2099,15 @@ export function createGame(deps: GameDeps): Game {
           return;
         case "npcEditOpen":
           deliver(openNpcEditor(world, p, casinoDeps));
+          return;
+        // The Control Panel: any of its permissions opens it; 1.6 had none, so the World Editor's
+        // reason is logged, as for Server Settings.
+        case "controlPanelOpen":
+          if (!canOpenControlPanel(p.role)) {
+            cheat(p.name, p.ip, "Attempted Admin Access");
+            return;
+          }
+          deliver(openControlPanel(world, p, casinoDeps));
           return;
         case "npcLoad":
           deliver(loadNpc(world, p, msg.name, ledgerOf));

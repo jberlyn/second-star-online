@@ -273,6 +273,9 @@ export interface CharacterState {
   profile: string;
 }
 
+/** Where an admin off the map is: the World Editor, the NPC editor or the Control Panel. */
+export type Editing = "world" | "npc" | "controlPanel";
+
 export interface Player {
   id: string;
   accountId: string;
@@ -425,12 +428,12 @@ export interface Player {
   // ---- spells -----------------------------------------------------------------
   spell: SpellState;
 
-  // ---- the World Editor --------------------------------------------------------
+  // ---- the World Editor, the NPC editor and the Control Panel ---------------------
   /**
-   * In the World Editor or the NPC editor: off the map (the client left its map group), so nothing
-   * on it sees, hits or ticks for this player until Return To Game. Null in play.
+   * In the World Editor, the NPC editor or the Control Panel: off the map (the client left its map
+   * group), so nothing on it sees, hits or ticks for this player until Return To Game. Null in play.
    */
-  editing: "world" | "npc" | null;
+  editing: Editing | null;
 
   // ---- admin -------------------------------------------------------------------
   /** The connection's IP address (`/IPlookup`, the cheat log); set by the gateway at login. */

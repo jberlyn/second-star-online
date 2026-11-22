@@ -21,8 +21,14 @@ export const TOOL_PERMISSIONS = [
   "worldEditor",
   /** Admin menu → NPC Editor. */
   "npcEditor",
-  /** Admin menu → Server Settings, which also edits and assigns the roles. */
+  /** Control Panel → Server Settings, which also edits and assigns the roles. */
   "settings",
+  /** Control Panel: create, edit and remove items, monsters and NPCs. */
+  "contentEditor",
+  /** Control Panel: edit a character's stats, items and state. */
+  "characterEditor",
+  /** Control Panel: read the player activity log. */
+  "activityLog",
   /** Chat → Admin Chat. */
   "adminChat",
   /** Admin menu → Begin (Lightning) Assassin's Game. */
@@ -88,6 +94,9 @@ const TOOL_LABELS: Record<ToolPermission, string> = {
   worldEditor: "World Editor",
   npcEditor: "NPC Editor",
   settings: "Server Settings, roles and staff",
+  contentEditor: "Control Panel: edit items, monsters and NPCs",
+  characterEditor: "Control Panel: edit characters",
+  activityLog: "Control Panel: read the player activity log",
   adminChat: "Admin Chat room",
   assassinGame: "Start and stop the Assassin's Game",
   overrule: "Overrule: change anyone's ban, jail or mute, and act on staff of the same rank",
@@ -116,6 +125,18 @@ export function permissionInfo(p: Permission): { group: PermissionGroup; label: 
     return { group: "tools", label: TOOL_LABELS[p as ToolPermission] };
   }
   return { group: "exemptions", label: EXEMPTION_LABELS[p as Exemption] };
+}
+
+/**
+ * The permissions that open a Control Panel page: holding any one shows the Control Panel and lets the
+ * server open it. A page's own requests still need its own permission. Each Control Panel page adds its
+ * permission here when it arrives.
+ */
+export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = ["settings"];
+
+/** Whether `role` may open the Control Panel (it holds a permission with a page there). */
+export function canOpenControlPanel(role: Role | undefined): boolean {
+  return CONTROL_PANEL_PERMISSIONS.some((p) => can(role, p));
 }
 
 /** A role: its name, who it outranks and what it may do. */

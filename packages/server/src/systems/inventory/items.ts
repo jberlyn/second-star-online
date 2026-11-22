@@ -1109,7 +1109,8 @@ export function dueGives(ctx: ItemCtx): Outgoing[] {
   w.gives = w.gives.filter((g) => g.at > w.tickNo);
   for (const give of due) {
     const target = w.players.get(give.target);
-    if (!target || target.map.id !== give.mapId) {
+    // Off the map in an editor or the Control Panel, the item stays on the ground (SSO).
+    if (!target || target.editing || target.map.id !== give.mapId) {
       continue;
     }
     const room = w.rooms.get(target.map.name);
