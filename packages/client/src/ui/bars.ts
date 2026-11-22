@@ -9,8 +9,8 @@
  * XP fill is flat green toward the next level. The depleted part of a slot is plain black rather
  * than 1.6's darker track sprites.
  *
- * Hovering any bar shows all three values at once, each centred on its own bar: `15 / 20 HP`,
- * `20 / 20 SP` and `1,240 / 2,000 XP`. Aboard a vehicle the HP bar shows its hull instead.
+ * Hovering a bar shows that bar's value, centred on it: `15 / 20 HP`, `20 / 20 SP` or
+ * `1,240 / 2,000 XP`. Aboard a vehicle the HP bar shows its hull instead.
  *
  * Player Settings adds an optional colour-blind palette (Amber/Gold HP + Sky-Cyan SP over black,
  * `.bars-colorblind`) in the same slot geometry.
@@ -109,7 +109,12 @@ export function createBars(a: Assets): Bars {
     f.setAttribute("aria-hidden", "true");
     return f;
   };
-  const clearHover = () => el.classList.remove("bars-show-values");
+  const zones: HTMLElement[] = [];
+  const clearHover = () => {
+    for (const z of zones) {
+      z.classList.remove("bar-hovered");
+    }
+  };
   const hover = (cls: string, y: number, hgt: number, label: HTMLElement) => {
     const h = action(document.createElement("div"), "bars-show-values");
     h.className = `bar-hover ${cls}`;
@@ -119,16 +124,13 @@ export function createBars(a: Assets): Bars {
     h.append(label);
     h.addEventListener("pointerenter", (event) => {
       if (event.pointerType !== "touch") {
-        el.classList.add("bars-show-values");
-      }
-    });
-    h.addEventListener("pointerleave", (event) => {
-      const next = event.relatedTarget;
-      if (!(next instanceof Element && next.parentElement === el && next.matches(".bar-hover"))) {
         clearHover();
+        h.classList.add("bar-hovered");
       }
     });
+    h.addEventListener("pointerleave", () => h.classList.remove("bar-hovered"));
     h.addEventListener("pointercancel", clearHover);
+    zones.push(h);
     return h;
   };
   const hpText = field("hp-value");

@@ -1353,8 +1353,8 @@ body {
   pointer-events: none;
   text-shadow: 0 1px #000;
 }
-/* Hovering any bar shows all three values, each on its own bar. */
-.bars-show-values .bar-value {
+/* Hovering a bar shows only that bar's value. */
+.bar-hovered .bar-value {
   visibility: visible;
 }
 .sr-only {

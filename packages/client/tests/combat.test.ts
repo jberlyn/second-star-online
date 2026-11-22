@@ -229,7 +229,7 @@ describe("bars", () => {
     expect(q(".xp-fill").style.width).toBe("0px");
   });
 
-  test("design change: hovering any one bar shows all three values, each on its own bar", () => {
+  test("design change: hovering a bar shows only that bar's value, centred on it", () => {
     const b = createBars(fakeAssets);
     b.setVitals({ ...vitals, hp: 20 });
     const zones = ["hp", "sp", "xp"].map((k) => b.el.querySelector(`.${k}-hover`) as HTMLElement);
@@ -243,13 +243,15 @@ describe("bars", () => {
       "20 / 20 SP",
       "100 / 300 XP",
     ]);
-    for (const zone of zones) {
-      expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    // Which bars show their value: the one hovered, and no other.
+    const shown = () => zones.map((z) => z.classList.contains("bar-hovered"));
+    for (const [i, zone] of zones.entries()) {
+      expect(shown()).toEqual([false, false, false]);
       zone.dispatchEvent(new PointerEvent("pointerenter"));
-      expect(b.el.classList.contains("bars-show-values")).toBe(true);
+      expect(shown()).toEqual([0, 1, 2].map((j) => j === i));
       zone.dispatchEvent(new PointerEvent("pointerleave"));
     }
-    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    expect(shown()).toEqual([false, false, false]);
     expect(zones.map((z) => [z.style.top, z.style.height])).toEqual([
       ["6px", "15px"],
       ["21px", "15px"],
@@ -257,15 +259,17 @@ describe("bars", () => {
     ]);
     const [hp, sp] = zones;
     hp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "touch" }));
-    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    expect(shown()).toEqual([false, false, false]);
+    // Sliding from HP straight onto SP hands the value over: only SP's shows.
     hp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "mouse" }));
     hp?.dispatchEvent(new PointerEvent("pointerleave", { relatedTarget: sp }));
-    expect(b.el.classList.contains("bars-show-values")).toBe(true);
+    sp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "mouse" }));
+    expect(shown()).toEqual([false, true, false]);
     sp?.dispatchEvent(new PointerEvent("pointercancel"));
-    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    expect(shown()).toEqual([false, false, false]);
     hp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "mouse" }));
     b.reset();
-    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    expect(shown()).toEqual([false, false, false]);
     expect(b.el.querySelector(".xp-value")?.textContent).toBe("");
   });
 
