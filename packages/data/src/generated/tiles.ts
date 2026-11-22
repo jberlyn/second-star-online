@@ -868,10 +868,12 @@ export const tilesData: TilesData = {
     },
     {
       "code": "P3",
+      "name": "Tree Stump",
       "member": 54
     },
     {
       "code": "S3",
+      "name": "Tree",
       "member": 55
     },
     {
@@ -1339,10 +1341,12 @@ export const tilesData: TilesData = {
     },
     {
       "code": "O8",
+      "name": "Rubble",
       "member": 171
     },
     {
       "code": "B8",
+      "name": "Rock",
       "member": 172
     },
     {
@@ -1856,6 +1860,7 @@ export const tilesData: TilesData = {
     },
     {
       "code": "1G",
+      "name": "Ice Block",
       "member": 295
     },
     {
@@ -1872,6 +1877,7 @@ export const tilesData: TilesData = {
     },
     {
       "code": "1K",
+      "name": "Hole",
       "member": 299
     },
     {
@@ -2240,10 +2246,12 @@ export const tilesData: TilesData = {
     },
     {
       "code": "6N",
+      "name": "Fire Rubble",
       "member": 391
     },
     {
       "code": "6O",
+      "name": "Fire Rock",
       "member": 392
     },
     {
@@ -2572,50 +2580,62 @@ export const tilesData: TilesData = {
     },
     {
       "code": "SL",
+      "name": "Tilled Soil",
       "member": 474
     },
     {
       "code": "TL",
+      "name": "Farmland",
       "member": 475
     },
     {
       "code": "UL",
+      "name": "Corn Seedling",
       "member": 476
     },
     {
       "code": "VL",
+      "name": "Nectar Seedling",
       "member": 477
     },
     {
       "code": "WL",
+      "name": "Watermelon Seedling",
       "member": 478
     },
     {
       "code": "XL",
+      "name": "Corn Plant",
       "member": 479
     },
     {
       "code": "YL",
+      "name": "Nectar Plant",
       "member": 480
     },
     {
       "code": "ZL",
+      "name": "Watermelon Plant",
       "member": 481
     },
     {
       "code": "AM",
+      "name": "Flower Seedling",
       "member": 482
     },
     {
       "code": "BM",
+      "name": "Rose Seedling",
       "member": 483
     },
     {
       "code": "CM",
+      "name": "Flower Plant",
       "member": 484
     },
     {
       "code": "DM",
+      "name": "Rose Bush",
       "member": 485
     },
     {
@@ -3042,6 +3062,7 @@ export const tilesData: TilesData = {
     },
     {
       "code": "0Z",
+      "name": "Broken Ice",
       "member": 594
     },
     {

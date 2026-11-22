@@ -152,7 +152,7 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 
 ## Tiles (`tiles.json`)
 
-`packages/data/content/tiles.json` contains `walkable` (the 2-character walkable code whitelist), `catalogue` (tile codes and flags), and `defaults` (`ground`, `empty`, `shadow`, `editorTile`).
+`packages/data/content/tiles.json` contains `walkable` (the 2-character walkable code whitelist), `catalogue` (tile codes, hover names and flags), and `defaults` (`ground`, `empty`, `shadow`, `editorTile`).
 
 ### Tile flags and defaults
 
@@ -171,6 +171,7 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 | `shadow` | Blank-map layer S shadow and the layer-3 `(7, 6)` mark | `5A` |
 | `editorTile` | Initial selected tile when opening the World Editor | `G1` |
 
+- **Hover names (`catalogue[].name`):** the playfield hover tip names a layer-2 tile with a `name` when no player, monster or named ground item is under the mouse. The shipped names cover the tiles you gather from and what they turn into (`S3` is `Tree`, `P3` is `Tree Stump`, `XL` is `Corn Plant`). Leave plain ground, water and decorative tiles unnamed, so most of the map shows no tip. A tile you add for a gathering tool should get a name too.
 - **Walk whitelist (`walkable`):** every code in `walkable` must be exactly 2 characters.
 - **Checked by tests, not the build:** the schema accepts any non-empty tile `code`; the rule that an added tile's code is 2 characters and unique in any case is enforced by `packages/data/tests/data.test.ts`, so run `bun run test` (or `bun run gate`) as well as `data:build`.
 - **Other tile codes live with their systems:** tool tile changes and fishing water in `gather.json`, the newspaper stand (`K2`) in `social.json`, and rough terrain and house tiles in `houses.json`.

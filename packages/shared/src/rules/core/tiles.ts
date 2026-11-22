@@ -1,5 +1,5 @@
 /**
- * Tile flags and single-valued tile defaults read from `@secondstaronline/data`.
+ * Tile flags, hover names and single-valued tile defaults read from `@secondstaronline/data`.
  */
 import { type TileFlag as DataTileFlag, tilesData } from "@secondstaronline/data";
 
@@ -48,6 +48,21 @@ export function tileCodes(flag: TileFlag): readonly string[] {
 /** Whether `code` has `flag` (case-insensitive comparison against the flagged catalogue codes). */
 export function tileHas(code: string, flag: TileFlag): boolean {
   return LOWER_SETS_BY_FLAG[flag].has(code.toLowerCase());
+}
+
+const NAMES = new Map<string, string>();
+for (const tile of tilesData.catalogue) {
+  if (tile.name) {
+    NAMES.set(tile.code.toLowerCase(), tile.name);
+  }
+}
+
+/**
+ * What the playfield hover tip calls a layer-2 tile (`catalogue[].name`, compared in any case), or
+ * null for a tile it never names. An SSO addition: 1.6 named no tiles.
+ */
+export function tileName(code: string): string | null {
+  return NAMES.get(code.toLowerCase()) ?? null;
 }
 
 /** Single-valued tile defaults (`ground`, `empty`, `shadow`, `editorTile`). */

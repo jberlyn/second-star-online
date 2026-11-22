@@ -123,6 +123,33 @@ describe("playfield clicks", () => {
     model.ground.set("g5", { id: "g5", name: "Left Ray", x: 3, y: 9 });
     expect(hoverText(model, field.pickAll(model, 2 * 32 + 16, 8 * 32 + 16))).toEqual([]);
   });
+  test("design change: a tree, rock or crop under the mouse is named when nothing else is", () => {
+    const { model } = world();
+    const field = createPlayfield(assets);
+    // Layer 2 holds a tree at (3, 9), a crop at (4, 9) and plain empty ground everywhere else.
+    const row = (y: number) =>
+      Array.from({ length: 17 }, (_, i) =>
+        y === 9 && i === 2 ? "S3" : y === 9 && i === 3 ? "xl" : "G3",
+      ).join(" ");
+    const layer2 = Array.from({ length: 12 }, (_, i) => row(i + 1));
+    const blank = Array.from({ length: 12 }, () => Array(17).fill("G3").join(" "));
+    model.map = { layers: [blank, layer2, blank, blank] } as unknown as NonNullable<Model["map"]>;
+    const tip = (x: number, y: number) => {
+      const at = { x: (x - 1) * 32 + 16, y: (y - 1) * 32 + 16 };
+      return hoverText(model, field.pickAll(model, at.x, at.y), at);
+    };
+    expect(tip(3, 9)).toEqual(["Tree"]);
+    // Tile codes are compared in any case.
+    expect(tip(4, 9)).toEqual(["Corn Plant"]);
+    // Plain ground has no name.
+    expect(tip(5, 9)).toEqual([]);
+    // A Ray is unnamed, so the tree still shows through it.
+    model.ground.set("g8", { id: "g8", name: "Left Ray", x: 3, y: 9 });
+    expect(tip(3, 9)).toEqual(["Tree"]);
+    // A named item on the tile is named instead: the log, not the tree.
+    model.ground.set("g9", { id: "g9", name: "Logs", x: 3, y: 9 });
+    expect(tip(3, 9)).toEqual(["Logs"]);
+  });
   test("bug fixed: a click passes over a Ray to the item under it", () => {
     const { model } = world();
     const field = createPlayfield(assets);

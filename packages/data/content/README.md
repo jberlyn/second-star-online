@@ -9,7 +9,7 @@ For modding workflows, rule precedence, and worked examples, see the [Modding gu
 | `jail-map.json` | the enclosed Jail at x0y0, with arrival tile 4,4 | migration inserts it when absent; existing jails are preserved |
 | `church-map.json` | the Church of the Bells at x999y999, the enclosed map the church bell sounds on | migration inserts it when absent; existing church maps are preserved |
 | `seed-map.json` | the title and four layers of Willowbrook Wilds, the fresh-server starter landscape | first map creation; existing maps are preserved |
-| `tiles.json` | the tile catalogue (`code`, `member`, `flags`), the walk whitelist (`walkable`), and single-tile `defaults` | movement, housing, spells, the map editor, the client draw |
+| `tiles.json` | the tile catalogue (`code`, hover `name`, `member`, `flags`), the walk whitelist (`walkable`), and single-tile `defaults` | movement, housing, spells, the map editor, the client draw and hover tip |
 | `items.json` | the item catalogue (name, archived spellings, icon: an original member or added art), fixtures, the World Editor's item list, the player-shop whitelist | inventory, shops, drops, the World Editor |
 | `attpower.json`, `item-rules.json` | weapon power; the item rules: equip, use, armour, breaks, the item menu, the paperdoll, ground items, containers, gear bonuses, the swing | combat, inventory, spells, the paperdoll |
 | `classes.json` | classes, their stat bonuses and promotions, the skills, the Skills page rows, starting skills, the skills each weapon trains on a kill | creation, promotion, skill gain, the Skills tab |

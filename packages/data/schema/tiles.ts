@@ -19,6 +19,12 @@ export const tileFlagSchema = z.enum(["sea", "airshipBlock", "dock", "arena", "g
 
 export const tileSchema = z.strictObject({
   code: z.string().min(1),
+  /**
+   * What the playfield hover tip calls this tile when it is on layer 2 and nothing else is under
+   * the mouse (an SSO addition: 1.6 named no tiles). Absent tiles are never named, so name only
+   * tiles a player uses: trees, rocks, crops and what they turn into.
+   */
+  name: z.string().trim().min(1).optional(),
   /** MapGFX cast member number for original tiles (pages 1-10). Absent on added tiles (page 10 slots 50-60, then pages 11+). */
   member: z.number().int().optional(),
   flags: z

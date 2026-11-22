@@ -24,6 +24,8 @@ import {
   type RestoreTarget,
   type ServerMsg,
   TICK_MS,
+  tileAt,
+  tileName,
 } from "@secondstaronline/shared";
 
 import { type Assets, loadAssets } from "./assets.ts";
@@ -156,10 +158,23 @@ export function hoverName(model: Model, hit: Pick): string | null {
 /**
  * The hover tip's lines for everything under the mouse (`Playfield.pickAll`): a monster's or
  * player's name alone, or the named ground items on the tile, newest first, so the first line is
- * what a click or Ctrl takes. Empty when none of it is named.
+ * what a click or Ctrl takes. With none of those, the layer-2 tile at playfield pixel `at` gives
+ * its name (`tileName`: a tree, a rock, a crop), so a log on a stump names the log. Empty when
+ * nothing there is named.
  */
-export function hoverText(model: Model, hits: readonly Pick[]): string[] {
-  return hits.map((h) => hoverName(model, h)).filter((t): t is string => !!t);
+export function hoverText(
+  model: Model,
+  hits: readonly Pick[],
+  at?: { x: number; y: number },
+): string[] {
+  const lines = hits.map((h) => hoverName(model, h)).filter((t): t is string => !!t);
+  if (lines.length > 0 || !at || !model.map) {
+    return lines;
+  }
+  const name = tileName(
+    tileAt(model.map.layers[1], Math.floor(at.x / 32) + 1, Math.floor(at.y / 32) + 1),
+  );
+  return name ? [name] : [];
 }
 
 export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App {
@@ -799,7 +814,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   });
   // The name of the monster, NPC, player or yourself under the mouse, in the hover tip (an SSO
   // change: 1.6 floated the bare name above the pointer, sprite 156), or else the ground items
-  // there, one line each (1.6 named nothing on the ground). The mouse position is kept,
+  // there, one line each, or else a named tile such as a tree (1.6 named nothing on the ground).
+  // The mouse position is kept,
   // so someone walking out from under it loses the tip too.
   let hoverAt: { x: number; y: number } | null = null;
   let hoverClient = { x: 0, y: 0 };
@@ -834,7 +850,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       panel.tips.release(playfieldTip);
       return;
     }
-    const text = hoverText(model, playfield.pickAll(model, hoverAt.x, hoverAt.y));
+    const text = hoverText(model, playfield.pickAll(model, hoverAt.x, hoverAt.y), hoverAt);
     panel.tips.showFor(playfieldTip, text, hoverClient.x, hoverClient.y);
   };
   // ---- screens -----------------------------------------------------------------------------
