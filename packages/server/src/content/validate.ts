@@ -6,7 +6,13 @@
  * "scroll" in the quests), and those stay as they were. Pure.
  */
 import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
-import { type ContentData, DATASET_IDS } from "@secondstaronline/shared";
+import {
+  buildContentStore,
+  type ContentData,
+  DATASET_IDS,
+  npcLootItemOk,
+  npcShopItemOk,
+} from "@secondstaronline/shared";
 
 /** One problem, with where it is (`items/items/Ale`, or a dataset and a schema path). */
 export interface ContentProblem {
@@ -167,7 +173,7 @@ export function skillProblems(next: ContentData, published: ContentData): Conten
 /** One reference from a row to a name another list must hold. */
 interface Reference {
   where: string;
-  kind: "item" | "monster" | "itemOrFixture" | "skill";
+  kind: "item" | "monster" | "itemOrFixture" | "skill" | "shopItem" | "lootItem";
   name: string;
 }
 
@@ -198,8 +204,18 @@ export function referencesOf(data: ContentData): Reference[] {
   }
   // Skill names written in other rows: `skillIndex` throws on a name it does not know, so a typo
   // would fail every tick that reads it.
+  // NPC files: what a shop sells or buys, and what a monster drops, as the NPC Editor checks them.
+  for (const f of data.npcFiles.files) {
+    for (const line of f.text.split(/\r\n?|\n/)) {
+      const m = /^(SEL|BUY|INV)\|([^:|]*)/.exec(line);
+      if (m) {
+        add(`npcFiles/files/${f.name}`, m[1] === "INV" ? "lootItem" : "shopItem", m[2] as string);
+      }
+    }
+  }
+  // An empty name is a reference too: the rules look it up all the same, and find nothing.
   const skill = (where: string, name: unknown) => {
-    if (typeof name === "string" && name !== "") {
+    if (typeof name === "string") {
       add(where, "skill", name);
     }
   };
@@ -208,7 +224,8 @@ export function referencesOf(data: ContentData): Reference[] {
       skill(`classes/classes/${c.code}`, g);
     }
     const stat = c.promotion?.requirement?.stat;
-    if (typeof stat === "string" && !STAT_WORDS.has(stat.toLowerCase())) {
+    // Promotion reads exactly "HPmax" and "SPmax" as stats (shared promotion.ts).
+    if (typeof stat === "string" && stat !== "HPmax" && stat !== "SPmax") {
       skill(`classes/classes/${c.code}`, stat);
     }
   }
@@ -227,7 +244,8 @@ export function referencesOf(data: ContentData): Reference[] {
     skill("itemRules/use", b.skill);
   }
   for (const p of data.itemRules.ground.platforms) {
-    if (!STAT_WORDS.has(p.needs.toLowerCase())) {
+    // A platform reads exactly "level" as the level (shared ground.ts `blocksPlayer`).
+    if (p.needs !== "level") {
       skill("itemRules/ground", p.needs);
     }
   }
@@ -239,6 +257,12 @@ export function referencesOf(data: ContentData): Reference[] {
       skill("social/bios", test.skill);
     }
   }
+  // The Bio score counts exactly "HPmax" and "SPmax" as stats (shared bios.ts `bioScore`).
+  for (const s of data.social.bios.score.counted) {
+    if (s !== "HPmax" && s !== "SPmax") {
+      skill("social/bios", s);
+    }
+  }
   for (const m of data.social.medals.awards) {
     skill("social/medals", (m as { skill?: unknown }).skill);
   }
@@ -246,7 +270,8 @@ export function referencesOf(data: ContentData): Reference[] {
     for (const t of b.tiers) {
       for (const w of t.when ?? []) {
         const name = /^\s*([A-Za-z][A-Za-z ]*?)\s*[<>=]/.exec(w)?.[1];
-        if (name && !STAT_WORDS.has(name.toLowerCase())) {
+        // A tier reads exactly "level" as the level (shared attpower.ts `tierApplies`).
+        if (name && name !== "level") {
           skill("attPower/attPower", name);
         }
       }
@@ -264,9 +289,6 @@ export function referencesOf(data: ContentData): Reference[] {
   return out;
 }
 
-/** The words a skill field may hold that name a stat, not a skill. */
-const STAT_WORDS = new Set(["level", "hpmax", "spmax", "hp", "sp", "exp"]);
-
 /** A skill name as `skillIndex` compares it: case and spaces ignored. */
 const skillNorm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
 
@@ -278,6 +300,7 @@ export function brokenReferences(data: ContentData): Reference[] {
   const fixtures = new Set(data.items.fixtures.map((f) => f.toLowerCase()));
   const monsters = new Set(data.monsters.monsters.map((m) => m.name.toLowerCase()));
   const skills = new Set(data.classes.skills.map((s) => skillNorm(s.skill)));
+  const store = buildContentStore(data);
   return referencesOf(data).filter((r) => {
     const n = r.name.toLowerCase();
     switch (r.kind) {
@@ -289,19 +312,33 @@ export function brokenReferences(data: ContentData): Reference[] {
         return !monsters.has(n);
       case "skill":
         return !skills.has(skillNorm(r.name));
+      case "shopItem":
+        return !npcShopItemOk(r.name, store);
+      case "lootItem":
+        return !npcLootItemOk(r.name, store);
     }
     return false;
   });
 }
 
-/** The references broken in `next` that were not already broken in `published`. */
+/**
+ * The references broken in `next` beyond those already broken in `published`. Counted, not just
+ * matched: a second broken reference in a row that already had one like it is still reported.
+ */
 export function referenceProblems(next: ContentData, published: ContentData): ContentProblem[] {
-  const before = new Set(brokenReferences(published).map(refKey));
+  const before = new Map<string, number>();
+  for (const r of brokenReferences(published)) {
+    before.set(refKey(r), (before.get(refKey(r)) ?? 0) + 1);
+  }
   return brokenReferences(next)
-    .filter((r) => !before.has(refKey(r)))
+    .filter((r) => {
+      const left = before.get(refKey(r)) ?? 0;
+      before.set(refKey(r), left - 1);
+      return left <= 0;
+    })
     .map((r) => ({
       where: r.where,
-      message: `names ${r.kind === "monster" ? "a monster" : r.kind === "skill" ? "a skill" : "an item"} that does not exist: ${r.name}`,
+      message: `names ${r.kind === "monster" ? "a monster" : r.kind === "skill" ? "a skill" : "an item"} that does not exist: ${r.name || "(nothing)"}`,
     }));
 }
 

@@ -626,8 +626,12 @@ export function startGateway(options: GatewayOptions): Gateway {
         if (!/^[\w ./'()+,&-]+$/.test(rel) || rel.includes("..")) {
           return respond("Not found", { status: 404 });
         }
-        // `./index.json` is the index: one spelling per file, so none skips the merge below.
+        // `./index.json` is the index: one spelling per file, so none skips the merge below. A
+        // leading slash (`//index.json`) is no file's name.
         rel = posix.normalize(rel);
+        if (rel.startsWith("/") || rel.startsWith("../")) {
+          return respond("Not found", { status: 404 });
+        }
         let base = options.assetsDir;
         if (options.packArt && rel.startsWith(PACK_ART_PREFIX)) {
           // A pack's art: served only while the pack is installed.

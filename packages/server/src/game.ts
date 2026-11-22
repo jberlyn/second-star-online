@@ -46,6 +46,7 @@ import {
   MODERATION_TEXT,
   mapName,
   mergePlayerPrefs,
+  NEW_SKILL_VALUE,
   NO_FOG,
   PASSWORD_TEXT,
   type Permission,
@@ -237,7 +238,7 @@ import {
   noteUnknownName,
   unnoteCreate,
 } from "./systems/admin/login-limits.ts";
-import { loadNpc, openNpcEditor, saveNpc } from "./systems/admin/npcedit.ts";
+import { closeNpcWindows, loadNpc, openNpcEditor, saveNpc } from "./systems/admin/npcedit.ts";
 import {
   applySave,
   closeEditor,
@@ -3041,7 +3042,26 @@ export function createGame(deps: GameDeps): Game {
     },
 
     contentPublished(hash) {
+      // An NPC whose file changed starts its shop again, as an NPC Editor save does: its ledger and
+      // saved shop go, and its open Bio and shop windows close.
+      const before = new Map([...npcs].map(([k, f]) => [k, f.text]));
       layNpcFiles();
+      for (const [k, f] of npcs) {
+        if (before.get(k) !== f.text) {
+          world.shops.delete(f.name);
+          deleteShop(db, f.name);
+          deliver(closeNpcWindows(world, f.name));
+        }
+      }
+      // A skill added by the publish starts at its starting value for everyone online (as a login
+      // pads it), and every sheet is sent again: the Skills tab's rows may have changed.
+      const skillCount = content().classes.skills.length;
+      for (const o of world.players.values()) {
+        while (o.char.skills.length < skillCount) {
+          o.char.skills.push(NEW_SKILL_VALUE);
+        }
+        o.lastSheet = "";
+      }
       // Setting defaults drawn from content (the Assassin prizes) follow it.
       applySettings(resolveSettings(loadSettingOverrides(db)));
       // Walkability comes from the tile tables: every loaded map's grids are worked out again.

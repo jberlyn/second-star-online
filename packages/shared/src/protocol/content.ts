@@ -56,14 +56,14 @@ export const contentDraftSchema = z.strictObject({
 export const contentDiscardSchema = z.strictObject({ t: z.literal("contentDiscard"), seq, ...ref });
 
 /**
- * Publishes the draft as the admin last saw it (`seen`: each change's row and time), so a change
+ * Publishes the draft as the admin last saw it (`draftRev`, the overview's revision), so a change
  * another admin made since refuses the publish.
  */
 export const contentPublishSchema = z.strictObject({
   t: z.literal("contentPublish"),
   seq,
   summary: z.string().max(200),
-  seen: z.array(z.strictObject({ ...ref, updatedAt: z.string().max(40) })).max(500),
+  draftRev: z.string().regex(/^[0-9a-f]{16}$/),
 });
 
 /** Undoes a publish as a whole. */
@@ -142,6 +142,8 @@ export interface ContentOverview {
   datasets: ContentDatasetView[];
   /** The published store's hash. */
   hash: string;
+  /** The draft's revision: Publish sends it back, and a draft changed since refuses it. */
+  draftRev: string;
 }
 
 /** A row's state: as the pack has it, changed or added by the operator, or removed. */

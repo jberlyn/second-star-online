@@ -68,6 +68,7 @@ export function overviewOf(service: ContentService): ContentOverview {
       };
     }),
     hash: service.store().hash,
+    draftRev: service.draftRev(),
   };
 }
 
@@ -267,16 +268,9 @@ export function contentIntent(
       return result(msg.seq, service.draftDiscard(ref), `${rowLabel(ref)} is out of the draft.`);
     }
     case "contentPublish": {
-      const seen: (RowRef & { updatedAt: string })[] = [];
-      for (const s of msg.seen) {
-        const ref = refOf(s);
-        if (ref) {
-          seen.push({ ...ref, updatedAt: s.updatedAt });
-        }
-      }
       return result(
         msg.seq,
-        service.publish(actor, seen, msg.summary),
+        service.publish(actor, msg.draftRev, msg.summary),
         "Published: it is live for everyone.",
       );
     }

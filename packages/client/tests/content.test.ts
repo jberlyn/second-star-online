@@ -194,3 +194,20 @@ describe("publishes in quick succession", () => {
     expect(content().hash).toBe("h1");
   });
 });
+
+test("a reset drops the dead session's waiting messages and ignores its store when it lands", async () => {
+  const { fetchImpl } = server({ late: fileWith(6, "late") }, "late");
+  const handled: string[] = [];
+  const sync = createContentSync({ handle: (m) => handled.push(m.t), fetch: fetchImpl });
+  sync.receive({ t: "content", hash: "late" });
+  sync.receive({ t: "death" });
+  sync.reset();
+  await settle();
+  await settle();
+  expect(handled).toEqual([]);
+  expect(content().hash).toBe("");
+  expect(sync.syncing).toBe(false);
+  // The next session works as before.
+  sync.receive({ t: "death" });
+  expect(handled).toEqual(["death"]);
+});

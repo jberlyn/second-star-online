@@ -41,7 +41,7 @@ export interface ContentPageActions {
   row(seq: number, ref: ContentRowRef): void;
   draft(seq: number, ref: ContentRowRef, op: "set" | "remove" | "revert", data: unknown): void;
   discard(seq: number, ref: ContentRowRef): void;
-  publish(seq: number, summary: string, seen: (ContentRowRef & { updatedAt: string })[]): void;
+  publish(seq: number, summary: string, draftRev: string): void;
   undo(seq: number, id: string): void;
   notice(seq: number, ref: ContentRowRef, accept: boolean): void;
 }
@@ -335,14 +335,10 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
       if (!overview || overview.draft.length === 0) {
         return;
       }
-      const seen = overview.draft.map((d) => ({
-        dataset: d.dataset,
-        part: d.part,
-        key: d.key,
-        updatedAt: d.updatedAt,
-      }));
+      const count = overview.draft.length;
+      const draftRev = overview.draftRev;
       void confirmBox(root, {
-        text: `Publish ${seen.length} change${seen.length === 1 ? "" : "s"}? They go live for every player at once.`,
+        text: `Publish ${count} change${count === 1 ? "" : "s"}? They go live for every player at once.`,
         confirm: "Publish",
         cancel: "Not yet",
       }).then((yes) => {
@@ -352,7 +348,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
             summary.value = "";
             refreshAll();
           };
-          actions.publish(resultSeq, summary.value, seen);
+          actions.publish(resultSeq, summary.value, draftRev);
         }
       });
     },
@@ -584,6 +580,13 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
       const k = (data as Record<string, unknown> | null)?.[editingKeyField];
       if (typeof k !== "string" && typeof k !== "number") {
         showError(`The row needs its "${editingKeyField}".`);
+        return;
+      }
+      // The key travels in the message, which takes 1 to 80 characters: say so here rather than
+      // send a message the server must drop.
+      const key = String(k);
+      if (key.trim() === "" || key.length > 80) {
+        showError(`Its "${editingKeyField}" is its key: 1 to 80 characters.`);
         return;
       }
       ref = { ...ref, key: String(k) };

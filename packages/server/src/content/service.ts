@@ -14,9 +14,12 @@ import {
   type ContentData,
   type ContentStore,
   checkNpcFile,
+  content,
   DATASET_IDS,
   type DatasetId,
   editorLines,
+  hasContent,
+  installContent,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
 } from "@secondstaronline/shared";
@@ -35,6 +38,7 @@ import {
   type PublishChange,
   type PublishedState,
   publishById,
+  publishesAfter,
   recentPublishes,
   type StoredContentRow,
   type StoredPublish,
@@ -403,7 +407,7 @@ export class ContentService {
 
   /** The draft's pre-publish checks: schemas, then key rules and cross-references. */
   check(draft: readonly DraftRow[] = this.draft()): ContentProblem[] {
-    return checkStore(this.draftContent(draft), this.published, this.packKeys);
+    return draft.length === 0 ? [] : this.fullProblems(this.draftContent(draft));
   }
 
   /** Checks that a ref names a row an operator may change. */
@@ -471,8 +475,10 @@ export class ContentService {
     if (op === "set" && ref.dataset === "npcFiles" && ref.part === "files") {
       const row = data as { name?: unknown; text?: unknown } | null;
       if (row && typeof row.text === "string") {
-        const lines = resolveNpcItemNames(editorLines(row.text));
-        const check = checkNpcFile(lines);
+        // Against the draft's items: an item added or renamed in the same draft counts.
+        const draftStore = buildContentStore(this.draftContent());
+        const lines = resolveNpcItemNames(editorLines(row.text), draftStore);
+        const check = checkNpcFile(lines, draftStore);
         if (check.error) {
           return fail(`${rowLabel(ref)}: ${check.error}`);
         }
@@ -546,6 +552,36 @@ export class ContentService {
   }
 
   /**
+   * Installs `next` for a moment and puts the store that was installed back: every module rebuilds
+   * from it, so a row the schemas accept but a rule cannot read (a missing text key, say) is
+   * refused before it is written, instead of failing the publish halfway or every start after.
+   */
+  private installProblems(next: ContentData): ContentProblem[] {
+    const before = hasContent() ? content() : null;
+    try {
+      installContent(buildContentStore(next));
+      return [];
+    } catch (e) {
+      return [
+        {
+          where: "content",
+          message: `a rule cannot read it: ${e instanceof Error ? e.message : String(e)}`,
+        },
+      ];
+    } finally {
+      if (before) {
+        installContent(before);
+      }
+    }
+  }
+
+  /** Every check a write must pass: the publish checks, then a trial install. */
+  private fullProblems(next: ContentData): ContentProblem[] {
+    const problems = checkStore(next, this.published, this.packKeys);
+    return problems.length > 0 ? problems : this.installProblems(next);
+  }
+
+  /**
    * The store a write would leave, read back from the database exactly as it would be stored (row
    * order included), with the write rolled back.
    */
@@ -575,26 +611,33 @@ export class ContentService {
   }
 
   /**
-   * Publishes the draft. `seen` is the draft as the admin last saw it (each row's ref and
-   * time); when another admin changed it since, the publish is refused, so nobody publishes
-   * over someone else's work. Every check must pass.
+   * The draft's revision: a hash of every change in it (row, change, author, time and JSON). Any
+   * save or discard gives a new one, even two saves in the same millisecond.
    */
-  publish(
-    actor: ContentActor,
-    seen: readonly (RowRef & { updatedAt: string })[],
-    summary: string,
-  ): ContentResult<StoredPublish> {
+  draftRev(draft: readonly DraftRow[] = this.draft()): string {
+    const h = createHash("sha256");
+    for (const d of draft) {
+      h.update(
+        `${rowLabel(d)}\u0000${d.op}\u0000${d.authorAccountId}\u0000${d.updatedAt}\u0000${rowHash(d.data)}\n`,
+      );
+    }
+    return h.digest("hex").slice(0, 16);
+  }
+
+  /**
+   * Publishes the draft. `draftRev` is the revision of the draft as the admin last saw it; when
+   * another admin changed it since, the publish is refused, so nobody publishes over someone
+   * else's work. Every check must pass.
+   */
+  publish(actor: ContentActor, draftRev: string, summary: string): ContentResult<StoredPublish> {
     const draft = this.draft();
     if (draft.length === 0) {
       return fail("the draft is empty");
     }
-    const changed =
-      draft.length !== seen.length ||
-      draft.some((d) => !seen.some((s) => sameRow(s, d) && s.updatedAt === d.updatedAt));
-    if (changed) {
+    if (this.draftRev(draft) !== draftRev) {
       return fail("the draft changed since you last looked: check it again before publishing");
     }
-    const problems = this.check(draft);
+    const problems = this.fullProblems(this.draftContent(draft));
     if (problems.length > 0) {
       return fail("the draft does not pass its checks", problems);
     }
@@ -665,8 +708,19 @@ export class ContentService {
     const layer = contentRows(this.db);
     const same = (a: PublishedState | null, b: PublishedState | null) =>
       a === null || b === null ? a === b : a.op === b.op && rowHash(a.data) === rowHash(b.data);
+    // A later publish that touched one of its rows counts as a change even if it put the row
+    // back as it was (a change and its undo, both later, cancel out).
+    const later = publishesAfter(this.db, p.id);
+    const laterIds = new Set(later.map((l) => l.id));
+    const touchedLater = later
+      .filter(
+        (l) => !(l.undoneBy && laterIds.has(l.undoneBy)) && !(l.undoOf && laterIds.has(l.undoOf)),
+      )
+      .flatMap((l) => l.changes);
     const conflicts = p.changes.filter(
-      (c) => !same(this.stateOf(layer.find((r) => sameRow(r, c))), c.after),
+      (c) =>
+        !same(this.stateOf(layer.find((r) => sameRow(r, c))), c.after) ||
+        touchedLater.some((t) => sameRow(t, c)),
     );
     if (conflicts.length > 0) {
       return fail(
@@ -687,7 +741,7 @@ export class ContentService {
       }
     });
     // Every publish check, not just the schemas: a later publish may refer to what this one added.
-    const problems = checkStore(rows, this.published, this.packKeys);
+    const problems = this.fullProblems(rows);
     if (problems.length > 0) {
       return fail("undoing it would leave content that does not pass its checks", problems);
     }
@@ -768,7 +822,7 @@ export class ContentService {
       },
     ];
     const next = this.candidate(() => deleteContentRow(this.db, ref.dataset, ref.part, ref.key));
-    const problems = checkStore(next, this.published, this.packKeys);
+    const problems = this.fullProblems(next);
     if (problems.length > 0) {
       return fail(
         "taking the pack's version would leave content that does not pass its checks",

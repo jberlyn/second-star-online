@@ -9,6 +9,7 @@ import {
   buildContentStore,
   type ContentData,
   type ContentStore,
+  content,
   installContent,
 } from "@secondstaronline/shared";
 
@@ -16,7 +17,12 @@ import { readPackDir } from "../src/content/packs.ts";
 import { rowDetailOf } from "../src/content/page.ts";
 import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
-import { badKeyForm, nameProblems, skillProblems } from "../src/content/validate.ts";
+import {
+  badKeyForm,
+  nameProblems,
+  referenceProblems,
+  skillProblems,
+} from "../src/content/validate.ts";
 import {
   contentRows,
   insertPack,
@@ -47,10 +53,8 @@ function setup(opts: { releasePacks?: Record<string, string> } = {}) {
   return { db, service, published };
 }
 
-const seen = (service: ContentService) =>
-  service
-    .draft()
-    .map((d) => ({ dataset: d.dataset, part: d.part, key: d.key, updatedAt: d.updatedAt }));
+/** The draft's revision as the admin last saw it (what Publish sends). */
+const seen = (service: ContentService) => service.draftRev();
 
 const classic = readPackDir(RELEASE_PACK_DIRS.classic as string);
 
@@ -751,5 +755,160 @@ describe("third review fixes", () => {
     saveNpcFile(db, { npc: file.name, text: file.text }, "acc", "now");
     expect(rowDetailOf(service, ref)?.note).toContain("NPC Editor");
     installContent(buildContentStore(classic.data as ContentData));
+  });
+});
+
+describe("fourth review fixes", () => {
+  test("an empty skill name is a broken reference too", () => {
+    const { service } = setup();
+    const medals = structuredClone(service.publishedContent().social.medals) as {
+      awards: { skill: string }[];
+    };
+    (medals.awards[0] as { skill: string }).skill = "";
+    service.draftSet(ADMIN, { dataset: "social", part: "medals", key: null }, "set", medals);
+    expect(service.check().map((p) => p.message)).toContain(
+      "names a skill that does not exist: (nothing)",
+    );
+  });
+
+  test("a second broken reference beside an existing one is still reported", () => {
+    const { service } = setup();
+    const base = structuredClone(classic.data) as ContentData;
+    base.quests.current = base.quests.current.map((q, n) =>
+      n === 0 ? { ...q, wants: "Nothing Here" } : q,
+    );
+    const next = structuredClone(base);
+    next.quests.current = next.quests.current.map((q, n) =>
+      n === 1 ? { ...q, wants: "Nothing Here" } : q,
+    );
+    expect(referenceProblems(base, base)).toEqual([]);
+    expect(referenceProblems(next, base).map((p) => p.message)).toEqual([
+      "names an item that does not exist: Nothing Here",
+    ]);
+  });
+
+  test("an attack-power condition or value combat cannot read is refused when drafted", () => {
+    const { service } = setup();
+    const ap = structuredClone(service.publishedContent().attPower.attPower);
+    const tier = ap.skillBlocks.flatMap((b) => b.tiers).find((t) => t.when) as {
+      when: string[];
+      value: unknown;
+    };
+    tier.when = ["Archery >= 10"];
+    expect(
+      service.draftSet(ADMIN, { dataset: "attPower", part: "attPower", key: null }, "set", ap).ok,
+    ).toBe(false);
+    tier.when = ["Archery > 9"];
+    tier.value = "random(ten)";
+    expect(
+      service.draftSet(ADMIN, { dataset: "attPower", part: "attPower", key: null }, "set", ap).ok,
+    ).toBe(false);
+  });
+
+  test("undo is refused when a later publish touched its row, even if it put it back", () => {
+    const { service } = setup();
+    const ref = { dataset: "casino" as const, part: "slots", key: null };
+    const slots = service.publishedContent().casino.slots;
+    service.draftSet(ADMIN, ref, "set", { ...slots, cost: 25 });
+    const a = service.publish(ADMIN, seen(service), "A");
+    service.draftSet(ADMIN, ref, "set", { ...slots, cost: 30 });
+    service.publish(ADMIN, seen(service), "B");
+    service.draftSet(ADMIN, ref, "set", { ...slots, cost: 25 });
+    service.publish(ADMIN, seen(service), "C");
+    const u = service.undo(ADMIN, a.ok ? a.value.id : "");
+    expect(u.ok).toBe(false);
+    expect(service.store().casino.slots.cost).toBe(25);
+  });
+
+  test("a later publish and its undo cancel out, so the earlier publish can still be undone", () => {
+    const { service } = setup();
+    const ref = { dataset: "casino" as const, part: "slots", key: null };
+    const slots = service.publishedContent().casino.slots;
+    service.draftSet(ADMIN, ref, "set", { ...slots, cost: 25 });
+    const a = service.publish(ADMIN, seen(service), "A");
+    service.draftSet(ADMIN, ref, "set", { ...slots, cost: 30 });
+    const b = service.publish(ADMIN, seen(service), "B");
+    expect(service.undo(ADMIN, b.ok ? b.value.id : "").ok).toBe(true);
+    expect(service.undo(ADMIN, a.ok ? a.value.id : "").ok).toBe(true);
+    expect(service.store().casino.slots).toEqual(classic.data.casino?.slots as never);
+  });
+
+  test("an NPC file may sell an item added in the same draft; removing an item a shop sells is refused", () => {
+    const { service } = setup();
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Moonblade" }, "set", {
+      name: "Moonblade",
+      icon: null,
+    });
+    const file = service.publishedContent().npcFiles.files.find((f) => f.text.includes("SEL|")) as {
+      name: string;
+      text: string;
+    };
+    const ref = { dataset: "npcFiles" as const, part: "files", key: file.name };
+    expect(
+      service.draftSet(ADMIN, ref, "set", { ...file, text: `${file.text}\rSEL|Moonblade:5:5` }).ok,
+    ).toBe(true);
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(true);
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Moonblade" }, "remove", null);
+    expect(service.check().some((p) => p.where === `npcFiles/files/${file.name}`)).toBe(true);
+  });
+
+  test("the draft revision changes with every save, even within one millisecond", () => {
+    const { db } = setup();
+    const service = new ContentService({
+      db,
+      now: () => "2026-11-22T00:00:00.000Z",
+      releasePacks: RELEASE_PACK_DIRS,
+    });
+    const ref = { dataset: "casino" as const, part: "slots", key: null };
+    const slots = service.publishedContent().casino.slots;
+    service.draftSet(ADMIN, ref, "set", { ...slots, cost: 25 });
+    const first = service.draftRev();
+    service.draftSet(ADMIN, ref, "set", { ...slots, cost: 26 });
+    expect(service.draftRev()).not.toBe(first);
+    expect(service.publish(ADMIN, first, "").ok).toBe(false);
+  });
+});
+
+describe("fifth review fixes", () => {
+  test("a row every schema accepts but a rule cannot read is refused before it is written", () => {
+    const { service } = setup();
+    const stations = structuredClone(service.publishedContent().craft.stations) as {
+      texts: Record<string, unknown>;
+    };
+    delete stations.texts[Object.keys(stations.texts)[0] as string];
+    const ref = { dataset: "craft" as const, part: "stations", key: null };
+    expect(service.draftSet(ADMIN, ref, "set", stations).ok).toBe(true);
+    expect(service.check().some((p) => p.message.startsWith("a rule cannot read it"))).toBe(true);
+    const before = service.store().hash;
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(false);
+    expect(service.store().hash).toBe(before);
+    // The installed store is put back after the trial.
+    expect(content().craft.stations.texts).toEqual(classic.data.craft?.stations.texts as never);
+  });
+
+  test("stat words are read exactly as each rule reads them; the Bio score's skills are checked", () => {
+    const { service } = setup();
+    const bios = structuredClone(service.publishedContent().social.bios);
+    bios.score.counted.push("hpmax");
+    service.draftSet(ADMIN, { dataset: "social", part: "bios", key: null }, "set", bios);
+    expect(service.check().map((p) => p.message)).toContain(
+      "names a skill that does not exist: hpmax",
+    );
+    service.draftDiscard({ dataset: "social", part: "bios", key: null });
+    const ground = structuredClone(service.publishedContent().itemRules.ground);
+    (ground.platforms[0] as { needs: string }).needs = "Level";
+    service.draftSet(ADMIN, { dataset: "itemRules", part: "ground", key: null }, "set", ground);
+    expect(service.check().map((p) => p.message)).toContain(
+      "names a skill that does not exist: Level",
+    );
+  });
+
+  test("each chat room is listed once", () => {
+    const { service } = setup();
+    const chat = structuredClone(service.publishedContent().social.chat);
+    (chat.rooms[4] as { key: string }).key = chat.rooms[0]?.key as string;
+    expect(
+      service.draftSet(ADMIN, { dataset: "social", part: "chat", key: null }, "set", chat).ok,
+    ).toBe(false);
   });
 });

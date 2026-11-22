@@ -337,6 +337,16 @@ export function recentPublishes(db: Db, limit: number): StoredPublish[] {
     .map(toPublish);
 }
 
+/** Every publish made after this one (ids are UUIDv7, so they sort in the order made). */
+export function publishesAfter(db: Db, id: string): StoredPublish[] {
+  return db
+    .query<PublishRecord, [string]>(
+      "SELECT id, created_at, actor_name, summary, changes, hash, undo_of, undone_by FROM content_publishes WHERE id > ? ORDER BY id",
+    )
+    .all(id)
+    .map(toPublish);
+}
+
 export function publishById(db: Db, id: string): StoredPublish | null {
   const r = db
     .query<PublishRecord, [string]>(

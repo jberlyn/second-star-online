@@ -11,6 +11,7 @@ import { content, type ServerMsg } from "@secondstaronline/shared";
 
 import { setRole } from "../src/persistence/accounts.ts";
 import { recentCheats } from "../src/persistence/admin.ts";
+import { loadShop, saveShop } from "../src/persistence/economy.ts";
 import {
   type Bot,
   chats,
@@ -20,6 +21,7 @@ import {
   settle,
   startTestServer,
   type TestServer,
+  tick,
 } from "./harness.ts";
 
 type Result = Extract<ServerMsg, { t: "contentResult" }>;
@@ -128,15 +130,9 @@ describe("the live content store", () => {
     expect(overview.overview.draft).toHaveLength(1);
     expect(overview.overview.problems).toEqual([]);
     expect(overview.overview.packs[0]).toMatchObject({ id: "classic", name: "Classic" });
-    const seen = overview.overview.draft.map(({ dataset, part, key, updatedAt }) => ({
-      dataset,
-      part,
-      key,
-      updatedAt,
-    }));
     const published = await ask<Result>(
       alice,
-      { t: "contentPublish", summary: "Close the bank", seen },
+      { t: "contentPublish", summary: "Close the bank", draftRev: overview.overview.draftRev },
       "contentResult",
     );
     expect(published.ok).toBe(true);
@@ -178,5 +174,61 @@ describe("the live content store", () => {
     bob.send({ t: "chat", text: "/help banking" });
     await settle();
     expect(chats(bob)).not.toContain("The bank is closed today.");
+  });
+
+  test("publishing an NPC file starts its shop again; a new skill reaches characters online", async () => {
+    const overviewOf = () =>
+      ask<Overview>(alice, { t: "contentOverview" }, "contentOverview").then((o) => o.overview);
+    const publish = async (summary: string) => {
+      const o = await overviewOf();
+      return ask<Result>(
+        alice,
+        { t: "contentPublish", summary, draftRev: o.draftRev },
+        "contentResult",
+      );
+    };
+    // A saved shop for an NPC, as a trade leaves it.
+    const npc = content().npcFiles.files.find((f) => f.text.includes("SEL|")) as {
+      name: string;
+      text: string;
+    };
+    saveShop(server.db, { npc: npc.name, gold: 5, lines: [] }, "2026-11-04T00:00:00.000Z");
+    expect(loadShop(server.db, npc.name)).not.toBeNull();
+    const drafted = await ask<Result>(
+      alice,
+      {
+        t: "contentDraft",
+        dataset: "npcFiles",
+        part: "files",
+        key: npc.name,
+        op: "set",
+        data: { ...npc, text: `${npc.text}\rSEL|Ale:5:5` },
+      },
+      "contentResult",
+    );
+    expect(drafted.ok).toBe(true);
+    expect((await publish("Sell ale")).ok).toBe(true);
+    expect(loadShop(server.db, npc.name)).toBeNull();
+
+    // A new skill: Bob, online, has it at its starting value and his sheet comes again.
+    const n = content().classes.skills.length;
+    await ask<Result>(
+      alice,
+      {
+        t: "contentDraft",
+        dataset: "classes",
+        part: "skills",
+        key: "Swimming",
+        op: "set",
+        data: { index: n + 1, skill: "Swimming" },
+      },
+      "contentResult",
+    );
+    expect((await publish("Swimming")).ok).toBe(true);
+    bob.inbox.length = 0;
+    await tick(server, 2);
+    const sheet = await bob.waitFor((m) => m.t === "sheet");
+    expect(sheet.t === "sheet" ? sheet.skills.length : 0).toBe(n + 1);
+    expect(sheet.t === "sheet" ? sheet.skills[n] : 0).toBe(1);
   });
 });

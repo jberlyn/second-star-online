@@ -156,8 +156,11 @@ export const chatSchema = z.strictObject({
         entering: z.string(),
       }),
     )
-    // Five rooms: the RoomKey union, the protocol enum and one menu item per room.
-    .length(5),
+    // Five rooms: the RoomKey union, the protocol enum and one menu item per room, each once.
+    .length(5)
+    .refine((rooms) => new Set(rooms.map((r) => r.key)).size === rooms.length, {
+      message: "each room is listed once",
+    }),
   windows: z.strictObject({
     imSlots: z.literal(10),
     /** 1.6's chat ignore window. SSO keeps the archive value but checks every entry. */

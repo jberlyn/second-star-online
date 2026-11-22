@@ -94,6 +94,11 @@ export interface ContentSync {
   receive(msg: ServerMsg): void;
   /** True while a new store is on its way (messages wait). */
   readonly syncing: boolean;
+  /**
+   * The connection went: the messages waiting are the dead session's, so they go, and a store
+   * still on its way is not installed against the next session's messages.
+   */
+  reset(): void;
 }
 
 /** The hash a message says the server's store has, when it says one. */
@@ -127,6 +132,8 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
    * (an undo back to it, a reconnect) fetches it again.
    */
   const settled = new Set<string>();
+  /** Counts connections: a fetch begun under an earlier one is ignored when it lands. */
+  let generation = 0;
 
   const drain = () => {
     syncing = false;
@@ -142,8 +149,12 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
   const fetchStore = (hash: string) => {
     syncing = true;
     wanted = hash;
+    const gen = generation;
     fetchContent(hash, fetchImpl).then(
       (store) => {
+        if (gen !== generation) {
+          return;
+        }
         if (wanted === hash) {
           install(store);
           opts.installed?.(store);
@@ -154,6 +165,9 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
         drain();
       },
       (err: unknown) => {
+        if (gen !== generation) {
+          return;
+        }
         if (err instanceof ContentFormatError) {
           reload();
           return;
@@ -189,6 +203,13 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
     },
     get syncing() {
       return syncing;
+    },
+    reset() {
+      generation += 1;
+      waiting.length = 0;
+      settled.clear();
+      syncing = false;
+      wanted = null;
     },
   };
 }

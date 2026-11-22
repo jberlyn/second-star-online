@@ -647,7 +647,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     row: (seq, ref) => send({ t: "contentRow", seq, ...ref }),
     draft: (seq, ref, op, data) => send({ t: "contentDraft", seq, ...ref, op, data }),
     discard: (seq, ref) => send({ t: "contentDiscard", seq, ...ref }),
-    publish: (seq, summary, seen) => send({ t: "contentPublish", seq, summary, seen }),
+    publish: (seq, summary, draftRev) => send({ t: "contentPublish", seq, summary, draftRev }),
     undo: (seq, id) => send({ t: "contentUndo", seq, id }),
     notice: (seq, ref, accept) => send({ t: "contentNotice", seq, ...ref, accept }),
   });
@@ -1552,6 +1552,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
   };
   conn.onGone = (text, relogin = false) => {
+    // Messages the dead session left waiting for a store must not reach the next one.
+    contentSync.reset();
     if (kickAlert) {
       const shown = kickAlert;
       kickAlert = null;

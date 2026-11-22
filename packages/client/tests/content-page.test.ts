@@ -29,6 +29,7 @@ const overview = (over: Partial<ContentOverview> = {}): ContentOverview => ({
     { id: "rects", readOnly: true, parts: [{ part: "fx", keyed: false, rows: 1 }] },
   ],
   hash: "abc",
+  draftRev: "0123456789abcdef",
   ...over,
 });
 
@@ -186,10 +187,7 @@ describe("the Content page", () => {
     publish.click();
     confirm();
     await settle();
-    expect(last("publish")?.args).toEqual([
-      "Rename Ale",
-      [{ dataset: "items", part: "items", key: "Ale", updatedAt: "2026-11-22T01:02:03.000Z" }],
-    ]);
+    expect(last("publish")?.args).toEqual(["Rename Ale", "0123456789abcdef"]);
   });
 
   test("a failing check blocks Publish and lists the problems", () => {
@@ -402,4 +400,24 @@ describe("review fixes", () => {
     expect($<HTMLTextAreaElement>("content-json").readOnly).toBe(false);
     expect($("content-save").hidden).toBe(false);
   });
+});
+
+test("a new row with an empty or over-long key is caught before anything is sent", () => {
+  const { p, $, last, sent } = page();
+  p.onShow();
+  p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+  p.receive({
+    t: "contentList",
+    seq: last("list")?.seq ?? 0,
+    listing: { dataset: "items", part: "items", keyField: "name", rows: [] },
+  });
+  $("content-add").click();
+  for (const name of ["", "   ", "x".repeat(81)]) {
+    $<HTMLTextAreaElement>("content-json").value = JSON.stringify({ name, icon: null });
+    $("content-save").click();
+    expect(sent.some((s) => s.kind === "draft")).toBe(false);
+    expect(p.el.querySelector(".content-editor-error")?.textContent).toContain(
+      "1 to 80 characters",
+    );
+  }
 });

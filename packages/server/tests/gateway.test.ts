@@ -262,6 +262,10 @@ describe("each installed pack's art is served under /assets/packs/<id>/", () => 
     expect((await get("/assets/packs/classic/sounds/hitsound.wav")).status).toBe(200);
     expect((await get("/assets/packs/classic/..%2f..%2fengine%2findex.json")).status).toBe(404);
     expect((await get("/assets/packs/other/tiles-0.png")).status).toBe(404);
+    // Every spelling of the index is merged, or refused.
+    expect((await (await get("/assets/./index.json")).json()).atlases.tiles.sheets).toHaveLength(1);
+    expect((await get("/assets//index.json")).status).toBe(404);
+    expect((await get("/assets/%2findex.json")).status).toBe(404);
   });
 
   test("without the pack installed, none of its art is sent", async () => {

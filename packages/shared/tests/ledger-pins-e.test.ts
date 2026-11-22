@@ -151,20 +151,14 @@ describe("Only server systems create items", () => {
       // The player hub (characterView permission): a character by name, and a moderation button's
       // length and reason, each read by the chat command's own code. Nothing names an item.
       // The Content page (contentEditor permission): rows of the content store by dataset, field and
-      // key, a publish's summary and the draft it saw, a publish id. `contentDraft` also carries a
+      // key, a publish's summary and the draft revision it saw, a publish id. `contentDraft` also carries a
       // row's JSON (`data`), which changes what an item is, never makes one: the server validates
       // it against the dataset's schema and the pre-publish checks, and every publish can be undone.
       contentList: ["dataset:string", "part:string"],
       contentRow: ["dataset:string", "part:string", "key:string"],
       contentDraft: ["dataset:string", "part:string", "key:string"],
       contentDiscard: ["dataset:string", "part:string", "key:string"],
-      contentPublish: [
-        "summary:string",
-        "seen[].dataset:string",
-        "seen[].part:string",
-        "seen[].key:string",
-        "seen[].updatedAt:string",
-      ],
+      contentPublish: ["summary:string", "draftRev:string"],
       contentUndo: ["id:string"],
       contentNotice: ["dataset:string", "part:string", "key:string"],
       characterSearch: ["query:string"],

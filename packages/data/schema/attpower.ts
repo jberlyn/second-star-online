@@ -19,11 +19,14 @@ const baseRowSchema = z.strictObject({
 
 const tierSchema = z.strictObject({
   subWeapon: z.strictObject({ match: z.enum(["exact"]), pattern: z.string() }).nullable(),
-  /** `["<Skill> <op> <n>"]`, or null for an unconditional row. */
-  when: z.array(z.string()).nullable(),
+  /**
+   * `["<Skill> <op> <n>"]` with op `<` or `>` (`level` for the character level), or null for an
+   * unconditional row. Exactly what combat reads (shared `tierApplies`), so nothing else publishes.
+   */
+  when: z.array(z.string().regex(/^\w+ [<>] \d+$/)).nullable(),
   op: z.enum(["set", "add", "subtract"]),
-  /** A number, or `random(n)` / `a + random(n)`. */
-  value: z.union([int, z.string()]),
+  /** A number, or `random(n)` / `a + random(n)` (shared `evalValue`). */
+  value: z.union([int, z.string().regex(/^(?:(?:\d+ \+ )?random\(\d+\)|-?\d+)$/)]),
 });
 
 export const attPowerDataSchema = z.strictObject({

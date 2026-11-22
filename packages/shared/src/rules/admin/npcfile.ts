@@ -10,7 +10,7 @@
  * `contains`. An empty file reads EMPTY: the NPC never moves and opens no Bio.
  */
 
-import { content, onContent } from "../../content/store.ts";
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
 import { parseTrn } from "../progression/promotion.ts";
 
@@ -257,7 +257,10 @@ export function npcEditorName(name: string): string | null {
  * key (decision 3 of issue #27: text written by operators is resolved when saved, so a later rename
  * never breaks it). An `INV|` line's leading count stays. Every other line is unchanged.
  */
-export function resolveNpcItemNames(lines: readonly string[]): string[] {
+export function resolveNpcItemNames(
+  lines: readonly string[],
+  store: ContentStore = content(),
+): string[] {
   return lines.map((l) => {
     const m = /^(SEL|BUY|INV)\|([^:|]*)(:.*)?$/.exec(l);
     if (!m) {
@@ -266,30 +269,30 @@ export function resolveNpcItemNames(lines: readonly string[]): string[] {
     const [, tag, name = "", rest = ""] = m;
     const count = tag === "INV" ? /^(\d+ )(.+)$/.exec(name) : null;
     const bare = count ? (count[2] as string) : name;
-    if (content().item(bare)) {
+    if (store.item(bare)) {
       return l;
     }
-    const item = content().itemNamed(bare);
+    const item = store.itemNamed(bare);
     return item ? `${tag}|${count ? count[1] : ""}${item.name}${rest}` : l;
   });
 }
 
-const catalogue = (name: string) =>
-  content().items.items.some(
+const catalogue = (name: string, store: ContentStore = content()) =>
+  store.items.items.some(
     (i) => lingoEq(i.name, name) || (i.variants ?? []).some((v) => lingoEq(v, name)),
   );
 
 /** A shop line's item: a catalogue name or one of its archived spellings (`apple`, `knife`). */
-export function npcShopItemOk(name: string): boolean {
-  return catalogue(name);
+export function npcShopItemOk(name: string, store: ContentStore = content()): boolean {
+  return catalogue(name, store);
 }
 
 /**
  * A drop line's item: what a shop sells, an Inventory fixture, `N Gold` (a positive integer
  * followed by "gold", as `/drop` takes it), or `N <crystals>` ("5 Blue Crystals").
  */
-export function npcLootItemOk(name: string): boolean {
-  if (catalogue(name) || content().items.fixtures.some((f) => lingoEq(f, name))) {
+export function npcLootItemOk(name: string, store: ContentStore = content()): boolean {
+  if (catalogue(name, store) || store.items.fixtures.some((f) => lingoEq(f, name))) {
     return true;
   }
   const n = Number.parseInt(lingoWord(name, 1), 10);
@@ -300,7 +303,7 @@ export function npcLootItemOk(name: string): boolean {
     return true;
   }
   const rest = name.trim().slice(lingoWord(name, 1).length).trim();
-  return lingoContains(rest, "Crystals") && catalogue(rest);
+  return lingoContains(rest, "Crystals") && catalogue(rest, store);
 }
 
 const MAX_INT = 2_000_000_000;
@@ -333,7 +336,10 @@ export function editorLines(text: string): string[] {
  * Checks an NPC editor save. Refused: what would break the file or make an item that does not
  * exist. Saved with a warning: what lies outside the line window that reads it, or does nothing.
  */
-export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
+export function checkNpcFile(
+  lines: readonly string[],
+  store: ContentStore = content(),
+): NpcFileCheck {
   const warnings: string[] = [];
   const fail = (n: number, why: string): NpcFileCheck => ({
     error: `Line ${n}: ${why}`,
@@ -373,7 +379,7 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (p.length !== 3) {
           return fail(n, "SEL|<item>:<price>:<stock>.");
         }
-        if (!npcShopItemOk(p[0] ?? "")) {
+        if (!npcShopItemOk(p[0] ?? "", store)) {
           return fail(n, `"${p[0]}" is not an item.`);
         }
         if (!count(p[1], 0) || !count(p[2], 0)) {
@@ -387,7 +393,7 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (p.length < 2 || p.length > 3) {
           return fail(n, "BUY|<item>:<price>.");
         }
-        if (!npcShopItemOk(p[0] ?? "")) {
+        if (!npcShopItemOk(p[0] ?? "", store)) {
           return fail(n, `"${p[0]}" is not an item.`);
         }
         if (!count(p[1], 0)) {
@@ -407,7 +413,7 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (p.length !== 2) {
           return fail(n, "INV|<item>:<one in N>.");
         }
-        if (!npcLootItemOk(p[0] ?? "")) {
+        if (!npcLootItemOk(p[0] ?? "", store)) {
           return fail(n, `"${p[0]}" is not an item.`);
         }
         if (!count(p[1], 1)) {
@@ -421,7 +427,7 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (!count(p[1], 0)) {
           return fail(n, "the price is a whole number from 0.");
         }
-        if (!content().classes.classes.some((c) => c.promotion && lingoEq(c.name, p[0] ?? ""))) {
+        if (!store.classes.classes.some((c) => c.promotion && lingoEq(c.name, p[0] ?? ""))) {
           warnings.push(`Line ${n}: no class "${p[0]}" can be trained: 1.6 has no rule for it.`);
         }
         break;
