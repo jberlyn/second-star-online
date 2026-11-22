@@ -26,7 +26,30 @@ import { applyTabMask, mendPanelSeam, PANEL_SEAM } from "../build/assets-lib/pan
 import { createRgba, decodePng, encodePng, type Rgba } from "../build/assets-lib/png.ts";
 import type { ManifestBitmap } from "../build/assets-lib/select.ts";
 import { renderRects } from "../build/data.ts";
-import type { AssetIndex } from "../src/assets.ts";
+import type { AssetIndex, PackArtIndex } from "../src/assets.ts";
+
+/**
+ * A test build's index as the server serves it: the engine's index with the Classic pack's art
+ * (`<outDir>/classic-art/`) merged in, its file paths relative to `outDir`.
+ */
+function readBuilt(outDir: string): AssetIndex {
+  const engine = JSON.parse(readFileSync(join(outDir, "index.json"), "utf8")) as AssetIndex;
+  const art = JSON.parse(
+    readFileSync(join(outDir, "classic-art", "index.json"), "utf8"),
+  ) as PackArtIndex;
+  const atlases = Object.fromEntries(
+    Object.entries(art.atlases).map(([g, a]) => [
+      g,
+      { sheets: a.sheets.map((f) => `classic-art/${f}`), sprites: a.sprites },
+    ]),
+  ) as AssetIndex["atlases"];
+  const sounds = { ...engine.sounds };
+  for (const [k, f] of Object.entries(art.sounds)) {
+    sounds[k] = `classic-art/${f}`;
+  }
+  return { ...engine, atlases, sounds };
+}
+
 import { TAB_ART } from "../src/panel-tabs.ts";
 
 const tmp = mkdtempSync(join(tmpdir(), "sso-assets-"));
@@ -196,7 +219,7 @@ describe("asset build", () => {
     for (const f of files(a)) {
       expect(Bun.hash(readFileSync(join(a, f)))).toBe(Bun.hash(readFileSync(join(b, f))));
     }
-    const index = JSON.parse(readFileSync(join(a, "index.json"), "utf8")) as AssetIndex;
+    const index = readBuilt(join(a));
     // Every sheet ≤ 2048², and the first sprites drawn are present.
     for (const g of Object.values(index.atlases)) {
       for (const s of Object.values(g.sprites)) {
@@ -256,10 +279,12 @@ describe("asset build", () => {
     // The 37 sounds some 1.6 script plays: the bell is the MP3, not its
     // 44-byte WAV stub; the 13 unused ones are not built.
     expect(Object.keys(index.sounds)).toHaveLength(37);
-    expect(index.sounds.churchy).toBe("sounds/churchy.mp3");
-    expect(index.sounds["stone skin"]).toBe("sounds/stone-skin.wav");
+    // The bell is the Classic pack's; the interface's clicks are the engine's own.
+    expect(index.sounds.churchy).toBe("classic-art/sounds/churchy.mp3");
+    expect(index.sounds.clicksound).toBe("sounds/clicksound.wav");
+    expect(index.sounds["stone skin"]).toBe("classic-art/sounds/stone-skin.wav");
     expect(index.sounds.monsterhitme).toBeUndefined();
-    expect(readFileSync(join(a, "sounds/fx.wav")).readUInt32LE(24)).toBe(14092);
+    expect(readFileSync(join(a, "classic-art/sounds/fx.wav")).readUInt32LE(24)).toBe(14092);
     // A rerun with the same inputs is skipped.
     expect(buildAssets({ outDir: a, addedDir: empty }).skipped).toBe(true);
   }, 60_000);
@@ -300,7 +325,7 @@ describe("asset build", () => {
       }),
     );
     buildAssets({ outDir: join(tmp, "d"), addedDir: added, force: true });
-    const index = JSON.parse(readFileSync(join(tmp, "d", "index.json"), "utf8")) as AssetIndex;
+    const index = readBuilt(join(tmp, "d"));
     expect(index.atlases.tiles.sprites["sso test tile"]?.slice(3)).toEqual([32, 32, 16, 16]);
   }, 60_000);
 
@@ -347,7 +372,7 @@ describe("asset build", () => {
       put(dir, g, "Added Test.json", artSide(g));
     }
     build(dir, "e");
-    const index = JSON.parse(readFileSync(join(tmp, "e", "index.json"), "utf8")) as AssetIndex;
+    const index = readBuilt(join(tmp, "e"));
     for (const g of ["tiles", "bodies", "paperdoll", "fx", "items"] as const) {
       expect(index.atlases[g].sprites["added test"]?.slice(3), g).toEqual([8, 8, 3, 4]);
     }
@@ -358,9 +383,11 @@ describe("asset build", () => {
     put(dir, "sounds", "Test Chime.wav", wav());
     put(dir, "sounds", "Test Chime.json", soundSide());
     build(dir, "f");
-    const index = JSON.parse(readFileSync(join(tmp, "f", "index.json"), "utf8")) as AssetIndex;
-    expect(index.sounds["test chime"]).toBe("sounds/test-chime.wav");
-    expect(readFileSync(join(tmp, "f", "sounds/test-chime.wav"))).toEqual(Buffer.from(wav()));
+    const index = readBuilt(join(tmp, "f"));
+    expect(index.sounds["test chime"]).toBe("classic-art/sounds/test-chime.wav");
+    expect(readFileSync(join(tmp, "f", "classic-art/sounds/test-chime.wav"))).toEqual(
+      Buffer.from(wav()),
+    );
     expect(Object.keys(index.sounds)).toHaveLength(38);
   }, 60_000);
 
@@ -413,8 +440,7 @@ describe("asset build", () => {
     }
     build(a, "m1");
     build(b, "m2");
-    const h = (o: string) =>
-      (JSON.parse(readFileSync(join(tmp, o, "index.json"), "utf8")) as AssetIndex).inputHash;
+    const h = (o: string) => readBuilt(join(tmp, o)).inputHash;
     expect(h("m1")).toBe(h("m2"));
     put(b, "sounds", "Chime.json", soundSide({ note: "changed" }));
     build(b, "m3");
@@ -442,7 +468,7 @@ describe("mirrored north frames", () => {
     // The first test's build, reused through the input hash (built here when run alone).
     const a = join(tmp, "a");
     buildAssets({ outDir: a, addedDir: join(tmp, "no-added") });
-    const index = JSON.parse(readFileSync(join(a, "index.json"), "utf8")) as AssetIndex;
+    const index = readBuilt(join(a));
     // North frames are flipped about the body's centre line (column 22); the body stays put.
     const sheets = new Map<string, Rgba>();
     const centreX = (group: "paperdoll" | "bodies", name: string): number => {
@@ -576,7 +602,7 @@ describe("mirrored north frames", () => {
   test("original sidecars: every paperdoll north frame and the listed bodies' north frames are mirrored, nothing else", () => {
     const a = join(tmp, "a");
     buildAssets({ outDir: a, addedDir: join(tmp, "no-added") });
-    const index = JSON.parse(readFileSync(join(a, "index.json"), "utf8")) as AssetIndex;
+    const index = readBuilt(join(a));
     const north = /^(.*)-f\d-n$/;
     const expected = [
       ...Object.keys(index.atlases.paperdoll.sprites)
@@ -676,9 +702,7 @@ describe("mirrored north frames", () => {
     }
     put(dir, "bodies", "900-F2-S", side("bodies"));
     buildAssets({ outDir: join(tmp, "mirror-out"), addedDir: dir, force: true });
-    const index = JSON.parse(
-      readFileSync(join(tmp, "mirror-out", "index.json"), "utf8"),
-    ) as AssetIndex;
+    const index = readBuilt(join(tmp, "mirror-out"));
     // One pixel at column 1, registration point 3: flipped in place, regX moves to 10.
     expect(index.atlases.bodies.sprites["900-f2-n"]?.slice(3)).toEqual([10, 4, 10, 1]);
     expect(index.atlases.bodies.sprites["900-f2-s"]?.slice(3)).toEqual([10, 4, 3, 1]);

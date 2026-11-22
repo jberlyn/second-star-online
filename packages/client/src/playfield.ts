@@ -332,7 +332,8 @@ export function createPlayfield(assets: Assets): Playfield {
             // it keeps its own picture.
             drawSprite(ctx, assets, "items", clockFace(model.minute), px, py);
           } else {
-            drawSprite(ctx, assets, "items", groundMember(g.name), px, py);
+            // The server names the art when an operator gave the item its own (`sprite`).
+            drawSprite(ctx, assets, "items", g.sprite ?? groundMember(g.name), px, py);
           }
           const overlay = groundOverlay(g.name);
           // A crafting station animates only while someone crafts facing it.

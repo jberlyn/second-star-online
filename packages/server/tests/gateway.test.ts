@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { systemClock } from "../src/clock.ts";
 import { createGame } from "../src/game.ts";
-import { type Gateway, startGateway } from "../src/gateway/server.ts";
+import { type Gateway, mergePackArt, startGateway } from "../src/gateway/server.ts";
 import { openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { scriptedRng } from "../src/rng.ts";
@@ -189,25 +189,40 @@ describe("gateway prebuilt production and development serving", () => {
   });
 });
 
-describe("the release's art follows the Classic pack", () => {
+describe("each installed pack's art is served under /assets/packs/<id>/", () => {
   let root = "";
   let gateway: Gateway;
   let classicInstalled = true;
 
   beforeAll(() => {
     root = mkdtempSync(join(tmpdir(), "sso-gw-art-"));
-    const atlas = { sheets: ["tiles-0.png"], sprites: { g1: [0, 0, 0, 32, 32, 0, 0] } };
+    const engine = join(root, "engine");
+    const art = join(root, "classic-art");
+    mkdirSync(join(engine, "sounds"), { recursive: true });
+    mkdirSync(join(art, "sounds"), { recursive: true });
+    const none = { sheets: [], sprites: {} };
     writeFileSync(
-      join(root, "index.json"),
+      join(engine, "index.json"),
       JSON.stringify({
         version: 1,
         inputHash: "x",
-        atlases: { tiles: atlas, bodies: atlas, paperdoll: atlas, fx: atlas, items: atlas },
+        atlases: { tiles: none, bodies: none, paperdoll: none, fx: none, items: none },
         ui: { "internal:1": { file: "ui/internal-1.png", w: 1, h: 1, regX: 0, regY: 0 } },
-        sounds: {},
+        sounds: { clicksound: "sounds/clicksound.wav" },
       }),
     );
-    writeFileSync(join(root, "tiles-0.png"), new Uint8Array([137, 80, 78, 71]));
+    const atlas = { sheets: ["tiles-0.png"], sprites: { g1: [0, 0, 0, 32, 32, 0, 0] } };
+    writeFileSync(
+      join(art, "index.json"),
+      JSON.stringify({
+        version: 1,
+        inputHash: "x",
+        atlases: { tiles: atlas, bodies: none, paperdoll: none, fx: none, items: none },
+        sounds: { hitsound: "sounds/hitsound.wav" },
+      }),
+    );
+    writeFileSync(join(art, "tiles-0.png"), new Uint8Array([137, 80, 78, 71]));
+    writeFileSync(join(art, "sounds", "hitsound.wav"), new Uint8Array([82, 73, 70, 70]));
     const db = openDatabase(":memory:");
     migrate(db);
     gateway = startGateway({
@@ -222,8 +237,8 @@ describe("the release's art follows the Classic pack", () => {
         dropOtherSessions: () => {},
       }),
       clock: systemClock,
-      assetsDir: root,
-      releaseArt: () => classicInstalled,
+      assetsDir: engine,
+      packArt: () => (classicInstalled ? [{ id: "classic", artDir: art }] : []),
     });
   });
 
@@ -232,15 +247,84 @@ describe("the release's art follows the Classic pack", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  test("with Classic installed the atlases are served; without it no 1.6 art is", async () => {
-    const index = async () => (await fetch(new URL("/assets/index.json", gateway.url))).json();
-    expect((await index()).atlases.tiles.sheets).toEqual(["tiles-0.png"]);
-    expect((await fetch(new URL("/assets/tiles-0.png", gateway.url))).status).toBe(200);
+  const get = (path: string) => fetch(new URL(path, gateway.url));
+
+  test("the index merges the pack's atlases and sounds into the engine's art", async () => {
+    const index = await (await get("/assets/index.json")).json();
+    expect(index.atlases.tiles.sheets).toEqual(["packs/classic/tiles-0.png"]);
+    expect(index.atlases.tiles.sprites.g1[0]).toBe(0);
+    expect(index.sounds).toEqual({
+      clicksound: "sounds/clicksound.wav",
+      hitsound: "packs/classic/sounds/hitsound.wav",
+    });
+    expect(index.ui["internal:1"]).toBeDefined();
+    expect((await get("/assets/packs/classic/tiles-0.png")).status).toBe(200);
+    expect((await get("/assets/packs/classic/sounds/hitsound.wav")).status).toBe(200);
+    expect((await get("/assets/packs/classic/..%2f..%2fengine%2findex.json")).status).toBe(404);
+    expect((await get("/assets/packs/other/tiles-0.png")).status).toBe(404);
+  });
+
+  test("without the pack installed, none of its art is sent", async () => {
     classicInstalled = false;
-    const bare = await index();
-    expect(bare.atlases.tiles).toEqual({ sheets: [], sprites: {} });
-    // The interface's own art is the engine's.
-    expect(bare.ui["internal:1"]).toBeDefined();
-    expect((await fetch(new URL("/assets/tiles-0.png", gateway.url))).status).toBe(404);
+    try {
+      const index = await (await get("/assets/index.json")).json();
+      expect(index.atlases.tiles).toEqual({ sheets: [], sprites: {} });
+      expect(index.sounds).toEqual({ clicksound: "sounds/clicksound.wav" });
+      // The interface's own art is the engine's.
+      expect(index.ui["internal:1"]).toBeDefined();
+      expect((await get("/assets/packs/classic/tiles-0.png")).status).toBe(404);
+    } finally {
+      classicInstalled = true;
+    }
+  });
+});
+
+describe("merging pack art", () => {
+  test("a later pack's sheets follow the earlier ones, and its sprites point at them", () => {
+    const none = { sheets: [], sprites: {} };
+    const atlases = (sheet: string, name: string) => ({
+      tiles: {
+        sheets: [sheet],
+        sprites: {
+          [name]: [0, 1, 2, 3, 4, 5, 6] as [number, number, number, number, number, number, number],
+        },
+      },
+      bodies: none,
+      paperdoll: none,
+      fx: none,
+      items: none,
+    });
+    const merged = mergePackArt(
+      {
+        version: 1,
+        inputHash: "",
+        atlases: { ...atlases("e.png", "e"), tiles: none },
+        ui: {},
+        sounds: {},
+      },
+      [
+        {
+          id: "a",
+          art: {
+            version: 1,
+            inputHash: "",
+            atlases: atlases("t.png", "x"),
+            sounds: { s: "s.wav" },
+          },
+        },
+        {
+          id: "b",
+          art: {
+            version: 1,
+            inputHash: "",
+            atlases: atlases("t.png", "x"),
+            sounds: { s: "s2.wav" },
+          },
+        },
+      ],
+    );
+    expect(merged.atlases.tiles.sheets).toEqual(["packs/a/t.png", "packs/b/t.png"]);
+    expect(merged.atlases.tiles.sprites.x?.[0]).toBe(1);
+    expect(merged.sounds.s).toBe("packs/b/s2.wav");
   });
 });

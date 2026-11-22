@@ -42,7 +42,14 @@ export type {
   TilesData,
   WhitelistToken,
 } from "../schema/tiles.ts";
-export type { AssetIndex, AtlasGroup, AtlasIndex, AtlasSprite, UiFile } from "./assets.ts";
+export type {
+  AssetIndex,
+  AtlasGroup,
+  AtlasIndex,
+  AtlasSprite,
+  PackArtIndex,
+  UiFile,
+} from "./assets.ts";
 export { ASSET_INDEX_FILE } from "./assets.ts";
 export { churchMapData, jailMapData, seedMapData } from "./generated/index.ts";
 export { type PanelTab, TAB_ART, TAB_HIT, TAB_ROW_Y, type TabArt } from "./panel-tabs.ts";

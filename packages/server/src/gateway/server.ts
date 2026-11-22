@@ -15,7 +15,7 @@ import { realpathSync, statSync } from "node:fs";
 import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 import type { ServerWebSocket } from "bun";
 
-import { ASSET_INDEX_FILE, type AssetIndex } from "@secondstaronline/data";
+import { ASSET_INDEX_FILE, type AssetIndex, type PackArtIndex } from "@secondstaronline/data";
 import {
   CLOSE,
   type ClientMsg,
@@ -36,6 +36,41 @@ import { ipKey } from "../systems/admin/login-limits.ts";
 
 export const WS_PATH = "/ws";
 export const ASSETS_PATH = "/assets/";
+/** Where a pack's art is served, under `/assets/`: `packs/<id>/<file>`. */
+const PACK_ART_PREFIX = "packs/";
+
+/**
+ * The asset index clients load: the engine's own art (the UI files and its sounds) with each
+ * installed pack's atlases and sounds merged in, in load order. A pack's files are named under
+ * `packs/<id>/`; a later pack's sprite or sound of the same name wins.
+ */
+export function mergePackArt(
+  engine: AssetIndex,
+  packs: readonly { id: string; art: PackArtIndex }[],
+): AssetIndex {
+  const atlases = structuredClone(engine.atlases);
+  const sounds = { ...engine.sounds };
+  for (const { id, art } of packs) {
+    for (const [group, atlas] of Object.entries(art.atlases) as [
+      keyof AssetIndex["atlases"],
+      AssetIndex["atlases"][keyof AssetIndex["atlases"]],
+    ][]) {
+      const into = atlases[group] ?? { sheets: [], sprites: {} };
+      const offset = into.sheets.length;
+      into.sheets.push(...atlas.sheets.map((f) => `${PACK_ART_PREFIX}${id}/${f}`));
+      for (const [name, sprite] of Object.entries(atlas.sprites)) {
+        const [sheet, ...rest] = sprite;
+        into.sprites[name] = [sheet + offset, ...rest] as typeof sprite;
+      }
+      atlases[group] = into;
+    }
+    for (const [name, file] of Object.entries(art.sounds)) {
+      sounds[name] = `${PACK_ART_PREFIX}${id}/${file}`;
+    }
+  }
+  return { ...engine, atlases, sounds };
+}
+
 /** Where the content store is served (`current.json`, `<hash>.json`). */
 export const CONTENT_PATH = "/content/";
 
@@ -58,12 +93,13 @@ export interface GatewayOptions {
    */
   content?: () => ClientCopy;
   /**
-   * Whether the pack that owns the release's atlases (Classic) is installed. While it is not, the
-   * asset index lists no atlases and their sheets are not served, so a server without Classic never
-   * sends 1.6 art; the interface's own art (the UI files) is the engine's and always served.
-   * Absent: always installed.
+   * The installed packs' art folders, in load order. Each pack's atlases and sounds are served
+   * under `/assets/packs/<id>/`, and `/assets/index.json` is the engine's own art (the UI files and
+   * the interface's sounds) with every installed pack's art merged in. A pack that is not
+   * installed sends nothing, so a server without the Classic pack never sends 1.6 art. Absent:
+   * `/assets/` serves the asset folder as it is (tests of the gateway alone).
    */
-  releaseArt?: () => boolean;
+  packArt?: () => readonly { id: string; artDir: string | null }[];
   clock: Clock;
   /** Folder of generated assets (packages/data/assets). */
   assetsDir: string;
@@ -584,23 +620,37 @@ export function startGateway(options: GatewayOptions): Gateway {
         if (!/^[\w ./'()+,&-]+$/.test(rel) || rel.includes("..")) {
           return respond("Not found", { status: 404 });
         }
-        const file = Bun.file(normalize(join(options.assetsDir, rel)));
+        let base = options.assetsDir;
+        if (options.packArt && rel.startsWith(PACK_ART_PREFIX)) {
+          // A pack's art: served only while the pack is installed.
+          const [id = "", ...rest] = rel.slice(PACK_ART_PREFIX.length).split("/");
+          const pack = options.packArt().find((p) => p.id === id && p.artDir);
+          if (!pack?.artDir || rest.length === 0) {
+            return respond("Not found", { status: 404 });
+          }
+          base = pack.artDir;
+          rel = rest.join("/");
+        }
+        const file = Bun.file(normalize(join(base, rel)));
         if (!(await file.exists())) {
           return respond("Not found", { status: 404 });
         }
-        if (options.releaseArt && !options.releaseArt()) {
-          if (rel === ASSET_INDEX_FILE) {
-            const index = (await file.json()) as AssetIndex;
-            const atlases = Object.fromEntries(
-              Object.keys(index.atlases).map((g) => [g, { sheets: [], sprites: {} }]),
-            ) as unknown as AssetIndex["atlases"];
-            return respond(req.method === "HEAD" ? null : JSON.stringify({ ...index, atlases }), {
-              headers: { "cache-control": "no-cache", "content-type": "application/json" },
-            });
-          }
-          if (/^(tiles|bodies|paperdoll|fx|items)-\d+\.png$/.test(rel)) {
-            return respond("Not found", { status: 404 });
-          }
+        if (options.packArt && base === options.assetsDir && rel === ASSET_INDEX_FILE) {
+          const index = mergePackArt(
+            (await file.json()) as AssetIndex,
+            await Promise.all(
+              options
+                .packArt()
+                .filter((p): p is { id: string; artDir: string } => p.artDir !== null)
+                .map(async (p) => ({
+                  id: p.id,
+                  art: (await Bun.file(join(p.artDir, ASSET_INDEX_FILE)).json()) as PackArtIndex,
+                })),
+            ),
+          );
+          return respond(req.method === "HEAD" ? null : JSON.stringify(index), {
+            headers: { "cache-control": "no-cache", "content-type": "application/json" },
+          });
         }
         const assetHeaders = {
           "cache-control": "no-cache",

@@ -187,6 +187,8 @@ async function main(): Promise<void> {
         "test ! -e /app/decompiled",
         "test -f /app/dist/client/index.html",
         "test -f /app/packages/data/assets/index.json",
+        "test -f /app/packages/data/packs/classic/manifest.json",
+        "test -f /app/packages/data/packs/classic/art/index.json",
       ].join(" && "),
     ]).stdout.trim().split("\n");
     expect(inspectOut).toEqual(["1000", "1000", "bun"]);

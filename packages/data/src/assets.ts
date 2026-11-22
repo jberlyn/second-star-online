@@ -1,6 +1,8 @@
 /**
  * The shape of the generated asset index, written by
- * `bun run assets:build` to packages/data/assets/index.json and served at /assets/.
+ * `bun run assets:build` to packages/data/assets/index.json (the engine's UI art) and, for the
+ * Classic pack's atlases and sounds, to packages/data/packs/classic/art/index.json. The server
+ * serves the two merged at /assets/index.json.
  * Types only, so the client can import them.
  */
 
@@ -39,6 +41,18 @@ export interface AssetIndex {
   /** Large UI art as single files, by `<cast>:<member>` (e.g. `internal:186`). */
   ui: Record<string, UiFile>;
   /** Sounds of the Audio cast by lower-cased member name (`hitsound`, `stone skin`): WAV, or MP3 for `churchy`. */
+  sounds: Record<string, string>;
+}
+
+/**
+ * A pack's art (`<pack>/art/index.json`): its atlases and sounds, with file paths relative to the
+ * pack's art folder. The server merges the art of every installed pack into the index it serves,
+ * under `/assets/packs/<pack id>/`.
+ */
+export interface PackArtIndex {
+  version: 1;
+  inputHash: string;
+  atlases: Record<AtlasGroup, AtlasIndex>;
   sounds: Record<string, string>;
 }
 

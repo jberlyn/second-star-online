@@ -308,7 +308,8 @@ function listFiles(dir: string, prefix = ""): string[] {
 /** Like `findStaleModules`, for the files of a built pack folder (nested paths). */
 export function findStalePack(files: Map<string, string>, dir = CLASSIC_PACK_DIR): string[] {
   const problems: string[] = [];
-  const onDisk = listFiles(dir);
+  // The art folder is built by `bun run assets:build` and gitignored, so it is not checked here.
+  const onDisk = listFiles(dir).filter((f) => !f.startsWith("art/"));
   for (const [name, text] of files) {
     if (!onDisk.includes(name)) {
       problems.push(`missing: ${name}`);
@@ -385,14 +386,14 @@ if (import.meta.main) {
       writeFileSync(join(GENERATED_DIR, name), text);
     }
     if (pack.sourceStale) {
-      const { id, name, version, format, sso, contentHash } = pack.manifest;
-      writeFileSync(
-        join(CONTENT, PACK_SOURCE),
-        `${JSON.stringify({ id, name, version, format, sso, contentHash }, null, 2)}\n`,
+      writeFileSync(join(CONTENT, PACK_SOURCE), `${JSON.stringify(pack.manifest, null, 2)}\n`);
+      console.log(
+        `data:build: the Classic content changed, so the pack is now v${pack.manifest.version}`,
       );
-      console.log(`data:build: the Classic content changed, so the pack is now v${version}`);
     }
-    rmSync(CLASSIC_PACK_DIR, { recursive: true, force: true });
+    // The art folder belongs to the asset build: keep it.
+    rmSync(join(CLASSIC_PACK_DIR, "data"), { recursive: true, force: true });
+    rmSync(join(CLASSIC_PACK_DIR, "manifest.json"), { force: true });
     mkdirSync(join(CLASSIC_PACK_DIR, "data"), { recursive: true });
     for (const [name, text] of pack.files) {
       writeFileSync(join(CLASSIC_PACK_DIR, name), text);

@@ -1,10 +1,15 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
-import type { ContentStore } from "@secondstaronline/shared";
+import {
+  buildContentStore,
+  type ContentData,
+  type ContentStore,
+  installContent,
+} from "@secondstaronline/shared";
 
 import { readPackDir } from "../src/content/packs.ts";
 import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
@@ -18,6 +23,8 @@ import {
 } from "../src/persistence/content.ts";
 import { openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
+import { groundView, inventoryView } from "../src/systems/world/world.ts";
+import { player, testMap } from "./helpers/sim.ts";
 
 const ADMIN: ContentActor = { accountId: "acc-admin", name: "Admin" };
 const OTHER: ContentActor = { accountId: "acc-other", name: "Other" };
@@ -472,5 +479,33 @@ describe("installed packs", () => {
 
   test("rowValue finds keyed rows ignoring case", () => {
     expect(rowValue(classic.data, { dataset: "items", part: "items", key: "ALE" })).toBeDefined();
+  });
+});
+
+describe("the protocol carries an item's art separately from its key", () => {
+  afterEach(() => installContent(buildContentStore(classic.data as ContentData)));
+
+  test("a ground item and a bag or worn item name their sprite only when it differs", () => {
+    const data = structuredClone(classic.data) as ContentData;
+    const sword = data.items.items.find(
+      (i) => i.name === "Long Sword",
+    ) as (typeof data.items.items)[0];
+    sword.sprite = "Knife";
+    installContent(buildContentStore(data));
+    const g = (item: string) => groundView({ id: "g", item, x: 1, y: 1 } as never);
+    expect(g("Long Sword")).toMatchObject({ name: "Long Sword", sprite: "Knife" });
+    expect(g("Cannonball")).toMatchObject({ name: "Cannonball", sprite: "CannonballBag" });
+    expect(g("Ale").sprite).toBeUndefined();
+    const p = player("p1", testMap("x1y1"), 3, 3);
+    p.char.bag[0] = { item: "Long Sword", qty: 1 };
+    p.char.bag[1] = { item: "Ale", qty: 2 };
+    p.char.equip.ring = "Cannonball";
+    expect(inventoryView(p).sprites).toEqual({
+      "Long Sword": "Knife",
+      Cannonball: "CannonballBag",
+    });
+    p.char.bag[0] = null;
+    p.char.equip.ring = "NOTHING";
+    expect(inventoryView(p).sprites).toBeUndefined();
   });
 });

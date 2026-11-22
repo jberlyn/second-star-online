@@ -1,8 +1,9 @@
 /**
- * Schema for a content pack's manifest. A pack is a folder holding `manifest.json` and one JSON
- * file per dataset under `data/` (each validated by that dataset's schema). The Classic pack is
- * built from `content/` by `bun run data:build` into `packs/classic/`, and its source manifest is
- * `content/pack.json`.
+ * Schema for a content pack's manifest. A pack is a folder holding `manifest.json`, one JSON file
+ * per dataset under `data/` (each validated by that dataset's schema) and its art and sounds (the
+ * `art` folder). The Classic pack's data is built from `content/` by `bun run data:build` into
+ * `packs/classic/` (its source manifest is `content/pack.json`), and its art from `assets/` by
+ * `bun run assets:build` into `packs/classic/art/`.
  */
 import { z } from "zod";
 
@@ -28,6 +29,15 @@ export const packManifestSchema = z.strictObject({
   sso: z.string().regex(/^\d+\.\d+$/),
   /** The SHA-256 (first 16 hex) of the pack's data at this version, so a change needs a bump. */
   contentHash: z.string().regex(/^[0-9a-f]{16}$/),
+  /**
+   * The folder (inside the pack) holding its art and sounds: atlas sheets, sound files and an
+   * `index.json` (`PackArtIndex`). The Classic pack's is built by `bun run assets:build` from
+   * `assets/`. Absent: the pack brings no art.
+   */
+  art: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
 });
 
 export type PackManifest = z.infer<typeof packManifestSchema>;

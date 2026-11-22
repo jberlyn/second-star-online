@@ -74,6 +74,8 @@ export interface ClientCopy {
 /** An installed pack as the Content page lists it. */
 export interface PackInfo {
   id: string;
+  /** The folder of the pack's art and sounds, or null when it brings none. */
+  artDir: string | null;
   name: string;
   version: string;
   source: "release" | "imported";
@@ -211,6 +213,7 @@ export class ContentService {
       loaded.push(pack);
       packs.push({
         id: p.id,
+        artDir: pack.artDir,
         name: pack.manifest.name,
         version: pack.manifest.version,
         source: p.source,

@@ -99,7 +99,13 @@ export interface EquipView {
 /** A ground item: the original's name ("15 Gold") on a tile. */
 export interface GroundView {
   id: string;
+  /** The stored name ("15 Gold", "Crate#3"): the item's key, with what it carries. */
   name: string;
+  /**
+   * The atlas art to draw, when the item's `sprite` differs from its key (an operator gave it new
+   * art); absent draws by the name, as 1.6 did.
+   */
+  sprite?: string;
   x: number;
   y: number;
   /** The way a parked Boat or Battleship faces; absent faces east. */
@@ -111,6 +117,11 @@ export interface InventoryView {
   gold: number;
   bag: ({ item: string; qty: number } | null)[];
   equip: EquipView;
+  /**
+   * The atlas art of each bag or worn item whose `sprite` differs from its key, by key; absent
+   * when every item draws by its name.
+   */
+  sprites?: Record<string, string>;
 }
 
 /** Another player as a client draws them. */

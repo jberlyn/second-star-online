@@ -904,3 +904,41 @@ describe("Ctrl", () => {
     expect(n).toBe(1);
   });
 });
+
+describe("item art named by the server", () => {
+  test("a bag line and a worn item draw the sprite the inventory names, else their own name", () => {
+    const asked: string[] = [];
+    const assets: Assets = { ...fakeAssets, sprite: (_g, name) => (asked.push(name), undefined) };
+    const panel = createPanel(assets, {
+      use: () => {},
+      equip: () => {},
+      drop: () => {},
+      give: () => {},
+      unequip: () => {},
+      crystals: () => {},
+      oneCrystal: () => {},
+      stack: () => {},
+      arrange: () => {},
+      gold: () => {},
+      sound: () => {},
+      canModify: () => true,
+      say: () => {},
+    });
+    const bag = emptyBag();
+    bag[0] = { item: "Long Sword", qty: 1 };
+    bag[1] = { item: "Apple", qty: 1 };
+    panel.setInventory(
+      {
+        gold: 0,
+        bag,
+        equip: { ...NO_EQUIPMENT, ring: "Cannonball" },
+        sprites: { "Long Sword": "Knife", Cannonball: "CannonballBag" },
+      },
+      1,
+    );
+    expect(asked).toContain("Knife");
+    expect(asked).toContain("Apple");
+    expect(asked).toContain("CannonballBag");
+    expect(asked).not.toContain("Long Sword");
+  });
+});

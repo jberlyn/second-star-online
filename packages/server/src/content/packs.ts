@@ -19,6 +19,8 @@ import type { ContentData } from "@secondstaronline/shared";
 export interface LoadedPack {
   manifest: PackManifest;
   data: Partial<ContentData>;
+  /** The folder holding the pack's art (`<pack>/<manifest.art>`), when it has art there. */
+  artDir: string | null;
 }
 
 /** An imported pack as the database stores it: the manifest and each dataset by file stem. */
@@ -50,7 +52,12 @@ export function readPackDir(dir: string): LoadedPack {
       data[id] = validDataset(manifest.id, id, JSON.parse(readFileSync(file, "utf8")));
     }
   }
-  return { manifest, data: data as Partial<ContentData> };
+  const artDir = manifest.art ? join(dir, manifest.art) : null;
+  return {
+    manifest,
+    data: data as Partial<ContentData>,
+    artDir: artDir && existsSync(join(artDir, "index.json")) ? artDir : null,
+  };
 }
 
 /** Reads an imported pack from the JSON the database keeps. Throws on anything invalid. */
@@ -64,5 +71,6 @@ export function readPackBlob(json: string): LoadedPack {
       data[id] = validDataset(manifest.id, id, value);
     }
   }
-  return { manifest, data: data as Partial<ContentData> };
+  // An imported pack's art arrives with art uploads (#29) and pack import (#34).
+  return { manifest, data: data as Partial<ContentData>, artDir: null };
 }

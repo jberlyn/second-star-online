@@ -22,3 +22,4 @@ Thumbs.db
 *.log
 perf-results/
 .fso/
+packages/data/packs/*/art/

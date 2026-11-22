@@ -765,6 +765,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   };
 
   let inventory: InventoryView | null = null;
+  /** A bag line's picture: the art the server named for it (an item's `sprite`), else 1.6's. */
+  const pictureOf = (item: string): string => inventory?.sprites?.[item] ?? bagPicture(item);
   let headNo = 1;
 
   // ---- drag to rearrange (SSO; 1.6 had none) ------------------------------------------------
@@ -860,7 +862,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         return;
       }
       menu.hidden = true;
-      drag.ghost = spriteCanvas(a, "items", bagPicture(line.item), 0, 0);
+      drag.ghost = spriteCanvas(a, "items", pictureOf(line.item), 0, 0);
       drag.ghost.classList.add("drag-ghost");
       drag.source.style.opacity = "0.35";
       bagLayer.classList.add("dragging");
@@ -1036,7 +1038,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
           // An SSO addition: the item's name, and a stack's size.
           const name = itemLabel(line.item);
           tips.attach(hit, line.qty > 1 ? `${name} (${line.qty})` : name);
-          const picture = spriteCanvas(a, "items", bagPicture(line.item), x, y);
+          const picture = spriteCanvas(a, "items", pictureOf(line.item), x, y);
           bagLayer.append(picture);
           if (line.qty > 1) {
             const q = field(String(line.qty), "qty");
@@ -1085,7 +1087,9 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         // The icon itself is not clickable (sprites 75-80 carry no behaviour, score frame 63).
         if (item !== "NOTHING") {
           const c = boxCentre(box.col, box.row);
-          equipLayer.append(centredCanvas(a, "items", item, c.x, c.y));
+          equipLayer.append(
+            centredCanvas(a, "items", inventory?.sprites?.[item] ?? item, c.x, c.y),
+          );
         }
         marks
           .get(box.slot)

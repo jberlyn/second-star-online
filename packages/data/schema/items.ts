@@ -17,7 +17,7 @@ export const itemSchema = z.strictObject({
   name: z.string().min(1),
   /** The name players see, when an operator has renamed the item; the key otherwise. */
   display: z.string().min(1).max(40).optional(),
-  /** The Inventory and paperdoll art to draw, when it differs from the key. */
+  /** The Inventory art to draw (bag, equipment boxes, the ground), when it differs from the key. */
   sprite: z.string().min(1).optional(),
   /** Other spellings of the name seen in the archive. */
   variants: strings.optional(),

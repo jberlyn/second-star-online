@@ -15,7 +15,7 @@ The starter landscape is defined in [seed-map.json](../packages/data/content/see
    bun run data:build
    ```
 
-3. If you added or changed art or sounds, rebuild the sprite atlases and sound index:
+3. If you added or changed art or sounds, rebuild the sprite atlases and sound index (the Classic pack's art lands in `packages/data/packs/classic/art/`):
 
    ```sh
    bun run assets:build

@@ -151,7 +151,7 @@ export function startServer(options: ServerOptions): RunningServer {
     development: options.development,
     game,
     content: () => content.clientCopy(),
-    releaseArt: () => content.installedPacks().some((p) => p.id === "classic"),
+    packArt: () => content.installedPacks(),
     clock,
     assetsDir: ASSETS_DIR,
     proxyHops: options.proxyHops ?? 0,

@@ -34,6 +34,7 @@ import {
   hullMax,
   type InventoryView,
   isJailMap,
+  itemSprite,
   type MapExit,
   type MapFog,
   type MapView,
@@ -41,6 +42,7 @@ import {
   NO_EQUIPMENT,
   NO_FACTION,
   NO_FOG,
+  NOTHING,
   newAttackTimers,
   newGatherCounters,
   type Piece,
@@ -137,7 +139,15 @@ export interface GroundItem {
 }
 
 export function groundView(g: GroundItem): GroundView {
-  return { id: g.id, name: g.item, x: g.x, y: g.y, ...(g.facing ? { facing: g.facing } : {}) };
+  const sprite = itemSprite(g.item);
+  return {
+    id: g.id,
+    name: g.item,
+    ...(sprite !== g.item ? { sprite } : {}),
+    x: g.x,
+    y: g.y,
+    ...(g.facing ? { facing: g.facing } : {}),
+  };
 }
 
 /** Map field 12 items 1, 2, 3 and 5. */
@@ -1149,10 +1159,21 @@ export function playerView(p: Player): PlayerView {
 }
 
 export function inventoryView(p: Player): InventoryView {
+  // The protocol carries an item's art separately from its key when they differ (issue #27).
+  const sprites: Record<string, string> = {};
+  for (const name of [...p.char.bag.map((l) => l?.item), ...Object.values(p.char.equip)]) {
+    if (name && name !== NOTHING) {
+      const sprite = itemSprite(name);
+      if (sprite !== name) {
+        sprites[name] = sprite;
+      }
+    }
+  }
   return {
     gold: p.char.gold,
     bag: p.char.bag.map((l) => (l ? { ...l } : null)),
     equip: { ...p.char.equip },
+    ...(Object.keys(sprites).length > 0 ? { sprites } : {}),
   };
 }
 

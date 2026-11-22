@@ -25,7 +25,14 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import type { AssetIndex, AtlasGroup, AtlasIndex, AtlasSprite, UiFile } from "../src/assets.ts";
+import type {
+  AssetIndex,
+  AtlasGroup,
+  AtlasIndex,
+  AtlasSprite,
+  PackArtIndex,
+  UiFile,
+} from "../src/assets.ts";
 import { addedSoundFile, listAdded } from "./assets-lib/added.ts";
 import { applyKey, type KeyRule, ruleForUsage } from "./assets-lib/key.ts";
 import { ATLAS_RULE, loadOriginal, MAIN_ROOT, rootOf, ruleForSidecar } from "./assets-lib/load.ts";
@@ -52,9 +59,16 @@ import {
 } from "./assets-lib/select.ts";
 
 export const ASSETS_DIR = join(import.meta.dir, "..", "assets");
+/**
+ * Where the Classic pack's art goes: its atlases and its sounds (gitignored, like ASSETS_DIR). The
+ * engine keeps the interface's own art, the UI files and `ENGINE_SOUNDS`, in ASSETS_DIR.
+ */
+export const CLASSIC_ART_DIR = join(import.meta.dir, "..", "packs", "classic", "art");
+/** The interface's click sounds: engine art, served whatever packs are installed. */
+export const ENGINE_SOUNDS: readonly string[] = ["clicksound", "clicksound2"];
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
 /** Bump when the build's output format or rules change, so the cache is invalidated. */
-const BUILD_VERSION = 16;
+const BUILD_VERSION = 17;
 
 interface Source {
   name: string;
@@ -70,6 +84,11 @@ interface Source {
 export interface BuildOptions {
   repoRoot?: string;
   outDir?: string;
+  /**
+   * Where the Classic pack's atlases and sounds go: CLASSIC_ART_DIR, or `<outDir>/classic-art` when
+   * `outDir` is given.
+   */
+  packArtDir?: string;
   addedDir?: string;
   force?: boolean;
 }
@@ -226,10 +245,15 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
     addedDir,
   );
   const indexPath = join(outDir, "index.json");
-  if (!options.force && existsSync(indexPath)) {
+  // A build into another folder (a test) keeps the pack's art beside it, never in the real pack.
+  const packArtDir =
+    options.packArtDir ?? (options.outDir ? join(options.outDir, "classic-art") : CLASSIC_ART_DIR);
+  const packIndexPath = join(packArtDir, "index.json");
+  if (!options.force && existsSync(indexPath) && existsSync(packIndexPath)) {
     try {
       const old = JSON.parse(readFileSync(indexPath, "utf8")) as AssetIndex;
-      if (old.inputHash === hash) {
+      const oldPack = JSON.parse(readFileSync(packIndexPath, "utf8")) as PackArtIndex;
+      if (old.inputHash === hash && oldPack.inputHash === hash) {
         return { skipped: true, files: 0, bytes: 0, sheets: {}, sprites: {}, uiFiles: 0 };
       }
     } catch {
@@ -403,7 +427,41 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
     sounds[key] = file;
   }
 
-  const index: AssetIndex = { version: 1, inputHash: hash, atlases, ui, sounds };
+  // The Classic pack's art: every atlas sheet and every sound but the interface's clicks move to
+  // the pack's art folder, with an index of their own. The engine index keeps the UI files.
+  rmSync(packArtDir, { recursive: true, force: true });
+  mkdirSync(join(packArtDir, "sounds"), { recursive: true });
+  const move = (rel: string) => {
+    writeFileSync(join(packArtDir, rel), readFileSync(join(outDir, rel)));
+    rmSync(join(outDir, rel));
+  };
+  for (const group of groups) {
+    for (const sheet of atlases[group].sheets) {
+      move(sheet);
+    }
+  }
+  const engineSounds: Record<string, string> = {};
+  const packSounds: Record<string, string> = {};
+  for (const [name, file] of Object.entries(sounds)) {
+    if (ENGINE_SOUNDS.includes(name)) {
+      engineSounds[name] = file;
+    } else {
+      move(file);
+      packSounds[name] = file;
+    }
+  }
+  const packIndex: PackArtIndex = { version: 1, inputHash: hash, atlases, sounds: packSounds };
+  writeFileSync(packIndexPath, `${JSON.stringify(packIndex)}\n`);
+  const noAtlases = Object.fromEntries(
+    groups.map((g) => [g, { sheets: [], sprites: {} }]),
+  ) as unknown as Record<AtlasGroup, AtlasIndex>;
+  const index: AssetIndex = {
+    version: 1,
+    inputHash: hash,
+    atlases: noAtlases,
+    ui,
+    sounds: engineSounds,
+  };
   write("index.json", `${JSON.stringify(index)}\n`);
   return stats;
 }
