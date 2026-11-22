@@ -589,6 +589,10 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           held += inVault;
           characters.add(p.id);
           refund += purge ? inVault : 0;
+          // A container stored in the vault takes its storage with it, as one in the bag does.
+          for (const v of p.char.vault.filter(is)) {
+            moveStorage(v, purge ? null : as(v));
+          }
           p.char.vault = purge
             ? p.char.vault.filter((v) => !is(v))
             : p.char.vault.map((v) => (is(v) ? as(v) : v));
@@ -676,6 +680,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       }
       for (const r of vaults.values()) {
         const items = store.vault(r.characterId);
+        for (const v of items.filter(is)) {
+          moveStorage(v, purge ? null : as(v));
+        }
         const kept = purge ? items.filter((v) => !is(v)) : items.map((v) => (is(v) ? as(v) : v));
         store.setVault(r.characterId, kept);
         logActivity(world, offline(r), "admin", {

@@ -826,6 +826,70 @@ describe("removing content in use from a running game", () => {
     expect(service.history()[0]?.cleanup.join("\n")).toContain("2 stored items");
   });
 
+  test("a container in a vault, online or offline, takes its storage with it when replaced or purged", async () => {
+    // Deposits refuse containers, so only a database edit puts one in a vault; a cleanup must
+    // still not strand its storage.
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const bo = await make("Bo", undefined, false);
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.char.vault.push("Crate#21");
+    game.world.containers.set("Crate#21", ["Ale", "Apple"]);
+    db.query(
+      "INSERT INTO vault_items (character_id, position, item) VALUES (?, 1, 'Crate#22')",
+    ).run(bo.characterId);
+    game.world.containers.set("Crate#22", ["Mead"]);
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Crate",
+        content: "replace",
+        copies: "replace",
+        replacement: "Cabinet",
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    const online = p.char.vault[0] ?? "";
+    const offline =
+      db
+        .query<{ item: string }, [string]>("SELECT item FROM vault_items WHERE character_id = ?")
+        .get(bo.characterId)?.item ?? "";
+    expect(online).toMatch(/^Cabinet#\d+$/);
+    expect(offline).toMatch(/^Cabinet#\d+$/);
+    expect(game.world.containers.get(online)).toEqual(["Ale", "Apple"]);
+    expect(game.world.containers.get(offline)).toEqual(["Mead"]);
+    expect(game.world.containers.has("Crate#21")).toBe(false);
+    expect(game.world.containers.has("Crate#22")).toBe(false);
+    // Purged, each Cabinet takes what it held with it.
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Cabinet",
+        content: "replace",
+        copies: "purge",
+        replacement: "Wind Cabinet",
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(p.char.vault).toEqual([]);
+    expect(game.world.containers.has(online)).toBe(false);
+    expect(game.world.containers.has(offline)).toBe(false);
+    expect(
+      db
+        .query("SELECT count(*) AS n FROM container_items WHERE name IN (?, ?)")
+        .get(online, offline),
+    ).toEqual({ n: 0 });
+  });
+
   test("a pile replaced by crystals carries its count in its name; usage counts crystal piles whole", async () => {
     const god = await make("God", "administrator");
     const al = await make("Al");
