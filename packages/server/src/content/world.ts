@@ -5,9 +5,17 @@
  * references nothing in the content resolves. The game implements it (game.ts `contentWorld`);
  * tests pass a fake.
  */
+import type { ServerMsg } from "@secondstaronline/shared";
+
 import type { EntryKind } from "./cleanup.ts";
 import type { ContentActor } from "./service.ts";
 import type { ContentProblem } from "./validate.ts";
+
+/** A message for one client (systems/world/world.ts `Outgoing`). */
+export interface Outgoing {
+  to: string;
+  msg: ServerMsg;
+}
 
 /** A kind of place the world keeps an item or a monster. */
 export type UsagePlaceKind =
@@ -94,6 +102,17 @@ export interface ContentWorld {
   /** How many different characters hold a copy of the item (bag, gear or vault). */
   holders(spellings: readonly string[]): number;
   /**
+   * A publish starts (before its transaction): memory is noted so a rollback can put it back, and
+   * what the game tells clients from here, the new store included, is held until `commit` (or
+   * dropped by `rollback`).
+   */
+  begin(): void;
+  /**
+   * Tells clients `out`: held while a publish is open, at once otherwise. The game sends what a new
+   * store changes through it.
+   */
+  tell(out: readonly Outgoing[]): void;
+  /**
    * Applies published removals to the world, inside the publish's transaction: online players and
    * loaded maps in memory (their clients told), the rest in the database. Returns a line for each
    * thing done.
@@ -102,10 +121,10 @@ export interface ContentWorld {
   /** Stored references (bags, the ground, spawns) the published content does not resolve. */
   problems(): ContentProblem[];
   /**
-   * Puts back in memory what the last `apply` changed: the publish failed after it, and the
-   * database rolled back with it.
+   * Puts back in memory what the open publish changed: it failed, and the database rolled back
+   * with it. What it held for clients is dropped.
    */
   rollback(): void;
-  /** The publish committed: what the last `apply` held back for clients goes out. */
+  /** The publish committed: what it held back for clients goes out. */
   commit(): void;
 }

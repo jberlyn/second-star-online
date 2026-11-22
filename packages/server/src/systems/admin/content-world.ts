@@ -96,9 +96,10 @@ export interface ContentWorldDeps {
   saveSlots(m: WorldMap): void;
   /**
    * Writes now, in the caller's transaction, the inventories of `players`, every changed
-   * container, the ground changes and the quest lines (game.ts `flushChanged`).
+   * container, the ground changes and the quest lines (game.ts `flushChanged`). What it would tell
+   * the players goes to `send`, held until the publish commits.
    */
-  persist(players: readonly Player[]): void;
+  persist(players: readonly Player[], send: (out: readonly Outgoing[]) => void): void;
   /** Wall-clock ISO time, for the rows it writes. */
   now(): string;
   /** An NPC's shop ledger: in memory, or loaded from the database (null: its file's state). */
@@ -180,17 +181,23 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     store.groundItems(spellings, loaded()).filter((r) => storedCopyOf(r.item, spellings));
 
   /**
-   * What the last `apply` may change, as it was before, and how to put it back: the database rolls
+   * What the open publish may change, as it was before, and how to put it back: the database rolls
    * back with a failed publish, and memory must go back with it.
    */
   let undoLast: (() => void) | null = null;
   /**
-   * What the last `apply` tells clients, held until the publish commits (`commit`), so a publish
-   * that rolls back has told nobody anything.
+   * What the open publish tells clients (the new store and the cleanup), held until it commits
+   * (`commit`), so a publish that rolls back has told nobody anything.
    */
   let outbox: Outgoing[] = [];
   const send = (out: readonly Outgoing[]) => {
     outbox.push(...out);
+  };
+  /** Opens a publish: memory is noted to put back, and clients are told nothing until it commits. */
+  const begin = () => {
+    undoLast = snapshot();
+    outbox = [];
+    touchedAll = new Set();
   };
   /** Online players whose things the last `apply` changed. */
   let touchedAll = new Set<Player>();
@@ -201,7 +208,13 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       equip: { ...p.char.equip },
       vault: [...p.char.vault],
       gold: p.char.gold,
+      skills: [...p.char.skills],
+      lastSheet: p.lastSheet,
       container: p.container,
+      // A changed NPC file closes the shop or Bio window open on it.
+      shop: p.shop,
+      bio: p.bio,
+      vaultOpen: p.vaultOpen,
       keyLock: p.keyLock,
       // The activity ledger moves with each logged change, so it goes back with them.
       held: p.activityHeld ? new Map(p.activityHeld) : undefined,
@@ -219,6 +232,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       guildFields: new Map(world.guildFields),
       shops: [...world.shops.values()].map((sh) => [sh, sh.dirty] as const),
     };
+    // A changed NPC file drops its shop's ledger from memory (an unsaved sale with it).
+    const ledgers = new Map(world.shops);
     const containers = [...world.containers].map(([k, v]) => [k, [...v]] as const);
     const maps = deps.loadedMaps().map((m) => ({
       m,
@@ -228,7 +243,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     const quests = [...world.questLines];
     const shops = [...world.playerShops.values()].flatMap((ps) => {
       const f = npcFileNamed(world.npcs, ps.npc);
-      return f ? [{ name: f.name, text: f.text, ledger: world.shops.get(f.name) }] : [];
+      return f ? [{ name: f.name, text: f.text }] : [];
     });
     const activity = world.activity.length;
     const groundLog = [...world.groundLog];
@@ -240,7 +255,12 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         Object.assign(s.p.char.equip, s.equip);
         s.p.char.vault = s.vault;
         s.p.char.gold = s.gold;
+        s.p.char.skills.splice(0, s.p.char.skills.length, ...s.skills);
+        s.p.lastSheet = s.lastSheet;
         s.p.container = s.container;
+        s.p.shop = s.shop;
+        s.p.bio = s.bio;
+        s.p.vaultOpen = s.vaultOpen;
         s.p.keyLock = s.keyLock;
         s.p.activityHeld = s.held;
         s.p.char.storeDirty = s.storeDirty;
@@ -261,11 +281,10 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       world.questLines.splice(0, world.questLines.length, ...quests);
       for (const sh of shops) {
         setNpcFile(world.npcs, sh.name, sh.text);
-        if (sh.ledger) {
-          world.shops.set(sh.name, sh.ledger);
-        } else {
-          world.shops.delete(sh.name);
-        }
+      }
+      world.shops.clear();
+      for (const [k, v] of ledgers) {
+        world.shops.set(k, v);
       }
       world.activity.length = activity;
       world.groundLog.splice(0, world.groundLog.length, ...groundLog);
@@ -1015,9 +1034,18 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     holders(spellings: readonly string[]) {
       return itemPlaces(spellings).characters;
     },
+    begin,
+    tell(out) {
+      if (undoLast) {
+        send(out);
+      } else {
+        deps.deliver(out);
+      }
+    },
     apply(actions, actor, publishId) {
-      undoLast = snapshot();
-      outbox = [];
+      if (!undoLast) {
+        begin();
+      }
       touchedAll = new Set();
       const lines: string[] = [];
       for (const a of actions) {
@@ -1025,7 +1053,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       }
       // Written with the publish, so a crash before the next save cannot leave the new content
       // with the old copies.
-      deps.persist([...touchedAll]);
+      deps.persist([...touchedAll], send);
       return lines;
     },
     problems,

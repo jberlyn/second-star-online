@@ -1806,7 +1806,7 @@ export function createGame(deps: GameDeps): Game {
     rng,
     deliver,
     saveSlots: (m) => saveMapSlots(m),
-    persist: (players) => flushChanged(players),
+    persist: (players, out) => flushChanged(players, out),
     now: () => isoNow(),
     ledgerOf: (npc) => ledgerOf(npc),
   });
@@ -1815,10 +1815,13 @@ export function createGame(deps: GameDeps): Game {
    * After an intent outside the tick: sends `inv` to everyone in `players` whose inventory changed
    * and writes those inventories, banks, vaults, NPC ledgers and ground items in one transaction.
    */
-  const flushChanged = (players: readonly Player[]) => {
+  const flushChanged = (
+    players: readonly Player[],
+    out: (o: readonly Outgoing[]) => void = deliver,
+  ) => {
     const changed: Player[] = [];
     for (const o of players) {
-      deliver(flushInventory(world, o));
+      out(flushInventory(world, o));
       if (o.invSaveDue || o.char.storeDirty) {
         o.invSaveDue = false;
         changed.push(o);
@@ -3074,7 +3077,7 @@ export function createGame(deps: GameDeps): Game {
         if (!restoring) {
           deleteShop(db, name);
         }
-        deliver(closeNpcWindows(world, name));
+        contentWorld.tell(closeNpcWindows(world, name));
       };
       for (const [k, f] of npcs) {
         if (before.get(k)?.text !== f.text) {
@@ -3105,24 +3108,27 @@ export function createGame(deps: GameDeps): Game {
         m.walkShip = shipWalkGrid(m.layers[0]);
       }
       // Every client is told the new store, then gets its inventory and the ground items around it
-      // again (their art may have changed); the client holds them until the new store is in.
+      // again (their art may have changed); the client holds them until the new store is in. During
+      // a publish this waits until it commits, so a publish that fails tells nobody anything.
       const told = new Set<string>();
+      const out: Outgoing[] = [];
       for (const room of world.rooms.values()) {
         const events = room.map.ground.map((g) => ({ e: "gadd" as const, item: groundView(g) }));
         for (const o of room.players) {
           told.add(o.id);
-          send(o.id, { t: "content", hash });
-          send(o.id, { t: "inv", inv: inventoryView(o) });
+          out.push({ to: o.id, msg: { t: "content", hash } });
+          out.push({ to: o.id, msg: { t: "inv", inv: inventoryView(o) } });
           if (events.length > 0) {
-            send(o.id, { t: "delta", events });
+            out.push({ to: o.id, msg: { t: "delta", events } });
           }
         }
       }
       for (const o of world.players.values()) {
         if (!told.has(o.id)) {
-          send(o.id, { t: "content", hash });
+          out.push({ to: o.id, msg: { t: "content", hash } });
         }
       }
+      contentWorld.tell(out);
     },
 
     flushLogs() {

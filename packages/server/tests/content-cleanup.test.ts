@@ -1336,6 +1336,43 @@ describe("removing content in use from a running game", () => {
     expect(p.char.bag[3]).toEqual({ item: "Ruby Ring", qty: 2 });
   });
 
+  test("a failed publish sends no message at all, and an NPC's open shop stays open", async () => {
+    const { god, p } = await ringsEverywhere();
+    // Agavar's NPC Editor save sells rings: the cleanup changes it, which closes its shop window.
+    saveNpcFile(db, { npc: "Agavar", text: "BIO|Hi\rSEL|Ruby Ring:9:3\rSEL|Ale:2:5" }, "acc", "t");
+    game.contentPublished(content().hash);
+    p.shop = { npc: "Agavar", mode: "buy" };
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 3,
+      },
+      game.contentWorld,
+    );
+    sent.length = 0;
+    const failing = {
+      ...game.contentWorld,
+      apply: (...args: Parameters<typeof game.contentWorld.apply>) => {
+        game.contentWorld.apply(...args);
+        throw new Error("write failed");
+      },
+    };
+    expect(() => service.publish(ADMIN(god), service.draftRev(), "", failing)).toThrow();
+    // Not the new store, nor an inventory, the ground or a closed window.
+    expect(sent.map((s) => s.msg.t)).toEqual([]);
+    expect(p.shop).toEqual({ npc: "Agavar", mode: "buy" });
+    // The same draft then publishes, and only now are clients told.
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(sent.some((s) => s.to === p.id && s.msg.t === "content")).toBe(true);
+    expect(sent.some((s) => s.to === p.id && s.msg.t === "npcClosed")).toBe(true);
+    expect(p.shop).toBeNull();
+  });
+
   test("paintings and photos players make are not problems", async () => {
     const al = await make("Al");
     const p = game.world.players.get(al.characterId);

@@ -1030,7 +1030,8 @@ export class ContentService {
       .filter((c) => c.before !== null || c.after !== null);
     const nextCopy = clientCopyOf(nextData);
     let id = "";
-    let applied = false;
+    // Memory is noted and clients are told nothing until the publish commits.
+    world?.begin();
     // One transaction: the content rows, the publish log, the new store and the world's cleanup
     // (which runs once the new store is live, so what it rolls, a quest line, comes from the
     // published content). A crash or a throw part-way leaves none of it written.
@@ -1053,23 +1054,19 @@ export class ContentService {
         }
         this.rebuild();
         if (actions.length > 0 && world) {
-          applied = true;
           const lines = world.apply(actions, actor, id);
           setPublishCleanup(this.db, id, { actions, lines });
         }
       })();
     } catch (e) {
-      // Rolled back: the world's memory (if the cleanup ran), then the store that was live, go back.
-      if (applied) {
-        world?.rollback();
-      }
+      // Rolled back: the store that was live goes back, then the world's memory as it was before
+      // the publish; what either would have told clients is dropped.
       this.rebuild(true);
+      world?.rollback();
       throw e;
     }
-    // Committed: what the cleanup held back for clients goes out.
-    if (applied) {
-      world?.commit();
-    }
+    // Committed: what the publish held back for clients goes out.
+    world?.commit();
     return { ok: true, value: publishById(this.db, id) as StoredPublish };
   }
 
