@@ -151,24 +151,13 @@ export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): s
   return out;
 }
 
-/**
- * The front-facing head for the Stats tab's Level row (an SSO addition): the worn helmet's layer
- * when the paperdoll draws one, otherwise the hairstyle's head. A body that hides the head (a
- * Ninja Outfit, say) still shows the hairstyle here, so the row is never blank.
- */
+/** The Stats portrait shows the equipped helmet or the character's hairstyle. */
 export function portraitLayers(
   look: Look,
   frame: BodyFrame = "F2",
   facing: Facing = "S",
 ): string[] {
-  const hair = `Head${look.head}-${frame}-${facing}`;
-  if (!look.equip) {
-    return [hair];
-  }
-  const helm = normaliseLook(look.equip).helm;
-  const helmLayer = `${helm}-${frame}-${facing}`;
-  if (!isNothing(helm) && paperdollLayers(look, frame, facing).includes(helmLayer)) {
-    return [helmLayer];
-  }
-  return [hair];
+  const helm = look.equip ? normaliseLook(look.equip).helm : "NOTHING";
+  const head = isNothing(helm) ? `Head${look.head}` : helm;
+  return [`${head}-${frame}-${facing}`];
 }

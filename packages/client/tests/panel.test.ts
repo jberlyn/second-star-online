@@ -430,10 +430,12 @@ describe("the right panel (frames 50-65)", () => {
       sheets: { items: [{} as CanvasImageSource] } as unknown as Assets["sheets"],
       sprite: (group, name) => {
         drawn.push(`${group}:${name}`);
-        return [0, 0, 0, 11, 8, 0, 0];
+        return [0, 0, 0, 32, 32, 0, 0];
       },
     };
-    createPanel(assets, {} as Parameters<typeof createPanel>[1]);
+    const panel = createPanel(assets, {} as Parameters<typeof createPanel>[1]);
+    const icon = panel.el.querySelector<HTMLCanvasElement>(".small-gold");
+    expect([icon?.width, icon?.height]).toEqual([11, 8]);
     expect(drawn).toContain("items:SmallGold");
     expect(drawn.some((d) => /LargeGold|MediumGold/.test(d))).toBe(false);
   });

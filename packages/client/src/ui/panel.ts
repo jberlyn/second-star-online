@@ -363,12 +363,17 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   smallGold.className = "small-gold";
   smallGold.setAttribute("aria-hidden", "true");
   const paintSmallGold = () => {
-    const sg = a.sprite("items", "SmallGold");
-    smallGold.width = sg?.[3] ?? 1;
-    smallGold.height = sg?.[4] ?? 1;
+    // Crop the empty padding in SmallGold’s 32 px ground sprite.
+    smallGold.width = 11;
+    smallGold.height = 8;
+    const sprite = a.sprite("items", "SmallGold");
     const ctx = smallGold.getContext("2d");
-    if (ctx) {
-      drawSprite(ctx, a, "items", "SmallGold", 0, 0, true);
+    if (sprite && ctx) {
+      const [sheetIndex, x, y] = sprite;
+      const sheet = a.sheets.items?.[sheetIndex];
+      if (sheet) {
+        ctx.drawImage(sheet, x + 10, y + 13, 11, 8, 0, 0, 11, 8);
+      }
     }
   };
   if (a.sheets.items) {
