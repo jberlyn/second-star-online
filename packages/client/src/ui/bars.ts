@@ -1,26 +1,27 @@
 /**
- * The HP, SP and power bars. 1.6 had no XP bar: XP shows only as the level-up line.
+ * The HP, SP and XP bars. 1.6 had no XP bar (XP showed only as the level-up line) and a power bar
+ * in the third slot; SSO has no power bar and shows XP there instead.
  *
- * The wooden slots of Internal #186 are stage x 600-789, five pixels tall: HP at y 70-74 and SP
- * at y 85-89. SSO keeps that slot geometry but fills each HP and SP slot from its left edge by
+ * The wooden slots of Internal #186 are stage x 600-789, five pixels tall: HP at y 70-74, SP at
+ * y 85-89 and the third (1.6's power bar) at y 101-105. SSO fills each slot from its left edge by
  * the percentage of the maximum, so full HP or SP fills the slot whether the maximum is 20 or
- * 1000. The fill sprites are still the original 205 px art, clipped to the 189 px slot; the
- * depleted part of the slot is plain black rather than 1.6's darker track sprites.
- * The hover field shows `current / max` centred on the bar.
+ * 1000. The HP and SP fill sprites are the original 205 px art, clipped to the 189 px slot; the
+ * XP fill is flat green toward the next level. The depleted part of a slot is plain black rather
+ * than 1.6's darker track sprites.
+ *
+ * Hovering any bar shows all three values at once, each centred on its own bar: `15 / 20 HP`,
+ * `20 / 20 SP` and `1,240 / 2,000 XP`. Aboard a vehicle the HP bar shows its hull instead.
  *
  * Player Settings adds an optional colour-blind palette (Amber/Gold HP + Sky-Cyan SP over black,
  * `.bars-colorblind`) in the same slot geometry.
  *
- * The power bar keeps 1.6's loader: sprite 63 starts at horizontal position 874 and moves 2 px
- * left per point over its track (Internal #169 at 677, 101); its member shows the tier
- * (Internal #473 none, #472 +3, #474 +5, #475 +7), drawn at 50 % (ink 32, blend 127).
- *
  * The box below covers stage x 590-800, y 60-110; children use stage coordinates minus that
  * origin. The box sits at its stage rect.
  */
-import type { BarMember, VitalsView } from "@secondstaronline/shared";
+import type { VitalsView } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
+import { action } from "./action.ts";
 import { artImg } from "./stage.ts";
 
 export const BARS_RECT = { x: 590, y: 60, w: 210, h: 50 } as const;
@@ -29,8 +30,12 @@ const SLOT_X = 600;
 const SLOT_W = 189;
 const HP_TRACK_Y = 67;
 const SP_TRACK_Y = 84;
+/** The third slot (1.6's power bar): y 101-105. */
+const XP_TRACK_Y = 101;
+const XP_TRACK_H = 5;
 const HP_HOVER_Y = 66;
 const SP_HOVER_Y = 81;
+const XP_HOVER_Y = 96;
 const OX = BARS_RECT.x;
 const OY = BARS_RECT.y;
 
@@ -41,7 +46,6 @@ export interface BarsOptions {
 export interface Bars {
   el: HTMLElement;
   setVitals(v: VitalsView): void;
-  setPower(bar: number, member: BarMember): void;
   setOptions(opts: BarsOptions): void;
 }
 
@@ -59,6 +63,11 @@ function box(el: HTMLElement, x: number, y: number, w: number, h: number, z: num
   el.style.overflow = "hidden";
 }
 
+/** A number with thousands separators: 1,240. */
+export function grouped(n: number): string {
+  return Math.trunc(n).toLocaleString("en-US");
+}
+
 /** A bar's slot width in pixels for a value, as a percentage of its maximum. */
 function fillWidth(value: number, max: number): string {
   const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
@@ -69,28 +78,28 @@ export function createBars(a: Assets): Bars {
   const el = document.createElement("div");
   el.className = "bars";
   el.setAttribute("role", "group");
-  el.setAttribute("aria-label", "Hit points, spell points and attack power");
+  el.setAttribute("aria-label", "Hit points, spell points and experience");
   const img = (n: number) => artImg(a.ui("internal", n));
-  // Score channels: 36 power track, 38/39 tracks, 62/63/64 fills, 318/319 numbers.
+  // Score channels: 38/39 tracks, 62/64 fills; the XP track and fill take 1.6's power bar
+  // channels (36, 63).
   const hpFill = img(151);
   hpFill.classList.add("bar-fill-img");
   const spFill = img(153);
   spFill.classList.add("bar-fill-img");
-  const powerTrack = img(169);
-  const power = img(473);
-  power.style.opacity = "0.5";
   const track = (cls: string, y: number, h: number, z: number) => {
     const b = document.createElement("div");
     b.className = `bar-track ${cls}`;
     box(b, SLOT_X, y, SLOT_W, h, z);
     return b;
   };
-  const fill = (cls: string, art: HTMLImageElement, y: number, h: number, z: number) => {
+  const fill = (cls: string, art: HTMLImageElement | null, y: number, h: number, z: number) => {
     const b = document.createElement("div");
     b.className = `bar-fill ${cls}`;
     box(b, SLOT_X, y, SLOT_W, h, z);
     b.style.width = "0px";
-    b.append(art);
+    if (art) {
+      b.append(art);
+    }
     return b;
   };
   const field = (cls: string) => {
@@ -100,66 +109,59 @@ export function createBars(a: Assets): Bars {
     return f;
   };
   const hover = (cls: string, y: number, label: HTMLElement) => {
-    const h = document.createElement("div");
+    const h = action(document.createElement("div"), "bars-show-values");
     h.className = `bar-hover ${cls}`;
     at(h, SLOT_X, y, 321);
     h.style.width = `${SLOT_W}px`;
     h.style.height = "14px";
     h.append(label);
+    // Hovering any one bar shows all three values.
+    h.addEventListener("pointerenter", () => el.classList.add("bars-show-values"));
+    h.addEventListener("pointerleave", () => el.classList.remove("bars-show-values"));
     return h;
   };
   const hpText = field("hp-value");
   const spText = field("sp-value");
-  const hpTrackBox = track("hp-track", HP_TRACK_Y, 8, 38);
-  const spTrackBox = track("sp-track", SP_TRACK_Y, 9, 39);
+  const xpText = field("xp-value");
   const hpFillBox = fill("hp-fill", hpFill, HP_TRACK_Y, 8, 62);
   const spFillBox = fill("sp-fill", spFill, SP_TRACK_Y, 9, 64);
-  at(powerTrack, 677 - 81, 101 - 2, 36);
+  const xpFillBox = fill("xp-fill", null, XP_TRACK_Y, XP_TRACK_H, 63);
   el.append(
-    hpTrackBox,
-    spTrackBox,
+    track("hp-track", HP_TRACK_Y, 8, 38),
+    track("sp-track", SP_TRACK_Y, 9, 39),
+    track("xp-track", XP_TRACK_Y, XP_TRACK_H, 36),
     hpFillBox,
     spFillBox,
-    powerTrack,
-    power,
+    xpFillBox,
     hover("hp-hover", HP_HOVER_Y, hpText),
     hover("sp-hover", SP_HOVER_Y, spText),
+    hover("xp-hover", XP_HOVER_Y, xpText),
   );
   const sr = document.createElement("span");
   sr.className = "sr-only";
   sr.setAttribute("aria-live", "polite");
   el.append(sr);
-  const members: Record<BarMember, string> = {
-    473: a.ui("internal", 473),
-    472: a.ui("internal", 472),
-    474: a.ui("internal", 474),
-    475: a.ui("internal", 475),
-  };
-  let shown: BarMember = 473;
 
-  const bars: Bars = {
+  return {
     el,
     setVitals(v) {
       // Aboard a vehicle the HP bar shows its hull, which hits wear instead of HP.
       const hull = v.hull;
       hpFillBox.style.width = hull ? fillWidth(hull.hp, hull.max) : fillWidth(v.hp, v.hpMax);
       spFillBox.style.width = fillWidth(v.sp, v.spMax);
-      hpText.textContent = hull ? `Hull ${hull.hp} / ${hull.max}` : `${v.hp} / ${v.hpMax}`;
-      spText.textContent = `${v.sp} / ${v.spMax}`;
+      // XP is held toward the next level, so the bar empties on a level-up. A value at or past
+      // the destination (data saved before a level check ran) shows full; there is no level cap.
+      xpFillBox.style.width = fillWidth(v.exp, v.expNeeded);
+      hpText.textContent = hull
+        ? `Hull ${grouped(hull.hp)} / ${grouped(hull.max)}`
+        : `${grouped(v.hp)} / ${grouped(v.hpMax)} HP`;
+      spText.textContent = `${grouped(v.sp)} / ${grouped(v.spMax)} SP`;
+      xpText.textContent = `${grouped(v.exp)} / ${grouped(v.expNeeded)} XP`;
       const first = hull ? `Hull ${hull.hp} of ${hull.max}` : `HP ${v.hp} of ${v.hpMax}`;
-      sr.textContent = `${first}, SP ${v.sp} of ${v.spMax}, level ${v.level}`;
-    },
-    setPower(bar, member) {
-      at(power, 874 - 2 * bar - 81, 101 - 2, 63);
-      if (member !== shown) {
-        shown = member;
-        power.src = members[member];
-      }
+      sr.textContent = `${first}, SP ${v.sp} of ${v.spMax}, level ${v.level}, XP ${v.exp} of ${v.expNeeded}`;
     },
     setOptions(opts) {
       el.classList.toggle("bars-colorblind", opts.colorblind);
     },
   };
-  bars.setPower(0, 473);
-  return bars;
 }

@@ -38,7 +38,7 @@ The asset build reads retained bitmaps, sound and layout metadata in `assets/ori
 
 ## Client
 
-The client uses a 544×384 logical canvas for the playfield and DOM components for controls and windows. The game frame scales as a unit; floating windows scale with it. The client predicts movement and the power bar using shared rules, then reconciles with the server. Combat results, loot and economy outcomes remain authoritative. Input uses the established directional priority and sends intents; interactive DOM controls carry semantic action identifiers.
+The client uses a 544×384 logical canvas for the playfield and DOM components for controls and windows. The game frame scales as a unit; floating windows scale with it. The client predicts movement and the attack lock using shared rules, then reconciles with the server. Combat results, loot and economy outcomes remain authoritative. Input uses the established directional priority and sends intents; interactive DOM controls carry semantic action identifiers.
 
 ## Tests and dependencies
 

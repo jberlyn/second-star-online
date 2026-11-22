@@ -150,7 +150,7 @@ export interface Self {
   unconfirmedSince: number | null;
   /** Last authoritative state from the server. */
   server: SelfState;
-  /** The power bar and attack timers, predicted with the server's rules. */
+  /** The attack timers, predicted with the server's rules. */
   timers: AttackTimers;
   body: number | null;
   /** Frames left of your own sprite's spell animation. */
@@ -446,8 +446,7 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
             const passes = STEPFRAMES_PER_FRAME - 1 + ticks * STEPFRAMES_PER_FRAME;
             t.actionDelay = Math.max(0, ev.actionDelay - passes);
           } else {
-            // Snap the predicted bar to the server's swing.
-            t.bar = 0;
+            // Snap the predicted lock to the server's swing.
             t.canAttack = false;
             t.atkAnim = ATTACK_ANIM_FRAMES;
             t.atDelay = ev.atDelay;
@@ -839,11 +838,10 @@ function predictSwing(m: Model, s: Self, intent: Intent): void {
   if (bowRefusal(equip, m.inv?.bag ?? []) !== null) {
     return;
   }
-  // `startSwing`: the bar resets and the cooldowns start. They depend on skills only for axes and
+  // `startSwing`: the cooldowns start. They depend on skills only for axes and
   // mining hammers, which the client does not have; the server's `swing` corrects them.
   const cd = swingCooldowns(equip, []);
   intent.attackPress = null;
-  t.bar = 0;
   t.atDelay = cd.atDelay;
   t.actionDelay = cd.actionDelay;
   t.canAttack = false;

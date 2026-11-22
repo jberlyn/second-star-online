@@ -5,19 +5,23 @@
  * 67, spellbook.ts). Positions are 800×600 stage coordinates; the panel element spans the stage
  * rect [566, 0, 800, 410].
  *
- * - Bag: slot x is centred on (617 + 37·col, 116/153/190) at its icon's regpoint; the quantity
- *   shows only above 1 (Arial 10 bold white, the bag's quantity fields).
+ * - Bag: slot x is centred on (617 + 37·col, 138/175/212) at its icon's regpoint, 22 px below
+ *   1.6's 116/153/190 to make room for the gold box; the quantity shows only above 1 (Arial 10
+ *   bold white, the bag's quantity fields, moved down with the slots).
+ * - Gold (an SSO move: 1.6 showed it on Stats): a slim dark brown bevelled box just below the XP
+ *   bar, the XP bar's width (stage x 600-789, y 114-134). The drop/give button (Internal #118)
+ *   sits at its left and opens the amount dialog; the amount, with thousands separators, is
+ *   right-aligned beside the bag's own SmallGold picture.
  * - Equipment boxes (Inventory #1, 135×113 at [626, 280, 761, 393]): Head, LeftHand, Feet on the
  *   left (x 646), Body, RightHand, Ring on the right (x 746), at y 281/320/359. Clicking one takes
  *   the item off.
  * - The item menu: Use, Equip (or Cook/Mix/Build/Smith/Storage), Drop, Give at the pointer; it
  *   hides when the pointer leaves it.
- * - Stats (frames 50-61): labels "Strength … Mysticism" (the stat label field), values STR, STA,
- *   INT, WIS, DEX (the stat value fields) and Gold (field Gold at (668, 126)). Gold and the five
- *   stats sit on one 30 px row grid, each icon centred on its row (see the stats page). The gold
- *   drop button (Internal #118, channel 2, matte, loc (619, 133), drawn 14×13 at
- *   [613, 127, 627, 140] on the Game Area frame 50; the score's 18×15 is stale, the sprite is
- *   unstretched) opens the amount dialog.
+ * - Stats (frames 50-61): labels "Strength … Mysticism" (the stat label field) and values STR,
+ *   STA, INT, WIS, DEX (the stat value fields). Level sits above Strength in the row 1.6 gave
+ *   Gold (field Gold at (668, 126)): its value in the values column, "Level" in the labels column
+ *   and, in the icon column, the player's front-facing head (hairstyle, or the helmet worn). The
+ *   six rows sit on one 30 px grid, each icon centred on its row (see the stats page).
  * - Spellbook (frame 67): the spell list, Info and the cast button (spellbook.ts).
  * - Skills (frame 65): the 35 rows of 1.6's fixed list (`classesData.skillPanel`): names
  *   (the skill name field, Arial 12 bold) at (620, 117) and values (the skill value field,
@@ -36,11 +40,13 @@ import {
   menuAction,
   PAPERDOLL_SIZE,
   paperdollLayers,
+  portraitLayers,
 } from "@secondstaronline/shared";
 
 import { type Assets, drawSprite } from "../assets.ts";
 import { type Sfx, SOUND } from "../sfx.ts";
 import { action as tagAction } from "./action.ts";
+import { grouped } from "./bars.ts";
 import { createHoverTips, type HoverTips } from "./hovertip.ts";
 import { createSpellbook, type Spellbook } from "./spellbook.ts";
 import { artImg } from "./stage.ts";
@@ -98,6 +104,8 @@ export interface Panel {
   setTab(t: Tab): void;
   setInventory(inv: InventoryView, head: number): void;
   setStats(s: { str: number; sta: number; int: number; wis: number; dex: number }): void;
+  /** The Stats tab's Level row, from the server's vitals. */
+  setLevel(level: number): void;
   setSkills(skills: readonly number[]): void;
   /** The Spellbook page (frame 67). */
   spellbook: Spellbook;
@@ -172,10 +180,14 @@ function field(text: string, cls: string): HTMLElement {
 }
 
 const BAG_X = (i: number) => 617 + 37 * (i % 5);
-const BAG_Y = (i: number) => [116, 153, 190][Math.floor(i / 5)] as number;
-/** The bag's quantity field rects (frame-63.json channels 220-234). */
+/** How far the bag sits below 1.6's rows, to make room for the gold box. */
+const BAG_SHIFT = 22;
+const BAG_Y = (i: number) => ([116, 153, 190][Math.floor(i / 5)] as number) + BAG_SHIFT;
+/** The bag's quantity field rects (frame-63.json channels 220-234), moved with the bag. */
 const QTY_X = [612, 649, 683, 722, 755];
-const QTY_Y = [139, 177, 219];
+const QTY_Y = [139 + BAG_SHIFT, 177 + BAG_SHIFT, 219 + BAG_SHIFT];
+/** The gold box: the XP bar's width (stage x 600-789), just below it. */
+const GOLD_BOX = { x: 600, y: 114, w: 189, h: 20 } as const;
 // The skills page: the backdrop's clip height, the rows' inset from its edges, and the 15 px line.
 const SKILLS_CLIP_H = 165;
 const SKILLS_INSET = 3;
@@ -332,6 +344,43 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   at(doll, 673, 319, PAPERDOLL_SIZE.w, PAPERDOLL_SIZE.h);
   invPage.append(bagLayer, equipLayer, doll);
 
+  // The gold box: the drop/give button at its left, the amount right-aligned beside SmallGold.
+  const goldBox = document.createElement("div");
+  goldBox.className = "gold-box";
+  goldBox.setAttribute("role", "group");
+  at(goldBox, GOLD_BOX.x, GOLD_BOX.y, GOLD_BOX.w, GOLD_BOX.h);
+  // Internal #118 at its own 14×13 (the score's 18×15 is stale, the sprite is unstretched).
+  const goldButton = tagAction(document.createElement("button"), "inventory-gold");
+  goldButton.type = "button";
+  goldButton.className = "gold-button";
+  goldButton.setAttribute("aria-label", "Drop or give gold");
+  const goldArt = artImg(a.ui("internal", 118));
+  goldArt.style.width = "14px";
+  goldArt.style.height = "13px";
+  goldButton.append(goldArt);
+  goldButton.addEventListener("click", () => act.gold());
+  const smallGold = document.createElement("canvas");
+  smallGold.className = "small-gold";
+  smallGold.setAttribute("aria-hidden", "true");
+  const paintSmallGold = () => {
+    const sg = a.sprite("items", "SmallGold");
+    smallGold.width = sg?.[3] ?? 1;
+    smallGold.height = sg?.[4] ?? 1;
+    const ctx = smallGold.getContext("2d");
+    if (ctx) {
+      drawSprite(ctx, a, "items", "SmallGold", 0, 0, true);
+    }
+  };
+  if (a.sheets.items) {
+    paintSmallGold();
+  } else {
+    void a.loadGroup("items").then(paintSmallGold);
+  }
+  const gold = document.createElement("span");
+  gold.className = "gold-amount";
+  goldBox.append(goldButton, smallGold, gold);
+  invPage.append(goldBox);
+
   // The × markers (Internal #75, channels 354-359) are the unequip buttons: each carries its slot's
   // take-off behaviour, and the equipment icons (sprites 75-80) carry none, so clicking an item
   // does nothing (score frame 63). The Inventory tab shows all six, Head's included. Drawn at the
@@ -376,28 +425,28 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   // ---- stats page ----------------------------------------------------------------------
   const statsPage = document.createElement("div");
   statsPage.className = "page page-stats";
-  // Gold and the five stats are one column of icons on a common 30 px row grid. The icons
+  // Level and the five stats are one column of icons on a common 30 px row grid. The stat icons
   // are a single 24×177 strip (Internal #34, its regpoint 14/90 puts it at [635, 124]) whose
   // glyphs are unevenly spaced and of uneven height, so each slice gets its own clipping box
   // and is centred on its row. Each slice is an odd number of rows (one transparent row pads
   // the two even-height glyphs), which keeps every box on a whole stage pixel. The text
   // fields use the same grid: Arial 12 bold on a 15 px line with a blank line between rows is
-  // a 30 px pitch, gold row included.
+  // a 30 px pitch. The Level row is 1.6's gold row; its icon is the player's head.
   const ICON_X = 635;
+  const ICON_W = 24;
   const ROW_H = 30;
-  const GOLD_MID = 133.5; // the gold field (668, 126) on its 15 px line
+  const LEVEL_MID = 133.5; // 1.6's gold field (668, 126) on its 15 px line
   const STAT_ICONS: readonly [cropTop: number, height: number][] = [
-    [0, 15], // gold
     [26, 21], // Strength (bicep; its pixels are rows 27-46)
     [64, 15], // Stamina (heart)
     [93, 23], // Intelligence (bulb)
     [130, 15], // Wisdom (brain)
     [156, 21], // Mysticism (wand; its pixels are rows 157-176)
   ];
-  const icons = STAT_ICONS.map(([cropTop, h], row) => {
+  const icons = STAT_ICONS.map(([cropTop, h], i) => {
     const clip = document.createElement("div");
     clip.className = "stat-icon";
-    at(clip, ICON_X, GOLD_MID + row * ROW_H - h / 2, 24, h);
+    at(clip, ICON_X, LEVEL_MID + (i + 1) * ROW_H - h / 2, ICON_W, h);
     const img = artImg(a.ui("internal", 34));
     img.style.position = "absolute";
     img.style.left = "0";
@@ -408,27 +457,82 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     return clip;
   });
   const labels = field("Strength\n\nStamina\n\nIntelligence\n\nWisdom\n\nMysticism", "stat-labels");
-  // Both fields start on the first stat row, 30 px below the gold row's 15 px line.
+  // Both fields start on the first stat row, 30 px below the Level row's 15 px line.
   at(labels, 668, 156, 88, 160);
   const values = field("", "stat-values");
   at(values, 613, 156, 27, 175);
-  const gold = field("", "gold");
-  at(gold, 668, 126, 88, 16);
-  // Internal #118 at its own 14×13, loc (619, 133) less its regpoint (6, 6) (frame-50.json).
-  const goldButton = tagAction(document.createElement("button"), "inventory-gold");
-  goldButton.type = "button";
-  goldButton.className = "gold-button";
-  goldButton.setAttribute("aria-label", "Drop or give gold");
-  at(goldButton, 613, 127, 14, 13);
-  const goldArt = artImg(a.ui("internal", 118));
-  goldArt.style.position = "absolute";
-  goldArt.style.left = "0";
-  goldArt.style.top = "0";
-  goldArt.style.width = "14px";
-  goldArt.style.height = "13px";
-  goldButton.append(goldArt);
-  goldButton.addEventListener("click", () => act.gold());
-  statsPage.append(...icons, labels, values, gold, goldButton);
+  const levelLabel = field("Level", "level-label");
+  at(levelLabel, 668, 126, 88, 16);
+  const levelValue = field("", "level-value");
+  at(levelValue, 613, 126, 27, 16);
+  // The head: drawn on a paperdoll-sized canvas, then cropped to its drawn pixels and centred
+  // on the icon column and the Level row.
+  const head = document.createElement("canvas");
+  head.className = "stat-head";
+  head.setAttribute("role", "img");
+  head.setAttribute("aria-label", "Your character's head");
+  head.width = 0;
+  head.height = 0;
+  at(head, ICON_X + ICON_W / 2, LEVEL_MID, 0, 0);
+  statsPage.append(head, levelValue, levelLabel, ...icons, labels, values);
+  const drawHead = () => {
+    const look = { head: headNo, equip: inventory?.equip };
+    const paint = () => {
+      const scratch = document.createElement("canvas");
+      scratch.width = PAPERDOLL_SIZE.w;
+      scratch.height = PAPERDOLL_SIZE.h;
+      const sc = scratch.getContext("2d", { willReadFrequently: true });
+      if (!sc) {
+        return;
+      }
+      // A helmet with no paperdoll art falls back to the hairstyle.
+      let layers = portraitLayers(look).filter((l) => a.sprite("paperdoll", l));
+      if (layers.length === 0) {
+        layers = portraitLayers({ head: headNo });
+      }
+      for (const l of layers) {
+        drawSprite(sc, a, "paperdoll", l, 0, 0, true);
+      }
+      let box = { x: 0, y: 0, w: scratch.width, h: scratch.height };
+      try {
+        const data = sc.getImageData(0, 0, scratch.width, scratch.height).data;
+        let x0 = scratch.width;
+        let y0 = scratch.height;
+        let x1 = -1;
+        let y1 = -1;
+        for (let y = 0; y < scratch.height; y++) {
+          for (let x = 0; x < scratch.width; x++) {
+            if ((data[(y * scratch.width + x) * 4 + 3] ?? 0) > 0) {
+              x0 = Math.min(x0, x);
+              y0 = Math.min(y0, y);
+              x1 = Math.max(x1, x);
+              y1 = Math.max(y1, y);
+            }
+          }
+        }
+        if (x1 >= 0) {
+          box = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+        }
+      } catch {
+        // No pixel reads (tests): the whole layer box.
+      }
+      head.width = box.w;
+      head.height = box.h;
+      at(
+        head,
+        Math.round(ICON_X + ICON_W / 2 - box.w / 2),
+        Math.round(LEVEL_MID - box.h / 2),
+        box.w,
+        box.h,
+      );
+      head.getContext("2d")?.drawImage(scratch, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+    };
+    if (a.sheets.paperdoll) {
+      paint();
+    } else {
+      void a.loadGroup("paperdoll").then(paint);
+    }
+  };
 
   // ---- skills page ---------------------------------------------------------------------
   const skillsPage = document.createElement("div");
@@ -891,7 +995,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     setInventory(inv, head) {
       inventory = inv;
       headNo = head;
-      gold.textContent = String(inv.gold);
+      gold.textContent = grouped(inv.gold);
+      goldBox.setAttribute("aria-label", `${grouped(inv.gold)} gold`);
       // The slots are rebuilt, so one under the mouse never sees it leave; its next move shows the
       // tip again.
       tips.hide();
@@ -971,9 +1076,13 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
           );
       }
       drawDoll();
+      drawHead();
     },
     setStats(s) {
       values.textContent = `${s.str}\n\n${s.sta}\n\n${s.int}\n\n${s.wis}\n\n${s.dex}`;
+    },
+    setLevel(level) {
+      levelValue.textContent = String(level);
     },
     setSkills(skills) {
       const rows = classesData.skillPanel;

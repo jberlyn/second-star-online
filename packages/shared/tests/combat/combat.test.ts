@@ -121,32 +121,21 @@ describe("attack cadence", () => {
   });
 });
 
-describe("power bar", () => {
-  function bonusAfterWait(waitFrames: number): number {
+describe("no power bar", () => {
+  test("design change: waiting between swings charges nothing; a swing only sets the cooldowns", () => {
     const t = newAttackTimers();
     startSwing(t, NO_EQUIPMENT, fighter().skills);
-    for (let i = 0; i < waitFrames; i++) {
+    // Long past 1.6's +7 tier (88 frames after the last swing), with Argon's Fist running.
+    t.attackCounter = 400;
+    for (let i = 0; i < 400; i++) {
       tickSpriteTimers(t);
       tickAttackTimers(t);
     }
-    return startSwing(t, NO_EQUIPMENT, fighter().skills);
-  }
-  test("tiers come from the member windows: +0 until t+38, +3, +5 from t+63, +7 from t+88", () => {
-    expect(bonusAfterWait(15)).toBe(0);
-    expect(bonusAfterWait(37)).toBe(0);
-    expect(bonusAfterWait(38)).toBe(3);
-    expect(bonusAfterWait(62)).toBe(3);
-    expect(bonusAfterWait(63)).toBe(5);
-    expect(bonusAfterWait(88)).toBe(7);
-    expect(bonusAfterWait(400)).toBe(7);
-  });
-  test("the bar value resets on a swing, its member does not", () => {
-    const t = newAttackTimers();
-    t.bar = 80;
-    t.barMember = 475;
-    expect(startSwing(t, NO_EQUIPMENT, fighter().skills)).toBe(7);
-    expect(t.bar).toBe(0);
-    expect(t.barMember).toBe(475);
+    expect(startSwing(t, NO_EQUIPMENT, fighter().skills)).toBeUndefined();
+    expect(Object.keys(t).sort()).toEqual(
+      ["actionDelay", "atDelay", "atkAnim", "attackCounter", "canAttack"].sort(),
+    );
+    expect([t.atDelay, t.actionDelay]).toEqual([14, 14]);
   });
 });
 

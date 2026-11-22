@@ -67,7 +67,7 @@ describe("the right panel (frames 50-65)", () => {
     ]);
     expect(panel.el.querySelectorAll(".bag-slot")).toHaveLength(15);
     expect([...panel.el.querySelectorAll(".qty")].map((q) => q.textContent)).toEqual(["2"]);
-    expect(panel.el.querySelector(".gold")?.textContent).toBe("12");
+    expect(panel.el.querySelector(".gold-amount")?.textContent).toBe("12");
   });
   test("the tabs switch pages; Stats is first", () => {
     const { panel } = panelWith([]);
@@ -399,22 +399,66 @@ describe("the right panel (frames 50-65)", () => {
       "give 2",
     ]);
   });
-  test("the gold button beside the gold count opens the gold dialog", () => {
+  test("design change: gold sits in a box below the XP bar on Inventory, its button opening the gold dialog", () => {
     const { panel, sent } = panelWith([]);
-    const b = panel.el.querySelector<HTMLButtonElement>(
-      '.page-stats [aria-label="Drop or give gold"]',
-    );
-    expect(b?.style.left).toBe(`${613 - 566}px`);
-    expect(b?.style.top).toBe("127px");
+    panel.setInventory({ gold: 1234567, bag: emptyBag(), equip: { ...NO_EQUIPMENT } }, 1);
+    // Not on Stats any more.
+    expect(panel.el.querySelector(".page-stats .gold-box, .page-stats .gold-button")).toBeNull();
+    const box = panel.el.querySelector<HTMLElement>(".page-inventory .gold-box");
+    // The XP bar's width (stage x 600-789), just below its slot (y 101-105) and above the bag.
+    expect([box?.style.left, box?.style.top, box?.style.width, box?.style.height]).toEqual([
+      `${600 - 566}px`,
+      "114px",
+      "189px",
+      "20px",
+    ]);
+    // Left to right: the drop/give button, the SmallGold picture, the amount.
+    const kids = [...(box?.children ?? [])].map((c) => c.className);
+    expect(kids).toEqual(["gold-button", "small-gold", "gold-amount"]);
+    expect(box?.querySelector(".gold-amount")?.textContent).toBe("1,234,567");
+    expect(box?.getAttribute("aria-label")).toBe("1,234,567 gold");
+    const b = box?.querySelector<HTMLButtonElement>('[aria-label="Drop or give gold"]');
+    expect(b?.dataset.action).toBe("inventory-gold");
+    expect(b?.querySelector("img")?.getAttribute("src")).toBe("/assets/ui/internal-118.png");
     b?.click();
     expect(sent).toEqual(["gold"]);
+  });
+  test("the SmallGold picture is drawn from the bag's own item art, not the large pile", async () => {
+    const drawn: string[] = [];
+    const assets: Assets = {
+      ...fakeAssets,
+      sheets: { items: [{} as CanvasImageSource] } as unknown as Assets["sheets"],
+      sprite: (group, name) => {
+        drawn.push(`${group}:${name}`);
+        return [0, 0, 0, 11, 8, 0, 0];
+      },
+    };
+    createPanel(assets, {} as Parameters<typeof createPanel>[1]);
+    expect(drawn).toContain("items:SmallGold");
+    expect(drawn.some((d) => /LargeGold|MediumGold/.test(d))).toBe(false);
+  });
+  test("the bag sits 22 px lower to fit the gold box, and the full bag still clears the equipment", () => {
+    const full = Array.from({ length: 15 }, (_, i) => ({ item: `Apple${i}`, qty: 2 }));
+    const { panel } = panelWith(full);
+    const slots = [...panel.el.querySelectorAll<HTMLElement>(".bag-slot")];
+    const tops = slots.map((s) => Number.parseFloat(s.style.top));
+    expect([tops[0], tops[5], tops[10]]).toEqual([142, 179, 216]);
+    // Below the gold box (y 114-134) and above the equipment boxes (y 280).
+    expect(Math.min(...tops)).toBeGreaterThanOrEqual(134);
+    expect(Math.max(...tops) + 34).toBeLessThanOrEqual(280);
+    const qty = [...panel.el.querySelectorAll<HTMLElement>(".qty")].map((q) =>
+      Number.parseFloat(q.style.top),
+    );
+    expect(Math.max(...qty) + 13).toBeLessThanOrEqual(280);
   });
   test("the × beside a box takes the item off; the icon does not click (score frame 63: channels 354-359 carry the remove-button names, sprites 75-80 nothing)", () => {
     const { panel, sent } = panelWith([], { equip: { head: "Chain Helm" } });
     const xs = panel.el.querySelectorAll<HTMLButtonElement>(".equip-x");
     expect(xs).toHaveLength(6);
     expect(
-      panel.el.querySelectorAll(".page-inventory button:not(.equip-x):not(.bag-slot)"),
+      panel.el.querySelectorAll(
+        ".page-inventory button:not(.equip-x):not(.bag-slot):not(.gold-button)",
+      ),
     ).toHaveLength(0);
     panel.el.querySelector<HTMLButtonElement>('[aria-label="LeftHand: take off Knife"]')?.click();
     expect(sent).toEqual(["unequip LeftHand"]);
@@ -443,18 +487,39 @@ describe("the right panel (frames 50-65)", () => {
     panel.setStats({ str: 11, sta: 12, int: 13, wis: 14, dex: 15 });
     expect(panel.el.querySelector(".stat-values")?.textContent).toBe("11\n\n12\n\n13\n\n14\n\n15");
   });
-  test("the six stat icons are centred on the rows and evenly spaced", () => {
+  test("design change: Level sits above Strength in Gold's old row, on the value and label columns", () => {
     const { panel } = panelWith([]);
-    const icons = [...panel.el.querySelectorAll<HTMLElement>(".stat-icon")];
+    panel.setLevel(12);
+    const value = panel.el.querySelector<HTMLElement>(".page-stats .level-value");
+    const label = panel.el.querySelector<HTMLElement>(".page-stats .level-label");
+    expect([value?.textContent, label?.textContent]).toEqual(["12", "Level"]);
+    const values = panel.el.querySelector<HTMLElement>(".stat-values");
+    const labels = panel.el.querySelector<HTMLElement>(".stat-labels");
+    // The columns the stats use, one 30 px row above Strength (1.6's gold field at (668, 126)).
+    expect(value?.style.left).toBe(values?.style.left);
+    expect(label?.style.left).toBe(labels?.style.left);
+    expect(
+      Number.parseFloat(values?.style.top ?? "") - Number.parseFloat(value?.style.top ?? ""),
+    ).toBe(30);
+    expect(label?.style.top).toBe("126px");
+  });
+  test("the six stat icons are centred on the rows and evenly spaced, the head first", () => {
+    const { panel } = panelWith([]);
+    const icons = [...panel.el.querySelectorAll<HTMLElement>(".stat-head, .stat-icon")];
     expect(icons).toHaveLength(6);
-    expect(icons.map((i) => i.querySelector("img")?.getAttribute("src"))).toEqual(
-      Array(6).fill("/assets/ui/internal-34.png"),
+    expect(icons.slice(1).map((i) => i.querySelector("img")?.getAttribute("src"))).toEqual(
+      Array(5).fill("/assets/ui/internal-34.png"),
     );
-    // Each wrapper is centred on its row.
+    // Each icon is centred on its row and on the icon column (x 635-659).
     const middles = icons.map(
       (i) => Number.parseFloat(i.style.top) + Number.parseFloat(i.style.height) / 2,
     );
-    // Gold, then the five stats, once every 30 px (15 px line + a blank line).
+    for (const i of icons) {
+      expect(Number.parseFloat(i.style.left) + Number.parseFloat(i.style.width) / 2).toBe(
+        635 + 12 - 566,
+      );
+    }
+    // Level, then the five stats, once every 30 px (15 px line + a blank line).
     for (let i = 1; i < middles.length; i++) {
       expect(middles[i]! - middles[i - 1]!).toBe(30);
     }
@@ -463,7 +528,8 @@ describe("the right panel (frames 50-65)", () => {
       const el = panel.el.querySelector<HTMLElement>(sel);
       return Number.parseFloat(el?.style.top ?? "NaN") + 7.5;
     };
-    expect(lineMiddle(".gold")).toBe(middles[0]!);
+    expect(lineMiddle(".level-label")).toBe(middles[0]!);
+    expect(lineMiddle(".level-value")).toBe(middles[0]!);
     expect(lineMiddle(".stat-labels")).toBe(middles[1]!);
     expect(lineMiddle(".stat-values")).toBe(middles[1]!);
   });
@@ -636,7 +702,7 @@ describe("the amount dialog", () => {
 
 describe("drag to rearrange the bag (SSO; 1.6 had none)", () => {
   // happy-dom lays nothing out, so the panel's box is at (0, 0) with scale 1: client coordinates
-  // are panel-local. Slot 1 spans x 35-67, y 120-154; slot 2 starts at x 72.
+  // are panel-local. Slot 1 spans x 35-67, y 142-176; slot 2 starts at x 72.
   const pointer = (target: EventTarget, type: string, x: number, y: number) =>
     target.dispatchEvent(
       new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true }),
@@ -651,8 +717,8 @@ describe("drag to rearrange the bag (SSO; 1.6 had none)", () => {
     pointer(slots[0] as HTMLElement, "pointerdown", 50, 130);
     pointer(document, "pointermove", 70, 130);
     expect(panel.el.querySelector(".drag-ghost")).not.toBeNull();
-    pointer(document, "pointermove", 160, 175); // slot 9: x 146-178, row 2 y 157-191
-    pointer(document, "pointerup", 160, 175);
+    pointer(document, "pointermove", 160, 197); // slot 9: x 146-178, row 2 y 179-213
+    pointer(document, "pointerup", 160, 197);
     slots[0]?.click();
     expect(sent).toEqual(["arrange 1 9"]);
     expect(sounds).toHaveLength(1);
@@ -676,8 +742,8 @@ describe("drag to rearrange the bag (SSO; 1.6 had none)", () => {
     pointer(document, "pointermove", 50, 300);
     pointer(document, "pointerup", 50, 300);
     pointer(slot, "pointerdown", 50, 130);
-    pointer(document, "pointermove", 60, 140);
-    pointer(document, "pointerup", 60, 140);
+    pointer(document, "pointermove", 60, 150);
+    pointer(document, "pointerup", 60, 150);
     expect(sent).toEqual([]);
   });
   test("an empty slot cannot be picked up, and nothing moves while the bag is locked", () => {

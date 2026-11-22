@@ -139,7 +139,7 @@ describe("monsters, melee and XP", () => {
     expect(deltas(gm).some((e) => e.e === "mspawn")).toBe(true);
   });
 
-  test("the bar charged while waiting gives +5 once; then holding swings every 14 frames for 2; the 14 HP Slime dies on the 5th hit for 23 XP", async () => {
+  test("design change: no power bar: waiting adds nothing; holding swings every 14 frames for 2; the 14 HP Slime dies on the 8th hit for 23 XP", async () => {
     fighter.clear();
     gm.clear();
     fighter.send({ t: "attack", seq: 1, held: true });
@@ -149,13 +149,14 @@ describe("monsters, melee and XP", () => {
     const swings = deltas(fighter).filter((e) => e.e === "swing");
     const hits = deltas(fighter).filter((e) => e.e === "mhit");
     expect(swings.length).toBe(9); // every 14 frames over 120 frames
-    // 51 frames since login: the bar sits in the 50-53 window, member 474 = +5.
-    expect(swings[0]).toMatchObject({ bonus: 5, sound: "swordswing", atDelay: 14 });
-    expect(swings.slice(1).every((s) => s.e === "swing" && s.bonus === 0)).toBe(true);
-    // AttPower 1 + STR tiers 2 + Thrust 1 = 4, less Defense 2; +5 on the first.
-    expect(hits.map((h) => (h.e === "mhit" ? h.dmg : 0))).toEqual([7, 2, 2, 2, 2]);
+    // 51 frames since login: 1.6's bar would have added +5 to the first swing; SSO adds nothing.
+    expect(swings[0]).toMatchObject({ sound: "swordswing", atDelay: 14 });
+    expect(swings.every((s) => s.e === "swing" && !("bonus" in s))).toBe(true);
+    // AttPower 1 + STR tiers 2 + Thrust 1 = 4, less Defense 2, on every swing: 14 HP goes below 0
+    // on the 8th (1.6's +5 first swing killed it on the 5th).
+    expect(hits.map((h) => (h.e === "mhit" ? h.dmg : 0))).toEqual([2, 2, 2, 2, 2, 2, 2, 2]);
     expect(hits.at(-1)).toMatchObject({ kill: true });
-    expect(deltas(gm).filter((e) => e.e === "mhit")).toHaveLength(5);
+    expect(deltas(gm).filter((e) => e.e === "mhit")).toHaveLength(8);
     expect(lastVitals(fighter)).toMatchObject({ exp: 23, level: 1 });
     // No line for a kill or for XP.
     expect(chatTexts(fighter)).toEqual([]);

@@ -1015,6 +1015,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "vitals":
         model.vitals = msg.vitals;
         bars.setVitals(msg.vitals);
+        panel.setLevel(msg.vitals.level);
         return;
       case "delta":
         applyDelta(model, msg.events);
@@ -1639,10 +1640,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         playAll(audio, model.sounds.splice(0));
       } else {
         model.sounds.length = 0;
-      }
-      const t = model.self?.timers;
-      if (t) {
-        bars.setPower(t.bar, t.barMember);
       }
       updateHoverTip();
       const title = model.map?.title ?? "";

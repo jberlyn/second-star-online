@@ -471,16 +471,13 @@ describe("melee", () => {
     const { join, run } = setup([map], undefined, rngByN());
     const a = player("a", map, 5, 5);
     join(a);
-    // Waited for +7, then held: the re-arm resets the bar's member before the swing, so a held
-    // key swings at +0 every 14 frames, as on a fight map.
-    a.timers.barMember = 475;
+    // Held: the key swings every 14 frames, as on a fight map.
     a.timers.atDelay = 1;
     setAttackHeld(a, true);
     const msgs = run(60);
     const swings = msgs
       .flatMap((m) => (m.msg.t === "delta" && m.to === "a" ? m.msg.events : []))
       .filter((e) => e.e === "swing");
-    expect(swings.every((e) => e.e === "swing" && e.bonus === 0)).toBe(true);
     expect(swings.length).toBe(Math.floor(60 / 14) + 1);
   });
 

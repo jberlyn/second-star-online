@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 79 |
+| [Design changes](#design-changes) | 81 |
 | [Fixed bugs](#fixed-bugs) | 297 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **560** |
+| **Total** | **562** |
 
 By system (the code folder that holds the change):
 
@@ -448,12 +448,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Stats icons centred on their rows and evenly spaced
 - **Kind:** Platform
-- **What you notice:** The gold and stat icons line up with their labels and values, and every row has the same spacing.
+- **What you notice:** The Level row's head and the stat icons line up with their labels and values, and every row has the same spacing.
 - **1.6:** The six icons were one 24×177 cast-member bitmap drawn at its registration point at [635, 124]. Its glyphs were unevenly spaced, with row centres near y 131, 161, 195, 228, 261 and 291 on the stage, so the icons kept their own spacing rather than the text's.
-- **SSO:** The bitmap's glyphs are clipped apart and each icon is centered on its row. Gold and the five stats share a 30-pixel row grid, with icon centres at y 133.5, 163.5, 193.5, 223.5, 253.5 and 283.5; the label and value fields start on the same rows.
+- **SSO:** The bitmap's glyphs are clipped apart and each icon is centered on its row. Level (in 1.6's gold row, see [Gold moves to the Inventory tab](#gold-moves-to-the-inventory-tab-and-level-takes-its-row-on-stats)) and the five stats share a 30-pixel row grid, with icon centres at y 133.5, 163.5, 193.5, 223.5, 253.5 and 283.5; the label and value fields start on the same rows. The strip's gold glyph is no longer drawn.
 - **Why:** The user requested the icons centered with their text and evenly spaced. The strip's baked-in spacing did not match the 30-pixel text grid, so each icon drifted a little further from its label down the column.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
-- **Pinned by:** `the six stat icons are centred on the rows and evenly spaced` (packages/client/tests/panel.test.ts)
+- **Pinned by:** `the six stat icons are centred on the rows and evenly spaced, the head first` (packages/client/tests/panel.test.ts)
 
 #### The four panel tabs share one row and an even pitch
 - **Kind:** Platform
@@ -645,14 +645,32 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/world/tick.ts` (`tick`), `packages/client/src/playfield.ts` (`createPlayfield`)
 - **Pinned by:** `design change: a monster hit starts 40 calls of i-frames and never hides your sprite` (packages/server/tests/monsters.test.ts); `a melee hit starts the victim's i-frames; no sprite is hidden on anyone's screen` (packages/server/tests/melee.test.ts); `design change: the local player is always drawn; no hit blink hides it` (packages/client/tests/death-stage.test.ts)
 
-#### HP and SP bars fill by percentage with hover text
+#### HP, SP and XP bars fill by percentage, and hovering one shows all three
 - **Kind:** Other
-- **What you notice:** Each HP and SP bar fills its wooden slot from left to right. Full HP or SP fills the slot even when the maximum is 20, and losing half the points leaves half the bar. Hovering a bar shows `current / max` centred on it; otherwise the bar has no number.
-- **1.6:** The bar loader slid fixed 205-px track and fill sprites leftward from the stage's right edge using the raw value, capped at 200. A character with 20 maximum HP showed only a short bar at full health, while one with 1000 maximum HP filled the slot. The right-aligned number also disappeared past the stage's right edge at 1 HP/SP and spilled left of the cutout above 200.
-- **SSO:** The HP and SP tracks stay in the 189-px transparent slot of Internal #186 (stage x 600-789) and the fills grow from its left edge by `value / max`, with no 200 cap; the original 205-px fill art is clipped to the slot, and the depleted part of the slot is plain black instead of 1.6's darker red and blue track sprites. The text is a centred `current / max` field shown only while that bar is hovered, so it cannot leave the cutout. The power bar keeps 1.6's sliding behaviour.
-- **Why:** A bar's length should show how much of the stat remains, not how large the stat's maximum happens to be.
-- **In the code:** `packages/client/src/ui/bars.ts` (`createBars`, `setVitals`), `packages/client/src/styles.css` (`.bar-track`, `.bar-fill`, `.bar-hover`, `.bar-value`), `packages/client/src/ui/shells.ts` (`createGameView`)
-- **Pinned by:** `HP and SP fill the wooden slot left to right by percentage; the text reads current / max`; `a full bar is full at any maximum, and values above 200 are not capped`; `each bar's text field sits in that bar's own hover zone` (packages/client/tests/combat.test.ts)
+- **What you notice:** Each HP, SP and XP bar fills its wooden slot from left to right. Full HP or SP fills the slot even when the maximum is 20, and losing half the points leaves half the bar. The third slot, which held 1.6's power bar, is a flat green XP bar toward your next level. Hovering any one bar shows all three values at once, each centred on its own bar, such as `20 / 20 HP`, `20 / 20 SP` and `100 / 300 XP`; otherwise the bars have no numbers. Aboard a vehicle the HP bar shows its hull, such as `Hull 30 / 40`.
+- **1.6:** The bar loader slid fixed 205-px track and fill sprites leftward from the stage's right edge using the raw value, capped at 200. A character with 20 maximum HP showed only a short bar at full health, while one with 1000 maximum HP filled the slot. The right-aligned number also disappeared past the stage's right edge at 1 HP/SP and spilled left of the cutout above 200. There was no XP bar: XP showed only as the level-up line.
+- **SSO:** The HP, SP and XP tracks stay in the 189-px transparent slots of Internal #186 (stage x 600-789; y 70-74, 85-89 and 101-105) and the fills grow from the left edge by `value / max`, with no 200 cap; the original 205-px HP and SP fill art is clipped to the slot, and the depleted part of each slot is plain black instead of 1.6's darker red and blue track sprites. The XP bar reads the server's vitals: the XP held toward the next level over the XP that level needs. A level-up empties it and carries the remainder; saved XP at or past its destination shows a full bar until the next level check, and a destination of 0 shows an empty one. There is no level cap. Numbers above 999 carry thousands separators. The text fields show only while a bar is hovered, so they cannot leave the cutout.
+- **Why:** A bar's length should show how much of the stat remains, not how large the stat's maximum happens to be. With the power bar gone, its slot shows progress that players otherwise had no way to see.
+- **In the code:** `packages/client/src/ui/bars.ts` (`createBars`, `setVitals`), `packages/client/src/styles.css` (`.bar-track`, `.bar-fill`, `.xp-fill`, `.bar-hover`, `.bar-value`, `.bars-show-values`), `packages/client/src/ui/shells.ts` (`createGameView`)
+- **Pinned by:** `HP and SP fill the wooden slot left to right by percentage; the text reads current / max`; `a full bar is full at any maximum, and values above 200 are not capped`; `design change: no power bar; the third slot is a flat green XP bar toward the next level`; `the XP bar empties on a level-up, shows full past its destination, and never divides by 0`; `design change: hovering any one bar shows all three values, each on its own bar`; `aboard a vehicle the HP bar shows the hull; SP and XP stay the player's` (packages/client/tests/combat.test.ts)
+
+#### No power bar
+- **Kind:** Other
+- **What you notice:** There is no power bar and no reason to wait between swings: every swing hits with the same attack power however long you waited. Argon's Fist and the Purple Potion still add their +1 attack power while they last.
+- **1.6:** After each swing the bar refilled one point a frame once the attack re-armed (two a frame under Argon's Fist or a Purple Potion), and the next swing added +3, +5 or +7 to its attack power once the bar passed 25, 50 or 75. With the default 14-frame cooldown that was +3 from 38 frames (1.9 s) after the last swing, +5 from 63 (3.15 s) and +7 from 88 (4.4 s); under Argon's Fist +3 from 26 frames, +5 from 38 and +7 from 51. A held key always swung at +0. The bonus went into melee damage against monsters and players and into the power of an arrow shot.
+- **SSO:** `startSwing` only sets the cooldowns and `tickAttackTimers` only re-arms; the swing's attack power is `attackPower` alone, and the `swing` message carries no tier. No other tuning replaces the bonus.
+- **Why:** The bar rewarded waiting out a timer rather than playing, and its slot now shows XP.
+- **In the code:** `packages/shared/src/rules/combat/combat.ts` (`AttackTimers`, `tickAttackTimers`, `startSwing`); `packages/server/src/systems/combat/melee.ts` (`workAttack`); `packages/client/src/model.ts` (`predictSwing`)
+- **Pinned by:** `design change: waiting between swings charges nothing; a swing only sets the cooldowns` (packages/shared/tests/combat/combat.test.ts); `design change: no power bar: a swing after a long wait hits a player as hard as a held one` (packages/server/tests/melee.test.ts); `design change: no power bar: waiting adds nothing; holding swings every 14 frames for 2; the 14 HP Slime dies on the 8th hit for 23 XP` (packages/server/e2e/monsters-and-melee.test.ts)
+
+#### Gold moves to the Inventory tab, and Level takes its row on Stats
+- **Kind:** Other
+- **What you notice:** The Inventory tab shows your gold in a slim dark brown box just below the XP bar, as wide as the bars: the drop/give button at its left, then the bag's small gold picture and the amount, right-aligned with thousands separators. The bag and equipment sit underneath. The Stats tab no longer shows gold; its top row reads your Level, with your character's head (hairstyle, or the helmet you wear) in the icon column. There is no hunger display.
+- **1.6:** Gold was the top row of the Stats tab, with its drop button and a gold-coin glyph, and the level appeared nowhere on the panel.
+- **SSO:** The gold box spans stage x 600-789, y 114-134. The 15 bag slots and their quantities sit 22 pixels below 1.6's rows (row centres y 138, 175 and 212) and clear the equipment boxes at y 280. The Level row keeps the old gold row's place, value and label columns, and the 30-pixel pitch; its head is the front-facing paperdoll head layer, or the worn helmet's layer, cropped to its pixels and centred on the icon column. A body that hides the head on the paperdoll still shows the hairstyle here.
+- **Why:** Gold is something you carry and spend from the bag, and the level is the stat players most want to see.
+- **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`, `setLevel`, `GOLD_BOX`, `BAG_SHIFT`); `packages/shared/src/rules/inventory/paperdoll.ts` (`portraitLayers`); `packages/client/src/styles.css` (`.gold-box`)
+- **Pinned by:** `design change: gold sits in a box below the XP bar on Inventory, its button opening the gold dialog`; `the SmallGold picture is drawn from the bag's own item art, not the large pile`; `the bag sits 22 px lower to fit the gold box, and the full bag still clears the equipment`; `design change: Level sits above Strength in Gold's old row, on the value and label columns` (packages/client/tests/panel.test.ts); `design change: the Level row's head is the hairstyle, or the helmet the paperdoll draws` (packages/shared/tests/inventory/inventory.test.ts)
 
 #### Hover tips name tabs, items, players, NPCs, monsters and ground items
 - **Kind:** Other
@@ -1217,12 +1235,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A held attack swings at the cooldown's own pace
 - **Kind:** Bug fixed
-- **What you notice:** Holding attack swings every 14 frames by default (10 with the Ring of Quickness), matching the cooldown. The power bar's tiers also arrive a frame sooner.
+- **What you notice:** Holding attack swings every 14 frames by default (10 with the Ring of Quickness), matching the cooldown.
 - **1.6:** The frame script re-armed the attack before counting the delay down, so a held key swung every cooldown plus one frames.
 - **SSO:** `tickAttackTimers` counts the delay down first and re-arms on the frame it reaches 0. The browser runs the same function.
 - **Why:** The cooldown number should be the actual wait.
 - **In the code:** `packages/shared/src/rules/combat/combat.ts` (`tickAttackTimers`)
-- **Pinned by:** `bug fixed: holding attack swings every AtDelay = 14 frames, not 15`; `tiers come from the member windows: +0 until t+38, +3, +5 from t+63, +7 from t+88` (packages/shared/tests/combat/combat.test.ts)
+- **Pinned by:** `bug fixed: holding attack swings every AtDelay = 14 frames, not 15` (packages/shared/tests/combat/combat.test.ts)
 
 #### Big monsters can be hit on any of their tiles
 - **Kind:** Bug fixed
@@ -1235,12 +1253,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A bow without arrows or crystals refuses the shot
 - **Kind:** Bug fixed
-- **What you notice:** Swinging a bow with no arrows says "You don't have any arrows!"; with arrows but no crystal of their colour it says "You don't have any <colour> crystals left!". Either way nothing else happens: no swing, no cooldown, and your power bar keeps its charge. The line is said once per press.
+- **What you notice:** Swinging a bow with no arrows says "You don't have any arrows!"; with arrows but no crystal of their colour it says "You don't have any <colour> crystals left!". Either way nothing else happens: no swing and no cooldown. The line is said once per press.
 - **1.6:** With no arrows the bow meleed for 1. With no crystal the swing was wasted: the cooldown ran, the power bar reset and you left combat.
 - **SSO:** `bowRefusal` is checked in `workAttack` before `startSwing`; the browser's prediction makes the same check.
 - **Why:** Running out of ammunition should stop the shot, not cost you a swing or turn the bow into a stick.
 - **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`bowRefusal`, `NO_ARROWS_TEXT`); `packages/server/src/systems/combat/melee.ts` (`workAttack`); `packages/client/src/model.ts` (`predictSwing`)
-- **Pinned by:** `bug fixed: a bow with no arrows, or no crystal for them, is refused before the swing` (packages/shared/tests/combat/combat.test.ts); `bug fixed: a bow with no arrows is refused once per press, with no cooldown`; `bug fixed: a bow with arrows but no crystal is refused before the swing, keeping the bar`; `an off-hand that only contains "Arrows" counts as no arrows` (packages/server/tests/melee.test.ts)
+- **Pinned by:** `bug fixed: a bow with no arrows, or no crystal for them, is refused before the swing` (packages/shared/tests/combat/combat.test.ts); `bug fixed: a bow with no arrows is refused once per press, with no cooldown`; `bug fixed: a bow with arrows but no crystal is refused before the swing, with no cooldown`; `an off-hand that only contains "Arrows" counts as no arrows` (packages/server/tests/melee.test.ts)
 
 #### A stepping player is hit on the tile they are leaving
 - **Kind:** Bug fixed
@@ -1334,10 +1352,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Arena tiles wait for the re-arm like any swing
 - **Kind:** Bug fixed
-- **What you notice:** On a no-fight map, holding attack on an arena tile swings at the same pace as on a fight map, and the power bar resets after each swing.
-- **1.6:** The arena-tile branch swung without checking that you were ready, on the frame the cooldown reached 0 and before the bar block ran, so every swing repeated the last bar tier.
+- **What you notice:** On a no-fight map, holding attack on an arena tile swings at the same pace as on a fight map.
+- **1.6:** The arena-tile branch swung without checking that you were ready, on the frame the cooldown reached 0 and before the bar block ran, so every swing repeated the last power-bar tier (SSO has [no power bar](#no-power-bar)).
 - **SSO:** `pollAttack` requires the attack to be armed on an arena tile too.
-- **Why:** An arena should not let a held key keep a full power bar.
+- **Why:** An arena tile should follow the same attack rules as a fight map.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`, `onArenaTile`)
 - **Pinned by:** `bug fixed: on a no-fight map an arena tile waits for the re-arm like any swing` (packages/server/tests/monsters.test.ts)
 
@@ -3896,14 +3914,14 @@ Changes that move authority from the client to the server and close exploits tha
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`, `pvpSwing`)
 - **Pinned by:** `SSO: the attack intent is the key's hold state only: no damage, power, target, position or weapon` (packages/shared/tests/ledger-pins-a.test.ts); `bug fixed: a victim part-way through a step is hit on the tile it is leaving`; `bug fixed: a swing at (4,4) no longer hits a victim stepping from (9,4)` (packages/server/tests/melee.test.ts)
 
-#### Server-side cooldowns and power bar
+#### Server-side cooldowns
 - **Kind:** Exploit closed
-- **What you notice:** Attack timing and the power bar are governed by the server.
-- **1.6:** Attack delay, action delay and the power bar were held on the client.
+- **What you notice:** Attack timing is governed by the server.
+- **1.6:** Attack delay, action delay and the power bar were held on the client. SSO has [no power bar](#no-power-bar).
 - **SSO:** The server counts ticks; an attack pressed a few ticks early can be latched for the next permitted attack.
 - **Why:** Client-controlled timing allowed speed and power hacks.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`pollAttack`), `packages/shared/src/rules/combat/combat.ts` (`tickAttackTimers`, `startSwing`)
-- **Pinned by:** `SSO: a tap is latched for ${ATTACK_LATCH_TICKS} ticks: it swings if the attack re-arms by then`; `SSO: a tap older than the latch is lost, as 1.6's keyPressed poll lost it` (packages/server/tests/melee.test.ts); `bug fixed: holding attack swings every AtDelay = 14 frames, not 15`; `tiers come from the member windows: +0 until t+38, +3, +5 from t+63, +7 from t+88`; `the bar value resets on a swing, its member does not` (packages/shared/tests/combat/combat.test.ts)
+- **Pinned by:** `SSO: a tap is latched for ${ATTACK_LATCH_TICKS} ticks: it swings if the attack re-arms by then`; `SSO: a tap older than the latch is lost, as 1.6's keyPressed poll lost it` (packages/server/tests/melee.test.ts); `bug fixed: holding attack swings every AtDelay = 14 frames, not 15` (packages/shared/tests/combat/combat.test.ts)
 
 #### Server checks crystals before shots and casts
 - **Kind:** Exploit closed
@@ -3912,7 +3930,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server checks and removes the crystal with the shot or cast.
 - **Why:** A modified client could otherwise shoot or cast without spending crystals.
 - **In the code:** `packages/server/src/systems/combat/melee.ts` (`workAttack`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
-- **Pinned by:** `bug fixed: a bow with arrows but no crystal is refused before the swing, keeping the bar`; `a bow with Blue Arrows and a crystal shoots an arrow and spends the crystal, hitting nothing in melee` (packages/server/tests/melee.test.ts); `not enough SP and too few crystals: the messages`; `SP and crystals are taken from the last crystal line` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `bug fixed: a bow with arrows but no crystal is refused before the swing, with no cooldown`; `a bow with Blue Arrows and a crystal shoots an arrow and spends the crystal, hitting nothing in melee` (packages/server/tests/melee.test.ts); `not enough SP and too few crystals: the messages`; `SP and crystals are taken from the last crystal line` (packages/server/tests/spells.test.ts)
 
 #### Server rolls equipment breaks
 - **Kind:** Exploit closed

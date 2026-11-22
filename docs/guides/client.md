@@ -24,7 +24,7 @@ The UI files are:
 - [packages/client/src/ui/alert.ts](../../packages/client/src/ui/alert.ts): in-page alerts.
 - [packages/client/src/ui/amount.ts](../../packages/client/src/ui/amount.ts): gold and crystal amount dialog.
 - [packages/client/src/ui/away.ts](../../packages/client/src/ui/away.ts): away message window.
-- [packages/client/src/ui/bars.ts](../../packages/client/src/ui/bars.ts): health, spell and attack power bars; aboard a vehicle the health bar shows its hull.
+- [packages/client/src/ui/bars.ts](../../packages/client/src/ui/bars.ts): health, spell and experience bars, whose values all show while any one is hovered; aboard a vehicle the health bar shows its hull.
 - [packages/client/src/ui/bio.ts](../../packages/client/src/ui/bio.ts): player and NPC biography window.
 - [packages/client/src/ui/blackjack.ts](../../packages/client/src/ui/blackjack.ts): blackjack table.
 - [packages/client/src/ui/board.ts](../../packages/client/src/ui/board.ts): message board window.

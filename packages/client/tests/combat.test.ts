@@ -1,6 +1,6 @@
 /**
- * Client: monsters, effects, floaties, the predicted power bar, the bars component and the attack
- * key.
+ * Client: monsters, effects, floaties, the predicted attack lock, the bars component and the
+ * attack key.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -130,26 +130,29 @@ describe("monsters on the client", () => {
     ]);
   });
 
-  test("your swing snaps the predicted bar to the server's", () => {
+  test("your swing snaps the predicted attack lock to the server's", () => {
     const { m, intent } = setup();
     const t = m.self?.timers;
     for (let i = 0; i < 30; i++) {
       clientTick(m, intent);
     }
-    expect(t?.bar).toBe(30);
-    expect(t?.barMember).toBe(472);
+    expect(t?.canAttack).toBe(true);
     applyDelta(m, [
       {
         e: "swing",
         id: "me",
-        bonus: 3,
         atDelay: 14,
         actionDelay: 14,
         sound: "swordswing",
       },
     ]);
     // The swing plays on channel 3.
-    expect([t?.bar, t?.atkAnim, m.sounds]).toEqual([0, 5, [{ name: "swordswing", ch: 3 }]]);
+    expect([t?.canAttack, t?.atDelay, t?.atkAnim, m.sounds]).toEqual([
+      false,
+      14,
+      5,
+      [{ name: "swordswing", ch: 3 }],
+    ]);
     // No step starts during the 5-frame attack animation.
     intent.held = "R";
     clientTick(m, intent);
@@ -158,9 +161,10 @@ describe("monsters on the client", () => {
 });
 
 describe("bars", () => {
+  const vitals = { level: 3, hp: 15, hpMax: 20, sp: 20, spMax: 20, exp: 100, expNeeded: 300 };
   test("HP and SP fill the wooden slot left to right by percentage; the text reads current / max", () => {
     const b = createBars(fakeAssets);
-    b.setVitals({ level: 1, hp: 15, hpMax: 20, sp: 20, spMax: 20, exp: 0, expNeeded: 30 });
+    b.setVitals(vitals);
     const q = (sel: string) => b.el.querySelector(sel) as HTMLElement;
     // The slot is stage x 600-789: 189 px wide, 10 px from the box origin.
     expect(q(".hp-track").style.left).toBe("10px");
@@ -172,36 +176,93 @@ describe("bars", () => {
     // 15/20 = 75% of 189 = 141.75 px, measured from the slot's left edge.
     expect(q(".hp-fill").style.width).toBe("141.75px");
     expect(q(".sp-fill").style.width).toBe("189px");
-    expect(q(".hp-value").textContent).toBe("15 / 20");
-    expect(q(".sp-value").textContent).toBe("20 / 20");
-    b.setPower(50, 474);
-    const power = [...b.el.querySelectorAll("img")].find((i) => i.style.opacity === "0.5");
-    expect(power?.style.left).toBe(`${874 - 100 - 81 - 590}px`);
-    expect(power?.src.endsWith("internal-474.png")).toBe(true);
+    expect(q(".hp-value").textContent).toBe("15 / 20 HP");
+    expect(q(".sp-value").textContent).toBe("20 / 20 SP");
   });
 
   test("a full bar is full at any maximum, and values above 200 are not capped", () => {
     const b = createBars(fakeAssets);
     const q = (sel: string) => b.el.querySelector(sel) as HTMLElement;
-    b.setVitals({ level: 1, hp: 20, hpMax: 20, sp: 1029, spMax: 1029, exp: 0, expNeeded: 30 });
+    b.setVitals({ ...vitals, hp: 20, hpMax: 20, sp: 1029, spMax: 1029 });
     expect(q(".hp-fill").style.width).toBe("189px");
     expect(q(".sp-fill").style.width).toBe("189px");
-    b.setVitals({ level: 1, hp: 1, hpMax: 200, sp: 10, spMax: 1000, exp: 0, expNeeded: 30 });
+    b.setVitals({ ...vitals, hp: 1, hpMax: 200, sp: 10, spMax: 1000 });
     expect(q(".hp-fill").style.width).toBe("0.95px");
     expect(q(".sp-fill").style.width).toBe("1.89px");
-    expect(q(".hp-value").textContent).toBe("1 / 200");
-    expect(q(".sp-value").textContent).toBe("10 / 1000");
+    expect(q(".hp-value").textContent).toBe("1 / 200 HP");
+    expect(q(".sp-value").textContent).toBe("10 / 1,000 SP");
   });
 
-  test("each bar's text field sits in that bar's own hover zone", () => {
+  test("design change: no power bar; the third slot is a flat green XP bar toward the next level", () => {
     const b = createBars(fakeAssets);
-    b.setVitals({ level: 1, hp: 15, hpMax: 20, sp: 20, spMax: 20, exp: 0, expNeeded: 30 });
-    const hpValue = b.el.querySelector(".hp-value") as HTMLElement;
-    const spValue = b.el.querySelector(".sp-value") as HTMLElement;
-    expect(b.el.querySelector(".hp-hover .hp-value")).toBe(hpValue);
-    expect(b.el.querySelector(".sp-hover .sp-value")).toBe(spValue);
-    expect(hpValue.getAttribute("aria-hidden")).toBe("true");
-    expect(spValue.getAttribute("aria-hidden")).toBe("true");
+    const q = (sel: string) => b.el.querySelector(sel) as HTMLElement;
+    b.setVitals({ ...vitals, exp: 1240, expNeeded: 2000 });
+    // No power-bar art (Internal #169 track, #472-#475 tier sprites) is drawn.
+    const art = [...b.el.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? "");
+    expect(art.some((src) => /internal-(169|47[2-5])\.png$/.test(src))).toBe(false);
+    // The slot of Internal #186 at y 101-105: stage x 600-789, 41 px below the box's top.
+    expect([q(".xp-track").style.left, q(".xp-track").style.top]).toEqual(["10px", "41px"]);
+    expect([q(".xp-track").style.width, q(".xp-track").style.height]).toEqual(["189px", "5px"]);
+    expect(q(".xp-fill").querySelector("img")).toBeNull();
+    // 1240 / 2000 = 62 % of 189 px.
+    expect(q(".xp-fill").style.width).toBe("117.18px");
+    expect(q(".xp-value").textContent).toBe("1,240 / 2,000 XP");
+  });
+
+  test("the XP bar empties on a level-up, shows full past its destination, and never divides by 0", () => {
+    const b = createBars(fakeAssets);
+    const q = (sel: string) => b.el.querySelector(sel) as HTMLElement;
+    // Level 1 needs 30; a level-up carries the remainder toward level 2's 400.
+    b.setVitals({ ...vitals, level: 1, exp: 30, expNeeded: 30 });
+    expect(q(".xp-fill").style.width).toBe("189px");
+    b.setVitals({ ...vitals, level: 2, exp: 0, expNeeded: 400 });
+    expect(q(".xp-fill").style.width).toBe("0px");
+    expect(q(".xp-value").textContent).toBe("0 / 400 XP");
+    // Saved data at or past its destination (no level check ran yet) shows full, not more.
+    b.setVitals({ ...vitals, exp: 5000, expNeeded: 410 });
+    expect(q(".xp-fill").style.width).toBe("189px");
+    expect(q(".xp-value").textContent).toBe("5,000 / 410 XP");
+    // A destination of 0 (never levels) or negative XP shows an empty bar.
+    b.setVitals({ ...vitals, exp: 10, expNeeded: 0 });
+    expect(q(".xp-fill").style.width).toBe("0px");
+    b.setVitals({ ...vitals, exp: -5, expNeeded: 400 });
+    expect(q(".xp-fill").style.width).toBe("0px");
+  });
+
+  test("design change: hovering any one bar shows all three values, each on its own bar", () => {
+    const b = createBars(fakeAssets);
+    b.setVitals({ ...vitals, hp: 20 });
+    const zones = ["hp", "sp", "xp"].map((k) => b.el.querySelector(`.${k}-hover`) as HTMLElement);
+    for (const k of ["hp", "sp", "xp"]) {
+      const value = b.el.querySelector(`.${k}-value`) as HTMLElement;
+      expect(b.el.querySelector(`.${k}-hover .${k}-value`)).toBe(value);
+      expect(value.getAttribute("aria-hidden")).toBe("true");
+    }
+    expect([...b.el.querySelectorAll(".bar-value")].map((v) => v.textContent)).toEqual([
+      "20 / 20 HP",
+      "20 / 20 SP",
+      "100 / 300 XP",
+    ]);
+    for (const zone of zones) {
+      expect(b.el.classList.contains("bars-show-values")).toBe(false);
+      zone.dispatchEvent(new PointerEvent("pointerenter"));
+      expect(b.el.classList.contains("bars-show-values")).toBe(true);
+      zone.dispatchEvent(new PointerEvent("pointerleave"));
+    }
+    expect(b.el.classList.contains("bars-show-values")).toBe(false);
+    // The zones stack without overlapping: HP y 66-80, SP 81-95, XP 96-110 (stage).
+    expect(zones.map((z) => z.style.top)).toEqual(["6px", "21px", "36px"]);
+  });
+
+  test("aboard a vehicle the HP bar shows the hull; SP and XP stay the player's", () => {
+    const b = createBars(fakeAssets);
+    const q = (sel: string) => b.el.querySelector(sel) as HTMLElement;
+    b.setVitals({ ...vitals, hull: { hp: 30, max: 40 } });
+    expect(q(".hp-fill").style.width).toBe("141.75px");
+    expect(q(".hp-value").textContent).toBe("Hull 30 / 40");
+    expect(q(".sp-value").textContent).toBe("20 / 20 SP");
+    expect(q(".xp-value").textContent).toBe("100 / 300 XP");
+    expect(q(".sr-only").textContent).toBe("Hull 30 of 40, SP 20 of 20, level 3, XP 100 of 300");
   });
 
   test("the desktop stage places the bars", () => {

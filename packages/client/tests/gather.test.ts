@@ -79,12 +79,8 @@ describe("gathering sounds", () => {
       equip: { ...NO_EQUIPMENT },
       body: null,
     } as never);
-    applyDelta(m, [
-      { e: "swing", id: "b", bonus: 0, atDelay: 0, actionDelay: 0, sound: "treechop" },
-    ]);
-    applyDelta(m, [
-      { e: "swing", id: "b", bonus: 0, atDelay: 0, actionDelay: 0, sound: "swordhit2" },
-    ]);
+    applyDelta(m, [{ e: "swing", id: "b", atDelay: 0, actionDelay: 0, sound: "treechop" }]);
+    applyDelta(m, [{ e: "swing", id: "b", atDelay: 0, actionDelay: 0, sound: "swordhit2" }]);
     expect(m.sounds).toEqual([
       { name: "treechop", ch: 3 },
       { name: "swordhit2", ch: 3 },

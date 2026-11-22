@@ -233,13 +233,12 @@ export type DeltaEvent =
   /** An operator emptied or changed the slot: the monster is removed without a kill. */
   | { e: "mgone"; slot: number }
   /**
-   * A player swings: attack animation and the swing sound. `bonus` is the bar tier used;
-   * `atDelay`/`actionDelay` the cooldowns it set, so the swinger's client can re-predict its bar.
+   * A player swings: attack animation and the swing sound. `atDelay`/`actionDelay` are the
+   * cooldowns it set, so the swinger's client can re-predict its attack lock.
    */
   | {
       e: "swing";
       id: string;
-      bonus: number;
       atDelay: number;
       actionDelay: number;
       /**

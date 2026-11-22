@@ -15,7 +15,7 @@ export interface GameParts {
   chatInput: HTMLInputElement;
   /** The classic layout's menu bar holder (ui/menubar.ts). */
   menuBar: MenuBar;
-  /** HP, SP and power bars (ui/bars.ts). */
+  /** HP, SP and XP bars (ui/bars.ts). */
   bars: HTMLElement;
   /** The right panel: tabs, bag, equipment, stats, skills (ui/panel.ts). */
   panel: HTMLElement;

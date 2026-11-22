@@ -49,6 +49,11 @@
     "hidden": 0,
     "disabled": 0
   },
+  "bars-show-values": {
+    "count": 3,
+    "hidden": 0,
+    "disabled": 0
+  },
   "bio-buy": {
     "count": 2,
     "hidden": 1,

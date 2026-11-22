@@ -50,7 +50,11 @@ import {
   invDelSlot,
   pileToItem,
 } from "../../src/rules/inventory/inventory.ts";
-import { normaliseLook, paperdollLayers } from "../../src/rules/inventory/paperdoll.ts";
+import {
+  normaliseLook,
+  paperdollLayers,
+  portraitLayers,
+} from "../../src/rules/inventory/paperdoll.ts";
 import {
   DEFAULT_DEATH_DROPS,
   type DeathDropRules,
@@ -639,6 +643,25 @@ describe("paperdoll", () => {
     expect(paperdollLayers({ head: 1, equip: gear({ weapon: "Knife" }) }, "F2", "N")).not.toContain(
       "Dagger-F2-N",
     );
+  });
+  test("design change: the Level row's head is the hairstyle, or the helmet the paperdoll draws", () => {
+    expect(portraitLayers({ head: 4 })).toEqual(["Head4-F2-S"]);
+    expect(portraitLayers({ head: 4, equip: gear({ weapon: "Knife" }) })).toEqual(["Head4-F2-S"]);
+    // A worn helmet replaces the head, after the renderer's `+N` strip.
+    expect(portraitLayers({ head: 4, equip: gear({ head: "Plate Helm+2" }) })).toEqual([
+      "Plate Helm-F2-S",
+    ]);
+    // A body that hides the head on the paperdoll still shows the hairstyle here; one that hides
+    // the helmet too shows the hairstyle rather than the hidden helmet.
+    expect(portraitLayers({ head: 2, equip: gear({ body: "Ninja Outfit" }) })).toEqual([
+      "Head2-F2-S",
+    ]);
+    expect(
+      portraitLayers({
+        head: 2,
+        equip: gear({ body: "Robe of Invisibility", head: "Plate Helm" }),
+      }),
+    ).toEqual(["Head2-F2-S"]);
   });
   test("a helm replaces the head; armour replaces DEFBOD", () => {
     expect(

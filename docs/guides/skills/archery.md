@@ -29,7 +29,7 @@ The attack power of any weapon whose name contains "bow" (bows and crossbows):
 | 20 to 29 | Set to 3 + random(4) |
 | 30 or more | The bow's own power, arrows and rings, +1 above 29, 40, 50, 60, 70, 80 and 90 (up to +7) |
 
-A Steel Bow adds a further +1 above 70, 80 and 90. Thrust and the power bar are added afterwards. Arrow bonuses run from +1 (Blue) to +7 (White), and the Bowmaster's Ring adds +4 with a bow.
+A Steel Bow adds a further +1 above 70, 80 and 90. Thrust is added afterwards. Arrow bonuses run from +1 (Blue) to +7 (White), and the Bowmaster's Ring adds +4 with a bow.
 
 ## Connected systems
 

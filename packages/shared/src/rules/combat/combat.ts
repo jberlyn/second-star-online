@@ -1,10 +1,11 @@
 /**
- * Melee timers, the power bar, hit tests and damage. Pure functions over plain state; the server
- * sim calls them in the original frame order.
+ * Melee timers, hit tests and damage. Pure functions over plain state; the server sim calls them in
+ * the original frame order.
  *
  * Implements the original's routines:
- * - The attack handler: gates, cooldowns, bar bonus.
- * - The frame script's bar and re-arm; the shared action delay.
+ * - The attack handler: gates and cooldowns. SSO has no power bar (a deliberate difference: 1.6's
+ *   bar added +3/+5/+7 to a swing left idle long enough; see docs/differences-from-fso.md).
+ * - The frame script's re-arm; the shared action delay.
  * - The monster hit test: own tile, faced tile, 3x2 footprint, damage.
  * - The monster reach test; HitMe2; the parry and block gains; the hit flicker.
  */
@@ -16,9 +17,6 @@ import { ruleMatches } from "../core/patterns.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 import { armourRows, elementalRows, factionRows, randomAndDefense } from "./armour.ts";
 
-/** Power-bar sprite 63 members (Internal #473, #472, #474, #475). */
-export type BarMember = 473 | 472 | 474 | 475;
-
 export interface AttackTimers {
   /** The attack delay: frames until the attack re-arms. */
   atDelay: number;
@@ -26,11 +24,7 @@ export interface AttackTimers {
   actionDelay: number;
   /** The can-attack flag: set when the attack delay is 0 at the top of a frame. */
   canAttack: boolean;
-  /** The power-up bar, 0..100. */
-  bar: number;
-  /** The member sprite 63 shows; the attack handler reads it, not the value. */
-  barMember: BarMember;
-  /** The attack counter (Argon's Fist, Purple Potion): the bar grows 2 per frame. */
+  /** The attack counter: frames left of Argon's Fist or a Purple Potion (`attackBonus`). */
   attackCounter: number;
   /** Your own sprite's attack counter: frames of attack animation; no step starts while > 0. */
   atkAnim: number;
@@ -41,33 +35,9 @@ export function newAttackTimers(): AttackTimers {
     atDelay: 0,
     actionDelay: 0,
     canAttack: false,
-    bar: 0,
-    barMember: 473,
     attackCounter: 0,
     atkAnim: 0,
   };
-}
-
-/** The bar member for a value, if the value lands in one of the 4-wide windows. */
-export function barMemberFor(bar: number): BarMember | null {
-  if (bar >= 0 && bar <= 3) {
-    return 473;
-  }
-  if (bar >= 25 && bar <= 28) {
-    return 472;
-  }
-  if (bar >= 50 && bar <= 53) {
-    return 474;
-  }
-  if (bar >= 75 && bar <= 78) {
-    return 475;
-  }
-  return null;
-}
-
-/** The attack bonus from the bar member: +0, +3, +5, +7. */
-export function barBonus(m: BarMember): number {
-  return m === 472 ? 3 : m === 474 ? 5 : m === 475 ? 7 : 0;
 }
 
 /**
@@ -93,9 +63,10 @@ export function tickSpriteTimers(t: AttackTimers): void {
 }
 
 /**
- * The frame script's attack block: count the attack delay down, then re-arm and grow the bar while
- * it is 0. Counting down first lets a held key swing every `atDelay` frames, as the cooldown says
- * (a bug fixed: 1.6 re-armed before the countdown, one frame late).
+ * The frame script's attack block: count the attack delay down, then re-arm while it is 0.
+ * Counting down first lets a held key swing every `atDelay` frames, as the cooldown says (a bug
+ * fixed: 1.6 re-armed before the countdown, one frame late). 1.6 also grew the power bar here; SSO
+ * has none.
  */
 export function tickAttackTimers(t: AttackTimers): void {
   if (t.atDelay > 0) {
@@ -103,13 +74,6 @@ export function tickAttackTimers(t: AttackTimers): void {
   }
   if (t.atDelay === 0) {
     t.canAttack = true;
-    if (t.bar < 100) {
-      if (t.attackCounter > 0) {
-        t.bar += 1;
-      }
-      t.bar += 1;
-      t.barMember = barMemberFor(t.bar) ?? t.barMember;
-    }
   }
 }
 
@@ -191,17 +155,11 @@ export function swingBlocked(t: AttackTimers, itemActionPause = 0, canModify = t
   return t.atDelay > 0 || t.actionDelay > 0 || itemActionPause > 0 || !canModify;
 }
 
-/**
- * Starts a swing: reads the bar bonus, resets the bar value (not its member) and sets the
- * cooldowns. Returns the bonus.
- */
-export function startSwing(t: AttackTimers, equip: Equipment, skills: readonly number[]): number {
-  const bonus = barBonus(t.barMember);
-  t.bar = 0;
+/** Starts a swing: sets the cooldowns. 1.6 also read and reset its power bar here. */
+export function startSwing(t: AttackTimers, equip: Equipment, skills: readonly number[]): void {
   const cd = swingCooldowns(equip, skills);
   t.atDelay = cd.atDelay;
   t.actionDelay = cd.actionDelay;
-  return bonus;
 }
 
 // ---- hitting monsters ------------------------------------------------------------------

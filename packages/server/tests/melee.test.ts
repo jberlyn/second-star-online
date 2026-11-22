@@ -100,19 +100,17 @@ describe("the attack poll", () => {
     expect(s.poll(a).lines).toEqual(["You don't have any arrows!"]);
   });
 
-  test("bug fixed: a bow with arrows but no crystal is refused before the swing, keeping the bar", () => {
+  test("bug fixed: a bow with arrows but no crystal is refused before the swing, with no cooldown", () => {
     const s = scene();
     const a = s.add("Ann", 5, 5);
     a.char.equip.weapon = "Wooden Bow";
     a.char.equip.offHand = "Red Arrows";
     a.timers.canAttack = true;
-    a.timers.bar = 80;
-    a.timers.barMember = 475;
     setAttackHeld(a, true);
     const ev = s.poll(a);
     expect(ev.swing).toBeNull();
     expect(ev.lines).toEqual(["You don't have any red crystals left!"]);
-    expect([a.timers.bar, a.timers.barMember, a.timers.atDelay]).toEqual([80, 475, 0]);
+    expect([a.timers.atDelay, a.timers.actionDelay, a.timers.canAttack]).toEqual([0, 0, true]);
   });
 });
 
@@ -142,6 +140,28 @@ describe("PvP melee", () => {
     a.timers.canAttack = true;
     setAttackHeld(a, true);
     expect(s.poll(a).pvp).toEqual([]);
+  });
+
+  test("design change: no power bar: a swing after a long wait hits a player as hard as a held one", () => {
+    // Bob never parries or blocks (every draw at its maximum), so both swings land.
+    const hit = (idleTicks: number) => {
+      const s = scene();
+      const a = s.add("Ann", 5, 5);
+      const b = s.add("Bob", 5, 4);
+      b.char.skills = Array(38).fill(0);
+      // Well past 1.6's +7 tier (88 frames), with Argon's Fist running (1.6 charged twice as fast).
+      a.timers.attackCounter = 400;
+      s.run(idleTicks);
+      a.timers.canAttack = true;
+      setAttackHeld(a, true);
+      const ev = s.poll(a);
+      return { text: ev.pvp.map((h) => h.text), swing: ev.swing };
+    };
+    const held = hit(0);
+    const waited = hit(120);
+    expect(waited.text).toEqual(held.text);
+    expect(held.text).toHaveLength(1);
+    expect(waited.swing).not.toHaveProperty("bonus");
   });
 
   test('a PvP block can raise Block: "You have advanced in the art of Block!" at Parry > 50', () => {

@@ -435,6 +435,176 @@
     "errors": []
   },
   {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [
+      {
+        "action": "slotClicked",
+        "args": []
+      }
+    ],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "inventory-select-slot",
+    "tag": "BUTTON",
+    "events": [],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "inventory-gold",
     "tag": "BUTTON",
     "events": ["click"],
@@ -446,176 +616,6 @@
         "args": []
       }
     ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
-    "hidden": false,
-    "changed": false,
-    "calls": [
-      {
-        "action": "slotClicked",
-        "args": []
-      }
-    ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
-    "hidden": false,
-    "changed": false,
-    "calls": [
-      {
-        "action": "slotClicked",
-        "args": []
-      }
-    ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
-    "hidden": false,
-    "changed": false,
-    "calls": [
-      {
-        "action": "slotClicked",
-        "args": []
-      }
-    ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
-    "hidden": false,
-    "changed": false,
-    "calls": [
-      {
-        "action": "slotClicked",
-        "args": []
-      }
-    ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
-    "hidden": false,
-    "changed": false,
-    "calls": [
-      {
-        "action": "slotClicked",
-        "args": []
-      }
-    ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
-    "hidden": false,
-    "changed": false,
-    "calls": [
-      {
-        "action": "slotClicked",
-        "args": []
-      }
-    ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
-    "hidden": false,
-    "changed": false,
-    "calls": [
-      {
-        "action": "slotClicked",
-        "args": []
-      }
-    ],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "inventory-select-slot",
-    "tag": "BUTTON",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
     "errors": []
   },
   {
@@ -6204,6 +6204,33 @@
     "action": "playfield",
     "tag": "CANVAS",
     "events": ["click", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bars-show-values",
+    "tag": "DIV",
+    "events": ["pointerenter", "pointerleave"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bars-show-values",
+    "tag": "DIV",
+    "events": ["pointerenter", "pointerleave"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "bars-show-values",
+    "tag": "DIV",
+    "events": ["pointerenter", "pointerleave"],
     "hidden": false,
     "changed": false,
     "calls": [],

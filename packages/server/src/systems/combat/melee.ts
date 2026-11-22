@@ -3,7 +3,7 @@
  *
  * - The key poll: a held key swings when the player may attack, on a fight map or from a `6P` tile
  *   of a no-fight map (a bug fixed: 1.6 skipped that check on an arena tile, so it swung every 14
- *   frames and repeated the bar tier). Anywhere else on a no-fight map, "You cannot fight here!"
+ *   frames). Anywhere else on a no-fight map, "You cannot fight here!"
  *   once per press (a bug fixed: 1.6 said it every frame). Hold stops the swing as it stops a step
  *   (a bug fixed: 1.6 polled the key before the Hold gate).
  * - The swing itself, the hit test on monsters and the monster hit.
@@ -80,9 +80,8 @@ export function onArenaTile(room: Room, x: number, y: number): boolean {
 }
 
 export interface SwingEvents {
-  /** The swing itself (animation and sound for everyone), with the bar bonus. */
+  /** The swing itself (animation and sound for everyone). */
   swing: {
-    bonus: number;
     atDelay: number;
     actionDelay: number;
     sound: SwingSound;
@@ -226,8 +225,8 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
     }
     return;
   }
-  const bonus = startSwing(t, p.char.equip, p.char.skills);
-  // The Fire Staff's and Firesword's fireballs come between the bar reset and the cooldowns;
+  startSwing(t, p.char.equip, p.char.skills);
+  // The Fire Staff's and Firesword's fireballs came between 1.6's bar reset and the cooldowns;
   // neither of those draws, so after `startSwing` keeps the original draw order.
   swingFireballs(room, p, { rng: ctx.rng });
   // The Watering Bucket's sprinkle and the Fishing Pole's cast come next, before the attack power:
@@ -248,12 +247,12 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
     invDelSlot(p.char.bag, crystalSlot(p, ap.crystal), 1);
     p.invDirty = true;
   }
-  const power = ap.power + bonus;
+  // 1.6 added its power bar's +0/+3/+5/+7 here; SSO has no power bar.
+  const power = ap.power;
   t.canAttack = false;
   t.atkAnim = ATTACK_ANIM_FRAMES;
   const weapon = f.equip.weapon;
   ev.swing = {
-    bonus,
     atDelay: t.atDelay,
     actionDelay: t.actionDelay,
     sound: swingSound(weapon),
