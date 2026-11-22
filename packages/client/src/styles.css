@@ -1896,12 +1896,6 @@ body {
   image-rendering: pixelated;
   pointer-events: none;
 }
-/* A pile's tip: the item a click or Ctrl takes first, bold and a size up, the rest below. */
-.menu-layer .hover-tip .hover-tip-first {
-  font-weight: bold;
-  font-size: 10px;
-  line-height: 12px;
-}
 /* Subtle bound hotkey hint on panel tab tooltips. */
 .menu-layer .hover-tip .hover-tip-key {
   margin-left: 5px;
@@ -1913,10 +1907,6 @@ body {
   font-size: 12px;
   line-height: 15px;
   padding: 2px 6px;
-}
-.menu-layer .hover-tip.hover-tip-large .hover-tip-first {
-  font-size: 13px;
-  line-height: 16px;
 }
 .menu-layer .hover-tip.hover-tip-large .hover-tip-key {
   font-size: 10px;

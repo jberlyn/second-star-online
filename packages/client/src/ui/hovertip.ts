@@ -6,8 +6,9 @@
  * (Arial, white, a 1 px black shadow) a size smaller.
  *
  * One tip serves the whole game: the panel's controls attach to it, and the playfield shows it for
- * the player, NPC, monster or ground items under the mouse, one per line (it replaces 1.6's
- * floating hover name, sprite 156).
+ * the player, NPC, monster or ground items under the mouse (it replaces 1.6's floating hover name,
+ * sprite 156). A pile shows its top item and a count of the rest, so the box stays small however
+ * much lies on the tile.
  * The tip lives in the 800×600 stage-coordinate menu layer so it can cross any frame's edge, and it
  * is kept on the stage: it slides left at the right edge and flips above the pointer at the
  * bottom. Only a mouse shows it: a touch has no hover, and its tap must not leave a box behind.
@@ -39,8 +40,8 @@ export interface HoverTips {
   /**
    * Shows `text` for `owner` at the pointer (client coordinates), or hides the tip if `owner` holds
    * it and `text` is null. For places with no element per thing, such as the playfield canvas. A
-   * list of two or more shows one per line, the first bold and a size larger (the thing a click
-   * acts on) and the rest below it.
+   * list of two or more shows the first (the thing a click acts on) and "+N more items" below it,
+   * both in the tip's plain lettering.
    */
   showFor(owner: object, text: TipText, clientX: number, clientY: number): void;
   /** Hides the tip if `owner` holds it. */
@@ -57,6 +58,11 @@ export interface HoverTips {
 
 function isKeyedTip(v: TipText): v is KeyedTip {
   return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** The line under a pile's top item: "+1 more item", "+3 more items". */
+export function moreItems(n: number): string {
+  return `+${n} more ${n === 1 ? "item" : "items"}`;
 }
 
 /** `frame` is the URL of the item menu's background, whose border is the tip's frame. */
@@ -117,9 +123,8 @@ export function createHoverTips(layer: HTMLElement, frame: string): HoverTips {
       return;
     }
     tip.replaceChildren(
-      ...lines.map((line, i) => {
+      ...[lines[0] ?? "", moreItems(lines.length - 1)].map((line) => {
         const row = document.createElement("div");
-        row.className = i === 0 ? "hover-tip-first" : "hover-tip-more";
         row.textContent = line;
         return row;
       }),

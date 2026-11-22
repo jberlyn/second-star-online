@@ -1,6 +1,7 @@
 /**
  * The hover tip over the playfield, in the running app: it names the character, or else the ground
- * items, under the mouse and keeps out from under the player menu that a click opens at the pointer.
+ * items, under the mouse and keeps out from under the player menu that a click opens at the pointer
+ * and the amount dialog.
  */
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 
@@ -127,7 +128,7 @@ describe("the playfield's hover tip", () => {
     expect(s.tip.hidden).toBe(true);
   });
 
-  test("design change: a pile is listed one item per line, the one a click takes first in bold", async () => {
+  test("design change: a pile names the item a click takes and counts the rest", async () => {
     const s = await onMap([
       { id: "a", name: "Exit", x: 13, y: 10 },
       { id: "b", name: "Long Sword", x: 13, y: 10 },
@@ -136,18 +137,50 @@ describe("the playfield's hover tip", () => {
     ]);
     s.at("pointermove", s.grass);
     s.frame();
-    const rows = [...s.tip.children].map((r) => [r.className, r.textContent]);
-    expect([s.tip.hidden, rows]).toEqual([
+    const rows = () => [...s.tip.children].map((r) => [r.className, r.textContent]);
+    // Plain rows like any other tip: no bold first line.
+    expect([s.tip.hidden, rows()]).toEqual([
       false,
       [
-        ["hover-tip-first", "Wooden Door"],
-        ["hover-tip-more", "Long Sword"],
+        ["", "Wooden Door"],
+        ["", "+1 more item"],
       ],
     ]);
     // You stand on the crystals: the tip names you alone, as a single plain line.
     s.at("pointermove", s.you);
     s.frame();
     expect([s.tip.hidden, s.tip.children.length, s.tip.textContent]).toEqual([false, 0, "Me"]);
+  });
+
+  test("design change: a big pile stays two lines, however much lies on the tile", async () => {
+    const names = ["Bones", "15 Gold", "Small Potion", "Long Sword", "Leather Hat", "Fish"];
+    const s = await onMap(names.map((name, i) => ({ id: `g${i}`, name, x: 13, y: 10 })));
+    s.at("pointermove", s.grass);
+    s.frame();
+    expect([...s.tip.children].map((r) => r.textContent)).toEqual(["Fish", "+5 more items"]);
+  });
+
+  test("design change: the amount dialog hides the tip until it closes", async () => {
+    const s = await onMap([
+      { id: "a", name: "Long Sword", x: 13, y: 10 },
+      { id: "b", name: "Fish", x: 13, y: 10 },
+    ]);
+    const amount = document.querySelector(".amount-dialog") as HTMLElement;
+    s.at("pointermove", s.grass);
+    s.frame();
+    expect(s.tip.hidden).toBe(false);
+    // Drop or give gold opens the amount dialog; the pointer goes back over the pile.
+    (document.querySelector(".gold-button") as HTMLElement).click();
+    expect(amount.hidden).toBe(false);
+    s.at("pointermove", s.grass);
+    s.frame();
+    expect(s.tip.hidden).toBe(true);
+    // Cancel closes it, and the pile's tip returns.
+    (amount.querySelector('[aria-label="Cancel"]') as HTMLElement).click();
+    expect(amount.hidden).toBe(true);
+    s.at("pointermove", s.grass);
+    s.frame();
+    expect([s.tip.hidden, s.tip.textContent]).toEqual([false, "Fish+1 more item"]);
   });
 
   test("design change: the player menu a click opens hides the tip until it closes", async () => {

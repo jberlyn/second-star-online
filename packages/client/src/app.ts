@@ -429,6 +429,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     say: (text) => chat.add(text, 0),
     tabShortcut: (tab) => primaryKeyLabel(input.bindings, TAB_KEY_ACTION[tab]),
   });
+  // No tip over the amount dialog either: it sits mid-stage, where a pile's tip would cover it.
+  const panelBlocked = panel.tips.blocked;
+  panel.tips.blocked = () => panelBlocked() || !amount.el.hidden;
 
   // ---- NPC Bio, shop and vault, the player menu, trade ---------------------------------------
   const bio = createBioWindow(assets, windows, {
