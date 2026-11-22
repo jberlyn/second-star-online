@@ -30,7 +30,7 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 81 |
-| [Fixed bugs](#fixed-bugs) | 297 |
+| [Fixed bugs](#fixed-bugs) | 298 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 134 |
 | [Not in SSO](#not-in-sso) | 40 |
@@ -50,7 +50,7 @@ By system (the code folder that holds the change):
 | housing | [20](#housing) | [6](#server-side-housing) |
 | inventory | [34](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
-| monsters | [19](#monsters) | [3](#server-side-monsters) |
+| monsters | [20](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
 | progression | [9](#progression) | [4](#server-side-progression) |
 | social | [21](#social) | [9](#server-side-social) |
@@ -2777,6 +2777,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The early exit skipped a check the code plainly meant to make.
 - **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`refusesTile`)
 - **Pinned by:** `bug fixed: the footprint test runs wherever the anchor is` (packages/server/tests/monsters.test.ts)
+
+#### Monsters never spawn on crafting stations or other blocking items
+- **Kind:** Bug fixed
+- **What you notice:** A monster no longer appears standing on an Anvil, Carpentry Bench, Stove, Alchemy Lab, statue, door, chest or any other item that stops walkers. Ordinary items on the ground, players and other monsters still do not stop a spawn.
+- **1.6:** The spawn check looked only at the map's tiles, so a monster could appear on top of a blocking item that it could not have walked onto. Standing there, it covered the station a player had to face to craft.
+- **SSO:** A spawn tile is refused when it, or any tile a 3 by 2 monster covers, holds an item on the `ground.blocks` list in `item-rules.json`, the same list that stops monsters walking.
+- **Why:** A monster should not appear where it could never walk, and one standing on a station blocked crafting until someone killed it.
+- **In the code:** `packages/server/src/systems/monsters/spawn.ts` (`refusesTile`)
+- **Pinned by:** `bug fixed: no monster spawns on a blocking item such as a crafting station` (packages/server/tests/monsters.test.ts)
 
 #### A failed roll for an NPC skips only its own slot
 - **Kind:** Bug fixed

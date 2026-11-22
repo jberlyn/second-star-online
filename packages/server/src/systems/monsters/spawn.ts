@@ -4,7 +4,14 @@
  * a slot twice.
  */
 import { monstersData } from "@secondstaronline/data";
-import { anyMatch, isWalkable, MAP_HEIGHT, MAP_WIDTH, type Rng } from "@secondstaronline/shared";
+import {
+  anyMatch,
+  blocksMonster,
+  isWalkable,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  type Rng,
+} from "@secondstaronline/shared";
 
 import type { WorldMap } from "../world/world.ts";
 import { FOOT_CELLS, isWater } from "./ai.ts";
@@ -18,15 +25,24 @@ export function spawnLadder(players: number): number {
 
 const FACING_ROLL = ["N", "S", "W", "E"] as const;
 
+/** True when a ground item on (x, y) stands in the way of a monster (`ground.blocks`). */
+function blockedByItem(map: WorldMap, x: number, y: number): boolean {
+  return map.ground.some((g) => g.x === x && g.y === y && blocksMonster(g.item));
+}
+
 /**
  * True when the tile is refused. Sea creatures (`rules.sea`, the list their movement uses) need
  * water; the rest need a walkable tile. A 3×2 monster also needs every footprint cell on the map
  * to be walkable, wherever its anchor is (bugs fixed: 1.6 checked only Squid, Shark and Mizella for
- * water, and skipped the footprint test past column 12 or row 9). Players, monsters and items on
- * the tile do not matter.
+ * water, and skipped the footprint test past column 12 or row 9). No tile the monster covers may
+ * hold a blocking ground item such as an Anvil or a statue (a bug fixed: 1.6 spawned on them).
+ * Players and monsters on the tile do not matter.
  */
 export function refusesTile(map: WorldMap, name: string, x: number, y: number): boolean {
   if (anyMatch(monstersData.rules.sea, name) ? !isWater(map, x, y) : !isWalkable(map.walk, x, y)) {
+    return true;
+  }
+  if (blockedByItem(map, x, y)) {
     return true;
   }
   if (!isFootprint(name)) {
@@ -37,7 +53,7 @@ export function refusesTile(map: WorldMap, name: string, x: number, y: number): 
     const tx = x + cx;
     const ty = y + cy;
     const onMap = tx >= 1 && tx <= MAP_WIDTH && ty >= 1 && ty <= MAP_HEIGHT;
-    return onMap && !isWalkable(map.walk, tx, ty);
+    return onMap && (!isWalkable(map.walk, tx, ty) || blockedByItem(map, tx, ty));
   });
 }
 

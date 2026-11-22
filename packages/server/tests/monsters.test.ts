@@ -159,6 +159,27 @@ describe("spawning", () => {
     expect(refusesTile(map, "Slime", 3, 5)).toBe(true);
   });
 
+  test("bug fixed: no monster spawns on a blocking item such as a crafting station", () => {
+    const map = withRoster(testMap("x1"), "Slime");
+    const put = (item: string, x: number, y: number) =>
+      map.ground.push({ id: `g${map.ground.length}`, item, x, y, kind: "admin", expiresAt: null });
+    put("Anvil", 7, 3);
+    put("Carpentry Bench", 4, 4);
+    put("Stone Statue", 10, 4); // under an Overlord's footprint at (9,5)
+    put("Apple", 5, 5); // an item that does not block
+    expect(refusesTile(map, "Slime", 7, 3)).toBe(true);
+    expect(refusesTile(map, "Slime", 4, 4)).toBe(true);
+    expect(refusesTile(map, "Slime", 5, 5)).toBe(false);
+    expect(refusesTile(map, "Overlord", 9, 5)).toBe(true);
+    expect(refusesTile(map, "Overlord", 2, 8)).toBe(false);
+    // The roll that would place a Slime on (7,3) spawns nothing while the Anvil stands there.
+    const roll = () => rngByN({ 80: [1], 17: [7], 12: [3], 5: [1], 4: [2] });
+    expect(spawnPass(map, { rng: roll(), players: 1, minute: 0 })).toEqual([]);
+    map.ground = map.ground.filter((g) => g.item !== "Anvil");
+    expect(spawnPass(map, { rng: roll(), players: 1, minute: 0 })).toHaveLength(1);
+    expect(map.slots[0]?.live).toMatchObject({ name: "Slime", x: 7, y: 3 });
+  });
+
   test("a client takes no spawn rolls for 44 frames after entering a map: the 45-frame spawn countdown runs before actor pass 1", () => {
     const map = withRoster(testMap("x1000y992"), "Slime");
     const rng = rngByN();
