@@ -75,6 +75,7 @@ import {
 import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "./config.ts";
 import { CONTENT_INTENTS, contentIntent } from "./content/page.ts";
 import type { ContentService } from "./content/service.ts";
+import type { ContentWorld } from "./content/world.ts";
 import {
   findAccountById,
   findAccountByUsername,
@@ -123,6 +124,7 @@ import {
 } from "./persistence/characters.ts";
 import { chatLogLines, insertChatLog, pruneChatLog } from "./persistence/chatlog.ts";
 import { loadContainers, saveContainer } from "./persistence/containers.ts";
+import { contentWorldStore } from "./persistence/content-world.ts";
 import type { Db } from "./persistence/database.ts";
 import {
   deleteShop,
@@ -226,6 +228,7 @@ import {
 } from "./systems/admin/character-edit.ts";
 import { characterHub, type HubDeps, liveSheet, searchRows } from "./systems/admin/characters.ts";
 import { type AdminDeps, applyRole, moderate, permissionsMsg } from "./systems/admin/commands.ts";
+import { createContentWorld } from "./systems/admin/content-world.ts";
 import { openControlPanel } from "./systems/admin/control-panel.ts";
 import {
   allowCreate,
@@ -466,6 +469,8 @@ export interface Game {
    * again and every player in game is told the new hash, so their clients fetch it.
    */
   contentPublished(hash: string): void;
+  /** The world as the content service sees it: where-used, removal cleanup and problems (#28). */
+  readonly contentWorld: ContentWorld;
 }
 
 /**
@@ -1793,6 +1798,16 @@ export function createGame(deps: GameDeps): Game {
     }
   };
 
+  /** The world as the Content page's where-used and removal cleanup see it (issue #28). */
+  const contentWorld = createContentWorld({
+    store: contentWorldStore(db),
+    world,
+    loadedMaps: () => [...mapCache.values()].filter((m): m is WorldMap => !!m),
+    rng,
+    deliver,
+    saveSlots: (m) => saveMapSlots(m),
+  });
+
   /**
    * After an intent outside the tick: sends `inv` to everyone in `players` whose inventory changed
    * and writes those inventories, banks, vaults, NPC ledgers and ground items in one transaction.
@@ -2121,6 +2136,7 @@ export function createGame(deps: GameDeps): Game {
       return settings;
     },
     config,
+    contentWorld,
 
     async login(name, password, ip = "") {
       const account = findAccountByUsername(db, name);
@@ -2488,6 +2504,7 @@ export function createGame(deps: GameDeps): Game {
                 service,
                 { accountId: p.accountId, name: p.name },
                 msg as Parameters<typeof contentIntent>[2],
+                contentWorld,
               )
             : { t: "contentResult", seq, ok: false, text: "This server has no content service." },
         );

@@ -650,6 +650,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     publish: (seq, summary, draftRev) => send({ t: "contentPublish", seq, summary, draftRev }),
     undo: (seq, id) => send({ t: "contentUndo", seq, id }),
     notice: (seq, ref, accept) => send({ t: "contentNotice", seq, ...ref, accept }),
+    usage: (seq, kind, key) => send({ t: "contentUsage", seq, kind, key }),
+    remove: (seq, plan) => send({ t: "contentRemove", seq, ...plan }),
+    problems: (seq) => send({ t: "contentProblems", seq }),
+    openCharacter: (name) => {
+      controlPanel.go("characters");
+      if (controlPanel.page === "characters") {
+        charactersPage.openHub(name);
+      }
+    },
   });
   const controlPanel = createControlPanel({
     pages: [
@@ -1258,6 +1267,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentOverview":
       case "contentList":
       case "contentRow":
+      case "contentUsage":
+      case "contentProblems":
       case "contentResult":
         contentPage.receive(msg);
         return;

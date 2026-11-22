@@ -27,10 +27,13 @@ import {
 import { insertAudit } from "../persistence/admin.ts";
 import {
   clearDraft,
+  clearDraftActions,
   contentRows,
   type DraftRow,
   deleteContentRow,
+  deleteDraftAction,
   deleteDraftRow,
+  draftActions,
   draftRows,
   type InstalledPack,
   insertPublish,
@@ -45,11 +48,22 @@ import {
   type StoredPublish,
   savedSkills,
   setPackVersion,
+  setPublishCleanup,
   upsertContentRow,
+  upsertDraftAction,
   upsertDraftRow,
 } from "../persistence/content.ts";
 import type { Db } from "../persistence/database.ts";
 import { loadNpcFiles } from "../persistence/npcfiles.ts";
+import {
+  type CleanupRow,
+  cleanUses,
+  type EntryKind,
+  spellingsOf,
+  type UseView,
+  usesOf,
+  useView,
+} from "./cleanup.ts";
 import { type LoadedPack, readPackBlob, readPackDir } from "./packs.ts";
 import {
   applyRows,
@@ -66,12 +80,14 @@ import {
   sameRow,
 } from "./rows.ts";
 import {
+  brokenReferences,
   type ContentProblem,
   checkStore,
   keyProblems,
   schemaProblems,
   skillProblems,
 } from "./validate.ts";
+import type { ContentWorld, Removal, UsagePlace, WorldAction } from "./world.ts";
 
 /** A release pack whose recorded version or name changes once the start succeeds. */
 interface PackVersionUpdate {
@@ -120,6 +136,126 @@ export interface PackNotice extends RowRef {
   /** The operator's row (null for a removal marker). */
   yours: unknown;
   yoursOp: "set" | "remove";
+}
+
+/** Where an item or a monster is used, for its removal (issue #28). */
+export interface ContentUsage {
+  kind: EntryKind;
+  key: string;
+  /** The name players see. */
+  name: string;
+  /** The item is retired: its copies stay, but no more can be made. */
+  retired: boolean;
+  /** References in content (with the draft laid in). */
+  uses: UseView[];
+  /** Where the world holds it (empty without a world). */
+  world: UsagePlace[];
+  /** A monster with an NPC file of its own. */
+  npcFile: boolean;
+  /** Its removal waiting in the draft, if any. */
+  pending: WorldAction | null;
+}
+
+/** A removal waiting in the draft, as the pre-publish check describes it. */
+export interface RemovalSummary {
+  kind: EntryKind;
+  key: string;
+  /** What the publish will do, a line each. */
+  lines: string[];
+  /** Places it is still used that the publish leaves as they are (content references, retired copies). */
+  stillUsed: number;
+}
+
+/** The references nothing resolves, in content and in the world. */
+export interface ContentProblems {
+  content: ContentProblem[];
+  world: ContentProblem[];
+}
+
+/** The row an item or a monster is. */
+export const entryRef = (kind: EntryKind, key: string): RowRef =>
+  kind === "item"
+    ? { dataset: "items", part: "items", key }
+    : { dataset: "monsters", part: "monsters", key };
+
+const npcFileRef = (key: string): RowRef => ({ dataset: "npcFiles", part: "files", key });
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** "14 copies held by 9 characters", "3 roster slots on 3 maps". */
+function placeText(p: UsagePlace): string {
+  const by = (who: string) => (p.holderCount > 0 ? ` ${who} ${plural(p.holderCount, "")}` : "");
+  switch (p.place) {
+    case "bag":
+      return `${plural(p.count, "copy", "copies")} in the bags of ${plural(p.holderCount, "character")}`;
+    case "worn":
+      return `${plural(p.count, "copy", "copies")} worn by ${plural(p.holderCount, "character")}`;
+    case "vault":
+      return `${plural(p.count, "copy", "copies")} in the vaults of ${plural(p.holderCount, "character")}`;
+    case "container":
+      return `${plural(p.count, "copy", "copies")} in ${plural(p.holderCount, "container")}`;
+    case "ground":
+      return `${plural(p.count, "copy", "copies")} on the ground on ${plural(p.holderCount, "map")}`;
+    case "quest":
+      return `${plural(p.count, "quest line")}`;
+    case "spawn":
+      return `${plural(p.count, "roster slot")} on ${plural(p.holderCount, "map")}`;
+    case "live":
+      return `${plural(p.count, "live one", "live ones")} on ${plural(p.holderCount, "map")}`;
+  }
+  return by("");
+}
+
+/** How many places a usage report names (each kind of place counted by its holders). */
+export const placeCount = (places: readonly UsagePlace[]): number =>
+  places.reduce((n, p) => n + (p.count > 0 ? Math.max(1, p.holderCount) : 0), 0);
+
+/** The lines a removal's world action will do on publish. */
+export function actionLines(a: WorldAction, places: readonly UsagePlace[]): string[] {
+  const out: string[] = [];
+  /** The verb for a place's count: "1 copy stays", "3 copies stay". */
+  const v = (p: UsagePlace, one: string, many: string) => (p.count === 1 ? one : many);
+  const of = (kinds: readonly UsagePlace["place"][]) =>
+    places.filter((p) => kinds.includes(p.place) && p.count > 0);
+  if (a.kind === "item") {
+    const copies = of(["bag", "worn", "vault", "container", "ground"]);
+    const quests = of(["quest"]);
+    for (const p of copies) {
+      out.push(
+        a.copies === "retire"
+          ? `${placeText(p)} ${v(p, "stays", "stay")} (retired: no more can be made)`
+          : a.copies === "purge"
+            ? `${placeText(p)} ${v(p, "is", "are")} deleted${a.refundGold > 0 && ["bag", "worn", "vault"].includes(p.place) ? ` (${a.refundGold} gold back for each)` : ""}`
+            : `${placeText(p)} ${v(p, "becomes", "become")} ${a.replacement}`,
+      );
+    }
+    for (const p of quests) {
+      out.push(
+        a.copies === "replace"
+          ? `${placeText(p)} ${v(p, "names", "name")} ${a.replacement} instead`
+          : `${placeText(p)} ${v(p, "is", "are")} rolled again from the quest pools`,
+      );
+    }
+    if (copies.length === 0 && a.copies === "retire") {
+      out.push("Nobody holds a copy, so it is removed rather than retired");
+    }
+  } else {
+    for (const p of of(["spawn"])) {
+      out.push(
+        a.spawns === "remove"
+          ? `${placeText(p)} ${v(p, "is", "are")} cleared`
+          : `${placeText(p)} ${v(p, "spawns", "spawn")} ${a.replacement} instead`,
+      );
+    }
+    for (const p of of(["live"])) {
+      out.push(
+        a.live === "despawn"
+          ? `${placeText(p)} ${v(p, "despawns", "despawn")}`
+          : `${placeText(p)} ${v(p, "stays until it dies", "stay until they die")}`,
+      );
+    }
+  }
+  return out;
 }
 
 /** How many published stores stay fetchable by hash after a newer one goes live. */
@@ -489,7 +625,11 @@ export class ContentService {
     }
     const key = `${this.draftRev(draft)}\u0000${this.current.hash}\u0000${rowHash(this.npcSaves())}`;
     if (this.checked?.key !== key) {
-      this.checked = { key, problems: this.fullProblems(this.draftContent(draft)) };
+      const next = this.draftContent(draft);
+      this.checked = {
+        key,
+        problems: [...this.fullProblems(next), ...this.actionProblems(next, draft)],
+      };
     }
     return this.checked.problems;
   }
@@ -612,7 +752,15 @@ export class ContentService {
     if (problems.length > 0) {
       return fail(`${rowLabel(row)} does not match its schema`, problems);
     }
-    upsertDraftRow(this.db, row);
+    this.db.transaction(() => {
+      upsertDraftRow(this.db, row);
+      // A row put back or changed is no longer a removal: its world cleanup goes. A retired item
+      // stays retired by its own row, so its cleanup stays.
+      const retired = (data as { retired?: unknown } | null)?.retired === true;
+      if (op !== "remove" && !retired) {
+        this.dropAction(row);
+      }
+    })();
     return { ok: true, value: undefined };
   }
 
@@ -621,8 +769,23 @@ export class ContentService {
     if (!this.draft().some((d) => sameRow(d, ref))) {
       return fail(`${rowLabel(ref)} is not in the draft`);
     }
-    deleteDraftRow(this.db, ref.dataset, ref.part, ref.key);
+    this.db.transaction(() => {
+      deleteDraftRow(this.db, ref.dataset, ref.part, ref.key);
+      this.dropAction(ref);
+    })();
     return { ok: true, value: undefined };
+  }
+
+  /** Drops the world cleanup of the item or monster a row is, if it has one waiting. */
+  private dropAction(ref: RowRef): void {
+    if (ref.key === null) {
+      return;
+    }
+    if (ref.dataset === "items" && ref.part === "items") {
+      deleteDraftAction(this.db, "item", ref.key);
+    } else if (ref.dataset === "monsters" && ref.part === "monsters") {
+      deleteDraftAction(this.db, "monster", ref.key);
+    }
   }
 
   /** The operator row as a publish records it. */
@@ -731,6 +894,10 @@ export class ContentService {
         `${rowLabel(d)}\u0000${d.op}\u0000${d.authorAccountId}\u0000${d.updatedAt}\u0000${rowHash(d.data)}\n`,
       );
     }
+    // The world cleanups waiting with it are part of the draft too.
+    for (const a of draftActions(this.db)) {
+      h.update(`${a.kind}\u0000${a.key}\u0000${a.updatedAt}\u0000${rowHash(a.action)}\n`);
+    }
     return h.digest("hex").slice(0, 16);
   }
 
@@ -739,7 +906,12 @@ export class ContentService {
    * another admin changed it since, the publish is refused, so nobody publishes over someone
    * else's work. Every check must pass.
    */
-  publish(actor: ContentActor, draftRev: string, summary: string): ContentResult<StoredPublish> {
+  publish(
+    actor: ContentActor,
+    draftRev: string,
+    summary: string,
+    world?: ContentWorld,
+  ): ContentResult<StoredPublish> {
     const draft = this.draft();
     if (draft.length === 0) {
       return fail("the draft is empty");
@@ -747,7 +919,9 @@ export class ContentService {
     if (this.draftRev(draft) !== draftRev) {
       return fail("the draft changed since you last looked: check it again before publishing");
     }
-    const problems = this.fullProblems(this.draftContent(draft));
+    const actions = this.liveActions(draft);
+    const nextData = this.draftContent(draft);
+    const problems = [...this.fullProblems(nextData), ...this.actionProblems(nextData, draft)];
     if (problems.length > 0) {
       return fail("the draft does not pass its checks", problems);
     }
@@ -779,6 +953,7 @@ export class ContentService {
         this.writeState(c, c.after, actor, now);
       }
       clearDraft(this.db);
+      clearDraftActions(this.db);
       id = insertPublish(
         this.db,
         {
@@ -803,6 +978,14 @@ export class ContentService {
       );
     })();
     this.rebuild();
+    // The world is cleaned up once the new store is live, so what it rolls (a quest line) comes
+    // from the published content.
+    if (actions.length > 0 && world) {
+      this.db.transaction(() => {
+        const lines = world.apply(actions, actor, id);
+        setPublishCleanup(this.db, id, { actions, lines });
+      })();
+    }
     return { ok: true, value: publishById(this.db, id) as StoredPublish };
   }
 
@@ -897,6 +1080,330 @@ export class ContentService {
     })();
     this.rebuild();
     return { ok: true, value: publishById(this.db, id) as StoredPublish };
+  }
+
+  /** The item or monster a row is, as it is published or drafted (null if neither has it). */
+  private entryOf(
+    kind: EntryKind,
+    key: string,
+    data: ContentData = this.draftContent(),
+  ): { name: string; display?: string; retired?: true } | null {
+    const ref = entryRef(kind, key);
+    return (rowValue(data, ref) ?? rowValue(this.published, ref) ?? null) as {
+      name: string;
+      display?: string;
+      retired?: true;
+    } | null;
+  }
+
+  /** Every spelling an entry has had, in the published store and the draft. */
+  private spellings(kind: EntryKind, key: string): string[] {
+    const all = [
+      ...spellingsOf(this.published, kind, key),
+      ...spellingsOf(this.draftContent(), kind, key),
+    ];
+    return all.filter((s, i) => all.findIndex((t) => t.toLowerCase() === s.toLowerCase()) === i);
+  }
+
+  /** Where an item or a monster is used: in content (the draft laid in) and in the world. */
+  usage(kind: EntryKind, key: string, world?: ContentWorld): ContentResult<ContentUsage> {
+    const entry = this.entryOf(kind, key);
+    if (!entry) {
+      return fail(`There is no ${kind} ${key}.`);
+    }
+    const data = this.draftContent();
+    const spellings = this.spellings(kind, entry.name);
+    const pending = draftActions(this.db).find(
+      (a) => a.kind === kind && a.key.toLowerCase() === entry.name.toLowerCase(),
+    );
+    return {
+      ok: true,
+      value: {
+        kind,
+        key: entry.name,
+        name: entry.display ?? entry.name,
+        retired: entry.retired === true,
+        uses: usesOf(data, kind, entry.name, spellings).map(useView),
+        world: world ? world.usage(kind, spellings) : [],
+        npcFile: kind === "monster" && rowValue(data, npcFileRef(entry.name)) !== undefined,
+        pending: (pending?.action as WorldAction | undefined) ?? null,
+      },
+    };
+  }
+
+  /**
+   * Puts an item's or monster's removal in the draft with its cleanup (issue #28): the content rows
+   * the cleanup changes become draft rows, and what happens to the world waits with the draft
+   * until it is published. An item players hold is retired (kept, with no more made) unless the
+   * operator purges or replaces the copies.
+   */
+  draftRemoval(actor: ContentActor, removal: Removal, world?: ContentWorld): ContentResult<string> {
+    const ref = entryRef(removal.kind, removal.key);
+    const published = rowValue(this.published, ref) as
+      | { name: string; display?: string; retired?: true }
+      | undefined;
+    if (!published) {
+      return fail(
+        this.draft().some((d) => sameRow(d, ref) && d.op === "set")
+          ? `${rowLabel(ref)} is only in the draft: discard the change instead`
+          : `There is no ${removal.kind} ${removal.key}.`,
+      );
+    }
+    const key = published.name;
+    const base = this.draftContent();
+    const replacement = removal.replacement?.trim() || null;
+    const wantsReplacement =
+      removal.content === "replace" ||
+      (removal.kind === "item" ? removal.copies === "replace" : removal.spawns === "replace");
+    if (wantsReplacement) {
+      if (!replacement) {
+        return fail(`Name the ${removal.kind} to replace ${key} with.`);
+      }
+      const other = (
+        removal.kind === "item"
+          ? buildContentStore(base).itemNamed(replacement)
+          : buildContentStore(base).monster(replacement)
+      ) as { name: string; retired?: true } | undefined;
+      if (!other) {
+        return fail(`There is no ${removal.kind} ${replacement}.`);
+      }
+      if (other.name.toLowerCase() === key.toLowerCase()) {
+        return fail(`${key} cannot be replaced with itself.`);
+      }
+      if (other.retired) {
+        return fail(`${other.name} is retired: no more can be made.`);
+      }
+    }
+    const replaceWith =
+      wantsReplacement && replacement
+        ? ((removal.kind === "item"
+            ? buildContentStore(base).itemNamed(replacement)?.name
+            : buildContentStore(base).monster(replacement)?.name) ?? replacement)
+        : null;
+    if (removal.kind === "item" && !(removal.refundGold >= 0 && removal.refundGold <= 1_000_000)) {
+      return fail("The refund is a whole number of gold from 0 to 1,000,000.");
+    }
+    const spellings = this.spellings(removal.kind, key);
+    const ownFile =
+      removal.kind === "monster" && removal.npcFile === "delete" ? [npcFileRef(key)] : [];
+    const cleaned = cleanUses(
+      base,
+      usesOf(base, removal.kind, key, spellings),
+      removal.content,
+      replaceWith ?? "",
+      ownFile,
+    );
+    const own: CleanupRow[] = [];
+    let action: WorldAction;
+    if (removal.kind === "item") {
+      const held = world
+        ? world.usage("item", spellings).some((p) => p.count > 0 && p.place !== "quest")
+        : true;
+      const current = (rowValue(base, ref) ?? published) as Record<string, unknown>;
+      own.push(
+        removal.copies === "retire" && held
+          ? { ref, op: "set", data: { ...current, retired: true } }
+          : { ref, op: "remove", data: null },
+      );
+      action = {
+        kind: "item",
+        key,
+        spellings,
+        copies: removal.copies,
+        replacement: removal.copies === "replace" ? replaceWith : null,
+        refundGold: removal.copies === "purge" ? Math.floor(removal.refundGold) : 0,
+      };
+    } else {
+      own.push({ ref, op: "remove", data: null });
+      if (ownFile.length > 0 && rowValue(base, npcFileRef(key)) !== undefined) {
+        own.push({ ref: npcFileRef(key), op: "remove", data: null });
+      }
+      action = {
+        kind: "monster",
+        key,
+        spawns: removal.spawns,
+        live: removal.live,
+        replacement: removal.spawns === "replace" ? replaceWith : null,
+      };
+    }
+    const now = this.now();
+    const writes: DraftRow[] = [];
+    const drops: RowRef[] = [];
+    for (const r of [...cleaned.rows, ...own]) {
+      const rowKey =
+        r.ref.key === null
+          ? null
+          : String(
+              (
+                (rowValue(base, r.ref) ?? rowValue(this.published, r.ref)) as
+                  | Record<string, unknown>
+                  | undefined
+              )?.[keyField(r.ref.dataset, r.ref.part) ?? ""] ?? r.ref.key,
+            );
+      // Removing a row only the draft adds is dropping that draft change.
+      if (r.op === "remove" && rowValue(this.published, r.ref) === undefined) {
+        drops.push(r.ref);
+        continue;
+      }
+      writes.push({
+        dataset: r.ref.dataset,
+        part: r.ref.part,
+        key: rowKey,
+        op: r.op,
+        data: r.op === "set" ? r.data : null,
+        authorAccountId: actor.accountId,
+        author: actor.name,
+        updatedAt: now,
+      });
+    }
+    const draft = [
+      ...this.draft().filter(
+        (d) => !writes.some((w) => sameRow(w, d)) && !drops.some((x) => sameRow(x, d)),
+      ),
+      ...writes,
+    ];
+    const next = this.draftContent(draft);
+    const touched = new Set(writes.map((w) => w.dataset));
+    const problems = schemaProblems(next).filter((p) =>
+      [...touched].some((d) => p.where === d || p.where.startsWith(`${d}/`)),
+    );
+    if (problems.length > 0) {
+      return fail(`the cleanup of ${key} would break its rows' schemas`, problems);
+    }
+    this.db.transaction(() => {
+      for (const d of drops) {
+        deleteDraftRow(this.db, d.dataset, d.part, d.key);
+      }
+      for (const w of writes) {
+        upsertDraftRow(this.db, w);
+      }
+      upsertDraftAction(this.db, {
+        kind: removal.kind,
+        key,
+        action,
+        authorAccountId: actor.accountId,
+        author: actor.name,
+        updatedAt: now,
+      });
+    })();
+    const left = cleaned.left.length;
+    const changed = cleaned.rows.length;
+    const verb = own[0]?.op === "set" ? `${key} will be retired` : `${key} will be removed`;
+    return {
+      ok: true,
+      value: `${verb} when the draft is published${changed > 0 ? `; ${plural(changed, "other row")} changed with it` : ""}${left > 0 ? `; ${plural(left, "reference")} left for you to fix` : ""}.`,
+    };
+  }
+
+  /**
+   * The world cleanups the draft will run: each waiting action whose entry the draft still removes
+   * (or, for a retired item, retires).
+   */
+  liveActions(draft: readonly DraftRow[] = this.draft()): WorldAction[] {
+    return draftActions(this.db)
+      .filter((a) => {
+        const d = draft.find((x) => sameRow(x, entryRef(a.kind, a.key)));
+        return (
+          d !== undefined &&
+          (d.op === "remove" ||
+            (a.kind === "item" &&
+              d.op === "set" &&
+              (d.data as { retired?: unknown })?.retired === true))
+        );
+      })
+      .map((a) => a.action as WorldAction);
+  }
+
+  /** Problems with the waiting cleanups: a replacement the draft no longer has. */
+  private actionProblems(next: ContentData, draft: readonly DraftRow[]): ContentProblem[] {
+    const store = buildContentStore(next);
+    const out: ContentProblem[] = [];
+    for (const a of this.liveActions(draft)) {
+      if (!a.replacement) {
+        continue;
+      }
+      const other = (
+        a.kind === "item" ? store.item(a.replacement) : store.monster(a.replacement)
+      ) as { retired?: true } | undefined;
+      if (!other || other.retired) {
+        out.push({
+          where: rowLabel(entryRef(a.kind, a.key)),
+          message: `its copies or spawns become ${a.replacement}, which ${other ? "is retired" : "the draft no longer has"}`,
+        });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The removals the draft holds and what publishing them will do: "this draft removes 2 items
+   * still used in 5 places". Built from the world's usage, so it is asked for on demand.
+   */
+  removals(world?: ContentWorld): RemovalSummary[] {
+    const draft = this.draft();
+    const next = this.draftContent(draft);
+    const actions = this.liveActions(draft);
+    const out: RemovalSummary[] = [];
+    for (const d of draft) {
+      const kind: EntryKind | null =
+        d.dataset === "items" && d.part === "items"
+          ? "item"
+          : d.dataset === "monsters" && d.part === "monsters"
+            ? "monster"
+            : null;
+      if (kind === null || d.key === null) {
+        continue;
+      }
+      const retiring =
+        kind === "item" &&
+        d.op === "set" &&
+        (d.data as { retired?: unknown })?.retired === true &&
+        (rowValue(this.published, d) as { retired?: unknown } | undefined)?.retired !== true;
+      if (d.op !== "remove" && !retiring) {
+        continue;
+      }
+      const spellings = this.spellings(kind, d.key);
+      const places = world ? world.usage(kind, spellings) : [];
+      const action = actions.find(
+        (a) => a.kind === kind && a.key.toLowerCase() === d.key?.toLowerCase(),
+      );
+      const left = usesOf(next, kind, d.key, spellings);
+      const lines = action
+        ? actionLines(action, places)
+        : places.map(
+            (p) =>
+              `${placeText(p)} ${p.count === 1 ? "is" : "are"} left as ${p.count === 1 ? "it is" : "they are"}`,
+          );
+      if (left.length > 0) {
+        lines.push(`${plural(left.length, "reference")} in content still name it`);
+      }
+      const copiesStay =
+        kind === "item" && (!action || (action.kind === "item" && action.copies === "retire"))
+          ? placeCount(places.filter((p) => p.place !== "quest"))
+          : 0;
+      const liveStay =
+        kind === "monster" && action?.kind === "monster" && action.live === "leave"
+          ? placeCount(places.filter((p) => p.place === "live"))
+          : 0;
+      out.push({
+        kind,
+        key: d.key,
+        lines,
+        stillUsed: left.length + copiesStay + liveStay + (action ? 0 : placeCount(places)),
+      });
+    }
+    return out;
+  }
+
+  /** The references nothing resolves: in the published content, and in the world. */
+  problems(world?: ContentWorld): ContentProblems {
+    return {
+      content: brokenReferences(this.published).map((r) => ({
+        where: r.where,
+        message: `names ${r.kind === "monster" ? "a monster" : r.kind === "skill" ? "a skill" : "an item"} that does not exist${r.kind.startsWith("item") || r.kind.endsWith("Item") || r.kind === "item" ? " (or is retired)" : ""}: ${r.name || "(nothing)"}`,
+      })),
+      world: world ? world.problems() : [],
+    };
   }
 
   /** The newest publishes, newest first. */

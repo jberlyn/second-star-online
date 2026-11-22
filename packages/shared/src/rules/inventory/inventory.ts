@@ -195,6 +195,34 @@ export function displayName(item: string): string {
   return i < 0 ? item : item.slice(0, i);
 }
 
+/**
+ * Whether a stored item name is a copy of the item spelled one of `spellings` (its key and its
+ * archived spellings, case ignored): the name itself, a container with its `#id` (`Crate#12`), a
+ * counted pile (`15 Gold`, `5 Blue Crystals`) or a masterwork level (`Long Sword+2`).
+ */
+export function storedCopyOf(stored: string, spellings: readonly string[]): boolean {
+  const base = displayName(stored).trim();
+  const is = (s: string) => spellings.some((k) => lingoEq(k, s.trim()));
+  if (is(base)) {
+    return true;
+  }
+  const count = /^\d+ (.+)$/.exec(base);
+  if (count && is(count[1] as string)) {
+    return true;
+  }
+  const level = /^(.+?)\+\d+$/.exec(base);
+  return level !== null && is(level[1] as string);
+}
+
+/**
+ * A stored copy rewritten as another item (an operator's Replace): a counted pile keeps its count;
+ * a container's `#id` and a masterwork level go with the old item.
+ */
+export function storedCopyAs(stored: string, item: string): string {
+  const count = /^(\d+) .+$/.exec(displayName(stored).trim());
+  return count ? `${count[1]} ${item}` : item;
+}
+
 /** The name players see for an item key: its `display` when an operator renamed it. */
 function labelOfKey(key: string): string {
   return content().item(key)?.display ?? key;

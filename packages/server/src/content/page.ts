@@ -24,6 +24,7 @@ import {
   sameRow,
 } from "./rows.ts";
 import type { ContentActor, ContentResult, ContentService } from "./service.ts";
+import type { ContentWorld, Removal } from "./world.ts";
 
 /** A wire ref as the service's ref, or null when it names no dataset. */
 export function refOf(r: ContentRowRef): RowRef | null {
@@ -32,7 +33,7 @@ export function refOf(r: ContentRowRef): RowRef | null {
     : null;
 }
 
-export function overviewOf(service: ContentService): ContentOverview {
+export function overviewOf(service: ContentService, world?: ContentWorld): ContentOverview {
   const packContent = service.packContent() as unknown as Record<string, Record<string, unknown>>;
   return {
     draft: service.draft().map((d) => ({
@@ -52,6 +53,7 @@ export function overviewOf(service: ContentService): ContentOverview {
       rows: p.changes.map(rowLabel),
       undoOf: p.undoOf,
       undoneBy: p.undoneBy,
+      cleanup: p.cleanup,
     })),
     packs: service.installedPacks().map(({ artDir: _art, ...p }) => p),
     notices: service.notices().map((n) => ({ ...n })),
@@ -69,6 +71,7 @@ export function overviewOf(service: ContentService): ContentOverview {
     }),
     hash: service.store().hash,
     draftRev: service.draftRev(),
+    removals: service.removals(world),
   };
 }
 
@@ -202,7 +205,10 @@ type ContentIntent = Extract<
       | "contentDiscard"
       | "contentPublish"
       | "contentUndo"
-      | "contentNotice";
+      | "contentNotice"
+      | "contentUsage"
+      | "contentRemove"
+      | "contentProblems";
   }
 >;
 
@@ -216,17 +222,64 @@ export const CONTENT_INTENTS = [
   "contentPublish",
   "contentUndo",
   "contentNotice",
+  "contentUsage",
+  "contentRemove",
+  "contentProblems",
 ] as const;
+
+/** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
+export function removalOf(msg: Extract<InGameMsg, { t: "contentRemove" }>): Removal {
+  const replacement = msg.replacement?.trim() || null;
+  return msg.kind === "item"
+    ? {
+        kind: "item",
+        key: msg.key,
+        content: msg.content,
+        copies: msg.copies ?? "retire",
+        replacement,
+        refundGold: msg.refundGold ?? 0,
+      }
+    : {
+        kind: "monster",
+        key: msg.key,
+        content: msg.content,
+        spawns: msg.spawns ?? "remove",
+        live: msg.live ?? "despawn",
+        npcFile: msg.npcRow ?? "delete",
+        replacement,
+      };
+}
 
 /** Answers one Content page intent. */
 export function contentIntent(
   service: ContentService,
   actor: ContentActor,
   msg: ContentIntent,
+  world?: ContentWorld,
 ): ContentServerMsg {
   switch (msg.t) {
     case "contentOverview":
-      return { t: "contentOverview", seq: msg.seq, overview: overviewOf(service) };
+      return { t: "contentOverview", seq: msg.seq, overview: overviewOf(service, world) };
+    case "contentUsage": {
+      const r = service.usage(msg.kind, msg.key, world);
+      return r.ok
+        ? {
+            t: "contentUsage",
+            seq: msg.seq,
+            usage: { ...r.value, pending: r.value.pending !== null },
+          }
+        : { t: "contentUsage", seq: msg.seq, usage: null, error: r.error };
+    }
+    case "contentRemove": {
+      const r = service.draftRemoval(actor, removalOf(msg), world);
+      return r.ok
+        ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value }
+        : result(msg.seq, r, "");
+    }
+    case "contentProblems": {
+      const p = service.problems(world);
+      return { t: "contentProblems", seq: msg.seq, content: p.content, world: p.world };
+    }
     case "contentList": {
       const ref = refOf({ dataset: msg.dataset, part: msg.part, key: null });
       const listing = ref ? listingOf(service, ref) : null;
@@ -277,7 +330,7 @@ export function contentIntent(
     case "contentPublish": {
       return result(
         msg.seq,
-        service.publish(actor, msg.draftRev, msg.summary),
+        service.publish(actor, msg.draftRev, msg.summary, world),
         "Published: it is live for everyone.",
       );
     }

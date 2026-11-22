@@ -5,9 +5,10 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import type { ContentOverview, ContentRowDetail } from "@secondstaronline/shared";
+import type { ContentOverview, ContentRowDetail, ContentUsageView } from "@secondstaronline/shared";
 
 import { createContentPage, lineDiff, refLabel } from "../src/ui/content-page.ts";
+import { removalHeadline } from "../src/ui/content-usage.ts";
 
 const overview = (over: Partial<ContentOverview> = {}): ContentOverview => ({
   draft: [],
@@ -30,6 +31,7 @@ const overview = (over: Partial<ContentOverview> = {}): ContentOverview => ({
   ],
   hash: "abc",
   draftRev: "0123456789abcdef",
+  removals: [],
   ...over,
 });
 
@@ -60,6 +62,10 @@ function page() {
     publish: rec("publish"),
     undo: rec("undo"),
     notice: rec("notice"),
+    usage: rec("usage"),
+    remove: rec("remove"),
+    problems: rec("problems"),
+    openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
   });
   document.body.replaceChildren(p.el);
   const $ = <T extends HTMLElement>(action: string) =>
@@ -308,6 +314,7 @@ describe("the Content page", () => {
       actorName: "A",
       rows: ["items/items/Ale"],
       undoOf: null,
+      cleanup: [],
     };
     p.receive({
       t: "contentOverview",
@@ -465,4 +472,277 @@ test("a new row with an empty or over-long key is caught before anything is sent
       "1 to 80 characters",
     );
   }
+});
+
+describe("where an item or a monster is used, and its removal (issue #28)", () => {
+  const aleUsage: ContentUsageView = {
+    kind: "item",
+    key: "Ale",
+    name: "Ale",
+    retired: false,
+    uses: [
+      {
+        row: { dataset: "craft", part: "stations", key: null },
+        where: "craft/stations → cook.recipes[2].output",
+        name: "Ale",
+        removable: true,
+      },
+      {
+        row: { dataset: "quests", part: "pools", key: null },
+        where: "quests/pools → wanted[4].item",
+        name: "ale",
+        removable: false,
+      },
+    ],
+    world: [
+      { place: "bag", count: 5, holders: ["Al", "Bo"], holderCount: 2 },
+      { place: "ground", count: 1, holders: ["x1000y992"], holderCount: 1 },
+    ],
+    npcFile: false,
+    pending: false,
+  };
+
+  /** A page with Ale open in the editor and its usage report in. */
+  function withAle(usage: ContentUsageView = aleUsage) {
+    const h = page();
+    h.p.onShow();
+    h.p.receive({ t: "contentOverview", seq: h.last("overview")?.seq ?? 0, overview: overview() });
+    h.p.receive({
+      t: "contentList",
+      seq: h.last("list")?.seq ?? 0,
+      listing: {
+        dataset: "items",
+        part: "items",
+        keyField: "name",
+        rows: [{ key: "Ale", status: "pack", draft: null }],
+      },
+    });
+    (h.p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    h.p.receive({ t: "contentRow", seq: h.last("row")?.seq ?? 0, row: ale });
+    expect(h.last("usage")?.args).toEqual(["item", "Ale"]);
+    h.p.receive({ t: "contentUsage", seq: h.last("usage")?.seq ?? 0, usage });
+    return h;
+  }
+
+  test("opening an item shows where it is used, with links to each place", () => {
+    const { p, sent, last } = withAle();
+    expect(p.el.textContent).toContain(
+      "Held by 2 characters · on the ground on 1 map · named in 2 places in content",
+    );
+    expect(p.el.textContent).toContain("cannot be removed, only replaced");
+    const holder = p.el.querySelector('[data-action="content-holder-open"]') as HTMLButtonElement;
+    holder.click();
+    expect(sent.at(-1)).toEqual({ kind: "openCharacter", seq: 0, args: ["Al"] });
+    (p.el.querySelector('[data-action="content-use-open"]') as HTMLButtonElement).click();
+    expect(last("row")?.args).toEqual([{ dataset: "craft", part: "stations", key: null }]);
+  });
+
+  test("Remove offers the cleanup with its defaults: remove the entries, retire the copies", () => {
+    const { $, last } = withAle();
+    $("content-remove").click();
+    expect($<HTMLSelectElement>("content-removal-content").value).toBe("remove");
+    expect($<HTMLSelectElement>("content-removal-copies").value).toBe("retire");
+    // The refund and the replacement only show when they apply.
+    expect(
+      ($("content-removal-refund").closest(".control-panel-field") as HTMLElement).hidden,
+    ).toBe(true);
+    expect(
+      ($("content-removal-replacement").closest(".control-panel-field") as HTMLElement).hidden,
+    ).toBe(true);
+    $("content-removal-submit").click();
+    expect(last("remove")?.args).toEqual([
+      {
+        kind: "item",
+        key: "Ale",
+        content: "remove",
+        replacement: null,
+        copies: "retire",
+        refundGold: 0,
+      },
+    ]);
+  });
+
+  test("purging asks again, and carries the refund", async () => {
+    const { p, $, last, confirm, settle } = withAle();
+    $("content-remove").click();
+    const copies = $<HTMLSelectElement>("content-removal-copies");
+    copies.value = "purge";
+    copies.dispatchEvent(new Event("change"));
+    $<HTMLInputElement>("content-removal-refund").value = "25";
+    $("content-removal-submit").click();
+    expect(last("remove")).toBeUndefined();
+    expect(p.el.textContent).toContain("Undoing the publish brings the item back, not the copies");
+    confirm();
+    await settle();
+    expect(last("remove")?.args).toEqual([
+      {
+        kind: "item",
+        key: "Ale",
+        content: "remove",
+        replacement: null,
+        copies: "purge",
+        refundGold: 25,
+      },
+    ]);
+  });
+
+  test("replacing needs the other item's name", () => {
+    const { p, $, last } = withAle();
+    $("content-remove").click();
+    const sel = $<HTMLSelectElement>("content-removal-content");
+    sel.value = "replace";
+    sel.dispatchEvent(new Event("change"));
+    $("content-removal-submit").click();
+    expect(last("remove")).toBeUndefined();
+    expect(p.el.textContent).toContain("Name the item to replace it with.");
+    $<HTMLInputElement>("content-removal-replacement").value = "Mead";
+    $("content-removal-submit").click();
+    expect(last("remove")?.args[0]).toMatchObject({ content: "replace", replacement: "Mead" });
+  });
+
+  test("a monster's removal offers its roster slots, live ones and NPC file", () => {
+    const slime: ContentUsageView = {
+      kind: "monster",
+      key: "Slime",
+      name: "Slime",
+      retired: false,
+      uses: [],
+      world: [
+        { place: "spawn", count: 3, holders: ["x1000y992"], holderCount: 1 },
+        { place: "live", count: 1, holders: ["x1000y992"], holderCount: 1 },
+      ],
+      npcFile: true,
+      pending: false,
+    };
+    const h = page();
+    h.p.onShow();
+    h.p.receive({ t: "contentOverview", seq: h.last("overview")?.seq ?? 0, overview: overview() });
+    h.p.receive({
+      t: "contentRow",
+      seq: -1,
+      row: ale,
+    });
+    // Open the monster's row from the draft.
+    h.p.receive({
+      t: "contentOverview",
+      seq: h.last("overview")?.seq ?? 0,
+      overview: overview({
+        draft: [
+          {
+            dataset: "monsters",
+            part: "monsters",
+            key: "Slime",
+            op: "set",
+            author: "A",
+            updatedAt: "2026-11-22T00:00:00.000Z",
+          },
+        ],
+      }),
+    });
+    (h.p.el.querySelector('[data-action="content-draft-open"]') as HTMLElement).click();
+    h.p.receive({
+      t: "contentRow",
+      seq: h.last("row")?.seq ?? 0,
+      row: {
+        ...ale,
+        dataset: "monsters",
+        part: "monsters",
+        key: "Slime",
+        pack: { name: "Slime" },
+        published: { name: "Slime" },
+      },
+    });
+    expect(h.last("usage")?.args).toEqual(["monster", "Slime"]);
+    h.p.receive({ t: "contentUsage", seq: h.last("usage")?.seq ?? 0, usage: slime });
+    expect(h.p.el.textContent).toContain("spawns on 1 map · 1 alive now · has its own NPC file");
+    h.$("content-remove").click();
+    expect(h.$<HTMLSelectElement>("content-removal-spawns").value).toBe("remove");
+    expect(h.$<HTMLSelectElement>("content-removal-live").value).toBe("despawn");
+    expect(h.$<HTMLSelectElement>("content-removal-npcfile").value).toBe("delete");
+    h.$("content-removal-submit").click();
+    expect(h.last("remove")?.args).toEqual([
+      {
+        kind: "monster",
+        key: "Slime",
+        content: "remove",
+        replacement: null,
+        spawns: "remove",
+        live: "despawn",
+        npcRow: "delete",
+      },
+    ]);
+  });
+
+  test("the draft says what its removals will do", () => {
+    expect(
+      removalHeadline([
+        { kind: "item", key: "Ale", lines: [], stillUsed: 3 },
+        { kind: "item", key: "Mead", lines: [], stillUsed: 2 },
+        { kind: "monster", key: "Slime", lines: [], stillUsed: 0 },
+      ]),
+    ).toBe("This draft removes 2 items and 1 monster still used in 5 places.");
+    expect(removalHeadline([{ kind: "monster", key: "Slime", lines: [], stillUsed: 0 }])).toBe(
+      "This draft removes 1 monster.",
+    );
+    const { p, last } = page();
+    p.onShow();
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({
+        removals: [
+          {
+            kind: "item",
+            key: "Ale",
+            lines: ["5 copies in the bags of 2 characters stay (retired: no more can be made)"],
+            stillUsed: 2,
+          },
+        ],
+      }),
+    });
+    expect(p.el.textContent).toContain("This draft removes 1 item still used in 2 places.");
+    expect(p.el.textContent).toContain("stay (retired: no more can be made)");
+  });
+
+  test("the history shows what a publish did to the world, and Undo says it stays", async () => {
+    const { p, last, settle } = page();
+    p.onShow();
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({
+        history: [
+          {
+            id: "p1",
+            at: "2026-11-22T01:00:00.000Z",
+            actorName: "A",
+            summary: "Purge ale",
+            rows: ["items/items/Ale"],
+            undoOf: null,
+            undoneBy: null,
+            cleanup: ["Deleted: 5 copies of Ale held by 2 characters"],
+          },
+        ],
+      }),
+    });
+    expect(p.el.textContent).toContain("Deleted: 5 copies of Ale held by 2 characters");
+    (p.el.querySelector('[data-action="content-undo"]') as HTMLButtonElement).click();
+    await settle();
+    expect(p.el.textContent).toContain("is not undone");
+  });
+
+  test("Look for problems lists them, in the world and in content", () => {
+    const { p, $, last } = page();
+    p.onShow();
+    $("content-problems-check").click();
+    p.receive({
+      t: "contentProblems",
+      seq: last("problems")?.seq ?? 0,
+      world: [{ where: "world/bags", message: '"Moonblade" is not an item' }],
+      content: [],
+    });
+    expect(p.el.textContent).toContain("In the world (1)");
+    expect(p.el.textContent).toContain('"Moonblade" is not an item');
+    expect(p.el.textContent).toContain("Every reference in content resolves.");
+  });
 });

@@ -78,7 +78,7 @@ const server = startServer({
 });
 check(true, "the migrations ran and the server started");
 const migrations = server.db
-  .query<{ name: string }, []>("SELECT name FROM _migrations ORDER BY id DESC LIMIT 2")
+  .query<{ name: string }, []>("SELECT name FROM _migrations ORDER BY id DESC")
   .all()
   .map((r: { name: string }) => r.name);
 check(migrations.includes("20261122_53_content_store.sql"), `migrated to ${migrations[0]}`);

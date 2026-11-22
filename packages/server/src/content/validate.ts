@@ -10,9 +10,12 @@ import {
   buildContentStore,
   type ContentData,
   DATASET_IDS,
+  type DatasetId,
   npcLootItemOk,
   npcShopItemOk,
 } from "@secondstaronline/shared";
+
+import { type RowRef, rowLabel } from "./rows.ts";
 
 /** One problem, with where it is (`items/items/Ale`, or a dataset and a schema path). */
 export interface ContentProblem {
@@ -173,194 +176,301 @@ export function skillProblems(
   return out;
 }
 
+/** A step into a row's JSON: a field name or a list index. */
+export type JsonPath = (string | number)[];
+
+/** The kinds of name a reference holds. */
+export type ReferenceKind =
+  | "item"
+  | "monster"
+  /** An NPC a quest names: shown where an NPC is used, and flagged for review, never checked. */
+  | "npc"
+  | "itemOrFixture"
+  | "skill"
+  | "shopItem"
+  | "lootItem";
+
 /** One reference from a row to a name another list must hold. */
-interface Reference {
+export interface Reference {
+  /** The row's label (`craft/stations`, `npcFiles/files/Fish`). */
   where: string;
-  kind: "item" | "monster" | "itemOrFixture" | "skill" | "shopItem" | "lootItem";
+  /** The row that holds it. */
+  row: RowRef;
+  /**
+   * Where the name sits in the row's JSON. For an NPC file line it is `["text", <line index>]`
+   * (the line's item field holds the name).
+   */
+  path: JsonPath;
+  kind: ReferenceKind;
   name: string;
+  /**
+   * What a cleanup removes to drop the reference (issue #28): the path of the list entry that holds
+   * it (a recipe, a shop line), `[]` for the whole row (a deed), or null when nothing can go
+   * without breaking the row (a station's one tool, a roll table's entry): replace it instead.
+   */
+  drop: JsonPath | null;
+  /** The reference is an NPC file line's item (`SEL|`, `BUY|`, `INV|`). */
+  npcLine?: boolean;
 }
 
 /** Every checked reference in a store. */
 export function referencesOf(data: ContentData): Reference[] {
   const out: Reference[] = [];
-  const add = (where: string, kind: Reference["kind"], name: string) =>
-    out.push({ where, kind, name });
-  for (const n of data.items.editorItems) {
-    add("items/editorItems", "itemOrFixture", n);
-  }
-  for (const n of data.items.playerShopWhitelist) {
-    add("items/playerShopWhitelist", "item", n);
-  }
+  const section = (dataset: DatasetId, part: string): RowRef => ({ dataset, part, key: null });
+  const add = (
+    row: RowRef,
+    path: JsonPath,
+    kind: ReferenceKind,
+    name: string,
+    drop: JsonPath | null,
+    npcLine = false,
+  ) =>
+    out.push({
+      where: rowLabel(row),
+      row,
+      path,
+      kind,
+      name,
+      drop,
+      ...(npcLine ? { npcLine: true } : {}),
+    });
+  const editorItems = section("items", "editorItems");
+  data.items.editorItems.forEach((n, i) => {
+    add(editorItems, [i], "itemOrFixture", n, [i]);
+  });
+  const whitelist = section("items", "playerShopWhitelist");
+  data.items.playerShopWhitelist.forEach((n, i) => {
+    add(whitelist, [i], "item", n, [i]);
+  });
   const lists = data.monsters.editorLists;
-  for (const n of [...lists.worldEditor.monsters, ...lists.worldEditor.npcs]) {
-    add("monsters/editorLists", "monster", n);
+  const editorLists = section("monsters", "editorLists");
+  for (const editor of ["worldEditor", "npcEditor"] as const) {
+    for (const list of ["monsters", "npcs"] as const) {
+      lists[editor][list].forEach((n, i) => {
+        add(editorLists, [editor, list, i], "monster", n, [editor, list, i]);
+      });
+    }
   }
-  for (const n of [...lists.npcEditor.monsters, ...lists.npcEditor.npcs]) {
-    add("monsters/editorLists", "monster", n);
-  }
-  for (const q of data.quests.current) {
-    add("quests/current", "item", q.wants);
-    add("quests/current", "item", q.reward);
-  }
+  // The quests a new world starts with: a line that names a removed item goes (the world pads the
+  // list to 40), but its NPC is for the operator to look at.
+  const current = section("quests", "current");
+  data.quests.current.forEach((q, i) => {
+    add(current, [i, "wants"], "item", q.wants, [i]);
+    add(current, [i, "reward"], "item", q.reward, [i]);
+    if (q.npc.trim() !== "") {
+      add(current, [i, "npc"], "npc", q.npc.trim(), null);
+    }
+  });
   // A finished quest rolls its next one from the pools, trimmed (shared quests.ts `findNewQuest`).
-  for (const w of data.quests.pools.wanted) {
-    add("quests/pools", "item", w.item.trim());
-  }
-  for (const r of data.quests.pools.rewards) {
-    add("quests/pools", "item", r.item.trim());
-  }
-  // What the crafting stations take, use and make.
+  // Each entry answers one roll, so an entry is replaced, never dropped.
+  const pools = section("quests", "pools");
+  data.quests.pools.wanted.forEach((w, i) => {
+    add(pools, ["wanted", i, "item"], "item", w.item.trim(), null);
+  });
+  data.quests.pools.rewards.forEach((r, i) => {
+    add(pools, ["rewards", i, "item"], "item", r.item.trim(), null);
+  });
+  data.quests.pools.npcs.forEach((p, i) => {
+    if (p.npc) {
+      add(pools, ["npcs", i, "npc"], "npc", p.npc, null);
+    }
+  });
+  // What the crafting stations take, use and make. A recipe that takes or makes the item goes as a
+  // whole; a station's own fixture and its one tool can only be replaced.
   const st = data.craft.stations;
-  const craft = (n: string) => add("craft/stations", "item", n);
-  const station = (n: string) => add("craft/stations", "itemOrFixture", n);
-  station(st.smith.station);
-  craft(st.smith.tool);
-  craft(st.smith.chunkDefault);
-  for (const c of st.smith.chunks) {
-    craft(c.item);
-    craft(c.chunk);
-  }
-  for (const r of st.smith.repairs) {
-    craft(r.input);
-    craft(r.output);
-  }
-  for (const m of st.smith.masterwork) {
-    craft(m.item);
-    for (const o of m.outcomes) {
-      craft(o.result);
+  const stations = section("craft", "stations");
+  const craft = (path: JsonPath, n: string, drop: JsonPath | null) =>
+    add(stations, path, "item", n, drop);
+  const station = (path: JsonPath, n: string, drop: JsonPath | null) =>
+    add(stations, path, "itemOrFixture", n, drop);
+  station(["smith", "station"], st.smith.station, null);
+  craft(["smith", "tool"], st.smith.tool, null);
+  craft(["smith", "chunkDefault"], st.smith.chunkDefault, null);
+  st.smith.chunks.forEach((c, i) => {
+    craft(["smith", "chunks", i, "item"], c.item, ["smith", "chunks", i]);
+    craft(["smith", "chunks", i, "chunk"], c.chunk, ["smith", "chunks", i]);
+  });
+  st.smith.repairs.forEach((r, i) => {
+    craft(["smith", "repairs", i, "input"], r.input, ["smith", "repairs", i]);
+    craft(["smith", "repairs", i, "output"], r.output, ["smith", "repairs", i]);
+  });
+  st.smith.masterwork.forEach((m, i) => {
+    craft(["smith", "masterwork", i, "item"], m.item, ["smith", "masterwork", i]);
+    m.outcomes.forEach((o, j) => {
+      craft(["smith", "masterwork", i, "outcomes", j, "result"], o.result, [
+        "smith",
+        "masterwork",
+        i,
+      ]);
+    });
+  });
+  st.cook.stations.forEach((n, i) => {
+    station(["cook", "stations", i], n, ["cook", "stations", i]);
+  });
+  st.cook.recipes.forEach((r, i) => {
+    for (const f of ["input", "output", "burned"] as const) {
+      craft(["cook", "recipes", i, f], r[f], ["cook", "recipes", i]);
     }
-  }
-  st.cook.stations.forEach(station);
-  for (const r of st.cook.recipes) {
-    craft(r.input);
-    craft(r.output);
-    craft(r.burned);
-  }
-  station(st.mix.station);
-  for (const m of st.mix.sands) {
-    craft(m.sand);
-    craft(m.potion);
-    craft(m.crystal);
-  }
-  station(st.build.station);
-  craft(st.build.tool);
-  for (const b of st.build.bands) {
-    for (const r of b.results) {
-      craft(r.item);
+  });
+  station(["mix", "station"], st.mix.station, null);
+  st.mix.sands.forEach((m, i) => {
+    for (const f of ["sand", "potion", "crystal"] as const) {
+      craft(["mix", "sands", i, f], m[f], ["mix", "sands", i]);
     }
-  }
-  for (const r of st.cauldron.recipes) {
-    r.requires.forEach(craft);
-    craft(r.result);
-  }
-  // What gathering takes and gives.
+  });
+  station(["build", "station"], st.build.station, null);
+  craft(["build", "tool"], st.build.tool, null);
+  st.build.bands.forEach((b, i) => {
+    b.results.forEach((r, j) => {
+      craft(["build", "bands", i, "results", j, "item"], r.item, [
+        "build",
+        "bands",
+        i,
+        "results",
+        j,
+      ]);
+    });
+  });
+  st.cauldron.recipes.forEach((r, i) => {
+    r.requires.forEach((n, j) => {
+      craft(["cauldron", "recipes", i, "requires", j], n, ["cauldron", "recipes", i]);
+    });
+    craft(["cauldron", "recipes", i, "result"], r.result, ["cauldron", "recipes", i]);
+  });
+  // What gathering takes and gives. A roll band's fish and the one-of tools are replaced, not
+  // dropped.
   const g = data.gather.gathering;
-  const gather = (n: string) => add("gather/gathering", "item", n);
-  for (const t of g.tools) {
-    gather(t.tool);
-  }
-  gather(g.logs.item);
-  g.mining.ore.items.forEach(gather);
-  for (const c of g.mining.chunks) {
-    gather(c.tool);
-    gather(c.item);
-  }
-  gather(g.fishing.tool);
-  for (const b of g.fishing.bands) {
-    gather(b.fish);
-  }
-  for (const sd of g.farming.seeds) {
-    gather(sd.item);
-  }
-  for (const pr of g.farming.produce) {
-    gather(pr.item);
-  }
-  g.treasure.items.forEach(gather);
+  const gathering = section("gather", "gathering");
+  const gather = (path: JsonPath, n: string, drop: JsonPath | null) =>
+    add(gathering, path, "item", n, drop);
+  g.tools.forEach((t, i) => {
+    gather(["tools", i, "tool"], t.tool, ["tools", i]);
+  });
+  gather(["logs", "item"], g.logs.item, null);
+  g.mining.ore.items.forEach((n, i) => {
+    gather(["mining", "ore", "items", i], n, ["mining", "ore", "items", i]);
+  });
+  g.mining.chunks.forEach((c, i) => {
+    gather(["mining", "chunks", i, "tool"], c.tool, ["mining", "chunks", i]);
+    gather(["mining", "chunks", i, "item"], c.item, ["mining", "chunks", i]);
+  });
+  gather(["fishing", "tool"], g.fishing.tool, null);
+  g.fishing.bands.forEach((b, i) => {
+    gather(["fishing", "bands", i, "fish"], b.fish, null);
+  });
+  g.farming.seeds.forEach((sd, i) => {
+    gather(["farming", "seeds", i, "item"], sd.item, ["farming", "seeds", i]);
+  });
+  g.farming.produce.forEach((pr, i) => {
+    gather(["farming", "produce", i, "item"], pr.item, ["farming", "produce", i]);
+  });
+  g.treasure.items.forEach((n, i) => {
+    gather(["treasure", "items", i], n, ["treasure", "items", i]);
+  });
+  // A deed is an item: its row goes with it.
   for (const d of data.houses.deeds) {
-    add(`houses/deeds/${d.deed}`, "item", d.deed);
+    add({ dataset: "houses", part: "deeds", key: d.deed }, ["deed"], "item", d.deed, []);
   }
-  // Skill names written in other rows: `skillIndex` throws on a name it does not know, so a typo
-  // would fail every tick that reads it.
   // NPC files: what a shop sells or buys, and what a monster drops, as the NPC Editor checks them.
   for (const f of data.npcFiles.files) {
-    for (const line of f.text.split(/\r\n?|\n/)) {
+    const row: RowRef = { dataset: "npcFiles", part: "files", key: f.name };
+    f.text.split(/\r\n?|\n/).forEach((line, i) => {
       const m = /^(SEL|BUY|INV)\|([^:|]*)/.exec(line);
       if (m) {
-        add(`npcFiles/files/${f.name}`, m[1] === "INV" ? "lootItem" : "shopItem", m[2] as string);
+        add(
+          row,
+          ["text", i],
+          m[1] === "INV" ? "lootItem" : "shopItem",
+          m[2] as string,
+          ["text", i],
+          true,
+        );
       }
-    }
+    });
   }
-  // An empty name is a reference too: the rules look it up all the same, and find nothing.
-  const skill = (where: string, name: unknown) => {
+  // Skill names written in other rows: `skillIndex` throws on a name it does not know, so a typo
+  // would fail every tick that reads it. An empty name is a reference too: the rules look it up
+  // all the same, and find nothing. Skills are never cleaned up, so these carry no drop.
+  const skill = (row: RowRef, path: JsonPath, name: unknown) => {
     if (typeof name === "string") {
-      add(where, "skill", name);
+      add(row, path, "skill", name, null);
     }
   };
   for (const c of data.classes.classes) {
-    for (const g of c.promotion?.skillGrants ?? []) {
-      skill(`classes/classes/${c.code}`, g);
-    }
+    const row: RowRef = { dataset: "classes", part: "classes", key: String(c.code) };
+    (c.promotion?.skillGrants ?? []).forEach((gr, i) => {
+      skill(row, ["promotion", "skillGrants", i], gr);
+    });
     const stat = c.promotion?.requirement?.stat;
     // Promotion reads exactly "HPmax" and "SPmax" as stats (shared promotion.ts).
     if (typeof stat === "string" && stat !== "HPmax" && stat !== "SPmax") {
-      skill(`classes/classes/${c.code}`, stat);
+      skill(row, ["promotion", "requirement", "stat"], stat);
     }
   }
-  for (const w of data.classes.skillGain.weaponSkills) {
-    for (const s of w.skills) {
-      skill("classes/skillGain", s);
-    }
-  }
-  for (const t of data.gather.gathering.tools) {
-    skill("gather/gathering", (t as { skill?: unknown }).skill);
-  }
-  for (const r of data.gather.skillGain) {
-    skill("gather/skillGain", r.skill);
-  }
-  for (const b of data.itemRules.use.skillBooks) {
-    skill("itemRules/use", b.skill);
-  }
-  for (const p of data.itemRules.ground.platforms) {
+  const skillGain = section("classes", "skillGain");
+  data.classes.skillGain.weaponSkills.forEach((w, i) => {
+    w.skills.forEach((s, j) => {
+      skill(skillGain, ["weaponSkills", i, "skills", j], s);
+    });
+  });
+  data.gather.gathering.tools.forEach((t, i) => {
+    skill(gathering, ["tools", i, "skill"], (t as { skill?: unknown }).skill);
+  });
+  const gatherGain = section("gather", "skillGain");
+  data.gather.skillGain.forEach((r, i) => {
+    skill(gatherGain, [i, "skill"], r.skill);
+  });
+  const use = section("itemRules", "use");
+  data.itemRules.use.skillBooks.forEach((b, i) => {
+    skill(use, ["skillBooks", i, "skill"], b.skill);
+  });
+  const ground = section("itemRules", "ground");
+  data.itemRules.ground.platforms.forEach((p, i) => {
     // A platform reads exactly "level" as the level (shared ground.ts `blocksPlayer`).
     if (p.needs !== "level") {
-      skill("itemRules/ground", p.needs);
+      skill(ground, ["platforms", i, "needs"], p.needs);
     }
-  }
-  for (const s of data.social.assassin.rating.skills) {
-    skill("social/assassin", s);
-  }
-  for (const t of data.social.bios.titles) {
-    for (const test of (t as { tests?: { skill?: unknown }[] }).tests ?? []) {
-      skill("social/bios", test.skill);
-    }
-  }
+  });
+  const assassin = section("social", "assassin");
+  data.social.assassin.rating.skills.forEach((s, i) => {
+    skill(assassin, ["rating", "skills", i], s);
+  });
+  const bios = section("social", "bios");
+  data.social.bios.titles.forEach((t, i) => {
+    ((t as { tests?: { skill?: unknown }[] }).tests ?? []).forEach((test, j) => {
+      skill(bios, ["titles", i, "tests", j, "skill"], test.skill);
+    });
+  });
   // The Bio score counts exactly "HPmax" and "SPmax" as stats (shared bios.ts `bioScore`).
-  for (const s of data.social.bios.score.counted) {
+  data.social.bios.score.counted.forEach((s, i) => {
     if (s !== "HPmax" && s !== "SPmax") {
-      skill("social/bios", s);
+      skill(bios, ["score", "counted", i], s);
     }
-  }
-  for (const m of data.social.medals.awards) {
-    skill("social/medals", (m as { skill?: unknown }).skill);
-  }
-  for (const b of data.attPower.attPower.skillBlocks) {
-    for (const t of b.tiers) {
-      for (const w of t.when ?? []) {
+  });
+  const medals = section("social", "medals");
+  data.social.medals.awards.forEach((m, i) => {
+    skill(medals, ["awards", i, "skill"], (m as { skill?: unknown }).skill);
+  });
+  const attPower = section("attPower", "attPower");
+  data.attPower.attPower.skillBlocks.forEach((b, i) => {
+    b.tiers.forEach((t, j) => {
+      (t.when ?? []).forEach((w, k) => {
         // Read exactly as `tierApplies` reads it, so every name a swing would look up is checked.
         const name = /^(\w+) [<>] \d+$/.exec(w)?.[1];
         // A tier reads exactly "level" as the level (shared attpower.ts `tierApplies`).
         if (name && name !== "level") {
-          skill("attPower/attPower", name);
+          skill(attPower, ["skillBlocks", i, "tiers", j, "when", k], name);
         }
-      }
-    }
-  }
+      });
+    });
+  });
   for (const s of data.spells.spells) {
-    skill(`spells/spells/${s.name}`, s.summon?.skilled?.skill);
+    const row: RowRef = { dataset: "spells", part: "spells", key: s.name };
+    skill(row, ["summon", "skilled", "skill"], s.summon?.skilled?.skill);
     if (s.summon) {
-      add(`spells/spells/${s.name}`, "monster", s.summon.monster);
+      add(row, ["summon", "monster"], "monster", s.summon.monster, null);
       if (s.summon.skilled) {
-        add(`spells/spells/${s.name}`, "monster", s.summon.skilled.monster);
+        add(row, ["summon", "skilled", "monster"], "monster", s.summon.skilled.monster, null);
       }
     }
   }
@@ -374,12 +484,23 @@ const refKey = (r: Reference) => `${r.where}\u0000${r.kind}\u0000${r.name.toLowe
 
 /** The references that do not resolve in a store. */
 export function brokenReferences(data: ContentData): Reference[] {
-  const items = new Set(data.items.items.map((i) => i.name.toLowerCase()));
+  return referencesOf(data).filter(unresolved(data));
+}
+
+/**
+ * The test of whether a reference resolves in a store. A retired item does not count: its copies
+ * stay, but no content may make, sell, buy or use it (issue #28).
+ */
+export function unresolved(data: ContentData): (r: Reference) => boolean {
+  const live: ContentData = data.items.items.some((i) => i.retired)
+    ? { ...data, items: { ...data.items, items: data.items.items.filter((i) => !i.retired) } }
+    : data;
+  const items = new Set(live.items.items.map((i) => i.name.toLowerCase()));
   const fixtures = new Set(data.items.fixtures.map((f) => f.toLowerCase()));
   const monsters = new Set(data.monsters.monsters.map((m) => m.name.toLowerCase()));
   const skills = new Set(data.classes.skills.map((s) => skillNorm(s.skill)));
-  const store = buildContentStore(data);
-  return referencesOf(data).filter((r) => {
+  const store = buildContentStore(live);
+  return (r) => {
     const n = r.name.toLowerCase();
     switch (r.kind) {
       case "item":
@@ -394,9 +515,12 @@ export function brokenReferences(data: ContentData): Reference[] {
         return !npcShopItemOk(r.name, store);
       case "lootItem":
         return !npcLootItemOk(r.name, store);
+      case "npc":
+        // 1.6's quest lines name NPCs by their spoken name, which need not be a monster ("Girl").
+        return false;
     }
     return false;
-  });
+  };
 }
 
 /**

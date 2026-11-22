@@ -81,6 +81,95 @@ export const contentNoticeSchema = z.strictObject({
   accept: z.boolean(),
 });
 
+/** An item or a monster (NPCs are monsters), by key, for where-used and removal (issue #28). */
+const entry = {
+  kind: z.enum(["item", "monster"]),
+  key: z.string().min(1).max(80),
+};
+
+/** Where an item or a monster is used: content rows and the world. */
+export const contentUsageSchema = z.strictObject({ t: z.literal("contentUsage"), seq, ...entry });
+
+const replacement = z.string().max(80).nullable();
+
+/**
+ * Puts an item's or monster's removal in the draft with its cleanup: what happens to the
+ * references content holds (`content`), and, published, to the world. An item: the copies players
+ * hold are retired, purged (with an optional gold refund for each) or replaced. A monster: its
+ * roster slots are cleared or replaced, live ones despawn or stay until they die, and its own NPC
+ * file goes with it or stays.
+ */
+export const contentRemoveSchema = z.strictObject({
+  t: z.literal("contentRemove"),
+  seq,
+  ...entry,
+  content: z.enum(["remove", "replace", "leave"]),
+  replacement,
+  /** An item's copies (default: retire). */
+  copies: z.enum(["retire", "purge", "replace"]).optional(),
+  /** Gold back for each purged copy a character held. */
+  refundGold: z.number().int().min(0).max(1_000_000).optional(),
+  /** A monster's roster slots (default: remove). */
+  spawns: z.enum(["remove", "replace"]).optional(),
+  /** A monster's live ones (default: despawn). */
+  live: z.enum(["despawn", "leave"]).optional(),
+  /** A monster's own NPC file row (default: delete). */
+  npcRow: z.enum(["delete", "keep"]).optional(),
+});
+
+/** The references nothing resolves: the Content problems list. */
+export const contentProblemsSchema = z.strictObject({ t: z.literal("contentProblems"), seq });
+
+/** A kind of place the world keeps an item or a monster. */
+export type ContentPlaceKind =
+  | "bag"
+  | "worn"
+  | "vault"
+  | "container"
+  | "ground"
+  | "quest"
+  | "spawn"
+  | "live";
+
+/** One kind of place, with how many and who or where holds them (the first few). */
+export interface ContentPlaceView {
+  place: ContentPlaceKind;
+  count: number;
+  holders: string[];
+  holderCount: number;
+}
+
+/** A reference in content to an item or a monster. */
+export interface ContentUseView {
+  row: ContentRowRef;
+  where: string;
+  name: string;
+  /** A cleanup can remove it (else it is replaced or fixed by hand). */
+  removable: boolean;
+}
+
+export interface ContentUsageView {
+  kind: "item" | "monster";
+  key: string;
+  name: string;
+  retired: boolean;
+  uses: ContentUseView[];
+  world: ContentPlaceView[];
+  /** A monster with an NPC file of its own. */
+  npcFile: boolean;
+  /** Its removal is waiting in the draft. */
+  pending: boolean;
+}
+
+/** A removal in the draft and what publishing it will do. */
+export interface ContentRemovalView {
+  kind: "item" | "monster";
+  key: string;
+  lines: string[];
+  /** Places it is still used that the publish leaves (references, retired copies). */
+  stillUsed: number;
+}
+
 /** A change in the shared draft. */
 export interface ContentDraftView extends ContentRowRef {
   op: "set" | "remove" | "revert";
@@ -104,6 +193,8 @@ export interface ContentPublishView {
   rows: string[];
   undoOf: string | null;
   undoneBy: string | null;
+  /** What it did to the world (purged copies, cleared spawns), a line each; an undo leaves it. */
+  cleanup: string[];
 }
 
 /** An installed pack. */
@@ -144,6 +235,8 @@ export interface ContentOverview {
   hash: string;
   /** The draft's revision: Publish sends it back, and a draft changed since refuses it. */
   draftRev: string;
+  /** The removals the draft holds and what publishing them does (issue #28). */
+  removals: ContentRemovalView[];
 }
 
 /** A row's state: as the pack has it, changed or added by the operator, or removed. */
@@ -179,5 +272,12 @@ export type ContentServerMsg =
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
-  /** A draft, discard, publish, undo or notice answer. */
+  | { t: "contentUsage"; seq: number; usage: ContentUsageView | null; error?: string }
+  | {
+      t: "contentProblems";
+      seq: number;
+      content: ContentProblemView[];
+      world: ContentProblemView[];
+    }
+  /** A draft, discard, publish, undo, notice or removal answer. */
   | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] };

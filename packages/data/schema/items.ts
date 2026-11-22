@@ -22,6 +22,12 @@ export const itemSchema = z.strictObject({
   /** Other spellings of the name seen in the archive. */
   variants: strings.optional(),
   /**
+   * Retired by an operator: copies players already hold stay and work, but no more can be made.
+   * Content may not refer to it (no shop, drop, recipe, gathering or quest), and admins cannot
+   * create it. Set when an operator removes an item that players still hold (issue #28).
+   */
+  retired: z.literal(true).optional(),
+  /**
    * The picture: an original Inventory cast member, `"added"` for art in
    * `assets/added/items/<name>.png` (a data test checks the file and its sidecar exist), or
    * `null` for an item with none. Nothing reads more than `icon !== null`: an item with a

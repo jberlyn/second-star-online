@@ -32,15 +32,15 @@ An entry uses this shape; `Pinned by` is optional:
 | [Design changes](#design-changes) | 81 |
 | [Fixed bugs](#fixed-bugs) | 298 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
-| [Server authority and exploits](#server-authority-and-exploits) | 136 |
+| [Server authority and exploits](#server-authority-and-exploits) | 137 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **567** |
+| **Total** | **568** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [14](#admin) | [23](#server-side-admin) |
+| admin | [14](#admin) | [24](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [26](#combat) | [7](#server-side-combat) |
@@ -3835,6 +3835,15 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** Running a server means fixing and adding content without a code change or a restart, and without being able to break saved characters (issue #27).
 - **In the code:** `packages/server/src/content/service.ts` (`ContentService`), `packages/server/src/content/validate.ts` (`checkStore`), `packages/server/src/content/rows.ts`, `packages/shared/src/content/store.ts` (`content`, `onContent`), `packages/client/src/content.ts` (`createContentSync`), `packages/client/src/ui/content-page.ts`
 - **Pinned by:** `a published edit changes the store, and the publish swaps it in`; `undoes a publish as a whole`; `a changed row the operator customised keeps their version and shows a notice` (packages/server/tests/content-store.test.ts); `a publish swaps the store in, and the rules see it` (packages/client/tests/content.test.ts)
+
+#### Removing content in use cleans up after itself
+- **Kind:** Architecture
+- **What you notice:** Removing an item or a monster on the Content page first shows where it is used (who holds copies, which maps spawn it, which shops, drops, recipes and quests name it), then asks what to clean up. By default an item players hold is retired: their copies stay and work, but no more can be made. An item can instead be purged (with gold back for each copy) or replaced, and a monster's spawns cleared or replaced and its live ones despawned.
+- **1.6:** Removing an item or a monster meant deleting it from the files by hand. Copies players held, shops that sold it, drops that gave it and maps that spawned it were left naming something that no longer existed, with nothing to find or fix them.
+- **SSO:** The cleanup goes into the draft with the removal and is checked like any change; what happens to the world runs when the draft is published, as part of the publish, and is logged in the activity log and the publish history. A reference nothing resolves (from a database edit or an older server) never crashes the game: an unknown item shows by its name with no picture, an unknown monster spawns as a stand-in with the Generic body and 1 HP, and both are listed on the Content page's Problems and printed at start.
+- **Why:** Operators should be able to remove content without leaving broken references behind or breaking saved characters (issue #28).
+- **In the code:** `packages/server/src/content/cleanup.ts` (`usesOf`, `cleanUses`), `packages/server/src/content/service.ts` (`draftRemoval`, `removals`, `problems`), `packages/server/src/systems/admin/content-world.ts` (`createContentWorld`), `packages/client/src/ui/content-usage.ts`
+- **Pinned by:** `retiring (the default): copies stay and work, no more can be made, the content goes`; `purging: every copy goes, online and offline, with gold back for each held one`; `a monster: its roster slots clear, live ones despawn, its NPC file goes`; `stored references nothing resolves load, play and are listed as problems` (packages/server/tests/content-cleanup.test.ts); `Remove offers the cleanup with its defaults: remove the entries, retire the copies` (packages/client/tests/content-page.test.ts)
 
 #### The server logs what players do with items, gold and their time
 - **Kind:** Architecture

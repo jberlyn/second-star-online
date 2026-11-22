@@ -1,0 +1,94 @@
+/**
+ * What the content service asks of the game world when content in use is removed (issue #28):
+ * where copies of an item or live monsters are (online players and loaded maps from memory, the
+ * rest from the database), what to do with them when the removal is published, and the stored
+ * references nothing in the content resolves. The game implements it (game.ts `contentWorld`);
+ * tests pass a fake.
+ */
+import type { EntryKind } from "./cleanup.ts";
+import type { ContentActor } from "./service.ts";
+import type { ContentProblem } from "./validate.ts";
+
+/** A kind of place the world keeps an item or a monster. */
+export type UsagePlaceKind =
+  | "bag"
+  | "worn"
+  | "vault"
+  | "container"
+  | "ground"
+  | "quest"
+  | "spawn"
+  | "live";
+
+/** One kind of place, with how many copies and who or where holds them. */
+export interface UsagePlace {
+  place: UsagePlaceKind;
+  /** Copies (items), quest lines, roster slots or live monsters. */
+  count: number;
+  /** Characters (bag, worn, vault), containers or maps holding them, the first few by name. */
+  holders: string[];
+  /** How many holders there are in all. */
+  holderCount: number;
+}
+
+/** What happens to the copies players hold of a removed item. */
+export type CopiesAction = "retire" | "purge" | "replace";
+
+/** What a removal does to the world on publish. */
+export type WorldAction =
+  | {
+      kind: "item";
+      key: string;
+      /** The key and archived spellings stored copies may use. */
+      spellings: string[];
+      copies: CopiesAction;
+      /** The item copies become (replace), or null. */
+      replacement: string | null;
+      /** Gold given back for each purged copy a character held. */
+      refundGold: number;
+    }
+  | {
+      kind: "monster";
+      key: string;
+      spawns: "remove" | "replace";
+      live: "despawn" | "leave";
+      /** The monster spawns become (replace), or null. */
+      replacement: string | null;
+    };
+
+/** An operator's removal of an item, with its cleanup. */
+export interface ItemRemoval {
+  kind: "item";
+  key: string;
+  content: "remove" | "replace" | "leave";
+  copies: CopiesAction;
+  replacement: string | null;
+  refundGold: number;
+}
+
+/** An operator's removal of a monster or NPC, with its cleanup. */
+export interface MonsterRemoval {
+  kind: "monster";
+  key: string;
+  content: "remove" | "replace" | "leave";
+  spawns: "remove" | "replace";
+  live: "despawn" | "leave";
+  /** Its own NPC file: removed with it, or kept unattached. */
+  npcFile: "delete" | "keep";
+  replacement: string | null;
+}
+
+export type Removal = ItemRemoval | MonsterRemoval;
+
+export interface ContentWorld {
+  /** Where the world holds an item (any of its spellings) or a monster. */
+  usage(kind: EntryKind, spellings: readonly string[]): UsagePlace[];
+  /**
+   * Applies published removals to the world, inside the publish's transaction: online players and
+   * loaded maps in memory (their clients told), the rest in the database. Returns a line for each
+   * thing done.
+   */
+  apply(actions: readonly WorldAction[], actor: ContentActor, publishId: string): string[];
+  /** Stored references (bags, the ground, spawns) the published content does not resolve. */
+  problems(): ContentProblem[];
+}

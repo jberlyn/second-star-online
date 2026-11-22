@@ -312,12 +312,15 @@ export function deriveEdit(
 const isInt = (n: unknown, min: number, max: number): n is number =>
   typeof n === "number" && Number.isInteger(n) && n >= min && n <= max;
 
-/** An item the game knows: a catalogue name or spelling, or an Inventory fixture. */
+/**
+ * An item an admin may create: a catalogue name or spelling, or an Inventory fixture. A retired
+ * item is not one: copies already held stay, but no more can be made (issue #28).
+ */
 export function knownItem(name: string): boolean {
   const n = displayName(name);
   return (
     content().items.items.some(
-      (i) => lingoEq(i.name, n) || (i.variants ?? []).some((v) => lingoEq(v, n)),
+      (i) => !i.retired && (lingoEq(i.name, n) || (i.variants ?? []).some((v) => lingoEq(v, n))),
     ) || content().items.fixtures.some((f) => lingoEq(f, n))
   );
 }

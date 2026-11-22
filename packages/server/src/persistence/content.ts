@@ -270,6 +270,8 @@ export interface StoredPublish {
   hash: string;
   undoOf: string | null;
   undoneBy: string | null;
+  /** What the publish did to the world (issue #28): a line per thing done; empty for none. */
+  cleanup: string[];
 }
 
 interface PublishRecord {
@@ -281,6 +283,7 @@ interface PublishRecord {
   hash: string;
   undo_of: string | null;
   undone_by: string | null;
+  cleanup: string | null;
 }
 
 const toPublish = (r: PublishRecord): StoredPublish => ({
@@ -292,6 +295,7 @@ const toPublish = (r: PublishRecord): StoredPublish => ({
   hash: r.hash,
   undoOf: r.undo_of,
   undoneBy: r.undone_by,
+  cleanup: r.cleanup ? ((JSON.parse(r.cleanup) as { lines?: string[] }).lines ?? []) : [],
 });
 
 /** Logs a publish and returns its id. An undo also marks the publish it undid. */
@@ -331,7 +335,7 @@ export function insertPublish(
 export function recentPublishes(db: Db, limit: number): StoredPublish[] {
   return db
     .query<PublishRecord, [number]>(
-      "SELECT id, created_at, actor_name, summary, changes, hash, undo_of, undone_by FROM content_publishes ORDER BY id DESC LIMIT ?",
+      "SELECT id, created_at, actor_name, summary, changes, hash, undo_of, undone_by, cleanup FROM content_publishes ORDER BY id DESC LIMIT ?",
     )
     .all(limit)
     .map(toPublish);
@@ -341,7 +345,7 @@ export function recentPublishes(db: Db, limit: number): StoredPublish[] {
 export function publishesAfter(db: Db, id: string): StoredPublish[] {
   return db
     .query<PublishRecord, [string]>(
-      "SELECT id, created_at, actor_name, summary, changes, hash, undo_of, undone_by FROM content_publishes WHERE id > ? ORDER BY id",
+      "SELECT id, created_at, actor_name, summary, changes, hash, undo_of, undone_by, cleanup FROM content_publishes WHERE id > ? ORDER BY id",
     )
     .all(id)
     .map(toPublish);
@@ -350,10 +354,80 @@ export function publishesAfter(db: Db, id: string): StoredPublish[] {
 export function publishById(db: Db, id: string): StoredPublish | null {
   const r = db
     .query<PublishRecord, [string]>(
-      "SELECT id, created_at, actor_name, summary, changes, hash, undo_of, undone_by FROM content_publishes WHERE id = ?",
+      "SELECT id, created_at, actor_name, summary, changes, hash, undo_of, undone_by, cleanup FROM content_publishes WHERE id = ?",
     )
     .get(id);
   return r ? toPublish(r) : null;
+}
+
+/** Records what a publish did to the world. */
+export function setPublishCleanup(
+  db: Db,
+  id: string,
+  cleanup: { actions: readonly unknown[]; lines: readonly string[] },
+): void {
+  db.query("UPDATE content_publishes SET cleanup = ? WHERE id = ?").run(
+    JSON.stringify(cleanup),
+    id,
+  );
+}
+
+/** A removed entry's world cleanup, waiting in the draft. */
+export interface DraftAction {
+  kind: "item" | "monster";
+  key: string;
+  action: unknown;
+  authorAccountId: string;
+  author: string;
+  updatedAt: string;
+}
+
+export function draftActions(db: Db): DraftAction[] {
+  return db
+    .query<
+      {
+        kind: "item" | "monster";
+        entry_key: string;
+        action: string;
+        author_account_id: string;
+        author: string;
+        updated_at: string;
+      },
+      []
+    >(
+      "SELECT kind, entry_key, action, author_account_id, author, updated_at FROM content_draft_actions ORDER BY updated_at, entry_key",
+    )
+    .all()
+    .map((r) => ({
+      kind: r.kind,
+      key: r.entry_key,
+      action: JSON.parse(r.action) as unknown,
+      authorAccountId: r.author_account_id,
+      author: r.author,
+      updatedAt: r.updated_at,
+    }));
+}
+
+export function upsertDraftAction(db: Db, a: DraftAction): void {
+  db.query("DELETE FROM content_draft_actions WHERE kind = ? AND lower(entry_key) = lower(?)").run(
+    a.kind,
+    a.key,
+  );
+  db.query(
+    `INSERT INTO content_draft_actions (kind, entry_key, action, author_account_id, author, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(a.kind, a.key, JSON.stringify(a.action), a.authorAccountId, a.author, a.updatedAt);
+}
+
+export function deleteDraftAction(db: Db, kind: string, key: string): void {
+  db.query("DELETE FROM content_draft_actions WHERE kind = ? AND lower(entry_key) = lower(?)").run(
+    kind,
+    key,
+  );
+}
+
+export function clearDraftActions(db: Db): void {
+  db.query("DELETE FROM content_draft_actions").run();
 }
 
 /** A skill's index as characters are saved with it. */

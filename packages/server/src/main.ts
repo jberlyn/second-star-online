@@ -146,6 +146,17 @@ export function startServer(options: ServerOptions): RunningServer {
     config: { ...DEFAULT_SERVER_CONFIG, ...options.config },
   });
   live = game;
+  // Stored references the content does not resolve (an item removed outside the Content page, a
+  // database edit, a pack import): they never crash the game, and are listed on the Content page.
+  const worldProblems = game.contentWorld.problems();
+  if (worldProblems.length > 0) {
+    console.log(
+      `content: ${worldProblems.length} stored reference${worldProblems.length === 1 ? "" : "s"} name content that does not exist (see the Content page's Problems):`,
+    );
+    for (const p of worldProblems.slice(0, 10)) {
+      console.log(`  ${p.where}: ${p.message}`);
+    }
+  }
   gateway = startGateway({
     port: options.port,
     development: options.development,

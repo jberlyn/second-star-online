@@ -44,7 +44,8 @@ export interface DropPile {
 function inventoryItem(name: string): string | null {
   // A renamed item may be typed by the name players see; it is put down by its key.
   const item = content().itemNamed(name);
-  return item && item.icon !== null ? item.name : null;
+  // A retired item's copies stay, but no more can be made (issue #28).
+  return item && item.icon !== null && !item.retired ? item.name : null;
 }
 
 /** A crystal stack ("Blue Crystals"): on the ground it is a `"<n> <Colour> Crystals"` pile. */

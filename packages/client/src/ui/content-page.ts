@@ -11,7 +11,10 @@
  *   Publish. A publish another admin's change would overwrite is refused.
  * - **Rows**: every row of a dataset field (an item, a text table) with its state, and an editor
  *   for one row's JSON that saves to the draft.
- * - **Publish history**, with Undo for a whole publish.
+ * - **Where it is used** and **Remove** for an item or a monster (issue #28, content-usage.ts):
+ *   the rows and the world's places that hold it, and a removal with its cleanup.
+ * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
+ * - **Problems**: references nothing resolves, in content and in the world.
  */
 import type {
   ContentDraftView,
@@ -23,9 +26,11 @@ import type {
   ContentRowDetail,
   ContentRowRef,
   ContentRowStatus,
+  ContentUsageView,
 } from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
+import { drawRemovals, drawUsage, type RemovalPlan, removalForm } from "./content-usage.ts";
 import {
   confirmBox,
   createTable,
@@ -44,12 +49,27 @@ export interface ContentPageActions {
   publish(seq: number, summary: string, draftRev: string): void;
   undo(seq: number, id: string): void;
   notice(seq: number, ref: ContentRowRef, accept: boolean): void;
+  /** Where an item or a monster is used. */
+  usage(seq: number, kind: "item" | "monster", key: string): void;
+  /** Puts a removal with its cleanup in the draft. */
+  remove(seq: number, plan: RemovalPlan): void;
+  /** The references nothing resolves. */
+  problems(seq: number): void;
+  /** Opens a character's hub (a holder in a usage report). */
+  openCharacter(name: string): void;
 }
 
 export type ContentReply =
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
+  | { t: "contentUsage"; seq: number; usage: ContentUsageView | null; error?: string }
+  | {
+      t: "contentProblems";
+      seq: number;
+      content: ContentProblemView[];
+      world: ContentProblemView[];
+    }
   | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] };
 
 export interface ContentPage {
@@ -87,6 +107,20 @@ const STATUS_TEXT: Record<ContentRowStatus, string> = {
   added: "Added",
   removed: "Removed",
 };
+
+/** The item or monster a row is, or null for any other row. */
+export function entryOf(r: ContentRowRef): { kind: "item" | "monster"; key: string } | null {
+  if (r.key === null) {
+    return null;
+  }
+  if (r.dataset === "items" && r.part === "items") {
+    return { kind: "item", key: r.key };
+  }
+  if (r.dataset === "monsters" && r.part === "monsters") {
+    return { kind: "monster", key: r.key };
+  }
+  return null;
+}
 
 /** `2026-11-22T09:15:03.120Z` → `2026-11-22 09:15`. */
 const when = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
@@ -206,6 +240,8 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   let listSeq = -1;
   let rowSeq = -1;
   let resultSeq = -1;
+  let usageSeq = -1;
+  let problemsSeq = -1;
   /** What the last action was, to know what to refresh after its result. */
   let afterResult: () => void = () => {};
   /**
@@ -366,7 +402,8 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   const publishRow = document.createElement("div");
   publishRow.className = "content-publish";
   publishRow.append(formField("Summary", summary, "Shown in the publish history."), publishBtn);
-  draft.body.append(draftTable.el, checks, publishRow);
+  let removals = drawRemovals([]);
+  draft.body.append(draftTable.el, checks, removals, publishRow);
 
   // ---- rows -----------------------------------------------------------------------------------
   const rows = section(
@@ -477,9 +514,15 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   const editorButtons = document.createElement("div");
   editorButtons.className = "content-buttons";
   editorButtons.append(saveBtn, removeBtn, revertBtn, discardBtn, closeBtn);
+  const usageBox = document.createElement("div");
+  usageBox.className = "content-usage-box";
+  const removalBox = document.createElement("div");
+  removalBox.className = "content-removal-box";
   editor.append(
     editorTitle,
     editorState,
+    usageBox,
+    removalBox,
     packView,
     formField(
       "JSON",
@@ -505,8 +548,27 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     }
   };
 
+  /** The usage report of the row open in the editor, once it has come. */
+  let usage: ContentUsageView | null = null;
+
+  function askUsage(r: ContentRowRef): void {
+    const entry = entryOf(r);
+    usage = null;
+    usageBox.replaceChildren();
+    removalBox.replaceChildren();
+    if (!entry) {
+      usageSeq = -1;
+      return;
+    }
+    usageSeq = next();
+    actions.usage(usageSeq, entry.kind, entry.key);
+  }
+
   function openRow(r: ContentRowRef): void {
     const ref = refOf(r);
+    usage = null;
+    usageBox.replaceChildren();
+    removalBox.replaceChildren();
     editing = ref;
     editingKeyField = null;
     editor.hidden = false;
@@ -562,11 +624,18 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     loaded = json.value;
     saveBtn.hidden = d.readOnly;
     removeBtn.hidden = d.readOnly || d.keyField === null || d.published === null;
+    if (d.published !== null && entryOf(d)) {
+      askUsage(d);
+    }
     revertBtn.hidden = d.readOnly || d.pack === null || d.status === "pack" || d.status === null;
     discardBtn.hidden = d.draft === null;
   }
 
   function closeEditor(): void {
+    usage = null;
+    usageSeq = -1;
+    usageBox.replaceChildren();
+    removalBox.replaceChildren();
     editor.hidden = true;
     editing = null;
     editingKeyField = null;
@@ -617,6 +686,30 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     if (!ref || ref.key === null) {
       return;
     }
+    // An item or a monster is removed with its cleanup, once its usage report is in.
+    if (entryOf(ref)) {
+      if (!usage) {
+        showError("Wait for the usage report before removing it.");
+        return;
+      }
+      const u = usage;
+      removalBox.replaceChildren(
+        removalForm(u, root, {
+          submit: (plan) => {
+            resultSeq = next();
+            resultInEditor = true;
+            afterResult = () => {
+              removalBox.replaceChildren();
+              refreshAll();
+              openRow(ref);
+            };
+            actions.remove(resultSeq, plan);
+          },
+          cancel: () => removalBox.replaceChildren(),
+        }),
+      );
+      return;
+    }
     void confirmBox(root, {
       text: `Add the removal of ${refLabel(ref)} to the draft?`,
       confirm: "Remove",
@@ -658,7 +751,24 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     columns: [
       { label: "When (UTC)", cell: (p) => when(p.at) },
       { label: "By", cell: (p) => p.actorName },
-      { label: "Summary", cell: (p) => p.summary },
+      {
+        label: "Summary",
+        cell: (p) => {
+          if (p.cleanup.length === 0) {
+            return p.summary;
+          }
+          const cell = document.createElement("div");
+          const ul = document.createElement("ul");
+          ul.className = "content-usage-list";
+          for (const line of p.cleanup) {
+            const li = document.createElement("li");
+            li.textContent = line;
+            ul.append(li);
+          }
+          cell.append(p.summary, ul);
+          return cell;
+        },
+      },
       { label: "Rows", cell: (p) => p.rows.join(", ") },
       {
         label: "",
@@ -668,7 +778,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
           }
           return panelButton("content-undo", "Undo", () => {
             void confirmBox(root, {
-              text: `Undo "${p.summary}"? Every row it changed goes back as it was before, live at once.`,
+              text: `Undo "${p.summary}"? Every row it changed goes back as it was before, live at once.${p.cleanup.length > 0 ? " What it did to the world (deleted, replaced or despawned) is not undone." : ""}`,
               confirm: "Undo",
               cancel: "Keep it",
               danger: true,
@@ -687,7 +797,41 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   });
   history.body.append(historyTable.el);
 
-  root.append(packs.el, notices.el, draft.el, rows.el, history.el);
+  // ---- problems -------------------------------------------------------------------------------
+  const problemsSection = section(
+    "Problems",
+    "References nothing resolves. They never stop the game: an unknown item shows by its name with no picture, and an unknown monster spawns as a stand-in. Content's own are as the packs shipped them, or left by a change.",
+  );
+  const problemsBody = document.createElement("div");
+  problemsBody.className = "content-problems-body";
+  problemsSection.body.append(
+    panelButton("content-problems-check", "Look for problems", () => {
+      problemsSeq = next();
+      problemsBody.replaceChildren("Looking…");
+      actions.problems(problemsSeq);
+    }),
+    problemsBody,
+  );
+  const drawProblems = (contentList: ContentProblemView[], world: ContentProblemView[]) => {
+    const part = (title: string, list: ContentProblemView[], none: string) => {
+      const h = document.createElement("h4");
+      h.className = "content-usage-title";
+      h.textContent = `${title} (${list.length})`;
+      if (list.length === 0) {
+        const p = document.createElement("p");
+        p.className = "content-checks-ok";
+        p.textContent = none;
+        return [h, p];
+      }
+      return [h, problemList(list)];
+    };
+    problemsBody.replaceChildren(
+      ...part("In the world", world, "Every stored item and spawn names something that exists."),
+      ...part("In content", contentList, "Every reference in content resolves."),
+    );
+  };
+
+  root.append(packs.el, notices.el, draft.el, rows.el, history.el, problemsSection.el);
 
   function refreshAll(): void {
     overviewSeq = next();
@@ -713,6 +857,9 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
         checks.append(bad, problemList(o.problems));
       }
     }
+    const nextRemovals = drawRemovals(o.removals ?? []);
+    removals.replaceWith(nextRemovals);
+    removals = nextRemovals;
     publishBtn.disabled = o.draft.length === 0 || o.problems.length > 0;
     historyTable.setRows(o.history);
     if (datasetSel.options.length === 0) {
@@ -757,6 +904,24 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
             }
           }
           return;
+        case "contentUsage":
+          if (msg.seq === usageSeq) {
+            usage = msg.usage;
+            usageBox.replaceChildren(
+              msg.usage
+                ? drawUsage(msg.usage, {
+                    openRow: (r) => openRow(r),
+                    openCharacter: (name) => actions.openCharacter(name),
+                  })
+                : (msg.error ?? ""),
+            );
+          }
+          return;
+        case "contentProblems":
+          if (msg.seq === problemsSeq) {
+            drawProblems(msg.content, msg.world);
+          }
+          return;
         case "contentResult":
           if (msg.seq === resultSeq) {
             if (msg.ok) {
@@ -785,6 +950,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     reset() {
       overview = null;
       listing = null;
+      problemsBody.replaceChildren();
       closeEditor();
       datasetSel.replaceChildren();
       partSel.replaceChildren();

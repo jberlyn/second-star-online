@@ -161,6 +161,10 @@ describe("Only server systems create items", () => {
       contentPublish: ["summary:string", "draftRev:string"],
       contentUndo: ["id:string"],
       contentNotice: ["dataset:string", "part:string", "key:string"],
+      // Where-used and removal (issue #28): an item or monster by key, and the item or monster its
+      // copies, spawns and references become. The server resolves both against the content store.
+      contentUsage: ["key:string"],
+      contentRemove: ["key:string", "replacement:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
