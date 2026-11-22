@@ -1,13 +1,12 @@
 /**
- * The Assassin's game. Pure rules over the generated `socialData` (the generated assassin data).
+ * The Assassin's game. Pure rules over the content store's `social.assassin` data.
  */
-import { itemsData, socialData } from "@secondstaronline/data";
-
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { skillValue } from "../core/fighter.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
 import { isGoldName } from "../inventory/inventory.ts";
 
-const A = socialData.assassin;
+let A: ContentStore["social"]["assassin"];
 
 /** `MODE.txt`: GO (normal), LIGHTNING, STOP (none running; the archive's value). */
 export type AssassinMode = "GO" | "LIGHTNING" | "STOP";
@@ -116,10 +115,10 @@ export function endLines(table: AssassinTable): string[] {
 }
 
 /** The Statue's line, "You view the top Assassins of FSO..." */
-export const STATUE_ITEM = A.statue.item;
-export const STATUE_TEXT = A.statue.text;
+export let STATUE_ITEM: typeof A.statue.item;
+export let STATUE_TEXT: typeof A.statue.text;
 /** 20 frames: the original's pause between item actions. */
-export const STATUE_PAUSE = A.statue.pause;
+export let STATUE_PAUSE: typeof A.statue.pause;
 
 /**
  * The all-time scores display (both original draw routines): a return, the header, two returns,
@@ -168,7 +167,7 @@ export function topTenBlock(layout: TopTenLayout, table: AssassinTable): string 
 }
 
 /** The archive's prizes, `Long Sword:1000 Gold:500 Gold:Knife`. */
-export const ARCHIVED_PRIZES: readonly string[] = A.prizes.archived.split(":");
+export let ARCHIVED_PRIZES: readonly string[];
 
 /**
  * The prizes given, in place order: items 1-4, stopping at the first blank. 1.6 gave only items
@@ -202,6 +201,15 @@ export function prizeLineOk(line: string): boolean {
     );
   }
   return (
-    itemsData.items.some((i) => lingoEq(i.name, s)) || itemsData.fixtures.some((f) => lingoEq(f, s))
+    content().items.items.some((i) => lingoEq(i.name, s)) ||
+    content().items.fixtures.some((f) => lingoEq(f, s))
   );
 }
+
+onContent((c) => {
+  A = c.social.assassin;
+  STATUE_ITEM = A.statue.item;
+  STATUE_TEXT = A.statue.text;
+  STATUE_PAUSE = A.statue.pause;
+  ARCHIVED_PRIZES = A.prizes.archived.split(":");
+});

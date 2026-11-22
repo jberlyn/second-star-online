@@ -2,17 +2,16 @@
  * Quests: `QuestGive`'s quest-line branch, `FindNewQuest` and `SayQuest`, over the server's
  * 40 `Quests.txt` lines. Pure rules. The faction-head branch is `headTurnIn` (factions.ts).
  */
-import { questData, socialData } from "@secondstaronline/data";
-
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { addSlotFor, type Bag } from "../inventory/inventory.ts";
 
 /** The lines `QuestGive` and `SayQuest` read. */
-export const QUEST_LINES = socialData.questReplies.give.lines;
+export let QUEST_LINES: ContentStore["social"]["questReplies"]["give"]["lines"];
 
 /** The archive's `Quests.txt`, padded to 40 lines (the stray line feeds trimmed). */
 export function archivedQuestLines(): string[] {
-  const out = questData.current.map((q) => `${q.npc}:${q.wants}:${q.reward}`);
+  const out = content().quests.current.map((q) => `${q.npc}:${q.wants}:${q.reward}`);
   while (out.length < QUEST_LINES) {
     out.push("");
   }
@@ -95,7 +94,7 @@ export function questReward(bag: Bag, reward: string): number {
  * nobody, writing a line no NPC would answer.)
  */
 export function findNewQuest(rng: Rng): string {
-  const pools = questData.pools;
+  const pools = content().quests.pools;
   const names = pools.npcs.flatMap((p) => (p.npc ? [p.npc] : []));
   const npc = names[rng.random(names.length) - 1] ?? names[0] ?? "";
   const w = rng.random(pools.wanted.length);
@@ -112,16 +111,16 @@ export function questLineUnanswerable(line: string): boolean {
 
 /** "Wow thanks…", `aqs`: the giver's map hears it. */
 export function questThanks(npc: string): string {
-  return fill(socialData.questReplies.give.thanks, npc);
+  return fill(content().social.questReplies.give.thanks, npc);
 }
 
 /** "I'm sorry but I don't need that.", `sqa`: the giver alone. */
 export function questSorry(npc: string): string {
-  return fill(socialData.questReplies.give.sorry, npc);
+  return fill(content().social.questReplies.give.sorry, npc);
 }
 
 /** Oraku's exchange: his own orb for the Royal Ninja Uniform. */
-export const ORAKU = socialData.questReplies.oraku;
+export let ORAKU: ContentStore["social"]["questReplies"]["oraku"];
 
 export function orakuLine(): string {
   return fill(ORAKU.text, ORAKU.npc);
@@ -145,7 +144,7 @@ export interface QuestReply {
  * question was (1.6 sent slot 1's "Bring me a…" to the asker alone and left off its closing quote).
  */
 export function sayQuest(lines: readonly string[], names: readonly string[]): QuestReply[] {
-  const s = socialData.questReplies.say;
+  const s = content().social.questReplies.say;
   const out: QuestReply[] = [];
   for (const name of names) {
     if (name === "") {
@@ -183,3 +182,8 @@ export function asksAboutFaction(text: string): boolean {
     lingoContains(text, p),
   );
 }
+
+onContent((c) => {
+  QUEST_LINES = c.social.questReplies.give.lines;
+  ORAKU = c.social.questReplies.oraku;
+});

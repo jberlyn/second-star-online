@@ -1,17 +1,32 @@
-/** Blackjack. Pure rules over the generated `casinoData`. */
-import { casinoData } from "@secondstaronline/data";
+/** Blackjack. Pure rules over the content store's `casino.blackjack`. */
+import type { CasinoData } from "@secondstaronline/data";
 
+import { onContent } from "../../content/store.ts";
 import { lingoEq, lingoInteger, type Rng } from "../core/lingo.ts";
 
-const B = casinoData.blackjack;
+type Blackjack = CasinoData["blackjack"];
 
-export const BJ_ITEM = B.item.text;
-export const BJ_TEXT = B.texts;
-export const BJ_MAX_BID = B.maxBid;
-export const BJ_HAND_SIZE = B.handSize;
-export const BJ_RESET_FRAMES = B.resetFrames;
-export const BJ_BID_BLOCK = B.bidBlock;
-export const BJ_BUTTON_BLOCK = B.buttonBlock;
+let B: Blackjack;
+export let BJ_ITEM: string;
+export let BJ_TEXT: Blackjack["texts"];
+export let BJ_MAX_BID: number;
+export let BJ_HAND_SIZE: number;
+export let BJ_RESET_FRAMES: number;
+export let BJ_BID_BLOCK: Blackjack["bidBlock"];
+export let BJ_BUTTON_BLOCK: Blackjack["buttonBlock"];
+let ACE: number;
+
+onContent((c) => {
+  B = c.casino.blackjack;
+  BJ_ITEM = B.item.text;
+  BJ_TEXT = B.texts;
+  BJ_MAX_BID = B.maxBid;
+  BJ_HAND_SIZE = B.handSize;
+  BJ_RESET_FRAMES = B.resetFrames;
+  BJ_BID_BLOCK = B.bidBlock;
+  BJ_BUTTON_BLOCK = B.buttonBlock;
+  ACE = B.cards.base + 1;
+});
 
 /** The exact name that sits (comparison ignores case). */
 export function isBlackjackTable(name: string): boolean {
@@ -32,8 +47,6 @@ export function drawCard(rng: Rng): number {
 export function cardValue(card: number): number {
   return B.values[String(card)] ?? 0;
 }
-
-const ACE = B.cards.base + 1;
 
 /**
  * `handTotal`: count each Ace as 11, then reduce Aces from 11 to 1 one at a time while over 21.

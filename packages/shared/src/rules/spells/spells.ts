@@ -10,14 +10,9 @@
  * - Spell collisions; the monster hit effects; the monster death check; the radar; the
  *   experience-band text; Create Food.
  */
-import {
-  itemRulesData,
-  type Spell,
-  type SpellFx,
-  type SpellSummon,
-  spellsData,
-} from "@secondstaronline/data";
+import type { Spell, SpellFx, SpellSummon } from "@secondstaronline/data";
 
+import { content, onContent } from "../../content/store.ts";
 import { slotItem } from "../combat/armour.ts";
 import { gearBonus } from "../combat/gear.ts";
 import { type Equipment, type Faction, skillIndex } from "../core/fighter.ts";
@@ -36,7 +31,7 @@ export interface SpellTable {
 }
 
 /**
- * Pure index over `spells` rows (default: `spellsData.spells`), resolving spell names,
+ * Pure index over `spells` rows (the module's default: the installed store's `spells.spells`), resolving spell names,
  * `effect` mappings, and FX runs case-insensitively. For every 1.6 row `effect` equals the
  * row's name and each run's `effect` equals its `member`, so `fxEffect` and `fxForEffect`
  * return their input unchanged.
@@ -74,18 +69,20 @@ export function spellTable(rows: readonly Spell[]): SpellTable {
   return { byName, castEffect, fxRun, fxEffect, fxForEffect };
 }
 
-const DEFAULT_TABLE = spellTable(spellsData.spells);
+/** The table over the installed store's spells, rebuilt on every install. */
+let defaultTable: SpellTable;
 
 /** A spell by any case of its name, or null. */
-export const spellByName = DEFAULT_TABLE.byName;
+export const spellByName = (name: string): Spell | null => defaultTable.byName(name);
 /** The 1.6 spell whose effect code `spell` runs (unknown names: `spell` unchanged). */
-export const castEffect = DEFAULT_TABLE.castEffect;
+export const castEffect = (spell: string): string => defaultTable.castEffect(spell);
 /** An FX run by any case of its member base, or null. */
-export const fxRun = DEFAULT_TABLE.fxRun;
+export const fxRun = (member: string): SpellFx | null => defaultTable.fxRun(member);
 /** The 1.6 FX run member that `name` behaves as (1.6 runs, arrows, hazards: `name` unchanged). */
-export const fxEffect = DEFAULT_TABLE.fxEffect;
+export const fxEffect = (name: string): string => defaultTable.fxEffect(name);
 /** The art FX member for `spell` corresponding to 1.6 FX run `effectFx`. */
-export const fxForEffect = DEFAULT_TABLE.fxForEffect;
+export const fxForEffect = (spell: string, effectFx: string): string =>
+  defaultTable.fxForEffect(spell, effectFx);
 
 // ---- the cast ---------------------------------------------------------------------
 
@@ -451,7 +448,7 @@ export interface SpellTarget {
  * so armour and Magic Shield never touched spell damage.
  */
 export function spellDefense(n: number, t: SpellTarget, rng: Rng): number {
-  const def = itemRulesData.armour.spell;
+  const def = content().itemRules.armour.spell;
   let p = n;
   for (const r of def.rows) {
     if (ruleMatches(slotItem(t.equip, r.slot), r)) {
@@ -666,14 +663,14 @@ export const BOOK_TEXT = {
 
 /** The required Dexterity: 1, then each `use.books` row that matches (the last true wins). */
 export function bookDex(item: string): number {
-  return lastMatch(itemRulesData.use.books, item)?.mysticism ?? 1;
+  return lastMatch(content().itemRules.use.books, item)?.mysticism ?? 1;
 }
 
 /**
- * The book's spell rows are `spellsData.spells` in 1.6's file order: the last match wins. Only
+ * The book's spell rows are `content().spells.spells` in 1.6's file order: the last match wins. Only
  * Bolt and Firebolt overlap ("Firebolt Book" contains both).
  */
-const BOOK_ROWS = spellsData.spells.flatMap((s) => (s.book ? [{ ...s.book, name: s.name }] : []));
+let BOOK_ROWS: (NonNullable<Spell["book"]> & { name: string })[];
 
 export type BookResult =
   | { kind: "skill"; skill: string; lines: string[] }
@@ -690,7 +687,7 @@ export const SKILL_BOOK_CAP = 77;
  * and only then is the book used up.
  */
 export function runBook(book: string, skills: number[], spellbook: string[], rng: Rng): BookResult {
-  const skillBook = firstMatch(itemRulesData.use.skillBooks, book);
+  const skillBook = firstMatch(content().itemRules.use.skillBooks, book);
   if (skillBook) {
     const i = skillIndex(skillBook.skill);
     if ((skills[i] ?? 0) < SKILL_BOOK_CAP) {
@@ -829,3 +826,8 @@ export function createFood(
       : `Suddenly, ${food} appears in your inventory.`;
   return { item: food, text };
 }
+
+onContent((c) => {
+  defaultTable = spellTable(c.spells.spells);
+  BOOK_ROWS = c.spells.spells.flatMap((s) => (s.book ? [{ ...s.book, name: s.name }] : []));
+});

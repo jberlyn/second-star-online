@@ -2,7 +2,6 @@
  * The live world: maps with players on them, held in memory and owned by the sim. Pure apart from
  * the `loadMap` function it is given; it never touches sockets, SQL or the clock.
  */
-import { classesData } from "@secondstaronline/data";
 import {
   ARCHIVED_POWERS,
   type AssassinEntry,
@@ -14,6 +13,7 @@ import {
   type Bag,
   type ChatChannel,
   type ChatOutcome,
+  content,
   type DeltaEvent,
   type Dir,
   defaultPlayerPrefs,
@@ -817,7 +817,7 @@ export function defaultCharacter(): CharacterState {
     classCode: 1,
     vitals: { level: 1, hp: 20, hpMax: 20, sp: 20, spMax: 20, exp: 0, expNeeded: 30 },
     stats: { str: 10, sta: 10, agi: 1, dex: 10, int: 10, wis: 10, spd: 1 },
-    skills: Array(classesData.skills.length).fill(1),
+    skills: Array(content().classes.skills.length).fill(1),
     hunger: 50000,
     equip: { ...NO_EQUIPMENT },
     faction: { ...NO_FACTION },

@@ -6,8 +6,8 @@
  * count, the Passive test, the aim, the Cow/Pig/Spikes/Web/Holy Shield exits, and the no-fight-map
  * test that only the harmful ones make.
  */
-import { type MonsterSpellRule, monstersData } from "@secondstaronline/data";
-import { anyMatch, lingoContains, type Rng } from "@secondstaronline/shared";
+import type { MonsterSpellRule } from "@secondstaronline/data";
+import { anyMatch, content, lingoContains, type Rng } from "@secondstaronline/shared";
 
 import { hasFlag, npcData } from "../monsters/npcfiles.ts";
 import type { MonsterSlot } from "../monsters/slots.ts";
@@ -31,7 +31,7 @@ export function monsterSpells(room: Room, p: Player, rng: Rng): void {
       continue;
     }
     const spells = npcData(room.npcs, m.name)?.spells ?? [];
-    for (const s of monstersData.casting.spells) {
+    for (const s of content().monsters.casting.spells) {
       if (spells.some((l) => lingoContains(l, `SPL|${s.tag}`))) {
         castOne(room, p, slot, s, rng);
       }
@@ -50,7 +50,7 @@ function castOne(room: Room, p: Player, slot: MonsterSlot, s: MonsterSpellRule, 
   }
   const passive = hasFlag(room.npcs, m.name, "Passive");
   const unprovoked = passive && !p.npcAttackFlag;
-  const never = () => anyMatch(monstersData.casting.neverCasts, m.name);
+  const never = () => anyMatch(content().monsters.casting.neverCasts, m.name);
   const me = playerLoc(p);
   const mon = monsterLoc(slot) ?? me;
   const sprite = 179 + slot.slot;

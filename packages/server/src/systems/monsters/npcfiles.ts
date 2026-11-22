@@ -4,15 +4,14 @@
  * files and takes the NPC editor's saves on top (`npc_files`, persistence), so the shops, Bio
  * windows, chatter, flags, monster spells and drops all read one current copy.
  */
-import { npcFilesData } from "@secondstaronline/data/npcfiles";
-import { type NpcFile, parseNpcFile } from "@secondstaronline/shared";
+import { content, type NpcFile, parseNpcFile } from "@secondstaronline/shared";
 
 export type NpcStore = Map<string, NpcFile>;
 
 /** The seeded NPC files. */
 export function archiveNpcStore(): NpcStore {
   return new Map(
-    npcFilesData.files.map((f) => [f.name.toLowerCase(), parseNpcFile(f.name, f.text)]),
+    content().npcFiles.files.map((f) => [f.name.toLowerCase(), parseNpcFile(f.name, f.text)]),
   );
 }
 

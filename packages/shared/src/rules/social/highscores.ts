@@ -1,21 +1,20 @@
 /**
  * The High Score Statue: the server's top-ten ranking of player scores. Pure rules over the
- * generated `socialData.highScores`.
+ * content store's `social.highScores`.
  *
  * 1.6 kept the board with its casino scripts; in SSO it is a plain ranking of every player on the
  * server, with nothing to do with the casino.
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { type AssassinEntry, type AssassinTable, topTenBlock } from "./assassin.ts";
 import { bioScore } from "./bios.ts";
 
-const H = socialData.highScores;
+let H: ContentStore["social"]["highScores"];
 
-export const SCORES_ITEM = H.item.text;
-export const SCORES_TEXT = H.text;
-export const SCORES_PAUSE = H.pause;
-export const SCORES_SIZE = H.tableSize;
+export let SCORES_ITEM: typeof H.item.text;
+export let SCORES_TEXT: typeof H.text;
+export let SCORES_PAUSE: typeof H.pause;
+export let SCORES_SIZE: typeof H.tableSize;
 
 /** The high-score points: the bio score, which counts every skill, HPmax and SPmax. No cap. */
 export function highScorePoints(skills: readonly number[], hpMax: number, spMax: number): number {
@@ -67,3 +66,11 @@ export function scoresBlock(table: AssassinTable): string {
     table,
   );
 }
+
+onContent((c) => {
+  H = c.social.highScores;
+  SCORES_ITEM = H.item.text;
+  SCORES_TEXT = H.text;
+  SCORES_PAUSE = H.pause;
+  SCORES_SIZE = H.tableSize;
+});

@@ -7,6 +7,8 @@
  * Run: `bun run admin:role <name> <role id|none>`, or `bun run admin:role --list` for the roles
  * and who holds them (SSO_DB as for the server).
  */
+import "../content-classic.ts";
+
 import { roleToData } from "@secondstaronline/shared";
 
 import { findAccountByUsername, setRole } from "../persistence/accounts.ts";

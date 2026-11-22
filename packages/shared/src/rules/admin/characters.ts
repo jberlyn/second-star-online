@@ -3,8 +3,7 @@
  * one place, with their sheet, items, houses, moderation and history. 1.6 had nothing like it: staff
  * read and edited the character's text files by hand. Pure.
  */
-import { classesData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import type { CharacterEditRow } from "./character-edit.ts";
 import type { ChatLogRow } from "./chatlog.ts";
 import {
@@ -70,7 +69,7 @@ export interface CharacterSheet {
     wis: number;
     spd: number;
   };
-  /** One value per skill in `classesData.skills`, index 0 = Slash. */
+  /** One value per skill in the content store's `classes.skills`, index 0 = Slash. */
   skills: number[];
   hunger: number;
   /** `Fctnme`: 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
@@ -145,7 +144,7 @@ export const TIMED_HUB_ACTIONS: readonly HubAction[] = ["ban", "jail", "mute"];
 
 /** A class code's name, or `Class <code>` for one the content no longer lists. */
 export function classLabel(code: number): string {
-  return classesData.classes.find((c) => c.code === code)?.name ?? `Class ${code}`;
+  return content().classes.classes.find((c) => c.code === code)?.name ?? `Class ${code}`;
 }
 
 const FACTION_LABELS = ["None", "Mage", "Warrior", "Adventurer"] as const;

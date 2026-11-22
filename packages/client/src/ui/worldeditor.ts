@@ -19,12 +19,12 @@
  *   strip (55, 56).
  */
 
-import { monstersData } from "@secondstaronline/data";
 import {
   BLEND_LEVELS,
   type Brush,
   clickFaction,
   clickLayer,
+  content,
   EDITOR_ITEM_SLOTS,
   EDITOR_ITEMS,
   EDITOR_MONSTERS,
@@ -92,8 +92,6 @@ function paletteRect(k: number): Rect {
   const ys = [46, 81, 116, 151, 185, 220, 255, 290, 325, 360];
   return { x: 590 + 35 * col - 16, y: (ys[row] ?? 46) - 16, w: 32, h: 32 };
 }
-
-const BODY = new Map(monstersData.monsters.map((m) => [m.name.toLowerCase(), m.body]));
 
 function hitButton(label: string, origin: string, onClick: (e: MouseEvent) => void) {
   const b = action(document.createElement("button"), origin);
@@ -731,7 +729,7 @@ export function createWorldEditor(
       }
     }
     for (const m of mobs) {
-      const body = m ? BODY.get(m.name.toLowerCase()) : undefined;
+      const body = m ? content().monster(m.name)?.body : undefined;
       if (m && body !== undefined) {
         drawSprite(ctx, assets, "bodies", `${body}-F2-S`, m.x * 32 - 16, m.y * 32 - 35);
       }

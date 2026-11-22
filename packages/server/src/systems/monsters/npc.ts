@@ -2,10 +2,10 @@
  * NPCs as world entities. An NPC is a roster species like any monster; what makes it an NPC is its
  * data file (1.6 kept one text file per NPC; the NPC file store is `npcfiles.ts`).
  */
-import { monstersData } from "@secondstaronline/data";
 import {
   addSlotFor,
   anyMatch,
+  content,
   type DeltaEvent,
   FACING_DELTA,
   heardSqa,
@@ -153,7 +153,7 @@ export function clickNpc(room: Room, p: Player, slotNo: number, rng: Rng): NpcOu
   if (bodyIs(slot, BODY.pig) && slotAt(room, p, 1) === slot) {
     return grabPig(room, p, slot, rng);
   }
-  if (anyMatch(monstersData.rules.namesSelf, m.name)) {
+  if (anyMatch(content().monsters.rules.namesSelf, m.name)) {
     return { out: [say(p, NPC_TEXT.thisIs(m.name))], slotsChanged: false };
   }
   if (Object.values(BODY).some((b) => bodyIs(slot, b))) {
@@ -203,7 +203,7 @@ export function goldTarget(room: Room, p: Player): MonsterSlot | null {
 
 /** The `MONSTER` field `contains` the name. */
 export function inMonsterList(name: string): boolean {
-  return lingoContains(monstersData.editorLists.worldEditor.monsters.join("\r"), name);
+  return lingoContains(content().monsters.editorLists.worldEditor.monsters.join("\r"), name);
 }
 
 /**

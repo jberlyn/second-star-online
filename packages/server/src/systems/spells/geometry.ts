@@ -4,8 +4,9 @@
  * `tileLoc`); rects come from each member's size and registration point
  * (@secondstaronline/data/rects, from the cast manifest).
  */
-import { type MemberRect, rectsData } from "@secondstaronline/data/rects";
+import type { MemberRect } from "@secondstaronline/data/rects";
 import {
+  content,
   FACING_DELTA,
   type FxSprite,
   fxMember,
@@ -31,7 +32,7 @@ export type Rect = { left: number; top: number; right: number; bottom: number };
 export const FALLBACK_BODY_RECT: MemberRect = [32, 32, 16, -2];
 
 export function fxRect(fx: Pick<FxSprite, "name" | "frame" | "h" | "v">): Rect | null {
-  const r = rectsData.fx[fxMember(fx).toLowerCase()];
+  const r = content().rects.fx[fxMember(fx).toLowerCase()];
   return r ? spriteRect(r, fx.h, fx.v) : null;
 }
 
@@ -73,7 +74,7 @@ export function playerRect(p: Player, tick = 0): Rect {
       p.vehicle && p.stepFrames <= 0
         ? (RIDER_FRAMES[tick % 3] ?? "F2")
         : walkFrame(p.stepFrames, len);
-    const r = rectsData.chars[`${body}-${frame}-${p.facing}`.toLowerCase()];
+    const r = content().rects.chars[`${body}-${frame}-${p.facing}`.toLowerCase()];
     if (r) {
       return spriteRect(r, at.h, at.v);
     }
@@ -109,7 +110,7 @@ export function monsterRect(slot: MonsterSlot): Rect | null {
   }
   const body = bodyOf(m.name);
   const member = `${body}-${walkFrame(m.anim, MONSTER_STEP_FRAMES)}-${m.facing}`;
-  return spriteRect(rectsData.chars[member.toLowerCase()] ?? FALLBACK_BODY_RECT, at.h, at.v);
+  return spriteRect(content().rects.chars[member.toLowerCase()] ?? FALLBACK_BODY_RECT, at.h, at.v);
 }
 
 /** The member name a monster shows, for the body tests for names containing "61-". */

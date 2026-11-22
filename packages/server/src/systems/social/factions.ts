@@ -7,9 +7,9 @@
  * player hears only its own faction's announcements and stops hearing them the moment the
  * membership ends, however it ends (bugs fixed).
  */
-import { socialData } from "@secondstaronline/data";
 import {
   CHAT_COLOR,
+  content,
   type FactionId,
   factionIdOf,
   headTurnIn,
@@ -167,7 +167,7 @@ export function askFactionPower(world: World, p: Player): Outgoing[] {
     return [];
   }
   const out: Outgoing[] = [];
-  for (const leader of socialData.factions.map((f) => f.leader)) {
+  for (const leader of content().social.factions.map((f) => f.leader)) {
     const here = room.map.slots.some((s) => s.live?.name === leader);
     const text = here ? sayFaction(leader, world.factionPowers) : null;
     if (text) {

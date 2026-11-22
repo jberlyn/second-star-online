@@ -21,7 +21,9 @@ export type {
   MonsterSpellRule,
   MonstersData,
 } from "../schema/monsters.ts";
+export type { NpcFilesData, NpcFileText } from "../schema/npcfiles.ts";
 export type { QuestData } from "../schema/quests.ts";
+export type { MemberRect, RectsData } from "../schema/rects.ts";
 export type { SeedMapData } from "../schema/seed-map.ts";
 export type { Faction as FactionRow, SocialData } from "../schema/social.ts";
 export type {

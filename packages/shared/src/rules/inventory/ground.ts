@@ -3,8 +3,7 @@
  * "15 Gold", "5 Blue Crystals") on a tile. Pure rules shared by the server and the client's
  * prediction and drawing.
  */
-import { houseData, itemRulesData } from "@secondstaronline/data";
-
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
@@ -18,7 +17,7 @@ export function tilePixel(x: number, y: number): { px: number; py: number } {
   return { px: 32 * x + 14, py: 32 * y - 3 };
 }
 
-const G = itemRulesData.ground;
+let G: ContentStore["itemRules"]["ground"];
 
 /**
  * The item-action pause after Ctrl: 4 frames (200 ms). 1.6 set 40 frames on every Ctrl and held
@@ -310,7 +309,7 @@ const CASINO_CLICKS: Readonly<Record<string, "slots" | "blackjack" | "checkers">
  * The name gates of a click pickup. A click uses a thing that does something and Ctrl picks up the
  * ones that can be carried (`ctrlGate`). Chests, crates, cabinets and house and guild vaults open
  * with the chest click; boards, mailboxes and signs open windows elsewhere (here they are left
- * alone); the fixtures after the Guild Vault run in 1.6's order from `houseData.clickFixtures`: a
+ * alone); the fixtures after the Guild Vault run in 1.6's order from `content().houses.clickFixtures`: a
  * text, a silent exit, or a handler (the switches, the Guild Center and the casino tables; the
  * personal Vault is the server's, before this test). The stations and casino tables answer
  * wherever they stand, your own house included (1.6 picked them up there instead).
@@ -377,7 +376,7 @@ export function clickGate(name: string): PickupGate {
   if (has("Guild Vault")) {
     return { kind: "open" };
   }
-  for (const f of houseData.clickFixtures) {
+  for (const f of content().houses.clickFixtures) {
     if (f.match === "exact" ? eq(f.item) : has(f.item)) {
       if (f.text) {
         return { kind: "text", text: f.text };
@@ -464,7 +463,7 @@ export function ctrlGate(name: string, who: { str: number; mine: boolean }): Pic
   }
   // The fixtures' one-line texts and the skill platforms', `pickup.ctrlTexts`, in 1.6's order, with
   // the stations' lines after them (docs/modding.md has the notes on the platforms).
-  const said = firstMatch(itemRulesData.pickup.ctrlTexts, name);
+  const said = firstMatch(content().itemRules.pickup.ctrlTexts, name);
   if (said) {
     return { kind: "text", text: said.text, ...(said.unpause ? { unpause: true } : {}) };
   }
@@ -534,3 +533,7 @@ export function amountPath(a: {
   }
   return "drop";
 }
+
+onContent((c) => {
+  G = c.itemRules.ground;
+});

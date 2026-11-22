@@ -3,10 +3,10 @@
  * player-count ladder, against the server's one set of slots, so two players' rolls can never fill
  * a slot twice.
  */
-import { monstersData } from "@secondstaronline/data";
 import {
   anyMatch,
   blocksMonster,
+  content,
   isWalkable,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -39,7 +39,9 @@ function blockedByItem(map: WorldMap, x: number, y: number): boolean {
  * Players and monsters on the tile do not matter.
  */
 export function refusesTile(map: WorldMap, name: string, x: number, y: number): boolean {
-  if (anyMatch(monstersData.rules.sea, name) ? !isWater(map, x, y) : !isWalkable(map.walk, x, y)) {
+  if (
+    anyMatch(content().monsters.rules.sea, name) ? !isWater(map, x, y) : !isWalkable(map.walk, x, y)
+  ) {
     return true;
   }
   if (blockedByItem(map, x, y)) {

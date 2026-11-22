@@ -3,7 +3,6 @@
  * the server's own handler, against server state only: the item comes from the bag slot, the tile
  * from the player's position, the target from the map.
  */
-import { houseData } from "@secondstaronline/data";
 import {
   ACTION_PAUSE,
   addSlotFor,
@@ -15,6 +14,7 @@ import {
   blocksPlayer,
   checkEquip,
   clickGate,
+  content,
   ctrlGate,
   type DeltaEvent,
   deedUse,
@@ -456,7 +456,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   if (isFurniture(name)) {
     p.headFlag = headDrop(p.map.title, p.name, p.guild);
     if (p.headFlag === 1) {
-      io.tell(p, houseData.furnitureDrop.text);
+      io.tell(p, content().houses.furnitureDrop.text);
       return io.out;
     }
   }
@@ -907,7 +907,7 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
   }
   // A container: the click's item-action pause, then the chest click, whose open ends the pause.
   if (gate.kind === "open") {
-    p.itemPause = houseData.containers.clickPause;
+    p.itemPause = content().houses.containers.clickPause;
     return openContainer(ctx.world, p, g);
   }
   if (gate.kind === "switch") {
@@ -928,7 +928,7 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
   }
   // The casino tables after the click's pause.
   if (gate.kind === "casino") {
-    p.itemPause = houseData.containers.clickPause;
+    p.itemPause = content().houses.containers.clickPause;
     if (gate.game === "slots") {
       io.out.push(...slotOpen(p, g));
     } else if (gate.game === "blackjack") {
@@ -940,14 +940,14 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
   }
   // The Guild Center click after the click's item-action pause.
   if (gate.kind === "guildCenter") {
-    p.itemPause = houseData.containers.clickPause;
+    p.itemPause = content().houses.containers.clickPause;
     io.out.push(...guildCenterClick(ctx.world, p, g));
     return io.out;
   }
   // A mailbox (the owner's or another's) after the click's pause, and a board (the hall's own pause
   // is set inside).
   if (gate.kind === "mail") {
-    p.itemPause = houseData.containers.clickPause;
+    p.itemPause = content().houses.containers.clickPause;
     if (ctx.mail) {
       io.out.push(...mailOpen(p, g, gate.universal, ctx.mail));
     }

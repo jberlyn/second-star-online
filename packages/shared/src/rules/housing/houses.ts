@@ -1,9 +1,10 @@
 /**
  * Housing rules: deeds, the placement ghost and checks, the build, the do-not-drop flag, rest regen and the
- * decay list. Pure functions over `houseData`, the generated house records.
+ * decay list. Pure functions over the content store's `houses`, house records.
  */
-import { type HouseType, houseData } from "@secondstaronline/data";
+import type { HouseType } from "@secondstaronline/data";
 
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import type { MapExit } from "../admin/worldedit.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { houseMapName } from "../core/maps.ts";
@@ -24,7 +25,7 @@ export type DeedUse =
  * (the Stone Guild Hall, which has no art or template) says why and is kept.
  */
 export function deedUse(item: string): DeedUse | null {
-  const d = houseData.deeds.find((x) => lingoEq(x.deed, item));
+  const d = content().houses.deeds.find((x) => lingoEq(x.deed, item));
   if (!d) {
     return null;
   }
@@ -39,7 +40,7 @@ export function deedUse(item: string): DeedUse | null {
 }
 
 export function houseType(house: string): HouseType | null {
-  return houseData.types.find((t) => lingoEq(t.house, house)) ?? null;
+  return content().houses.types.find((t) => lingoEq(t.house, house)) ?? null;
 }
 
 /**
@@ -47,8 +48,8 @@ export function houseType(house: string): HouseType | null {
  * type's shift, drawn by its member's size and regpoint.
  */
 export function ghostRect(t: HouseType, hx: number, hy: number): StageRect {
-  const h = hx * 32 + houseData.ghost.baseX + t.ghost.shiftX;
-  const v = hy * 32 + houseData.ghost.baseY + t.ghost.shiftY;
+  const h = hx * 32 + content().houses.ghost.baseX + t.ghost.shiftX;
+  const v = hy * 32 + content().houses.ghost.baseY + t.ghost.shiftY;
   const left = h - t.ghost.regX;
   const top = v - t.ghost.regY;
   return { left, top, right: left + t.ghost.width, bottom: top + t.ghost.height };
@@ -74,7 +75,7 @@ export function terrainOk(
   layer1: readonly string[],
   layer2: readonly string[],
 ): boolean {
-  const codes = houseData.placement.terrain.layer1Codes;
+  const codes = content().houses.placement.terrain.layer1Codes;
   for (let dy = 0; dy < t.footprint.h; dy++) {
     for (let dx = 0; dx < t.footprint.w; dx++) {
       const ground = wordAt(layer1, ax + dx, ay + dy);
@@ -118,7 +119,7 @@ export type PlacementResult =
  * refusal is lifted (an SSO divergence).
  */
 export function checkPlacement(i: PlacementInput): PlacementResult {
-  const pl = houseData.placement;
+  const pl = content().houses.placement;
   const a = houseAnchor(i.type, i.hx, i.hy);
   const e = pl.edge;
   if (a.x < e.minX || a.y < e.minY || a.x > e.maxX || a.y > e.maxY) {
@@ -170,7 +171,7 @@ export function planHouse(
   owner: string,
   guild: string,
 ): HousePlan {
-  const b = houseData.build;
+  const b = content().houses.build;
   const exitItem = {
     item: slot === 1 ? "Exit" : "Exit2",
     x: anchor.x + b.exit.dx,
@@ -217,16 +218,16 @@ export function headDrop(header: string, name: string, guild: string): 0 | 1 {
 }
 
 export const isFurniture = (item: string): boolean =>
-  houseData.furnitureDrop.items.some((f) => lingoEq(item, f));
+  content().houses.furnitureDrop.items.some((f) => lingoEq(item, f));
 
 /** Rest regen: `random(10) = 1` on a house map, then y < 11. */
-export const REST_REGEN = houseData.restRegen;
+export let REST_REGEN: ContentStore["houses"]["restRegen"];
 
 /** The five-minute countdown: each online player's clock check refreshes their houses. */
-export const HOUSE_CLOCK_FRAMES = houseData.decay.clockFrames;
+export let HOUSE_CLOCK_FRAMES: ContentStore["houses"]["decay"]["clockFrames"];
 
 /** A house goes once its owner's last month is this many calendar months back. */
-export const HOUSE_STALE_MONTHS = houseData.decay.staleAfterMonths;
+export let HOUSE_STALE_MONTHS: ContentStore["houses"]["decay"]["staleAfterMonths"];
 
 /** One house-list entry: the house (its interior) and the calendar month its owner was last seen. */
 export interface HouseListEntry {
@@ -290,3 +291,9 @@ export function sweep(
   }
   return { demolish, list: list.filter((e) => !gone.has(key(e))) };
 }
+
+onContent((c) => {
+  REST_REGEN = c.houses.restRegen;
+  HOUSE_CLOCK_FRAMES = c.houses.decay.clockFrames;
+  HOUSE_STALE_MONTHS = c.houses.decay.staleAfterMonths;
+});

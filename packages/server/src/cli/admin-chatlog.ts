@@ -7,6 +7,8 @@
  * (default 50 lines; times are ISO dates or date-times, UTC; SSO_DB as for the server). With a
  * name: the lines that character sent and the IMs sent to them.
  */
+import "../content-classic.ts";
+
 import { CHAT_CHANNELS, type ChatChannel, chatlogLine } from "@secondstaronline/shared";
 
 import { chatLogLines } from "../persistence/chatlog.ts";

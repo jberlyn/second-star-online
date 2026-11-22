@@ -8,7 +8,6 @@
  *   (a bug fixed: 1.6 polled the key before the Hold gate).
  * - The swing itself, the hit test on monsters and the monster hit.
  */
-import { itemRulesData, monstersData } from "@secondstaronline/data";
 import {
   ATTACK_ANIM_FRAMES,
   ATTACK_LATCH_TICKS,
@@ -21,6 +20,7 @@ import {
   can,
   cannonballSlot,
   checkLevelUp,
+  content,
   crystalSlotIn,
   damagedForm,
   FACING_DELTA,
@@ -449,7 +449,7 @@ function pvpSwing(
  * sword, else `swordswing`.
  */
 export function swingSound(weapon: string): SwingSound {
-  const row = firstMatch(itemRulesData.swing.sounds, weapon);
+  const row = firstMatch(content().itemRules.swing.sounds, weapon);
   return row ? row.sound : "swordswing";
 }
 
@@ -523,7 +523,7 @@ function smash(
     return;
   }
   const killXp = meleeKillXp(sp?.xpMelee ?? 30, m.name, p.char.equip.ring);
-  const broadcast = firstMatch(monstersData.rules.killBroadcasts, m.name);
+  const broadcast = firstMatch(content().monsters.rules.killBroadcasts, m.name);
   if (broadcast) {
     ev.broadcast = broadcast.text.replace("{}", p.name);
   }

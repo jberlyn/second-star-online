@@ -1,40 +1,41 @@
 /**
- * Paintings and photos. Pure rules over the generated `socialData.art`.
+ * Paintings and photos. Pure rules over the content store's `social.art`.
  *
  * The painting is member "Painting", 64×64 and 16-bit: every pixel the tools write is stored at 5
  * bits a channel, `level = v >> 3`, shown as `(l << 3) | (l >> 2)`. The tools run on the client
  * only; the server receives the finished PNG.
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import type { Rng } from "../core/lingo.ts";
 
-const A = socialData.art;
+let A: ContentStore["social"]["art"];
 
 const fill = (s: string, v: Record<string, string>) =>
   s.replace(/\{([A-Z]+)\}/g, (_m, k: string) => v[k] ?? "");
 const ax = (k: keyof typeof A.texts) => A.texts[k].text;
 
 /** Every art text, verbatim. */
-export const ART_TEXT = {
-  paintFull: ax("paintFull"),
-  paintSaving: ax("paintSaving"),
-  photoFull: ax("photoFull"),
-  photoSaving: ax("photoSaving"),
-  saved: ax("saved"),
-  viewPhoto: ax("viewPhoto"),
-  viewItem: (name: string) => fill(ax("viewItem"), { NAME: name }),
-  author: (name: string) => fill(ax("author"), { NAME: name }),
-  needCamera: ax("needCamera"),
-  noPicture: ax("noPicture"),
-  notInFront: (name: string) => fill(ax("notInFront"), { NAME: name }),
-} as const;
+const artTextOf = () =>
+  ({
+    paintFull: ax("paintFull"),
+    paintSaving: ax("paintSaving"),
+    photoFull: ax("photoFull"),
+    photoSaving: ax("photoSaving"),
+    saved: ax("saved"),
+    viewPhoto: ax("viewPhoto"),
+    viewItem: (name: string) => fill(ax("viewItem"), { NAME: name }),
+    author: (name: string) => fill(ax("author"), { NAME: name }),
+    needCamera: ax("needCamera"),
+    noPicture: ax("noPicture"),
+    notInFront: (name: string) => fill(ax("notInFront"), { NAME: name }),
+  }) as const;
+export let ART_TEXT: ReturnType<typeof artTextOf>;
 
 /** The painting's side in pixels (member 505) and its on-screen scale. */
-export const PAINT_SIZE = A.size;
-export const PAINT_SCALE = A.scale;
+export let PAINT_SIZE: typeof A.size;
+export let PAINT_SCALE: typeof A.scale;
 /** `lensOk`'s bounds. */
-export const LENS = A.lens;
+export let LENS: typeof A.lens;
 
 /** A 64×64 image of displayed RGB triples (always on the 5-bit grid). */
 export interface PaintImage {
@@ -339,3 +340,11 @@ export function artRef(name: string): { kind: "painting" | "photo"; id: string }
   }
   return { kind, id: name.split("#")[1] ?? "" };
 }
+
+onContent((c) => {
+  A = c.social.art;
+  PAINT_SIZE = A.size;
+  PAINT_SCALE = A.scale;
+  LENS = A.lens;
+  ART_TEXT = artTextOf();
+});

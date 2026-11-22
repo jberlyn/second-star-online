@@ -2,13 +2,13 @@
  * Spell collision and effects: the collision test on players and the hit and death checks on
  * monsters, run once on the server against its own state.
  */
-import { monstersData } from "@secondstaronline/data";
 import {
   can,
   cannonballSweep,
   cannonballTile,
   cannonDamage,
   checkLevelUp,
+  content,
   createFood,
   type DeltaEvent,
   EFFECT_TEXT,
@@ -542,7 +542,7 @@ function checkForDead(
     return true;
   }
   const xp = meleeKillXp(sp?.xpSpell ?? 30, m.name, owner.char.equip.ring);
-  const broadcast = firstMatch(monstersData.rules.killBroadcasts, m.name);
+  const broadcast = firstMatch(content().monsters.rules.killBroadcasts, m.name);
   if (broadcast) {
     res.broadcasts.push({ from: owner.name, text: broadcast.text.replace("{}", owner.name) });
   }

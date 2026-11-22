@@ -1,57 +1,64 @@
 /**
- * Instant messages and away messages. Pure rules over the generated `socialData.chat`.
+ * Instant messages and away messages. Pure rules over the content store's `social.chat`.
  */
-import { socialData } from "@secondstaronline/data";
+import type { SocialData } from "@secondstaronline/data";
 
+import { content, onContent } from "../../content/store.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
-
-const C = socialData.chat;
 
 const fill = (s: string, v: Record<string, string>) =>
   s.replace(/\{([A-Z]+)\}/g, (_m, k: string) => v[k] ?? "");
-const tx = (k: keyof typeof C.texts) => C.texts[k].text;
+const tx = (k: keyof SocialData["chat"]["texts"]) => content().social.chat.texts[k].text;
 
-/** Every IM, away, room, ignore and `/logchat` text, verbatim (the generated chat texts). */
-export const CHAT_SOCIAL_TEXT = {
-  /** The sender's `/msg` echo in the main chat. */
-  imEcho: (me: string, text: string) => fill(tx("imEcho"), { NAME: me, TEXT: text }),
-  /** A line in an IM window's received-text field. */
-  imLine: (name: string, text: string) => fill(tx("imLine"), { NAME: name, TEXT: text }),
-  /** The IM window's title. */
-  imTitle: (sender: string) => fill(tx("imTitle"), { NAME: sender }),
-  /** IMsend's title. */
-  imSendTitle: tx("imSendTitle"),
-  /** The Away window's title. */
-  awayTitle: tx("awayTitle"),
-  /** The Away window's line when away is switched on. */
-  awayOn: tx("awayOn"),
-  /** The Away window's line when away is switched off. */
-  awayOff: tx("awayOff"),
-  /** A line in the Away window's `Messages`. */
-  awayLog: (name: string, text: string) => fill(tx("awayLog"), { NAME: name, TEXT: text }),
-  /** The ChatWindow's title bar. */
-  roomWindowTitle: tx("roomWindowTitle"),
-  /** A room line. */
-  roomLine: (name: string, text: string) => fill(tx("roomLine"), { NAME: name, TEXT: text }),
-  /** Guild Chat with no guild. */
-  noGuild: tx("noGuild"),
-  /** The line printed after `/ignore`. */
-  ignoreAdded: (rest: string) => fill(tx("ignoreAdded"), { TEXT: rest }),
-  /** The line printed after `/unignore`. */
-  ignoreRemoved: (rest: string) => fill(tx("ignoreRemoved"), { TEXT: rest }),
-  /** The `/ignorelist` header, with its trailing space. */
-  ignoreListHeader: tx("ignoreListHeader"),
-  /** The line printed after `/logchat`. */
-  logging: tx("logging"),
-  // ---- SSO lines --------------------------------------------------------------------------
-  notOnline: (name: string) => `${name} is not online.`,
-  ignoreFull: "Your ignore list is full.",
-} as const;
+const chatSocialText = () =>
+  ({
+    /** The sender's `/msg` echo in the main chat. */
+    imEcho: (me: string, text: string) => fill(tx("imEcho"), { NAME: me, TEXT: text }),
+    /** A line in an IM window's received-text field. */
+    imLine: (name: string, text: string) => fill(tx("imLine"), { NAME: name, TEXT: text }),
+    /** The IM window's title. */
+    imTitle: (sender: string) => fill(tx("imTitle"), { NAME: sender }),
+    /** IMsend's title. */
+    imSendTitle: tx("imSendTitle"),
+    /** The Away window's title. */
+    awayTitle: tx("awayTitle"),
+    /** The Away window's line when away is switched on. */
+    awayOn: tx("awayOn"),
+    /** The Away window's line when away is switched off. */
+    awayOff: tx("awayOff"),
+    /** A line in the Away window's `Messages`. */
+    awayLog: (name: string, text: string) => fill(tx("awayLog"), { NAME: name, TEXT: text }),
+    /** The ChatWindow's title bar. */
+    roomWindowTitle: tx("roomWindowTitle"),
+    /** A room line. */
+    roomLine: (name: string, text: string) => fill(tx("roomLine"), { NAME: name, TEXT: text }),
+    /** Guild Chat with no guild. */
+    noGuild: tx("noGuild"),
+    /** The line printed after `/ignore`. */
+    ignoreAdded: (rest: string) => fill(tx("ignoreAdded"), { TEXT: rest }),
+    /** The line printed after `/unignore`. */
+    ignoreRemoved: (rest: string) => fill(tx("ignoreRemoved"), { TEXT: rest }),
+    /** The `/ignorelist` header, with its trailing space. */
+    ignoreListHeader: tx("ignoreListHeader"),
+    /** The line printed after `/logchat`. */
+    logging: tx("logging"),
+    // ---- SSO lines --------------------------------------------------------------------------
+    notOnline: (name: string) => `${name} is not online.`,
+    ignoreFull: "Your ignore list is full.",
+  }) as const;
 
+/** Every IM, away, room, ignore and `/logchat` text, verbatim (the content store's chat texts). */
+export let CHAT_SOCIAL_TEXT: ReturnType<typeof chatSocialText>;
 /** The ten IM windows. */
-export const IM_SLOTS = C.windows.imSlots;
+export let IM_SLOTS: number;
 /** The IM and chat-chat message senders strip line breaks in chars 1-200. */
-const RETURN_SCAN = C.windows.returnScan;
+let RETURN_SCAN: number;
+
+onContent((c) => {
+  CHAT_SOCIAL_TEXT = chatSocialText();
+  IM_SLOTS = c.social.chat.windows.imSlots;
+  RETURN_SCAN = c.social.chat.windows.returnScan;
+});
 
 /** Removes the first word, keeping the space after it. */
 function deleteWord1(s: string): string {

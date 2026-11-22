@@ -5,10 +5,10 @@
  * `Quests.txt` lines as server rows and the NPC taken from the map, not from the message (1.6 let
  * the client name any NPC, from anywhere).
  */
-import { monstersData } from "@secondstaronline/data";
 import {
   anyMatch,
   CHAT_COLOR,
+  content,
   displayName,
   EDITOR_MONSTERS,
   findNewQuest,
@@ -142,7 +142,7 @@ export function askForQuest(world: World, p: Player): Outgoing[] {
   }
   const names = room.map.slots.slice(0, 4).map((s) => {
     const name = s.live?.name ?? "";
-    if (name === "" || inMonsterList(name) || anyMatch(monstersData.rules.noQuests, name)) {
+    if (name === "" || inMonsterList(name) || anyMatch(content().monsters.rules.noQuests, name)) {
       return "";
     }
     return name;

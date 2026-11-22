@@ -1,16 +1,15 @@
 /**
- * Guilds. Pure rules over the generated `socialData.guilds`.
+ * Guilds. Pure rules over the content store's `social.guilds`.
  *
  * 1.6 kept a guild as the file `DAT\GUILDS\<guild>.txt`: the header `<align>-<colour>-*<leader>*`
  * then one member per line in join order. SSO keeps rows but renders the file text so the client's
  * readers behave as they did. 1.6's loader also deleted the first character of any line not
  * starting with a letter; SSO reads every line as it is (a bug fixed).
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
 
-const G = socialData.guilds;
+let G: ContentStore["social"]["guilds"];
 
 /** `G`ood, `N`eutral or `E`vil. */
 export type GuildAlignment = "G" | "N" | "E";
@@ -39,13 +38,13 @@ export type GuildScreen =
     };
 
 /** The guild name field's text before anything is typed. */
-export const GUILD_DEFAULT_NAME = G.defaultName;
+export let GUILD_DEFAULT_NAME: typeof G.defaultName;
 
 /** `GLDLST` → the guild list lists up to this many names. */
-export const GUILD_LIST_MAX = G.listMax;
+export let GUILD_LIST_MAX: typeof G.listMax;
 
 /** The sanitiser scans characters 1-100, as the original did; longer is a forged intent. */
-export const GUILD_NAME_MAX = G.sanitiser.scan;
+export let GUILD_NAME_MAX: typeof G.sanitiser.scan;
 
 /**
  * SSO also removes these: `;` (1.6 cut it elsewhere), `` ` `` breaks the guild save, `'` breaks the
@@ -58,34 +57,37 @@ const fill = (s: string, v: Record<string, string>) =>
 
 const tx = (k: keyof typeof G.texts) => G.texts[k].text;
 
-/** Every guild text, verbatim (the generated social data's `guilds.texts`). */
-export const GUILD_TEXT = {
-  notInFront: tx("notInFront"),
-  taken: tx("taken"),
-  created: tx("created"),
-  hail: (name: string) => fill(tx("hail"), { NAME: name }),
-  kicked: (guild: string) => fill(tx("kicked"), { GUILD: guild }),
-  disbanded: (guild: string) => fill(tx("disbanded"), { GUILD: guild }),
-  sending: (name: string) => fill(tx("sending"), { NAME: name }),
-  notLeader: tx("notLeader"),
-  alreadyIn: (name: string) => fill(tx("alreadyIn"), { NAME: name }),
-  invited: (leader: string, guild: string) => fill(tx("invited"), { LEADER: leader, GUILD: guild }),
-  accepted: tx("accepted"),
-  rejected: tx("rejected"),
-  declined: (name: string) => fill(tx("declined"), { NAME: name }),
-  joined: (name: string, guild: string) => fill(tx("joined"), { NAME: name, GUILD: guild }),
-  quitting: (guild: string) => fill(tx("quitting"), { GUILD: guild }),
-  quit: (name: string, guild: string) => fill(tx("quit"), { NAME: name, GUILD: guild }),
-  exiled: (name: string, guild: string) => fill(tx("exiled"), { NAME: name, GUILD: guild }),
-  abdicating: (target: string) => fill(tx("abdicating"), { NAME: target }),
-  promoted: (name: string, target: string, guild: string) =>
-    fill(tx("promoted"), { NAME: name, TARGET: target, GUILD: guild }),
-  notMember: tx("notMember"),
-  noGuild: tx("noGuild"),
-  /** `<name> tells the <guild> "<text>"`. */
-  chat: (name: string, guild: string, text: string) =>
-    fill(tx("chat"), { NAME: name, GUILD: guild, TEXT: text }),
-} as const;
+/** Every guild text, verbatim (the social data's `guilds.texts`). */
+const guildTextOf = () =>
+  ({
+    notInFront: tx("notInFront"),
+    taken: tx("taken"),
+    created: tx("created"),
+    hail: (name: string) => fill(tx("hail"), { NAME: name }),
+    kicked: (guild: string) => fill(tx("kicked"), { GUILD: guild }),
+    disbanded: (guild: string) => fill(tx("disbanded"), { GUILD: guild }),
+    sending: (name: string) => fill(tx("sending"), { NAME: name }),
+    notLeader: tx("notLeader"),
+    alreadyIn: (name: string) => fill(tx("alreadyIn"), { NAME: name }),
+    invited: (leader: string, guild: string) =>
+      fill(tx("invited"), { LEADER: leader, GUILD: guild }),
+    accepted: tx("accepted"),
+    rejected: tx("rejected"),
+    declined: (name: string) => fill(tx("declined"), { NAME: name }),
+    joined: (name: string, guild: string) => fill(tx("joined"), { NAME: name, GUILD: guild }),
+    quitting: (guild: string) => fill(tx("quitting"), { GUILD: guild }),
+    quit: (name: string, guild: string) => fill(tx("quit"), { NAME: name, GUILD: guild }),
+    exiled: (name: string, guild: string) => fill(tx("exiled"), { NAME: name, GUILD: guild }),
+    abdicating: (target: string) => fill(tx("abdicating"), { NAME: target }),
+    promoted: (name: string, target: string, guild: string) =>
+      fill(tx("promoted"), { NAME: name, TARGET: target, GUILD: guild }),
+    notMember: tx("notMember"),
+    noGuild: tx("noGuild"),
+    /** `<name> tells the <guild> "<text>"`. */
+    chat: (name: string, guild: string, text: string) =>
+      fill(tx("chat"), { NAME: name, GUILD: guild, TEXT: text }),
+  }) as const;
+export let GUILD_TEXT: ReturnType<typeof guildTextOf>;
 
 /**
  * One forward pass deleting `ch` from characters 1-`scan`: after a deletion the
@@ -250,3 +252,11 @@ export function abdicateGuild(g: GuildRecord, target: string): GuildRecord {
 export function inGuild(g: GuildRecord, name: string): boolean {
   return lingoEq(g.leader, name) || g.members.some((m) => lingoEq(m, name));
 }
+
+onContent((c) => {
+  G = c.social.guilds;
+  GUILD_DEFAULT_NAME = G.defaultName;
+  GUILD_LIST_MAX = G.listMax;
+  GUILD_NAME_MAX = G.sanitiser.scan;
+  GUILD_TEXT = guildTextOf();
+});

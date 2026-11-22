@@ -1,0 +1,3 @@
+# Root tests install the Classic content store first.
+[test]
+preload = ["./packages/shared/tests/helpers/content.ts"]

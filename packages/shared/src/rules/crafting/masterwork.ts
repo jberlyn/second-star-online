@@ -2,13 +2,12 @@
  * Masterwork names: a repair can turn an item into its `+N` masterwork (craft `smith.masterwork`).
  * A rule written for the base item by its exact name also covers the masterworks made from it.
  */
-import { craftData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import { lingoEq } from "../core/lingo.ts";
 
 /** The base item a masterwork was made from, or the name itself when it is not a masterwork. */
 export function masterworkBase(name: string): string {
-  for (const m of craftData.stations.smith.masterwork) {
+  for (const m of content().craft.stations.smith.masterwork) {
     if (m.outcomes.some((o) => lingoEq(o.result, name))) {
       return m.item;
     }

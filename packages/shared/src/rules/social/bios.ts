@@ -1,32 +1,33 @@
 /**
- * Player bios and profiles. Pure rules over the generated `socialData.bios`
- * (the generated social data).
+ * Player bios and profiles. Pure rules over the content store's `social.bios`
+ * (the social data).
  *
  * In 1.6 the target's client composed the reply as one `*@*` string of 11 ":"-items and
  * the viewer's client drew it. The server composes the same items from its own
  * state (`giveBio`) and draws them for the viewer (`drawProfile`), so a forged reply cannot exist.
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { skillValue } from "../core/fighter.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
 
-const B = socialData.bios;
+let B: ContentStore["social"]["bios"];
 const tx = (k: keyof typeof B.texts) => B.texts[k].text;
 const fill = (s: string, k: string, v: string) => s.replace(`{${k}}`, v);
 
 /** The bio lines printed by the requester's own client. */
-export const BIO_TEXT = {
-  /** The player menu's Bio. */
-  viewBio: tx("viewBio"),
-  /** The Who window's Profile. */
-  loadingProfile: tx("loadingProfile"),
-  /** The window's title before item 1 replaces it. */
-  windowTitle: tx("windowTitle"),
-} as const;
+const bioTextOf = () =>
+  ({
+    /** The player menu's Bio. */
+    viewBio: tx("viewBio"),
+    /** The Who window's Profile. */
+    loadingProfile: tx("loadingProfile"),
+    /** The window's title before item 1 replaces it. */
+    windowTitle: tx("windowTitle"),
+  }) as const;
+export let BIO_TEXT: ReturnType<typeof bioTextOf>;
 
 /** Every character receives this last name at creation. */
-export const LAST_NAME = B.lastName;
+export let LAST_NAME: typeof B.lastName;
 
 /** The bio's title: "Adventurer", then each row in order whose tests all hold. */
 export function bioTitle(skills: readonly number[]): string {
@@ -185,7 +186,7 @@ export function medalStrip(medals: readonly string[]): number[] {
     if (slot < S.slots) {
       // An id with no matching medal image draws nothing in 1.6 (the default reading) and
       // the slot stays empty.
-      const award = socialData.medals.awards.find((a) => String(a.id) === id);
+      const award = content().social.medals.awards.find((a) => String(a.id) === id);
       if (award) {
         out[slot] = award.member;
       }
@@ -196,7 +197,7 @@ export function medalStrip(medals: readonly string[]): number[] {
 }
 
 /** One medal slot's width in the strip (each slot's left is 16 times its start pixel). */
-export const MEDAL_SLOT_WIDTH = B.medalStrip.slotWidth;
+export let MEDAL_SLOT_WIDTH: typeof B.medalStrip.slotWidth;
 
 /** The profile box's cap (1.6's box stopped typing when full). */
 export const PROFILE_MAX = 500;
@@ -217,3 +218,10 @@ export function saveProfile(text: string): { profile: string | null; alert: stri
   }
   return { profile: out, alert: null };
 }
+
+onContent((c) => {
+  B = c.social.bios;
+  LAST_NAME = B.lastName;
+  MEDAL_SLOT_WIDTH = B.medalStrip.slotWidth;
+  BIO_TEXT = bioTextOf();
+});

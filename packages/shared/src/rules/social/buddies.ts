@@ -1,6 +1,6 @@
 /**
- * The buddy list and the Friends window's lines. Pure rules over the generated `socialData.buddies`
- * (the generated social data).
+ * The buddy list and the Friends window's lines. Pure rules over the content store's `social.buddies`
+ * (the social data).
  *
  * 1.6 kept the list as one string `:a:b:` (a leading colon, each name followed by one) and read it
  * by splitting on colons, so the first field is always empty and name k is field k + 1. SSO keeps
@@ -14,25 +14,26 @@
  * from everyone online (`friendsAtEntry`), a buddy appended at logon and deleted at logoff, an
  * added buddy appended when online (the online reply), a removed one deleted.
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
 
-const B = socialData.buddies;
+let B: ContentStore["social"]["buddies"];
 
 const fill = (s: string, name: string) => s.replace("{NAME}", name);
 
-/** Every buddy text, verbatim (the generated social data's `buddies.texts`). */
-export const BUDDY_TEXT = {
-  added: (name: string) => fill(B.texts.added.text, name),
-  already: (name: string) => fill(B.texts.already.text, name),
-  removed: (name: string) => fill(B.texts.removed.text, name),
-  notOn: (name: string) => fill(B.texts.notOn.text, name),
-  /** The Friends window's title. */
-  title: B.texts.title.text,
-  /** SSO divergence: the friends list is capped at 199 names. */
-  full: "Your friends list is full.",
-} as const;
+/** Every buddy text, verbatim (the social data's `buddies.texts`). */
+const buddyTextOf = () =>
+  ({
+    added: (name: string) => fill(B.texts.added.text, name),
+    already: (name: string) => fill(B.texts.already.text, name),
+    removed: (name: string) => fill(B.texts.removed.text, name),
+    notOn: (name: string) => fill(B.texts.notOn.text, name),
+    /** The Friends window's title. */
+    title: B.texts.title.text,
+    /** SSO divergence: the friends list is capped at 199 names. */
+    full: "Your friends list is full.",
+  }) as const;
+export let BUDDY_TEXT: ReturnType<typeof buddyTextOf>;
 
 /**
  * SSO's cap (user decision): the names 1.6's remove rebuild kept (items 2-200). 1.6 had none; each
@@ -153,3 +154,8 @@ export function friendsLogon(lines: readonly string[], items: readonly string[],
 export function friendsLogoff(lines: readonly string[], items: readonly string[], name: string) {
   return isBuddy(items, name) ? friendsDelete(lines, name) : [...lines];
 }
+
+onContent((c) => {
+  B = c.social.buddies;
+  BUDDY_TEXT = buddyTextOf();
+});

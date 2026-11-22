@@ -10,8 +10,7 @@
  * art), and with nothing on the feet the authored `Bare Feet` layer covers the shoes every body
  * paints; gloves are worn in the Ring slot. A layer member that does not exist is skipped.
  */
-import { itemRulesData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
@@ -73,7 +72,7 @@ export function normaliseLook(e: Equipment): {
   }
   // The aliases in the original's order, each rewriting its own layer (`paperdoll.aliases`).
   const layers = { weapon, shield, helm, gloves, body };
-  for (const row of itemRulesData.paperdoll.aliases) {
+  for (const row of content().itemRules.paperdoll.aliases) {
     if (ruleMatches(layers[row.layer], row)) {
       layers[row.layer] = row.becomes;
     }

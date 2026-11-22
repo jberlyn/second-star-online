@@ -1,24 +1,25 @@
 /**
- * The newspaper. Pure rules over the generated `socialData.newspaper`.
+ * The newspaper. Pure rules over the content store's `social.newspaper`.
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
 
-const N = socialData.newspaper;
+let N: ContentStore["social"]["newspaper"];
 
 /** Every newspaper text, verbatim. */
-export const NEWS_TEXT = {
-  view: N.view.text,
-  notInFront: N.notInFront.text,
-  saved: N.saved.text,
-  noStand: N.noStand.text,
-} as const;
+const newsTextOf = () =>
+  ({
+    view: N.view.text,
+    notInFront: N.notInFront.text,
+    saved: N.saved.text,
+    noStand: N.noStand.text,
+  }) as const;
+export let NEWS_TEXT: ReturnType<typeof newsTextOf>;
 
 /** The editor's cast text before a reply fills it (item 3). */
-export const NEWS_DEFAULTS = N.defaults;
+export let NEWS_DEFAULTS: typeof N.defaults;
 /** The Kit's needed layer-1 tile. */
-export const STAND_TILE = N.standTile.text;
+export let STAND_TILE: typeof N.standTile.text;
 
 /** The author of a stand, the part of the name before `'`; "Alice's Newspaper" → "Alice". */
 export function newspaperAuthor(name: string): string {
@@ -35,3 +36,10 @@ export function kitTileOk(layer1: readonly string[], x: number, y: number): bool
   const line = layer1[y - 1] ?? "";
   return lingoEq(lingoWord(line, x), STAND_TILE);
 }
+
+onContent((c) => {
+  N = c.social.newspaper;
+  NEWS_DEFAULTS = N.defaults;
+  STAND_TILE = N.standTile.text;
+  NEWS_TEXT = newsTextOf();
+});

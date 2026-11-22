@@ -4,7 +4,9 @@
  *
  * Names match without regard to case; substring matches also ignore case.
  */
-import { type EquipSlot, itemRulesData } from "@secondstaronline/data";
+import type { EquipSlot } from "@secondstaronline/data";
+
+import { content, onContent } from "../../content/store.ts";
 
 export type { EquipSlot };
 
@@ -86,9 +88,7 @@ export function pileToItem(name: string): { item: string; qty: number } {
  * content/item-rules.json. Giving every Cauldron its own id is a divergence: in 1.6 a carried
  * Cauldron had none, so all of them opened one shared file.
  */
-export const ID_CONTAINERS: readonly string[] = itemRulesData.containers.uniqueIds.map(
-  (r) => r.pattern,
-);
+export let ID_CONTAINERS: readonly string[];
 
 /** The bag slot `InvAdd` would use, or -1: a stack by exact name, else the lowest empty. */
 export function addSlotFor(bag: Bag, item: string): number {
@@ -101,7 +101,7 @@ export function addSlotFor(bag: Bag, item: string): number {
 
 /** A bare Crate, Cabinet, Wind Cabinet or Cauldron, which `invAdd` gives its own `#id`. */
 export function isUniqueContainer(item: string): boolean {
-  return anyMatch(itemRulesData.containers.uniqueIds, item);
+  return anyMatch(content().itemRules.containers.uniqueIds, item);
 }
 
 export type AddResult =
@@ -207,3 +207,7 @@ export function equipmentOf(slots: Partial<Record<EquipSlot, string>>): Equipmen
 export function equipped(e: Equipment, slot: EquipSlot): string {
   return e[EQUIP_FIELD[slot]];
 }
+
+onContent((c) => {
+  ID_CONTAINERS = c.itemRules.containers.uniqueIds.map((r) => r.pattern);
+});

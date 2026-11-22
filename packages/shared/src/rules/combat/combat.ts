@@ -9,8 +9,8 @@
  * - The monster hit test: own tile, faced tile, 3x2 footprint, damage.
  * - The monster reach test; HitMe2; the parry and block gains; the hit flicker.
  */
-import { gatherData, itemRulesData, monstersData } from "@secondstaronline/data";
 
+import { content } from "../../content/store.ts";
 import { type Equipment, type Fighter, skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
@@ -124,7 +124,7 @@ export function swingCooldowns(
   let actionDelay = BASE;
   // `swing.cooldowns`: each matching row sets both delays, so the last one wins (Ring of
   // Quickness 10/10).
-  for (const row of itemRulesData.swing.cooldowns) {
+  for (const row of content().itemRules.swing.cooldowns) {
     if (ruleMatches(equip[row.slot], row)) {
       atDelay = row.atDelay;
       actionDelay = row.actionDelay;
@@ -138,13 +138,11 @@ export function swingCooldowns(
     atDelay = ladderStep(MINING_LADDER, skillValue(skills, "Mining")) ?? atDelay;
   }
   if (lingoContains(equip.weapon, "Fishing")) {
-    atDelay = FISHING_POLE_AT_DELAY - quickness;
+    // A Fishing Pole's attack delay without the Ring of Quickness.
+    atDelay = content().gather.gathering.fishing.atDelay - quickness;
   }
   return { atDelay, actionDelay };
 }
-
-/** A Fishing Pole's attack delay without the Ring of Quickness. */
-const FISHING_POLE_AT_DELAY = gatherData.gathering.fishing.atDelay;
 
 /**
  * The attack handler's early gates. The frame-number gates always pass in play, and the Airship's refusal
@@ -206,7 +204,7 @@ export function meleeDamageVsMonster(
   rng: Rng,
 ): number {
   let dmg = attPower - monster.defense;
-  for (const a of monstersData.meleeAffinities) {
+  for (const a of content().monsters.meleeAffinities) {
     if (!lingoContains(weapon, a.weapon)) {
       continue;
     }

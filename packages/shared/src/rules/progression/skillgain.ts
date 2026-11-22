@@ -1,10 +1,9 @@
 /**
  * Kill skill gain: the weapon skill increase for the left-hand item and the body, called by the original's kill routine
- * on the killer's client before the level check. Data: the generated classes `skillGain` and
+ * on the killer's client before the level check. Data: the classes `skillGain` and
  * monsters `skillCaps`.
  */
-import { classesData, monstersData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import { type Faction, type Fighter, skillIndex } from "../core/fighter.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
@@ -12,7 +11,7 @@ import { weaponIs } from "../crafting/masterwork.ts";
 /** The skills the weapon trains: the last matching row wins; an exact row covers its masterworks. */
 export function weaponSkillList(weapon: string): readonly string[] {
   let out: readonly string[] = [];
-  for (const row of classesData.skillGain.weaponSkills) {
+  for (const row of content().classes.skillGain.weaponSkills) {
     const hit =
       row.match === "exact" ? weaponIs(weapon, row.weapon) : lingoContains(weapon, row.weapon);
     if (hit) {
@@ -56,7 +55,7 @@ export function skillCaps(f: Fighter): { max: number; mage: number } {
 
 /** The skill cap by the killed monster's body, plus the Intelligence tiers. */
 export function monsterSkillCap(body: number, intelligence: number): number {
-  const caps = monstersData.skillCaps;
+  const caps = content().monsters.skillCaps;
   let cap = caps.default;
   for (const row of caps.byBody) {
     if (row.body === String(body)) {

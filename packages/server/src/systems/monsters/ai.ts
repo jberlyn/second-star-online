@@ -9,10 +9,10 @@
  *   block a step.
  */
 
-import { monstersData } from "@secondstaronline/data";
 import {
   anyMatch,
   blocksMonster,
+  content,
   DIR_DELTA,
   DIR_FACING,
   type Dir,
@@ -207,7 +207,7 @@ export function nextStep(map: WorldMap, slot: MonsterSlot, ctx: WalkCtx): MoveEv
   if (!m) {
     return null;
   }
-  const sea = anyMatch(monstersData.rules.sea, m.name);
+  const sea = anyMatch(content().monsters.rules.sea, m.name);
   const foot = isFootprint(m.name);
   for (;;) {
     let dir: Dir;

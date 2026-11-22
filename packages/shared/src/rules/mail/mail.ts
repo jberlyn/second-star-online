@@ -1,16 +1,15 @@
 /**
- * Mail and message boards. Pure rules over the generated `socialData.mail` and `socialData.boards`.
+ * Mail and message boards. Pure rules over the content store's `social.mail` and `social.boards`.
  *
  * 1.6 kept a mailbox as the file `MAIL\<name>.txt` and a board as `BOARDS\<board>.txt`; SSO keeps
  * rows, so only what a player can see of the file format is kept: the board's `From:` blocks.
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { lingoEq } from "../core/lingo.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 
-const M = socialData.mail;
-const B = socialData.boards;
+let M: ContentStore["social"]["mail"];
+let B: ContentStore["social"]["boards"];
 
 const fill = (s: string, v: Record<string, string>) =>
   s.replace(/\{([A-Z]+)\}/g, (_m, k: string) => v[k] ?? "");
@@ -18,26 +17,30 @@ const mx = (k: keyof typeof M.texts) => M.texts[k].text;
 const bx = (k: keyof typeof B.texts) => B.texts[k].text;
 
 /** Every mail text, verbatim. */
-export const MAIL_TEXT = {
-  notInFront: mx("notInFront"),
-  notYours: mx("notYours"),
-  checking: mx("checking"),
-  sending: mx("sending"),
-  newMail: (name: string) => fill(mx("newMail"), { NAME: name }),
-  tooMany: mx("tooMany"),
-} as const;
+const mailTextOf = () =>
+  ({
+    notInFront: mx("notInFront"),
+    notYours: mx("notYours"),
+    checking: mx("checking"),
+    sending: mx("sending"),
+    newMail: (name: string) => fill(mx("newMail"), { NAME: name }),
+    tooMany: mx("tooMany"),
+  }) as const;
+export let MAIL_TEXT: ReturnType<typeof mailTextOf>;
 
 /** Every board text, verbatim. */
-export const BOARD_TEXT = {
-  view: bx("view"),
-  notInFront: bx("notInFront"),
-  notMember: bx("notMember"),
-  empty: bx("empty"),
-  townSquare: B.townSquare,
-} as const;
+const boardTextOf = () =>
+  ({
+    view: bx("view"),
+    notInFront: bx("notInFront"),
+    notMember: bx("notMember"),
+    empty: bx("empty"),
+    townSquare: B.townSquare,
+  }) as const;
+export let BOARD_TEXT: ReturnType<typeof boardTextOf>;
 
 /** A message goes to at most this many different names. */
-export const MAIL_RECIPIENTS = M.recipients;
+export let MAIL_RECIPIENTS: typeof M.recipients;
 
 /**
  * The To field after SEND's strip: every space and `*` is removed. (1.6 deleted while stepping
@@ -147,3 +150,11 @@ export function boardKind(name: string): "town" | "guild" | null {
 export function boardMember(board: string, guild: string): boolean {
   return guild !== "" && lingoEq(board, `The ${guild}'s Board`);
 }
+
+onContent((c) => {
+  M = c.social.mail;
+  B = c.social.boards;
+  MAIL_RECIPIENTS = M.recipients;
+  MAIL_TEXT = mailTextOf();
+  BOARD_TEXT = boardTextOf();
+});

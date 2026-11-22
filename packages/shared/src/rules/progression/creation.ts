@@ -2,15 +2,14 @@
  * Character creation: the rules the original creation screen enforced, run on the server, plus the
  * starting record.
  */
-import { classesData } from "@secondstaronline/data";
-
+import { content, onContent } from "../../content/store.ts";
 import { NEW_SKILL_VALUE } from "../core/fighter.ts";
 
 export type Sex = 1 | 2;
 export type StartClass = 1 | 2 | 3;
 
 /** Class codes offered on the screen: Fighter 1, Mage 2, Ranger 3. */
-export const START_CLASSES: Readonly<Record<StartClass, string>> = classesData.creation.classes;
+export let START_CLASSES: Readonly<Record<StartClass, string>>;
 
 /**
  * Heads the screen can show. Choosing Male shows Head1 and Female shows Head2. The right arrow
@@ -149,7 +148,7 @@ export interface StartingCharacter {
   exp: number;
   expNeeded: number;
   stats: SpentStats & { agi: number; spd: number; aim: number };
-  /** One value per skill, skill index 1.. (the generated classes data's `skills`). */
+  /** One value per skill, skill index 1.. (the classes data's `skills`). */
   skills: number[];
   gold: number;
   profile: string;
@@ -176,7 +175,7 @@ export function padStartingSkills(values: readonly number[], count: number): num
  * them; rolling would reward remaking a character until it rolled well, so nothing is rolled here.
  */
 export function startingCharacter(c: CreationChoice): StartingCharacter {
-  const other = classesData.creation.otherFields;
+  const other = content().classes.creation.otherFields;
   return {
     name: c.name,
     sex: c.sex,
@@ -191,8 +190,8 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     expNeeded: 30,
     stats: { str: c.str, sta: c.sta, int: c.int, wis: c.wis, dex: c.dex, agi: 1, spd: 1, aim: 1 },
     skills: padStartingSkills(
-      classesData.creation.startingSkills[c.classCode].values,
-      classesData.skills.length,
+      content().classes.creation.startingSkills[c.classCode].values,
+      content().classes.skills.length,
     ),
     gold: other.gold,
     profile: other.profile,
@@ -204,3 +203,7 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     ],
   };
 }
+
+onContent((c) => {
+  START_CLASSES = c.classes.creation.classes;
+});

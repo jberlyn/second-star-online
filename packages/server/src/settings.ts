@@ -364,7 +364,10 @@ export const SETTINGS = {
           .refine(prizeLineOk, "Each line is an item, an amount like 1000 Gold, or empty."),
       )
       .length(4),
-    default: [...ARCHIVED_PRIZES],
+    // Read when asked, from the content store as it is then (a publish can change the prizes).
+    get default() {
+      return [...ARCHIVED_PRIZES];
+    },
     tooltip:
       "What the first, second, third and fourth place win when an Assassin's game ends: an item, or an amount like 1000 Gold. An empty line gives no prize from that place on. An item to a full bag is lost; gold always arrives.",
     source:

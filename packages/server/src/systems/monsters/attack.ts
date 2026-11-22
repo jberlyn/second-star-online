@@ -3,10 +3,10 @@
  * visible monster on each client against that client's own player; the server rolls once per
  * (monster, player) per tick, so each player's hazard is the original's.
  */
-import { monstersData } from "@secondstaronline/data";
 import {
   advancedText,
   anyMatch,
+  content,
   damagedForm,
   EQUIP_FIELD,
   type Fighter,
@@ -80,7 +80,8 @@ export function monsterAttack(
   const sp = species(m.name);
   // Officers also fight a wanted player on a no-fight map.
   const canFight =
-    map.flags.canFight === "X" || (anyMatch(monstersData.rules.officer, m.name) && p.char.wanted);
+    map.flags.canFight === "X" ||
+    (anyMatch(content().monsters.rules.officer, m.name) && p.char.wanted);
   // Webs never attack (body 92), nor does a name with no attack entry.
   const attack = monsterAttackValue(m.name);
   if (p.dontHitMeAgain || !canFight || sp?.body === 92 || attack === null) {
@@ -118,7 +119,7 @@ function hitMe2(
     return null; // no damage, from monsters or players
   }
   // Holy Shield never hits an innocent.
-  if (!p.char.wanted && anyMatch(monstersData.rules.sparesInnocent, m.name)) {
+  if (!p.char.wanted && anyMatch(content().monsters.rules.sparesInnocent, m.name)) {
     return null;
   }
   // A roll ignored while you blink names no one (a bug fixed: 1.6 recorded the attacker first).

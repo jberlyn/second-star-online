@@ -9,8 +9,8 @@
  * With no `GLD|` line the shopkeeper's till starts at 0. `FLG|`, `SPL|` and `BNK|` are found by
  * `contains`. An empty file reads EMPTY: the NPC never moves and opens no Bio.
  */
-import { classesData, itemsData, monstersData } from "@secondstaronline/data";
 
+import { content, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
 import { parseTrn } from "../progression/promotion.ts";
 
@@ -39,7 +39,7 @@ export const NPC_TAGS = [
 export const NPC_FLAGS = ["Still", "Passive"] as const;
 
 /** The `SPL|` tags the monster spell casters test, in their order. */
-export const NPC_SPELL_TAGS: readonly string[] = monstersData.casting.spells.map((s) => s.tag);
+export let NPC_SPELL_TAGS: readonly string[];
 
 export interface NpcSell {
   item: string;
@@ -231,8 +231,14 @@ export function liveNpcText(f: NpcFile, ledger: LedgerView | null): string {
  * MONSTER and NPC lists, in a different order. Both set the selected name: they are NPC file names.
  * `NPC_EDITOR_NPCS` also drives the `isNpced` spawn gate (`random(60) <= 2`).
  */
-export const NPC_EDITOR_MONSTERS: readonly string[] = monstersData.editorLists.npcEditor.monsters;
-export const NPC_EDITOR_NPCS: readonly string[] = monstersData.editorLists.npcEditor.npcs;
+export let NPC_EDITOR_MONSTERS: readonly string[];
+export let NPC_EDITOR_NPCS: readonly string[];
+
+onContent((c) => {
+  NPC_SPELL_TAGS = c.monsters.casting.spells.map((s) => s.tag);
+  NPC_EDITOR_MONSTERS = c.monsters.editorLists.npcEditor.monsters;
+  NPC_EDITOR_NPCS = c.monsters.editorLists.npcEditor.npcs;
+});
 
 /** The list spelling of a name the editor may load and save (comparison ignores case), or null. */
 export function npcEditorName(name: string): string | null {
@@ -247,7 +253,7 @@ export function npcEditorName(name: string): string | null {
 // ---- the editor's checks ----
 
 const catalogue = (name: string) =>
-  itemsData.items.some(
+  content().items.items.some(
     (i) => lingoEq(i.name, name) || (i.variants ?? []).some((v) => lingoEq(v, name)),
   );
 
@@ -261,7 +267,7 @@ export function npcShopItemOk(name: string): boolean {
  * followed by "gold", as `/drop` takes it), or `N <crystals>` ("5 Blue Crystals").
  */
 export function npcLootItemOk(name: string): boolean {
-  if (catalogue(name) || itemsData.fixtures.some((f) => lingoEq(f, name))) {
+  if (catalogue(name) || content().items.fixtures.some((f) => lingoEq(f, name))) {
     return true;
   }
   const n = Number.parseInt(lingoWord(name, 1), 10);
@@ -393,7 +399,7 @@ export function checkNpcFile(lines: readonly string[]): NpcFileCheck {
         if (!count(p[1], 0)) {
           return fail(n, "the price is a whole number from 0.");
         }
-        if (!classesData.classes.some((c) => c.promotion && lingoEq(c.name, p[0] ?? ""))) {
+        if (!content().classes.classes.some((c) => c.promotion && lingoEq(c.name, p[0] ?? ""))) {
           warnings.push(`Line ${n}: no class "${p[0]}" can be trained: 1.6 has no rule for it.`);
         }
         break;

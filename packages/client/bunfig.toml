@@ -1,4 +1,5 @@
 # Client tests run in a happy-dom window. Only this package loads it,
-# so server and shared tests keep the real Bun globals.
+# so server and shared tests keep the real Bun globals. Every package's tests install the Classic
+# content store first.
 [test]
-preload = ["./tests/helpers/happydom.ts"]
+preload = ["./tests/helpers/happydom.ts", "./tests/helpers/content.ts"]

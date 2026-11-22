@@ -1,8 +1,9 @@
 /**
- * Factions and the murder flag. Pure rules over the generated `socialData`.
+ * Factions and the murder flag. Pure rules over the content store's `social` data.
  */
-import { type FactionRow, socialData } from "@secondstaronline/data";
+import type { FactionRow } from "@secondstaronline/data";
 
+import { content, onContent } from "../../content/store.ts";
 import type { Faction } from "../core/fighter.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 
@@ -27,7 +28,7 @@ export function factionIdOf(n: number): FactionId {
 }
 
 /** The archive's powers, `27:123:0`. */
-export const ARCHIVED_POWERS: Powers = parsePowers(socialData.factionRules.powers.archived);
+export let ARCHIVED_POWERS: Powers;
 
 /**
  * Parse the selected colon-separated faction value as an integer; missing or invalid values are 0.
@@ -41,9 +42,9 @@ export function parsePowers(text: string): Powers {
   return [n(items[0]), n(items[1]), n(items[2])];
 }
 
-/** One faction's row (the generated social data's `factions`). */
+/** One faction's row (the social data's `factions`). */
 export function factionRow(id: 1 | 2 | 3): FactionRow {
-  const row = socialData.factions.find((f) => f.id === id);
+  const row = content().social.factions.find((f) => f.id === id);
   if (!row) {
     throw new Error(`no faction ${id}`);
   }
@@ -57,7 +58,7 @@ function power(p: Powers, id: 1 | 2 | 3): number {
 
 /** The faction whose leader is `npc` (case-insensitive comparison), or null. */
 export function leaderFaction(npc: string): FactionRow | null {
-  return socialData.factions.find((f) => lingoEq(f.leader, npc)) ?? null;
+  return content().social.factions.find((f) => lingoEq(f.leader, npc)) ?? null;
 }
 
 /**
@@ -233,7 +234,7 @@ export function headTurnIn(npc: string, item: string, powers: Powers): HeadTurnI
     return { kind: "notHead" };
   }
   const word = (id: number) => `${factionRow(id as 1 | 2 | 3).name}'s`;
-  const r = socialData.factionRules.turnIn;
+  const r = content().social.factionRules.turnIn;
   if (lingoContains(item, word(row.id))) {
     return { kind: "own", line: fill(r.ownHead, { NPC: npc }) };
   }
@@ -268,7 +269,7 @@ export function sayFaction(npc: string, powers: Powers): string | null {
   if (!row) {
     return null;
   }
-  const s = socialData.factionRules.sayFaction;
+  const s = content().social.factionRules.sayFaction;
   const mine = power(powers, row.id);
   const others = powers.filter((_p, i) => i !== row.id - 1);
   let text = s.fine;
@@ -283,17 +284,21 @@ export function sayFaction(npc: string, powers: Powers): string | null {
 
 /** The wanted line to the killer, naming the victim. */
 export function wantedLine(victim: string): string {
-  return fill(socialData.murder.wanted.text, { NAME: victim });
+  return fill(content().social.murder.wanted.text, { NAME: victim });
 }
 
 /** The pardon line to the pardoned, naming the staff member (1.6: the immortal). */
 export function pardonedLine(staff: string): string {
-  return fill(socialData.murder.pardoned.text, { NAME: staff });
+  return fill(content().social.murder.pardoned.text, { NAME: staff });
 }
 
 /** "Pardoning <name>..." to the staff member. */
 export function pardoningLine(name: string): string {
-  return fill(socialData.murder.pardoning.text, { NAME: name });
+  return fill(content().social.murder.pardoning.text, { NAME: name });
 }
 
 export { fill as fillSocialText };
+
+onContent((c) => {
+  ARCHIVED_POWERS = parsePowers(c.social.factionRules.powers.archived);
+});

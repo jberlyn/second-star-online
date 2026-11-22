@@ -5,6 +5,8 @@
  *
  * Run: `bun run admin:audit [n]` (default 50; SSO_DB as for the server).
  */
+import "../content-classic.ts";
+
 import { recentAudit } from "../persistence/admin.ts";
 import { openDatabase } from "../persistence/database.ts";
 import { migrate } from "../persistence/migrations.ts";

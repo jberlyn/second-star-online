@@ -6,7 +6,6 @@
  * world. Nothing here touches a socket: messages go out through `send`.
  */
 
-import { helpData } from "@secondstaronline/data";
 import {
   ACTIVITY_TOTALS_MAX,
   type ActivityType,
@@ -20,6 +19,7 @@ import {
   canOpenControlPanel,
   cheatLine,
   className,
+  content,
   creationError,
   diffEdit,
   EDIT_TEXT,
@@ -403,7 +403,7 @@ export interface GameDeps {
  */
 export function helpLines(topic: string): readonly string[] | null {
   const want = topic.toLowerCase();
-  return helpData.topics.find((t) => t.topic.toLowerCase() === want)?.lines ?? null;
+  return content().help.topics.find((t) => t.topic.toLowerCase() === want)?.lines ?? null;
 }
 
 export type LoginResult =

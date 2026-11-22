@@ -9,9 +9,9 @@
  * The web check is the `web` outcome of `attemptMove`. The Airship's 8-frame step is
  * `stepLengthFor`.
  */
-import { monstersData } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH, TILE_PX } from "../../constants.ts";
+import { content } from "../../content/store.ts";
 import { anyMatch } from "../core/patterns.ts";
 
 /** An arrow key: Left, Right, Up, Down. */
@@ -39,7 +39,7 @@ export const MONSTER_STEP_FRAMES = 16;
 
 /** Overlord and Mutant Worm are three tiles wide (the step-blocking test). */
 export function isFootprint(name: string): boolean {
-  return anyMatch(monstersData.rules.footprint, name);
+  return anyMatch(content().monsters.rules.footprint, name);
 }
 
 /**
@@ -109,7 +109,7 @@ export function blockPCCheck(
       return false;
     }
     const name = s.name ?? "";
-    if (anyMatch(monstersData.rules.clearsBlock, name)) {
+    if (anyMatch(content().monsters.rules.clearsBlock, name)) {
       return false;
     }
     if (s.at.x === tx) {

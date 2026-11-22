@@ -5,9 +5,10 @@
  * purpose). A slot holds at most one live monster. The state lives on the map and is saved to
  * `map_slots`, so monsters survive a restart and stay frozen while nobody is there.
  */
-import { type Monster, monstersData } from "@secondstaronline/data";
+import type { Monster } from "@secondstaronline/data";
 import {
   anyMatch,
+  content,
   type Dir,
   type Facing,
   inMonsterList,
@@ -16,6 +17,7 @@ import {
   lingoContains,
   MONSTER_STEP_FRAMES,
   type MonsterView,
+  onContent,
 } from "@secondstaronline/shared";
 
 export interface LiveMonster {
@@ -61,11 +63,9 @@ export interface MonsterSlot {
   home?: { x: number; y: number } | null;
 }
 
-const BY_NAME = new Map(monstersData.monsters.map((m) => [m.name.toLowerCase(), m]));
-
 /** A species by name (comparison ignores case), or null when it is not in `mlists`. */
 export function species(name: string): Monster | null {
-  return BY_NAME.get(name.toLowerCase()) ?? null;
+  return content().monster(name) ?? null;
 }
 
 /**
@@ -74,17 +74,20 @@ export function species(name: string): Monster | null {
  * inside a listed one but equal to none finds no member (0; shopkeeper names avoid them).
  */
 export function bodyOf(name: string): number {
-  return species(name)?.body ?? (inMonsterList(name) ? 0 : monstersData.generic.body);
+  return species(name)?.body ?? (inMonsterList(name) ? 0 : content().monsters.generic.body);
 }
 
 /** The defense a live name is hit with (line 3 of the monster's data). */
 export function defenseOf(name: string): number {
-  return species(name)?.defense ?? (inMonsterList(name) ? 0 : monstersData.generic.defense);
+  return species(name)?.defense ?? (inMonsterList(name) ? 0 : content().monsters.generic.defense);
 }
 
 export { isFootprint, MONSTER_STEP_FRAMES };
 
-const HOSTILE = new Set(monstersData.editorLists.worldEditor.monsters.map((n) => n.toLowerCase()));
+let HOSTILE = new Set<string>();
+onContent((c) => {
+  HOSTILE = new Set(c.monsters.editorLists.worldEditor.monsters.map((n) => n.toLowerCase()));
+});
 
 /**
  * The hostile (lean) test: the name is an entry of the World Editor's monster list, or matches
@@ -92,12 +95,12 @@ const HOSTILE = new Set(monstersData.editorLists.worldEditor.monsters.map((n) =>
  * leaned through "Dragon Hatchling" and the Overlord, on no list, wandered).
  */
 export function leansToward(name: string): boolean {
-  return HOSTILE.has(name.toLowerCase()) || anyMatch(monstersData.rules.hostile, name);
+  return HOSTILE.has(name.toLowerCase()) || anyMatch(content().monsters.rules.hostile, name);
 }
 
 /** The NPC list contains the name. */
 export function isNpced(name: string): boolean {
-  return lingoContains(monstersData.editorLists.npcEditor.npcs.join("\r"), name);
+  return lingoContains(content().monsters.editorLists.npcEditor.npcs.join("\r"), name);
 }
 
 /** Spikes (body 90), Pig (91), Web (92) and Holy Shield (99). */

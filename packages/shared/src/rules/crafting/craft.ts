@@ -4,22 +4,23 @@
  *
  * Names match without regard to case; substring matches also ignore case.
  */
-import { type CraftData, craftData } from "@secondstaronline/data";
+import type { CraftData } from "@secondstaronline/data";
 
+import { onContent } from "../../content/store.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { menuAction } from "../inventory/equip.ts";
 import { type AddResult, type Bag, invAdd } from "../inventory/inventory.ts";
 import { crystalLine } from "../spells/spells.ts";
 
-const ST: CraftData["stations"] = craftData.stations;
+let ST: CraftData["stations"];
 
 export type CraftKind = "Smith" | "Cook" | "Mix" | "Build";
 
 /** The order the four counters run in one frame. */
-export const CRAFT_ORDER: readonly CraftKind[] = ST.frameOrder.order;
+export let CRAFT_ORDER: readonly CraftKind[];
 
 /** `random(30) = 1` per frame of a smithing craft sends the BSmith FX. */
-export const SMITH_FX_CHANCE = ST.frameOrder.smithFxChance;
+export let SMITH_FX_CHANCE: number;
 
 const t = (key: string): string => {
   const v = ST.texts[key];
@@ -33,35 +34,37 @@ const fill = (key: string, ...args: string[]): string => {
   return t(key).replace(/\{\}/g, () => args[i++] ?? "");
 };
 
-/** Every crafting line, from the generated crafting data. */
-export const CRAFT_TEXT = {
-  noAnvil: t("noAnvil"),
-  noCarpentryBench: t("noCarpentryBench"),
-  crowded: t("crowded"),
-  noHammer: t("noHammer"),
-  needChunk: (chunk: string) => fill("needChunk", chunk),
-  smithBegin: (item: string) => fill("smithBegin", item),
-  noStove: t("noStove"),
-  unskilled: t("unskilled"), // no full stop
-  cantCook: t("cantCook"),
-  cookBegin: (item: string) => fill("cookBegin", item),
-  burned: t("burned"),
-  noLab: t("noLab"),
-  noSand: t("noSand"),
-  mixBegin: t("mixBegin"),
-  potionOff: t("potionOff"),
-  potionReady: t("potionReady"),
-  noSaw: t("noSaw"),
-  unskilledBuild: t("unskilledBuild"), // no full stop, like cooking's
-  buildBegin: t("buildBegin"),
-  buildFailed: t("buildFailed"),
-  built: (name: string) => fill("built", name),
-  ready: (item: string) => fill("ready", item),
-  cantRepair: t("cantRepair"),
-  interrupted: t("interrupted"),
-  fizzle: t("fizzle"),
-  puff: t("puff"),
-} as const;
+/** Every crafting line, from the crafting data. */
+const craftTextOf = () =>
+  ({
+    noAnvil: t("noAnvil"),
+    noCarpentryBench: t("noCarpentryBench"),
+    crowded: t("crowded"),
+    noHammer: t("noHammer"),
+    needChunk: (chunk: string) => fill("needChunk", chunk),
+    smithBegin: (item: string) => fill("smithBegin", item),
+    noStove: t("noStove"),
+    unskilled: t("unskilled"), // no full stop
+    cantCook: t("cantCook"),
+    cookBegin: (item: string) => fill("cookBegin", item),
+    burned: t("burned"),
+    noLab: t("noLab"),
+    noSand: t("noSand"),
+    mixBegin: t("mixBegin"),
+    potionOff: t("potionOff"),
+    potionReady: t("potionReady"),
+    noSaw: t("noSaw"),
+    unskilledBuild: t("unskilledBuild"), // no full stop, like cooking's
+    buildBegin: t("buildBegin"),
+    buildFailed: t("buildFailed"),
+    built: (name: string) => fill("built", name),
+    ready: (item: string) => fill("ready", item),
+    cantRepair: t("cantRepair"),
+    interrupted: t("interrupted"),
+    fizzle: t("fizzle"),
+    puff: t("puff"),
+  }) as const;
+export let CRAFT_TEXT: ReturnType<typeof craftTextOf>;
 
 /** The start sounds on channel 3, after the click; Cook has none. */
 export const CRAFT_SOUND: Record<CraftKind, string | null> = {
@@ -521,4 +524,12 @@ export function cauldronBrew(lines: readonly string[]): string[] | null {
 }
 
 /** The Cauldron's name test on Drop (name contains "Cauldron#") and capacity. */
-export const CAULDRON = { match: ST.cauldron.match, capacity: ST.cauldron.capacity } as const;
+export let CAULDRON: { readonly match: string; readonly capacity: number };
+
+onContent((c) => {
+  ST = c.craft.stations;
+  CRAFT_ORDER = ST.frameOrder.order;
+  SMITH_FX_CHANCE = ST.frameOrder.smithFxChance;
+  CRAFT_TEXT = craftTextOf();
+  CAULDRON = { match: ST.cauldron.match, capacity: ST.cauldron.capacity };
+});

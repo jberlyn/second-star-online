@@ -3,7 +3,7 @@
  * the class data's `skills`), equipment and faction. Plain data; the server builds it from its own
  * state.
  */
-import { classesData } from "@secondstaronline/data";
+import { onContent } from "../../content/store.ts";
 
 /** The empty equipment slot (`NOTHING`). */
 export const NOTHING = "NOTHING";
@@ -59,7 +59,10 @@ export interface Fighter {
 /** Skill names normalised: case and spaces ignored ("Martial Arts" = "MartialArts"). */
 const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
 
-const SKILL_INDEX = new Map(classesData.skills.map((s) => [norm(s.skill), s.index - 1]));
+let SKILL_INDEX = new Map<string, number>();
+onContent((c) => {
+  SKILL_INDEX = new Map(c.classes.skills.map((s) => [norm(s.skill), s.index - 1]));
+});
 
 /** The array index of a skill by any spelling the original uses. */
 export function skillIndex(name: string): number {

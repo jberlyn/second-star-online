@@ -15,9 +15,9 @@
  * - **Undo refuses on conflict:** an edit is undone only while every field it changed still holds
  *   the value it set (`undoConflicts`).
  */
-import { classesData, itemsData, spellsData } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
+import { content } from "../../content/store.ts";
 import { type Equipment, NOTHING } from "../core/fighter.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { checkEquip, EQUIP_TEXT } from "../inventory/equip.ts";
@@ -65,7 +65,7 @@ export interface EditableCharacter {
   int: number;
   wis: number;
   spd: number;
-  /** One value per skill in `classesData.skills`, index 0 = Slash. */
+  /** One value per skill in the content store's `classes.skills`, index 0 = Slash. */
   skills: number[];
   hunger: number;
   /** 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
@@ -186,7 +186,9 @@ export const EDIT_LIMITS = {
   skillMax: 100,
   skillMin: 1,
   /** A new character starts with the most hunger the game gives (50000); a death sets 40000. */
-  hungerMax: Math.max(40_000, classesData.creation.otherFields.hunger),
+  get hungerMax(): number {
+    return Math.max(40_000, content().classes.creation.otherFields.hunger);
+  },
   intMax: 2_000_000_000,
   /** The personal vault's lines (systems/economy/vault.ts `VAULT_CAPACITY`). */
   vaultMax: 15,
@@ -314,9 +316,9 @@ const isInt = (n: unknown, min: number, max: number): n is number =>
 export function knownItem(name: string): boolean {
   const n = displayName(name);
   return (
-    itemsData.items.some(
+    content().items.items.some(
       (i) => lingoEq(i.name, n) || (i.variants ?? []).some((v) => lingoEq(v, n)),
-    ) || itemsData.fixtures.some((f) => lingoEq(f, n))
+    ) || content().items.fixtures.some((f) => lingoEq(f, n))
   );
 }
 
@@ -329,7 +331,7 @@ const isStorage = (name: string): boolean =>
 
 /** A spell the game knows, by its exact listed name. */
 export function knownSpell(name: string): boolean {
-  return spellsData.spells.some((s) => s.name === name);
+  return content().spells.spells.some((s) => s.name === name);
 }
 
 const pointError = (label: string, p: unknown): string | null => {
@@ -365,7 +367,7 @@ export function editErrors(
     ...before.vault,
   ]);
   const L = EDIT_LIMITS;
-  if (changed("classCode") && !classesData.classes.some((c) => c.code === after.classCode)) {
+  if (changed("classCode") && !content().classes.classes.some((c) => c.code === after.classCode)) {
     errors.push("Class: there is no such class.");
   }
   if (!isInt(after.level, 1, L.levelMax)) {
@@ -393,7 +395,7 @@ export function editErrors(
     } else {
       after.skills.forEach((v, i) => {
         if (v !== before.skills[i] && !isInt(v, L.skillMin, L.skillMax)) {
-          const name = classesData.skills[i]?.skill ?? `Skill ${i + 1}`;
+          const name = content().classes.skills[i]?.skill ?? `Skill ${i + 1}`;
           errors.push(`${name}: a whole number from ${L.skillMin} to ${L.skillMax}.`);
         }
       });
@@ -665,7 +667,7 @@ export function editValueText(field: EditField, v: unknown): string {
   }
   switch (field) {
     case "classCode":
-      return classesData.classes.find((c) => c.code === v)?.name ?? `Class ${String(v)}`;
+      return content().classes.classes.find((c) => c.code === v)?.name ?? `Class ${String(v)}`;
     case "faction":
       return ["None", "Mage", "Warrior", "Adventurer"][v as number] ?? String(v);
     case "wanted":
@@ -711,7 +713,9 @@ export function changeText(c: EditChange): string {
   if (c.field === "skills" && Array.isArray(c.before) && Array.isArray(c.after)) {
     const a = c.after as number[];
     const moved = (c.before as number[]).flatMap((v, i) =>
-      v === a[i] ? [] : [`${classesData.skills[i]?.skill ?? `Skill ${i + 1}`} ${v} → ${a[i]}`],
+      v === a[i]
+        ? []
+        : [`${content().classes.skills[i]?.skill ?? `Skill ${i + 1}`} ${v} → ${a[i]}`],
     );
     return `${label}: ${moved.join(", ")}`;
   }

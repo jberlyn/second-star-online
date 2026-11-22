@@ -1,4 +1,10 @@
+import { classicData } from "@secondstaronline/data/classic";
+import { buildContentStore, installContent } from "@secondstaronline/shared";
+
 import { startApp } from "./app.ts";
+
+// The content store is still the Classic pack's generated modules, bundled with the client.
+installContent(buildContentStore(classicData));
 
 const root = document.getElementById("app");
 if (root) {

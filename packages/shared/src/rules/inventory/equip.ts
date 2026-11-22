@@ -2,13 +2,14 @@
  * Equip and use. The client-side gates of the original run on the server here, in the original
  * order with case-insensitive substring or exact matching; the ordered tables' quirks are kept.
  */
-import { type EquipSlot, itemRulesData } from "@secondstaronline/data";
+import type { EquipSlot } from "@secondstaronline/data";
 
+import { type ContentStore, onContent } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 
-const R = itemRulesData;
+let R: ContentStore["itemRules"];
 
 /** The strength requirement: 0 unless a rule matches, last match wins. */
 export function strengthRequirement(name: string): number {
@@ -26,9 +27,6 @@ export type MenuAction = "Equip" | "Cook" | "Mix" | "Build" | "Smith" | "Storage
 export function menuAction(name: string): MenuAction {
   return lastMatch(R.menu, name)?.action ?? "Equip";
 }
-
-// The data's choices are exactly the buttons (a mismatch is a type error).
-R.menu satisfies readonly { action: Exclude<MenuAction, "Equip"> }[];
 
 export const EQUIP_TEXT = {
   weak: "You are not strong enough to equip this!",
@@ -175,3 +173,9 @@ export function useItem(
   out.consume = true;
   return out;
 }
+
+onContent((c) => {
+  R = c.itemRules;
+  // The data's choices are exactly the buttons (a mismatch is a type error).
+  R.menu satisfies readonly { action: Exclude<MenuAction, "Equip"> }[];
+});

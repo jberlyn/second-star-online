@@ -1,8 +1,7 @@
 /**
  * Admin command rules, shared by the server (which runs every command) and the tests. Pure.
  */
-import { classesData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 
 /**
@@ -180,14 +179,14 @@ export function cheatFileLines(entries: readonly string[]): string[] {
 export function findClass(text: string): { code: number; name: string } | null {
   const t = text.trim().replace(/\s+/g, " ");
   if (/^\d+$/.test(t)) {
-    const c = classesData.classes.find((k) => k.code === Number(t));
+    const c = content().classes.classes.find((k) => k.code === Number(t));
     return c ? { code: c.code, name: c.name } : null;
   }
-  const c = classesData.classes.find((k) => lingoEq(k.name, t));
+  const c = content().classes.classes.find((k) => lingoEq(k.name, t));
   return c ? { code: c.code, name: c.name } : null;
 }
 
 /** The class name for a code, or null. */
 export function className(code: number): string | null {
-  return classesData.classes.find((k) => k.code === code)?.name ?? null;
+  return content().classes.classes.find((k) => k.code === code)?.name ?? null;
 }

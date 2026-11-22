@@ -1,5 +1,5 @@
 /**
- * Medals, calculated from skills over the generated `socialData.medals` table.
+ * Medals, calculated from skills over the content store's `social.medals` table.
  *
  * A skill at 90 or more holds its medal: the medal shows on the bio and its stat points are added
  * to the character's allocated stats (`effectiveStats`, stats.ts). A skill that falls below 90
@@ -7,16 +7,15 @@
  * `Medals` field and added its points to the stored stats for good, and only when a skill reached
  * exactly 90).
  */
-import { socialData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { skillValue } from "../core/fighter.ts";
 
-const M = socialData.medals;
+let M: ContentStore["social"]["medals"];
 
 export type MedalStat = "str" | "sta" | "dex" | "int" | "wis";
 
 /** The skill level a medal needs, at least. */
-export const MEDAL_AT = M.at;
+export let MEDAL_AT: typeof M.at;
 
 export type MedalAward = (typeof M.awards)[number];
 
@@ -49,3 +48,8 @@ export function newMedalLines(before: readonly number[], after: readonly number[
     .filter((a) => skillValue(before, a.skill) < M.at && skillValue(after, a.skill) >= M.at)
     .map((a) => a.text);
 }
+
+onContent((c) => {
+  M = c.social.medals;
+  MEDAL_AT = M.at;
+});

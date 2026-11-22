@@ -1,15 +1,16 @@
 /**
  * Gathering: the tools, their hit counters, the tile changes, what each success drops, fishing,
  * seeds, watering, regrowth and the skill handlers. Pure: the server applies the results; tables
- * come from `gatherData`, the generated gathering and skill-gain data.
+ * come from the content store's `gather`, gathering and skill-gain data.
  */
-import { type GatherTool, gatherData, type SkillGainRule } from "@secondstaronline/data";
+import type { GatherTool, SkillGainRule } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
 import type { Facing } from "../movement/movement.ts";
 
-const G = gatherData.gathering;
+let G: ContentStore["gather"]["gathering"];
 
 // ---- map tiles -----------------------------------------------------------------------------
 
@@ -195,9 +196,9 @@ export function isFishingWater(code: string): boolean {
 }
 
 /** The map layers fishing reads: water drawn on any of them can be fished. */
-export const FISHING_LAYERS: readonly (1 | 2)[] = G.fishing.layers;
+export let FISHING_LAYERS: readonly (1 | 2)[];
 
-export const FISHING_AT_DELAY = G.fishing.atDelay;
+export let FISHING_AT_DELAY: typeof G.fishing.atDelay;
 
 /** The Fishing FX's offset from sprite 112. */
 export function fishingOffset(facing: Facing): readonly [number, number] {
@@ -205,10 +206,10 @@ export function fishingOffset(facing: Facing): readonly [number, number] {
 }
 
 /** The catches one tile allows before you must fish from another. */
-export const ANTI_MACRO_START = G.fishing.antiMacroStart;
+export let ANTI_MACRO_START: typeof G.fishing.antiMacroStart;
 
 /** Told when a cast finds its tile's allowance spent. */
-export const FISHING_STOPPED_TEXT = G.fishing.stoppedText;
+export let FISHING_STOPPED_TEXT: typeof G.fishing.stoppedText;
 
 /** The tile a fisher's allowance belongs to, and the catches it has left. */
 export interface FishingSpot {
@@ -285,7 +286,7 @@ export function canPlant(code: string): boolean {
   return code !== "" && G.farming.seedTest.split("*").some((c) => c !== "" && lingoEq(c, code));
 }
 
-export const SEED_PAUSE = G.farming.seedPause;
+export let SEED_PAUSE: typeof G.farming.seedPause;
 
 /** The watering routine: the watered form, or null (a wasted success). */
 export function wateredTile(code: string): string | null {
@@ -300,9 +301,9 @@ export function sprinkleOffset(facing: Facing): readonly [number, number] | null
   return G.sprinkle.offsets[facing as "E" | "W" | "S"] ?? null;
 }
 
-export const SPRINKLE_FX = G.sprinkle.fx;
+export let SPRINKLE_FX: typeof G.sprinkle.fx;
 
-export const GATHER_TEXT = G.texts;
+export let GATHER_TEXT: typeof G.texts;
 
 // ---- regrowth --------------------------------------------------------------------------------
 
@@ -355,7 +356,7 @@ export const REGROWTH_CATCH_UP_FRAMES = 72_000;
 
 // ---- treasure --------------------------------------------------------------------------------
 
-export const TREASURE = G.treasure;
+export let TREASURE: typeof G.treasure;
 
 /** The treasure list build: its last pass decides; null when no map is set. */
 export function buildTreasure(
@@ -388,7 +389,7 @@ export function asksAboutTreasure(text: string): boolean {
 }
 
 /** The NPCs the treasure hint answers for. */
-export const RUMOUR_NPCS: readonly string[] = G.treasure.rumourNpcs;
+export let RUMOUR_NPCS: readonly string[];
 
 /** A rumour NPC's line naming the treasure map's header, by `random(2)`. */
 export function rumourLine(npc: string, header: string, roll: number): string {
@@ -399,7 +400,7 @@ export function rumourLine(npc: string, header: string, roll: number): string {
 
 // ---- skill gain ------------------------------------------------------------------------------
 
-const RULES: readonly SkillGainRule[] = gatherData.skillGain;
+let RULES: readonly SkillGainRule[];
 
 /** The skill handler for a skill. */
 export function skillGainRule(skill: string): SkillGainRule | null {
@@ -417,3 +418,17 @@ export function rollSkillGain(skill: string, value: number, rng: Rng): boolean {
   }
   return rng.random(r.chance) === 1;
 }
+
+onContent((c) => {
+  G = c.gather.gathering;
+  RULES = c.gather.skillGain;
+  FISHING_LAYERS = G.fishing.layers;
+  FISHING_AT_DELAY = G.fishing.atDelay;
+  ANTI_MACRO_START = G.fishing.antiMacroStart;
+  FISHING_STOPPED_TEXT = G.fishing.stoppedText;
+  SEED_PAUSE = G.farming.seedPause;
+  SPRINKLE_FX = G.sprinkle.fx;
+  GATHER_TEXT = G.texts;
+  TREASURE = G.treasure;
+  RUMOUR_NPCS = G.treasure.rumourNpcs;
+});

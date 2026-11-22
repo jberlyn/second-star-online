@@ -1,16 +1,25 @@
 /**
- * Checkers. Pure rules over `casinoData.checkers`. A piece's `h`/`v` are the sub-movie's sprite
- * locs.
+ * Checkers. Pure rules over the content store's `casino.checkers`. A piece's `h`/`v` are the
+ * sub-movie's sprite locs.
  */
-import { casinoData } from "@secondstaronline/data";
+import type { CasinoData } from "@secondstaronline/data";
 
+import { onContent } from "../../content/store.ts";
 import { lingoEq } from "../core/lingo.ts";
 
-const C = casinoData.checkers;
+type Checkers = CasinoData["checkers"];
 
-export const CK_ITEM = C.item.text;
-export const CK_TEXT = C.texts;
-export const CK_MARKER = C.marker;
+let C: Checkers;
+export let CK_ITEM: string;
+export let CK_TEXT: Checkers["texts"];
+export let CK_MARKER: Checkers["marker"];
+
+onContent((c) => {
+  C = c.casino.checkers;
+  CK_ITEM = C.item.text;
+  CK_TEXT = C.texts;
+  CK_MARKER = C.marker;
+});
 
 export function isCheckersTable(name: string): boolean {
   return lingoEq(name, CK_ITEM);

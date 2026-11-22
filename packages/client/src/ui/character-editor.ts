@@ -10,12 +10,12 @@
  * - **The log** lists each edit with its admin, reason and changes. Undo puts an edit's old values
  *   back, with a reason of its own; the server refuses it when something it set has changed since.
  */
-import { classesData, itemsData } from "@secondstaronline/data";
 import {
   BAG_SLOTS,
   type CharacterEditRow,
   type CharacterSheet,
   changeText,
+  content,
   deriveEdit,
   diffEdit,
   EDIT_LIMITS,
@@ -162,7 +162,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   // ---- core ------------------------------------------------------------------------------------
   const cls = select(
     "hub-edit-class",
-    classesData.classes.map((c) => [String(c.code), c.name]),
+    content().classes.classes.map((c) => [String(c.code), c.name]),
   );
   const level = numberInput("hub-edit-level");
   const exp = numberInput("hub-edit-exp");
@@ -209,10 +209,12 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     grid(...STAT_FIELDS.map((f) => formField(STAT_LABELS[f], stats.get(f) as HTMLInputElement))),
     note("The allocated points, 1 to 20. Class and medal points are added in play."),
   );
-  const skills = classesData.skills.map((_s, i) => numberInput(`hub-edit-skill-${i + 1}`));
+  const skills = content().classes.skills.map((_s, i) => numberInput(`hub-edit-skill-${i + 1}`));
   const skillsBox = section(
     "Skills",
-    grid(...classesData.skills.map((s, i) => formField(s.skill, skills[i] as HTMLInputElement))),
+    grid(
+      ...content().classes.skills.map((s, i) => formField(s.skill, skills[i] as HTMLInputElement)),
+    ),
     note("1 to 100."),
   );
 
@@ -349,7 +351,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   saveBox.append(
     datalist(
       itemList,
-      itemsData.items.map((i) => i.name),
+      content().items.items.map((i) => i.name),
     ),
   );
 

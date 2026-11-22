@@ -1,7 +1,10 @@
 /**
- * Tile flags, hover names and single-valued tile defaults read from `@secondstaronline/data`.
+ * Tile flags, hover names and single-valued tile defaults read from the content store, rebuilt on
+ * every install.
  */
-import { type TileFlag as DataTileFlag, tilesData } from "@secondstaronline/data";
+import type { TileFlag as DataTileFlag, TilesData } from "@secondstaronline/data";
+
+import { onContent } from "../../content/store.ts";
 
 export type TileFlag = "sea" | "airshipBlock" | "dock" | "arena" | "grave";
 
@@ -14,31 +17,35 @@ const _flagCheck: Record<DataTileFlag, TileFlag> = {
 } satisfies Record<TileFlag, DataTileFlag>;
 void _flagCheck;
 
-const CODES_BY_FLAG: Record<TileFlag, readonly string[]> = {
-  sea: [],
-  airshipBlock: [],
-  dock: [],
-  arena: [],
-  grave: [],
-};
+const noFlags = <T>(make: () => T): Record<TileFlag, T> => ({
+  sea: make(),
+  airshipBlock: make(),
+  dock: make(),
+  arena: make(),
+  grave: make(),
+});
 
-const LOWER_SETS_BY_FLAG: Record<TileFlag, ReadonlySet<string>> = {
-  sea: new Set(),
-  airshipBlock: new Set(),
-  dock: new Set(),
-  arena: new Set(),
-  grave: new Set(),
-};
+let CODES_BY_FLAG: Record<TileFlag, string[]> = noFlags(() => []);
+let LOWER_SETS_BY_FLAG: Record<TileFlag, Set<string>> = noFlags(() => new Set());
+let NAMES = new Map<string, string>();
+/** Single-valued tile defaults (`ground`, `empty`, `shadow`, `editorTile`). */
+export let TILE_DEFAULTS: TilesData["defaults"];
 
-for (const tile of tilesData.catalogue) {
-  if (!tile.flags) {
-    continue;
+onContent((c) => {
+  CODES_BY_FLAG = noFlags(() => []);
+  LOWER_SETS_BY_FLAG = noFlags(() => new Set());
+  NAMES = new Map();
+  TILE_DEFAULTS = c.tiles.defaults;
+  for (const tile of c.tiles.catalogue) {
+    for (const flag of tile.flags ?? []) {
+      CODES_BY_FLAG[flag].push(tile.code);
+      LOWER_SETS_BY_FLAG[flag].add(tile.code.toLowerCase());
+    }
+    if (tile.name) {
+      NAMES.set(tile.code.toLowerCase(), tile.name);
+    }
   }
-  for (const flag of tile.flags) {
-    (CODES_BY_FLAG[flag] as string[]).push(tile.code);
-    (LOWER_SETS_BY_FLAG[flag] as Set<string>).add(tile.code.toLowerCase());
-  }
-}
+});
 
 /** Catalogue tile codes carrying `flag`, in catalogue order. */
 export function tileCodes(flag: TileFlag): readonly string[] {
@@ -50,13 +57,6 @@ export function tileHas(code: string, flag: TileFlag): boolean {
   return LOWER_SETS_BY_FLAG[flag].has(code.toLowerCase());
 }
 
-const NAMES = new Map<string, string>();
-for (const tile of tilesData.catalogue) {
-  if (tile.name) {
-    NAMES.set(tile.code.toLowerCase(), tile.name);
-  }
-}
-
 /**
  * What the playfield hover tip calls a layer-2 tile (`catalogue[].name`, compared in any case), or
  * null for a tile it never names. An SSO addition: 1.6 named no tiles.
@@ -64,6 +64,3 @@ for (const tile of tilesData.catalogue) {
 export function tileName(code: string): string | null {
   return NAMES.get(code.toLowerCase()) ?? null;
 }
-
-/** Single-valued tile defaults (`ground`, `empty`, `shadow`, `editorTile`). */
-export const TILE_DEFAULTS = tilesData.defaults;

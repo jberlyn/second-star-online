@@ -14,9 +14,9 @@
  * slices): the minute-dependent skull swap 9C-9F → Sk11-Sk24, and the monster and sea-creature
  * grids.
  */
-import { tilesData } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
+import { onContent } from "../../content/store.ts";
 import { lingoContains, lingoWord } from "./lingo.ts";
 import { tileCodes, tileHas } from "./tiles.ts";
 
@@ -24,7 +24,10 @@ import { tileCodes, tileHas } from "./tiles.ts";
  * The blocked-list field text (`WALK_WHITELIST`): one code per line, CR-terminated, as in the cast
  * member.
  */
-export const WALK_WHITELIST: string = `${tilesData.walkable.map((t) => t.code).join("\r")}\r`;
+export let WALK_WHITELIST: string;
+onContent((c) => {
+  WALK_WHITELIST = `${c.tiles.walkable.map((t) => t.code).join("\r")}\r`;
+});
 
 /**
  * Whether the walkable list contains the tile: a missing word (EMPTY) is contained, so it is
@@ -74,7 +77,10 @@ export function isWalkable(grid: readonly (readonly boolean[])[], x: number, y: 
  * Layer-2 codes that block an Airship (the airship flag set): D8 I8 E8 J8 K8 L8, matched
  * ignoring case.
  */
-export const AIRSHIP_BLOCK: readonly string[] = tileCodes("airshipBlock");
+export let AIRSHIP_BLOCK: readonly string[];
+onContent(() => {
+  AIRSHIP_BLOCK = tileCodes("airshipBlock");
+});
 
 /**
  * Walk grid for a player aboard an Airship: blocked only where the map data row, layer 2, holds one

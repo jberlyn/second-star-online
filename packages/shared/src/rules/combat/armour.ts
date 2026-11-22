@@ -1,16 +1,13 @@
 /**
  * Armour, PvP mitigation and equipment breaks (the formulas `mitigation.pvp`, `mitigation.pve`,
- * `break.armour` and `break.weapon`). Rows come from `itemRulesData`, in source order. `HitMe` is
- * the original's PvP hit handler and `HitMe2` its monster-hit handler.
+ * `break.armour` and `break.weapon`). Rows come from the content store's `itemRules`, in source order.
+ * `HitMe` is the original's PvP hit handler and `HitMe2` its monster-hit handler.
  */
-import { itemRulesData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import type { Equipment, Fighter } from "../core/fighter.ts";
 import { skillValue } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
-
-const R = itemRulesData;
 
 type SlotVar = "RingE" | "HeadE" | "BodyE" | "RightHandE" | "LeftHandE" | "FeetE";
 
@@ -44,7 +41,7 @@ function plusBonus(name: string): number {
  */
 export function armourRows(power: number, e: Equipment, handler: "HitMe" | "HitMe2"): number {
   let p = power;
-  for (const r of R.armour.rows) {
+  for (const r of content().itemRules.armour.rows) {
     const delta = handler === "HitMe" ? r.hitMe : r.hitMe2;
     if (delta !== null && ruleMatches(slotItem(e, r.slot), r)) {
       p += delta;
@@ -70,7 +67,7 @@ export function elementalRows(
   trigger: string,
 ): number {
   let p = power;
-  for (const r of R.armour.elemental) {
+  for (const r of content().itemRules.armour.elemental) {
     if (
       r.handler === handler &&
       lingoEq(trigger, r.trigger) &&
@@ -219,7 +216,7 @@ export function rollArmourBreak(
   rng: Rng,
 ): "Body" | "Head" | "RightHand" | null {
   const monster = lastToHitMe.replace(/^a /i, "");
-  if (R.breaks.armour.excludedMonsters.some((m) => lingoEq(monster, m))) {
+  if (content().itemRules.breaks.armour.excludedMonsters.some((m) => lingoEq(monster, m))) {
     return null;
   }
   if (rng.random(breakOdds(sta, hunger, 600)) > 1) {
@@ -228,7 +225,9 @@ export function rollArmourBreak(
   for (let tries = 0; tries < 4; tries++) {
     const slot = ARMOUR_PICK[rng.random(3) - 1] as SlotVar;
     const item = slotItem(e, slot);
-    if (R.breaks.armour.items.some((i) => i.slot === slot && lingoEq(item, i.item))) {
+    if (
+      content().itemRules.breaks.armour.items.some((i) => i.slot === slot && lingoEq(item, i.item))
+    ) {
       return slot === "BodyE" ? "Body" : slot === "HeadE" ? "Head" : "RightHand";
     }
   }
@@ -246,10 +245,10 @@ export function rollWeaponBreak(
   monster: string,
   rng: Rng,
 ): boolean {
-  if (R.breaks.weapon.excludedMonsters.some((m) => lingoEq(monster, m))) {
+  if (content().itemRules.breaks.weapon.excludedMonsters.some((m) => lingoEq(monster, m))) {
     return false;
   }
-  if (!R.breaks.weapon.items.some((i) => lingoEq(e.weapon, i.item))) {
+  if (!content().itemRules.breaks.weapon.items.some((i) => lingoEq(e.weapon, i.item))) {
     return false;
   }
   return rng.random(breakOdds(sta, hunger, 500)) <= 1;
@@ -258,7 +257,7 @@ export function rollWeaponBreak(
 /** An item's damaged form: 33 `contains` rules, last wins; else unchanged. */
 export function damagedForm(item: string): string {
   let out = item;
-  for (const r of R.breaks.damaged) {
+  for (const r of content().itemRules.breaks.damaged) {
     if (ruleMatches(item, r)) {
       out = r.damaged;
     }

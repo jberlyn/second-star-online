@@ -1,0 +1,154 @@
+/**
+ * The live content store: every content dataset the rules read, in one object, plus the lookups
+ * built from it. Every consumer reaches it through one swappable holder (`content()`), so an
+ * operator's publish (or a test's fixture) replaces the whole store in one step and every rule
+ * sees the change.
+ *
+ * Values a module used to copy out of the data when it loaded (text tables, flag sets, indexes)
+ * are rebuilt from the new store in `onContent` callbacks, which run in module-load order each
+ * time a store is installed. Rebuilt exports are `export let` bindings, which ES modules keep live
+ * for every importer, so no caller holds an old copy.
+ *
+ * Nothing here imports the generated modules: the server builds a store from its installed packs
+ * and the operator layer, the client from the copy the server sends, and tests from the Classic
+ * fixture (`installClassicContent` in the test helpers).
+ */
+import type {
+  AttPowerData,
+  CasinoData,
+  ClassesData,
+  CraftData,
+  GatherData,
+  HelpData,
+  HouseData,
+  Item,
+  ItemRulesData,
+  ItemsData,
+  Monster,
+  MonstersData,
+  NpcFilesData,
+  QuestData,
+  RectsData,
+  SocialData,
+  SpellsData,
+  TilesData,
+} from "@secondstaronline/data";
+
+/**
+ * Every dataset in a content store. Server-only datasets (NPC file text, collision rects) are
+ * left out of the copy sent to clients (`clientContent`), which install them as empty.
+ */
+export interface ContentData {
+  attPower: AttPowerData;
+  casino: CasinoData;
+  classes: ClassesData;
+  craft: CraftData;
+  gather: GatherData;
+  help: HelpData;
+  houses: HouseData;
+  itemRules: ItemRulesData;
+  items: ItemsData;
+  monsters: MonstersData;
+  quests: QuestData;
+  social: SocialData;
+  spells: SpellsData;
+  tiles: TilesData;
+  npcFiles: NpcFilesData;
+  rects: RectsData;
+}
+
+export type DatasetId = keyof ContentData;
+
+/** The datasets only the server reads. */
+export const SERVER_ONLY_DATASETS = ["npcFiles", "rects"] as const satisfies readonly DatasetId[];
+
+/** Every dataset id, in a fixed order (the order hashes and pack files use). */
+export const DATASET_IDS = [
+  "attPower",
+  "casino",
+  "classes",
+  "craft",
+  "gather",
+  "help",
+  "houses",
+  "itemRules",
+  "items",
+  "monsters",
+  "quests",
+  "social",
+  "spells",
+  "tiles",
+  "npcFiles",
+  "rects",
+] as const satisfies readonly DatasetId[];
+
+/** A built store: the data and its lookups. Treat it as read-only. */
+export interface ContentStore extends ContentData {
+  /** Identifies this exact content (the hash of the client copy); "" for a fixture without one. */
+  readonly hash: string;
+  /** The catalogue item with this name (case ignored), or undefined. */
+  item(name: string): Item | undefined;
+  /** The monster with this name (case ignored), or undefined. */
+  monster(name: string): Monster | undefined;
+}
+
+/** Builds a store's lookups over a set of datasets. The data is not copied. */
+export function buildContentStore(data: ContentData, hash = ""): ContentStore {
+  const items = new Map<string, Item>();
+  for (const i of data.items.items) {
+    if (!items.has(i.name.toLowerCase())) {
+      items.set(i.name.toLowerCase(), i);
+    }
+  }
+  const monsters = new Map<string, Monster>();
+  for (const m of data.monsters.monsters) {
+    if (!monsters.has(m.name.toLowerCase())) {
+      monsters.set(m.name.toLowerCase(), m);
+    }
+  }
+  return {
+    ...data,
+    hash,
+    item: (name) => items.get(name.toLowerCase()),
+    monster: (name) => monsters.get(name.toLowerCase()),
+  };
+}
+
+let current: ContentStore | null = null;
+const listeners: ((store: ContentStore) => void)[] = [];
+
+/** The installed store. Throws when none is installed yet (a module read the data too early). */
+export function content(): ContentStore {
+  if (!current) {
+    throw new Error("no content store installed");
+  }
+  return current;
+}
+
+/** Whether a store is installed. */
+export function hasContent(): boolean {
+  return current !== null;
+}
+
+/**
+ * Installs a store, replacing the current one in a single step, then runs every `onContent`
+ * callback in registration order (which is module-load order, so a module's dependencies rebuild
+ * before it does).
+ */
+export function installContent(store: ContentStore): void {
+  current = store;
+  for (const fn of listeners) {
+    fn(store);
+  }
+}
+
+/**
+ * Registers a rebuild: `fn` runs now if a store is installed, and again on every install. Use it
+ * for every value a module derives from the data, never a module-level read of `content()`.
+ */
+export function onContent(fn: (store: ContentStore) => void): void {
+  listeners.push(fn);
+  if (current) {
+    fn(current);
+  }
+}

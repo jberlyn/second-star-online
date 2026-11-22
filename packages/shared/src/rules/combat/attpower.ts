@@ -1,6 +1,6 @@
 /**
  * Melee attack power (formula `attpower.assembly`). A port of `GetAttackPower`,
- * driven by the rows in `attPowerData`, in source order. Every
+ * driven by the rows in the content store's `attPower`, in source order. Every
  * `random` the original draws is drawn here in the same order, so seeded replays match.
  *
  * Names use case-insensitive substring and exact matches; each base row says which. Bugs fixed in
@@ -8,14 +8,13 @@
  * Mining Hammer's row is spelled right, the Archery tiers are steps rather than a cascade with a
  * gap at 30, and the Gold Sword's HeavyArms block runs once.
  */
-import { type AttPowerTier, attPowerData } from "@secondstaronline/data";
+import type { AttPowerTier } from "@secondstaronline/data";
 
+import { content } from "../../content/store.ts";
 import { type Fighter, skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoDiv, lingoEq, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 import { gearBonus } from "./gear.ts";
-
-const AP = attPowerData.attPower;
 
 /** The six arrow colours, by arrow number. */
 export const ARROW_COLOURS = ["Blue", "Red", "Green", "Yellow", "Purple", "White"] as const;
@@ -146,7 +145,7 @@ export function attackPower(
   const w = f.equip.weapon;
   let power = 1;
   // Base rows by `contains`; every match re-rolls, the last one wins.
-  for (const row of AP.base) {
+  for (const row of content().attPower.attPower.base) {
     if (row.match === "exact" ? lingoEq(w, row.pattern) : lingoContains(w, row.pattern)) {
       power = row.flat + (row.randomN === null ? 0 : rng.random(row.randomN));
       if (row.extra) {
@@ -159,7 +158,7 @@ export function attackPower(
   }
   power += gearBonus(f.equip, "attack"); // Argon's Ring +3
   const isBow = lingoContains(w, "bow");
-  for (const row of AP.exactOverrides) {
+  for (const row of content().attPower.attPower.exactOverrides) {
     if (lingoEq(w, row.pattern)) {
       power = row.flat + (row.randomN === null ? 0 : rng.random(row.randomN));
     }
@@ -170,12 +169,12 @@ export function attackPower(
   let outOfCrystals: string | null = null;
   let crystal: CrystalColour | null = null;
   if (isBow) {
-    for (const a of AP.arrowBonus) {
+    for (const a of content().attPower.attPower.arrowBonus) {
       if (lingoEq(f.equip.offHand, a.arrows)) {
         power += a.bonus;
       }
     }
-    for (const r of AP.ringBonus) {
+    for (const r of content().attPower.attPower.ringBonus) {
       if (r.requiresBow && lingoEq(f.equip.ring, r.ring)) {
         power += r.bonus;
       }
@@ -204,7 +203,7 @@ export function attackPower(
     power = rng.random(2);
   }
   // Skill blocks in source order, the Thrust tiers last; an exact block covers its masterworks.
-  for (const block of AP.skillBlocks) {
+  for (const block of content().attPower.attPower.skillBlocks) {
     const hit =
       block.weaponMatch === "any" ||
       (block.weaponMatch === "contains" && lingoContains(w, block.pattern ?? "")) ||

@@ -11,13 +11,13 @@
  * - The server reads an online character live, so the hub is never a save behind. Every read is
  *   audited.
  */
-import { classesData } from "@secondstaronline/data";
 import {
   CHARACTER_SEARCH_MAX,
   type CharacterHub,
   type CharacterListRow,
   type ChatLogRow,
   classLabel,
+  content,
   EDIT_TEXT,
   type EditableCharacter,
   factionLabel,
@@ -523,7 +523,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
           key: (r) => r[0],
         });
         skills.setRows(
-          s.skills.map((v, i) => [classesData.skills[i]?.skill ?? `Skill ${i + 1}`, v]),
+          s.skills.map((v, i) => [content().classes.skills[i]?.skill ?? `Skill ${i + 1}`, v]),
         );
         return [
           section(

@@ -10,9 +10,10 @@
  *   signs and the header; the placed monsters become the roster and the live monsters; the placed
  *   items become the map's item file.
  */
-import { itemsData, monstersData, type Tile, tilesData } from "@secondstaronline/data";
+import type { Tile } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
+import { content, onContent } from "../../content/store.ts";
 import { lingoWord } from "../core/lingo.ts";
 import { houseMapName, mapName } from "../core/maps.ts";
 import { TILE_DEFAULTS } from "../core/tiles.ts";
@@ -102,17 +103,17 @@ export const HEADER_MAX = 200;
  * (`leansToward`), get no quests (`questGive`, `askForQuest`), and get no treasure rumours
  * (`sayTreasure`).
  */
-export const EDITOR_MONSTERS: readonly string[] = monstersData.editorLists.worldEditor.monsters;
+export let EDITOR_MONSTERS: readonly string[];
 
 /** The NPC list (field `NPC`), 56 names in its order. */
-export const EDITOR_NPCS: readonly string[] = monstersData.editorLists.worldEditor.npcs;
+export let EDITOR_NPCS: readonly string[];
 
 /**
  * The ITEM list (field `ITEM`): "Delete", then
  * the item content's `editorItems`. "Delete" is not an item: with it selected, clicking a placed
  * item removes it and clicking the map places nothing.
  */
-export const EDITOR_ITEMS: readonly string[] = ["Delete", ...itemsData.editorItems];
+export let EDITOR_ITEMS: readonly string[];
 
 /** The FOGTEX list: Internal members #448-456 by name. */
 export const FOG_TEXTURES: readonly string[] = [
@@ -151,7 +152,8 @@ export function palettePagesOf(catalogue: readonly Tile[]): number {
   return ORIGINAL_PALETTE_PAGES + Math.ceil(Math.max(0, added - PAGE_10_FREE) / PALETTE_PAGE_SIZE);
 }
 
-export const PALETTE_PAGES = palettePagesOf(tilesData.catalogue);
+/** Palette page count for the current tile catalogue. */
+export let PALETTE_PAGES: number;
 
 /**
  * Pure palette page lookup: pages 1-10 show original tiles by MapGFX member (stopping at 589);
@@ -191,7 +193,7 @@ export function palettePageOf(catalogue: readonly Tile[], page: number): string[
  * The tile codes on palette page `page` (1..`PALETTE_PAGES`), in sprite order 5-64.
  */
 export function palettePage(page: number): string[] {
-  return palettePageOf(tilesData.catalogue, page);
+  return palettePageOf(content().tiles.catalogue, page);
 }
 
 /** Step a palette page with wraparound across `pages` pages. */
@@ -206,9 +208,7 @@ export function stepPalette(page: number, delta: 1 | -1): number {
 }
 
 /** Every tile code the palette offers: the only codes a save may hold. */
-export const PALETTE_CODES: ReadonlySet<string> = new Set(
-  Array.from({ length: PALETTE_PAGES }, (_, i) => palettePage(i + 1)).flat(),
-);
+export let PALETTE_CODES: ReadonlySet<string>;
 
 /**
  * The BLOCKED TILE box (sprite 142): ticked (`YAY`) when the selected tile is not on the walkable
@@ -372,8 +372,19 @@ export function blankMap(mx: number, my: number): EditorMap {
 }
 
 const lower = (list: readonly string[]) => new Set(list.map((s) => s.toLowerCase()));
-const MOB_NAMES = lower([...EDITOR_MONSTERS, ...EDITOR_NPCS]);
+let MOB_NAMES = new Set<string>();
 const FOG_NAMES = lower(FOG_TEXTURES);
+
+onContent((c) => {
+  EDITOR_MONSTERS = c.monsters.editorLists.worldEditor.monsters;
+  EDITOR_NPCS = c.monsters.editorLists.worldEditor.npcs;
+  EDITOR_ITEMS = ["Delete", ...c.items.editorItems];
+  PALETTE_PAGES = palettePagesOf(c.tiles.catalogue);
+  MOB_NAMES = lower([...EDITOR_MONSTERS, ...EDITOR_NPCS]);
+  PALETTE_CODES = new Set(
+    Array.from({ length: PALETTE_PAGES }, (_, i) => palettePageOf(c.tiles.catalogue, i + 1)).flat(),
+  );
+});
 
 /** The canonical list spelling of a placed name (comparison ignores case), or null. */
 export function editorMobName(name: string): string | null {

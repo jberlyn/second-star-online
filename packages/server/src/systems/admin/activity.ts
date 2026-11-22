@@ -14,11 +14,11 @@
  * and when they leave. A difference is a change no system logged, a missed source or sink or a
  * dupe, and is written as an `unlogged` event so the log never silently misses one.
  */
-import { classesData } from "@secondstaronline/data";
 import {
   type ActivityType,
   type Bag,
   className,
+  content,
   displayName,
   type Equipment,
   isGoldName,
@@ -332,7 +332,7 @@ export function checkProgress(world: World, p: Player): void {
     if (v > before) {
       logActivity(world, p, "skill", {
         details: {
-          skill: classesData.skills[i]?.skill ?? `Skill ${i + 1}`,
+          skill: content().classes.skills[i]?.skill ?? `Skill ${i + 1}`,
           level: v,
           gained: v - before,
         },

@@ -11,6 +11,8 @@
  *
  * Run: `bun run maps:check` (SSO_DB as for the server).
  */
+import "../content-classic.ts";
+
 import { exitTarget, lingoEq } from "@secondstaronline/shared";
 
 import { type Db, openDatabase } from "../persistence/database.ts";

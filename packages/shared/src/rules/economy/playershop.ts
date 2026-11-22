@@ -9,8 +9,7 @@
  * by its exact name: setting a price or removing an item touches only that item's own lines (1.6
  * dropped every line that contained the name, and lost empty lines and lines past 30).
  */
-import { itemsData, monstersData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoInteger, lingoWord, type Rng } from "../core/lingo.ts";
 
 // ---- the shopkeeper -------------------------------------------------------------------------
@@ -34,7 +33,7 @@ export function shopkeeperName(rng: Rng): string {
   return pick(p.first) + pick(p.vowel) + pick(p.middle) + pick(p.vowel) + pick(p.last);
 }
 
-const MLISTS = monstersData.monsters.map((m) => m.name).join("\r");
+let MLISTS: string;
 
 /**
  * A name the monster renderer would read as a listed monster: the monster list contains the name.
@@ -116,7 +115,7 @@ export type ShopCommand =
   /** The client recognised the command and dropped it without a word. */
   | { kind: "silent" };
 
-const WHITELIST = itemsData.playerShopWhitelist;
+let WHITELIST: ContentStore["items"]["playerShopWhitelist"];
 
 /**
  * The item equals `<name>` for a whitelist line (ignoring case). The list names crystals in the
@@ -377,3 +376,8 @@ export function profile(
   const out = lines.map((l, i) => (i < SHOP_LINES && tag(l, "PRO") ? `PRO|${text}` : l));
   return { lines: out, text: SHOP_TEXT.profile(npc) };
 }
+
+onContent((c) => {
+  WHITELIST = c.items.playerShopWhitelist;
+  MLISTS = c.monsters.monsters.map((m) => m.name).join("\r");
+});

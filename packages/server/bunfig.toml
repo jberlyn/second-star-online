@@ -1,0 +1,3 @@
+# Tests install the Classic content store first.
+[test]
+preload = ["./tests/helpers/content.ts"]

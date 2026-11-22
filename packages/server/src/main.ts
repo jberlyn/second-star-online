@@ -18,6 +18,8 @@
  * Whatever the setting, a minute with a dropped tick or a tick over 25 ms logs one line
  * (`tick lag in the last minute: ...`).
  */
+import "./content-classic.ts";
+
 import { join } from "node:path";
 
 import { type Clock, systemClock } from "./clock.ts";

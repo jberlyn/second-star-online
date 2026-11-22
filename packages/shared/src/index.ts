@@ -7,6 +7,7 @@ export {
   TICK_MS,
   TILE_PX,
 } from "./constants.ts";
+export * from "./content/store.ts";
 export * from "./protocol/index.ts";
 export * from "./rules/admin/activity.ts";
 export * from "./rules/admin/admin.ts";

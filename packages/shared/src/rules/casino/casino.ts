@@ -1,25 +1,38 @@
 /**
- * The casino's slots and click gates. Pure rules over the generated `casinoData`.
+ * The casino's slots and click gates. Pure rules over the content store's `casino.slots`.
  */
-import { casinoData } from "@secondstaronline/data";
+import type { CasinoData } from "@secondstaronline/data";
 
+import { onContent } from "../../content/store.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 
-const S = casinoData.slots;
+type Slots = CasinoData["slots"];
 
-export const SLOT_ITEM = S.item.text;
-export const SLOT_TEXT = {
-  stand: S.standText,
-  poor: S.poorText,
-  win: S.winText,
-  lose: S.loseText,
-} as const;
-export const SLOT_COST = S.cost;
-export const SLOT_SPIN_FRAMES = S.spinFrames;
-export const SLOT_FX = S.fx;
-export const SLOT_FACES = S.faces;
-export const SLOT_CASH = S.cash;
+let S: Slots;
+export let SLOT_ITEM: string;
+export let SLOT_TEXT: {
+  readonly stand: string;
+  readonly poor: string;
+  readonly win: string;
+  readonly lose: string;
+};
+export let SLOT_COST: number;
+export let SLOT_SPIN_FRAMES: number;
+export let SLOT_FX: Slots["fx"];
+export let SLOT_FACES: number;
+export let SLOT_CASH: Slots["cash"];
+
+onContent((c) => {
+  S = c.casino.slots;
+  SLOT_ITEM = S.item.text;
+  SLOT_TEXT = { stand: S.standText, poor: S.poorText, win: S.winText, lose: S.loseText };
+  SLOT_COST = S.cost;
+  SLOT_SPIN_FRAMES = S.spinFrames;
+  SLOT_FX = S.fx;
+  SLOT_FACES = S.faces;
+  SLOT_CASH = S.cash;
+});
 
 /** Any item whose name contains "Slot Machine" (ignoring case) opens and plays. */
 export function isSlotMachine(name: string): boolean {

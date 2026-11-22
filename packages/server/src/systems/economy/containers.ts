@@ -5,12 +5,12 @@
  * container its carrier's; everything placed is anyone's who faces it. Quest chests are one
  * container per chest type, refilled on the save clock.
  */
-import { houseData, itemRulesData } from "@secondstaronline/data";
 import {
   addSlotFor,
   CAULDRON,
   CRAFT_TEXT,
   cauldronBrew,
+  content,
   displayName,
   FACING_DELTA,
   invAdd,
@@ -31,7 +31,7 @@ import { VAULT_TEXT } from "./vault.ts";
 
 /** The capacity by name, `contains` cascade, last wins. */
 export function containerCapacity(name: string): number {
-  const C = itemRulesData.containers;
+  const C = content().itemRules.containers;
   return lastMatch(C.capacity, name)?.capacity ?? C.defaultCapacity;
 }
 
@@ -279,7 +279,7 @@ export function saveClockStep(world: World, p: Player, rng: Rng): void {
 
 /** Drop's container route for the first item on the faced tile, or null. */
 export function dropRoute(g: GroundItem): string | null {
-  for (const r of houseData.containers.drop) {
+  for (const r of content().houses.containers.drop) {
     if (r.match === "contains" ? lingoContains(g.item, r.name) : lingoEq(g.item, r.name)) {
       return r.match === "contains" ? g.item : r.name;
     }

@@ -7,8 +7,7 @@
  * grants at once, so no promotion ever gave its skill; SSO applies them, and never lowers a skill
  * (1.6's grant overwrote the skill with the roll). The gold charge is made by the server.
  */
-import { classesData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import { className } from "../admin/admin.ts";
 import { lingoEq, lingoInteger, type Rng } from "../core/lingo.ts";
 
@@ -65,7 +64,7 @@ function statValue(s: PromotionState, stat: string): number {
   if (stat === "SPmax") {
     return s.spMax;
   }
-  const skill = classesData.skills.find((k) => k.skill === stat);
+  const skill = content().classes.skills.find((k) => k.skill === stat);
   return skill ? (s.skills[skill.index - 1] ?? 0) : 0;
 }
 
@@ -91,7 +90,7 @@ export function promoteClass(
   if (lingoEq(current, typed)) {
     return { texts: [PROMOTION_TEXT.learnedAll(npc, typed)], sound: false, result: null };
   }
-  const branch = classesData.classes.find((c) => c.promotion && lingoEq(c.name, typed));
+  const branch = content().classes.classes.find((c) => c.promotion && lingoEq(c.name, typed));
   const rule = branch?.promotion;
   if (!branch || !rule) {
     return nothing;
@@ -111,7 +110,7 @@ export function promoteClass(
   }
   const skills = [...s.skills];
   for (const name of rule.skillGrants) {
-    const skill = classesData.skills.find((k) => k.skill === name);
+    const skill = content().classes.skills.find((k) => k.skill === name);
     if (skill) {
       const i = skill.index - 1;
       skills[i] = Math.max(skills[i] ?? 0, rng.random(10));

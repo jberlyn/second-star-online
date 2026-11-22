@@ -1,24 +1,23 @@
 /**
- * Doors, keys, switches and the relock. Pure functions over `houseData.keys`, `.switches` and
- * `.relock` (the generated house records).
+ * Doors, keys, switches and the relock. Pure functions over `content().houses.keys`, `.switches` and
+ * `.relock` (the house data).
  */
-import { houseData } from "@secondstaronline/data";
-
+import { type ContentStore, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
 
-const K = houseData.keys;
-const SW = houseData.switches;
-const R = houseData.relock;
+let K: ContentStore["houses"]["keys"];
+let SW: ContentStore["houses"]["switches"];
+let R: ContentStore["houses"]["relock"];
 
-export const KEY_TEXT = { doesntFit: K.doesntFit } as const;
-export const SWITCH_TEXT = { notInFront: SW.text } as const;
+export let KEY_TEXT: { readonly doesntFit: typeof K.doesntFit };
+export let SWITCH_TEXT: { readonly notInFront: typeof SW.text };
 
 /** Coloured keys' pause (425 frames between item actions). */
-export const KEY_PAUSE = K.colouredPause;
+export let KEY_PAUSE: typeof K.colouredPause;
 /** House and Guild Keys' pause after turning a door (100 frames). */
-export const HOUSE_KEY_PAUSE = K.housePause;
+export let HOUSE_KEY_PAUSE: typeof K.housePause;
 /** A switch that flips sets a 100-frame pause between item actions. */
-export const SWITCH_PAUSE = SW.pause;
+export let SWITCH_PAUSE: typeof SW.pause;
 
 /** An item whose name contains "Key" routes to the key script. */
 export const isKey = (item: string): boolean => lingoContains(item, "Key");
@@ -206,14 +205,14 @@ export const anyOpenDoor = (names: readonly string[]): boolean =>
  * The map's relock timer (the door-lock countdown): every door or switch change sets it to 200, so
  * the doors close 200 frames after the last change, whether or not anyone is on the map.
  */
-export const RELOCK_FRAMES = R.change;
+export let RELOCK_FRAMES: typeof R.change;
 
 // ---- quest chests ----------------------------------------------------------------------------
 
-const QC = houseData.questChest;
+let QC: ContentStore["houses"]["questChest"];
 
 /** The save-block counter is 400 after each save. */
-export const QUEST_SAVE_BLOCK = QC.saveBlock;
+export let QUEST_SAVE_BLOCK: typeof QC.saveBlock;
 
 /**
  * The periodic save, once the save-block counter is 0 (`random(350) = 1`), and its quest chest roll
@@ -240,3 +239,17 @@ export function questChestRefill(rng: Rng): { chest: string; item: string } | nu
   const item = c.source[rng.random(c.source.length) - 1];
   return item ? { chest: c.chest, item } : null;
 }
+
+onContent((c) => {
+  K = c.houses.keys;
+  SW = c.houses.switches;
+  R = c.houses.relock;
+  QC = c.houses.questChest;
+  KEY_TEXT = { doesntFit: K.doesntFit } as const;
+  SWITCH_TEXT = { notInFront: SW.text } as const;
+  KEY_PAUSE = K.colouredPause;
+  HOUSE_KEY_PAUSE = K.housePause;
+  SWITCH_PAUSE = SW.pause;
+  RELOCK_FRAMES = R.change;
+  QUEST_SAVE_BLOCK = QC.saveBlock;
+});

@@ -29,9 +29,10 @@
  *   Arial 12) at (736, 117), one per line. The arrows #162 (up, loc (609, 122)) and #161 (down,
  *   (609, 274)) move both columns 32 px on mouse-down with no limit either way.
  */
-import { type AtlasGroup, classesData, TAB_ART, TAB_HIT, TAB_ROW_Y } from "@secondstaronline/data";
+import { type AtlasGroup, TAB_ART, TAB_HIT, TAB_ROW_Y } from "@secondstaronline/data";
 import {
   bagPicture,
+  content,
   displayName,
   type EquipSlot,
   type EquipView,
@@ -1119,7 +1120,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       levelValue.textContent = String(level);
     },
     setSkills(skills) {
-      const rows = classesData.skillPanel;
+      const rows = content().classes.skillPanel;
       names.textContent = rows.map((r) => r.name).join("\n");
       amounts.textContent = rows.map((r) => skills[r.index - 1] ?? 0).join("\n");
     },

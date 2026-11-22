@@ -2,8 +2,8 @@
  * Characters. All SQL for characters, their skills and their bag lines lives here. Callers own
  * transactions.
  */
-import { classesData } from "@secondstaronline/data";
 import {
+  content,
   type Facing,
   NEW_SKILL_VALUE,
   type StartingCharacter,
@@ -332,7 +332,7 @@ export function saveProfileText(db: Db, id: string, profile: string, now: string
  * A character saved before a skill was added gets 1, and the next save writes its row;
  * rows above `count` (a skill since removed from content) are ignored and kept.
  */
-export function loadSkills(db: Db, id: string, count = classesData.skills.length): number[] {
+export function loadSkills(db: Db, id: string, count = content().classes.skills.length): number[] {
   const skills = Array<number>(count).fill(NEW_SKILL_VALUE);
   const rows = db
     .query<{ skill: number; value: number }, [string]>(

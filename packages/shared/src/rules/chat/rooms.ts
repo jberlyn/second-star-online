@@ -1,18 +1,21 @@
 /**
  * Chat rooms: General, New Player, Trading Post, Guild and Admin Chat, each a ChatWindow room.
  */
-import { socialData } from "@secondstaronline/data";
 
+import { content, onContent } from "../../content/store.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
 import { commandWord } from "./chat.ts";
 
 export type RoomKey = "general" | "newPlayer" | "tradingPost" | "guild" | "admin";
-export const ROOM_KEYS: readonly RoomKey[] = socialData.chat.rooms.map((r) => r.key);
+export let ROOM_KEYS: readonly RoomKey[];
+onContent((c) => {
+  ROOM_KEYS = c.social.chat.rooms.map((r) => r.key);
+});
 
 const fill = (s: string, guild: string) => s.replace(/\{GUILD\}/g, guild);
 
 function roomRow(key: RoomKey) {
-  const r = socialData.chat.rooms.find((x) => x.key === key);
+  const r = content().social.chat.rooms.find((x) => x.key === key);
   if (!r) {
     throw new Error(`no room ${key}`);
   }

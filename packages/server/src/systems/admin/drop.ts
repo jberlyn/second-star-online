@@ -4,9 +4,9 @@
  * (the ones with an icon) and the cast's fixture members, plus a count (SSO's own addition). The
  * item lands on the faced tile and never decays (SSO's own rule).
  */
-import { itemsData } from "@secondstaronline/data";
 import {
   can,
+  content,
   FACING_DELTA,
   ID_CONTAINERS,
   isGoldName,
@@ -42,7 +42,8 @@ export interface DropPile {
  * case (`"Cash"` finds `cash`).
  */
 function inventoryItem(name: string): string | null {
-  return itemsData.items.find((i) => i.icon !== null && lingoEq(i.name, name))?.name ?? null;
+  const item = content().item(name);
+  return item && item.icon !== null ? item.name : null;
 }
 
 /** A crystal stack ("Blue Crystals"): on the ground it is a `"<n> <Colour> Crystals"` pile. */
@@ -66,7 +67,7 @@ export function parseDrop(text: string): DropPile | null {
   if (plain !== null) {
     return isCrystals(plain) ? { item: `1 ${plain}`, qty: 1 } : { item: text, qty: 1 };
   }
-  if (itemsData.fixtures.some((f) => lingoEq(f, text))) {
+  if (content().items.fixtures.some((f) => lingoEq(f, text))) {
     return { item: text, qty: 1 };
   }
   const count = lingoWord(text, 1);

@@ -1,8 +1,7 @@
 /**
  * Kill XP, level-up, regen, hunger and the death penalty. Pure functions over plain state.
  */
-import { monstersData } from "@secondstaronline/data";
-
+import { content } from "../../content/store.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { firstMatch } from "../core/patterns.ts";
 
@@ -16,7 +15,7 @@ export function meleeKillXp(base: number, monsterName: string, ring: string): nu
   if (lingoEq(ring, "Ring of Experience")) {
     xp += 5;
   }
-  const override = firstMatch(monstersData.rules.killXp, monsterName);
+  const override = firstMatch(content().monsters.rules.killXp, monsterName);
   if (override) {
     xp = override.xp;
   }
