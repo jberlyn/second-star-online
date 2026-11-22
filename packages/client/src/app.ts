@@ -73,7 +73,13 @@ import { type Sfx, SOUND } from "./sfx.ts";
 import { action } from "./ui/action.ts";
 import { createActivityLogPage } from "./ui/activity-log.ts";
 import { showAlert } from "./ui/alert.ts";
-import { createAmountDialog, crystalTitle, GOLD_TITLE, stackTitle } from "./ui/amount.ts";
+import {
+  type AmountDialog,
+  createAmountDialog,
+  crystalTitle,
+  GOLD_TITLE,
+  stackTitle,
+} from "./ui/amount.ts";
 import { createAwayWindow } from "./ui/away.ts";
 import { createBars } from "./ui/bars.ts";
 import { createBioWindow } from "./ui/bio.ts";
@@ -395,6 +401,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   };
   // The amount dialog's OK clicks on every press.
   const amount = createAmountDialog(assets, () => sound(SOUND.click));
+  /**
+   * Opens the amount dialog and takes down any tip already up: a dialog opened from the keyboard
+   * leaves the pointer still, so the tip it was over would otherwise stay on top of the dialog.
+   */
+  const askAmount: AmountDialog["open"] = (title, seed, onOk) => {
+    panel.tips.hide();
+    amount.open(title, seed, onOk);
+  };
   const panel = createPanel(assets, {
     use: (slot) => send({ t: "use", slot }),
     // The Use button exits silently while the compose pane is up.
@@ -406,12 +420,12 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     storage: (slot) => send({ t: "storage", slot }),
     unequip: (slot) => send({ t: "unequip", slot }),
     crystals: (slot, colour, mode) =>
-      amount.open(crystalTitle(colour, mode), null, (n) => send({ t: "crystals", slot, n, mode })),
+      askAmount(crystalTitle(colour, mode), null, (n) => send({ t: "crystals", slot, n, mode })),
     oneCrystal: (slot, mode) => send({ t: "crystals", slot, n: 1, mode }),
-    gold: () => amount.open(GOLD_TITLE, "0", (n) => send({ t: "gold", n })),
+    gold: () => askAmount(GOLD_TITLE, "0", (n) => send({ t: "gold", n })),
     // Any other stack asks how many, starting at 1.
     stack: (slot, name, mode) =>
-      amount.open(stackTitle(name, mode), "1", (n) => send({ t: mode, slot, n })),
+      askAmount(stackTitle(name, mode), "1", (n) => send({ t: mode, slot, n })),
     arrange: (from, to) => send({ t: "arrange", from, to }),
     sound,
     // An open vault or container holds the keys, but the bag still takes clicks so Drop can

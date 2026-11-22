@@ -183,6 +183,20 @@ describe("the playfield's hover tip", () => {
     expect([s.tip.hidden, s.tip.textContent]).toEqual([false, "Fish+1 more item"]);
   });
 
+  test("design change: a dialog opened from the keyboard takes down a tip that was already up", async () => {
+    await onMap();
+    const tip = document.querySelector(".hover-tip") as HTMLElement;
+    const tab = document.querySelector('[aria-label="Inventory"]') as HTMLElement;
+    tab.dispatchEvent(
+      new PointerEvent("pointerenter", { pointerType: "mouse", clientX: 700, clientY: 100 }),
+    );
+    expect([tip.hidden, tip.textContent?.startsWith("Inventory")]).toEqual([false, true]);
+    // Enter on the focused gold button: a click with no pointer press, the pointer still on the tab.
+    (document.querySelector(".gold-button") as HTMLElement).click();
+    expect((document.querySelector(".amount-dialog") as HTMLElement).hidden).toBe(false);
+    expect(tip.hidden).toBe(true);
+  });
+
   test("design change: the player menu a click opens hides the tip until it closes", async () => {
     const s = await onMap();
     s.at("pointermove", s.you);
