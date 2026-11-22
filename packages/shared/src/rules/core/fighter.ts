@@ -64,6 +64,11 @@ onContent((c) => {
   SKILL_INDEX = new Map(c.classes.skills.map((s) => [norm(s.skill), s.index - 1]));
 });
 
+/** The array index of a skill by any spelling the original uses, or undefined for no skill. */
+export function findSkillIndex(name: string): number | undefined {
+  return SKILL_INDEX.get(norm(name));
+}
+
 /** The array index of a skill by any spelling the original uses. */
 export function skillIndex(name: string): number {
   const i = SKILL_INDEX.get(norm(name));

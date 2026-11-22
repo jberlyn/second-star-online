@@ -221,6 +221,51 @@ describe("the Content page", () => {
     expect(p.el.textContent).toContain("names an item that does not exist");
   });
 
+  test("another action's result leaves unsaved edits and their error box alone", () => {
+    const { p, $, last } = page();
+    p.onShow();
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({
+        notices: [
+          {
+            dataset: "casino",
+            part: "slots",
+            key: null,
+            packName: "Classic",
+            packVersion: "1.3.0",
+            was: { cost: 10 },
+            now: { cost: 12 },
+            yours: { cost: 25 },
+            yoursOp: "set",
+          },
+        ],
+      }),
+    });
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: {
+        dataset: "items",
+        part: "items",
+        keyField: "name",
+        rows: [{ key: "Ale", status: "pack", draft: null }],
+      },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    p.receive({ t: "contentRow", seq: last("row")?.seq ?? 0, row: ale });
+    const json = $<HTMLTextAreaElement>("content-json");
+    json.value = JSON.stringify({ name: "Ale", display: "Brown Ale", icon: null });
+    (p.el.querySelector('[data-action="content-notice-dismiss"]') as HTMLButtonElement).click();
+    p.receive({ t: "contentResult", seq: last("notice")?.seq ?? 0, ok: true, text: "Kept." });
+    expect(p.changes()).toBe(1);
+    (p.el.querySelector('[data-action="content-notice-dismiss"]') as HTMLButtonElement).click();
+    p.receive({ t: "contentResult", seq: last("notice")?.seq ?? 0, ok: false, text: "Nope." });
+    expect(p.el.querySelector(".content-status")?.textContent).toContain("Nope.");
+    expect(p.el.querySelector('[role="alert"]')?.textContent ?? "").not.toContain("Nope.");
+  });
+
   test("a pack update shows what changed and takes or keeps it", async () => {
     const { p, last, confirm, settle } = page();
     p.onShow();

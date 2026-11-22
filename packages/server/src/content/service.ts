@@ -40,8 +40,10 @@ import {
   publishById,
   publishesAfter,
   recentPublishes,
+  recordSkills,
   type StoredContentRow,
   type StoredPublish,
+  savedSkills,
   setPackVersion,
   upsertContentRow,
   upsertDraftRow,
@@ -70,6 +72,15 @@ import {
   schemaProblems,
   skillProblems,
 } from "./validate.ts";
+
+/** A release pack whose recorded version or name changes once the start succeeds. */
+interface PackVersionUpdate {
+  id: string;
+  name: string;
+  version: string;
+  /** The version recorded before, or null on the first start after the migration. */
+  was: string | null;
+}
 
 /** Who made a change. */
 export interface ContentActor {
@@ -157,6 +168,40 @@ export function resolveQuestItems(
   );
 }
 
+/**
+ * The quest pools with each wanted and reward item written as an item's display name rewritten to
+ * the item's key, as `resolveQuestItems` does for the quest lines.
+ */
+export function resolvePoolItems(
+  pools: unknown,
+  items: readonly { name: string; display?: string }[],
+): unknown {
+  if (pools === null || typeof pools !== "object" || Array.isArray(pools)) {
+    return pools;
+  }
+  const p = pools as Record<string, unknown>;
+  const list = (v: unknown) =>
+    Array.isArray(v)
+      ? v.map((e) =>
+          e !== null && typeof e === "object" && "item" in e
+            ? {
+                ...e,
+                item: (
+                  resolveQuestItems([{ wants: (e as { item: unknown }).item }], items)[0] as {
+                    wants: unknown;
+                  }
+                ).wants,
+              }
+            : e,
+        )
+      : v;
+  return {
+    ...p,
+    ...("wanted" in p ? { wanted: list(p.wanted) } : {}),
+    ...("rewards" in p ? { rewards: list(p.rewards) } : {}),
+  };
+}
+
 /** The JSON clients receive, and its hash. */
 export function clientCopyOf(data: ContentData): ClientCopy {
   const copy: Record<string, unknown> = {};
@@ -225,7 +270,7 @@ export class ContentService {
     this.now = opts.now;
     this.onPublish = opts.onPublish ?? (() => {});
     this.log = opts.log ?? (() => {});
-    const { data, packs, owners } = this.loadPacks(opts.releasePacks);
+    const { data, packs, owners, updates } = this.loadPacks(opts.releasePacks);
     this.owners = owners;
     this.packData = data;
     this.packs = packs;
@@ -243,15 +288,43 @@ export class ContentService {
           .join("\n")}`,
       );
     }
+    // Characters are saved with each skill's index: a release that would move or drop a skill
+    // that has been live stops the server, before anything plays with the wrong skills.
+    const saved = savedSkills(this.db);
+    const skills = skillProblems(
+      this.published,
+      saved.length > 0 ? saved : this.published.classes.skills,
+    );
+    if (skills.length > 0) {
+      throw new Error(
+        `the installed packs and the operator's changes move skills characters are saved with:\n${skills
+          .map((p) => `  ${p.where}: ${p.message}`)
+          .join("\n")}`,
+      );
+    }
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
-    // A newer pack can clash with the operator's changes (an item key equal to a display name,
-    // skills out of order). Say so at start: every publish names the problem until it is fixed.
-    for (const p of [
-      ...keyProblems(this.published, this.packKeys),
-      ...skillProblems(this.published, this.published),
-    ]) {
+    // Only a start that got this far records the pack versions and the live skills, so a start
+    // that fails still says "updated from" the next time.
+    this.db.transaction(() => {
+      for (const u of updates) {
+        setPackVersion(this.db, u.id, u.name, u.version);
+      }
+      recordSkills(this.db, this.published.classes.skills);
+    })();
+    for (const u of updates) {
+      // The first start after the migration records the version quietly; a release that brings
+      // another version says so.
+      if (u.was !== null) {
+        this.log(
+          `content: ${u.name} ${comparePackVersions(u.version, u.was) > 0 ? "updated" : "changed"} from v${u.was} to v${u.version}`,
+        );
+      }
+    }
+    // A newer pack can clash with the operator's changes (an item key equal to a display name).
+    // Say so at start: every publish names the problem until it is fixed.
+    for (const p of keyProblems(this.published, this.packKeys)) {
       this.log(`content: ${p.where}: ${p.message}`);
     }
   }
@@ -261,22 +334,22 @@ export class ContentService {
     data: ContentData;
     packs: PackInfo[];
     owners: Map<string, PackInfo>;
+    updates: PackVersionUpdate[];
   } {
     const loaded: LoadedPack[] = [];
     const packs: PackInfo[] = [];
+    const updates: PackVersionUpdate[] = [];
     for (const p of installedPacks(this.db)) {
       const pack = this.readInstalled(p, releasePacks);
       const updatedFrom =
         p.version !== null && p.version !== pack.manifest.version ? p.version : null;
       if (p.version !== pack.manifest.version || p.name !== pack.manifest.name) {
-        setPackVersion(this.db, p.id, pack.manifest.name, pack.manifest.version);
-        // The first start after the migration records the version quietly; a release that brings
-        // another version says so.
-        if (p.version !== null) {
-          this.log(
-            `content: ${pack.manifest.name} ${comparePackVersions(pack.manifest.version, p.version) > 0 ? "updated" : "changed"} from v${p.version} to v${pack.manifest.version}`,
-          );
-        }
+        updates.push({
+          id: p.id,
+          name: pack.manifest.name,
+          version: pack.manifest.version,
+          was: p.version,
+        });
       }
       loaded.push(pack);
       packs.push({
@@ -301,7 +374,7 @@ export class ContentService {
         `the installed packs leave out ${missing.join(", ")}: a server needs a pack with every dataset (the Classic pack)`,
       );
     }
-    return { data: merged as ContentData, packs, owners };
+    return { data: merged as ContentData, packs, owners, updates };
   }
 
   private readInstalled(
@@ -405,9 +478,28 @@ export class ContentService {
     return rows;
   }
 
-  /** The draft's pre-publish checks: schemas, then key rules and cross-references. */
+  /**
+   * The draft's pre-publish checks: schemas, then key rules and cross-references. The answer is
+   * kept until the draft, the published store or the NPC Editor's saves change, so the Content
+   * page can ask for it on every refresh without running the trial install each time.
+   */
   check(draft: readonly DraftRow[] = this.draft()): ContentProblem[] {
-    return draft.length === 0 ? [] : this.fullProblems(this.draftContent(draft));
+    if (draft.length === 0) {
+      return [];
+    }
+    const key = `${this.draftRev(draft)}\u0000${this.current.hash}\u0000${rowHash(this.npcSaves())}`;
+    if (this.checked?.key !== key) {
+      this.checked = { key, problems: this.fullProblems(this.draftContent(draft)) };
+    }
+    return this.checked.problems;
+  }
+
+  /** The last `check` answer and what it was for. */
+  private checked: { key: string; problems: ContentProblem[] } | null = null;
+
+  /** The NPC Editor's saves, which play instead of their NPC's content row. */
+  private npcSaves() {
+    return loadNpcFiles(this.db);
   }
 
   /** Checks that a ref names a row an operator may change. */
@@ -455,7 +547,11 @@ export class ContentService {
       if (typeof k !== "string" && typeof k !== "number") {
         return fail(`the row needs its key field "${field}"`);
       }
-      const existing = rowValue(this.draftContent(), ref) as Record<string, unknown> | undefined;
+      // A pack row the operator removed is not in the store, but its key is still the pack's: put
+      // back, it is spelled exactly as before (stored names and the pack's text use it).
+      const existing = (rowValue(this.draftContent(), ref) ?? rowValue(this.packData, ref)) as
+        | Record<string, unknown>
+        | undefined;
       if (existing && String(existing[field]) !== String(k)) {
         return fail(
           `the key "${String(existing[field])}" never changes: to rename it, set "display" instead`,
@@ -470,6 +566,9 @@ export class ContentService {
     // (decision 3), so a later rename never breaks it.
     if (op === "set" && ref.dataset === "quests" && ref.part === "current" && Array.isArray(data)) {
       data = resolveQuestItems(data, this.draftContent().items.items);
+    }
+    if (op === "set" && ref.dataset === "quests" && ref.part === "pools") {
+      data = resolvePoolItems(data, this.draftContent().items.items);
     }
     // An NPC file gets the NPC Editor's handling: display names become keys, then its checks.
     if (op === "set" && ref.dataset === "npcFiles" && ref.part === "files") {
@@ -488,8 +587,12 @@ export class ContentService {
     if (op === "revert" && !contentRows(this.db).some((r) => sameRow(r, ref))) {
       return fail(`${rowLabel(ref)} has no change to revert`);
     }
-    if (op === "remove" && rowValue(this.draftContent(), ref) === undefined) {
-      return fail(`${rowLabel(ref)} does not exist`);
+    if (op === "remove" && rowValue(this.published, ref) === undefined) {
+      return fail(
+        this.draft().some((d) => sameRow(d, ref) && d.op === "set")
+          ? `${rowLabel(ref)} is only in the draft: discard the change instead`
+          : `${rowLabel(ref)} does not exist`,
+      );
     }
     const row: DraftRow = {
       dataset: ref.dataset,
@@ -577,7 +680,13 @@ export class ContentService {
 
   /** Every check a write must pass: the publish checks, then a trial install. */
   private fullProblems(next: ContentData): ContentProblem[] {
-    const problems = checkStore(next, this.published, this.packKeys);
+    const problems = checkStore(
+      next,
+      this.published,
+      this.packKeys,
+      this.npcSaves(),
+      savedSkills(this.db),
+    );
     return problems.length > 0 ? problems : this.installProblems(next);
   }
 
@@ -604,6 +713,7 @@ export class ContentService {
   /** Rebuilds the published store from the database and swaps it in. */
   private rebuild(): void {
     this.published = applyRows(this.packData, contentRows(this.db).map(toLayer));
+    recordSkills(this.db, this.published.classes.skills);
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
@@ -643,22 +753,25 @@ export class ContentService {
     }
     const now = this.now();
     const layer = contentRows(this.db);
-    const changes: PublishChange[] = draft.map((d) => {
-      const before = this.stateOf(layer.find((r) => sameRow(r, d)));
-      const base = rowValue(this.packData, d);
-      // Reverting drops the operator row; so does removing a row no pack has (an added one), which
-      // leaves nothing behind to mark.
-      const after: PublishedState | null =
-        d.op === "revert" || (d.op === "remove" && base === undefined)
-          ? null
-          : {
-              op: d.op,
-              data: d.op === "set" ? d.data : null,
-              baseHash: base === undefined ? null : rowHash(base),
-              baseData: base === undefined ? null : base,
-            };
-      return { dataset: d.dataset, part: d.part, key: d.key, before, after };
-    });
+    const changes: PublishChange[] = draft
+      .map((d): PublishChange => {
+        const before = this.stateOf(layer.find((r) => sameRow(r, d)));
+        const base = rowValue(this.packData, d);
+        // Reverting drops the operator row; so does removing a row no pack has (an added one), which
+        // leaves nothing behind to mark.
+        const after: PublishedState | null =
+          d.op === "revert" || (d.op === "remove" && base === undefined)
+            ? null
+            : {
+                op: d.op,
+                data: d.op === "set" ? d.data : null,
+                baseHash: base === undefined ? null : rowHash(base),
+                baseData: base === undefined ? null : base,
+              };
+        return { dataset: d.dataset, part: d.part, key: d.key, before, after };
+      })
+      // A revert of a row whose operator change has gone since (an undo) changes nothing.
+      .filter((c) => c.before !== null || c.after !== null);
     const nextCopy = clientCopyOf(this.draftContent(draft));
     let id = "";
     this.db.transaction(() => {
@@ -703,20 +816,38 @@ export class ContentService {
       return fail("there is no such publish");
     }
     if (p.undoneBy) {
-      return fail("that publish was already undone");
+      return fail(
+        publishById(this.db, p.undoneBy)?.undoneBy
+          ? "that publish was undone and then redone: to undo it again, undo the redo"
+          : "that publish was already undone",
+      );
     }
     const layer = contentRows(this.db);
     const same = (a: PublishedState | null, b: PublishedState | null) =>
       a === null || b === null ? a === b : a.op === b.op && rowHash(a.data) === rowHash(b.data);
     // A later publish that touched one of its rows counts as a change even if it put the row
-    // back as it was (a change and its undo, both later, cancel out).
+    // back as it was. A later change and its undo cancel out: a chain of later publishes each
+    // undoing the one before (a change, its undo, a redo, ...) cancels when it has an even
+    // number of steps; with an odd number the last step is live, so all of them count.
     const later = publishesAfter(this.db, p.id);
-    const laterIds = new Set(later.map((l) => l.id));
-    const touchedLater = later
-      .filter(
-        (l) => !(l.undoneBy && laterIds.has(l.undoneBy)) && !(l.undoOf && laterIds.has(l.undoOf)),
-      )
-      .flatMap((l) => l.changes);
+    const byId = new Map(later.map((l) => [l.id, l]));
+    const cancelled = new Set<string>();
+    for (const l of later) {
+      if (l.undoOf && byId.has(l.undoOf)) {
+        continue; // not the first step of its chain among the later publishes
+      }
+      const chain = [l];
+      for (let at = l; at.undoneBy && byId.has(at.undoneBy); ) {
+        at = byId.get(at.undoneBy) as StoredPublish;
+        chain.push(at);
+      }
+      if (chain.length % 2 === 0) {
+        for (const c of chain) {
+          cancelled.add(c.id);
+        }
+      }
+    }
+    const touchedLater = later.filter((l) => !cancelled.has(l.id)).flatMap((l) => l.changes);
     const conflicts = p.changes.filter(
       (c) =>
         !same(this.stateOf(layer.find((r) => sameRow(r, c))), c.after) ||

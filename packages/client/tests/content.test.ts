@@ -120,21 +120,87 @@ describe("the client's content", () => {
     expect(asked).toEqual([]);
   });
 
-  test("a store that cannot be fetched keeps the old one and lets messages through", async () => {
-    const { fetchImpl } = server({}, "x");
+  test("a store that cannot be fetched is tried again while the messages wait", async () => {
+    const files: Record<string, ContentFile> = {};
+    const { fetchImpl } = server(files, "x");
+    const handled: string[] = [];
+    const timers: (() => void)[] = [];
+    const sync = createContentSync({
+      handle: (m) => handled.push(m.t),
+      fetch: fetchImpl,
+      warn: () => {},
+      later: (_ms, fn) => timers.push(fn),
+    });
+    sync.receive(welcome("h1"));
+    sync.receive({ t: "death" });
+    await settle();
+    await settle();
+    // Still waiting: nothing is handled against the old store while a retry is due.
+    expect(handled).toEqual([]);
+    expect(sync.syncing).toBe(true);
+    files.h1 = fileWith(3, "h1");
+    timers.shift()?.();
+    await settle();
+    await settle();
+    expect(content().hash).toBe("h1");
+    expect(handled).toEqual(["welcome", "death"]);
+  });
+
+  test("once the retries are spent the messages go through, and the store is fetched in the background", async () => {
+    const files: Record<string, ContentFile> = {};
+    const { fetchImpl } = server(files, "x");
     const handled: string[] = [];
     const warned: string[] = [];
+    const timers: (() => void)[] = [];
+    let installed = 0;
     const sync = createContentSync({
       handle: (m) => handled.push(m.t),
       fetch: fetchImpl,
       warn: (t) => warned.push(t),
+      retryDelays: [],
+      later: (_ms, fn) => timers.push(fn),
+      installed: () => {
+        installed++;
+      },
     });
-    sync.receive(welcome("gone"));
+    sync.receive(welcome("h1"));
     await settle();
     await settle();
     expect(handled).toEqual(["welcome"]);
     expect(warned).toHaveLength(1);
     expect(content().hash).toBe("");
+    // The background retry fails too, and is tried again.
+    timers.shift()?.();
+    await settle();
+    await settle();
+    await settle();
+    expect(content().hash).toBe("");
+    expect(timers).toHaveLength(1);
+    files.h1 = fileWith(3, "h1");
+    timers.shift()?.();
+    await settle();
+    await settle();
+    expect(content().hash).toBe("h1");
+    expect(installed).toBe(1);
+  });
+
+  test("a fetch that hangs counts as failed", async () => {
+    const hang = (async (_url: string, init?: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("timed out")));
+      })) as unknown as typeof fetch;
+    const handled: string[] = [];
+    const sync = createContentSync({
+      handle: (m) => handled.push(m.t),
+      fetch: hang,
+      warn: () => {},
+      retryDelays: [],
+      later: () => {},
+      timeoutMs: 5,
+    });
+    sync.receive(welcome("h1"));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(handled).toEqual(["welcome"]);
   });
 
   test("a client too old for the server's content reloads", async () => {
@@ -181,7 +247,13 @@ describe("publishes in quick succession", () => {
   test("a hash that failed once is fetched again when a later publish names it (an undo back)", async () => {
     const files: Record<string, ContentFile> = {};
     const { fetchImpl } = server(files, "none");
-    const sync = createContentSync({ handle: () => {}, fetch: fetchImpl, warn: () => {} });
+    const sync = createContentSync({
+      handle: () => {},
+      fetch: fetchImpl,
+      warn: () => {},
+      retryDelays: [],
+      later: () => {},
+    });
     sync.receive({ t: "content", hash: "h1" });
     await settle();
     await settle();

@@ -7,6 +7,7 @@ const { monsters: monstersData } = classicData;
 
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 
+import { buildContentStore, content } from "../../src/content/store.ts";
 import {
   checkNpcFile,
   editorLines,
@@ -104,6 +105,28 @@ describe("LOAD shows the live ledger (the file was the ledger in 1.6)", () => {
 
 describe("the editor's checks", () => {
   const check = (...lines: string[]) => checkNpcFile(lines);
+  test("a spell tag is checked against the store given, as an item is", () => {
+    const firstSpell = () => {
+      const s = content().monsters.casting.spells[0];
+      if (!s) {
+        throw new Error("Classic has a monster spell");
+      }
+      return s;
+    };
+    const store = buildContentStore({
+      ...content(),
+      monsters: {
+        ...content().monsters,
+        casting: {
+          ...content().monsters.casting,
+          spells: [...content().monsters.casting.spells, { ...firstSpell(), tag: "Frostnova" }],
+        },
+      },
+    });
+    expect(checkNpcFile(["SPL|Frostnova"], store).warnings).toEqual([]);
+    expect(checkNpcFile(["SPL|Frostnova"]).warnings).toHaveLength(1);
+  });
+
   test("every SEL|/BUY| item and INV| name the archive uses is accepted (the whole files: server tests)", () => {
     for (const n of npcsData.npcs) {
       for (const s of [...n.sells, ...n.buys]) {

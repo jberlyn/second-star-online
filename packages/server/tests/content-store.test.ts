@@ -33,6 +33,7 @@ import { openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { saveNpcFile } from "../src/persistence/npcfiles.ts";
 import { parseDrop } from "../src/systems/admin/drop.ts";
+import { VAULT_TEXT } from "../src/systems/economy/vault.ts";
 import { groundView, inventoryView } from "../src/systems/world/world.ts";
 import { player, testMap } from "./helpers/sim.ts";
 
@@ -525,7 +526,7 @@ describe("review fixes", () => {
     const ref = { dataset: "classes" as const, part: "skills", key: skills[0]?.skill as string };
     service.draftSet(ADMIN, ref, "set", { ...skills[0], index: skills[1]?.index });
     expect(service.check().some((p) => p.message.includes("cannot change"))).toBe(true);
-    expect(service.check().some((p) => p.message.includes("from 1 to"))).toBe(true);
+    expect(service.check().some((p) => p.message.includes("in index order"))).toBe(true);
     service.draftDiscard(ref);
     // Removing a skill: refused (here the classes' starting values already outnumber the skills).
     const published = service.publishedContent();
@@ -533,7 +534,7 @@ describe("review fixes", () => {
       ...published,
       classes: { ...published.classes, skills: published.classes.skills.slice(0, -1) },
     };
-    expect(skillProblems(without, published).map((p) => p.message)).toContain(
+    expect(skillProblems(without, published.classes.skills).map((p) => p.message)).toContain(
       "a skill characters have trained cannot be removed",
     );
     const added = { dataset: "classes" as const, part: "skills", key: "Swimming" };
@@ -910,5 +911,179 @@ describe("fifth review fixes", () => {
     expect(
       service.draftSet(ADMIN, { dataset: "social", part: "chat", key: null }, "set", chat).ok,
     ).toBe(false);
+  });
+});
+
+describe("council review fixes", () => {
+  const slotsRef = { dataset: "casino" as const, part: "slots", key: null };
+
+  test("an NPC Editor save counts: removing an item only a saved shop sells is refused", () => {
+    const { db, service } = setup();
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Moonblade" }, "set", {
+      name: "Moonblade",
+      icon: null,
+    });
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(true);
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Moonblade" }, "remove", null);
+    expect(service.check()).toEqual([]);
+    // The check is asked again once the NPC Editor saves a shop that sells it.
+    saveNpcFile(db, { npc: "Amber", text: "BIO|Name: Amber\rSEL|Moonblade:5:5" }, "Admin", "x");
+    expect(service.check().map((p) => p.where)).toContain("npcFiles/files/Amber");
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(false);
+  });
+
+  test("crafting and the quest pools are checked for the items they name", () => {
+    const { service } = setup();
+    service.draftSet(
+      ADMIN,
+      { dataset: "items", part: "items", key: "Burned Fish" },
+      "remove",
+      null,
+    );
+    expect(service.check().map((p) => p.where)).toContain("craft/stations");
+    service.draftDiscard({ dataset: "items", part: "items", key: "Burned Fish" });
+    const pools = structuredClone(service.publishedContent().quests.pools);
+    (pools.rewards[0] as { item: string }).item = "NonExistentSword";
+    service.draftSet(ADMIN, { dataset: "quests", part: "pools", key: null }, "set", pools);
+    expect(service.check().map((p) => p.message)).toContain(
+      "names an item that does not exist: NonExistentSword",
+    );
+  });
+
+  test("a quest pool written with an item's display name is stored with its key", () => {
+    const { service } = setup();
+    const ale = service.publishedContent().items.items.find((i) => i.name === "Ale");
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Ale" }, "set", {
+      ...ale,
+      display: "Brown Ale",
+    });
+    const pools = structuredClone(service.publishedContent().quests.pools);
+    (pools.wanted[0] as { item: string }).item = "Brown Ale";
+    service.draftSet(ADMIN, { dataset: "quests", part: "pools", key: null }, "set", pools);
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(true);
+    expect(service.store().quests.pools.wanted[0]?.item).toBe("Ale");
+  });
+
+  test("a later change, its undo, its redo and the redo's undo cancel out", () => {
+    const { service } = setup();
+    const slots = service.publishedContent().casino.slots;
+    service.draftSet(ADMIN, slotsRef, "set", { ...slots, cost: 25 });
+    const a = service.publish(ADMIN, seen(service), "A");
+    service.draftSet(ADMIN, slotsRef, "set", { ...slots, cost: 30 });
+    const b = service.publish(ADMIN, seen(service), "B");
+    const ub = service.undo(ADMIN, b.ok ? b.value.id : "");
+    const redo = service.undo(ADMIN, ub.ok ? ub.value.id : "");
+    expect(redo.ok).toBe(true);
+    expect(service.store().casino.slots.cost).toBe(30);
+    // With the redo live, A cannot be undone underneath it, and B says to undo the redo.
+    expect(service.undo(ADMIN, a.ok ? a.value.id : "").ok).toBe(false);
+    const again = service.undo(ADMIN, b.ok ? b.value.id : "");
+    expect(again.ok ? "" : again.error).toContain("undo the redo");
+    expect(service.undo(ADMIN, redo.ok ? redo.value.id : "").ok).toBe(true);
+    expect(service.store().casino.slots.cost).toBe(25);
+    expect(service.undo(ADMIN, a.ok ? a.value.id : "").ok).toBe(true);
+    expect(service.store().casino.slots).toEqual(classic.data.casino?.slots as never);
+  });
+
+  test("skills are listed in index order: two new ones drafted out of order are refused", () => {
+    const { service } = setup();
+    const n = service.publishedContent().classes.skills.length;
+    const skill = (index: number, name: string) =>
+      service.draftSet(ADMIN, { dataset: "classes", part: "skills", key: name }, "set", {
+        index,
+        skill: name,
+      });
+    skill(n + 2, "Swimming");
+    skill(n + 1, "Climbing");
+    expect(service.check().some((p) => p.message.includes("in index order"))).toBe(true);
+  });
+
+  test("an attack-power condition is read as combat reads it: an unknown skill is refused", () => {
+    const { service } = setup();
+    const ap = structuredClone(service.publishedContent().attPower.attPower);
+    const tier = ap.skillBlocks.flatMap((b) => b.tiers).find((t) => t.when?.length) as {
+      when: string[];
+    };
+    tier.when = ["Slash2 > 5"];
+    const r = service.draftSet(
+      ADMIN,
+      { dataset: "attPower", part: "attPower", key: null },
+      "set",
+      ap,
+    );
+    expect(r.ok ? service.check().map((p) => p.message) : [r.error]).toContainEqual(
+      expect.stringContaining("Slash2"),
+    );
+  });
+
+  test("a crafting line a player only meets mid-craft is still read when it is installed", () => {
+    const { service } = setup();
+    const stations = structuredClone(service.publishedContent().craft.stations) as {
+      texts: Record<string, unknown>;
+    };
+    delete stations.texts.smithBegin;
+    service.draftSet(ADMIN, { dataset: "craft", part: "stations", key: null }, "set", stations);
+    expect(service.check().some((p) => p.message.includes("smithBegin"))).toBe(true);
+  });
+
+  test("vault and container lines name a renamed item as players see it", () => {
+    const before = content();
+    const items = structuredClone(before.items);
+    const ale = items.items.find((i) => i.name === "Ale");
+    if (ale) {
+      ale.display = "Brown Ale";
+    }
+    try {
+      installContent(buildContentStore({ ...before, items }));
+      expect(VAULT_TEXT.drop("Ale")).toBe("You drop a Brown Ale into the container.");
+      expect(VAULT_TEXT.dropMany(2, "Ale")).toBe("You drop 2 Brown Ale into the container.");
+      expect(VAULT_TEXT.take("Ale")).toBe("You take a Brown Ale out of the container.");
+    } finally {
+      installContent(before);
+    }
+  });
+
+  test("removing a row only the draft adds is refused: discard it instead", () => {
+    const { service } = setup();
+    const ref = { dataset: "items" as const, part: "items", key: "TempItem" };
+    service.draftSet(ADMIN, ref, "set", { name: "TempItem", icon: null });
+    const r = service.draftSet(ADMIN, ref, "remove", null);
+    expect(r.ok ? "" : r.error).toContain("discard the change instead");
+  });
+
+  test("a pack row put back after its removal keeps the pack's spelling of its key", () => {
+    const { service } = setup();
+    const ref = { dataset: "items" as const, part: "items", key: "Burned Fish" };
+    const row = rowValue(service.packContent(), ref) as Record<string, unknown>;
+    service.draftSet(ADMIN, ref, "remove", null);
+    const r = service.draftSet(ADMIN, { ...ref, key: "burned fish" }, "set", {
+      ...row,
+      name: "BURNED FISH",
+    });
+    expect(r.ok).toBe(false);
+    expect(service.draftSet(ADMIN, ref, "set", row).ok).toBe(true);
+  });
+
+  test("a release that moves a saved skill stops the start, and its version waits for a start that works", () => {
+    const { db } = setup();
+    const before = installedPacks(db)[0]?.version;
+    const dir = mkdtempSync(join(tmpdir(), "sso-pack-"));
+    cpSync(RELEASE_PACK_DIRS.classic as string, dir, { recursive: true });
+    const file = join(dir, "data", "classes.json");
+    const classes = JSON.parse(readFileSync(file, "utf8"));
+    const [s1, s2] = classes.skills;
+    classes.skills[0] = { ...s2, index: 1 };
+    classes.skills[1] = { ...s1, index: 2 };
+    writeFileSync(file, JSON.stringify(classes));
+    const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
+    writeFileSync(join(dir, "manifest.json"), JSON.stringify({ ...m, version: "9.0.0" }));
+    try {
+      expect(
+        () => new ContentService({ db, now: () => "x", releasePacks: { classic: dir } }),
+      ).toThrow(/move skills characters are saved with/);
+      expect(installedPacks(db)[0]?.version).toBe(before);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -4,7 +4,7 @@
  */
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
-import { addSlotFor, type Bag } from "../inventory/inventory.ts";
+import { addSlotFor, type Bag, itemLabel } from "../inventory/inventory.ts";
 
 /** The lines `QuestGive` and `SayQuest` read. */
 export let QUEST_LINES: ContentStore["social"]["questReplies"]["give"]["lines"];
@@ -158,7 +158,7 @@ export function sayQuest(lines: readonly string[], names: readonly string[]): Qu
       continue;
     }
     for (const line of mine) {
-      out.push({ text: fill(s.bring, name, item(line, 2).trim()), to: "map" });
+      out.push({ text: fill(s.bring, name, itemLabel(item(line, 2).trim())), to: "map" });
     }
   }
   return out;

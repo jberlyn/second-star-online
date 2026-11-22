@@ -208,6 +208,11 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   let resultSeq = -1;
   /** What the last action was, to know what to refresh after its result. */
   let afterResult: () => void = () => {};
+  /**
+   * Whether the last action was the row editor's (save, remove, revert, discard its change): only
+   * its result is the editor's to show, and only it makes the editor's text the saved text.
+   */
+  let resultInEditor = false;
 
   const status = document.createElement("p");
   status.className = "content-status";
@@ -279,6 +284,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
             }).then((yes) => {
               if (yes) {
                 resultSeq = next();
+                resultInEditor = false;
                 afterResult = refreshAll;
                 actions.notice(resultSeq, refOf(n), true);
               }
@@ -286,6 +292,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
           }),
           panelButton("content-notice-dismiss", "Keep mine", () => {
             resultSeq = next();
+            resultInEditor = false;
             afterResult = refreshAll;
             actions.notice(resultSeq, refOf(n), false);
           }),
@@ -316,6 +323,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
         cell: (d) =>
           panelButton("content-draft-discard", "Discard", () => {
             resultSeq = next();
+            resultInEditor = false;
             afterResult = refreshAll;
             actions.discard(resultSeq, refOf(d));
           }),
@@ -344,6 +352,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
       }).then((yes) => {
         if (yes) {
           resultSeq = next();
+          resultInEditor = false;
           afterResult = () => {
             summary.value = "";
             refreshAll();
@@ -459,6 +468,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   const discardBtn = panelButton("content-discard", "Discard the draft change", () => {
     if (editing) {
       resultSeq = next();
+      resultInEditor = true;
       afterResult = refreshAll;
       actions.discard(resultSeq, editing);
     }
@@ -594,6 +604,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     showError("");
     const saved = ref;
     resultSeq = next();
+    resultInEditor = true;
     afterResult = () => {
       refreshAll();
       openRow(saved);
@@ -614,6 +625,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     }).then((yes) => {
       if (yes) {
         resultSeq = next();
+        resultInEditor = true;
         afterResult = () => {
           refreshAll();
           openRow(ref);
@@ -629,6 +641,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
       return;
     }
     resultSeq = next();
+    resultInEditor = true;
     afterResult = () => {
       refreshAll();
       openRow(ref);
@@ -662,6 +675,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
             }).then((yes) => {
               if (yes) {
                 resultSeq = next();
+                resultInEditor = false;
                 afterResult = refreshAll;
                 actions.undo(resultSeq, p.id);
               }
@@ -747,9 +761,11 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
           if (msg.seq === resultSeq) {
             if (msg.ok) {
               say(msg.text);
-              loaded = json.value;
+              if (resultInEditor) {
+                loaded = json.value;
+              }
               afterResult();
-            } else if (!editor.hidden) {
+            } else if (resultInEditor && !editor.hidden) {
               showError(msg.text, msg.problems ?? []);
               say("");
             } else {

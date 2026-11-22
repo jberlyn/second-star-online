@@ -170,6 +170,13 @@ export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDet
           note: "This NPC has a save from the NPC Editor, which is what plays: change it there, or this row has no effect.",
         }
       : {}),
+    // The world keeps its own quest lines once it has started (a finished quest rolls the next
+    // from the pools), so these only seed a new world.
+    ...(ref.dataset === "quests" && ref.part === "current"
+      ? {
+          note: "These are the quests a new world starts with. A world that has started keeps its own (each finished quest rolls the next from quests/pools), so a change here only reaches a new database.",
+        }
+      : {}),
   };
 }
 

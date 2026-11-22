@@ -29,9 +29,16 @@ const t = (key: string): string => {
   }
   return v.text;
 };
-const fill = (key: string, ...args: string[]): string => {
-  let i = 0;
-  return t(key).replace(/\{\}/g, () => args[i++] ?? "");
+/**
+ * A line with `{}` slots, read when the content is installed (not when a player first needs it),
+ * so a missing line is refused by the publish checks' trial install instead of failing a craft.
+ */
+const fill = (key: string): ((...args: string[]) => string) => {
+  const text = t(key);
+  return (...args) => {
+    let i = 0;
+    return text.replace(/\{\}/g, () => args[i++] ?? "");
+  };
 };
 
 /** Every crafting line, from the crafting data. */
@@ -41,12 +48,12 @@ const craftTextOf = () =>
     noCarpentryBench: t("noCarpentryBench"),
     crowded: t("crowded"),
     noHammer: t("noHammer"),
-    needChunk: (chunk: string) => fill("needChunk", chunk),
-    smithBegin: (item: string) => fill("smithBegin", item),
+    needChunk: fill("needChunk") as (chunk: string) => string,
+    smithBegin: fill("smithBegin") as (item: string) => string,
     noStove: t("noStove"),
     unskilled: t("unskilled"), // no full stop
     cantCook: t("cantCook"),
-    cookBegin: (item: string) => fill("cookBegin", item),
+    cookBegin: fill("cookBegin") as (item: string) => string,
     burned: t("burned"),
     noLab: t("noLab"),
     noSand: t("noSand"),
@@ -57,8 +64,8 @@ const craftTextOf = () =>
     unskilledBuild: t("unskilledBuild"), // no full stop, like cooking's
     buildBegin: t("buildBegin"),
     buildFailed: t("buildFailed"),
-    built: (name: string) => fill("built", name),
-    ready: (item: string) => fill("ready", item),
+    built: fill("built") as (name: string) => string,
+    ready: fill("ready") as (item: string) => string,
     cantRepair: t("cantRepair"),
     interrupted: t("interrupted"),
     fizzle: t("fizzle"),

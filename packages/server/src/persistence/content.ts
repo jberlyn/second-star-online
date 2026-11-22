@@ -355,3 +355,27 @@ export function publishById(db: Db, id: string): StoredPublish | null {
     .get(id);
   return r ? toPublish(r) : null;
 }
+
+/** A skill's index as characters are saved with it. */
+export interface SavedSkill {
+  skill: string;
+  index: number;
+}
+
+/** Every skill that has been live, by the index characters are saved with. */
+export function savedSkills(db: Db): SavedSkill[] {
+  return db
+    .query<{ skill: string; idx: number }, []>("SELECT skill, idx FROM content_skills ORDER BY idx")
+    .all()
+    .map((r) => ({ skill: r.skill, index: r.idx }));
+}
+
+/** Records skills as live (a skill already recorded keeps its row). */
+export function recordSkills(db: Db, skills: readonly SavedSkill[]): void {
+  const q = db.query(
+    "INSERT INTO content_skills (skill, idx) VALUES (?, ?) ON CONFLICT DO NOTHING",
+  );
+  for (const s of skills) {
+    q.run(s.skill, s.index);
+  }
+}

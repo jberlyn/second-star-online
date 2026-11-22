@@ -11,8 +11,11 @@ const { monsters: monstersData, npcFiles: npcFilesData } = classicData;
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 import {
   ADMINISTRATOR,
+  buildContentStore,
   checkNpcFile,
+  content,
   editorLines,
+  installContent,
   NPC_EDITOR_MONSTERS,
   NPC_EDITOR_NPCS,
   rollLoot,
@@ -356,6 +359,36 @@ describe("persistence (real SQL)", () => {
     setRole(db, acc?.account_id ?? "", "administrator", "2026-11-06T00:00:00.000Z");
     return l.characterId;
   };
+
+  test("a content publish that removes an NPC's file drops its ledger and closes its windows", async () => {
+    let g = game();
+    const id = await makeAdministrator(g);
+    db.run("UPDATE characters SET gold = 1000 WHERE id = ?", [id]);
+    g = game();
+    g.enter(id, false);
+    g.intent(id, { t: "mapReady" });
+    g.intent(id, { t: "chat", text: "/roster 1 Amber" });
+    g.intent(id, { t: "chat", text: "/spawn 1" });
+    g.intent(id, { t: "npcClick", slot: 1 });
+    g.intent(id, { t: "shopList", mode: "buy" });
+    g.intent(id, { t: "buy", line: 4, count: 3 });
+    expect(loadShop(db, "Amber")).not.toBeNull();
+    const before = content();
+    try {
+      installContent(
+        buildContentStore({
+          ...before,
+          npcFiles: { files: before.npcFiles.files.filter((f) => f.name !== "Amber") },
+        }),
+      );
+      sent = [];
+      g.contentPublished("x");
+      expect(loadShop(db, "Amber")).toBeNull();
+      expect(sent.some((m) => m.to === id && m.msg.t === "npcClosed")).toBe(true);
+    } finally {
+      installContent(before);
+    }
+  });
 
   test("a save writes the file and its old version and drops the stored ledger; a restart loads it", async () => {
     let g = game();

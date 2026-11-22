@@ -254,7 +254,7 @@ Give a new species one of these numbers only if you want that rule.
    { "name": "Frost Wolf", "text": "BIO|Name: Frost Wolf\rPRO|A fierce wolf of the snow.\rINV|5 Gold:1" }
    ```
 
-Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the atlases would leave the monster invisible (its `<body>-f2-s` key is also missing from the generated `rects.ts`, which is a quick way to check).
+Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the atlases would leave the monster invisible (its `<body>-f2-s` key is also missing from the generated `packages/data/packs/classic/data/rects.json`, which is a quick way to check).
 
 `npc-files.json` is not only a seed: the server loads it at every start as the base NPC store, then applies the `npc_files` rows saved by the NPC Editor on top. So a rebuilt image changes every NPC that has no saved NPC Editor edit, on existing servers too.
 
@@ -398,7 +398,7 @@ Place new art and audio in [assets/added/](../assets/added/README.md) with a mat
 - **Sounds:** WAV or MP3 + sidecar in `sounds/`, referenced by name in `spells.json`, `gather.json`, `casino.json` or `item-rules.json` `swing.sounds`.
 - **North frames:** draw paperdoll layers and bodies as seen from behind, with the right hand on the viewer's right. A north frame copied from an original keeps 1.6's mirror; set `"mirrored": true` on every north frame of that layer or body and the build flips them.
 
-Hit rectangles for `fx`, `bodies`, and `items` are computed from the images and their registration points by `bun run data:build` (which writes `rects.ts`; `assets:build` only builds the atlases). After adding art, run both; `data:check` in the gate fails on a stale `rects.ts`.
+Hit rectangles for `fx`, `bodies`, and `items` are computed from the images and their registration points by `bun run data:build` (which writes the Classic pack's `rects.json`; `assets:build` only builds the atlases). After adding art, run both; `data:check` in the gate fails on a stale `rects.json`.
 
 ## The content report
 

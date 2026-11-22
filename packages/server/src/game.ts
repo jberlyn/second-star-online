@@ -3043,14 +3043,23 @@ export function createGame(deps: GameDeps): Game {
 
     contentPublished(hash) {
       // An NPC whose file changed starts its shop again, as an NPC Editor save does: its ledger and
-      // saved shop go, and its open Bio and shop windows close.
-      const before = new Map([...npcs].map(([k, f]) => [k, f.text]));
+      // saved shop go, and its open Bio and shop windows close. So does an NPC whose file the
+      // publish removed.
+      const before = new Map([...npcs].map(([k, f]) => [k, { name: f.name, text: f.text }]));
       layNpcFiles();
+      const restart = (name: string) => {
+        world.shops.delete(name);
+        deleteShop(db, name);
+        deliver(closeNpcWindows(world, name));
+      };
       for (const [k, f] of npcs) {
-        if (before.get(k) !== f.text) {
-          world.shops.delete(f.name);
-          deleteShop(db, f.name);
-          deliver(closeNpcWindows(world, f.name));
+        if (before.get(k)?.text !== f.text) {
+          restart(f.name);
+        }
+      }
+      for (const [k, f] of before) {
+        if (!npcs.has(k)) {
+          restart(f.name);
         }
       }
       // A skill added by the publish starts at its starting value for everyone online (as a login

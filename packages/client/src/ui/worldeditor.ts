@@ -41,6 +41,7 @@ import {
   FOG_TEXTURES,
   factionBoxes,
   factionFlag,
+  itemSprite,
   type LayerButtons,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -742,7 +743,7 @@ export function createWorldEditor(
     // Placed items at (X·32, Y·32 − 3) on the stage, monsters at Y·32 − 2.
     for (const it of placed) {
       if (it) {
-        drawSprite(ctx, assets, "items", it.name, it.x * 32 - 16, it.y * 32 - 36);
+        drawSprite(ctx, assets, "items", itemSprite(it.name), it.x * 32 - 16, it.y * 32 - 36);
       }
     }
     for (const m of mobs) {

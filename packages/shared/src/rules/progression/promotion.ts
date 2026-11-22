@@ -9,6 +9,7 @@
  */
 import { content } from "../../content/store.ts";
 import { className } from "../admin/admin.ts";
+import { findSkillIndex } from "../core/fighter.ts";
 import { lingoEq, lingoInteger, type Rng } from "../core/lingo.ts";
 
 /** The five texts; `npc` is the speaker. */
@@ -64,8 +65,9 @@ function statValue(s: PromotionState, stat: string): number {
   if (stat === "SPmax") {
     return s.spMax;
   }
-  const skill = content().classes.skills.find((k) => k.skill === stat);
-  return skill ? (s.skills[skill.index - 1] ?? 0) : 0;
+  // Found as every other rule finds a skill (case and spaces ignored), as the publish checks it.
+  const i = findSkillIndex(stat);
+  return i === undefined ? 0 : (s.skills[i] ?? 0);
 }
 
 /**
@@ -110,9 +112,8 @@ export function promoteClass(
   }
   const skills = [...s.skills];
   for (const name of rule.skillGrants) {
-    const skill = content().classes.skills.find((k) => k.skill === name);
-    if (skill) {
-      const i = skill.index - 1;
+    const i = findSkillIndex(name);
+    if (i !== undefined) {
       skills[i] = Math.max(skills[i] ?? 0, rng.random(10));
     }
   }

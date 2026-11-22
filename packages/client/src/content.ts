@@ -87,6 +87,18 @@ export interface ContentSyncOptions {
   installed?(store: ContentStore): void;
   /** Reports a store that could not be fetched (default `console.warn`). */
   warn?(text: string): void;
+  /**
+   * The waits before each retry of a fetch that failed, while messages keep waiting (default 1, 3
+   * and 9 seconds). Once they are spent the messages go through on the store the client has, and
+   * the fetch is tried again every `recoverMs` until the store arrives.
+   */
+  retryDelays?: readonly number[];
+  /** How often a store that could not be fetched is tried again in the background (default 30 s). */
+  recoverMs?: number;
+  /** How long one fetch may take before it counts as failed (default 15 s). */
+  timeoutMs?: number;
+  /** Runs `fn` after `ms` (default `setTimeout`). */
+  later?(ms: number, fn: () => void): void;
 }
 
 export interface ContentSync {
@@ -114,11 +126,23 @@ function hashOf(msg: ServerMsg): string | null {
 
 /**
  * Follows the server's store: a message naming another hash fetches it and holds every message
- * (that one included) until it is installed, then handles them in order. A fetch that fails
- * keeps the store the client has and lets the messages through.
+ * (that one included) until it is installed, then handles them in order. A fetch that fails is
+ * tried again a few times while the messages wait; after that they go through on the store the
+ * client has, and the fetch keeps being tried in the background until the store arrives, so a
+ * client is never left on old rules for good.
  */
 export function createContentSync(opts: ContentSyncOptions): ContentSync {
-  const fetchImpl = opts.fetch ?? fetch;
+  const baseFetch = opts.fetch ?? fetch;
+  const timeoutMs = opts.timeoutMs ?? 15_000;
+  // A fetch that hangs counts as failed, so it is tried again instead of holding messages for ever.
+  const fetchImpl = ((url: string, init?: RequestInit) =>
+    baseFetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(timeoutMs),
+    })) as unknown as typeof fetch;
+  const retryDelays = opts.retryDelays ?? [1000, 3000, 9000];
+  const recoverMs = opts.recoverMs ?? 30_000;
+  const later = opts.later ?? ((ms: number, fn: () => void) => void setTimeout(fn, ms));
   const install = opts.install ?? installContent;
   const reload = opts.reload ?? (() => location.reload());
   const warn = opts.warn ?? ((t: string) => console.warn(t));
@@ -134,6 +158,43 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
   const settled = new Set<string>();
   /** Counts connections: a fetch begun under an earlier one is ignored when it lands. */
   let generation = 0;
+  /** A store the client gave up waiting for, still fetched in the background. */
+  let behind: string | null = null;
+
+  const installStore = (store: ContentStore) => {
+    install(store);
+    opts.installed?.(store);
+  };
+
+  /** Tries the store the client is behind on again, now and then, until it arrives. */
+  const recover = (hash: string, gen: number) => {
+    later(recoverMs, () => {
+      if (gen !== generation || behind !== hash || syncing) {
+        return;
+      }
+      fetchContent(hash, fetchImpl).then(
+        (store) => {
+          if (gen !== generation || behind !== hash || syncing) {
+            return;
+          }
+          behind = null;
+          if (!hasContent() || content().hash !== store.hash) {
+            installStore(store);
+          }
+        },
+        (err: unknown) => {
+          if (gen !== generation) {
+            return;
+          }
+          if (err instanceof ContentFormatError) {
+            reload();
+            return;
+          }
+          recover(hash, gen);
+        },
+      );
+    });
+  };
 
   const drain = () => {
     syncing = false;
@@ -146,9 +207,10 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
     }
   };
 
-  const fetchStore = (hash: string) => {
+  const fetchStore = (hash: string, attempt = 0) => {
     syncing = true;
     wanted = hash;
+    behind = null;
     const gen = generation;
     fetchContent(hash, fetchImpl).then(
       (store) => {
@@ -156,8 +218,7 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
           return;
         }
         if (wanted === hash) {
-          install(store);
-          opts.installed?.(store);
+          installStore(store);
           // The server may have sent a newer store than the one asked for; either way the asked
           // hash is answered.
           settled.add(hash);
@@ -172,10 +233,21 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
           reload();
           return;
         }
+        const wait = retryDelays[attempt];
+        if (wait !== undefined) {
+          later(wait, () => {
+            if (gen === generation && wanted === hash) {
+              fetchStore(hash, attempt + 1);
+            }
+          });
+          return;
+        }
         settled.add(hash);
         warn(
-          `could not fetch content ${hash}: ${err instanceof Error ? err.message : String(err)}`,
+          `could not fetch content ${hash}, so the game runs on the content it has until it can: ${err instanceof Error ? err.message : String(err)}`,
         );
+        behind = hash;
+        recover(hash, gen);
         drain();
       },
     );
@@ -210,6 +282,7 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
       settled.clear();
       syncing = false;
       wanted = null;
+      behind = null;
     },
   };
 }

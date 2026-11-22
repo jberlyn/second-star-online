@@ -4,10 +4,10 @@
  */
 import {
   addSlotFor,
-  displayName,
   FACING_DELTA,
   invAdd,
   isGoldName,
+  itemLabel,
   lingoContains,
   type Rng,
 } from "@secondstaronline/shared";
@@ -22,11 +22,11 @@ export const VAULT_TEXT = {
   open: "You open your vault to see what's inside...",
   notInFront: "You see your vault, but you must be standing in front of it to use it.",
   container: "You cannot store a container!",
-  drop: (item: string) => `You drop a ${displayName(item)} into the container.`,
+  drop: (item: string) => `You drop a ${itemLabel(item)} into the container.`,
   /** A deposit of more than one. */
-  dropMany: (n: number, item: string) => `You drop ${n} ${displayName(item)} into the container.`,
+  dropMany: (n: number, item: string) => `You drop ${n} ${itemLabel(item)} into the container.`,
   /** A withdrawal (1.6 printed nothing). */
-  take: (item: string) => `You take a ${displayName(item)} out of the container.`,
+  take: (item: string) => `You take a ${itemLabel(item)} out of the container.`,
   full: "This is too full to store anything else!",
   carrying: "You are carrying too much to withdraw this item.",
 } as const;

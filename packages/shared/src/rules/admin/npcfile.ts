@@ -437,7 +437,7 @@ export function checkNpcFile(
         }
         break;
       case "SPL":
-        if (!NPC_SPELL_TAGS.some((s) => lingoContains(l, `SPL|${s}`))) {
+        if (!store.monsters.casting.spells.some((s) => lingoContains(l, `SPL|${s.tag}`))) {
           warnings.push(`Line ${n}: no monster casts "${data}".`);
         }
         break;

@@ -124,18 +124,21 @@ export function keyProblems(
 
 /**
  * The skill rules: a character's saved skills are a list read by each skill's `index`, so the
- * indices are exactly 1 to the number of skills, a published skill keeps its index, and no
- * published skill goes (its saved values would move onto another skill).
+ * skills are listed in index order, 1 to the number of skills; a skill characters have saved
+ * (`saved`) keeps its index, and none goes (its saved values would move onto another skill).
  */
-export function skillProblems(next: ContentData, published: ContentData): ContentProblem[] {
+export function skillProblems(
+  next: ContentData,
+  saved: readonly { skill: string; index: number }[],
+): ContentProblem[] {
   const out: ContentProblem[] = [];
   const skills = next.classes.skills;
-  const indices = new Set(skills.map((s) => s.index));
   for (let i = 1; i <= skills.length; i++) {
-    if (!indices.has(i)) {
+    // Listed in index order too: the character editor and sheet show a skill by its position.
+    if (skills[i - 1]?.index !== i) {
       out.push({
         where: "classes/skills",
-        message: `the skill indices must run from 1 to ${skills.length} with none missing or repeated (${i} is missing)`,
+        message: `the skills must be listed in index order, 1 to ${skills.length}, with none missing or repeated (${i} is not ${i === 1 ? "first" : `after ${i - 1}`})`,
       });
       break;
     }
@@ -153,7 +156,7 @@ export function skillProblems(next: ContentData, published: ContentData): Conten
     }
     spelled.set(skillNorm(s.skill), s.skill);
   }
-  for (const before of published.classes.skills) {
+  for (const before of saved) {
     const now = skills.find((s) => s.skill.toLowerCase() === before.skill.toLowerCase());
     if (!now) {
       out.push({
@@ -199,6 +202,80 @@ export function referencesOf(data: ContentData): Reference[] {
     add("quests/current", "item", q.wants);
     add("quests/current", "item", q.reward);
   }
+  // A finished quest rolls its next one from the pools, trimmed (shared quests.ts `findNewQuest`).
+  for (const w of data.quests.pools.wanted) {
+    add("quests/pools", "item", w.item.trim());
+  }
+  for (const r of data.quests.pools.rewards) {
+    add("quests/pools", "item", r.item.trim());
+  }
+  // What the crafting stations take, use and make.
+  const st = data.craft.stations;
+  const craft = (n: string) => add("craft/stations", "item", n);
+  const station = (n: string) => add("craft/stations", "itemOrFixture", n);
+  station(st.smith.station);
+  craft(st.smith.tool);
+  craft(st.smith.chunkDefault);
+  for (const c of st.smith.chunks) {
+    craft(c.item);
+    craft(c.chunk);
+  }
+  for (const r of st.smith.repairs) {
+    craft(r.input);
+    craft(r.output);
+  }
+  for (const m of st.smith.masterwork) {
+    craft(m.item);
+    for (const o of m.outcomes) {
+      craft(o.result);
+    }
+  }
+  st.cook.stations.forEach(station);
+  for (const r of st.cook.recipes) {
+    craft(r.input);
+    craft(r.output);
+    craft(r.burned);
+  }
+  station(st.mix.station);
+  for (const m of st.mix.sands) {
+    craft(m.sand);
+    craft(m.potion);
+    craft(m.crystal);
+  }
+  station(st.build.station);
+  craft(st.build.tool);
+  for (const b of st.build.bands) {
+    for (const r of b.results) {
+      craft(r.item);
+    }
+  }
+  for (const r of st.cauldron.recipes) {
+    r.requires.forEach(craft);
+    craft(r.result);
+  }
+  // What gathering takes and gives.
+  const g = data.gather.gathering;
+  const gather = (n: string) => add("gather/gathering", "item", n);
+  for (const t of g.tools) {
+    gather(t.tool);
+  }
+  gather(g.logs.item);
+  g.mining.ore.items.forEach(gather);
+  for (const c of g.mining.chunks) {
+    gather(c.tool);
+    gather(c.item);
+  }
+  gather(g.fishing.tool);
+  for (const b of g.fishing.bands) {
+    gather(b.fish);
+  }
+  for (const sd of g.farming.seeds) {
+    gather(sd.item);
+  }
+  for (const pr of g.farming.produce) {
+    gather(pr.item);
+  }
+  g.treasure.items.forEach(gather);
   for (const d of data.houses.deeds) {
     add(`houses/deeds/${d.deed}`, "item", d.deed);
   }
@@ -269,7 +346,8 @@ export function referencesOf(data: ContentData): Reference[] {
   for (const b of data.attPower.attPower.skillBlocks) {
     for (const t of b.tiers) {
       for (const w of t.when ?? []) {
-        const name = /^\s*([A-Za-z][A-Za-z ]*?)\s*[<>=]/.exec(w)?.[1];
+        // Read exactly as `tierApplies` reads it, so every name a swing would look up is checked.
+        const name = /^(\w+) [<>] \d+$/.exec(w)?.[1];
         // A tier reads exactly "level" as the level (shared attpower.ts `tierApplies`).
         if (name && name !== "level") {
           skill("attPower/attPower", name);
@@ -342,11 +420,39 @@ export function referenceProblems(next: ContentData, published: ContentData): Co
     }));
 }
 
+/** An NPC Editor save: it plays instead of the NPC's content row (the game lays it on top). */
+export interface NpcSave {
+  npc: string;
+  text: string;
+}
+
+/**
+ * The store with the NPC Editor's saves laid over its NPC files, as the game lays them: the
+ * files that play, so a reference only a save makes (a shop selling an added item) is checked.
+ */
+export function withNpcSaves(data: ContentData, saves: readonly NpcSave[]): ContentData {
+  if (saves.length === 0) {
+    return data;
+  }
+  const files = [...data.npcFiles.files];
+  for (const s of saves) {
+    const at = files.findIndex((f) => f.name.toLowerCase() === s.npc.toLowerCase());
+    if (at >= 0) {
+      files[at] = { ...(files[at] as (typeof files)[number]), text: s.text };
+    } else {
+      files.push({ name: s.npc, text: s.text });
+    }
+  }
+  return { ...data, npcFiles: { ...data.npcFiles, files } };
+}
+
 /** Every pre-publish check, in order: schemas first, then (if they pass) keys and references. */
 export function checkStore(
   next: ContentData,
   published: ContentData,
   packKeys: Parameters<typeof keyProblems>[1],
+  npcSaves: readonly NpcSave[] = [],
+  publishedSkills: readonly { skill: string; index: number }[] = published.classes.skills,
 ): ContentProblem[] {
   const schema = schemaProblems(next);
   if (schema.length > 0) {
@@ -354,7 +460,7 @@ export function checkStore(
   }
   return [
     ...keyProblems(next, packKeys),
-    ...skillProblems(next, published),
-    ...referenceProblems(next, published),
+    ...skillProblems(next, publishedSkills),
+    ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

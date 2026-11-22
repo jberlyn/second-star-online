@@ -5,6 +5,7 @@ import { classicData } from "@secondstaronline/data/classic";
 
 const { classes: classesData } = classicData;
 
+import { buildContentStore, content, installContent } from "../../src/content/store.ts";
 import { findClass } from "../../src/rules/admin/admin.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
@@ -82,6 +83,23 @@ describe("the checks, in 1.6's order", () => {
     expect(
       promoteClass(state("Fighter", {}, { Slash: 30 }), "Grunt", 0, "Trainer", rng).result,
     ).not.toBeNull();
+  });
+
+  test("a requirement names its skill as every rule does: case and spaces ignored", () => {
+    const before = content();
+    const classes = structuredClone(before.classes);
+    const grunt = classes.classes.find((c) => c.name === "Grunt");
+    if (grunt?.promotion?.requirement) {
+      grunt.promotion.requirement.stat = "slash";
+    }
+    try {
+      installContent(buildContentStore({ ...before, classes }));
+      expect(
+        promoteClass(state("Fighter", {}, { Slash: 30 }), "Grunt", 0, "Trainer", rng).result,
+      ).not.toBeNull();
+    } finally {
+      installContent(before);
+    }
   });
 
   test("noFunds: price = gold + 1 refuses, price = gold passes", () => {

@@ -5,6 +5,7 @@ import { classicData } from "@secondstaronline/data/classic";
 
 const { social: socialData } = classicData;
 
+import { buildContentStore, content, installContent } from "../../src/content/store.ts";
 import {
   ARCHIVED_POWERS,
   archivedQuestLines,
@@ -292,5 +293,22 @@ describe("quests", () => {
     expect(sayQuest(lines, ["Steel"])).toEqual([
       { text: 'Steel says "Sorry but I don\'t need anything right now."', to: "map" },
     ]);
+  });
+
+  test("a quest NPC asks for a renamed item by the name players see", () => {
+    const before = content();
+    const items = structuredClone(before.items);
+    const fishle = items.items.find((i) => i.name === "Fishle");
+    if (fishle) {
+      fishle.display = "Spotted Fishle";
+    }
+    try {
+      installContent(buildContentStore({ ...before, items }));
+      expect(sayQuest(archivedQuestLines(), ["Stephie"])[0]?.text).toBe(
+        'Stephie says "Bring me a Spotted Fishle quickly and I\'ll reward you."',
+      );
+    } finally {
+      installContent(before);
+    }
   });
 });

@@ -18,7 +18,6 @@ import {
   ctrlGate,
   type DeltaEvent,
   deedUse,
-  displayName,
   dropRefusal,
   EQUIP_FIELD,
   EQUIP_TEXT,
@@ -973,7 +972,7 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
     }
     return io.out;
   }
-  const name = displayName(g.item);
+  const name = itemLabel(g.item);
   if (fixedInPlace(g.item, g.kind === "admin")) {
     io.tell(p, PICKUP_TEXT.fixed);
     return io.out;
