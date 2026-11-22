@@ -24,6 +24,7 @@ import {
   editableOf,
   editErrors,
   HEADS_BY_SEX,
+  onContent,
   SETTABLE_FIELDS,
   type Sex,
   STAT_FIELDS,
@@ -209,14 +210,9 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     grid(...STAT_FIELDS.map((f) => formField(STAT_LABELS[f], stats.get(f) as HTMLInputElement))),
     note("The allocated points, 1 to 20. Class and medal points are added in play."),
   );
-  const skills = content().classes.skills.map((_s, i) => numberInput(`hub-edit-skill-${i + 1}`));
-  const skillsBox = section(
-    "Skills",
-    grid(
-      ...content().classes.skills.map((s, i) => formField(s.skill, skills[i] as HTMLInputElement)),
-    ),
-    note("1 to 100."),
-  );
+  let skills: HTMLInputElement[] = [];
+  const skillsGrid = grid();
+  const skillsBox = section("Skills", skillsGrid, note("1 to 100."));
 
   // ---- gold and items --------------------------------------------------------------------------
   const gold = numberInput("hub-edit-gold");
@@ -348,12 +344,37 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     status,
   );
   saveBox.classList.add("hub-edit-save", "hub-wide");
-  saveBox.append(
-    datalist(
-      itemList,
-      content().items.items.map((i) => i.name),
-    ),
-  );
+  const items = datalist(itemList, []);
+  saveBox.append(items);
+  // The class list, the skills and the item suggestions follow the content store, so a publish
+  // that adds a class, a skill or an item shows here at once.
+  onContent((c) => {
+    const picked = cls.value;
+    cls.replaceChildren(
+      ...c.classes.classes.map((k) => {
+        const o = document.createElement("option");
+        o.value = String(k.code);
+        o.textContent = k.name;
+        return o;
+      }),
+    );
+    cls.value = picked;
+    const values = skills.map((s) => s.value);
+    skills = c.classes.skills.map((_s, i) => numberInput(`hub-edit-skill-${i + 1}`));
+    skills.forEach((s, i) => {
+      s.value = values[i] ?? String(original?.skills[i] ?? "");
+    });
+    skillsGrid.replaceChildren(
+      ...c.classes.skills.map((s, i) => formField(s.skill, skills[i] as HTMLInputElement)),
+    );
+    items.replaceChildren(
+      ...c.items.items.map((i) => {
+        const o = document.createElement("option");
+        o.value = i.name;
+        return o;
+      }),
+    );
+  });
 
   function note(text: string): HTMLElement {
     const p = document.createElement("p");

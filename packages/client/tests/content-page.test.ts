@@ -309,3 +309,97 @@ describe("the Content page", () => {
     expect($<HTMLTextAreaElement>("content-json").readOnly).toBe(true);
   });
 });
+
+describe("review fixes", () => {
+  test("a whole-field row opened from the draft saves while a keyed list is on screen", () => {
+    const { p, $, last } = page();
+    p.onShow();
+    const draft = [
+      {
+        dataset: "casino",
+        part: "slots",
+        key: null,
+        op: "set" as const,
+        author: "A",
+        updatedAt: "x",
+      },
+    ];
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({ draft }),
+    });
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: { dataset: "items", part: "items", keyField: "name", rows: [] },
+    });
+    (p.el.querySelector('[data-action="content-draft-open"]') as HTMLElement).click();
+    p.receive({
+      t: "contentRow",
+      seq: last("row")?.seq ?? 0,
+      row: {
+        ...ale,
+        dataset: "casino",
+        part: "slots",
+        key: null,
+        keyField: null,
+        pack: { cost: 10 },
+        published: { cost: 10 },
+      },
+    });
+    $<HTMLTextAreaElement>("content-json").value = JSON.stringify({ cost: 12 });
+    $("content-save").click();
+    expect(last("draft")?.args).toEqual([
+      { dataset: "casino", part: "slots", key: null },
+      "set",
+      { cost: 12 },
+    ]);
+  });
+
+  test("Add a row is editable after a read-only row was shown", () => {
+    const { p, $, last } = page();
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({
+      t: "contentRow",
+      seq: 0,
+      row: { ...ale, dataset: "rects", part: "fx", key: null, keyField: null, readOnly: true },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement | null)?.click();
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: {
+        dataset: "rects",
+        part: "fx",
+        keyField: null,
+        rows: [{ key: null, status: "pack", draft: null }],
+      },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    p.receive({
+      t: "contentRow",
+      seq: last("row")?.seq ?? 0,
+      row: { ...ale, dataset: "rects", part: "fx", key: null, keyField: null, readOnly: true },
+    });
+    expect($<HTMLTextAreaElement>("content-json").readOnly).toBe(true);
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: { dataset: "items", part: "items", keyField: "name", rows: [] },
+    });
+    // The list answered was for an earlier seq; ask again so the items list is current.
+    (p.el.querySelector('[data-action="content-dataset"]') as HTMLSelectElement).dispatchEvent(
+      new Event("change"),
+    );
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: { dataset: "items", part: "items", keyField: "name", rows: [] },
+    });
+    $("content-add").click();
+    expect($<HTMLTextAreaElement>("content-json").readOnly).toBe(false);
+    expect($("content-save").hidden).toBe(false);
+  });
+});

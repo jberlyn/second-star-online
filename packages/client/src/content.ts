@@ -45,24 +45,34 @@ export function storeFromFile(file: ContentFile): ContentStore {
   return buildContentStore({ ...file.data, ...SERVER_ONLY_EMPTY } as ContentData, file.hash);
 }
 
-/** Fetches a store: the one with `hash`, or the server's current one. */
+/** The server's current hash. */
+async function currentHash(fetchImpl: typeof fetch): Promise<string> {
+  const res = await fetchImpl(`${CONTENT_URL}current.json`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("the server sent no content");
+  }
+  return ((await res.json()) as { hash: string }).hash;
+}
+
+/**
+ * Fetches a store: the one with `hash`, or the server's current one. A hash the server no longer
+ * has (several publishes went by) falls back to the current store, which is newer.
+ */
 export async function fetchContent(
   hash: string | null = null,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ContentStore> {
-  let want = hash;
-  if (want === null) {
-    const res = await fetchImpl(`${CONTENT_URL}current.json`, { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error("the server sent no content");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const want = hash !== null && attempt === 0 ? hash : await currentHash(fetchImpl);
+    const res = await fetchImpl(`${CONTENT_URL}${want}.json`);
+    if (res.ok) {
+      return storeFromFile((await res.json()) as ContentFile);
     }
-    want = ((await res.json()) as { hash: string }).hash;
+    if (res.status !== 404) {
+      throw new Error(`content ${want} could not be fetched (${res.status})`);
+    }
   }
-  const res = await fetchImpl(`${CONTENT_URL}${want}.json`);
-  if (!res.ok) {
-    throw new Error(`content ${want} is not on the server`);
-  }
-  return storeFromFile((await res.json()) as ContentFile);
+  throw new Error("the server's content kept changing while it was fetched");
 }
 
 export interface ContentSyncOptions {
@@ -110,14 +120,22 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
   const waiting: ServerMsg[] = [];
   let syncing = false;
   let wanted: string | null = null;
-  /** A hash whose fetch failed: its messages go through on the store the client has. */
-  let failed: string | null = null;
+  /**
+   * Hashes answered while the waiting messages drain: one a newer store replaced while it was
+   * fetched, or one whose fetch failed (its messages go through on the store the client has rather
+   * than wait for ever). Forgotten once the queue is empty, so a later message naming that hash
+   * (an undo back to it, a reconnect) fetches it again.
+   */
+  const settled = new Set<string>();
 
   const drain = () => {
     syncing = false;
     while (waiting.length > 0 && !syncing) {
       const msg = waiting.shift() as ServerMsg;
       step(msg);
+    }
+    if (!syncing) {
+      settled.clear();
     }
   };
 
@@ -129,6 +147,9 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
         if (wanted === hash) {
           install(store);
           opts.installed?.(store);
+          // The server may have sent a newer store than the one asked for; either way the asked
+          // hash is answered.
+          settled.add(hash);
         }
         drain();
       },
@@ -137,7 +158,7 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
           reload();
           return;
         }
-        failed = hash;
+        settled.add(hash);
         warn(
           `could not fetch content ${hash}: ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -148,7 +169,7 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
 
   function step(msg: ServerMsg): void {
     const hash = hashOf(msg);
-    if (hash !== null && hash !== failed && hash !== (hasContent() ? content().hash : null)) {
+    if (hash !== null && !settled.has(hash) && hash !== (hasContent() ? content().hash : null)) {
       waiting.unshift(msg);
       fetchStore(hash);
       return;

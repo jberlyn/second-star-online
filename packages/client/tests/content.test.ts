@@ -153,3 +153,44 @@ describe("the client's content", () => {
     expect(reloaded).toBe(1);
   });
 });
+
+describe("publishes in quick succession", () => {
+  test("a hash the server no longer has falls back to its current store", async () => {
+    const { fetchImpl, asked } = server({ newer: fileWith(4, "newer") }, "newer");
+    const store = await fetchContent("gone", fetchImpl);
+    expect(store.hash).toBe("newer");
+    expect(asked).toEqual(["/content/gone.json", "/content/current.json", "/content/newer.json"]);
+  });
+
+  test("a store replaced while it was fetched is settled by the newer one, not fetched again", async () => {
+    const { fetchImpl, asked } = server({ newer: fileWith(4, "newer") }, "newer");
+    const handled: string[] = [];
+    const sync = createContentSync({ handle: (m) => handled.push(m.t), fetch: fetchImpl });
+    sync.receive({ t: "content", hash: "gone" });
+    sync.receive({ t: "death" });
+    await settle();
+    await settle();
+    await settle();
+    expect(content().hash).toBe("newer");
+    expect(handled).toEqual(["death"]);
+    // The next publish message naming the newer store fetches nothing more.
+    sync.receive({ t: "content", hash: "newer" });
+    expect(asked.filter((u) => u.endsWith(".json"))).toHaveLength(3);
+  });
+
+  test("a hash that failed once is fetched again when a later publish names it (an undo back)", async () => {
+    const files: Record<string, ContentFile> = {};
+    const { fetchImpl } = server(files, "none");
+    const sync = createContentSync({ handle: () => {}, fetch: fetchImpl, warn: () => {} });
+    sync.receive({ t: "content", hash: "h1" });
+    await settle();
+    await settle();
+    await settle();
+    expect(content().hash).toBe("");
+    files.h1 = fileWith(3, "h1");
+    sync.receive({ t: "content", hash: "h1" });
+    await settle();
+    await settle();
+    expect(content().hash).toBe("h1");
+  });
+});

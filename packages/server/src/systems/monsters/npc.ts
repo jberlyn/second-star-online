@@ -11,6 +11,7 @@ import {
   heardSqa,
   invAdd,
   lingoContains,
+  monsterLabel,
   type NpcFile,
   type Rng,
 } from "@secondstaronline/shared";
@@ -154,7 +155,7 @@ export function clickNpc(room: Room, p: Player, slotNo: number, rng: Rng): NpcOu
     return grabPig(room, p, slot, rng);
   }
   if (anyMatch(content().monsters.rules.namesSelf, m.name)) {
-    return { out: [say(p, NPC_TEXT.thisIs(m.name))], slotsChanged: false };
+    return { out: [say(p, NPC_TEXT.thisIs(monsterLabel(m.name)))], slotsChanged: false };
   }
   if (Object.values(BODY).some((b) => bodyIs(slot, b))) {
     return none;

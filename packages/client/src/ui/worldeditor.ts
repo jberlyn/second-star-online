@@ -44,6 +44,7 @@ import {
   type LayerButtons,
   MAP_HEIGHT,
   MAP_WIDTH,
+  onContent,
   PALETTE_PAGES,
   paint,
   palettePage,
@@ -122,15 +123,19 @@ function list(
   box.className = "we-list";
   box.setAttribute("role", "listbox");
   box.setAttribute("aria-label", label);
-  const rows: HTMLDivElement[] = [];
-  for (const line of lines) {
-    const row = document.createElement("div");
-    row.className = "we-row";
-    row.textContent = line;
-    row.setAttribute("role", "option");
-    rows.push(row);
-    box.append(row);
-  }
+  let rows: HTMLDivElement[] = [];
+  /** Lists `next` (a publish can change the editor's lists); the selection clears. */
+  const set = (next: readonly string[]) => {
+    rows = next.map((line) => {
+      const row = document.createElement("div");
+      row.className = "we-row";
+      row.textContent = line;
+      row.setAttribute("role", "option");
+      return row;
+    });
+    box.replaceChildren(...rows);
+  };
+  set(lines);
   box.addEventListener("click", (e) => {
     const row = (e.target as HTMLElement).closest(".we-row");
     for (const r of rows) {
@@ -144,7 +149,7 @@ function list(
       r.classList.remove("on");
     }
   };
-  return { box, clear };
+  return { box, clear, set };
 }
 
 /** The palette's pages; a test passes its own to give the catalogue an added tile. */
@@ -156,7 +161,13 @@ export interface PaletteSource {
 export function createWorldEditor(
   assets: Assets,
   actions: WorldEditorActions,
-  palette: PaletteSource = { pages: PALETTE_PAGES, page: palettePage },
+  palette: PaletteSource = {
+    // Read when asked: a publish can add tiles, and so palette pages.
+    get pages() {
+      return PALETTE_PAGES;
+    },
+    page: palettePage,
+  },
 ): WorldEditor {
   const items: StageItem[] = [];
   const add = (el: HTMLElement, r: Rect, z: number, art = false) => {
@@ -449,6 +460,12 @@ export function createWorldEditor(
     clickType = "item";
   });
   add(itemList.box, { x: 243, y: 513, w: 110, h: 60 }, 72);
+  // A publish can change what the editor places: the lists follow the content store.
+  onContent(() => {
+    npcList.set(EDITOR_NPCS);
+    monList.set(EDITOR_MONSTERS);
+    itemList.set(EDITOR_ITEMS);
+  });
   let fog = { tex: "NoTex", blend: 0, r: 255, g: 255, b: 255 };
   const fogList = list("Fog texture", editorAction("Fog texture"), FOG_TEXTURES, (l) => {
     // The fog texture is set by name; NoTex clears the preview but keeps the blend.

@@ -16,7 +16,12 @@
  *   [649, 263, 685, 282]. Neither plays a sound.
  * The frame shows nothing else: no chat, no way out but Return To Game.
  */
-import { NPC_EDITOR_MONSTERS, NPC_EDITOR_NPCS, showNpcScript } from "@secondstaronline/shared";
+import {
+  NPC_EDITOR_MONSTERS,
+  NPC_EDITOR_NPCS,
+  onContent,
+  showNpcScript,
+} from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
 import { action } from "./action.ts";
@@ -61,14 +66,19 @@ function nameList(
   box.className = "npced-list";
   box.setAttribute("role", "listbox");
   box.setAttribute("aria-label", label);
-  const rows = names.map((n) => {
-    const row = document.createElement("div");
-    row.className = "npced-row";
-    row.textContent = n;
-    row.setAttribute("role", "option");
-    box.append(row);
-    return row;
-  });
+  let rows: HTMLDivElement[] = [];
+  /** Lists `next` (a publish can change the editor's lists); the highlight clears. */
+  const set = (next: readonly string[]) => {
+    rows = next.map((n) => {
+      const row = document.createElement("div");
+      row.className = "npced-row";
+      row.textContent = n;
+      row.setAttribute("role", "option");
+      return row;
+    });
+    box.replaceChildren(...rows);
+  };
+  set(names);
   const clear = () => {
     for (const r of rows) {
       r.classList.remove("on");
@@ -83,7 +93,7 @@ function nameList(
     // A click below the last line clears the name.
     pick(row instanceof HTMLDivElement ? (row.textContent ?? "") : "");
   });
-  return { box, clear };
+  return { box, clear, set };
 }
 
 export function createNpcEditor(assets: Assets, actions: NpcEditorActions): NpcEditor {
@@ -103,6 +113,11 @@ export function createNpcEditor(assets: Assets, actions: NpcEditorActions): NpcE
   const npcs = nameList("NPCs", "npc-editor-select-npc", NPC_EDITOR_NPCS, (n) => {
     name = n;
     monsters.clear();
+  });
+  // A publish can change which monsters and NPCs the editor lists.
+  onContent(() => {
+    monsters.set(NPC_EDITOR_MONSTERS);
+    npcs.set(NPC_EDITOR_NPCS);
   });
   add(monsters.box, NPC_EDITOR_RECTS.monsters, 3);
   add(npcs.box, NPC_EDITOR_RECTS.npcs, 2);

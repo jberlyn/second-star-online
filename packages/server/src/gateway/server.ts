@@ -12,7 +12,7 @@
  * - A second login to the same account replaces the first.
  */
 import { realpathSync, statSync } from "node:fs";
-import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { extname, isAbsolute, join, normalize, posix, relative, resolve } from "node:path";
 import type { ServerWebSocket } from "bun";
 
 import { ASSET_INDEX_FILE, type AssetIndex, type PackArtIndex } from "@secondstaronline/data";
@@ -92,6 +92,8 @@ export interface GatewayOptions {
    * its hash at `/content/current.json`). Absent: no content is served (tests of the gateway alone).
    */
   content?: () => ClientCopy;
+  /** A recent published store by hash, so a client that asked just before a publish gets it. */
+  contentFor?: (hash: string) => ClientCopy | undefined;
   /**
    * The installed packs' art folders, in load order. Each pack's atlases and sounds are served
    * under `/assets/packs/<id>/`, and `/assets/index.json` is the engine's own art (the UI files and
@@ -342,17 +344,21 @@ export function startGateway(options: GatewayOptions): Gateway {
 
   /**
    * `current.json` is the published hash (never cached); `<hash>.json` is that store, cached for
-   * good, since a hash names one store. Only the published hash is served: an old hash is gone.
+   * good, since a hash names one store. The published store and the few before it (`contentFor`) are served.
    */
-  const contentResponse = (req: Request, file: string, copy: ClientCopy): Response => {
+  const contentResponse = (req: Request, file: string, current: ClientCopy): Response => {
+    let copy = current;
     if (file === "current.json") {
       return respond(JSON.stringify({ hash: copy.hash }), {
         headers: { "content-type": "application/json", "cache-control": "no-store" },
       });
     }
-    if (file !== `${copy.hash}.json`) {
+    const wanted = /^([0-9a-f]{16})\.json$/.exec(file)?.[1];
+    const found = wanted === copy.hash ? copy : wanted ? options.contentFor?.(wanted) : undefined;
+    if (!found) {
       return respond("Not found", { status: 404 });
     }
+    copy = found;
     const gzip = /\bgzip\b/.test(req.headers.get("accept-encoding") ?? "");
     const body = gzip ? copy.gzip : copy.json;
     return respond(req.method === "HEAD" ? null : body, {
@@ -620,6 +626,8 @@ export function startGateway(options: GatewayOptions): Gateway {
         if (!/^[\w ./'()+,&-]+$/.test(rel) || rel.includes("..")) {
           return respond("Not found", { status: 404 });
         }
+        // `./index.json` is the index: one spelling per file, so none skips the merge below.
+        rel = posix.normalize(rel);
         let base = options.assetsDir;
         if (options.packArt && rel.startsWith(PACK_ART_PREFIX)) {
           // A pack's art: served only while the pack is installed.

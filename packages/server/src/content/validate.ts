@@ -116,6 +116,41 @@ export function keyProblems(
   ];
 }
 
+/**
+ * The skill rules: a character's saved skills are a list read by each skill's `index`, so the
+ * indices are exactly 1 to the number of skills, a published skill keeps its index, and no
+ * published skill goes (its saved values would move onto another skill).
+ */
+export function skillProblems(next: ContentData, published: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const skills = next.classes.skills;
+  const indices = new Set(skills.map((s) => s.index));
+  for (let i = 1; i <= skills.length; i++) {
+    if (!indices.has(i)) {
+      out.push({
+        where: "classes/skills",
+        message: `the skill indices must run from 1 to ${skills.length} with none missing or repeated (${i} is missing)`,
+      });
+      break;
+    }
+  }
+  for (const before of published.classes.skills) {
+    const now = skills.find((s) => s.skill.toLowerCase() === before.skill.toLowerCase());
+    if (!now) {
+      out.push({
+        where: `classes/skills/${before.skill}`,
+        message: "a skill characters have trained cannot be removed",
+      });
+    } else if (now.index !== before.index) {
+      out.push({
+        where: `classes/skills/${before.skill}`,
+        message: `its index is ${before.index} in every saved character and cannot change`,
+      });
+    }
+  }
+  return out;
+}
+
 /** One reference from a row to a name another list must hold. */
 interface Reference {
   where: string;
@@ -204,5 +239,9 @@ export function checkStore(
   if (schema.length > 0) {
     return schema;
   }
-  return [...keyProblems(next, packKeys), ...referenceProblems(next, published)];
+  return [
+    ...keyProblems(next, packKeys),
+    ...skillProblems(next, published),
+    ...referenceProblems(next, published),
+  ];
 }

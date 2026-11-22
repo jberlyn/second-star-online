@@ -10,7 +10,7 @@ import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
 import { isFurniture } from "../housing/houses.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
-import { itemSprite, leadingInteger } from "./inventory.ts";
+import { itemLabel, itemSprite, leadingInteger } from "./inventory.ts";
 
 /** The pixel anchor of a tile (`32·x + 14`, `32·y − 3`). */
 export function tilePixel(x: number, y: number): { px: number; py: number } {
@@ -245,10 +245,10 @@ export function groundTipName(name: string): string | null {
   if (!base || anyMatch(G.tipless, base)) {
     return null;
   }
-  // A renamed item is named as players know it.
-  const renamed = content().item(base)?.display;
-  if (renamed) {
-    return renamed;
+  // A renamed item is named as players know it, count and level included ("2 Brown Ale").
+  const label = itemLabel(base);
+  if (label !== base) {
+    return label;
   }
   const row = firstMatch(G.tipNames, base);
   if (!row) {

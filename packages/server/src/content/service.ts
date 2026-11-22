@@ -51,6 +51,7 @@ import {
   type RowRef,
   rowHash,
   rowLabel,
+  rowsOf,
   rowValue,
   sameRow,
 } from "./rows.ts";
@@ -96,6 +97,12 @@ export interface PackNotice extends RowRef {
   yoursOp: "set" | "remove";
 }
 
+/** How many published stores stay fetchable by hash after a newer one goes live. */
+export const RECENT_COPIES = 8;
+
+/** Thrown to roll back a trial write (`candidate`). */
+const ROLLBACK = Symbol("rollback");
+
 export type ContentResult<T = void> =
   | { ok: true; value: T }
   | { ok: false; error: string; problems?: ContentProblem[] };
@@ -106,6 +113,36 @@ const fail = (
 ): { ok: false; error: string; problems?: ContentProblem[] } =>
   problems ? { ok: false, error, problems } : { ok: false, error };
 
+/**
+ * Quest rows with each `wants` and `reward` written as an item's display name rewritten to the
+ * item's key. Text that names an item's key, or nothing at all, is left as it is.
+ */
+export function resolveQuestItems(
+  rows: unknown[],
+  items: readonly { name: string; display?: string }[],
+): unknown[] {
+  const byKey = new Set(items.map((i) => i.name.toLowerCase()));
+  const byDisplay = new Map<string, string>();
+  for (const i of items) {
+    if (i.display && !byDisplay.has(i.display.toLowerCase())) {
+      byDisplay.set(i.display.toLowerCase(), i.name);
+    }
+  }
+  const key = (v: unknown) =>
+    typeof v === "string" && !byKey.has(v.toLowerCase())
+      ? (byDisplay.get(v.toLowerCase()) ?? v)
+      : v;
+  return rows.map((r) =>
+    r !== null && typeof r === "object" && !Array.isArray(r)
+      ? {
+          ...r,
+          ...("wants" in r ? { wants: key((r as Record<string, unknown>).wants) } : {}),
+          ...("reward" in r ? { reward: key((r as Record<string, unknown>).reward) } : {}),
+        }
+      : r,
+  );
+}
+
 /** The JSON clients receive, and its hash. */
 export function clientCopyOf(data: ContentData): ClientCopy {
   const copy: Record<string, unknown> = {};
@@ -115,7 +152,9 @@ export function clientCopyOf(data: ContentData): ClientCopy {
     }
   }
   const body = JSON.stringify(copy);
-  const hash = createHash("sha256").update(body).digest("hex").slice(0, 16);
+  // The format is part of the identity: a deploy that changes only the format names a new file,
+  // so no client reads a cached file in the old format.
+  const hash = createHash("sha256").update(`${CONTENT_FORMAT}\n${body}`).digest("hex").slice(0, 16);
   const json = `{"format":${CONTENT_FORMAT},"hash":"${hash}","data":${body}}`;
   return { hash, json, gzip: new Uint8Array(gzipSync(json)) };
 }
@@ -158,9 +197,13 @@ export class ContentService {
   /** The packs merged in install order, without the operator layer. */
   private packData: ContentData;
   private packs: PackInfo[];
+  /** The pack that supplies each row (the last to define it), by lower-cased row label. */
+  private owners: Map<string, PackInfo>;
   private packKeys: { items: Set<string>; monsters: Set<string>; npcFiles: Set<string> };
   private published: ContentData;
   private copy: ClientCopy;
+  /** The last few published stores, so a client that asked just before a publish still gets one. */
+  private readonly recent = new Map<string, ClientCopy>();
   private current: ContentStore;
 
   constructor(opts: ContentServiceOptions) {
@@ -168,7 +211,8 @@ export class ContentService {
     this.now = opts.now;
     this.onPublish = opts.onPublish ?? (() => {});
     this.log = opts.log ?? (() => {});
-    const { data, packs } = this.loadPacks(opts.releasePacks);
+    const { data, packs, owners } = this.loadPacks(opts.releasePacks);
+    this.owners = owners;
     this.packData = data;
     this.packs = packs;
     this.packKeys = {
@@ -186,6 +230,7 @@ export class ContentService {
       );
     }
     this.copy = clientCopyOf(this.published);
+    this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
   }
 
@@ -193,6 +238,7 @@ export class ContentService {
   private loadPacks(releasePacks: Readonly<Record<string, string>>): {
     data: ContentData;
     packs: PackInfo[];
+    owners: Map<string, PackInfo>;
   } {
     const loaded: LoadedPack[] = [];
     const packs: PackInfo[] = [];
@@ -221,13 +267,19 @@ export class ContentService {
       });
     }
     const merged = mergePacks(loaded.map((l) => l.data));
+    const owners = new Map<string, PackInfo>();
+    loaded.forEach((l, i) => {
+      for (const r of rowsOf(l.data)) {
+        owners.set(rowLabel(r).toLowerCase(), packs[i] as PackInfo);
+      }
+    });
     const missing = missingDatasets(merged);
     if (missing.length > 0) {
       throw new Error(
         `the installed packs leave out ${missing.join(", ")}: a server needs a pack with every dataset (the Classic pack)`,
       );
     }
-    return { data: merged as ContentData, packs };
+    return { data: merged as ContentData, packs, owners };
   }
 
   private readInstalled(
@@ -257,6 +309,19 @@ export class ContentService {
     return this.copy;
   }
 
+  /** A recent published store by hash (the current one, or one of the few before it). */
+  clientCopyFor(hash: string): ClientCopy | undefined {
+    return this.recent.get(hash);
+  }
+
+  private remember(copy: ClientCopy): void {
+    this.recent.delete(copy.hash);
+    this.recent.set(copy.hash, copy);
+    while (this.recent.size > RECENT_COPIES) {
+      this.recent.delete(this.recent.keys().next().value as string);
+    }
+  }
+
   installedPacks(): readonly PackInfo[] {
     return this.packs;
   }
@@ -281,20 +346,36 @@ export class ContentService {
     return draftRows(this.db);
   }
 
-  /** The store the draft would publish. */
+  /**
+   * The store the draft would publish, built exactly as the publish will store it: a draft change
+   * to an existing operator row takes that row's place (as `upsertContentRow` keeps its `seq`), and
+   * new rows follow in draft order.
+   */
   draftContent(draft: readonly DraftRow[] = this.draft()): ContentData {
-    let layer = contentRows(this.db);
-    for (const d of draft) {
-      layer = layer.filter((r) => !sameRow(r, d));
-    }
-    const rows = [
-      ...layer.map(toLayer),
-      ...draft.flatMap((d) => {
+    return applyRows(this.packData, this.layerWith(draft));
+  }
+
+  /** The operator layer with draft changes laid in, in the order the database will hold it. */
+  private layerWith(draft: readonly DraftRow[]): LayerRow[] {
+    const rows: LayerRow[] = [];
+    for (const r of contentRows(this.db)) {
+      const d = draft.find((x) => sameRow(x, r));
+      if (!d) {
+        rows.push(toLayer(r));
+      } else {
         const l = draftLayer(d);
-        return l ? [l] : [];
-      }),
-    ];
-    return applyRows(this.packData, rows);
+        if (l) {
+          rows.push(l);
+        }
+      }
+    }
+    for (const d of draft) {
+      const l = draftLayer(d);
+      if (l && !contentRows(this.db).some((r) => sameRow(r, d))) {
+        rows.push(l);
+      }
+    }
+    return rows;
   }
 
   /** The draft's pre-publish checks: schemas, then key rules and cross-references. */
@@ -311,7 +392,7 @@ export class ContentService {
       return `${ref.dataset} is built from the art and cannot be changed here`;
     }
     const ds = this.packData[ref.dataset] as unknown as Record<string, unknown>;
-    if (!(ref.part in ds)) {
+    if (!Object.hasOwn(ds, ref.part)) {
       return `${ref.dataset} has no field ${ref.part}`;
     }
     const field = keyField(ref.dataset, ref.part);
@@ -358,6 +439,11 @@ export class ContentService {
         return fail(`the row's "${field}" must be ${ref.key}`);
       }
     }
+    // Text an operator writes may name an item by its display name; it is stored as the key
+    // (decision 3), so a later rename never breaks it.
+    if (op === "set" && ref.dataset === "quests" && ref.part === "current" && Array.isArray(data)) {
+      data = resolveQuestItems(data, this.draftContent().items.items);
+    }
     if (op === "revert" && !contentRows(this.db).some((r) => sameRow(r, ref))) {
       return fail(`${rowLabel(ref)} has no change to revert`);
     }
@@ -376,7 +462,9 @@ export class ContentService {
     };
     const draft = [...this.draft().filter((d) => !sameRow(d, row)), row];
     const next = this.draftContent(draft);
-    const problems = schemaProblems(next).filter((p) => p.where.startsWith(`${ref.dataset}/`));
+    const problems = schemaProblems(next).filter(
+      (p) => p.where === ref.dataset || p.where.startsWith(`${ref.dataset}/`),
+    );
     if (problems.length > 0) {
       return fail(`${rowLabel(row)} does not match its schema`, problems);
     }
@@ -422,10 +510,31 @@ export class ContentService {
     }
   }
 
+  /**
+   * The store a write would leave, read back from the database exactly as it would be stored (row
+   * order included), with the write rolled back.
+   */
+  private candidate(write: () => void): ContentData {
+    let next: ContentData | null = null;
+    try {
+      this.db.transaction(() => {
+        write();
+        next = applyRows(this.packData, contentRows(this.db).map(toLayer));
+        throw ROLLBACK;
+      })();
+    } catch (e) {
+      if (e !== ROLLBACK) {
+        throw e;
+      }
+    }
+    return next as unknown as ContentData;
+  }
+
   /** Rebuilds the published store from the database and swaps it in. */
   private rebuild(): void {
     this.published = applyRows(this.packData, contentRows(this.db).map(toLayer));
     this.copy = clientCopyOf(this.published);
+    this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
     this.onPublish(this.current);
   }
@@ -459,8 +568,10 @@ export class ContentService {
     const changes: PublishChange[] = draft.map((d) => {
       const before = this.stateOf(layer.find((r) => sameRow(r, d)));
       const base = rowValue(this.packData, d);
+      // Reverting drops the operator row; so does removing a row no pack has (an added one), which
+      // leaves nothing behind to mark.
       const after: PublishedState | null =
-        d.op === "revert"
+        d.op === "revert" || (d.op === "remove" && base === undefined)
           ? null
           : {
               op: d.op,
@@ -534,19 +645,17 @@ export class ContentService {
       before: c.after,
       after: c.before,
     }));
-    const rows = applyRows(this.packData, [
-      ...layer.filter((r) => !p.changes.some((c) => sameRow(c, r))).map(toLayer),
-      ...changes.flatMap((c) =>
-        c.after
-          ? [{ dataset: c.dataset, part: c.part, key: c.key, op: c.after.op, data: c.after.data }]
-          : [],
-      ),
-    ]);
-    const problems = schemaProblems(rows);
-    if (problems.length > 0) {
-      return fail("undoing it would leave content that does not match the schemas", problems);
-    }
     const now = this.now();
+    const rows = this.candidate(() => {
+      for (const c of changes) {
+        this.writeState(c, c.after, actor, now);
+      }
+    });
+    // Every publish check, not just the schemas: a later publish may refer to what this one added.
+    const problems = checkStore(rows, this.published, this.packKeys);
+    if (problems.length > 0) {
+      return fail("undoing it would leave content that does not pass its checks", problems);
+    }
     let id = "";
     this.db.transaction(() => {
       for (const c of changes) {
@@ -581,10 +690,11 @@ export class ContentService {
    * it, because rows compare by hash.
    */
   notices(): PackNotice[] {
-    // The newest installed pack is the one whose rows win; with only Classic installed, Classic.
-    const owner = this.packs.at(-1) ?? { name: "", version: "" };
     const out: PackNotice[] = [];
     for (const r of contentRows(this.db)) {
+      // The pack that supplies the row now (a row no pack has any more: the newest pack).
+      const owner = this.owners.get(rowLabel(r).toLowerCase()) ??
+        this.packs.at(-1) ?? { name: "", version: "" };
       const now = rowValue(this.packData, r);
       const nowHash = now === undefined ? null : rowHash(now);
       if (nowHash === r.baseHash) {
@@ -622,11 +732,11 @@ export class ContentService {
         after: null,
       },
     ];
-    const next = applyRows(this.packData, layer.filter((r) => !sameRow(r, ref)).map(toLayer));
-    const problems = schemaProblems(next);
+    const next = this.candidate(() => deleteContentRow(this.db, ref.dataset, ref.part, ref.key));
+    const problems = checkStore(next, this.published, this.packKeys);
     if (problems.length > 0) {
       return fail(
-        "taking the pack's version would leave content that does not match the schemas",
+        "taking the pack's version would leave content that does not pass its checks",
         problems,
       );
     }

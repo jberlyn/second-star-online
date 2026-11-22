@@ -89,7 +89,7 @@ export function listingOf(
   ref: { dataset: DatasetId; part: string },
 ): ContentListing | null {
   const pack = service.packContent()[ref.dataset] as unknown as Record<string, unknown>;
-  if (!(ref.part in pack)) {
+  if (!Object.hasOwn(pack, ref.part)) {
     return null;
   }
   const field = keyField(ref.dataset, ref.part);
@@ -138,7 +138,7 @@ export function listingOf(
 
 export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDetail | null {
   const pack = service.packContent()[ref.dataset] as unknown as Record<string, unknown>;
-  if (!(ref.part in pack)) {
+  if (!Object.hasOwn(pack, ref.part)) {
     return null;
   }
   const field = keyField(ref.dataset, ref.part);

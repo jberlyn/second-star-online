@@ -223,6 +223,11 @@ export function itemLabel(item: string): string {
   return base;
 }
 
+/** The name players see for a monster or NPC: its species' `display` when renamed, else the name. */
+export function monsterLabel(name: string): string {
+  return content().monster(name)?.display ?? name;
+}
+
 /** The atlas art for an item key: its `sprite` when it has one, else the key itself. */
 export function itemSprite(key: string): string {
   return content().item(key)?.sprite ?? key;

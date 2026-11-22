@@ -15,6 +15,7 @@ import {
   installContent,
   itemLabel,
   itemSprite,
+  monsterLabel,
   onContent,
   resolveNpcItemNames,
   skillIndex,
@@ -93,6 +94,7 @@ describe("renamed items", () => {
     expect(itemLabel("2 Long Sword")).toBe("2 Longblade");
     expect(itemLabel("Ale")).toBe("Ale");
     expect(groundTipName("Long Sword")).toBe("Longblade");
+    expect(groundTipName("Long Sword+2")).toBe("Longblade+2");
     // Rules and logs still go by the key.
     expect(displayName("Long Sword")).toBe("Long Sword");
   });
@@ -125,5 +127,20 @@ describe("renamed items", () => {
       "INV|2 Long Sword:10",
       "BIO|Longblade",
     ]);
+  });
+});
+
+describe("renamed monsters", () => {
+  test("players see a species' display name", () => {
+    const first = classicData.monsters.monsters[0]?.name as string;
+    installContent(
+      buildContentStore(
+        changed((d) => {
+          (d.monsters.monsters[0] as { display?: string }).display = "Gloomrat";
+        }),
+      ),
+    );
+    expect(monsterLabel(first)).toBe("Gloomrat");
+    expect(monsterLabel("Nobody")).toBe("Nobody");
   });
 });

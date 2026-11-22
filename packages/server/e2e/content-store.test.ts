@@ -143,11 +143,15 @@ describe("the live content store", () => {
     const hash = content().hash;
     expect(hash).not.toBe(before);
 
-    // Both clients are told the new hash...
+    // Both clients are told the new hash, then get their inventory again (its art may differ)...
     for (const bot of [alice, bob]) {
       const msg = await bot.waitFor((m) => m.t === "content");
       expect(msg).toEqual({ t: "content", hash });
+      const at = bot.inbox.indexOf(msg);
+      await bot.waitFor((m) => m.t === "inv" && bot.inbox.indexOf(m) > at);
     }
+    // A client that asked for the store just before the publish still gets it.
+    expect((await fetchJson(`/content/${before}.json`)).status).toBe(200);
     // ...the hashed file has the change...
     const file = await fetchJson(`/content/${hash}.json`);
     expect(

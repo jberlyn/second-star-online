@@ -10,6 +10,7 @@ import {
   ACTIVITY_TOTALS_MAX,
   type ActivityType,
   ADMIN_TEXT,
+  airshipWalkGrid,
   anyMapName,
   banNotice,
   CHARACTER_SEARCH_LIMIT,
@@ -29,6 +30,7 @@ import {
   endMs,
   factionIdOf,
   findNewQuest,
+  footWalkGrid,
   HUB_EDITS,
   HUB_TEXT,
   hubArgs,
@@ -61,6 +63,7 @@ import {
   roleToData,
   type ServerMsg,
   savedSpellbook,
+  shipWalkGrid,
   sortFaction,
   startingCharacter,
   TEXT,
@@ -354,6 +357,8 @@ import {
 import {
   addPlayer,
   createWorld,
+  groundView,
+  inventoryView,
   newSpellState,
   type Outgoing,
   type Player,
@@ -3037,8 +3042,33 @@ export function createGame(deps: GameDeps): Game {
 
     contentPublished(hash) {
       layNpcFiles();
+      // Setting defaults drawn from content (the Assassin prizes) follow it.
+      applySettings(resolveSettings(loadSettingOverrides(db)));
+      // Walkability comes from the tile tables: every loaded map's grids are worked out again.
+      for (const room of world.rooms.values()) {
+        const m = room.map;
+        m.walk = footWalkGrid(m.layers[0], m.layers[1]);
+        m.walkAir = airshipWalkGrid(m.layers[1]);
+        m.walkShip = shipWalkGrid(m.layers[0]);
+      }
+      // Every client is told the new store, then gets its inventory and the ground items around it
+      // again (their art may have changed); the client holds them until the new store is in.
+      const told = new Set<string>();
+      for (const room of world.rooms.values()) {
+        const events = room.map.ground.map((g) => ({ e: "gadd" as const, item: groundView(g) }));
+        for (const o of room.players) {
+          told.add(o.id);
+          send(o.id, { t: "content", hash });
+          send(o.id, { t: "inv", inv: inventoryView(o) });
+          if (events.length > 0) {
+            send(o.id, { t: "delta", events });
+          }
+        }
+      }
       for (const o of world.players.values()) {
-        send(o.id, { t: "content", hash });
+        if (!told.has(o.id)) {
+          send(o.id, { t: "content", hash });
+        }
       }
     },
 

@@ -3,12 +3,15 @@
  * game loop ticks the model at the original 20 fps and draws every animation frame.
  */
 import {
+  airshipWalkGrid,
   artBagFull,
   BIO_TEXT,
   CHAT_COLOR,
   CHAT_SOCIAL_TEXT,
   type ClientMsg,
+  type ContentStore,
   type Dir,
+  footWalkGrid,
   groundTipName,
   hidesName,
   houseType,
@@ -18,6 +21,7 @@ import {
   localSyncPatch,
   logchatFile,
   mergePlayerPrefs,
+  monsterLabel,
   newsIsNew,
   PLAYFIELD_RECT,
   type PlayerPreferences,
@@ -31,7 +35,7 @@ import {
 
 import { type Assets, loadAssets } from "./assets.ts";
 import { createAudio, playAll } from "./audio.ts";
-import { createContentSync, fetchContent } from "./content.ts";
+import { ContentFormatError, createContentSync, fetchContent } from "./content.ts";
 import {
   createInputState,
   type InputSink,
@@ -116,10 +120,47 @@ export interface App {
   stop(): void;
 }
 
+/**
+ * The server's store, at start. A store in a format this client was not built for means a newer
+ * client was deployed: reload once to get it (not again, if the reload did not help).
+ */
+async function startingContent(): Promise<ContentStore> {
+  try {
+    const store = await fetchContent();
+    sessionStorageSafe("removeItem");
+    return store;
+  } catch (err) {
+    if (err instanceof ContentFormatError && sessionStorageSafe("getItem") === null) {
+      sessionStorageSafe("setItem");
+      location.reload();
+      return new Promise(() => {});
+    }
+    throw err;
+  }
+}
+
+/** Remembers a format reload across it (with storage blocked it does not reload, so it cannot loop). */
+function sessionStorageSafe(op: "getItem" | "setItem" | "removeItem"): string | null {
+  try {
+    const key = "sso-content-format-reload";
+    if (op === "setItem") {
+      sessionStorage.setItem(key, "1");
+      return null;
+    }
+    if (op === "removeItem") {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+    return sessionStorage.getItem(key);
+  } catch {
+    return op === "getItem" ? "blocked" : null;
+  }
+}
+
 export async function startApp(root: HTMLElement): Promise<App> {
   root.replaceChildren();
   // The client bundles no content: it plays with the server's published store (content.ts).
-  const [assets, store] = await Promise.all([loadAssets(), fetchContent()]);
+  const [assets, store] = await Promise.all([loadAssets(), startingContent()]);
   installContent(store);
   const conn = await connect();
   return runApp(root, assets, conn);
@@ -157,7 +198,8 @@ export function hoverName(model: Model, hit: Pick): string | null {
     const item = model.ground.get(hit.id);
     return item ? groundTipName(item.name) : null;
   }
-  return hit.name;
+  // A monster or NPC whose species an operator renamed shows the name players know it by.
+  return monsterLabel(hit.name);
 }
 
 /**
@@ -1033,8 +1075,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       handleMessage(msg);
       syncMenus();
     },
-    // A new store is live: the Content page shows the publish.
-    installed: () => contentPage.published(),
+    // A new store is live: walkability follows the tile tables, and the Content page shows the
+    // publish. The server sends the inventory and the ground items again after it.
+    installed: () => {
+      if (model.map) {
+        model.walk = footWalkGrid(model.map.layers[0], model.map.layers[1]);
+        model.walkAir = airshipWalkGrid(model.map.layers[1]);
+      }
+      contentPage.published();
+    },
   });
   conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
   const handleMessage = (msg: ServerMsg) => {

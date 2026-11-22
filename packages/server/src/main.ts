@@ -151,6 +151,7 @@ export function startServer(options: ServerOptions): RunningServer {
     development: options.development,
     game,
     content: () => content.clientCopy(),
+    contentFor: (hash) => content.clientCopyFor(hash),
     packArt: () => content.installedPacks(),
     clock,
     assetsDir: ASSETS_DIR,

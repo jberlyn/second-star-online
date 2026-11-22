@@ -66,7 +66,11 @@ export function parseDrop(text: string): DropPile | null {
   }
   const plain = inventoryItem(text);
   if (plain !== null) {
-    return isCrystals(plain) ? { item: `1 ${plain}`, qty: 1 } : { item: text, qty: 1 };
+    if (isCrystals(plain)) {
+      return { item: `1 ${plain}`, qty: 1 };
+    }
+    // Typed as the key, it is put down as typed; typed as a renamed item's display name, by its key.
+    return { item: lingoEq(plain, text) ? text : plain, qty: 1 };
   }
   if (content().items.fixtures.some((f) => lingoEq(f, text))) {
     return { item: text, qty: 1 };

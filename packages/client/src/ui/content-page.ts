@@ -487,6 +487,8 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
 
   /** The row being edited (null while adding a new one before it has a key). */
   let editing: ContentRowRef | null = null;
+  /** The edited row's own key field (null for a whole field): not the list on screen's. */
+  let editingKeyField: string | null = null;
   /** The JSON as it was loaded, to tell whether it changed. */
   let loaded = "";
 
@@ -500,6 +502,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   function openRow(r: ContentRowRef): void {
     const ref = refOf(r);
     editing = ref;
+    editingKeyField = null;
     editor.hidden = false;
     editorTitle.textContent = refLabel(ref);
     editorState.textContent = "Loading…";
@@ -515,7 +518,10 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
       return;
     }
     editing = { dataset: listing.dataset, part: listing.part, key: null };
+    editingKeyField = listing.keyField;
     editor.hidden = false;
+    json.readOnly = false;
+    saveBtn.hidden = false;
     editorTitle.textContent = `New row in ${listing.dataset}/${listing.part}`;
     editorState.textContent = `Its "${listing.keyField}" is its key, which never changes.`;
     packView.hidden = true;
@@ -529,6 +535,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   }
 
   function showRow(d: ContentRowDetail): void {
+    editingKeyField = d.keyField;
     editorTitle.textContent = refLabel(d);
     const parts = [d.status ? STATUS_TEXT[d.status] : "Not published yet"];
     if (d.draft) {
@@ -553,6 +560,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   function closeEditor(): void {
     editor.hidden = true;
     editing = null;
+    editingKeyField = null;
     loaded = "";
     json.value = "";
   }
@@ -569,10 +577,10 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
       return;
     }
     let ref = editing;
-    if (ref.key === null && listing?.keyField) {
-      const k = (data as Record<string, unknown> | null)?.[listing.keyField];
+    if (ref.key === null && editingKeyField) {
+      const k = (data as Record<string, unknown> | null)?.[editingKeyField];
       if (typeof k !== "string" && typeof k !== "number") {
-        showError(`The row needs its "${listing.keyField}".`);
+        showError(`The row needs its "${editingKeyField}".`);
         return;
       }
       ref = { ...ref, key: String(k) };

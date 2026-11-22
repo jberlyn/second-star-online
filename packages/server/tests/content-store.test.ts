@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,7 +15,7 @@ import {
 import { readPackDir } from "../src/content/packs.ts";
 import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
-import { badKeyForm, nameProblems } from "../src/content/validate.ts";
+import { badKeyForm, nameProblems, skillProblems } from "../src/content/validate.ts";
 import {
   contentRows,
   insertPack,
@@ -23,6 +24,7 @@ import {
 } from "../src/persistence/content.ts";
 import { openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
+import { parseDrop } from "../src/systems/admin/drop.ts";
 import { groundView, inventoryView } from "../src/systems/world/world.ts";
 import { player, testMap } from "./helpers/sim.ts";
 
@@ -507,5 +509,184 @@ describe("the protocol carries an item's art separately from its key", () => {
     p.char.bag[0] = null;
     p.char.equip.ring = "NOTHING";
     expect(inventoryView(p).sprites).toBeUndefined();
+  });
+});
+
+describe("review fixes", () => {
+  test("a skill keeps its index, indices run 1 to n, and a trained skill cannot be removed", () => {
+    const { service } = setup();
+    const skills = service.publishedContent().classes.skills;
+    const ref = { dataset: "classes" as const, part: "skills", key: skills[0]?.skill as string };
+    service.draftSet(ADMIN, ref, "set", { ...skills[0], index: skills[1]?.index });
+    expect(service.check().some((p) => p.message.includes("cannot change"))).toBe(true);
+    expect(service.check().some((p) => p.message.includes("from 1 to"))).toBe(true);
+    service.draftDiscard(ref);
+    // Removing a skill: refused (here the classes' starting values already outnumber the skills).
+    const published = service.publishedContent();
+    const without = {
+      ...published,
+      classes: { ...published.classes, skills: published.classes.skills.slice(0, -1) },
+    };
+    expect(skillProblems(without, published).map((p) => p.message)).toContain(
+      "a skill characters have trained cannot be removed",
+    );
+    const added = { dataset: "classes" as const, part: "skills", key: "Swimming" };
+    service.draftSet(ADMIN, added, "set", { index: skills.length + 1, skill: "Swimming" });
+    expect(service.check()).toEqual([]);
+  });
+
+  test("undo runs every publish check: it cannot strand a reference a later publish made", () => {
+    const { service } = setup();
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Moonblade" }, "set", {
+      name: "Moonblade",
+      icon: null,
+    });
+    const first = service.publish(ADMIN, seen(service), "Add Moonblade");
+    const quests = service
+      .publishedContent()
+      .quests.current.map((q, i) => (i === 0 ? { ...q, reward: "Moonblade" } : q));
+    service.draftSet(ADMIN, { dataset: "quests", part: "current", key: null }, "set", quests);
+    expect(service.publish(ADMIN, seen(service), "Reward it").ok).toBe(true);
+    const undo = service.undo(ADMIN, first.ok ? first.value.id : "");
+    expect(undo.ok).toBe(false);
+    expect(undo.ok ? [] : undo.problems?.map((p) => p.message)).toContain(
+      "names an item that does not exist: Moonblade",
+    );
+    expect(service.store().item("Moonblade")).toBeDefined();
+  });
+
+  test("a publish logs the hash of the store it installs, even when it edits an earlier added row", () => {
+    const { service } = setup();
+    for (const name of ["Alpha Blade", "Beta Blade"]) {
+      service.draftSet(ADMIN, { dataset: "items", part: "items", key: name }, "set", {
+        name,
+        icon: null,
+      });
+    }
+    service.publish(ADMIN, seen(service), "");
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Alpha Blade" }, "set", {
+      name: "Alpha Blade",
+      display: "First Blade",
+      icon: null,
+    });
+    const p = service.publish(ADMIN, seen(service), "");
+    expect(p.ok ? p.value.hash : "").toBe(service.store().hash);
+    const names = service.store().items.items.map((i) => i.name);
+    expect(names.indexOf("Alpha Blade")).toBeLessThan(names.indexOf("Beta Blade"));
+  });
+
+  test("the last few published stores stay fetchable by hash", () => {
+    const { service } = setup();
+    const first = service.store().hash;
+    service.draftSet(ADMIN, { dataset: "casino", part: "slots", key: null }, "set", {
+      ...service.publishedContent().casino.slots,
+      cost: 25,
+    });
+    service.publish(ADMIN, seen(service), "");
+    expect(service.clientCopyFor(first)?.hash).toBe(first);
+    expect(service.clientCopyFor(service.store().hash)?.hash).toBe(service.store().hash);
+    expect(service.clientCopyFor("0000000000000000")).toBeUndefined();
+  });
+
+  test("the store's hash covers the format, so a format-only change names a new file", () => {
+    const { service } = setup();
+    const body = JSON.parse(service.clientCopy().json).data;
+    const bare = createHash("sha256").update(JSON.stringify(body)).digest("hex").slice(0, 16);
+    expect(service.clientCopy().hash).not.toBe(bare);
+  });
+
+  test("a quest written with an item's display name is stored with its key", () => {
+    const { service } = setup();
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Ale" }, "set", {
+      ...(service.store().item("Ale") as object),
+      display: "Brown Ale",
+    });
+    const quests = service
+      .publishedContent()
+      .quests.current.map((q, i) => (i === 0 ? { ...q, reward: "brown ale" } : q));
+    service.draftSet(ADMIN, { dataset: "quests", part: "current", key: null }, "set", quests);
+    const stored = service.draft().find((d) => d.dataset === "quests")?.data as {
+      reward: string;
+    }[];
+    expect(stored[0]?.reward).toBe("Ale");
+    expect(service.check()).toEqual([]);
+  });
+});
+
+describe("second review fixes", () => {
+  test("a field name off the object's prototype is no field: __proto__ and toString are refused", () => {
+    const { service } = setup();
+    for (const part of ["__proto__", "toString", "constructor"]) {
+      expect(service.draftSet(ADMIN, { dataset: "casino", part, key: null }, "set", null).ok).toBe(
+        false,
+      );
+    }
+    expect(service.draft()).toEqual([]);
+    expect(Object.getPrototypeOf(service.store().casino)).toBe(Object.prototype);
+  });
+
+  test("removing a row the operator added leaves nothing behind", () => {
+    const { service, db } = setup();
+    const ref = { dataset: "items" as const, part: "items", key: "Moonblade" };
+    service.draftSet(ADMIN, ref, "set", { name: "Moonblade", icon: null });
+    service.publish(ADMIN, seen(service), "");
+    service.draftSet(ADMIN, ref, "remove", null);
+    const p = service.publish(ADMIN, seen(service), "");
+    expect(contentRows(db).some((r) => r.key === "Moonblade")).toBe(false);
+    expect(service.store().item("Moonblade")).toBeUndefined();
+    // Undo brings it back.
+    expect(service.undo(ADMIN, p.ok ? p.value.id : "").ok).toBe(true);
+    expect(service.store().item("Moonblade")).toBeDefined();
+  });
+
+  test("a pack notice names the pack that supplies the row, not the newest pack", () => {
+    const { db, service } = setup();
+    insertPack(
+      db,
+      {
+        id: "frost",
+        name: "Frost",
+        version: "1.0.0",
+        source: "imported",
+        data: JSON.stringify({
+          manifest: { ...classic.manifest, id: "frost", name: "Frost", version: "1.0.0" },
+          data: { items: { ...classic.data.items, items: [{ name: "Frost Wand", icon: null }] } },
+        }),
+      },
+      "now",
+    );
+    const s1 = new ContentService({ db, now: () => "a", releasePacks: RELEASE_PACK_DIRS });
+    const ref = { dataset: "casino" as const, part: "slots", key: null };
+    s1.draftSet(ADMIN, ref, "set", { ...s1.publishedContent().casino.slots, cost: 25 });
+    s1.publish(ADMIN, seen(s1), "");
+    void service;
+    const dir = mkdtempSync(join(tmpdir(), "sso-pack-"));
+    cpSync(RELEASE_PACK_DIRS.classic as string, dir, { recursive: true });
+    const file = join(dir, "data", "casino.json");
+    const casino = JSON.parse(readFileSync(file, "utf8"));
+    casino.slots.spinFrames = 3;
+    writeFileSync(file, JSON.stringify(casino));
+    const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
+    writeFileSync(join(dir, "manifest.json"), JSON.stringify({ ...m, version: "1.1.0" }));
+    try {
+      const s2 = new ContentService({ db, now: () => "b", releasePacks: { classic: dir } });
+      expect(s2.notices()[0]).toMatchObject({ packName: "Classic", packVersion: "1.1.0" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("/drop by a renamed item's display name puts down its key", () => {
+    const data = structuredClone(classic.data) as ContentData;
+    const ale = data.items.items.find((i) => i.name === "Ale") as (typeof data.items.items)[0];
+    ale.display = "Brown Ale";
+    installContent(buildContentStore(data));
+    try {
+      expect(parseDrop("Brown Ale")).toEqual({ item: "Ale", qty: 1 });
+      expect(parseDrop("ale")).toEqual({ item: "ale", qty: 1 });
+      expect(parseDrop("3 Brown Ale")).toEqual({ item: "Ale", qty: 3 });
+    } finally {
+      installContent(buildContentStore(classic.data as ContentData));
+    }
   });
 });

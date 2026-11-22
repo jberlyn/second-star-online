@@ -15,7 +15,8 @@ const seq = z
 /** A dataset id, a top-level field and an entry key (null for a whole field). */
 const ref = {
   dataset: z.string().min(1).max(20),
-  part: z.string().min(1).max(40),
+  /** A dataset's top-level field: a plain identifier. */
+  part: z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,39}$/),
   key: z.string().min(1).max(80).nullable(),
 };
 
