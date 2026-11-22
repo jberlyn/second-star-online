@@ -19,21 +19,34 @@ export type ContentCleanup = "remove" | "replace" | "leave";
 
 const ITEM_KINDS = new Set<Reference["kind"]>(["item", "itemOrFixture", "shopItem", "lootItem"]);
 
-/** The spellings that name an entry: an item's key and its archived spellings, a monster's key. */
+/**
+ * The spellings that name an entry: an item's key and its archived spellings, a monster's key.
+ * Stored copies are matched by these, so a singular crystal (`Blue Crystal`, an item of its own)
+ * is not one: the player-shop list's singular entries are matched by `names`.
+ */
 export function spellingsOf(data: ContentData, kind: EntryKind, key: string): string[] {
   if (kind === "monster") {
     return [key];
   }
   const item = data.items.items.find((i) => lingoEq(i.name, key));
-  // The player-shop list names crystals in the singular (`Blue Crystal`).
-  const singular = /^(.+ Crystal)s$/i.exec(key)?.[1];
-  return [key, ...(item?.variants ?? []), ...(singular ? [singular] : [])];
+  return [key, ...(item?.variants ?? [])];
 }
+
+/** The player-shop list's references, where crystals are named in the singular. */
+const WHITELIST = "items/playerShopWhitelist";
 
 /** Whether a reference's name is one of `spellings` (a drop line may carry a count: `5 Fish`). */
 function names(r: Reference, spellings: readonly string[]): boolean {
   const n = r.name.trim();
   if (spellings.some((s) => lingoEq(s, n))) {
+    return true;
+  }
+  // The player-shop list names crystals in the singular (`Blue Crystal` lets a shop stock Blue
+  // Crystals); anywhere else the singular is the item of that name.
+  if (
+    r.where === WHITELIST &&
+    spellings.some((s) => lingoEq(s, `${n}s`) && / Crystals$/i.test(s))
+  ) {
     return true;
   }
   // Only crystals drop as a counted pile; `INV|50 Gold` is gold, not the Gold item.

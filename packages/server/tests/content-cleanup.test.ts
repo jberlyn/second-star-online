@@ -1151,6 +1151,61 @@ describe("removing content in use from a running game", () => {
     expect(activity("unlogged")).toEqual([]);
   });
 
+  test("removing crystals leaves the singular crystal, an item of its own, and its copies alone", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.char.bag[2] = { item: "Blue Crystals", qty: 6 };
+    p.char.bag[3] = { item: "Blue Crystal", qty: 2 };
+    p.char.vault.push("Blue Crystal");
+    p.activityHeld = undefined;
+    game.tick();
+    saveNpcFile(
+      db,
+      { npc: "Agavar", text: "BIO|Hi\rSEL|Blue Crystal:9:3\rSEL|Blue Crystals:2:5" },
+      "acc",
+      "t",
+    );
+    const gathering = service.publishedContent().gather.gathering;
+    service.draftSet(ADMIN(god), { dataset: "gather", part: "gathering", key: null }, "set", {
+      ...gathering,
+      mining: {
+        ...gathering.mining,
+        colours: gathering.mining.colours.map((c) => (c === "Blue" ? "Red" : c)),
+      },
+    });
+    // The player-shop list's singular entry still counts as naming Blue Crystals.
+    expect(
+      usesOf(service.draftContent(), "item", "Blue Crystals").some(
+        (u) => u.where === "items/playerShopWhitelist",
+      ),
+    ).toBe(true);
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Blue Crystals",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 1,
+      },
+      game.contentWorld,
+    );
+    expect(service.check()).toEqual([]);
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(p.char.bag[2]).toBeNull();
+    expect(p.char.bag[3]).toEqual({ item: "Blue Crystal", qty: 2 });
+    expect(p.char.vault).toEqual(["Blue Crystal"]);
+    expect(content().item("Blue Crystal")).toBeDefined();
+    expect(db.query("SELECT text FROM npc_files WHERE npc = 'Agavar'").get()).toEqual({
+      text: "BIO|Hi\rSEL|Blue Crystal:9:3",
+    });
+  });
+
   test("an open vault shows its new lines when a purge empties some", async () => {
     const { god, p } = await ringsEverywhere();
     p.vaultOpen = true;
