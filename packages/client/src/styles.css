@@ -1465,13 +1465,13 @@ body {
   pointer-events: none;
   image-rendering: pixelated;
 }
-/* The gold row below the XP bar, no box: packed against the bag's right edge, so the bag's
-   SmallGold picture and the amount line up with the right-hand items and a longer amount grows to
-   the left. The two are one button that opens the drop/give dialog. */
+/* The gold row under the bag, no box: centred on the equipment boxes and paperdoll, so a longer
+   amount grows both ways. The bag's SmallGold picture and the amount are one button that opens the
+   drop/give dialog. */
 .panel-page .gold-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 3px;
 }
 .panel-page .gold-row .gold-button {

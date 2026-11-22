@@ -399,26 +399,23 @@ describe("the right panel (frames 50-65)", () => {
       "give 2",
     ]);
   });
-  test("design change: gold sits in a row below the XP bar on Inventory, right-aligned with the bag, and clicking it opens the gold dialog", () => {
+  test("design change: gold sits in a row under the bag on Inventory, centred on the equipment, and clicking it opens the gold dialog", () => {
     const { panel, sent } = panelWith([]);
     panel.setInventory({ gold: 1234567, bag: emptyBag(), equip: { ...NO_EQUIPMENT } }, 1);
     // Not on Stats any more.
     expect(panel.el.querySelector(".page-stats .gold-row, .page-stats .gold-button")).toBeNull();
     const box = panel.el.querySelector<HTMLElement>(".page-inventory .gold-row");
-    // Below the XP bar's slot (y 101-105) and above the bag, ending on the bag's right edge (slot 5
-    // spans x 749-781), so the packed-right amount lines up with the right-hand items.
+    // Between the bag (its last quantity field ends at y 232) and the equipment boxes (y 280).
     expect([box?.style.left, box?.style.top, box?.style.width, box?.style.height]).toEqual([
-      `${600 - 566}px`,
-      "126px",
+      `${603 - 566}px`,
+      "238px",
       "181px",
       "20px",
     ]);
-    const slot5 = panel.el.querySelectorAll<HTMLElement>(".bag-slot")[4];
+    // Centred on the equipment boxes and paperdoll (x 626-761, centre 693.5).
     expect(
-      Number.parseFloat(box?.style.left ?? "") + Number.parseFloat(box?.style.width ?? ""),
-    ).toBe(
-      Number.parseFloat(slot5?.style.left ?? "") + Number.parseFloat(slot5?.style.width ?? ""),
-    );
+      Number.parseFloat(box?.style.left ?? "") + Number.parseFloat(box?.style.width ?? "") / 2,
+    ).toBe((626 + 761) / 2 - 566);
     // One button: the SmallGold picture, then the amount. No separate drop button (Internal #118).
     const b = box?.querySelector<HTMLButtonElement>(".gold-button");
     expect([...(box?.children ?? [])]).toEqual([b as HTMLButtonElement]);
@@ -463,19 +460,21 @@ describe("the right panel (frames 50-65)", () => {
     expect(drawn).toContain("items:SmallGold");
     expect(drawn.some((d) => /LargeGold|MediumGold/.test(d))).toBe(false);
   });
-  test("the bag sits 34 px lower to fit the gold row, and the full bag still clears the equipment", () => {
+  test("the bag keeps 1.6's rows, and the gold row fits between the full bag and the equipment", () => {
     const full = Array.from({ length: 15 }, (_, i) => ({ item: `Apple${i}`, qty: 2 }));
     const { panel } = panelWith(full);
     const slots = [...panel.el.querySelectorAll<HTMLElement>(".bag-slot")];
     const tops = slots.map((s) => Number.parseFloat(s.style.top));
-    expect([tops[0], tops[5], tops[10]]).toEqual([154, 191, 228]);
-    // Below the gold row (y 126-146) and above the equipment boxes (y 280).
-    expect(Math.min(...tops)).toBeGreaterThanOrEqual(146);
-    expect(Math.max(...tops) + 34).toBeLessThanOrEqual(280);
+    expect([tops[0], tops[5], tops[10]]).toEqual([120, 157, 194]);
     const qty = [...panel.el.querySelectorAll<HTMLElement>(".qty")].map((q) =>
       Number.parseFloat(q.style.top),
     );
-    expect(Math.max(...qty) + 13).toBeLessThanOrEqual(280);
+    const row = panel.el.querySelector<HTMLElement>(".page-inventory .gold-row");
+    const rowTop = Number.parseFloat(row?.style.top ?? "");
+    // The bag and its quantities end above the gold row, which ends above the equipment (y 280).
+    expect(Math.max(...tops) + 34).toBeLessThanOrEqual(rowTop);
+    expect(Math.max(...qty) + 13).toBeLessThanOrEqual(rowTop);
+    expect(rowTop + Number.parseFloat(row?.style.height ?? "")).toBeLessThanOrEqual(280);
   });
   test("the × beside a box takes the item off; the icon does not click (score frame 63: channels 354-359 carry the remove-button names, sprites 75-80 nothing)", () => {
     const { panel, sent } = panelWith([], { equip: { head: "Chain Helm" } });
@@ -785,7 +784,7 @@ describe("the amount dialog", () => {
 
 describe("drag to rearrange the bag (SSO; 1.6 had none)", () => {
   // happy-dom lays nothing out, so the panel's box is at (0, 0) with scale 1: client coordinates
-  // are panel-local. Slot 1 spans x 35-67, y 142-176; slot 2 starts at x 72.
+  // are panel-local. Slot 1 spans x 35-67, y 108-142; slot 2 starts at x 72.
   const pointer = (target: EventTarget, type: string, x: number, y: number) =>
     target.dispatchEvent(
       new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true }),
@@ -800,8 +799,8 @@ describe("drag to rearrange the bag (SSO; 1.6 had none)", () => {
     pointer(slots[0] as HTMLElement, "pointerdown", 50, 130);
     pointer(document, "pointermove", 70, 130);
     expect(panel.el.querySelector(".drag-ghost")).not.toBeNull();
-    pointer(document, "pointermove", 160, 197); // slot 9: x 146-178, row 2 y 179-213
-    pointer(document, "pointerup", 160, 197);
+    pointer(document, "pointermove", 160, 163); // slot 9: x 146-178, row 2 y 145-179
+    pointer(document, "pointerup", 160, 163);
     slots[0]?.click();
     expect(sent).toEqual(["arrange 1 9"]);
     expect(sounds).toHaveLength(1);

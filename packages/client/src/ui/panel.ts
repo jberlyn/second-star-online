@@ -5,15 +5,13 @@
  * 67, spellbook.ts). Positions are 800×600 stage coordinates; the panel element spans the stage
  * rect [566, 0, 800, 410].
  *
- * - Bag: slot x is centred on (617 + 37·col, 150/187/224) at its icon's regpoint, 34 px below
- *   1.6's 116/153/190 to make room for the gold row; the quantity shows only above 1 (Arial 10
- *   bold white, the bag's quantity fields, moved down with the slots).
- * - Gold (an SSO move: 1.6 showed it on Stats): a row below the XP bar (y 126-146) with no box,
- *   packed against the bag's right edge (stage x 781) so it lines up with the right-hand items
- *   whatever the amount's width: the bag's own SmallGold picture and the amount with thousands
+ * - Bag: slot x is centred on (617 + 37·col, 116/153/190) at its icon's regpoint, 1.6's rows;
+ *   the quantity shows only above 1 (Arial 10 bold white, the bag's quantity fields).
+ * - Gold (an SSO move: 1.6 showed it on Stats): a row under the bag (y 238-258), in the gap 1.6
+ *   left between the bag and the equipment boxes, with no box and centred on the equipment boxes
+ *   and paperdoll (stage x 693.5): the bag's own SmallGold picture and the amount with thousands
  *   separators, together one button that opens the drop/give dialog (1.6's separate drop button,
- *   Internal #118, is gone); its hover tip says so. The
- *   gold row and bag sit midway between the XP bar and the equipment boxes.
+ *   Internal #118, is gone); its hover tip says so.
  * - Equipment boxes (Inventory #1, 135×113 at [626, 280, 761, 393]): Head, LeftHand, Feet on the
  *   left (x 646), Body, RightHand, Ring on the right (x 746), at y 281/320/359. Clicking one takes
  *   the item off.
@@ -184,14 +182,15 @@ function field(text: string, cls: string): HTMLElement {
 }
 
 const BAG_X = (i: number) => 617 + 37 * (i % 5);
-/** How far the bag sits below 1.6's rows, to make room for the gold row. */
-const BAG_SHIFT = 34;
-const BAG_Y = (i: number) => ([116, 153, 190][Math.floor(i / 5)] as number) + BAG_SHIFT;
-/** The bag's quantity field rects (frame-63.json channels 220-234), moved with the bag. */
+const BAG_Y = (i: number) => [116, 153, 190][Math.floor(i / 5)] as number;
+/** The bag's quantity field rects (frame-63.json channels 220-234). */
 const QTY_X = [612, 649, 683, 722, 755];
-const QTY_Y = [139 + BAG_SHIFT, 177 + BAG_SHIFT, 219 + BAG_SHIFT];
-/** The gold row: below the XP bar, its right edge on the bag's (slot 5's x 749-781). */
-const GOLD_ROW = { x: 600, y: 126, w: 181, h: 20 } as const;
+const QTY_Y = [139, 177, 219];
+/**
+ * The gold row: under the bag (its last quantity field ends at y 232) and above the equipment
+ * boxes (y 280), centred on them (x 626-761, centre 693.5).
+ */
+const GOLD_ROW = { x: 603, y: 238, w: 181, h: 20 } as const;
 // The skills page: the backdrop's clip height, the rows' inset from its edges, and the 15 px line.
 const SKILLS_CLIP_H = 165;
 const SKILLS_INSET = 3;
@@ -348,7 +347,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   at(doll, 673, 319, PAPERDOLL_SIZE.w, PAPERDOLL_SIZE.h);
   invPage.append(bagLayer, equipLayer, doll);
 
-  // The gold row, packed right: SmallGold and the amount, one button that opens the drop/give
+  // The gold row, centred: SmallGold and the amount, one button that opens the drop/give
   // dialog, as clicking a bag item opens its menu. 1.6's drop button (Internal #118) is gone.
   const goldBox = document.createElement("div");
   goldBox.className = "gold-row";
