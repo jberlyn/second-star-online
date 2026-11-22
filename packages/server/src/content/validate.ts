@@ -11,6 +11,7 @@ import {
   type ContentData,
   DATASET_IDS,
   type DatasetId,
+  lingoContains,
   npcLootItemOk,
   npcShopItemOk,
 } from "@secondstaronline/shared";
@@ -186,6 +187,12 @@ export type ReferenceKind =
   /** An NPC a quest names: shown where an NPC is used, and flagged for review, never checked. */
   | "npc"
   | "itemOrFixture"
+  /**
+   * Part of an item's name, matched with "contains" (a tool any "Fishing" item or "Axe" counts as):
+   * it resolves while some live item's name contains it. It names no one item, so a removal's
+   * cleanup never touches it.
+   */
+  | "itemPattern"
   | "skill"
   | "shopItem"
   | "lootItem";
@@ -348,7 +355,11 @@ export function referencesOf(data: ContentData): Reference[] {
   const gather = (path: JsonPath, n: string, drop: JsonPath | null) =>
     add(gathering, path, "item", n, drop);
   g.tools.forEach((t, i) => {
-    gather(["tools", i, "tool"], t.tool, ["tools", i]);
+    if (t.match === "contains") {
+      add(gathering, ["tools", i, "tool"], "itemPattern", t.tool, null);
+    } else {
+      gather(["tools", i, "tool"], t.tool, ["tools", i]);
+    }
   });
   gather(["logs", "item"], g.logs.item, null);
   // The ore list is a fixed three, read by position.
@@ -359,7 +370,8 @@ export function referencesOf(data: ContentData): Reference[] {
     gather(["mining", "chunks", i, "tool"], c.tool, ["mining", "chunks", i]);
     gather(["mining", "chunks", i, "item"], c.item, ["mining", "chunks", i]);
   });
-  gather(["fishing", "tool"], g.fishing.tool, null);
+  // The fishing tool is always matched with "contains" (shared gather.ts `isFishingPole`).
+  add(gathering, ["fishing", "tool"], "itemPattern", g.fishing.tool, null);
   g.fishing.bands.forEach((b, i) => {
     gather(["fishing", "bands", i, "fish"], b.fish, null);
   });
@@ -369,8 +381,11 @@ export function referencesOf(data: ContentData): Reference[] {
   g.farming.produce.forEach((pr, i) => {
     gather(["farming", "produce", i, "item"], pr.item, ["farming", "produce", i]);
   });
+  // A treasure is dropped as a ground name, so "300 Gold" is a pile of gold, not an item.
   g.treasure.items.forEach((n, i) => {
-    gather(["treasure", "items", i], n, ["treasure", "items", i]);
+    if (!/^\d+ gold$/i.test(n.trim())) {
+      gather(["treasure", "items", i], n, ["treasure", "items", i]);
+    }
   });
   // What mining strikes, faction deaths and the Assassin's default prizes make.
   g.mining.colours.forEach((c, i) => {
@@ -536,6 +551,8 @@ export function unresolved(data: ContentData): (r: Reference) => boolean {
         return !items.has(n);
       case "itemOrFixture":
         return !items.has(n) && !fixtures.has(n);
+      case "itemPattern":
+        return !live.items.items.some((i) => lingoContains(i.name, r.name));
       case "monster":
         return !monsters.has(n);
       case "skill":
@@ -567,10 +584,24 @@ export function referenceProblems(next: ContentData, published: ContentData): Co
       before.set(refKey(r), left - 1);
       return left <= 0;
     })
-    .map((r) => ({
-      where: r.where,
-      message: `names ${r.kind === "monster" ? "a monster" : r.kind === "skill" ? "a skill" : "an item"} that does not exist: ${r.name || "(nothing)"}`,
-    }));
+    .map((r) => ({ where: r.where, message: referenceMessage(r) }));
+}
+
+/** What a broken reference is told as on the Content page. */
+export function referenceMessage(r: Reference): string {
+  const name = r.name || "(nothing)";
+  switch (r.kind) {
+    case "monster":
+      return `names a monster that does not exist: ${name}`;
+    case "skill":
+      return `names a skill that does not exist: ${name}`;
+    case "npc":
+      return `names an NPC that does not exist: ${name}`;
+    case "itemPattern":
+      return `matches no item (or only retired ones): ${name}`;
+    default:
+      return `names an item that does not exist (or is retired): ${name}`;
+  }
 }
 
 /** An NPC Editor save: it plays instead of the NPC's content row (the game lays it on top). */

@@ -557,7 +557,7 @@ describe("review fixes", () => {
     const undo = service.undo(ADMIN, first.ok ? first.value.id : "");
     expect(undo.ok).toBe(false);
     expect(undo.ok ? [] : undo.problems?.map((p) => p.message)).toContain(
-      "names an item that does not exist: Moonblade",
+      "names an item that does not exist (or is retired): Moonblade",
     );
     expect(service.store().item("Moonblade")).toBeDefined();
   });
@@ -784,7 +784,7 @@ describe("fourth review fixes", () => {
     );
     expect(referenceProblems(base, base)).toEqual([]);
     expect(referenceProblems(next, base).map((p) => p.message)).toEqual([
-      "names an item that does not exist: Nothing Here",
+      "names an item that does not exist (or is retired): Nothing Here",
     ]);
   });
 
@@ -946,7 +946,7 @@ describe("council review fixes", () => {
     (pools.rewards[0] as { item: string }).item = "NonExistentSword";
     service.draftSet(ADMIN, { dataset: "quests", part: "pools", key: null }, "set", pools);
     expect(service.check().map((p) => p.message)).toContain(
-      "names an item that does not exist: NonExistentSword",
+      "names an item that does not exist (or is retired): NonExistentSword",
     );
   });
 

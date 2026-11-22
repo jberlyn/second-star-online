@@ -92,6 +92,7 @@ import {
   type ContentProblem,
   checkStore,
   keyProblems,
+  referenceMessage,
   schemaProblems,
   skillProblems,
   withNpcSaves,
@@ -1605,7 +1606,7 @@ export class ContentService {
     return {
       content: brokenReferences(withNpcSaves(this.published, this.npcSaves())).map((r) => ({
         where: r.where,
-        message: `names ${r.kind === "monster" ? "a monster" : r.kind === "skill" ? "a skill" : "an item"} that does not exist${r.kind.startsWith("item") || r.kind.endsWith("Item") || r.kind === "item" ? " (or is retired)" : ""}: ${r.name || "(nothing)"}`,
+        message: referenceMessage(r),
       })),
       world: world ? world.problems() : [],
     };

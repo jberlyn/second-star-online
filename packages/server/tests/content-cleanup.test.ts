@@ -305,6 +305,25 @@ describe("where content refers to an item, and its cleanup", () => {
     const broken = brokenReferences(retired).filter((r) => r.name.toLowerCase() === "ruby ring");
     expect(broken.length).toBe(usesOf(data, "item", "Ruby Ring").length);
   });
+
+  test("stock Classic has no problems: a treasure's gold pile and a contains-matched tool resolve", () => {
+    const data = classic();
+    expect(brokenReferences(data)).toEqual([]);
+    // The fishing tool "Fishing" and the Axe tool are parts of names, matched with contains.
+    const g = (r: { where: string }) => r.where === "gather/gathering";
+    expect(usesOf(data, "item", "Fishing Pole").filter(g)).toEqual([]);
+    const poles = data.items.items.map((i) =>
+      /fishing/i.test(i.name) ? { ...i, retired: true as const } : i,
+    );
+    const noPoles = { ...data, items: { ...data.items, items: poles } };
+    expect(
+      brokenReferences(noPoles)
+        .filter(g)
+        .map((r) => r.name),
+    ).toContain("Fishing");
+    // "300 Gold" is dropped as a pile of gold, so removing the Gold item leaves it alone.
+    expect(usesOf(data, "item", "Gold").filter(g)).toEqual([]);
+  });
 });
 
 /** A copy of `data` with one row set (or removed, with `value` undefined). */
@@ -1958,9 +1977,9 @@ describe("runtime fallbacks", () => {
       expect(game.tick()).toBe(true);
     }
     expect(sent.some((s) => s.to === l.characterId && s.msg.t === "inv")).toBe(true);
-    // The Content page lists them with the content's own unresolved references.
+    // The Content page lists them; stock Classic content has no unresolved references of its own.
     const all = service.problems(game.contentWorld);
     expect(all.world).toHaveLength(3);
-    expect(all.content.length).toBeGreaterThan(0);
+    expect(all.content).toEqual([]);
   });
 });
