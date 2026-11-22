@@ -106,4 +106,6 @@ export interface ContentWorld {
    * database rolled back with it.
    */
   rollback(): void;
+  /** The publish committed: what the last `apply` held back for clients goes out. */
+  commit(): void;
 }

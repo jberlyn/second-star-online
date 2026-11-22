@@ -116,9 +116,9 @@ export function startServer(options: ServerOptions): RunningServer {
     now: isoNow,
     releasePacks: options.releasePacks ?? RELEASE_PACK_DIRS,
     log: (line) => console.log(line),
-    onPublish: (store) => {
+    onPublish: (store, restoring) => {
       installContent(store);
-      live?.contentPublished(store.hash);
+      live?.contentPublished(store.hash, restoring);
     },
   });
   installContent(content.store());

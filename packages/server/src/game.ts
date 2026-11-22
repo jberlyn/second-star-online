@@ -468,7 +468,7 @@ export interface Game {
    * A new content store was installed (a publish or an undo): the NPC files are laid over it
    * again and every player in game is told the new hash, so their clients fetch it.
    */
-  contentPublished(hash: string): void;
+  contentPublished(hash: string, restoring?: boolean): void;
   /** The world as the content service sees it: where-used, removal cleanup and problems (#28). */
   readonly contentWorld: ContentWorld;
 }
@@ -3061,15 +3061,19 @@ export function createGame(deps: GameDeps): Game {
       }
     },
 
-    contentPublished(hash) {
+    contentPublished(hash, restoring = false) {
       // An NPC whose file changed starts its shop again, as an NPC Editor save does: its ledger and
       // saved shop go, and its open Bio and shop windows close. So does an NPC whose file the
       // publish removed.
       const before = new Map([...npcs].map(([k, f]) => [k, { name: f.name, text: f.text }]));
       layNpcFiles();
+      // Putting back the store a failed publish replaced: the saved ledgers rolled back with it, so
+      // they are read again rather than reset.
       const restart = (name: string) => {
         world.shops.delete(name);
-        deleteShop(db, name);
+        if (!restoring) {
+          deleteShop(db, name);
+        }
         deliver(closeNpcWindows(world, name));
       };
       for (const [k, f] of npcs) {

@@ -230,14 +230,17 @@ export function removalForm(
     );
   }
   const copies = copyCount(u);
-  const copiesSel = choice(
+  // An item already retired can only be taken out by purging or replacing the copies left.
+  const copiesSel = choice<"retire" | "purge" | "replace">(
     "content-removal-copies",
     [
-      ["retire", "Retire it: copies stay, no more can be made"],
+      ...(u.retired
+        ? []
+        : ([["retire", "Retire it: copies stay, no more can be made"]] as ["retire", string][])),
       ["purge", "Purge every copy"],
       ["replace", "Replace every copy with another item"],
     ],
-    "retire",
+    u.retired ? "purge" : "retire",
   );
   const refund = gameInput("content-removal-refund");
   refund.type = "number";

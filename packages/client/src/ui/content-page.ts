@@ -566,6 +566,8 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
 
   function openRow(r: ContentRowRef): void {
     const ref = refOf(r);
+    // A usage report still on its way belongs to the row being left.
+    usageSeq = -1;
     usage = null;
     usageBox.replaceChildren();
     removalBox.replaceChildren();

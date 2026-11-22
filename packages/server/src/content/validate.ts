@@ -211,6 +211,12 @@ export interface Reference {
   drop: JsonPath | null;
   /** The reference is an NPC file line's item (`SEL|`, `BUY|`, `INV|`). */
   npcLine?: boolean;
+  /**
+   * The name is built from the row rather than written in it whole (a mining colour makes
+   * `<colour> Crystals`; the Assassin's prizes are one colon-separated line): a cleanup neither
+   * removes nor replaces it, and the operator edits the row.
+   */
+  fixed?: boolean;
 }
 
 /** Every checked reference in a store. */
@@ -224,6 +230,7 @@ export function referencesOf(data: ContentData): Reference[] {
     name: string,
     drop: JsonPath | null,
     npcLine = false,
+    fixed = false,
   ) =>
     out.push({
       where: rowLabel(row),
@@ -233,6 +240,7 @@ export function referencesOf(data: ContentData): Reference[] {
       name,
       drop,
       ...(npcLine ? { npcLine: true } : {}),
+      ...(fixed ? { fixed: true } : {}),
     });
   const editorItems = section("items", "editorItems");
   data.items.editorItems.forEach((n, i) => {
@@ -364,6 +372,19 @@ export function referencesOf(data: ContentData): Reference[] {
   g.treasure.items.forEach((n, i) => {
     gather(["treasure", "items", i], n, ["treasure", "items", i]);
   });
+  // What mining strikes, faction deaths and the Assassin's default prizes make.
+  g.mining.colours.forEach((c, i) => {
+    add(gathering, ["mining", "colours", i], "item", `${c} Crystals`, null, false, true);
+  });
+  for (const f of data.social.factions) {
+    add({ dataset: "social", part: "factions", key: String(f.id) }, ["head"], "item", f.head, null);
+  }
+  const assassinRow = section("social", "assassin");
+  for (const prize of data.social.assassin.prizes.archived.split(":")) {
+    if (prize.trim() !== "" && !/^\d+ gold$/i.test(prize.trim())) {
+      add(assassinRow, ["prizes", "archived"], "item", prize.trim(), null, false, true);
+    }
+  }
   // What the quest chests refill with after a save, and Oraku's orb and reward.
   const questChest = section("houses", "questChest");
   data.houses.questChest.chests.forEach((c, i) => {

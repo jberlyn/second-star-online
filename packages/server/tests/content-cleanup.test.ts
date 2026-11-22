@@ -13,6 +13,8 @@ import {
   type ContentData,
   checkNpcFile,
   content,
+  type EditableCharacter,
+  editErrors,
   inGameSchema,
   installContent,
   type ServerMsg,
@@ -31,11 +33,52 @@ import { setRole } from "../src/persistence/accounts.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { saveShop } from "../src/persistence/economy.ts";
 import { migrate } from "../src/persistence/migrations.ts";
-import { saveNpcFile } from "../src/persistence/npcfiles.ts";
+import { npcFileVersions, saveNpcFile } from "../src/persistence/npcfiles.ts";
 import { parseDrop } from "../src/systems/admin/drop.ts";
 import { setNpcFile } from "../src/systems/monsters/npcfiles.ts";
 import { spawnHp } from "../src/systems/monsters/spawn.ts";
 import { NEVER_PUSH } from "./helpers/sim.ts";
+
+/** A plain character for the editor's checks. */
+const editable = (): EditableCharacter => ({
+  classCode: 1,
+  level: 5,
+  exp: 10,
+  expNeeded: 410,
+  hp: 20,
+  hpMax: 24,
+  sp: 20,
+  spMax: 24,
+  str: 10,
+  sta: 10,
+  agi: 1,
+  dex: 10,
+  int: 10,
+  wis: 10,
+  spd: 1,
+  skills: [1, 1, 1],
+  hunger: 30000,
+  faction: 0,
+  factionCount: 0,
+  wanted: false,
+  respawn: { map: "x1000y992", x: 5, y: 5 },
+  gold: 100,
+  bank: null,
+  bag: Array.from({ length: 15 }, () => null),
+  equip: {
+    weapon: "NOTHING",
+    offHand: "NOTHING",
+    head: "NOTHING",
+    body: "NOTHING",
+    feet: "NOTHING",
+    ring: "NOTHING",
+  },
+  vault: [],
+  spellbook: [],
+  position: { map: "x1000y992", x: 5, y: 5 },
+  sex: 1,
+  head: 1,
+});
 
 const classic = () => readPackDir(RELEASE_PACK_DIRS.classic as string).data as ContentData;
 
@@ -227,6 +270,32 @@ describe("where content refers to an item, and its cleanup", () => {
     );
   });
 
+  test("a content NPC file that already sold the replacement keeps one line for it", () => {
+    const data = classic();
+    const files = [
+      { name: "Test Seller", text: "SEL|Ale:2:5\rBUY|Ale:1\rSEL|Ruby Ring:9:3\rBUY|Ruby Ring:4" },
+    ];
+    const withFile = { ...data, npcFiles: { ...data.npcFiles, files } };
+    const uses = usesOf(withFile, "item", "Ruby Ring").filter((u) => u.npcLine);
+    const out = cleanUses(withFile, uses, "replace", "Ale").rows[0]?.data as { text: string };
+    expect(out.text).toBe("SEL|Ale:2:8\rBUY|Ale:1");
+  });
+
+  test("the player-shop list's singular crystals, mining colours, faction heads and Assassin prizes are references", () => {
+    const data = classic();
+    expect(
+      usesOf(data, "item", "Blue Crystals").some((u) => u.where === "items/playerShopWhitelist"),
+    ).toBe(true);
+    const colours = usesOf(data, "item", "Blue Crystals").filter((u) => u.path[1] === "colours");
+    expect(colours.length).toBeGreaterThan(0);
+    // A colour makes "<colour> Crystals": it is neither removed nor replaced, but left to edit.
+    expect(cleanUses(data, colours, "replace", "Ale").left).toHaveLength(colours.length);
+    expect(usesOf(data, "item", "Mage's Head").some((u) => u.where === "social/factions/1")).toBe(
+      true,
+    );
+    expect(usesOf(data, "item", "Knife").some((u) => u.where === "social/assassin")).toBe(true);
+  });
+
   test("a retired item counts as missing for every reference", () => {
     const data = classic();
     const items = data.items.items.map((i) =>
@@ -281,9 +350,9 @@ describe("removing content in use from a running game", () => {
       db,
       now: () => new Date(wall + t++).toISOString(),
       releasePacks: RELEASE_PACK_DIRS,
-      onPublish: (store) => {
+      onPublish: (store, restoring) => {
         installContent(store);
-        live?.contentPublished(store.hash);
+        live?.contentPublished(store.hash, restoring);
       },
     });
     installContent(service.store());
@@ -838,6 +907,9 @@ describe("removing content in use from a running game", () => {
     expect(db.query("SELECT count(*) AS n FROM inventory WHERE item = 'Ruby Ring'").get()).toEqual({
       n: 1,
     });
+    // The activity ledger went back with the items: the next check finds nothing unlogged.
+    game.tick();
+    expect(activity("unlogged")).toEqual([]);
   });
 
   test("a crystal pile replaced by an item that does not count in its name keeps its count as quantity", async () => {
@@ -855,6 +927,17 @@ describe("removing content in use from a running game", () => {
       kind: "drop",
       expiresAt: null,
     });
+    // Mining makes Blue Crystals from its colours: the operator changes those first.
+    const gathering = service.publishedContent().gather.gathering;
+    expect(
+      service.draftSet(ADMIN(god), { dataset: "gather", part: "gathering", key: null }, "set", {
+        ...gathering,
+        mining: {
+          ...gathering.mining,
+          colours: gathering.mining.colours.map((c) => (c === "Blue" ? "Red" : c)),
+        },
+      }).ok,
+    ).toBe(true);
     service.draftRemoval(
       ADMIN(god),
       {
@@ -1126,9 +1209,185 @@ describe("removing content in use from a running game", () => {
     p.char.vault = [];
     db.query("DELETE FROM inventory WHERE item = 'Ruby Ring'").run();
     db.query("DELETE FROM vault_items WHERE item = 'Ruby Ring'").run();
+    p.map.ground.splice(
+      p.map.ground.findIndex((g) => g.id === "g-ring"),
+      1,
+    );
+    game.world.containers.set("Crate#7", ["Ale"]);
     expect(service.draftRemoval(ADMIN(god), retireAgain, game.contentWorld).ok).toBe(true);
     expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
     expect(content().item("Ruby Ring")).toBeUndefined();
+  });
+
+  test("an already-retired item with a copy left anywhere (the ground) is not removed outright", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.char.bag[4] = { item: "Ruby Ring", qty: 1 };
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "retire",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    // The last copy is dropped: it is on the ground, held by nobody.
+    p.char.bag[4] = null;
+    p.map.ground.push({
+      id: "g-last",
+      item: "Ruby Ring",
+      x: 5,
+      y: 5,
+      kind: "drop",
+      expiresAt: null,
+    });
+    const again = service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "retire",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(again.ok).toBe(false);
+  });
+
+  test("a failed publish leaves NPC shops' saved stock as it was", async () => {
+    const { god } = await ringsEverywhere();
+    saveNpcFile(db, { npc: "Agavar", text: "BIO|Hi\rSEL|Ruby Ring:9:3\rSEL|Ale:2:5" }, "acc", "t");
+    saveShop(
+      db,
+      {
+        npc: "Agavar",
+        gold: 77,
+        lines: [
+          { line: 2, kind: "SEL", item: "Ruby Ring", price: 9, stock: 1 },
+          { line: 3, kind: "SEL", item: "Ale", price: 2, stock: 4 },
+        ],
+      },
+      "t",
+    );
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    const failing = {
+      ...game.contentWorld,
+      apply: (...args: Parameters<typeof game.contentWorld.apply>) => {
+        game.contentWorld.apply(...args);
+        throw new Error("write failed");
+      },
+    };
+    expect(() => service.publish(ADMIN(god), service.draftRev(), "", failing)).toThrow();
+    expect(db.query("SELECT gold FROM npc_shops WHERE npc = 'Agavar'").get()).toEqual({ gold: 77 });
+  });
+
+  test("a failed publish tells clients nothing and leaves pending saves pending", async () => {
+    const { god, p } = await ringsEverywhere();
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    game.world.powersDirty = true;
+    sent.length = 0;
+    const failing = {
+      ...game.contentWorld,
+      apply: (...args: Parameters<typeof game.contentWorld.apply>) => {
+        game.contentWorld.apply(...args);
+        throw new Error("write failed");
+      },
+    };
+    expect(() => service.publish(ADMIN(god), service.draftRev(), "", failing)).toThrow();
+    expect(
+      sent.some(
+        (x) => x.msg.t === "delta" && x.msg.events.some((e) => e.e === "gdel" && e.id === "g-ring"),
+      ),
+    ).toBe(false);
+    expect(game.world.powersDirty).toBe(true);
+    expect(p.char.bag[3]).toEqual({ item: "Ruby Ring", qty: 2 });
+  });
+
+  test("paintings and photos players make are not problems", async () => {
+    const al = await make("Al");
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.char.bag[7] = { item: "Painting#12", qty: 1 };
+    p.char.vault.push("Photo#4");
+    expect(game.contentWorld.problems()).toEqual([]);
+  });
+
+  test("the character editor moves a retired item's copies but adds none", async () => {
+    const { god } = await ringsEverywhere();
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "retire",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    const bag = (lines: Record<number, { item: string; qty: number }>) =>
+      Array.from({ length: 15 }, (_, i) => lines[i] ?? null);
+    const before = { ...editable(), bag: bag({ 3: { item: "Ruby Ring", qty: 2 } }) };
+    const more = { ...before, bag: bag({ 3: { item: "Ruby Ring", qty: 500 } }) };
+    expect(editErrors(before, more).join("\n")).toContain("no more can be made");
+    const moved = { ...before, bag: bag({ 9: { item: "Ruby Ring", qty: 2 } }) };
+    expect(editErrors(before, moved)).toEqual([]);
+  });
+
+  test("an NPC Editor save the cleanup changes keeps its old text as a version", async () => {
+    const god = await make("God", "administrator");
+    saveNpcFile(db, { npc: "Agavar", text: "BIO|Hi\rSEL|Ruby Ring:9:3" }, "acc", "t");
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(npcFileVersions(db, "Agavar")).toContain("BIO|Hi\rSEL|Ruby Ring:9:3");
   });
 
   test("marking a queued purge's item retired by hand drops the purge", async () => {
@@ -1345,9 +1604,9 @@ describe("edits that change content in use", () => {
       db,
       now: () => "2026-11-22T00:00:00.000Z",
       releasePacks: RELEASE_PACK_DIRS,
-      onPublish: (store) => {
+      onPublish: (store, restoring) => {
         installContent(store);
-        live?.contentPublished(store.hash);
+        live?.contentPublished(store.hash, restoring);
       },
     });
     installContent(service.store());

@@ -139,6 +139,9 @@ class Tally {
 const OWNED_FIXTURE =
   /^(.+'s (Door|Opened Door|Mailbox|Board|House Vault|Newspaper)|The .+'s Guild Vault)$/i;
 
+/** Paintings and photos players make (`Painting#12`): art of their own, no catalogue item. */
+const PLAYER_ART = /^(Painting|Photo)#\d+$/;
+
 /** Joins every bag line of `item` into its first line (containers, which never stack, excepted). */
 function mergeStacks(bag: (BagLine | null)[], item: string): void {
   if (isUniqueContainer(item)) {
@@ -181,6 +184,16 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
    * back with a failed publish, and memory must go back with it.
    */
   let undoLast: (() => void) | null = null;
+  /**
+   * What the last `apply` tells clients, held until the publish commits (`commit`), so a publish
+   * that rolls back has told nobody anything.
+   */
+  let outbox: Outgoing[] = [];
+  const send = (out: readonly Outgoing[]) => {
+    outbox.push(...out);
+  };
+  /** Online players whose things the last `apply` changed. */
+  let touchedAll = new Set<Player>();
   const snapshot = (): (() => void) => {
     const players = [...world.players.values()].map((p) => ({
       p,
@@ -190,7 +203,22 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       gold: p.char.gold,
       container: p.container,
       keyLock: p.keyLock,
+      // The activity ledger moves with each logged change, so it goes back with them.
+      held: p.activityHeld ? new Map(p.activityHeld) : undefined,
+      storeDirty: p.char.storeDirty,
+      invSaveDue: p.invSaveDue,
     }));
+    // Writing the touched players flushes every pending save; a rollback undoes those writes, so
+    // what was pending is pending again.
+    const pending = {
+      tileLog: new Set(world.tileLog),
+      powers: world.powersDirty,
+      assassin: world.assassinDirty,
+      highScores: world.highScoresDirty,
+      guilds: new Set(world.guildsDirty),
+      guildFields: new Map(world.guildFields),
+      shops: [...world.shops.values()].map((sh) => [sh, sh.dirty] as const),
+    };
     const containers = [...world.containers].map(([k, v]) => [k, [...v]] as const);
     const maps = deps.loadedMaps().map((m) => ({
       m,
@@ -214,6 +242,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         s.p.char.gold = s.gold;
         s.p.container = s.container;
         s.p.keyLock = s.keyLock;
+        s.p.activityHeld = s.held;
+        s.p.char.storeDirty = s.storeDirty;
+        s.p.invSaveDue = s.invSaveDue;
         s.p.invDirty = true;
         s.p.lookDirty = true;
       }
@@ -246,6 +277,24 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       for (const q of questsDirty) {
         world.questsDirty.add(q);
       }
+      world.tileLog.clear();
+      for (const t of pending.tileLog) {
+        world.tileLog.add(t);
+      }
+      world.powersDirty = pending.powers;
+      world.assassinDirty = pending.assassin;
+      world.highScoresDirty = pending.highScores;
+      world.guildsDirty.clear();
+      for (const g of pending.guilds) {
+        world.guildsDirty.add(g);
+      }
+      world.guildFields.clear();
+      for (const [k, v] of pending.guildFields) {
+        world.guildFields.set(k, v);
+      }
+      for (const [sh, dirty] of pending.shops) {
+        sh.dirty = dirty;
+      }
     };
   };
 
@@ -255,7 +304,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       if (o.container && lingoEq(o.container.name, name)) {
         o.container = null;
         o.keyLock = false;
-        deps.deliver([{ to: o.id, msg: { t: "vault", items: [], open: false, closed: true } }]);
+        send([{ to: o.id, msg: { t: "vault", items: [], open: false, closed: true } }]);
       }
     }
   };
@@ -405,7 +454,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         const ledger = ledgerFromTemplate(setNpcFile(world.npcs, f.name, text));
         world.shops.set(f.name, ledger);
         store.saveShopFile(f.name, text, ledger, actor.accountId, deps.now());
-        deps.deliver(closeNpcWindows(world, f.name));
+        send(closeNpcWindows(world, f.name));
       }
       return n;
     };
@@ -543,10 +592,10 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       // progress is called off (its offer named the old lines).
       for (const p of touched) {
         if (p.vaultOpen) {
-          deps.deliver([{ to: p.id, msg: { t: "vault", items: [...p.char.vault], open: false } }]);
+          send([{ to: p.id, msg: { t: "vault", items: [...p.char.vault], open: false } }]);
         }
         if (p.trade) {
-          deps.deliver(cancelTrade(world, p));
+          send(cancelTrade(world, p));
         }
       }
       // Offline characters: in the database, as one transaction with the publish's cleanup.
@@ -700,7 +749,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
             }
           }
         }
-        deps.deliver(out);
+        send(out);
       }
       for (const g of offlineGround(a.spellings)) {
         onGround += g.qty * storedCount(g.item);
@@ -761,7 +810,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     }
     // Written with the publish, so a crash before the next save cannot leave the new content with
     // the old copies.
-    deps.persist([...touched]);
+    for (const p of touched) {
+      touchedAll.add(p);
+    }
     return lines;
   }
 
@@ -784,7 +835,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           gone += 1;
           s.live = null;
           s.dirty = true;
-          deps.deliver(
+          send(
             (room?.players ?? []).map((o) => ({
               to: o.id,
               msg: { t: "delta" as const, events: [{ e: "mgone" as const, slot: s.slot }] },
@@ -801,7 +852,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       gone += store.despawn(a.key, loaded());
       // An NPC that is gone has no Bio or shop to show, whether or not its file stays.
       if (gone > 0) {
-        deps.deliver(closeNpcWindows(world, a.key));
+        send(closeNpcWindows(world, a.key));
       }
     }
     const lines: string[] = [];
@@ -827,7 +878,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       base === "" ||
       isGoldName(base) ||
       vehicleOfItem(base) !== null ||
-      OWNED_FIXTURE.test(base)
+      OWNED_FIXTURE.test(base) ||
+      PLAYER_ART.test(stored)
     ) {
       return true;
     }
@@ -965,16 +1017,28 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     },
     apply(actions, actor, publishId) {
       undoLast = snapshot();
+      outbox = [];
+      touchedAll = new Set();
       const lines: string[] = [];
       for (const a of actions) {
         lines.push(...(a.kind === "item" ? applyItem(a, actor, publishId) : applyMonster(a)));
       }
+      // Written with the publish, so a crash before the next save cannot leave the new content
+      // with the old copies.
+      deps.persist([...touchedAll]);
       return lines;
     },
     problems,
     rollback() {
       undoLast?.();
       undoLast = null;
+      outbox = [];
+    },
+    commit() {
+      undoLast = null;
+      const out = outbox;
+      outbox = [];
+      deps.deliver(out);
     },
   };
 }

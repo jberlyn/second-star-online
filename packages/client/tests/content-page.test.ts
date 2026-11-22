@@ -684,6 +684,38 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
     expect(p.el.querySelector(".content-removal")).toBeNull();
   });
 
+  test("a usage report that arrives after another row opened is not shown there", () => {
+    const { p, last } = withAle();
+    const stale = last("usage")?.seq ?? 0;
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({
+        draft: [
+          {
+            dataset: "casino",
+            part: "slots",
+            key: null,
+            op: "set",
+            author: "A",
+            updatedAt: "2026-11-22T00:00:00.000Z",
+          },
+        ],
+      }),
+    });
+    (p.el.querySelector('[data-action="content-draft-open"]') as HTMLElement).click();
+    p.receive({ t: "contentUsage", seq: stale, usage: aleUsage });
+    expect(p.el.querySelector(".content-usage")).toBeNull();
+  });
+
+  test("an item already retired is removed by purging or replacing its copies, not retiring", () => {
+    const { $ } = withAle({ ...aleUsage, retired: true });
+    $("content-remove").click();
+    const sel = $<HTMLSelectElement>("content-removal-copies");
+    expect([...sel.options].map((o) => o.value)).toEqual(["purge", "replace"]);
+    expect(sel.value).toBe("purge");
+  });
+
   test("the draft says what its removals will do", () => {
     expect(
       removalHeadline([

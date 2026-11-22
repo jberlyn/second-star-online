@@ -25,7 +25,9 @@ export function spellingsOf(data: ContentData, kind: EntryKind, key: string): st
     return [key];
   }
   const item = data.items.items.find((i) => lingoEq(i.name, key));
-  return [key, ...(item?.variants ?? [])];
+  // The player-shop list names crystals in the singular (`Blue Crystal`).
+  const singular = /^(.+ Crystal)s$/i.exec(key)?.[1];
+  return [key, ...(item?.variants ?? []), ...(singular ? [singular] : [])];
 }
 
 /** Whether a reference's name is one of `spellings` (a drop line may carry a count: `5 Fish`). */
@@ -131,7 +133,7 @@ export function cleanUses(
     if (skip.some((s) => sameRow(s, u.row))) {
       continue;
     }
-    if (mode === "leave" || (mode === "remove" && u.drop === null)) {
+    if (mode === "leave" || u.fixed || (mode === "remove" && u.drop === null)) {
       left.push(u);
       continue;
     }
@@ -166,6 +168,11 @@ export function cleanUses(
         } else {
           setAt(value, u.path, replacement);
         }
+      }
+      // A shop that already sold the replacement keeps one line for it.
+      if (rowUses.some((u) => u.npcLine)) {
+        const text = String(getAt(value, ["text"]));
+        setAt(value, ["text"], mergeShopLines(text.split(/\r\n?|\n/), replacement).join("\r"));
       }
       rows.push({ ref, op: "set", data: value });
       continue;

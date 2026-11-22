@@ -492,6 +492,7 @@ export function editErrors(
   }
   if (!opts.restore && (changed("bag") || changed("equip") || changed("vault"))) {
     errors.push(...storageIdErrors(before, after));
+    errors.push(...unmakeableErrors(before, after));
   }
   if (changed("spellbook")) {
     const seen = new Set<string>();
@@ -769,3 +770,41 @@ export const fieldLabels = (fields: readonly EditField[]): string[] =>
 /** Whether `name`'s bag item is one the edit must give its own storage id (a bare Crate). */
 export const needsContainerId = (item: string): boolean =>
   !item.includes("#") && isUniqueContainer(item);
+
+/** Every copy a character holds, by exact name: bag counts, worn gear and vault lines. */
+function holdingCounts(c: EditableCharacter): Map<string, number> {
+  const out = new Map<string, number>();
+  const add = (name: string, n: number) => out.set(name, (out.get(name) ?? 0) + n);
+  for (const l of c.bag) {
+    if (l) {
+      add(l.item, l.qty);
+    }
+  }
+  for (const v of Object.values(c.equip)) {
+    if (v && v !== NOTHING) {
+      add(v, 1);
+    }
+  }
+  for (const v of c.vault) {
+    add(v, 1);
+  }
+  return out;
+}
+
+/**
+ * Something the game cannot create (a retired item, a painting) may move between a character's
+ * lines, but the editor may not add copies of it: no more can be made (issue #28).
+ */
+function unmakeableErrors(before: EditableCharacter, after: EditableCharacter): string[] {
+  const was = holdingCounts(before);
+  const errors: string[] = [];
+  for (const [name, n] of holdingCounts(after)) {
+    // A name the character did not hold is refused line by line ("no item called ..."); this is
+    // for more of one they did.
+    const had = was.get(name) ?? 0;
+    if (had > 0 && n > had && !knownItem(name) && !isGold(name)) {
+      errors.push(`${displayName(name)}: no more can be made, so no copies can be added.`);
+    }
+  }
+  return errors;
+}

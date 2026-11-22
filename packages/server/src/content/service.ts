@@ -55,7 +55,12 @@ import {
   upsertDraftRow,
 } from "../persistence/content.ts";
 import type { Db } from "../persistence/database.ts";
-import { deleteNpcFile, loadNpcFiles, saveNpcFile } from "../persistence/npcfiles.ts";
+import {
+  deleteNpcFile,
+  insertNpcFileVersion,
+  loadNpcFiles,
+  saveNpcFile,
+} from "../persistence/npcfiles.ts";
 import { loadPlayerShops } from "../persistence/playershops.ts";
 import {
   type CleanupRow,
@@ -386,14 +391,15 @@ export interface ContentServiceOptions {
   /** The folders of the packs that ship in the release, by pack id. */
   releasePacks: Readonly<Record<string, string>>;
   /** Called after each publish or undo swaps the store in (the server tells clients). */
-  onPublish?: (store: ContentStore) => void;
+  /** `restoring`: the store that was live goes back after a failed publish. */
+  onPublish?: (store: ContentStore, restoring: boolean) => void;
   log?: (line: string) => void;
 }
 
 export class ContentService {
   private readonly db: Db;
   private readonly now: () => string;
-  private readonly onPublish: (store: ContentStore) => void;
+  private readonly onPublish: (store: ContentStore, restoring: boolean) => void;
   private readonly log: (line: string) => void;
   /** The packs merged in install order, without the operator layer. */
   private packData: ContentData;
@@ -927,13 +933,13 @@ export class ContentService {
   }
 
   /** Rebuilds the published store from the database and swaps it in. */
-  private rebuild(): void {
+  private rebuild(restoring = false): void {
     this.published = applyRows(this.packData, contentRows(this.db).map(toLayer));
     recordSkills(this.db, this.published.classes.skills);
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
-    this.onPublish(this.current);
+    this.onPublish(this.current, restoring);
   }
 
   /**
@@ -978,6 +984,25 @@ export class ContentService {
     const problems = [
       ...this.fullProblems(nextData, actions),
       ...this.actionProblems(nextData, draft),
+      // An already-retired item removed outright: copies that turned up since would be stranded.
+      ...actions.flatMap((a) => {
+        const d = draft.find((x) => sameRow(x, entryRef(a.kind, a.key)));
+        const wasRetired =
+          (rowValue(this.published, entryRef(a.kind, a.key)) as { retired?: unknown } | undefined)
+            ?.retired === true;
+        const left =
+          a.kind === "item" && a.copies === "retire" && d?.op === "remove" && wasRetired
+            ? this.copiesLeft(a.key, world)
+            : 0;
+        return left > 0
+          ? [
+              {
+                where: rowLabel(entryRef(a.kind, a.key)),
+                message: `it is retired and ${left} ${left === 1 ? "copy is" : "copies are"} still in the world: purge or replace them to remove it`,
+              },
+            ]
+          : [];
+      }),
     ];
     if (problems.length > 0) {
       return fail("the draft does not pass its checks", problems);
@@ -1014,8 +1039,12 @@ export class ContentService {
         this.writePublish(changes, actor, now, summary, nextCopy.hash, (got) => {
           id = got;
         });
-        // The NPC Editor's saves get the content's cleanup, before the game lays them again.
+        // The NPC Editor's saves get the content's cleanup, before the game lays them again; each
+        // keeps the text it had as a version, as an NPC Editor save does.
         for (const f of this.npcSavesAfter(actions)) {
+          if (f.text !== f.was) {
+            insertNpcFileVersion(this.db, { npc: f.npc, text: f.was }, actor.accountId, now);
+          }
           if (f.text === null) {
             deleteNpcFile(this.db, f.npc);
           } else if (f.text !== f.was) {
@@ -1034,8 +1063,12 @@ export class ContentService {
       if (applied) {
         world?.rollback();
       }
-      this.rebuild();
+      this.rebuild(true);
       throw e;
+    }
+    // Committed: what the cleanup held back for clients goes out.
+    if (applied) {
+      world?.commit();
     }
     return { ok: true, value: publishById(this.db, id) as StoredPublish };
   }
@@ -1281,10 +1314,10 @@ export class ContentService {
     // they are purged or replaced to remove it.
     const alreadyRetired = removal.kind === "item" && published.retired === true;
     if (alreadyRetired && removal.kind === "item" && removal.copies === "retire") {
-      const held = world ? world.holders(this.spellings("item", key)) : 0;
-      if (held > 0) {
+      const left = this.copiesLeft(key, world);
+      if (left > 0) {
         return fail(
-          `${key} is already retired, and ${held} ${held === 1 ? "character still holds" : "characters still hold"} a copy: purge or replace the copies to remove it.`,
+          `${key} is already retired, and ${left} ${left === 1 ? "copy is" : "copies are"} still in the world: purge or replace them to remove it.`,
         );
       }
     }
@@ -1457,6 +1490,16 @@ export class ContentService {
       ok: true,
       value: `${verb} when the draft is published${changed > 0 ? `; ${plural(changed, "other row")} changed with it` : ""}${left > 0 ? `; ${plural(left, "reference")} left for you to fix` : ""}.`,
     };
+  }
+
+  /** How many copies of an item the world holds anywhere (bags, gear, vaults, containers, the ground, shops). */
+  private copiesLeft(key: string, world?: ContentWorld): number {
+    return world
+      ? world
+          .usage("item", this.spellings("item", key))
+          .filter((p) => p.place !== "quest")
+          .reduce((n, p) => n + p.count, 0)
+      : 0;
   }
 
   /**
