@@ -13,6 +13,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { readPackDir } from "../src/content/packs.ts";
+import { rowDetailOf } from "../src/content/page.ts";
 import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
 import { badKeyForm, nameProblems, skillProblems } from "../src/content/validate.ts";
@@ -24,6 +25,7 @@ import {
 } from "../src/persistence/content.ts";
 import { openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
+import { saveNpcFile } from "../src/persistence/npcfiles.ts";
 import { parseDrop } from "../src/systems/admin/drop.ts";
 import { groundView, inventoryView } from "../src/systems/world/world.ts";
 import { player, testMap } from "./helpers/sim.ts";
@@ -688,5 +690,66 @@ describe("second review fixes", () => {
     } finally {
       installContent(buildContentStore(classic.data as ContentData));
     }
+  });
+});
+
+describe("third review fixes", () => {
+  test("a skill name written in another row must be a skill: a typo is refused before it is live", () => {
+    const { service } = setup();
+    const medals = structuredClone(service.publishedContent().social.medals) as {
+      awards: { skill?: string }[];
+    };
+    const award = medals.awards.find((a) => typeof a.skill === "string") as { skill: string };
+    award.skill = "Fishin";
+    expect(
+      service.draftSet(ADMIN, { dataset: "social", part: "medals", key: null }, "set", medals).ok,
+    ).toBe(true);
+    expect(service.check().map((p) => p.message)).toContain(
+      "names a skill that does not exist: Fishin",
+    );
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(false);
+    // Case and spaces are ignored, as the rules read skill names.
+    award.skill = "martial arts";
+    service.draftSet(ADMIN, { dataset: "social", part: "medals", key: null }, "set", medals);
+    expect(service.check()).toEqual([]);
+  });
+
+  test("a new skill whose name reads like an existing one (spaces ignored) is refused", () => {
+    const { service } = setup();
+    const n = service.publishedContent().classes.skills.length;
+    service.draftSet(ADMIN, { dataset: "classes", part: "skills", key: "Martial Arts" }, "set", {
+      index: n + 1,
+      skill: "Martial Arts",
+    });
+    expect(service.check().some((p) => p.message.includes("reads the same as MartialArts"))).toBe(
+      true,
+    );
+  });
+
+  test("an NPC file saved here gets the NPC Editor's handling: names resolve to keys, bad lines are refused", () => {
+    const { service, db } = setup();
+    service.draftSet(ADMIN, { dataset: "items", part: "items", key: "Ale" }, "set", {
+      ...(service.store().item("Ale") as object),
+      display: "Fine Ale",
+    });
+    service.publish(ADMIN, seen(service), "");
+    // The server installs each published store; the NPC checks read the installed one.
+    installContent(service.store());
+    const file = service.publishedContent().npcFiles.files.find((f) => f.text.includes("SEL|")) as {
+      name: string;
+      text: string;
+    };
+    const ref = { dataset: "npcFiles" as const, part: "files", key: file.name };
+    expect(
+      service.draftSet(ADMIN, ref, "set", { ...file, text: `${file.text}\rSEL|Fine Ale:5:5` }).ok,
+    ).toBe(true);
+    const stored = service.draft()[0]?.data as { text: string };
+    expect(stored.text.endsWith("SEL|Ale:5:5")).toBe(true);
+    const bad = service.draftSet(ADMIN, ref, "set", { ...file, text: "SEL|Nothing At All:5:5" });
+    expect(bad.ok).toBe(false);
+    // An NPC with an NPC Editor save: the row says the save is what plays.
+    saveNpcFile(db, { npc: file.name, text: file.text }, "acc", "now");
+    expect(rowDetailOf(service, ref)?.note).toContain("NPC Editor");
+    installContent(buildContentStore(classic.data as ContentData));
   });
 });

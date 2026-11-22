@@ -164,6 +164,8 @@ export interface ContentRowDetail extends ContentRowRef {
   published: unknown;
   /** The draft's change, if any. */
   draft: { op: ContentDraftView["op"]; data: unknown; author: string } | null;
+  /** Something the admin should know before editing (an NPC Editor save that plays instead). */
+  note?: string;
 }
 
 export type ContentServerMsg =

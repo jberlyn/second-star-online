@@ -544,6 +544,9 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     if (d.readOnly) {
       parts.push("built from the art: it cannot be changed here");
     }
+    if (d.note) {
+      parts.push(d.note);
+    }
     editorState.textContent = parts.join(", ");
     packView.hidden = d.pack === null;
     packPre.textContent = pretty(d.pack);

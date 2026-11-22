@@ -13,8 +13,11 @@ import {
   CONTENT_FORMAT,
   type ContentData,
   type ContentStore,
+  checkNpcFile,
   DATASET_IDS,
   type DatasetId,
+  editorLines,
+  resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
 } from "@secondstaronline/shared";
 
@@ -40,6 +43,7 @@ import {
   upsertDraftRow,
 } from "../persistence/content.ts";
 import type { Db } from "../persistence/database.ts";
+import { loadNpcFiles } from "../persistence/npcfiles.ts";
 import { type LoadedPack, readPackBlob, readPackDir } from "./packs.ts";
 import {
   applyRows,
@@ -55,7 +59,13 @@ import {
   rowValue,
   sameRow,
 } from "./rows.ts";
-import { type ContentProblem, checkStore, schemaProblems } from "./validate.ts";
+import {
+  type ContentProblem,
+  checkStore,
+  keyProblems,
+  schemaProblems,
+  skillProblems,
+} from "./validate.ts";
 
 /** Who made a change. */
 export interface ContentActor {
@@ -232,6 +242,14 @@ export class ContentService {
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
+    // A newer pack can clash with the operator's changes (an item key equal to a display name,
+    // skills out of order). Say so at start: every publish names the problem until it is fixed.
+    for (const p of [
+      ...keyProblems(this.published, this.packKeys),
+      ...skillProblems(this.published, this.published),
+    ]) {
+      this.log(`content: ${p.where}: ${p.message}`);
+    }
   }
 
   /** Reads every installed pack, records release versions, and merges them. */
@@ -341,6 +359,11 @@ export class ContentService {
     return contentRows(this.db);
   }
 
+  /** The NPCs with an NPC Editor save, which is laid over their content row (the save plays). */
+  npcEditorSaves(): Set<string> {
+    return new Set(loadNpcFiles(this.db).map((f) => f.npc.toLowerCase()));
+  }
+
   /** The shared draft. */
   draft(): DraftRow[] {
     return draftRows(this.db);
@@ -443,6 +466,18 @@ export class ContentService {
     // (decision 3), so a later rename never breaks it.
     if (op === "set" && ref.dataset === "quests" && ref.part === "current" && Array.isArray(data)) {
       data = resolveQuestItems(data, this.draftContent().items.items);
+    }
+    // An NPC file gets the NPC Editor's handling: display names become keys, then its checks.
+    if (op === "set" && ref.dataset === "npcFiles" && ref.part === "files") {
+      const row = data as { name?: unknown; text?: unknown } | null;
+      if (row && typeof row.text === "string") {
+        const lines = resolveNpcItemNames(editorLines(row.text));
+        const check = checkNpcFile(lines);
+        if (check.error) {
+          return fail(`${rowLabel(ref)}: ${check.error}`);
+        }
+        data = { ...row, text: lines.join("\r") };
+      }
     }
     if (op === "revert" && !contentRows(this.db).some((r) => sameRow(r, ref))) {
       return fail(`${rowLabel(ref)} has no change to revert`);

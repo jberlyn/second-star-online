@@ -164,6 +164,11 @@ export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDet
     pack: packValue ?? null,
     published: published ?? null,
     draft: d ? { op: d.op, data: d.data, author: d.author } : null,
+    ...(ref.dataset === "npcFiles" && ref.key && service.npcEditorSaves().has(ref.key.toLowerCase())
+      ? {
+          note: "This NPC has a save from the NPC Editor, which is what plays: change it there, or this row has no effect.",
+        }
+      : {}),
   };
 }
 

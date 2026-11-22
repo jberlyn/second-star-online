@@ -13,8 +13,10 @@
  */
 import "../content-classic.ts";
 
-import { exitTarget, lingoEq } from "@secondstaronline/shared";
+import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
+import { exitTarget, installContent, lingoEq } from "@secondstaronline/shared";
 
+import { ContentService } from "../content/service.ts";
 import { type Db, openDatabase } from "../persistence/database.ts";
 import { listMaps } from "../persistence/maps.ts";
 import { migrate } from "../persistence/migrations.ts";
@@ -65,6 +67,14 @@ export function mapCheck(db: Db): string[] {
 if (import.meta.main) {
   const db = openDatabase(process.env.SSO_DB ?? "sso.sqlite");
   migrate(db);
+  // Judge the maps by the server's own content: its packs and the operator's published changes.
+  installContent(
+    new ContentService({
+      db,
+      now: () => new Date().toISOString(),
+      releasePacks: RELEASE_PACK_DIRS,
+    }).store(),
+  );
   const lines = mapCheck(db);
   db.close();
   for (const line of lines) {

@@ -134,6 +134,19 @@ export function skillProblems(next: ContentData, published: ContentData): Conten
       break;
     }
   }
+  // The rules find a skill by its name with case and spaces ignored ("Martial Arts" is
+  // MartialArts), so two skills may not share that spelling: the later would take the other's slot.
+  const spelled = new Map<string, string>();
+  for (const s of skills) {
+    const other = spelled.get(skillNorm(s.skill));
+    if (other !== undefined) {
+      out.push({
+        where: `classes/skills/${s.skill}`,
+        message: `its name reads the same as ${other} (case and spaces are ignored)`,
+      });
+    }
+    spelled.set(skillNorm(s.skill), s.skill);
+  }
   for (const before of published.classes.skills) {
     const now = skills.find((s) => s.skill.toLowerCase() === before.skill.toLowerCase());
     if (!now) {
@@ -183,7 +196,64 @@ export function referencesOf(data: ContentData): Reference[] {
   for (const d of data.houses.deeds) {
     add(`houses/deeds/${d.deed}`, "item", d.deed);
   }
+  // Skill names written in other rows: `skillIndex` throws on a name it does not know, so a typo
+  // would fail every tick that reads it.
+  const skill = (where: string, name: unknown) => {
+    if (typeof name === "string" && name !== "") {
+      add(where, "skill", name);
+    }
+  };
+  for (const c of data.classes.classes) {
+    for (const g of c.promotion?.skillGrants ?? []) {
+      skill(`classes/classes/${c.code}`, g);
+    }
+    const stat = c.promotion?.requirement?.stat;
+    if (typeof stat === "string" && !STAT_WORDS.has(stat.toLowerCase())) {
+      skill(`classes/classes/${c.code}`, stat);
+    }
+  }
+  for (const w of data.classes.skillGain.weaponSkills) {
+    for (const s of w.skills) {
+      skill("classes/skillGain", s);
+    }
+  }
+  for (const t of data.gather.gathering.tools) {
+    skill("gather/gathering", (t as { skill?: unknown }).skill);
+  }
+  for (const r of data.gather.skillGain) {
+    skill("gather/skillGain", r.skill);
+  }
+  for (const b of data.itemRules.use.skillBooks) {
+    skill("itemRules/use", b.skill);
+  }
+  for (const p of data.itemRules.ground.platforms) {
+    if (!STAT_WORDS.has(p.needs.toLowerCase())) {
+      skill("itemRules/ground", p.needs);
+    }
+  }
+  for (const s of data.social.assassin.rating.skills) {
+    skill("social/assassin", s);
+  }
+  for (const t of data.social.bios.titles) {
+    for (const test of (t as { tests?: { skill?: unknown }[] }).tests ?? []) {
+      skill("social/bios", test.skill);
+    }
+  }
+  for (const m of data.social.medals.awards) {
+    skill("social/medals", (m as { skill?: unknown }).skill);
+  }
+  for (const b of data.attPower.attPower.skillBlocks) {
+    for (const t of b.tiers) {
+      for (const w of t.when ?? []) {
+        const name = /^\s*([A-Za-z][A-Za-z ]*?)\s*[<>=]/.exec(w)?.[1];
+        if (name && !STAT_WORDS.has(name.toLowerCase())) {
+          skill("attPower/attPower", name);
+        }
+      }
+    }
+  }
   for (const s of data.spells.spells) {
+    skill(`spells/spells/${s.name}`, s.summon?.skilled?.skill);
     if (s.summon) {
       add(`spells/spells/${s.name}`, "monster", s.summon.monster);
       if (s.summon.skilled) {
@@ -194,6 +264,12 @@ export function referencesOf(data: ContentData): Reference[] {
   return out;
 }
 
+/** The words a skill field may hold that name a stat, not a skill. */
+const STAT_WORDS = new Set(["level", "hpmax", "spmax", "hp", "sp", "exp"]);
+
+/** A skill name as `skillIndex` compares it: case and spaces ignored. */
+const skillNorm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+
 const refKey = (r: Reference) => `${r.where}\u0000${r.kind}\u0000${r.name.toLowerCase()}`;
 
 /** The references that do not resolve in a store. */
@@ -201,7 +277,7 @@ export function brokenReferences(data: ContentData): Reference[] {
   const items = new Set(data.items.items.map((i) => i.name.toLowerCase()));
   const fixtures = new Set(data.items.fixtures.map((f) => f.toLowerCase()));
   const monsters = new Set(data.monsters.monsters.map((m) => m.name.toLowerCase()));
-  const skills = new Set(data.classes.skills.map((s) => s.skill.toLowerCase()));
+  const skills = new Set(data.classes.skills.map((s) => skillNorm(s.skill)));
   return referencesOf(data).filter((r) => {
     const n = r.name.toLowerCase();
     switch (r.kind) {
@@ -212,7 +288,7 @@ export function brokenReferences(data: ContentData): Reference[] {
       case "monster":
         return !monsters.has(n);
       case "skill":
-        return !skills.has(n);
+        return !skills.has(skillNorm(r.name));
     }
     return false;
   });
