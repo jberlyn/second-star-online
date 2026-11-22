@@ -399,27 +399,34 @@ describe("the right panel (frames 50-65)", () => {
       "give 2",
     ]);
   });
-  test("design change: gold sits in a box below the XP bar on Inventory, its button opening the gold dialog", () => {
+  test("design change: gold sits in a row below the XP bar on Inventory, right-aligned with the bag, and clicking it opens the gold dialog", () => {
     const { panel, sent } = panelWith([]);
     panel.setInventory({ gold: 1234567, bag: emptyBag(), equip: { ...NO_EQUIPMENT } }, 1);
     // Not on Stats any more.
-    expect(panel.el.querySelector(".page-stats .gold-box, .page-stats .gold-button")).toBeNull();
-    const box = panel.el.querySelector<HTMLElement>(".page-inventory .gold-box");
-    // The XP bar's width (stage x 600-789), just below its slot (y 101-105) and above the bag.
+    expect(panel.el.querySelector(".page-stats .gold-row, .page-stats .gold-button")).toBeNull();
+    const box = panel.el.querySelector<HTMLElement>(".page-inventory .gold-row");
+    // Below the XP bar's slot (y 101-105) and above the bag, ending on the bag's right edge (slot 5
+    // spans x 749-781), so the packed-right amount lines up with the right-hand items.
     expect([box?.style.left, box?.style.top, box?.style.width, box?.style.height]).toEqual([
       `${600 - 566}px`,
-      "114px",
-      "189px",
+      "126px",
+      "181px",
       "20px",
     ]);
-    // Left to right: the drop/give button, the SmallGold picture, the amount.
-    const kids = [...(box?.children ?? [])].map((c) => c.className);
-    expect(kids).toEqual(["gold-button", "small-gold", "gold-amount"]);
+    const slot5 = panel.el.querySelectorAll<HTMLElement>(".bag-slot")[4];
+    expect(
+      Number.parseFloat(box?.style.left ?? "") + Number.parseFloat(box?.style.width ?? ""),
+    ).toBe(
+      Number.parseFloat(slot5?.style.left ?? "") + Number.parseFloat(slot5?.style.width ?? ""),
+    );
+    // One button: the SmallGold picture, then the amount. No separate drop button (Internal #118).
+    const b = box?.querySelector<HTMLButtonElement>('[aria-label="Drop or give gold"]');
+    expect([...(box?.children ?? [])]).toEqual([b as HTMLButtonElement]);
+    expect([...(b?.children ?? [])].map((c) => c.className)).toEqual(["small-gold", "gold-amount"]);
+    expect(b?.querySelector("img")).toBeNull();
     expect(box?.querySelector(".gold-amount")?.textContent).toBe("1,234,567");
     expect(box?.getAttribute("aria-label")).toBe("1,234,567 gold");
-    const b = box?.querySelector<HTMLButtonElement>('[aria-label="Drop or give gold"]');
     expect(b?.dataset.action).toBe("inventory-gold");
-    expect(b?.querySelector("img")?.getAttribute("src")).toBe("/assets/ui/internal-118.png");
     b?.click();
     expect(sent).toEqual(["gold"]);
   });
@@ -439,14 +446,14 @@ describe("the right panel (frames 50-65)", () => {
     expect(drawn).toContain("items:SmallGold");
     expect(drawn.some((d) => /LargeGold|MediumGold/.test(d))).toBe(false);
   });
-  test("the bag sits 22 px lower to fit the gold box, and the full bag still clears the equipment", () => {
+  test("the bag sits 34 px lower to fit the gold row, and the full bag still clears the equipment", () => {
     const full = Array.from({ length: 15 }, (_, i) => ({ item: `Apple${i}`, qty: 2 }));
     const { panel } = panelWith(full);
     const slots = [...panel.el.querySelectorAll<HTMLElement>(".bag-slot")];
     const tops = slots.map((s) => Number.parseFloat(s.style.top));
-    expect([tops[0], tops[5], tops[10]]).toEqual([142, 179, 216]);
-    // Below the gold box (y 114-134) and above the equipment boxes (y 280).
-    expect(Math.min(...tops)).toBeGreaterThanOrEqual(134);
+    expect([tops[0], tops[5], tops[10]]).toEqual([154, 191, 228]);
+    // Below the gold row (y 126-146) and above the equipment boxes (y 280).
+    expect(Math.min(...tops)).toBeGreaterThanOrEqual(146);
     expect(Math.max(...tops) + 34).toBeLessThanOrEqual(280);
     const qty = [...panel.el.querySelectorAll<HTMLElement>(".qty")].map((q) =>
       Number.parseFloat(q.style.top),
@@ -535,7 +542,7 @@ describe("the right panel (frames 50-65)", () => {
     expect(lineMiddle(".stat-labels")).toBe(middles[1]!);
     expect(lineMiddle(".stat-values")).toBe(middles[1]!);
   });
-  test("the Level portrait crops the helmet, falls back to hair, and clears between characters", () => {
+  test("the Level portrait crops the helmet, shows it at the stat icons' height, falls back to hair, and clears between characters", () => {
     const alpha = new Uint8ClampedArray(46 * 45 * 4);
     for (let y = 4; y < 19; y++) {
       for (let x = 8; x < 18; x++) {
@@ -573,8 +580,11 @@ describe("the right panel (frames 50-65)", () => {
         panel.setInventory({ gold: 12, bag: emptyBag(), equip: { ...NO_EQUIPMENT, head } }, 2);
       setHelmet("Plate Helm");
       expect(sourceXs.slice(-2)).toEqual([200, 8]);
+      // Cropped to its 10×15 pixels, shown 14×21 (the bicep's and wand's height), centred on the
+      // icon column (x 647) and the Level row (y 133.5).
       expect([portrait?.width, portrait?.height]).toEqual([10, 15]);
-      expect([portrait?.style.left, portrait?.style.top]).toEqual(["76px", "126px"]);
+      expect([portrait?.style.width, portrait?.style.height]).toEqual(["14px", "21px"]);
+      expect([portrait?.style.left, portrait?.style.top]).toEqual(["74px", "123px"]);
       setHelmet("White Tiara");
       expect(sourceXs.slice(-2)).toEqual([100, 8]);
       setHelmet("NOTHING");

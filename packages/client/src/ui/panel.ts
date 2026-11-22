@@ -5,13 +5,15 @@
  * 67, spellbook.ts). Positions are 800×600 stage coordinates; the panel element spans the stage
  * rect [566, 0, 800, 410].
  *
- * - Bag: slot x is centred on (617 + 37·col, 138/175/212) at its icon's regpoint, 22 px below
- *   1.6's 116/153/190 to make room for the gold box; the quantity shows only above 1 (Arial 10
+ * - Bag: slot x is centred on (617 + 37·col, 150/187/224) at its icon's regpoint, 34 px below
+ *   1.6's 116/153/190 to make room for the gold row; the quantity shows only above 1 (Arial 10
  *   bold white, the bag's quantity fields, moved down with the slots).
- * - Gold (an SSO move: 1.6 showed it on Stats): a slim dark brown bevelled box just below the XP
- *   bar, the XP bar's width (stage x 600-789, y 114-134). The drop/give button (Internal #118)
- *   sits at its left and opens the amount dialog; the amount, with thousands separators, is
- *   right-aligned beside the bag's own SmallGold picture.
+ * - Gold (an SSO move: 1.6 showed it on Stats): a row below the XP bar (y 126-146) with no box,
+ *   packed against the bag's right edge (stage x 781) so it lines up with the right-hand items
+ *   whatever the amount's width: the bag's own SmallGold picture and the amount with thousands
+ *   separators, together one button that opens the drop/give dialog (1.6's separate drop button,
+ *   Internal #118, is gone); its hover tip says so. The
+ *   gold row and bag sit midway between the XP bar and the equipment boxes.
  * - Equipment boxes (Inventory #1, 135×113 at [626, 280, 761, 393]): Head, LeftHand, Feet on the
  *   left (x 646), Body, RightHand, Ring on the right (x 746), at y 281/320/359. Clicking one takes
  *   the item off.
@@ -20,8 +22,9 @@
  * - Stats (frames 50-61): labels "Strength … Mysticism" (the stat label field) and values STR,
  *   STA, INT, WIS, DEX (the stat value fields). Level sits above Strength in the row 1.6 gave
  *   Gold (field Gold at (668, 126)): its value in the values column, "Level" in the labels column
- *   and, in the icon column, the player's front-facing head (hairstyle, or the helmet worn). The
- *   six rows sit on one 30 px grid, each icon centred on its row (see the stats page).
+ *   and, in the icon column, the player's front-facing head (hairstyle, or the helmet worn), scaled
+ *   to the stat icons' 21 px height. The six rows sit on one 30 px grid, each icon centred on its
+ *   row (see the stats page).
  * - Spellbook (frame 67): the spell list, Info and the cast button (spellbook.ts).
  * - Skills (frame 65): the 35 rows of 1.6's fixed list (`classesData.skillPanel`): names
  *   (the skill name field, Arial 12 bold) at (620, 117) and values (the skill value field,
@@ -73,7 +76,7 @@ export interface PanelActions {
   stack(slot: number, name: string, mode: "drop" | "give"): void;
   /** A bag slot dragged onto another: the two change places. */
   arrange(from: number, to: number): void;
-  /** The gold button beside the gold count opens the amount dialog. */
+  /** Clicking the gold (its picture and count) opens the amount dialog. */
   gold(): void;
   /** Plays a sound. */
   sound(s: Sfx): void;
@@ -181,14 +184,14 @@ function field(text: string, cls: string): HTMLElement {
 }
 
 const BAG_X = (i: number) => 617 + 37 * (i % 5);
-/** How far the bag sits below 1.6's rows, to make room for the gold box. */
-const BAG_SHIFT = 22;
+/** How far the bag sits below 1.6's rows, to make room for the gold row. */
+const BAG_SHIFT = 34;
 const BAG_Y = (i: number) => ([116, 153, 190][Math.floor(i / 5)] as number) + BAG_SHIFT;
 /** The bag's quantity field rects (frame-63.json channels 220-234), moved with the bag. */
 const QTY_X = [612, 649, 683, 722, 755];
 const QTY_Y = [139 + BAG_SHIFT, 177 + BAG_SHIFT, 219 + BAG_SHIFT];
-/** The gold box: the XP bar's width (stage x 600-789), just below it. */
-const GOLD_BOX = { x: 600, y: 114, w: 189, h: 20 } as const;
+/** The gold row: below the XP bar, its right edge on the bag's (slot 5's x 749-781). */
+const GOLD_ROW = { x: 600, y: 126, w: 181, h: 20 } as const;
 // The skills page: the backdrop's clip height, the rows' inset from its edges, and the 15 px line.
 const SKILLS_CLIP_H = 165;
 const SKILLS_INSET = 3;
@@ -345,20 +348,17 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   at(doll, 673, 319, PAPERDOLL_SIZE.w, PAPERDOLL_SIZE.h);
   invPage.append(bagLayer, equipLayer, doll);
 
-  // The gold box: the drop/give button at its left, the amount right-aligned beside SmallGold.
+  // The gold row, packed right: SmallGold and the amount, one button that opens the drop/give
+  // dialog, as clicking a bag item opens its menu. 1.6's drop button (Internal #118) is gone.
   const goldBox = document.createElement("div");
-  goldBox.className = "gold-box";
+  goldBox.className = "gold-row";
   goldBox.setAttribute("role", "group");
-  at(goldBox, GOLD_BOX.x, GOLD_BOX.y, GOLD_BOX.w, GOLD_BOX.h);
-  // Internal #118 at its own 14×13 (the score's 18×15 is stale, the sprite is unstretched).
+  at(goldBox, GOLD_ROW.x, GOLD_ROW.y, GOLD_ROW.w, GOLD_ROW.h);
   const goldButton = tagAction(document.createElement("button"), "inventory-gold");
   goldButton.type = "button";
   goldButton.className = "gold-button";
   goldButton.setAttribute("aria-label", "Drop or give gold");
-  const goldArt = artImg(a.ui("internal", 118));
-  goldArt.style.width = "14px";
-  goldArt.style.height = "13px";
-  goldButton.append(goldArt);
+  tips.attach(goldButton, "Drop or give gold");
   goldButton.addEventListener("click", () => act.gold());
   const smallGold = document.createElement("canvas");
   smallGold.className = "small-gold";
@@ -384,7 +384,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   }
   const gold = document.createElement("span");
   gold.className = "gold-amount";
-  goldBox.append(goldButton, smallGold, gold);
+  goldButton.append(smallGold, gold);
+  goldBox.append(goldButton);
   invPage.append(goldBox);
 
   // The × markers (Internal #75, channels 354-359) are the unequip buttons: each carries its slot's
@@ -442,6 +443,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   const ICON_W = 24;
   const ROW_H = 30;
   const LEVEL_MID = 133.5; // 1.6's gold field (668, 126) on its 15 px line
+  const HEAD_H = 21;
   const STAT_ICONS: readonly [cropTop: number, height: number][] = [
     [26, 21], // Strength (bicep; its pixels are rows 27-46)
     [64, 15], // Stamina (heart)
@@ -527,13 +529,13 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       }
       head.width = box.w;
       head.height = box.h;
-      at(
-        head,
-        Math.round(ICON_X + ICON_W / 2 - box.w / 2),
-        Math.round(LEVEL_MID - box.h / 2),
-        box.w,
-        box.h,
-      );
+      // Shown at the stat icons' size rather than its own ~15 px: 21 px tall (the bicep's and the
+      // wand's height), at most the column's 24 px wide, its proportions kept and its pixels hard.
+      // An even width and odd height keep it on whole stage pixels, centred on the column and row.
+      const fit = Math.min(HEAD_H / box.h, ICON_W / box.w);
+      const shownW = Math.max(2, 2 * Math.round((box.w * fit) / 2));
+      const shownH = Math.max(1, 2 * Math.floor((box.h * fit) / 2) + 1);
+      at(head, ICON_X + ICON_W / 2 - shownW / 2, LEVEL_MID - shownH / 2, shownW, shownH);
       head.getContext("2d")?.drawImage(scratch, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
     };
     if (a.sheets.paperdoll) {

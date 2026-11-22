@@ -1465,28 +1465,25 @@ body {
   pointer-events: none;
   image-rendering: pixelated;
 }
-/* The gold box below the XP bar: slim, dark brown and bevelled, the drop/give button at its left
-   and the amount right-aligned beside the bag's SmallGold picture. */
-.panel-page .gold-box {
-  box-sizing: border-box;
+/* The gold row below the XP bar, no box: packed against the bag's right edge, so the bag's
+   SmallGold picture and the amount line up with the right-hand items and a longer amount grows to
+   the left. The two are one button that opens the drop/give dialog. */
+.panel-page .gold-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 3px;
-  padding: 0 4px 0 2px;
-  background: #190d06;
-  border: 1px solid #87502e;
-  box-shadow: inset 0 0 0 1px #321a0c;
 }
-.panel-page .gold-box .gold-button {
-  display: block;
+.panel-page .gold-row .gold-button {
+  display: flex;
   flex: none;
-  width: 14px;
-  height: 13px;
+  align-items: center;
+  gap: 3px;
+  color: inherit;
 }
-.panel-page .gold-box .small-gold {
+.panel-page .gold-row .small-gold {
   flex: none;
   pointer-events: none;
-  margin-left: auto;
   image-rendering: pixelated;
 }
 .panel-page .gold-amount {

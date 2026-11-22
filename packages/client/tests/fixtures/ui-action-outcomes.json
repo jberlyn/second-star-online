@@ -607,7 +607,7 @@
   {
     "action": "inventory-gold",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [
@@ -6455,7 +6455,7 @@
   {
     "action": "inventory-gold",
     "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["click", "pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [],
