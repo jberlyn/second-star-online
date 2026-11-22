@@ -32,6 +32,7 @@ import {
   findClass,
   formatStaffChat,
   formatUtc,
+  type HubAction,
   historyLine,
   type IpBanRecord,
   inventoryLines,
@@ -44,6 +45,7 @@ import {
   lingoEq,
   lingoWord,
   MODERATION_TEXT,
+  type ModerationArgs,
   type ModerationEntry,
   type ModerationLogRow,
   type ModerationRecord,
@@ -282,19 +284,7 @@ export function handleAdmin(
       if (w2 === "") {
         return [];
       }
-      const out = tell(p, ADMIN_TEXT.kicking(w2));
-      const t = onlineByName(world, w2);
-      if (!t) {
-        return [...out, ...tell(p, ADMIN_TEXT.notOnline(w2))];
-      }
-      if (shieldedFrom(t)) {
-        return [...out, ...tell(p, ADMIN_TEXT.kickOutranked)];
-      }
-      audit(t.name);
-      // The kicked player's chat line, then the alert: `x956`'s "*** You are being kicked." and
-      // "You have been kicked from the game." The kick waits for the lines.
-      deps.kick(t.id, TEXT.kicked);
-      return [...out, ...tell(t, ADMIN_TEXT.beingKicked)];
+      return [...tell(p, ADMIN_TEXT.kicking(w2)), ...kick(world, p, w2, deps)];
     }
     case "warp": {
       // The server sent the target a warp message (`name*<line>`), and the target's client warped.
@@ -331,14 +321,20 @@ export function handleAdmin(
       const out = tell(p, ADMIN_TEXT.jailing(w2));
       return w2 === ""
         ? [...out, ...tell(p, MODERATION_TEXT.jailUsage)]
-        : [...out, ...jail(world, p, w2, typed, deps)];
+        : [...out, ...jail(world, p, w2, parseModerationArgs(typed), deps)];
     }
     case "unjail":
-      return w2 === "" ? tell(p, MODERATION_TEXT.unjailUsage) : unjail(world, p, w2, typed, deps);
+      return w2 === ""
+        ? tell(p, MODERATION_TEXT.unjailUsage)
+        : unjail(world, p, w2, liftArgs(typed), deps);
     case "mute":
-      return w2 === "" ? tell(p, MODERATION_TEXT.muteUsage) : mute(world, p, w2, typed, deps);
+      return w2 === ""
+        ? tell(p, MODERATION_TEXT.muteUsage)
+        : mute(world, p, w2, parseModerationArgs(typed), deps);
     case "unmute":
-      return w2 === "" ? tell(p, MODERATION_TEXT.unmuteUsage) : unmute(world, p, w2, typed, deps);
+      return w2 === ""
+        ? tell(p, MODERATION_TEXT.unmuteUsage)
+        : unmute(world, p, w2, liftArgs(typed), deps);
     case "pardon": {
       // 1.6: an immortal's P2P `PRDN` to word 2 and "Pardoning <name>...". The target's client cleared its murder flag and said who pardoned it; SSO does
       // it on the server and says when the name is not online.
@@ -364,7 +360,7 @@ export function handleAdmin(
         action: "pardon",
         accountId: t.accountId,
         characterName: t.name,
-        reason: parseModerationArgs(typed, { duration: false })?.reason ?? "",
+        reason: liftArgs(typed)?.reason ?? "",
         expiresAt: null,
       });
       audit(t.name, wasWanted, false);
@@ -418,12 +414,15 @@ export function handleAdmin(
       if (w2 === "") {
         return tell(p, MODERATION_TEXT.banUsage);
       }
-      return [...tell(p, ADMIN_TEXT.banning(w2)), ...ban(world, p, w2, typed, deps)];
+      return [
+        ...tell(p, ADMIN_TEXT.banning(w2)),
+        ...ban(world, p, w2, parseModerationArgs(typed), deps),
+      ];
     }
 
     // ---- SSO additions (an unknown command to anyone without the permission, in chat.ts) --
     case "unban":
-      return w2 === "" ? tell(p, MODERATION_TEXT.unbanUsage) : unban(p, w2, typed, deps);
+      return w2 === "" ? tell(p, MODERATION_TEXT.unbanUsage) : unban(p, w2, liftArgs(typed), deps);
     case "banlist":
       return banList(p, w2, deps);
     case "chatlog": {
@@ -487,6 +486,66 @@ export function handleAdmin(
 
 // ---- moderation: bans, jails and IP bans -------------------------------------------------------
 
+/** A lift's reason: everything after the name (a lift takes no length). */
+const liftArgs = (typed: string) => parseModerationArgs(typed, { duration: false });
+
+/** `/kick <name>`: an online player who does not outrank the staff member. */
+function kick(world: World, p: Player, w2: string, deps: AdminDeps): Outgoing[] {
+  const t = onlineByName(world, w2);
+  if (!t) {
+    return tell(p, ADMIN_TEXT.notOnline(w2));
+  }
+  if (outranks(t.role, p.role)) {
+    return tell(p, ADMIN_TEXT.kickOutranked);
+  }
+  auditOf(p, deps, "/kick")(t.name);
+  // The kicked player's chat line, then the alert: `x956`'s "*** You are being kicked." and
+  // "You have been kicked from the game." The kick waits for the lines.
+  deps.kick(t.id, TEXT.kicked);
+  return tell(t, ADMIN_TEXT.beingKicked);
+}
+
+/**
+ * The player hub's moderation buttons (issue #26): the chat command of the same name, with its own
+ * permission and every check it makes, without the echo line typed commands print first. `args`
+ * is null for a length the commands do not understand.
+ */
+export function moderate(
+  world: World,
+  p: Player,
+  action: HubAction,
+  name: string,
+  args: ModerationArgs | null,
+  deps: AdminDeps,
+): Outgoing[] {
+  if (!can(p.role, action)) {
+    return [];
+  }
+  switch (action) {
+    case "kick": {
+      // The typed command's echo is the staff member's only line when the kick works. Kicking
+      // yourself from the Control Panel would end the session the hub is answering.
+      const t = onlineByName(world, name);
+      if (t === p) {
+        return tell(p, MODERATION_TEXT.kickSelf);
+      }
+      return [...tell(p, ADMIN_TEXT.kicking(t?.name ?? name)), ...kick(world, p, name, deps)];
+    }
+    case "ban":
+      return ban(world, p, name, args, deps);
+    case "unban":
+      return unban(p, name, args, deps);
+    case "jail":
+      return jail(world, p, name, args, deps);
+    case "unjail":
+      return unjail(world, p, name, args, deps);
+    case "mute":
+      return mute(world, p, name, args, deps);
+    case "unmute":
+      return unmute(world, p, name, args, deps);
+  }
+}
+
 /** Who acts, in what role, and when: every moderation entry's common fields. */
 function by(p: Player, deps: AdminDeps) {
   return {
@@ -522,8 +581,13 @@ function jailWarpRefusal(t: Player, map: string): string | null {
 }
 
 /** `/ban <name> [duration] [reason]`: a new ban, or a change to one the actor may change. */
-function ban(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
-  const args = parseModerationArgs(typed);
+function ban(
+  world: World,
+  p: Player,
+  w2: string,
+  args: ModerationArgs | null,
+  deps: AdminDeps,
+): Outgoing[] {
   if (!args) {
     return tell(p, MODERATION_TEXT.badDuration);
   }
@@ -565,7 +629,7 @@ function ban(world: World, p: Player, w2: string, typed: string, deps: AdminDeps
 }
 
 /** `/unban <name> [reason]`: only the ban's maker or a role with `overrule` lifts it. */
-function unban(p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
+function unban(p: Player, w2: string, args: ModerationArgs | null, deps: AdminDeps): Outgoing[] {
   const c = deps.findCharacter(w2);
   if (!c) {
     return tell(p, ADMIN_TEXT.noSuchCharacter(w2));
@@ -583,7 +647,7 @@ function unban(p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[
     action: "unban",
     accountId: c.accountId,
     characterName: c.name,
-    reason: parseModerationArgs(typed, { duration: false })?.reason ?? "",
+    reason: args?.reason ?? "",
     expiresAt: null,
   });
   auditOf(p, deps, "/unban")(c.name, was.expiresAt ?? "permanent", null);
@@ -594,8 +658,13 @@ function unban(p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[
  * `/jail <name> [duration] [reason]`, online or offline: the sentence is stored and runs in real
  * time. An online prisoner goes to the jail tile now; an offline one at their next login.
  */
-function jail(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
-  const args = parseModerationArgs(typed);
+function jail(
+  world: World,
+  p: Player,
+  w2: string,
+  args: ModerationArgs | null,
+  deps: AdminDeps,
+): Outgoing[] {
   if (!args) {
     return tell(p, MODERATION_TEXT.badDuration);
   }
@@ -653,8 +722,13 @@ const onlineAccount = (world: World, accountId: string): Player | undefined =>
  * `/mute <name> [duration] [reason]`, online or offline: the account can't chat, IM (except to
  * staff), post or mail until it ends. It runs in real time, as a sentence does.
  */
-function mute(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
-  const args = parseModerationArgs(typed);
+function mute(
+  world: World,
+  p: Player,
+  w2: string,
+  args: ModerationArgs | null,
+  deps: AdminDeps,
+): Outgoing[] {
   if (!args) {
     return tell(p, MODERATION_TEXT.badDuration);
   }
@@ -698,7 +772,13 @@ function mute(world: World, p: Player, w2: string, typed: string, deps: AdminDep
 }
 
 /** `/unmute <name> [reason]`: only the staff member who muted them, or a role with `overrule`. */
-function unmute(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
+function unmute(
+  world: World,
+  p: Player,
+  w2: string,
+  args: ModerationArgs | null,
+  deps: AdminDeps,
+): Outgoing[] {
   const c = deps.findCharacter(w2);
   if (!c) {
     return tell(p, ADMIN_TEXT.noSuchCharacter(w2));
@@ -716,7 +796,7 @@ function unmute(world: World, p: Player, w2: string, typed: string, deps: AdminD
     action: "unmute",
     accountId: c.accountId,
     characterName: c.name,
-    reason: parseModerationArgs(typed, { duration: false })?.reason ?? "",
+    reason: args?.reason ?? "",
     expiresAt: null,
   });
   auditOf(p, deps, "/unmute")(c.name, was.expiresAt ?? "permanent", null);
@@ -730,7 +810,13 @@ function unmute(world: World, p: Player, w2: string, typed: string, deps: AdminD
 }
 
 /** `/unjail <name> [reason]`: only the jailer or a role with `overrule` ends a sentence early. */
-function unjail(world: World, p: Player, w2: string, typed: string, deps: AdminDeps): Outgoing[] {
+function unjail(
+  world: World,
+  p: Player,
+  w2: string,
+  args: ModerationArgs | null,
+  deps: AdminDeps,
+): Outgoing[] {
   const c = deps.findCharacter(w2);
   if (!c) {
     return tell(p, ADMIN_TEXT.noSuchCharacter(w2));
@@ -749,7 +835,7 @@ function unjail(world: World, p: Player, w2: string, typed: string, deps: AdminD
     accountId: c.accountId,
     characterId: c.characterId,
     characterName: c.name,
-    reason: parseModerationArgs(typed, { duration: false })?.reason ?? "",
+    reason: args?.reason ?? "",
     expiresAt: null,
   });
   auditOf(p, deps, "/unjail")(c.name, was.expiresAt ?? "permanent", null);

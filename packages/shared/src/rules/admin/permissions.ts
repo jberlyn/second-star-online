@@ -25,6 +25,8 @@ export const TOOL_PERMISSIONS = [
   "settings",
   /** Control Panel: create, edit and remove items, monsters and NPCs. */
   "contentEditor",
+  /** Control Panel: find characters and read their player hub. */
+  "characterView",
   /** Control Panel: edit a character's stats, items and state. */
   "characterEditor",
   /** Control Panel: read the player activity log. */
@@ -95,6 +97,7 @@ const TOOL_LABELS: Record<ToolPermission, string> = {
   npcEditor: "NPC Editor",
   settings: "Server Settings, roles and staff",
   contentEditor: "Control Panel: edit items, monsters and NPCs",
+  characterView: "Control Panel: look up characters (the player hub)",
   characterEditor: "Control Panel: edit characters",
   activityLog: "Control Panel: read the player activity log",
   adminChat: "Admin Chat room",
@@ -132,7 +135,11 @@ export function permissionInfo(p: Permission): { group: PermissionGroup; label: 
  * server open it. A page's own requests still need its own permission. Each Control Panel page adds its
  * permission here when it arrives.
  */
-export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = ["settings", "activityLog"];
+export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = [
+  "settings",
+  "characterView",
+  "activityLog",
+];
 
 /** Whether `role` may open the Control Panel (it holds a permission with a page there). */
 export function canOpenControlPanel(role: Role | undefined): boolean {

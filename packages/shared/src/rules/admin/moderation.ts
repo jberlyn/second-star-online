@@ -379,6 +379,7 @@ export function durationText(ms: number): string {
 export const MODERATION_TEXT = {
   staffTarget: "You can only do that to someone you outrank.",
   jailSelf: "You cannot jail yourself.",
+  kickSelf: "You cannot kick yourself.",
   badDuration:
     "A duration is a number with m, h, d or w (30m, 12h, 7d, 2w, 1d12h) up to 10 years, or perm.",
   banUsage: "Usage: /ban <name> [duration] [reason]",

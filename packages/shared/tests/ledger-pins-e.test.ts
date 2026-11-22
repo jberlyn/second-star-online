@@ -148,6 +148,11 @@ describe("Only server systems create items", () => {
         "before.at:string",
         "before.id:string",
       ],
+      // The player hub (characterView permission): a character by name, and a moderation button's
+      // length and reason, each read by the chat command's own code. Nothing names an item.
+      characterSearch: ["query:string"],
+      characterOpen: ["name:string"],
+      characterModerate: ["name:string", "duration:string", "reason:string"],
       editSave: [
         "map.layers[][]:string",
         "map.flags.canFight:string",
@@ -210,10 +215,15 @@ describe("File editor and path-based file access removed", () => {
     );
     const types = messages.map((m) => m.t);
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the
-    // names match: two editor loads, a guild page, closing a painting, a newspaper, the profile.
+    // names match: two editor loads, the Control Panel's player hub (a character by name, read
+    // through the server for a role with characterView, never a file), a guild page, closing a
+    // painting, a newspaper, the profile.
     expect(types.filter((t) => /file|transfer|char|view|load/i.test(t))).toEqual([
       "editLoad",
       "npcLoad",
+      "characterSearch",
+      "characterOpen",
+      "characterModerate",
       "guildView",
       "viewClose",
       "newspaperLoad",

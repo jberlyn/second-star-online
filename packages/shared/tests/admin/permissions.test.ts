@@ -68,7 +68,9 @@ describe("the default roles", () => {
     const admin = roleToData(ADMINISTRATOR);
     // The Control Panel's permissions came later, given to every role that held all the others.
     const controlPanel = ["contentEditor", "characterEditor", "activityLog"];
-    const seeded = admin.permissions.filter((p) => !controlPanel.includes(p));
+    const seeded = admin.permissions.filter(
+      (p) => !controlPanel.includes(p) && p !== "characterView",
+    );
     expect(roles).toContain(
       `('${admin.id}', '${admin.name}', ${admin.rank},\n    '${JSON.stringify(seeded)}'`,
     );
@@ -77,6 +79,11 @@ describe("the default roles", () => {
     for (const p of controlPanel) {
       expect(later).toContain(`'${p}'`);
     }
+    // The player hub's came after that, the same way.
+    const hub = await migration("20261122_51_character_view.sql");
+    const beforeHub = admin.permissions.filter((p) => p !== "characterView");
+    expect(hub).toContain(`json_each('${JSON.stringify(beforeHub)}')`);
+    expect(hub).toContain("'characterView'");
     // The moderator seed lost /pardon, /iplookup, /save and /Refresh in a later migration.
     const mod = roleToData(MODERATOR);
     expect(roles).toContain(`('${mod.id}', '${mod.name}', ${mod.rank},`);

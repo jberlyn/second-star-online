@@ -973,6 +973,57 @@ body {
 .activity-unlogged {
   color: #f0b429;
 }
+/* The Characters page and player hub (ui/characters.ts). */
+.characters [hidden],
+.hub [hidden] {
+  display: none;
+}
+.hub-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 20px 0;
+}
+.hub-title {
+  margin: 12px 20px 2px;
+  font-size: 18px;
+  color: #fff;
+}
+.hub-summary {
+  margin: 0 20px;
+  color: #bbb;
+}
+.hub-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 4px 12px;
+  padding: 8px 0 20px;
+}
+.hub-section {
+  min-width: 0;
+}
+.hub-section .activity-filters {
+  border-bottom: 0;
+}
+.hub-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 0 20px 8px;
+}
+.hub-facts dt {
+  color: #999;
+}
+.hub-facts dd {
+  margin: 0;
+  color: #eee;
+  overflow-wrap: anywhere;
+}
+.hub-list {
+  margin: 0 20px 8px;
+  padding-left: 18px;
+  color: #eee;
+}
 @media (max-width: 640px) {
   .control-panel-body {
     flex-direction: column;

@@ -179,6 +179,21 @@
     "hidden": 0,
     "disabled": 0
   },
+  "characters-open": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "characters-query": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "characters-search": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
   "chat-input": {
     "count": 1,
     "hidden": 0,
@@ -674,6 +689,61 @@
     "hidden": 0,
     "disabled": 0
   },
+  "hub-action": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-activity": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-apply": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-back": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-length": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-reason": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-refresh": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-tab-chat": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-tab-items": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-tab-moderation": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-tab-overview": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
   "inventory-build": {
     "count": 1,
     "hidden": 0,
@@ -1050,7 +1120,7 @@
     "disabled": 0
   },
   "roles-permission": {
-    "count": 47,
+    "count": 48,
     "hidden": 0,
     "disabled": 0
   },

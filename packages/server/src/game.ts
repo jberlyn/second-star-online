@@ -12,6 +12,7 @@ import {
   type ActivityType,
   ADMIN_TEXT,
   banNotice,
+  CHARACTER_SEARCH_LIMIT,
   CHAT_COLOR,
   type CreateMsg,
   can,
@@ -24,6 +25,8 @@ import {
   endMs,
   factionIdOf,
   findNewQuest,
+  HUB_TEXT,
+  hubArgs,
   hullMax,
   type InGameMsg,
   invAdd,
@@ -56,6 +59,7 @@ import {
   sortFaction,
   startingCharacter,
   TEXT,
+  TIMED_HUB_ACTIONS,
   VEHICLE_BODY,
 } from "@secondstaronline/shared";
 
@@ -121,6 +125,7 @@ import {
 } from "./persistence/guilds.ts";
 import { loadHighScores, saveHighScores } from "./persistence/highscores.ts";
 import { loadHouseList, loadHouses, saveHouses } from "./persistence/houses.ts";
+import { characterTimes, loadStoredCharacter, searchCharacters } from "./persistence/hub.ts";
 import { loadIgnores, saveIgnores } from "./persistence/ignores.ts";
 import { addGoldOffline, loadInventory, saveInventory } from "./persistence/inventory.ts";
 import { addMail, deleteMail, findCharacterByName, loadMail } from "./persistence/mail.ts";
@@ -194,7 +199,8 @@ import {
   logEditorPlacements,
   resetHoldings,
 } from "./systems/admin/activity.ts";
-import { type AdminDeps, applyRole, permissionsMsg } from "./systems/admin/commands.ts";
+import { characterHub, type HubDeps, searchRows } from "./systems/admin/characters.ts";
+import { type AdminDeps, applyRole, moderate, permissionsMsg } from "./systems/admin/commands.ts";
 import { openControlPanel } from "./systems/admin/control-panel.ts";
 import {
   allowCreate,
@@ -444,6 +450,9 @@ const EDITOR_INTENTS = new Set([
   "roleDelete",
   "roleAssign",
   "activityQuery",
+  "characterSearch",
+  "characterOpen",
+  "characterModerate",
   "assassinGame",
   // IM, Away and chat rooms are their own windows (MIAWs), usable over the editors.
   "im",
@@ -481,6 +490,10 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   roleDelete: { permission: "settings", reason: "Attempted Admin Access" },
   roleAssign: { permission: "settings", reason: "Attempted Admin Access" },
   activityQuery: { permission: "activityLog", reason: "Attempted Admin Access" },
+  // The player hub; each moderation button also needs its own command's permission.
+  characterSearch: { permission: "characterView", reason: "Attempted Admin Access" },
+  characterOpen: { permission: "characterView", reason: "Attempted Admin Access" },
+  characterModerate: { permission: "characterView", reason: "Attempted Admin Access" },
   // Menu 502's Assassin items: 1.6's server just ignored anyone but an immortal.
   assassinGame: { permission: "assassinGame", reason: "Attempted Admin Access" },
 };
@@ -1175,6 +1188,86 @@ export function createGame(deps: GameDeps): Game {
     casino: casinoDeps,
   };
   chatDeps.admin = adminDeps;
+
+  // ---- the player hub (issue #26) ----------------------------------------------------------------
+  const hubDeps: HubDeps = {
+    findCharacter: adminDeps.findCharacter,
+    search: (query) => searchCharacters(db, query, CHARACTER_SEARCH_LIMIT),
+    roleName: (id) => roleOf(id)?.name ?? null,
+    stored: (id) => loadStoredCharacter(db, id),
+    times: (id) => characterTimes(db, id),
+    accountBan: (accountId) => accountBan(db, accountId),
+    jail: (characterId) => characterJail(db, characterId),
+    mute: (accountId) => accountMute(db, accountId),
+    history: (accountId, limit) => moderationHistory(db, accountId, limit),
+    chatLog: (name, limit) => {
+      flushChatLog();
+      return chatLogLines(db, { name, limit });
+    },
+    addresses: (accountId) => accountAddresses(db, accountId),
+    ipBan: (key) => ipBan(db, key),
+    mapName: (id) => findMapById(db, id)?.name ?? id,
+    now: isoNow,
+  };
+
+  /** Opens a player hub. Every read is audited, as `/chatlog` is (the hub may hold their chat). */
+  const characterOpen = (p: Player, msg: Extract<InGameMsg, { t: "characterOpen" }>): ServerMsg => {
+    const hub = characterHub(world, p, msg.name, hubDeps);
+    insertAudit(
+      db,
+      {
+        actor: p.accountId,
+        command: "characterView",
+        target: hub?.name ?? msg.name.trim(),
+        after: { chat: hub?.chat !== undefined, addresses: hub?.addresses !== undefined },
+      },
+      isoNow(),
+    );
+    return hub
+      ? { t: "characterHub", seq: msg.seq, hub }
+      : { t: "characterHub", seq: msg.seq, hub: null, error: HUB_TEXT.notFound(msg.name.trim()) };
+  };
+
+  /**
+   * A hub moderation button: the command's own code and checks. Its lines to the staff member
+   * come back as the result; it worked when it wrote to the audit log, as every action does.
+   */
+  const characterModerate = (p: Player, msg: Extract<InGameMsg, { t: "characterModerate" }>) => {
+    const result = (ok: boolean, text: string) =>
+      send(p.id, { t: "characterResult", seq: msg.seq, ok, text });
+    if (!can(p.role, msg.action)) {
+      cheat(p.name, p.ip, "Attempted Admin Access");
+      // A role changed under an open hub still gets an answer, not a page left waiting.
+      result(false, HUB_TEXT.notAllowed);
+      return;
+    }
+    const timed = TIMED_HUB_ACTIONS.includes(msg.action);
+    if (timed && msg.reason.trim() === "") {
+      result(false, HUB_TEXT.needReason);
+      return;
+    }
+    const args = hubArgs(timed ? msg.duration : "", msg.reason);
+    if (!args) {
+      result(false, HUB_TEXT.badDuration);
+      return;
+    }
+    let done = false;
+    const out = moderate(world, p, msg.action, msg.name.trim(), args, {
+      ...adminDeps,
+      audit: (e) => {
+        done = true;
+        audit(e);
+      },
+    });
+    const mine = (o: Outgoing) => o.to === p.id && o.msg.t === "chat";
+    deliver(out.filter((o) => !mine(o)));
+    const text = out
+      .filter(mine)
+      .map((o) => (o.msg.t === "chat" ? o.msg.text : ""))
+      .join(" ");
+    result(done, text);
+    deliverKicks();
+  };
 
   /** Server Settings window SAVE: the `settings` permission only; every changed value audited. */
   const settingsSave = (p: Player, values: Record<string, unknown>) => {
@@ -2146,6 +2239,19 @@ export function createGame(deps: GameDeps): Game {
           return;
         case "activityQuery":
           send(p.id, activityQuery(p, msg));
+          return;
+        case "characterSearch":
+          send(p.id, {
+            t: "characterList",
+            seq: msg.seq,
+            rows: searchRows(world, msg.query, hubDeps),
+          });
+          return;
+        case "characterOpen":
+          send(p.id, characterOpen(p, msg));
+          return;
+        case "characterModerate":
+          characterModerate(p, msg);
           return;
         // The Guild Center: each change is written with the fields it set.
         case "guildCreate":

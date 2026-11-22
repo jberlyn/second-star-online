@@ -224,7 +224,7 @@ The command line is also the way back in if you ever leave no one able to open S
 
 Administrators open **Admin → Control Panel** from the top menu bar. The game gives way to a full-page dashboard; **Return to Game** at the top brings you back where you stood. While you are in the Control Panel you stay online but are off the map, as in the World Editor: other players see you leave, and trades, shops and held actions are cancelled. The header also opens Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms and Player Settings as floating windows over the dashboard, and Return To Title Screen logs out. The sidebar lists the admin pages your role may use, with the World Editor and NPC Editor under **Classic tools** until their Control Panel pages arrive.
 
-The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff** and **Control Panel: read the player activity log** (the [Activity Log](#the-activity-log) page). The Roles page also lists **Control Panel: edit items, monsters and NPCs** and **Control Panel: edit characters** for the pages still to come; they do nothing yet.
+The Control Panel shows for a role with a permission that has a page there: today **Server Settings, roles and staff**, **Control Panel: look up characters (the player hub)** (the [Characters](#the-player-hub) page) and **Control Panel: read the player activity log** (the [Activity Log](#the-activity-log) page). The Roles page also lists **Control Panel: edit items, monsters and NPCs** and **Control Panel: edit characters** for the pages still to come; they do nothing yet.
 
 **Upgrading from 1.13.0 or earlier:** **Admin → Server Settings** moved into the Control Panel, and the floating Server Settings window is gone. A role that held every permission gets the three new Control Panel permissions, so it still holds every permission; other roles are left as they are.
 
@@ -241,6 +241,20 @@ Every ban, unban, IP ban, IP unban, jail, `/unjail`, mute, `/unmute` and pardon 
 - **IP bans.** `/banip <name>` bans the address the character last logged in from, `/banip <name> all` every address it has used, and `/banip <address>` an address you type. `/banip <name>` refuses your own account and a character whose role has the IP-ban bypass ("IP bans do not apply to that player's role."). An IPv6 address bans its whole /64. A new IP ban disconnects every session from that address at once, and the address can no longer log in or create characters. Administrators (any role with the IP-ban bypass) are never stopped by IP bans, so an operator cannot lock themselves out.
 - **Login addresses.** The server keeps the addresses each account logs in from for `addressHistory` (default 180 days after last use) so that `/banip <name>` and `/banlist` can use them. Only roles with `/banip` (administrators) can read them.
 - **Upgrading an older server.** The upgrade carries existing bans over as permanent bans with no reason, recorded under the role the banner held then (`Moderator` or `Admin` in `actor_role`; `Admin` if that account is gone). Existing IP bans are kept in their standard form and stay permanent; any that are not valid addresses are lifted and logged. A player saved in the jail receives a 10-minute sentence. The old `jailFrames` setting is removed: set the jail sentence again if you had changed it.
+
+### The player hub
+
+Open **Admin → Control Panel → Characters** (the **Control Panel: look up characters** permission, administrators by default) and type part of a name; an empty search lists the most recently saved characters. Choose a row to open their hub:
+
+- **Overview:** class, level, experience, HP, SP, hunger, faction, wanted, stats and skills, where they are, their respawn point and what they ride, and when the account was made and the character last saved.
+- **Items:** gold carried and in the bank, the bag, worn gear, vault, spellbook and the houses they own.
+- **Moderation:** any ban, jail or mute in force, with who made it and why, and the moderation history. A role with `/banip` also sees the addresses the account logged in from and any IP ban in force on them (noting a role that IP bans do not stop); without it, an IP ban in the history shows without its address, as on `/banlist`. The **Act** form kicks, bans, jails or mutes (a ban, jail or mute needs a reason; a kick takes none, as `/kick` does; the length is typed as for the commands, such as `30m`, `7d` or `perm`, or left empty for the server's default) and lifts each. Each action needs the same permission as its command and follows the same rules: who may act on whom, and who may change or lift someone else's ban.
+- **Chat:** their newest 50 chat lines, for a role with `/chatlog`.
+- **Activity Log** opens their timeline, for a role with the activity log permission.
+
+An online character is read from the game as it stands, not from their last save. Every hub opened is recorded in the audit log.
+
+**Upgrading from 1.13.0 or earlier:** a role that held every permission gets the new **Control Panel: look up characters** permission; give it to any other role that should use the hub.
 
 ### The activity log
 

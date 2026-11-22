@@ -62,7 +62,13 @@ describe("who may open the Control Panel", () => {
   });
 
   test("the administrator holds the Control Panel's permissions", () => {
-    for (const p of ["settings", "contentEditor", "characterEditor", "activityLog"] as const) {
+    for (const p of [
+      "settings",
+      "contentEditor",
+      "characterView",
+      "characterEditor",
+      "activityLog",
+    ] as const) {
       expect(PERMISSIONS).toContain(p);
       expect(ADMINISTRATOR.permissions.has(p)).toBe(true);
       expect(MODERATOR.permissions.has(p)).toBe(false);

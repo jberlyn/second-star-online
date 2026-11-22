@@ -136,7 +136,8 @@ describe("the Control Panel permissions migration", () => {
     migrate(db);
     return new Map(loadRoles(db).map((r) => [r.id, [...r.permissions].sort()]));
   };
-  const OLD_ALL = PERMISSIONS.filter((p) => !NEW.includes(p));
+  // Every permission there was before it (characterView came later, in its own migration).
+  const OLD_ALL = PERMISSIONS.filter((p) => !NEW.includes(p) && p !== "characterView");
 
   test("every role that held every permission gets the new ones; the seeded roles match the defaults", () => {
     const roles = after([{ id: "owner", permissions: [...OLD_ALL].reverse() }]);
@@ -156,6 +157,51 @@ describe("the Control Panel permissions migration", () => {
     expect(after([{ id: "builder", permissions: short }]).get("builder")).toEqual(
       [...short].sort(),
     );
+  });
+});
+
+describe("the player hub permission migration", () => {
+  const HUB = "20261122_51_character_view.sql";
+  const after = (roles: { id: string; permissions: string[] }[]) => {
+    const db = openDatabase();
+    runMigrations(
+      db,
+      loadMigrations().filter((m) => m.name < HUB),
+    );
+    for (const r of roles) {
+      db.run(
+        `INSERT INTO roles (id, name, rank, permissions, created_at, updated_at)
+         VALUES (?, ?, 3, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET permissions = excluded.permissions`,
+        [r.id, r.id, JSON.stringify(r.permissions), NOW, NOW],
+      );
+    }
+    migrate(db);
+    const stored = new Map(
+      db
+        .query<{ id: string; permissions: string }, []>("SELECT id, permissions FROM roles")
+        .all()
+        .map((r) => [r.id, JSON.parse(r.permissions) as string[]]),
+    );
+    return { roles: new Map(loadRoles(db).map((r) => [r.id, [...r.permissions].sort()])), stored };
+  };
+  const OLD_ALL = PERMISSIONS.filter((p) => p !== "characterView");
+
+  test("a role that held every permission gets characterView; the seeded roles match the defaults", () => {
+    const { roles } = after([{ id: "owner", permissions: [...OLD_ALL] }]);
+    expect(roles.get("owner")).toEqual([...PERMISSIONS].sort());
+    expect(roles.get("administrator")).toEqual([...ADMINISTRATOR.permissions].sort());
+    expect(roles.get("moderator")).toEqual([...MODERATOR.permissions].sort());
+  });
+
+  test("a role short of a permission is left alone, and one that has it is not given it twice", () => {
+    const short = OLD_ALL.filter((p) => p !== "drop");
+    const { roles, stored } = after([
+      { id: "builder", permissions: short },
+      { id: "full", permissions: [...PERMISSIONS] },
+    ]);
+    expect(roles.get("builder")).toEqual([...short].sort());
+    expect(stored.get("full")?.filter((p) => p === "characterView")).toEqual(["characterView"]);
   });
 });
 

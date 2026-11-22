@@ -22,6 +22,7 @@ import { showAlert } from "../src/ui/alert.ts";
 import { createAmountDialog } from "../src/ui/amount.ts";
 import { createAwayWindow } from "../src/ui/away.ts";
 import { createBioWindow } from "../src/ui/bio.ts";
+import { createCharactersPage } from "../src/ui/characters.ts";
 import { createCharMenu } from "../src/ui/charmenu.ts";
 import { createChatRoomWindow } from "../src/ui/chatroom.ts";
 import { createControlPanel } from "../src/ui/control-panel.ts";
@@ -313,6 +314,88 @@ function buildAll(): HTMLElement[] {
       more: true,
       totals: [{ type: "trade", gained: 0, lost: 1, rows: 1 }],
     });
+  }
+
+  // The Characters page: a search result, then a hub on each tab (every action allowed).
+  {
+    const searches: number[] = [];
+    const opens: number[] = [];
+    const chars = createCharactersPage({
+      search: (seq) => searches.push(seq),
+      open: (seq) => opens.push(seq),
+      moderate: () => {},
+      openActivity: () => {},
+      can: () => true,
+    });
+    layer.el.append(chars.el);
+    chars.onShow();
+    chars.receiveList({
+      seq: searches.at(-1) ?? 0,
+      rows: [
+        {
+          name: "Al",
+          level: 5,
+          classCode: 1,
+          role: null,
+          online: true,
+          lastSaved: "2026-11-22T09:00:00.000Z",
+        },
+      ],
+    });
+    const listCopy = chars.el.cloneNode(true) as HTMLElement;
+    for (const el of listCopy.querySelectorAll("[data-action]")) {
+      listened.set(el, new Set(["click"]));
+    }
+    holder([listCopy]);
+    const bag = emptyBag();
+    bag[0] = { item: "Apple", qty: 1 };
+    chars.openHub("Al");
+    chars.receiveHub({
+      seq: opens.at(-1) ?? 0,
+      hub: {
+        name: "Al",
+        role: null,
+        created: "2026-11-01T00:00:00.000Z",
+        lastSaved: "2026-11-22T09:00:00.000Z",
+        presence: "playing",
+        sheet: {
+          name: "Al",
+          sex: 1,
+          head: 1,
+          classCode: 1,
+          level: 5,
+          exp: 0,
+          expNeeded: 10,
+          hp: 1,
+          hpMax: 1,
+          sp: 1,
+          spMax: 1,
+          stats: { str: 1, sta: 1, agi: 1, dex: 1, int: 1, wis: 1, spd: 1 },
+          skills: [1],
+          hunger: 0,
+          faction: 0,
+          factionCount: 0,
+          wanted: false,
+          position: { map: "x1y1", x: 1, y: 1, facing: "S" },
+          respawn: null,
+          vehicle: null,
+          gold: 0,
+          bank: null,
+          bag,
+          equip: { ...NO_EQUIPMENT },
+          vault: [],
+          spellbook: [],
+          houses: [],
+        },
+        ban: null,
+        jail: null,
+        mute: null,
+        history: [],
+        chat: [],
+        addresses: [],
+      },
+    });
+    chars.el.querySelector<HTMLButtonElement>('[data-action="hub-tab-moderation"]')?.click();
   }
 
   // Player Settings on Controls (keybinds), Sound (sliders/checkboxes), and Social (choices + ignore list).

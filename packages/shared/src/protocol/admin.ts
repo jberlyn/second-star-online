@@ -10,6 +10,12 @@ import {
   isActivityType,
 } from "../rules/admin/activity.ts";
 import {
+  CHARACTER_SEARCH_MAX,
+  type CharacterHub,
+  type CharacterListRow,
+  HUB_ACTIONS,
+} from "../rules/admin/characters.ts";
+import {
   EDITOR_ITEM_SLOTS,
   type EditorMap,
   HEADER_MAX,
@@ -140,6 +146,44 @@ export const activityQuerySchema = z.strictObject({
   until: isoTime.nullable(),
   before: z.strictObject({ at: isoTime, id: z.string().max(40) }).nullable(),
   limit: z.number().int().min(1).max(ACTIVITY_PAGE_MAX),
+});
+
+const seqField = z
+  .number()
+  .int()
+  .min(0)
+  .max(2 ** 31);
+
+/**
+ * The Characters page's search: characters whose name contains `query`, ignoring case (the most
+ * recently saved when it is empty). Gated by the `characterView` permission.
+ */
+export const characterSearchSchema = z.strictObject({
+  t: z.literal("characterSearch"),
+  seq: seqField,
+  query: z.string().max(CHARACTER_SEARCH_MAX),
+});
+
+/** Opens one character's player hub, by name. Gated by `characterView`, and every read is audited. */
+export const characterOpenSchema = z.strictObject({
+  t: z.literal("characterOpen"),
+  seq: seqField,
+  name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+});
+
+/**
+ * One of the hub's moderation buttons: the chat command of the same name, with the same checks
+ * (the command's own permission, rank and who may change a ban). `duration` is a length as the
+ * commands read it (`30m`, `7d`, `perm`) or "" for the setting's default.
+ */
+export const characterModerateSchema = z.strictObject({
+  t: z.literal("characterModerate"),
+  /** Comes back on the result, so it reaches only the hub that asked. */
+  seq: seqField,
+  name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+  action: z.enum(HUB_ACTIONS),
+  duration: z.string().max(12),
+  reason: z.string().max(200),
 });
 
 /** A role as the Roles page sends it (shared `RoleData`; the server checks it with `roleDataError`). */
@@ -290,4 +334,10 @@ export type AdminServerMsg =
       /** The totals cover only this many newest events: older ones were left out. */
       totalsCapped?: number;
       error?: string;
-    };
+    }
+  /** The Characters page's search results (`characterSearch`'s answer, with its `seq`). */
+  | { t: "characterList"; seq: number; rows: CharacterListRow[] }
+  /** A player hub (`characterOpen`'s answer), or why there is none. */
+  | { t: "characterHub"; seq: number; hub: CharacterHub | null; error?: string }
+  /** A hub button's outcome: the lines the chat command would have printed. */
+  | { t: "characterResult"; seq: number; ok: boolean; text: string };

@@ -70,6 +70,7 @@ import { createBars } from "./ui/bars.ts";
 import { createBioWindow } from "./ui/bio.ts";
 import { createBlackjack } from "./ui/blackjack.ts";
 import { createBoardWindow } from "./ui/board.ts";
+import { createCharactersPage } from "./ui/characters.ts";
 import { createCharMenu } from "./ui/charmenu.ts";
 import { createChatInput, createChatLog } from "./ui/chat.ts";
 import { createChatRoomWindow } from "./ui/chatroom.ts";
@@ -563,6 +564,18 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   const activityPage = createActivityLogPage({
     query: (q) => send({ t: "activityQuery", ...q }),
   });
+  const charactersPage = createCharactersPage({
+    search: (seq, query) => send({ t: "characterSearch", seq, query }),
+    open: (seq, name) => send({ t: "characterOpen", seq, name }),
+    moderate: (req) => send({ t: "characterModerate", ...req }),
+    openActivity: (name) => {
+      controlPanel.go("activity");
+      if (controlPanel.page === "activity") {
+        activityPage.show("character", name);
+      }
+    },
+    can: (permission) => permissions.has(permission),
+  });
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -574,6 +587,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onShow: () => send({ t: "settingsOpen" }),
         changes: () => settingsPanel.changes(),
         discard: () => settingsPanel.discard(),
+      },
+      {
+        id: "characters",
+        title: "Characters",
+        group: "Players",
+        permission: "characterView",
+        el: charactersPage.el,
+        onShow: () => charactersPage.onShow(),
       },
       {
         id: "activity",
@@ -1115,6 +1136,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (!permissions.has("activityLog")) {
           activityPage.reset();
         }
+        if (permissions.has("characterView")) {
+          charactersPage.permissionsChanged();
+        } else {
+          charactersPage.reset();
+        }
         return;
       case "settings":
         settingsPanel.show(msg.pages, msg.rows, { roles: msg.roles, staff: msg.staff });
@@ -1124,6 +1150,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "activity":
         activityPage.receive(msg);
+        return;
+      case "characterList":
+        charactersPage.receiveList(msg);
+        return;
+      case "characterHub":
+        charactersPage.receiveHub(msg);
+        return;
+      case "characterResult":
+        charactersPage.receiveResult(msg);
         return;
       case "settingsResult":
         settingsPanel.result(msg);
@@ -1453,6 +1488,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     controlPanel.reset();
     settingsPanel.discard();
     activityPage.reset();
+    charactersPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];
