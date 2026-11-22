@@ -304,6 +304,7 @@ export function referencesOf(data: ContentData): Reference[] {
       ]);
     });
   });
+  station(["cook", "doubles"], st.cook.doubles, null);
   st.cook.stations.forEach((n, i) => {
     station(["cook", "stations", i], n, ["cook", "stations", i]);
   });
@@ -322,13 +323,8 @@ export function referencesOf(data: ContentData): Reference[] {
   craft(["build", "tool"], st.build.tool, null);
   st.build.bands.forEach((b, i) => {
     b.results.forEach((r, j) => {
-      craft(["build", "bands", i, "results", j, "item"], r.item, [
-        "build",
-        "bands",
-        i,
-        "results",
-        j,
-      ]);
+      // Each result answers a roll, so it is replaced, never dropped.
+      craft(["build", "bands", i, "results", j, "item"], r.item, null);
     });
   });
   st.cauldron.recipes.forEach((r, i) => {
@@ -347,8 +343,9 @@ export function referencesOf(data: ContentData): Reference[] {
     gather(["tools", i, "tool"], t.tool, ["tools", i]);
   });
   gather(["logs", "item"], g.logs.item, null);
+  // The ore list is a fixed three, read by position.
   g.mining.ore.items.forEach((n, i) => {
-    gather(["mining", "ore", "items", i], n, ["mining", "ore", "items", i]);
+    gather(["mining", "ore", "items", i], n, null);
   });
   g.mining.chunks.forEach((c, i) => {
     gather(["mining", "chunks", i, "tool"], c.tool, ["mining", "chunks", i]);

@@ -7,6 +7,8 @@
 import { anyMapName } from "@secondstaronline/shared";
 
 import type { Db } from "./database.ts";
+import { type StoredShop, saveShop } from "./economy.ts";
+import { saveNpcFile } from "./npcfiles.ts";
 
 /** A character table that stores item names. */
 export type CharacterItemTable = "inventory" | "equipment" | "vault_items";
@@ -114,6 +116,17 @@ export function contentWorldStore(db: Db) {
       }
     },
 
+    /** Sets an offline bag line's count (a replaced line merged into a stack). */
+    setInventoryQty(id: string, qty: number): void {
+      db.query("UPDATE inventory SET qty = ? WHERE id = ?").run(qty, id);
+    },
+
+    /** Writes a player shop's rewritten file and its new ledger. */
+    saveShopFile(npc: string, text: string, ledger: StoredShop, by: string, now: string): void {
+      saveNpcFile(db, { npc, text }, by, now);
+      saveShop(db, ledger, now);
+    },
+
     vault(characterId: string): string[] {
       return db
         .query<{ item: string }, [string]>(
@@ -141,23 +154,23 @@ export function contentWorldStore(db: Db) {
     groundItems(
       likes: readonly string[],
       skip: readonly string[],
-    ): { id: string; item: string; map: string }[] {
+    ): { id: string; item: string; qty: number; map: string }[] {
       return db
-        .query<{ id: string; item: string } & MapCols, string[]>(
-          `SELECT g.id, g.item, m.mx AS mx, m.my AS my, m.slot AS mslot
+        .query<{ id: string; item: string; qty: number } & MapCols, string[]>(
+          `SELECT g.id, g.item, g.qty, m.mx AS mx, m.my AS my, m.slot AS mslot
            FROM ground_items g JOIN maps m ON m.id = g.map_id
            WHERE 1 = 1${likeAny("g.item", likes)}${notIn("g.map_id", skip)}`,
         )
         .all(...likeArgs(likes), ...skip)
-        .map((r) => ({ id: r.id, item: r.item, map: mapOf(r) }));
+        .map((r) => ({ id: r.id, item: r.item, qty: r.qty, map: mapOf(r) }));
     },
 
     deleteGround(id: string): void {
       db.query("DELETE FROM ground_items WHERE id = ?").run(id);
     },
 
-    renameGround(id: string, item: string): void {
-      db.query("UPDATE ground_items SET item = ? WHERE id = ?").run(item, id);
+    renameGround(id: string, item: string, qty: number): void {
+      db.query("UPDATE ground_items SET item = ?, qty = ? WHERE id = ?").run(item, qty, id);
     },
 
     /** Roster slots of maps not in `skip` that hold a species or a live monster. */

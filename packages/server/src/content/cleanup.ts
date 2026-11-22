@@ -6,7 +6,7 @@
  * its row (a station's one tool, a roll table's entry) is never removed: it is left, or replaced.
  * Pure.
  */
-import { type ContentData, lingoEq } from "@secondstaronline/shared";
+import { type ContentData, lingoContains, lingoEq } from "@secondstaronline/shared";
 
 import { keyField, type RowRef, rowLabel, rowValue, sameRow } from "./rows.ts";
 import { type JsonPath, type Reference, referencesOf } from "./validate.ts";
@@ -89,14 +89,15 @@ function setAt(root: unknown, path: JsonPath, value: unknown): void {
   }
 }
 
-/** An NPC file line with its item rewritten (a drop's count stays). */
+/** An NPC file line with its item rewritten (a crystal drop's count stays). */
 function npcLineAs(line: string, item: string): string {
   const m = /^(SEL|BUY|INV)\|([^:|]*)(.*)$/.exec(line);
   if (!m) {
     return line;
   }
   const [, tag, name = "", rest = ""] = m;
-  const count = tag === "INV" ? /^(\d+ )/.exec(name) : null;
+  // Only crystals drop as a counted pile (`INV|5 Blue Crystals`); any other item drops one.
+  const count = tag === "INV" && lingoContains(item, " Crystals") ? /^(\d+ )/.exec(name) : null;
   return `${tag}|${count ? count[1] : ""}${item}${rest}`;
 }
 
@@ -114,6 +115,11 @@ export function cleanUses(
   mode: ContentCleanup,
   replacement = "",
   skip: readonly RowRef[] = [],
+  /**
+   * Whether a cleaned row still matches its schema. A removal that would break it (a list that
+   * must keep one entry) is not made: its references are left, for the operator to replace.
+   */
+  rowOk: (ref: RowRef, value: unknown) => boolean = () => true,
 ): CleanupResult {
   const left: Reference[] = [];
   const byRow = new Map<string, { ref: RowRef; uses: Reference[] }>();
@@ -190,6 +196,10 @@ export function cleanUses(
       const lines = String(getAt(value, ["text"])).split(/\r\n?|\n/);
       setAt(value, ["text"], lines.filter((_, i) => !gone.has(i)).join("\r"));
     }
+    if (!rowOk(ref, value)) {
+      left.push(...rowUses);
+      continue;
+    }
     rows.push({ ref, op: "set", data: value });
   }
   return { rows, left };
@@ -221,4 +231,59 @@ export function useView(u: Reference): UseView {
     name: u.name,
     removable: u.drop !== null,
   };
+}
+
+/** The item a `SEL|`, `BUY|` or `INV|` line names (a drop's count left off), or null. */
+function lineItem(line: string): string | null {
+  const m = /^(SEL|BUY|INV)\|([^:|]*)/.exec(line);
+  if (!m) {
+    return null;
+  }
+  const name = (m[2] as string).trim();
+  return m[1] === "INV" ? name.replace(/^\d+ /, "") : name;
+}
+
+/**
+ * An NPC file's text with the shop and drop lines naming one of `spellings` removed or rewritten
+ * (`replace`), or null when no line names it. The NPC Editor's saves and player shops' files are
+ * cleaned with this, as the content's NPC file rows are by `cleanUses`.
+ */
+export function npcTextCleaned(
+  text: string,
+  spellings: readonly string[],
+  mode: "remove" | "replace",
+  replacement = "",
+): string | null {
+  const lines = text.split(/\r\n?|\n/);
+  let changed = false;
+  const out: string[] = [];
+  for (const line of lines) {
+    const item = lineItem(line);
+    if (item === null || !spellings.some((s) => lingoEq(s, item))) {
+      out.push(line);
+      continue;
+    }
+    changed = true;
+    if (mode === "replace") {
+      out.push(npcLineAs(line, replacement));
+    }
+  }
+  return changed ? out.join("\r") : null;
+}
+
+/** How many a shop's `SEL|` lines naming one of `spellings` hold in stock. */
+export function shopStockOf(text: string, spellings: readonly string[]): number {
+  let n = 0;
+  for (const line of text.split(/\r\n?|\n/)) {
+    const m = /^SEL\|([^:|]*):[^:]*:(\d+)/.exec(line);
+    if (m && spellings.some((s) => lingoEq(s, (m[1] as string).trim()))) {
+      n += Number(m[2]);
+    }
+  }
+  return n;
+}
+
+/** Whether an NPC file names one of `spellings` in a shop or drop line. */
+export function npcTextNames(text: string, spellings: readonly string[]): boolean {
+  return npcTextCleaned(text, spellings, "remove") !== null;
 }

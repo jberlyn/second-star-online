@@ -35,3 +35,8 @@ export function npcFileVersions(db: Db, npc: string): string[] {
     .all(npc)
     .map((r) => r.text);
 }
+
+/** Drops an NPC's save, so its content row plays again (its versions are kept). */
+export function deleteNpcFile(db: Db, npc: string): void {
+  db.query("DELETE FROM npc_files WHERE lower(npc) = lower(?)").run(npc);
+}

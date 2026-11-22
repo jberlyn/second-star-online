@@ -8,14 +8,17 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
+import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
 import {
   type ContentData,
+  checkNpcFile,
   content,
   inGameSchema,
   installContent,
   type ServerMsg,
   storedCopyAs,
   storedCopyOf,
+  storedCount,
 } from "@secondstaronline/shared";
 
 import { cleanUses, usesOf } from "../src/content/cleanup.ts";
@@ -27,7 +30,9 @@ import { createGame, type Game } from "../src/game.ts";
 import { setRole } from "../src/persistence/accounts.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
+import { saveNpcFile } from "../src/persistence/npcfiles.ts";
 import { parseDrop } from "../src/systems/admin/drop.ts";
+import { setNpcFile } from "../src/systems/monsters/npcfiles.ts";
 import { spawnHp } from "../src/systems/monsters/spawn.ts";
 import { NEVER_PUSH } from "./helpers/sim.ts";
 
@@ -43,11 +48,17 @@ describe("stored copies", () => {
     expect(storedCopyOf("apple", ["Apple", "apple"])).toBe(true);
     expect(storedCopyOf("Ruby Ring Mold", ["Ruby Ring"])).toBe(false);
     expect(storedCopyOf("Long Sword", ["Sword"])).toBe(false);
+    // Only crystals count in their name: a gold pile is gold, not the Gold item.
+    expect(storedCopyOf("15 Gold", ["Gold"])).toBe(false);
   });
 
-  test("a replaced copy keeps its count and loses its id and level", () => {
+  test("a replaced copy keeps a container's id or a crystal pile's count only where they still mean something", () => {
     expect(storedCopyAs("5 Blue Crystals", "Red Crystals")).toBe("5 Red Crystals");
-    expect(storedCopyAs("Crate#12", "Cabinet")).toBe("Cabinet");
+    expect(storedCopyAs("5 Blue Crystals", "Apple")).toBe("Apple");
+    expect(storedCount("5 Blue Crystals")).toBe(5);
+    expect(storedCount("Apple")).toBe(1);
+    expect(storedCopyAs("Crate#12", "Cabinet")).toBe("Cabinet#12");
+    expect(storedCopyAs("Crate#12", "Ale")).toBe("Ale");
     expect(storedCopyAs("Long Sword+2", "Short Sword")).toBe("Short Sword");
   });
 });
@@ -104,7 +115,7 @@ describe("where content refers to an item, and its cleanup", () => {
     expect(schemaProblems(next)).toEqual([]);
   });
 
-  test("NPC file lines: shop and drop lines go, or name the replacement keeping a drop's count", () => {
+  test("NPC file lines: shop and drop lines go, or name the replacement (a crystal drop keeps its count)", () => {
     const data = classic();
     const files = [
       ...data.npcFiles.files,
@@ -121,7 +132,23 @@ describe("where content refers to an item, and its cleanup", () => {
     const replaced = cleanUses(withFile, uses, "replace", "Gold Ring").rows[0]?.data as {
       text: string;
     };
-    expect(replaced.text).toBe("BIO|Hello\rSEL|Gold Ring:10:1\rINV|2 Gold Ring:5\rBUY|Ale:3");
+    expect(replaced.text).toBe("BIO|Hello\rSEL|Gold Ring:10:1\rINV|Gold Ring:5\rBUY|Ale:3");
+    // A crystal drop keeps its count when it becomes other crystals.
+    const crystals = {
+      ...withFile,
+      npcFiles: {
+        ...withFile.npcFiles,
+        files: [{ name: "Gem Seller", text: "INV|5 Blue Crystals:2" }],
+      },
+    };
+    const gems = usesOf(crystals, "item", "Blue Crystals").filter((u) => u.npcLine);
+    expect(
+      (
+        cleanUses(crystals, gems, "replace", "Red Crystals").rows[0]?.data as
+          | { text: string }
+          | undefined
+      )?.text,
+    ).toBe("INV|5 Red Crystals:2");
   });
 
   test("leave changes nothing and lists every reference", () => {
@@ -130,6 +157,32 @@ describe("where content refers to an item, and its cleanup", () => {
     const r = cleanUses(data, uses, "leave");
     expect(r.rows).toEqual([]);
     expect(r.left).toHaveLength(uses.length);
+  });
+
+  test("a removal that would break its row is left to replace, not made (a band's one result, the ore three)", () => {
+    const data = classic();
+    for (const item of ["Table", "Chunk of Iron"]) {
+      const uses = usesOf(data, "item", item);
+      const { rows, left } = cleanUses(data, uses, "remove", "", [], (ref, value) => {
+        const next = withRow(data, ref, value);
+        return DATASET_SCHEMAS[ref.dataset as "craft"].safeParse(
+          (next as unknown as Record<string, unknown>)[ref.dataset],
+        ).success;
+      });
+      for (const r of rows) {
+        const next = withRow(data, r.ref, r.op === "set" ? r.data : undefined);
+        expect(schemaProblems(next)).toEqual([]);
+      }
+      expect(left.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("the station that doubles the cooking time is a reference too", () => {
+    const data = classic();
+    const doubles = data.craft.stations.cook.doubles;
+    expect(usesOf(data, "item", doubles).some((u) => u.path.join(".") === "cook.doubles")).toBe(
+      true,
+    );
   });
 
   test("a retired item counts as missing for every reference", () => {
@@ -334,20 +387,16 @@ describe("removing content in use from a running game", () => {
     // No content refers to it any more, and none may again.
     expect(usesOf(service.publishedContent(), "item", "Ruby Ring")).toEqual([]);
     expect(parseDrop("Ruby Ring")).toBeNull();
-    const fish = rowValue(service.publishedContent(), {
-      dataset: "npcFiles",
-      part: "files",
-      key: "Fish",
-    }) as { name: string; text: string } | undefined;
-    if (fish) {
-      const r = service.draftSet(
-        ADMIN(god),
-        { dataset: "npcFiles", part: "files", key: "Fish" },
-        "set",
-        { ...fish, text: `${fish.text}\rSEL|Ruby Ring:5:1` },
-      );
-      expect(r.ok).toBe(false);
-    }
+    // Neither the Content page nor the NPC Editor may put it on sale again.
+    const npc = { dataset: "npcFiles", part: "files", key: "Agavar" } as const;
+    const agavar = rowValue(service.publishedContent(), npc) as { name: string; text: string };
+    expect(agavar).toBeDefined();
+    const r = service.draftSet(ADMIN(god), npc, "set", {
+      ...agavar,
+      text: `${agavar.text}\rSEL|Ruby Ring:5:1`,
+    });
+    expect(r.ok).toBe(false);
+    expect(checkNpcFile(["SEL|Ruby Ring:5:1"]).error).not.toBeNull();
     // The quest line that rewarded it was rolled again.
     expect(game.world.questLines[0]).not.toContain("Ruby Ring");
     // The publish history says what happened to the world.
@@ -511,8 +560,403 @@ describe("removing content in use from a running game", () => {
       },
       game.contentWorld,
     );
-    expect(r.ok && r.value).toContain("removed");
-    expect(service.draft().find((d) => d.key === "Ruby Ring")?.op).toBe("remove");
+    expect(r.ok).toBe(true);
+    // Settled at publish: nobody holds one, so it is removed rather than retired.
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(content().item("Ruby Ring")).toBeUndefined();
+  });
+
+  test("a retirement is settled at publish: a copy gained since the draft keeps the item retired", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "retire",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    // Nobody held one when it was drafted; Al gets one before it is published.
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.char.bag[5] = { item: "Ruby Ring", qty: 1 };
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(content().item("Ruby Ring")?.retired).toBe(true);
+    expect(game.contentWorld.problems()).toEqual([]);
+  });
+
+  test("a publish whose world cleanup fails writes nothing and keeps the live store", async () => {
+    const god = await make("God", "administrator");
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    const rev = service.draftRev();
+    const hash = content().hash;
+    const broken = {
+      ...game.contentWorld,
+      apply: () => {
+        throw new Error("disk full");
+      },
+    };
+    expect(() => service.publish(ADMIN(god), rev, "", broken)).toThrow("disk full");
+    expect(content().hash).toBe(hash);
+    expect(content().item("Ruby Ring")).toBeDefined();
+    expect(service.draftRev()).toBe(rev);
+    expect(service.liveActions()).toHaveLength(1);
+    expect(service.history()).toEqual([]);
+  });
+
+  test("an online player's purged copies are written with the publish, not at the next save", async () => {
+    const { god, al } = await ringsEverywhere();
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    // No tick has run.
+    expect(
+      db
+        .query("SELECT count(*) AS n FROM inventory WHERE character_id = ? AND item = 'Ruby Ring'")
+        .get(al.characterId),
+    ).toEqual({ n: 0 });
+    expect(
+      db.query("SELECT count(*) AS n FROM container_items WHERE item = 'Ruby Ring'").get(),
+    ).toEqual({ n: 0 });
+  });
+
+  test("a replaced container keeps its storage; a purged one takes it with it", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.char.bag[5] = { item: "Crate#12", qty: 1 };
+    game.world.containers.set("Crate#12", ["Ale", "Apple"]);
+    // Only another storage item may take its place.
+    const notStorage = service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Crate",
+        content: "replace",
+        copies: "replace",
+        replacement: "Ale",
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(notStorage.ok).toBe(false);
+    expect(
+      service.draftRemoval(
+        ADMIN(god),
+        {
+          kind: "item",
+          key: "Crate",
+          content: "replace",
+          copies: "replace",
+          replacement: "Cabinet",
+          refundGold: 0,
+        },
+        game.contentWorld,
+      ).ok,
+    ).toBe(true);
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(p.char.bag[5]).toEqual({ item: "Cabinet#12", qty: 1 });
+    expect(game.world.containers.get("Cabinet#12")).toEqual(["Ale", "Apple"]);
+    expect(game.world.containers.has("Crate#12")).toBe(false);
+    // Purged, the Cabinet takes what it held with it.
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Cabinet",
+        // Carpentry's roll table makes Cabinets: its entry can only be replaced.
+        content: "replace",
+        copies: "purge",
+        replacement: "Wind Cabinet",
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(p.char.bag[5]).toBeNull();
+    expect(game.world.containers.has("Cabinet#12")).toBe(false);
+    expect(service.history()[0]?.cleanup.join("\n")).toContain("2 stored items");
+  });
+
+  test("a crystal pile replaced by an item that does not count in its name keeps its count as quantity", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.map.ground.push({
+      id: "g-cr",
+      item: "5 Blue Crystals",
+      x: 2,
+      y: 3,
+      kind: "drop",
+      expiresAt: null,
+    });
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Blue Crystals",
+        content: "replace",
+        copies: "replace",
+        replacement: "Apple",
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.check()).toEqual([]);
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    const g = p.map.ground.find((x) => x.id === "g-cr");
+    expect(g?.item).toBe("Apple");
+    expect(g?.qty).toBe(5);
+    expect(db.query("SELECT item, qty FROM ground_items WHERE id = 'g-cr'").get()).toEqual({
+      item: "Apple",
+      qty: 5,
+    });
+  });
+
+  test("an NPC Editor save gets the content's cleanup on publish", async () => {
+    const god = await make("God", "administrator");
+    saveNpcFile(db, { npc: "Agavar", text: "BIO|Hi\rSEL|Ruby Ring:9:3\rSEL|Ale:2:5" }, "acc", "t");
+    const u = service.usage("item", "Ruby Ring", game.contentWorld);
+    expect(u.ok && u.value.uses.some((x) => x.where.includes("(NPC Editor save)"))).toBe(true);
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    // The save would sell a removed item, but the waiting cleanup takes its line out.
+    expect(service.check()).toEqual([]);
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(db.query("SELECT text FROM npc_files WHERE npc = 'Agavar'").get()).toEqual({
+      text: "BIO|Hi\rSEL|Ale:2:5",
+    });
+  });
+
+  test("a player shop never blocks a removal; a purge takes its stock, a retirement leaves it", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const shop = "Zorbu";
+    const text = "BIO|My shop\rSEL|Ruby Ring:50:4\rSEL|Ale:2:5";
+    db.query(
+      "INSERT INTO player_shops (npc, owner_id, interior, created_at) VALUES (?, ?, 'xH1000yH992', 't')",
+    ).run(shop, al.characterId);
+    saveNpcFile(db, { npc: shop, text }, "acc", "t");
+    game.world.playerShops.set(shop.toLowerCase(), {
+      npc: shop,
+      ownerId: al.characterId,
+      interior: "xH1000yH992",
+    });
+    setNpcFile(game.world.npcs, shop, text);
+    const u = service.usage("item", "Ruby Ring", game.contentWorld);
+    expect(u.ok && u.value.world.find((w) => w.place === "shop")).toMatchObject({
+      count: 4,
+      holders: [shop],
+    });
+    // Retired: the shop keeps its stock (they are copies) and nothing blocks the publish.
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "retire",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.check()).toEqual([]);
+    service.draftDiscard(entryRef("item", "Ruby Ring"));
+    // Purged: the stock goes with every other copy.
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(db.query("SELECT text FROM npc_files WHERE npc = ?").get(shop)).toEqual({
+      text: "BIO|My shop\rSEL|Ale:2:5",
+    });
+    expect(service.history()[0]?.cleanup.join("\n")).toContain("4 on sale in player shops");
+  });
+
+  test("a replaced line joins the stack of the replacement, online and offline", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const bo = await make("Bo", undefined, false);
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    p.char.bag[3] = { item: "Ruby Ring", qty: 2 };
+    p.char.bag[6] = { item: "Mage's Ring", qty: 1 };
+    p.activityHeld = undefined;
+    game.tick();
+    for (const [id, slot, item, qty] of [
+      ["b1", 14, "Ruby Ring", 3],
+      ["b2", 15, "Mage's Ring", 2],
+    ] as const) {
+      db.query(
+        "INSERT INTO inventory (id, character_id, slot, item, qty) VALUES (?, ?, ?, ?, ?)",
+      ).run(id, bo.characterId, slot, item, qty);
+    }
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "replace",
+        copies: "replace",
+        replacement: "Mage's Ring",
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    expect(p.char.bag.filter((l) => l?.item === "Mage's Ring")).toEqual([
+      { item: "Mage's Ring", qty: 3 },
+    ]);
+    expect(
+      db
+        .query("SELECT item, qty FROM inventory WHERE character_id = ? AND item = 'Mage''s Ring'")
+        .all(bo.characterId),
+    ).toEqual([{ item: "Mage's Ring", qty: 5 }]);
+    game.tick();
+    expect(activity("unlogged")).toEqual([]);
+  });
+
+  test("an open vault shows its new lines when a purge empties some", async () => {
+    const { god, p } = await ringsEverywhere();
+    p.vaultOpen = true;
+    p.char.vault.push("Ale");
+    sent.length = 0;
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "purge",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    const shown = sent.filter((x) => x.to === p.id && x.msg.t === "vault").at(-1)?.msg as
+      | { items: string[] }
+      | undefined;
+    expect(shown?.items).toEqual(["Ale"]);
+  });
+
+  test("owner-named fixtures and player shopkeepers are not problems", async () => {
+    const al = await make("Al");
+    const p = game.world.players.get(al.characterId);
+    if (!p) {
+      throw new Error("Al is not online");
+    }
+    for (const [id, item] of [
+      ["f1", "Al's House Vault"],
+      ["f2", "Al's Newspaper"],
+      ["f3", "The Knights's Guild Vault"],
+    ] as const) {
+      p.map.ground.push({ id, item, x: 4, y: 4, kind: "admin", expiresAt: null });
+    }
+    game.world.playerShops.set("zorbu", { npc: "Zorbu", ownerId: al.characterId, interior: "x" });
+    const slot = p.map.slots[2];
+    if (slot) {
+      slot.species = "Zorbu";
+    }
+    expect(game.contentWorld.problems()).toEqual([]);
+  });
+
+  test("a monster's replacement may be named by the name players see", async () => {
+    const god = await make("God", "administrator");
+    const ratmas = rowValue(service.publishedContent(), entryRef("monster", "Ratmas")) as Record<
+      string,
+      unknown
+    >;
+    service.draftSet(ADMIN(god), entryRef("monster", "Ratmas"), "set", {
+      ...ratmas,
+      display: "Giant Rat",
+    });
+    service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld);
+    const r = service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "monster",
+        key: "Slime",
+        content: "replace",
+        spawns: "replace",
+        live: "leave",
+        npcFile: "keep",
+        replacement: "Giant Rat",
+      },
+      game.contentWorld,
+    );
+    expect(r.ok).toBe(true);
+    expect(service.liveActions()[0]).toMatchObject({ replacement: "Ratmas" });
+  });
+
+  test("a retirement made by hand counts each place once", async () => {
+    const { god } = await ringsEverywhere();
+    const ring = rowValue(service.publishedContent(), entryRef("item", "Ruby Ring")) as Record<
+      string,
+      unknown
+    >;
+    service.draftSet(ADMIN(god), entryRef("item", "Ruby Ring"), "set", { ...ring, retired: true });
+    const places = game.contentWorld.usage("item", ["Ruby Ring"]);
+    const placeTotal = places.reduce((n, x) => n + Math.max(1, x.holderCount), 0);
+    expect(service.removals(game.contentWorld)[0]?.stillUsed).toBe(
+      placeTotal + usesOf(service.draftContent(), "item", "Ruby Ring").length,
+    );
   });
 
   test("a monster: its roster slots clear, live ones despawn, its NPC file goes", async () => {

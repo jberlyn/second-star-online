@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 
-import { comparePackVersions } from "@secondstaronline/data/schema";
+import { comparePackVersions, DATASET_SCHEMAS } from "@secondstaronline/data/schema";
 import {
   buildContentStore,
   CONTENT_FORMAT,
@@ -20,6 +20,7 @@ import {
   editorLines,
   hasContent,
   installContent,
+  isUniqueContainer,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
 } from "@secondstaronline/shared";
@@ -54,11 +55,13 @@ import {
   upsertDraftRow,
 } from "../persistence/content.ts";
 import type { Db } from "../persistence/database.ts";
-import { loadNpcFiles } from "../persistence/npcfiles.ts";
+import { deleteNpcFile, loadNpcFiles, saveNpcFile } from "../persistence/npcfiles.ts";
+import { loadPlayerShops } from "../persistence/playershops.ts";
 import {
   type CleanupRow,
   cleanUses,
   type EntryKind,
+  npcTextCleaned,
   spellingsOf,
   type UseView,
   usesOf,
@@ -86,6 +89,7 @@ import {
   keyProblems,
   schemaProblems,
   skillProblems,
+  withNpcSaves,
 } from "./validate.ts";
 import type { ContentWorld, Removal, UsagePlace, WorldAction } from "./world.ts";
 
@@ -150,6 +154,8 @@ export interface ContentUsage {
   uses: UseView[];
   /** Where the world holds it (empty without a world). */
   world: UsagePlace[];
+  /** How many different characters hold a copy (an item; 0 without a world). */
+  characters: number;
   /** A monster with an NPC file of its own. */
   npcFile: boolean;
   /** Its removal waiting in the draft, if any. */
@@ -184,7 +190,6 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 /** "14 copies held by 9 characters", "3 roster slots on 3 maps". */
 function placeText(p: UsagePlace): string {
-  const by = (who: string) => (p.holderCount > 0 ? ` ${who} ${plural(p.holderCount, "")}` : "");
   switch (p.place) {
     case "bag":
       return `${plural(p.count, "copy", "copies")} in the bags of ${plural(p.holderCount, "character")}`;
@@ -202,8 +207,9 @@ function placeText(p: UsagePlace): string {
       return `${plural(p.count, "roster slot")} on ${plural(p.holderCount, "map")}`;
     case "live":
       return `${plural(p.count, "live one", "live ones")} on ${plural(p.holderCount, "map")}`;
+    case "shop":
+      return `${plural(p.count, "copy", "copies")} on sale in ${plural(p.holderCount, "player shop")}`;
   }
-  return by("");
 }
 
 /** How many places a usage report names (each kind of place counted by its holders). */
@@ -218,7 +224,7 @@ export function actionLines(a: WorldAction, places: readonly UsagePlace[]): stri
   const of = (kinds: readonly UsagePlace["place"][]) =>
     places.filter((p) => kinds.includes(p.place) && p.count > 0);
   if (a.kind === "item") {
-    const copies = of(["bag", "worn", "vault", "container", "ground"]);
+    const copies = of(["bag", "worn", "vault", "container", "ground", "shop"]);
     const quests = of(["quest"]);
     for (const p of copies) {
       out.push(
@@ -628,7 +634,10 @@ export class ContentService {
       const next = this.draftContent(draft);
       this.checked = {
         key,
-        problems: [...this.fullProblems(next), ...this.actionProblems(next, draft)],
+        problems: [
+          ...this.fullProblems(next, this.liveActions(draft)),
+          ...this.actionProblems(next, draft),
+        ],
       };
     }
     return this.checked.problems;
@@ -637,9 +646,44 @@ export class ContentService {
   /** The last `check` answer and what it was for. */
   private checked: { key: string; problems: ContentProblem[] } | null = null;
 
-  /** The NPC Editor's saves, which play instead of their NPC's content row. */
+  /**
+   * The NPC Editor's saves, which play instead of their NPC's content row. Player shops' files are
+   * in the same table but are world data (a player's stock and prices), handled with the copies
+   * players hold, not checked as content.
+   */
   private npcSaves() {
-    return loadNpcFiles(this.db);
+    const shops = new Set(loadPlayerShops(this.db).map((s) => s.npc.toLowerCase()));
+    return loadNpcFiles(this.db).filter((f) => !shops.has(f.npc.toLowerCase()));
+  }
+
+  /**
+   * The NPC Editor's saves as the waiting cleanups will leave them: shop and drop lines naming a
+   * removed item go or name its replacement (as the content's NPC file rows did), and a removed
+   * NPC's save goes with it. A save the cleanup deletes has `text: null`.
+   */
+  private npcSavesAfter(
+    actions: readonly WorldAction[],
+  ): { npc: string; text: string | null; was: string }[] {
+    return this.npcSaves().map((f) => {
+      let text: string | null = f.text;
+      for (const a of actions) {
+        if (text === null) {
+          break;
+        }
+        if (a.kind === "monster") {
+          if ((a.npcFile ?? "delete") === "delete" && f.npc.toLowerCase() === a.key.toLowerCase()) {
+            text = null;
+          }
+          continue;
+        }
+        const mode = a.content ?? "remove";
+        if (mode === "leave") {
+          continue;
+        }
+        text = npcTextCleaned(text, a.spellings, mode, a.contentReplacement ?? "") ?? text;
+      }
+      return { npc: f.npc, text, was: f.text };
+    });
   }
 
   /** Checks that a ref names a row an operator may change. */
@@ -842,12 +886,14 @@ export class ContentService {
   }
 
   /** Every check a write must pass: the publish checks, then a trial install. */
-  private fullProblems(next: ContentData): ContentProblem[] {
+  private fullProblems(next: ContentData, actions: readonly WorldAction[] = []): ContentProblem[] {
     const problems = checkStore(
       next,
       this.published,
       this.packKeys,
-      this.npcSaves(),
+      this.npcSavesAfter(actions).flatMap((f) =>
+        f.text === null ? [] : [{ npc: f.npc, text: f.text }],
+      ),
       savedSkills(this.db),
     );
     return problems.length > 0 ? problems : this.installProblems(next);
@@ -912,16 +958,20 @@ export class ContentService {
     summary: string,
     world?: ContentWorld,
   ): ContentResult<StoredPublish> {
-    const draft = this.draft();
-    if (draft.length === 0) {
+    const asDrafted = this.draft();
+    if (asDrafted.length === 0) {
       return fail("the draft is empty");
     }
-    if (this.draftRev(draft) !== draftRev) {
+    if (this.draftRev(asDrafted) !== draftRev) {
       return fail("the draft changed since you last looked: check it again before publishing");
     }
-    const actions = this.liveActions(draft);
+    const actions = this.liveActions(asDrafted);
+    const draft = world ? this.settleRetirements(asDrafted, actions, world) : asDrafted;
     const nextData = this.draftContent(draft);
-    const problems = [...this.fullProblems(nextData), ...this.actionProblems(nextData, draft)];
+    const problems = [
+      ...this.fullProblems(nextData, actions),
+      ...this.actionProblems(nextData, draft),
+    ];
     if (problems.length > 0) {
       return fail("the draft does not pass its checks", problems);
     }
@@ -946,26 +996,89 @@ export class ContentService {
       })
       // A revert of a row whose operator change has gone since (an undo) changes nothing.
       .filter((c) => c.before !== null || c.after !== null);
-    const nextCopy = clientCopyOf(this.draftContent(draft));
+    const nextCopy = clientCopyOf(nextData);
     let id = "";
-    this.db.transaction(() => {
+    // One transaction: the content rows, the publish log, the new store and the world's cleanup
+    // (which runs once the new store is live, so what it rolls, a quest line, comes from the
+    // published content). A crash or a throw part-way leaves none of it written.
+    try {
+      this.db.transaction(() => {
+        this.writePublish(changes, actor, now, summary, nextCopy.hash, (got) => {
+          id = got;
+        });
+        // The NPC Editor's saves get the content's cleanup, before the game lays them again.
+        for (const f of this.npcSavesAfter(actions)) {
+          if (f.text === null) {
+            deleteNpcFile(this.db, f.npc);
+          } else if (f.text !== f.was) {
+            saveNpcFile(this.db, { npc: f.npc, text: f.text }, actor.accountId, now);
+          }
+        }
+        this.rebuild();
+        if (actions.length > 0 && world) {
+          const lines = world.apply(actions, actor, id);
+          setPublishCleanup(this.db, id, { actions, lines });
+        }
+      })();
+    } catch (e) {
+      // Rolled back: the store that was live goes back in.
+      this.rebuild();
+      throw e;
+    }
+    return { ok: true, value: publishById(this.db, id) as StoredPublish };
+  }
+
+  /**
+   * A retirement is settled when it is published, not when it was drafted: an item somebody holds
+   * by then is retired (its row kept, marked retired), and one nobody holds is removed outright.
+   */
+  private settleRetirements(
+    draft: readonly DraftRow[],
+    actions: readonly WorldAction[],
+    world: ContentWorld,
+  ): DraftRow[] {
+    return draft.map((d) => {
+      const a = actions.find(
+        (x) => x.kind === "item" && x.copies === "retire" && sameRow(entryRef("item", x.key), d),
+      );
+      if (a?.kind !== "item" || d.op !== "set") {
+        return d;
+      }
+      const held = world.usage("item", a.spellings).some((p) => p.count > 0 && p.place !== "quest");
+      const wasRetired =
+        (rowValue(this.published, d) as { retired?: unknown } | undefined)?.retired === true;
+      return held || wasRetired ? d : { ...d, op: "remove", data: null };
+    });
+  }
+
+  /** Writes a publish's rows, empties the draft, and logs it (inside the caller's transaction). */
+  private writePublish(
+    changes: readonly PublishChange[],
+    actor: ContentActor,
+    now: string,
+    summary: string,
+    hash: string,
+    setId: (id: string) => void,
+  ): void {
+    {
       for (const c of changes) {
         this.writeState(c, c.after, actor, now);
       }
       clearDraft(this.db);
       clearDraftActions(this.db);
-      id = insertPublish(
+      const id = insertPublish(
         this.db,
         {
           actorAccountId: actor.accountId,
           actorName: actor.name,
           summary: summary.trim() || `${changes.length} change${changes.length === 1 ? "" : "s"}`,
           changes,
-          hash: nextCopy.hash,
+          hash,
           undoOf: null,
         },
         now,
       );
+      setId(id);
       insertAudit(
         this.db,
         {
@@ -976,17 +1089,7 @@ export class ContentService {
         },
         now,
       );
-    })();
-    this.rebuild();
-    // The world is cleaned up once the new store is live, so what it rolls (a quest line) comes
-    // from the published content.
-    if (actions.length > 0 && world) {
-      this.db.transaction(() => {
-        const lines = world.apply(actions, actor, id);
-        setPublishCleanup(this.db, id, { actions, lines });
-      })();
     }
-    return { ok: true, value: publishById(this.db, id) as StoredPublish };
   }
 
   /**
@@ -1113,6 +1216,8 @@ export class ContentService {
     }
     const data = this.draftContent();
     const spellings = this.spellings(kind, entry.name);
+    const saves = this.npcSaves();
+    const savedNpcs = new Set(saves.map((f) => f.npc.toLowerCase()));
     const pending = draftActions(this.db).find(
       (a) => a.kind === kind && a.key.toLowerCase() === entry.name.toLowerCase(),
     );
@@ -1123,8 +1228,15 @@ export class ContentService {
         key: entry.name,
         name: entry.display ?? entry.name,
         retired: entry.retired === true,
-        uses: usesOf(data, kind, entry.name, spellings).map(useView),
+        // The NPC Editor's saves play instead of their rows, so their lines are listed too.
+        uses: usesOf(withNpcSaves(data, saves), kind, entry.name, spellings).map((u) => {
+          const v = useView(u);
+          return u.row.dataset === "npcFiles" && savedNpcs.has(String(u.row.key).toLowerCase())
+            ? { ...v, where: `${v.where} (NPC Editor save)` }
+            : v;
+        }),
         world: world ? world.usage(kind, spellings) : [],
+        characters: world && kind === "item" ? world.holders(spellings) : 0,
         npcFile: kind === "monster" && rowValue(data, npcFileRef(entry.name)) !== undefined,
         pending: (pending?.action as WorldAction | undefined) ?? null,
       },
@@ -1150,8 +1262,20 @@ export class ContentService {
       );
     }
     const key = published.name;
+    if (removal.kind === "item" && removal.copies === "retire" && published.retired) {
+      return fail(`${key} is already retired.`);
+    }
     const base = this.draftContent();
     const replacement = removal.replacement?.trim() || null;
+    const baseStore = buildContentStore(base);
+    /** The item or monster text names: its key, or the name players see. */
+    const named = (text: string) =>
+      (removal.kind === "item"
+        ? baseStore.itemNamed(text)
+        : (baseStore.monster(text) ??
+          base.monsters.monsters.find((m) => m.display?.toLowerCase() === text.toLowerCase()))) as
+        | { name: string; retired?: true }
+        | undefined;
     const wantsReplacement =
       removal.content === "replace" ||
       (removal.kind === "item" ? removal.copies === "replace" : removal.spawns === "replace");
@@ -1159,11 +1283,7 @@ export class ContentService {
       if (!replacement) {
         return fail(`Name the ${removal.kind} to replace ${key} with.`);
       }
-      const other = (
-        removal.kind === "item"
-          ? buildContentStore(base).itemNamed(replacement)
-          : buildContentStore(base).monster(replacement)
-      ) as { name: string; retired?: true } | undefined;
+      const other = named(replacement);
       if (!other) {
         return fail(`There is no ${removal.kind} ${replacement}.`);
       }
@@ -1173,13 +1293,24 @@ export class ContentService {
       if (other.retired) {
         return fail(`${other.name} is retired: no more can be made.`);
       }
+      // A container's storage goes to its replacement by its `#id`, so a container is replaced
+      // with another container, or the things stored in copies of it could not be reached.
+      // and an ordinary item is not replaced with one: each copy would need storage of its own.
+      if (removal.kind === "item" && removal.copies === "replace") {
+        if (isUniqueContainer(key) && !isUniqueContainer(other.name)) {
+          return fail(
+            `${key} stores things: replace its copies with another storage item, so what they hold goes with them.`,
+          );
+        }
+        if (!isUniqueContainer(key) && isUniqueContainer(other.name)) {
+          return fail(
+            `${other.name} is a storage item, which each copy would need its own storage for: replace ${key} with something else.`,
+          );
+        }
+      }
     }
     const replaceWith =
-      wantsReplacement && replacement
-        ? ((removal.kind === "item"
-            ? buildContentStore(base).itemNamed(replacement)?.name
-            : buildContentStore(base).monster(replacement)?.name) ?? replacement)
-        : null;
+      wantsReplacement && replacement ? (named(replacement)?.name ?? replacement) : null;
     if (removal.kind === "item" && !(removal.refundGold >= 0 && removal.refundGold <= 1_000_000)) {
       return fail("The refund is a whole number of gold from 0 to 1,000,000.");
     }
@@ -1192,16 +1323,20 @@ export class ContentService {
       removal.content,
       replaceWith ?? "",
       ownFile,
+      // A removal that would break its row (a list that must keep an entry) is left to replace.
+      (r, value) => {
+        const next = applyRows(base, [{ ...r, op: "set", data: value }]);
+        return DATASET_SCHEMAS[r.dataset].safeParse(next[r.dataset]).success;
+      },
     );
     const own: CleanupRow[] = [];
     let action: WorldAction;
     if (removal.kind === "item") {
-      const held = world
-        ? world.usage("item", spellings).some((p) => p.count > 0 && p.place !== "quest")
-        : true;
+      // A retirement goes into the draft as the retired row; whether anybody still holds a copy is
+      // settled when it is published (`settleRetirements`).
       const current = (rowValue(base, ref) ?? published) as Record<string, unknown>;
       own.push(
-        removal.copies === "retire" && held
+        removal.copies === "retire"
           ? { ref, op: "set", data: { ...current, retired: true } }
           : { ref, op: "remove", data: null },
       );
@@ -1212,6 +1347,8 @@ export class ContentService {
         copies: removal.copies,
         replacement: removal.copies === "replace" ? replaceWith : null,
         refundGold: removal.copies === "purge" ? Math.floor(removal.refundGold) : 0,
+        content: removal.content,
+        contentReplacement: removal.content === "replace" ? replaceWith : null,
       };
     } else {
       own.push({ ref, op: "remove", data: null });
@@ -1224,6 +1361,7 @@ export class ContentService {
         spawns: removal.spawns,
         live: removal.live,
         replacement: removal.spawns === "replace" ? replaceWith : null,
+        npcFile: removal.npcFile,
       };
     }
     const now = this.now();
@@ -1288,7 +1426,10 @@ export class ContentService {
     })();
     const left = cleaned.left.length;
     const changed = cleaned.rows.length;
-    const verb = own[0]?.op === "set" ? `${key} will be retired` : `${key} will be removed`;
+    const verb =
+      own[0]?.op === "set"
+        ? `${key} will be retired (or removed, if nobody holds a copy by then)`
+        : `${key} will be removed`;
     return {
       ok: true,
       value: `${verb} when the draft is published${changed > 0 ? `; ${plural(changed, "other row")} changed with it` : ""}${left > 0 ? `; ${plural(left, "reference")} left for you to fix` : ""}.`,
@@ -1367,7 +1508,7 @@ export class ContentService {
       const action = actions.find(
         (a) => a.kind === kind && a.key.toLowerCase() === d.key?.toLowerCase(),
       );
-      const left = usesOf(next, kind, d.key, spellings);
+      const left = usesOf(withNpcSaves(next, this.npcSaves()), kind, d.key, spellings);
       const lines = action
         ? actionLines(action, places)
         : places.map(
@@ -1377,20 +1518,16 @@ export class ContentService {
       if (left.length > 0) {
         lines.push(`${plural(left.length, "reference")} in content still name it`);
       }
-      const copiesStay =
-        kind === "item" && (!action || (action.kind === "item" && action.copies === "retire"))
+      // Places the publish leaves using it: everything, with no cleanup waiting; retired copies;
+      // live monsters left until they die.
+      const stays = !action
+        ? placeCount(places)
+        : action.kind === "item" && action.copies === "retire"
           ? placeCount(places.filter((p) => p.place !== "quest"))
-          : 0;
-      const liveStay =
-        kind === "monster" && action?.kind === "monster" && action.live === "leave"
-          ? placeCount(places.filter((p) => p.place === "live"))
-          : 0;
-      out.push({
-        kind,
-        key: d.key,
-        lines,
-        stillUsed: left.length + copiesStay + liveStay + (action ? 0 : placeCount(places)),
-      });
+          : action.kind === "monster" && action.live === "leave"
+            ? placeCount(places.filter((p) => p.place === "live"))
+            : 0;
+      out.push({ kind, key: d.key, lines, stillUsed: left.length + stays });
     }
     return out;
   }
@@ -1398,7 +1535,7 @@ export class ContentService {
   /** The references nothing resolves: in the published content, and in the world. */
   problems(world?: ContentWorld): ContentProblems {
     return {
-      content: brokenReferences(this.published).map((r) => ({
+      content: brokenReferences(withNpcSaves(this.published, this.npcSaves())).map((r) => ({
         where: r.where,
         message: `names ${r.kind === "monster" ? "a monster" : r.kind === "skill" ? "a skill" : "an item"} that does not exist${r.kind.startsWith("item") || r.kind.endsWith("Item") || r.kind === "item" ? " (or is retired)" : ""}: ${r.name || "(nothing)"}`,
       })),

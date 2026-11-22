@@ -44,16 +44,8 @@ const COPY_PLACES: readonly ContentPlaceView["place"][] = [
   "vault",
   "container",
   "ground",
+  "shop",
 ];
-
-/** The characters who hold copies, counted once each. */
-function holderNames(u: ContentUsageView): Set<string> {
-  return new Set(
-    u.world
-      .filter((p) => p.place === "bag" || p.place === "worn" || p.place === "vault")
-      .flatMap((p) => p.holders),
-  );
-}
 
 /** How many copies the world holds. */
 export const copyCount = (u: ContentUsageView): number =>
@@ -63,14 +55,12 @@ export const copyCount = (u: ContentUsageView): number =>
 export function usageSummary(u: ContentUsageView): string {
   const parts: string[] = [];
   if (u.kind === "item") {
-    const characters = Math.max(
-      holderNames(u).size,
-      ...u.world
-        .filter((p) => p.place === "bag" || p.place === "worn" || p.place === "vault")
-        .map((p) => p.holderCount),
-    );
-    if (characters > 0) {
-      parts.push(`Held by ${plural(characters, "character")}`);
+    if (u.characters > 0) {
+      parts.push(`Held by ${plural(u.characters, "character")}`);
+    }
+    const shops = u.world.find((p) => p.place === "shop");
+    if (shops) {
+      parts.push(`on sale in ${plural(shops.holderCount, "player shop")}`);
     }
     const ground = u.world.find((p) => p.place === "ground");
     if (ground) {
@@ -112,6 +102,7 @@ const PLACE_TEXT: Record<ContentPlaceView["place"], (p: ContentPlaceView) => str
   quest: (p) => `Quest lines: ${p.count}`,
   spawn: (p) => `Roster slots: ${p.count}`,
   live: (p) => `Alive now: ${p.count}`,
+  shop: (p) => `On sale in player shops: ${plural(p.count, "copy", "copies")}`,
 };
 
 /** The usage report: the summary, the rows that name it and the world's places. */
@@ -375,9 +366,9 @@ export function removalForm(
           return;
         }
         // Purging is the strong option: it says what goes, and that no undo brings it back.
-        const who = holderNames(u).size;
+        const who = u.characters;
         void confirmBox(host, {
-          text: `Purge ${u.name}? When the draft is published, ${plural(copies, "copy", "copies")}${who > 0 ? ` held by ${plural(who, "character")} and more` : ""} are deleted from bags, gear, vaults, containers and the ground. Undoing the publish brings the item back, not the copies.`,
+          text: `Purge ${u.name}? When the draft is published, ${plural(copies, "copy", "copies")}${who > 0 ? ` held by ${plural(who, "character")}` : ""} are deleted from bags, gear, vaults, containers and the ground. Undoing the publish brings the item back, not the copies.`,
           confirm: "Purge every copy",
           cancel: "Keep them",
           danger: true,

@@ -18,7 +18,9 @@ export type UsagePlaceKind =
   | "ground"
   | "quest"
   | "spawn"
-  | "live";
+  | "live"
+  /** Stock on sale in player shops (their shopkeepers). */
+  | "shop";
 
 /** One kind of place, with how many copies and who or where holds them. */
 export interface UsagePlace {
@@ -46,6 +48,10 @@ export type WorldAction =
       replacement: string | null;
       /** Gold given back for each purged copy a character held. */
       refundGold: number;
+      /** What the NPC Editor's saves naming it get (as the content rows did); absent: remove. */
+      content?: "remove" | "replace" | "leave";
+      /** The item those saves name instead, for `content: "replace"`. */
+      contentReplacement?: string | null;
     }
   | {
       kind: "monster";
@@ -54,6 +60,8 @@ export type WorldAction =
       live: "despawn" | "leave";
       /** The monster spawns become (replace), or null. */
       replacement: string | null;
+      /** Its NPC Editor save goes with it (as its NPC file row did); absent: delete. */
+      npcFile?: "delete" | "keep";
     };
 
 /** An operator's removal of an item, with its cleanup. */
@@ -83,6 +91,8 @@ export type Removal = ItemRemoval | MonsterRemoval;
 export interface ContentWorld {
   /** Where the world holds an item (any of its spellings) or a monster. */
   usage(kind: EntryKind, spellings: readonly string[]): UsagePlace[];
+  /** How many different characters hold a copy of the item (bag, gear or vault). */
+  holders(spellings: readonly string[]): number;
   /**
    * Applies published removals to the world, inside the publish's transaction: online players and
    * loaded maps in memory (their clients told), the rest in the database. Returns a line for each

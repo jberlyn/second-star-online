@@ -198,7 +198,7 @@ export function displayName(item: string): string {
 /**
  * Whether a stored item name is a copy of the item spelled one of `spellings` (its key and its
  * archived spellings, case ignored): the name itself, a container with its `#id` (`Crate#12`), a
- * counted pile (`15 Gold`, `5 Blue Crystals`) or a masterwork level (`Long Sword+2`).
+ * crystal pile (`5 Blue Crystals`) or a masterwork level (`Long Sword+2`).
  */
 export function storedCopyOf(stored: string, spellings: readonly string[]): boolean {
   const base = displayName(stored).trim();
@@ -206,8 +206,9 @@ export function storedCopyOf(stored: string, spellings: readonly string[]): bool
   if (is(base)) {
     return true;
   }
+  // Only a crystal pile carries its count in its name; `15 Gold` is gold, not the Gold item.
   const count = /^\d+ (.+)$/.exec(base);
-  if (count && is(count[1] as string)) {
+  if (count && lingoContains(count[1] as string, " Crystals") && is(count[1] as string)) {
     return true;
   }
   const level = /^(.+?)\+\d+$/.exec(base);
@@ -215,12 +216,24 @@ export function storedCopyOf(stored: string, spellings: readonly string[]): bool
 }
 
 /**
- * A stored copy rewritten as another item (an operator's Replace): a counted pile keeps its count;
- * a container's `#id` and a masterwork level go with the old item.
+ * A stored copy rewritten as another item (an operator's Replace). A container keeps its `#id`
+ * when the new item is a container too, so its storage goes with it; a crystal pile keeps its
+ * count when the new item is crystals too (any other pile's count is `storedCount`, which the
+ * caller moves to the pile's quantity). A masterwork level goes with the old item.
  */
 export function storedCopyAs(stored: string, item: string): string {
+  const id = /#([^#]*)$/.exec(stored)?.[1];
+  if (id !== undefined && isUniqueContainer(item)) {
+    return `${item}#${id}`;
+  }
   const count = /^(\d+) .+$/.exec(displayName(stored).trim());
-  return count ? `${count[1]} ${item}` : item;
+  return count && lingoContains(item, " Crystals") ? `${count[1]} ${item}` : item;
+}
+
+/** How many a stored pile name counts (`5 Blue Crystals` is 5); 1 for anything else. */
+export function storedCount(stored: string): number {
+  const count = /^(\d+) .+$/.exec(displayName(stored).trim());
+  return count ? Math.max(1, Number(count[1])) : 1;
 }
 
 /** The name players see for an item key: its `display` when an operator renamed it. */

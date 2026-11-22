@@ -500,6 +500,7 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
     ],
     npcFile: false,
     pending: false,
+    characters: 2,
   };
 
   /** A page with Ale open in the editor and its usage report in. */
@@ -613,6 +614,7 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
       ],
       npcFile: true,
       pending: false,
+      characters: 0,
     };
     const h = page();
     h.p.onShow();

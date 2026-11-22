@@ -277,9 +277,11 @@ export function resolveNpcItemNames(
   });
 }
 
+/** A catalogue item by name or spelling. A retired item is none: no shop may sell or buy it. */
 const catalogue = (name: string, store: ContentStore = content()) =>
   store.items.items.some(
-    (i) => lingoEq(i.name, name) || (i.variants ?? []).some((v) => lingoEq(v, name)),
+    (i) =>
+      !i.retired && (lingoEq(i.name, name) || (i.variants ?? []).some((v) => lingoEq(v, name))),
   );
 
 /** A shop line's item: a catalogue name or one of its archived spellings (`apple`, `knife`). */

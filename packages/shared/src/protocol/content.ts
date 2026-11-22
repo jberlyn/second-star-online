@@ -129,7 +129,9 @@ export type ContentPlaceKind =
   | "ground"
   | "quest"
   | "spawn"
-  | "live";
+  | "live"
+  /** Stock on sale in player shops. */
+  | "shop";
 
 /** One kind of place, with how many and who or where holds them (the first few). */
 export interface ContentPlaceView {
@@ -155,6 +157,8 @@ export interface ContentUsageView {
   retired: boolean;
   uses: ContentUseView[];
   world: ContentPlaceView[];
+  /** How many different characters hold a copy (bag, gear or vault). */
+  characters: number;
   /** A monster with an NPC file of its own. */
   npcFile: boolean;
   /** Its removal is waiting in the draft. */
