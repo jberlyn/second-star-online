@@ -420,15 +420,32 @@ describe("the right panel (frames 50-65)", () => {
       Number.parseFloat(slot5?.style.left ?? "") + Number.parseFloat(slot5?.style.width ?? ""),
     );
     // One button: the SmallGold picture, then the amount. No separate drop button (Internal #118).
-    const b = box?.querySelector<HTMLButtonElement>('[aria-label="Drop or give gold"]');
+    const b = box?.querySelector<HTMLButtonElement>(".gold-button");
     expect([...(box?.children ?? [])]).toEqual([b as HTMLButtonElement]);
     expect([...(b?.children ?? [])].map((c) => c.className)).toEqual(["small-gold", "gold-amount"]);
     expect(b?.querySelector("img")).toBeNull();
     expect(box?.querySelector(".gold-amount")?.textContent).toBe("1,234,567");
-    expect(box?.getAttribute("aria-label")).toBe("1,234,567 gold");
+    // Its name carries the balance it shows, then what it does.
+    expect(b?.getAttribute("aria-label")).toBe("1,234,567 gold: Drop or give gold");
     expect(b?.dataset.action).toBe("inventory-gold");
     b?.click();
     expect(sent).toEqual(["gold"]);
+    panel.resetCharacter();
+    expect(b?.getAttribute("aria-label")).toBe("Drop or give gold");
+  });
+  test("the gold's hover tip names its action and goes when Enter opens the dialog with no pointer press", () => {
+    const { panel, sent } = panelWith([]);
+    panel.setInventory({ gold: 50, bag: emptyBag(), equip: { ...NO_EQUIPMENT } }, 1);
+    const tip = panel.tips.el;
+    const b = panel.el.querySelector<HTMLButtonElement>(".gold-button");
+    b?.dispatchEvent(
+      new PointerEvent("pointermove", { pointerType: "mouse", clientX: 760, clientY: 136 }),
+    );
+    expect([tip.hidden, tip.textContent]).toEqual([false, "Drop or give gold"]);
+    // Keyboard activation: a click with no pointerdown or pointerleave before it.
+    b?.click();
+    expect(sent).toEqual(["gold"]);
+    expect(tip.hidden).toBe(true);
   });
   test("the SmallGold picture is drawn from the bag's own item art, not the large pile", async () => {
     const drawn: string[] = [];

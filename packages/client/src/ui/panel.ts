@@ -352,14 +352,19 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   // dialog, as clicking a bag item opens its menu. 1.6's drop button (Internal #118) is gone.
   const goldBox = document.createElement("div");
   goldBox.className = "gold-row";
-  goldBox.setAttribute("role", "group");
   at(goldBox, GOLD_ROW.x, GOLD_ROW.y, GOLD_ROW.w, GOLD_ROW.h);
   const goldButton = tagAction(document.createElement("button"), "inventory-gold");
   goldButton.type = "button";
   goldButton.className = "gold-button";
-  goldButton.setAttribute("aria-label", "Drop or give gold");
-  tips.attach(goldButton, "Drop or give gold");
-  goldButton.addEventListener("click", () => act.gold());
+  // Its name carries the balance it shows (set with the inventory), then what it does.
+  const GOLD_LABEL = "Drop or give gold";
+  goldButton.setAttribute("aria-label", GOLD_LABEL);
+  tips.attach(goldButton, GOLD_LABEL);
+  goldButton.addEventListener("click", () => {
+    // Enter or Space opens the dialog with no pointer press, which would otherwise leave the tip up.
+    tips.release(goldButton);
+    act.gold();
+  });
   const smallGold = document.createElement("canvas");
   smallGold.className = "small-gold";
   smallGold.setAttribute("aria-hidden", "true");
@@ -1010,7 +1015,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       inventory = inv;
       headNo = head;
       gold.textContent = grouped(inv.gold);
-      goldBox.setAttribute("aria-label", `${grouped(inv.gold)} gold`);
+      goldButton.setAttribute("aria-label", `${grouped(inv.gold)} gold: ${GOLD_LABEL}`);
       // The slots are rebuilt, so one under the mouse never sees it leave; its next move shows the
       // tip again.
       tips.hide();
@@ -1106,7 +1111,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       levelValue.textContent = "";
       values.textContent = "";
       gold.textContent = "";
-      goldBox.removeAttribute("aria-label");
+      goldButton.setAttribute("aria-label", GOLD_LABEL);
       bagLayer.replaceChildren();
       equipLayer.replaceChildren();
       menu.hidden = true;
