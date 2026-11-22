@@ -22,6 +22,7 @@ import {
   blocksPlayer,
   bowRefusal,
   CANNON_FIRE_ANIM,
+  type Crafter,
   type DeltaEvent,
   type Dir,
   type EquipView,
@@ -81,6 +82,8 @@ export interface Peer {
   body: number | null;
   /** Frames left of the cast frame (set to 5 on a cast). */
   spellAnim: number;
+  /** Crafting: the station they face animates. */
+  crafting?: boolean;
 }
 
 /** A spell FX sprite (shared/rules/spells/spellfx.ts) in its FX slot. */
@@ -152,6 +155,8 @@ export interface Self {
   body: number | null;
   /** Frames left of your own sprite's spell animation. */
   spellAnim: number;
+  /** Crafting: the station you face animates. */
+  crafting?: boolean;
   /** Tick of a swing predicted from the attack key, not yet matched by the server's `swing`. */
   swingPredictedAt: number | null;
 }
@@ -301,6 +306,7 @@ function toPeer(p: PlayerView): Peer {
     equip: p.equip ?? { ...NO_EQUIPMENT },
     body: p.body ?? null,
     spellAnim: 0,
+    crafting: p.crafting === true,
   };
 }
 
@@ -336,6 +342,7 @@ export function applySnapshot(
     body: snap.you.body ?? null,
     spellAnim: 0,
     swingPredictedAt: null,
+    crafting: snap.you.crafting === true,
   };
   // Requests from the old map are refused; the snapshot already corrected them.
   m.staleRejectsThrough = m.stepSeq;
@@ -349,6 +356,9 @@ export function applySnapshot(
   m.effects = [];
   m.floaties = [];
   m.loading = true;
+  // Drawing the map's items clears the key lock, except for a craft still running: a World Editor
+  // save resends the map mid-craft, and the server still holds the crafter in place.
+  m.keyLock = m.self.crafting === true;
 }
 
 export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
@@ -529,6 +539,13 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
         const who = m.self && ev.id === m.self.id ? m.self : m.peers.get(ev.id);
         if (who) {
           who.body = ev.body;
+        }
+        break;
+      }
+      case "craft": {
+        const who = m.self && ev.id === m.self.id ? m.self : m.peers.get(ev.id);
+        if (who) {
+          who.crafting = ev.on;
         }
         break;
       }
@@ -918,6 +935,19 @@ function keyPoll(m: Model, intent: Intent, sendStep?: SendStep): void {
 export function animObjFrame(tick: number): 1 | 2 | 3 | 4 {
   const k = ((tick % 13) + 13) % 13;
   return k < 3 ? 1 : k < 6 ? 2 : k < 9 ? 3 : 4;
+}
+
+/** Everyone on the map as the station test sees them: you and the other players. */
+export function crafters(m: Model): Crafter[] {
+  const out: Crafter[] = [];
+  if (m.self) {
+    const s = m.self;
+    out.push({ x: s.x, y: s.y, facing: s.facing, crafting: s.crafting === true });
+  }
+  for (const p of m.peers.values()) {
+    out.push({ x: p.x, y: p.y, facing: p.facing, crafting: p.crafting === true });
+  }
+  return out;
 }
 
 /** Where to draw a walker: the tile it is stepping from, plus the step offset. */

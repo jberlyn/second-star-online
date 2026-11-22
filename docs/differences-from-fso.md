@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 78 |
+| [Design changes](#design-changes) | 79 |
 | [Fixed bugs](#fixed-bugs) | 297 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 132 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **559** |
+| **Total** | **560** |
 
 By system (the code folder that holds the change):
 
@@ -550,10 +550,19 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Other
 - **What you notice:** Building from Logs requires facing a Carpentry Bench while standing still. Operators place the bench in the World Editor before players can build.
 - **1.6:** Building required a Saw and Logs and could start anywhere.
-- **SSO:** Build checks the Carpentry Bench before checking the Saw and Carpentry skill. The Carpentry Bench is a fixed station with a four-frame animated saw.
+- **SSO:** Build checks the Carpentry Bench before checking the Saw and Carpentry skill. The Carpentry Bench is a fixed station whose saw moves while someone builds at it.
 - **Why:** Carpentry needs a workstation like the other crafts.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startBuild`)
 - **Pinned by:** `design change: carpentry requires facing a Carpentry Bench before checking the Saw` (packages/shared/tests/crafting/craft.test.ts)
+
+#### Crafting stations animate only while in use
+- **Kind:** Other
+- **What you notice:** A Stove, Anvil, Alchemy Lab or Carpentry Bench stands still until someone crafts at it. While a player crafts facing it, everyone on the map sees it work: the Stove's fire flickers and its flue smokes, the Anvil throws sparks and its quench bucket ripples, the Alchemy Lab bubbles and the bench's saw moves. It stops when the craft finishes or is interrupted. Campfires, torches, fountains, crystals and other scenery still animate all the time.
+- **1.6:** The Alchemy Lab bubbled all the time, whether or not anyone used it. The Stove and Anvil were still pictures.
+- **SSO:** The Stove and Anvil have four-frame overlays (`SV`, `AN`) like the Alchemy Lab (`AL`) and Carpentry Bench (`WB`). Those four stations are listed in `ground.inUse`, so their overlays draw only on a tile a crafting player faces. The server tells the map when a player starts or stops crafting with a `craft` event, and a player arriving on a map sees anyone already crafting there with `crafting` set. A craft ends when the crafter dies or is moved or turned off the spot.
+- **Why:** A moving station shows at a glance that someone is crafting there, and every station behaves the same.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`stationInUse`), `packages/server/src/systems/crafting/craft.ts` (`craftShownChange`), `packages/client/src/playfield.ts` (`createPlayfield`), `packages/data/content/item-rules.json` (`inUse`)
+- **Pinned by:** `design change: the crafting stations animate only in use; scenery always does` (packages/shared/tests/inventory/ground.test.ts); `design change: the map hears a craft start on the next tick and its end on the last frame` (packages/server/tests/craft.test.ts); `design change: a craft event animates the station the crafter faces, until it stops` (packages/client/tests/model.test.ts); `design change: a Stove's overlay draws only while you craft facing it; a Campfire's always` (packages/client/tests/station-overlay.test.ts)
 
 #### Ctrl and item clicks answer at once
 - **Kind:** Other
@@ -1592,19 +1601,19 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** If you change map while smithing, cooking, mixing or building, whether by a warp, an exit or a death, the craft stops and you read "You stop what you were making." Nothing has been taken, so nothing is lost.
 - **1.6:** Nothing reset the crafting counters on a map change, death or warp, and loading a map freed the keys, so you could walk around while the craft ran and it finished wherever you were.
-- **SSO:** `enterRoom` ends any running craft with `cancelCrafts`.
+- **SSO:** `enterRoom` ends any running craft with `cancelCrafts`. A death ends it sooner, on the frame after the player dies and before the respawn moves them (see "A crafter can be shoved, which ends the craft").
 - **Why:** A craft should need you to stay at the station.
 - **In the code:** `packages/server/src/systems/crafting/craft.ts` (`cancelCrafts`); `packages/server/src/systems/world/world.ts` (`enterRoom`)
 - **Pinned by:** `bug fixed: a map change ends the craft, says so, and loses nothing`; `a map change with no craft running says nothing` (packages/server/tests/craft.test.ts)
 
 #### A crafter can be shoved, which ends the craft
 - **Kind:** Bug fixed
-- **What you notice:** While you craft you stay in place: walking and turning are refused until it finishes. Another player can still push you a tile as usual, and being pushed off the spot ends the craft with "You stop what you were making." Nothing has been taken, so nothing is lost.
+- **What you notice:** While you craft you stay in place: walking and turning are refused until it finishes. Another player can still push you a tile as usual, and being pushed off the spot or turned away from the station ends the craft with "You stop what you were making." So does dying or being hopped into or out of an arena. Nothing has been taken, so nothing is lost.
 - **1.6:** Starting a craft locked the keys, and the shove skipped players whose keys were locked, so a crafter could not be pushed.
-- **SSO:** The shove ignores a lock held only by a craft (a window holding the keys still stops it). A shove that moves the crafter ends every running craft and frees the keys, as a map change does. A running craft holds the player in its own right: walking, turning, swinging and starting a second craft are refused while it runs, even if a window close with no window open (a shop Cancel, a board close, a guild Leave) clears the key lock.
+- **SSO:** The shove ignores a lock held only by a craft (a window holding the keys still stops it). A shove that moves the crafter ends every running craft and frees the keys, as a map change does. On the next frame, a craft also ends if the crafter is no longer standing and facing as they were when it started (a shove into a wall turns them, an arena challenge or defeat hops them) or has died, so nothing finishes during the death lock. Other players see the crafter stop crafting at once. A running craft holds the player in its own right: walking, turning, swinging and starting a second craft are refused while it runs, even if a window close with no window open (a shop Cancel, a board close, a guild Leave) clears the key lock.
 - **Why:** Crafting should not make a player immovable, and a craft should need you to stay at the station.
-- **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`); `packages/server/src/systems/crafting/craft.ts` (`isCrafting`, `stopCraftsOnMove`)
-- **Pinned by:** `bug fixed: a crafter can be shoved, which ends the craft and frees the keys`; `a crafter cannot walk or turn away: the craft's key lock holds them in place`; `a stray Cancel or board close mid-craft frees nothing: no walking, swinging or second craft`; `one craft at a time: a second is refused even with the keys cleared`; `a window's key lock still stops a shove` (packages/server/tests/craft.test.ts)
+- **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`); `packages/server/src/systems/crafting/craft.ts` (`isCrafting`, `stopCraftsOnMove`, `craftStep`)
+- **Pinned by:** `bug fixed: a crafter can be shoved, which ends the craft and frees the keys`; `bug fixed: a shove into a wall that only turns the crafter ends the craft`; `bug fixed: a crafter who dies stops crafting; nothing finishes during the death lock or after`; `bug fixed: a hop off the spot (an arena challenge or defeat) ends the craft`; `a crafter cannot walk or turn away: the craft's key lock holds them in place`; `a stray Cancel or board close mid-craft frees nothing: no walking, swinging or second craft`; `one craft at a time: a second is refused even with the keys cleared`; `a window's key lock still stops a shove` (packages/server/tests/craft.test.ts)
 
 #### Regrowth runs at one rate on every map
 - **Kind:** Bug fixed

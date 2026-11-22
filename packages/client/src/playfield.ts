@@ -23,6 +23,7 @@
 import {
   attackFrame,
   type BodyFrame,
+  type Crafter,
   cannonFireFrame,
   clockFace,
   type Equipment,
@@ -38,12 +39,14 @@ import {
   MAP_HEIGHT,
   MAP_WIDTH,
   type MapView,
+  overlayWhenInUse,
   PALETTE_RGB,
   PAPERDOLL_REG,
   PAPERDOLL_SIZE,
   PLAYFIELD_RECT,
   paperdollLayers,
   showsClockFace,
+  stationInUse,
   trailFrames,
   VEHICLE_BODY,
   vehicleOfBody,
@@ -55,6 +58,7 @@ import { type Assets, drawSprite } from "./assets.ts";
 import { drawFog, fogLayer } from "./fog.ts";
 import {
   animObjFrame,
+  crafters,
   lenOf,
   MONSTER_STEP_FRAMES,
   type Model,
@@ -298,6 +302,9 @@ export function createPlayfield(assets: Assets): Playfield {
       } else {
         ctx.drawImage(base, 0, 0);
       }
+      // Who is crafting where, worked out once per draw and only when a station is on the map.
+      let crafting: Crafter[] | null = null;
+      const users = () => (crafting ??= crafters(model));
       // Ground items, oldest first (sprites 158-177 take the first free channel).
       const drawGround = (layer: ReturnType<typeof groundLayer>) => {
         if (black) {
@@ -328,7 +335,8 @@ export function createPlayfield(assets: Assets): Playfield {
             drawSprite(ctx, assets, "items", groundMember(g.name), px, py);
           }
           const overlay = groundOverlay(g.name);
-          if (overlay) {
+          // A crafting station animates only while someone crafts facing it.
+          if (overlay && (!overlayWhenInUse(g.name) || stationInUse(g.x, g.y, users()))) {
             // Frames 1-4 over a 13-frame cycle held 3, 3, 3, 4.
             const n = animObjFrame(model.tick);
             drawSprite(ctx, assets, "items", `${overlay}-${n}`, px, py);

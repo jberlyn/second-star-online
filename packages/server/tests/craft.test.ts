@@ -12,7 +12,8 @@ import { loadContainers } from "../src/persistence/containers.ts";
 import { openDatabase } from "../src/persistence/database.ts";
 import { loadInventory } from "../src/persistence/inventory.ts";
 import { migrate } from "../src/persistence/migrations.ts";
-import { applySave, editorMap } from "../src/systems/admin/worldedit.ts";
+import { applySave, editorMap, refreshSnapshot } from "../src/systems/admin/worldedit.ts";
+import { hopTo } from "../src/systems/combat/arena.ts";
 import { setAttackHeld } from "../src/systems/combat/melee.ts";
 import { craftIntent } from "../src/systems/crafting/craft.ts";
 import { storageIntent, withdrawContainer } from "../src/systems/economy/containers.ts";
@@ -25,6 +26,7 @@ import {
   enterRoom,
   leaveRoom,
   type Player,
+  playerView,
   type Room,
   type WorldMap,
 } from "../src/systems/world/world.ts";
@@ -357,6 +359,141 @@ function cauldron(name = "Cauldron#7") {
   const drop = (slot: number, n?: number) => dropIntent(ictx, k.room, k.a, slot, n);
   return { ...k, ictx, drop };
 }
+
+describe("stations animate only while in use", () => {
+  const smith = () => {
+    const k = bench("Anvil");
+    k.a.char.equip.weapon = "Blacksmith Hammer";
+    k.a.char.bag[0] = { item: "Damaged Sword, Long", qty: 1 };
+    k.a.char.bag[1] = { item: "Chunk of Iron", qty: 1 };
+    return k;
+  };
+  const crafts = (out: Out, to: string) => events(out, to).filter((e) => e.e === "craft");
+
+  test("design change: the map hears a craft start on the next tick and its end on the last frame", () => {
+    const k = smith();
+    expect(playerView(k.a).crafting).toBeUndefined();
+    k.craft(1);
+    const start = k.run(1);
+    for (const who of ["a", "b"]) {
+      expect(crafts(start, who)).toEqual([{ e: "craft", id: "a", on: true }]);
+    }
+    expect(playerView(k.a).crafting).toBe(true);
+    expect(crafts(k.run(498), "b")).toEqual([]);
+    const done = k.run(1);
+    expect(lines(done, "a")).toEqual(["Your Long Sword is ready!"]);
+    for (const who of ["a", "b"]) {
+      expect(crafts(done, who)).toEqual([{ e: "craft", id: "a", on: false }]);
+    }
+    expect(playerView(k.a).crafting).toBeUndefined();
+  });
+
+  test("design change: a refused craft never animates the station", () => {
+    const k = bench(null);
+    k.a.char.equip.weapon = "Blacksmith Hammer";
+    k.a.char.bag[0] = { item: "Damaged Sword, Long", qty: 1 };
+    k.a.char.bag[1] = { item: "Chunk of Iron", qty: 1 };
+    expect(lines(k.craft(1), "a")).toEqual([CRAFT_TEXT.noAnvil]);
+    expect(crafts(k.run(5), "b")).toEqual([]);
+  });
+
+  test("design change: a shove stops the animation; a map change arrives not crafting", () => {
+    const k = smith();
+    k.craft(1);
+    k.run(1);
+    pushOnMe(k.room, k.a, "D", k.b, {
+      rng: rngByN({ 25: [1] }),
+      emit: () => {},
+      tell: () => {},
+      crossings: [],
+      send: () => {},
+    });
+    expect(crafts(k.run(1), "b")).toEqual([{ e: "craft", id: "a", on: false }]);
+
+    const m = smith();
+    const dest = testMap("x1001y992");
+    const c = player("c", dest, 2, 2);
+    m.join(c);
+    m.craft(1);
+    m.run(1);
+    leaveRoom(m.world, m.a);
+    m.a.map = dest;
+    const arrive = enterRoom(m.world, m.a);
+    const seen = events(arrive, "c").flatMap((e) => (e.e === "enter" ? [e.player] : []));
+    expect(seen.map((v) => [v.id, v.crafting])).toEqual([["a", undefined]]);
+    expect(playerView(m.a).crafting).toBeUndefined();
+    const next = m.run(1);
+    expect(crafts(next, "a")).toEqual([]);
+    expect(crafts(next, "c")).toEqual([]);
+  });
+
+  test("bug fixed: a map resent by a World Editor save just after a craft starts says you craft", () => {
+    const k = smith();
+    k.craft(1);
+    // No tick has run: the map has not been told yet, but the crafter's own snapshot keeps the craft.
+    expect(refreshSnapshot(k.a, k.map, k.room.players).you.crafting).toBe(true);
+    expect(refreshSnapshot(k.b, k.map, k.room.players).players[0]?.crafting).toBeUndefined();
+    k.run(1);
+    expect(refreshSnapshot(k.b, k.map, k.room.players).players[0]?.crafting).toBe(true);
+  });
+
+  test("bug fixed: a shove into a wall that only turns the crafter ends the craft", () => {
+    const k = smith();
+    k.map.ground.push({ id: "wall", item: "Stove", x: 6, y: 6, kind: "admin", expiresAt: null });
+    k.craft(1);
+    k.run(1);
+    pushOnMe(k.room, k.a, "R", k.b, {
+      rng: rngByN({ 25: [1] }),
+      emit: () => {},
+      tell: () => {},
+      crossings: [],
+      send: () => {},
+    });
+    expect([k.a.x, k.a.y, k.a.facing]).toEqual([5, 6, "E"]);
+    // Shown as not crafting at once: no one sees the Stove it now faces animate.
+    expect(playerView(k.a).crafting).toBeUndefined();
+    const out = k.run(1);
+    expect(lines(out, "a")).toEqual([CRAFT_TEXT.interrupted]);
+    expect(locks(out, "a")).toEqual([false]);
+    expect(crafts(out, "b")).toEqual([{ e: "craft", id: "a", on: false }]);
+    expect(k.a.craft.timers).toEqual({});
+    expect(lines(k.run(600), "a")).not.toContain("Your Long Sword is ready!");
+    expect(k.a.char.bag[0]).toEqual({ item: "Damaged Sword, Long", qty: 1 });
+  });
+
+  test("bug fixed: a crafter who dies stops crafting; nothing finishes during the death lock or after", () => {
+    const k = smith();
+    k.craft(1);
+    k.run(490);
+    k.a.char.vitals.hp = 0;
+    const died = k.run(1);
+    expect(k.a.deadLock).toBeGreaterThan(0);
+    expect(crafts(died, "b")).toEqual([{ e: "craft", id: "a", on: false }]);
+    // The next frame ends the craft and frees the keys; the respawn's map change says nothing more.
+    const rest = k.run(60);
+    expect(k.a.deadLock).toBe(0);
+    const said = [...lines(died, "a"), ...lines(rest, "a")];
+    expect(said.filter((l) => l === CRAFT_TEXT.interrupted)).toHaveLength(1);
+    expect(said).not.toContain("Your Long Sword is ready!");
+    expect(locks(rest, "a")[0]).toBe(false);
+    expect(k.a.craft.timers).toEqual({});
+    expect(k.a.char.bag[0]).toEqual({ item: "Damaged Sword, Long", qty: 1 });
+  });
+
+  test("bug fixed: a hop off the spot (an arena challenge or defeat) ends the craft", () => {
+    const k = smith();
+    k.craft(1);
+    k.run(1);
+    const hop = hopTo(k.a, 2, 2);
+    // The hop's arrival is not shown crafting, so no station at the landing tile animates.
+    const arrived = hop.flatMap((e) => (e.e === "enter" ? [e.player.crafting] : []));
+    expect(arrived).toEqual([undefined]);
+    const out = k.run(1);
+    expect(lines(out, "a")).toEqual([CRAFT_TEXT.interrupted]);
+    expect(crafts(out, "b")).toEqual([{ e: "craft", id: "a", on: false }]);
+    expect(k.a.craft.timers).toEqual({});
+  });
+});
 
 describe("the Cauldron", () => {
   test("bug fixed: a deposit that completes nothing does not fizzle", () => {

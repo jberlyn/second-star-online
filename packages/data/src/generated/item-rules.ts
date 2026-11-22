@@ -3389,6 +3389,16 @@ export const itemRulesData: ItemRulesData = {
       },
       {
         "match": "exact",
+        "pattern": "Stove",
+        "overlay": "SV"
+      },
+      {
+        "match": "exact",
+        "pattern": "Anvil",
+        "overlay": "AN"
+      },
+      {
+        "match": "exact",
         "pattern": "Wall Torch",
         "overlay": "TW"
       },
@@ -3411,6 +3421,24 @@ export const itemRulesData: ItemRulesData = {
         "match": "exact",
         "pattern": "Chimney",
         "overlay": "CM"
+      }
+    ],
+    "inUse": [
+      {
+        "match": "exact",
+        "pattern": "Stove"
+      },
+      {
+        "match": "exact",
+        "pattern": "Anvil"
+      },
+      {
+        "match": "exact",
+        "pattern": "Alchemy Lab"
+      },
+      {
+        "match": "exact",
+        "pattern": "Carpentry Bench"
       }
     ],
     "layers": [

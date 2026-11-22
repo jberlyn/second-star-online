@@ -110,6 +110,11 @@ export const itemRulesDataSchema = z.strictObject({
     platforms: z.array(strictRow({ needs: z.string().min(1), atLeast: int })),
     /** The animated overlay, first match. */
     overlays: z.array(strictRow({ overlay: z.string().min(1) })),
+    /**
+     * Ground items whose overlay animates only while a player crafts facing them (an SSO addition:
+     * the crafting stations), any match.
+     */
+    inUse: z.array(z.strictObject(pattern)),
     /** The draw layer, first match, else `items`. */
     layers: z.array(strictRow({ layer: z.enum(["hidden", "overChars", "overLayer3"]) })),
     /** The pixel offset from the tile, first match. */

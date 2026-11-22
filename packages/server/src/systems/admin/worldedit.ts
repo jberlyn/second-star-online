@@ -24,12 +24,13 @@ import {
   footWalkGrid,
   lingoEq,
   mapName,
+  type PlayerView,
   shipWalkGrid,
   TEXT,
 } from "@secondstaronline/shared";
 
 import { type CasinoDeps, casinoMapChange } from "../casino/index.ts";
-import { mintContainerId } from "../crafting/craft.ts";
+import { craftingInPlace, mintContainerId } from "../crafting/craft.ts";
 import { leaveTrade } from "../economy/trade.ts";
 import { spawnHp } from "../monsters/spawn.ts";
 import {
@@ -264,12 +265,17 @@ export function applySave(
   return { out, removed, added };
 }
 
-/** The map, items and monsters again, without a map change. */
+/**
+ * The map, items and monsters again, without a map change. A craft keeps running, so `you` says
+ * so even when it started after the map was last told (the client keeps its key lock by it).
+ */
 export function refreshSnapshot(p: Player, m: WorldMap, all: readonly Player[]) {
+  const { crafting: _shown, ...view } = playerView(p);
+  const you: PlayerView = craftingInPlace(p) ? { ...view, crafting: true } : view;
   return {
     t: "snapshot" as const,
     map: mapView(m),
-    you: playerView(p),
+    you,
     self: selfState(p),
     players: all.filter((o) => o !== p).map(playerView),
     monsters: liveMonsterViews(m),

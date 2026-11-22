@@ -53,7 +53,7 @@ import { slotTick } from "../casino/slots.ts";
 import { hears } from "../chat/ignore.ts";
 import { hopTo } from "../combat/arena.ts";
 import { pollAttack } from "../combat/melee.ts";
-import { craftStep } from "../crafting/craft.ts";
+import { craftShownChange, craftStep } from "../crafting/craft.ts";
 import { regrowthStep } from "../crafting/gather.ts";
 import { saveClockStep } from "../economy/containers.ts";
 import { leaveTrade } from "../economy/trade.ts";
@@ -576,6 +576,13 @@ export function tick(world: World, deps: TickDeps): TickResult {
       actorPass();
     }
 
+    // A craft started, finished or stopped since the last tick: the faced station animates or stops.
+    for (const p of room.players) {
+      const ev = craftShownChange(p);
+      if (ev) {
+        all(ev);
+      }
+    }
     if (slotEvent || (world.tickNo % SLOT_SAVE_TICKS === 0 && map.slots.some((s) => s.dirty))) {
       slotSaves.add(map);
     }

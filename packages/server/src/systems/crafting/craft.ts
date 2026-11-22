@@ -34,15 +34,46 @@ export interface CraftTimer {
 /** A player's crafting state; client globals in 1.6, so fresh at every login. */
 export interface CraftState {
   timers: Partial<Record<CraftKind, CraftTimer>>;
+  /** Whether the map was last told this player crafts (the `craft` event): stations animate. */
+  shown: boolean;
+  /** Where the crafter stood and faced when the craft started; leaving it ends the craft. */
+  at: { x: number; y: number; facing: Player["facing"] } | null;
 }
 
 export function newCraftState(): CraftState {
-  return { timers: {} };
+  return { timers: {}, shown: false, at: null };
+}
+
+/**
+ * The `craft` event when a player's crafting changed since the map was last told, so the station
+ * they face animates only while it is in use (an SSO change). Null when nothing changed.
+ */
+export function craftShownChange(p: Player): { e: "craft"; id: string; on: boolean } | null {
+  const on = craftingInPlace(p);
+  if (on === p.craft.shown) {
+    return null;
+  }
+  p.craft.shown = on;
+  return { e: "craft", id: p.id, on };
 }
 
 /** True while any craft is running. */
 export function isCrafting(p: Player): boolean {
   return Object.keys(p.craft.timers).length > 0;
+}
+
+/**
+ * True while a craft runs and the crafter is alive and still stands and faces as at its start. A
+ * crafter who died, or was turned or moved off the spot (a shove into a wall, an arena hop), is
+ * shown as not crafting at once; `craftStep` ends the craft on the next frame.
+ */
+export function craftingInPlace(p: Player): boolean {
+  const at = p.craft.at;
+  return (
+    isCrafting(p) &&
+    p.deadLock === 0 &&
+    (at === null || (at.x === p.x && at.y === p.y && at.facing === p.facing))
+  );
 }
 
 /**
@@ -54,6 +85,7 @@ export function cancelCrafts(p: Player): Outgoing[] {
     return [];
   }
   p.craft.timers = {};
+  p.craft.at = null;
   return [tell(p, CRAFT_TEXT.interrupted)];
 }
 
@@ -66,6 +98,7 @@ export function stopCraftsOnMove(p: Player): Outgoing[] {
     return [];
   }
   p.craft.timers = {};
+  p.craft.at = null;
   p.keyLock = false;
   return [lock(p, false), tell(p, CRAFT_TEXT.interrupted)];
 }
@@ -148,6 +181,7 @@ export function craftIntent(room: Room, p: Player, slot: number, _ctx: CraftCtx)
   }
   // The same kind restarts its counter and overwrites its job.
   p.craft.timers[s.kind] = { counter: s.frames, job: s.job };
+  p.craft.at = { x: p.x, y: p.y, facing: p.facing };
   // 1.6 locked the keys here (its client-side input lock). The start's pause between item actions only
   // waited for the server and is not kept.
   p.keyLock = true;
@@ -192,9 +226,14 @@ function finish(p: Player, kind: CraftKind, job: CraftJob, ctx: CraftCtx, now: n
 /**
  * The four counters at their place in the frame script, after the item-action pause: Smith (whose FX
  * roll comes before its completion test), Cook, Build, Mix. Each fires on the frame it reads 1,
- * then counts down. A map change (a warp, an exit, a death's respawn) ends them (`cancelCrafts`).
+ * then counts down. A map change (a warp, an exit) ends them (`cancelCrafts`); so does a death, a
+ * frame after it, or being turned or moved off the spot (below).
  */
 export function craftStep(room: Room, p: Player, ctx: CraftCtx, now: number): Outgoing[] {
+  // The craft needs the crafter alive and standing at the station, as at its start.
+  if (isCrafting(p) && !craftingInPlace(p)) {
+    return stopCraftsOnMove(p);
+  }
   const out: Outgoing[] = [];
   for (const kind of CRAFT_ORDER) {
     const t = p.craft.timers[kind];
@@ -211,6 +250,9 @@ export function craftStep(room: Room, p: Player, ctx: CraftCtx, now: number): Ou
     if (t.counter <= 0 && p.craft.timers[kind] === t) {
       delete p.craft.timers[kind];
     }
+  }
+  if (!isCrafting(p)) {
+    p.craft.at = null;
   }
   return out;
 }

@@ -10,6 +10,7 @@ import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
 import { isFurniture } from "../housing/houses.ts";
+import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 import { leadingInteger } from "./inventory.ts";
 
 /** The pixel anchor of a tile (`32·x + 14`, `32·y − 3`). */
@@ -207,6 +208,33 @@ export function groundDrawOffset(name: string): { dx: number; dy: number } {
  */
 export function groundOverlay(name: string): string | null {
   return firstMatch(G.overlays, name)?.overlay ?? null;
+}
+
+/**
+ * True when a ground item's overlay animates only while the item is in use: the crafting stations
+ * (an SSO change; 1.6's Alchemy Lab always bubbled).
+ */
+export function overlayWhenInUse(name: string): boolean {
+  return anyMatch(G.inUse, name);
+}
+
+/** A player as the station test sees them: where they stand, the way they face, and if they craft. */
+export interface Crafter {
+  x: number;
+  y: number;
+  facing: Facing;
+  crafting: boolean;
+}
+
+/** True when a crafting player faces the tile (x, y): the station there is in use. */
+export function stationInUse(x: number, y: number, crafters: Iterable<Crafter>): boolean {
+  for (const c of crafters) {
+    const [dx, dy] = FACING_DELTA[c.facing];
+    if (c.crafting && c.x + dx === x && c.y + dy === y) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

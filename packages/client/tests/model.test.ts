@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { MapView, PlayerView, SelfState } from "@secondstaronline/shared";
-import { ACTION_PAUSE, NO_EQUIPMENT, NO_FOG } from "@secondstaronline/shared";
+import { ACTION_PAUSE, NO_EQUIPMENT, NO_FOG, stationInUse } from "@secondstaronline/shared";
 
 import {
   animObjFrame,
@@ -9,6 +9,7 @@ import {
   applySnapshot,
   applyYou,
   clientTick,
+  crafters,
   createModel,
   type Intent,
   PREDICTION_TIMEOUT_TICKS,
@@ -341,6 +342,61 @@ describe("animated-object cycle", () => {
     const frames = Array.from({ length: 26 }, (_, t) => animObjFrame(t));
     expect(frames.slice(0, 13)).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4]);
     expect(frames.slice(13)).toEqual(frames.slice(0, 13));
+  });
+});
+
+describe("stations in use", () => {
+  test("design change: a craft event animates the station the crafter faces, until it stops", () => {
+    const { m } = setup();
+    const bob: PlayerView = { ...you, id: "bob", name: "bob", x: 8, y: 6, facing: "W" };
+    applyDelta(m, [{ e: "enter", player: bob }]);
+    expect(stationInUse(7, 6, crafters(m))).toBe(false);
+    applyDelta(m, [{ e: "craft", id: "bob", on: true }]);
+    expect(stationInUse(7, 6, crafters(m))).toBe(true);
+    expect(stationInUse(5, 4, crafters(m))).toBe(false);
+    applyDelta(m, [{ e: "craft", id: "me", on: true }]);
+    expect(stationInUse(5, 4, crafters(m))).toBe(true);
+    applyDelta(m, [
+      { e: "craft", id: "bob", on: false },
+      { e: "craft", id: "me", on: false },
+    ]);
+    expect(stationInUse(7, 6, crafters(m))).toBe(false);
+    expect(stationInUse(5, 4, crafters(m))).toBe(false);
+  });
+
+  test("a player already crafting when you arrive shows it", () => {
+    const m = createModel();
+    const bob: PlayerView = {
+      ...you,
+      id: "bob",
+      name: "bob",
+      x: 8,
+      y: 6,
+      facing: "W",
+      crafting: true,
+    };
+    applySnapshot(m, { map, you, self: self(), players: [bob], monsters: [] });
+    expect(stationInUse(7, 6, crafters(m))).toBe(true);
+    applyDelta(m, [{ e: "leave", id: "bob" }]);
+    expect(stationInUse(7, 6, crafters(m))).toBe(false);
+  });
+
+  test("bug fixed: a map resent mid-craft (a World Editor save) keeps your craft and its key lock", () => {
+    const m = createModel();
+    applySnapshot(m, {
+      map,
+      you: { ...you, crafting: true },
+      self: self(),
+      players: [],
+      monsters: [],
+    });
+    expect(m.self?.crafting).toBe(true);
+    expect(m.keyLock).toBe(true);
+    expect(stationInUse(5, 4, crafters(m))).toBe(true);
+    // A real map change ends the craft: the snapshot clears the lock.
+    applySnapshot(m, { map, you, self: self(), players: [], monsters: [] });
+    expect(m.self?.crafting).toBe(false);
+    expect(m.keyLock).toBe(false);
   });
 });
 

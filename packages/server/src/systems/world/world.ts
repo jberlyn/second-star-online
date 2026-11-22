@@ -60,7 +60,12 @@ import {
   withTile,
 } from "@secondstaronline/shared";
 
-import { type CraftState, cancelCrafts, newCraftState } from "../crafting/craft.ts";
+import {
+  type CraftState,
+  cancelCrafts,
+  craftingInPlace,
+  newCraftState,
+} from "../crafting/craft.ts";
 import type { ShopLedger } from "../economy/shop.ts";
 import { archiveNpcStore, type NpcStore } from "../monsters/npcfiles.ts";
 import { type MonsterSlot, monsterView } from "../monsters/slots.ts";
@@ -1126,6 +1131,7 @@ export function playerView(p: Player): PlayerView {
     step: p.stepFrames > 0 ? { fromX: p.x - dx, fromY: p.y - dy, frames: p.stepFrames } : null,
     equip: { ...p.char.equip },
     body: p.spell.body,
+    ...(p.craft.shown && craftingInPlace(p) ? { crafting: true as const } : {}),
   };
 }
 
@@ -1187,6 +1193,9 @@ function roomFor(world: World, map: WorldMap): Room {
 export function enterRoom(world: World, p: Player): Outgoing[] {
   const room = roomFor(world, p.map);
   const out: Outgoing[] = [];
+  // The map change ends any craft (below), so the new map sees the player arrive not crafting; the
+  // old map saw them leave.
+  p.craft.shown = false;
   for (const other of room.players) {
     out.push({
       to: other.id,

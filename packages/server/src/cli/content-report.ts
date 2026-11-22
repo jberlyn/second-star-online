@@ -174,6 +174,10 @@ export const TABLES: Record<string, TableInfo> = {
     decides: "blocks until a skill (or the level) reaches the row's threshold",
     wins: "any",
   },
+  [`item-rules.json ground.inUse`]: {
+    decides: "ground items whose overlay animates only while a crafting player faces them",
+    wins: "any",
+  },
   [`item-rules.json ground.tipless`]: {
     decides: "ground items the hover tip never names",
     wins: "any",

@@ -10,7 +10,9 @@ import {
   fixedInPlace,
   groundOverlay,
   groundTipName,
+  overlayWhenInUse,
   showsClockFace,
+  stationInUse,
 } from "../../src/rules/inventory/ground.ts";
 
 /** Ctrl by a player of middling Strength away from their own premises. */
@@ -141,6 +143,38 @@ describe("ground overlays", () => {
       kind: "text",
       text,
     });
+  });
+
+  test("design change: a Stove and an Anvil animate like the other crafting stations", () => {
+    expect(groundOverlay("Stove")).toBe("SV");
+    expect(groundOverlay("Anvil")).toBe("AN");
+    expect(groundOverlay("Alchemy Lab")).toBe("AL");
+    expect(groundOverlay("Stove Top")).toBeNull();
+    expect(groundOverlay("Anvils")).toBeNull();
+  });
+
+  test("design change: the crafting stations animate only in use; scenery always does", () => {
+    for (const station of ["Stove", "Anvil", "Alchemy Lab", "Carpentry Bench"]) {
+      expect(overlayWhenInUse(station)).toBe(true);
+    }
+    for (const scenery of ["Campfire", "Wall Torch", "Fountain", "5 Blue Crystals", "Apple"]) {
+      expect(overlayWhenInUse(scenery)).toBe(false);
+    }
+  });
+
+  test("a station is in use while a crafting player faces it", () => {
+    const at = { x: 5, y: 6, facing: "N" as const };
+    expect(stationInUse(5, 5, [{ ...at, crafting: true }])).toBe(true);
+    expect(stationInUse(5, 5, [{ ...at, crafting: false }])).toBe(false);
+    expect(stationInUse(5, 5, [{ ...at, facing: "E", crafting: true }])).toBe(false);
+    expect(stationInUse(5, 5, [{ x: 5, y: 5, facing: "N", crafting: true }])).toBe(false);
+    expect(
+      stationInUse(5, 5, [
+        { ...at, crafting: false },
+        { x: 4, y: 5, facing: "E", crafting: true },
+      ]),
+    ).toBe(true);
+    expect(stationInUse(5, 5, [])).toBe(false);
   });
 
   test("the animated overlays match Crystal piles or exact fixture names", () => {

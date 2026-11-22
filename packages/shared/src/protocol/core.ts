@@ -130,6 +130,8 @@ export interface PlayerView {
    * from everyone else), or null.
    */
   body: number | null;
+  /** Crafting (an SSO addition): the station they face animates. Absent when not crafting. */
+  crafting?: true;
 }
 
 /** A monster in roster slot 1-4 as a client draws it (sprites 180-183). */
@@ -277,6 +279,8 @@ export type DeltaEvent =
   | { e: "fxend"; slot: number; name: string }
   /** A player's body changes or reverts. */
   | { e: "body"; id: string; body: number | null }
+  /** A player starts or stops crafting (SSO): the station they face animates while `on`. */
+  | { e: "craft"; id: string; on: boolean }
   /**
    * A spell's floatie over a monster (the spell hit check): colour 124 with the splat and
    * `hitsound` for damage, 46 for a heal (the element heals keep the splat and sound); `kill` shows

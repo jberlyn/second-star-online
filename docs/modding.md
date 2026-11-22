@@ -66,6 +66,7 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `ground.blocks` | Ground items that block players and monsters; one the world placed cannot be picked up | Any | Boolean |
 | `ground.platforms` | Blocks until a skill or level reaches `atLeast` | Any | `needs` skill or `level` |
 | `ground.overlays` | Animated overlay on a ground item | First | `overlay`; default none |
+| `ground.inUse` | Ground items whose overlay animates only while a crafting player faces them | Any | Boolean |
 | `ground.layers` | Draw layer | First | `hidden`, `overChars`, or `overLayer3`; default items layer |
 | `ground.offsets` | Pixel offset from tile | First | `dx`, `dy`; default `0, 0` |
 | `ground.tipless` | Ground items the hover tip never names (exits, overlays, markers) | Any | Boolean |
