@@ -257,6 +257,12 @@ describe("bars", () => {
       ["21px", "15px"],
       ["36px", "14px"],
     ]);
+    // Each value's line box starts on its bar's visible window (y 70, 85, 101), not the taller
+    // hover zone or the track, part of which sits behind the bezel.
+    const tops = ["hp", "sp", "xp"].map(
+      (k) => (b.el.querySelector(`.${k}-value`) as HTMLElement).style.top,
+    );
+    expect(tops).toEqual(["4px", "4px", "5px"]);
     const [hp, sp] = zones;
     hp?.dispatchEvent(new PointerEvent("pointerenter", { pointerType: "touch" }));
     expect(shown()).toEqual([false, false, false]);

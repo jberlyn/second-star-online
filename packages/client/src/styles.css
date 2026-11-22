@@ -1388,19 +1388,19 @@ body {
   pointer-events: auto;
   cursor: default;
 }
+/* The line box is the bar's 5-px visible window (top from ui/bars.ts), so the value centres on it. */
 .bar-value {
   position: absolute;
   left: 0;
-  top: 1px;
   width: 100%;
-  height: 12px;
+  height: 5px;
   visibility: hidden;
   text-align: center;
   color: #fff;
   font:
-    bold 10px Arial,
+    bold 8px Arial,
     sans-serif;
-  line-height: 12px;
+  line-height: 5px;
   pointer-events: none;
   text-shadow: 0 1px #000;
 }

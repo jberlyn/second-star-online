@@ -33,6 +33,13 @@ const SP_TRACK_Y = 84;
 /** The third slot shows y 101–105, with a pixel behind the bezel on either side. */
 const XP_TRACK_Y = 100;
 const XP_TRACK_H = 7;
+/**
+ * The 5 rows each bar shows through Internal #186 (y 70-74, 85-89, 101-105). The tracks
+ * run a pixel or two behind the bezel (SP's bottom two rows are hidden), so values centre here.
+ */
+const HP_WINDOW_Y = 70;
+const SP_WINDOW_Y = 85;
+const XP_WINDOW_Y = 101;
 const HP_HOVER_Y = 66;
 const SP_HOVER_Y = 81;
 const XP_HOVER_Y = 96;
@@ -115,12 +122,15 @@ export function createBars(a: Assets): Bars {
       z.classList.remove("bar-hovered");
     }
   };
-  const hover = (cls: string, y: number, hgt: number, label: HTMLElement) => {
+  // The value's line box is the bar's visible window, so it centres on what shows of the bar
+  // rather than on the taller hover zone (styles.css nudges Arial's figures onto the middle).
+  const hover = (cls: string, y: number, hgt: number, label: HTMLElement, windowY: number) => {
     const h = action(document.createElement("div"), "bars-show-values");
     h.className = `bar-hover ${cls}`;
     at(h, SLOT_X, y, 321);
     h.style.width = `${SLOT_W}px`;
     h.style.height = `${hgt}px`;
+    label.style.top = `${windowY - y}px`;
     h.append(label);
     h.addEventListener("pointerenter", (event) => {
       if (event.pointerType !== "touch") {
@@ -146,9 +156,9 @@ export function createBars(a: Assets): Bars {
     hpFillBox,
     spFillBox,
     xpFillBox,
-    hover("hp-hover", HP_HOVER_Y, 15, hpText),
-    hover("sp-hover", SP_HOVER_Y, 15, spText),
-    hover("xp-hover", XP_HOVER_Y, 14, xpText),
+    hover("hp-hover", HP_HOVER_Y, 15, hpText, HP_WINDOW_Y),
+    hover("sp-hover", SP_HOVER_Y, 15, spText, SP_WINDOW_Y),
+    hover("xp-hover", XP_HOVER_Y, 14, xpText, XP_WINDOW_Y),
   );
   const sr = document.createElement("span");
   sr.className = "sr-only";
