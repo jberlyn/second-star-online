@@ -144,11 +144,9 @@
     },
     {
       "name": "Blue Crystal",
-      "icon": null
-    },
-    {
-      "name": "Blue Crystals",
+      "sprite": "Blue Crystals",
       "variants": [
+        "Blue Crystals",
         "Blue crystals",
         "blue crystals"
       ],
@@ -493,10 +491,6 @@
       }
     },
     {
-      "name": "Crown",
-      "icon": null
-    },
-    {
       "name": "Crush Book",
       "icon": {
         "member": 228,
@@ -511,10 +505,6 @@
         "castLib": 9,
         "asset": "bitmaps/234697_Cyclops_Burger.png"
       }
-    },
-    {
-      "name": "Cyclops Costume",
-      "icon": null
     },
     {
       "name": "Cyclops Meat",
@@ -534,6 +524,7 @@
     },
     {
       "name": "Damaged Armor",
+      "retired": true,
       "icon": null
     },
     {
@@ -617,10 +608,6 @@
       }
     },
     {
-      "name": "Damaged Helm",
-      "icon": null
-    },
-    {
       "name": "Damaged Helm, Chain",
       "icon": {
         "member": 172,
@@ -685,10 +672,6 @@
       }
     },
     {
-      "name": "Damaged Shield",
-      "icon": null
-    },
-    {
       "name": "Damaged Shield, Fire",
       "icon": {
         "member": 167,
@@ -737,10 +720,6 @@
       }
     },
     {
-      "name": "Damaged Sword",
-      "icon": null
-    },
-    {
       "name": "Damaged Sword, Broad",
       "icon": {
         "member": 278,
@@ -771,10 +750,6 @@
         "castLib": 9,
         "asset": "bitmaps/440284_Damaged_Sword_Knight.png"
       }
-    },
-    {
-      "name": "Damaged Sword, Knight's",
-      "icon": null
     },
     {
       "name": "Damaged Sword, Long",
@@ -828,14 +803,6 @@
       }
     },
     {
-      "name": "Dark Shield",
-      "icon": null
-    },
-    {
-      "name": "Dark Staff",
-      "icon": null
-    },
-    {
       "name": "Dark Sword",
       "icon": {
         "member": 205,
@@ -884,20 +851,12 @@
       }
     },
     {
-      "name": "Earth Orb",
-      "icon": null
-    },
-    {
       "name": "Emerald Key",
       "icon": {
         "member": 96,
         "castLib": 9,
         "asset": "bitmaps/183909_Emerald_Key.png"
       }
-    },
-    {
-      "name": "Fawn Cap",
-      "icon": null
     },
     {
       "name": "Film",
@@ -938,10 +897,6 @@
         "castLib": 9,
         "asset": "bitmaps/183912_Fire_Key.png"
       }
-    },
-    {
-      "name": "Fire Orb",
-      "icon": null
     },
     {
       "name": "Fire Pot",
@@ -1090,20 +1045,12 @@
       "icon": null
     },
     {
-      "name": "Gold Armor",
-      "icon": null
-    },
-    {
       "name": "Gold Axe",
       "icon": {
         "member": 181,
         "castLib": 9,
         "asset": "bitmaps/474435_Gold_Axe.png"
       }
-    },
-    {
-      "name": "Gold Boots",
-      "icon": null
     },
     {
       "name": "Gold Crown",
@@ -1114,20 +1061,12 @@
       }
     },
     {
-      "name": "Gold Helm",
-      "icon": null
-    },
-    {
       "name": "Gold Key",
       "icon": {
         "member": 102,
         "castLib": 9,
         "asset": "bitmaps/183915_Gold_Key.png"
       }
-    },
-    {
-      "name": "Gold Shield",
-      "icon": null
     },
     {
       "name": "Gold Staff",
@@ -1155,11 +1094,9 @@
     },
     {
       "name": "Green Crystal",
-      "icon": null
-    },
-    {
-      "name": "Green Crystals",
+      "sprite": "Green Crystals",
       "variants": [
+        "Green Crystals",
         "Green crystals"
       ],
       "icon": {
@@ -1170,6 +1107,7 @@
     },
     {
       "name": "Green Laser Sword",
+      "retired": true,
       "icon": null
     },
     {
@@ -1206,6 +1144,7 @@
     },
     {
       "name": "Hammer",
+      "retired": true,
       "icon": null
     },
     {
@@ -1281,10 +1220,6 @@
       }
     },
     {
-      "name": "Ice Cap",
-      "icon": null
-    },
-    {
       "name": "Ice Hammer",
       "icon": {
         "member": 108,
@@ -1339,10 +1274,6 @@
         "castLib": 9,
         "asset": "bitmaps/342369_Illusionary_Spikes_Book.png"
       }
-    },
-    {
-      "name": "Imp Costume",
-      "icon": null
     },
     {
       "name": "Inxition Book",
@@ -1445,6 +1376,7 @@
     },
     {
       "name": "Laser Sword",
+      "retired": true,
       "icon": null
     },
     {
@@ -1478,10 +1410,6 @@
         "castLib": 9,
         "asset": "bitmaps/195187_Leather_Cap.png"
       }
-    },
-    {
-      "name": "Lizard Costume",
-      "icon": null
     },
     {
       "name": "Logs",
@@ -1544,6 +1472,7 @@
     },
     {
       "name": "Magic Shield",
+      "retired": true,
       "icon": null
     },
     {
@@ -1553,10 +1482,6 @@
         "castLib": 9,
         "asset": "bitmaps/342371_Magic_Shield_Book.png"
       }
-    },
-    {
-      "name": "Magic Shield Spell Book",
-      "icon": null
     },
     {
       "name": "Magical Shield",
@@ -1682,10 +1607,6 @@
       }
     },
     {
-      "name": "Ocarina",
-      "icon": null
-    },
-    {
       "name": "Oraku's Orb",
       "icon": {
         "member": 115,
@@ -1782,10 +1703,6 @@
       }
     },
     {
-      "name": "Pig Costume",
-      "icon": null
-    },
-    {
       "name": "Plate Armor",
       "icon": {
         "member": 6,
@@ -1826,10 +1743,6 @@
       }
     },
     {
-      "name": "Poison Dart Book",
-      "icon": null
-    },
-    {
       "name": "Portal Book",
       "icon": {
         "member": 232,
@@ -1863,10 +1776,10 @@
     },
     {
       "name": "Purple Crystal",
-      "icon": null
-    },
-    {
-      "name": "Purple Crystals",
+      "sprite": "Purple Crystals",
+      "variants": [
+        "Purple Crystals"
+      ],
       "icon": {
         "member": 518,
         "castLib": 9,
@@ -1926,23 +1839,16 @@
       }
     },
     {
-      "name": "red crystal",
+      "name": "Red Crystal",
+      "sprite": "Red Crystals",
       "variants": [
-        "Red Crystal"
+        "Red Crystals"
       ],
-      "icon": null
-    },
-    {
-      "name": "Red Crystals",
       "icon": {
         "member": 515,
         "castLib": 9,
         "asset": "bitmaps/319438_Red_Crystals.png"
       }
-    },
-    {
-      "name": "Red Laser Sword",
-      "icon": null
     },
     {
       "name": "Red Potion",
@@ -2025,22 +1931,6 @@
       }
     },
     {
-      "name": "Rune Armor",
-      "icon": null
-    },
-    {
-      "name": "Rune Helm",
-      "icon": null
-    },
-    {
-      "name": "Rune Shield",
-      "icon": null
-    },
-    {
-      "name": "Rune Sword",
-      "icon": null
-    },
-    {
       "name": "Saw",
       "icon": {
         "member": 175,
@@ -2050,6 +1940,7 @@
     },
     {
       "name": "Scimitar",
+      "retired": true,
       "icon": null
     },
     {
@@ -2299,10 +2190,6 @@
       }
     },
     {
-      "name": "Stone Guild Hall Deed",
-      "icon": null
-    },
-    {
       "name": "Stone Skin Book",
       "icon": {
         "member": 227,
@@ -2533,10 +2420,6 @@
       }
     },
     {
-      "name": "Water Orb",
-      "icon": null
-    },
-    {
       "name": "Watering Bucket",
       "icon": {
         "member": 419,
@@ -2586,11 +2469,9 @@
     },
     {
       "name": "White Crystal",
-      "icon": null
-    },
-    {
-      "name": "White Crystals",
+      "sprite": "White Crystals",
       "variants": [
+        "White Crystals",
         "White crystals"
       ],
       "icon": {
@@ -2624,15 +2505,7 @@
       }
     },
     {
-      "name": "White Tiara",
-      "icon": null
-    },
-    {
       "name": "Wind Cabinet",
-      "icon": null
-    },
-    {
-      "name": "Wind Orb",
       "icon": null
     },
     {
@@ -2701,10 +2574,10 @@
     },
     {
       "name": "Yellow Crystal",
-      "icon": null
-    },
-    {
-      "name": "Yellow Crystals",
+      "sprite": "Yellow Crystals",
+      "variants": [
+        "Yellow Crystals"
+      ],
       "icon": {
         "member": 517,
         "castLib": 9,
@@ -2899,19 +2772,11 @@
     "Emerald Key",
     "Fire Key",
     "Gold Key",
-    "Laser Sword",
-    "Red Laser Sword",
-    "Green Laser Sword",
     "Sword of Hope",
-    "Hammer",
     "Thor's Hammer",
     "Knight Shield",
     "Leather Cap",
-    "Crown",
-    "Damaged Shield",
     "Plate Helm",
-    "Damaged Armor",
-    "Damaged Helm",
     "Gold Staff",
     "Axe",
     "Gold Axe",
@@ -2926,10 +2791,6 @@
     "Bowmaster's Ring",
     "Logs",
     "Saw",
-    "Water Orb",
-    "Fire Orb",
-    "Earth Orb",
-    "Wind Orb",
     "Dark Sword",
     "Unholy Lance",
     "Trout",
@@ -2940,7 +2801,6 @@
     "Small Guild Hall Deed",
     "Small House Deed",
     "Blue Cottage Deed",
-    "Damaged Sword",
     "Trumpet",
     "Tom Tom",
     "Clarinet",
@@ -2949,7 +2809,6 @@
     "Piano",
     "Dragon Wing",
     "Mirror",
-    "Ocarina",
     "Lord's Staff",
     "Argon's Plate",
     "Ninja Outfit",
@@ -3002,7 +2861,6 @@
     "Yeti Burger",
     "Orc Pot Pie",
     "Dark Scimitar",
-    "Scimitar",
     "Bo",
     "Potion Bottle",
     "Blue Potion",
@@ -3046,7 +2904,6 @@
     "Fireball Book",
     "Wind Wave Book",
     "Firebolt Book",
-    "Poison Dart Book",
     "Weaken Book",
     "Bless Book",
     "Firesword Book",

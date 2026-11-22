@@ -1,6 +1,6 @@
 /**
  * Ground items. An entry is the original's `Name:px-py` string: a name (the quantity is part of it,
- * "15 Gold", "5 Blue Crystals") on a tile. Pure rules shared by the server and the client's
+ * "15 Gold", "5 Blue Crystal") on a tile. Pure rules shared by the server and the client's
  * prediction and drawing.
  */
 import { type ContentStore, content, onContent } from "../../content/store.ts";
@@ -10,7 +10,7 @@ import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
 import { isFurniture } from "../housing/houses.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
-import { itemLabel, itemSprite, leadingInteger } from "./inventory.ts";
+import { crystalColour, crystalPile, itemLabel, itemSprite, leadingInteger } from "./inventory.ts";
 
 /** The pixel anchor of a tile (`32·x + 14`, `32·y − 3`). */
 export function tilePixel(x: number, y: number): { px: number; py: number } {
@@ -156,13 +156,10 @@ export function groundPicture(name: string): string {
       pic = picture;
     }
   }
-  if (lingoContains(name, " Crystal")) {
-    // The last colour to match wins.
-    for (const c of ["Blue", "Red", "Green", "Yellow", "Purple", "White"]) {
-      if (lingoContains(name, c)) {
-        pic = `${c}Crystal`;
-      }
-    }
+  // A crystal, or a pile of them (`5 Blue Crystal`), by its whole name.
+  const colour = crystalColour(crystalPile(name)?.item ?? name);
+  if (colour) {
+    pic = `${colour}Crystal`;
   }
   return pic;
 }

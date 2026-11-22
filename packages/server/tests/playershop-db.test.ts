@@ -144,8 +144,9 @@ describe("the shopkeeper", () => {
   });
 
   test("a taken name is rolled again; 1.6 overwrote the file", async () => {
-    // The first roll is Tela (T e l a, no ending), the crystal merchant's file; then Zumu.
-    const g = game({ 17: [15], 5: [2, 4, 1], 11: [1] });
+    // The first roll is Tela (T e l a, no ending), the crystal merchant's file; then Zumu. (The
+    // archive's quest line with no NPC is rolled again at start, taking the first random(17).)
+    const g = game({ 17: [1, 15], 5: [2, 4, 1], 11: [1] });
     await buildShop(g);
     expect(loadPlayerShops(db).map((s) => s.npc)).toEqual(["Zumu"]);
     expect(g.world.npcs.get("tela")?.text).toContain("SEL|");

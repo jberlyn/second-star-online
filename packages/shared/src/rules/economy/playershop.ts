@@ -119,13 +119,11 @@ let WHITELIST: ContentStore["items"]["playerShopWhitelist"];
 
 /**
  * The item equals `<name>` for a whitelist line (ignoring case). The list names crystals in the
- * singular ("Blue Crystal") while every bag holds "<colour> Crystals", so the plural is accepted
- * too (1.6 had no alias, so no shop could stock crystals).
+ * singular ("Blue Crystal"), as the bag does (in 1.6 the bag held "Blue Crystals", so no shop
+ * could stock crystals).
  */
 export function onShopWhitelist(item: string): boolean {
-  return WHITELIST.some(
-    (w) => lingoEq(w, item) || (/ Crystal$/i.test(w) && lingoEq(`${w}s`, item)),
-  );
+  return WHITELIST.some((w) => lingoEq(w, item));
 }
 
 /**

@@ -164,6 +164,10 @@ describe("AttPower", () => {
     const arrows = { weapon: "Wooden Bow", offHand: "Blue Arrows" };
     expect(bowRefusal(arrows, [])).toBe("You don't have any blue crystals left!");
     expect(bowRefusal(arrows, [{ item: "Blue Crystal", qty: 1 }])).toBeNull();
+    // Only the crystal itself counts (1.6 took any line containing "Blue Cry").
+    expect(bowRefusal(arrows, [{ item: "Blue Crystal Ring", qty: 1 }])).toBe(
+      "You don't have any blue crystals left!",
+    );
     // Anything that is not a bow is never refused.
     expect(bowRefusal({ weapon: "Knife", offHand: "NOTHING" }, [])).toBeNull();
   });

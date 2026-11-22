@@ -2,8 +2,8 @@
  * The checks a merged store passes before it is published: every dataset against its schema,
  * then the key and name rules, then cross-references. Cross-references are compared with the
  * published store, so only a reference the change breaks (or adds broken) is reported: the
- * Classic pack has references 1.6 never resolved (the singular crystals in the player-shop list,
- * "scroll" in the quests), and those stay as they were. Pure.
+ * Classic pack has references 1.6 never resolved ("scroll" in the quests), and those stay as they
+ * were. Pure.
  */
 import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
 import {
@@ -220,7 +220,7 @@ export interface Reference {
   npcLine?: boolean;
   /**
    * The name is built from the row rather than written in it whole (a mining colour makes
-   * `<colour> Crystals`; the Assassin's prizes are one colon-separated line): a cleanup neither
+   * `<colour> Crystal`; the Assassin's prizes are one colon-separated line): a cleanup neither
    * removes nor replaces it, and the operator edits the row.
    */
   fixed?: boolean;
@@ -389,7 +389,7 @@ export function referencesOf(data: ContentData): Reference[] {
   });
   // What mining strikes, faction deaths and the Assassin's default prizes make.
   g.mining.colours.forEach((c, i) => {
-    add(gathering, ["mining", "colours", i], "item", `${c} Crystals`, null, false, true);
+    add(gathering, ["mining", "colours", i], "item", `${c} Crystal`, null, false, true);
   });
   for (const f of data.social.factions) {
     add({ dataset: "social", part: "factions", key: String(f.id) }, ["head"], "item", f.head, null);

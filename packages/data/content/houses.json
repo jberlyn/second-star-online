@@ -49,12 +49,6 @@
       "text": null
     },
     {
-      "deed": "Stone Guild Hall Deed",
-      "use": "nothing",
-      "house": null,
-      "text": "The Stone Guild Hall cannot be built yet, so this deed can't be used."
-    },
-    {
       "deed": "Fortress Guild Hall Deed",
       "use": "place",
       "house": "Fortress Guild Hall",
@@ -1642,7 +1636,6 @@
         "roll": 1,
         "chest": "Gold Chest",
         "source": [
-          "Hammer",
           "Thor's Hammer",
           "Fire Staff"
         ]
@@ -1675,10 +1668,8 @@
         "source": [
           "Leather Cap",
           "Small Shield",
-          "Laser Sword",
           "Gold Staff",
-          "Axe",
-          "Green Laser Sword"
+          "Axe"
         ]
       }
     ]

@@ -252,7 +252,7 @@ describe("bow shots", () => {
     a.facing = "E";
     a.timers.canAttack = true;
     a.char.equip = { ...a.char.equip, weapon: "Wooden Bow", offHand };
-    a.char.bag[0] = { item: "Blue Crystals", qty: 5 };
+    a.char.bag[0] = { item: "Blue Crystal", qty: 5 };
     const slot = s.map.slots[0];
     if (!slot) {
       throw new Error("no monster slot");
@@ -277,14 +277,14 @@ describe("bow shots", () => {
   test("a bow with Blue Arrows and a crystal shoots an arrow and spends the crystal, hitting nothing in melee", () => {
     const { a, hp, fx } = archer("Blue Arrows");
     expect(fx).toContain("Blue ArrowsR");
-    expect(a.char.bag[0]).toMatchObject({ item: "Blue Crystals", qty: 4 });
+    expect(a.char.bag[0]).toMatchObject({ item: "Blue Crystal", qty: 4 });
     expect(hp).toBe(1000);
   });
 
   test('an off-hand that only contains "Arrows" counts as no arrows: refused, no melee, no crystal', () => {
     const { a, hp, fx } = archer("Rusty Arrows");
     expect(fx.some((n) => n.includes("Arrows"))).toBe(false);
-    expect(a.char.bag[0]).toMatchObject({ item: "Blue Crystals", qty: 5 });
+    expect(a.char.bag[0]).toMatchObject({ item: "Blue Crystal", qty: 5 });
     expect(hp).toBe(1000);
     expect(a.timers.atDelay).toBe(0);
   });

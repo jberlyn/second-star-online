@@ -49,11 +49,8 @@ describe("deeds", () => {
   test("the Airship Deed runs the airship drop", () => {
     expect(deedUse("Airship Deed")).toEqual({ kind: "vehicle", vehicle: "Airship" });
   });
-  test("bug fixed: the Stone Guild Hall Deed says it cannot be built", () => {
-    expect(deedUse("Stone Guild Hall Deed")).toEqual({
-      kind: "nothing",
-      text: "The Stone Guild Hall cannot be built yet, so this deed can't be used.",
-    });
+  test("bug fixed: the Stone Guild Hall Deed is not in the Classic pack (no art, no source)", () => {
+    expect(deedUse("Stone Guild Hall Deed")).toBeNull();
   });
   test("the seven house deeds start placement", () => {
     for (const h of [

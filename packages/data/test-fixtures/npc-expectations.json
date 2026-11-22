@@ -542,7 +542,7 @@
           "stock": 0
         },
         {
-          "item": "red crystal",
+          "item": "Red Crystal",
           "line": 10,
           "price": 1,
           "stock": 96
@@ -560,7 +560,7 @@
           "price": 20
         },
         {
-          "item": "red crystal",
+          "item": "Red Crystal",
           "line": 11,
           "price": 1
         }
@@ -963,37 +963,37 @@
           "stock": 9876612
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 3,
           "price": 7,
           "stock": 845590
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 4,
           "price": 15,
           "stock": 9839648
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 5,
           "price": 18,
           "stock": 820352
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 6,
           "price": 20,
           "stock": 887069
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 7,
           "price": 23,
           "stock": 886417
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 8,
           "price": 26,
           "stock": 865140
@@ -1012,32 +1012,32 @@
           "price": 2
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 11,
           "price": 4
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 12,
           "price": 7
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 13,
           "price": 9
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 14,
           "price": 10
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 15,
           "price": 11
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 16,
           "price": 13
         },
@@ -1671,14 +1671,7 @@
       "bio": ["Mermaid"],
       "profile": [],
       "chatter": [],
-      "sells": [
-        {
-          "item": "Damaged Armor",
-          "line": 2,
-          "price": 10,
-          "stock": 999
-        }
-      ],
+      "sells": [],
       "buys": [],
       "gold": null,
       "banker": false
@@ -2097,37 +2090,37 @@
           "stock": 10624
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 7,
           "price": 7,
           "stock": 955947
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 9,
           "price": 15,
           "stock": 9980945
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 11,
           "price": 18,
           "stock": 1011276
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 13,
           "price": 20,
           "stock": 992135
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 15,
           "price": 23,
           "stock": 968132
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 17,
           "price": 26,
           "stock": 53757
@@ -2140,32 +2133,32 @@
           "price": 2
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 8,
           "price": 4
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 10,
           "price": 7
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 12,
           "price": 9
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 14,
           "price": 10
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 16,
           "price": 11
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 18,
           "price": 13
         },
@@ -2668,37 +2661,37 @@
           "stock": 4755
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 6,
           "price": 7,
           "stock": 949266
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 8,
           "price": 15,
           "stock": 9986084
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 10,
           "price": 18,
           "stock": 1012522
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 12,
           "price": 20,
           "stock": 996625
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 14,
           "price": 23,
           "stock": 824344
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 16,
           "price": 26,
           "stock": 915285
@@ -2706,32 +2699,32 @@
       ],
       "buys": [
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 7,
           "price": 4
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 9,
           "price": 7
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 11,
           "price": 9
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 13,
           "price": 10
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 15,
           "price": 11
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 17,
           "price": 13
         },
@@ -2785,31 +2778,31 @@
           "stock": 9883179
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 6,
           "price": 7,
           "stock": 9919922
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 8,
           "price": 15,
           "stock": 99948602
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 10,
           "price": 20,
           "stock": 9911961
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 12,
           "price": 18,
           "stock": 9986790
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 14,
           "price": 23,
           "stock": 908927
@@ -2821,7 +2814,7 @@
           "stock": 9980
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 17,
           "price": 26,
           "stock": 9965131
@@ -2834,32 +2827,32 @@
           "price": 2
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 7,
           "price": 4
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 9,
           "price": 7
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 11,
           "price": 10
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 13,
           "price": 9
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 15,
           "price": 11
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 18,
           "price": 13
         },
@@ -3376,37 +3369,37 @@
           "stock": 3878
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 7,
           "price": 7,
           "stock": 933633
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 9,
           "price": 15,
           "stock": 9960898
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 11,
           "price": 18,
           "stock": 939713
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 13,
           "price": 20,
           "stock": 990037
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 15,
           "price": 23,
           "stock": 965511
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 20,
           "price": 26,
           "stock": 9033
@@ -3419,32 +3412,32 @@
           "price": 2
         },
         {
-          "item": "Blue Crystals",
+          "item": "Blue Crystal",
           "line": 8,
           "price": 4
         },
         {
-          "item": "Red Crystals",
+          "item": "Red Crystal",
           "line": 10,
           "price": 7
         },
         {
-          "item": "Green Crystals",
+          "item": "Green Crystal",
           "line": 12,
           "price": 9
         },
         {
-          "item": "Yellow Crystals",
+          "item": "Yellow Crystal",
           "line": 14,
           "price": 10
         },
         {
-          "item": "Purple Crystals",
+          "item": "Purple Crystal",
           "line": 16,
           "price": 11
         },
         {
-          "item": "White Crystals",
+          "item": "White Crystal",
           "line": 17,
           "price": 13
         },
@@ -3572,7 +3565,7 @@
           "oneIn": 7
         },
         {
-          "item": "5 Blue Crystals",
+          "item": "5 Blue Crystal",
           "oneIn": 15
         },
         {
@@ -3686,7 +3679,7 @@
           "oneIn": 4
         },
         {
-          "item": "5 White Crystals",
+          "item": "5 White Crystal",
           "oneIn": 10
         }
       ]
@@ -3818,7 +3811,7 @@
           "oneIn": 4
         },
         {
-          "item": "5 Purple Crystals",
+          "item": "5 Purple Crystal",
           "oneIn": 10
         },
         {
@@ -3860,7 +3853,7 @@
           "oneIn": 7
         },
         {
-          "item": "5 Green Crystals",
+          "item": "5 Green Crystal",
           "oneIn": 10
         }
       ]
@@ -3924,7 +3917,7 @@
       "npc": "Orc",
       "lines": [
         {
-          "item": "5 Red Crystals",
+          "item": "5 Red Crystal",
           "oneIn": 10
         },
         {
@@ -3970,7 +3963,7 @@
           "oneIn": 4
         },
         {
-          "item": "5 Yellow Crystals",
+          "item": "5 Yellow Crystal",
           "oneIn": 10
         }
       ]

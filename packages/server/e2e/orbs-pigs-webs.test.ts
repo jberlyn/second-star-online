@@ -109,7 +109,7 @@ describe("orbs, pigs and webs", () => {
       ["Pig", 2],
       ["Fire Orb", 1],
       ["Web Book", 1],
-      ["White Crystals", 6],
+      ["White Crystal", 6],
     ]);
   });
   afterAll(async () => {

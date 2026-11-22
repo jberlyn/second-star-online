@@ -131,12 +131,14 @@ describe("the cast checks", () => {
     expect(spCost("Smoke Bomb", "Ninja Outfit")).toBe(17);
     expect(spCost("Smoke Bomb", "Royal Ninja Uniform")).toBe(13);
   });
-  test("crystal loading: the last bag line containing '<Colour> Cry'", () => {
+  test("bug fixed: crystal loading takes the last bag line holding that crystal, by its whole name", () => {
     const bag = [
-      { item: "Red Crystals" },
+      { item: "Red Crystal" },
       null,
-      { item: "Red Crystals" },
-      { item: "Blue Crystals" },
+      { item: "Red Crystal" },
+      { item: "Blue Crystal" },
+      // 1.6 took any line containing "<Colour> Cry".
+      { item: "Red Crystal Ring" },
     ];
     expect(crystalLine(bag, "Red")).toBe(2);
     expect(crystalLine(bag, "Green")).toBe(-1);
@@ -442,7 +444,7 @@ describe("the spell-defense lookup", () => {
 });
 
 describe("worn items add to the power", () => {
-  test("gear adds to the power: White Robe +2, Wizard's Robe +5, White Tiara +1, Ceramic Armor +5, Mage's Ring +3", () => {
+  test("gear adds to the power: White Robe +2, Wizard's Robe +5, Ceramic Armor +5, Mage's Ring +3", () => {
     const power = (equip: Partial<Caster["equip"]>) =>
       spellPower("Minor Heal", {
         skills: skills(),
@@ -452,7 +454,6 @@ describe("worn items add to the power", () => {
     const bare = power({});
     expect(power({ body: "White Robe" }) - bare).toBe(2);
     expect(power({ body: "Wizard's Robe" }) - bare).toBe(5);
-    expect(power({ head: "White Tiara" }) - bare).toBe(1);
     expect(power({ body: "Ceramic Armor" }) - bare).toBe(5);
     expect(power({ ring: "Mage's Ring" }) - bare).toBe(3);
     // The slot counts: a Wizard's Robe in the ring slot adds nothing.

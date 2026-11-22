@@ -525,7 +525,7 @@ describe("placed containers", () => {
 
 describe("quest chests", () => {
   test("bug fixed: after 400 frames a 1-in-350 save rolls 1 in 4000; the refill is added to the chest", () => {
-    const s = scene({ 350: [1], 4000: [1], 6: [1], 3: [3] });
+    const s = scene({ 350: [1], 4000: [1], 6: [1], 2: [2] });
     const p = s.join("Alice", 5, 5);
     s.world.containers.set("Gold Chest", ["Old Sword", "Apple"]);
     for (let i = 0; i < 399; i++) {
@@ -534,13 +534,13 @@ describe("quest chests", () => {
     expect(s.rng.calls).toEqual([]);
     saveClockStep(s.world, p, s.rng); // block now 0: no roll this frame
     saveClockStep(s.world, p, s.rng);
-    expect(s.rng.calls).toEqual([350, 4000, 6, 3]);
+    expect(s.rng.calls).toEqual([350, 4000, 6, 2]);
     expect(s.world.containers.get("Gold Chest")).toEqual(["Old Sword", "Apple", "Fire Staff"]);
     expect(p.saveBlock).toBe(400);
   });
 
   test("bug fixed: a full quest chest keeps what it holds", () => {
-    const s = scene({ 350: [1], 4000: [1], 6: [1], 3: [3] });
+    const s = scene({ 350: [1], 4000: [1], 6: [1], 2: [2] });
     const p = s.join("Alice", 5, 5);
     p.saveBlock = 0;
     const full = Array.from({ length: 15 }, (_, i) => `Item${i}`);

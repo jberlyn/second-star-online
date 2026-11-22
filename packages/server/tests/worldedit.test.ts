@@ -146,8 +146,10 @@ describe("opening, saving and closing", () => {
     const a = testMap("x1000y992");
     const { world } = setup([a]);
     const m = editorView(a, 1000, 992);
-    m.items = [{ name: "Blue Crystal", x: 3, y: 3 }];
+    m.items = [{ name: "Gold Armor", x: 3, y: 3 }];
     expect(saveError(m)).not.toBeNull();
+    m.items = [{ name: "20 Blue Crystal", x: 3, y: 3 }];
+    expect(saveError(m)).toBeNull();
     m.items = [{ name: "20 Apple", x: 3, y: 3 }];
     expect(saveError(m)).toBeNull();
     applySave(world, a, m, () => "pile");

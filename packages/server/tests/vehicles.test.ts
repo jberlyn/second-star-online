@@ -310,7 +310,7 @@ describe("what an Airship cannot do", () => {
   test("cast is silent and spends nothing", () => {
     const s = aboard();
     s.ann.spell.book = ["Minor Heal"];
-    give(s.ann, 2, "Blue Crystals", 5);
+    give(s.ann, 2, "Blue Crystal", 5);
     const r = castIntent(s.room, s.ann, "Minor Heal", 200, 100, { rng: s.rng });
     expect(r.out).toEqual([]);
     expect(s.ann.char.vitals.sp).toBe(200);
@@ -364,9 +364,9 @@ describe("what an Airship cannot do", () => {
   test("Morph and Hold do nothing to a rider; Dispel keeps the airship", () => {
     const s = aboard();
     s.bob.spell.book = ["Morph", "Hold", "Dispel Illusions"];
-    give(s.bob, 1, "Yellow Crystals", 10);
-    give(s.bob, 2, "Purple Crystals", 10);
-    give(s.bob, 3, "White Crystals", 10);
+    give(s.bob, 1, "Yellow Crystal", 10);
+    give(s.bob, 2, "Purple Crystal", 10);
+    give(s.bob, 3, "White Crystal", 10);
     s.bob.x = 8;
     s.bob.y = 5;
     const t = tileLoc(6, 5);
@@ -399,14 +399,14 @@ describe("what an Airship cannot do", () => {
     give(s.ann, 2, "Apple", 1);
     expect(chat(dropIntent(s.ctx(), s.room, s.ann, 2), "Ann")).toEqual([VEHICLE_TEXT.sky]);
     expect(s.ann.char.bag[1]?.item).toBe("Apple");
-    give(s.ann, 3, "Blue Crystals", 5);
+    give(s.ann, 3, "Blue Crystal", 5);
     s.ann.char.gold = 50;
     s.ann.facing = "E";
     expect(chat(crystalsIntent(s.ctx(), s.room, s.ann, 3, 2, "drop"), "Ann")).toEqual([
       VEHICLE_TEXT.sky,
     ]);
     expect(chat(goldIntent(s.ctx(), s.room, s.ann, 10), "Ann")).toEqual([VEHICLE_TEXT.sky]);
-    expect(s.ann.char.bag[2]).toEqual({ item: "Blue Crystals", qty: 5 });
+    expect(s.ann.char.bag[2]).toEqual({ item: "Blue Crystal", qty: 5 });
     expect(s.ann.char.gold).toBe(50);
     expect(s.map.ground.some((g) => /Gold|Crystals/.test(g.item))).toBe(false);
   });
@@ -601,7 +601,7 @@ describe("hulls", () => {
     s.bob.spell.body = 57;
     s.bob.hull = hull;
     s.ann.spell.book = ["Firebolt"];
-    give(s.ann, 1, "Red Crystals", 20);
+    give(s.ann, 1, "Red Crystal", 20);
     const fire = () => {
       s.ann.timers.actionDelay = 0;
       const t = tileLoc(8, 8);

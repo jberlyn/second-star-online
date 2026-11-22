@@ -144,10 +144,10 @@ describe("spells", () => {
       ["Hold Book", 1],
       ["Summon Creature Book", 1],
       ["Identify Book", 1],
-      ["Red Crystals", 2],
-      ["Blue Crystals", 10],
-      ["Purple Crystals", 10],
-      ["White Crystals", 10],
+      ["Red Crystal", 2],
+      ["Blue Crystal", 10],
+      ["Purple Crystal", 10],
+      ["White Crystal", 10],
     ]);
   });
   afterAll(async () => {
@@ -206,7 +206,7 @@ describe("spells", () => {
     // Inside the 20-frame delay a second click does nothing.
     await cast(alice, "Fireball", slime.h, slime.v);
     expect(lastSp(alice)).toBe(188);
-    expect(slotOf(alice, "Red Crystals")).toBe(0);
+    expect(slotOf(alice, "Red Crystal")).toBe(0);
     await tick(2);
     expect(deltas(bob)).toContainEqual({
       e: "fx",

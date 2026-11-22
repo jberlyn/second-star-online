@@ -206,7 +206,7 @@ describe("gathering and crafting", () => {
     setSkill(db, "Dave", "Cooking", 1);
     bag(db, "Erin", [
       ["Potion Bottle", 1],
-      ["Red Crystals", 2],
+      ["Red Crystal", 2],
     ]);
     wield(db, "Erin", "Red Sand", "RightHand");
     bag(db, "Finn", [
@@ -360,7 +360,7 @@ describe("gathering and crafting", () => {
     await tick(200);
     expect(lines(erin)).toContain("Your potion is ready!");
     expect(bagItems(erin)).toContain("Red Potion-1");
-    expect(bagItems(erin)).toContain("Red Crystals-1");
+    expect(bagItems(erin)).toContain("Red Crystal-1");
     expect(bagItems(erin)).not.toContain("Potion Bottle-1");
   });
 

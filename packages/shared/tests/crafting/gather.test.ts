@@ -122,7 +122,7 @@ describe("drops", () => {
 
   test("a find: count, colour, three ore rolls, then random(5)", () => {
     const rng = rngByN({ 2: [2], 28: [8], 5: [1] });
-    expect(rollMiningFind(15, rng)).toBe("2 Yellow Crystals");
+    expect(rollMiningFind(15, rng)).toBe("2 Yellow Crystal");
     // Mining 15: count random(1) then random(2), colour random(30) then random(28) (every true line
     // draws), ore 95/125/225, find random(5).
     expect(rng.calls).toEqual([1, 2, 30, 28, 95, 125, 225, 5]);
@@ -141,7 +141,7 @@ describe("drops", () => {
     }
     // Iron, Steel (+30) and Star (+130) all roll at 97, from 25, 55 and 155.
     const rng = rngByN({ 5: [5, 5, 1] });
-    expect(rollMiningFind(97, rng)).toMatch(/ Crystals$/);
+    expect(rollMiningFind(97, rng)).toMatch(/ Crystal$/);
     expect(rng.calls.slice(-4)).toEqual([25, 55, 155, 5]);
     expect(rollMiningFind(97, rngByN({ 25: [1], 5: [5, 5, 1] }))).toBe("Chunk of Iron");
   });
@@ -156,7 +156,7 @@ describe("drops", () => {
     const rng = rngByN({ 100: [1], 5: [1] });
     expect(rollMiningFind(0, rng)).toBe("Chunk of Iron");
     expect(rng.calls).toEqual([100, 130, 230, 5]);
-    expect(rollMiningFind(0, rngByN({ 5: [1] }))).toBe("1 Blue Crystals");
+    expect(rollMiningFind(0, rngByN({ 5: [1] }))).toBe("1 Blue Crystal");
     expect(rollChunk("Ice Hammer", 5, rngByN({ 130: [1] }))).toBe("Chunk of Ice");
     expect(rollChunk("Fire Hammer", 5, rngByN({ 130: [1] }))).toBe("Chunk of Fire");
     expect(rollChunk("Fire Hammer", 0, rngByN({ 130: [1] }))).toBe("Chunk of Fire");

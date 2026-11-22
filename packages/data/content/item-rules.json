@@ -159,18 +159,8 @@
         "slot": "Body"
       },
       {
-        "match": "contains",
-        "pattern": "White Tiara",
-        "slot": "Head"
-      },
-      {
         "match": "exact",
         "pattern": "Mirror",
-        "slot": "No"
-      },
-      {
-        "match": "exact",
-        "pattern": "Ocarina",
         "slot": "No"
       },
       {
@@ -380,23 +370,8 @@
       },
       {
         "match": "exact",
-        "pattern": "Damaged Sword",
-        "slot": "LeftHand"
-      },
-      {
-        "match": "exact",
         "pattern": "Damaged Armor",
         "slot": "Body"
-      },
-      {
-        "match": "exact",
-        "pattern": "Damaged Shield",
-        "slot": "RightHand"
-      },
-      {
-        "match": "exact",
-        "pattern": "Damaged Helm",
-        "slot": "Head"
       },
       {
         "match": "exact",
@@ -635,11 +610,6 @@
       },
       {
         "match": "contains",
-        "pattern": "Rune Sword",
-        "slot": "LeftHand"
-      },
-      {
-        "match": "contains",
         "pattern": "Plate Armor",
         "slot": "Body"
       },
@@ -661,11 +631,6 @@
       {
         "match": "contains",
         "pattern": "Steel Shield",
-        "slot": "RightHand"
-      },
-      {
-        "match": "contains",
-        "pattern": "Rune Shield",
         "slot": "RightHand"
       },
       {
@@ -695,16 +660,6 @@
       },
       {
         "match": "contains",
-        "pattern": "Gold Shield",
-        "slot": "RightHand"
-      },
-      {
-        "match": "contains",
-        "pattern": "Gold Armor",
-        "slot": "Body"
-      },
-      {
-        "match": "contains",
         "pattern": "Robe of Invisibility",
         "slot": "Body"
       },
@@ -725,11 +680,6 @@
       },
       {
         "match": "contains",
-        "pattern": "Rune Armor",
-        "slot": "Body"
-      },
-      {
-        "match": "contains",
         "pattern": "Chain Boots",
         "slot": "Feet"
       },
@@ -737,11 +687,6 @@
         "match": "contains",
         "pattern": "Plate Boots",
         "slot": "Feet"
-      },
-      {
-        "match": "contains",
-        "pattern": "Fawn Cap",
-        "slot": "Head"
       },
       {
         "match": "contains",
@@ -790,11 +735,6 @@
       },
       {
         "match": "contains",
-        "pattern": "Ice Cap",
-        "slot": "Head"
-      },
-      {
-        "match": "contains",
         "pattern": "Gold Sword",
         "slot": "LeftHand"
       },
@@ -802,26 +742,6 @@
         "match": "contains",
         "pattern": "Gold Staff",
         "slot": "LeftHand"
-      },
-      {
-        "match": "contains",
-        "pattern": "Gold Boots",
-        "slot": "Feet"
-      },
-      {
-        "match": "contains",
-        "pattern": "Gold Helm",
-        "slot": "Head"
-      },
-      {
-        "match": "contains",
-        "pattern": "Dark Staff",
-        "slot": "LeftHand"
-      },
-      {
-        "match": "contains",
-        "pattern": "Dark Shield",
-        "slot": "RightHand"
       },
       {
         "match": "contains",
@@ -1893,13 +1813,6 @@
       {
         "slot": "HeadE",
         "match": "contains",
-        "pattern": "White Tiara",
-        "hitMe": -1,
-        "hitMe2": -1
-      },
-      {
-        "slot": "HeadE",
-        "match": "contains",
         "pattern": "Plate Helm",
         "hitMe": -3,
         "hitMe2": -3
@@ -2012,13 +1925,6 @@
       {
         "slot": "BodyE",
         "match": "contains",
-        "pattern": "Rune armor",
-        "hitMe": -9,
-        "hitMe2": -9
-      },
-      {
-        "slot": "BodyE",
-        "match": "contains",
         "pattern": "Ninja Outfit",
         "hitMe": -3,
         "hitMe2": -3
@@ -2099,13 +2005,6 @@
         "pattern": "Magical Shield",
         "hitMe": -2,
         "hitMe2": -2
-      },
-      {
-        "slot": "RightHandE",
-        "match": "contains",
-        "pattern": "Gold Shield",
-        "hitMe": -4,
-        "hitMe2": -4
       },
       {
         "slot": "RightHandE",
@@ -3762,13 +3661,6 @@
       "pattern": "Wizard's Robe",
       "power": "spell",
       "add": 5
-    },
-    {
-      "slot": "head",
-      "match": "exact",
-      "pattern": "White Tiara",
-      "power": "spell",
-      "add": 1
     },
     {
       "slot": "body",

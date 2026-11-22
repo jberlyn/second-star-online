@@ -13,7 +13,7 @@ Staff Fighting adds attack power to staves and makes the Fire Staff's free fireb
 
 ## How it rises
 
-**Melee kills** with the Wooden Staff, Steel Staff, Lord's Staff, Gold Staff or Dark Staff. The chance is 1 in (Staff Fighting + W); see [melee kills](README.md#melee-kills). The Fire Staff trains nothing.
+**Melee kills** with the Wooden Staff, Steel Staff, Lord's Staff or Gold Staff. The chance is 1 in (Staff Fighting + W); see [melee kills](README.md#melee-kills). The Fire Staff trains nothing.
 
 ## What it does
 

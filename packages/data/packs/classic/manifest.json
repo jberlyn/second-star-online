@@ -1,9 +1,9 @@
 {
   "id": "classic",
   "name": "Classic",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "format": 1,
   "sso": "1.10",
-  "contentHash": "5fbe7a852f0fc988",
+  "contentHash": "756b7cd51d8572b4",
   "art": "art"
 }

@@ -25,7 +25,7 @@ Attack power:
 | Any "Dark " weapon | +1 | +1 | +1 | +1 | +1 | +2 | +2 | +9 |
 | Unholy Lance | +1 | +1 | +1 | +2 | | +3 | +4 | +12 |
 
-"Dark " with its space matches the Dark Sword, Dark Scimitar and Dark Staff.
+"Dark " with its space matches the Dark Sword and Dark Scimitar.
 
 ## Connected systems
 
@@ -35,5 +35,4 @@ Attack power:
 ## Balance notes
 
 - Its kill gain ignores Wisdom, so it is faster than other weapon skills at low Wisdom and slower at high Wisdom.
-- The Dark Staff gets the "Dark " bonus but trains Staff Fighting, not Unholy Combat.
 - No class grants it, and the Death Knight class has no promotion path.

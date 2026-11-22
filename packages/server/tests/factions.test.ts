@@ -303,7 +303,7 @@ describe("turn-ins", () => {
   test("a quest item: the reward, thanks to the map, the line rerolled", () => {
     const { world, a, c } = npcScene();
     a.char.bag[2] = { item: "Fishle", qty: 1 };
-    const out = questGive(world, a, 2, "Stephie", rngByN({ 43: [5], 20: [3, 9] }));
+    const out = questGive(world, a, 2, "Stephie", rngByN({ 43: [5], 17: [3], 19: [9] }));
     // The lowest empty slot takes the reward.
     expect(a.char.bag[0]).toEqual({ item: "Yellow Potion", qty: 1 });
     expect(a.char.bag[2]).toBeNull();

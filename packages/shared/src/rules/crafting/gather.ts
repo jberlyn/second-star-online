@@ -158,7 +158,7 @@ export function rollMiningFind(skill: number, rng: Rng): string | null {
   const m = G.mining;
   const count = gtRoll(m.count, skill, m.countDefault, rng);
   const roll = gtRoll(m.colourPool, skill, m.colourDefault, rng);
-  let item = `${count} ${m.colours[roll - 1] ?? "Blue"} Crystals`;
+  let item = `${count} ${m.colours[roll - 1] ?? "Blue"} Crystal`;
   const base = orePool(skill);
   const steel = base + m.ore.steelAdd; // the Steel pool: the base pool plus 30
   const star = steel + m.ore.starAdd; // the Star pool: the Steel pool plus 100

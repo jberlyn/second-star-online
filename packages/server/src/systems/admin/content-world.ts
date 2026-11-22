@@ -11,11 +11,12 @@
 import {
   type BagLine,
   content,
+  crystalPile,
   displayName,
   findNewQuest,
+  isCrystal,
   isGoldName,
   isUniqueContainer,
-  lingoContains,
   lingoEq,
   liveNpcText,
   NOTHING,
@@ -496,7 +497,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         return next;
       };
       /**
-       * A ground pile replaced: crystals carry their count in their name (`5 Blue Crystals`, one
+       * A ground pile replaced: crystals carry their count in their name (`5 Blue Crystal`, one
        * pile), anything else in the pile's quantity.
        */
       const groundAs = (stored: string, qty: number): { item: string; qty: number } => {
@@ -505,9 +506,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         if (/^\d+ /.test(next)) {
           return { item: next, qty };
         }
-        return lingoContains(next, " Crystals")
-          ? { item: `${n} ${next}`, qty: 1 }
-          : { item: next, qty: n };
+        return isCrystal(next) ? { item: `${n} ${next}`, qty: 1 } : { item: next, qty: n };
       };
       // A container's storage goes with it: to the replacement's name (which keeps its `#id`), or,
       // purged, with it.
@@ -751,7 +750,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
             }
           } else {
             // A pile's count moves to its quantity when the new item is not one that counts in
-            // its name (`5 Blue Crystals` replaced by Apple is a pile of 5 Apples).
+            // its name (`5 Blue Crystal` replaced by Apple is a pile of 5 Apples).
             const next = groundAs(g.item, g.qty ?? 1);
             moveStorage(g.item, next.item);
             g.item = next.item;
@@ -917,11 +916,10 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     if (known(base)) {
       return true;
     }
-    // Only a crystal pile carries its count in its name (`5 Blue Crystals`); other piles keep it
+    // Only a crystal pile carries its count in its name (`5 Blue Crystal`); other piles keep it
     // in their quantity.
-    const count = /^\d+ (.+)$/.exec(base);
-    const piled = (count?.[1] ?? "").trim();
-    if (count && lingoContains(piled, " Crystals") && known(piled)) {
+    const pile = crystalPile(base);
+    if (pile && known(pile.item)) {
       return true;
     }
     const level = /^(.+?)\+\d+$/.exec(base);

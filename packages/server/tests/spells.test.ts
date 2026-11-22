@@ -104,14 +104,14 @@ describe("the cast", () => {
     cast(a, "Fireball", 200, 100); // harmful here
     expect(a.timers.actionDelay).toBe(0);
     map.flags.canFight = "X";
-    give(a, "Blue Crystals", 10);
+    give(a, "Blue Crystal", 10);
     cast(a, "Minor Heal", 200, 100);
     expect(a.timers.actionDelay).toBe(20);
   });
   test("bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]", () => {
     const { a, cast } = scene();
     a.spell.book = ["Minor Heal"];
-    give(a, "Blue Crystals", 30);
+    give(a, "Blue Crystal", 30);
     const casts = (h: number, v: number) => {
       a.timers.actionDelay = 0;
       const before = a.char.vitals.sp;
@@ -138,13 +138,13 @@ describe("the cast", () => {
       "Identify",
     ];
     a.spell.book = [...inert];
-    give(a, "Blue Crystals", 4);
+    give(a, "Blue Crystal", 4);
     for (const spell of inert) {
       const r = cast(a, spell, 200, 200);
       expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.inert, color: 0 });
     }
     expect(a.char.vitals.sp).toBe(200);
-    expect(a.char.bag.some((l) => l?.item === "Blue Crystals")).toBe(true);
+    expect(a.char.bag.some((l) => l?.item === "Blue Crystal")).toBe(true);
     expect(a.timers.actionDelay).toBe(0);
     expect(room.fxQueue).toEqual([]);
   });
@@ -153,8 +153,8 @@ describe("the cast", () => {
     a.spell.book = ["Fireball", "Wind Wave"];
     a.char.skills[skillIndex("Fire")] = 31;
     a.char.skills[skillIndex("Wind")] = 11;
-    give(a, "Red Crystals", 10);
-    give(a, "Green Crystals", 10);
+    give(a, "Red Crystal", 10);
+    give(a, "Green Crystal", 10);
     cast(a, "Fireball", 300, 100);
     a.timers.actionDelay = 0;
     cast(a, "Wind Wave", 300, 100);
@@ -167,7 +167,7 @@ describe("the cast", () => {
   test("ActionDelay > 0 exits, shared with melee", () => {
     const { a, cast } = scene();
     a.spell.book = ["Minor Heal"];
-    give(a, "Blue Crystals", 10);
+    give(a, "Blue Crystal", 10);
     cast(a, "Minor Heal", 200, 100);
     cast(a, "Minor Heal", 200, 100);
     expect(a.char.vitals.sp).toBe(195);
@@ -189,10 +189,10 @@ describe("the cast", () => {
   test("SP and crystals are taken from the last crystal line", () => {
     const { a, room, cast } = scene();
     a.spell.book = ["Minor Heal"];
-    give(a, "Blue Crystals", 2);
-    give(a, "Blue Crystals", 5);
+    give(a, "Blue Crystal", 2);
+    give(a, "Blue Crystal", 5);
     cast(a, "Minor Heal", 200, 100);
-    expect(a.char.bag[1]).toEqual({ item: "Blue Crystals", qty: 2 });
+    expect(a.char.bag[1]).toEqual({ item: "Blue Crystal", qty: 2 });
     expect(a.char.vitals.sp).toBe(195);
     expect(room.fxQueue).toHaveLength(1);
   });
@@ -200,7 +200,7 @@ describe("the cast", () => {
     const { a, map, cast } = scene();
     map.flags.canFight = "O";
     a.spell.book = ["Hold", "Fireball"];
-    give(a, "Purple Crystals", 10);
+    give(a, "Purple Crystal", 10);
     const r = cast(a, "Hold", 200, 100);
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.harmful, color: 0 });
     expect(a.char.vitals.sp).toBe(200);
@@ -209,12 +209,12 @@ describe("the cast", () => {
   test("bug fixed: Portal is refused near another player before SP and crystals are spent, and opens on the caster", () => {
     const { a, room, cast } = scene();
     a.spell.book = ["Portal"];
-    give(a, "White Crystals", 20);
+    give(a, "White Crystal", 20);
     const bob = at(9, 6);
     const r = cast(a, "Portal", bob.h, bob.v);
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.portal, color: 0 });
     expect(a.char.vitals.sp).toBe(200);
-    expect(a.char.bag.some((l) => l?.item === "White Crystals" && l.qty === 20)).toBe(true);
+    expect(a.char.bag.some((l) => l?.item === "White Crystal" && l.qty === 20)).toBe(true);
     expect(room.fxQueue).toHaveLength(0);
     const me = at(6, 6);
     cast(a, "Portal", me.h, me.v);
@@ -225,12 +225,12 @@ describe("the cast", () => {
   test("bug fixed: Portal with no destination is refused before SP and crystals are spent", () => {
     const { a, room } = scene();
     a.spell.book = ["Portal"];
-    give(a, "White Crystals", 10);
+    give(a, "White Crystal", 10);
     const t = at(9, 9);
     const r = castIntent(room, a, "Portal", t.h, t.v, { rng: rngByN(), portalOpen: () => false });
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.portalClosed, color: 0 });
     expect(a.char.vitals.sp).toBe(200);
-    expect(a.char.bag.some((l) => l?.item === "White Crystals")).toBe(true);
+    expect(a.char.bag.some((l) => l?.item === "White Crystal")).toBe(true);
     expect(room.fxQueue).toHaveLength(0);
   });
 });
@@ -239,7 +239,7 @@ describe("FX and monsters", () => {
   test("a fireball at a monster is placed next frame and hits in that frame's actor passes on FireballU-1 for 4 + P + random(3)", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Fireball"];
-    give(a, "Red Crystals", 10);
+    give(a, "Red Crystal", 10);
     const m = live(map, 1, "Slime", 6, 5, 14);
     const t = at(6, 5);
     cast(a, "Fireball", t.h, t.v);
@@ -268,7 +268,7 @@ describe("FX and monsters", () => {
   test("bug fixed: a spell kill pays the spell XP table and the melee level-up line", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Fireball"];
-    give(a, "Red Crystals", 10);
+    give(a, "Red Crystal", 10);
     live(map, 1, "Slime", 6, 5, 3);
     a.char.vitals.exp = 29;
     const t = at(6, 5);
@@ -283,7 +283,7 @@ describe("FX and monsters", () => {
     const killMidStep = (anim: number, aimX: number) => {
       const { a, map, run, cast } = scene(rngByN({ 4: [1] }));
       a.spell.book = ["Fireball"];
-      give(a, "Red Crystals", 10);
+      give(a, "Red Crystal", 10);
       const m = live(map, 1, "Slime", 6, 4, 1);
       (map.slots[0] as MonsterSlot).pause = 10_000;
       m.fromX = 5;
@@ -309,7 +309,7 @@ describe("FX and monsters", () => {
   test("minor heal heals a monster up to its own hit points, a Slime's 14", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Minor Heal"];
-    give(a, "Blue Crystals", 10);
+    give(a, "Blue Crystal", 10);
     const slime = live(map, 1, "Slime", 6, 4, 5);
     const t = at(6, 4);
     cast(a, "Minor Heal", t.h, t.v);
@@ -324,7 +324,7 @@ describe("monster heals", () => {
   test("bug fixed: a spell heal stops at the monster's own hit points: a Pig stays at 1", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Minor Heal"];
-    give(a, "Blue Crystals", 10);
+    give(a, "Blue Crystal", 10);
     const pig = live(map, 1, "Pig", 6, 4, 1);
     const t = at(6, 4);
     cast(a, "Minor Heal", t.h, t.v);
@@ -344,7 +344,7 @@ describe("players", () => {
   test("minor heal heals whoever stands in it, colour 5", () => {
     const { a, b, run, cast } = scene();
     a.spell.book = ["Minor Heal"];
-    give(a, "Blue Crystals", 10);
+    give(a, "Blue Crystal", 10);
     const t = at(9, 6);
     cast(a, "Minor Heal", t.h, t.v);
     const out = run(3);
@@ -355,7 +355,7 @@ describe("players", () => {
   test("damage only where PvP is on; the victim flickers 40 frames", () => {
     const { a, b, map, run, cast } = scene();
     a.spell.book = ["Firebolt"];
-    give(a, "Red Crystals", 20);
+    give(a, "Red Crystal", 20);
     map.flags.canPvp = "O";
     const t = at(9, 6);
     cast(a, "Firebolt", t.h, t.v);
@@ -374,8 +374,8 @@ describe("players", () => {
     const { a, b, run, cast } = scene();
     b.role = ADMINISTRATOR;
     a.spell.book = ["Firebolt", "Whirlwind"];
-    give(a, "Red Crystals", 20);
-    give(a, "Purple Crystals", 10);
+    give(a, "Red Crystal", 20);
+    give(a, "Purple Crystal", 10);
     const t = at(9, 6);
     cast(a, "Firebolt", t.h, t.v);
     run(17);
@@ -388,7 +388,7 @@ describe("players", () => {
   test("Hold: the hold counter = P·8, no step while it runs, the text", () => {
     const { a, b, run, cast } = scene();
     a.spell.book = ["Hold"];
-    give(a, "Purple Crystals", 10);
+    give(a, "Purple Crystal", 10);
     const t = at(9, 6);
     cast(a, "Hold", t.h, t.v);
     const out = run(4);
@@ -401,7 +401,7 @@ describe("players", () => {
   test("Stone Skin: the defense bonus 1 and its counter P·30, then back to 0", () => {
     const { a, run, cast } = scene();
     a.spell.book = ["Stone Skin"];
-    give(a, "Purple Crystals", 10);
+    give(a, "Purple Crystal", 10);
     const t = at(6, 6);
     cast(a, "Stone Skin", t.h, t.v);
     const out = run(12);
@@ -415,7 +415,7 @@ describe("players", () => {
   test("kept on purpose: Whirlwind drains 1 SP a frame of overlap, no flicker", () => {
     const { a, b, run, cast } = scene();
     a.spell.book = ["Whirlwind"];
-    give(a, "Purple Crystals", 10);
+    give(a, "Purple Crystal", 10);
     const t = at(9, 6);
     cast(a, "Whirlwind", t.h, t.v);
     run(11);
@@ -427,8 +427,8 @@ describe("players", () => {
     const { a, b, run, cast, room } = scene();
     a.spell.book = ["Minor Heal", "Whirlwind"];
     b.spell.book = ["Minor Heal"];
-    give(a, "Purple Crystals", 10);
-    give(b, "Blue Crystals", 10);
+    give(a, "Purple Crystal", 10);
+    give(b, "Blue Crystal", 10);
     const me = at(6, 6);
     cast(a, "Whirlwind", me.h, me.v); // slot 1: mine
     cast(b, "Minor Heal", me.h, me.v); // slot 2
@@ -442,8 +442,8 @@ describe("players", () => {
   test("bug fixed: a buff cast again restarts its time and never adds: Stone Skin, Magic Shield, Argon's Fist", () => {
     const { a, run, cast } = scene();
     a.spell.book = ["Stone Skin", "Magic Shield", "Argon's Fist"];
-    give(a, "Purple Crystals", 10);
-    give(a, "Yellow Crystals", 10);
+    give(a, "Purple Crystal", 10);
+    give(a, "Yellow Crystal", 10);
     const me = at(6, 6);
     const twice = (spell: string) => {
       for (let i = 0; i < 2; i++) {
@@ -464,7 +464,7 @@ describe("players", () => {
   test("Morph changes the body for everyone; the morph counter 1300 then a revert", () => {
     const { a, run, cast } = scene(rngByN({ 5: [1] }));
     a.spell.book = ["Morph"];
-    give(a, "Yellow Crystals", 10);
+    give(a, "Yellow Crystal", 10);
     const me = at(6, 6);
     cast(a, "Morph", me.h, me.v);
     const out = run(4);
@@ -479,7 +479,7 @@ describe("summons", () => {
   test("Summon Creature: a Pig in the first free slot; Cow at Sorcery > 39", () => {
     const { a, map, cast } = scene();
     a.spell.book = ["Summon Creature"];
-    give(a, "White Crystals", 10);
+    give(a, "White Crystal", 10);
     const t = centre(4, 4);
     cast(a, "Summon Creature", t.h, t.v);
     expect(map.slots[0]?.live).toMatchObject({ name: "Pig", x: 4, y: 4 });
@@ -494,19 +494,19 @@ describe("summons", () => {
       live(map, k, "Slime", k, 1);
     }
     a.spell.book = ["Summon Creature"];
-    give(a, "White Crystals", 10);
+    give(a, "White Crystal", 10);
     const t = at(4, 4);
     const r = cast(a, "Summon Creature", t.h, t.v);
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.summon, color: 0 });
     expect(a.char.vitals.sp).toBe(200);
-    expect(a.char.bag.some((l) => l?.item === "White Crystals" && l.qty === 10)).toBe(true);
+    expect(a.char.bag.some((l) => l?.item === "White Crystal" && l.qty === 10)).toBe(true);
     expect(room.fxQueue).toEqual([]);
   });
   test("bug fixed: a summon on a blocked tile is refused before anything is spent", () => {
     const { a, map, cast } = scene();
     map.walk[3]![3] = false; // x4y4
     a.spell.book = ["Summon Creature"];
-    give(a, "White Crystals", 10);
+    give(a, "White Crystal", 10);
     const t = centre(4, 4);
     const r = cast(a, "Summon Creature", t.h, t.v);
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.summon, color: 0 });
@@ -525,7 +525,7 @@ describe("summons", () => {
       row[4] = "Q8"; // a grave at (5, 3)
       map.layers[1][2] = row.join(" ");
       a.spell.book = ["Raise Dead"];
-      give(a, "Purple Crystals", 20);
+      give(a, "Purple Crystal", 20);
       const t = centre(5, click);
       cast(a, "Raise Dead", t.h, t.v);
       expect(map.slots[0]?.live).toMatchObject({ name: "Zombie", x: 5, y: 4 });
@@ -537,12 +537,12 @@ describe("summons", () => {
     row[4] = "Q8"; // a grave at (5, 12)
     map.layers[1][11] = row.join(" ");
     a.spell.book = ["Raise Dead"];
-    give(a, "Purple Crystals", 20);
+    give(a, "Purple Crystal", 20);
     const t = centre(5, 12);
     cast(a, "Raise Dead", t.h, t.v);
     expect(map.slots.every((sl) => sl.live === null)).toBe(true);
     expect(a.char.vitals.sp).toBe(200);
-    expect(a.char.bag.find((l) => l?.item === "Purple Crystals")?.qty).toBe(20);
+    expect(a.char.bag.find((l) => l?.item === "Purple Crystal")?.qty).toBe(20);
     expect(a.timers.actionDelay).toBe(0);
     // The control: a grave one row up raises its Zombie on the bottom row.
     const c = scene();
@@ -550,7 +550,7 @@ describe("summons", () => {
     up[4] = "Q8"; // a grave at (5, 11)
     c.map.layers[1][10] = up.join(" ");
     c.a.spell.book = ["Raise Dead"];
-    give(c.a, "Purple Crystals", 20);
+    give(c.a, "Purple Crystal", 20);
     const u = centre(5, 11);
     c.cast(c.a, "Raise Dead", u.h, u.v);
     expect(c.map.slots[0]?.live).toMatchObject({ name: "Zombie", x: 5, y: 12 });
@@ -562,8 +562,8 @@ describe("summons", () => {
     row[4] = "Q8";
     map.layers[1][2] = row.join(" ");
     a.spell.book = ["Raise Dead", "Summon Creature"];
-    give(a, "Purple Crystals", 20);
-    give(a, "White Crystals", 20);
+    give(a, "Purple Crystal", 20);
+    give(a, "White Crystal", 20);
     const grave = centre(5, 3);
     const r = cast(a, "Raise Dead", grave.h, grave.v);
     expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.summon, color: 0 });
@@ -628,7 +628,7 @@ describe("books", () => {
     expect(p.char.bag[0]).toEqual({ item: "Slash Book", qty: 1 });
     expect(p.char.skills[skillIndex("Slash")]).toBe(77);
   });
-  test("bug fixed: the Poison Dart Book is read like any other book, though it has no picture", () => {
+  test("bug fixed: a book with no picture is read like any other book", () => {
     const p = player("Ann", testMap("x1"), 1, 1);
     give(p, "Poison Dart Book", 1);
     expect(readBook(p, 0, rngByN())).toEqual([
@@ -715,7 +715,7 @@ describe("monster spells", () => {
   test("bug fixed: a player's harmful spell provokes a Passive monster for everyone here", () => {
     const { a, b, map, run, cast } = scene();
     a.spell.book = ["Fireball"];
-    give(a, "Red Crystals", 10);
+    give(a, "Red Crystal", 10);
     live(map, 1, "Acrostia", 6, 5);
     const t = at(6, 5);
     cast(a, "Fireball", t.h, t.v);
@@ -778,7 +778,7 @@ describe("arrows and the Fire Staff", () => {
     // The control: a cast Fireball trains Magery and Fire on the same rolls.
     const c = scene(rolls());
     c.a.spell.book = ["Fireball"];
-    give(c.a, "Red Crystals", 10);
+    give(c.a, "Red Crystal", 10);
     c.a.char.skills[skillIndex("Magery")] = 7;
     c.a.char.skills[skillIndex("Fire")] = 7;
     const t = at(6, 3);
@@ -806,7 +806,7 @@ describe("players and monsters", () => {
       b.char.vitals.hp = 60;
       b.spell.magicDef = shield;
       a.spell.book = ["Meteor"];
-      give(a, "Green Crystals", 10);
+      give(a, "Green Crystal", 10);
       const t = at(9, 6);
       cast(a, "Meteor", t.h, t.v);
       run(23);
@@ -823,7 +823,7 @@ describe("players and monsters", () => {
     const { a, b, map, run, cast } = scene();
     map.flags.canPvp = "O";
     a.spell.book = ["Hold"];
-    give(a, "Purple Crystals", 10);
+    give(a, "Purple Crystal", 10);
     const t = at(9, 6);
     cast(a, "Hold", t.h, t.v);
     run(4);
@@ -833,7 +833,7 @@ describe("players and monsters", () => {
     const { a, b, map, run, cast } = scene();
     map.flags.canPvp = "X";
     a.spell.book = ["Hold"];
-    give(a, "Purple Crystals", 10);
+    give(a, "Purple Crystal", 10);
     const t = at(9, 6);
     cast(a, "Hold", t.h, t.v);
     run(4);
@@ -859,7 +859,7 @@ describe("players and monsters", () => {
   test("bug fixed: Meteor hits a monster on both its hit frames, 13 and 19", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Meteor"];
-    give(a, "Green Crystals", 10);
+    give(a, "Green Crystal", 10);
     const zombie = live(map, 1, "Zombie", 4, 4, 60);
     const t = at(4, 4);
     cast(a, "Meteor", t.h, t.v);
@@ -870,7 +870,7 @@ describe("players and monsters", () => {
   test("a second Meteor inside the lockout still misses: only the FX that set it hits again", () => {
     const { a, map, run, cast } = scene();
     a.spell.book = ["Meteor"];
-    give(a, "Green Crystals", 20);
+    give(a, "Green Crystal", 20);
     const zombie = live(map, 1, "Zombie", 4, 4, 67);
     const t = at(4, 4);
     cast(a, "Meteor", t.h, t.v);
@@ -884,7 +884,7 @@ describe("players and monsters", () => {
   test("kept on purpose: Firesword without a sword: the warmth line, no counter; a recast refreshes P·40", () => {
     const { a, b, run, cast } = scene();
     a.spell.book = ["Firesword"];
-    give(a, "Red Crystals", 30);
+    give(a, "Red Crystal", 30);
     const t = at(9, 6);
     cast(a, "Firesword", t.h, t.v);
     const out = run(4);
@@ -903,7 +903,7 @@ describe("players and monsters", () => {
   test("bug fixed: Radar on a player sends one line", () => {
     const { a, run, cast } = scene();
     a.spell.book = ["Radar"];
-    give(a, "Yellow Crystals", 10);
+    give(a, "Yellow Crystal", 10);
     const t = at(9, 6);
     cast(a, "Radar", t.h, t.v);
     const lines = chat(run(12), "Ann").filter((l) => l.startsWith("*** Bob"));
@@ -934,7 +934,7 @@ describe("players and monsters", () => {
     const { a, b, run, cast } = scene();
     a.name = "Ann18";
     a.spell.book = ["Minor Heal"];
-    give(a, "Blue Crystals", 10);
+    give(a, "Blue Crystal", 10);
     cast(a, "Minor Heal", 100, 100);
     run(1);
     expect(b.spell.npcSpellBlock).toBe(0);

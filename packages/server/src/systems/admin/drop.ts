@@ -9,10 +9,10 @@ import {
   content,
   FACING_DELTA,
   ID_CONTAINERS,
+  isCrystal,
   isGoldName,
   isWalkable,
   leadingInteger,
-  lingoContains,
   lingoEq,
   lingoWord,
   MAP_HEIGHT,
@@ -48,16 +48,13 @@ function inventoryItem(name: string): string | null {
   return item && item.icon !== null && !item.retired ? item.name : null;
 }
 
-/** A crystal stack ("Blue Crystals"): on the ground it is a `"<n> <Colour> Crystals"` pile. */
-const isCrystals = (name: string) => lingoContains(name, " Crystals");
-
 /**
  * What `/drop` (and the World Editor's placed items) puts down for this text, or null for "This
  * item doesn't exist!":
  * - `N gold` with a positive integer amount, as typed;
  * - an Inventory item or fixture member, as typed; a bare crystal name becomes a pile of 1 (SSO: in
  *   1.6 it picked up as "Crystals ");
- * - `<n> <Inventory item>` with n from 1 to 9,999 (SSO): crystals as the `"<n> <Colour> Crystals"`
+ * - `<n> <Inventory item>` with n from 1 to 9,999 (SSO): crystals as the `"<n> <Colour> Crystal"`
  *   pile, anything else as one pile that gives n. The containers that never stack (`InvAdd` gives
  *   each its own `#id`) take no count.
  */
@@ -67,7 +64,7 @@ export function parseDrop(text: string): DropPile | null {
   }
   const plain = inventoryItem(text);
   if (plain !== null) {
-    if (isCrystals(plain)) {
+    if (isCrystal(plain)) {
       return { item: `1 ${plain}`, qty: 1 };
     }
     // Typed as the key, it is put down as typed; typed as a renamed item's display name, by its key.
@@ -85,7 +82,7 @@ export function parseDrop(text: string): DropPile | null {
   if (base === null || n < 1 || n > DROP_MAX || ID_CONTAINERS.some((c) => lingoEq(c, base))) {
     return null;
   }
-  if (isCrystals(base)) {
+  if (isCrystal(base)) {
     return { item: `${n} ${base}`, qty: 1 };
   }
   return { item: base, qty: n };

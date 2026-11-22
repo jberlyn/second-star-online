@@ -89,9 +89,10 @@ export function questReward(bag: Bag, reward: string): number {
 }
 
 /**
- * `FindNewQuest`: the NPC is one of the pool's named NPCs, each equally likely; then `random(20)`
- * for the wanted item and `random(20)` for the reward. (1.6 rolled `random(44)`, and roll 29 named
- * nobody, writing a line no NPC would answer.)
+ * `FindNewQuest`: the NPC is one of the pool's named NPCs, each equally likely; then a roll over the
+ * wanted pool and one over the rewards (1.6's were `random(20)` each; the Classic pack dropped the
+ * items nobody could get). (1.6 rolled `random(44)` for the NPC, and roll 29 named nobody, writing a
+ * line no NPC would answer.)
  */
 export function findNewQuest(rng: Rng): string {
   const pools = content().quests.pools;
@@ -104,9 +105,24 @@ export function findNewQuest(rng: Rng): string {
   return `${npc}:${wanted}:${reward}`;
 }
 
-/** A stored quest line that names no NPC, which no one can ever answer. */
+/** An item a quest may still ask for or give: in the catalogue (any spelling) and not retired. */
+function questItemOk(name: string): boolean {
+  const n = name.trim();
+  const c = content();
+  const it =
+    c.itemNamed(n) ?? c.items.items.find((i) => (i.variants ?? []).some((v) => lingoEq(v, n)));
+  return it !== undefined && !it.retired;
+}
+
+/**
+ * A stored quest line that can never be finished: it names no NPC, or it asks for or gives an item
+ * the catalogue no longer has or has retired (1.6's Water Orb, which nobody could get).
+ */
 export function questLineUnanswerable(line: string): boolean {
-  return line !== "" && item(line, 1).trim() === "";
+  if (line === "") {
+    return false;
+  }
+  return item(line, 1).trim() === "" || !questItemOk(item(line, 2)) || !questItemOk(item(line, 3));
 }
 
 /** "Wow thanks…", `aqs`: the giver's map hears it. */

@@ -205,20 +205,16 @@ describe("Smith", () => {
     expect(masterwork("Leather Armor", 1)).toBe("Leather Armor");
   });
 
-  test("bug fixed: a broken Knight's Sword repairs, under either damaged name", () => {
-    // It breaks into the name that has art and a repair.
+  test("bug fixed: a broken Knight's Sword repairs", () => {
+    // It breaks into the name that has art and a repair; 1.6's artless "Damaged Sword, Knight's"
+    // is not in the Classic pack (a migration renames old copies).
     expect(damagedForm("Knight's Sword")).toBe("Damaged Sword, Knight");
     expect(repairResult("Damaged Sword, Knight")).toBe("Knight's Sword");
-    expect(repairResult("Damaged Sword, Knight's")).toBe("Knight's Sword");
-    expect(smithChunk("Damaged Sword, Knight's")).toBe("Chunk of Steel");
-    const legacy = inv(bagOf(["Damaged Sword, Knight's", 1], ["Chunk of Steel", 1]));
-    const job: CraftJob = {
-      kind: "Smith",
-      item: "Damaged Sword, Knight's",
-      chunk: "Chunk of Steel",
-    };
-    expect(finishCraft(legacy, job, 0, rngByN()).lines).toEqual(["Your Knight's Sword is ready!"]);
-    expect(legacy.bag[0]).toEqual({ item: "Knight's Sword", qty: 1 });
+    expect(smithChunk("Damaged Sword, Knight")).toBe("Chunk of Steel");
+    const bag = inv(bagOf(["Damaged Sword, Knight", 1], ["Chunk of Steel", 1]));
+    const job: CraftJob = { kind: "Smith", item: "Damaged Sword, Knight", chunk: "Chunk of Steel" };
+    expect(finishCraft(bag, job, 0, rngByN()).lines).toEqual(["Your Knight's Sword is ready!"]);
+    expect(bag.bag[0]).toEqual({ item: "Knight's Sword", qty: 1 });
   });
 
   test("an item with no repair cannot be started", () => {
@@ -374,12 +370,12 @@ describe("Mix", () => {
   const job: CraftJob = {
     kind: "Mix",
     bottle: "Potion Bottle",
-    crystal: "Red Crystals",
+    crystal: "Red Crystal",
     potion: "Red Potion",
   };
 
   test("checks the lab, the sand, the crystal; nothing is taken at the start", () => {
-    const bag = bagOf(["Potion Bottle", 2], ["Red Crystals", 3]);
+    const bag = bagOf(["Potion Bottle", 2], ["Red Crystal", 3]);
     expect(startCraft(view({ bag }), 1).lines).toEqual([CRAFT_TEXT.noLab]);
     const lab = at("Alchemy Lab");
     expect(startCraft(view({ bag, facing: lab }), 1).lines).toEqual([CRAFT_TEXT.noSand]);
@@ -390,11 +386,11 @@ describe("Mix", () => {
     expect(r.lines).toEqual(["You begin to mix the potion."]);
     expect(r.started?.job).toEqual(job);
     expect(bag[0]).toEqual({ item: "Potion Bottle", qty: 2 });
-    expect(bag[1]).toEqual({ item: "Red Crystals", qty: 3 });
+    expect(bag[1]).toEqual({ item: "Red Crystal", qty: 3 });
   });
 
   test("kept on purpose: completion takes the bottle and the crystal; the held sand is a tool", () => {
-    const i = inv(bagOf(["Potion Bottle", 1], ["Red Crystals", 1]));
+    const i = inv(bagOf(["Potion Bottle", 1], ["Red Crystal", 1]));
     expect(finishCraft(i, job, 0, rngByN())).toMatchObject({
       reached: true,
       lines: ["Your potion is ready!"],
@@ -405,11 +401,11 @@ describe("Mix", () => {
   });
 
   test("a failed brew uses up the bottle and the crystal", () => {
-    const i = inv(bagOf(["Potion Bottle", 1], ["Red Crystals", 2]));
+    const i = inv(bagOf(["Potion Bottle", 1], ["Red Crystal", 2]));
     const r = finishCraft(i, job, 0, rngByN({ 3: [1] }));
     expect(r).toEqual({ reached: true, lines: [CRAFT_TEXT.potionOff], added: null, gain: false });
     expect(i.bag[0]).toBeNull();
-    expect(i.bag[1]).toEqual({ item: "Red Crystals", qty: 1 });
+    expect(i.bag[1]).toEqual({ item: "Red Crystal", qty: 1 });
   });
 
   test("bug fixed: only a real sand mixes; a Catfish Sandwich is refused", () => {
@@ -489,10 +485,13 @@ describe("the Cauldron", () => {
     ]);
   });
 
-  test("bug fixed: ingredients match by exact name; the Magic Shield Book recipes work", () => {
+  test("bug fixed: ingredients match by exact name; the Magic Shield Book recipe works", () => {
     expect(cauldronBrew(["Gold Axe", "Chunk of Star"])).toBeNull();
     expect(cauldronBrew(["Axe", "Chunk of Star"])).toEqual(["Gold Axe"]);
-    expect(cauldronBrew(["Magic Shield Book", "Small Shield"])).toEqual(["Magic Shield"]);
     expect(cauldronBrew(["White Robe", "Magic Shield Book"])).toEqual(["Wizard's Robe"]);
+  });
+
+  test("bug fixed: no recipe brews the artless Magic Shield item", () => {
+    expect(cauldronBrew(["Magic Shield Book", "Small Shield"])).toBeNull();
   });
 });

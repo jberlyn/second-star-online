@@ -252,7 +252,7 @@ describe("bow shots", () => {
     a.flicker = 0;
     a.facing = "E";
     a.char.equip = { ...a.char.equip, weapon: "Wooden Bow", offHand: "Blue Arrows" };
-    a.char.bag[0] = { item: "Blue Crystals", qty: 10 };
+    a.char.bag[0] = { item: "Blue Crystal", qty: 10 };
     join(a);
     a.timers.canAttack = true;
     setAttackHeld(a, true);

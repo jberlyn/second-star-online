@@ -22,7 +22,7 @@ export type DeedUse =
 
 /**
  * What a deed's Use does: build a vehicle, place a house, or nothing. A deed that builds nothing
- * (the Stone Guild Hall, which has no art or template) says why and is kept.
+ * (`use` "nothing": a building with no art or template yet) says why and is kept.
  */
 export function deedUse(item: string): DeedUse | null {
   const d = content().houses.deeds.find((x) => lingoEq(x.deed, item));

@@ -367,13 +367,13 @@ describe("the right panel (frames 50-65)", () => {
     expect(panel.menu.hidden).toBe(true);
   });
   test("Drop on crystals opens the amount dialog instead", () => {
-    const { panel, sent } = panelWith([{ item: "Blue Crystals", qty: 5 }]);
+    const { panel, sent } = panelWith([{ item: "Blue Crystal", qty: 5 }]);
     panel.el.querySelector<HTMLButtonElement>(".bag-slot")?.click();
     panel.menu.querySelector<HTMLButtonElement>('[aria-label="Drop"]')?.click();
     expect(sent).toEqual(["crystals 1 blue"]);
   });
   test("divergence: Drop and Give on a single crystal go at once, without the amount dialog", () => {
-    const { panel, sent } = panelWith([{ item: "Red Crystals", qty: 1 }]);
+    const { panel, sent } = panelWith([{ item: "Red Crystal", qty: 1 }]);
     const pick = (button: string) => {
       panel.el.querySelector<HTMLButtonElement>(".bag-slot")?.click();
       panel.menu.querySelector<HTMLButtonElement>(`[aria-label="${button}"]`)?.click();

@@ -7,6 +7,7 @@ const { classes: classesData } = classicData;
 
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 
+import { content } from "../../src/content/store.ts";
 import {
   armourRows,
   breakOdds,
@@ -48,9 +49,12 @@ import {
 } from "../../src/rules/inventory/ground.ts";
 import {
   type Bag,
+  crystalColour,
+  crystalPile,
   emptyBag,
   invAdd,
   invDelSlot,
+  isCrystal,
   pileToItem,
 } from "../../src/rules/inventory/inventory.ts";
 import {
@@ -63,7 +67,6 @@ import {
   type DeathDropRules,
   type DeathDropVictim,
   dropsOnDeath,
-  isCrystal,
   rollDeathDrop,
   rollLoot,
 } from "../../src/rules/monsters/loot.ts";
@@ -134,9 +137,31 @@ describe("bag (InvAdd)", () => {
     expect(invAdd(inv, "Crate", 1, scripted([4242]))).toMatchObject({ item: "Crate#4242" });
     expect(invAdd(inv, "Cauldron", 1, scripted([7]))).toMatchObject({ item: "Cauldron#7" });
   });
-  test("a crystal pile is n of <Colour> Crystals", () => {
-    expect(pileToItem("5 Blue Crystals")).toEqual({ item: "Blue Crystals", qty: 5 });
+  test("a crystal pile is n of <Colour> Crystal", () => {
+    expect(pileToItem("5 Blue Crystal")).toEqual({ item: "Blue Crystal", qty: 5 });
+    expect(pileToItem("5 blue crystal")).toEqual({ item: "Blue Crystal", qty: 5 });
     expect(pileToItem("Apple")).toEqual({ item: "Apple", qty: 1 });
+    expect(pileToItem("15 Gold")).toEqual({ item: "15 Gold", qty: 1 });
+  });
+  test("bug fixed: crystals are named in the singular and matched by their whole name", () => {
+    expect(crystalColour("Blue Crystal")).toBe("Blue");
+    expect(crystalColour(" white CRYSTAL ")).toBe("White");
+    // Anything that only contains the words is not a crystal; 1.6's plural still counts, so a
+    // stored copy the migration missed works, and a pile of them picks up singular.
+    expect(crystalColour("Blue Crystals")).toBe("Blue");
+    expect(crystalColour("Blue Crystal Ring")).toBeNull();
+    expect(crystalColour("Crystal Axe")).toBeNull();
+    expect(crystalColour("Black Crystal")).toBeNull();
+    expect(isCrystal("Purple Crystal")).toBe(true);
+    expect(crystalPile("20 Red Crystal")).toEqual({ item: "Red Crystal", qty: 20 });
+    expect(crystalPile("Red Crystal")).toBeNull();
+    expect(crystalPile("20 red crystals")).toEqual({ item: "Red Crystal", qty: 20 });
+    expect(crystalPile("20 Gold")).toBeNull();
+    for (const c of ["Blue", "Red", "Green", "Yellow", "Purple", "White"]) {
+      const item = content().item(`${c} Crystal`);
+      expect(item?.icon).not.toBeNull();
+      expect(item?.variants).toContain(`${c} Crystals`);
+    }
   });
   test("removal is by slot, blanking at 0", () => {
     const bag = emptyBag();
@@ -455,7 +480,7 @@ describe("ground items", () => {
     expect(groundPicture("2 Gold")).toBe("SmallGold");
     expect(groundPicture("50 Gold")).toBe("MediumGold");
     expect(groundPicture("100 gold")).toBe("LargeGold");
-    expect(groundPicture("5 Blue Crystals")).toBe("BlueCrystal");
+    expect(groundPicture("5 Blue Crystal")).toBe("BlueCrystal");
     // The named pictures, last match seen.
     expect(groundPicture("Cauldron#12")).toBe("CauldronPic");
     expect(groundPicture("Cauldron")).toBe("Cauldron");
@@ -554,7 +579,7 @@ describe("loot and the death drop", () => {
   test("bug fixed: the death drop picks one of the bag's items at random; crystals never", () => {
     const bag = emptyBag();
     bag[0] = { item: "Apple", qty: 2 };
-    bag[3] = { item: "Blue Crystals", qty: 5 };
+    bag[3] = { item: "Blue Crystal", qty: 5 };
     bag[5] = { item: "Knife", qty: 1 };
     bag[13] = { item: "Bread", qty: 1 }; // line 14 counts too
     const who = victim({ bag, wanted: true });
@@ -566,7 +591,7 @@ describe("loot and the death drop", () => {
     expect(rollDeathDrop(who, rules(), scripted([1]))).toEqual({ kind: "item", slot: 0 });
     // Only whole crystal names count: a "Crystal Axe" can drop.
     expect(isCrystal("Blue Crystal")).toBe(true);
-    expect(isCrystal("red crystals")).toBe(true);
+    expect(isCrystal("red crystal")).toBe(true);
     expect(isCrystal("Crystal Axe")).toBe(false);
     const axe = emptyBag();
     axe[0] = { item: "Crystal Axe", qty: 1 };
@@ -576,7 +601,7 @@ describe("loot and the death drop", () => {
     });
     // Only crystals: nothing drops.
     const crystals = emptyBag();
-    crystals[0] = { item: "Red Crystals", qty: 9 };
+    crystals[0] = { item: "Red Crystal", qty: 9 };
     expect(rollDeathDrop({ ...who, bag: crystals }, rules(), scripted([1]))).toEqual({
       kind: "none",
     });

@@ -29,11 +29,6 @@
       "npc": "Girl",
       "wants": "trumpet",
       "reward": "Ruby Ring"
-    },
-    {
-      "npc": "Dantan",
-      "wants": "Water Orb",
-      "reward": "Plate Boots"
     }
   ],
   "pools": {
@@ -238,62 +233,50 @@
       },
       {
         "roll": 6,
-        "item": "Damaged Helm"
-      },
-      {
-        "roll": 7,
-        "item": "Water Orb"
-      },
-      {
-        "roll": 8,
         "item": "Mirror"
       },
       {
-        "roll": 9,
-        "item": "Ocarina"
-      },
-      {
-        "roll": 10,
+        "roll": 7,
         "item": "Flask"
       },
       {
-        "roll": 11,
+        "roll": 8,
         "item": "Herb"
       },
       {
-        "roll": 12,
+        "roll": 9,
         "item": "Silver Token "
       },
       {
-        "roll": 13,
+        "roll": 10,
         "item": "Scroll"
       },
       {
-        "roll": 14,
+        "roll": 11,
         "item": "Fishle"
       },
       {
-        "roll": 15,
+        "roll": 12,
         "item": "Argon's Medal"
       },
       {
-        "roll": 16,
+        "roll": 13,
         "item": "Potion Bottle"
       },
       {
-        "roll": 17,
+        "roll": 14,
         "item": "Orc Meat"
       },
       {
-        "roll": 18,
+        "roll": 15,
         "item": "Torch"
       },
       {
-        "roll": 19,
+        "roll": 16,
         "item": "Steel Key"
       },
       {
-        "roll": 20,
+        "roll": 17,
         "item": "Blacksmith Hammer"
       }
     ],
@@ -373,10 +356,6 @@
       {
         "roll": 19,
         "item": "Purple Potion"
-      },
-      {
-        "roll": 20,
-        "item": "Scimitar"
       }
     ]
   }

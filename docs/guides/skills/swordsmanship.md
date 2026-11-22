@@ -13,7 +13,7 @@ Swordsmanship adds attack power to swords and opens the way to Fencing. It rises
 
 ## How it rises
 
-**Melee kills** with the Bo, Broad Sword, Dark Scimitar, Dark Sword, Dragon Sword, Fire Sword, Gold Sword, Ice Sword, Katana, Knight's Sword, Laser Sword, Long Sword, Pharaoh Sword, Rune Sword, Scimitar, Short Sword, Star Sword, Steel Scimitar, Sword of Hope or Unholy Lance. The chance is 1 in (25 − Stamina + Swordsmanship + W), and a gain also needs Slash above 50. See [melee kills](README.md#melee-kills).
+**Melee kills** with the Bo, Broad Sword, Dark Scimitar, Dark Sword, Dragon Sword, Fire Sword, Gold Sword, Ice Sword, Katana, Knight's Sword, Laser Sword, Long Sword, Pharaoh Sword, Scimitar, Short Sword, Star Sword, Steel Scimitar, Sword of Hope or Unholy Lance. The chance is 1 in (25 − Stamina + Swordsmanship + W), and a gain also needs Slash above 50. See [melee kills](README.md#melee-kills).
 
 ## What it does
 

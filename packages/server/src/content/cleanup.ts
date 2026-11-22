@@ -6,7 +6,7 @@
  * its row (a station's one tool, a roll table's entry) is never removed: it is left, or replaced.
  * Pure.
  */
-import { type ContentData, lingoContains, lingoEq } from "@secondstaronline/shared";
+import { type ContentData, crystalPile, isCrystal, lingoEq } from "@secondstaronline/shared";
 
 import { keyField, type RowRef, rowLabel, rowValue, sameRow } from "./rows.ts";
 import { type JsonPath, type Reference, referencesOf } from "./validate.ts";
@@ -21,8 +21,7 @@ const ITEM_KINDS = new Set<Reference["kind"]>(["item", "itemOrFixture", "shopIte
 
 /**
  * The spellings that name an entry: an item's key and its archived spellings, a monster's key.
- * Stored copies are matched by these, so a singular crystal (`Blue Crystal`, an item of its own)
- * is not one: the player-shop list's singular entries are matched by `names`.
+ * Stored copies are matched by these.
  */
 export function spellingsOf(data: ContentData, kind: EntryKind, key: string): string[] {
   if (kind === "monster") {
@@ -32,26 +31,15 @@ export function spellingsOf(data: ContentData, kind: EntryKind, key: string): st
   return [key, ...(item?.variants ?? [])];
 }
 
-/** The player-shop list's references, where crystals are named in the singular. */
-const WHITELIST = "items/playerShopWhitelist";
-
 /** Whether a reference's name is one of `spellings` (a drop line may carry a count: `5 Fish`). */
 function names(r: Reference, spellings: readonly string[]): boolean {
   const n = r.name.trim();
   if (spellings.some((s) => lingoEq(s, n))) {
     return true;
   }
-  // The player-shop list names crystals in the singular (`Blue Crystal` lets a shop stock Blue
-  // Crystals); anywhere else the singular is the item of that name.
-  if (
-    r.where === WHITELIST &&
-    spellings.some((s) => lingoEq(s, `${n}s`) && / Crystals$/i.test(s))
-  ) {
-    return true;
-  }
   // Only crystals drop as a counted pile; `INV|50 Gold` is gold, not the Gold item.
-  const counted = r.kind === "lootItem" ? /^\d+ (.+ Crystals)$/i.exec(n) : null;
-  return counted !== null && spellings.some((s) => lingoEq(s, (counted[1] as string).trim()));
+  const counted = r.kind === "lootItem" ? crystalPile(n) : null;
+  return counted !== null && spellings.some((s) => lingoEq(s, counted.item));
 }
 
 /**
@@ -112,9 +100,9 @@ function npcLineAs(line: string, item: string): string {
     return line;
   }
   const [, tag, name = "", rest = ""] = m;
-  // Only crystals drop as a counted pile (`INV|5 Blue Crystals`, one crystal is `1 ...`); any other
+  // Only crystals drop as a counted pile (`INV|5 Blue Crystal`, one crystal is `1 ...`); any other
   // item drops one, named bare.
-  if (tag === "INV" && lingoContains(item, " Crystals")) {
+  if (tag === "INV" && isCrystal(item)) {
     return `${tag}|${/^(\d+) /.exec(name)?.[1] ?? "1"} ${item}${rest}`;
   }
   return `${tag}|${item}${rest}`;
@@ -265,7 +253,7 @@ function lineItem(line: string): string | null {
     return null;
   }
   const name = (m[2] as string).trim();
-  return m[1] === "INV" && /^\d+ .+ Crystals$/i.test(name) ? name.replace(/^\d+ /, "") : name;
+  return m[1] === "INV" ? (crystalPile(name)?.item ?? name) : name;
 }
 
 /**

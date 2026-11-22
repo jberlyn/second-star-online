@@ -61,7 +61,7 @@ const tell = (p: Player, text: string): Outgoing => ({
 
 /**
  * Use on a deed, after Use's own gates: a house deed starts placement and the client draws the
- * ghost; the Stone Guild Hall Deed says it cannot be built and is kept. The vehicle deeds never
+ * ghost; a deed whose `use` is "nothing" says its text and is kept. The vehicle deeds never
  * reach here: `useIntent` builds them first (`vehicleDeed`). Returns null for anything else.
  */
 export function useDeed(p: Player, slot: number, item: string): Outgoing[] | null {

@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 81 |
-| [Fixed bugs](#fixed-bugs) | 298 |
+| [Fixed bugs](#fixed-bugs) | 299 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 137 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **568** |
+| **Total** | **569** |
 
 By system (the code folder that holds the change):
 
@@ -47,8 +47,8 @@ By system (the code folder that holds the change):
 | core | [3](#core) | [9](#server-side-core) |
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
-| housing | [20](#housing) | [6](#server-side-housing) |
-| inventory | [34](#inventory) | [11](#server-side-inventory) |
+| housing | [19](#housing) | [6](#server-side-housing) |
+| inventory | [36](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [20](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
@@ -205,7 +205,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** An administrator can use `/drop <n> <item>` to place a stack of up to 9,999 items at once.
 - **1.6:** `/drop` put one name on the ground. Gold and crystal piles carried a count; another pile gave one item. A bare dropped crystal name parsed into a useless quantity and item name.
-- **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystals” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several gives each container its own line and ID (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)). A bare crystal name is a pile of one; the World Editor shows and saves the count.
+- **SSO:** The command puts one pile on the faced tile, with crystals in their “<n> <Colour> Crystal” form and other stacking Inventory items carrying a quantity. Crates, cabinets, Wind Cabinets and Cauldrons take no count: a counted pile would grant several under one ID, and a bare one gets an ID when it enters a bag. A shop purchase of several gives each container its own line and ID (see [Every bought container gets its own id](#every-bought-container-gets-its-own-id)). A bare crystal name is a pile of one; the World Editor shows and saves the count.
 - **Why:** Operators can stock the world without dropping items one at a time, and bare crystal piles work.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`parseDrop`, `handleDrop`)
 - **Pinned by:** `SSO: a count from 1 to 9,999 on any stacking Inventory item`; `SSO: a bare crystal name is a pile of 1`; `/drop 20 Apple is one pile that adds 20 to the stack` (packages/server/tests/inventory.test.ts); `placed items take /drop's names; a counted pile round-trips` (packages/server/tests/worldedit.test.ts)
@@ -1545,12 +1545,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Masterwork rolls are even and the Knight's Sword repairs
 - **Kind:** Bug fixed
-- **What you notice:** A repaired Chain Helm or Steel Shield gets its +1 on one roll, like every other single-bonus item. A broken Knight's Sword becomes "Damaged Sword, Knight", which repairs into a Knight's Sword with a Chunk of Steel; an old "Damaged Sword, Knight's" in a bag repairs too. Starting a repair on an item with no repair says "You don't know how to repair that."
+- **What you notice:** A repaired Chain Helm or Steel Shield gets its +1 on one roll, like every other single-bonus item. A broken Knight's Sword becomes "Damaged Sword, Knight", which repairs into a Knight's Sword with a Chunk of Steel. Starting a repair on an item with no repair says "You don't know how to repair that."
 - **1.6:** Chain Helm and Steel Shield gave +1 on two rolls. The table had a Leather Armor +1 row, but Leather Armor never breaks, so it could never come up. A Knight's Sword broke into "Damaged Sword, Knight's", but the repair looked for "Damaged Sword, Knight", so it ended with "Your  is ready!" and kept its inputs.
-- **SSO:** Each masterwork bonus has one roll, and the dead Leather Armor row is gone. The armour break uses the "Damaged Sword, Knight" name that has art, and the old name has its own chunk and repair rows. The Smith button refuses an item with no repair.
+- **SSO:** Each masterwork bonus has one roll, and the dead Leather Armor row is gone. The armour break uses the "Damaged Sword, Knight" name that has art, and the artless "Damaged Sword, Knight's" is not in the Classic pack: the upgrade renames old copies to "Damaged Sword, Knight". The Smith button refuses an item with no repair.
 - **Why:** Every masterwork row should be reachable, and every damaged item that breaks should be repairable.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`masterwork`, `repairResult`, `smithChunk`); `packages/data/content/item-rules.json` (`breaks`)
-- **Pinned by:** `bug fixed: each masterwork bonus has one roll, and every row can come up`; `bug fixed: a broken Knight's Sword repairs, under either damaged name`; `an item with no repair cannot be started` (packages/shared/tests/crafting/craft.test.ts)
+- **Pinned by:** `bug fixed: each masterwork bonus has one roll, and every row can come up`; `bug fixed: a broken Knight's Sword repairs`; `an item with no repair cannot be started` (packages/shared/tests/crafting/craft.test.ts)
 
 #### Only alchemy sand mixes a potion
 - **Kind:** Bug fixed
@@ -1572,12 +1572,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### The cauldron matches exact ingredients and keeps the rest
 - **Kind:** Bug fixed
-- **What you notice:** A cauldron brews when it holds both ingredients of a recipe, each by its exact name: an Axe works, a Gold Axe does not. The brew swaps the two ingredients for the result and leaves everything else inside. The two recipes that need a Magic Shield Book now work. Anyone with that cauldron open sees the new contents at once.
+- **What you notice:** A cauldron brews when it holds both ingredients of a recipe, each by its exact name: an Axe works, a Gold Axe does not. The brew swaps the two ingredients for the result and leaves everything else inside. The recipe that needs a Magic Shield Book (with a White Robe, for a Wizard's Robe) now works; the other made a Magic Shield item with no picture and is gone (see [Items nobody could get, or could only get without a picture, are gone](#items-nobody-could-get-or-could-only-get-without-a-picture-are-gone)). Anyone with that cauldron open sees the new contents at once.
 - **1.6:** The recipes were "contains" tests over all the stored text, the last matching recipe won, and a success overwrote everything inside with the result. Two recipes needed a "Magic Shield Spell Book" that no one could get. The open window was not refreshed, so after a brew its old lines took nothing.
 - **SSO:** `cauldronBrew` checks recipes in order by exact name, the first match wins, and it removes one of each ingredient. A brew refreshes the list of every player with that cauldron open.
 - **Why:** Players should not lose unrelated items to a brew, and every recipe should be possible.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`); `packages/server/src/systems/economy/containers.ts` (`depositContainer`)
-- **Pinned by:** `a brew needs both ingredients and swaps them for the result`; `bug fixed: ingredients match by exact name; the Magic Shield Book recipes work` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: a hit says so to the depositor only and keeps the other contents`; `bug fixed: a brew refreshes the list of anyone with the Cauldron open`; `bug fixed: the Magic Shield Book recipes brew, and 'Axe' means an Axe` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `a brew needs both ingredients and swaps them for the result`; `bug fixed: ingredients match by exact name; the Magic Shield Book recipe works`; `bug fixed: no recipe brews the artless Magic Shield item` (packages/shared/tests/crafting/craft.test.ts); `bug fixed: a hit says so to the depositor only and keeps the other contents`; `bug fixed: a brew refreshes the list of anyone with the Cauldron open`; `bug fixed: the Magic Shield Book recipe brews, and 'Axe' means an Axe` (packages/server/tests/craft.test.ts)
 
 #### Crafts take exactly the named item
 - **Kind:** Bug fixed
@@ -1745,7 +1745,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A shopkeeper's till starts at 0 without a gold line, and counts anywhere in the file
 - **Kind:** Bug fixed
-- **What you notice:** The Fire, Water and Wind God books and Merius' Damaged Armor cost their listed price, and the gold goes into the shopkeeper's till. Selling to a shopkeeper pays from its till; one whose till is empty says "<Name> says "I'm sorry but I can't afford to buy that."" and you keep the item. Gold handed to a shopkeeper always goes into its till.
+- **What you notice:** The Fire, Water and Wind God books cost their listed price, and the gold goes into the shopkeeper's till. Selling to a shopkeeper pays from its till; one whose till is empty says "<Name> says "I'm sorry but I can't afford to buy that."" and you keep the item. Gold handed to a shopkeeper always goes into its till.
 - **1.6:** Only a shopkeeper with a `GLD|` line among its first 80 lines charged or paid: one without gave goods away (after checking you could afford them) and took sold items for nothing. A gift counted only with a `GLD|` line among the first 60 lines.
 - **SSO:** No `GLD|` line means a till of 0. Purchases fill it, sales pay from it, and gifts add to it. Once it holds gold, the file the NPC editor loads (and a player shop's rewrite) shows a `GLD|` line. The `GLD|` line counts wherever it is, so the NPC editor no longer warns about its position.
 - **Why:** A listed price should be charged, a sale should never take an item for nothing, and the line limits were 1.6 reader windows with no gameplay purpose.
@@ -1925,16 +1925,16 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Player shops can stock crystals
 - **Kind:** Bug fixed
-- **What you notice:** "<Shopkeeper> set Blue Crystals=30,15" works for every crystal colour.
+- **What you notice:** "<Shopkeeper> set Blue Crystal=30,15" works for every crystal colour.
 - **1.6:** The shop's allow-list names crystals in the singular ("Blue Crystal"), but every bag and NPC holds "<colour> Crystals", so none was ever accepted.
-- **SSO:** The plural of a listed crystal is accepted too.
+- **SSO:** Crystals are named in the singular, as the list names them (see [Crystals are named in the singular](#crystals-are-named-in-the-singular)).
 - **Why:** The list clearly meant to allow crystals.
 - **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`onShopWhitelist`)
 - **Pinned by:** `set: the whitelist, case ignored, the name as typed` (packages/shared/tests/economy/playershop.test.ts)
 
 #### Crystals come out of storage as themselves
 - **Kind:** Bug fixed
-- **What you notice:** Withdrawing Blue Crystals (or any colour) from a vault or container gives back Blue Crystals.
+- **What you notice:** Withdrawing a Blue Crystal (or any colour) from a vault or container gives back a Blue Crystal.
 - **1.6:** A line containing " Crystals" was split on spaces and words 2 and 3 joined, giving a worthless "Crystals " item.
 - **SSO:** The stored line is added unchanged.
 - **Why:** Storage should return what was stored.
@@ -2023,15 +2023,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Pinned by:** `bug fixed: turn-in takes the head you gave, not the first in the bag` (packages/server/tests/factions.test.ts)
 
 ### housing
-
-#### Unbuildable deeds say so
-- **Kind:** Bug fixed
-- **What you notice:** Using a Stone Guild Hall Deed says "The Stone Guild Hall cannot be built yet, so this deed can't be used." and keeps the deed.
-- **1.6:** The Stone Guild Hall had a deed but no house art, template or builder, so it did nothing and said nothing.
-- **SSO:** The deed still builds nothing, since there is no art or template to build from, but Use explains why and the deed stays in the bag. The text is in `houses.json` (`deeds[].text`). The Boat and Battleship Deeds, which 1.6 also left doing nothing, now build their ships (see [Boats and Battleships can be built and sailed](#boats-and-battleships-can-be-built-and-sailed)).
-- **Why:** A silent item reads as a broken click. Building it is planned in [#10](https://github.com/jberlyn/second-star-online/issues/10).
-- **In the code:** `packages/shared/src/rules/housing/houses.ts` (`deedUse`), `packages/server/src/systems/housing/houses.ts` (`useDeed`)
-- **Pinned by:** `bug fixed: the Stone Guild Hall Deed says it cannot be built` (packages/shared/tests/housing/houses.test.ts)
 
 #### The Small Farm lands where the other houses do
 - **Kind:** Bug fixed
@@ -2459,15 +2450,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`ctrlGate`)
 - **Pinned by:** `bug fixed: Ctrl on the Mage Master Platform says its line and ends the pause like the others` (packages/shared/tests/inventory/ground.test.ts)
 
-#### The Ocarina plays a tune
-- **Kind:** Bug fixed
-- **What you notice:** Using an Ocarina says "You play a tune on your Ocarina." and plays a short tune that everyone on the map hears. The Ocarina stays in your bag.
-- **1.6:** Its use called an empty music routine, so it did nothing and said nothing; the game had no music at all.
-- **SSO:** The tune is new sound in `assets/added/sounds/ocarina.wav`. The game still has no background music.
-- **Why:** An instrument that makes no sound reads as broken.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`useIntent`, `OCARINA`), `packages/shared/src/rules/inventory/equip.ts` (`useDeferred`)
-- **Pinned by:** `bug fixed: an Ocarina plays its tune to everyone on the map, says so, and is kept` (packages/server/tests/art-news.test.ts); `bug fixed: the Ocarina is not a silent item; the server plays it` (packages/shared/tests/mail/art-news.test.ts)
-
 #### Ctrl reads a newspaper whatever its owner is called
 - **Kind:** Bug fixed
 - **What you notice:** Ctrl on "Doorman's Newspaper", or any stand whose owner's name holds "door" or "exit", reads it as a click does.
@@ -2512,6 +2494,38 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A marker players cannot see should not hide the item they can.
 - **In the code:** `packages/client/src/playfield.ts` (`pickAll`), `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/data/content/item-rules.json` (`tipless`)
 - **Pinned by:** `bug fixed: a click passes over a Ray to the item under it` (packages/client/tests/playfield-clicks.test.ts); `bug fixed: Ctrl passes over a Ray to the item under it` (packages/server/tests/inventory.test.ts)
+
+#### Crystals are named in the singular
+- **Kind:** Bug fixed
+- **What you notice:** Crystals are "Blue Crystal", "Red Crystal" and so on, like every other item: you hold 8 Blue Crystal as you hold 8 Long Sword, and a pile on the ground is "5 Blue Crystal", as gold is "15 Gold". Shops, drops, mining, spells, alchemy and the player-shop list all use the singular. A spell or a bow spends the crystal itself: an item that only has the words in its name is never spent.
+- **1.6:** Crystals were the only items with a plural name, "Blue Crystals". Each colour was also listed a second time in the singular, with no picture and nothing that made it: the player-shop list and Coched's shop named the singular, so neither worked. Spells and bows took any bag line containing "<Colour> Cry", and the other crystal checks tested whether a name contained "Crystals".
+- **SSO:** The Classic pack keeps one item per colour under the singular name, drawn with the plural's art (`sprite`); the plural spellings stay as archived spellings, so old names still resolve. Every crystal check matches the whole name (`crystalColour`, `crystalPile`). The upgrade renames saved crystals and merges two stacks of a colour into one, and a copy in a spelling it missed still counts as that crystal and picks up singular.
+- **Why:** The duplicate singular entries broke the shop list and Coched's shop, and the "contains" checks would spend or protect an item that only mentions a crystal.
+- **In the code:** `packages/shared/src/rules/inventory/inventory.ts` (`crystalColour`, `crystalPile`, `pileToItem`), `packages/shared/src/rules/spells/spells.ts` (`crystalLine`), `packages/shared/src/rules/combat/attpower.ts` (`crystalSlotIn`), `packages/server/migrations/20261122_56_singular_crystals.sql`
+- **Pinned by:** `bug fixed: crystals are named in the singular and matched by their whole name` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: crystal loading takes the last bag line holding that crystal, by its whole name` (packages/shared/tests/spells/spells.test.ts); `bug fixed: a bow with no arrows, or no crystal for them, is refused before the swing` (packages/shared/tests/combat/combat.test.ts); `bug fixed: the crystals are the six singular items, with their art and the old plurals` (packages/server/tests/classic-pack.test.ts); `bug fixed: /drop 50 Blue Crystal picks up as 50 onto the crystal stack` (packages/server/tests/inventory.test.ts); `bug fixed: singular_crystals renames saved crystals, merges their stacks and is safe to run again on the world` (packages/server/tests/migrations.test.ts)
+
+#### Crystals go into an open vault or container
+- **Kind:** Bug fixed
+- **What you notice:** With a vault or container window open, Drop on crystals puts them in it, one line per crystal, as many as fit, as Drop does with any other stack; a full vault says so and the rest stay in your bag.
+- **1.6:** The open window locked the bag, so nothing could be stored by Drop (see [Drop and Give ask how many of a stack](#drop-and-give-ask-how-many-of-a-stack)). SSO let other items in, but the crystal dialog still dropped on the faced tile, which the vault itself fills, so it said the floor was too crowded.
+- **SSO:** The crystal dialog's Drop stores in the open vault or container before it looks at the tile. A vault still holds one item per line.
+- **Why:** Storing crystals should work as it does for every other item.
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`crystalsIntent`)
+- **Pinned by:** `bug fixed: the crystal dialog's Drop stores crystals in an open vault, a line each, as many as fit`; `bug fixed: the crystal dialog's Drop stores crystals in an open container` (packages/server/tests/inventory.test.ts)
+
+#### Items nobody could get, or could only get without a picture, are gone
+- **Kind:** Bug fixed
+- **What you notice:** Nothing in the Classic pack hands you an item with no picture or asks you for one you could never get. Merius sells nothing; the Gold and Dark Chests no longer refill with the Hammer, Laser Sword or Green Laser Sword; no quest asks for a Damaged Helm, Water Orb or Ocarina or rewards a Scimitar; the cauldron no longer turns a Magic Shield Book and a Small Shield into a Magic Shield item. Copies you already hold of those six items stay and work.
+- **1.6:** 47 items had no picture. Some could still be got and showed as a blank: Damaged Armor (Merius), the Scimitar (a quest reward), the Hammer, Laser Sword and Green Laser Sword (quest chest refills), the Magic Shield (a cauldron recipe SSO made work) and Coched's "red crystal". Others could never be got at all, though quests asked for some of them: Dantan's quest and the quest pool wanted a Water Orb, a Damaged Helm or an Ocarina.
+- **SSO:** The Classic pack drops every item with no picture and no source, with the rule rows, shop-list entries and quest rolls that named only them: the Crown, the Cyclops, Imp, Lizard and Pig Costumes, the Damaged Helm, Shield and Sword, "Damaged Sword, Knight's" (see [Masterwork rolls are even and the Knight's Sword repairs](#masterwork-rolls-are-even-and-the-knights-sword-repairs)), the Dark Shield and Dark Staff, the Fawn Cap and Ice Cap, the Gold Armor, Boots, Helm and Shield, the Rune Armor, Helm, Shield and Sword, the Red Laser Sword, the White Tiara, the Magic Shield Spell Book, the Poison Dart Book, the duplicate singular crystals, and these three, recorded so they can come back to Classic with art and a source:
+  - **The Ocarina.** SSO had made it play a short authored tune to everyone on the map when used (an added sound, ocarina.wav, removed here and kept in the git history), but nobody could get one.
+  - **The Earth, Fire, Water and Wind Orbs**, the pieces of the orb war 1.6 never finished (see [Features 1.6 never reached](#features-16-never-reached)).
+  - **The Stone Guild Hall Deed.** It had no art, template or builder; SSO's Use said "The Stone Guild Hall cannot be built yet, so this deed can't be used." and kept it (building it is [#10](https://github.com/jberlyn/second-star-online/issues/10)). A deed whose `use` is `nothing` still works that way for an operator's own content.
+
+  Damaged Armor, the Scimitar, the Hammer, the Laser Sword, the Green Laser Sword and the Magic Shield item are retired instead, since players may hold them, and their sources are removed. An NPC shop whose saved ledger still lists a retired item neither shows nor sells it. Items with a picture but no source in the data stay: operators hand them out with their NPCs, monsters, quests and maps. A stored quest line that asks for or gives an item the catalogue no longer has, or has retired, is rolled again at start.
+- **Why:** An item you cannot see or cannot get is a 1.6 bug, not part of its feel, and a quest that can never be finished wastes a quest line.
+- **In the code:** `packages/data/content/items.json`, `packages/shared/src/rules/economy/quests.ts` (`questLineUnanswerable`), `packages/server/src/game.ts` (`createGame`), `packages/server/src/systems/economy/intents.ts` (`buyIntent`)
+- **Pinned by:** `bug fixed: everything content hands out or asks for has a picture and can still be made`; `bug fixed: an item with no picture is drawn by the engine or retired` (packages/server/tests/classic-pack.test.ts); `bug fixed: an NPC shop neither lists nor sells a retired item a saved ledger still holds` (packages/server/tests/ledger-pins-b.test.ts); `bug fixed: no quest asks for or gives an item nobody can get`; `the archive's lines, padded to 40; Dantan's Water Orb line is gone (bug fixed)` (packages/shared/tests/social/factions.test.ts); `bug fixed: the Stone Guild Hall Deed is not in the Classic pack (no art, no source)` (packages/shared/tests/housing/houses.test.ts); `bug fixed: the Ocarina, which nobody could get, is not in the Classic pack, nor its tune` (packages/server/tests/art-news.test.ts)
 
 ### mail
 
@@ -3401,12 +3415,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Books teach what they say, and stay when they teach nothing
 - **Kind:** Bug fixed
-- **What you notice:** The Radar Book teaches Radar and the Poison Dart Book teaches Poison Dart. A book for a spell you know, or a combat book at 77 or more, says so and stays in your bag. Reading a Bolt Book uses up that book. A combat book never takes a skill past 77.
+- **What you notice:** The Radar Book teaches Radar, and a book with no picture is read like any other. A book for a spell you know, or a combat book at 77 or more, says so and stays in your bag. Reading a Bolt Book uses up that book. A combat book never takes a skill past 77.
 - **1.6:** The book routine had no line for Radar or Haste. The Poison Dart Book had no inventory picture, so using it stopped before reading. The server removed the first bag line containing "<name>-" before the routine ran, so a book that taught nothing was lost and a Bolt Book could use up a Firebolt Book above it. A combat book added `1 + random(5)` below 77, reaching up to 82.
 - **SSO:** Radar and Haste have book rows; any book can be read; the book read is the one used up, and only when it teaches something; a combat book stops at 77.
 - **Why:** Each was an omission or an ordering slip; 77 is the limit the book routine tests.
 - **In the code:** `packages/shared/src/rules/spells/spells.ts` (`runBook`, `SKILL_BOOK_CAP`), `packages/server/src/systems/spells/learn.ts` (`readBook`)
-- **Pinned by:** `bug fixed: the Radar and Haste books teach their spells`; `bug fixed: combat books add 1 + random(5) below 77 and stop at 77` (packages/shared/tests/spells/spells.test.ts); `bug fixed: reading a Bolt Book uses up that Bolt Book, not a Firebolt Book above it`; `bug fixed: a book is kept when the spell is already known`; `bug fixed: a skill book is kept when the skill is 77 or more and it teaches nothing`; `bug fixed: the Poison Dart Book is read like any other book, though it has no picture`; `bug fixed: the Radar Book teaches Radar` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `bug fixed: the Radar and Haste books teach their spells`; `bug fixed: combat books add 1 + random(5) below 77 and stop at 77` (packages/shared/tests/spells/spells.test.ts); `bug fixed: reading a Bolt Book uses up that Bolt Book, not a Firebolt Book above it`; `bug fixed: a book is kept when the spell is already known`; `bug fixed: a skill book is kept when the skill is 77 or more and it teaches nothing`; `bug fixed: a book with no picture is read like any other book`; `bug fixed: the Radar Book teaches Radar` (packages/server/tests/spells.test.ts)
 
 #### The spellbook is saved in full
 - **Kind:** Bug fixed
@@ -3696,10 +3710,10 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Items come from game systems such as loot, crafting, shops, quests or operator actions.
 - **1.6:** Multiple messages let clients ask the server to create items. An immortal's `/drop` accepted any Inventory cast member, including screen art, scripts, fields, saved copies, facing frames and junk, while refusing singular crystal names and some real items without Inventory members.
-- **SSO:** Loot, gathering, crafting, shops, quests and admin create items using their own rules. An administrator's `/drop` and World Editor placements accept `N gold` or an Inventory cast member that is a catalogue item with an icon or a fixture such as a vault, chest, sign or door. They refuse non-item cast members; like 1.6 they refuse singular crystal names and items without Inventory members such as Gold Armor and Rune Sword.
+- **SSO:** Loot, gathering, crafting, shops, quests and admin create items using their own rules. An administrator's `/drop` and World Editor placements accept `N gold` or an Inventory cast member that is a catalogue item with an icon or a fixture such as a vault, chest, sign or door. They refuse non-item cast members and, like 1.6, items without Inventory members such as a bare Crate. Crystals take their singular names (see [Crystals are named in the singular](#crystals-are-named-in-the-singular)).
 - **Why:** An arbitrary client request could mint items, and non-item cast members would produce objects the game cannot use.
 - **In the code:** `packages/server/src/systems/admin/drop.ts` (`droppableName`, `handleDrop`), `packages/server/src/systems/crafting/craft.ts` (`craftStep`)
-- **Pinned by:** `only administrators drop items or gold; moderators and players do nothing`; `/drop takes only Inventory cast members; the shop whitelist's singular crystals are not`; `SSO: a count from 1 to 9,999 on any stacking Inventory item` (packages/server/tests/inventory.test.ts); `placed items take /drop's names; a counted pile round-trips` (packages/server/tests/worldedit.test.ts); `SSO: every item intent names bag slots, counts or ground ids, never an item`; `SSO: the only free text a client sends is chat, mail, names and the editors' fields` (packages/shared/tests/ledger-pins-e.test.ts)
+- **Pinned by:** `only administrators drop items or gold; moderators and players do nothing`; `/drop takes only Inventory cast members`; `SSO: a count from 1 to 9,999 on any stacking Inventory item` (packages/server/tests/inventory.test.ts); `placed items take /drop's names; a counted pile round-trips` (packages/server/tests/worldedit.test.ts); `SSO: every item intent names bag slots, counts or ground ids, never an item`; `SSO: the only free text a client sends is chat, mail, names and the editors' fields` (packages/shared/tests/ledger-pins-e.test.ts)
 
 #### Peer sigils replaced by server events; peer kicks, warps and gold removed
 - **Kind:** Exploit closed
@@ -4955,5 +4969,4 @@ What 1.6 did that cannot happen under server authority, and what 1.6 built but n
 
 These were built into 1.6 but could never be reached in play, so SSO does the same and does not build them.
 
-- **The elemental orb war never worked.** 1.6 was designed so that an orb dropped on an elemental platform shifted the balance of power between the four mage classes, but nothing connected it: no platform existed, nothing saved the balance and no monster dropped an orb, so an orb dropped as an ordinary item. SSO does the same and does not build the war; it is a candidate to build after release.
-  - **Pinned by:** `orb drop: a Water Orb lands on the floor like any item`; `orb drop: an orb goes into a container on the faced tile`; `orb drop: aboard an Airship "You can't drop this from the sky!"` (packages/server/tests/pigs-orbs-webs.test.ts)
+- **The elemental orb war never worked.** 1.6 was designed so that an orb dropped on an elemental platform shifted the balance of power between the four mage classes, but nothing connected it: no platform existed, nothing saved the balance and no monster dropped an orb, so an orb dropped as an ordinary item. The four orbs had no picture and no way to be got either, so they are not in the Classic pack (see [Items nobody could get, or could only get without a picture, are gone](#items-nobody-could-get-or-could-only-get-without-a-picture-are-gone)), and SSO does not build the war; it is a candidate to build after release, with orbs that have art.

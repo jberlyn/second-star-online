@@ -230,9 +230,9 @@ describe("quest chests", () => {
   });
 
   test("a save refills 1 in 4000; random(6) picks the chest; random(lines) picks the item", () => {
-    const r = queue(1, 1, 2);
+    const r = queue(1, 1, 1);
     expect(questChestRefill(r)).toEqual({ chest: "Gold Chest", item: "Thor's Hammer" });
-    expect(r.asked).toEqual([4000, 6, 3]);
+    expect(r.asked).toEqual([4000, 6, 2]);
     expect(questChestRefill(queue(2))).toBeNull();
   });
 
@@ -240,10 +240,7 @@ describe("quest chests", () => {
     for (const roll of [3, 4, 5]) {
       expect(questChestRefill(queue(1, roll))).toBeNull();
     }
-    expect(questChestRefill(queue(1, 6, 6))).toEqual({
-      chest: "Dark Chest",
-      item: "Green Laser Sword",
-    });
+    expect(questChestRefill(queue(1, 6, 4))).toEqual({ chest: "Dark Chest", item: "Axe" });
     expect(questChestRefill(queue(1, 2, 1))).toEqual({
       chest: "Emerald Chest",
       item: "Emerald Key",

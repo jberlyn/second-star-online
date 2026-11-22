@@ -37,8 +37,8 @@ import {
   type EquipView,
   equipSlotFor,
   type InventoryView,
+  isCrystal,
   itemLabel,
-  lingoContains,
   menuAction,
   PAPERDOLL_SIZE,
   paperdollLayers,
@@ -701,7 +701,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
         }
       });
     };
-    const isCrystal = lingoContains(name, "Crystals");
+    const crystal = isCrystal(name);
     const colour = name.split(" ")[0]?.toLowerCase() ?? "";
     button(
       "Use",
@@ -749,9 +749,9 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     // A stack of more than one asks how many; a single item, crystals included, goes at once.
     const many = qty > 1;
     const move = (mode: "drop" | "give") => {
-      if (isCrystal && many) {
+      if (crystal && many) {
         act.crystals(menuSlot, colour, mode);
-      } else if (isCrystal) {
+      } else if (crystal) {
         act.oneCrystal(menuSlot, mode);
       } else if (many) {
         act.stack(menuSlot, itemLabel(name), mode);

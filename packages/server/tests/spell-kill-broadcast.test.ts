@@ -53,7 +53,7 @@ function scene(name: string) {
   const fireball = (p: Player) => {
     p.spell.book = ["Fireball"];
     const i = p.char.bag.indexOf(null);
-    p.char.bag[i] = { item: "Red Crystals", qty: 10 };
+    p.char.bag[i] = { item: "Red Crystal", qty: 10 };
     const t = tileLoc(6, 4);
     castIntent(room, p, "Fireball", t.h, t.v, { rng });
   };

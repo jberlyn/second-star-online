@@ -612,8 +612,8 @@ describe("the playthrough", () => {
   chapter("7b Gold and crystals to the faced player", async () => {
     await supply(alice, "Alice", "500 gold");
     expect(goldOf(alice)).toBeGreaterThanOrEqual(500);
-    await supply(alice, "Alice", "5 White Crystals");
-    expect(slotOf(alice, "White Crystals") || slotOf(alice, "5 White Crystals")).toBeGreaterThan(0);
+    await supply(alice, "Alice", "5 White Crystal");
+    expect(slotOf(alice, "White Crystal") || slotOf(alice, "5 White Crystal")).toBeGreaterThan(0);
     await warp("Alice", "x1000y992", 3, 6);
     await warp("Bob", "x1000y992", 4, 6);
     await turn(alice, "R");
@@ -631,13 +631,13 @@ describe("the playthrough", () => {
     expect(goldOf(bob)).toBe(b0 + 100);
     alice.clear();
     bob.clear();
-    const stack = lastInv(alice)?.bag.findIndex((l) => l?.item.includes("Crystals")) ?? -1;
+    const stack = lastInv(alice)?.bag.findIndex((l) => l?.item.endsWith(" Crystal")) ?? -1;
     alice.send({ t: "crystals", slot: stack + 1, n: 2, mode: "give" });
     await t(1);
-    expect(chats(alice)).toEqual(["*** Offering the 2 White Crystals to Bob."]);
-    expect(chats(bob)).toEqual(["Alice is giving you 2 White Crystals."]);
+    expect(chats(alice)).toEqual(["*** Offering the 2 White Crystal to Bob."]);
+    expect(chats(bob)).toEqual(["Alice is giving you 2 White Crystal."]);
     await t(60);
-    expect(lastInv(bob)?.bag.some((l) => l?.item.includes("Crystals"))).toBe(true);
+    expect(lastInv(bob)?.bag.some((l) => l?.item.endsWith(" Crystal"))).toBe(true);
   });
 
   /** Opens an NPC's shop list in `mode` and returns its rows. */
@@ -770,7 +770,7 @@ describe("the playthrough", () => {
     server.db.run("UPDATE characters SET dex = 20, sp = 200, sp_max = 200 WHERE name = 'Bob'");
     bob = await login(server, "Bob");
     await supply(bob, "Bob", "Fireball Book");
-    await supply(bob, "Bob", "2 Red Crystals");
+    await supply(bob, "Bob", "2 Red Crystal");
     await warp("Bob", "x1000y992", 6, 8);
     await t(50);
     bob.clear();
@@ -786,7 +786,7 @@ describe("the playthrough", () => {
     bob.send({ t: "cast", spell: "Fireball", x: at.x, y: at.y });
     await t(2);
     expect(deltas(carol).some((e) => e.e === "fx" && e.name.startsWith("Fireball"))).toBe(true);
-    expect(slotOf(bob, "Red Crystals")).toBe(0);
+    expect(slotOf(bob, "Red Crystal")).toBe(0);
     expect(who("Bob").char.vitals.sp).toBeLessThan(sp0);
     await t(20);
     bob.clear();
@@ -933,7 +933,7 @@ describe("the playthrough", () => {
     // Everyone gets what they need from King (/drop) and goes to a station on row 10.
     await supply(alice, "Alice", "Saw");
     await supply(dave, "Dave", "Potion Bottle");
-    await supply(dave, "Dave", "2 Red Crystals");
+    await supply(dave, "Dave", "2 Red Crystal");
     await supply(dave, "Dave", "Red Sand");
     await supply(bob, "Bob", "Chunk of Star");
     await supply(bob, "Bob", "Silver Crown");
@@ -1791,7 +1791,7 @@ describe("the playthrough", () => {
     alice = await login(server, "Alice");
     await supply(alice, "Alice", "Pig");
     await supply(bob, "Bob", "Web Book");
-    await supply(bob, "Bob", "1 White Crystals"); // Web costs 3; Bob has the 2 Alice gave him
+    await supply(bob, "Bob", "1 White Crystal"); // Web costs 3; Bob has the 2 Alice gave him
 
     // The promotion: Smithy trains a Fighter into a Grunt for 100 gold.
     await warp("Alice", "x1000y992", 6, 4);

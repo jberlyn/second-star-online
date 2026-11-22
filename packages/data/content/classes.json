@@ -981,17 +981,6 @@
         ]
       },
       {
-        "weapon": "Rune Sword",
-        "match": "exact",
-        "skills": [
-          "Slash",
-          "Thrust",
-          "Swordsmanship",
-          "Fencing",
-          "Heavy Arms"
-        ]
-      },
-      {
         "weapon": "Star Sword",
         "match": "contains",
         "skills": [
@@ -1076,13 +1065,6 @@
       },
       {
         "weapon": "Gold Staff",
-        "match": "exact",
-        "skills": [
-          "Staff Fighting"
-        ]
-      },
-      {
-        "weapon": "Dark Staff",
         "match": "exact",
         "skills": [
           "Staff Fighting"

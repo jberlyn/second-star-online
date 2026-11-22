@@ -72,10 +72,6 @@ describe("gate routing", () => {
     }
     expect(useDeferred("Piano")).toBe(false); // Use on a Piano has its line
   });
-  test("bug fixed: the Ocarina is not a silent item; the server plays it", () => {
-    expect(useDeferred("Ocarina")).toBe(false);
-    expect(useDeferred("ocarina")).toBe(false);
-  });
 });
 
 describe("5-5-5 levels (member is 16-bit)", () => {

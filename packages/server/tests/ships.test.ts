@@ -338,7 +338,7 @@ describe("aboard", () => {
     const s = aboard();
     s.ann.hull = 2;
     s.bob.spell.book = ["Firebolt"];
-    give(s.bob, 1, "Red Crystals", 20);
+    give(s.bob, 1, "Red Crystal", 20);
     const t = tileLoc(8, 5);
     castIntent(s.room, s.bob, "Firebolt", t.h, t.v, { rng: s.rng });
     const out = s.run(60);

@@ -149,9 +149,9 @@ describe("NPC shops: buying", () => {
     expect(stock(s, 17)).toBe(300000);
   });
 
-  test("Plone's line-17 White Crystals sell", () => {
+  test("Plone's line-17 White Crystal sell", () => {
     const r = npcBuy(shop("Plone"), 17, 3, { gold: 100, bag: emptyBag() }, rng);
-    expect(r.ok && r.buyer.bag[0]).toEqual({ item: "White Crystals", qty: 3 });
+    expect(r.ok && r.buyer.bag[0]).toEqual({ item: "White Crystal", qty: 3 });
     expect(r.ok && r.buyer.gold).toBe(100 - 78);
   });
 
@@ -481,11 +481,11 @@ describe("the personal vault", () => {
 
   test("bug fixed: a crystal line comes back as the same crystals", () => {
     const { p, vault, world } = scene();
-    p.char.vault = ["Blue Crystals"];
-    p.char.bag = bag(["Blue Crystals", 4]);
+    p.char.vault = ["Blue Crystal"];
+    p.char.bag = bag(["Blue Crystal", 4]);
     openVault(p, vault);
     withdrawVault(world, p, 1, rng);
-    expect(p.char.bag[0]).toEqual({ item: "Blue Crystals", qty: 5 });
+    expect(p.char.bag[0]).toEqual({ item: "Blue Crystal", qty: 5 });
     expect(p.char.vault).toEqual([]);
   });
 });

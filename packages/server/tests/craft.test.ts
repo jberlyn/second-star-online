@@ -184,7 +184,7 @@ describe("crafts in the frame script", () => {
     setSkill(k.a, "Alchemy", 1);
     k.a.char.equip.offHand = "Red Sand";
     k.a.char.bag[0] = { item: "Potion Bottle", qty: 1 };
-    k.a.char.bag[1] = { item: "Red Crystals", qty: 1 };
+    k.a.char.bag[1] = { item: "Red Crystal", qty: 1 };
     k.craft(1);
     k.run(50);
     leaveRoom(k.world, k.a);
@@ -196,7 +196,7 @@ describe("crafts in the frame script", () => {
     expect(k.a.craft.timers).toEqual({});
     expect(lines(k.run(200), "a")).toEqual([]);
     expect(k.a.char.bag[0]).toEqual({ item: "Potion Bottle", qty: 1 });
-    expect(k.a.char.bag[1]).toEqual({ item: "Red Crystals", qty: 1 });
+    expect(k.a.char.bag[1]).toEqual({ item: "Red Crystal", qty: 1 });
   });
 
   test("a map change with no craft running says nothing", () => {
@@ -307,7 +307,7 @@ describe("crafts in the frame script", () => {
     setSkill(k.a, "Alchemy", 1);
     k.a.char.equip.offHand = "Red Sand";
     k.a.char.bag[0] = { item: "Potion Bottle", qty: 2 };
-    k.a.char.bag[1] = { item: "Red Crystals", qty: 1 };
+    k.a.char.bag[1] = { item: "Red Crystal", qty: 1 };
     k.craft(1);
     expect(k.a.char.bag[0]).toEqual({ item: "Potion Bottle", qty: 2 });
     expect(lines(k.run(200), "a")).toEqual([
@@ -532,12 +532,12 @@ describe("the Cauldron", () => {
     expect(c.b.char.bag[0]).toEqual({ item: "Gold Crown", qty: 1 });
   });
 
-  test("bug fixed: the Magic Shield Book recipes brew, and 'Axe' means an Axe", () => {
+  test("bug fixed: the Magic Shield Book recipe brews, and 'Axe' means an Axe", () => {
     const c = cauldron();
-    c.world.containers.set("Cauldron#7", ["Small Shield"]);
+    c.world.containers.set("Cauldron#7", ["White Robe"]);
     c.a.char.bag[0] = { item: "Magic Shield Book", qty: 1 };
     expect(lines(c.drop(1), "a")).toContain(CRAFT_TEXT.puff);
-    expect(c.world.containers.get("Cauldron#7")).toEqual(["Magic Shield"]);
+    expect(c.world.containers.get("Cauldron#7")).toEqual(["Wizard's Robe"]);
     c.world.containers.set("Cauldron#7", ["Gold Axe"]);
     c.a.char.bag[1] = { item: "Chunk of Star", qty: 1 };
     expect(lines(c.drop(2), "a")).not.toContain(CRAFT_TEXT.puff);
@@ -712,10 +712,10 @@ describe("withdrawing from a container", () => {
 
   test("bug fixed: a crystal line comes back out of a container as the same crystals", () => {
     const c = cauldron();
-    c.world.containers.set("Cauldron#7", ["Blue Crystals"]);
+    c.world.containers.set("Cauldron#7", ["Blue Crystal"]);
     actionIntent(c.ictx, c.room, c.a);
     withdrawContainer(c.world, c.a, 1, c.ictx.rng);
-    expect(c.a.char.bag.some((l) => l?.item === "Blue Crystals")).toBe(true);
+    expect(c.a.char.bag.some((l) => l?.item === "Blue Crystal")).toBe(true);
     expect(c.a.char.bag.some((l) => l !== null && l.item.trim() === "Crystals")).toBe(false);
     expect(c.world.containers.get("Cauldron#7")).toEqual([]);
   });

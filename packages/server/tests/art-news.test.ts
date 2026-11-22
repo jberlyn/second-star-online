@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import type { ServerMsg } from "@secondstaronline/shared";
+import { content, type ServerMsg } from "@secondstaronline/shared";
 
 import {
   actionIntent,
@@ -505,24 +505,9 @@ describe("game entry", () => {
 });
 
 describe("music", () => {
-  test("bug fixed: an Ocarina plays its tune to everyone on the map, says so, and is kept", () => {
-    const s = scene();
-    const a = s.join("Alice");
-    const b = s.join("Bob", 6, 6);
-    s.give(a, "Ocarina");
-    const out = useIntent(s.ctx(), s.room(), a, 1);
-    expect(of(out, a.id, "chat")).toEqual([
-      { t: "chat", text: "You play a tune on your Ocarina.", color: 0 },
-    ]);
-    for (const id of [a.id, b.id]) {
-      expect(of(out, id, "sound")).toEqual([{ t: "sound", name: "ocarina", ch: 5 }]);
-    }
-    expect(of(out, b.id, "chat")).toEqual([]);
-    expect(a.char.bag[0]).toEqual({ item: "Ocarina", qty: 1 });
-  });
-  test("the Ocarina's tune is an authored sound the asset build packs", () => {
+  test("bug fixed: the Ocarina, which nobody could get, is not in the Classic pack, nor its tune", () => {
+    expect(content().item("Ocarina")).toBeUndefined();
     const dir = join(import.meta.dir, "../../../assets/added/sounds");
-    expect(existsSync(join(dir, "ocarina.wav"))).toBe(true);
-    expect(existsSync(join(dir, "ocarina.json"))).toBe(true);
+    expect(existsSync(join(dir, "ocarina.wav"))).toBe(false);
   });
 });

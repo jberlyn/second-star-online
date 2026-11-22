@@ -663,8 +663,9 @@ export function createGame(deps: GameDeps): Game {
   if (quests) {
     world.questLines = quests;
   }
-  // A line that names no NPC (1.6's roll 29, or the archive's ":Steel Key:Trumpet") can never be
-  // answered: it is replaced by a new quest as the lines are loaded or seeded.
+  // A line that names no NPC (1.6's roll 29, or the archive's ":Steel Key:Trumpet"), or an item
+  // the catalogue no longer has or has retired (Dantan's Water Orb), can never be answered: it is
+  // replaced by a new quest as the lines are loaded or seeded.
   db.transaction(() => {
     for (const [i, text] of world.questLines.entries()) {
       if (questLineUnanswerable(text)) {

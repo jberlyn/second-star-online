@@ -20,7 +20,7 @@ Killing monsters does not raise Magery.
 
 ## What it does
 
-**Base spell power** for every spell (`basePower`): 1, +1 above 10, 20, 30, 40, 50, 60, 70, 80 and 90 (up to 10). The Mage faction bonus and worn gear add to it: White Robe +2, Wizard's Robe +5, White Tiara +1, Ceramic Armor +5 and Mage's Ring +3 (`gear` in [item-rules.json](../../../packages/data/content/item-rules.json)). A school skill then adds its own bonus; see [Blessing](blessing.md), [Wrath](wrath.md), [Illusion](illusion.md), [Black Arts](black-arts.md) and the elements ([Fire](fire.md), [Water](water.md), [Wind](wind.md), [Earth](earth.md)). Smoke Bomb ignores Magery: [Martial Arts](martial-arts.md) sets its power.
+**Base spell power** for every spell (`basePower`): 1, +1 above 10, 20, 30, 40, 50, 60, 70, 80 and 90 (up to 10). The Mage faction bonus and worn gear add to it: White Robe +2, Wizard's Robe +5, Ceramic Armor +5 and Mage's Ring +3 (`gear` in [item-rules.json](../../../packages/data/content/item-rules.json)). A school skill then adds its own bonus; see [Blessing](blessing.md), [Wrath](wrath.md), [Illusion](illusion.md), [Black Arts](black-arts.md) and the elements ([Fire](fire.md), [Water](water.md), [Wind](wind.md), [Earth](earth.md)). Smoke Bomb ignores Magery: [Martial Arts](martial-arts.md) sets its power.
 
 Spell power sets damage and healing, and how long buffs such as Magic Shield, Stone Skin, Firesword and Hold last.
 

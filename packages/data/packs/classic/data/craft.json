@@ -179,10 +179,6 @@
         {
           "item": "Damaged Hammer, Thor's",
           "chunk": "Chunk of Steel"
-        },
-        {
-          "item": "Damaged Sword, Knight's",
-          "chunk": "Chunk of Steel"
         }
       ],
       "repairs": [
@@ -317,10 +313,6 @@
         {
           "input": "Damaged Sword, Short",
           "output": "Short Sword"
-        },
-        {
-          "input": "Damaged Sword, Knight's",
-          "output": "Knight's Sword"
         }
       ],
       "masterworkPool": {
@@ -634,37 +626,37 @@
         {
           "sand": "Red Sand",
           "potion": "Red Potion",
-          "crystal": "Red Crystals",
+          "crystal": "Red Crystal",
           "need": "You need 1 red crystal to create this potion!"
         },
         {
           "sand": "Blue Sand",
           "potion": "Blue Potion",
-          "crystal": "Blue Crystals",
+          "crystal": "Blue Crystal",
           "need": "You need 1 blue crystal to create this potion!"
         },
         {
           "sand": "Yellow Sand",
           "potion": "Yellow Potion",
-          "crystal": "Yellow Crystals",
+          "crystal": "Yellow Crystal",
           "need": "You need 1 yellow crystal to create this potion!"
         },
         {
           "sand": "Green Sand",
           "potion": "Green Potion",
-          "crystal": "Green Crystals",
+          "crystal": "Green Crystal",
           "need": "You need 1 green crystal to create this potion!"
         },
         {
           "sand": "Purple Sand",
           "potion": "Purple Potion",
-          "crystal": "Purple Crystals",
+          "crystal": "Purple Crystal",
           "need": "You need 1 purple crystal to create this potion!"
         },
         {
           "sand": "White Sand",
           "potion": "White Potion",
-          "crystal": "White Crystals",
+          "crystal": "White Crystal",
           "need": "You need 1 white crystal to create this potion!"
         }
       ]
@@ -914,13 +906,6 @@
             "Fireball Book"
           ],
           "result": "Fire Staff"
-        },
-        {
-          "requires": [
-            "Magic Shield Book",
-            "Small Shield"
-          ],
-          "result": "Magic Shield"
         },
         {
           "requires": [

@@ -18,6 +18,7 @@ import { gearBonus } from "../combat/gear.ts";
 import { type Equipment, type Faction, skillIndex } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { firstMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
+import { crystalColour } from "../inventory/inventory.ts";
 import type { Facing } from "../movement/movement.ts";
 import { mageSkillCap } from "../progression/skillgain.ts";
 import { PLAYFIELD_RECT } from "./spellfx.ts";
@@ -163,17 +164,15 @@ export function summonFor(spell: string): SpellSummon | null {
   return spellByName(spell)?.summon ?? null;
 }
 
-/** The six crystal colours, bag-loading order. */
-export const CRYSTAL_COLOURS = ["Blue", "Red", "Green", "Yellow", "Purple", "White"] as const;
-
 /**
- * The crystal loader: the bag line (0-based) whose item contains "<Colour> Cry", the **last** such
- * line of lines 1-16, or -1.
+ * The crystal loader: the bag line (0-based) holding that colour's crystal, the **last** such line
+ * of lines 1-16, or -1. (1.6 took any line containing "<Colour> Cry", so a renamed "Blue Crystal
+ * Ring" would have been spent; SSO takes the crystal by its exact name.)
  */
 export function crystalLine(bag: readonly ({ item: string } | null)[], colour: string): number {
   let found = -1;
   bag.forEach((l, i) => {
-    if (l && i < 16 && lingoContains(l.item, `${colour} Cry`)) {
+    if (l && i < 16 && lingoEq(crystalColour(l.item) ?? "", colour)) {
       found = i;
     }
   });

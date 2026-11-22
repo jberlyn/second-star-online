@@ -207,7 +207,7 @@ const bag = (...lines: [string, number][]): Bag => {
 };
 
 describe("quests", () => {
-  test("the archive's seven lines, padded to 40", () => {
+  test("the archive's lines, padded to 40; Dantan's Water Orb line is gone (bug fixed)", () => {
     const lines = archivedQuestLines();
     expect(lines.length).toBe(40);
     expect(lines.slice(0, 7)).toEqual([
@@ -217,7 +217,7 @@ describe("quests", () => {
       "Missie:Dragon Wing:Knight Shield",
       "James:tom tom:trumpet",
       "Girl:trumpet:Ruby Ring",
-      "Dantan:Water Orb:Plate Boots",
+      "",
     ]);
   });
 
@@ -268,8 +268,8 @@ describe("quests", () => {
   test("bug fixed: FindNewQuest always names an NPC, each named one equally likely", () => {
     expect(findNewQuest(seq(1, 1, 1))).toBe("Water God:Dragon Wing:Fire Key");
     // random(43) over the named NPCs: 29 is the NPC after 1.6's empty roll 29.
-    expect(findNewQuest(seq(29, 13, 20))).toBe("Divela:Scroll:Scimitar");
-    expect(findNewQuest(seq(38, 12, 9))).toBe("Kanta:Silver Token:Trumpet");
+    expect(findNewQuest(seq(29, 10, 19))).toBe("Divela:Scroll:Purple Potion");
+    expect(findNewQuest(seq(38, 9, 9))).toBe("Kanta:Silver Token:Trumpet");
     const names = new Set<string>();
     for (let n = 1; n <= 43; n++) {
       const npc = findNewQuest(seq(n, 1, 1)).split(":")[0] ?? "";
@@ -280,6 +280,19 @@ describe("quests", () => {
     expect(questLineUnanswerable(":Steel Key:Trumpet")).toBe(true);
     expect(questLineUnanswerable("Edwin:scroll:Airship Deed")).toBe(false);
     expect(questLineUnanswerable("")).toBe(false);
+  });
+
+  test("bug fixed: no quest asks for or gives an item nobody can get", () => {
+    const pools = content().quests.pools;
+    for (const p of [...pools.wanted, ...pools.rewards]) {
+      expect(["Damaged Helm", "Water Orb", "Ocarina", "Scimitar"]).not.toContain(p.item);
+    }
+    expect(pools.wanted.map((p) => p.roll)).toEqual(pools.wanted.map((_, i) => i + 1));
+    expect(pools.rewards.map((p) => p.roll)).toEqual(pools.rewards.map((_, i) => i + 1));
+    // A stored line that asks for or gives one is rolled again at start.
+    expect(questLineUnanswerable("Dantan:Water Orb:Plate Boots")).toBe(true);
+    expect(questLineUnanswerable("Divela:Scroll:Scimitar")).toBe(true);
+    expect(questLineUnanswerable("Divela:Scroll:Katana")).toBe(false);
   });
 
   test("bug fixed: every quest reply is heard by the map, closes its quote and ends its sentence", () => {

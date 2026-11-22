@@ -19,10 +19,11 @@ import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
 import {
   type ContentData,
   content,
+  crystalPile,
   displayName,
   installContent,
+  isCrystal,
   isUniqueContainer,
-  lingoContains,
   lingoEq,
   liveNpcText,
   NOTHING,
@@ -316,7 +317,10 @@ function census(game: Game, db: Db): Census {
   }
   const containers: Record<string, string[]> = {};
   for (const [name, lines] of [...game.world.containers].sort((x, y) => x[0].localeCompare(y[0]))) {
-    containers[name] = [...lines];
+    // An emptied container keeps an empty list in memory, and no rows in the database: the same.
+    if (lines.length > 0) {
+      containers[name] = [...lines];
+    }
     for (const l of lines) {
       copies.push({ place: "container", holder: name, stored: l, qty: 1 });
     }
@@ -391,9 +395,9 @@ function keyOf(stored: string): { key: string; n: number } {
   if (content().item(base) || CATALOGUE.has(base.toLowerCase())) {
     return { key: base.toLowerCase(), n: 1 };
   }
-  const count = /^(\d+) (.+)$/.exec(base);
-  if (count && lingoContains(count[2] as string, " Crystals")) {
-    return { key: (count[2] as string).trim().toLowerCase(), n: Number(count[1]) };
+  const pile = crystalPile(base);
+  if (pile) {
+    return { key: pile.item.toLowerCase(), n: pile.qty };
   }
   const level = /^(.*\S)\+\d+$/.exec(base);
   if (level) {
@@ -491,7 +495,7 @@ function recoloured(
   data: ContentData,
   items: readonly string[],
 ): ContentData["gather"]["gathering"] | null {
-  const gone = COLOURS.filter((c) => items.some((i) => lingoEq(i, `${c} Crystals`)));
+  const gone = COLOURS.filter((c) => items.some((i) => lingoEq(i, `${c} Crystal`)));
   const kept = COLOURS.find((c) => !gone.includes(c));
   if (gone.length === 0 || !kept) {
     return null;
@@ -579,7 +583,7 @@ function seedItems(db: Db, b: Base, plan: ItemPlan, batch: number) {
   const saleLines: string[] = [];
   plan.items.forEach((item, i) => {
     const storage = isUniqueContainer(item);
-    const crystal = lingoContains(item, " Crystals");
+    const crystal = isCrystal(item);
     // Bags: online and offline; a container carries its storage.
     bagLine(c.al, storage ? box(`${item}#${id()}`) : item, crystal ? 7 : 2);
     bagLine(c.bo, storage ? box(`${item}#${id()}`) : item, 3);

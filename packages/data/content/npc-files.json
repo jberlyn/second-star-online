@@ -58,7 +58,7 @@
     },
     {
       "name": "Coched",
-      "text": "OWN|king\rBIO|Name: Coched\rBIO|Class: Shopkeeper\rPRO|\rGLD|604\rSEL|Apple:2:0\rBUY|Apple:1\rSEL|gauntlets:100:0\rBUY|gauntlets:20\rSEL|red crystal:1:96\rBUY|red crystal:1\r"
+      "text": "OWN|king\rBIO|Name: Coched\rBIO|Class: Shopkeeper\rPRO|\rGLD|604\rSEL|Apple:2:0\rBUY|Apple:1\rSEL|gauntlets:100:0\rBUY|gauntlets:20\rSEL|Red Crystal:1:96\rBUY|Red Crystal:1\r"
     },
     {
       "name": "Corin",
@@ -86,7 +86,7 @@
     },
     {
       "name": "Cyclops",
-      "text": "INV|Long Sword:40\rINV|Chain boots:20\rINV|3 Gold:1\rINV|8 Gold:3\rINV|15 Gold:7\rINV|5 Blue Crystals:15\rINV|Cyclops Meat:6"
+      "text": "INV|Long Sword:40\rINV|Chain boots:20\rINV|3 Gold:1\rINV|8 Gold:3\rINV|15 Gold:7\rINV|5 Blue Crystal:15\rINV|Cyclops Meat:6"
     },
     {
       "name": "Dan",
@@ -130,7 +130,7 @@
     },
     {
       "name": "Dwarf",
-      "text": "INV|10 gold:2\rINV|30 Gold:4\rINV|5 White Crystals:10\r"
+      "text": "INV|10 gold:2\rINV|30 Gold:4\rINV|5 White Crystal:10\r"
     },
     {
       "name": "Earth God",
@@ -154,7 +154,7 @@
     },
     {
       "name": "Galor",
-      "text": "BIO|Name:Galor\rSEL|Potion Bottle:5:9876612\rSEL|Blue Crystals:7:845590\rSEL|Red Crystals:15:9839648\rSEL|Green Crystals:18:820352\rSEL|Yellow Crystals:20:887069\rSEL|Purple Crystals:23:886417\rSEL|White Crystals:26:865140\rSEL|Red Sand:100:999913\rBUY|Potion Bottle:2\rBUY|Blue Crystals:4\rBUY|Red Crystals:7\rBUY|Green Crystals:9\rBUY|Yellow Crystals:10\rBUY|Purple Crystals:11\rBUY|White Crystals:13\rBUY|Red Potion:23\rGLD|1424337707\r"
+      "text": "BIO|Name:Galor\rSEL|Potion Bottle:5:9876612\rSEL|Blue Crystal:7:845590\rSEL|Red Crystal:15:9839648\rSEL|Green Crystal:18:820352\rSEL|Yellow Crystal:20:887069\rSEL|Purple Crystal:23:886417\rSEL|White Crystal:26:865140\rSEL|Red Sand:100:999913\rBUY|Potion Bottle:2\rBUY|Blue Crystal:4\rBUY|Red Crystal:7\rBUY|Green Crystal:9\rBUY|Yellow Crystal:10\rBUY|Purple Crystal:11\rBUY|White Crystal:13\rBUY|Red Potion:23\rGLD|1424337707\r"
     },
     {
       "name": "Gazer",
@@ -246,7 +246,7 @@
     },
     {
       "name": "Lizard Warrior",
-      "text": "INV|10 Gold:2\rINV|25 Gold:4\rINV|5 Purple Crystals:10\rINV|Steel Shield:15\r"
+      "text": "INV|10 Gold:2\rINV|25 Gold:4\rINV|5 Purple Crystal:10\rINV|Steel Shield:15\r"
     },
     {
       "name": "Mage Faction Member",
@@ -254,7 +254,7 @@
     },
     {
       "name": "Mega Slime",
-      "text": "INV|10 Gold:1\rINV|15 Gold:2\rINV|25 Gold:3\rINV|Apple:7\rINV|5 Green Crystals:10\r"
+      "text": "INV|10 Gold:1\rINV|15 Gold:2\rINV|25 Gold:3\rINV|Apple:7\rINV|5 Green Crystal:10\r"
     },
     {
       "name": "Melag",
@@ -266,7 +266,7 @@
     },
     {
       "name": "Merius",
-      "text": "BIO|Mermaid\rSEL|Damaged Armor:10:999"
+      "text": "BIO|Mermaid"
     },
     {
       "name": "Minmaye",
@@ -314,7 +314,7 @@
     },
     {
       "name": "Orc",
-      "text": "BIO|Orc\rINV|5 Red Crystals:10\rINV|Orc Meat:4\rINV|5 Gold:1\rINV|15 Gold:5\r"
+      "text": "BIO|Orc\rINV|5 Red Crystal:10\rINV|Orc Meat:4\rINV|5 Gold:1\rINV|15 Gold:5\r"
     },
     {
       "name": "Overlord",
@@ -338,11 +338,11 @@
     },
     {
       "name": "Plone",
-      "text": "BIO|Name: Plone\rBIO|Class: Master Alchemist\rGLD|1876060692\rSEL|White Sand:150:99985\rSEL|Potion Bottle:5:10624\rBUY|Potion Bottle:2\rSEL|Blue Crystals:7:955947\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:9980945\rBUY|Red Crystals:7\rSEL|Green Crystals:18:1011276\rBUY|Green Crystals:9\rSEL|Yellow Crystals:20:992135\rBUY|Yellow Crystals:10\rSEL|Purple Crystals:23:968132\rBUY|Purple Crystals:11\rSEL|White Crystals:26:53757\rBUY|White Crystals:13\rBUY|White Sand:75\rBUY|White Potion:35\r"
+      "text": "BIO|Name: Plone\rBIO|Class: Master Alchemist\rGLD|1876060692\rSEL|White Sand:150:99985\rSEL|Potion Bottle:5:10624\rBUY|Potion Bottle:2\rSEL|Blue Crystal:7:955947\rBUY|Blue Crystal:4\rSEL|Red Crystal:15:9980945\rBUY|Red Crystal:7\rSEL|Green Crystal:18:1011276\rBUY|Green Crystal:9\rSEL|Yellow Crystal:20:992135\rBUY|Yellow Crystal:10\rSEL|Purple Crystal:23:968132\rBUY|Purple Crystal:11\rSEL|White Crystal:26:53757\rBUY|White Crystal:13\rBUY|White Sand:75\rBUY|White Potion:35\r"
     },
     {
       "name": "Poison Frog",
-      "text": "INV|8 Gold:2\rINV|15 Gold:4\rINV|5 Yellow Crystals:10\r"
+      "text": "INV|8 Gold:2\rINV|15 Gold:4\rINV|5 Yellow Crystal:10\r"
     },
     {
       "name": "Prestin",
@@ -402,7 +402,7 @@
     },
     {
       "name": "Stephie",
-      "text": "BIO|Name: Stephie\rBIO|Class: Alchemist\rGLD|1870865497\rSEL|Purple Sand:125:99978\rSEL|Potion Bottle:5:4755\rSEL|Blue Crystals:7:949266\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:9986084\rBUY|Red Crystals:7\rSEL|Green Crystals:18:1012522\rBUY|Green Crystals:9\rSEL|Yellow Crystals:20:996625\rBUY|Yellow Crystals:10\rSEL|Purple Crystals:23:824344\rBUY|Purple Crystals:11\rSEL|White Crystals:26:915285\rBUY|White Crystals:13\rBUY|Purple Sand:65\rBUY|Purple Potion:32\r"
+      "text": "BIO|Name: Stephie\rBIO|Class: Alchemist\rGLD|1870865497\rSEL|Purple Sand:125:99978\rSEL|Potion Bottle:5:4755\rSEL|Blue Crystal:7:949266\rBUY|Blue Crystal:4\rSEL|Red Crystal:15:9986084\rBUY|Red Crystal:7\rSEL|Green Crystal:18:1012522\rBUY|Green Crystal:9\rSEL|Yellow Crystal:20:996625\rBUY|Yellow Crystal:10\rSEL|Purple Crystal:23:824344\rBUY|Purple Crystal:11\rSEL|White Crystal:26:915285\rBUY|White Crystal:13\rBUY|Purple Sand:65\rBUY|Purple Potion:32\r"
     },
     {
       "name": "Tastad",
@@ -410,7 +410,7 @@
     },
     {
       "name": "Tela",
-      "text": "BIO|Name: Tela\rBIO|Class: Crystal Vendor\rGLD|1006008096\rSEL|Potion Bottle:5:9883179\rBUY|Potion Bottle:2\rSEL|Blue Crystals:7:9919922\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:99948602\rBUY|Red Crystals:7\rSEL|Yellow Crystals:20:9911961\rBUY|Yellow Crystals:10\rSEL|Green Crystals:18:9986790\rBUY|Green Crystals:9\rSEL|Purple Crystals:23:908927\rBUY|Purple Crystals:11\rSEL|Yellow Sand:125:9980\rSEL|White Crystals:26:9965131\rBUY|White Crystals:13\rBUY|Yellow Sand:65\rBUY|Yellow Potion:28\r"
+      "text": "BIO|Name: Tela\rBIO|Class: Crystal Vendor\rGLD|1006008096\rSEL|Potion Bottle:5:9883179\rBUY|Potion Bottle:2\rSEL|Blue Crystal:7:9919922\rBUY|Blue Crystal:4\rSEL|Red Crystal:15:99948602\rBUY|Red Crystal:7\rSEL|Yellow Crystal:20:9911961\rBUY|Yellow Crystal:10\rSEL|Green Crystal:18:9986790\rBUY|Green Crystal:9\rSEL|Purple Crystal:23:908927\rBUY|Purple Crystal:11\rSEL|Yellow Sand:125:9980\rSEL|White Crystal:26:9965131\rBUY|White Crystal:13\rBUY|Yellow Sand:65\rBUY|Yellow Potion:28\r"
     },
     {
       "name": "Teli",
@@ -466,7 +466,7 @@
     },
     {
       "name": "Wrel",
-      "text": "BIO|Name: Wrel\rBIO|Class: Crystal Vendor\rGLD|1874337789\rSEL|Green Sand:125:100002\rSEL|Potion Bottle:5:3878\rBUY|Potion Bottle:2\rSEL|Blue Crystals:7:933633\rBUY|Blue Crystals:4\rSEL|Red Crystals:15:9960898\rBUY|Red Crystals:7\rSEL|Green Crystals:18:939713\rBUY|Green Crystals:9\rSEL|Yellow Crystals:20:990037\rBUY|Yellow Crystals:10\rSEL|Purple Crystals:23:965511\rBUY|Purple Crystals:11\rBUY|White Crystals:13\rBUY|Green Sand:65\rBUY|Green Potion:26\rSEL|White Crystals:26:9033"
+      "text": "BIO|Name: Wrel\rBIO|Class: Crystal Vendor\rGLD|1874337789\rSEL|Green Sand:125:100002\rSEL|Potion Bottle:5:3878\rBUY|Potion Bottle:2\rSEL|Blue Crystal:7:933633\rBUY|Blue Crystal:4\rSEL|Red Crystal:15:9960898\rBUY|Red Crystal:7\rSEL|Green Crystal:18:939713\rBUY|Green Crystal:9\rSEL|Yellow Crystal:20:990037\rBUY|Yellow Crystal:10\rSEL|Purple Crystal:23:965511\rBUY|Purple Crystal:11\rBUY|White Crystal:13\rBUY|Green Sand:65\rBUY|Green Potion:26\rSEL|White Crystal:26:9033"
     },
     {
       "name": "Yeti",

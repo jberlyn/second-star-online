@@ -202,8 +202,8 @@ function refuseOnce(p: Player, line: string): boolean {
 }
 
 /**
- * The crystal a bow shot spends: the last bag line containing "<Colour> Cry", as a 0-based slot, or
- * -1.
+ * The crystal a bow shot spends: the last bag line holding that colour's crystal (`crystalSlotIn`),
+ * as a 0-based slot, or -1.
  */
 export function crystalSlot(p: Player, colour: CrystalColour): number {
   return crystalSlotIn(p.char.bag, colour);

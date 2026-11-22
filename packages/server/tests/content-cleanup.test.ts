@@ -87,7 +87,7 @@ describe("stored copies", () => {
     expect(storedCopyOf("Ruby Ring", ["Ruby Ring"])).toBe(true);
     expect(storedCopyOf("ruby ring", ["Ruby Ring"])).toBe(true);
     expect(storedCopyOf("Crate#1234", ["Crate"])).toBe(true);
-    expect(storedCopyOf("5 Blue Crystals", ["Blue Crystals"])).toBe(true);
+    expect(storedCopyOf("5 Blue Crystal", ["Blue Crystal"])).toBe(true);
     expect(storedCopyOf("Long Sword+2", ["Long Sword"])).toBe(true);
     expect(storedCopyOf("apple", ["Apple", "apple"])).toBe(true);
     expect(storedCopyOf("Ruby Ring Mold", ["Ruby Ring"])).toBe(false);
@@ -99,9 +99,9 @@ describe("stored copies", () => {
   });
 
   test("a replaced copy keeps a container's id or a crystal pile's count only where they still mean something", () => {
-    expect(storedCopyAs("5 Blue Crystals", "Red Crystals")).toBe("5 Red Crystals");
-    expect(storedCopyAs("5 Blue Crystals", "Apple")).toBe("Apple");
-    expect(storedCount("5 Blue Crystals")).toBe(5);
+    expect(storedCopyAs("5 Blue Crystal", "Red Crystal")).toBe("5 Red Crystal");
+    expect(storedCopyAs("5 Blue Crystal", "Apple")).toBe("Apple");
+    expect(storedCount("5 Blue Crystal")).toBe(5);
     expect(storedCount("Apple")).toBe(1);
     expect(storedCopyAs("Crate#12", "Cabinet")).toBe("Cabinet#12");
     expect(storedCopyAs("Crate#12", "Ale")).toBe("Ale");
@@ -184,17 +184,17 @@ describe("where content refers to an item, and its cleanup", () => {
       ...withFile,
       npcFiles: {
         ...withFile.npcFiles,
-        files: [{ name: "Gem Seller", text: "INV|5 Blue Crystals:2" }],
+        files: [{ name: "Gem Seller", text: "INV|5 Blue Crystal:2" }],
       },
     };
-    const gems = usesOf(crystals, "item", "Blue Crystals").filter((u) => u.npcLine);
+    const gems = usesOf(crystals, "item", "Blue Crystal").filter((u) => u.npcLine);
     expect(
       (
-        cleanUses(crystals, gems, "replace", "Red Crystals").rows[0]?.data as
+        cleanUses(crystals, gems, "replace", "Red Crystal").rows[0]?.data as
           | { text: string }
           | undefined
       )?.text,
-    ).toBe("INV|5 Red Crystals:2");
+    ).toBe("INV|5 Red Crystal:2");
   });
 
   test("leave changes nothing and lists every reference", () => {
@@ -237,10 +237,10 @@ describe("where content refers to an item, and its cleanup", () => {
     const files = [{ name: "Test Monster", text: "INV|Ruby Ring:5\rINV|50 Gold:2" }];
     const withFile = { ...data, npcFiles: { ...data.npcFiles, files } };
     const uses = usesOf(withFile, "item", "Ruby Ring").filter((u) => u.npcLine);
-    const out = cleanUses(withFile, uses, "replace", "Blue Crystals").rows[0]?.data as {
+    const out = cleanUses(withFile, uses, "replace", "Blue Crystal").rows[0]?.data as {
       text: string;
     };
-    expect(out.text).toBe("INV|1 Blue Crystals:5\rINV|50 Gold:2");
+    expect(out.text).toBe("INV|1 Blue Crystal:5\rINV|50 Gold:2");
   });
 
   test("a deed's row goes with its item even when the references are replaced", () => {
@@ -255,7 +255,7 @@ describe("where content refers to an item, and its cleanup", () => {
 
   test("the quest chests' refills and Oraku's orb and reward are references", () => {
     const data = classic();
-    expect(usesOf(data, "item", "Laser Sword").some((u) => u.where === "houses/questChest")).toBe(
+    expect(usesOf(data, "item", "Thor's Hammer").some((u) => u.where === "houses/questChest")).toBe(
       true,
     );
     expect(
@@ -284,9 +284,9 @@ describe("where content refers to an item, and its cleanup", () => {
   test("the player-shop list's singular crystals, mining colours, faction heads and Assassin prizes are references", () => {
     const data = classic();
     expect(
-      usesOf(data, "item", "Blue Crystals").some((u) => u.where === "items/playerShopWhitelist"),
+      usesOf(data, "item", "Blue Crystal").some((u) => u.where === "items/playerShopWhitelist"),
     ).toBe(true);
-    const colours = usesOf(data, "item", "Blue Crystals").filter((u) => u.path[1] === "colours");
+    const colours = usesOf(data, "item", "Blue Crystal").filter((u) => u.path[1] === "colours");
     expect(colours.length).toBeGreaterThan(0);
     // A colour makes "<colour> Crystals": it is neither removed nor replaced, but left to edit.
     expect(cleanUses(data, colours, "replace", "Ale").left).toHaveLength(colours.length);
@@ -927,13 +927,13 @@ describe("removing content in use from a running game", () => {
     });
     p.map.ground.push({
       id: "g-bc",
-      item: "3 Red Crystals",
+      item: "3 Red Crystal",
       x: 3,
       y: 3,
       kind: "drop",
       expiresAt: null,
     });
-    expect(game.contentWorld.usage("item", ["Red Crystals"])[0]).toMatchObject({
+    expect(game.contentWorld.usage("item", ["Red Crystal"])[0]).toMatchObject({
       place: "ground",
       count: 3,
     });
@@ -944,14 +944,14 @@ describe("removing content in use from a running game", () => {
         key: "Apple",
         content: "replace",
         copies: "replace",
-        replacement: "Blue Crystals",
+        replacement: "Blue Crystal",
         refundGold: 0,
       },
       game.contentWorld,
     );
     expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
     const g = p.map.ground.find((x) => x.id === "g-ap");
-    expect(g?.item).toBe("5 Blue Crystals");
+    expect(g?.item).toBe("5 Blue Crystal");
     expect(g?.qty).toBeUndefined();
   });
 
@@ -1004,13 +1004,13 @@ describe("removing content in use from a running game", () => {
     }
     p.map.ground.push({
       id: "g-cr",
-      item: "5 Blue Crystals",
+      item: "5 Blue Crystal",
       x: 2,
       y: 3,
       kind: "drop",
       expiresAt: null,
     });
-    // Mining makes Blue Crystals from its colours: the operator changes those first.
+    // Mining makes Blue Crystal from its colours: the operator changes those first.
     const gathering = service.publishedContent().gather.gathering;
     expect(
       service.draftSet(ADMIN(god), { dataset: "gather", part: "gathering", key: null }, "set", {
@@ -1025,7 +1025,7 @@ describe("removing content in use from a running game", () => {
       ADMIN(god),
       {
         kind: "item",
-        key: "Blue Crystals",
+        key: "Blue Crystal",
         content: "replace",
         copies: "replace",
         replacement: "Apple",
@@ -1170,21 +1170,21 @@ describe("removing content in use from a running game", () => {
     expect(activity("unlogged")).toEqual([]);
   });
 
-  test("removing crystals leaves the singular crystal, an item of its own, and its copies alone", async () => {
+  test("removing a crystal purges its stacks, vault lines and shop lines, and no other colour's", async () => {
     const god = await make("God", "administrator");
     const al = await make("Al");
     const p = game.world.players.get(al.characterId);
     if (!p) {
       throw new Error("Al is not online");
     }
-    p.char.bag[2] = { item: "Blue Crystals", qty: 6 };
-    p.char.bag[3] = { item: "Blue Crystal", qty: 2 };
-    p.char.vault.push("Blue Crystal");
+    p.char.bag[2] = { item: "Blue Crystal", qty: 6 };
+    p.char.bag[3] = { item: "Red Crystal", qty: 2 };
+    p.char.vault.push("Blue Crystal", "Red Crystal");
     p.activityHeld = undefined;
     game.tick();
     saveNpcFile(
       db,
-      { npc: "Agavar", text: "BIO|Hi\rSEL|Blue Crystal:9:3\rSEL|Blue Crystals:2:5" },
+      { npc: "Agavar", text: "BIO|Hi\rSEL|Blue Crystal:9:3\rSEL|Red Crystal:2:5" },
       "acc",
       "t",
     );
@@ -1196,9 +1196,9 @@ describe("removing content in use from a running game", () => {
         colours: gathering.mining.colours.map((c) => (c === "Blue" ? "Red" : c)),
       },
     });
-    // The player-shop list's singular entry still counts as naming Blue Crystals.
+    // The player-shop list names the crystal as the bag does.
     expect(
-      usesOf(service.draftContent(), "item", "Blue Crystals").some(
+      usesOf(service.draftContent(), "item", "Blue Crystal").some(
         (u) => u.where === "items/playerShopWhitelist",
       ),
     ).toBe(true);
@@ -1206,7 +1206,7 @@ describe("removing content in use from a running game", () => {
       ADMIN(god),
       {
         kind: "item",
-        key: "Blue Crystals",
+        key: "Blue Crystal",
         content: "remove",
         copies: "purge",
         replacement: null,
@@ -1217,11 +1217,11 @@ describe("removing content in use from a running game", () => {
     expect(service.check()).toEqual([]);
     expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
     expect(p.char.bag[2]).toBeNull();
-    expect(p.char.bag[3]).toEqual({ item: "Blue Crystal", qty: 2 });
-    expect(p.char.vault).toEqual(["Blue Crystal"]);
-    expect(content().item("Blue Crystal")).toBeDefined();
+    expect(p.char.bag[3]).toEqual({ item: "Red Crystal", qty: 2 });
+    expect(p.char.vault).toEqual(["Red Crystal"]);
+    expect(content().item("Blue Crystal")).toBeUndefined();
     expect(db.query("SELECT text FROM npc_files WHERE npc = 'Agavar'").get()).toEqual({
-      text: "BIO|Hi\rSEL|Blue Crystal:9:3",
+      text: "BIO|Hi\rSEL|Red Crystal:2:5",
     });
   });
 

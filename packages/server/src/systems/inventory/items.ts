@@ -15,6 +15,7 @@ import {
   checkEquip,
   clickGate,
   content,
+  crystalPile,
   ctrlGate,
   type DeltaEvent,
   deedUse,
@@ -31,6 +32,7 @@ import {
   headDrop,
   invAdd,
   invDelSlot,
+  isCrystal,
   isFurniture,
   isGoldName,
   isWalkable,
@@ -107,7 +109,7 @@ export const GIVE_TEXT = {
   noOne: "*** You must be standing in front of someone to give them this.",
   /** A single item, `#` number stripped ("a Painting"). */
   receiving: (giver: string, item: string) => `${giver} is giving you a ${item}.`,
-  /** A pile of gold or crystals, named with its amount ("50 Gold", "5 Blue Crystals"). */
+  /** A pile of gold or crystals, named with its amount ("50 Gold", "5 Blue Crystal"). */
   receivingPile: (giver: string, pile: string) => `${giver} is giving you ${pile}.`,
   /** 1.6 left the crystals out ("Offering the  to Bob"). */
   offerCrystals: (pile: string, to: string) => `*** Offering the ${pile} to ${to}.`,
@@ -115,13 +117,6 @@ export const GIVE_TEXT = {
   /** The NPC gold line's wording; 1.6 named only the amount ("Offering the 50 to Bob"). */
   offerGold: (n: number, to: string) => `*** Offering the ${n} gold to ${to}.`,
   notEnoughGold: "You don't have enough gold!",
-} as const;
-
-/** Using an Ocarina: the line, and the tune everyone on the map hears. */
-export const OCARINA = {
-  text: "You play a tune on your Ocarina.",
-  sound: "ocarina",
-  ch: 5,
 } as const;
 
 /** How many items one tile holds before a player's drop finds the floor too crowded. */
@@ -257,14 +252,6 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   // Right after the Photo branch: the Piano says it cannot be used and consumes nothing.
   if (lingoEq(line.item, "Piano")) {
     io.tell(p, USE_TEXT.piano);
-    return io.out;
-  }
-  // The Ocarina plays a tune that everyone on the map hears, and is kept (1.6's did nothing).
-  if (lingoEq(line.item, "Ocarina")) {
-    io.tell(p, OCARINA.text);
-    for (const o of room.players) {
-      io.out.push({ to: o.id, msg: { t: "sound", name: OCARINA.sound, ch: OCARINA.ch } });
-    }
     return io.out;
   }
   if (useDeferred(line.item)) {
@@ -429,13 +416,13 @@ function tileCrowded(room: Room, x: number, y: number): boolean {
 export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n = 1): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
-  if (line && !busy(p) && line.qty < n && !lingoContains(line.item, "Crystals")) {
+  if (line && !busy(p) && line.qty < n && !isCrystal(line.item)) {
     io.tell(p, GIVE_TEXT.notEnoughItems(itemLabel(line.item)));
     return io.out;
   }
   // With a vault or container window open, Drop puts the item into it (in 1.6 the window's key
   // lock made the bag ignore clicks, so nothing could be stored until a take freed the keys).
-  if (line && !busy(p) && !lingoContains(line.item, "Crystals")) {
+  if (line && !busy(p) && !isCrystal(line.item)) {
     if (p.vaultOpen) {
       io.out.push(...depositVault(ctx.world, p, slot, n));
       return io.out;
@@ -464,7 +451,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
     return io.out;
   }
   // Crystals belong to the amount dialog.
-  if (lingoContains(name, "Crystals")) {
+  if (isCrystal(name)) {
     return io.out;
   }
   // Aboard a vehicle nothing leaves the bag, a Pig included: not from the sky, not into the
@@ -577,7 +564,7 @@ function monsterAhead(room: Room, p: Player): boolean {
 export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n = 1): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
-  if (busy(p) || p.keyLock || !line || lingoContains(line.item, "Crystals")) {
+  if (busy(p) || p.keyLock || !line || isCrystal(line.item)) {
     return io.out;
   }
   if (isFurniture(line.item)) {
@@ -646,7 +633,7 @@ export function crystalsIntent(
 ): Outgoing[] {
   const io = new ItemOut(room);
   const line = p.char.bag[slot - 1];
-  if (busy(p) || !line || !lingoContains(line.item, "Crystals")) {
+  if (busy(p) || !line || !isCrystal(line.item)) {
     return io.out;
   }
   const t = faced(p);
@@ -663,6 +650,17 @@ export function crystalsIntent(
     // Before the path split, so a short drop also says this; the drop's own "…to drop!" test can
     // never fail after it.
     io.tell(p, GIVE_TEXT.notEnough);
+    return io.out;
+  }
+  // With a vault or container window open, the drop puts the crystals into it, one line each,
+  // as many as fit, as Drop does with any other stack (in 1.6 the window's key lock made the bag
+  // ignore the dialog, and the pile went on the tile, which the vault itself blocks).
+  if (mode === "drop" && p.vaultOpen) {
+    io.out.push(...depositVault(ctx.world, p, slot, n));
+    return io.out;
+  }
+  if (mode === "drop" && p.container) {
+    io.out.push(...depositContainer(ctx.world, p, slot, p.container.name, n));
     return io.out;
   }
   if (mode === "give" && !target) {
@@ -1156,7 +1154,7 @@ export function receiveGive(
   const io = new ItemOut(room);
   // Printed first, before the ground and bag checks. A pile is named with its amount ("50 Gold"),
   // an item without its `#` number (1.6 showed "a Painting#12" and "a 50 Gold").
-  const pile = isGoldName(g.item) || lingoContains(g.item, " Crystals");
+  const pile = isGoldName(g.item) || crystalPile(g.item) !== null;
   const count = g.qty ?? 1;
   io.tell(
     target,

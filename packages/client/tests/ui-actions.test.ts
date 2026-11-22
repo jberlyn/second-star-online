@@ -161,7 +161,7 @@ function buildAll(): HTMLElement[] {
     "Logs",
     "Damaged Short Sword",
     "Wooden crate",
-    "Blue Crystals",
+    "Blue Crystal",
   ];
   items.forEach((item, i) => {
     bag[i] = { item, qty: 1 };

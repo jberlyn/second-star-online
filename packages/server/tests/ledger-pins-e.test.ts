@@ -359,10 +359,10 @@ describe("Cauldrons get unique ids", () => {
     const ctx = { world: s.world, rng: rngByN(), stepLength: 16 };
     const brew = (now: number) => {
       a.char.bag[0] = { item: "Potion Bottle", qty: 1 };
-      a.char.bag[1] = { item: "Red Crystals", qty: 1 };
+      a.char.bag[1] = { item: "Red Crystal", qty: 1 };
       a.craft.timers.Mix = {
         counter: 1,
-        job: { kind: "Mix", bottle: "Potion Bottle", crystal: "Red Crystals", potion: "Cauldron" },
+        job: { kind: "Mix", bottle: "Potion Bottle", crystal: "Red Crystal", potion: "Cauldron" },
       };
       craftStep(room, a, ctx, now);
     };

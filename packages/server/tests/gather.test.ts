@@ -139,7 +139,7 @@ describe("mining", () => {
     const out = g.swings(1);
     expect(events(out, "a").find((e) => e.e === "swing")).toMatchObject({ sound: "swordhit2" });
     expect(tileAt(g.map.layers[1], 5, 5)).toBe("O8");
-    expect(g.map.ground.map((x) => x.item)).toEqual(["1 Blue Crystals"]);
+    expect(g.map.ground.map((x) => x.item)).toEqual(["1 Blue Crystal"]);
     expect(sounds(out, "a")).toEqual(["crush:2"]);
   });
 });

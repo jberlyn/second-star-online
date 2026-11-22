@@ -133,7 +133,7 @@ describe("the playfield's hover tip", () => {
       { id: "a", name: "Exit", x: 13, y: 10 },
       { id: "b", name: "Long Sword", x: 13, y: 10 },
       { id: "c", name: "Open Wooden Door", x: 13, y: 10 },
-      { id: "d", name: "5 Blue Crystals", x: 5, y: 5 },
+      { id: "d", name: "5 Blue Crystal", x: 5, y: 5 },
     ]);
     s.at("pointermove", s.grass);
     s.frame();

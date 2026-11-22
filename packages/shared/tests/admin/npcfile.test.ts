@@ -164,7 +164,7 @@ describe("the editor's checks", () => {
   test("accepted: archived spellings, N Gold, N crystals, fixtures, BUY's ignored third field", () => {
     expect(check("SEL|apple:2:10", "BUY|knife:1:x", "INV|10 gold:3").error).toBeNull();
     expect(
-      check("INV|5 Blue Crystals:1", "INV|Chain boots:40", "BNK|", "OWN|king").error,
+      check("INV|5 Blue Crystal:1", "INV|Chain boots:40", "BNK|", "OWN|king").error,
     ).toBeNull();
   });
   test("bug fixed: a till filled without a GLD| line shows as one in the live file", () => {
@@ -182,8 +182,8 @@ describe("the editor's checks", () => {
   });
   test("warned: inert tags only; no line is outside a reader's window", () => {
     expect(check(...at(16, "SEL|Knife:5:10")).warnings).toEqual([]);
-    expect(check(...at(16, "SEL|Blue Crystals:5:10")).warnings).toEqual([]);
-    expect(check(...at(80, "SEL|Blue Crystals:5:10")).warnings).toEqual([]);
+    expect(check(...at(16, "SEL|Blue Crystal:5:10")).warnings).toEqual([]);
+    expect(check(...at(80, "SEL|Blue Crystal:5:10")).warnings).toEqual([]);
     // GLD| counts wherever it is.
     expect(check(...at(60, "GLD|5")).warnings).toEqual([]);
     expect(check(...at(80, "GLD|5")).warnings).toEqual([]);

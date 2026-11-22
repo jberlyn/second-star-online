@@ -453,14 +453,14 @@ describe("drop, pickup and give", () => {
     a.facing = "E";
     s.map.ground.push({
       id: "g1",
-      item: "5 Blue Crystals",
+      item: "5 Blue Crystal",
       x: 6,
       y: 5,
       kind: "loot",
       expiresAt: null,
     });
     actionIntent(s.ctx(), s.room(), a);
-    expect(a.char.bag[0]).toEqual({ item: "Blue Crystals", qty: 5 });
+    expect(a.char.bag[0]).toEqual({ item: "Blue Crystal", qty: 5 });
   });
   test("give: one unit on the target's tile, grabbed 60 frames later", () => {
     const s = scene();
@@ -534,34 +534,60 @@ describe("drop, pickup and give", () => {
     const a = s.join("A", 5, 5);
     const b = s.join("B", 6, 5);
     a.facing = "E";
-    give(a, 1, "Red Crystals", 10);
+    give(a, 1, "Red Crystal", 10);
     const out = crystalsIntent(s.ctx(), s.room(), a, 1, 4, "give");
-    expect(chat(out, "A")).toEqual(["*** Offering the 4 Red Crystals to B."]);
-    expect(chat(out, "B")).toEqual(["A is giving you 4 Red Crystals."]);
-    expect(a.char.bag[0]).toEqual({ item: "Red Crystals", qty: 6 });
-    expect(b.char.bag[0]).toEqual({ item: "Red Crystals", qty: 4 });
+    expect(chat(out, "A")).toEqual(["*** Offering the 4 Red Crystal to B."]);
+    expect(chat(out, "B")).toEqual(["A is giving you 4 Red Crystal."]);
+    expect(a.char.bag[0]).toEqual({ item: "Red Crystal", qty: 6 });
+    expect(b.char.bag[0]).toEqual({ item: "Red Crystal", qty: 4 });
   });
   test("bug fixed: Drop on crystals drops them even facing a player", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     const b = s.join("B", 6, 5);
     a.facing = "E";
-    give(a, 1, "Red Crystals", 10);
+    give(a, 1, "Red Crystal", 10);
     expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 4, "drop"), "A")).toEqual([]);
-    expect(groundAt(s.map, 6, 5)).toEqual(["4 Red Crystals"]);
+    expect(groundAt(s.map, 6, 5)).toEqual(["4 Red Crystal"]);
     expect(b.char.bag[0]).toBeNull();
     // Give with no one in front says so and keeps them.
     a.facing = "W";
     expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 2, "give"), "A")).toEqual([
       GIVE_TEXT.noOne,
     ]);
-    expect(a.char.bag[0]).toEqual({ item: "Red Crystals", qty: 6 });
+    expect(a.char.bag[0]).toEqual({ item: "Red Crystal", qty: 6 });
+  });
+  test("bug fixed: the crystal dialog's Drop stores crystals in an open vault, a line each, as many as fit", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    a.facing = "E";
+    give(a, 1, "Blue Crystal", 10);
+    a.vaultOpen = true;
+    a.char.vault = Array.from({ length: 12 }, () => "Apple");
+    const out = crystalsIntent(s.ctx(), s.room(), a, 1, 4, "drop");
+    expect(chat(out, "A")).toEqual([
+      "You drop 3 Blue Crystal into the container.",
+      "This is too full to store anything else!",
+    ]);
+    expect(a.char.vault.slice(12)).toEqual(["Blue Crystal", "Blue Crystal", "Blue Crystal"]);
+    expect(a.char.bag[0]).toEqual({ item: "Blue Crystal", qty: 7 });
+    // Nothing went on the faced tile.
+    expect(groundAt(s.map, 6, 5)).toEqual([]);
+  });
+  test("bug fixed: the crystal dialog's Drop stores crystals in an open container", () => {
+    const s = scene();
+    const a = s.join("A", 5, 5);
+    give(a, 1, "Red Crystal", 5);
+    a.container = { name: "Gold Chest", shown: [] };
+    crystalsIntent(s.ctx(), s.room(), a, 1, 2, "drop");
+    expect(s.world.containers.get("Gold Chest")).toEqual(["Red Crystal", "Red Crystal"]);
+    expect(a.char.bag[0]).toEqual({ item: "Red Crystal", qty: 3 });
   });
   test("a short crystal drop says the balance test's line, before the path split", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
-    give(a, 1, "Red Crystals", 3);
+    give(a, 1, "Red Crystal", 3);
     expect(chat(crystalsIntent(s.ctx(), s.room(), a, 1, 4, "drop"), "A")).toEqual([
       "You don't have enough crystals!",
     ]);
@@ -1032,12 +1058,12 @@ describe("/drop", () => {
 });
 
 describe("/drop names", () => {
-  test("/drop takes only Inventory cast members; the shop whitelist's singular crystals are not", () => {
-    expect(parseDrop("Blue Crystal")).toBeNull();
-    expect(parseDrop("red crystal")).toBeNull();
+  test("/drop takes only Inventory cast members", () => {
+    expect(parseDrop("Dragon")).toBeNull();
     // A real item with no Inventory member is refused too, as in 1.6.
-    expect(parseDrop("Gold Armor")).toBeNull();
     expect(parseDrop("Crate")).toBeNull();
+    // An item no longer in the Classic pack (no art, no source) is not one.
+    expect(parseDrop("Gold Armor")).toBeNull();
     // Member lookup ignores case; the name goes down as typed.
     expect(parseDrop("long sword")).toEqual({ item: "long sword", qty: 1 });
     expect(parseDrop("vault")).toEqual({ item: "vault", qty: 1 });
@@ -1049,33 +1075,33 @@ describe("/drop names", () => {
     expect(parseDrop("20 Gold Armor")).toEqual({ item: "20 Gold Armor", qty: 1 });
   });
   test("SSO: a bare crystal name is a pile of 1", () => {
-    expect(parseDrop("Blue Crystals")).toEqual({ item: "1 Blue Crystals", qty: 1 });
+    expect(parseDrop("Blue Crystal")).toEqual({ item: "1 Blue Crystal", qty: 1 });
   });
   test("SSO: a count from 1 to 9,999 on any stacking Inventory item", () => {
-    expect(parseDrop("50 blue crystals")).toEqual({ item: "50 Blue Crystals", qty: 1 });
+    expect(parseDrop("50 blue crystal")).toEqual({ item: "50 Blue Crystal", qty: 1 });
     expect(parseDrop("20 apple")).toEqual({ item: "Apple", qty: 20 });
     expect(parseDrop("1 Apple")).toEqual({ item: "Apple", qty: 1 });
     expect(parseDrop("9999 Apple")).toEqual({ item: "Apple", qty: 9999 });
-    for (const bad of ["0 Apple", "10000 Apple", "-5 Apple", "20 Rune Sword", "20 Vault"]) {
+    for (const bad of ["0 Apple", "10000 Apple", "-5 Apple", "20 Crate", "20 Vault"]) {
       expect(parseDrop(bad)).toBeNull();
     }
     // Containers get their own #id on every add, so they take no count.
     expect(parseDrop("Cauldron")).toEqual({ item: "Cauldron", qty: 1 });
     expect(parseDrop("3 Cauldron")).toBeNull();
   });
-  test("/drop Blue Crystal shows the alert; /drop 50 Blue Crystals picks up as 50", () => {
+  test("bug fixed: /drop 50 Blue Crystal picks up as 50 onto the crystal stack", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.role = ADMINISTRATOR;
     a.facing = "E";
-    expect(handleDrop(s.ctx(), s.room(), a, "Blue Crystal")).toEqual([
+    give(a, 1, "Blue Crystal", 3);
+    handleDrop(s.ctx(), s.room(), a, "50 Blue Crystal");
+    expect(groundAt(s.map, 6, 5)).toEqual(["50 Blue Crystal"]);
+    actionIntent(s.ctx(), s.room(), a);
+    expect(a.char.bag[0]).toEqual({ item: "Blue Crystal", qty: 53 });
+    expect(handleDrop(s.ctx(), s.room(), a, "Gold Armor")).toEqual([
       { to: "A", msg: { t: "alert", text: NO_SUCH_ITEM } },
     ]);
-    expect(groundAt(s.map, 6, 5)).toEqual([]);
-    handleDrop(s.ctx(), s.room(), a, "50 Blue Crystals");
-    expect(groundAt(s.map, 6, 5)).toEqual(["50 Blue Crystals"]);
-    actionIntent(s.ctx(), s.room(), a);
-    expect(a.char.bag[0]).toEqual({ item: "Blue Crystals", qty: 50 });
   });
   test("/drop 20 Apple is one pile that adds 20 to the stack", () => {
     const s = scene();

@@ -77,7 +77,7 @@ describe("traffic pin", () => {
       if (i < 2) {
         server.db.run("UPDATE characters SET dex = 20, sp = 200, sp_max = 200 WHERE id = ?", [id]);
         saveSpellbook(server.db, id, ["Fireball"]);
-        bag[0] = { item: "Red Crystals", qty: 500 };
+        bag[0] = { item: "Red Crystal", qty: 500 };
       } else if (i < 6) {
         equip.weapon = "Knife";
       }

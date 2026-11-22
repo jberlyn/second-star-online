@@ -157,7 +157,7 @@ describe("ground overlays", () => {
     for (const station of ["Stove", "Anvil", "Alchemy Lab", "Carpentry Bench"]) {
       expect(overlayWhenInUse(station)).toBe(true);
     }
-    for (const scenery of ["Campfire", "Wall Torch", "Fountain", "5 Blue Crystals", "Apple"]) {
+    for (const scenery of ["Campfire", "Wall Torch", "Fountain", "5 Blue Crystal", "Apple"]) {
       expect(overlayWhenInUse(scenery)).toBe(false);
     }
   });
@@ -178,7 +178,7 @@ describe("ground overlays", () => {
   });
 
   test("the animated overlays match Crystal piles or exact fixture names", () => {
-    expect(groundOverlay("5 Blue Crystals")).toBe("CC");
+    expect(groundOverlay("5 Blue Crystal")).toBe("CC");
     expect(groundOverlay("Campfire")).toBe("CF");
     expect(groundOverlay("campfire")).toBe("CF");
     expect(groundOverlay("Big Campfire")).toBeNull();
@@ -191,7 +191,7 @@ describe("the hover tip's name for a ground item", () => {
   test("design change: loose items, vehicles and fixtures are named as they are, quantity included", () => {
     expect(groundTipName("Long Sword")).toBe("Long Sword");
     expect(groundTipName("15 Gold")).toBe("15 Gold");
-    expect(groundTipName("5 Blue Crystals")).toBe("5 Blue Crystals");
+    expect(groundTipName("5 Blue Crystal")).toBe("5 Blue Crystal");
     expect(groundTipName("Zieg's Boat")).toBe("Zieg's Boat");
     expect(groundTipName("Slim's House Vault")).toBe("Slim's House Vault");
     expect(groundTipName("Wooden Door")).toBe("Wooden Door");

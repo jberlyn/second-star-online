@@ -6,7 +6,7 @@
  */
 
 import type { Rng } from "../core/lingo.ts";
-import type { Bag } from "../inventory/inventory.ts";
+import { type Bag, isCrystal } from "../inventory/inventory.ts";
 
 /** One `INV|<item>:<N>` line (the quantity is part of the name, "15 Gold"). */
 export interface LootLine {
@@ -28,14 +28,6 @@ export function rollLoot(lines: readonly LootLine[] | null, rng: Rng): string | 
     return null;
   }
   return rng.random(line.oneIn) === 1 ? line.item : null;
-}
-
-/**
- * The six colours of crystal, one or a stack ("Blue Crystal", "Red Crystals"), by whole name
- * ignoring case; an item that only contains the word, such as a "Crystal Axe", is not one.
- */
-export function isCrystal(item: string): boolean {
-  return /^(blue|green|purple|red|white|yellow) crystals?$/i.test(item.trim());
 }
 
 export type DeathDrop =

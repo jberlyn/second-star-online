@@ -124,13 +124,6 @@
       },
       {
         "match": "contains",
-        "pattern": "Rune Sword",
-        "expr": "10 + random(4)",
-        "flat": 10,
-        "randomN": 4
-      },
-      {
-        "match": "contains",
         "pattern": "Wooden Staff",
         "expr": "2 + random(3)",
         "flat": 2,

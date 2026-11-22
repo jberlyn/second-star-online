@@ -205,11 +205,11 @@ describe("the ledger", () => {
       p,
       "x1y1",
       [{ item: "Apple" }, { item: "Rock", qty: 3 }, { item: "50 Gold" }],
-      [{ item: "Apple" }, { item: "Rock" }, { item: "5 Blue Crystals" }, { item: "80 Gold" }],
+      [{ item: "Apple" }, { item: "Rock" }, { item: "5 Blue Crystal" }, { item: "80 Gold" }],
     );
     expect(world.activity.map((e) => [e.type, e.item, e.map, e.x, e.details])).toEqual([
       ["admin", "Rock", "x1y1", null, { via: "worldEditor", placed: -2 }],
-      ["admin", "Blue Crystals", "x1y1", null, { via: "worldEditor", placed: 5 }],
+      ["admin", "Blue Crystal", "x1y1", null, { via: "worldEditor", placed: 5 }],
       ["admin", null, "x1y1", null, { via: "worldEditor", placedGold: 30 }],
     ]);
     expect(checkHoldings(world, p)).toBe(0);

@@ -46,7 +46,7 @@ The original engine classified items, monsters, and spells by testing their name
 - **Every match adds:** all matching rows' numeric bonuses or effects are summed.
 - **In order:** every matching row applies, one after another in file order (`paperdoll.aliases`, where each row can rename the result of the one before).
 
-Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystals`, `Long Sword+3`, `Damaged Helm`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name. Two tables also extend `exact` to masterworks: an exact row in `classes.json` `skillGain.weaponSkills` or an exact skill block in `attpower.json` also matches the `+1` to `+N` masterworks that `craft.json` `stations.smith.masterwork` makes from that weapon.
+Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystal`, `Long Sword+3`, `Damaged Helm, Fire`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name. Two tables also extend `exact` to masterworks: an exact row in `classes.json` `skillGain.weaponSkills` or an exact skill block in `attpower.json` also matches the `+1` to `+N` masterworks that `craft.json` `stations.smith.masterwork` makes from that weapon.
 
 ## Items (`items.json`, `item-rules.json`, `attpower.json`)
 
@@ -98,7 +98,7 @@ Some keywords are handled directly in game logic or formulas without a table row
 
 Notes carried over from the code:
 
-- **`use.silent`:** `Map` stays although no item has `"Map"` in its name, so its Use text can never show. The Ocarina is not on the list: the server plays its tune.
+- **`use.silent`:** `Map` stays although no item has `"Map"` in its name, so its Use text can never show.
 - **Platforms (`ground.platforms`):** the Experience Platform's step gate is level `21`, and its text says so. All four platforms' Ctrl text ends Ctrl's pause (`unpause`), as does the Street Lamp's.
 - **Book table order:** the book Dexterity table (`use.books`) is `contains` and the last match wins, so `"Firebolt"` comes after `"Bolt"`.
 - **Spell defense (`armour.spell`):** each row adds its `delta` to the spell damage a player wearing the item takes (positive for metal, negative for robes), and `magicShield` is added while Magic Shield runs.

@@ -13,7 +13,7 @@ Slash is the basic edged-weapon skill. Almost every blade, axe and hammer trains
 
 ## How it rises
 
-- **Melee kills** with any of these weapons: Axe (and any name containing "Axe"), Bo, Broad Sword, Dagger, Dark Scimitar, Dark Sword, Dragon Sword, Fire Sword, Gold Sword, Hammer, Ice Sword, Katana, Knife, Knight's Sword, Laser Sword, Long Sword, Pharaoh Sword, Rune Sword, Scimitar, Short Sword, Star Sword, Steel Scimitar, Sword of Hope, Thor's Hammer, Unholy Lance. The chance is 1 in (Slash + W); see [melee kills](README.md#melee-kills).
+- **Melee kills** with any of these weapons: Axe (and any name containing "Axe"), Bo, Broad Sword, Dagger, Dark Scimitar, Dark Sword, Dragon Sword, Fire Sword, Gold Sword, Hammer, Ice Sword, Katana, Knife, Knight's Sword, Laser Sword, Long Sword, Pharaoh Sword, Scimitar, Short Sword, Star Sword, Steel Scimitar, Sword of Hope, Thor's Hammer, Unholy Lance. The chance is 1 in (Slash + W); see [melee kills](README.md#melee-kills).
 - **The Slash Book** adds 1 to 5 while Slash is below 77.
 
 ## What it does

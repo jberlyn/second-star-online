@@ -86,7 +86,7 @@ export const USE_TEXT = {
 
 /**
  * Items whose use is handled before the usable list, or does nothing and says nothing. Books are
- * read by the spell-learning system and the Ocarina is played by the server. The names are
+ * read by the spell-learning system. The names are
  * `use.silent` in content/item-rules.json. "Map" stays in it: no item has "Map" in its name, so the
  * Use text ("You open up the map and read it...") can never show and nothing is built for it.
  */

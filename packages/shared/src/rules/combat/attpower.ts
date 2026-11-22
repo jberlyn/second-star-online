@@ -14,14 +14,15 @@ import { content } from "../../content/store.ts";
 import { type Fighter, skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoDiv, lingoEq, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
+import { type CrystalColour, crystalColour } from "../inventory/inventory.ts";
 import { gearBonus } from "./gear.ts";
 
 /** The six arrow colours, by arrow number. */
 export const ARROW_COLOURS = ["Blue", "Red", "Green", "Yellow", "Purple", "White"] as const;
 
 /**
- * The crystal a bow shot spends: the last bag line containing "<Colour> Cry" with some left, as a
- * 0-based slot, or -1.
+ * The crystal a bow shot spends: the last bag line holding that colour's crystal with some left, as
+ * a 0-based slot, or -1. (1.6 took any line containing "<Colour> Cry".)
  */
 export function crystalSlotIn(
   bag: readonly ({ item: string; qty: number } | null)[],
@@ -29,7 +30,7 @@ export function crystalSlotIn(
 ): number {
   let slot = -1;
   bag.forEach((l, i) => {
-    if (l && lingoContains(l.item, `${colour} Cry`) && l.qty > 0) {
+    if (l && crystalColour(l.item) === colour && l.qty > 0) {
       slot = i;
     }
   });
@@ -62,7 +63,6 @@ export function bowRefusal(
   }
   return crystalSlotIn(bag, colour) < 0 ? outOfCrystalsText(colour) : null;
 }
-export type CrystalColour = (typeof ARROW_COLOURS)[number];
 
 export interface AttackPowerResult {
   /** The attack power before target defenses. */

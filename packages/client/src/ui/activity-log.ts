@@ -99,7 +99,7 @@ const SCOPE_TEXT: Record<ActivityScope, { label: string; help: string; empty: st
   },
   item: {
     label: "Item",
-    help: "An item's name as the bag shows it, such as Steel Sword or Blue Crystals.",
+    help: "An item's name as the bag shows it, such as Steel Sword or Blue Crystal.",
     empty: "Nothing is logged for this item with these filters.",
   },
 };

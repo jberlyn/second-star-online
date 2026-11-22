@@ -106,13 +106,13 @@ describe("the client's checks (SH)", () => {
     expect(parse("Tolam set Dragon=5,2")).toEqual({ kind: "refused", text: SHOP_TEXT.wrongItem });
     // A space before "=" is part of the name.
     expect(parse("Tolam set Fish =5,2")).toEqual({ kind: "refused", text: SHOP_TEXT.wrongItem });
-    // Bug fixed: the list names crystals in the singular, and the bag's plural is accepted too.
+    // Bug fixed: the list names crystals in the singular, as the bag does.
     expect(onShopWhitelist("Blue Crystal")).toBe(true);
-    expect(onShopWhitelist("Blue Crystals")).toBe(true);
-    expect(onShopWhitelist("white crystals")).toBe(true);
-    expect(parse("Tolam set Red Crystals=30,15")).toMatchObject({
+    expect(onShopWhitelist("white crystal")).toBe(true);
+    expect(onShopWhitelist("Blue Crystals")).toBe(false);
+    expect(parse("Tolam set Red Crystal=30,15")).toMatchObject({
       kind: "set",
-      item: "Red Crystals",
+      item: "Red Crystal",
     });
     expect(onShopWhitelist("Crystals")).toBe(false);
   });

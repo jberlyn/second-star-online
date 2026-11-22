@@ -134,7 +134,7 @@ export function castIntent(
     res.out.push(tell(p, CAST_TEXT.sp(sp)));
     return res;
   }
-  // The last "<Colour> Cry" line must hold enough crystals. 1.6 checked the client's own count and
+  // The last line holding that colour's crystal must hold enough. 1.6 checked the client's own count and
   // sent the removal afterwards, which allowed free casts; SSO checks and removes in the same step.
   const need = crystalsFor(spell);
   const line = need ? crystalLine(p.char.bag, need.colour) : -1;

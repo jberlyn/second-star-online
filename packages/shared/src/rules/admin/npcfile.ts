@@ -12,6 +12,7 @@
 
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
+import { isCrystal } from "../inventory/inventory.ts";
 import { parseTrn } from "../progression/promotion.ts";
 
 /** The longest file the editor shows and saves (the NPC editor's display routine). */
@@ -291,7 +292,7 @@ export function npcShopItemOk(name: string, store: ContentStore = content()): bo
 
 /**
  * A drop line's item: what a shop sells, an Inventory fixture, `N Gold` (a positive integer
- * followed by "gold", as `/drop` takes it), or `N <crystals>` ("5 Blue Crystals").
+ * followed by "gold", as `/drop` takes it), or `N <crystal>` ("5 Blue Crystal").
  */
 export function npcLootItemOk(name: string, store: ContentStore = content()): boolean {
   if (catalogue(name, store) || store.items.fixtures.some((f) => lingoEq(f, name))) {
@@ -305,7 +306,7 @@ export function npcLootItemOk(name: string, store: ContentStore = content()): bo
     return true;
   }
   const rest = name.trim().slice(lingoWord(name, 1).length).trim();
-  return lingoContains(rest, "Crystals") && catalogue(rest, store);
+  return isCrystal(rest) && catalogue(rest, store);
 }
 
 const MAX_INT = 2_000_000_000;

@@ -177,6 +177,29 @@ describe("the bank", () => {
 });
 
 describe("shops", () => {
+  test("bug fixed: an NPC shop neither lists nor sells a retired item a saved ledger still holds", () => {
+    const s = scene();
+    const p = s.join("Al", 6, 4);
+    p.char.gold = 1000;
+    p.char.bag = emptyBag();
+    s.put(1, "Akadius", 7, 3);
+    clickNpc(s.room(), p, 1, s.rng);
+    // A ledger saved before the Classic pack retired Damaged Armor (Merius sold it).
+    const ledger = s.ctx().shop?.("Akadius");
+    const line = ledger?.lines.find((l) => l.line === 4);
+    if (!line) {
+      throw new Error("no line 4");
+    }
+    line.item = "Damaged Armor";
+    const list = shopListIntent(s.ctx(), p, "buy");
+    const rows = list.flatMap((o) => (o.msg.t === "shop" ? o.msg.rows : []));
+    expect(rows.some((r) => r.item === "Damaged Armor")).toBe(false);
+    expect(chat(buyIntent(s.ctx(), p, 4, 1), "Al")).toEqual([
+      'Akadius says "Sorry but I\'m out of that particular item."',
+    ]);
+    expect(p.char.gold).toBe(1000);
+    expect(p.char.bag.every((l) => l === null)).toBe(true);
+  });
   test("SSO: Shop OK does nothing once the opened NPC has left the map's roster", () => {
     const s = scene();
     const p = s.join("Al", 6, 4);

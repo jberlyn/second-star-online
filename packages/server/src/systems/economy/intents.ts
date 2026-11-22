@@ -3,7 +3,7 @@
  * server's handler, against server state. The NPC is the one whose Bio you opened, and it must
  * still be in your map's roster (SSO checks the map's roster, not what the client says).
  */
-import { lingoEq, promoteClass } from "@secondstaronline/shared";
+import { content, lingoEq, promoteClass } from "@secondstaronline/shared";
 
 import { type Holdings, holdingsOf, logActivity, logBagChange } from "../admin/activity.ts";
 import type { ItemCtx } from "../inventory/items.ts";
@@ -11,7 +11,7 @@ import { goldTarget, inMonsterList, NPC_TEXT } from "../monsters/npc.ts";
 import { type NpcStore, npcData, npcFileNamed } from "../monsters/npcfiles.ts";
 import type { Outgoing, Player, Room, WorldMap } from "../world/world.ts";
 import { BANK_TEXT, parseBank, runBank } from "./bank.ts";
-import { buyList, npcBuy, npcSell, type ShopLedger, sellList } from "./shop.ts";
+import { buyList, npcBuy, npcSell, SHOP_TEXT, type ShopLedger, sellList } from "./shop.ts";
 
 const tell = (p: Player, text: string): Outgoing => ({
   to: p.id,
@@ -61,7 +61,12 @@ export function shopListIntent(
     const rows = data.trains.map((t) => ({ line: t.line, item: t.cls, price: t.price }));
     return [{ to: p.id, msg: { t: "shop", mode, rows } }];
   }
-  const rows = mode === "buy" ? sellList(shop) : buyList(shop);
+  // An NPC shop leaves out a retired item its saved ledger still lists (see `buyIntent`).
+  const npcShop = !ctx.world.playerShops.has(shop.npc.toLowerCase());
+  const rows =
+    mode === "buy"
+      ? sellList(shop).filter((r) => !(npcShop && content().item(r.item)?.retired))
+      : buyList(shop);
   return [{ to: p.id, msg: { t: "shop", mode, rows } }];
 }
 
@@ -135,6 +140,17 @@ export function buyIntent(ctx: ItemCtx, p: Player, line: number, count: number):
   const shop = openShop(ctx, p, "buy");
   if (!shop) {
     return [];
+  }
+  // No NPC shop sells a retired item, though a ledger saved before a pack retired it may still
+  // list one (Merius' Damaged Armor). A player shop's stock is copies players own, sold as in a
+  // trade.
+  const sel = shop.lines.find((l) => l.line === line && l.kind === "SEL");
+  if (
+    sel &&
+    !ctx.world.playerShops.has(shop.npc.toLowerCase()) &&
+    content().item(sel.item)?.retired
+  ) {
+    return [tell(p, SHOP_TEXT.outOfStock(shop.npc)), processed(p)];
   }
   const r = npcBuy(shop, line, count, { gold: p.char.gold, bag: p.char.bag }, ctx.rng, (n) =>
     containerInUse(ctx, n),

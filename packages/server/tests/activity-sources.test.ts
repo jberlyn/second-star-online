@@ -207,7 +207,7 @@ describe("drop, give and pickup", () => {
     a.facing = "E";
     s.map.ground.push({
       id: "g1",
-      item: "5 Blue Crystals",
+      item: "5 Blue Crystal",
       x: 6,
       y: 5,
       kind: "loot",
@@ -215,7 +215,7 @@ describe("drop, give and pickup", () => {
     });
     start(a);
     actionIntent(s.ctx(), s.room(), a);
-    expect(logged(s.world)).toEqual([{ type: "pickup", who: "A", item: "Blue Crystals", qty: 5 }]);
+    expect(logged(s.world)).toEqual([{ type: "pickup", who: "A", item: "Blue Crystal", qty: 5 }]);
     expect(s.world.activity[0]?.details).toEqual({ from: "loot" });
     balanced(s.world, a);
   });
@@ -241,12 +241,12 @@ describe("drop, give and pickup", () => {
     const a = s.join("A", 5, 5);
     const b = s.join("B", 6, 5);
     a.facing = "E";
-    put(a, 1, "Red Crystals", 10);
+    put(a, 1, "Red Crystal", 10);
     start(a, b);
     crystalsIntent(s.ctx(), s.room(), a, 1, 4, "give");
     expect(logged(s.world)).toEqual([
-      { type: "give", who: "A", other: "B", otherId: "B", item: "Red Crystals", qty: -4 },
-      { type: "give", who: "B", other: "A", otherId: "A", item: "Red Crystals", qty: 4 },
+      { type: "give", who: "A", other: "B", otherId: "B", item: "Red Crystal", qty: -4 },
+      { type: "give", who: "B", other: "A", otherId: "A", item: "Red Crystal", qty: 4 },
     ]);
     balanced(s.world, a, b);
   });
@@ -255,10 +255,10 @@ describe("drop, give and pickup", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     a.facing = "E";
-    put(a, 1, "Red Crystals", 10);
+    put(a, 1, "Red Crystal", 10);
     start(a);
     crystalsIntent(s.ctx(), s.room(), a, 1, 4, "drop");
-    expect(logged(s.world)).toEqual([{ type: "drop", who: "A", item: "Red Crystals", qty: -4 }]);
+    expect(logged(s.world)).toEqual([{ type: "drop", who: "A", item: "Red Crystal", qty: -4 }]);
     balanced(s.world, a);
   });
 
@@ -520,12 +520,12 @@ describe("using items up", () => {
     a.facing = "E";
     a.timers.canAttack = true;
     a.char.equip = { ...a.char.equip, weapon: "Wooden Bow", offHand: "Blue Arrows" };
-    put(a, 1, "Blue Crystals", 5);
+    put(a, 1, "Blue Crystal", 5);
     orc(s.map.slots[0] as MonsterSlot, "Overlord", 1000, 6, 5);
     start(a);
     setAttackHeld(a, true);
     pollAttack(s.room(), a, { rng: s.rng, now: 0, world: s.world });
-    expect(logged(s.world)).toEqual([{ type: "use", who: "A", item: "Blue Crystals", qty: -1 }]);
+    expect(logged(s.world)).toEqual([{ type: "use", who: "A", item: "Blue Crystal", qty: -1 }]);
     balanced(s.world, a);
   });
 
@@ -534,12 +534,12 @@ describe("using items up", () => {
     const a = s.join("A", 6, 6);
     a.char.vitals = { ...a.char.vitals, sp: 200, spMax: 200 };
     a.spell.book = ["Minor Heal"];
-    put(a, 1, "Blue Crystals", 10);
+    put(a, 1, "Blue Crystal", 10);
     start(a);
     castIntent(s.room(), a, "Minor Heal", 200, 100, { rng: s.rng, world: s.world });
     const used = s.world.activity.filter((e) => e.type === "use");
     expect(used.map((e) => [e.item, e.qty < 0, e.details?.spell])).toEqual([
-      ["Blue Crystals", true, "Minor Heal"],
+      ["Blue Crystal", true, "Minor Heal"],
     ]);
     balanced(s.world, a);
   });
@@ -781,7 +781,7 @@ describe("spells and armour", () => {
     slot.pause = 10_000;
     const room = sim.world.rooms.get(map.name) as Room;
     a.spell.book = ["Fireball"];
-    put(a, 1, "Red Crystals", 10);
+    put(a, 1, "Red Crystal", 10);
     start(a);
     const t = tileLoc(6, 4);
     castIntent(room, a, "Fireball", t.h, t.v, { rng, world: sim.world });

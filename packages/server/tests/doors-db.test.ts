@@ -142,7 +142,7 @@ describe("doors and house vaults in the database", () => {
   });
 
   test("a quest chest refill is written with the tick", async () => {
-    const g = game({ 350: [1], 4000: [1], 6: [6] });
+    const g = game({ 350: [1], 4000: [1], 6: [6], 4: [4] });
     const bob = await makeChar(g, "Bob");
     g.enter(bob, false);
     g.intent(bob, { t: "mapReady" });
@@ -152,7 +152,7 @@ describe("doors and house vaults in the database", () => {
     }
     p.saveBlock = 0;
     g.tick();
-    // random(6) = 6 → Dark Chest; random(6) for its line takes the default 6: Green Laser Sword.
-    expect(loadContainers(db).get("Dark Chest")).toEqual(["Green Laser Sword"]);
+    // random(6) = 6 → Dark Chest; random(4) = 4 for its line: Axe.
+    expect(loadContainers(db).get("Dark Chest")).toEqual(["Axe"]);
   });
 });

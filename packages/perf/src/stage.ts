@@ -161,7 +161,7 @@ function kit(db: ReturnType<typeof openDatabase>, id: string, bot: BotPlan): voi
         [id],
       );
       saveSpellbook(db, id, [bot.spell ?? "Fireball"]);
-      bag[0] = { item: "Red Crystals", qty: 5000 };
+      bag[0] = { item: "Red Crystal", qty: 5000 };
       break;
     case "gatherer":
       equip.weapon = "Axe";

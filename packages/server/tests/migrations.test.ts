@@ -477,4 +477,208 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       expect(db.query("SELECT key, value FROM settings").all()).toEqual([...after]);
     }
   });
+
+  test("bug fixed: singular_crystals renames saved crystals, merges their stacks and is safe to run again on the world", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    const mig = all.find((m) => m.name.endsWith("_singular_crystals.sql"));
+    const icon = { member: 514, castLib: 9, asset: "bitmaps/319437_Blue_Crystals.png" };
+    expect(mig).toBeDefined();
+    runMigrations(
+      db,
+      all.filter((m) => m !== mig),
+    );
+    const seed = db.query("SELECT id FROM maps WHERE mx = 1000 AND my = 992").get() as {
+      id: string;
+    };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    const id = insertCharacter(db, {
+      accountId: "a1",
+      start: startingCharacter({
+        name: "Miner",
+        sex: 1,
+        head: 1,
+        classCode: 1,
+        str: 1,
+        sta: 1,
+        int: 1,
+        wis: 1,
+        dex: 1,
+      }),
+      position: { mapId: seed.id, x: 6, y: 4, facing: "S" },
+      now: "now",
+    });
+    db.run("DELETE FROM inventory WHERE character_id = ?", [id]);
+    const line = (slot: number, item: string, qty: number) =>
+      db.run("INSERT INTO inventory (id, character_id, slot, item, qty) VALUES (?, ?, ?, ?, ?)", [
+        `i${slot}`,
+        id,
+        slot,
+        item,
+        qty,
+      ]);
+    // An operator's test stack of the artless singular, the bag's plural, Coched's "red crystal".
+    line(1, "Blue Crystals", 50);
+    line(2, "Apple", 3);
+    line(3, "Blue Crystal", 100);
+    line(4, "Red Crystals", 4);
+    line(5, "red crystal", 2);
+    line(6, "Damaged Sword, Knight's", 1);
+    db.run(
+      "INSERT INTO vault_items (character_id, position, item) VALUES (?, 1, 'White Crystals')",
+      [id],
+    );
+    db.run(
+      "INSERT INTO container_items (name, position, item) VALUES ('Crate#7', 1, 'green crystals')",
+    );
+    const ground = (gid: string, item: string) =>
+      db.run(
+        "INSERT INTO ground_items (id, map_id, x, y, item, kind, created_at) VALUES (?, ?, 5, 5, ?, 'drop', 'now')",
+        [gid, seed.id, item],
+      );
+    ground("g1", "20 Blue Crystals");
+    ground("g2", "996 Yellow Crystals");
+    ground("g3", "Purple Crystals");
+    ground("g4", "15 Gold");
+    ground("g5", "Crystal Axe");
+    db.run(
+      "INSERT INTO npc_files (npc, text, saved_by, updated_at) VALUES ('Galor', ?, 'a1', 'now')",
+      [
+        "BIO|Sells Blue Crystals: the best\rSEL|Blue Crystals:7:9\rBUY|red crystal:1\rINV|5 White Crystals:10",
+      ],
+    );
+    db.run("INSERT INTO quests (line, text) VALUES (1, 'Tela:Red Crystals:Blue Crystals')");
+    db.run("INSERT INTO quests (line, text) VALUES (2, 'Edwin:scroll:Airship Deed')");
+    db.run("INSERT INTO quests (line, text) VALUES (3, 'Dantan:Blue Crystals:Blue Crystals')");
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_data, seq, updated_by, updated_at) VALUES ('items', 'items', 'Blue Crystals', 'set', ?, ?, 1, 'a1', 'now'), ('items', 'items', 'Blue Crystal', 'remove', NULL, NULL, 2, 'a1', 'now'), ('items', 'items', 'Red Crystals', 'set', ?, NULL, 3, 'a1', 'now'), ('items', 'items', 'Red Crystal', 'set', ?, NULL, 4, 'a1', 'now'), ('npcFiles', 'files', 'Tela', 'set', ?, NULL, 5, 'a1', 'now'), ('items', 'items', 'Damaged Sword, Knight', 'set', ?, NULL, 6, 'a1', 'now'), ('items', 'items', 'Damaged Sword, Knight''s', 'set', ?, NULL, 7, 'a1', 'now')",
+      [
+        // The plural, renamed, with the original art and no sprite (Classic v1.0.0's row).
+        JSON.stringify({
+          name: "Blue Crystals",
+          display: "Sky Shard",
+          variants: ["Blue crystals"],
+          icon,
+        }),
+        JSON.stringify({ name: "Blue Crystals", variants: ["Blue crystals"], icon }),
+        JSON.stringify({ name: "Red Crystals", display: "Ember", icon: "added" }),
+        // The artless singular, given art by the operator: the plural's change takes the key.
+        JSON.stringify({ name: "Red Crystal", icon: "added" }),
+        JSON.stringify({ name: "Tela", text: "SEL|Blue Crystals:7:9\rINV|5 Red Crystals:3" }),
+        // Both damaged Knight swords given art: the one with the new key keeps it.
+        JSON.stringify({ name: "Damaged Sword, Knight", display: "Notched Blade", icon: "added" }),
+        JSON.stringify({ name: "Damaged Sword, Knight's", icon: "added" }),
+      ],
+    );
+    // A waiting removal of Green Crystals that replaces its copies keeps its world cleanup.
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('items', 'items', 'Green Crystals', 'remove', NULL, 'a1', 'A', 'now')",
+    );
+    db.run(
+      "INSERT INTO content_draft_actions (kind, entry_key, action, author_account_id, author, updated_at) VALUES ('item', 'Green Crystals', ?, 'a1', 'A', 'now')",
+      [JSON.stringify({ copies: "replace", replacement: "White Crystals" })],
+    );
+
+    runMigrations(db, all);
+    const check = (content: boolean) => {
+      expect(
+        db
+          .query("SELECT slot, item, qty FROM inventory WHERE character_id = ? ORDER BY slot")
+          .all(id),
+      ).toEqual([
+        { slot: 1, item: "Blue Crystal", qty: 150 },
+        { slot: 2, item: "Apple", qty: 3 },
+        { slot: 4, item: "Red Crystal", qty: 6 },
+        { slot: 6, item: "Damaged Sword, Knight", qty: 1 },
+      ]);
+      expect(db.query("SELECT item FROM vault_items").all()).toEqual([{ item: "White Crystal" }]);
+      expect(db.query("SELECT item FROM container_items").all()).toEqual([
+        { item: "Green Crystal" },
+      ]);
+      expect(
+        db.query("SELECT id, item FROM ground_items WHERE id LIKE 'g%' ORDER BY id").all(),
+      ).toEqual([
+        { id: "g1", item: "20 Blue Crystal" },
+        { id: "g2", item: "996 Yellow Crystal" },
+        { id: "g3", item: "Purple Crystal" },
+        { id: "g4", item: "15 Gold" },
+        { id: "g5", item: "Crystal Axe" },
+      ]);
+      // Shop and drop lines are renamed (and any other mention before a colon, which only names
+      // the item as it is now called).
+      expect(db.query("SELECT text FROM npc_files WHERE npc = 'Galor'").get()).toEqual({
+        text: "BIO|Sells Blue Crystal: the best\rSEL|Blue Crystal:7:9\rBUY|Red Crystal:1\rINV|5 White Crystal:10",
+      });
+      expect(db.query("SELECT text FROM quests ORDER BY line").all()).toEqual([
+        { text: "Tela:Red Crystal:Blue Crystal" },
+        { text: "Edwin:scroll:Airship Deed" },
+        { text: "Dantan:Blue Crystal:Blue Crystal" },
+      ]);
+      if (!content) {
+        return;
+      }
+      // The change to the plural follows it; the change to the artless singular goes with it.
+      const rows = db
+        .query<{ row_key: string; op: string; data: string; base_data: string | null }, []>(
+          "SELECT row_key, op, data, base_data FROM content_rows ORDER BY seq",
+        )
+        .all()
+        .map((r) => ({ ...r, data: JSON.parse(r.data) }));
+      expect(rows).toEqual([
+        {
+          row_key: "Blue Crystal",
+          op: "set",
+          // A changed crystal takes the pack's name, spellings and picture.
+          data: {
+            name: "Blue Crystal",
+            display: "Sky Shard",
+            variants: ["Blue Crystals", "Blue crystals", "blue crystals"],
+            icon,
+            sprite: "Blue Crystals",
+          },
+          // The pack base stays as it was, so the Content page shows what the pack changed.
+          base_data: JSON.stringify({ name: "Blue Crystals", variants: ["Blue crystals"], icon }),
+        },
+        {
+          row_key: "Red Crystal",
+          op: "set",
+          data: {
+            name: "Red Crystal",
+            display: "Ember",
+            icon: "added",
+            variants: ["Red Crystals"],
+          },
+          base_data: null,
+        },
+        {
+          row_key: "Tela",
+          op: "set",
+          data: { name: "Tela", text: "SEL|Blue Crystal:7:9\rINV|5 Red Crystal:3" },
+          base_data: null,
+        },
+        {
+          row_key: "Damaged Sword, Knight",
+          op: "set",
+          data: { name: "Damaged Sword, Knight", display: "Notched Blade", icon: "added" },
+          base_data: null,
+        },
+      ]);
+      expect(db.query("SELECT row_key, op FROM content_draft").all()).toEqual([
+        { row_key: "Green Crystal", op: "remove" },
+      ]);
+      expect(db.query("SELECT entry_key, action FROM content_draft_actions").all()).toEqual([
+        {
+          entry_key: "Green Crystal",
+          action: JSON.stringify({ copies: "replace", replacement: "White Crystal" }),
+        },
+      ]);
+    };
+    check(true);
+    // Running it again changes nothing in the world (the runner applies it once, so the operator's
+    // content rows are only rewritten the one time).
+    db.run((mig as { sql: string }).sql);
+    check(false);
+  });
 });

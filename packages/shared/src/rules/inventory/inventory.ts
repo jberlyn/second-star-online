@@ -71,16 +71,45 @@ export function isGoldName(name: string): boolean {
   return lingoContains(name, " Gold");
 }
 
+/** The six crystal colours, in the order the bag loads them. */
+export const CRYSTAL_COLOURS = ["Blue", "Red", "Green", "Yellow", "Purple", "White"] as const;
+export type CrystalColour = (typeof CRYSTAL_COLOURS)[number];
+
 /**
- * A crystal pile `"<n> <Colour> Crystals"` becomes `n` of `<Colour> Crystals` on pickup (words 2
- * and 3, the count from word 1).
+ * The colour of a crystal (`Blue Crystal`, case ignored), or null for any other name. The whole
+ * name must match: a `Crystal Axe` or a `Blue Crystal Ring` is not a crystal. (1.6 named the item
+ * "Blue Crystals" and tested names with "contains"; SSO names it in the singular, issue #39. The
+ * old plural still counts, so a copy the upgrade's migration missed works and picks up singular.)
  */
+export function crystalColour(item: string): CrystalColour | null {
+  const m = /^(\S+) crystals?$/i.exec(item.trim());
+  return m ? (CRYSTAL_COLOURS.find((c) => lingoEq(c, m[1] as string)) ?? null) : null;
+}
+
+/** Whether the name is one of the six crystals. */
+export function isCrystal(item: string): boolean {
+  return crystalColour(item) !== null;
+}
+
+/** The crystal item of a colour: `Blue Crystal`. */
+export function crystalItem(colour: CrystalColour): string {
+  return `${colour} Crystal`;
+}
+
+/**
+ * A crystal pile on the ground, `"<n> <Colour> Crystal"` (its count in its name, as `15 Gold`
+ * carries its amount): the crystal, by its singular name, and the count, or null for any other
+ * name.
+ */
+export function crystalPile(name: string): { item: string; qty: number } | null {
+  const m = /^(\d+) (.+)$/.exec(name.trim());
+  const colour = m ? crystalColour(m[2] as string) : null;
+  return m && colour ? { item: crystalItem(colour), qty: Number(m[1]) } : null;
+}
+
+/** A crystal pile `"<n> <Colour> Crystal"` becomes `n` of `<Colour> Crystal` on pickup. */
 export function pileToItem(name: string): { item: string; qty: number } {
-  if (lingoContains(name, " Crystals")) {
-    const words = name.trim().split(/\s+/);
-    return { item: `${words[1] ?? ""} ${words[2] ?? ""}`, qty: leadingInteger(name) };
-  }
-  return { item: name, qty: 1 };
+  return crystalPile(name) ?? { item: name, qty: 1 };
 }
 
 /**
@@ -198,7 +227,7 @@ export function displayName(item: string): string {
 /**
  * Whether a stored item name is a copy of the item spelled one of `spellings` (its key and its
  * archived spellings, case ignored): the name itself, a container with its `#id` (`Crate#12`), a
- * crystal pile (`5 Blue Crystals`) or a masterwork level (`Long Sword+2`).
+ * crystal pile (`5 Blue Crystal`) or a masterwork level (`Long Sword+2`).
  */
 export function storedCopyOf(stored: string, spellings: readonly string[]): boolean {
   const base = displayName(stored).trim();
@@ -207,8 +236,8 @@ export function storedCopyOf(stored: string, spellings: readonly string[]): bool
     return true;
   }
   // Only a crystal pile carries its count in its name; `15 Gold` is gold, not the Gold item.
-  const count = /^\d+ (.+)$/.exec(base);
-  if (count && lingoContains(count[1] as string, " Crystals") && is(count[1] as string)) {
+  const pile = crystalPile(base);
+  if (pile && is(pile.item)) {
     return true;
   }
   // A masterwork level is written onto the name (`Long Sword+2`); a name with a space before its
@@ -229,10 +258,10 @@ export function storedCopyAs(stored: string, item: string): string {
     return `${item}#${id}`;
   }
   const count = /^(\d+) .+$/.exec(displayName(stored).trim());
-  return count && lingoContains(item, " Crystals") ? `${count[1]} ${item}` : item;
+  return count && isCrystal(item) ? `${count[1]} ${item}` : item;
 }
 
-/** How many a stored pile name counts (`5 Blue Crystals` is 5); 1 for anything else. */
+/** How many a stored pile name counts (`5 Blue Crystal` is 5); 1 for anything else. */
 export function storedCount(stored: string): number {
   const count = /^(\d+) .+$/.exec(displayName(stored).trim());
   return count ? Math.max(1, Number(count[1])) : 1;

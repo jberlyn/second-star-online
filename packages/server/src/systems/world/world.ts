@@ -114,7 +114,7 @@ export interface WorldMap {
 /** A ground item: an original `Name:px-py` entry with a server id. */
 export interface GroundItem {
   id: string;
-  /** The original name, quantity included ("15 Gold", "5 Blue Crystals"). */
+  /** The original name, quantity included ("15 Gold", "5 Blue Crystal"). */
   item: string;
   /**
    * How many the pile gives on pickup when more than 1: only a counted `/drop`. Absent
