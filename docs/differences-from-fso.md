@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 82 |
-| [Fixed bugs](#fixed-bugs) | 301 |
+| [Fixed bugs](#fixed-bugs) | 304 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 137 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **572** |
+| **Total** | **575** |
 
 By system (the code folder that holds the change):
 
@@ -43,18 +43,18 @@ By system (the code folder that holds the change):
 | admin | [14](#admin) | [24](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
-| combat | [27](#combat) | [7](#server-side-combat) |
+| combat | [28](#combat) | [7](#server-side-combat) |
 | core | [3](#core) | [9](#server-side-core) |
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
-| inventory | [37](#inventory) | [11](#server-side-inventory) |
+| inventory | [38](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [20](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
 | progression | [9](#progression) | [4](#server-side-progression) |
 | social | [21](#social) | [9](#server-side-social) |
-| spells | [24](#spells) | [9](#server-side-spells) |
+| spells | [25](#spells) | [9](#server-side-spells) |
 | vehicles | [4](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
 
@@ -1440,6 +1440,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`attackPower`), `packages/shared/src/rules/crafting/masterwork.ts` (`weaponIs`)
 - **Pinned by:** `bug fixed: Sword of Hope +1 gets the Heavy Arms bonus of the Sword of Hope` (packages/shared/tests/progression/weapon-skills.test.ts)
 
+#### Bowmaster's Ring is not a bow
+- **Kind:** Bug fixed
+- **What you notice:** Nothing in normal play: Classic's bows (Wooden Bow, Steel Bow and the three crossbows) shoot arrows as before. Bowmaster's Ring, held as a weapon (the character editor can put it there), swings like any other item instead of asking for arrows.
+- **1.6:** Any weapon whose name contained "bow" was a bow, so Bowmaster's Ring was one: it refused to swing without arrows and spent crystals.
+- **SSO:** An item is a bow when content gives it the `bow` behaviour (`item-rules.json` `behaviours`); Classic names its five bows exactly.
+- **Why:** The ring's name happens to hold the word; it was never meant to shoot (issue #37).
+- **In the code:** `packages/shared/src/rules/combat/attpower.ts` (`bowRefusal`, `attackPower`), `packages/shared/src/rules/inventory/behaviours.ts` (`hasBehaviour`)
+- **Pinned by:** `bug fixed: Bowmaster's Ring is no bow` (packages/shared/tests/inventory/behaviours.test.ts)
+
 ### core
 
 #### Sound off silences everything
@@ -2285,7 +2294,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** The Pig left the bag before the summon checked the tile, so a pig dropped on a tile monsters cannot stand on, or north from the top row, was silently lost. Off the other edges the drop did nothing and said nothing.
 - **SSO:** Every test the summon makes runs before the Pig leaves the bag. A blocked tile says the line above; a map whose four monster slots are all live says "It's too crowded to drop any pigs here!".
 - **Why:** Losing a pig without a word was never meant.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`pigDrop`), `packages/server/src/systems/spells/cast.ts` (`summonPig`)
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`releaseDrop`), `packages/server/src/systems/spells/cast.ts` (`releaseMonster`)
 - **Pinned by:** `bug fixed: a faced tile off the map at the side, bottom or top → "You can't drop an animal here!", the pig kept` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 #### A Pig drops only when other items can
@@ -2294,7 +2303,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** The Pig test came before the pause, vehicle and mid-step tests, so a Pig dropped when nothing else could.
 - **SSO:** The Pig test comes after them.
 - **Why:** The order was an accident and let pigs skip the rules every item follows.
-- **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`, `pigDrop`)
+- **In the code:** `packages/server/src/systems/inventory/items.ts` (`dropIntent`, `releaseDrop`)
 - **Pinned by:** `bug fixed: a pig waits out the item pause and the step like any other item` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 #### Only the Bo is wielded as a Bo
@@ -2553,6 +2562,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** An item you cannot see or cannot get is a 1.6 bug, not part of its feel, and a quest that can never be finished wastes a quest line.
 - **In the code:** `packages/data/content/items.json`, `packages/shared/src/rules/economy/quests.ts` (`questLineUnanswerable`), `packages/server/src/game.ts` (`createGame`), `packages/server/src/systems/economy/intents.ts` (`buyIntent`)
 - **Pinned by:** `bug fixed: everything content hands out or asks for has a picture and can still be made`; `bug fixed: an item with no picture is drawn by the engine or retired` (packages/server/tests/classic-pack.test.ts); `bug fixed: an NPC shop neither lists nor sells a retired item a saved ledger still holds` (packages/server/tests/ledger-pins-b.test.ts); `bug fixed: no quest asks for or gives an item nobody can get`; `the archive's lines, padded to 40; Dantan's Water Orb line is gone (bug fixed)` (packages/shared/tests/social/factions.test.ts); `bug fixed: the Stone Guild Hall Deed is not in the Classic pack (no art, no source)` (packages/shared/tests/housing/houses.test.ts); `bug fixed: the Ocarina, which nobody could get, is not in the Classic pack, nor its tune` (packages/server/tests/art-news.test.ts)
+
+#### An owner's fixture named after a container is not taken for one
+- **Kind:** Bug fixed
+- **What you notice:** Ctrl on the board of a guild whose name holds "Crate", "Cabinet" or "Cauldron" opens the board; items dropped into such a guild's vault, or a house vault whose owner is named so, never brew. A click on the mailbox of a player whose name holds "door" or "Universal Mail" opens that player's mailbox, and a key ignores it. A click on the vault of a guild named "The Photo Club" opens it, and Ctrl on "The Clock Club's Board" reads the board.
+- **1.6:** A name containing "Crate", "Cabinet" or "Cauldron" was that container wherever it came from, so Ctrl opened such a board as an empty container, and a vault named "Cauldron" brewed whatever went in. A name containing "door" was a door, so "Doorman's Mailbox" ignored a click, a click on "Universal Mail's Mailbox" opened the universal mail, a guild vault holding "Photo" opened the photo viewer, and Ctrl on a board holding "Clock" said "This is a clock."
+- **SSO:** The fixtures the engine names after their owner (doors, mailboxes, boards, house and guild vaults, parked vehicles) and the exits, signs and Street Lamp never take an item behaviour, and no new content item may take one of their names.
+- **Why:** A player's or guild's name must not change what their fixture does (issue #37).
+- **In the code:** `packages/shared/src/rules/core/fixtures.ts` (`engineFixtureKind`), `packages/shared/src/rules/inventory/behaviours.ts` (`hasBehaviour`), `packages/shared/src/rules/inventory/ground.ts` (`clickGate`, `ctrlGate`), `packages/server/src/content/validate.ts` (`keyProblems`)
+- **Pinned by:** `bug fixed: an owner's fixture named after a container is not taken for one` (packages/shared/tests/inventory/behaviours.test.ts)
 
 ### mail
 
@@ -3428,7 +3446,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** The blocked test looked for "x<X>y<Y>" without its closing `*`, so a short tile name matched the start of a longer one. Web, Spikes and Holy Shield tested the no-fight flag; Raise Dead did not, so a hostile Zombie could be raised in town.
 - **SSO:** The test reads the tile's own entry. Raise Dead joins the no-fight test; Summon Creature does not, as its Pig or Cow harms no one.
 - **Why:** The missing `*` was a typo; a Zombie in town is the harm the other summons' test prevents.
-- **In the code:** `packages/server/src/systems/spells/cast.ts` (`npcBlocked`, `planSummon`, `summonPig`)
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`npcBlocked`, `planSummon`, `releaseMonster`)
 - **Pinned by:** `bug fixed: the summons read a tile's own blocked entry: x1y1 is open when only x1y10 is blocked`; `bug fixed: Raise Dead is refused where fighting is off; Summon Creature is not` (packages/server/tests/spells.test.ts); `bug fixed: pig drop reads the tile's own entry, so x1y1 is open when only x1y10 is blocked` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 #### Spell books ask for the right Dexterity
@@ -3502,6 +3520,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The text test caught a body number it was never written for.
 - **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spellHitOnMonster`, `memberBody`)
 - **Pinned by:** `bug fixed: a Shark (body 445) is not healed by Firebolt like a Ghoul (body 45)`; `bug fixed: a Shark takes a Fireball's full damage; a Ghoul takes random(3)` (packages/shared/tests/spells/body-numbers.test.ts)
+
+#### Firesword needs a sword, not a Swordfish
+- **Kind:** Bug fixed
+- **What you notice:** Firesword lights Classic's swords (and their masterworks and damaged forms) as before; cast on a player holding a Swordfish, it says "You feel a warmth you haven't felt before, but feel it has not assisted you." and a running Firesword sends no fireballs from one.
+- **1.6:** The spell, and the fireballs it adds to each swing, took any weapon whose name contained "sword", so a Swordfish, Swordfish Steak or Burned Swordfish burned like a blade.
+- **SSO:** A sword is an item with the `sword` behaviour (`item-rules.json` `behaviours`); Classic names its swords exactly.
+- **Why:** A fish is not a sword (issue #37).
+- **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`), `packages/server/src/systems/spells/cast.ts` (`freeFireballs`)
+- **Pinned by:** `bug fixed: Firesword fires from Classic's swords, not a Swordfish`; `bug fixed: Firesword lights Classic's swords, not a Swordfish` (packages/server/tests/keyword-branches.test.ts)
 
 ### vehicles
 
@@ -4874,7 +4901,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** The cast area extended far enough beyond the 17×12 playfield that clicking its right or bottom edge could place a monster on column 18 or row 13.
 - **SSO:** A cast click must be on the playfield, and a summon whose tile is off the map is refused before anything is spent; a pig dropped toward an edge stays in the bag.
 - **Why:** Server monsters live on map tiles; an off-map monster could not be reached or saved.
-- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `planSummon`, `summonPig`), `packages/shared/src/rules/spells/spells.ts` (`inCastBounds`), `packages/server/src/systems/inventory/items.ts` (`pigDrop`)
+- **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `planSummon`, `releaseMonster`), `packages/shared/src/rules/spells/spells.ts` (`inCastBounds`), `packages/server/src/systems/inventory/items.ts` (`releaseDrop`)
 - **Pinned by:** `bug fixed: the server takes a cast click only on the playfield [30, 31, 574, 415]` (packages/server/tests/spells.test.ts); `bug fixed: Raise Dead on a grave in the bottom row is refused before anything is spent: the Zombie would be off the map` (packages/server/tests/spells.test.ts); `bug fixed: a faced tile off the map at the side, bottom or top → "You can't drop an animal here!", the pig kept` (packages/server/tests/pigs-orbs-webs.test.ts)
 
 ### Server-side vehicles

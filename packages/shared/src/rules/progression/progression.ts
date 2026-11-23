@@ -2,19 +2,19 @@
  * Kill XP, level-up, regen, hunger and the death penalty. Pure functions over plain state.
  */
 import { content } from "../../content/store.ts";
-import { lingoEq, type Rng } from "../core/lingo.ts";
+import { gearBonus } from "../combat/gear.ts";
+import type { Equipment } from "../core/fighter.ts";
+import type { Rng } from "../core/lingo.ts";
 import { firstMatch } from "../core/patterns.ts";
 
 /**
- * Melee kill XP before the level is taken off: the species' table value, Ring of Experience +5 (Cow
- * and Holy Shield set to 5 after it), `Regged` (always 1) +10, then +10 for each of > 100 … > 400,
- * tested on the growing value.
+ * Melee kill XP before the level is taken off: the species' table value, plus the worn gear's
+ * `killXp` (`item-rules.json` `gear`; Classic: the Ring of Experience's 5), the `killXp`
+ * overrides after it (Cow and Holy Shield set to 5), `Regged` (always 1) +10, then +10 for each of
+ * > 100 … > 400, tested on the growing value.
  */
-export function meleeKillXp(base: number, monsterName: string, ring: string): number {
-  let xp = base;
-  if (lingoEq(ring, "Ring of Experience")) {
-    xp += 5;
-  }
+export function meleeKillXp(base: number, monsterName: string, equip: Equipment): number {
+  let xp = base + gearBonus(equip, "killXp");
   const override = firstMatch(content().monsters.rules.killXp, monsterName);
   if (override) {
     xp = override.xp;

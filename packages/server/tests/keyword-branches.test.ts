@@ -1,7 +1,7 @@
 /**
  * Server branches of name-based mechanics and skill gain that no other test reached (issue #37's
  * coverage baseline): the skill-gain line of a melee kill, a crossbow shot training Martial Arts,
- * the Fire Staff's free fireball by Staff Fighting, Firesword's `sword` test, and the player
+ * the Fire Staff's free fireball by Staff Fighting, Firesword's `sword` behaviour, and the player
  * effects the spell collision picks by FX name.
  */
 import { describe, expect, test } from "bun:test";
@@ -124,15 +124,20 @@ describe("free fireballs", () => {
     expect(staffPower(100)).toBe(15);
   });
 
-  test("Firesword fires from any weapon whose name contains sword, a Swordfish included", () => {
+  test("bug fixed: Firesword fires from Classic's swords, not a Swordfish", () => {
     expect(freeFireballs("Long Sword", true)).toEqual({ staff: false, sword: true });
-    expect(freeFireballs("Swordfish", true)).toEqual({ staff: false, sword: true });
+    expect(freeFireballs("Knight's Sword +1", true)).toEqual({ staff: false, sword: true });
+    expect(freeFireballs("Damaged Sword, Long", true)).toEqual({ staff: false, sword: true });
+    expect(freeFireballs("Swordfish", true)).toEqual({ staff: false, sword: false });
     expect(freeFireballs("Long Sword", false)).toEqual({ staff: false, sword: false });
     expect(freeFireballs("Fire Staff", false)).toEqual({ staff: true, sword: false });
     const s = scene();
     const a = s.add("Ann", 5, 5);
     a.char.equip.weapon = "Swordfish";
     a.spell.fireSword = 10;
+    swingFireballs(s.room(), a, { rng: s.rng });
+    expect(s.room().fxQueue).toEqual([]);
+    a.char.equip.weapon = "Long Sword";
     swingFireballs(s.room(), a, { rng: s.rng });
     expect(s.room().fxQueue.map((c) => c.power)).toEqual([7]);
   });
@@ -183,17 +188,17 @@ describe("spell effects on a player, by FX name", () => {
     expect(dispel.ann).toContain("You have advanced in the art of Wizardry!");
   });
 
-  test("Firesword lights any weapon whose name contains sword, a Swordfish included", () => {
-    for (const weapon of ["Long Sword", "Swordfish"]) {
-      const r = castOnBob("Firesword", weapon);
-      expect(r.bob).toEqual(["Your sword burns with a fiery fury."]);
-      expect(r.b.spell.fireSword).toBe(101);
+  test("bug fixed: Firesword lights Classic's swords, not a Swordfish", () => {
+    const r = castOnBob("Firesword", "Long Sword");
+    expect(r.bob).toEqual(["Your sword burns with a fiery fury."]);
+    expect(r.b.spell.fireSword).toBe(101);
+    for (const weapon of ["Axe", "Swordfish"]) {
+      const other = castOnBob("Firesword", weapon);
+      expect(other.bob).toEqual([
+        "You feel a warmth you haven't felt before, but feel it has not assisted you.",
+      ]);
+      expect(other.b.spell.fireSword).toBe(0);
     }
-    const axe = castOnBob("Firesword", "Axe");
-    expect(axe.bob).toEqual([
-      "You feel a warmth you haven't felt before, but feel it has not assisted you.",
-    ]);
-    expect(axe.b.spell.fireSword).toBe(0);
   });
 
   test("Stone Skin, Argon's Fist, Inxition, Create Food and Radar", () => {

@@ -30,10 +30,11 @@ describe("gate routing", () => {
     expect(clickGate("message boards")).toEqual({ kind: "board" });
     expect(clickGate("The Knights's Board")).toEqual({ kind: "board" });
   });
-  test("click: Universal Mail before 's Mailbox", () => {
+  test("click: Universal Mail, and a player's mailbox whatever the owner is called", () => {
     expect(clickGate("Universal Mail")).toEqual({ kind: "mail", universal: true });
     expect(clickGate("Alice's Mailbox")).toEqual({ kind: "mail", universal: false });
-    expect(clickGate("Universal Mail's Mailbox")).toEqual({ kind: "mail", universal: true });
+    // 1.6 read the words and opened the universal mail; an engine fixture is known by its kind.
+    expect(clickGate("Universal Mail's Mailbox")).toEqual({ kind: "mail", universal: false });
   });
   test("click: signs stay silent", () => {
     expect(clickGate("Sign 1")).toEqual({ kind: "silent" });

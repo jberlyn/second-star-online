@@ -12,9 +12,10 @@
  */
 import { content } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
-import { lingoContains, lingoEq } from "../core/lingo.ts";
+import { lingoEq } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
 import type { Facing, WalkFrame } from "../movement/movement.ts";
+import { hasBehaviour } from "./behaviours.ts";
 
 /** Size and registration point of the composited member (`SP112-F2-S`, Chars #1010). */
 export const PAPERDOLL_SIZE = { w: 46, h: 45 } as const;
@@ -84,9 +85,12 @@ export function normaliseLook(e: Equipment): {
 
 const isNothing = (s: string) => lingoEq(s, NOTHING);
 
-/** A body armour that hides the wearer's name on others' screens (the hide-name flag). */
+/**
+ * A body armour that hides the wearer's name on others' screens: the `hidesName` behaviour
+ * (Classic: a name containing "Invis"), with any `+N` ending ignored.
+ */
 export function hidesName(e: Equipment): boolean {
-  return lingoContains(strip(e.body), "Invis");
+  return hasBehaviour(strip(e.body), "hidesName");
 }
 
 /** `Characters` member names, bottom to top, for one frame. */
@@ -99,7 +103,11 @@ export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): s
   }
   const n = normaliseLook(e);
   const out = ["BIM"];
-  const arrows = lingoContains(n.shield, "Arrows");
+  // The off hand's and body's draw rules are their items' behaviours (Classic: anything named
+  // "Arrows" is a quiver, the Torch is hidden facing N, and four robes cover the head).
+  const offHand = strip(e.offHand);
+  const arrows = !isNothing(n.shield) && hasBehaviour(offHand, "quiver");
+  const body = strip(e.body);
   // Weapon behind the body: W on every frame, N on the attack frame only.
   if (!isNothing(n.weapon) && (facing === "W" || (facing === "N" && frame === "F4"))) {
     out.push(f(n.weapon));
@@ -120,25 +128,18 @@ export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): s
   if (
     facing === "N" &&
     !isNothing(n.shield) &&
-    !lingoEq(n.shield, "Arrows") &&
-    !lingoEq(n.shield, "Torch")
+    !arrows &&
+    !hasBehaviour(offHand, "hiddenFacingNorth")
   ) {
     out.push(f(n.shield));
   }
-  const hiding = [
-    "Robe of Invisibility",
-    "Ninja Outfit",
-    "Royal Ninja Uniform",
-    "Necromancer's Robe",
-  ];
-  if (isNothing(n.helm) && !hiding.some((b) => lingoEq(n.body, b))) {
+  if (isNothing(n.helm) && !hasBehaviour(body, "hidesHead")) {
     out.push(f(head));
   }
-  const hidingHelm = ["Robe of Invisibility", "Necromancer's Robe"];
-  if (!isNothing(n.helm) && !hidingHelm.some((b) => lingoEq(n.body, b))) {
+  if (!isNothing(n.helm) && !hasBehaviour(body, "hidesHelm")) {
     out.push(f(n.helm));
   }
-  if ((facing === "S" || facing === "W") && !isNothing(n.shield) && !lingoEq(n.shield, "Arrows")) {
+  if ((facing === "S" || facing === "W") && !isNothing(n.shield) && !arrows) {
     out.push(f(n.shield)); // Torch included
   }
   if (arrows && facing === "N") {

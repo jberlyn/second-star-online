@@ -30,6 +30,7 @@ import {
   goldPileName,
   groundLayer,
   groundTipName,
+  hasBehaviour,
   headDrop,
   invAdd,
   invDelSlot,
@@ -80,7 +81,7 @@ import { type NewspaperStore, readNewspaper } from "../mail/newspapers.ts";
 import { ctrlPig, goldTarget } from "../monsters/npc.ts";
 import { statueLines } from "../social/assassin.ts";
 import { guildCenterClick } from "../social/guilds.ts";
-import { npcBlocked, summonPig } from "../spells/cast.ts";
+import { npcBlocked, releaseMonster } from "../spells/cast.ts";
 import { argonsFist } from "../spells/collide.ts";
 import { isBook, readBook } from "../spells/learn.ts";
 import { unboardVehicle, vehicleClick, vehicleDeed } from "../vehicles/vehicles.ts";
@@ -233,9 +234,9 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   if (useKey(ctx, room, io, p, slot, line.item)) {
     return io.out;
   }
-  // Film, Canvas, Painting and Photo, in 1.6's order.
-  if (lingoContains(line.item, "Film") || lingoEq(line.item, "Canvas")) {
-    const r = lingoEq(line.item, "Canvas") ? useCanvas(p) : useFilm(p);
+  // A film or canvas (their behaviours), then a Painting and Photo, in 1.6's order.
+  if (hasBehaviour(line.item, "film") || hasBehaviour(line.item, "canvas")) {
+    const r = hasBehaviour(line.item, "canvas") ? useCanvas(p) : useFilm(p);
     io.out.push(...r.out);
     if (r.consume) {
       logActivity(ctx.world, p, "use", { item: line.item, qty: -1 });
@@ -248,11 +249,6 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
     if (ctx.art) {
       io.out.push(...viewArt(p, line.item, ctx.art, "bag"));
     }
-    return io.out;
-  }
-  // Right after the Photo branch: the Piano says it cannot be used and consumes nothing.
-  if (lingoEq(line.item, "Piano")) {
-    io.tell(p, USE_TEXT.piano);
     return io.out;
   }
   if (useDeferred(line.item)) {
@@ -363,11 +359,19 @@ export function unequipIntent(ctx: ItemCtx, room: Room, p: Player, slot: EquipSl
 // ---- drop ------------------------------------------------------------------------------
 
 /**
- * Dropping a Pig: a live Pig is summoned on the faced tile. Every test the summon makes runs before
- * the Pig leaves the bag, so a refused pig stays in the bag (1.6 took it first and lost it on a
+ * Dropping an item that releases a monster (Classic: a Pig): a live monster of the item's name is
+ * summoned on the faced tile. Every test the summon makes runs before the item leaves the bag, so a
+ * refused one stays in the bag (1.6 took it first and lost it on a
  * tile monsters cannot stand on, or above the top row).
  */
-function pigDrop(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, slot: number): Outgoing[] {
+function releaseDrop(
+  ctx: ItemCtx,
+  room: Room,
+  io: ItemOut,
+  p: Player,
+  slot: number,
+  monster: string,
+): Outgoing[] {
   // Monster slots 1-4 all live (sprites 180-183; slot 5 is never counted).
   if (room.map.slots.every((s) => s.live !== null)) {
     io.tell(p, PIG_TEXT.crowded);
@@ -385,7 +389,7 @@ function pigDrop(ctx: ItemCtx, room: Room, io: ItemOut, p: Player, slot: number)
     return io.out;
   }
   // No pause is set here: 1.6's item-action pause and modify flag are cleared by the reply's `inx`.
-  const r = summonPig(room, t.x, t.y, ctx.rng);
+  const r = releaseMonster(room, monster, t.x, t.y, ctx.rng);
   if (!r.changed) {
     io.tell(p, PIG_TEXT.blocked);
     return io.out;
@@ -464,10 +468,11 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   if (p.stepFrames > 0) {
     return io.out; // mid-step: silent
   }
-  // A Pig (exact name) after the pause, vehicle and mid-step tests like every other item (1.6
-  // tested it first, so pigs dropped when nothing else could).
-  if (lingoEq(name, "Pig")) {
-    return pigDrop(ctx, room, io, p, slot);
+  // An item that releases a monster (Classic: the Pig) after the pause, vehicle and mid-step tests
+  // like every other item (1.6 tested it first, so pigs dropped when nothing else could). With no
+  // monster of its name it drops as an item.
+  if (hasBehaviour(name, "releasesMonster") && content().monster(name)) {
+    return releaseDrop(ctx, room, io, p, slot, name);
   }
   // The four orbs go to 1.6's orb routine, which never matches and falls through.
   const t = faced(p);
@@ -477,7 +482,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   // the floor is too crowded. Ordinary items share a tile.
   const first = room.map.ground.find((g) => g.x === t.x && g.y === t.y);
   const route = first ? dropRoute(first) : null;
-  if (route !== null && lingoEq(route, "Vault")) {
+  if (first && hasBehaviour(first.item, "personalVault")) {
     io.out.push(...depositVault(ctx.world, p, slot, n));
     return io.out;
   }
@@ -496,12 +501,12 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
     io.tell(p, DROP_TEXT.blocked);
     return io.out;
   }
-  // The Newspaper Kit needs the faced tile's layer-1 code `K2`, and the item put down is
-  // `<owner>'s Newspaper`.
+  // A newspaper kit (the `newspaperKit` behaviour) needs the faced tile's layer-1 code `K2`, and
+  // the item put down is `<owner>'s Newspaper`.
   let placed = name;
   // A stand or a piece of furniture is placed one at a time.
   let qty = isFurniture(name) ? 1 : n;
-  if (lingoEq(name, "Newspaper Kit")) {
+  if (hasBehaviour(name, "newspaperKit")) {
     if (!kitTileOk(room.map.layers[0], t.x, t.y)) {
       io.tell(p, NEWS_TEXT.noStand);
       return io.out;
@@ -896,7 +901,7 @@ export function pickupIntent(ctx: ItemCtx, room: Room, p: Player, id: string): O
     return io.out;
   }
   // The personal vault.
-  if (lingoEq(g.item, "Vault")) {
+  if (hasBehaviour(g.item, "personalVault")) {
     return openVault(p, g);
   }
   const gate = clickGate(g.item);
@@ -1059,7 +1064,7 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     return io.out;
   }
   // The personal vault.
-  if (lingoEq(g.item, "Vault")) {
+  if (hasBehaviour(g.item, "personalVault")) {
     io.out.push(...openVault(p, g));
     return io.out;
   }

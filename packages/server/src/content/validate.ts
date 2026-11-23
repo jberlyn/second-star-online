@@ -11,6 +11,7 @@ import {
   type ContentData,
   DATASET_IDS,
   type DatasetId,
+  isEngineFixture,
   lingoContains,
   lingoEq,
   npcLootItemOk,
@@ -117,6 +118,15 @@ export function keyProblems(
 ): ContentProblem[] {
   return [
     ...nameProblems("items/items", data.items.items, packKeys.items),
+    // The engine builds and reads its fixtures' names itself (shared fixtures.ts): an item named
+    // like one would be taken for it.
+    ...data.items.items
+      .filter((i) => !packKeys.items.has(i.name.toLowerCase()) && isEngineFixture(i.name))
+      .map((i) => ({
+        where: `items/items/${i.name}`,
+        message:
+          "a key may not be an engine fixture's name (Exit, Exit2, Sign 1-3, Street Lamp, or an owner's Door, Mailbox, Board, Vault or vehicle)",
+      })),
     ...nameProblems("monsters/monsters", data.monsters.monsters, packKeys.monsters),
     ...data.npcFiles.files
       .filter((f) => !packKeys.npcFiles.has(f.name.toLowerCase()))

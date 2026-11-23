@@ -3,7 +3,9 @@
  * `.relock` (the house data).
  */
 import { type ContentStore, onContent } from "../../content/store.ts";
+import { isFixtureKind } from "../core/fixtures.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
+import { hasBehaviour } from "../inventory/behaviours.ts";
 
 let K: ContentStore["houses"]["keys"];
 let SW: ContentStore["houses"]["switches"];
@@ -19,18 +21,18 @@ export let HOUSE_KEY_PAUSE: typeof K.housePause;
 /** A switch that flips sets a 100-frame pause between item actions. */
 export let SWITCH_PAUSE: typeof SW.pause;
 
-/** An item whose name contains "Key" routes to the key script. */
-export const isKey = (item: string): boolean => lingoContains(item, "Key");
+/** An item with the `key` behaviour (Classic: a name containing "Key") routes to the key script. */
+export const isKey = (item: string): boolean => hasBehaviour(item, "key");
 
 /**
  * The door a key acts on: of the ground items on the faced tile, in sprite order, the **last**
- * whose name contains "Door" (the exact tests above it are overwritten by the `contains` test).
- * Null: nothing happens.
+ * door (an item with the `door` behaviour, Classic's being any name containing "door", or an
+ * owner's door). Null: nothing happens.
  */
 export function facedDoor(namesOnTile: readonly string[]): string | null {
   let found: string | null = null;
   for (const n of namesOnTile) {
-    if (lingoContains(n, "Door")) {
+    if (hasBehaviour(n, "door") || isFixtureKind(n, "door", "openedDoor")) {
       found = n;
     }
   }
@@ -52,11 +54,13 @@ const owner = (door: string) => door.split("'")[0] ?? "";
  */
 export function turnKey(key: string, door: string, me: string, guild: string): KeyTurn {
   const myGuild = `The ${guild}`;
-  for (const [closedPart, openSuffix] of [
-    ["'s Door", "'s Opened Door"],
-    ["'s Opened Door", "'s Door"],
+  // An owner's door, by its fixture kind: 1.6 took any name containing "'s Door", so a content
+  // item named "Bob's Doorway" turned into Bob's door.
+  for (const [kind, closedPart, openSuffix] of [
+    ["door", "'s Door", "'s Opened Door"],
+    ["openedDoor", "'s Opened Door", "'s Door"],
   ] as const) {
-    if (!lingoContains(door, closedPart)) {
+    if (!isFixtureKind(door, kind)) {
       continue;
     }
     const person = owner(door);
@@ -115,7 +119,7 @@ export const keyPause = (turn: { coloured: boolean }): number =>
 
 /** The names a door or switch rename may touch (exploit 3: nothing else is renamed). */
 export function isDoorOrSwitch(name: string): boolean {
-  if (lingoContains(name, "'s Door") || lingoContains(name, "'s Opened Door")) {
+  if (isFixtureKind(name, "door", "openedDoor")) {
     return true;
   }
   return R.closes.some(([open, closed]) => lingoEq(name, open) || lingoEq(name, closed));
@@ -153,7 +157,7 @@ export function switchState(name: string): "on" | "off" | null {
  * Door`). Returned as `[old, new]` renames in send order.
  */
 export function switchFlip(state: "on" | "off"): [[string, string], [string, string]] {
-  const sd = R.closes.find(([open]) => lingoContains(open, "Switch Door"));
+  const sd = R.closes.find(([open]) => hasBehaviour(open, "switchDoor"));
   const [openDoor, shutDoor] = sd ?? ["Open Switch Door", "Switch Door"];
   return state === "on"
     ? [
@@ -175,7 +179,7 @@ export function closedName(name: string): string | null {
     return pair[1];
   }
   // A player's or guild's opened door ("<owner>'s Opened Door") shuts as "<owner>'s Door".
-  if (name.toLowerCase().endsWith(OPENED_DOOR.toLowerCase())) {
+  if (isFixtureKind(name, "openedDoor")) {
     return `${name.slice(0, -OPENED_DOOR.length)}'s Door`;
   }
   return null;

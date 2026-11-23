@@ -214,6 +214,24 @@ describe("draft and publish", () => {
     expect(service.draft()).toHaveLength(2);
   });
 
+  test("a new item may not take an engine fixture's name; a pack's Street Lamp stays", () => {
+    const { service } = setup();
+    for (const name of ["Hawks's Board", "Exit2", "Bob's Airship"]) {
+      const ref = { dataset: "items" as const, part: "items", key: name };
+      expect(service.draftSet(ADMIN, ref, "set", { name, icon: null }).ok).toBe(true);
+    }
+    const problems = service.check().map((p) => p.where);
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        "items/items/Hawks's Board",
+        "items/items/Exit2",
+        "items/items/Bob's Airship",
+      ]),
+    );
+    expect(problems.some((w) => w.includes("Street Lamp"))).toBe(false);
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(false);
+  });
+
   test("one shared draft: a publish is refused when another admin changed the draft since", () => {
     const { service } = setup();
     const slots = { ...service.publishedContent().casino.slots, cost: 25 };

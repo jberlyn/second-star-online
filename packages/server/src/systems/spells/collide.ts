@@ -18,6 +18,7 @@ import {
   fxEffect,
   fxMember,
   HULL_HIT_DAMAGE,
+  hasBehaviour,
   invAdd,
   inxitionText,
   isCannonball,
@@ -181,7 +182,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       }
     }
     if (has("Firesword-3")) {
-      if (lingoContains(p.char.equip.weapon, "Sword")) {
+      if (hasBehaviour(p.char.equip.weapon, "sword")) {
         p.spell.fireSword = P * 40;
         tell(res.out, p, EFFECT_TEXT.fireswordOn);
       } else {
@@ -553,7 +554,7 @@ function checkForDead(
   if (v.level < 1) {
     return true;
   }
-  const xp = meleeKillXp(sp?.xpSpell ?? 30, m.name, owner.char.equip.ring);
+  const xp = meleeKillXp(sp?.xpSpell ?? 30, m.name, owner.char.equip);
   const broadcast = firstMatch(content().monsters.rules.killBroadcasts, m.name);
   if (broadcast) {
     res.broadcasts.push({ from: owner.name, text: broadcast.text.replace("{}", owner.name) });

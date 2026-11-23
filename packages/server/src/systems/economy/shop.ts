@@ -9,7 +9,9 @@
 import {
   addSlotFor,
   type Bag,
+  hasBehaviour,
   invAdd,
+  isCabinet,
   isUniqueContainer,
   lingoEq,
   type NpcFile,
@@ -188,13 +190,17 @@ export function npcBuy(
   return { ok: true, ledger, buyer: after, texts: [SHOP_TEXT.thanks(shop.npc)] };
 }
 
-/** The container names the sell OK swaps for a bag slot's `Name#n`. */
-const SELL_CONTAINERS = ["Wind Cabinet", "Cabinet", "Crate"] as const;
+/**
+ * Whether the sell OK swaps a list line for a bag slot's `Name#n`: a crate or a cabinet of either
+ * look (their behaviours; 1.6 named the Crate, Cabinet and Wind Cabinet, and left out the Cauldron).
+ */
+const sellsById = (item: string): boolean =>
+  !item.includes("#") && (hasBehaviour(item, "crate") || isCabinet(item));
 
 /**
- * The bag line a sale of `item` takes, and its count. A list line naming a Crate, Cabinet or Wind
- * Cabinet sells one bag `Crate#n`/`Cabinet#n`/`Wind Cabinet#n` of exactly that kind, an empty one
- * when you have one (`stored` gives a container's stored line count), else the first.
+ * The bag line a sale of `item` takes, and its count. A list line naming a crate or cabinet sells
+ * one bag `Crate#n`/`Cabinet#n`/`Wind Cabinet#n` of exactly that item, an empty one when you have
+ * one (`stored` gives a container's stored line count), else the first.
  */
 export function sellName(
   item: string,
@@ -202,13 +208,12 @@ export function sellName(
   bag: Bag,
   stored: (name: string) => number = () => 0,
 ): { item: string; count: number } {
-  const kind = SELL_CONTAINERS.find((c) => lingoEq(item, c));
-  if (!kind) {
+  if (!sellsById(item)) {
     return { item, count };
   }
   const held = bag.filter(
     (l): l is NonNullable<typeof l> =>
-      l !== null && lingoEq(l.item.split("#")[0] ?? "", kind) && l.item.includes("#"),
+      l !== null && lingoEq(l.item.split("#")[0] ?? "", item) && l.item.includes("#"),
   );
   const pick = held.find((l) => stored(l.item) === 0) ?? held[0];
   return pick ? { item: pick.item, count: 1 } : { item, count };

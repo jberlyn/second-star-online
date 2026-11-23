@@ -13,10 +13,9 @@ import {
   artRef,
   CHAT_COLOR,
   equipped,
+  hasBehaviour,
   invAdd,
   invDelSlot,
-  lingoContains,
-  lingoEq,
   type Rng,
   standingInFront,
 } from "@secondstaronline/shared";
@@ -64,24 +63,26 @@ export function useCanvas(p: Player): ArtUse {
 }
 
 /**
- * Use on a Film: no camera in the right hand (exact name) is refused; else the lens appears. No
+ * Use on a Film: no camera (the `camera` behaviour; Classic: the Camera) in the right hand is
+ * refused; else the lens appears. No
  * lock and no pause: 1.6's 425-frame pause waited for the reply to the Film being spent, which SSO
  * defers to the save, so nothing would end it. Nothing is consumed: the photo's save spends the
  * Film.
  */
 export function useFilm(p: Player): ArtUse {
-  if (!lingoEq(equipped(p.char.equip, "RightHand"), "Camera")) {
+  if (!hasBehaviour(equipped(p.char.equip, "RightHand"), "camera")) {
     return { consume: false, out: [chat(p, ART_TEXT.needCamera)] };
   }
   p.film = true;
   return { consume: false, out: [{ to: p.id, msg: { t: "lens" } }] };
 }
 
-/** The bag line a save spends: a Canvas (exact name) or a Film (any name containing it). */
+/**
+ * The bag line a save spends: a canvas or a film, by their behaviours (Classic: the Canvas, and
+ * any name containing "Film").
+ */
 const spentSlot = (p: Player, kind: "painting" | "photo"): number =>
-  p.char.bag.findIndex(
-    (l) => !!l && (kind === "painting" ? lingoEq(l.item, "Canvas") : lingoContains(l.item, "Film")),
-  );
+  p.char.bag.findIndex((l) => !!l && hasBehaviour(l.item, kind === "painting" ? "canvas" : "film"));
 
 const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
 

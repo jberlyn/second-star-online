@@ -25,7 +25,8 @@ import {
   type SkillValues,
   skillDisplay,
 } from "../core/fighter.ts";
-import { lingoContains, lingoEq } from "../core/lingo.ts";
+import { lingoEq } from "../core/lingo.ts";
+import { isStorageContainer } from "../inventory/behaviours.ts";
 import { checkEquip, EQUIP_TEXT } from "../inventory/equip.ts";
 import {
   BAG_SLOTS,
@@ -346,8 +347,7 @@ const isGold = (name: string): boolean =>
   isGoldName(name) || (CURRENCY !== null && lingoEq(displayName(name), CURRENCY));
 
 /** A container with storage of its own, which the vault refuses (vault.ts `depositVault`). */
-const isStorage = (name: string): boolean =>
-  ["Cabinet", "Crate", "Cauldron"].some((c) => lingoContains(name, c));
+const isStorage = isStorageContainer;
 
 /** A spell the game knows, by its exact listed name. */
 export function knownSpell(name: string): boolean {

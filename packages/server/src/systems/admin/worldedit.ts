@@ -22,7 +22,7 @@ import {
   editorMapError,
   editorMobName,
   footWalkGrid,
-  lingoEq,
+  hasBehaviour,
   mapName,
   type PlayerView,
   shipWalkGrid,
@@ -160,13 +160,16 @@ export function closeEditor(world: World, p: Player): Outgoing[] {
 }
 
 /**
- * Whether a placed item name is allowed: what `/drop` allows, and a Cauldron that already has its
- * id, so a map that holds one saves again.
+ * Whether a placed item name is allowed: what `/drop` allows, and a cauldron that already has its
+ * id (`Cauldron#12`), so a map that holds one saves again.
  */
-export const editorItemOk = (name: string) => droppableName(name) || CAULDRON_ID.test(name);
-
-/** A placed Cauldron's name once the editor has given it an id. */
-const CAULDRON_ID = /^Cauldron#\d+$/i;
+export const editorItemOk = (name: string) => {
+  if (droppableName(name)) {
+    return true;
+  }
+  const m = /^(.+)#\d+$/.exec(name);
+  return !!m && hasBehaviour(m[1] as string, "cauldron") && droppableName(m[1] as string);
+};
 
 /** Why a save is refused, or null. */
 export function saveError(m: EditorMap): string | null {
@@ -239,9 +242,9 @@ export function applySave(
   const added: GroundItem[] = m.items.map((it) => {
     const pile = parseDrop(it.name) ?? { item: it.name, qty: 1 };
     // 1.6's item save renamed an exact "Cauldron" to `Cauldron#<id>`, and one with an id kept it:
-    // SSO's id is unique.
-    if (lingoEq(pile.item, "Cauldron")) {
-      pile.item = `Cauldron#${mintContainerId(world, now)}`;
+    // SSO's id is unique. A cauldron is an item with the `cauldron` behaviour.
+    if (!pile.item.includes("#") && hasBehaviour(pile.item, "cauldron")) {
+      pile.item = `${pile.item}#${mintContainerId(world, now)}`;
     }
     return {
       id: newId(),

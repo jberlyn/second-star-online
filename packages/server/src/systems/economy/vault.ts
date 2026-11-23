@@ -7,8 +7,8 @@ import {
   FACING_DELTA,
   invAdd,
   isGoldName,
+  isStorageContainer,
   itemLabel,
-  lingoContains,
   type Rng,
 } from "@secondstaronline/shared";
 
@@ -69,7 +69,7 @@ export function depositVault(world: World, p: Player, slot: number, n = 1): Outg
     return [];
   }
   const item = line.item;
-  if (["Cabinet", "Crate", "Cauldron"].some((c) => lingoContains(item, c))) {
+  if (isStorageContainer(item)) {
     // 1.6's 425-frame item-action pause and modify flag cleared were locals here: no lock.
     return [tell(p, VAULT_TEXT.container)];
   }

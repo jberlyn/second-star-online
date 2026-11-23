@@ -6,8 +6,9 @@ import type { EquipSlot } from "@secondstaronline/data";
 
 import { type ContentStore, onContent } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
-import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
+import { lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
+import { hasBehaviour } from "./behaviours.ts";
 
 let R: ContentStore["itemRules"];
 
@@ -81,7 +82,6 @@ export const USE_TEXT = {
   stuffed: "You're stuffed!",
   argon: "The power of argon flows through your body.",
   argonEnds: "You no longer feel the power of Argon helping you in battle.",
-  piano: "You can't use this.",
 } as const;
 
 /**
@@ -158,11 +158,12 @@ export function useItem(
   out.sp = Math.min(out.sp, v.spMax);
   // The eat/drink line, last match wins; a potion's is "You drink the <name>."
   const msg = lastMatch(
-    R.use.messages.filter((m) => !lingoContains(m.pattern, "Book")),
+    // The book rows (in Classic, those whose pattern holds "Book") are the read lines, not a meal's.
+    R.use.messages.filter((m) => !hasBehaviour(m.pattern, "book")),
     name,
   );
   let text = msg ? msg.text.replace('" & SelInventory & "', name) : null;
-  if (lingoEq(name, "Purple Potion")) {
+  if (hasBehaviour(name, "argonsFist")) {
     // The Argon line once (1.6 printed it twice).
     out.argon = true;
     text = USE_TEXT.argon;

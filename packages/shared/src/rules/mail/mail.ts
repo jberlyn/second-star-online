@@ -5,7 +5,9 @@
  * rows, so only what a player can see of the file format is kept: the board's `From:` blocks.
  */
 import { type ContentStore, onContent } from "../../content/store.ts";
+import { isFixtureKind } from "../core/fixtures.ts";
 import { lingoEq } from "../core/lingo.ts";
+import { hasBehaviour } from "../inventory/behaviours.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 
 let M: ContentStore["social"]["mail"];
@@ -136,14 +138,14 @@ export function boardText(posts: readonly { author: string; body: string }[]): s
 }
 
 /**
- * Which board an item opens: `Message Boards` (case-insensitive comparison) is Town Square, a name
- * containing `'s Board` a guild hall's.
+ * Which board an item opens: an item with the `messageBoard` behaviour (Classic: `Message Boards`)
+ * is Town Square's, a guild's `<guild>'s Board` its hall's.
  */
 export function boardKind(name: string): "town" | "guild" | null {
-  if (lingoEq(name, "Message Boards")) {
+  if (hasBehaviour(name, "messageBoard")) {
     return "town";
   }
-  return name.toLowerCase().includes("'s board") ? "guild" : null;
+  return isFixtureKind(name, "board") ? "guild" : null;
 }
 
 /** A hall's board (`The <guild>'s Board`) is read only by that guild's members. */

@@ -444,6 +444,8 @@ describe("halls, keys, vaults and head drops follow the guild", () => {
     expect(mayUseContainer(b, "The Knights's Guild Vault")).toBe(true);
     expect(mayUseContainer(z, "The Knights's Guild Vault")).toBe(false);
     expect(mayUseContainer(b, "The Rogues's Guild Vault")).toBe(false);
+    // A # in a guild's name keeps its vault its members'.
+    expect(mayUseContainer(b, "The Stars #1's Guild Vault")).toBe(false);
   });
 
   test("furniture may go down in your guild's hall", () => {

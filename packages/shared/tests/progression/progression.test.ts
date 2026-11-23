@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
 
-import { classicData } from "@secondstaronline/data/classic";
-
 import {
   type Fighter,
   NO_EQUIPMENT,
@@ -41,19 +39,22 @@ const vitals = (): Vitals => ({
   expNeeded: 30,
 });
 
+/** Bare equipment but for the ring. */
+const ring = (r: string) => ({ ...NO_EQUIPMENT, ring: r });
+
 describe("kill XP", () => {
   test("Slime: 14 + Regged 10, less the level: 23 at level 1", () => {
-    expect(meleeKillXp(14, "Slime", "NOTHING")).toBe(24);
+    expect(meleeKillXp(14, "Slime", ring("NOTHING"))).toBe(24);
     expect(xpGained(24, 1)).toBe(23);
   });
   test("the > 100 … > 400 bonuses test the growing value", () => {
-    expect(meleeKillXp(85, "Orc Lord", "NOTHING")).toBe(95);
-    expect(meleeKillXp(91, "x", "NOTHING")).toBe(111); // 101 > 100 → 111
-    expect(meleeKillXp(625, "Overlord", "NOTHING")).toBe(705);
+    expect(meleeKillXp(85, "Orc Lord", ring("NOTHING"))).toBe(95);
+    expect(meleeKillXp(91, "x", ring("NOTHING"))).toBe(111); // 101 > 100 → 111
+    expect(meleeKillXp(625, "Overlord", ring("NOTHING"))).toBe(705);
   });
   test("Ring of Experience +5, but Cow is set to 5 after it", () => {
-    expect(meleeKillXp(14, "Slime", "Ring of Experience")).toBe(29);
-    expect(meleeKillXp(30, "Cow", "Ring of Experience")).toBe(15);
+    expect(meleeKillXp(14, "Slime", ring("Ring of Experience"))).toBe(29);
+    expect(meleeKillXp(30, "Cow", ring("Ring of Experience"))).toBe(15);
   });
   test("a level above the XP gives nothing", () => {
     expect(xpGained(24, 30)).toBe(0);

@@ -14,6 +14,7 @@ import { content } from "../../content/store.ts";
 import { type Fighter, skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoDiv, lingoEq, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
+import { hasBehaviour } from "../inventory/behaviours.ts";
 import { type CrystalColour, crystalColour } from "../inventory/inventory.ts";
 import { gearBonus } from "./gear.ts";
 
@@ -54,7 +55,7 @@ export function bowRefusal(
   equip: { weapon: string; offHand: string },
   bag: readonly ({ item: string; qty: number } | null)[],
 ): string | null {
-  if (!lingoContains(equip.weapon, "bow")) {
+  if (!hasBehaviour(equip.weapon, "bow")) {
     return null;
   }
   const colour = ARROW_COLOURS.find((c) => lingoEq(equip.offHand, `${c} Arrows`));
@@ -157,7 +158,7 @@ export function attackPower(
     power += plusBonus(w);
   }
   power += gearBonus(f.equip, "attack"); // Argon's Ring +3
-  const isBow = lingoContains(w, "bow");
+  const isBow = hasBehaviour(w, "bow");
   for (const row of content().attPower.attPower.exactOverrides) {
     if (lingoEq(w, row.pattern)) {
       power = row.flat + (row.randomN === null ? 0 : rng.random(row.randomN));

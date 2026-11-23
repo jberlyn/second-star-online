@@ -4,12 +4,18 @@
  * prediction and drawing.
  */
 import { type ContentStore, content, onContent } from "../../content/store.ts";
+import { isBlackjackTable } from "../casino/blackjack.ts";
+import { isSlotMachine } from "../casino/casino.ts";
+import { isCheckersTable } from "../casino/checkers.ts";
 import { skillValue } from "../core/fighter.ts";
+import { engineFixtureKind } from "../core/fixtures.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
 import { isFurniture } from "../housing/houses.ts";
+import { isNewspaperStand } from "../mail/newspaper.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
+import { hasBehaviour, isCabinet } from "./behaviours.ts";
 import {
   crystalColour,
   crystalPile,
@@ -70,17 +76,24 @@ export function fixedInPlace(name: string, placedByWorld: boolean): boolean {
   return placedByWorld && (anyMatch(G.blocks, name) || anyMatch(G.platforms, name));
 }
 
+/** A placed carried container (`Crate#12`): its kind's behaviour, with an `#id`. */
+const placed =
+  (b: "cabinet" | "windCabinet" | "crate" | "cauldron") =>
+  (name: string): boolean =>
+    name.includes("#") && hasBehaviour(name, b);
+
 /**
- * The pictures pasted for names that `contain` these, in script order. Each paste covers the 32×32
- * scratch member, so the last match is the one seen.
+ * The pictures pasted for names that `contain` these (or pass the test), in script order. Each
+ * paste covers the 32×32 scratch member, so the last match is the one seen. 1.6 tested the
+ * containers' words with their `#` (`Cabinet#`); content's behaviours now say which items they are.
  */
-const PICTURES: readonly [string, string][] = [
+const PICTURES: readonly [string | ((name: string) => boolean), string][] = [
   ["Map", "MapPic"],
-  ["'s Newspaper", "NewspaperPic"],
-  ["Cabinet#", "CabinetPic"],
-  ["Wind Cabinet#", "WindCabinetPic"],
-  ["Crate#", "CratePic"],
-  ["Cauldron#", "CauldronPic"],
+  [isNewspaperStand, "NewspaperPic"],
+  [placed("cabinet"), "CabinetPic"],
+  [placed("windCabinet"), "WindCabinetPic"],
+  [placed("crate"), "CratePic"],
+  [placed("cauldron"), "CauldronPic"],
   ["Painting#", "PaintingPic"],
   ["Photo#", "PhotoPic"],
   ["'s Mailbox", "MailBoxPic"],
@@ -106,25 +119,26 @@ export function clockFace(minute: number): string {
 }
 
 /**
- * Whether a ground item's picture takes the clock face: its member name contains "Clock", which is
- * true of the `Clock` fixture and of the faces themselves.
+ * Whether a ground item's picture takes the clock face: the `clock` behaviour (Classic: a name
+ * containing "Clock", which is true of the `Clock` fixture and of the faces themselves).
  */
 export function showsClockFace(picture: string): boolean {
-  return lingoContains(picture, "Clock");
+  return hasBehaviour(picture, "clock");
 }
 
 /**
- * The picture a bag line shows (the bag-line drawing): a name that contains "cabinet" (not "Wind"),
- * "wind cabinet", "Painting", "Photo", "cauldron" or "crate" is drawn from that pool's picture, the
- * last test to match winning; any other name is its own member, unless SSO has drawn it a new
- * picture (its `sprite`). The pools hold the carried containers' and art's `Name#n` pictures.
+ * The picture a bag line shows (the bag-line drawing): a cabinet, a wind cabinet, a name that
+ * contains "Painting" or "Photo", a cauldron or a crate is drawn from that pool's picture, the last
+ * test to match winning; any other name is its own member, unless SSO has drawn it a new picture
+ * (its `sprite`). The pools hold the carried containers' and art's `Name#n` pictures. 1.6 tested
+ * the containers' words ("cabinet" without "Wind"); content's behaviours now say which they are.
  */
 export function bagPicture(name: string): string {
   let pic = name;
-  if (lingoContains(name, "cabinet") && !lingoContains(name, "Wind")) {
+  if (hasBehaviour(name, "cabinet") && !hasBehaviour(name, "windCabinet")) {
     pic = "CabinetBag";
   }
-  if (lingoContains(name, "wind cabinet")) {
+  if (hasBehaviour(name, "windCabinet")) {
     pic = "WindCabinetBag";
   }
   if (lingoContains(name, "Painting")) {
@@ -133,10 +147,10 @@ export function bagPicture(name: string): string {
   if (lingoContains(name, "Photo")) {
     pic = "PhotoBag";
   }
-  if (lingoContains(name, "cauldron")) {
+  if (hasBehaviour(name, "cauldron")) {
     pic = "CauldronBag";
   }
-  if (lingoContains(name, "crate")) {
+  if (hasBehaviour(name, "crate")) {
     pic = "CrateBag";
   }
   return pic === name ? itemSprite(name) : pic;
@@ -160,7 +174,7 @@ export function groundPicture(name: string): string {
     pic = n > 99 ? "LargeGold" : n > 49 ? "MediumGold" : n > 0 ? "SmallGold" : pic;
   }
   for (const [part, picture] of PICTURES) {
-    if (lingoContains(name, part)) {
+    if (typeof part === "string" ? lingoContains(name, part) : part(name)) {
       pic = picture;
     }
   }
@@ -306,98 +320,127 @@ export type PickupGate =
   /** The painting viewer for a `Painting#<id>` or `Photo#<id>` (click only). */
   | { kind: "view" };
 
-const CASINO_CLICKS: Readonly<Record<string, "slots" | "blackjack" | "checkers">> = {
-  SlotMachineClick: "slots",
-  BlackJackTableClick: "blackjack",
-  CheckersTableClick: "checkers",
-};
+/** The casino game an item plays, in 1.6's order: Slot Machine, Blackjack, Checkers. */
+function casinoGame(name: string): "slots" | "blackjack" | "checkers" | null {
+  return isSlotMachine(name)
+    ? "slots"
+    : isBlackjackTable(name)
+      ? "blackjack"
+      : isCheckersTable(name)
+        ? "checkers"
+        : null;
+}
+
+/** The click fixtures' actions that still answer: the switches. */
+const SWITCH_CLICKS: ReadonlySet<string> = new Set(["TheOnSwitchClick", "TheOffSwitchClick"]);
+
+/**
+ * The gate an engine fixture answers with whatever its owner is called, or null for any other name.
+ * 1.6 read words, so "The Photo Club's Guild Vault" was a photo and "The Clock Club's Board" a
+ * clock; SSO knows a fixture by its kind before any other test. The Street Lamp has no owner and
+ * runs the tables.
+ */
+function fixtureGate(name: string): PickupGate | null {
+  switch (engineFixtureKind(name)) {
+    case "door":
+    case "openedDoor":
+    case "exit":
+    case "sign":
+      return { kind: "silent" };
+    case "board":
+      return { kind: "board" };
+    case "mailbox":
+      return { kind: "mail", universal: false };
+    case "houseVault":
+    case "guildVault":
+      return { kind: "open" };
+    case "airship":
+    case "boat":
+    case "battleship":
+      return { kind: "vehicle" };
+    default:
+      return null;
+  }
+}
 
 /**
  * The name gates of a click pickup. A click uses a thing that does something and Ctrl picks up the
- * ones that can be carried (`ctrlGate`). Chests, crates, cabinets and house and guild vaults open
- * with the chest click; boards, mailboxes and signs open windows elsewhere (here they are left
- * alone); the fixtures after the Guild Vault run in 1.6's order from `content().houses.clickFixtures`: a
- * text, a silent exit, or a handler (the switches, the Guild Center and the casino tables; the
- * personal Vault is the server's, before this test). The stations and casino tables answer
+ * ones that can be carried (`ctrlGate`). An engine fixture answers by its kind first (`fixtureGate`);
+ * items by their behaviours (`item-rules.json` `behaviours`), in 1.6's order: doors and `noClick`
+ * items are left alone; boards and mail open their windows; chests, crates and cabinets open with
+ * the chest click; the casino tables play and the guild center opens; then `houses.json`
+ * `clickFixtures` gives a text, a silent exit or a switch. The stations and casino tables answer
  * wherever they stand, your own house included (1.6 picked them up there instead).
  */
 export function clickGate(name: string): PickupGate {
   const has = (p: string) => lingoContains(name, p);
   const eq = (p: string) => lingoEq(name, p);
+  const fixture = fixtureGate(name);
+  if (fixture) {
+    return fixture;
+  }
   // The newspaper, then a painting or photo, both tested on the part of the name before `#`,
   // before the door/exit/Ray silence.
   const item1 = name.split("#")[0] ?? name;
-  if (lingoContains(item1, "'s Newspaper")) {
+  if (isNewspaperStand(item1)) {
     return { kind: "newspaper" };
   }
   if (lingoContains(item1, "Painting") || lingoContains(item1, "Photo")) {
     return { kind: "view" };
   }
-  if (has(" Ray") || has("door") || has("exit")) {
+  // 1.6 tested " Ray", "door" and "exit", then "Sign" (and "Lair" after the vehicles); Classic's
+  // `noClick` rows hold those words.
+  if (hasBehaviour(name, "noClick") || hasBehaviour(name, "door")) {
     return { kind: "silent" };
   }
-  // The signs come first (silent); then Town Square's board (exact) and a hall's `'s Board`; a
-  // chest opens with the chest click; then the mail, `Universal Mail` before `'s Mailbox`, and a
-  // House Vault.
-  if (has("Sign")) {
-    return { kind: "silent" };
-  }
-  if (eq("Message Boards") || has("'s Board")) {
+  // Town Square's board and a hall's board; a chest opens with the chest click; then the mail,
+  // the universal mailbox before a house's, and a house vault.
+  if (hasBehaviour(name, "messageBoard")) {
     return { kind: "board" };
   }
-  if (has(" Chest")) {
+  if (hasBehaviour(name, "chest")) {
     return { kind: "open" };
   }
-  if (has("Universal Mail")) {
+  if (hasBehaviour(name, "universalMail")) {
     return { kind: "mail", universal: true };
   }
-  if (has("'s Mailbox")) {
-    return { kind: "mail", universal: false };
-  }
-  if (has("House Vault")) {
-    return { kind: "open" };
-  }
-  // The High Score Statue and Assassin Statue open from any distance and are never picked up,
-  // before any header test.
-  if (eq("High Score Statue")) {
+  // The statues open from any distance and are never picked up, before any header test.
+  if (hasBehaviour(name, "highScoreStatue")) {
     return { kind: "scores" };
   }
-  if (eq("Assassin Statue")) {
+  if (hasBehaviour(name, "assassinStatue")) {
     return { kind: "statue" };
   }
-  // A vehicle is boarded (1.6's BoatClick and AirshipClick).
-  if (has("'s Airship") || has("'s Boat") || has("'s Battleship")) {
-    return { kind: "vehicle" };
-  }
-  if (has("Lair")) {
-    return { kind: "silent" };
-  }
-  if (eq("Cauldron") || has("Cauldron#")) {
+  if (hasBehaviour(name, "cauldron")) {
     return { kind: "text", text: PICKUP_TEXT.cauldron };
   }
   // A crate or cabinet opens like a chest; Ctrl carries it off (1.6's click picked it up and never
   // reached the chest click).
-  if (has("Crate") || has("Cabinet")) {
+  if (hasBehaviour(name, "crate") || isCabinet(name)) {
     return { kind: "open" };
   }
-  if (has("Guild Vault")) {
-    return { kind: "open" };
+  // The casino tables and the guild center. 1.6 found them among the fixtures below, after the
+  // Vault; no Classic one matches a fixture before it.
+  const game = casinoGame(name);
+  if (game) {
+    return { kind: "casino", game };
+  }
+  if (hasBehaviour(name, "guildCenter")) {
+    return { kind: "guildCenter" };
+  }
+  // The personal vault is the server's, before this gate.
+  if (hasBehaviour(name, "personalVault")) {
+    return { kind: "silent" };
   }
   for (const f of content().houses.clickFixtures) {
+    // A row for the Vault, the Guild Center or a casino table is an item behaviour now.
+    if (f.action !== null && !SWITCH_CLICKS.has(f.action)) {
+      continue;
+    }
     if (f.match === "exact" ? eq(f.item) : has(f.item)) {
       if (f.text) {
         return { kind: "text", text: f.text };
       }
-      // The Guild Center.
-      if (f.action === "GuildCenterClick") {
-        return { kind: "guildCenter" };
-      }
-      // The casino tables.
-      const game = CASINO_CLICKS[f.action ?? ""];
-      if (game) {
-        return { kind: "casino", game };
-      }
-      // The switches; the Vault is the server's before this gate.
       const state = switchState(name);
       return state && f.action ? { kind: "switch", state } : { kind: "silent" };
     }
@@ -406,67 +449,52 @@ export function clickGate(name: string): PickupGate {
 }
 
 /**
- * The name gates of a Ctrl pickup: a newspaper is read, then door/exit is silent; chests open and
- * switches flip; no Painting/Photo branch, so paintings and photos are taken (a click views them);
- * a crate or cabinet is taken by whoever is strong enough (a click opens it); the stations and
- * casino tables are taken on your own premises (`mine`: the room's header names you or your guild)
- * and used anywhere else; the fixtures with a line (Piano, Wall Torch, Windmill, Holy Water, Fire
- * Pot, Fountain, Clock, Street Lamp) say it and take nothing, as do the four skill platforms;
- * Chimney is silent.
+ * The name gates of a Ctrl pickup, by behaviour and fixture kind in 1.6's order: a newspaper is
+ * read, then a door or exit is silent; chests open and switches flip; no Painting/Photo branch, so
+ * paintings and photos are taken (a click views them); a crate or cabinet is taken by whoever is
+ * strong enough (a click opens it); the stations and casino tables are taken on your own premises
+ * (`mine`: the room's header names you or your guild) and used anywhere else; the fixtures with a
+ * line (`pickup.ctrlTexts`) say it and take nothing; signs, boards, mail, vaults, parked boats and
+ * `noCtrl` items are silent.
  */
 export function ctrlGate(name: string, who: { str: number; mine: boolean }): PickupGate {
-  const has = (p: string) => lingoContains(name, p);
-  const eq = (p: string) => lingoEq(name, p);
+  const fixture = fixtureGate(name);
+  if (fixture) {
+    return fixture;
+  }
   // A newspaper stand first, so a stand whose author's name holds "door" or "exit" is read (1.6
   // tested the door/exit silence first, so Ctrl ignored "Doorman's Newspaper").
-  if (has("'s Newspaper")) {
+  if (isNewspaperStand(name)) {
     return { kind: "newspaper" };
   }
-  if (has("door") || has("exit")) {
+  if (hasBehaviour(name, "door")) {
     return { kind: "silent" };
   }
-  // Town Square's board, a house mailbox, then the statue and `Universal Mail`, all before the
-  // chests. Ctrl's mail order is the reverse of the click's.
-  if (eq("Message Boards")) {
+  // Town Square's board, a house mailbox, then the statues, the vehicles and the universal
+  // mailbox, all before the chests. Ctrl's mail order is the reverse of the click's.
+  if (hasBehaviour(name, "messageBoard")) {
     return { kind: "board" };
   }
-  if (has("'s Mailbox")) {
-    return { kind: "mail", universal: false };
-  }
-  // The High Score Statue, the same lines as the click.
-  if (eq("High Score Statue")) {
+  if (hasBehaviour(name, "highScoreStatue")) {
     return { kind: "scores" };
   }
-  if (eq("Assassin Statue")) {
+  if (hasBehaviour(name, "assassinStatue")) {
     return { kind: "statue" };
   }
-  // The vehicle click on the faced Airship, Boat or Battleship, between the statues and the mail.
-  if (has("'s Airship") || has("'s Boat") || has("'s Battleship")) {
-    return { kind: "vehicle" };
-  }
-  if (has("Universal Mail")) {
+  if (hasBehaviour(name, "universalMail")) {
     return { kind: "mail", universal: true };
   }
-  // The chest click for a chest, House Vault, Cabinet, Crate, Cauldron and Guild Vault; then the
-  // switches.
-  // No other name before them contains these.
-  if (has(" Chest")) {
+  if (hasBehaviour(name, "chest")) {
     return { kind: "open" };
   }
   // The six furniture items (stations and casino tables) are carried off from your own premises.
   if (who.mine && isFurniture(name)) {
     return { kind: "take" };
   }
-  // Elsewhere the casino tables play, in 1.6's order: Slot Machine, Blackjack, Checkers, before the
-  // vaults, cabinets and crates.
-  if (has("Slot Machine")) {
-    return { kind: "casino", game: "slots" };
-  }
-  if (has("Blackjack")) {
-    return { kind: "casino", game: "blackjack" };
-  }
-  if (has("Checkers")) {
-    return { kind: "casino", game: "checkers" };
+  // Elsewhere the casino tables play, before the vaults, cabinets and crates.
+  const game = casinoGame(name);
+  if (game) {
+    return { kind: "casino", game };
   }
   // The fixtures' one-line texts and the skill platforms', `pickup.ctrlTexts`, in 1.6's order, with
   // the stations' lines after them (docs/modding.md has the notes on the platforms).
@@ -474,42 +502,28 @@ export function ctrlGate(name: string, who: { str: number; mine: boolean }): Pic
   if (said) {
     return { kind: "text", text: said.text, ...(said.unpause ? { unpause: true } : {}) };
   }
-  // The vaults and the Cauldron open. 1.6 opened crates and cabinets here too, so its Strength
+  // The vaults and the cauldron open. 1.6 opened crates and cabinets here too, so its Strength
   // tests below were never reached; SSO takes them.
-  if (has("House Vault") || has("Cauldron") || has("Guild Vault")) {
+  if (hasBehaviour(name, "cauldron")) {
     return { kind: "open" };
   }
-  if (has("Crate") || has("Cabinet")) {
-    const need = has("Cabinet") ? 19 : 15;
+  if (hasBehaviour(name, "crate") || isCabinet(name)) {
+    const need = isCabinet(name) ? 19 : 15;
     return who.str < need ? { kind: "text", text: PICKUP_TEXT.weak } : { kind: "take" };
-  }
-  // A hall's board (only " Chest" precedes it in 1.6 and no item has both).
-  if (has("'s Board")) {
-    return { kind: "board" };
   }
   const state = switchState(name);
   if (state) {
     return { kind: "switch", state };
   }
-  // `GuildCenterClick` on the faced Guild Center.
-  if (eq("Guild Center")) {
+  // `GuildCenterClick` on the faced guild center.
+  if (hasBehaviour(name, "guildCenter")) {
     return { kind: "guildCenter" };
   }
-  if (
-    has("Sign") ||
-    has("Board") ||
-    has(" Chest") ||
-    has("Mail") ||
-    has("Vault") ||
-    has("'s Boat") ||
-    has("'s Battleship") ||
-    has("Platform") ||
-    has("Lair")
-  ) {
+  // 1.6's last silence: "Sign", "Board", " Chest", "Mail", "Vault", "'s Boat", "'s Battleship",
+  // "Platform", "Lair" and an exact "Chimney". Classic's `noCtrl` rows hold the words; the
+  // engine's signs, mail and vaults are silent by kind.
+  if (hasBehaviour(name, "noCtrl")) {
     return { kind: "silent" };
-  }
-  if (eq("Chimney")) {
-    return { kind: "silent" }; // returns silently
   }
   return { kind: "take" };
 }

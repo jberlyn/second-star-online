@@ -16,11 +16,11 @@ import {
   directional,
   fireballForm,
   fxForEffect,
+  hasBehaviour,
   inCastBounds,
   invDelSlot,
   isHarmful,
   isInert,
-  lingoContains,
   lingoDiv,
   lingoEq,
   lingoWord,
@@ -324,11 +324,13 @@ function placeSummon(
 }
 
 /**
- * The tail of a dropped Pig: a tile a monster cannot stand on → silent exit; else the first free
- * slot takes a live Pig. No Sorcery test and no no-fight test.
+ * The tail of a dropped item that releases a monster (Classic: a Pig): a tile a monster cannot
+ * stand on → silent exit; else the first free slot takes a live `monster`. No Sorcery test and no
+ * no-fight test.
  */
-export function summonPig(
+export function releaseMonster(
   room: Room,
+  monster: string,
   x: number,
   y: number,
   rng: Rng,
@@ -336,22 +338,23 @@ export function summonPig(
   if (npcBlocked(room.map.walk, x, y)) {
     return { out: [], changed: false };
   }
-  return placeSummon(room, "Pig", { x, y }, rng);
+  return placeSummon(room, monster, { x, y }, rng);
 }
 
 // ---- the other senders ----------------------------------------------------------------
 
 /**
- * Which free fireballs a swing of `weapon` sends: the Fire Staff's (exact name), and while Firesword
- * runs any weapon whose name contains "sword" (so a Swordfish too, as in 1.6).
+ * Which free fireballs a swing of `weapon` sends: a weapon with the `swingFireballs` behaviour (the
+ * Fire Staff), and while Firesword runs a `sword` (Classic names its swords; 1.6 took any name
+ * containing "sword", so a Swordfish too: a bug fixed).
  */
 export function freeFireballs(
   weapon: string,
   fireSword: boolean,
 ): { staff: boolean; sword: boolean } {
   return {
-    staff: lingoEq(weapon, "Fire Staff"),
-    sword: fireSword && lingoContains(weapon, "sword"),
+    staff: hasBehaviour(weapon, "swingFireballs"),
+    sword: fireSword && hasBehaviour(weapon, "sword"),
   };
 }
 

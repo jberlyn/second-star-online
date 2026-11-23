@@ -4,8 +4,12 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
+  buildContentStore,
+  type ContentData,
   type DeltaEvent,
+  installContent,
   PIG_TEXT,
   type ServerMsg,
   VEHICLE_TEXT,
@@ -310,5 +314,46 @@ describe("orbs are ordinary items", () => {
     give(s.a, 1, "Earth Orb");
     expect(chat(dropIntent(s.ctx(), s.room, s.a, 1), "A")).toEqual([VEHICLE_TEXT.sky]);
     expect(s.a.char.bag[0]).toEqual({ item: "Earth Orb", qty: 1 });
+  });
+});
+
+describe("an item that releases a monster", () => {
+  /** Runs `body` with Classic's behaviour rows replaced, then puts Classic back. */
+  function withBehaviours(rows: ContentData["itemRules"]["behaviours"], body: () => void): void {
+    const d = structuredClone(classicData) as ContentData;
+    d.itemRules.behaviours = rows;
+    installContent(buildContentStore(d));
+    try {
+      body();
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  }
+
+  test("drops as the monster of its name; with no such monster it is an item", () => {
+    withBehaviours(
+      [
+        { match: "exact", pattern: "Cow", behaviour: "releasesMonster" },
+        { match: "exact", pattern: "Apple", behaviour: "releasesMonster" },
+      ],
+      () => {
+        const s = scene();
+        give(s.a, 1, "Cow");
+        dropIntent(s.ctx(), s.room, s.a, 1);
+        expect(s.map.slots.some((m) => m.live?.name === "Cow")).toBe(true);
+        expect(s.a.char.bag[0]).toBeNull();
+        // Apple is no monster: it is put down like any item.
+        give(s.a, 2, "Apple");
+        s.a.facing = "S";
+        dropIntent(s.ctx(), s.room, s.a, 2);
+        expect(s.map.ground.some((g) => g.item === "Apple")).toBe(true);
+        // A Pig is now an ordinary item, put down as one.
+        give(s.a, 3, "Pig");
+        s.a.facing = "N";
+        dropIntent(s.ctx(), s.room, s.a, 3);
+        expect(livePigs(s.map)).toEqual([]);
+        expect(s.map.ground.some((g) => g.item === "Pig")).toBe(true);
+      },
+    );
   });
 });

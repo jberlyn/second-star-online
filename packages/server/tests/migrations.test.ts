@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { classicData } from "@secondstaronline/data/classic";
 import { startingCharacter } from "@secondstaronline/shared";
 
+import { readPackBlob } from "../src/content/packs.ts";
+import { rowHash } from "../src/content/rows.ts";
 import { insertCharacter as insertCurrent } from "../src/persistence/characters.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import {
@@ -1145,5 +1147,122 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       { key: "bellMap", value: "null", updated_at: "then" },
       { key: "jailPoint", value: '{"map":"x5y5","x":2,"y":2}', updated_at: "then" },
     ]);
+  });
+
+  test("item_behaviours gives older imported packs Classic's behaviour, kill XP and Piano rows and keeps a pack's own", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_60"),
+    );
+    // A pack blob keeps each dataset under its file name (content/packs.ts `readPackBlob`).
+    const pack = (id: string, itemRules: unknown) =>
+      db.run(
+        "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES (?, ?, '1.0.0', ?, 'imported', ?, 'now')",
+        [
+          id,
+          id,
+          id === "old" ? 1 : 2,
+          JSON.stringify({ manifest: {}, data: { "item-rules": itemRules } }),
+        ],
+      );
+    // "old" is Classic's item rules as they were before this stage.
+    const classic = classicData.itemRules;
+    const { behaviours: _b, ...before } = structuredClone(classic);
+    before.gear = before.gear.filter((g) => g.power !== "killXp");
+    before.use.refusals = before.use.refusals.filter((r) => r.pattern !== "Piano");
+    pack("old", before);
+    const own = [{ match: "exact", pattern: "Lockpick", behaviour: "key" }];
+    const ownGear = [
+      { slot: "ring", match: "exact", pattern: "Lucky Ring", power: "killXp", add: 2 },
+    ];
+    const ownUse = { refusals: [{ match: "exact", pattern: "PIANO", text: "Hush." }] };
+    pack("own", { use: ownUse, gear: ownGear, behaviours: own });
+    // An operator's published gear section and a drafted use section, from before the upgrade.
+    const operatorGear = [
+      { slot: "ring", match: "exact", pattern: "Argon's Ring", power: "attack", add: 4 },
+    ];
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('itemRules', 'gear', '', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(operatorGear)],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('itemRules', 'use', '', 'set', ?, 'a', 'A', 'then')",
+      [JSON.stringify({ refusals: [] })],
+    );
+    // The publish that made the gear row: undo compares the live row with its "after".
+    const beforeGear = classic.gear.filter((g) => g.power !== "killXp");
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "itemRules",
+            part: "gear",
+            key: null,
+            before: { op: "set", data: beforeGear },
+            after: { op: "set", data: operatorGear },
+          },
+          { dataset: "casino", part: "slots", key: null, before: null, after: null },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    runMigrations(db, all);
+    const rules = (id: string) =>
+      JSON.parse(
+        (
+          db
+            .query(
+              "SELECT json_extract(data, '$.data.\"item-rules\"') AS r FROM content_packs WHERE id = ?",
+            )
+            .get(id) as { r: string }
+        ).r,
+      );
+    expect(rules("old")).toEqual(classic);
+    expect(rules("own")).toEqual({ use: ownUse, gear: ownGear, behaviours: own });
+    // The old pack loads again.
+    const old = db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as {
+      data: string;
+    };
+    const blob = JSON.parse(old.data);
+    const classicManifest = JSON.parse(
+      readFileSync(
+        join(MIGRATIONS_DIR, "..", "..", "data", "packs", "classic", "manifest.json"),
+        "utf8",
+      ),
+    );
+    blob.manifest = { ...classicManifest, id: "old", art: undefined };
+    expect(readPackBlob(JSON.stringify(blob)).data.itemRules).toEqual(classic);
+    const killXp = classic.gear.filter((g) => g.power === "killXp");
+    const row = (table: string) =>
+      JSON.parse(
+        (
+          db.query(`SELECT data FROM ${table} WHERE dataset = 'itemRules'`).get() as {
+            data: string;
+          }
+        ).data,
+      );
+    expect(row("content_rows")).toEqual([...operatorGear, ...killXp]);
+    const changes = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(rowHash(changes[0].after.data)).toBe(rowHash(row("content_rows")));
+    expect(changes[0].before.data).toEqual(classic.gear);
+    expect(changes[1]).toEqual({
+      dataset: "casino",
+      part: "slots",
+      key: null,
+      before: null,
+      after: null,
+    });
+    expect(row("content_draft")).toEqual({
+      refusals: classic.use.refusals.filter((r) => r.pattern === "Piano"),
+    });
   });
 });

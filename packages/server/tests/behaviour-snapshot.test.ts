@@ -5,8 +5,8 @@
  * shows up as a line diff; an intended one is recorded with `SSO_UPDATE_GOLDEN=1` and, when it
  * differs from 1.6, a differences entry (docs/modding.md, "The safety net").
  *
- * The snapshot records behaviour, bugs included: `bow` matches Bowmaster's Ring and Firesword's
- * `sword` test matches Swordfish.
+ * The snapshot records behaviour, 1.6's kept bugs included. Fixed ones show as the change that
+ * fixed them (stage 3: Bowmaster's Ring is no bow, and Firesword passes over a Swordfish).
  *
  * Rolls are recorded by their draws: a formula runs once with every `random(n)` answering 1 and
  * once answering `n`, and the line lists the results and the sizes drawn.
@@ -958,7 +958,7 @@ describe("the behaviour snapshot", () => {
         web: isWebBody(body),
         footprint: isFootprint(n),
         leans: leansToward(n),
-        killXp: `${meleeKillXp(30, n, NOTHING)}/${meleeKillXp(30, n, "Ring of Experience")}`,
+        killXp: `${meleeKillXp(30, n, NO_EQUIPMENT)}/${meleeKillXp(30, n, { ...NO_EQUIPMENT, ring: "Ring of Experience" })}`,
         rows: ruleNames.filter((k) => inRows(n, rules[k])).join(",") || "-",
         ...throughMonster(n),
       });

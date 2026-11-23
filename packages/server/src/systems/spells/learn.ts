@@ -5,8 +5,8 @@
 import {
   BOOK_TEXT,
   bookDex,
+  hasBehaviour,
   invDelSlot,
-  lingoContains,
   type Rng,
   runBook,
 } from "@secondstaronline/shared";
@@ -43,7 +43,7 @@ export function readBook(p: Player, slot: number, rng: Rng): string[] {
   return lines;
 }
 
-/** True for the items the Use button reads as a book. */
+/** True for the items the Use button reads as a book (the `book` behaviour). */
 export function isBook(item: string): boolean {
-  return lingoContains(item, "Book");
+  return hasBehaviour(item, "book");
 }

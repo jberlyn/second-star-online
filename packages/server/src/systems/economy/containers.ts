@@ -7,17 +7,19 @@
  */
 import {
   addSlotFor,
-  CAULDRON,
   CRAFT_TEXT,
   cauldronBrew,
   content,
   displayName,
   FACING_DELTA,
+  hasBehaviour,
   invAdd,
+  isEngineFixture,
+  isFixtureKind,
   isGoldName,
+  isStorageContainer,
   itemLabel,
   lastMatch,
-  lingoContains,
   lingoEq,
   menuAction,
   periodicSave,
@@ -39,12 +41,12 @@ export function containerCapacity(name: string): number {
 export const CONTAINER_TEXT = {
   /** The chest click: the `#id` is stripped; a House Vault reads "You open <name>". */
   open: (name: string) =>
-    lingoContains(name, "House")
+    isFixtureKind(name, "houseVault")
       ? `You open ${name} to see what's inside...`
       : `You open the ${itemLabel(name)} to see what's inside...`,
   /** The line for a click from the wrong spot: the `#id` is not stripped. */
   notInFront: (name: string) =>
-    lingoContains(name, "House")
+    isFixtureKind(name, "houseVault")
       ? `You see ${name}, but you must be standing in front of it to use it.`
       : `You see the ${name}, but you must be standing in front of it to use it.`,
   /** SSO, after the mailbox's "You can't check mail that's not yours!" */
@@ -57,10 +59,10 @@ export const CONTAINER_TEXT = {
  * only if its last leader founds it anew: `guildCreate`); the rest anyone.
  */
 export function mayUseContainer(p: Player, name: string): boolean {
-  if (lingoContains(name, "Guild Vault")) {
+  if (isFixtureKind(name, "guildVault")) {
     return p.guild !== "" && lingoEq(name, `The ${p.guild}'s Guild Vault`);
   }
-  if (lingoContains(name, "House Vault")) {
+  if (isFixtureKind(name, "houseVault")) {
     return lingoEq(name, `${p.name}'s House Vault`);
   }
   return true;
@@ -118,7 +120,7 @@ export function storageIntent(world: World, p: Player, slot: number): Outgoing[]
   if (!line || menuAction(line.item) !== "Storage" || p.keyLock || p.itemPause > 0) {
     return [];
   }
-  if (p.deadLock > 0 || p.loading > 0 || lingoContains(line.item, "Chest")) {
+  if (p.deadLock > 0 || p.loading > 0 || hasBehaviour(line.item, "chest")) {
     return [];
   }
   return [show(world, p, line.item, true), tell(p, CONTAINER_TEXT.open(line.item))];
@@ -147,7 +149,7 @@ export function depositContainer(
     return [tell(p, CONTAINER_TEXT.notYours)];
   }
   const item = line.item;
-  if (["Cabinet", "Crate", "Cauldron"].some((c) => lingoContains(item, c))) {
+  if (isStorageContainer(item)) {
     return [tell(p, VAULT_TEXT.container)];
   }
   if (linesOf(world, name).length >= containerCapacity(name)) {
@@ -165,7 +167,7 @@ export function depositContainer(
     line.qty -= 1;
     count += 1;
     const next = [...lines, item];
-    const brewed = lingoContains(name, "Cauldron") ? cauldronBrew(next) : null;
+    const brewed = hasBehaviour(name, "cauldron") ? cauldronBrew(next) : null;
     write(world, name, brewed ?? next);
     if (brewed !== null) {
       brews += 1;
@@ -251,9 +253,6 @@ export function withdrawContainer(world: World, p: Player, index: number, rng: R
   return [...refreshViewers(world, c.name), tell(p, VAULT_TEXT.take(item))];
 }
 
-/** Whether Drop facing this ground item deposits into it (its name contains "Cauldron#"). */
-export const isDepositCauldron = (g: GroundItem) => lingoContains(g.item, CAULDRON.match);
-
 /**
  * The periodic save and its quest chest roll for one player: the save-block counter counts down;
  * once 0, `random(350) = 1` saves and resets it to 400; the save rolls the quest chest, which adds
@@ -278,12 +277,18 @@ export function saveClockStep(world: World, p: Player, rng: Rng): void {
   }
 }
 
-/** Drop's container route for the first item on the faced tile, or null. */
+/**
+ * Drop's container route for the first item on the faced tile, or null: a house or guild vault (by
+ * fixture kind), or a placed container (a cabinet, crate or cauldron with its `#id`) or a chest (by
+ * behaviour). Any other engine fixture takes nothing, whatever its owner is called. The personal
+ * vault is the caller's, before this. `houses.json` `containers.drop` named the same containers in
+ * 1.6's words and is no longer read: a container whose behaviour is taken away takes nothing.
+ */
 export function dropRoute(g: GroundItem): string | null {
-  for (const r of content().houses.containers.drop) {
-    if (r.match === "contains" ? lingoContains(g.item, r.name) : lingoEq(g.item, r.name)) {
-      return r.match === "contains" ? g.item : r.name;
-    }
+  if (isEngineFixture(g.item)) {
+    return isFixtureKind(g.item, "houseVault", "guildVault") ? g.item : null;
   }
-  return null;
+  return (g.item.includes("#") && isStorageContainer(g.item)) || hasBehaviour(g.item, "chest")
+    ? g.item
+    : null;
 }

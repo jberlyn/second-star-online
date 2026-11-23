@@ -5,24 +5,27 @@
 import type { CasinoData } from "@secondstaronline/data";
 
 import { onContent } from "../../content/store.ts";
-import { lingoEq } from "../core/lingo.ts";
+import { hasBehaviour } from "../inventory/behaviours.ts";
+import { legacyItem } from "./blackjack.ts";
 
 type Checkers = CasinoData["checkers"];
 
 let C: Checkers;
-export let CK_ITEM: string;
 export let CK_TEXT: Checkers["texts"];
 export let CK_MARKER: Checkers["marker"];
 
 onContent((c) => {
   C = c.casino.checkers;
-  CK_ITEM = C.item.text;
   CK_TEXT = C.texts;
   CK_MARKER = C.marker;
 });
 
+/**
+ * An item with the `checkersTable` behaviour sits you down (Classic: exactly "Checkers Table", the
+ * only name 1.6 seated; its click and Ctrl also routed longer names, which then sat no one).
+ */
 export function isCheckersTable(name: string): boolean {
-  return lingoEq(name, CK_ITEM);
+  return hasBehaviour(name, "checkersTable") || legacyItem(name, C.item);
 }
 
 export type PieceName = "Black" | "White" | "BlackKing" | "WhiteKing";

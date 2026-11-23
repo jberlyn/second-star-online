@@ -27,10 +27,10 @@ import {
   FACING_DELTA,
   FLICKER_FRAMES,
   firstMatch,
+  hasBehaviour,
   invDelSlot,
   isArenaTile,
   LEVEL_UP_TEXT,
-  lingoContains,
   meleeDamageVsMonster,
   meleeKillXp,
   meleeReaches,
@@ -344,7 +344,7 @@ function gainOnShot(p: Player, ctx: MeleeCtx, ev: SwingEvents): void {
     }
   };
   gain(boundSkillIndex("archery"));
-  if (lingoContains(p.char.equip.weapon, "Crossbow")) {
+  if (hasBehaviour(p.char.equip.weapon, "crossbow")) {
     gain(boundSkillIndex("martialArts"));
   }
 }
@@ -532,7 +532,7 @@ function smash(
   if (v.level < 1) {
     return;
   }
-  const killXp = meleeKillXp(sp?.xpMelee ?? 30, m.name, p.char.equip.ring);
+  const killXp = meleeKillXp(sp?.xpMelee ?? 30, m.name, p.char.equip);
   const broadcast = firstMatch(content().monsters.rules.killBroadcasts, m.name);
   if (broadcast) {
     ev.broadcast = broadcast.text.replace("{}", p.name);

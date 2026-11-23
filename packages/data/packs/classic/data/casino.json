@@ -1,8 +1,5 @@
 {
   "slots": {
-    "item": {
-      "text": "Slot Machine"
-    },
     "standText": "This is a slot machine. You need to be standing in front of it to play.",
     "poorText": "You don't have enough gold to play!",
     "winText": "You won!!!!",
@@ -72,9 +69,6 @@
     }
   },
   "blackjack": {
-    "item": {
-      "text": "Blackjack Table"
-    },
     "texts": {
       "stand": "This is blackjack table, but you must be standing beside it to play!",
       "joined": "{USER} has joined the table!",
@@ -113,9 +107,6 @@
     "buttonBlock": 10
   },
   "checkers": {
-    "item": {
-      "text": "Checkers Table"
-    },
     "texts": {
       "stand": "This is Checkers table, but you must be standing beside it to play!",
       "black": "Black is {USER}",

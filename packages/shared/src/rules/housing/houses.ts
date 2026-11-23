@@ -6,7 +6,7 @@ import type { HouseType } from "@secondstaronline/data";
 
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import type { MapExit } from "../admin/worldedit.ts";
-import { lingoContains, lingoEq } from "../core/lingo.ts";
+import { lingoEq } from "../core/lingo.ts";
 import { houseMapName } from "../core/maps.ts";
 import { TILE_DEFAULTS } from "../core/tiles.ts";
 import type { Vehicle } from "../movement/movement.ts";
@@ -134,7 +134,7 @@ export function checkPlacement(i: PlacementInput): PlacementResult {
   if (i.hasExit && i.hasExit2) {
     return { ok: false, text: pl.slots };
   }
-  if (i.guild === "" && lingoContains(i.type.house, "Guild")) {
+  if (i.guild === "" && i.type.guild) {
     return { ok: false, text: pl.guild };
   }
   return { ok: true, anchor: a, slot: i.hasExit ? 2 : 1 };

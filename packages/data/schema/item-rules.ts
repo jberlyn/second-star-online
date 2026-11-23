@@ -15,7 +15,91 @@ const slotVarSchema = z.enum(["RingE", "HeadE", "BodyE", "RightHandE", "LeftHand
 const wornSlotSchema = z.enum(["head", "body", "weapon", "offHand", "feet", "ring"]);
 const paperdollLayerSchema = z.enum(["weapon", "shield", "helm", "gloves", "body"]);
 
+/**
+ * The behaviours an item can have (issue #37 stage 3). 1.6 gave each of these to any item whose name
+ * held a word; content now says which items have them, in `behaviours`.
+ */
+export const itemBehaviourSchema = z.enum([
+  /** Use opens the doors its name unlocks (the key script). */
+  "key",
+  /** Use reads it: a spell book teaches its spell, a skill book its skill. */
+  "book",
+  /** Shoots arrows from the off hand, spending a crystal of their colour. */
+  "bow",
+  /** A bow that also trains Martial Arts. */
+  "crossbow",
+  /** Worn as body armour, hides the wearer's name. */
+  "hidesName",
+  /** A chest: opens with the chest click and is never carried. */
+  "chest",
+  /** A carried container drawn as a cabinet; Ctrl needs 19 Strength to lift it. */
+  "cabinet",
+  /** A cabinet drawn as the Wind Cabinet. */
+  "windCabinet",
+  /** A carried container drawn as a crate; Ctrl needs 15 Strength to lift it. */
+  "crate",
+  /** A carried container that brews its recipes as items go in. */
+  "cauldron",
+  /** A slot machine: a click or Ctrl plays it. */
+  "slotMachine",
+  /** A blackjack table: a click or Ctrl sits at it. */
+  "blackjackTable",
+  /** A checkers table: a click or Ctrl sits at it. */
+  "checkersTable",
+  /** Shows the high scores, from any distance. */
+  "highScoreStatue",
+  /** Shows the assassins' ranking, from any distance. */
+  "assassinStatue",
+  /** Held in the right hand, lets a Film take a photo. */
+  "camera",
+  /** Spent by a photo. */
+  "film",
+  /** Spent by a painting. */
+  "canvas",
+  /** Dropped on a newspaper stand tile, becomes the dropper's newspaper. */
+  "newspaperKit",
+  /** Every swing also sends a fireball. */
+  "swingFireballs",
+  /** A sword, for the Firesword spell. */
+  "sword",
+  /** Use also casts Argon's Fist on you, with the Argon line in place of its drink line. */
+  "argonsFist",
+  /** Dropped, it becomes the live monster of the same name (a Pig item lets a Pig go). */
+  "releasesMonster",
+  /** Worn as body armour, covers the head: no hair is drawn. */
+  "hidesHead",
+  /** Worn as body armour, covers the helmet: no helmet is drawn. */
+  "hidesHelm",
+  /** Held in the off hand, drawn on the back: behind the body facing S or W, over it facing N. */
+  "quiver",
+  /** Held in the off hand, not drawn facing N (held out in front). */
+  "hiddenFacingNorth",
+  /** A door: a click or Ctrl leaves it alone, and a key turns the last one on the faced tile. */
+  "door",
+  /** The open door the switches close and open. */
+  "switchDoor",
+  /** Shows the server's time on its face. */
+  "clock",
+  /** The town's message board: a click or Ctrl reads it. */
+  "messageBoard",
+  /** The mailbox anyone can use: a click or Ctrl opens your mail. */
+  "universalMail",
+  /** The guild center: a click or Ctrl opens the guild window. */
+  "guildCenter",
+  /** Your own vault: a click or Ctrl opens it, and Drop facing it puts the item in. */
+  "personalVault",
+  /** A click does nothing (Ctrl may still take it). */
+  "noClick",
+  /** Ctrl does nothing, when nothing before it answered. */
+  "noCtrl",
+]);
+
 export const itemRulesDataSchema = z.strictObject({
+  /**
+   * The behaviours by name, any match: an item has every behaviour a row gives it. A row tests the
+   * name without its `#id` or `+N` ending, and never an engine fixture's name (`Bob's Door`).
+   */
+  behaviours: z.array(z.strictObject({ ...pattern, behaviour: itemBehaviourSchema })),
   equip: z.strictObject({
     /** 19 rules, required Strength to equip, last match wins. */
     strength: z.array(z.strictObject({ ...pattern, strength: int })),
@@ -142,7 +226,7 @@ export const itemRulesDataSchema = z.strictObject({
   gear: z.array(
     strictRow({
       slot: wornSlotSchema,
-      power: z.enum(["spell", "blackArts", "martialArts", "attack"]),
+      power: z.enum(["spell", "blackArts", "martialArts", "attack", "killXp"]),
       add: int,
     }),
   ),
@@ -165,3 +249,4 @@ export const itemRulesDataSchema = z.strictObject({
 
 export type ItemRulesData = z.infer<typeof itemRulesDataSchema>;
 export type EquipSlot = z.infer<typeof equipSlotSchema>;
+export type ItemBehaviour = z.infer<typeof itemBehaviourSchema>;

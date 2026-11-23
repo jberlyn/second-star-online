@@ -133,6 +133,11 @@ export function patternTables(): Map<string, Row[]> {
 export const TABLES: Record<string, TableInfo> = {
   // strengthRequirement, equipSlotFor, menuAction, useItem, bookDex, invAdd, swingCooldowns,
   // damagedForm
+  [`item-rules.json behaviours`]: {
+    decides: "what an item does (a key, a bow, a chest, a crate…)",
+    wins: "adds",
+    note: "each matching row gives its behaviour; rows test the name without its #id or +N, and never an engine fixture's (Bob's Door)",
+  },
   [`item-rules.json equip.strength`]: { decides: "the Strength needed to equip", wins: "last" },
   [`item-rules.json equip.slots`]: { decides: "which slot the item goes in", wins: "last" },
   [`item-rules.json menu`]: {
@@ -292,7 +297,7 @@ export const TABLES: Record<string, TableInfo> = {
   "houses.json clickFixtures": {
     decides: "what a click on a fixture does",
     wins: "first",
-    note: "reached only after the click gate's own name tests",
+    note: "reached only after the click gate's own tests; only texts and switches are read",
   },
 };
 

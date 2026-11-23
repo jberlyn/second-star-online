@@ -4,13 +4,14 @@
 import type { CasinoData } from "@secondstaronline/data";
 
 import { onContent } from "../../content/store.ts";
+import { isEngineFixture } from "../core/fixtures.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
+import { hasBehaviour } from "../inventory/behaviours.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 
 type Slots = CasinoData["slots"];
 
 let S: Slots;
-export let SLOT_ITEM: string;
 export let SLOT_TEXT: {
   readonly stand: string;
   readonly poor: string;
@@ -25,7 +26,6 @@ export let SLOT_CASH: Slots["cash"];
 
 onContent((c) => {
   S = c.casino.slots;
-  SLOT_ITEM = S.item.text;
   SLOT_TEXT = { stand: S.standText, poor: S.poorText, win: S.winText, lose: S.loseText };
   SLOT_COST = S.cost;
   SLOT_SPIN_FRAMES = S.spinFrames;
@@ -34,9 +34,12 @@ onContent((c) => {
   SLOT_CASH = S.cash;
 });
 
-/** Any item whose name contains "Slot Machine" (ignoring case) opens and plays. */
+/** An item with the `slotMachine` behaviour (Classic: a name containing "Slot Machine") plays. */
 export function isSlotMachine(name: string): boolean {
-  return lingoContains(name, SLOT_ITEM);
+  return (
+    hasBehaviour(name, "slotMachine") ||
+    (S.item !== undefined && !isEngineFixture(name) && lingoContains(name, S.item.text))
+  );
 }
 
 /**

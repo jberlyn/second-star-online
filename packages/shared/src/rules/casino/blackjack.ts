@@ -2,12 +2,13 @@
 import type { CasinoData } from "@secondstaronline/data";
 
 import { onContent } from "../../content/store.ts";
+import { isEngineFixture } from "../core/fixtures.ts";
 import { lingoEq, lingoInteger, type Rng } from "../core/lingo.ts";
+import { hasBehaviour } from "../inventory/behaviours.ts";
 
 type Blackjack = CasinoData["blackjack"];
 
 let B: Blackjack;
-export let BJ_ITEM: string;
 export let BJ_TEXT: Blackjack["texts"];
 export let BJ_MAX_BID: number;
 export let BJ_HAND_SIZE: number;
@@ -18,7 +19,6 @@ let ACE: number;
 
 onContent((c) => {
   B = c.casino.blackjack;
-  BJ_ITEM = B.item.text;
   BJ_TEXT = B.texts;
   BJ_MAX_BID = B.maxBid;
   BJ_HAND_SIZE = B.handSize;
@@ -28,9 +28,20 @@ onContent((c) => {
   ACE = B.cards.base + 1;
 });
 
-/** The exact name that sits (comparison ignores case). */
+/**
+ * An item with the `blackjackTable` behaviour sits you down (Classic: exactly "Blackjack Table",
+ * the only name 1.6 seated; its click and Ctrl also routed longer names, which then sat no one).
+ */
 export function isBlackjackTable(name: string): boolean {
-  return lingoEq(name, BJ_ITEM);
+  return hasBehaviour(name, "blackjackTable") || legacyItem(name, B.item);
+}
+
+/**
+ * A casino game's `item` from a pack or operator change made before the behaviours: its exact name
+ * still plays, as it did (Classic's casino.json no longer sets it).
+ */
+export function legacyItem(name: string, item: { text: string } | undefined): boolean {
+  return item !== undefined && !isEngineFixture(name) && lingoEq(name, item.text);
 }
 
 /** `{USER}`-style text slots. */

@@ -2,7 +2,7 @@
  * The newspaper. Pure rules over the content store's `social.newspaper`.
  */
 import { type ContentStore, onContent } from "../../content/store.ts";
-import { lingoEq, lingoWord } from "../core/lingo.ts";
+import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
 
 let N: ContentStore["social"]["newspaper"];
 
@@ -29,6 +29,11 @@ export function newspaperAuthor(name: string): string {
 /** An item named "Newspaper Kit" becomes `<owner>'s Newspaper`. */
 export function standName(owner: string): string {
   return `${owner}${N.suffix.text}`;
+}
+
+/** A newspaper stand: a name holding the stand suffix (`'s Newspaper`). */
+export function isNewspaperStand(name: string): boolean {
+  return lingoContains(name, N.suffix.text);
 }
 
 /** The Kit's tile test: the tile at column x and row y of layer 1 is `K2`. */

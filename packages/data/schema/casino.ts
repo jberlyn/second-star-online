@@ -12,8 +12,8 @@ const face = z.number().int().min(1).max(4);
 
 export const casinoDataSchema = z.strictObject({
   slots: z.strictObject({
-    /** The exact item name that plays; a longer name routes and does nothing. */
-    item: z.strictObject({ text: z.string().min(1) }),
+    /** Unused: the `slotMachine` item behaviour says which items play (issue #37). */
+    item: z.strictObject({ text: z.string().min(1) }).optional(),
     standText: z.string().min(1),
     poorText: z.string().min(1),
     winText: z.string().min(1),
@@ -41,8 +41,8 @@ export const casinoDataSchema = z.strictObject({
     cash: z.strictObject({ name: z.string().min(1), ch: z.number().int().positive() }),
   }),
   blackjack: z.strictObject({
-    /** The exact item name that sits. */
-    item: z.strictObject({ text }),
+    /** Unused: the `blackjackTable` item behaviour says which items sit (issue #37). */
+    item: z.strictObject({ text }).optional(),
     texts: z.strictObject({
       stand: text,
       /** `{USER}` is the other player. */
@@ -71,7 +71,8 @@ export const casinoDataSchema = z.strictObject({
     buttonBlock: z.number().int().positive(),
   }),
   checkers: z.strictObject({
-    item: z.strictObject({ text }),
+    /** Unused: the `checkersTable` item behaviour says which items sit (issue #37). */
+    item: z.strictObject({ text }).optional(),
     texts: z.strictObject({
       stand: text,
       black: text,

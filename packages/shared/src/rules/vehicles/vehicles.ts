@@ -7,6 +7,7 @@
  */
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import { onContent } from "../../content/store.ts";
+import { engineFixtureKind } from "../core/fixtures.ts";
 import { lingoWord } from "../core/lingo.ts";
 import { tileHas } from "../core/tiles.ts";
 import type { Facing, Vehicle } from "../movement/movement.ts";
@@ -32,17 +33,14 @@ export function vehicleOfBody(body: number | null | undefined): Vehicle | null {
 
 /** The vehicle a parked ground item is: `<owner>'s Airship`, `'s Boat` or `'s Battleship`. */
 export function vehicleOfItem(item: string): Vehicle | null {
-  const lower = item.toLowerCase();
-  if (lower.includes("'s airship")) {
-    return "Airship";
-  }
-  if (lower.includes("'s battleship")) {
-    return "Battleship";
-  }
-  if (lower.includes("'s boat")) {
-    return "Boat";
-  }
-  return null;
+  const kind = engineFixtureKind(item);
+  return kind === "airship"
+    ? "Airship"
+    : kind === "battleship"
+      ? "Battleship"
+      : kind === "boat"
+        ? "Boat"
+        : null;
 }
 
 export const VEHICLE_TEXT = {

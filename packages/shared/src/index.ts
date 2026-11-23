@@ -32,6 +32,7 @@ export * from "./rules/combat/attpower.ts";
 export * from "./rules/combat/combat.ts";
 export * from "./rules/combat/gear.ts";
 export * from "./rules/core/fighter.ts";
+export * from "./rules/core/fixtures.ts";
 export {
   lingoContains,
   lingoDiv,
@@ -61,6 +62,7 @@ export * from "./rules/economy/playershop.ts";
 export * from "./rules/economy/quests.ts";
 export * from "./rules/housing/doors.ts";
 export * from "./rules/housing/houses.ts";
+export * from "./rules/inventory/behaviours.ts";
 export * from "./rules/inventory/equip.ts";
 export * from "./rules/inventory/ground.ts";
 export * from "./rules/inventory/inventory.ts";

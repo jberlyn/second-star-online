@@ -79,6 +79,7 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 
 | Table (`item-rules.json`) | Decides | Wins | Result and default |
 |---|---|---|---|
+| `behaviours` | What an item does: a key, a book, a bow, a chest, a container and so on ([Item behaviours](#item-behaviours)) | Every match adds | `behaviour`; an item no row matches has none |
 | `equip.slots` | Equipment slot | Last | `slot` (`LeftHand` is weapon hand); default `No` (not equippable) |
 | `equip.strength` | Strength needed to equip | Last | `strength`; default `0` |
 | `equip.twoHanded` | Two-handed weapons | Any | Boolean |
@@ -101,34 +102,64 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `pickup.ctrlTexts` | Line Ctrl says on a fixture | First | `text`; `unpause` ends Ctrl's pause |
 | `containers.capacity` | Lines a container holds | Last | `capacity`; default `containers.defaultCapacity` |
 | `containers.uniqueIds` | Containers assigned a `#id` in a bag | Any | Boolean |
-| `gear` | Stat bonus from worn item | Every match adds | `power` (`spell`, `blackArts`, `martialArts`, `attack`), `add`, `slot` |
+| `gear` | Stat bonus from worn item | Every match adds | `power` (`spell`, `blackArts`, `martialArts`, `attack`, `killXp`), `add`, `slot` |
 | `swing.cooldowns` | Swing delays for a worn item | Last | `atDelay`, `actionDelay`; default `14, 14` |
 | `swing.sounds` | Swing sound by weapon | First | Sound name or `null` (silent); default `swordswing` |
 | `armour.*`, `breaks.*` | Armour mitigation and breakage | See schema | Mitigation / broken form |
 
-### Dynamic and owner-name effects
+### Item behaviours
 
-Some keywords are handled directly in game logic or formulas without a table row:
+1.6 gave an item a mechanic by a word in its name: "Key" opened doors, "bow" shot arrows, " Chest" opened as a chest. In SSO, `item-rules.json` `behaviours` says which items have each mechanic (issue #37). Each row is `{ "match", "pattern", "behaviour" }`, and an item has every behaviour a row matches. A row tests the name without its `#id` or `+N` ending, so `Crate#12` is a crate and `Knight's Sword +1` is a sword. An item that no row gives a behaviour does not have it: with no `key` rows, no item opens a door.
 
-| Word in the name | Effect |
+| Behaviour | What the item does | Classic's rows |
+|---|---|---|
+| `key` | Use opens the doors its name unlocks (`houses.json` keys) | contains `Key` |
+| `book` | Use reads it: a spell book teaches its spell (`use.books`), a skill book its skill (`use.skillBooks`) | contains `Book` |
+| `bow` | Shoots the arrows in the off hand, spending a crystal of their colour; no arrows, no swing | the five bows by name |
+| `crossbow` | A bow shot also trains Martial Arts | contains `Crossbow` |
+| `hidesName` | Worn as body armour, hides the wearer's name from others | contains `Invis` |
+| `chest` | Opens with the chest click, takes Drop, and is never carried | contains ` Chest` |
+| `cabinet`, `windCabinet`, `crate` | A carried container: opens with a click, is lifted with Ctrl (19 Strength for a cabinet, 15 for a crate), is drawn from that kind's bag and ground pictures, takes Drop once placed, and sells by its `#id` | contains `Cabinet`, `Wind Cabinet`, `Crate` |
+| `cauldron` | A carried container that brews `craft.json` recipes as items go in; the world editor gives a placed one its `#id` | contains `Cauldron` |
+| `slotMachine`, `blackjackTable`, `checkersTable` | A click or Ctrl plays it | contains `Slot Machine`; `Blackjack Table` and `Checkers Table` by name |
+| `highScoreStatue`, `assassinStatue` | Shows the high scores or the assassins' ranking, from any distance | each by name |
+| `camera`, `film`, `canvas` | A film used with a camera in the right hand takes a photo; a canvas opens the paint screen; each save spends one | `Camera` and `Canvas` by name; contains `Film` |
+| `newspaperKit` | Dropped on a newspaper stand tile, becomes the dropper's newspaper | `Newspaper Kit` |
+| `swingFireballs` | Every swing also sends a fireball, by Staff Fighting | `Fire Staff` |
+| `sword` | Firesword can light it | each sword by name, and contains `Damaged Sword` |
+| `argonsFist` | Use also casts Argon's Fist, with the Argon line in place of its drink line | `Purple Potion` |
+| `releasesMonster` | Dropped, it becomes the live monster of the same name (no such monster: it drops as an item) | `Pig` |
+| `hidesHead`, `hidesHelm` | Worn as body armour, no hair, or no helmet, is drawn | four robes and outfits; two of them |
+| `quiver` | In the off hand, drawn on the back: behind the body facing S or W, over it facing N | contains `Arrows` |
+| `hiddenFacingNorth` | In the off hand, not drawn facing N | `Torch` |
+| `door` | A click or Ctrl leaves it alone; a key turns the last door on the faced tile (`houses.json` `keys`) | contains `door` |
+| `switchDoor` | The open door the switches close and open (`houses.json` `switches`) | contains `Switch Door` |
+| `clock` | Its picture shows the server's time | contains `Clock` |
+| `messageBoard`, `universalMail`, `guildCenter` | A click or Ctrl reads Town Square's board, opens your mail, or opens the guild window | `Message Boards`; contains `Universal Mail`; `Guild Center` |
+| `personalVault` | A click or Ctrl opens your vault; Drop facing it puts the item in | `Vault` |
+| `noClick` | A click does nothing (Ctrl may still take it); tested where 1.6 tested " Ray", "door" and "exit", before boards, chests and mail | contains ` Ray`, `Sign`, `Lair` |
+| `noCtrl` | Ctrl does nothing, when nothing before it answered | contains `Sign`, `Board`, ` Chest`, `Mail`, `Vault`, `Platform`, `Lair`; `Chimney` |
+
+Classic keeps 1.6's words where they did no harm, and names the items where they misfired: `bow` matched Bowmaster's Ring, and Firesword's `sword` matched Swordfish ([differences](differences-from-fso.md)). The item editor (issue #30) will write `exact` rows. `houses.json` `containers.drop` and the `clickFixtures` rows for the Vault, the Guild Center and the casino tables are no longer read: those are behaviours now (Classic keeps the rows, unused). Two 1.6 name tests became rows of existing tables instead: the Ring of Experience's +5 kill XP is a `gear` row with `power` `killXp`, and the Piano's "You can't use this." is a `use.refusals` row.
+
+The click and Ctrl gates test these in 1.6's order, so where a name has two behaviours the earlier test wins (a `noCtrl` item that is also a `chest` opens).
+
+The **engine fixtures** never take a behaviour, and no new content item may take one of their names: the owner-named `<owner>'s Door`, `'s Opened Door`, `'s Mailbox`, `'s Board`, `'s House Vault`, `'s Guild Vault`, `'s Airship`, `'s Boat` and `'s Battleship`, and `Exit`, `Exit2`, `Sign 1` to `Sign 3` and `Street Lamp`. The engine builds or reads these names itself and knows each by its kind, before any other test and from the whole name (a guild called "Stars #1" keeps its board); a pack supplies their art. So a guild named "Crate Club" has a board, not a crate, and a player named "Doorman" a mailbox, not a door. A house type's guild hall and shop are its `guild` flag and `header`, not words in its name.
+
+### Names the engine still builds or reads
+
+These are the engine's own names, or wait for a later stage of issue #37:
+
+| Name | What reads it |
 |---|---|
-| `Axe`, `Mining` | Axe and mining swing-speed cascades by skill |
-| `Fishing` | Fishing swing delay |
-| `bow` | Bow behaviour (arrows, crystals, bow skill block) |
-| `Bow` with `Arrows` in off-hand | Arrow firing |
-| `Crossbow` | Martial Arts gain for crossbows |
-| `Key`, `Deed`, `Seeds` | Key, deed, and seed interactions (and `use.silent`) |
-| `Door`, `door` | Silent door/exit gates |
-| `Invis` (body armour) | Hides the wearer's name |
-| ` Chest` (with leading space) | Openable chest |
-| `+N` at the end (`Long Sword+3`) | Adds `N` to attack power |
-
-Notes carried over from the code:
-
-- **`use.silent`:** `Map` stays although no item has `"Map"` in its name, so its Use text can never show.
-- **Platforms (`ground.platforms`):** the Experience Platform's step gate is level `21`, and its text says so. All four platforms' Ctrl text ends Ctrl's pause (`unpause`), as does the Street Lamp's.
-- **Book table order:** the book Dexterity table (`use.books`) is `contains` and the last match wins, so `"Firebolt"` comes after `"Bolt"`.
-- **Spell defense (`armour.spell`):** each row adds its `delta` to the spell damage a player wearing the item takes (positive for metal, negative for robes), and `magicShield` is added while Magic Shield runs.
+| `Painting#<id>`, `Photo#<id>` | The engine names the paintings and photos it saves; their pictures and the viewer read the words |
+| `Map` (a name containing it) | Drawn with the `MapPic` picture on the ground (no Classic item has it; give an item a `sprite` instead) |
+| The newspaper's `'s Newspaper` | `social.json` `newspaper.suffix`: content already |
+| `Axe`, `Mining`, `Fishing` | Swing-speed cascades and the fishing delay: tool behaviours, stage 5 |
+| Spell and FX names, Create Food's "an Apple" | Spells by effect, stage 4 |
+| `<faction> Head` | Faction heads: factions as content, stage 4 |
+| `+N` at the end (`Long Sword+3`) | A masterwork: adds `N` to attack power |
+| `<Colour> Arrows`, `<Colour> Crystal` | A bow's ammunition: arrows of one of the six colours spend crystals of that colour |
 
 ### Adding an item
 
@@ -136,7 +167,7 @@ Add a catalogue entry to `packages/data/content/items.json`, plus rows in `item-
 
 An item's `name` is its permanent key: stored bags, maps, NPC files and every rule table refer to it, so never change it once players hold the item. To change what players see, set `display` (the name shown in the bag, tips, shops, trades and give messages); to draw it with other art, set `sprite` to the atlas name (the Cannonball's `CannonballBag` is an example). Monsters take a `display` name too. `"retired": true` retires an item: copies players hold stay and work, but nothing may make it (no shop, drop, recipe, gathering find or quest may name it, and admins cannot create it); the Content page sets it when an operator removes an item players still hold. The same fields can be set live on a running server from the Control Panel's [Content page](running-a-server.md#the-content-page).
 
-What still needs code: a new mechanic (an item that does something no table expresses), a new carried container's bag picture and sell swap, a new owner-named fixture, and anything whose name is built at run time.
+What still needs code: a new mechanic (an item that does something no table or [behaviour](#item-behaviours) expresses), new bag or ground pictures for a new kind of container, a new owner-named fixture, and anything whose name is built at run time.
 
 #### Example: Moonblade
 
@@ -305,7 +336,7 @@ These files have no worked example here; their schemas in [packages/data/schema/
 - **`craft.json`:** `stations`: what each crafting station makes, from what, and at what skill.
 - **`houses.json`:** house deeds and types, placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
 - **`social.json`:** factions and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
-- **`casino.json`:** the Slot Machine, Blackjack and Checkers tables, including their sounds.
+- **`casino.json`:** the Slot Machine, Blackjack and Checkers games, including their sounds. Which items play them is the `slotMachine`, `blackjackTable` and `checkersTable` [behaviours](#item-behaviours). Classic no longer sets each game's `item`; a pack made before the behaviours that still sets it keeps that item playing.
 - **`quests.json`:** the quest lines that seed a fresh database's `quests` table (`current`) and the pools a replacement quest is drawn from (`pools`).
 - **`help.json`:** the help topics `/help <topic>` shows, with their lines.
 

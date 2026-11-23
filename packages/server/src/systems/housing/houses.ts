@@ -18,7 +18,6 @@ import {
   invDelSlot,
   isFootprint,
   isHouseMap,
-  lingoContains,
   lingoEq,
   planHouse,
   REST_REGEN,
@@ -191,9 +190,7 @@ export function placeHouseIntent(
     world.groundLog.length = undo.log;
     throw err;
   }
-  const shop = lingoContains(type.house, "Shop")
-    ? createShopkeeper(world, interior, p, deps.rng)
-    : null;
+  const shop = type.header === "shop" ? createShopkeeper(world, interior, p, deps.rng) : null;
   // 3. The deed.
   logActivity(world, p, "use", {
     item: p.char.bag[slot - 1]?.item,

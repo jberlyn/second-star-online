@@ -87,7 +87,9 @@ export const houseDataSchema = z
     furnitureDrop: z.strictObject({ items: z.array(text).min(1), text }),
     /**
      * Fixtures checked on a ground-item click after the Guild Vault, in order: a text, a silent exit
-     * (both null) or a handler. They answer wherever they stand.
+     * (both null) or a switch (`TheOnSwitchClick`, `TheOffSwitchClick`). They answer wherever they
+     * stand. Since issue #37 a row with any other action (the Vault, the Guild Center, the casino
+     * tables) is skipped: those are item behaviours.
      */
     clickFixtures: z
       .array(
@@ -132,6 +134,10 @@ export const houseDataSchema = z
     /** Drop's container routes in order and the click's pause. */
     containers: z.strictObject({
       clickPause: int.positive(),
+      /**
+       * Unused since issue #37: Drop finds a container by its item behaviour or fixture kind. Kept
+       * so packs made before still load.
+       */
       drop: z.array(z.strictObject({ name: text, match: z.enum(["exact", "contains"]) })).min(1),
     }),
     /** Quest chest refill rolls on 1.6's periodic save. */
