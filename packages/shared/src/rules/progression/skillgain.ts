@@ -14,6 +14,7 @@ import {
 } from "../core/fighter.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
+import { factionPerk } from "../social/factions.ts";
 
 /** The skills the weapon trains: the last matching row wins; an exact row covers its masterworks. */
 export function weaponSkillList(weapon: string): readonly string[] {
@@ -29,35 +30,20 @@ export function weaponSkillList(weapon: string): readonly string[] {
 }
 
 /**
- * The Mage skill cap, for kills and casts alike: 30, or for the Mage faction 50/60/70/90/100 by
- * faction bonus < 1/1/2/3/> 3. A bug fixed: 1.6's kill path used 80 at bonus 3 and its cast path 90.
+ * The Mage skill cap, for kills and casts alike: the faction perk `mageCap` (Classic: 30, or for
+ * the Mage faction 50/60/70/90/100 by tier 0/1/2/3/4 and over). A bug fixed: 1.6's kill path used
+ * 80 at tier 3 and its cast path 90.
  */
 export function mageSkillCap(f: Faction): number {
-  if (f.id !== 1) {
-    return 30;
-  }
-  const b = f.f1Bonus;
-  return b < 1 ? 50 : b === 1 ? 60 : b === 2 ? 70 : b === 3 ? 90 : 100;
+  return factionPerk(f, "mageCap");
 }
 
-/** The skill caps by faction (kill path). */
+/**
+ * The skill caps by faction (kill path): the perks `skillCap` (Classic: 50; Warriors 55, 60, 70,
+ * 80, 90 by tier, then 100; Adventurers 55 … 75, then 80) and `mageCap`.
+ */
 export function skillCaps(f: Fighter): { max: number; mage: number } {
-  let max = 50;
-  const mage = mageSkillCap(f.faction);
-  const { id, f2Bonus, f3Bonus } = f.faction;
-  if (id === 2) {
-    max = [55, 60, 70, 80, 90][Math.max(0, Math.min(f2Bonus, 4))] ?? 100;
-    if (f2Bonus > 4) {
-      max = 100;
-    }
-  }
-  if (id === 3) {
-    max = [55, 60, 65, 70, 75][Math.max(0, Math.min(f3Bonus, 4))] ?? 80;
-    if (f3Bonus > 4) {
-      max = 80;
-    }
-  }
-  return { max, mage };
+  return { max: factionPerk(f.faction, "skillCap"), mage: mageSkillCap(f.faction) };
 }
 
 /** The skill cap by the killed monster's body, plus the Intelligence tiers. */

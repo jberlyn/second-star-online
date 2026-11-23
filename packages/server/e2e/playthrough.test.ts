@@ -221,7 +221,7 @@ describe("the playthrough", () => {
     });
     await editMap(1001, 992, (m) => {
       m.header = "Wilds";
-      m.flags = { canFight: "X", fctSpwn: "X", isIndoors: "X", canPvp: "X" };
+      m.flags = { canFight: "X", fctSpwn: "", isIndoors: "X", canPvp: "X" };
       m.layers[0] = m.layers[0].map((r) => r.replaceAll("H1", "G1"));
       paint(m, 1, 3, 3, "S3");
       paint(m, 0, 10, 5, "W1");
@@ -505,7 +505,9 @@ describe("the playthrough", () => {
     // a faction asks; earning either takes hours. Chapter 12 uses the head.
     await logout(alice);
     await logout(dave);
-    server.db.run("UPDATE characters SET faction = 2, faction_count = 212000 WHERE name = 'Dave'");
+    server.db.run(
+      "UPDATE characters SET faction = 'warrior', faction_count = 212000 WHERE name = 'Dave'",
+    );
     server.db.run("UPDATE characters SET hp_max = 90, hp = 90 WHERE name IN ('Alice', 'Dave')");
     alice = await login(server, "Alice");
     dave = await login(server, "Dave");
@@ -1181,9 +1183,11 @@ describe("the playthrough", () => {
       what: "Alice: Mage faction",
       check: () => {
         const row = server.db
-          .query<{ faction: number }, []>("SELECT faction FROM characters WHERE name = 'Alice'")
+          .query<{ faction: string | null }, []>(
+            "SELECT faction FROM characters WHERE name = 'Alice'",
+          )
           .get();
-        expect(row?.faction).toBe(1);
+        expect(row?.faction).toBe("mage");
       },
     });
     await t(60);

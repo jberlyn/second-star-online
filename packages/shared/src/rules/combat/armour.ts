@@ -8,6 +8,7 @@ import type { Equipment, Fighter } from "../core/fighter.ts";
 import { boundSkillIndex } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
+import { factionPerk } from "../social/factions.ts";
 
 type SlotVar = "RingE" | "HeadE" | "BodyE" | "RightHandE" | "LeftHandE" | "FeetE";
 
@@ -80,20 +81,12 @@ export function elementalRows(
 }
 
 /**
- * The faction reductions (HitMe, HitMe2): a Warrior by the Warrior bonus, an Adventurer by the
- * Adventurer bonus (a bug fixed: 1.6 read the Warrior bonus for both).
+ * The faction reductions (HitMe, HitMe2): the perk `defence` (Classic: a Warrior 1 from tier 1, 2
+ * from 5, 3 at 9; an Adventurer 1 from tier 1, 2 from 7; a bug fixed: 1.6 read the Warrior bonus
+ * for both).
  */
 export function factionRows(power: number, f: Fighter): number {
-  let p = power;
-  if (f.faction.id === 2) {
-    const b = f.faction.f2Bonus;
-    p -= (b > 0 ? 1 : 0) + (b > 4 ? 1 : 0) + (b > 8 ? 1 : 0);
-  }
-  if (f.faction.id === 3) {
-    const b = f.faction.f3Bonus;
-    p -= (b > 0 ? 1 : 0) + (b > 6 ? 1 : 0);
-  }
-  return p;
+  return power - factionPerk(f.faction, "defence");
 }
 
 /**
@@ -156,19 +149,19 @@ function pvpDodge(
   p = elementalRows(p, victim.equip, "HitMe", lastWeaponSeen);
   p = factionRows(p, victim);
   p = randomAndDefense(p, defenseBonus, rng);
-  const adventurer = victim.faction.id === 3;
   // A world that binds no Parry (or Block) skill has no parrying (or blocking): no roll at all.
+  // The perks `pvpParry` and `pvpBlock` lower the rolls (Classic: an Adventurer's 4 and 10).
   const parry = boundSkillIndex("parry");
   if (
     parry !== undefined &&
-    pvpDodgeRoll(victim.skills[parry] ?? 0, adventurer ? 4 : 0, rng) === 1
+    pvpDodgeRoll(victim.skills[parry] ?? 0, factionPerk(victim.faction, "pvpParry"), rng) === 1
   ) {
     return { kind: "parry" };
   }
   const block = boundSkillIndex("block");
   if (
     block !== undefined &&
-    pvpDodgeRoll(victim.skills[block] ?? 0, adventurer ? 10 : 0, rng) === 1
+    pvpDodgeRoll(victim.skills[block] ?? 0, factionPerk(victim.faction, "pvpBlock"), rng) === 1
   ) {
     return { kind: "block" };
   }

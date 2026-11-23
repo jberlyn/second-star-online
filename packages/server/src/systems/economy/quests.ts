@@ -12,6 +12,7 @@ import {
   displayName,
   EDITOR_MONSTERS,
   findNewQuest,
+  headFaction,
   heardSqa,
   isOrakuExchange,
   leaderFaction,
@@ -61,7 +62,9 @@ export function questGive(
   if (!given || inMonsterList(npc)) {
     return [];
   }
-  if (leaderFaction(npc) && lingoContains(given, " Head")) {
+  // A faction's head (its `head` item, exactly) given to a faction's leader; any other item goes
+  // to the quest lines (1.6 took any item containing " Head", and took it for nothing).
+  if (leaderFaction(npc) && headFaction(given) !== null) {
     const refused = headRefusal(world, p, npc, given);
     if (refused) {
       return refused;

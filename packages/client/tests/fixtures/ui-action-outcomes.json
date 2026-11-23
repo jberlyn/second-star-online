@@ -6536,7 +6536,7 @@
             ],
             "flags": {
               "canFight": "O",
-              "fctSpwn": "X",
+              "fctSpwn": "",
               "isIndoors": "X",
               "canPvp": "X"
             },

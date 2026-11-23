@@ -17,16 +17,30 @@ const baseRowSchema = z.strictObject({
   extra: z.string().optional(),
 });
 
-const tierSchema = z.strictObject({
-  subWeapon: z.strictObject({ match: z.enum(["exact"]), pattern: z.string() }).nullable(),
+/**
+ * A tier row's condition, operation and value: shared by attack power's tiers and spell power's
+ * tables (spells.json).
+ */
+export const tierFields = {
   /**
    * `["<Skill> <op> <n>"]` with op `<` or `>` (`level` for the character level), or null for an
    * unconditional row. Exactly what combat reads (shared `tierApplies`), so nothing else publishes.
    */
   when: z.array(z.string().regex(/^\w+ [<>] \d+$/)).nullable(),
   op: z.enum(["set", "add", "subtract"]),
-  /** A number, or `random(n)` / `a + random(n)` (shared `evalValue`). */
-  value: z.union([int, z.string().regex(/^(?:(?:\d+ \+ )?random\(\d+\)|-?\d+)$/)]),
+  /**
+   * A number, or `random(n)` / `a + random(n)` (shared `evalValue`), each number at most five
+   * digits, so no row can overflow or roll a die it cannot.
+   */
+  value: z.union([
+    int.min(-99999).max(99999),
+    z.string().regex(/^(?:(?:\d{1,5} \+ )?random\([1-9]\d{0,4}\)|-?\d{1,5})$/),
+  ]),
+};
+
+const tierSchema = z.strictObject({
+  subWeapon: z.strictObject({ match: z.enum(["exact"]), pattern: z.string() }).nullable(),
+  ...tierFields,
 });
 
 export const attPowerDataSchema = z.strictObject({

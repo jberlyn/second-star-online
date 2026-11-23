@@ -173,6 +173,7 @@ describe("Only server systems create items", () => {
       // against the game's own lists and limits; the edit is logged and can be undone.
       characterEdit: [
         "name:string",
+        "set.faction:string",
         "set.respawn.map:string",
         "set.bag[].item:string",
         "set.equip.weapon:string",
@@ -184,6 +185,7 @@ describe("Only server systems create items", () => {
         "set.vault[]:string",
         "set.spellbook[]:string",
         "set.position.map:string",
+        "seen.faction:string",
         "seen.respawn.map:string",
         "seen.bag[].item:string",
         "seen.equip.weapon:string",

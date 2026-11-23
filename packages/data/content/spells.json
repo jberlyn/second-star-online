@@ -27,6 +27,12 @@
         "pattern": "Smoke Bomb"
       },
       "info": "Disappear into the shadows with the rest of the ninja.",
+      "school": {
+        "skill": "MartialArts",
+        "line": "You have advanced in the art of Martial Arts!",
+        "cap": 100
+      },
+      "power": "MartialArts",
       "fx": [
         {
           "member": "Smoke Bomb",
@@ -66,6 +72,11 @@
         "pattern": "Minor Heal"
       },
       "info": "A lower level healing spell.",
+      "school": {
+        "skill": "Blessing",
+        "line": "You have advanced in the art of blessing!"
+      },
+      "power": "Blessing",
       "fx": [
         {
           "member": "Minor Heal",
@@ -97,6 +108,11 @@
         "pattern": "Morph"
       },
       "info": "Creates an illusion that makes you appear to be a monster.",
+      "school": {
+        "skill": "Illusion",
+        "line": "You have advanced in the art of illusion!"
+      },
+      "power": "Illusion",
       "fx": [
         {
           "member": "Morph",
@@ -128,6 +144,11 @@
         "pattern": "Stone Skin"
       },
       "info": "Turns the target's skin into pure stone.",
+      "school": {
+        "skill": "Earth",
+        "line": "You have advanced in the art of Earth!"
+      },
+      "power": "Earth",
       "fx": [
         {
           "member": "Stone Skin",
@@ -159,6 +180,11 @@
         "pattern": "Crush"
       },
       "info": "The fist of the Earth strikes down your foes.",
+      "school": {
+        "skill": "Earth",
+        "line": "You have advanced in the art of Earth!"
+      },
+      "power": "Earth",
       "fx": [
         {
           "member": "Crush",
@@ -190,6 +216,11 @@
         "pattern": "Whirlwind"
       },
       "info": "A whirling wind causes confusion for your foe.",
+      "school": {
+        "skill": "wind",
+        "line": "You have advanced in the art of Wind!"
+      },
+      "power": "Wind",
       "fx": [
         {
           "member": "Whirlwind",
@@ -221,6 +252,11 @@
         "pattern": "Meteor"
       },
       "info": "A powerful, crushing blow from the sky.",
+      "school": {
+        "skill": "Wrath",
+        "line": "You have advanced in the art of Wrath!"
+      },
+      "power": "Wrath",
       "fx": [
         {
           "member": "Meteor",
@@ -310,6 +346,11 @@
         "pattern": "Fireball"
       },
       "info": "Send a shot of fire through an enemy with this spell.",
+      "school": {
+        "skill": "fire",
+        "line": "You have advanced in the art of Fire!"
+      },
+      "power": "Fire",
       "fx": [
         {
           "member": "FireballL",
@@ -400,6 +441,10 @@
           "monster": "Cow"
         }
       },
+      "school": {
+        "skill": "Sorcery",
+        "line": "You have advanced in the art of Sorcery!"
+      },
       "fx": [
         {
           "member": "Summon Creature",
@@ -435,6 +480,10 @@
         "monster": "Holy Shield",
         "skilled": null
       },
+      "school": {
+        "skill": "Blessing",
+        "line": "You have advanced in the art of Blessing!"
+      },
       "fx": [
         {
           "member": "Holy Shield",
@@ -466,6 +515,11 @@
         "pattern": "Wind Wave"
       },
       "info": "This wind blast will definately hurt your foes.",
+      "school": {
+        "skill": "wind",
+        "line": "You have advanced in the art of Wind!"
+      },
+      "power": "Wind",
       "fx": [
         {
           "member": "Wind waveL",
@@ -548,6 +602,11 @@
         "pattern": "Bolt"
       },
       "info": "Send a jolt of electricity through your opponent's body.",
+      "school": {
+        "skill": "Wrath",
+        "line": "You have advanced in the art of Wrath!"
+      },
+      "power": "Wrath",
       "fx": [
         {
           "member": "BoltL",
@@ -618,6 +677,11 @@
         "pattern": "Firebolt"
       },
       "info": "Fry your oppoent with this deadly bolt of flames.",
+      "school": {
+        "skill": "fire",
+        "line": "You have advanced in the art of Fire!"
+      },
+      "power": "Fire",
       "fx": [
         {
           "member": "Firebolt",
@@ -672,6 +736,7 @@
         "pattern": "Weaken"
       },
       "info": "Your opponent will become too weak to fight.",
+      "power": "BlackArts",
       "fx": [
         {
           "member": "Weaken",
@@ -698,6 +763,7 @@
         "pattern": "Bless"
       },
       "info": "Give the attacker divine power.",
+      "power": "Blessing",
       "fx": [
         {
           "member": "Bless",
@@ -724,6 +790,11 @@
         "pattern": "Firesword"
       },
       "info": "Turns an ordinary sword into a flaming sword.",
+      "school": {
+        "skill": "fire",
+        "line": "You have advanced in the art of Fire!"
+      },
+      "power": "Fire",
       "fx": [
         {
           "member": "Firesword",
@@ -755,6 +826,11 @@
         "pattern": "Major Heal"
       },
       "info": "A very strong healing spell.",
+      "school": {
+        "skill": "Blessing",
+        "line": "You have advanced in the art of blessing!"
+      },
+      "power": "Blessing",
       "fx": [
         {
           "member": "Major Heal",
@@ -783,6 +859,10 @@
         "pattern": "Replenish"
       },
       "info": "A medium level healing spell.",
+      "school": {
+        "skill": "Blessing",
+        "line": "You have advanced in the art of blessing!"
+      },
       "fx": [
         {
           "member": "Replenish",
@@ -809,6 +889,11 @@
         "pattern": "Splash"
       },
       "info": "Soak your foe in this deadly downpour.",
+      "school": {
+        "skill": "Water",
+        "line": "You have advanced in the art of Water!"
+      },
+      "power": "Water",
       "fx": [
         {
           "member": "Splash",
@@ -898,6 +983,11 @@
         "monster": "Illusionary Spikes",
         "skilled": null
       },
+      "school": {
+        "skill": "Illusion",
+        "line": "You have advanced in the art of illusion!"
+      },
+      "power": "Illusion",
       "fx": [
         {
           "member": "Illusionary Spikes",
@@ -991,6 +1081,11 @@
         "pattern": "Magic Shield"
       },
       "info": "A protective barrier to keep out harmful spells.",
+      "school": {
+        "skill": "Wrath",
+        "line": "You have advanced in the art of Wrath!"
+      },
+      "power": "Wrath",
       "fx": [
         {
           "member": "Magic Shield",
@@ -1022,6 +1117,24 @@
         "pattern": "Create Food"
       },
       "info": "Create some food at the expense of a blue crystal.",
+      "creates": [
+        {
+          "item": "Apple",
+          "article": "an"
+        },
+        {
+          "item": "Pie"
+        },
+        {
+          "item": "Corn"
+        },
+        {
+          "item": "Fish"
+        },
+        {
+          "item": "Ale"
+        }
+      ],
       "fx": [
         {
           "member": "Create Food",
@@ -1053,6 +1166,10 @@
         "pattern": "Dispel Illusions"
       },
       "info": "Reveals the true-colors of all illusionist magics in an area.",
+      "school": {
+        "skill": "Wizardry",
+        "line": "You have advanced in the art of Wizardry!"
+      },
       "fx": [
         {
           "member": "Dispel Illusions",
@@ -1084,6 +1201,11 @@
         "pattern": "Hold"
       },
       "info": "The black arts allows you to briefly hold your foe in place.",
+      "school": {
+        "skill": "BlackArts",
+        "line": "You have advanced in the Black Arts!"
+      },
+      "power": "BlackArts",
       "fx": [
         {
           "member": "Hold",
@@ -1119,6 +1241,11 @@
         "monster": "Zombie",
         "skilled": null
       },
+      "school": {
+        "skill": "BlackArts",
+        "line": "You have advanced in the Black Arts!"
+      },
+      "power": "BlackArts",
       "fx": [
         {
           "member": "Raise Dead",
@@ -1154,6 +1281,10 @@
         "monster": "Web",
         "skilled": null
       },
+      "school": {
+        "skill": "Wizardry",
+        "line": "You have advanced in the art of Wizardry!"
+      },
       "fx": [
         {
           "member": "Web",
@@ -1185,6 +1316,11 @@
         "pattern": "Diminish Hunger"
       },
       "info": "Eases the target's hunger.",
+      "school": {
+        "skill": "Blessing",
+        "line": "You have advanced in the art of blessing!"
+      },
+      "power": "Blessing",
       "fx": [
         {
           "member": "Diminish Hunger",
@@ -1216,6 +1352,11 @@
         "pattern": "Radar"
       },
       "info": "Learn the strengths and weaknesses of a foe.",
+      "school": {
+        "skill": "Wrath",
+        "line": "You have advanced in the art of Wrath!"
+      },
+      "power": "Wrath",
       "fx": [
         {
           "member": "Radar",
@@ -1247,6 +1388,7 @@
         "pattern": "Haste"
       },
       "info": "Speeds up your healing.",
+      "power": "Blessing",
       "fx": [
         {
           "member": "Haste",
@@ -1258,5 +1400,635 @@
         }
       ]
     }
-  ]
+  ],
+  "power": {
+    "base": [
+      {
+        "when": [
+          "Magery > 10"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 20"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 30"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 40"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 50"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 60"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 70"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 80"
+        ],
+        "op": "add",
+        "value": 1
+      },
+      {
+        "when": [
+          "Magery > 90"
+        ],
+        "op": "add",
+        "value": 1
+      }
+    ],
+    "tables": {
+      "Blessing": {
+        "tiers": [
+          {
+            "when": [
+              "Blessing > 0"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "Blessing > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Blessing > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Blessing > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Blessing > 50"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Blessing > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Blessing > 80"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Blessing > 90"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Blessing > 97"
+            ],
+            "op": "add",
+            "value": 1
+          }
+        ]
+      },
+      "Wrath": {
+        "tiers": [
+          {
+            "when": [
+              "Wrath > 0"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "Wrath > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Wrath > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Wrath > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Wrath > 50"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Wrath > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Wrath > 80"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Wrath > 90"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Wrath > 97"
+            ],
+            "op": "add",
+            "value": 1
+          }
+        ]
+      },
+      "Illusion": {
+        "tiers": [
+          {
+            "when": [
+              "Illusion > 0"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "Illusion > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Illusion > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Illusion > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Illusion > 50"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Illusion > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Illusion > 80"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Illusion > 90"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Illusion > 97"
+            ],
+            "op": "add",
+            "value": 1
+          }
+        ]
+      },
+      "Water": {
+        "tiers": [
+          {
+            "when": [
+              "Water > 0"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "Water > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Water > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Water > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Water > 50"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Water > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Water > 80"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "Water > 97"
+            ],
+            "op": "add",
+            "value": 4
+          }
+        ]
+      },
+      "Earth": {
+        "tiers": [
+          {
+            "when": [
+              "Earth > 0"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "Earth > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Earth > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Earth > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Earth > 50"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Earth > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "Earth > 80"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "Earth > 97"
+            ],
+            "op": "add",
+            "value": 4
+          }
+        ]
+      },
+      "Fire": {
+        "tiers": [
+          {
+            "when": [
+              "fire > 0"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "fire > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "fire > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "fire > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "fire > 50"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "fire > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "fire > 80"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "fire > 97"
+            ],
+            "op": "add",
+            "value": 4
+          }
+        ]
+      },
+      "Wind": {
+        "tiers": [
+          {
+            "when": [
+              "wind > 0"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "wind > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "wind > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "wind > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "wind > 50"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "wind > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "wind > 80"
+            ],
+            "op": "add",
+            "value": 2
+          },
+          {
+            "when": [
+              "wind > 97"
+            ],
+            "op": "add",
+            "value": 4
+          }
+        ]
+      },
+      "BlackArts": {
+        "tiers": [
+          {
+            "when": [
+              "BlackArts > 10"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "BlackArts > 20"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "BlackArts > 30"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "BlackArts > 70"
+            ],
+            "op": "add",
+            "value": 1
+          },
+          {
+            "when": [
+              "BlackArts > 90"
+            ],
+            "op": "add",
+            "value": 1
+          }
+        ],
+        "gear": "blackArts"
+      },
+      "MartialArts": {
+        "tiers": [
+          {
+            "when": null,
+            "op": "set",
+            "value": 1
+          },
+          {
+            "when": [
+              "MartialArts < 101"
+            ],
+            "op": "set",
+            "value": 500
+          },
+          {
+            "when": [
+              "MartialArts < 90"
+            ],
+            "op": "set",
+            "value": 350
+          },
+          {
+            "when": [
+              "MartialArts < 80"
+            ],
+            "op": "set",
+            "value": 200
+          },
+          {
+            "when": [
+              "MartialArts < 70"
+            ],
+            "op": "set",
+            "value": 100
+          },
+          {
+            "when": [
+              "MartialArts < 60"
+            ],
+            "op": "set",
+            "value": 70
+          },
+          {
+            "when": [
+              "MartialArts < 50"
+            ],
+            "op": "set",
+            "value": 60
+          },
+          {
+            "when": [
+              "MartialArts < 40"
+            ],
+            "op": "set",
+            "value": 55
+          },
+          {
+            "when": [
+              "MartialArts < 30"
+            ],
+            "op": "set",
+            "value": 45
+          },
+          {
+            "when": [
+              "MartialArts < 20"
+            ],
+            "op": "set",
+            "value": 35
+          },
+          {
+            "when": [
+              "MartialArts < 10"
+            ],
+            "op": "set",
+            "value": 25
+          }
+        ],
+        "gear": "martialArts"
+      }
+    }
+  }
 }

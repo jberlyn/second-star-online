@@ -67,16 +67,13 @@ export function checkLevelUp(v: Vitals): number {
 // ---- regen -----------------------------------------------------------------------------
 
 /**
- * The regen target `60 − speed + speed increase`: 90, less 5·(Adventurer bonus + 1) for an Adventurer with
- * Adventurer bonus 0..9. Speed is always 1 (1.6 stored a Speed stat that nothing could raise; SSO dropped
- * it), so the target is 149, or 144 down to 99 for an Adventurer.
+ * The regen target `60 − speed + speed increase`: 90, less the faction perk `regeneration` (Classic:
+ * an Adventurer's 5·(tier + 1)). Speed is always 1 (1.6 stored a Speed stat that nothing could
+ * raise; SSO dropped it), so the target is 149, or 144 down to 99 for an Adventurer.
  */
-export function regenTarget(adventurerBonus: number | null): number {
+export function regenTarget(regeneration: number): number {
   const speed = 1;
-  let inc = 90;
-  if (adventurerBonus !== null && adventurerBonus >= 0 && adventurerBonus <= 9) {
-    inc -= 5 * (adventurerBonus + 1);
-  }
+  const inc = 90 - regeneration;
   return 60 - speed + inc;
 }
 

@@ -6,6 +6,43 @@ import { patternRow } from "./common.ts";
 const int = z.number().int();
 const patternEntry = z.strictObject(patternRow);
 
+/** The spell effects (1.6 spell names) whose monster hit a species can be healed by or resist. */
+export const MONSTER_HIT_EFFECTS = [
+  "Meteor",
+  "Bolt",
+  "Splash",
+  "Crush",
+  "Firebolt",
+  "Fireball",
+  "Wind Wave",
+] as const;
+const hitEffect = z.enum(MONSTER_HIT_EFFECTS);
+
+/**
+ * What a species does that no other row says: each flag is an engine mechanic (1.6 tied each one
+ * to a body number). An absent flag is off.
+ */
+export const monsterFlagsSchema = z.strictObject({
+  /** Never walks (Classic: Illusionary Spikes, Web, Holy Shield). */
+  immobile: z.boolean().optional(),
+  /** A click on it does nothing (after a grab and a `namesSelf` row). */
+  unclickable: z.boolean().optional(),
+  /** Holds a player standing on its tile, and never attacks (Classic: Web). */
+  trap: z.boolean().optional(),
+  /** Dispel Illusions destroys it (Classic: Illusionary Spikes). */
+  dispellable: z.boolean().optional(),
+  /** An innocent player standing exactly on it cannot be hit (Classic: Holy Shield). */
+  shieldsInnocent: z.boolean().optional(),
+  /** Ctrl, or a click from the faced tile, picks it up as this item (Classic: a Pig). */
+  grabbable: z.string().min(1).optional(),
+  /** Minor and Major Heal hurt it instead (Classic: Zombie). */
+  hurtByHealing: z.boolean().optional(),
+  /** Spell effects that heal it instead of hurting it (1.6 spell names: "Splash", "Crush", "Firebolt"). */
+  healedBy: z.array(hitEffect).optional(),
+  /** Spell effects whose hit on it deals only `random(3)` (Classic: the Ghoul and "Fireball"). */
+  resists: z.array(hitEffect).optional(),
+});
+
 export const monsterSchema = z.strictObject({
   /** The species' permanent key: the name it was created with (the 1.6 name for Classic). */
   name: z.string().min(1),
@@ -26,6 +63,8 @@ export const monsterSchema = z.strictObject({
   xpSpell: int,
   /** Zombie and Skeleton: spawn only while `gt < server minute < lt`. */
   spawnMinute: z.strictObject({ gt: int, lt: int }).nullable(),
+  /** The species' engine flags. Absent = none. */
+  flags: monsterFlagsSchema.optional(),
 });
 
 export const meleeAffinitySchema = z.strictObject({
@@ -104,6 +143,7 @@ export const monstersDataSchema = z.strictObject({
 });
 
 export type Monster = z.infer<typeof monsterSchema>;
+export type MonsterFlags = z.infer<typeof monsterFlagsSchema>;
 export type MeleeAffinity = z.infer<typeof meleeAffinitySchema>;
 export type MonsterSpellKind = z.infer<typeof monsterSpellKindSchema>;
 export type MonsterSpellRule = z.infer<typeof monsterSpellSchema>;

@@ -12,6 +12,7 @@ import {
   EQUIP_FIELD,
   type Fighter,
   FLICKER_FRAMES,
+  isTrap,
   monsterHitsPlayer,
   monsterReaches,
   type Rng,
@@ -78,14 +79,13 @@ export function monsterAttack(
   if (!m || p.loading > 0 || p.deadLock > 0) {
     return null;
   }
-  const sp = species(m.name);
   // Officers also fight a wanted player on a no-fight map.
   const canFight =
     map.flags.canFight === "X" ||
     (anyMatch(content().monsters.rules.officer, m.name) && p.char.wanted);
-  // Webs never attack (body 92), nor does a name with no attack entry.
+  // A trap never attacks (Classic: a Web), nor does a name with no attack entry.
   const attack = monsterAttackValue(m.name);
-  if (p.dontHitMeAgain || !canFight || sp?.body === 92 || attack === null) {
+  if (p.dontHitMeAgain || !canFight || isTrap(m.name) || attack === null) {
     return null;
   }
   if (ctx.rng.random(10) !== 1) {

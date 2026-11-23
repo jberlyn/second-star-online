@@ -25,15 +25,6 @@ export const WEB_TEXT = "Your feet are stuck in the web, you cannot move!";
 /** SSO's line for a walk off an edge with no map beyond, or onto an unwalkable tile on it. */
 export const EDGE_BLOCKED_TEXT = "You cannot go that way.";
 
-/**
- * Whether a monster body is a Web: body 92. A bug fixed: the original tested the member name
- * `"<body>-F1"` for `92-`, so any body ending in 92 (192, 892, …) would also have stood still and
- * trapped players.
- */
-export function isWebBody(body: number): boolean {
-  return body === 92;
-}
-
 /** Monster steps take 16 `stepFrame` calls of 2 px = 8 frames. */
 export const MONSTER_STEP_FRAMES = 16;
 
@@ -209,7 +200,7 @@ export interface WalkWorld {
   /** A fixture on the ground blocks this on-screen tile. */
   itemBlocks(x: number, y: number): boolean;
   /**
-   * A live monster whose body contains `92-` stands exactly on this tile; always false aboard an
+   * A live trap (`flags.trap`, Classic: a Web) stands exactly on this tile; always false aboard an
    * Airship (the test needs no vehicle). Only ever asked about the walker's own tile.
    */
   webAt(x: number, y: number): boolean;

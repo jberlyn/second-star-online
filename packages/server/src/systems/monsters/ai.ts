@@ -30,7 +30,6 @@ import {
 import type { Player, WorldMap } from "../world/world.ts";
 import { hasFlag, type NpcStore, npcData } from "./npcfiles.ts";
 import {
-  bodyOf,
   isFootprint,
   type LiveMonster,
   leansToward,
@@ -298,7 +297,7 @@ export function moverPass(
   if (!slot || !m) {
     return null;
   }
-  if (neverMoves(bodyOf(m.name)) || slot.pause !== 0) {
+  if (neverMoves(m.name) || slot.pause !== 0) {
     return null;
   }
   const plan = authorPath(npcs, m, author, rng);

@@ -18,6 +18,7 @@ import { lingoWord } from "../core/lingo.ts";
 import { houseMapName, mapName } from "../core/maps.ts";
 import { TILE_DEFAULTS } from "../core/tiles.ts";
 import { isWhitelisted } from "../core/walk.ts";
+import { factionByKey, factionKeyOf, sameFaction } from "../social/factions.ts";
 
 /**
  * A map exit (map field 13 or 18, `MX:MY:LX:LY:`): the target map and tile. `house` marks a house's
@@ -52,6 +53,7 @@ export const NO_FOG: MapFog = { tex: "NoTex", blend: 0, r: 255, g: 255, b: 255 }
 /** Map field 12 items 1, 2, 3 and 5 as the editor's toggles write them. */
 export interface EditorFlags {
   canFight: string;
+  /** The faction the spawn swap brings (a faction key), or "" for none. */
   fctSpwn: string;
   isIndoors: string;
   canPvp: string;
@@ -276,36 +278,50 @@ export function paint(
   return rowsOf(g);
 }
 
-/** The three faction boxes, sprites 150 (W), 151 (M) and 152 (A). */
-export interface FactionBoxes {
-  w: boolean;
-  m: boolean;
-  a: boolean;
+/**
+ * The faction a map's spawn swap puts in its slots (map flag item 2), as the World Editor holds
+ * it: a faction key, or null for none. The three boxes, sprites 150 (W), 151 (M) and 152 (A), pick
+ * the factions `social.json` `factionRules.editorBoxes` names, in box order (Classic: Warrior,
+ * Mage, Adventurer).
+ */
+export type FactionBoxes = string | null;
+
+/** A faction key's form (`social.json` `factions[].key`). */
+const FACTION_KEY = /^[A-Za-z][A-Za-z0-9_-]{0,39}$/;
+
+/** The faction box `box` (0-2) picks, or null for a box no faction is given. */
+export function boxFaction(box: number): string | null {
+  return factionKeyOf(content().social.factionRules.editorBoxes[box]);
+}
+
+/** Whether faction box `box` (0-2) is ticked. */
+export function boxTicked(b: FactionBoxes, box: number): boolean {
+  return sameFaction(b, boxFaction(box));
 }
 
 /**
- * A click on a faction box: W, M and A are mutually exclusive, clearing the other two and toggling
- * themselves.
+ * A click on a faction box: the boxes are mutually exclusive, so a click ticks its own faction
+ * (clearing the others) or clears itself. A box no faction is given does nothing.
  */
-export function clickFaction(b: FactionBoxes, which: "w" | "m" | "a"): FactionBoxes {
-  if (which === "w") {
-    return { w: !b.w, m: false, a: false };
+export function clickFaction(b: FactionBoxes, box: number): FactionBoxes {
+  const f = boxFaction(box);
+  if (f === null) {
+    return b;
   }
-  if (which === "m") {
-    return { w: false, m: !b.m, a: false };
-  }
-  return { w: false, m: false, a: !b.a };
+  return sameFaction(b, f) ? null : f;
 }
 
-/** Item 2 from the boxes: the last ticked of W, M, A wins, else "X". */
+/** Map flag item 2 from the boxes: the faction's key, else "" (none). */
 export function factionFlag(b: FactionBoxes): string {
-  return b.a ? "A" : b.m ? "M" : b.w ? "W" : "X";
+  return b ?? "";
 }
 
-/** The boxes as a loaded map sets them. */
+/**
+ * The boxes as a loaded map sets them: its faction, kept even when no box shows it, and kept as
+ * saved when the world has removed it (so a save does not clear it before it returns); none for "".
+ */
 export function factionBoxes(fctSpwn: string): FactionBoxes {
-  const f = fctSpwn.toUpperCase();
-  return { w: f === "W", m: f === "M", a: f === "A" };
+  return fctSpwn === "" ? null : (factionByKey(fctSpwn)?.key ?? fctSpwn);
 }
 
 /** The four layer buttons, sprites 93 (S), 90 (3), 91 (2) and 92 (1), top to bottom. */
@@ -343,8 +359,8 @@ const row = (code: string) => Array(MAP_WIDTH).fill(code).join(" ");
  * What LOAD shows for a map that does not exist: the blank-map field, used when the reply has
  * no `#`. Layer 1 is `TILE_DEFAULTS.ground` (H1), layers 2 and 3 are `TILE_DEFAULTS.empty` (G3)
  * with one `TILE_DEFAULTS.shadow` (5A) mark on layer 3 at (7, 6) because the field has it, layer S
- * `TILE_DEFAULTS.shadow` (5A); field 12 `O:O:X:None`, so SAFE AREA is ticked and the faction item
- * is "O" (no box); no header, signs, exits or fog. No mobs or items exist for it.
+ * `TILE_DEFAULTS.shadow` (5A); field 12 `O:O:X:None`, so SAFE AREA is ticked and no faction box
+ * is (1.6's item "O"); no header, signs, exits or fog. No mobs or items exist for it.
  */
 export function blankMap(mx: number, my: number): EditorMap {
   const l3 = Array.from({ length: MAP_HEIGHT }, () => row(TILE_DEFAULTS.empty));
@@ -360,7 +376,7 @@ export function blankMap(mx: number, my: number): EditorMap {
       l3,
       Array.from({ length: MAP_HEIGHT }, () => row(TILE_DEFAULTS.shadow)),
     ],
-    flags: { canFight: "O", fctSpwn: "O", isIndoors: "X", canPvp: "X" },
+    flags: { canFight: "O", fctSpwn: "", isIndoors: "X", canPvp: "X" },
     header: "",
     signs: ["", "", ""],
     exit1: null,
@@ -432,8 +448,9 @@ export function editorMapError(m: EditorMap, itemOk: (name: string) => boolean):
   if (![f.canFight, f.isIndoors, f.canPvp].every((v) => v === "O" || v === "X")) {
     return "A map flag is not O or X.";
   }
-  if (!["X", "W", "M", "A", "O"].includes(f.fctSpwn)) {
-    return "The faction flag is not W, M, A or X.";
+  // A faction the world has removed may stay on its maps (its members spawn again when it returns).
+  if (f.fctSpwn !== "" && !FACTION_KEY.test(f.fctSpwn)) {
+    return "The faction spawn is not a faction key.";
   }
   if (m.header.length > HEADER_MAX || m.signs.some((s) => s.length > SIGN_MAX)) {
     return "A header or sign is too long.";

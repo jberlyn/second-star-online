@@ -211,7 +211,7 @@
         ],
         "flags": {
           "canFight": "O",
-          "fctSpwn": "X",
+          "fctSpwn": "",
           "isIndoors": "X",
           "canPvp": "X"
         },
@@ -367,7 +367,7 @@
         ],
         "flags": {
           "canFight": "O",
-          "fctSpwn": "X",
+          "fctSpwn": "",
           "isIndoors": "X",
           "canPvp": "X"
         },
@@ -528,7 +528,7 @@
         ],
         "flags": {
           "canFight": "O",
-          "fctSpwn": "X",
+          "fctSpwn": "",
           "isIndoors": "O",
           "canPvp": "O"
         },
@@ -674,7 +674,7 @@
         ],
         "flags": {
           "canFight": "O",
-          "fctSpwn": "X",
+          "fctSpwn": "",
           "isIndoors": "O",
           "canPvp": "O"
         },
@@ -860,7 +860,7 @@
         ],
         "flags": {
           "canFight": "O",
-          "fctSpwn": "X",
+          "fctSpwn": "",
           "isIndoors": "O",
           "canPvp": "O"
         },
@@ -1056,7 +1056,7 @@
         ],
         "flags": {
           "canFight": "O",
-          "fctSpwn": "X",
+          "fctSpwn": "",
           "isIndoors": "X",
           "canPvp": "X"
         },
@@ -1267,7 +1267,7 @@
         ],
         "flags": {
           "canFight": "O",
-          "fctSpwn": "X",
+          "fctSpwn": "",
           "isIndoors": "O",
           "canPvp": "O"
         },

@@ -64,7 +64,12 @@
       "defense": 13,
       "xpMelee": 300,
       "xpSpell": 300,
-      "spawnMinute": null
+      "spawnMinute": null,
+      "flags": {
+        "healedBy": [
+          "Splash"
+        ]
+      }
     },
     {
       "name": "Poison Frog",
@@ -141,7 +146,12 @@
       "defense": 1,
       "xpMelee": 5,
       "xpSpell": 5,
-      "spawnMinute": null
+      "spawnMinute": null,
+      "flags": {
+        "immobile": true,
+        "unclickable": true,
+        "dispellable": true
+      }
     },
     {
       "name": "Ghoul",
@@ -152,7 +162,15 @@
       "defense": 18,
       "xpMelee": 200,
       "xpSpell": 200,
-      "spawnMinute": null
+      "spawnMinute": null,
+      "flags": {
+        "healedBy": [
+          "Firebolt"
+        ],
+        "resists": [
+          "Fireball"
+        ]
+      }
     },
     {
       "name": "Snared Loah",
@@ -174,7 +192,12 @@
       "defense": 31,
       "xpMelee": 400,
       "xpSpell": 400,
-      "spawnMinute": null
+      "spawnMinute": null,
+      "flags": {
+        "healedBy": [
+          "Crush"
+        ]
+      }
     },
     {
       "name": "Elf",
@@ -196,7 +219,11 @@
       "defense": 1,
       "xpMelee": 1,
       "xpSpell": 1,
-      "spawnMinute": null
+      "spawnMinute": null,
+      "flags": {
+        "unclickable": true,
+        "grabbable": "Pig"
+      }
     },
     {
       "name": "Zombie",
@@ -210,6 +237,9 @@
       "spawnMinute": {
         "gt": 35,
         "lt": 49
+      },
+      "flags": {
+        "hurtByHealing": true
       }
     },
     {
@@ -276,7 +306,12 @@
       "defense": 1,
       "xpMelee": 5,
       "xpSpell": 5,
-      "spawnMinute": null
+      "spawnMinute": null,
+      "flags": {
+        "immobile": true,
+        "unclickable": true,
+        "trap": true
+      }
     },
     {
       "name": "Skeleton",
@@ -1060,7 +1095,12 @@
       "defense": 5,
       "xpMelee": 5,
       "xpSpell": 5,
-      "spawnMinute": null
+      "spawnMinute": null,
+      "flags": {
+        "immobile": true,
+        "unclickable": true,
+        "shieldsInnocent": true
+      }
     },
     {
       "name": "Mizella",

@@ -1265,4 +1265,437 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       refusals: classic.use.refusals.filter((r) => r.pattern === "Piano"),
     });
   });
+
+  test("spells_by_effect gives older spell rows the school, power and food of the spell their effect runs", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_61"),
+    );
+    const classic = classicData.spells;
+    // Classic's spells as they were before this stage: no school, power table or food.
+    const strip = (s: (typeof classic.spells)[number]) => {
+      const { school: _s, power: _p, creates: _c, ...rest } = structuredClone(s);
+      return rest;
+    };
+    const byName = (n: string) => {
+      const s = classic.spells.find((x) => x.name === n);
+      if (!s) {
+        throw new Error(n);
+      }
+      return s;
+    };
+    // An operator's spell on Fireball's effect, with its own name and runs.
+    const iceball = {
+      ...strip(byName("Fireball")),
+      name: "Iceball",
+      fx: byName("Fireball").fx.map((f) => ({
+        ...f,
+        member: f.member.replace("Fireball", "Iceball"),
+      })),
+    };
+    // A pack's own spell that already names its school keeps it, and gains only what it lacks.
+    const own = {
+      ...strip(byName("Splash")),
+      name: "Drench",
+      school: { skill: "Water", line: "Wet!" },
+    };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: {},
+          data: { spells: { spells: [...classic.spells.map(strip), own] } },
+        }),
+      ],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('spells', 'spells', 'Iceball', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(iceball)],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('spells', 'spells', 'Create Food', 'set', ?, 'a', 'A', 'then')",
+      [JSON.stringify(strip(byName("Create Food")))],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "spells",
+            part: "spells",
+            key: "Iceball",
+            before: null,
+            after: { op: "set", data: iceball },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    runMigrations(db, all);
+    const pack = JSON.parse(
+      (
+        db
+          .query(
+            "SELECT json_extract(data, '$.data.spells') AS s FROM content_packs WHERE id = 'old'",
+          )
+          .get() as { s: string }
+      ).s,
+    );
+    // Drench keeps its own school and gains Splash's power table, which it had none of.
+    expect(pack).toEqual({
+      spells: [...classic.spells, { ...own, power: byName("Splash").power }],
+      power: classic.power,
+    });
+    const row = (table: string) =>
+      JSON.parse(
+        (db.query(`SELECT data FROM ${table} WHERE dataset = 'spells'`).get() as { data: string })
+          .data,
+      );
+    const fire = byName("Fireball");
+    expect(row("content_rows")).toEqual({ ...iceball, school: fire.school, power: fire.power });
+    expect(row("content_draft")).toEqual(byName("Create Food"));
+    const changes = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(rowHash(changes[0].after.data)).toBe(rowHash(row("content_rows")));
+    expect(changes[0].before).toBeNull();
+  });
+
+  test("monster_flags gives older species the flags their body gave them and keeps a row's own", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_62"),
+    );
+    const classic = classicData.monsters.monsters;
+    const strip = (m: (typeof classic)[number]) => {
+      const { flags: _f, ...rest } = structuredClone(m);
+      return rest;
+    };
+    const ghoul = classic.find((m) => m.name === "Ghoul");
+    if (!ghoul) {
+      throw new Error("Ghoul");
+    }
+    // An operator's species drawn as a Ghoul behaved as one; a pack's own flags stay.
+    const iceGhoul = { ...strip(ghoul), name: "Ice Ghoul" };
+    const tame = { ...strip(ghoul), name: "Tame Ghoul", flags: { unclickable: true } };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: {},
+          data: { monsters: { monsters: [...classic.map(strip), tame] } },
+        }),
+      ],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('monsters', 'monsters', 'Ice Ghoul', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(iceGhoul)],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "monsters",
+            part: "monsters",
+            key: "Ice Ghoul",
+            before: null,
+            after: { op: "set", data: iceGhoul },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    runMigrations(db, all);
+    const pack = JSON.parse(
+      (
+        db
+          .query(
+            "SELECT json_extract(data, '$.data.monsters.monsters') AS m FROM content_packs WHERE id = 'old'",
+          )
+          .get() as { m: string }
+      ).m,
+    );
+    expect(pack).toEqual([...classic, tame]);
+    const row = JSON.parse(
+      (
+        db.query("SELECT data FROM content_rows WHERE dataset = 'monsters'").get() as {
+          data: string;
+        }
+      ).data,
+    );
+    expect(row).toEqual({ ...iceGhoul, flags: ghoul.flags });
+    const changes = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(rowHash(changes[0].after.data)).toBe(rowHash(row));
+  });
+
+  test("factions_as_content saves factions, powers, map spawns and edit logs by key and reshapes older content", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_63"),
+    );
+    const map = db.query("SELECT id FROM maps LIMIT 1").get() as { id: string };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    for (const [id, name, faction] of [
+      ["c0", "Nan", 0],
+      ["c1", "Ann", 1],
+      ["c2", "Bob", 2],
+      ["c3", "Cat", 3],
+    ] as const) {
+      db.run(
+        `INSERT INTO characters (id, account_id, name, sex, head, class_code, level, hp, hp_max, sp,
+          sp_max, exp, exp_needed, str, sta, dex, int, wis, gold, profile, hunger, break_count,
+          map_id, x, y, facing, faction, faction_count, created_at, updated_at)
+         VALUES (?, 'a1', ?, 1, 1, 1, 1, 20, 20, 20, 20, 0, 30, 5, 5, 5, 5, 5, 0, '', 40000, 0, ?, 5,
+          5, 'S', ?, 100, 'now', 'now')`,
+        [id, name, map.id, faction],
+      );
+    }
+    db.run("DELETE FROM faction_powers");
+    db.run("INSERT INTO faction_powers (id, mage, warrior, adventurer) VALUES (1, 30, 120, 4)");
+    // A fresh database has three maps (the seed map, the jail and the church).
+    const spawns = ["W", "a", "O"];
+    const mapIds = (
+      db.query("SELECT id FROM maps ORDER BY id LIMIT 3").all() as { id: string }[]
+    ).map((m) => m.id);
+    mapIds.forEach((id, i) => {
+      db.run("UPDATE maps SET fct_spwn = ? WHERE id = ?", [spawns[i] ?? "X", id]);
+    });
+    db.run(
+      `INSERT INTO character_edits (id, created_at, actor_account_id, actor_name, character_id,
+        character, reason, changes) VALUES ('e1', 'then', 'a1', 'A', 'c1', 'Ann', 'r', ?)`,
+      [
+        JSON.stringify([
+          { field: "faction", before: 0, after: 1 },
+          { field: "hunger", before: 1, after: 2 },
+        ]),
+      ],
+    );
+    // Classic's social data as it was before this stage, in an imported pack and as an operator's
+    // changed Mage row, factionRules and Bio texts.
+    const classic = classicData.social;
+    const oldRow = (f: (typeof classic.factions)[number], id: number) => {
+      const {
+        key: _k,
+        member: _m,
+        startPower: _s,
+        bio: _b,
+        perks: _p,
+        ...rest
+      } = structuredClone(f);
+      return { id, ...rest };
+    };
+    const ids = { mage: 1, warrior: 2, adventurer: 3 } as Record<string, number>;
+    const oldFactions = classic.factions.map((f) => oldRow(f, ids[f.key] ?? 0));
+    const {
+      tiers: _t,
+      perkDefaults: _d,
+      editorBoxes: _e,
+      ...restRules
+    } = structuredClone(classic.factionRules);
+    const oldRules = { ...restRules, powers: { file: "f", archived: "27:123:0" } };
+    const oldBios = structuredClone(classic.bios) as unknown as {
+      texts: Record<string, { text: string }>;
+    };
+    oldBios.texts.mages = { text: "Loyal to the Mages" };
+    oldBios.texts.warriors = { text: "Loyal to the Warriors" };
+    oldBios.texts.adventurers = { text: "Loyal to the Adventurers" };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: {},
+          data: { social: { factions: oldFactions, factionRules: oldRules, bios: oldBios } },
+        }),
+      ],
+    );
+    const angry = { ...oldFactions[0], leader: "Angry Angela" };
+    const myBios = structuredClone(oldBios);
+    myBios.texts.mages = { text: "Sworn to the Mages" };
+    // A Bio line changed in the texts alone, with no change of that faction's row.
+    myBios.texts.warriors = { text: "Sworn to the Warriors" };
+    const put = (part: string, key: string, data: unknown) =>
+      db.run(
+        "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('social', ?, ?, 'set', ?, 1, 'a', 'then')",
+        [part, key, JSON.stringify(data)],
+      );
+    put("factions", "1", angry);
+    put("factionRules", "", oldRules);
+    put("bios", "", myBios);
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "social",
+            part: "factions",
+            key: "1",
+            before: null,
+            after: { op: "set", data: angry },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    expect(db.query("SELECT name, faction FROM characters ORDER BY name").all()).toEqual([
+      { name: "Ann", faction: "mage" },
+      { name: "Bob", faction: "warrior" },
+      { name: "Cat", faction: "adventurer" },
+      { name: "Nan", faction: null },
+    ]);
+    expect(db.query("SELECT faction, power FROM faction_power ORDER BY faction").all()).toEqual([
+      { faction: "adventurer", power: 4 },
+      { faction: "mage", power: 30 },
+      { faction: "warrior", power: 120 },
+    ]);
+    const spawned = mapIds.map(
+      (id) => (db.query("SELECT fct_spwn AS f FROM maps WHERE id = ?").get(id) as { f: string }).f,
+    );
+    expect(spawned).toEqual(["warrior", "adventurer", ""]);
+    const edit = JSON.parse(
+      (db.query("SELECT changes FROM character_edits").get() as { changes: string }).changes,
+    );
+    expect(edit).toEqual([
+      { field: "faction", before: null, after: "mage" },
+      { field: "hunger", before: 1, after: 2 },
+    ]);
+    const social = JSON.parse(
+      (
+        db
+          .query(
+            "SELECT json_extract(data, '$.data.social') AS s FROM content_packs WHERE id = 'old'",
+          )
+          .get() as { s: string }
+      ).s,
+    );
+    expect(social.factions).toEqual(classic.factions);
+    expect(social.factionRules).toEqual({
+      ...classic.factionRules,
+    });
+    expect(social.bios).toEqual(classic.bios);
+    const rows = db
+      .query(
+        "SELECT part, row_key AS k, data FROM content_rows WHERE dataset = 'social' ORDER BY part, row_key",
+      )
+      .all() as { part: string; k: string; data: string }[];
+    const mage = classic.factions.find((f) => f.key === "mage");
+    // The operator's own Bio line for the Mages moved onto the Mage row.
+    expect(rows.map((r) => [r.part, r.k]).sort()).toEqual([
+      ["bios", ""],
+      ["factionRules", ""],
+      ["factions", "mage"],
+      ["factions", "warrior"],
+    ]);
+    const warrior = classic.factions.find((f) => f.key === "warrior");
+    const warriorRow = rows.find((r) => r.k === "warrior");
+    expect(JSON.parse(warriorRow?.data ?? "")).toEqual({
+      ...warrior,
+      bio: "Sworn to the Warriors",
+    });
+    expect(JSON.parse(rows[2]?.data ?? "")).toEqual({
+      ...mage,
+      leader: "Angry Angela",
+      bio: "Sworn to the Mages",
+    });
+    expect(JSON.parse(rows[1]?.data ?? "")).toEqual(classic.factionRules);
+    expect(JSON.parse(rows[0]?.data ?? "")).toEqual(classic.bios);
+    const changes = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(changes[0].key).toBe("mage");
+    expect(changes[0].after.data.key).toBe("mage");
+    expect(changes[0].after.data.leader).toBe("Angry Angela");
+    // The log's row matches the live one, so the publish can still be undone.
+    expect(rowHash(changes[0].after.data)).toBe(rowHash(JSON.parse(rows[2]?.data ?? "")));
+  });
+
+  test("spells_by_effect keeps an operator's Magery binding in the base power", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_61"),
+    );
+    const { magery: _m, ...unbound } = classicData.bindings.skills;
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('bindings', 'skills', '', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(unbound)],
+    );
+    runMigrations(db, all);
+    runMigrations(db, all);
+    const rows = db
+      .query(
+        "SELECT data, base_hash AS h FROM content_rows WHERE dataset = 'spells' AND part = 'power'",
+      )
+      .all() as { data: string; h: string }[];
+    expect(rows.length).toBe(1);
+    // Magery was unbound, so the base power reads no skill, as before the upgrade.
+    expect(JSON.parse(rows[0]?.data ?? "")).toEqual({ ...classicData.spells.power, base: [] });
+    expect(rows[0]?.h).toBe(rowHash(classicData.spells.power));
+  });
+
+  test("factions_as_content gives house templates their faction by key", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_63"),
+    );
+    const type = structuredClone(classicData.houses.types[0]) as unknown as {
+      house: string;
+      template: { flags: { fctSpwn: string } };
+    };
+    const withSpawn = (house: string, f: string) => {
+      const t = structuredClone(type);
+      t.house = house;
+      t.template.flags.fctSpwn = f;
+      return t;
+    };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [JSON.stringify({ manifest: {}, data: { houses: { types: [withSpawn("Hut", "X")] } } })],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('houses', 'types', 'Barracks', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(withSpawn("Barracks", "W"))],
+    );
+    runMigrations(db, all);
+    const packFlag = (
+      db
+        .query(
+          "SELECT json_extract(data, '$.data.houses.types[0].template.flags.fctSpwn') AS f FROM content_packs WHERE id = 'old'",
+        )
+        .get() as { f: string }
+    ).f;
+    const rowFlag = (
+      db
+        .query(
+          "SELECT json_extract(data, '$.template.flags.fctSpwn') AS f FROM content_rows WHERE dataset = 'houses'",
+        )
+        .get() as { f: string }
+    ).f;
+    expect([packFlag, rowFlag]).toEqual(["", "warrior"]);
+  });
 });

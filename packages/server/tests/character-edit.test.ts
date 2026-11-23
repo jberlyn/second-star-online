@@ -47,7 +47,7 @@ const base = (): EditableCharacter => ({
   wis: 10,
   skills: { Slash: 1, Thrust: 1, Parry: 1 },
   hunger: 30000,
-  faction: 0,
+  faction: null,
   factionCount: 0,
   wanted: false,
   respawn: { map: "x1000y992", x: 5, y: 5 },
@@ -545,11 +545,11 @@ describe("editing a character from the hub", () => {
     const { game, make } = start();
     const god = await make("God", "administrator");
     const al = await make("Al", undefined, false);
-    expect(edit(game, god.characterId, { wanted: true, faction: 2 })?.ok).toBe(true);
+    expect(edit(game, god.characterId, { wanted: true, faction: "warrior" })?.ok).toBe(true);
     const id = hubOf(game, god.characterId).edits[0]?.id ?? "";
     expect(undo(game, god.characterId, id)?.ok).toBe(true);
     const s = loadStoredCharacter(db, al.characterId);
-    expect([s?.record.wanted, s?.record.faction.id]).toEqual([false, 0]);
+    expect([s?.record.wanted, s?.record.faction.key]).toEqual([false, null]);
   });
 
   test("an old edit that changed Agility or Speed still reads and undoes the rest", async () => {

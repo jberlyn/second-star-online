@@ -4,7 +4,13 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import type { ServerMsg } from "@secondstaronline/shared";
+import { classicData } from "@secondstaronline/data/classic";
+import {
+  buildContentStore,
+  type ContentData,
+  installContent,
+  type ServerMsg,
+} from "@secondstaronline/shared";
 
 import { askForQuest, questGive } from "../src/systems/economy/quests.ts";
 import { type MonsterSlot, species } from "../src/systems/monsters/slots.ts";
@@ -153,7 +159,7 @@ describe("the murder flag", () => {
 describe("faction death", () => {
   test("a member drops its head on a PvP-X map before its item drop, whatever killed it", () => {
     const { a, map, run } = murderScene();
-    a.char.faction = { id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 };
+    a.char.faction = { key: "warrior", tier: 9 };
     a.char.factionCount = 100000;
     a.char.vitals.hpMax = 90;
     a.char.bag[0] = { item: "Apple", qty: 1 };
@@ -166,7 +172,7 @@ describe("faction death", () => {
   test("no head on a map whose PvP flag is O, nor from a non-member", () => {
     const { a, map, run } = murderScene();
     map.flags.canPvp = "O";
-    a.char.faction = { id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 };
+    a.char.faction = { key: "warrior", tier: 9 };
     a.char.vitals.hpMax = 90;
     run(1);
     expect(map.ground.some((g) => g.item === "Warrior's Head")).toBe(false);
@@ -174,17 +180,19 @@ describe("faction death", () => {
 
   test("bug fixed: exile below the line on death also leaves the faction channel", () => {
     const { world, a, run } = murderScene();
-    a.char.faction = { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 };
+    a.char.faction = { key: "mage", tier: 3 };
     a.char.factionCount = 100000;
     a.char.vitals.hpMax = 49; // below the Mage line of 50, as an operator might set it
-    expect(toFactionChannel(world, 1, "*** Mages!", "Nobody").map((o) => o.to)).toEqual([a.id]);
+    expect(toFactionChannel(world, "mage", "*** Mages!", "Nobody").map((o) => o.to)).toEqual([
+      a.id,
+    ]);
     const msgs = run(1);
     expect(chat(msgs, "Alice")).toEqual([
       "*** You have been exiled from the Mage faction due to your downfalls in battle.",
     ]);
-    expect(a.char.faction.id).toBe(0);
+    expect(a.char.faction.key).toBe(null);
     expect(a.char.factionCount).toBe(0);
-    expect(toFactionChannel(world, 1, "*** Mages!", "Nobody")).toEqual([]);
+    expect(toFactionChannel(world, "mage", "*** Mages!", "Nobody")).toEqual([]);
   });
 });
 
@@ -193,7 +201,7 @@ describe("loyalty", () => {
     const map = testMap("x1000y992");
     const s = setup([map]);
     const a = player("Alice", map, 5, 5);
-    a.char.faction = { id: 3, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    a.char.faction = { key: "adventurer", tier: 0 };
     a.char.factionCount = 20001;
     s.join(a);
     expect(chat(s.run(1), "Alice")).toEqual([
@@ -203,10 +211,45 @@ describe("loyalty", () => {
     expect(chat(s.run(1), "Alice")).toEqual([
       "*** You have been kicked out of the Adventurer faction due to lack of loyalty.",
     ]);
-    expect([a.char.faction.id, a.char.factionCount]).toEqual([0, 0]);
-    expect(toFactionChannel(s.world, 3, "*** Adventurers!", "Nobody")).toEqual([]);
+    expect([a.char.faction.key, a.char.factionCount]).toEqual([null, 0]);
+    expect(toFactionChannel(s.world, "adventurer", "*** Adventurers!", "Nobody")).toEqual([]);
+  });
+
+  test("a faction the world removed keeps its members' count until it returns", () => {
+    const map = testMap("x1000y992");
+    const s = setup([map]);
+    const a = player("Alice", map, 5, 5);
+    a.char.faction = { key: "adventurer", tier: 0 };
+    a.char.factionCount = 2;
+    s.join(a);
+    withContent(
+      (d) => {
+        d.social.factions = d.social.factions.filter((f) => f.key !== "adventurer");
+        d.social.factionRules.editorBoxes = ["warrior", "mage"];
+      },
+      () => {
+        s.run(5);
+        expect([a.char.faction.key, a.char.factionCount]).toEqual(["adventurer", 2]);
+      },
+    );
+    // Back, the countdown runs on and kicks at 1 (it never reached 0 unkicked while gone).
+    expect(chat(s.run(1), "Alice")).toEqual([
+      "*** You have been kicked out of the Adventurer faction due to lack of loyalty.",
+    ]);
   });
 });
+
+/** Runs `body` with Classic changed by `change`, then puts Classic back. */
+function withContent(change: (d: ContentData) => void, body: () => void): void {
+  const d = structuredClone(classicData) as ContentData;
+  change(d);
+  installContent(buildContentStore(d));
+  try {
+    body();
+  } finally {
+    installContent(buildContentStore(classicData as ContentData));
+  }
+}
 
 describe("turn-ins", () => {
   function npcScene() {
@@ -223,16 +266,16 @@ describe("turn-ins", () => {
   test("a rival head to Angela: said to the map, power moved, joined, announced to the Mages, bonuses for all", () => {
     const { world, map, a, c, join } = npcScene();
     live(map, 1, "Angela", 5, 4);
-    world.factionPowers = [27, 123, 0];
+    world.factionPowers = { mage: 27, warrior: 123, adventurer: 0 };
     a.char.vitals.hpMax = 60;
     a.char.bag[3] = { item: "Warrior's Head", qty: 1 };
-    c.char.faction = { id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 };
+    c.char.faction = { key: "warrior", tier: 9 };
     const d = player("Dan", map, 3, 3);
-    d.char.faction = { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 };
+    d.char.faction = { key: "mage", tier: 3 };
     join(d);
     const out = questGive(world, a, 3, "Angela", rngByN());
     expect(a.char.bag[3]).toBeNull();
-    expect(world.factionPowers).toEqual([28, 122, 0]);
+    expect(world.factionPowers).toEqual({ mage: 28, warrior: 122, adventurer: 0 });
     expect(world.powersDirty).toBe(true);
     // Bug fixed: a Warrior no longer hears the Mages' announcement; a Mage does.
     expect(chat(out, "Carol")).toEqual([
@@ -247,38 +290,38 @@ describe("turn-ins", () => {
       'Angela says "Welcome to the Mage faction."',
       "*** The Mage faction has become stronger thanks to Alice.",
     ]);
-    expect(a.char.faction).toEqual({ id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 });
+    expect(a.char.faction).toEqual({ key: "mage", tier: 3 });
     expect(a.char.factionCount).toBe(212000);
-    expect(c.char.faction.f2Bonus).toBe(9);
+    expect(c.char.faction.tier).toBe(9);
   });
 
   test("bug fixed: a joiner who would be refused keeps the head and moves no power", () => {
     const { world, a, c } = npcScene();
-    world.factionPowers = [27, 123, 0];
+    world.factionPowers = { mage: 27, warrior: 123, adventurer: 0 };
     a.char.vitals.hpMax = 20;
     a.char.bag[0] = { item: "Warrior's Head", qty: 1 };
     const out = questGive(world, a, 0, "Angela", rngByN());
     expect(chat(out, "Alice")).toEqual(['Angela says "You need more experience to join us."']);
     expect(chat(out, "Carol")).toEqual([]);
     expect(a.char.bag[0]).toEqual({ item: "Warrior's Head", qty: 1 });
-    expect(world.factionPowers).toEqual([27, 123, 0]);
+    expect(world.factionPowers).toEqual({ mage: 27, warrior: 123, adventurer: 0 });
     expect(world.powersDirty).toBe(false);
-    expect(a.char.faction.id).toBe(0);
+    expect(a.char.faction.key).toBe(null);
     // Another faction's member is refused the same way.
     a.char.vitals.hpMax = 90;
-    a.char.faction = { id: 3, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    a.char.faction = { key: "adventurer", tier: 0 };
     expect(chat(questGive(world, a, 0, "Angela", rngByN()), "Alice")).toEqual([
       'Angela says "We could use someone like you in our faction."',
     ]);
     expect(a.char.bag[0]).toEqual({ item: "Warrior's Head", qty: 1 });
-    expect(world.factionPowers).toEqual([27, 123, 0]);
+    expect(world.factionPowers).toEqual({ mage: 27, warrior: 123, adventurer: 0 });
   });
 
   test("a member turning a rival head in to its own leader adds time and moves power", () => {
     const { world, a } = npcScene();
-    world.factionPowers = [27, 123, 0];
+    world.factionPowers = { mage: 27, warrior: 123, adventurer: 0 };
     a.char.vitals.hpMax = 20;
-    a.char.faction = { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 };
+    a.char.faction = { key: "mage", tier: 3 };
     a.char.factionCount = 5;
     a.char.bag[0] = { item: "Warrior's Head", qty: 1 };
     const out = questGive(world, a, 0, "Angela", rngByN());
@@ -286,7 +329,7 @@ describe("turn-ins", () => {
       'Angela says "I hope that you will be with us for years to come."',
     );
     expect(a.char.bag[0]).toBeNull();
-    expect(world.factionPowers).toEqual([28, 122, 0]);
+    expect(world.factionPowers).toEqual({ mage: 28, warrior: 122, adventurer: 0 });
     expect(a.char.factionCount).toBe(212005);
   });
 
@@ -363,6 +406,43 @@ describe("turn-ins", () => {
   });
 });
 
+describe("heads are their factions' head items", () => {
+  function scene() {
+    const map = testMap("x1000y992");
+    const s = setup([map]);
+    const a = player("Alice", map, 5, 5);
+    s.join(a);
+    a.facing = "N";
+    live(map, 1, "Angela", 5, 4);
+    s.world.factionPowers = { mage: 27, warrior: 123, adventurer: 0 };
+    a.char.vitals.hpMax = 60;
+    return { ...s, a };
+  }
+
+  test('a head named without " Head" is a head; an item with " Head" in its name that is no head is not taken', () => {
+    withContent(
+      (d) => {
+        const w = d.social.factions.find((f) => f.key === "warrior");
+        if (w) {
+          w.head = "Ale";
+        }
+      },
+      () => {
+        const { world, a } = scene();
+        a.char.bag[0] = { item: "Ale", qty: 1 };
+        questGive(world, a, 0, "Angela", rngByN());
+        expect(a.char.bag[0]).toBeNull();
+        expect([a.char.faction.key, world.factionPowers.warrior]).toEqual(["mage", 122]);
+        // The old Warrior's Head is no head now: it goes to the quest lines and stays in the bag.
+        a.char.bag[1] = { item: "Warrior's Head", qty: 1 };
+        const out = questGive(world, a, 1, "Angela", rngByN());
+        expect(a.char.bag[1]).toEqual({ item: "Warrior's Head", qty: 1 });
+        expect(chat(out, "Alice")).toEqual(["Angela says \"I'm sorry but I don't need that.\""]);
+      },
+    );
+  });
+});
+
 describe("NPC keyword replies", () => {
   test("bug fixed: SayQuest: every slot's reply is heard by the map, with its closing quote", () => {
     const map = testMap("x1000y992");
@@ -389,7 +469,7 @@ describe("NPC keyword replies", () => {
     s.join(a);
     live(map, 2, "Corin", 2, 2);
     live(map, 1, "Trianus", 3, 2);
-    s.world.factionPowers = [27, 123, 0];
+    s.world.factionPowers = { mage: 27, warrior: 123, adventurer: 0 };
     expect(chat(askFactionPower(s.world, a), "Alice")).toEqual([
       'Trianus says "We are currently in absolute power."',
       'Corin says "We are very weak, I fear that we may be destroyed."',
@@ -414,7 +494,7 @@ describe("NPC keyword replies", () => {
     live(map, 1, "Corin", 2, 2);
     live(map, 2, "Trianus", 3, 2);
     live(map, 3, "Angela", 4, 2);
-    s.world.factionPowers = [150, 150, 150];
+    s.world.factionPowers = { mage: 150, warrior: 150, adventurer: 150 };
     expect(chat(askFactionPower(s.world, a), "Alice")).toEqual([
       'Angela says "Our power is fine...for now."',
       'Trianus says "Our power is fine...for now."',

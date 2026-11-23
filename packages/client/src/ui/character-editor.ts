@@ -23,6 +23,7 @@ import {
   type EditableCharacter,
   editableOf,
   editErrors,
+  factionLabel,
   HEADS_BY_SEX,
   onContent,
   SETTABLE_FIELDS,
@@ -168,12 +169,28 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   const hp = numberInput("hub-edit-hp");
   const sp = numberInput("hub-edit-sp");
   const hunger = numberInput("hub-edit-hunger");
-  const faction = select("hub-edit-faction", [
-    ["0", "None"],
-    ["1", "Mage"],
-    ["2", "Warrior"],
-    ["3", "Adventurer"],
-  ]);
+  // The world's factions, and the shown character's saved faction when the world has removed it.
+  const faction = select("hub-edit-faction", []);
+  const factionOptions = (...saved: (string | null | undefined)[]) => {
+    const rows: [string, string][] = [
+      ["", "None"],
+      ...content().social.factions.map((f): [string, string] => [f.key, f.name]),
+    ];
+    for (const k of saved) {
+      if (k && !rows.some(([r]) => r.toLowerCase() === k.toLowerCase())) {
+        rows.push([k, factionLabel(k)]);
+      }
+    }
+    faction.replaceChildren(
+      ...rows.map(([value, label]) => {
+        const o = document.createElement("option");
+        o.value = value;
+        o.textContent = label;
+        return o;
+      }),
+    );
+  };
+  factionOptions();
   const factionCount = numberInput("hub-edit-faction-time");
   const wanted = select("hub-edit-wanted", [
     ["false", "No"],
@@ -346,9 +363,12 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   saveBox.classList.add("hub-edit-save", "hub-wide");
   const items = datalist(itemList, []);
   saveBox.append(items);
-  // The class list, the skills and the item suggestions follow the content store, so a publish
-  // that adds a class, a skill or an item shows here at once.
+  // The class list, the factions, the skills and the item suggestions follow the content store, so
+  // a publish that adds a class, a faction, a skill or an item shows here at once.
   onContent((c) => {
+    const pickedFaction = faction.value;
+    factionOptions(original?.faction, pickedFaction);
+    faction.value = pickedFaction;
     const picked = cls.value;
     cls.replaceChildren(
       ...c.classes.classes.map((k) => {
@@ -395,7 +415,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     hp.value = String(c.hp);
     sp.value = String(c.sp);
     hunger.value = String(c.hunger);
-    faction.value = String(c.faction);
+    factionOptions(c.faction);
+    faction.value = c.faction ?? "";
     factionCount.value = String(c.factionCount);
     wanted.value = String(c.wanted);
     derived.textContent = `Experience needed ${c.expNeeded}, HP max ${c.hpMax}, SP max ${c.spMax}. They follow the level: each level up or down moves HP and SP max by one.`;
@@ -447,7 +468,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     hp: num(hp),
     sp: num(sp),
     hunger: num(hunger),
-    faction: Number(faction.value),
+    faction: faction.value === "" ? null : faction.value,
     factionCount: num(factionCount),
     wanted: wanted.value === "true",
     ...Object.fromEntries(STAT_FIELDS.map((f) => [f, num(stats.get(f) as HTMLInputElement)])),

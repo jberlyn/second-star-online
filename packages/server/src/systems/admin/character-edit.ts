@@ -28,7 +28,7 @@ import {
   editableOf,
   editErrors,
   effectiveStats,
-  factionIdOf,
+  factionKeyOf,
   fieldLabels,
   ITEM_FIELDS,
   isJailMap,
@@ -357,7 +357,7 @@ export function applyLive(world: World, p: Player, e: PreparedEdit, deps: EditDe
   c.skills = skillsFromKeys(a.skills);
   c.hunger = a.hunger;
   if (changed.has("faction")) {
-    c.faction = sortFaction(factionIdOf(a.faction), world.factionPowers);
+    c.faction = sortFaction(factionKeyOf(a.faction), world.factionPowers);
   }
   c.factionCount = a.factionCount;
   c.wanted = a.wanted;

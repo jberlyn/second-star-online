@@ -69,9 +69,10 @@ export interface CharacterRecord {
   hull: number | null;
 }
 
-/** `Fctnme` (0 none, 1 Mage, 2 Warrior, 3 Adventurer) and `Fctcnt` in frames. */
+/** `Fctnme` (1.6's 0-3, now a faction key) and `Fctcnt` in frames. */
 export interface StoredFaction {
-  id: number;
+  /** The faction's key (`social.json` `factions[].key`), or null for none. */
+  key: string | null;
   count: number;
 }
 
@@ -102,7 +103,7 @@ interface CharacterRow {
   respawn_map_id: string | null;
   respawn_x: number | null;
   respawn_y: number | null;
-  faction: number;
+  faction: string | null;
   faction_count: number;
   wanted: number;
   profile: string;
@@ -236,7 +237,7 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     r?.mapId ?? null,
     r?.x ?? null,
     r?.y ?? null,
-    c.faction.id,
+    c.faction.key,
     c.faction.count,
     c.wanted ? 1 : 0,
     c.stats.str,
@@ -397,7 +398,7 @@ function toRecord(row: CharacterRow): CharacterRecord {
       row.respawn_map_id !== null && row.respawn_x !== null && row.respawn_y !== null
         ? { mapId: row.respawn_map_id, x: row.respawn_x, y: row.respawn_y }
         : null,
-    faction: { id: row.faction, count: row.faction_count },
+    faction: { key: row.faction, count: row.faction_count },
     wanted: row.wanted === 1,
     profile: row.profile,
     vehicle: row.vehicle,

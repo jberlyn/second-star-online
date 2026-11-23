@@ -10,6 +10,7 @@ import {
   FACING_DELTA,
   type FxSprite,
   fxMember,
+  monsterFlags,
   PAPERDOLL_REG,
   PAPERDOLL_SIZE,
   spriteRect,
@@ -19,7 +20,7 @@ import {
   walkFrame,
 } from "@secondstaronline/shared";
 
-import { BODY, bodyOf, MONSTER_STEP_FRAMES, type MonsterSlot } from "../monsters/slots.ts";
+import { bodyOf, MONSTER_STEP_FRAMES, type MonsterSlot } from "../monsters/slots.ts";
 import type { Player } from "../world/world.ts";
 
 export type Rect = { left: number; top: number; right: number; bottom: number };
@@ -113,17 +114,11 @@ export function monsterRect(slot: MonsterSlot): Rect | null {
   return spriteRect(content().rects.chars[member.toLowerCase()] ?? FALLBACK_BODY_RECT, at.h, at.v);
 }
 
-/** The member name a monster shows, for the body tests for names containing "61-". */
-export function monsterMember(slot: MonsterSlot): string {
-  const m = slot.live;
-  const body = m ? bodyOf(m.name) : 0;
-  return m ? `${body}-${walkFrame(m.anim, MONSTER_STEP_FRAMES)}-${m.facing}` : "";
-}
-
 /**
  * The Holy Shield test of `HitMe`/`HitMe2`: an innocent (`gnL = 0`) whose sprite 112 has exactly
- * the loc of a Holy Shield (body 99). The original tested the member name for "99-", which any
- * body ending in 99 would also pass; SSO compares the body (a bug fixed). Spells never test it.
+ * the loc of a monster that shields innocents (`flags.shieldsInnocent`; Classic: a Holy Shield).
+ * The original tested the member name for "99-", which any body ending in 99 would also pass; SSO
+ * reads the flag (a bug fixed). Spells never test it.
  */
 export function onHolyShield(p: Player, slots: readonly MonsterSlot[]): boolean {
   if (p.char.wanted) {
@@ -135,7 +130,7 @@ export function onHolyShield(p: Player, slots: readonly MonsterSlot[]): boolean 
     return (
       !!at &&
       s.live !== null &&
-      bodyOf(s.live.name) === BODY.holyShield &&
+      monsterFlags(s.live.name).shieldsInnocent === true &&
       at.h === me.h &&
       at.v === me.v
     );

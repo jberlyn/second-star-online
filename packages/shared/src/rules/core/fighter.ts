@@ -31,15 +31,15 @@ export const NO_EQUIPMENT: Equipment = {
   ring: NOTHING,
 };
 
+/** A character's faction as the rules read it: what its perks are worth (`factionPerk`). */
 export interface Faction {
-  /** `Fctnme`: 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
-  id: 0 | 1 | 2 | 3;
-  f1Bonus: number;
-  f2Bonus: number;
-  f3Bonus: number;
+  /** The faction's key (`social.json` `factions[].key`), or null for none. 1.6's `Fctnme`. */
+  key: string | null;
+  /** The tier its faction's power gives (`factionBonus`); 1.6's faction bonus. 0 for none. */
+  tier: number;
 }
 
-export const NO_FACTION: Faction = { id: 0, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+export const NO_FACTION: Faction = { key: null, tier: 0 };
 
 export interface Fighter {
   level: number;

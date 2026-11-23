@@ -10,28 +10,32 @@
  * - Spell collisions; the monster hit effects; the monster death check; the radar; the
  *   experience-band text; Create Food.
  */
-import type { Spell, SpellFx, SpellSummon } from "@secondstaronline/data";
+import type {
+  MonsterFlags,
+  Spell,
+  SpellCreates,
+  SpellFx,
+  SpellSummon,
+} from "@secondstaronline/data";
 
 import { content, onContent } from "../../content/store.ts";
 import { slotItem } from "../combat/armour.ts";
+import { applyTierRow } from "../combat/attpower.ts";
 import { gearBonus } from "../combat/gear.ts";
-import {
-  boundSkillIndex,
-  boundSkillValue,
-  type Equipment,
-  type Faction,
-  findSkillIndex,
-  skillValue,
-} from "../core/fighter.ts";
+import { boundSkillIndex, type Equipment, type Faction, findSkillIndex } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { firstMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 import { crystalColour } from "../inventory/inventory.ts";
+import { flagHasEffect } from "../monsters/flags.ts";
 import type { Facing } from "../movement/movement.ts";
 import { mageSkillCap } from "../progression/skillgain.ts";
+import { factionPerk } from "../social/factions.ts";
 import { PLAYFIELD_RECT } from "./spellfx.ts";
 
 export interface SpellTable {
   byName(name: string): Spell | null;
+  /** The spell one of whose FX runs has this member base, or null. */
+  ofFx(member: string): Spell | null;
   castEffect(spell: string): string;
   fxRun(member: string): SpellFx | null;
   fxEffect(name: string): string;
@@ -47,13 +51,16 @@ export interface SpellTable {
 export function spellTable(rows: readonly Spell[]): SpellTable {
   const byNameMap = new Map<string, Spell>();
   const byFxMember = new Map<string, SpellFx>();
+  const spellOfFx = new Map<string, Spell>();
   for (const s of rows) {
     byNameMap.set(s.name.toLowerCase(), s);
     for (const f of s.fx) {
       byFxMember.set(f.member.toLowerCase(), f);
+      spellOfFx.set(f.member.toLowerCase(), s);
     }
   }
   const byName = (name: string): Spell | null => byNameMap.get(name.toLowerCase()) ?? null;
+  const ofFx = (member: string): Spell | null => spellOfFx.get(member.toLowerCase()) ?? null;
   const castEffect = (spell: string): string => byName(spell)?.effect ?? spell;
   const fxRun = (member: string): SpellFx | null => byFxMember.get(member.toLowerCase()) ?? null;
   const fxEffect = (name: string): string => {
@@ -74,7 +81,7 @@ export function spellTable(rows: readonly Spell[]): SpellTable {
     }
     return f.member;
   };
-  return { byName, castEffect, fxRun, fxEffect, fxForEffect };
+  return { byName, ofFx, castEffect, fxRun, fxEffect, fxForEffect };
 }
 
 /** The table over the installed store's spells, rebuilt on every install. */
@@ -82,6 +89,8 @@ let defaultTable: SpellTable;
 
 /** A spell by any case of its name, or null. */
 export const spellByName = (name: string): Spell | null => defaultTable.byName(name);
+/** The spell that owns an FX run member base ("FireballL", "Minor Heal"), or null. */
+export const spellOfFx = (member: string): Spell | null => defaultTable.ofFx(member);
 /** The 1.6 spell whose effect code `spell` runs (unknown names: `spell` unchanged). */
 export const castEffect = (spell: string): string => defaultTable.castEffect(spell);
 /** An FX run by any case of its member base, or null. */
@@ -191,174 +200,87 @@ export interface Caster {
   skills: readonly number[];
   equip: Equipment;
   faction: Faction;
+  /** The character level, for a power row that reads `level`. Absent: 0. */
+  level?: number;
 }
 
-const skill = (c: Caster, name: string) => skillValue(c.skills, name);
+/** What a power row's condition reads. */
+const reader = (c: Caster) => ({ skills: c.skills, level: c.level ?? 0 });
 
-/** The base power, starting from 1. */
-export function basePower(c: Caster): number {
+/**
+ * The dice for a power row's `random(n)`. No Classic row rolls, so the cast passes none by default
+ * and a row that does roll (an operator's) draws from the cast's dice.
+ */
+const NO_DICE: Rng = {
+  random: () => {
+    throw new Error("spell power: a power row rolled with no dice");
+  },
+};
+
+/**
+ * The base power: 1, then `spells.json` `power.base` rows (Classic: +1 for each tier of Magery
+ * over 10, 20 … 90), the caster's faction perk `spellPower` and their worn spell gear.
+ */
+export function basePower(c: Caster, rng: Rng = NO_DICE): number {
   let p = 1;
-  const magery = boundSkillValue(c.skills, "magery");
-  for (const t of [10, 20, 30, 40, 50, 60, 70, 80, 90]) {
-    if (magery > t) {
-      p += 1;
-    }
+  for (const t of content().spells.power.base) {
+    p = applyTierRow(p, t, reader(c), rng);
   }
-  if (c.faction.id === 1) {
-    p += c.faction.f1Bonus;
-  }
+  p += factionPerk(c.faction, "spellPower");
   p += gearBonus(c.equip, "spell");
   return p;
 }
 
-/** The Wrath, Blessing and Illusion bonuses: +2 at > 0, then +1 per tier. */
-function tiered(v: number): number {
-  let p = v > 0 ? 2 : 0;
-  for (const t of [10, 20, 30, 50, 70, 80, 90, 97]) {
-    if (v > t) {
-      p += 1;
+/**
+ * The spell power for the spell named `spell` ("Fireball", "Wind Wave", "Bolt"): the base power,
+ * then the rows of the spell's `power` table and its gear power (Classic: the school skill's
+ * tiers; Smoke Bomb's Martial Arts rows replace the power). The caller works it out before renaming
+ * the spell to its directional form (a bug fixed: 1.6 renamed Fireball and Wind Wave first, so
+ * they never matched their school).
+ */
+export function spellPower(spell: string, c: Caster, rng: Rng = NO_DICE): number {
+  let p = basePower(c, rng);
+  const name = spellByName(spell)?.power;
+  const table = name === undefined ? undefined : content().spells.power.tables[name];
+  if (table) {
+    for (const t of table.tiers) {
+      p = applyTierRow(p, t, reader(c), rng);
+    }
+    if (table.gear) {
+      p += gearBonus(c.equip, table.gear);
     }
   }
-  return p;
+  return clampPower(p);
 }
 
-/** The Black Arts bonus. */
-function blackArts(c: Caster): number {
-  let p = 0;
-  for (const t of [10, 20, 30, 70, 90]) {
-    if (skill(c, "BlackArts") > t) {
-      p += 1;
-    }
-  }
-  p += gearBonus(c.equip, "blackArts");
-  return p;
-}
+/** The highest spell power a cast can have. */
+export const MAX_SPELL_POWER = 100_000;
 
 /**
- * The Water, Earth, Fire and Wind bonuses: for the matching elemental mage class, +1 per
- * element-bonus tier over 10, 20 … 190, which adds nothing in 1.6 since nothing sends an element
- * bonus (read as 0); then the skill: +2, +1, +1, +1, +1, +1, +2, +4.
+ * Spell power stays from 0 to `MAX_SPELL_POWER`, so content can never make a harmful spell heal
+ * (Firebolt and Splash take no defence floor) or overflow. Classic's powers are always within it.
  */
-function elemental(c: Caster, skillName: string): number {
-  let p = 0;
-  const v = skill(c, skillName);
-  const steps: [number, number][] = [
-    [0, 2],
-    [10, 1],
-    [20, 1],
-    [30, 1],
-    [50, 1],
-    [70, 1],
-    [80, 2],
-    [97, 4],
-  ];
-  for (const [t, add] of steps) {
-    if (v > t) {
-      p += add;
-    }
-  }
-  return p;
-}
-
-/** The Martial Arts bonus: replaces the power; the last true row wins. */
-function martialArts(c: Caster): number {
-  const ma = skill(c, "MartialArts");
-  let p = 1;
-  const rows: [number, number][] = [
-    [101, 500],
-    [90, 350],
-    [80, 200],
-    [70, 100],
-    [60, 70],
-    [50, 60],
-    [40, 55],
-    [30, 45],
-    [20, 35],
-    [10, 25],
-  ];
-  for (const [lt, v] of rows) {
-    if (ma < lt) {
-      p = v;
-    }
-  }
-  p += gearBonus(c.equip, "martialArts");
-  return p;
-}
-
-/**
- * The spell power for `spell` by its base name ("Fireball", "Wind Wave", "Bolt"). The caller works
- * it out before renaming the spell to its directional form (a bug fixed: 1.6 renamed Fireball and
- * Wind Wave first, so they never matched their school).
- */
-export function spellPower(spell: string, c: Caster): number {
-  let p = basePower(c);
-  const is = (n: string) => lingoEq(spell, n);
-  if (is("Minor Heal")) {
-    p += tiered(skill(c, "Blessing"));
-  }
-  if (is("Smoke Bomb")) {
-    p = martialArts(c);
-  }
-  for (const n of ["Major Heal", "Bless", "Haste", "Diminish Hunger"]) {
-    if (is(n)) {
-      p += tiered(skill(c, "Blessing"));
-    }
-  }
-  for (const n of ["Meteor", "Radar", "Bolt", "Magic Shield"]) {
-    if (is(n)) {
-      p += tiered(skill(c, "Wrath"));
-    }
-  }
-  for (const n of ["Morph", "Illusionary Spikes"]) {
-    if (is(n)) {
-      p += tiered(skill(c, "Illusion"));
-    }
-  }
-  if (is("Splash")) {
-    p += elemental(c, "Water");
-  }
-  for (const n of ["Crush", "Stone Skin"]) {
-    if (is(n)) {
-      p += elemental(c, "Earth");
-    }
-  }
-  for (const n of ["Fireball", "Firesword", "Firebolt"]) {
-    if (is(n)) {
-      p += elemental(c, "Fire");
-    }
-  }
-  for (const n of ["Whirlwind", "wind wave"]) {
-    if (is(n)) {
-      p += elemental(c, "Wind");
-    }
-  }
-  for (const n of ["Hold", "Raise Dead", "Weaken"]) {
-    if (is(n)) {
-      p += blackArts(c);
-    }
-  }
-  return p;
-}
-
-/**
- * The body number of a monster member name (`"<body>-<frame>-<facing>"`). The original tested the
- * member name for text such as `"45-"`, so a Shark (body 445) took Firebolt and Fireball as a
- * Ghoul (body 45) does; SSO compares the number (a bug fixed).
- */
-export function memberBody(member: string): number {
-  return Number.parseInt(member, 10);
+function clampPower(p: number): number {
+  return Number.isFinite(p) ? Math.max(0, Math.min(MAX_SPELL_POWER, p)) : 0;
 }
 
 /**
  * What a spell effect does to a monster, in the original's monster hit check: the cascade of
  * independent `if`s on the effect's member name, where the last true branch wins, so a later branch
- * overwrites an earlier one. `member` is the FX member name, `body` the monster's body member name,
+ * overwrites an earlier one. `member` is the FX member name, `flags` the monster's species flags,
  * `defense` its defense (`defenseOf`), `P` the FX's power. Draws in source order. Returns the
  * amount, whether it heals, and whether the splat shows; null when no branch hit.
+ *
+ * The species flags decide what 1.6 decided by body number: `hurtByHealing` (body 61), `dispellable`
+ * (90), `healedBy` (Splash 36, Crush 47, Firebolt 45) and `resists` (Fireball 45). 1.6 tested the
+ * member name for text such as `"45-"`, so a Shark (body 445) took Firebolt and Fireball as a Ghoul
+ * (body 45) does; SSO reads the species (a bug fixed). An effect a species is healed by heals by its
+ * heal amount where 1.6 had one, else by its damage; a resisted hit rolls its damage, then deals
+ * `random(3)`.
  */
 export function spellHitOnMonster(
   member: string,
-  body: string,
+  flags: MonsterFlags,
   defense: number,
   P: number,
   rng: Rng,
@@ -366,6 +288,17 @@ export function spellHitOnMonster(
   const is = (n: string) => lingoEq(member, n);
   const r = rng;
   let hit: { n: number; heal: boolean; splat: boolean } | null = null;
+  /** A harmful effect's hit: `damage`, or for a species it heals, `heals` (else `damage`). */
+  const strike = (effect: string, damage: () => number, heals?: () => number) => {
+    if (flagHasEffect(flags.healedBy, effect)) {
+      return { n: (heals ?? damage)(), heal: true, splat: true };
+    }
+    let n = damage();
+    if (flagHasEffect(flags.resists, effect)) {
+      n = r.random(3);
+    }
+    return { n, heal: false, splat: true };
+  };
   if (lingoContains(member, " Arrows")) {
     let n = P - defense;
     if (n < 1) {
@@ -373,7 +306,7 @@ export function spellHitOnMonster(
     }
     hit = { n, heal: false, splat: true };
   }
-  const undead = memberBody(body) === 61;
+  const undead = flags.hurtByHealing === true;
   if (is("minor heal-3")) {
     hit = undead
       ? { n: 1 + P + r.random(2), heal: false, splat: true }
@@ -384,44 +317,44 @@ export function spellHitOnMonster(
       ? { n: 5 + P + r.random(5), heal: false, splat: true }
       : { n: 15 + P + r.random(10), heal: true, splat: false };
   }
-  for (const n of ["meteor-13", "BoltL-1", "BoltR-1", "BoltU-1", "BoltD-1", "meteor-19"]) {
+  for (const n of ["meteor-13", "meteor-19"]) {
     if (is(n)) {
-      hit = { n: 15 + P + r.random(3), heal: false, splat: true };
+      hit = strike("Meteor", () => 15 + P + r.random(3));
     }
   }
-  if (memberBody(body) === 90 && is("Dispel Illusions-8")) {
+  for (const n of ["BoltL-1", "BoltR-1", "BoltU-1", "BoltD-1"]) {
+    if (is(n)) {
+      hit = strike("Bolt", () => 15 + P + r.random(3));
+    }
+  }
+  if (flags.dispellable === true && is("Dispel Illusions-8")) {
     hit = { n: 2000, heal: false, splat: true };
   }
   if (is("splash-18")) {
-    hit =
-      memberBody(body) === 36
-        ? { n: 10 + P + r.random(5), heal: true, splat: true }
-        : { n: 20 + P + r.random(3), heal: false, splat: true };
+    hit = strike(
+      "Splash",
+      () => 20 + P + r.random(3),
+      () => 10 + P + r.random(5),
+    );
   }
   if (is("crush-18")) {
-    hit =
-      memberBody(body) === 47
-        ? { n: 8 + P + r.random(3), heal: true, splat: true }
-        : { n: 6 + P + r.random(3), heal: false, splat: true };
+    hit = strike(
+      "Crush",
+      () => 6 + P + r.random(3),
+      () => 8 + P + r.random(3),
+    );
   }
   if (is("Firebolt-12")) {
-    hit =
-      memberBody(body) === 45
-        ? { n: 6 + P + r.random(3), heal: true, splat: true }
-        : { n: 6 + P + r.random(3), heal: false, splat: true };
+    hit = strike("Firebolt", () => 6 + P + r.random(3));
   }
   for (const n of ["FireballL-1", "FireballR-1", "FireballU-1", "FireballD-1"]) {
     if (is(n)) {
-      let dmg = 4 + P + r.random(3);
-      if (memberBody(body) === 45) {
-        dmg = r.random(3);
-      }
-      hit = { n: dmg, heal: false, splat: true };
+      hit = strike("Fireball", () => 4 + P + r.random(3));
     }
   }
   for (const n of ["Wind waveL-1", "wind waveR-1", "wind waveU-1", "wind waveD-1"]) {
     if (is(n)) {
-      hit = { n: 2 + P + r.random(5), heal: false, splat: true };
+      hit = strike("Wind Wave", () => 2 + P + r.random(5));
     }
   }
   return hit;
@@ -566,46 +499,6 @@ export function castMageCap(f: Faction): number {
 }
 
 /**
- * The school rows after Magery, matched against the base spell name (`baseSpell`), the match, the
- * skill, its cap and the line.
- */
-const SCHOOL_ROWS: { spell: string; match: "=" | "contains"; skill: string; text: string }[] = [
-  { spell: "Minor Heal", match: "=", skill: "Blessing", text: "blessing" },
-  { spell: "Major Heal", match: "=", skill: "Blessing", text: "blessing" },
-  { spell: "Replenish", match: "=", skill: "Blessing", text: "blessing" },
-  { spell: "Diminish Hunger", match: "=", skill: "Blessing", text: "blessing" },
-  { spell: "Smoke Bomb", match: "=", skill: "MartialArts", text: "Martial Arts" },
-  { spell: "Radar", match: "=", skill: "Wrath", text: "Wrath" },
-  { spell: "Meteor", match: "=", skill: "Wrath", text: "Wrath" },
-  { spell: "Magic Shield", match: "=", skill: "Wrath", text: "Wrath" },
-  { spell: "Bolt", match: "=", skill: "Wrath", text: "Wrath" },
-  { spell: "Morph", match: "=", skill: "Illusion", text: "illusion" },
-  { spell: "Web", match: "=", skill: "Wizardry", text: "Wizardry" },
-  { spell: "Illusionary Spikes", match: "=", skill: "Illusion", text: "illusion" },
-  { spell: "Firesword", match: "contains", skill: "Fire", text: "Fire" },
-  { spell: "Fireball", match: "contains", skill: "Fire", text: "Fire" },
-  { spell: "Firebolt", match: "=", skill: "Fire", text: "Fire" },
-  { spell: "Splash", match: "=", skill: "Water", text: "Water" },
-  { spell: "Earth Shift", match: "=", skill: "Earth", text: "Earth" },
-  { spell: "Raise Dead", match: "=", skill: "BlackArts", text: "" },
-  { spell: "Hold", match: "=", skill: "BlackArts", text: "" },
-  { spell: "Summon Creature", match: "=", skill: "Sorcery", text: "Sorcery" },
-  { spell: "Holy Shield", match: "=", skill: "Blessing", text: "Blessing" },
-  { spell: "Dispel Illusions", match: "=", skill: "Wizardry", text: "Wizardry" },
-  { spell: "Stone Skin", match: "=", skill: "Earth", text: "Earth" },
-  { spell: "Crush", match: "=", skill: "Earth", text: "Earth" },
-  { spell: "Wind Wave", match: "=", skill: "Wind", text: "Wind" },
-  { spell: "Whirlwind", match: "=", skill: "Wind", text: "Wind" },
-];
-
-/** The advance line for a school row. Black Arts reads "in the Black Arts!" */
-function impText(row: { skill: string; text: string }): string {
-  return row.skill === "BlackArts"
-    ? "You have advanced in the Black Arts!"
-    : `You have advanced in the art of ${row.text}!`;
-}
-
-/**
  * The base spell of a directional cast name: "FireballL", "BoltR" and "Wind waveU" read as
  * "Fireball", "Bolt" and "Wind Wave"; any other name is unchanged.
  */
@@ -619,18 +512,31 @@ export function baseSpell(name: string): string {
 }
 
 /**
+ * The school a cast message trains: the `school` of the spell that owns the FX run (or, for a bare
+ * directional spell's name such as "Bolt", the spell of that name), when the run is the one its
+ * effect is cast with (a spell's other runs, such as Smoke Bomb's puff, train none).
+ */
+function castSchool(member: string, eff: string, cast: string | undefined) {
+  const spell = cast === undefined ? (spellOfFx(member) ?? spellByName(member)) : spellByName(cast);
+  return spell && lingoEq(eff, spell.effect) ? (spell.school ?? null) : null;
+}
+
+/**
  * The cast skill gain for your own cast: Magery `random(Magery) = 1` while 0 < Magery < the Mage
- * skill cap, then each matching school row the same way (Martial Arts up to 100). Raises the skills
- * in place and returns the lines, in order. A directional name trains its base spell's school (a
- * bug fixed: 1.6 compared "BoltR" and "Wind waveR" with "Bolt" and "Wind Wave", so they never
- * trained). The "Music" row (Musicianship) is not built: only the unreachable composer sends a
- * "Music" cast, so Musicianship never rises in 1.6.
+ * skill cap, then the spell's school the same way, below its own cap or the Mage cap (Classic:
+ * Smoke Bomb trains Martial Arts up to 100). Raises the skills in place and returns the lines, in
+ * order. A directional name trains its base spell's school (a bug fixed: 1.6 compared "BoltR" and
+ * "Wind waveR" with "Bolt" and "Wind Wave", so they never trained). The "Music" row
+ * (Musicianship) is not built: only the unreachable composer sends a "Music" cast, so Musicianship
+ * never rises in 1.6.
  */
 export function spellImp(
   spellName: string,
   skills: number[],
   faction: Faction,
   rng: Rng,
+  /** The spell the player cast, when known: its school, whichever spell's FX it ran. */
+  cast?: string,
 ): string[] {
   const eff = baseSpell(fxEffect(spellName));
   if (IMP_EXITS.some((x) => lingoContains(eff, x))) {
@@ -650,11 +556,9 @@ export function spellImp(
     }
   };
   roll(boundSkillIndex("magery"), cap, "You have advanced in the art of magery!");
-  for (const row of SCHOOL_ROWS) {
-    const hit = row.match === "=" ? lingoEq(eff, row.spell) : lingoContains(eff, row.spell);
-    if (hit) {
-      roll(findSkillIndex(row.skill), row.skill === "MartialArts" ? 100 : cap, impText(row));
-    }
+  const school = castSchool(spellName, eff, cast);
+  if (school) {
+    roll(findSkillIndex(school.skill), school.cap ?? cap, school.line);
   }
   return lines;
 }
@@ -829,23 +733,28 @@ export function inxitionText(name: string, expNeeded: number, exp: number): stri
   return `${name}${t}`;
 }
 
-/** Create Food: the item and its line. */
+/**
+ * Create Food: one of the spell's `creates` items at random, and its line. A spell with none makes
+ * nothing and draws nothing.
+ */
 export function createFood(
   filledBagLines: number,
+  creates: readonly SpellCreates[],
   rng: Rng,
-): { item: string | null; text: string } {
-  const food = ["Apple", "Pie", "Corn", "Fish", "Ale"][rng.random(5) - 1] ?? "Apple";
+): { item: string | null; text: string | null } {
+  if (creates.length === 0) {
+    return { item: null, text: null };
+  }
+  const pick = creates[rng.random(creates.length) - 1] ?? creates[0];
+  const food = pick?.item ?? "";
   if (filledBagLines > 14) {
     return {
       item: null,
       text: `The ${food} appears briefly but then vanishes because you're carrying too much.`,
     };
   }
-  const text =
-    food === "Apple"
-      ? `Suddenly, an ${food} appears in your inventory.`
-      : `Suddenly, ${food} appears in your inventory.`;
-  return { item: food, text };
+  const named = pick?.article ? `${pick.article} ${food}` : food;
+  return { item: food, text: `Suddenly, ${named} appears in your inventory.` };
 }
 
 onContent((c) => {

@@ -22,6 +22,7 @@
 import {
   BLEND_LEVELS,
   type Brush,
+  boxTicked,
   clickFaction,
   clickLayer,
   content,
@@ -187,7 +188,7 @@ export function createWorldEditor(
   let npcSel = "";
   let monSel = "";
   let itemSel = "";
-  let faction: FactionBoxes = { w: false, m: false, a: false };
+  let faction: FactionBoxes = null;
   const flags = { safe: false, noPvp: false, indoor: false };
   let exit1: ExitFields = [...EMPTY_EXIT_FIELDS];
   let exit2: ExitFields = [...EMPTY_EXIT_FIELDS];
@@ -423,13 +424,13 @@ export function createWorldEditor(
     flags.indoor = !flags.indoor;
   });
   const fW = box("Faction W", 150, { x: 671, y: 505, w: 14, h: 14 }, () => {
-    faction = clickFaction(faction, "w");
+    faction = clickFaction(faction, 0);
   });
   const fM = box("Faction M", 151, { x: 715, y: 505, w: 14, h: 14 }, () => {
-    faction = clickFaction(faction, "m");
+    faction = clickFaction(faction, 1);
   });
   const fA = box("Faction A", 152, { x: 756, y: 505, w: 14, h: 14 }, () => {
-    faction = clickFaction(faction, "a");
+    faction = clickFaction(faction, 2);
   });
   const drawBoxes = () => {
     const set = (img: HTMLImageElement, on: boolean) => {
@@ -438,9 +439,9 @@ export function createWorldEditor(
     set(safeImg, flags.safe);
     set(pvpImg, flags.noPvp);
     set(indoorImg, flags.indoor);
-    set(fW, faction.w);
-    set(fM, faction.m);
-    set(fA, faction.a);
+    set(fW, boxTicked(faction, 0));
+    set(fM, boxTicked(faction, 1));
+    set(fA, boxTicked(faction, 2));
   };
 
   // ---- lists --------------------------------------------------------------------------------
@@ -463,6 +464,8 @@ export function createWorldEditor(
   add(itemList.box, { x: 243, y: 513, w: 110, h: 60 }, 72);
   // A publish can change what the editor places: the lists follow the content store.
   onContent(() => {
+    // The faction boxes follow `factionRules.editorBoxes`.
+    drawBoxes();
     npcList.set(EDITOR_NPCS);
     monList.set(EDITOR_MONSTERS);
     itemList.set(EDITOR_ITEMS);

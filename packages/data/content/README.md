@@ -14,17 +14,17 @@ For modding workflows, rule precedence, and worked examples, see the [Modding gu
 | `attpower.json`, `item-rules.json` | weapon power; the item rules: item behaviours, equip, use, armour, breaks, the item menu, the paperdoll, ground items, containers, gear bonuses, the swing | combat, inventory, spells, the paperdoll |
 | `classes.json` | classes, their stat bonuses and promotions, the skills (keyed by `skill`, with their `display` names and `hidden` marks), the start classes and their starting skills, the skills each weapon trains on a kill | creation, promotion, skill gain, the Skills tab |
 | `bindings.json` | what the engine needs a world to name: the currency, a new character's vitals and bag, the cannon's ammo, the special bodies and the skills its mechanics read; a binding left out turns its mechanic off (the currency is required) | the purse and gold piles, creation, the cannon, Morph, Nature Shift, Smoke Bomb, vehicles, combat, spells, gathering, crafting |
-| `monsters.json` | monster stats, `editorLists`, name-matched `rules`, `casting`, melee affinities, skill caps, `generic` | the monster, combat, quest and editor systems |
-| `spells.json` | spell rows: cost, crystals, harmful, book, Info, summon, FX runs with frames and sounds; `effect` | spells, client audio, spellbook |
+| `monsters.json` | monster stats and species `flags`, `editorLists`, name-matched `rules`, `casting`, melee affinities, skill caps, `generic` | the monster, combat, quest and editor systems |
+| `spells.json` | spell rows: cost, crystals, harmful, book, Info, summon, school, power table, Create Food's items, FX runs with frames and sounds; `effect`; the `power` tables | spells, client audio, spellbook |
 | `gather.json`, `craft.json` | gathering and crafting tables | gathering, crafting |
 | `houses.json` | house types, placement, doors and keys | housing |
-| `social.json` | factions, guilds, chat rooms, Bios, medals, mail, boards, art tools | the social systems |
+| `social.json` | factions (keyed by `key`, with their perks by tier), guilds, chat rooms, Bios, medals, mail, boards, art tools | the social systems |
 | `casino.json`, `quests.json`, `help.json` | the casino tables, quest pools, help topics | casino, quests, help |
 | `npc-files.json` | each NPC script `<Name>.txt` as one string (lines joined by CR) | the NPC file store |
 | `pack.json` | the Classic pack's id, name, version, format, the SSO release it targets and its content hash | the data build (it bumps the version when the hash changes) |
 
 - **NPC files** are loaded at every server start as the base NPC store, not only when seeding. The in-game NPC Editor saves its edits to the `npc_files` table, which the server applies on top of this file (`packages/server/src/systems/monsters/npcfiles.ts`), so on a running server an edit here shows wherever the database has no saved version of that NPC.
-- **Fixed sizes.** Lists may grow, except where the code or the art needs a count: a map is 12 rows of 17 tokens in 4 layers, there are 3 factions, 5 chat rooms, 4 paint tools, 24 checkers squares, and the Bio strip has room for 14 medals.
+- **Fixed sizes.** Lists may grow, except where the code or the art needs a count: a map is 12 rows of 17 tokens in 4 layers, the World Editor has 3 faction boxes, there are 5 chat rooms, 4 paint tools, 24 checkers squares, and the Bio strip has room for 14 medals.
 - **Release baseline rows** are fingerprinted in `../tests/content-baseline.json`; `content-baseline.test.ts` detects changed, removed or reordered baseline rows. Review intentional changes and update the affected fingerprints and behavior docs.
 ## Commands
 

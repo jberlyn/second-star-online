@@ -1,6 +1,6 @@
 /**
  * Schema for the social tables `data:build` emits from `packages/data/content/social.json`:
- * the three factions, their texts and rules, the murder flag's lines, the quest replies,
+ * the factions, their perks, texts and rules, the murder flag's lines, the quest replies,
  * Assassin's game, guilds, IM, rooms and ignore, and buddies, bios, profiles and medals.
  * Texts keep 1.6's wording; `{NAME}`, `{NPC}` and `{ITEM}` stand for the names they are built from.
  *
@@ -9,13 +9,55 @@ import { z } from "zod";
 
 const rule = z.string().min(1);
 
+/**
+ * What a faction does for its members, each by tier (`values[tier]`; a tier past the end reads the
+ * last value). The kinds are engine: what each one changes is fixed, how much is content.
+ */
+export const FACTION_PERKS = [
+  /** Added to spell power. */
+  "spellPower",
+  /** Added to melee attack power. */
+  "melee",
+  /** Taken off the damage a member takes, from players and monsters. */
+  "defence",
+  /** The kill skill gain's skill cap. */
+  "skillCap",
+  /** The Mage skill cap: Magery, the spell schools, Staff Fighting and Unholy Combat. */
+  "mageCap",
+  /** Frames taken off the HP and SP regeneration period. */
+  "regeneration",
+  /** Taken off the parry roll against a player's swing (lower parries more). */
+  "pvpParry",
+  /** Taken off the block roll against a player's swing. */
+  "pvpBlock",
+  /** Taken off the parry and block rolls against a monster. */
+  "monsterDodge",
+] as const;
+export type FactionPerkKind = (typeof FACTION_PERKS)[number];
+
+export const factionPerkSchema = z.strictObject({
+  kind: z.enum(FACTION_PERKS),
+  values: z.array(z.number().int()).min(1),
+});
+
 export const factionSchema = z.strictObject({
-  /** Faction id: 1 Mage, 2 Warrior, 3 Adventurer. */
-  id: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  /** The faction's permanent key, which characters and maps save (Classic: mage, warrior, adventurer). */
+  key: z
+    .string()
+    .min(1)
+    .max(40)
+    .regex(/^[A-Za-z][A-Za-z0-9_-]*$/),
   name: z.string().min(1),
   leader: z.string().min(1),
-  /** The head a member drops and a rival leader takes. */
+  /** The head a member drops and a rival leader takes (the item, matched exactly). */
   head: z.string().min(1),
+  /** The species a map's faction spawn puts in a slot (Classic: "Mage Faction Member"). */
+  member: z.string().min(1),
+  /** The faction's power on a server that has saved none for it. */
+  startPower: z.number().int(),
+  /** The faction line of a member's Bio. */
+  bio: z.string(),
+  perks: z.array(factionPerkSchema),
   /** A join needs `HPmax > joinHpMaxAbove`. */
   joinHpMaxAbove: z.number().int(),
   /** Loyalty counter set on joining, in frames. */
@@ -197,9 +239,6 @@ export const biosSchema = z.strictObject({
     "windowTitle",
     "leader",
     "member",
-    "mages",
-    "warriors",
-    "adventurers",
     "murderer",
     "name",
     "class",
@@ -362,61 +401,106 @@ export const newspaperSchema = z.strictObject({
   }),
 });
 
-export const socialDataSchema = z.strictObject({
-  // Three factions: FactionId, the faction bonuses in the rules and the database CHECK (0-3).
-  factions: z.array(factionSchema).length(3),
-  factionRules: z.strictObject({
-    loyaltyPerFrame: z.strictObject({ rule }),
-    headDrop: z.strictObject({ rule }),
-    exile: z.strictObject({ rule }),
-    loginJoin: z.strictObject({ rule }),
-    turnIn: z.strictObject({
-      rule,
-      ownHead: z.string(),
-      rivalHead: z.string(),
-      missingPowers: z.string(),
+export const socialDataSchema = z
+  .strictObject({
+    factions: z.array(factionSchema).superRefine((rows, ctx) => {
+      const keys = new Set<string>();
+      rows.forEach((f, i) => {
+        if (keys.has(f.key.toLowerCase())) {
+          ctx.addIssue({ code: "custom", path: [i, "key"], message: `duplicate faction ${f.key}` });
+        }
+        keys.add(f.key.toLowerCase());
+        const kinds = new Set<string>();
+        f.perks.forEach((p, j) => {
+          if (kinds.has(p.kind)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [i, "perks", j, "kind"],
+              message: `duplicate perk ${p.kind}`,
+            });
+          }
+          kinds.add(p.kind);
+        });
+      });
     }),
-    sayFaction: z.strictObject({
-      rule,
-      fine: z.string(),
-      weak: z.string(),
-      absolute: z.string(),
+    factionRules: z.strictObject({
+      /**
+       * A member's tier from its faction's power: `top`, then each row whose `below` the power is
+       * under sets its `tier`, the last one winning.
+       */
+      tiers: z.strictObject({
+        top: z.number().int().nonnegative(),
+        below: z.array(
+          z.strictObject({ below: z.number().int(), tier: z.number().int().nonnegative() }),
+        ),
+      }),
+      /** A perk's value for anyone whose faction has no such perk, or who is in none. Absent = 0. */
+      perkDefaults: z.partialRecord(z.enum(FACTION_PERKS), z.number().int()),
+      /** The factions the World Editor's three spawn boxes pick, in box order (W, M, A in Classic). */
+      editorBoxes: z.array(z.string().min(1)).max(3),
+      loyaltyPerFrame: z.strictObject({ rule }),
+      headDrop: z.strictObject({ rule }),
+      exile: z.strictObject({ rule }),
+      loginJoin: z.strictObject({ rule }),
+      turnIn: z.strictObject({
+        rule,
+        ownHead: z.string(),
+        rivalHead: z.string(),
+        missingPowers: z.string(),
+      }),
+      sayFaction: z.strictObject({
+        rule,
+        fine: z.string(),
+        weak: z.string(),
+        absolute: z.string(),
+      }),
     }),
-    powers: z.strictObject({ file: z.string(), archived: z.string() }),
-  }),
-  murder: z.strictObject({
-    wanted: z.strictObject({ text: z.string(), sender: z.string() }),
-    pardoned: z.strictObject({ text: z.string(), sender: z.string() }),
-    pardoning: z.strictObject({ text: z.string(), rule }),
-    flagRule: z.strictObject({ rule }),
-  }),
-  questReplies: z.strictObject({
-    give: z.strictObject({
-      rule,
-      thanks: z.string(),
-      sorry: z.string(),
-      lines: z.number().int().positive(),
+    murder: z.strictObject({
+      wanted: z.strictObject({ text: z.string(), sender: z.string() }),
+      pardoned: z.strictObject({ text: z.string(), sender: z.string() }),
+      pardoning: z.strictObject({ text: z.string(), rule }),
+      flagRule: z.strictObject({ rule }),
     }),
-    oraku: z.strictObject({
-      npc: z.string(),
-      item: z.string(),
-      reward: z.string(),
-      text: z.string(),
+    questReplies: z.strictObject({
+      give: z.strictObject({
+        rule,
+        thanks: z.string(),
+        sorry: z.string(),
+        lines: z.number().int().positive(),
+      }),
+      oraku: z.strictObject({
+        npc: z.string(),
+        item: z.string(),
+        reward: z.string(),
+        text: z.string(),
+      }),
+      say: z.strictObject({ rule, bring: z.string(), nothing: z.string() }),
     }),
-    say: z.strictObject({ rule, bring: z.string(), nothing: z.string() }),
-  }),
-  assassin: assassinSchema,
-  highScores: highScoresSchema,
-  guilds: guildsSchema,
-  chat: chatSchema,
-  buddies: buddiesSchema,
-  bios: biosSchema,
-  medals: medalsSchema,
-  mail: mailSchema,
-  boards: boardsSchema,
-  art: artSchema,
-  newspaper: newspaperSchema,
-});
+    assassin: assassinSchema,
+    highScores: highScoresSchema,
+    guilds: guildsSchema,
+    chat: chatSchema,
+    buddies: buddiesSchema,
+    bios: biosSchema,
+    medals: medalsSchema,
+    mail: mailSchema,
+    boards: boardsSchema,
+    art: artSchema,
+    newspaper: newspaperSchema,
+  })
+  .superRefine((data, ctx) => {
+    const keys = new Set(data.factions.map((f) => f.key.toLowerCase()));
+    data.factionRules.editorBoxes.forEach((k, i) => {
+      if (!keys.has(k.toLowerCase())) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["factionRules", "editorBoxes", i],
+          message: `editorBoxes names no faction ${JSON.stringify(k)}`,
+        });
+      }
+    });
+  });
 
 export type Faction = z.infer<typeof factionSchema>;
+export type FactionPerk = z.infer<typeof factionPerkSchema>;
 export type SocialData = z.infer<typeof socialDataSchema>;

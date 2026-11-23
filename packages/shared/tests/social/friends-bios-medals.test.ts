@@ -144,7 +144,7 @@ const base: BioSource = {
   hpMax: 40,
   spMax: 25,
   guild: null,
-  faction: 0,
+  faction: null,
   wanted: false,
   body: null,
   tree: false,
@@ -195,7 +195,7 @@ describe("bios", () => {
     const items = giveBio({
       ...base,
       guild: { name: "Knights", leader: true },
-      faction: 1,
+      faction: "mage",
       wanted: true,
     });
     expect(items).toEqual([
@@ -231,7 +231,7 @@ describe("bios", () => {
 
   test("a member, the Warriors and Adventurers, and empty lines left out", () => {
     const d = drawProfile(
-      giveBio({ ...base, sex: 2, guild: { name: "Knights", leader: false }, faction: 2 }),
+      giveBio({ ...base, sex: 2, guild: { name: "Knights", leader: false }, faction: "warrior" }),
       "Bob",
     );
     expect(d.bio).toEqual([
@@ -242,7 +242,7 @@ describe("bios", () => {
       "Member of the Knights",
       "Loyal to the Warriors",
     ]);
-    expect(drawProfile(giveBio({ ...base, faction: 3 }), "x").bio.at(-1)).toBe(
+    expect(drawProfile(giveBio({ ...base, faction: "adventurer" }), "x").bio.at(-1)).toBe(
       "Loyal to the Adventurers",
     );
   });

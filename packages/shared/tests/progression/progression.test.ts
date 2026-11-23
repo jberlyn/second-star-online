@@ -86,10 +86,10 @@ describe("level-up", () => {
 });
 
 describe("regen", () => {
-  test("no Speed stat: the regen target is 149, less 5·(bonus + 1) for an Adventurer", () => {
-    expect(regenTarget(null)).toBe(149);
-    expect(regenTarget(0)).toBe(144);
-    expect(regenTarget(9)).toBe(99);
+  test("no Speed stat: the regen target is 149, less the regeneration perk (an Adventurer's 5·(tier + 1))", () => {
+    expect(regenTarget(0)).toBe(149);
+    expect(regenTarget(5)).toBe(144);
+    expect(regenTarget(50)).toBe(99);
   });
   test("the counter starts at 1 and is raised first, so regen fires every 148 frames", () => {
     const v = { ...vitals(), hp: 10, sp: 10 };

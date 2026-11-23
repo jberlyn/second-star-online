@@ -198,7 +198,7 @@ describe("the World Editor screen (frames 262-288)", () => {
     e.byLabel<HTMLButtonElement>("Faction A").click();
     expect(e.ed.current().flags).toEqual({
       canFight: "X",
-      fctSpwn: "A",
+      fctSpwn: "adventurer",
       isIndoors: "X",
       canPvp: "O",
     });
@@ -219,13 +219,13 @@ describe("the World Editor screen (frames 262-288)", () => {
     const e = editor();
     e.ed.show(blankMap(1, 1), false);
     (e.root.querySelector('[aria-label="Faction W"]') as HTMLButtonElement).click();
-    expect(e.ed.current().flags.fctSpwn).toBe("W");
+    expect(e.ed.current().flags.fctSpwn).toBe("warrior");
     (e.root.querySelector('[aria-label="Faction A"]') as HTMLButtonElement).click();
-    expect(e.ed.current().flags.fctSpwn).toBe("A");
+    expect(e.ed.current().flags.fctSpwn).toBe("adventurer");
     (e.root.querySelector('[aria-label="Faction W"]') as HTMLButtonElement).click();
-    expect(e.ed.current().flags.fctSpwn).toBe("W");
+    expect(e.ed.current().flags.fctSpwn).toBe("warrior");
     (e.root.querySelector('[aria-label="Faction W"]') as HTMLButtonElement).click();
-    expect(e.ed.current().flags.fctSpwn).toBe("X");
+    expect(e.ed.current().flags.fctSpwn).toBe("");
   });
 
   test("clicking lit layer S stays on layer S and keeps only S lit", () => {

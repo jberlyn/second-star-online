@@ -39,7 +39,8 @@ import {
 } from "../inventory/inventory.ts";
 import { HEADS_BY_SEX, type Sex, STAT_MAX, STAT_MIN } from "../progression/creation.ts";
 import type { StatKey } from "../progression/stats.ts";
-import type { CharacterSheet } from "./characters.ts";
+import { factionByKey } from "../social/factions.ts";
+import { type CharacterSheet, factionLabel } from "./characters.ts";
 
 /** A map tile, by map name. */
 export interface EditPoint {
@@ -77,8 +78,8 @@ export interface EditableCharacter {
    */
   skills: SkillValues;
   hunger: number;
-  /** 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
-  faction: number;
+  /** The faction's key, or null for none. */
+  faction: string | null;
   factionCount: number;
   wanted: boolean;
   /** Null only when its map was deleted (the fallback point is used then). */
@@ -426,8 +427,12 @@ export function editErrors(
   if (changed("hunger") && !isInt(after.hunger, 0, L.hungerMax)) {
     errors.push(`Hunger: a whole number from 0 to ${L.hungerMax}.`);
   }
-  if (changed("faction") && !isInt(after.faction, 0, 3)) {
-    errors.push("Faction: none, Mage, Warrior or Adventurer.");
+  if (changed("faction") && after.faction !== null && factionByKey(after.faction) === null) {
+    errors.push(
+      `Faction: none or ${content()
+        .social.factions.map((f) => f.name)
+        .join(", ")}.`,
+    );
   }
   if (changed("factionCount") && !isInt(after.factionCount, 0, L.intMax)) {
     errors.push(`Faction time: a whole number from 0 to ${L.intMax}.`);
@@ -693,13 +698,19 @@ const WORN_LABELS: Record<string, string> = {
 /** A field's value as the log shows it. */
 export function editValueText(field: EditField, v: unknown): string {
   if (v === null || v === undefined) {
-    return field === "bank" ? "no account" : field === "respawn" ? "the fallback point" : "—";
+    return field === "bank"
+      ? "no account"
+      : field === "respawn"
+        ? "the fallback point"
+        : field === "faction"
+          ? "None"
+          : "—";
   }
   switch (field) {
     case "classCode":
       return content().classes.classes.find((c) => c.code === v)?.name ?? `Class ${String(v)}`;
     case "faction":
-      return ["None", "Mage", "Warrior", "Adventurer"][v as number] ?? String(v);
+      return factionLabel(v as string);
     case "wanted":
       return v ? "yes" : "no";
     case "sex":

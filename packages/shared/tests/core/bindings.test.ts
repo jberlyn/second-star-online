@@ -241,7 +241,7 @@ describe("the special bodies", () => {
             hpMax: 20,
             spMax: 20,
             guild: null,
-            faction: 0,
+            faction: null,
             wanted: false,
             body: 300,
             tree: true,

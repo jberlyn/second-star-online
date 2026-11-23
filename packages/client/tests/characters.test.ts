@@ -40,7 +40,7 @@ const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
       stats: { str: 10, sta: 10, dex: 10, int: 10, wis: 10 },
       skills: { Slash: 3, Thrust: 1 },
       hunger: 0,
-      faction: 2,
+      faction: "warrior",
       factionCount: 0,
       wanted: false,
       position: { map: "x1000y992", x: 5, y: 6, facing: "S" },

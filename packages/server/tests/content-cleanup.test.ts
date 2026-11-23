@@ -58,7 +58,7 @@ const editable = (): EditableCharacter => ({
   wis: 10,
   skills: { Slash: 1, Thrust: 1, Parry: 1 },
   hunger: 30000,
-  faction: 0,
+  faction: null,
   factionCount: 0,
   wanted: false,
   respawn: { map: "x1000y992", x: 5, y: 5 },
@@ -290,9 +290,9 @@ describe("where content refers to an item, and its cleanup", () => {
     expect(colours.length).toBeGreaterThan(0);
     // A colour makes "<colour> Crystals": it is neither removed nor replaced, but left to edit.
     expect(cleanUses(data, colours, "replace", "Ale").left).toHaveLength(colours.length);
-    expect(usesOf(data, "item", "Mage's Head").some((u) => u.where === "social/factions/1")).toBe(
-      true,
-    );
+    expect(
+      usesOf(data, "item", "Mage's Head").some((u) => u.where === "social/factions/mage"),
+    ).toBe(true);
     expect(usesOf(data, "item", "Knife").some((u) => u.where === "social/assassin")).toBe(true);
   });
 

@@ -16,6 +16,7 @@ import {
   directional,
   fireballForm,
   fxForEffect,
+  fxRun,
   hasBehaviour,
   inCastBounds,
   invDelSlot,
@@ -163,6 +164,18 @@ export function castIntent(
     return res;
   }
 
+  // The power comes from the caster before anything is spent (it reads the skills and gear, which
+  // the cost does not change).
+  const power = spellPower(
+    spell,
+    {
+      skills: p.char.skills,
+      equip: p.char.equip,
+      faction: p.char.faction,
+      level: p.char.vitals.level,
+    },
+    ctx.rng,
+  );
   t.actionDelay = CAST_DELAY;
   if (need) {
     if (ctx.world) {
@@ -179,11 +192,6 @@ export function castIntent(
   p.vitalsDirty = true;
   res.changed = true;
 
-  const power = spellPower(effect, {
-    skills: p.char.skills,
-    equip: p.char.equip,
-    faction: p.char.faction,
-  });
   const me = playerLoc(p);
   let eff = effect;
   if (lingoEq(eff, "Fireball")) {
@@ -204,6 +212,7 @@ export function castIntent(
     h,
     v,
     power,
+    castSpell: spell,
   });
   if (plan.place) {
     const summoned = placeSummon(room, plan.place.monster, plan.place.at, ctx.rng);
@@ -381,7 +390,10 @@ export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
       power,
       train: false,
     });
-  const free = freeFireballs(weapon, p.spell.fireSword > 0);
+  // A world whose spells no longer have the fireball's runs sends none.
+  const free = fxRun(fireballForm(p.facing))
+    ? freeFireballs(weapon, p.spell.fireSword > 0)
+    : { staff: false, sword: false };
   if (free.staff) {
     let power = 1 + ctx.rng.random(3);
     if (staff > 20) {

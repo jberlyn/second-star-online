@@ -840,7 +840,7 @@ describe("the respawn point", () => {
     island.ground.push({ id: "e1", item: "Exit", x: 9, y: 9, kind: "admin", expiresAt: null });
     const main = testMap("x1000y992");
     const shrine = testMap("x50y50");
-    shrine.flags = { canFight: "O", fctSpwn: "X", isIndoors: "O", canPvp: "O" };
+    shrine.flags = { canFight: "O", fctSpwn: "", isIndoors: "O", canPvp: "O" };
     shrine.exit1 = { mx: 1000, my: 992, x: 3, y: 4 };
     shrine.ground.push({ id: "e2", item: "Exit", x: 5, y: 5, kind: "admin", expiresAt: null });
     const maps = [island, main, shrine];

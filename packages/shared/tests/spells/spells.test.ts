@@ -220,11 +220,11 @@ describe("SpellImp", () => {
   });
   test("Mage skill cap 30; Mage faction 50/60/70/90/100", () => {
     expect(castMageCap(NO_FACTION)).toBe(30);
-    expect(castMageCap({ ...NO_FACTION, id: 1, f1Bonus: 3 })).toBe(90);
-    expect(castMageCap({ ...NO_FACTION, id: 1, f1Bonus: 4 })).toBe(100);
+    expect(castMageCap({ key: "mage", tier: 3 })).toBe(90);
+    expect(castMageCap({ key: "mage", tier: 4 })).toBe(100);
   });
   test("bug fixed: a Mage faction bonus of 3 caps Mage skill at 90 from kills and casts alike", () => {
-    const faction: Faction = { ...NO_FACTION, id: 1, f1Bonus: 3 };
+    const faction: Faction = { key: "mage", tier: 3 };
     const mage: Fighter = {
       level: 1,
       str: 10,
@@ -239,8 +239,8 @@ describe("SpellImp", () => {
     };
     expect(skillCaps(mage).mage).toBe(90);
     expect(castMageCap(faction)).toBe(90);
-    for (const f1Bonus of [0, 1, 2, 3, 4, 9]) {
-      const f = { ...faction, f1Bonus };
+    for (const tier of [0, 1, 2, 3, 4, 9]) {
+      const f = { ...faction, tier };
       expect(skillCaps({ ...mage, faction: f }).mage).toBe(castMageCap(f));
     }
   });
@@ -372,9 +372,9 @@ describe("FX", () => {
 });
 
 describe("spell hits lifted out of the collision handlers", () => {
-  test("spellHitOnMonster: Splash on body 36 heals 10 + P + random(5), the last branch wins", () => {
+  test("spellHitOnMonster: Splash on a species it heals (Classic: the Dragon Hatchling, body 36) heals 10 + P + random(5)", () => {
     const rng = queue([4]);
-    expect(spellHitOnMonster("splash-18", "36-1", 0, 7, rng)).toEqual({
+    expect(spellHitOnMonster("splash-18", { healedBy: ["Splash"] }, 0, 7, rng)).toEqual({
       n: 21,
       heal: true,
       splat: true,
@@ -384,7 +384,7 @@ describe("spell hits lifted out of the collision handlers", () => {
 
   test("spellHitOnMonster: Arrows below 1 after defense draw random(2)", () => {
     const rng = queue([2]);
-    expect(spellHitOnMonster("Fire Arrows-1", "5-1", 9, 3, rng)).toEqual({
+    expect(spellHitOnMonster("Fire Arrows-1", {}, 9, 3, rng)).toEqual({
       n: 2,
       heal: false,
       splat: true,

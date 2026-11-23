@@ -29,7 +29,8 @@ export interface MapRecord {
 }
 
 /**
- * Map field 12 items 1, 2, 3 and 5 as the original reads them: "O" turns fighting / PvP off, the faction spawn swap is W, M, A or X.
+ * Map field 12 items 1, 2, 3 and 5 as the original reads them: "O" turns fighting / PvP off; the faction spawn swap
+ * (1.6's W, M, A or X) is a faction key, or "" for none.
  */
 export interface MapFlags {
   canFight: string;

@@ -77,7 +77,13 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
     }
     const caster = q.ownerId ? room.players.find((p) => p.id === q.ownerId) : undefined;
     if (q.train !== false && casterH > 0 && casterV > 0 && caster && caster.loading === 0) {
-      for (const text of spellImp(q.name, caster.char.skills, caster.char.faction, rng)) {
+      for (const text of spellImp(
+        q.name,
+        caster.char.skills,
+        caster.char.faction,
+        rng,
+        q.castSpell,
+      )) {
         res.lines.push({ to: caster, text });
       }
     }
@@ -93,6 +99,7 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
       power: q.power,
       owner: q.owner,
       ownerId: q.ownerId,
+      ...(q.castSpell === undefined ? {} : { castSpell: q.castSpell }),
     };
     room.fx.push(fx);
     room.fx.sort((a, b) => a.slot - b.slot);

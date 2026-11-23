@@ -2704,31 +2704,31 @@
   "houses.json#/types": [
     [
       "Small House Deed",
-      "8427af196ecd512d"
+      "873be0cd8b5acf0d"
     ],
     [
       "Blue Cottage Deed",
-      "984dacb8ae280ef7"
+      "19300434497299ff"
     ],
     [
       "Small Guild Hall Deed",
-      "d400aaa328820115"
+      "0c6dffe92d422c3f"
     ],
     [
       "Small Shop Deed",
-      "aa2f9b91fa9629dc"
+      "86abbf5ce6c0c32b"
     ],
     [
       "Small Farm Deed",
-      "1115476b3a21f1c7"
+      "db6870ab1de69b29"
     ],
     [
       "Large House Deed",
-      "616835e27ffcd46e"
+      "843022fc61954a05"
     ],
     [
       "Fortress Guild Hall Deed",
-      "408b4cf85382e96f"
+      "8904680d2c0b8f54"
     ]
   ],
   "item-rules.json#/armour/elemental": [
@@ -8666,7 +8666,7 @@
     ],
     [
       "Dragon Hatchling",
-      "0a2a62f3c115c44a"
+      "c9044dc534e0a561"
     ],
     [
       "Poison Frog",
@@ -8694,11 +8694,11 @@
     ],
     [
       "Illusionary Spikes",
-      "cf03155f64fa9bf8"
+      "1c694420c1b250a2"
     ],
     [
       "Ghoul",
-      "7e9828595ef4d0fe"
+      "52e0ebac6f376dea"
     ],
     [
       "Snared Loah",
@@ -8706,7 +8706,7 @@
     ],
     [
       "Fire Demon",
-      "9226b2ae1703fcf0"
+      "f485d9dd1dbdcb07"
     ],
     [
       "Elf",
@@ -8714,11 +8714,11 @@
     ],
     [
       "Pig",
-      "66e1d835db962ba7"
+      "7b6e4734e2850d66"
     ],
     [
       "Zombie",
-      "47cc1cdf294f55e8"
+      "054a450df4d49aa4"
     ],
     [
       "Dwarf",
@@ -8742,7 +8742,7 @@
     ],
     [
       "Web",
-      "8b17923db502d39b"
+      "26204166044b8595"
     ],
     [
       "Skeleton",
@@ -9026,7 +9026,7 @@
     ],
     [
       "Holy Shield",
-      "41d091697898e792"
+      "c3fb3806235c8a41"
     ],
     [
       "Mizella",
@@ -10648,15 +10648,15 @@
   "social.json#/factions": [
     [
       "Mage",
-      "69e8c5b36452c439"
+      "afebdf471188b7ef"
     ],
     [
       "Warrior",
-      "65f032280e9d9f4f"
+      "2f97eab6a065d92b"
     ],
     [
       "Adventurer",
-      "43501cfbae09fd17"
+      "fcd4827170fa4667"
     ]
   ],
   "social.json#/guilds/alignments": [
@@ -10798,31 +10798,31 @@
   "spells.json#/spells": [
     [
       "Smoke Bomb",
-      "679b2f4c4a3e566d"
+      "c82f0df81c173ccf"
     ],
     [
       "Minor Heal",
-      "ec59451f36decb66"
+      "4fb1ea107154fd20"
     ],
     [
       "Morph",
-      "6f9ea86529a07f6b"
+      "1b13f8398ef6d12e"
     ],
     [
       "Stone Skin",
-      "c9e0ea26257fc033"
+      "93740c6c8b3a4739"
     ],
     [
       "Crush",
-      "075825f7e19ea3b8"
+      "4b105b730521ee1f"
     ],
     [
       "Whirlwind",
-      "2c001056a50617f0"
+      "614952219621d931"
     ],
     [
       "Meteor",
-      "5b2ea4a691a20c87"
+      "0aac596caf396f69"
     ],
     [
       "Identify",
@@ -10834,27 +10834,27 @@
     ],
     [
       "Fireball",
-      "9bd8ab6db7e700cb"
+      "5fd6025ab8f172b1"
     ],
     [
       "Summon Creature",
-      "7bd2fe3192296c03"
+      "be8b9ad33c3ff077"
     ],
     [
       "Holy Shield",
-      "578f2f5e61530b6d"
+      "b53fb3cb26101106"
     ],
     [
       "Wind Wave",
-      "f9eb18a8f3f0cb1d"
+      "5536705645d7c759"
     ],
     [
       "Bolt",
-      "233beefe5ef0ae1c"
+      "1a93b98b25a955d9"
     ],
     [
       "Firebolt",
-      "8d1757ef01d6261b"
+      "d991f082b7e9b0cb"
     ],
     [
       "Poison Dart",
@@ -10862,27 +10862,27 @@
     ],
     [
       "Weaken",
-      "126021ab6b92b6a1"
+      "94b46b395a6653c8"
     ],
     [
       "Bless",
-      "52bf5051b28bae06"
+      "5d8b4c877aae2ffb"
     ],
     [
       "Firesword",
-      "dab07cccd100bdd1"
+      "0b54739750a2b520"
     ],
     [
       "Major Heal",
-      "5a0084eb87fb7e57"
+      "cf1d60e3246d77f9"
     ],
     [
       "Replenish",
-      "7379058d836a5cc8"
+      "d5a9c4d01f74f9ed"
     ],
     [
       "Splash",
-      "e75ed2915cba0b39"
+      "7e868a56289aac37"
     ],
     [
       "Nature Shift",
@@ -10894,7 +10894,7 @@
     ],
     [
       "Illusionary Spikes",
-      "ecaa9df2cc2eebae"
+      "5e747097d7e33add"
     ],
     [
       "Argon's Fist",
@@ -10906,39 +10906,39 @@
     ],
     [
       "Magic Shield",
-      "7c3619b43c75990b"
+      "174bb7c467d5eb16"
     ],
     [
       "Create Food",
-      "992aafeb19bfddd1"
+      "54a6217a164cf252"
     ],
     [
       "Dispel Illusions",
-      "a9e3240cc4c704ca"
+      "f2493ac3de5c7187"
     ],
     [
       "Hold",
-      "d30c4547db26d108"
+      "ab7026c6ee3beef1"
     ],
     [
       "Raise Dead",
-      "f169f0eff6124899"
+      "1fea4ebe886defe9"
     ],
     [
       "Web",
-      "6221b32f8f78a642"
+      "6fc07f9198c92fd3"
     ],
     [
       "Diminish Hunger",
-      "6132c814e4d91262"
+      "17eee8cbed209ab3"
     ],
     [
       "Radar",
-      "86d56aea707dabc8"
+      "f396215f23bea6b7"
     ],
     [
       "Haste",
-      "bcaf9cb73a7ce894"
+      "788e11c19603e410"
     ]
   ],
   "tiles.json#/catalogue": [

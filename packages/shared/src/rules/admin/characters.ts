@@ -5,6 +5,7 @@
  */
 import { content } from "../../content/store.ts";
 import type { SkillValues } from "../core/fighter.ts";
+import { factionByKey } from "../social/factions.ts";
 import type { CharacterEditRow } from "./character-edit.ts";
 import type { ChatLogRow } from "./chatlog.ts";
 import {
@@ -71,8 +72,8 @@ export interface CharacterSheet {
   /** Every skill the content lists, by skill key (`classes.skills`). */
   skills: SkillValues;
   hunger: number;
-  /** `Fctnme`: 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
-  faction: number;
+  /** The faction's key (`Fctnme`), or null for none. */
+  faction: string | null;
   /** Frames of play left in the faction. */
   factionCount: number;
   wanted: boolean;
@@ -146,11 +147,12 @@ export function classLabel(code: number): string {
   return content().classes.classes.find((c) => c.code === code)?.name ?? `Class ${code}`;
 }
 
-const FACTION_LABELS = ["None", "Mage", "Warrior", "Adventurer"] as const;
-
-/** A stored faction id's name. */
-export function factionLabel(id: number): string {
-  return FACTION_LABELS[id] ?? "None";
+/** A saved faction's name: its row's, or the saved key of a faction the world no longer has. */
+export function factionLabel(key: string | null): string {
+  if (key === null) {
+    return "None";
+  }
+  return factionByKey(key)?.name ?? key;
 }
 
 export const HUB_TEXT = {

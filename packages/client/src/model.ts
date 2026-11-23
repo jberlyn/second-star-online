@@ -33,8 +33,8 @@ import {
   type InventoryView,
   isArenaTile,
   isCannonball,
+  isTrap,
   isWalkable,
-  isWebBody,
   type MapView,
   MONSTER_STEP_FRAMES,
   type MonsterView,
@@ -730,7 +730,7 @@ function walkWorld(m: Model): WalkWorld {
     webAt: (x, y) =>
       !ship &&
       [...m.monsters.values()].some(
-        (mon) => isWebBody(mon.body) && mon.frames === 0 && mon.x === x && mon.y === y,
+        (mon) => isTrap(mon.name) && mon.frames === 0 && mon.x === x && mon.y === y,
       ),
     // The player-blocking check: non-rider peers at their logical tiles, moving or not, then
     // slots 1-4.

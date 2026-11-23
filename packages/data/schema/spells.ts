@@ -6,11 +6,13 @@
  *
  * Spell effects stay code in `packages/shared/src/rules/spells/` and `packages/server/src/systems/spells/`,
  * keyed by `effect` (the 1.6 spell name on the spell, and the 1.6 FX run member on each FX run).
-
- *
+ * What a spell's numbers come from is content: its `school` (the skill a cast trains), its `power`
+ * table (in `power.tables`, after the `power.base` rows every spell takes), and what Create Food
+ * makes (`creates`).
  */
 import { z } from "zod";
 
+import { tierFields } from "./attpower.ts";
 import { patternRow } from "./common.ts";
 
 const int = z.number().int();
@@ -52,6 +54,32 @@ export const spellSummonSchema = z.strictObject({
     .nullable(),
 });
 
+/** One spell-power row: attack power's tier rows without the weapon test. */
+export const spellPowerTierSchema = z.strictObject(tierFields);
+
+/** A named spell-power table: its rows in order, then a worn item's bonus of one gear power. */
+export const spellPowerTableSchema = z.strictObject({
+  tiers: z.array(spellPowerTierSchema),
+  /** The `item-rules.json` `gear` power whose bonus is added after the rows. Absent = none. */
+  gear: z.enum(["blackArts", "martialArts"]).optional(),
+});
+
+/** The skill a cast of this spell trains, the line it prints, and the skill's cap. */
+export const spellSchoolSchema = z.strictObject({
+  /** A skill key (classes.json `skills`). */
+  skill: z.string().min(1),
+  /** The line printed when the skill rises ("You have advanced in the art of Fire!"). */
+  line: z.string().min(1),
+  /** The skill rises only below this. Absent = the caster's Mage skill cap (faction perks). */
+  cap: int.positive().optional(),
+});
+
+/** One item Create Food can make, and the article its line puts before it ("an Apple"). */
+export const spellCreatesSchema = z.strictObject({
+  item: z.string().min(1),
+  article: z.string().min(1).optional(),
+});
+
 export const spellSchema = z.strictObject({
   name: z.string().min(1),
   /** 1.6's `savespells` encode id, or null (Identify had none). SSO saves spellbooks by name. */
@@ -72,6 +100,12 @@ export const spellSchema = z.strictObject({
   info: z.string().nullable(),
   /** Summoned species. Absent = not a summon spell. */
   summon: spellSummonSchema.optional(),
+  /** The school a cast trains after Magery. Absent = Magery only. */
+  school: spellSchoolSchema.optional(),
+  /** The `power.tables` entry added after the base power. Absent = the base power alone. */
+  power: z.string().min(1).optional(),
+  /** Create Food's choices, one taken at random. Read only by the Create Food effect. */
+  creates: z.array(spellCreatesSchema).min(1).optional(),
   fx: z.array(spellFxSchema),
 });
 
@@ -116,8 +150,27 @@ export const IMPLEMENTED_SPELL_EFFECTS = new Set([
 ]);
 
 export const spellsDataSchema = z
-  .strictObject({ spells: z.array(spellSchema) })
+  .strictObject({
+    spells: z.array(spellSchema),
+    /**
+     * Spell power: every cast starts from 1, takes the `base` rows, the caster's faction perk and
+     * worn spell gear (engine), then its own table's rows.
+     */
+    power: z.strictObject({
+      base: z.array(spellPowerTierSchema),
+      tables: z.record(z.string().min(1), spellPowerTableSchema),
+    }),
+  })
   .superRefine((data, ctx) => {
+    data.spells.forEach((s, i) => {
+      if (s.power !== undefined && !Object.hasOwn(data.power.tables, s.power)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["spells", i, "power"],
+          message: `power table ${JSON.stringify(s.power)} is not in power.tables`,
+        });
+      }
+    });
     const names = new Set<string>();
     const ids = new Set<number>();
     const members = new Set<string>();
@@ -208,4 +261,8 @@ export type SpellFx = z.infer<typeof spellFxSchema>;
 export type SpellSound = z.infer<typeof spellSoundSchema>;
 export type SpellSpByBody = z.infer<typeof spellSpByBodySchema>;
 export type SpellSummon = z.infer<typeof spellSummonSchema>;
+export type SpellSchool = z.infer<typeof spellSchoolSchema>;
+export type SpellCreates = z.infer<typeof spellCreatesSchema>;
+export type SpellPowerTier = z.infer<typeof spellPowerTierSchema>;
+export type SpellPowerTable = z.infer<typeof spellPowerTableSchema>;
 export type SpellsData = z.infer<typeof spellsDataSchema>;

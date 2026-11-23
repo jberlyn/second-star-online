@@ -751,7 +751,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The three stats are not saved or shown, and the regen timer works as Speed 1: a target of 149, or 144 down to 99 for an Adventurer. A class's stat points no longer include Agility or Speed; the upgrade removes them from the operator's content changes. Editor log lines from before keep their Agility and Speed changes, and an undo passes over them.
 - **Why:** Stats nobody could raise only cluttered the character record and the editor.
 - **In the code:** `packages/shared/src/rules/progression/progression.ts` (`regenTarget`), `packages/shared/src/rules/progression/creation.ts` (`startingCharacter`), `packages/server/migrations/20261122_57_drop_unused_stats.sql`
-- **Pinned by:** `no Speed stat: the regen target is 149, less 5·(bonus + 1) for an Adventurer` (packages/shared/tests/progression/progression.test.ts); `only the five stats the screen raises are kept` (packages/shared/tests/progression/creation.test.ts); `divergence: drop_unused_stats keeps every character and drops Agility, Speed and Aim, class points too` (packages/server/tests/migrations.test.ts); `an old edit that changed Agility or Speed still reads and undoes the rest` (packages/server/tests/character-edit.test.ts)
+- **Pinned by:** `no Speed stat: the regen target is 149, less the regeneration perk (an Adventurer's 5·(tier + 1))` (packages/shared/tests/progression/progression.test.ts); `only the five stats the screen raises are kept` (packages/shared/tests/progression/creation.test.ts); `divergence: drop_unused_stats keeps every character and drops Agility, Speed and Aim, class points too` (packages/server/tests/migrations.test.ts); `an old edit that changed Agility or Speed still reads and undoes the rest` (packages/server/tests/character-edit.test.ts)
 
 #### Drop and Give ask how many of a stack
 - **Kind:** Other
@@ -853,10 +853,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Ticking W, M, or A in the World Editor clears the other two boxes.
 - **1.6:** Ticking A cleared M twice and left W ticked.
-- **SSO:** `clickFaction` clears the other two boxes on every faction toggle.
+- **SSO:** `clickFaction` clears the other two boxes on every faction toggle: the map holds one faction, by key, and each box picks the faction `factionRules.editorBoxes` gives it.
 - **Why:** Prevents ambiguous multi-faction checkbox states.
 - **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickFaction`)
-- **Pinned by:** `W, M and A are mutually exclusive` (packages/shared/tests/admin/worldedit.test.ts); `faction checkboxes W, M and A are mutually exclusive in the editor UI` (packages/client/tests/worldeditor.test.ts)
+- **Pinned by:** `the W, M and A boxes pick Classic's Warrior, Mage and Adventurer and are mutually exclusive` (packages/shared/tests/admin/worldedit.test.ts); `faction checkboxes W, M and A are mutually exclusive in the editor UI` (packages/client/tests/worldeditor.test.ts)
 
 #### World editor lit S layer button stays on layer S
 - **Kind:** Bug fixed
@@ -1345,7 +1345,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** An Adventurer takes 1 less damage from each hit while the Adventurers' faction bonus is above 0, and 2 less above 6, whatever the Warriors' standing.
 - **1.6:** The faction reduction read the Warriors' bonus for Adventurers too, so an Adventurer's armour rose and fell with the rival faction's standing.
-- **SSO:** `factionRows` reads the Adventurer bonus (`f3Bonus`) for an Adventurer and the Warrior bonus (`f2Bonus`) for a Warrior.
+- **SSO:** `factionRows` takes off the `defence` perk of the member's own faction at its own tier (`social.json` `factions[].perks`), so an Adventurer's reads the Adventurers' standing and a Warrior's the Warriors'.
 - **Why:** Every other Adventurer perk reads the Adventurers' own bonus; reading the Warriors' was a slip.
 - **In the code:** `packages/shared/src/rules/combat/armour.ts` (`factionRows`)
 - **Pinned by:** `bug fixed: an Adventurer's faction armour reads the Adventurer bonus, not the Warrior one` (packages/shared/tests/combat/combat.test.ts)
@@ -2238,7 +2238,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Riding an airship, boat or battleship, Ctrl picks up or uses the item or Pig in front of you, as on foot. With nothing in front, Ctrl unboards.
 - **1.6:** Ctrl tested for the airship before anything else and only ever tried to unboard; only a mouse click could pick anything up.
-- **SSO:** Ctrl first grabs a Pig or Snow Demon on the faced tile; failing that it uses or takes the item there, and it unboards when there is neither. A monster Ctrl cannot grab does not stop the unboarding, and for a wide monster only its anchor tile counts.
+- **SSO:** Ctrl first grabs a Pig (a `grabbable` species) on the faced tile; failing that it uses or takes the item there, and it unboards when there is neither. A monster Ctrl cannot grab does not stop the unboarding, and for a wide monster only its anchor tile counts.
 - **Why:** The key did one thing aboard and another on foot for no reason a player could see.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`actionIntent`), `packages/server/src/systems/vehicles/vehicles.ts` (`unboardVehicle`)
 - **Pinned by:** `bug fixed: Ctrl aboard an airship takes what is in front, and unboards when nothing is` (packages/server/tests/vehicles.test.ts); `bug fixed: Ctrl aboard takes a Pig in front; any other monster with no item lets Ctrl unboard` (packages/server/tests/vehicles.test.ts)
@@ -2913,10 +2913,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Clicking a Snow Demon, or pressing Ctrl facing one, does nothing pig-like.
 - **1.6:** The click looked for "91-" anywhere in a monster's picture name, and the Snow Demon's picture 891 contains it, so it ran the Pig grab, and Ctrl grabbed a faced Snow Demon into your bag as a Pig.
-- **SSO:** The Pig, Spikes, Web and Holy Shield click rules, the never-moves rule for Spikes, Web and Holy Shield, the web trap a walker is caught in, and the melee Holy Shield test all compare the body number exactly.
+- **SSO:** The grab, the clicks that do nothing, the never-moves rule, the web trap a walker is caught in, and the melee Holy Shield test read the species' flags in `monsters.json` (`grabbable`, `unclickable`, `immobile`, `trap`, `shieldsInnocent`), which Classic gives the Pig, Spikes, Web and Holy Shield, so they follow the species, not a digit in its body number.
 - **Why:** The text test caught a body number it was never written for.
-- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `ctrlPig`), `packages/server/src/systems/monsters/slots.ts` (`neverMoves`, `BODY`), `packages/shared/src/rules/movement/movement.ts` (`isWebBody`), `packages/server/src/systems/spells/geometry.ts` (`onHolyShield`)
-- **Pinned by:** `bug fixed: a Snow Demon is no Pig: a click opens nothing and Ctrl grabs nothing` (packages/server/tests/npcs-trade.test.ts); `bug fixed: only body 92 is a Web` (packages/shared/tests/spells/body-numbers.test.ts)
+- **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `ctrlPig`), `packages/server/src/systems/monsters/slots.ts` (`neverMoves`), `packages/shared/src/rules/monsters/flags.ts` (`isTrap`), `packages/server/src/systems/spells/geometry.ts` (`onHolyShield`)
+- **Pinned by:** `bug fixed: a Snow Demon is no Pig: a click opens nothing and Ctrl grabs nothing` (packages/server/tests/npcs-trade.test.ts); `bug fixed: only a species flagged as a trap holds players, whatever its body` (packages/shared/tests/spells/body-numbers.test.ts)
 
 #### Clicking a Pig grabs that Pig
 - **Kind:** Bug fixed
@@ -3516,9 +3516,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Firebolt hurts a Shark instead of healing it, and a Fireball does full damage to it.
 - **1.6:** The monster hit check looked for text such as "45-" in the monster's picture name. The Shark's picture 445 contains "45-", so it healed from Firebolt and took only `random(3)` from a Fireball, like the Ghoul (body 45). The same text tests for "36-", "47-", "61-" and "90-" would have caught any body ending in those digits.
-- **SSO:** The hit check compares the body number exactly.
+- **SSO:** The hit check reads the species' flags in `monsters.json` (`healedBy`, `resists`, `hurtByHealing`, `dispellable`), which Classic gives the Ghoul, Dragon Hatchling, Fire Demon, Zombie and Illusionary Spikes.
 - **Why:** The text test caught a body number it was never written for.
-- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spellHitOnMonster`, `memberBody`)
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spellHitOnMonster`)
 - **Pinned by:** `bug fixed: a Shark (body 445) is not healed by Firebolt like a Ghoul (body 45)`; `bug fixed: a Shark takes a Fireball's full damage; a Ghoul takes random(3)` (packages/shared/tests/spells/body-numbers.test.ts)
 
 #### Firesword needs a sword, not a Swordfish

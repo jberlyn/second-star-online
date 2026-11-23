@@ -21,7 +21,7 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
   help: { topics: "file" },
   npcFiles: { files: "name" },
   houses: { deeds: "deed", types: "house" },
-  social: { factions: "id" },
+  social: { factions: "key" },
 };
 
 /** Datasets operators cannot change: the collision rects are built from the art. */

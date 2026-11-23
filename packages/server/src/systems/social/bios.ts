@@ -36,7 +36,7 @@ export function bioSource(world: World, t: Player): BioSource {
     // The `Guild` field names it; "Leader of" when the guild file holds `*<me>*`, which only its
     // header does.
     guild: t.guild === "" ? null : { name: t.guild, leader: guild?.leaderId === t.id },
-    faction: t.char.faction.id,
+    faction: t.char.faction.key,
     wanted: t.char.wanted,
     body: t.spell.body,
     tree: t.spell.body !== null && t.spell.body === treeBody(),

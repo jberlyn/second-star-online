@@ -13,7 +13,7 @@ import {
   type Facing,
   inMonsterList,
   isFootprint,
-  isWebBody,
+  isImmobile,
   lingoContains,
   MONSTER_STEP_FRAMES,
   type MonsterView,
@@ -103,12 +103,9 @@ export function isNpced(name: string): boolean {
   return lingoContains(content().monsters.editorLists.npcEditor.npcs.join("\r"), name);
 }
 
-/** Spikes (body 90), Pig (91), Web (92) and Holy Shield (99). */
-export const BODY = { spikes: 90, pig: 91, web: 92, holyShield: 99 } as const;
-
-/** Bodies that never move: Spikes, Web and Holy Shield. */
-export function neverMoves(body: number): boolean {
-  return body === BODY.spikes || isWebBody(body) || body === BODY.holyShield;
+/** The species never walks (`flags.immobile`; Classic: Spikes, Web and Holy Shield). */
+export function neverMoves(name: string): boolean {
+  return isImmobile(name);
 }
 
 export function monsterView(s: MonsterSlot): MonsterView {

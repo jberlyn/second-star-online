@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import {
   content,
   type Facing,
+  factionPower,
   type InGameMsg,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -502,16 +503,37 @@ const BOTS: BotSpec[] = [
 // ---- hashing ------------------------------------------------------------------------------
 
 /**
- * Keys left out: the NPC files the game lays over the content, and `lastSheet`, the copy of the last
- * character sheet sent (derived, and its skills by position; what was sent is hashed itself).
+ * Keys left out: the NPC files the game lays over the content, `lastSheet`, the copy of the last
+ * character sheet sent (derived, and its skills by position; what was sent is hashed itself), and
+ * `castSpell`, the cast's spell name a queued cast and its FX carry (#37 stage 4; the name sent is
+ * hashed itself).
  */
-const SKIP = new Set(["npcs", "lastSheet"]);
+const SKIP = new Set(["npcs", "lastSheet", "castSpell"]);
 
 /**
  * The world's own keys left out: `jail`, the game's copy of the `jailPoint` setting (a setting, not
  * state; what it does shows in the players it moves).
  */
 const SKIP_WORLD = new Set(["jail"]);
+
+/** Classic's factions in 1.6's order: 1 Mage, 2 Warrior, 3 Adventurer. */
+const FACTION_ORDER = ["mage", "warrior", "adventurer"] as const;
+/** The 1.6 map flag for each of Classic's factions (W, M, A); none was X. */
+const SPAWN_LETTER: Record<string, string> = { mage: "M", warrior: "W", adventurer: "A" };
+
+/**
+ * A faction as 1.6 held it (#37 stage 4 keys factions by name): its number and the three bonuses,
+ * only its own set, so the run hashes as it did before.
+ */
+function oldFaction(f: { key: string | null; tier: number }) {
+  const id = FACTION_ORDER.indexOf((f.key ?? "") as (typeof FACTION_ORDER)[number]) + 1;
+  return {
+    f1Bonus: id === 1 ? f.tier : 0,
+    f2Bonus: id === 2 ? f.tier : 0,
+    f3Bonus: id === 3 ? f.tier : 0,
+    id,
+  };
+}
 
 /**
  * The state as sorted `path = value` lines: objects by key, maps and arrays in their own order (the
@@ -520,6 +542,8 @@ const SKIP_WORLD = new Set(["jail"]);
 export function flatten(root: unknown): string[] {
   const out: string[] = [];
   const seen = new Map<object, string>();
+  /** Objects already written in an older shape, walked as they are. */
+  const projected = new WeakSet<object>();
   const skillNames = content().classes.skills.map((s) => s.skill);
   const walk = (v: unknown, path: string) => {
     if (v === null || typeof v !== "object") {
@@ -535,6 +559,26 @@ export function flatten(root: unknown): string[] {
       return;
     }
     seen.set(v, path);
+    // Factions by key read as 1.6's numbers and bonuses, the powers as its `mage:warrior:adventurer`
+    // list and a map's faction spawn as its letter (#37 stage 4), so keying them changes no line.
+    if (/\.char\.faction$/.test(path) && "tier" in v) {
+      walk(oldFaction(v as { key: string | null; tier: number }), path);
+      return;
+    }
+    if (path === "world.factionPowers" && !Array.isArray(v)) {
+      walk(
+        FACTION_ORDER.map((k) => factionPower(v as Record<string, number>, k)),
+        path,
+      );
+      return;
+    }
+    if (/\.flags$/.test(path) && "fctSpwn" in v && !projected.has(v)) {
+      const f = (v as { fctSpwn: string }).fctSpwn;
+      const old = { ...v, fctSpwn: SPAWN_LETTER[f] ?? (f === "" ? "X" : f) };
+      projected.add(old);
+      walk(old, path);
+      return;
+    }
     if (v instanceof Map) {
       out.push(`${path} = Map(${v.size})`);
       for (const [k, x] of v) {
@@ -655,6 +699,22 @@ function dbDigest(db: Db): string[] {
     .filter((t) => !MIGRATION_TABLES.has(t.name));
   const skillNames = content().classes.skills.map((s) => s.skill);
   return tables.map(({ name }) => {
+    // The powers by key read as 1.6's one row of three (#37 stage 4).
+    if (name === "faction_power") {
+      const by = Object.fromEntries(
+        db
+          .query<{ faction: string; power: number }, []>("SELECT faction, power FROM faction_power")
+          .all()
+          .map((r) => [r.faction, r.power]),
+      );
+      const row = JSON.stringify({
+        id: 1,
+        mage: by.mage,
+        warrior: by.warrior,
+        adventurer: by.adventurer,
+      });
+      return `db faction_powers rows=1 ${sha(row).slice(0, 12)}`;
+    }
     const rows = db
       .query<Record<string, unknown>, []>(`SELECT * FROM "${name}"`)
       .all()
@@ -667,11 +727,38 @@ function dbDigest(db: Db): string[] {
               skill: skillNames[Number(r.skill) - 1] ?? r.skill,
               value: r.value,
             })
-          : JSON.stringify(r),
+          : name === "characters"
+            ? JSON.stringify(oldCharacterRow(r))
+            : name === "maps"
+              ? JSON.stringify({
+                  ...r,
+                  fct_spwn:
+                    SPAWN_LETTER[String(r.fct_spwn)] ?? (r.fct_spwn === "" ? "X" : r.fct_spwn),
+                })
+              : JSON.stringify(r),
       )
       .sort();
     return `db ${name} rows=${rows.length} ${sha(rows.join("\n")).slice(0, 12)}`;
   });
+}
+
+/**
+ * A character row as it was saved before factions were keyed (#37 stage 4): the faction a number,
+ * 0 for none, in its old place before `faction_count`.
+ */
+function oldCharacterRow(r: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const id = FACTION_ORDER.indexOf(String(r.faction) as (typeof FACTION_ORDER)[number]) + 1;
+  for (const [k, v] of Object.entries(r)) {
+    if (k === "faction") {
+      continue;
+    }
+    if (k === "faction_count") {
+      out.faction = id;
+    }
+    out[k] = v;
+  }
+  return out;
 }
 
 export interface ReplayResult {

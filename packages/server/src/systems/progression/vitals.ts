@@ -11,6 +11,7 @@ import {
   deathHead,
   deathVitals,
   exileAtDeath,
+  factionPerk,
   goldPileName,
   hungerTick,
   invDelSlot,
@@ -35,8 +36,7 @@ export function regenStep(p: Player): void {
   const v = p.char.vitals;
   const before = `${v.hp}/${v.sp}`;
   const hp = v.hp;
-  const adventurer = p.char.faction.id === 3 ? p.char.faction.f3Bonus : null;
-  const target = regenTarget(adventurer);
+  const target = regenTarget(factionPerk(p.char.faction, "regeneration"));
   p.regenCounter = regenTick(p.regenCounter, target, p.char.hunger, v);
   // Starving costs no HP for a role that takes no damage.
   if (v.hp < hp && can(p.role, "invulnerable")) {
@@ -161,7 +161,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
       rng,
     );
     // The faction head goes down first, even in a vehicle or with drops off.
-    const head = deathHead(p.char.faction.id, pvpMap);
+    const head = deathHead(p.char.faction.key, pvpMap);
     if (head) {
       const io = new ItemOut(room);
       addGround(drop.item, room, io, {
@@ -212,7 +212,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
       out.push(...io.out);
     }
   }
-  const exile = exileAtDeath({ id: p.char.faction.id, count: p.char.factionCount }, v.hpMax);
+  const exile = exileAtDeath({ key: p.char.faction.key, count: p.char.factionCount }, v.hpMax);
   if (exile) {
     p.char.faction = { ...NO_FACTION };
     p.char.factionCount = 0;

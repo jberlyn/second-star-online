@@ -396,7 +396,11 @@ export function referencesOf(data: ContentData): Reference[] {
     add(gathering, ["mining", "colours", i], "item", `${c} Crystal`, null, false, true);
   });
   for (const f of data.social.factions) {
-    add({ dataset: "social", part: "factions", key: String(f.id) }, ["head"], "item", f.head, null);
+    const row: RowRef = { dataset: "social", part: "factions", key: f.key };
+    add(row, ["head"], "item", f.head, null);
+    add(row, ["member"], "monster", f.member, null);
+    // A head is handed to the leader as the monster standing there, so it must be a species.
+    add(row, ["leader"], "monster", f.leader, null);
   }
   const assassinRow = section("social", "assassin");
   for (const prize of data.social.assassin.prizes.archived.split(":")) {
@@ -538,8 +542,36 @@ export function referencesOf(data: ContentData): Reference[] {
       });
     });
   });
+  // A power row reads its condition exactly as `tierApplies` does: "level" is the level.
+  const tierSkills = (row: RowRef, path: JsonPath, when: readonly string[] | null) => {
+    (when ?? []).forEach((w, k) => {
+      const name = /^(\w+) [<>] \d+$/.exec(w)?.[1];
+      if (name && name !== "level") {
+        skill(row, [...path, "when", k], name);
+      }
+    });
+  };
+  const spellPower = section("spells", "power");
+  data.spells.power.base.forEach((t, i) => {
+    tierSkills(spellPower, ["base", i], t.when);
+  });
+  for (const [name, table] of Object.entries(data.spells.power.tables)) {
+    table.tiers.forEach((t, i) => {
+      tierSkills(spellPower, ["tables", name, "tiers", i], t.when);
+    });
+  }
+  for (const m of data.monsters.monsters) {
+    if (m.flags?.grabbable !== undefined) {
+      const row: RowRef = { dataset: "monsters", part: "monsters", key: m.name };
+      add(row, ["flags", "grabbable"], "item", m.flags.grabbable, null);
+    }
+  }
   for (const s of data.spells.spells) {
     const row: RowRef = { dataset: "spells", part: "spells", key: s.name };
+    skill(row, ["school", "skill"], s.school?.skill);
+    (s.creates ?? []).forEach((c, i) => {
+      add(row, ["creates", i, "item"], "item", c.item, null);
+    });
     skill(row, ["summon", "skilled", "skill"], s.summon?.skilled?.skill);
     if (s.summon) {
       add(row, ["summon", "monster"], "monster", s.summon.monster, null);

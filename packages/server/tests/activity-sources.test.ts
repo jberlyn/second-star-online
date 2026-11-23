@@ -355,7 +355,7 @@ describe("death", () => {
   test("a faction member's death logs the head it leaves, placed on the ground", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
-    a.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    a.char.faction = { key: "mage", tier: 0 };
     a.char.vitals.hpMax = 30;
     a.char.vitals.hp = 0;
     start(a);
@@ -638,7 +638,7 @@ describe("gold to an NPC and quests", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
     orc(s.map.slots[0] as MonsterSlot, "Angela", 10, 5, 4);
-    s.world.factionPowers = [27, 123, 0];
+    s.world.factionPowers = { mage: 27, warrior: 123, adventurer: 0 };
     a.char.vitals.hpMax = 60;
     put(a, 4, "Warrior's Head");
     start(a);

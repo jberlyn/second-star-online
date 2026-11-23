@@ -15,6 +15,7 @@ import { boundSkillIndex, boundSkillValue, type Equipment, type Fighter } from "
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
+import { factionPerk } from "../social/factions.ts";
 import { armourRows, elementalRows, factionRows, randomAndDefense } from "./armour.ts";
 
 export interface AttackTimers {
@@ -258,7 +259,7 @@ export function monsterReaches(
  * The parry/block ladder: `random(90)` until the skill is over 20, as against players (a bug fixed:
  * 1.6 drew `random(3000)` until the skill was over 10, so a new character almost never parried).
  */
-function dodgeRoll(skill: number, factionAdventurer: boolean, rng: Rng): number {
+function dodgeRoll(skill: number, bonus: number, rng: Rng): number {
   let n = rng.random(90);
   const ladder: [number, number][] = [
     [10, 90],
@@ -277,9 +278,7 @@ function dodgeRoll(skill: number, factionAdventurer: boolean, rng: Rng): number 
       n = rng.random(r);
     }
   }
-  if (factionAdventurer) {
-    n -= 10;
-  }
+  n -= bonus;
   if (n < 1) {
     n = 1;
   }
@@ -316,14 +315,15 @@ export function monsterHitsPlayer(
   power = elementalRows(power, f.equip, "HitMe2", attacker);
   power = factionRows(power, f);
   power = randomAndDefense(power, defenseBonus, rng);
-  const adventurer = f.faction.id === 3;
+  // The perk `monsterDodge` lowers both rolls (Classic: an Adventurer's 10).
+  const dodge = factionPerk(f.faction, "monsterDodge");
   // A world that binds no Parry (or Block) skill has no parrying (or blocking): no roll at all.
   const parry = boundSkillIndex("parry");
-  if (parry !== undefined && dodgeRoll(f.skills[parry] ?? 0, adventurer, rng) === 1) {
+  if (parry !== undefined && dodgeRoll(f.skills[parry] ?? 0, dodge, rng) === 1) {
     return { kind: "parry" };
   }
   const block = boundSkillIndex("block");
-  if (block !== undefined && dodgeRoll(f.skills[block] ?? 0, adventurer, rng) === 1) {
+  if (block !== undefined && dodgeRoll(f.skills[block] ?? 0, dodge, rng) === 1) {
     return { kind: "block" };
   }
   return { kind: "hit", lost: power };

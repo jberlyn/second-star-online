@@ -16,7 +16,7 @@ test("the seeded church is the validated Church of the Bells at x999y999 with no
   expect(church.layers).toEqual(churchMapData.layers);
   expect(church.exit1).toBeNull();
   expect(church.exit2).toBeNull();
-  expect(church.flags).toEqual({ canFight: "O", canPvp: "O", isIndoors: "O", fctSpwn: "X" });
+  expect(church.flags).toEqual({ canFight: "O", canPvp: "O", isIndoors: "O", fctSpwn: "" });
   expect(church.layers[0].join(" ")).not.toContain("J2");
 
   const grid = footWalkGrid(church.layers[0], church.layers[1]);

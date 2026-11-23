@@ -7,6 +7,8 @@ const { items: itemsData, monsters: monstersData, tiles: tilesData } = classicDa
 
 import {
   blankMap,
+  boxFaction,
+  boxTicked,
   clickFaction,
   clickLayer,
   EDITOR_ITEMS,
@@ -124,20 +126,28 @@ describe("painting", () => {
 });
 
 describe("toggles", () => {
-  test("W, M and A are mutually exclusive", () => {
-    const w = clickFaction({ w: false, m: false, a: false }, "w");
-    expect(w).toEqual({ w: true, m: false, a: false });
-    const m = clickFaction(w, "m");
-    expect(m).toEqual({ w: false, m: true, a: false });
-    const a = clickFaction(w, "a");
-    expect(a).toEqual({ w: false, m: false, a: true });
-    expect(clickFaction(a, "m")).toEqual({ w: false, m: true, a: false });
-    expect(clickFaction(a, "a")).toEqual({ w: false, m: false, a: false });
+  test("the W, M and A boxes pick Classic's Warrior, Mage and Adventurer and are mutually exclusive", () => {
+    expect([0, 1, 2].map(boxFaction)).toEqual(["warrior", "mage", "adventurer"]);
+    const w = clickFaction(null, 0);
+    expect(w).toBe("warrior");
+    expect([0, 1, 2].map((b) => boxTicked(w, b))).toEqual([true, false, false]);
+    const m = clickFaction(w, 1);
+    expect(m).toBe("mage");
+    const a = clickFaction(w, 2);
+    expect(a).toBe("adventurer");
+    expect(clickFaction(a, 1)).toBe("mage");
+    expect(clickFaction(a, 2)).toBeNull();
+    // A box no faction is given does nothing.
+    expect(clickFaction(a, 3)).toBe("adventurer");
   });
-  test("the save writes the ticked faction or X", () => {
-    expect(factionFlag({ w: false, m: false, a: true })).toBe("A");
-    expect(factionFlag({ w: false, m: false, a: false })).toBe("X");
-    expect(factionBoxes("M")).toEqual({ w: false, m: true, a: false });
+  test("the save writes the ticked faction's key or nothing; a load reads the key", () => {
+    expect(factionFlag("adventurer")).toBe("adventurer");
+    expect(factionFlag(null)).toBe("");
+    expect(factionBoxes("Mage")).toBe("mage");
+    expect(factionBoxes("")).toBeNull();
+    // A faction the world has removed is kept, so saving the map does not clear its spawn.
+    expect(factionBoxes("pirates")).toBe("pirates");
+    expect(factionFlag(factionBoxes("pirates"))).toBe("pirates");
   });
   test("layer buttons select their layer; clicking any lit layer button (including S) is stable", () => {
     for (const btn of ["l1", "l2", "l3", "s"] as const) {
@@ -158,7 +168,7 @@ describe("LOAD and SAVE", () => {
     expect(at(m.layers[2], 7, 6)).toBe("5A");
     expect(m.layers[2].join(" ").split("5A").length - 1).toBe(1);
     expect(m.layers[3]).toEqual(rows("5A"));
-    expect(m.flags).toEqual({ canFight: "O", fctSpwn: "O", isIndoors: "X", canPvp: "X" });
+    expect(m.flags).toEqual({ canFight: "O", fctSpwn: "", isIndoors: "X", canPvp: "X" });
   });
   test("loading a map without an exit resets the exit fields so saving does not recreate a stale exit", () => {
     const prev = exitFieldsAfterLoad({ mx: 3, my: 4, x: 5, y: 6 });

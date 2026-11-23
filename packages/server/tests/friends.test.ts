@@ -139,7 +139,7 @@ describe("bios", () => {
     bob.char.skills[skillIndex("Cooking")] = 90; // holds the spatula, id 39
     bob.char.profile = "Fishing is life";
     bob.char.wanted = true;
-    bob.char.faction = { ...bob.char.faction, id: 2 };
+    bob.char.faction = { ...bob.char.faction, key: "warrior" };
     bob.guild = "Knights";
     world.guilds.set("knights", {
       id: "g1",

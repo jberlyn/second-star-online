@@ -68,7 +68,7 @@ export interface StoredRecord {
   hunger: number;
   position: { mapId: string; x: number; y: number; facing: string };
   respawn: { mapId: string; x: number; y: number } | null;
-  faction: { id: number; count: number };
+  faction: { key: string | null; count: number };
   wanted: boolean;
   vehicle: string | null;
 }
@@ -179,7 +179,7 @@ export function liveSheet(
     stats: statsOf5(c.stats),
     skills: skillsByKey(c.skills),
     hunger: c.hunger,
-    faction: c.faction.id,
+    faction: c.faction.key,
     factionCount: c.factionCount,
     wanted: c.wanted,
     position: { map: p.map.name, x: p.x, y: p.y, facing: p.facing },
@@ -215,7 +215,7 @@ export function storedSheet(world: World, s: StoredCharacter): CharacterSheet {
     stats: statsOf5(r.stats),
     skills: skillsByKey(s.skills),
     hunger: r.hunger,
-    faction: r.faction.id,
+    faction: r.faction.key,
     factionCount: r.faction.count,
     wanted: r.wanted,
     position: { map: s.mapName, x: r.position.x, y: r.position.y, facing: r.position.facing },

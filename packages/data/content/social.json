@@ -1,10 +1,45 @@
 {
   "factions": [
     {
-      "id": 1,
+      "key": "mage",
       "name": "Mage",
       "leader": "Angela",
       "head": "Mage's Head",
+      "member": "Mage Faction Member",
+      "startPower": 27,
+      "bio": "Loyal to the Mages",
+      "perks": [
+        {
+          "kind": "spellPower",
+          "values": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "kind": "mageCap",
+          "values": [
+            50,
+            60,
+            70,
+            90,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ]
+        }
+      ],
       "joinHpMaxAbove": 49,
       "joinCount": 212000,
       "rejoinAdds": 212000,
@@ -42,10 +77,60 @@
       ]
     },
     {
-      "id": 2,
+      "key": "warrior",
       "name": "Warrior",
       "leader": "Trianus",
       "head": "Warrior's Head",
+      "member": "Warrior Faction Member",
+      "startPower": 123,
+      "bio": "Loyal to the Warriors",
+      "perks": [
+        {
+          "kind": "melee",
+          "values": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "kind": "defence",
+          "values": [
+            0,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            3
+          ]
+        },
+        {
+          "kind": "skillCap",
+          "values": [
+            55,
+            60,
+            70,
+            80,
+            90,
+            100,
+            100,
+            100,
+            100,
+            100
+          ]
+        }
+      ],
       "joinHpMaxAbove": 59,
       "joinCount": 212000,
       "rejoinAdds": 212000,
@@ -83,10 +168,78 @@
       ]
     },
     {
-      "id": 3,
+      "key": "adventurer",
       "name": "Adventurer",
       "leader": "Corin",
       "head": "Adventurer's Head",
+      "member": "Adventurer Faction Member",
+      "startPower": 0,
+      "bio": "Loyal to the Adventurers",
+      "perks": [
+        {
+          "kind": "defence",
+          "values": [
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2
+          ]
+        },
+        {
+          "kind": "skillCap",
+          "values": [
+            55,
+            60,
+            65,
+            70,
+            75,
+            80,
+            80,
+            80,
+            80,
+            80
+          ]
+        },
+        {
+          "kind": "regeneration",
+          "values": [
+            5,
+            10,
+            15,
+            20,
+            25,
+            30,
+            35,
+            40,
+            45,
+            50
+          ]
+        },
+        {
+          "kind": "pvpParry",
+          "values": [
+            4
+          ]
+        },
+        {
+          "kind": "pvpBlock",
+          "values": [
+            10
+          ]
+        },
+        {
+          "kind": "monsterDodge",
+          "values": [
+            10
+          ]
+        }
+      ],
       "joinHpMaxAbove": 49,
       "joinCount": 212000,
       "rejoinAdds": 212000,
@@ -125,6 +278,60 @@
     }
   ],
   "factionRules": {
+    "tiers": {
+      "top": 9,
+      "below": [
+        {
+          "below": 90,
+          "tier": 9
+        },
+        {
+          "below": 80,
+          "tier": 8
+        },
+        {
+          "below": 70,
+          "tier": 7
+        },
+        {
+          "below": 60,
+          "tier": 6
+        },
+        {
+          "below": 50,
+          "tier": 5
+        },
+        {
+          "below": 40,
+          "tier": 4
+        },
+        {
+          "below": 30,
+          "tier": 3
+        },
+        {
+          "below": 20,
+          "tier": 2
+        },
+        {
+          "below": 10,
+          "tier": 1
+        },
+        {
+          "below": 5,
+          "tier": 0
+        }
+      ]
+    },
+    "perkDefaults": {
+      "skillCap": 50,
+      "mageCap": 30
+    },
+    "editorBoxes": [
+      "warrior",
+      "mage",
+      "adventurer"
+    ],
     "loyaltyPerFrame": {
       "rule": "Fctcnt - 1 every frame while Fctcnt > 0, floored at 0; the warnings print at exactly 20000, 10000 and 5000 after the decrement, and at 1 the player is kicked (Fctnme, Fctcnt and the bonuses 0, LeaveGroup @Faction, save)"
     },
@@ -148,10 +355,6 @@
       "fine": "{NPC} says \"Our power is fine...for now.\"",
       "weak": "{NPC} says \"We are very weak, I fear that we may be destroyed.\"",
       "absolute": "{NPC} says \"We are currently in absolute power.\""
-    },
-    "powers": {
-      "file": "POLITICAL\\factions.txt = mage:warrior:adventurer",
-      "archived": "27:123:0"
     }
   },
   "murder": {
@@ -567,15 +770,6 @@
       },
       "member": {
         "text": "Member of the {GUILD}"
-      },
-      "mages": {
-        "text": "Loyal to the Mages"
-      },
-      "warriors": {
-        "text": "Loyal to the Warriors"
-      },
-      "adventurers": {
-        "text": "Loyal to the Adventurers"
       },
       "murderer": {
         "text": "Vile Murderer"

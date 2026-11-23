@@ -50,6 +50,7 @@ import {
   type Faction,
   type Fighter,
   facedDoor,
+  factionPerk,
   factionRows,
   failurePool,
   fishCheck,
@@ -72,8 +73,8 @@ import {
   isHarmful,
   isInert,
   isKey,
+  isTrap,
   isUniqueContainer,
-  isWebBody,
   itemLabel,
   keyConsumed,
   keyPause,
@@ -329,13 +330,21 @@ function wearing(name: string): Equipment {
  * Factions: none, then each faction with one bonus field set at a time, so a perk that reads the
  * wrong field shows.
  */
+/** 1.6's faction numbers, 1 Mage, 2 Warrior, 3 Adventurer, as Classic's keys. */
+const FACTION_KEYS = ["mage", "warrior", "adventurer"] as const;
+
+/**
+ * A faction as 1.6 held it: its number and the three bonuses, of which only the faction's own was
+ * ever read (so `f1.f2b5`, a Mage with a Warrior bonus, is a Mage at tier 0). Tier 10 cannot occur:
+ * the faction sort stops at 9.
+ */
 const FACTIONS: [string, Faction][] = [
   ["none", NO_FACTION],
   ...[1, 2, 3].flatMap((id) =>
-    (["f1Bonus", "f2Bonus", "f3Bonus"] as const).flatMap((field, i) =>
+    [1, 2, 3].flatMap((field) =>
       [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((b): [string, Faction] => [
-        `f${id}.f${i + 1}b${b}`,
-        { ...NO_FACTION, id: id as 1 | 2 | 3, [field]: b },
+        `f${id}.f${field}b${b}`,
+        { key: FACTION_KEYS[id - 1] ?? null, tier: field === id ? b : 0 },
       ]),
     ),
   ),
@@ -788,7 +797,7 @@ describe("the behaviour snapshot", () => {
         const f = fighter({
           skills: Object.fromEntries(KILL_SKILLS.map((k) => [k, x])),
           equip: { weapon },
-          faction: { ...NO_FACTION, id: 2, f2Bonus: 5 },
+          faction: { key: "warrior", tier: 5 },
         });
         f.skills[skillIndex("Slash")] = 51;
         f.skills[skillIndex("Thrust")] = 61;
@@ -875,7 +884,7 @@ describe("the behaviour snapshot", () => {
           monsterHit: roll((rng) => monsterHitsPlayer(10, f, 0, rng)),
           pvpHit: roll((rng) => pvpHit(10, f, "Long Sword", 0, rng)),
           spellBase: basePower({ skills: f.skills, equip: f.equip, faction }),
-          regen: regenTarget(faction.id === 3 ? faction.f3Bonus : null),
+          regen: regenTarget(factionPerk(faction, "regeneration")),
           regenServer: regenOf(faction),
         });
       }),
@@ -909,11 +918,10 @@ describe("the behaviour snapshot", () => {
         .filter(([, , d]) => d !== 0)
         .map(([k, v, d]) => `${k}${v}:${d}`);
       const byFaction = [0, 1, 2, 3, 4].map(
-        (b) => `f1b${b}:${caster({}, { id: 1, f1Bonus: b, f2Bonus: 0, f3Bonus: 0 }) - base}`,
+        (b) => `f1b${b}:${caster({}, { key: "mage", tier: b }) - base}`,
       );
       const byOther = [2, 3].map(
-        (id) =>
-          `f${id}:${caster({}, { id: id as 2 | 3, f1Bonus: 4, f2Bonus: 4, f3Bonus: 4 }) - base}`,
+        (id) => `f${id}:${caster({}, { key: FACTION_KEYS[id - 1] ?? null, tier: 4 }) - base}`,
       );
       const byGear = gearItems
         .map((g) => [g, caster({}, NO_FACTION, wearing(g)) - base] as const)
@@ -929,7 +937,7 @@ describe("the behaviour snapshot", () => {
         const out = spellImp(s, arr, faction, lo);
         return `${out.join("/") || "-"}[${lo.draws.join(",")}]`;
       };
-      const mage4: Faction = { id: 1, f1Bonus: 4, f2Bonus: 0, f3Bonus: 0 };
+      const mage4: Faction = { key: "mage", tier: 4 };
       const gains = ["Magery", ...SPELL_SKILLS.filter((k) => k !== "Magery")].flatMap((k) =>
         [10, 29, 31, 99].map((v) => `${k}${v}:${gain({ [k]: v }, NO_FACTION)}`),
       );
@@ -954,8 +962,8 @@ describe("the behaviour snapshot", () => {
         body,
         defense: defenseOf(n),
         attack: show(monsterAttackValue(n)),
-        neverMoves: neverMoves(body),
-        web: isWebBody(body),
+        neverMoves: neverMoves(n),
+        web: isTrap(n),
         footprint: isFootprint(n),
         leans: leansToward(n),
         killXp: `${meleeKillXp(30, n, NO_EQUIPMENT)}/${meleeKillXp(30, n, { ...NO_EQUIPMENT, ring: "Ring of Experience" })}`,
@@ -995,10 +1003,13 @@ describe("the behaviour snapshot", () => {
         [200, 445, ...content().monsters.monsters.map((m) => m.body)].sort((a, b) => a - b),
       ),
     ];
+    // 1.6 read these by body; SSO reads the flags of the species drawn with that body.
+    const flagsOfBody = (b: number) =>
+      content().monsters.monsters.find((x) => x.body === b)?.flags ?? {};
     for (const m of [...members].sort()) {
       const groups = new Map<string, number[]>();
       for (const b of bodies) {
-        const r = roll((rng) => spellHitOnMonster(m, `${b}-1-1`, 5, 10, rng));
+        const r = roll((rng) => spellHitOnMonster(m, flagsOfBody(b), 5, 10, rng));
         groups.set(r, [...(groups.get(r) ?? []), b]);
       }
       if (groups.size === 1 && groups.has("- []")) {

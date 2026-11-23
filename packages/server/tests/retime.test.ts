@@ -19,7 +19,7 @@ function regenTicks(adventurerBonus: number | null, ticks: number): number[] {
   const { join, run } = setup([map], undefined, rngByN());
   const a = player("a", map, 5, 5);
   if (adventurerBonus !== null) {
-    a.char.faction = { ...a.char.faction, id: 3, f3Bonus: adventurerBonus };
+    a.char.faction = { key: "adventurer", tier: adventurerBonus };
   }
   a.char.vitals.hpMax = 1000;
   a.char.vitals.spMax = 1000;

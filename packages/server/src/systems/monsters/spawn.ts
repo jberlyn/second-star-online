@@ -7,6 +7,7 @@ import {
   anyMatch,
   blocksMonster,
   content,
+  factionByKey,
   isWalkable,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -67,15 +68,17 @@ export interface SpawnCtx {
   players: number;
 }
 
-/** The monster in each slot this pass: the roster, with the faction swap. */
+/**
+ * The monster in each slot this pass: the roster, with the faction swap (the map's faction's
+ * `member`, in a slot picked by `random(35)`, 1-4 taking one).
+ */
 function passRoster(map: WorldMap, rng: Rng): (string | null)[] {
   const mon = map.slots.map((s) => s.species);
-  const f = map.flags.fctSpwn;
-  const who = f === "W" ? "Warrior" : f === "M" ? "Mage" : f === "A" ? "Adventurer" : null;
-  if (who) {
+  const member = factionByKey(map.flags.fctSpwn || null)?.member;
+  if (member) {
     const k = rng.random(35);
     if (k >= 1 && k <= 4) {
-      mon[k - 1] = `${who} Faction Member`;
+      mon[k - 1] = member;
     }
   }
   return mon;

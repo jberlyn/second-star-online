@@ -16,6 +16,7 @@ import { lingoContains, lingoDiv, lingoEq, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 import { hasBehaviour } from "../inventory/behaviours.ts";
 import { type CrystalColour, crystalColour } from "../inventory/inventory.ts";
+import { factionPerk } from "../social/factions.ts";
 import { gearBonus } from "./gear.ts";
 
 /** The six arrow colours, by arrow number. */
@@ -93,8 +94,14 @@ export function evalValue(v: number | string, rng: Rng): number {
   return Number(m[1] ?? 0) + rng.random(Number(m[2]));
 }
 
+/** What a tier condition reads: the skills, and the character level. */
+export interface TierReader {
+  skills: readonly number[];
+  level: number;
+}
+
 /** `["Archery < 10"]`: every condition true. `level` is the character level. */
-export function tierApplies(f: Fighter, when: readonly string[] | null): boolean {
+export function tierApplies(f: TierReader, when: readonly string[] | null): boolean {
   if (!when) {
     return true;
   }
@@ -113,6 +120,16 @@ export function applyTier(power: number, t: AttPowerTier, f: Fighter, rng: Rng):
   if (t.subWeapon && !lingoEq(f.equip.weapon, t.subWeapon.pattern)) {
     return power;
   }
+  return applyTierRow(power, t, f, rng);
+}
+
+/** A tier row without a weapon test (attack power's after that test, spell power's tables). */
+export function applyTierRow(
+  power: number,
+  t: Omit<AttPowerTier, "subWeapon">,
+  f: TierReader,
+  rng: Rng,
+): number {
   if (!tierApplies(f, t.when)) {
     return power;
   }
@@ -164,9 +181,8 @@ export function attackPower(
       power = row.flat + (row.randomN === null ? 0 : rng.random(row.randomN));
     }
   }
-  if (f.faction.id === 2) {
-    power += f.faction.f2Bonus;
-  }
+  // The faction perk `melee` (Classic: a Warrior's tier).
+  power += factionPerk(f.faction, "melee");
   let outOfCrystals: string | null = null;
   let crystal: CrystalColour | null = null;
   if (isBow) {

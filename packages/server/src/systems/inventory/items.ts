@@ -1039,7 +1039,7 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   if (p.vehicle && !g && !room.map.slots.some((s) => s.live?.x === t.x && s.live?.y === t.y)) {
     return unboardVehicle(ctx, room, p);
   }
-  // A Pig or Snow Demon on the faced tile is grabbed first.
+  // A grabbable monster (a Pig) on the faced tile is grabbed first.
   const pig = ctrlPig(room, p, ctx.rng);
   if (pig) {
     if (pig.grabbed) {

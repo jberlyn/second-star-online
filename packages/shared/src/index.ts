@@ -70,6 +70,7 @@ export * from "./rules/inventory/paperdoll.ts";
 export * from "./rules/mail/mail.ts";
 export * from "./rules/mail/newspaper.ts";
 export * from "./rules/mail/paint.ts";
+export * from "./rules/monsters/flags.ts";
 export * from "./rules/monsters/loot.ts";
 export * from "./rules/movement/movement.ts";
 export * from "./rules/progression/creation.ts";

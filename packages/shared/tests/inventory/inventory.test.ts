@@ -2,7 +2,6 @@
 
 import { describe, expect, test } from "bun:test";
 
-import { classicData } from "@secondstaronline/data/classic";
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 
 import { content } from "../../src/content/store.ts";
@@ -361,7 +360,7 @@ describe("armour and PvP", () => {
     expect(at15.calls).toEqual([3, 90, 90, 90, 90]);
   });
   test("bug fixed: the faction-3 parry/block bonus clamps a draw pushed below 1 to 1 in PvP, as against monsters", () => {
-    const adventurer = fighter({ skills: zeroSkills(), faction: { ...NO_FACTION, id: 3 } });
+    const adventurer = fighter({ skills: zeroSkills(), faction: { key: "adventurer", tier: 0 } });
     // PvP: random(3) = 2; parry draw 3 − 4 < 1 → 1, a parry.
     const pvp = scripted([2, 3]);
     expect(pvpHit(10, adventurer, "Knife", 0, pvp)).toEqual({ kind: "parry" });

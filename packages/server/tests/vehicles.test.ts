@@ -542,7 +542,7 @@ describe("death", () => {
   const dies = (s: ReturnType<typeof aboard>) => {
     s.ann.char.vitals.hp = 0;
     s.ann.dontHitMeAgain = false;
-    s.ann.char.faction = { ...s.ann.char.faction, id: 1 };
+    s.ann.char.faction = { ...s.ann.char.faction, key: "mage" };
     s.ann.char.wanted = true; // only a wanted death would drop the Apple
     give(s.ann, 2, "Apple", 1);
     s.map.flags.canPvp = "X";

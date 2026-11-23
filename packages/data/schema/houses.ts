@@ -43,7 +43,13 @@ const houseType = z.strictObject({
   /** The `Internal` field the interior is copied from. */
   template: z.strictObject({
     layers: z.tuple([layer, layer, layer, layer]),
-    flags: z.strictObject({ canFight: flag, fctSpwn: text, isIndoors: flag, canPvp: flag }),
+    flags: z.strictObject({
+      canFight: flag,
+      /** The faction a new interior's spawn swap brings (a faction key), or "" for none. */
+      fctSpwn: z.string().max(40),
+      isIndoors: flag,
+      canPvp: flag,
+    }),
     field18: z.string(),
   }),
 });

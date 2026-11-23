@@ -68,7 +68,7 @@ const texts = (to: string) =>
 describe("seed roster and map flags (migration 20261105_03)", () => {
   test("x1000y992 keeps its original roster, slot 1 Slime", () => {
     const m = findMapByCoords(db, 1000, 992);
-    expect(m?.flags).toEqual({ canFight: "X", fctSpwn: "X", isIndoors: "X", canPvp: "X" });
+    expect(m?.flags).toEqual({ canFight: "X", fctSpwn: "", isIndoors: "X", canPvp: "X" });
     expect(loadSlots(db, m?.id ?? "").map((s) => s.species)).toEqual(["Slime", null, null, null]);
   });
 });

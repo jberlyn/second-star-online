@@ -16,11 +16,10 @@ import {
   blockPCCheck,
   type DeltaEvent,
   DIR_DELTA,
-  DIR_FACING,
   type Dir,
   isShip,
+  isTrap,
   isWalkable,
-  isWebBody,
   type MoveOutcome,
   monsterSpriteTile,
   type ServerMsg,
@@ -33,7 +32,6 @@ import {
 import type { Rng } from "../../rng.ts";
 import { isCrafting } from "../crafting/craft.ts";
 import { groundBlocks } from "../inventory/items.ts";
-import { bodyOf } from "../monsters/slots.ts";
 import { type Outgoing, PENDING_MAX_TICKS, type Player, type Room } from "../world/world.ts";
 import { rollPushes } from "./push.ts";
 
@@ -167,8 +165,7 @@ export function walkWorld(room: Room, self: Player): WalkWorld {
     // A live Web exactly on the walker's own tile. A web never moves.
     webAt: (x, y) =>
       room.map.slots.some(
-        (s) =>
-          s.live !== null && isWebBody(bodyOf(s.live.name)) && s.live.x === x && s.live.y === y,
+        (s) => s.live !== null && isTrap(s.live.name) && s.live.x === x && s.live.y === y,
       ),
   };
 }

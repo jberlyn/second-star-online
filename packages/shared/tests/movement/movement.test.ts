@@ -7,7 +7,6 @@ import {
   attemptMove,
   blockPCCheck,
   edgeWrap,
-  isWebBody,
   monsterSpriteTile,
   resolveHeld,
   STEP_FRAMES,
@@ -301,13 +300,6 @@ describe("web", () => {
   test("web: a web on the next tile does not block", () => {
     const ahead: WalkWorld = { ...open, webAt: (x, y) => x === 6 && y === 5 };
     expect(attemptMove(walker(), "R", false, ahead).kind).toBe("step");
-  });
-
-  test('isWebBody: 92 is a web; 90, 99, 9 are not ("92-" in the member name)', () => {
-    expect(isWebBody(92)).toBe(true);
-    expect(isWebBody(90)).toBe(false);
-    expect(isWebBody(99)).toBe(false);
-    expect(isWebBody(9)).toBe(false);
   });
 });
 

@@ -13,7 +13,7 @@ import { setRole } from "../src/persistence/accounts.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { loadInventory } from "../src/persistence/inventory.ts";
 import { migrate } from "../src/persistence/migrations.ts";
-import { loadFactionPowers, loadQuestLines } from "../src/persistence/social.ts";
+import { loadFactionPowers, loadQuestLines, saveFactionPowers } from "../src/persistence/social.ts";
 import { rngByN } from "./helpers/sim.ts";
 
 let db: Db;
@@ -67,7 +67,7 @@ const texts = (to: string) =>
 
 const column = (id: string) =>
   db
-    .query<{ faction: number; faction_count: number; wanted: number }, [string]>(
+    .query<{ faction: string | null; faction_count: number; wanted: number }, [string]>(
       "SELECT faction, faction_count, wanted FROM characters WHERE id = ?",
     )
     .get(id);
@@ -76,7 +76,7 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
   test("the first start seeds the archive's powers and quest lines", () => {
     expect(loadFactionPowers(db)).toBeNull();
     game();
-    expect(loadFactionPowers(db)).toEqual([27, 123, 0]);
+    expect(loadFactionPowers(db)).toEqual({ mage: 27, warrior: 123, adventurer: 0 });
     const lines = loadQuestLines(db);
     expect(lines?.length).toBe(40);
     expect(lines?.[0]).toBe("Edwin:scroll:Airship Deed");
@@ -86,19 +86,20 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
   test("a character's faction, count and flag load with its bonus and are saved", async () => {
     const g = game();
     const id = await makeChar(g, "Al");
-    db.run("UPDATE characters SET faction = 2, faction_count = 5000, wanted = 1 WHERE id = ?", [
-      id,
-    ]);
+    db.run(
+      "UPDATE characters SET faction = 'warrior', faction_count = 5000, wanted = 1 WHERE id = ?",
+      [id],
+    );
     g.enter(id, false);
     const p = g.world.players.get(id);
-    expect(p?.char.faction).toEqual({ id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 });
+    expect(p?.char.faction).toEqual({ key: "warrior", tier: 9 });
     expect(p?.char.factionCount).toBe(5000);
     expect(p?.char.wanted).toBe(true);
     if (p) {
       p.char.factionCount = 4000;
     }
     g.leave(id);
-    expect(column(id)).toEqual({ faction: 2, faction_count: 4000, wanted: 1 });
+    expect(column(id)).toEqual({ faction: "warrior", faction_count: 4000, wanted: 1 });
   });
 
   test("a quest turn-in writes the bag and the rerolled line, which survive a restart", async () => {
@@ -152,5 +153,11 @@ describe("faction and quest persistence (migration 20261107_14)", () => {
     g.intent(bob, { t: "chat", text: "/Pardon Bob" });
     expect(sent.filter((m) => m.msg.t === "chat").map((m) => m.to)).toEqual([bob]);
     expect(p?.char.wanted).toBe(true);
+  });
+
+  test("a faction's power is saved once, under the spelling its key has now", () => {
+    saveFactionPowers(db, { Crown: 24 });
+    saveFactionPowers(db, { crown: 25 });
+    expect(loadFactionPowers(db)).toEqual({ crown: 25 });
   });
 });

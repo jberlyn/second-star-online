@@ -19,7 +19,7 @@ test("the seeded jail encloses every walkable area and has no exits or landing p
   expect(jail.exit1).toBeNull();
   expect(jail.exit2).toBeNull();
   expect(jail.layers[0].join(" ")).not.toContain("J2");
-  expect(jail.flags).toEqual({ canFight: "O", canPvp: "O", isIndoors: "O", fctSpwn: "X" });
+  expect(jail.flags).toEqual({ canFight: "O", canPvp: "O", isIndoors: "O", fctSpwn: "" });
   const grid = footWalkGrid(jail.layers[0], jail.layers[1]);
   expect(grid[3]?.[3]).toBe(true); // /jail arrival (4,4)
   // No walkable tile touches any screen edge, even outside the arrival cell.

@@ -48,7 +48,13 @@ export const editorMapSchema = z.strictObject({
   mx: gridPos,
   my: gridPos,
   layers: z.tuple([layerRows, layerRows, layerRows, layerRows]),
-  flags: z.strictObject({ canFight: flag, fctSpwn: flag, isIndoors: flag, canPvp: flag }),
+  flags: z.strictObject({
+    canFight: flag,
+    /** A faction key, or "" for none. */
+    fctSpwn: z.string().max(40),
+    isIndoors: flag,
+    canPvp: flag,
+  }),
   header: z.string().max(HEADER_MAX),
   signs: z.tuple([z.string().max(SIGN_MAX), z.string().max(SIGN_MAX), z.string().max(SIGN_MAX)]),
   exit1: mapExit,
@@ -221,7 +227,7 @@ const editValues = z
       .record(z.string().max(80), editInt)
       .refine((o) => Object.keys(o).length <= 1000, "too many skills"),
     hunger: editInt,
-    faction: editInt,
+    faction: z.string().min(1).max(40).nullable(),
     factionCount: editInt,
     wanted: z.boolean(),
     respawn: editPoint.nullable(),

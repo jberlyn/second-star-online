@@ -3,7 +3,6 @@
  * the `loadMap` function it is given; it never touches sockets, SQL or the clock.
  */
 import {
-  ARCHIVED_POWERS,
   type AssassinEntry,
   type AssassinState,
   type AttackTimers,
@@ -154,12 +153,13 @@ export function groundView(g: GroundItem): GroundView {
 /** Map field 12 items 1, 2, 3 and 5. */
 export interface MapFlags {
   canFight: string;
+  /** The faction the spawn swap brings (a faction key); "" or a key no faction has: none. */
   fctSpwn: string;
   isIndoors: string;
   canPvp: string;
 }
 
-export const DEFAULT_FLAGS: MapFlags = { canFight: "X", fctSpwn: "X", isIndoors: "X", canPvp: "X" };
+export const DEFAULT_FLAGS: MapFlags = { canFight: "X", fctSpwn: "", isIndoors: "X", canPvp: "X" };
 
 export function toWorldMap(
   m: Omit<
@@ -673,6 +673,8 @@ export interface SpellFx extends FxSprite {
   radarSeen?: Set<string>;
   /** A cannonball shot: the loc its last hit test reached, where the next one sweeps from. */
   sweptTo?: { h: number; v: number };
+  /** The spell a player cast to place it (`CastMessage.castSpell`). */
+  castSpell?: string;
 }
 
 /** Fresh per-session combat state for a character entering the world. */
@@ -878,6 +880,11 @@ export interface CastMessage {
   power: number;
   /** False for a cast that trains no skill (the Fire Staff's and Firesword's free fireballs). */
   train?: boolean;
+  /**
+   * The spell a player cast, for its school and Create Food's items: a spell may run another
+   * spell's FX, so the FX name alone does not say whose it is. Absent for every other sender.
+   */
+  castSpell?: string;
 }
 
 /** One line for the chat log (`systems/chat/log.ts`). */
@@ -1122,7 +1129,8 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     houseSweepDay: "",
     interiorsToDelete: new Set(),
     playerShops: new Map(),
-    factionPowers: [...ARCHIVED_POWERS],
+    // Each faction's `startPower` until the database's saved powers are loaded.
+    factionPowers: {},
     powersDirty: false,
     questLines: archivedQuestLines(),
     questsDirty: new Set(),

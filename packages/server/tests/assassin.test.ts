@@ -71,7 +71,7 @@ describe("Lightning", () => {
   test("one landed melee hit kills: HP held at 1, no drop, head, penalty or exile", () => {
     const s = scene();
     setAssassinMode(s.world, "LIGHTNING", s.game);
-    s.bob.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    s.bob.char.faction = { key: "mage", tier: 0 };
     setAttackHeld(s.alice, true);
     s.run(1);
     setAttackHeld(s.alice, false);
@@ -81,7 +81,7 @@ describe("Lightning", () => {
     expect(s.bob.deadLock).toBeGreaterThan(0);
     expect(s.bob.char.vitals.hp).toBe(1);
     expect(s.bob.char.vitals.hpMax).toBe(90);
-    expect(s.bob.char.faction.id).toBe(1);
+    expect(s.bob.char.faction.key).toBe("mage");
     expect(s.map.ground).toEqual([]);
   });
 
@@ -150,25 +150,25 @@ describe("Lightning", () => {
     const s = scene();
     setAssassinMode(s.world, "LIGHTNING", s.game);
     // A faction member on a PvP-X map, HPmax below the exile line: outside Lightning, both apply.
-    s.bob.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    s.bob.char.faction = { key: "mage", tier: 0 };
     s.bob.char.vitals.hpMax = 30;
     s.bob.char.vitals.hp = 0;
     s.bob.lastToHitMe = "Alice";
     s.bob.lastToHitId = s.alice.id;
     s.run(1);
     expect(s.bob.deadLock).toBeGreaterThan(0);
-    expect(s.bob.char.faction.id).toBe(1);
+    expect(s.bob.char.faction.key).toBe("mage");
     expect(s.map.ground.some((g) => g.item.includes("Head"))).toBe(false);
   });
 
   test("outside a Lightning game a faction member's death drops the head and exiles", () => {
     const s = scene();
-    s.bob.char.faction = { id: 1, f1Bonus: 0, f2Bonus: 0, f3Bonus: 0 };
+    s.bob.char.faction = { key: "mage", tier: 0 };
     s.bob.char.vitals.hpMax = 30;
     s.bob.char.vitals.hp = 0;
     s.run(1);
     expect(s.bob.deadLock).toBeGreaterThan(0);
-    expect(s.bob.char.faction.id).toBe(0);
+    expect(s.bob.char.faction.key).toBe(null);
     expect(s.map.ground.some((g) => g.item.includes("Head"))).toBe(true);
   });
 

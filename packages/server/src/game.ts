@@ -29,7 +29,7 @@ import {
   editableOf,
   endIso,
   endMs,
-  factionIdOf,
+  factionKeyOf,
   findNewQuest,
   findSkillIndex,
   footWalkGrid,
@@ -71,6 +71,7 @@ import {
   skillsFromKeys,
   sortFaction,
   startingCharacter,
+  startingPowers,
   TEXT,
   TIMED_HUB_ACTIONS,
   VEHICLE_BODY,
@@ -736,11 +737,13 @@ export function createGame(deps: GameDeps): Game {
   for (const s of loadPlayerShops(db)) {
     world.playerShops.set(s.npc.toLowerCase(), s);
   }
-  // Faction powers and quest lines: seeded from the archive on the first start.
+  // Faction powers and quest lines: each faction's `startPower` on the first start (Classic: the
+  // archive's 27:123:0).
   const powers = loadFactionPowers(db);
   if (powers) {
     world.factionPowers = powers;
   } else {
+    world.factionPowers = startingPowers();
     saveFactionPowers(db, world.factionPowers);
   }
   const quests = loadQuestLines(db);
@@ -1532,7 +1535,7 @@ export function createGame(deps: GameDeps): Game {
             a.respawn && mapIds.respawn
               ? { mapId: mapIds.respawn, x: a.respawn.x, y: a.respawn.y }
               : null,
-          faction: { id: a.faction, count: a.factionCount },
+          faction: { key: a.faction, count: a.factionCount },
           wanted: a.wanted,
           stats: {
             str: a.str,
@@ -2012,7 +2015,7 @@ export function createGame(deps: GameDeps): Game {
         hunger: p.char.hunger,
         skills: p.char.skills,
         respawn: p.char.respawn,
-        faction: { id: p.char.faction.id, count: p.char.factionCount },
+        faction: { key: p.char.faction.key, count: p.char.factionCount },
         wanted: p.char.wanted,
         stats: p.char.stats,
         vehicle: p.vehicle,
@@ -2529,7 +2532,7 @@ export function createGame(deps: GameDeps): Game {
           vault: loadVault(db, c.id),
           storeDirty: false,
           // The faction sort on the login's faction reply.
-          faction: sortFaction(factionIdOf(c.faction.id), world.factionPowers),
+          faction: sortFaction(factionKeyOf(c.faction.key), world.factionPowers),
           factionCount: c.faction.count,
           wanted: c.wanted,
           respawn: c.respawn,
@@ -3269,6 +3272,9 @@ export function createGame(deps: GameDeps): Game {
       followSkills(restoring);
       for (const o of world.players.values()) {
         o.lastSheet = "";
+        // A member's tier follows the store's tier rows; a faction the store dropped gives none of
+        // its perks (the membership stays saved, for the faction to return to).
+        o.char.faction = sortFaction(factionKeyOf(o.char.faction.key), world.factionPowers);
       }
       // Setting defaults drawn from content (the Assassin prizes) follow it.
       // Its moves (a jail point changed since the settings were read) wait with the publish.

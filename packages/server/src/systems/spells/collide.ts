@@ -26,6 +26,7 @@ import {
   lingoContains,
   meleeKillXp,
   monsterDrawnTile,
+  monsterFlags,
   morphBody,
   morphCounterFor,
   type PlayerSpellBranch,
@@ -36,7 +37,9 @@ import {
   rollLoot,
   type SpellTarget,
   smokeBody,
+  spellByName,
   spellHitOnMonster,
+  spellOfFx,
   treeBody,
   vehicleOfItem,
   xpGained,
@@ -50,7 +53,7 @@ import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, type MonsterSlot, species } from "../monsters/slots.ts";
 import { spawnHp } from "../monsters/spawn.ts";
 import type { Outgoing, Player, Room, SpellFx } from "../world/world.ts";
-import { fxRect, monsterMember, monsterRect, playerRect } from "./geometry.ts";
+import { fxRect, monsterRect, playerRect } from "./geometry.ts";
 
 /** Spell damage on a player shows in colour 6 with no splat or sound; heals in 5. */
 export const SPELL_HIT_COLOR = 6;
@@ -219,8 +222,12 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       res.out.push(...chatterOut(room, inxitionText(p.name, v.expNeeded, v.exp), p.name));
     }
     if (has("Create Food-3")) {
-      const food = createFood(filledLines(p.char.bag), ctx.rng);
-      tell(res.out, p, food.text);
+      // The cast spell's own items (a spell may run Create Food's FX with a list of its own).
+      const spell = fx.castSpell ? spellByName(fx.castSpell) : spellOfFx(fx.name);
+      const food = createFood(filledLines(p.char.bag), spell?.creates ?? [], ctx.rng);
+      if (food.text) {
+        tell(res.out, p, food.text);
+      }
       if (food.item) {
         // Stacks, or takes the first empty line.
         const r = invAdd(p.char, food.item, 1, ctx.rng);
@@ -228,7 +235,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
           logActivity(ctx.item.world, p, "spell", {
             item: food.item,
             qty: 1,
-            details: { spell: "Create Food" },
+            details: { spell: spell?.name ?? "Create Food" },
           });
         }
         p.invDirty = true;
@@ -352,7 +359,6 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
       if (m.hitCountb >= 1 && !ownSecondHit) {
         continue;
       }
-      const body = monsterMember(slot);
       const P = fx.power;
       const r = ctx.rng;
       if (lingoContains(mem, "Radar-5")) {
@@ -361,7 +367,7 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
           tell(res.out, o, `The ${m.name} has ${m.hp} hit points.`);
         }
       }
-      const hit = spellHitOnMonster(mem, body, defenseOf(m.name), P, r);
+      const hit = spellHitOnMonster(mem, monsterFlags(m.name), defenseOf(m.name), P, r);
       if (!hit) {
         continue;
       }

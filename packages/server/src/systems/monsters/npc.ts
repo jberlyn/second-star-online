@@ -11,6 +11,7 @@ import {
   heardSqa,
   invAdd,
   lingoContains,
+  monsterFlags,
   monsterLabel,
   type NpcFile,
   type Rng,
@@ -19,7 +20,7 @@ import {
 import { hears } from "../chat/ignore.ts";
 import type { Outgoing, Player, Room } from "../world/world.ts";
 import { type NpcStore, npcData } from "./npcfiles.ts";
-import { BODY, bodyOf, type MonsterSlot } from "./slots.ts";
+import type { MonsterSlot } from "./slots.ts";
 
 export const NPC_TEXT = {
   /** Faction members and Strippers. */
@@ -35,10 +36,12 @@ export const NPC_TEXT = {
 export const PIG_GRAB_FRAMES = 500;
 
 /**
- * The slot's monster has this body (a bug fixed: 1.6 asked whether the body's member name
- * contained `"91-"` and the like, so the Snow Demon's 891 ran the Pig's click).
+ * The item the slot's monster is grabbed as (`flags.grabbable`; Classic: a Pig), or null. A bug
+ * fixed: 1.6 asked whether the body's member name contained `"91-"`, so the Snow Demon's 891 ran
+ * the Pig's click.
  */
-const bodyIs = (s: MonsterSlot, body: number) => s.live !== null && bodyOf(s.live.name) === body;
+const grabbedAs = (s: MonsterSlot): string | null =>
+  s.live === null ? null : (monsterFlags(s.live.name).grabbable ?? null);
 
 /** The file has something for the Bio window to show: lines, or a shop or trainer. */
 export function hasBio(f: NpcFile): boolean {
@@ -103,32 +106,33 @@ export function cancelSlot(room: Room, slot: MonsterSlot): Outgoing[] {
 }
 
 /**
- * Grabs a Pig into the bag: refused while the countdown runs, or with no Pig stack and no free
- * line; the countdown starts only when the grab goes through (bugs fixed: 1.6 started it before
- * the bag test, and a bag whose text contained "Pig", even "Cooked Pig", skipped that test). The
- * Pig leaves (no kill, no XP, no loot).
+ * Grabs a grabbable monster (Classic: a Pig) into the bag as its item: refused while the countdown
+ * runs, or with no stack of that item and no free line; the countdown starts only when the grab
+ * goes through (bugs fixed: 1.6 started it before the bag test, and a bag whose text contained
+ * "Pig", even "Cooked Pig", skipped that test). The monster leaves (no kill, no XP, no loot).
  */
-export function grabPig(room: Room, p: Player, slot: MonsterSlot, rng: Rng): NpcOut {
+export function grabPig(room: Room, p: Player, slot: MonsterSlot, item: string, rng: Rng): NpcOut {
   if (p.piggie > 0) {
     return { out: [], slotsChanged: false };
   }
-  if (addSlotFor(p.char.bag, "Pig") < 0) {
+  if (addSlotFor(p.char.bag, item) < 0) {
     return { out: [say(p, NPC_TEXT.pigFull)], slotsChanged: false };
   }
   p.piggie = PIG_GRAB_FRAMES;
   const out = cancelSlot(room, slot);
-  invAdd(p.char, "Pig", 1, rng);
+  invAdd(p.char, item, 1, rng);
   p.invDirty = true;
-  return { out, slotsChanged: true, grabbed: "Pig" };
+  return { out, slotsChanged: true, grabbed: item };
 }
 
-/** Ctrl/Action on the faced tile: a Pig only. */
+/** Ctrl/Action on the faced tile: a grabbable monster only. */
 export function ctrlPig(room: Room, p: Player, rng: Rng): NpcOut | null {
   const s = slotAt(room, p, 1);
-  if (!s || !bodyIs(s, BODY.pig)) {
+  const item = s ? grabbedAs(s) : null;
+  if (!s || item === null) {
     return null;
   }
-  return grabPig(room, p, s, rng);
+  return grabPig(room, p, s, item, rng);
 }
 
 /** True when a dialog or the death lock holds the keys (1.6's client-side input lock). */
@@ -137,10 +141,10 @@ export function keyLocked(p: Player): boolean {
 }
 
 /**
- * A click on a monster or NPC, in order: the input lock; a click on a Pig standing on your faced
- * tile grabs that Pig (a bug fixed: 1.6 grabbed whatever stood there, whichever Pig you clicked);
- * Faction members and Strippers name themselves; Spikes, Pig, Web and Holy Shield bodies do
- * nothing; NPC data with nothing for a Bio (EMPTY, or only loot lines like a Slime's) does nothing
+ * A click on a monster or NPC, in order: the input lock; a click on a grabbable monster (a Pig)
+ * standing on your faced tile grabs it (a bug fixed: 1.6 grabbed whatever stood there, whichever
+ * Pig you clicked); Faction members and Strippers name themselves; an unclickable species (Classic:
+ * Spikes, Pig, Web and Holy Shield) does nothing; NPC data with nothing for a Bio (EMPTY, or only loot lines like a Slime's) does nothing
  * (a bug fixed: 1.6 opened an empty window); else the Bio window opens, from anywhere on the
  * screen (kept on purpose: NPCs walk), and holds the keys until it closes.
  */
@@ -151,13 +155,14 @@ export function clickNpc(room: Room, p: Player, slotNo: number, rng: Rng): NpcOu
   if (!slot || !m || keyLocked(p)) {
     return none;
   }
-  if (bodyIs(slot, BODY.pig) && slotAt(room, p, 1) === slot) {
-    return grabPig(room, p, slot, rng);
+  const item = grabbedAs(slot);
+  if (item !== null && slotAt(room, p, 1) === slot) {
+    return grabPig(room, p, slot, item, rng);
   }
   if (anyMatch(content().monsters.rules.namesSelf, m.name)) {
     return { out: [say(p, NPC_TEXT.thisIs(monsterLabel(m.name)))], slotsChanged: false };
   }
-  if (Object.values(BODY).some((b) => bodyIs(slot, b))) {
+  if (monsterFlags(m.name).unclickable === true) {
     return none;
   }
   const data = npcData(room.npcs, m.name);

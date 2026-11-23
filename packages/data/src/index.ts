@@ -26,6 +26,7 @@ export type { JailMapData } from "../schema/jail-map.ts";
 export type {
   MeleeAffinity,
   Monster,
+  MonsterFlags,
   MonsterSpellKind,
   MonsterSpellRule,
   MonstersData,
@@ -34,10 +35,19 @@ export type { NpcFilesData, NpcFileText } from "../schema/npcfiles.ts";
 export type { QuestData } from "../schema/quests.ts";
 export type { MemberRect, RectsData } from "../schema/rects.ts";
 export type { SeedMapData } from "../schema/seed-map.ts";
-export type { Faction as FactionRow, SocialData } from "../schema/social.ts";
+export type {
+  Faction as FactionRow,
+  FactionPerk,
+  FactionPerkKind,
+  SocialData,
+} from "../schema/social.ts";
 export type {
   Spell,
+  SpellCreates,
   SpellFx,
+  SpellPowerTable,
+  SpellPowerTier,
+  SpellSchool,
   SpellSound,
   SpellSpByBody,
   SpellSummon,

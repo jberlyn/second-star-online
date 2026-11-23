@@ -156,8 +156,6 @@ These are the engine's own names, or wait for a later stage of issue #37:
 | `Map` (a name containing it) | Drawn with the `MapPic` picture on the ground (no Classic item has it; give an item a `sprite` instead) |
 | The newspaper's `'s Newspaper` | `social.json` `newspaper.suffix`: content already |
 | `Axe`, `Mining`, `Fishing` | Swing-speed cascades and the fishing delay: tool behaviours, stage 5 |
-| Spell and FX names, Create Food's "an Apple" | Spells by effect, stage 4 |
-| `<faction> Head` | Faction heads: factions as content, stage 4 |
 | `+N` at the end (`Long Sword+3`) | A masterwork: adds `N` to attack power |
 | `<Colour> Arrows`, `<Colour> Crystal` | A bow's ammunition: arrows of one of the six colours spend crystals of that colour |
 
@@ -285,17 +283,25 @@ Every species row needs an `hp`. Its `attack` may be `null`: the species never m
 4. Add a `skillCaps.byBody` row if it uses a new body number (default is `85`).
 5. Add rows to `rules` or `casting.neverCasts` if it needs a behaviour its name does not already match, and add body art if it uses a new body.
 
-### Body-number traps
+### Species flags
 
-These body numbers have rules of their own, all tested by equality (1.6 tested the member name as text, so a body ending in the same digits matched too; SSO compares the number):
+A species' `flags` turn on the mechanics no table names (1.6 tied each one to a body number; a body is now only art). A flag left out is off.
 
-- `90` (Spikes) and `99` (Holy Shield) never move and are not clickable; `92` (Web) never moves, is not clickable, never attacks and traps players who walk into it; `91` is the Pig (a click or Ctrl on the faced tile grabs it).
-- `90` is destroyed by Dispel Illusions.
-- `99` protects an innocent player standing on it from melee (`HitMe`); spells never test it.
-- `61` is hurt by Minor Heal and Major Heal instead of healed.
-- `36` is healed by Splash, `47` by Crush and `45` by Firebolt; Fireball does only `random(3)` to `45`.
+| Flag | What it does | Classic |
+|---|---|---|
+| `immobile` | Never walks | Illusionary Spikes, Web, Holy Shield |
+| `unclickable` | A click on it does nothing (after a grab, and a `rules.namesSelf` row) | Illusionary Spikes, Pig, Web, Holy Shield |
+| `trap` | Holds a player standing on its tile ("Your feet are stuck in the web…"), and never attacks | Web |
+| `dispellable` | Dispel Illusions destroys it | Illusionary Spikes |
+| `shieldsInnocent` | An innocent player standing exactly on it cannot be hit in melee; spells never test it | Holy Shield |
+| `grabbable` | Ctrl, or a click from the faced tile, picks it up as this item | Pig (`"Pig"`) |
+| `hurtByHealing` | Minor Heal and Major Heal hurt it instead | Zombie |
+| `healedBy` | These spell effects heal it: by their heal amount where 1.6 had one (Splash, Crush), else by their damage | Dragon Hatchling (`Splash`), Fire Demon (`Crush`), Ghoul (`Firebolt`) |
+| `resists` | A hit from these effects rolls its damage, then deals only `random(3)` | Ghoul (`Fireball`) |
 
-Give a new species one of these numbers only if you want that rule.
+`healedBy` and `resists` name the effects that hit monsters: `Meteor`, `Bolt`, `Splash`, `Crush`, `Firebolt`, `Fireball` and `Wind Wave`. A spell of your own heals or is resisted by its `effect`, so an Ice Shard on Firebolt's effect heals a Ghoul. A `grabbable` item must be an item.
+
+A species made before stage 4 of #37 took these mechanics from its body number; the upgrade gave each such row the flags its body had, so it plays the same. A new species on one of those bodies takes none unless you give it the flags.
 
 ### Example: Frost Wolf
 
@@ -335,7 +341,7 @@ These files have no worked example here; their schemas in [packages/data/schema/
 - **`gather.json`:** `gathering` (tools, the tiles they work on, finds by skill, regrowth, fishing water) and `skillGain` (the gathering and crafting skill rolls: chance, the skill range and the advance line).
 - **`craft.json`:** `stations`: what each crafting station makes, from what, and at what skill.
 - **`houses.json`:** house deeds and types, placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
-- **`social.json`:** factions and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
+- **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
 - **`casino.json`:** the Slot Machine, Blackjack and Checkers games, including their sounds. Which items play them is the `slotMachine`, `blackjackTable` and `checkersTable` [behaviours](#item-behaviours). Classic no longer sets each game's `item`; a pack made before the behaviours that still sets it keeps that item playing.
 - **`quests.json`:** the quest lines that seed a fresh database's `quests` table (`current`) and the pools a replacement quest is drawn from (`pools`).
 - **`help.json`:** the help topics `/help <topic>` shows, with their lines.
@@ -353,6 +359,11 @@ Each entry in `packages/data/content/spells.json` defines one spell's data:
 - `info`: Spellbook Info text, or `null`.
 - `summon` (optional): `{ monster, skilled: { skill, above, monster } | null }` for the five summon effects (`Web`, `Illusionary Spikes`, `Holy Shield`, `Raise Dead`, `Summon Creature`).
 - `fx`: array of FX runs (`member` unique across all rows, `effect` naming a run of the spell's `effect`, `frames`, `lastFrame`, `projectile`, `sounds` as `{ name, ch }[]`).
+- `school` (optional): `{ skill, line, cap? }`, the skill a cast of this spell trains after Magery, the line printed when it rises, and the value it rises only below (left out: the caster's Mage skill cap, a [faction perk](#factions-socialjson)). Classic's Smoke Bomb trains `MartialArts` up to 100; a spell with no school trains Magery alone.
+- `power` (optional): the name of a table in the file's `power.tables` that the spell's power takes after the base power. Left out, the spell has the base power.
+- `creates` (optional, read by the Create Food effect): `{ item, article? }[]`, one taken at random; `article` goes before the item in the line ("Suddenly, an Apple appears in your inventory.").
+
+Spell power is attack power's shape (`attpower.json` `skillBlocks`): every cast starts from 1, takes the `power.base` rows (Classic: +1 for each step of Magery over 10, 20 … 90), the caster's `spellPower` faction perk and worn `spell` gear (engine), then its own table's rows and the table's `gear` power (`blackArts` or `martialArts`). A row is `{ when, op, value }`: `when` is a list of `"<Skill> <op> <n>"` conditions (`level` for the character level), `op` is `set`, `add` or `subtract`, and `value` a number or `random(n)` / `a + random(n)`. A cast's power stays from 0 to 100000 whatever the rows give, and each number in a row is at most five digits. Classic's tables are `Blessing`, `Wrath`, `Illusion`, `Water`, `Earth`, `Fire`, `Wind`, `BlackArts` and `MartialArts` (whose `set` rows replace the power, as 1.6's Smoke Bomb did). The school, the power and the food are the spell's own, so a new spell on an old effect picks them freely; the skills and items they name are checked at every publish.
 
 To add a new spell with an existing effect, you also need:
 - an `id` that no other spell uses, or `null` (spellbooks are saved by name, so either persists; the schema only refuses a repeated non-null id);
@@ -364,7 +375,7 @@ To add a new spell with an existing effect, you also need:
 
 ### Example: Ice Shard (reusing `Firebolt`)
 
-Add to the end of `spells.json` `spells`:
+Add to the end of `spells.json` `spells` (it trains and is powered by Water, where Firebolt uses Fire):
 
 ```json
 {
@@ -376,6 +387,8 @@ Add to the end of `spells.json` `spells`:
   "harmful": true,
   "book": { "match": "contains", "pattern": "Ice Shard" },
   "info": "Launch a shard of ice at your foe.",
+  "school": { "skill": "Water", "line": "You have advanced in the art of Water!" },
+  "power": "Water",
   "fx": [
     {
       "member": "Ice Shard",
@@ -406,12 +419,36 @@ Provide `fx/Ice Shard-1.png` through `fx/Ice Shard-16.png` (and `fx/xIce Shard-1
 Reusing an existing `effect` is data-only. Creating a brand-new effect requires code and schema changes across shared, server, and client (see [Spells guide](guides/spells.md) and [Client guide](guides/client.md)):
 
 - [packages/data/schema/spells.ts](../packages/data/schema/spells.ts): add the new effect name to `IMPLEMENTED_SPELL_EFFECTS` (and update spell/FX schema tests).
-- `packages/shared/src/rules/spells/spells.ts`: `spellPower` (school bonus), `spellHitOnMonster` (monster hit), `playerSpellAmount` (player hit), `spellImp` (`IMP_EXITS`, `SCHOOL_ROWS`), and `directional` / `boltForm` / `fireballForm` if directional.
+- `packages/shared/src/rules/spells/spells.ts`: `spellHitOnMonster` (monster hit, and `MONSTER_HIT_EFFECTS` in the monsters schema if species may be healed by or resist it), `playerSpellAmount` (player hit), `spellImp` (`IMP_EXITS`), `INERT_EFFECTS`, and `directional` / `boltForm` / `fireballForm` if directional. Its school and power are content.
 - `packages/shared/src/rules/spells/spellfx.ts`: `AT_CLICK` / `FROM_CASTER` in `placeFx`, and `TRAILS` if the effect leaves a trail.
 - `packages/server/src/systems/spells/cast.ts`: `castIntent` (safe-map, directional, or Portal-style checks), and `planSummon` if it summons a creature.
 - `packages/server/src/systems/spells/collide.ts`: `playerCollision` and `monsterHits`.
 - `packages/server/src/systems/spells/buffs.ts`: if the effect applies a timed buff or debuff.
 - `packages/client/src/playfield.ts`: draw-order or trail handling if special.
+
+## Factions (`social.json`)
+
+The faction system is the engine's: joining by turning a rival's head in to a leader, the loyalty count and its warnings, exile at death, the head a member drops on a PvP map, each faction's power and the tier it gives, the faction channel and the members a map's faction spawn brings. Each faction is a row of `social.json` `factions`:
+
+- `key`: the faction's permanent name, which characters and maps save (Classic: `mage`, `warrior`, `adventurer`). Letters, digits, `_` and `-`, starting with a letter.
+- `name`, `leader` (the NPC heads are given to), `head` (the item a member drops and a rival leader takes, matched exactly), `member` (the species a map's faction spawn puts in a slot), `bio` (the faction line of a member's Bio) and `startPower` (its power on a server that has saved none for it; Classic: 1.6's 27, 123 and 0).
+- The join and exile lines (`joinHpMaxAbove`, `exileHpMaxBelow`), the loyalty count (`joinCount`, `rejoinAdds`, `loyalty`) and the texts.
+- `perks`: `{ kind, values }[]`, what membership is worth by tier. `values[tier]` is the perk's value (a tier past the end reads the last value).
+
+| Perk | What it changes | Classic |
+|---|---|---|
+| `spellPower` | Added to spell power | Mage: the tier |
+| `melee` | Added to melee attack power | Warrior: the tier |
+| `defence` | Taken off damage taken, from players and monsters | Warrior: 1 from tier 1, 2 from 5, 3 at 9; Adventurer: 1 from tier 1, 2 from 7 |
+| `skillCap` | The kill skill gain's cap | Warrior 55 … 90, then 100; Adventurer 55 … 75, then 80 |
+| `mageCap` | The Mage skill cap: Magery, the spell schools, Staff Fighting and Unholy Combat | Mage: 50, 60, 70, 90, then 100 |
+| `regeneration` | Frames off the HP and SP regeneration period (149) | Adventurer: 5 × (tier + 1) |
+| `pvpParry`, `pvpBlock` | Taken off the parry and block rolls against a player's swing | Adventurer: 4 and 10 |
+| `monsterDodge` | Taken off the parry and block rolls against a monster | Adventurer: 10 |
+
+`factionRules` holds what all factions share: `tiers` (a member's tier from its faction's power: `top`, then each `{ below, tier }` row the power is under, the last winning; Classic gives 9 from 80, down to 0 below 5), `perkDefaults` (a perk's value for anyone outside a faction that has it; Classic: `skillCap` 50 and `mageCap` 30, others 0) and `editorBoxes` (the factions the World Editor's three spawn boxes pick, in box order; Classic: Warrior, Mage, Adventurer for the W, M and A boxes). A faction's leader and member must be species, and its head an item; each is checked at every publish. A head is matched exactly: any other item given to a leader goes to the quest lines.
+
+A faction an operator removes keeps its members' saved memberships, their loyalty count (it waits) and its saved power, for it to return to; while it is gone they have none of its perks, and maps whose spawn names it bring no one (the World Editor keeps the spawn when such a map is saved).
 
 ## Skills (`classes.json`)
 
@@ -480,7 +517,7 @@ Notes on the single bindings:
 | `fishing` | the catch bands, the gain and the cast itself | no fishing: the pole is only a weapon |
 | `blacksmithing`, `cooking`, `alchemy`, `carpentry` | the four crafts' timers, results and gains | that craft's button does nothing |
 
-A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. Some skills are still read by name: the spell schools (Smoke Bomb's Martial Arts among them) move to the spell rows in stage 4 of #37, the gathering tools' skills to tool behaviours in stage 5, and the kill-gain handlers in `RULES` to progression models in stage 6.
+A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. The spell schools are each spell's `school` and `power` (see [Spells](#spells-spellsjson)). Some skills are still read by name: the gathering tools' skills move to tool behaviours in stage 5 of #37, and the kill-gain handlers in `RULES` to progression models in stage 6.
 
 ## The content contract
 

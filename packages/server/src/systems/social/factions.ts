@@ -10,17 +10,17 @@
 import {
   CHAT_COLOR,
   content,
-  type FactionId,
-  factionIdOf,
+  type FactionKey,
+  factionKeyOf,
   headTurnIn,
   heardSqa,
   joinFaction,
   joinRefusal,
   leaderFaction,
-  lingoContains,
+  lingoEq,
   loyaltyStep,
   NO_FACTION,
-  type Powers,
+  sameFaction,
   sayFaction,
   sortFaction,
 } from "@secondstaronline/shared";
@@ -46,20 +46,17 @@ export function aqsToMap(world: World, asker: Player, text: string): Outgoing[] 
 }
 
 /**
- * A `sqa` to faction `id`'s channel: every online member of that faction, but those ignoring
+ * A `sqa` to faction `key`'s channel: every online member of that faction, but those ignoring
  * `from`, whose client sent it.
  */
 export function toFactionChannel(
   world: World,
-  id: FactionId,
+  key: FactionKey,
   text: string,
   from: string,
 ): Outgoing[] {
-  if (id === 0) {
-    return [];
-  }
   return [...world.players.values()]
-    .filter((o) => o.char.faction.id === id && hears(o, from))
+    .filter((o) => sameFaction(o.char.faction.key, key) && hears(o, from))
     .map((o) => chat(o, text));
 }
 
@@ -69,13 +66,13 @@ export function toFactionChannel(
  */
 export function refreshBonuses(world: World): void {
   for (const o of world.players.values()) {
-    o.char.faction = sortFaction(o.char.faction.id, world.factionPowers);
+    o.char.faction = sortFaction(o.char.faction.key, world.factionPowers);
   }
 }
 
 /** Sets `p`'s membership and its bonuses from the current powers. */
-function setMembership(world: World, p: Player, id: FactionId, count: number): void {
-  p.char.faction = id === 0 ? { ...NO_FACTION } : sortFaction(id, world.factionPowers);
+function setMembership(world: World, p: Player, key: FactionKey, count: number): void {
+  p.char.faction = key === null ? { ...NO_FACTION } : sortFaction(key, world.factionPowers);
   p.char.factionCount = count;
 }
 
@@ -87,10 +84,10 @@ export function loyaltyFrame(world: World, p: Player): { line: string | null; ki
   if (p.char.factionCount <= 0) {
     return { line: null, kicked: false };
   }
-  const step = loyaltyStep({ id: p.char.faction.id, count: p.char.factionCount });
+  const step = loyaltyStep({ key: p.char.faction.key, count: p.char.factionCount });
   p.char.factionCount = step.count;
   if (step.kicked) {
-    setMembership(world, p, 0, 0);
+    setMembership(world, p, null, 0);
   }
   return { line: step.text, kicked: step.kicked };
 }
@@ -102,8 +99,7 @@ export function loyaltyFrame(world: World, p: Player): { line: string | null; ki
  * ahead: not a head for a leader, the leader's own faction's head, or a join that would succeed.
  */
 export function headRefusal(world: World, p: Player, npc: string, item: string): Outgoing[] | null {
-  const row = leaderFaction(npc);
-  if (!row || !lingoContains(item, " Head")) {
+  if (!leaderFaction(npc)) {
     return null;
   }
   const r = headTurnIn(npc, item, world.factionPowers);
@@ -111,7 +107,7 @@ export function headRefusal(world: World, p: Player, npc: string, item: string):
     return null;
   }
   const line = joinRefusal(
-    { id: p.char.faction.id, count: p.char.factionCount },
+    { key: p.char.faction.key, count: p.char.factionCount },
     r.leader,
     p.char.vitals.hpMax,
   );
@@ -138,19 +134,19 @@ export function giveHead(
   if (r.kind === "own") {
     return { out, changed: false };
   }
-  world.factionPowers = r.powers as Powers;
+  world.factionPowers = { ...r.powers };
   world.powersDirty = true;
   if (r.join) {
     const j = joinFaction(
-      { id: p.char.faction.id, count: p.char.factionCount },
+      { key: p.char.faction.key, count: p.char.factionCount },
       r.leader,
       p.char.vitals.hpMax,
       p.name,
     );
     out.push(chat(p, j.line));
-    setMembership(world, p, factionIdOf(j.membership.id), j.membership.count);
+    setMembership(world, p, factionKeyOf(j.membership.key), j.membership.count);
     if (j.announce) {
-      out.push(...toFactionChannel(world, r.leader, j.announce, p.name));
+      out.push(...toFactionChannel(world, r.leader.key, j.announce, p.name));
     }
   }
   refreshBonuses(world);
@@ -158,8 +154,8 @@ export function giveHead(
 }
 
 /**
- * Each leader standing in the map's slots, in Angela, Trianus, Corin
- * order, says how its faction stands.
+ * Each leader standing in the map's slots, in the content's faction order (Classic: Angela,
+ * Trianus, Corin), says how its faction stands.
  */
 export function askFactionPower(world: World, p: Player): Outgoing[] {
   const room = world.rooms.get(p.map.name);
@@ -168,7 +164,7 @@ export function askFactionPower(world: World, p: Player): Outgoing[] {
   }
   const out: Outgoing[] = [];
   for (const leader of content().social.factions.map((f) => f.leader)) {
-    const here = room.map.slots.some((s) => s.live?.name === leader);
+    const here = room.map.slots.some((s) => s.live !== null && lingoEq(s.live.name, leader));
     const text = here ? sayFaction(leader, world.factionPowers) : null;
     if (text) {
       out.push(...aqsToMap(world, p, text));

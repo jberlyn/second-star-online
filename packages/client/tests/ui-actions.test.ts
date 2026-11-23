@@ -375,7 +375,7 @@ function buildAll(): HTMLElement[] {
           stats: { str: 1, sta: 1, dex: 1, int: 1, wis: 1 },
           skills: { Slash: 1 },
           hunger: 0,
-          faction: 0,
+          faction: null,
           factionCount: 0,
           wanted: false,
           position: { map: "x1y1", x: 1, y: 1, facing: "S" },

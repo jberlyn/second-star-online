@@ -4,25 +4,36 @@
  */
 import type { Db } from "./database.ts";
 
-/** Mage, Warrior and Adventurer power, in `factions.txt`'s order. */
-export type FactionPowers = [number, number, number];
+/** Each faction's power, by faction key (1.6's `factions.txt`). */
+export type FactionPowers = Record<string, number>;
 
-/** The powers, or null before the first start has seeded them. */
+/**
+ * The saved powers, by faction key, or null before the first start has saved any. A faction with
+ * no saved power has its content's `startPower` (shared `factionPower`).
+ */
 export function loadFactionPowers(db: Db): FactionPowers | null {
-  const row = db
-    .query<{ mage: number; warrior: number; adventurer: number }, []>(
-      "SELECT mage, warrior, adventurer FROM faction_powers WHERE id = 1",
+  const rows = db
+    .query<{ faction: string; power: number }, []>(
+      "SELECT faction, power FROM faction_power ORDER BY faction",
     )
-    .get();
-  return row ? [row.mage, row.warrior, row.adventurer] : null;
+    .all();
+  return rows.length === 0 ? null : Object.fromEntries(rows.map((r) => [r.faction, r.power]));
 }
 
-export function saveFactionPowers(db: Db, p: FactionPowers): void {
-  db.query(
-    `INSERT INTO faction_powers (id, mage, warrior, adventurer) VALUES (1, ?, ?, ?)
-     ON CONFLICT (id) DO UPDATE SET mage = excluded.mage, warrior = excluded.warrior,
-       adventurer = excluded.adventurer`,
-  ).run(p[0], p[1], p[2]);
+/** Saves every power held, by key; a faction's saved power stays when the world drops it. */
+export function saveFactionPowers(db: Db, p: Readonly<FactionPowers>): void {
+  const put = db.query(
+    `INSERT INTO faction_power (faction, power) VALUES (?, ?)
+     ON CONFLICT (faction) DO UPDATE SET power = excluded.power`,
+  );
+  // One row per faction: another spelling of the key (by case) is an older entry, and goes.
+  const others = db.query(
+    "DELETE FROM faction_power WHERE lower(faction) = lower(?) AND faction != ?",
+  );
+  for (const [faction, power] of Object.entries(p)) {
+    others.run(faction, faction);
+    put.run(faction, power);
+  }
 }
 
 /** The 40 quest lines in order, or null before the first start has seeded them. */

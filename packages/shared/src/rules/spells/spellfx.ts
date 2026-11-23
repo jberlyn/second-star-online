@@ -251,6 +251,9 @@ export function stepFx(fx: FxSprite, blocked?: ShotBlocked): void {
       return;
     }
   }
+  // An FX nothing describes any more (a publish removed the spell whose run it was) ends, rather
+  // than standing on the map with its hit box for good.
+  fx.gone = true;
 }
 
 /** A sprite rect from a member's `[w, h, regX, regY]` at a loc. */

@@ -136,7 +136,9 @@ describe("murder flag, factions and quests", () => {
     place(db, "Bob", 5, 4);
     place(db, "King", 5, 2);
     // Alice is a Warrior; both have the HP a faction asks for asks for.
-    db.run("UPDATE characters SET faction = 2, faction_count = 212000 WHERE name = 'Alice'");
+    db.run(
+      "UPDATE characters SET faction = 'warrior', faction_count = 212000 WHERE name = 'Alice'",
+    );
     db.run("UPDATE characters SET hp_max = 90, hp = 90 WHERE name IN ('Alice', 'Bob')");
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")
@@ -202,7 +204,7 @@ describe("murder flag, factions and quests", () => {
     expect(lines(king)).toEqual([thanks]);
     // Alice is a Warrior: the Mages' channel is not hers (1.6 shared one channel).
     expect(lines(alice)).not.toContain(joined);
-    expect(loadFactionPowers(server.db)).toEqual([28, 122, 0]);
+    expect(loadFactionPowers(server.db)).toEqual({ mage: 28, warrior: 122, adventurer: 0 });
   });
 
   test("Angela answers the quest and power questions to the map", async () => {
@@ -792,9 +794,10 @@ describe("friends, bios and medals", () => {
     place(db, "Bob", 12, 8);
     place(db, "King", 12, 6);
     // Bob: a Mage, wanted for murder, a Novice Cook (Cooking 41 > 40).
-    db.run("UPDATE characters SET faction = 1, faction_count = 1000, wanted = 1 WHERE name = ?", [
-      "Bob",
-    ]);
+    db.run(
+      "UPDATE characters SET faction = 'mage', faction_count = 1000, wanted = 1 WHERE name = ?",
+      ["Bob"],
+    );
     skill(db, "Bob", "Cooking", 41);
     const acc = db
       .query<{ account_id: string }, [string]>("SELECT account_id FROM characters WHERE id = ?")

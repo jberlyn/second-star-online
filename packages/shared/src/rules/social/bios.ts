@@ -9,6 +9,7 @@
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { skillValue } from "../core/fighter.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
+import { factionByKey } from "./factions.ts";
 
 let B: ContentStore["social"]["bios"];
 const tx = (k: keyof typeof B.texts) => B.texts[k].text;
@@ -74,8 +75,8 @@ export interface BioSource {
   spMax: number;
   /** The guild and whether the target leads it (the guild record contains `*<me>*`). */
   guild: { name: string; leader: boolean } | null;
-  /** `Fctnme`: 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
-  faction: number;
+  /** The faction's key (`Fctnme`), or null for none. */
+  faction: string | null;
   wanted: boolean;
   /** The current body (morphs included); sent but never shown. */
   body: number | null;
@@ -105,14 +106,7 @@ export function giveBio(s: BioSource): BioItems {
   const guild = s.guild
     ? fill(tx(s.guild.leader ? "leader" : "member"), "GUILD", s.guild.name)
     : "";
-  const faction =
-    s.faction === 1
-      ? tx("mages")
-      : s.faction === 2
-        ? tx("warriors")
-        : s.faction === 3
-          ? tx("adventurers")
-          : "";
+  const faction = factionByKey(s.faction)?.bio ?? "";
   return [
     `${s.name} ${LAST_NAME}`,
     bioTitle(s.skills),
