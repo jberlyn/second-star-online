@@ -1,0 +1,160 @@
+Argon's Fist | effect="Argon's Fist" inert=false harmful=false sp=8 spNinja=8 crystals={"colour":"Yellow","count":1} summon=-
+Argon's Fist | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Argon's Fist | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Argon's Fist | gainLines ["You have advanced in the art of magery!"]
+Bless | effect="Bless" inert=true harmful=false sp=12 spNinja=12 crystals={"colour":"Blue","count":4} summon=-
+Bless | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Bless | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Bless | gainLines ["You have advanced in the art of magery!"]
+Bolt | effect="Bolt" inert=false harmful=true sp=45 spNinja=45 crystals={"colour":"Green","count":9} summon=-
+Bolt | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Bolt | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Bolt | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wrath!"]
+Create Food | effect="Create Food" inert=false harmful=false sp=8 spNinja=8 crystals={"colour":"Blue","count":1} summon=-
+Create Food | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Create Food | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Create Food | gainLines ["You have advanced in the art of magery!"]
+Crush | effect="Crush" inert=false harmful=true sp=25 spNinja=25 crystals={"colour":"White","count":2} summon=-
+Crush | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Crush | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Crush | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Earth!"]
+Diminish Hunger | effect="Diminish Hunger" inert=false harmful=false sp=9 spNinja=9 crystals={"colour":"Blue","count":3} summon=-
+Diminish Hunger | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Diminish Hunger | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Diminish Hunger | gainLines ["You have advanced in the art of magery!","You have advanced in the art of blessing!"]
+Dispel Illusions | effect="Dispel Illusions" inert=false harmful=false sp=15 spNinja=15 crystals={"colour":"Green","count":2} summon=-
+Dispel Illusions | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Dispel Illusions | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Dispel Illusions | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wizardry!"]
+Fireball | effect="Fireball" inert=false harmful=true sp=12 spNinja=12 crystals={"colour":"Red","count":2} summon=-
+Fireball | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Fireball | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Fireball | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Fire!"]
+Firebolt | effect="Firebolt" inert=false harmful=true sp=40 spNinja=40 crystals={"colour":"Red","count":5} summon=-
+Firebolt | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Firebolt | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Firebolt | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Fire!"]
+Firesword | effect="Firesword" inert=false harmful=false sp=22 spNinja=22 crystals={"colour":"Red","count":10} summon=-
+Firesword | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Firesword | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Firesword | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Fire!"]
+Haste | effect="Haste" inert=true harmful=false sp=20 spNinja=20 crystals={"colour":"Yellow","count":3} summon=-
+Haste | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Haste | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Haste | gainLines ["You have advanced in the art of magery!"]
+Hold | effect="Hold" inert=false harmful=false sp=12 spNinja=12 crystals={"colour":"Purple","count":5} summon=-
+Hold | power 0:1/4 5:1/4 11:3/6 15:3/6 25:5/8 35:7/10 55:9/12 75:12/15 85:13/16 95:15/18 98:15/18
+Hold | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Hold | gainLines ["You have advanced in the art of magery!","You have advanced in the Black Arts!"]
+Holy Shield | effect="Holy Shield" inert=false harmful=true sp=50 spNinja=50 crystals={"colour":"White","count":9} summon={"monster":"Holy Shield","skilled":null}
+Holy Shield | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Holy Shield | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Holy Shield | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Blessing!"]
+Holy Weapon | effect="Holy Weapon" inert=true harmful=false sp=10 spNinja=10 crystals=- summon=-
+Holy Weapon | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Holy Weapon | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Holy Weapon | gainLines ["You have advanced in the art of magery!"]
+Identify | effect="Identify" inert=true harmful=false sp=0 spNinja=0 crystals=- summon=-
+Identify | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Identify | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Identify | gainLines ["You have advanced in the art of magery!"]
+Illusionary Spikes | effect="Illusionary Spikes" inert=false harmful=true sp=6 spNinja=6 crystals={"colour":"Red","count":3} summon={"monster":"Illusionary Spikes","skilled":null}
+Illusionary Spikes | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Illusionary Spikes | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Illusionary Spikes | gainLines ["You have advanced in the art of magery!","You have advanced in the art of illusion!"]
+Inxition | effect="Inxition" inert=false harmful=false sp=4 spNinja=4 crystals={"colour":"Yellow","count":1} summon=-
+Inxition | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Inxition | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Inxition | gainLines ["You have advanced in the art of magery!"]
+Magic Shield | effect="Magic Shield" inert=false harmful=false sp=20 spNinja=20 crystals={"colour":"Yellow","count":1} summon=-
+Magic Shield | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Magic Shield | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Magic Shield | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wrath!"]
+Major Heal | effect="Major Heal" inert=false harmful=false sp=20 spNinja=20 crystals={"colour":"Blue","count":7} summon=-
+Major Heal | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Major Heal | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Major Heal | gainLines ["You have advanced in the art of magery!","You have advanced in the art of blessing!"]
+Meteor | effect="Meteor" inert=false harmful=true sp=34 spNinja=34 crystals={"colour":"Green","count":5} summon=-
+Meteor | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Meteor | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Meteor | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wrath!"]
+Minor Heal | effect="Minor Heal" inert=false harmful=false sp=5 spNinja=5 crystals={"colour":"Blue","count":3} summon=-
+Minor Heal | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Minor Heal | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Minor Heal | gainLines ["You have advanced in the art of magery!","You have advanced in the art of blessing!"]
+Morph | effect="Morph" inert=false harmful=false sp=8 spNinja=8 crystals={"colour":"Yellow","count":2} summon=-
+Morph | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Morph | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Morph | gainLines ["You have advanced in the art of magery!","You have advanced in the art of illusion!"]
+Nature Shift | effect="Nature Shift" inert=false harmful=false sp=11 spNinja=11 crystals={"colour":"Purple","count":1} summon=-
+Nature Shift | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Nature Shift | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Nature Shift | gainLines ["You have advanced in the art of magery!"]
+Poison Dart | effect="Poison Dart" inert=true harmful=false sp=25 spNinja=25 crystals=- summon=-
+Poison Dart | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Poison Dart | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Poison Dart | gainLines ["You have advanced in the art of magery!"]
+Portal | effect="Portal" inert=false harmful=false sp=32 spNinja=32 crystals={"colour":"White","count":10} summon=-
+Portal | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Portal | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Portal | gainLines ["You have advanced in the art of magery!"]
+Radar | effect="Radar" inert=false harmful=false sp=6 spNinja=6 crystals={"colour":"Yellow","count":1} summon=-
+Radar | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:17/20 95:19/22 98:20/23
+Radar | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Radar | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wrath!"]
+Raise Dead | effect="Raise Dead" inert=false harmful=false sp=22 spNinja=22 crystals={"colour":"Purple","count":9} summon={"monster":"Zombie","skilled":null}
+Raise Dead | power 0:1/4 5:1/4 11:3/6 15:3/6 25:5/8 35:7/10 55:9/12 75:12/15 85:13/16 95:15/18 98:15/18
+Raise Dead | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Raise Dead | gainLines ["You have advanced in the art of magery!","You have advanced in the Black Arts!"]
+Replenish | effect="Replenish" inert=true harmful=false sp=22 spNinja=22 crystals=- summon=-
+Replenish | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Replenish | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Replenish | gainLines ["You have advanced in the art of magery!","You have advanced in the art of blessing!"]
+Smoke Bomb | effect="Smoke Bomb" inert=false harmful=false sp=25 spNinja=17 crystals={"colour":"White","count":5} summon=-
+Smoke Bomb | power 0:25/25 5:25/25 11:35/35 15:35/35 25:45/45 35:55/55 55:70/70 75:200/200 85:350/350 95:500/500 98:500/500
+Smoke Bomb | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:1[30] 30/1:2[30,30] 49/0:1[49] 49/1:2[49,49] 50/0:1[50] 50/1:2[50,50] 99/0:1[99] 99/1:2[99,99]
+Smoke Bomb | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Martial Arts!"]
+Splash | effect="Splash" inert=false harmful=true sp=20 spNinja=20 crystals={"colour":"Blue","count":5} summon=-
+Splash | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Splash | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Splash | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Water!"]
+Stone Skin | effect="Stone Skin" inert=false harmful=false sp=9 spNinja=9 crystals={"colour":"Purple","count":3} summon=-
+Stone Skin | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Stone Skin | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Stone Skin | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Earth!"]
+Summon Creature | effect="Summon Creature" inert=false harmful=false sp=13 spNinja=13 crystals={"colour":"White","count":2} summon={"monster":"Pig","skilled":{"skill":"Sorcery","above":39,"monster":"Cow"}}
+Summon Creature | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Summon Creature | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Summon Creature | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Sorcery!"]
+Weaken | effect="Weaken" inert=true harmful=false sp=30 spNinja=30 crystals={"colour":"White","count":5} summon=-
+Weaken | power 0:1/4 5:1/4 11:3/6 15:3/6 25:5/8 35:7/10 55:9/12 75:12/15 85:13/16 95:15/18 98:15/18
+Weaken | gain 1/0:1[1] 1/1:1[1] 29/0:1[29] 29/1:1[29] 30/0:0[] 30/1:1[30] 49/0:0[] 49/1:1[49] 50/0:0[] 50/1:1[50] 99/0:0[] 99/1:1[99]
+Weaken | gainLines ["You have advanced in the art of magery!"]
+Web | effect="Web" inert=false harmful=true sp=21 spNinja=21 crystals={"colour":"White","count":3} summon={"monster":"Web","skilled":null}
+Web | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Web | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Web | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wizardry!"]
+Whirlwind | effect="Whirlwind" inert=false harmful=true sp=13 spNinja=13 crystals={"colour":"Purple","count":2} summon=-
+Whirlwind | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Whirlwind | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Whirlwind | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wind!"]
+Wind Wave | effect="Wind Wave" inert=false harmful=true sp=17 spNinja=17 crystals={"colour":"Green","count":3} summon=-
+Wind Wave | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+Wind Wave | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Wind Wave | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wind!"]
+FireballL | effect="FireballL" inert=false harmful=false sp=0 spNinja=0 crystals=- summon=-
+FireballL | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+FireballL | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+FireballL | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Fire!"]
+BoltR | effect="BoltR" inert=false harmful=false sp=0 spNinja=0 crystals=- summon=-
+BoltR | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+BoltR | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+BoltR | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wrath!"]
+Wind waveU | effect="Wind waveU" inert=false harmful=false sp=0 spNinja=0 crystals=- summon=-
+Wind waveU | power 0:1/4 5:1/4 11:2/5 15:2/5 25:3/6 35:4/7 55:6/9 75:8/11 85:9/12 95:10/13 98:10/13
+Wind waveU | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+Wind waveU | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wind!"]
+wind wave | effect="Wind Wave" inert=false harmful=true sp=17 spNinja=17 crystals={"colour":"Green","count":3} summon=-
+wind wave | power 0:1/4 5:3/6 11:5/8 15:5/8 25:7/10 35:9/12 55:12/15 75:15/18 85:18/21 95:19/22 98:23/26
+wind wave | gain 1/0:2[1,1] 1/1:2[1,1] 29/0:2[29,29] 29/1:2[29,29] 30/0:0[] 30/1:2[30,30] 49/0:0[] 49/1:2[49,49] 50/0:0[] 50/1:2[50,50] 99/0:0[] 99/1:2[99,99]
+wind wave | gainLines ["You have advanced in the art of magery!","You have advanced in the art of Wind!"]

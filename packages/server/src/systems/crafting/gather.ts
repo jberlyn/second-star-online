@@ -130,6 +130,11 @@ const sound = (p: Player, name: string, ch: number): Outgoing => ({
   msg: { t: "sound", name, ch },
 });
 
+/** A weapon that sprinkles water on a swing: any name containing "watering bucket". */
+export function isWateringBucket(weapon: string): boolean {
+  return lingoEq(weapon, "Watering Bucket") || weapon.toLowerCase().includes("watering bucket");
+}
+
 /**
  * The attack routine's tool casts, before the attack power: the Watering Bucket's `sprinkle` on
  * every swing not facing north, and the Fishing Pole facing water on either layer (the `Fishing`
@@ -139,7 +144,7 @@ const sound = (p: Player, name: string, ch: number): Outgoing => ({
 export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents): number | null {
   const weapon = p.char.equip.weapon;
   const me = playerLoc(p);
-  if (lingoEq(weapon, "Watering Bucket") || weapon.toLowerCase().includes("watering bucket")) {
+  if (isWateringBucket(weapon)) {
     const off = sprinkleOffset(p.facing);
     if (off) {
       const h = me.h + off[0];

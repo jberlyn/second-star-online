@@ -341,6 +341,20 @@ export function summonPig(
 // ---- the other senders ----------------------------------------------------------------
 
 /**
+ * Which free fireballs a swing of `weapon` sends: the Fire Staff's (exact name), and while Firesword
+ * runs any weapon whose name contains "sword" (so a Swordfish too, as in 1.6).
+ */
+export function freeFireballs(
+  weapon: string,
+  fireSword: boolean,
+): { staff: boolean; sword: boolean } {
+  return {
+    staff: lingoEq(weapon, "Fire Staff"),
+    sword: fireSword && lingoContains(weapon, "sword"),
+  };
+}
+
+/**
  * The Fire Staff's and Firesword's free fireballs in the attack routine. Their cast message carries
  * the mouse, which a fireball never reads (it
  * starts beside the caster and flies by facing), so none is sent here. They train no skill (a bug
@@ -363,7 +377,8 @@ export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
       power,
       train: false,
     });
-  if (lingoEq(weapon, "Fire Staff")) {
+  const free = freeFireballs(weapon, p.spell.fireSword > 0);
+  if (free.staff) {
     let power = 1 + ctx.rng.random(3);
     if (staff > 20) {
       power += 1;
@@ -382,7 +397,7 @@ export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
       send(power);
     }
   }
-  if (lingoContains(weapon, "sword") && p.spell.fireSword > 0) {
+  if (free.sword) {
     send(4 + ctx.rng.random(3));
   }
 }

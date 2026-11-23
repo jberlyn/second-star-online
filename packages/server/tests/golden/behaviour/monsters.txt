@@ -1,0 +1,126 @@
+Acrostia | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Adventurer Faction Member | body=5 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=namesSelf
+Agavar | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Akadius | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Akiro | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Alex | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Amber | body=201 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Andero | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Angela | body=202 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Assasin | body=62 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Barnum | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Beldros | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Benolio | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Corin | body=204 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Cow | body=94 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=killXp,noQuests
+Cril | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Crushto | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Cyclops | body=34 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Dantan | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Dark Fairy | body=89 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Death | body=40 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Demon | body=42 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Divela | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Dragon | body=501 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=hostile
+Dragon Hatchling | body=36 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Dragon Snake | body=58 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Dwarf | body=60 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Earth God | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Elf | body=50 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Fire Demon | body=47 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Fire God | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Galor | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Gazer | body=38 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Ghost | body=52 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Ghoul | body=45 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Gryphon | body=498 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Hellhound | body=477 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Helum | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Holy Shield | body=99 neverMoves=true web=false pig=false holyShield=true undead=false leans=false rules=sparesInnocent,clearsBlock,killXp
+Illusionary Spikes | body=90 neverMoves=true web=false pig=false holyShield=false undead=false leans=false rules=-
+Imp | body=35 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Jelstar | body=621 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=sea
+Jim | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Kanta | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Katks | body=201 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Kin | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Krist | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Krista | body=201 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Krommie | body=621 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=sea
+Lir | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Lizard Warrior | body=41 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Mage Faction Member | body=3 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=namesSelf
+Mega Slime | body=37 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Mellanie | body=622 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=sea
+Merius | body=621 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=sea
+Minmaye | body=622 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=sea
+Miqa | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Mirra | body=201 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Missie | body=201 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Mizella | body=621 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=sea
+Mutant Worm | body=502 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=footprint
+Naked Stripper | body=855 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=namesSelf
+Officer | body=210 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=officer
+Ogre | body=503 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Oraku | body=207 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Orc | body=31 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Orc Lord | body=311 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Overlord | body=988 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=footprint,hostile,killBroadcasts
+Pig | body=91 neverMoves=false web=false pig=true holyShield=false undead=false leans=false rules=noQuests
+Plone | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Poison Frog | body=33 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Prestin | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Qieros | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Ratmas | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Roulan | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Rutxon | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Shark | body=445 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=sea
+Skeleton | body=59 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Slime | body=30 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Smithy | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Snared Loah | body=46 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Snow Demon | body=891 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Snow Serpent | body=858 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Somewhat Naked Stripper | body=856 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=namesSelf
+Squid | body=444 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=sea
+Stephie | body=201 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Stone Skull | body=500 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Stripper | body=857 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=namesSelf
+Tela | body=201 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Teli | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Teral | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Trianus | body=203 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Trimble | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Trixin | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Vin | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Warrior Faction Member | body=1 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=namesSelf
+Water God | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Web | body=92 neverMoves=true web=true pig=false holyShield=false undead=false leans=false rules=clearsBlock
+Wenslas | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Wind God | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Wolf | body=32 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Wrel | body=200 neverMoves=false web=false pig=false holyShield=false undead=false leans=false rules=-
+Yeti | body=51 neverMoves=false web=false pig=false holyShield=false undead=false leans=true rules=-
+Zombie | body=61 neverMoves=false web=false pig=false holyShield=false undead=true leans=true rules=-
+fx Blue ArrowsL | {"n":5,"heal":false,"splat":true} [] (56 bodies)
+fx BoltD-1 | {"n":26,"heal":false,"splat":true}→{"n":28,"heal":false,"splat":true} [3] (56 bodies)
+fx BoltL-1 | {"n":26,"heal":false,"splat":true}→{"n":28,"heal":false,"splat":true} [3] (56 bodies)
+fx BoltR-1 | {"n":26,"heal":false,"splat":true}→{"n":28,"heal":false,"splat":true} [3] (56 bodies)
+fx BoltU-1 | {"n":26,"heal":false,"splat":true}→{"n":28,"heal":false,"splat":true} [3] (56 bodies)
+fx Dispel Illusions-8 | - [] (55 bodies) ; {"n":2000,"heal":false,"splat":true} [] (90)
+fx FireballD-1 | {"n":15,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [3] (55 bodies) ; {"n":1,"heal":false,"splat":true}→{"n":3,"heal":false,"splat":true} [3,3] (45)
+fx FireballL-1 | {"n":15,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [3] (55 bodies) ; {"n":1,"heal":false,"splat":true}→{"n":3,"heal":false,"splat":true} [3,3] (45)
+fx FireballR-1 | {"n":15,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [3] (55 bodies) ; {"n":1,"heal":false,"splat":true}→{"n":3,"heal":false,"splat":true} [3,3] (45)
+fx FireballU-1 | {"n":15,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [3] (55 bodies) ; {"n":1,"heal":false,"splat":true}→{"n":3,"heal":false,"splat":true} [3,3] (45)
+fx Firebolt-12 | {"n":17,"heal":false,"splat":true}→{"n":19,"heal":false,"splat":true} [3] (55 bodies) ; {"n":17,"heal":true,"splat":true}→{"n":19,"heal":true,"splat":true} [3] (45)
+fx Wind waveD-1 | {"n":13,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [5] (56 bodies)
+fx Wind waveL-1 | {"n":13,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [5] (56 bodies)
+fx Wind waveR-1 | {"n":13,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [5] (56 bodies)
+fx Wind waveU-1 | {"n":13,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [5] (56 bodies)
+fx crush-18 | {"n":17,"heal":false,"splat":true}→{"n":19,"heal":false,"splat":true} [3] (55 bodies) ; {"n":19,"heal":true,"splat":true}→{"n":21,"heal":true,"splat":true} [3] (47)
+fx major heal-3 | {"n":26,"heal":true,"splat":false}→{"n":35,"heal":true,"splat":false} [10] (55 bodies) ; {"n":16,"heal":false,"splat":true}→{"n":20,"heal":false,"splat":true} [5] (61)
+fx meteor-13 | {"n":26,"heal":false,"splat":true}→{"n":28,"heal":false,"splat":true} [3] (56 bodies)
+fx meteor-19 | {"n":26,"heal":false,"splat":true}→{"n":28,"heal":false,"splat":true} [3] (56 bodies)
+fx minor heal-3 | {"n":14,"heal":true,"splat":false}→{"n":18,"heal":true,"splat":false} [5] (55 bodies) ; {"n":12,"heal":false,"splat":true}→{"n":13,"heal":false,"splat":true} [2] (61)
+fx splash-18 | {"n":31,"heal":false,"splat":true}→{"n":33,"heal":false,"splat":true} [3] (55 bodies) ; {"n":21,"heal":true,"splat":true}→{"n":25,"heal":true,"splat":true} [5] (36)
+fx wind waveD-1 | {"n":13,"heal":false,"splat":true}→{"n":17,"heal":false,"splat":true} [5] (56 bodies)

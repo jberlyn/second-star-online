@@ -30,6 +30,8 @@ See the [modding guide](modding.md) before changing content or adding art. Run `
 
 Each workspace also has a `test` script; from its directory, `bun run test` runs that package's tests only. Use the root test script for the full suite so the client loads its happy-dom configuration.
 
+The behaviour snapshot and the seeded replay compare against golden files. After reviewing an intended change, set `SSO_UPDATE_GOLDEN=1` to record the new files; see [the safety net](modding.md#the-safety-net).
+
 ## Operate and measure
 
 | Command | What it does |

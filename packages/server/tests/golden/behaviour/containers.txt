@@ -1,0 +1,18 @@
+Bob's House Vault | capacity=15 bob=true guildX=false
+Cabinet | capacity=10 bob=true guildX=true
+Cabinet#3 | capacity=10 bob=true guildX=true
+Cauldron | capacity=15 bob=true guildX=true
+Cauldron#7 | capacity=15 bob=true guildX=true
+Crate | capacity=3 bob=true guildX=true
+Crate#12 | capacity=3 bob=true guildX=true
+Dark Chest | capacity=15 bob=true guildX=true
+Emerald Chest | capacity=15 bob=true guildX=true
+Gold Chest | capacity=15 bob=true guildX=true
+Slim's House Vault | capacity=15 bob=false guildX=false
+Steel Chest | capacity=15 bob=true guildX=true
+The X's Guild Vault | capacity=15 bob=false guildX=true
+Vault | capacity=15 bob=true guildX=true
+Water Chest | capacity=15 bob=true guildX=true
+Wind Cabinet | capacity=20 bob=true guildX=true
+Wind Cabinet#5 | capacity=20 bob=true guildX=true
+Wind Chest | capacity=15 bob=true guildX=true

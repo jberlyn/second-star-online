@@ -1,0 +1,31 @@
+Bob's Door | faced="Bob's Door" doorOrSwitch=true switch=- closed=-
+Bob's Opened Door | faced="Bob's Opened Door" doorOrSwitch=true switch=- closed="Bob's Door"
+Doorman's Newspaper | faced="Doorman's Newspaper" doorOrSwitch=false switch=- closed=-
+Emerald Door | faced="Emerald Door" doorOrSwitch=true switch=- closed=-
+Emerald Key | faced=- doorOrSwitch=false switch=- closed=-
+Fire Door | faced="Fire Door" doorOrSwitch=true switch=- closed=-
+Fire Key | faced=- doorOrSwitch=false switch=- closed=-
+Gold Door | faced="Gold Door" doorOrSwitch=true switch=- closed=-
+Gold Key | faced=- doorOrSwitch=false switch=- closed=-
+Guild Key | faced=- doorOrSwitch=false switch=- closed=-
+House Key | faced=- doorOrSwitch=false switch=- closed=-
+OFF Switch | faced=- doorOrSwitch=true switch="off" closed=-
+ON Switch | faced=- doorOrSwitch=true switch="on" closed="OFF Switch"
+Open Emerald Door | faced="Open Emerald Door" doorOrSwitch=true switch=- closed="Emerald Door"
+Open Fire Door | faced="Open Fire Door" doorOrSwitch=true switch=- closed="Fire Door"
+Open Gold Door | faced="Open Gold Door" doorOrSwitch=true switch=- closed="Gold Door"
+Open Steel Door | faced="Open Steel Door" doorOrSwitch=true switch=- closed="Steel Door"
+Open Switch Door | faced="Open Switch Door" doorOrSwitch=true switch=- closed="Switch Door"
+Open Wooden Door | faced="Open Wooden Door" doorOrSwitch=true switch=- closed="Wooden Door"
+Steel Door | faced="Steel Door" doorOrSwitch=true switch=- closed=-
+Steel Key | faced=- doorOrSwitch=false switch=- closed=-
+Switch Door | faced="Switch Door" doorOrSwitch=true switch=- closed=-
+Wooden Door | faced="Wooden Door" doorOrSwitch=true switch=- closed=-
+Wooden Key | faced=- doorOrSwitch=false switch=- closed=-
+key Emerald Key | Emerald Door→{"kind":"turn","from":"Emerald Door","to":"Open Emerald Door","coloured":true,"opening":true} spent=true pause=100 ; Open Emerald Door→{"kind":"turn","from":"Open Emerald Door","to":"Emerald Door","coloured":true,"opening":false} spent=false pause=100
+key Fire Key | Fire Door→{"kind":"turn","from":"Fire Door","to":"Open Fire Door","coloured":true,"opening":true} spent=true pause=100 ; Open Fire Door→{"kind":"turn","from":"Open Fire Door","to":"Fire Door","coloured":true,"opening":false} spent=false pause=100
+key Gold Key | Gold Door→{"kind":"turn","from":"Gold Door","to":"Open Gold Door","coloured":true,"opening":true} spent=true pause=100 ; Open Gold Door→{"kind":"turn","from":"Open Gold Door","to":"Gold Door","coloured":true,"opening":false} spent=false pause=100
+key Guild Key | The X's Door→{"kind":"turn","from":"The X's Door","to":"The X's Opened Door","coloured":false,"opening":true} spent=false pause=100 ; The X's Opened Door→{"kind":"turn","from":"The X's Opened Door","to":"The X's Door","coloured":false,"opening":false} spent=false pause=100 ; The Y's Door→{"kind":"text","text":"Your key doesn't fit this lock!"}
+key House Key | Bob's Door→{"kind":"turn","from":"Bob's Door","to":"Bob's Opened Door","coloured":false,"opening":true} spent=false pause=100 ; Bob's Opened Door→{"kind":"turn","from":"Bob's Opened Door","to":"Bob's Door","coloured":false,"opening":false} spent=false pause=100 ; The X's Door→{"kind":"text","text":"Your key doesn't fit this lock!"} ; The X's Opened Door→{"kind":"text","text":"Your key doesn't fit this lock!"} ; The Y's Door→{"kind":"text","text":"Your key doesn't fit this lock!"} ; Al's Door→{"kind":"text","text":"Your key doesn't fit this lock!"}
+key Steel Key | Open Steel Door→{"kind":"turn","from":"Open Steel Door","to":"Steel Door","coloured":true,"opening":false} spent=false pause=100 ; Steel Door→{"kind":"turn","from":"Steel Door","to":"Open Steel Door","coloured":true,"opening":true} spent=true pause=100
+key Wooden Key | Open Wooden Door→{"kind":"turn","from":"Open Wooden Door","to":"Wooden Door","coloured":true,"opening":false} spent=false pause=100 ; Wooden Door→{"kind":"turn","from":"Wooden Door","to":"Open Wooden Door","coloured":true,"opening":true} spent=true pause=100

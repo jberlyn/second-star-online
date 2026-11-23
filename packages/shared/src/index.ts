@@ -30,6 +30,7 @@ export * from "./rules/combat/arena.ts";
 export * from "./rules/combat/armour.ts";
 export * from "./rules/combat/attpower.ts";
 export * from "./rules/combat/combat.ts";
+export * from "./rules/combat/gear.ts";
 export * from "./rules/core/fighter.ts";
 export {
   lingoContains,

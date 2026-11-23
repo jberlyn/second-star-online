@@ -1,0 +1,417 @@
+150 Gold | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+5 Blue Crystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+5 Gold | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+60 Gold | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Adventurer's Head | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Airship Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Alchemy Lab | click={"kind":"text","text":"This is an alchemy lab, used for mixing potions."} ctrl={"kind":"text","text":"This is an alchemy lab, used for mixing potions."} ctrlStrong={"kind":"text","text":"This is an alchemy lab, used for mixing potions."} ctrlMine={"kind":"take"}
+Ale | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Anvil | click={"kind":"text","text":"This is an anvil, used for blacksmithing."} ctrl={"kind":"text","text":"This is an anvil, used for blacksmithing."} ctrlStrong={"kind":"text","text":"This is an anvil, used for blacksmithing."} ctrlMine={"kind":"take"}
+Apple | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Argon's Fist Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Argon's Medal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Argon's Plate | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Argon's Ring | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Assassin Statue | click={"kind":"statue"} ctrl={"kind":"statue"} ctrlStrong={"kind":"statue"} ctrlMine={"kind":"statue"}
+Axe | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Battleship Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Blackjack Table | click={"kind":"casino","game":"blackjack"} ctrl={"kind":"casino","game":"blackjack"} ctrlStrong={"kind":"casino","game":"blackjack"} ctrlMine={"kind":"take"}
+Blacksmith Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Bless Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Blue Arrows | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Blue Cottage Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Blue Crystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Blue Potion | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Blue Sand | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+BlueCrystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Bo | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Boat Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Bob's Airship | click={"kind":"vehicle"} ctrl={"kind":"vehicle"} ctrlStrong={"kind":"vehicle"} ctrlMine={"kind":"vehicle"}
+Bob's Battleship | click={"kind":"vehicle"} ctrl={"kind":"vehicle"} ctrlStrong={"kind":"vehicle"} ctrlMine={"kind":"vehicle"}
+Bob's Board | click={"kind":"board"} ctrl={"kind":"board"} ctrlStrong={"kind":"board"} ctrlMine={"kind":"board"}
+Bob's Boat | click={"kind":"vehicle"} ctrl={"kind":"vehicle"} ctrlStrong={"kind":"vehicle"} ctrlMine={"kind":"vehicle"}
+Bob's Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Bob's House Vault | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Bob's Mailbox | click={"kind":"mail","universal":false} ctrl={"kind":"mail","universal":false} ctrlStrong={"kind":"mail","universal":false} ctrlMine={"kind":"mail","universal":false}
+Bob's Newspaper | click={"kind":"newspaper"} ctrl={"kind":"newspaper"} ctrlStrong={"kind":"newspaper"} ctrlMine={"kind":"newspaper"}
+Bob's Opened Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Bolt Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Bowmaster's Ring | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Broad Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Catfish | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Cyclops Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Fish | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Orc Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Pig | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Squid | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Swordfish | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Trout | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Burned Yeti Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Cabinet | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Cabinet#3 | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Camera | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Campfire | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Cannonball | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Canvas | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Carpentry Bench | click={"kind":"text","text":"This is a carpentry bench, used for carpentry."} ctrl={"kind":"text","text":"This is a carpentry bench, used for carpentry."} ctrlStrong={"kind":"text","text":"This is a carpentry bench, used for carpentry."} ctrlMine={"kind":"text","text":"This is a carpentry bench, used for carpentry."}
+Catfish | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Catfish Sandwich | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Cauldron | click={"kind":"text","text":"This is WAY too heavy for anyone to pick up!"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Cauldron#7 | click={"kind":"text","text":"This is WAY too heavy for anyone to pick up!"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Ceramic Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chain Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chain Boots | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chain Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chain Helm +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chair | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Champions Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Checkers Table | click={"kind":"casino","game":"checkers"} ctrl={"kind":"casino","game":"checkers"} ctrlStrong={"kind":"casino","game":"checkers"} ctrlMine={"kind":"take"}
+Chimney | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Chunk of Fire | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chunk of Ice | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chunk of Iron | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chunk of Star | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Chunk of Steel | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Clarinet | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Clock | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock1 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock10 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock11 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock12 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock2 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock3 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock4 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock5 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock6 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock7 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock8 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Clock9 | click={"kind":"text","text":"This is a clock."} ctrl={"kind":"text","text":"This is a clock."} ctrlStrong={"kind":"text","text":"This is a clock."} ctrlMine={"kind":"text","text":"This is a clock."}
+Cooked Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Cooked Pig | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Corn | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Crate | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Crate#12 | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Create Food Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Crossbow | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Crush Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Cyclops Burger | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Cyclops Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Dagger | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Argon's | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Ceramic | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Chain | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Fire | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Ice | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Lord's | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Plate | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Armor, Titanium | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Hammer, Thor's | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Hammer, War | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, Chain | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, Demon | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, Fire | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, Ice | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, Murder | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, Pharaoh | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, Plate | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Helm, War | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Shield, Fire | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Shield, Ice | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Shield, Knight | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Shield, Pharaoh | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Shield, Small | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Shield, Steel | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Broad | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Fire | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Ice | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Knight | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Long | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Pharaoh | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Short | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, Star | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Damaged Sword, of Hope | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Dark Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Dark Scimitar | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Dark Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Demon Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Diminish Hunger Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Dispel Illusions Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Doorman's Newspaper | click={"kind":"newspaper"} ctrl={"kind":"newspaper"} ctrlStrong={"kind":"newspaper"} ctrlMine={"kind":"newspaper"}
+Dragon Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Dragon Wing | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Emerald Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Emerald Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Emerald Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Exit | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Exit2 | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Experience Platform | click={"kind":"text","text":"You must be level 21 or higher to pass this platform."} ctrl={"kind":"text","text":"You must be level 21 or higher to pass this platform.","unpause":true} ctrlStrong={"kind":"text","text":"You must be level 21 or higher to pass this platform.","unpause":true} ctrlMine={"kind":"text","text":"You must be level 21 or higher to pass this platform.","unpause":true}
+Film | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Fire Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Pot | click={"kind":"text","text":"I bet that's hot"} ctrl={"kind":"text","text":"I bet that's hot."} ctrlStrong={"kind":"text","text":"I bet that's hot."} ctrlMine={"kind":"text","text":"I bet that's hot."}
+Fire Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Staff | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fireball Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Firebolt Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Firesword Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fish | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fish Sticks | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fishing Pole | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fishle | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Flask | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Flower Seeds | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Flowers | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Flute | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fortress Guild Hall Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fountain | click={"kind":"text","text":"This is a fountain."} ctrl={"kind":"text","text":"This is a fountain."} ctrlStrong={"kind":"text","text":"This is a fountain."} ctrlMine={"kind":"text","text":"This is a fountain."}
+Gauntlets | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Gold | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Gold Axe | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Gold Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Gold Crown | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Gold Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Gold Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Gold Staff | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Gold Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Green Arrows | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Green Crystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Green Laser Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Green Potion | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Green Sand | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+GreenCrystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Guild Center | click={"kind":"guildCenter"} ctrl={"kind":"guildCenter"} ctrlStrong={"kind":"guildCenter"} ctrlMine={"kind":"guildCenter"}
+Guild Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Guitar | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Halo's Newspaper | click={"kind":"newspaper"} ctrl={"kind":"newspaper"} ctrlStrong={"kind":"newspaper"} ctrlMine={"kind":"newspaper"}
+Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Heavy Arms Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Herb | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+High Score Statue | click={"kind":"scores"} ctrl={"kind":"scores"} ctrlStrong={"kind":"scores"} ctrlMine={"kind":"scores"}
+Hoe | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Hold Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Holy Shield Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Holy Water | click={"kind":"text","text":"This is Holy Water."} ctrl={"kind":"text","text":"This is Holy Water."} ctrlStrong={"kind":"text","text":"This is Holy Water."} ctrlMine={"kind":"text","text":"This is Holy Water."}
+Holy Weapon Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+House Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ice Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ice Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ice Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ice Helm +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ice Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ice Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Identify Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Illusionary Spikes Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Inxition Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Katana | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knife | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight Shield +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight Shield +2 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight's Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight's Sword +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight's Sword +2 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight's Sword +3 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Knight's Sword +4 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+LEFT RAY | click={"kind":"silent"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Large House Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Laser Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Leather Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Leather Armor +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Leather Boots | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Leather Cap | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Logs | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Long Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Long Sword+3 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Lord's Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Lord's Staff | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Mage Master Platform | click={"kind":"text","text":"This is a mage master's platform, only a master of magery can pass through this."} ctrl={"kind":"text","text":"This is a mage master's platform, only a master of magery can pass through this.","unpause":true} ctrlStrong={"kind":"text","text":"This is a mage master's platform, only a master of magery can pass through this.","unpause":true} ctrlMine={"kind":"text","text":"This is a mage master's platform, only a master of magery can pass through this.","unpause":true}
+Mage's Head | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Mage's Ring | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Magic Seeds | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Magic Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Magic Shield Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Magical Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Major Heal Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Message Boards | click={"kind":"board"} ctrl={"kind":"board"} ctrlStrong={"kind":"board"} ctrlMine={"kind":"board"}
+Meteor Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Mining Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Minor Heal Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Mirror | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Morph Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Murder Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Murder Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Nature Shift Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Necromancer's Robe | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Nectar | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Newspaper Kit | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ninja Gloves | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ninja Master Platform | click={"kind":"text","text":"This is a ninja master's platform, only a master of martial arts can pass through this."} ctrl={"kind":"text","text":"This is a ninja master's platform, only a master of martial arts can pass through this.","unpause":true} ctrlStrong={"kind":"text","text":"This is a ninja master's platform, only a master of martial arts can pass through this.","unpause":true} ctrlMine={"kind":"text","text":"This is a ninja master's platform, only a master of martial arts can pass through this.","unpause":true}
+Ninja Outfit | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+OFF Switch | click={"kind":"switch","state":"off"} ctrl={"kind":"switch","state":"off"} ctrlStrong={"kind":"switch","state":"off"} ctrlMine={"kind":"switch","state":"off"}
+ON Switch | click={"kind":"switch","state":"on"} ctrl={"kind":"switch","state":"on"} ctrlStrong={"kind":"switch","state":"on"} ctrlMine={"kind":"switch","state":"on"}
+Open Emerald Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Open Fire Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Open Gold Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Open Steel Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Open Switch Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Open Wooden Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Oraku's Orb | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Orc Burger | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Orc Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Orc Pot Pie | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Painting#4 | click={"kind":"view"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Parry Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Pharaoh Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Pharaoh Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Pharaoh Shield +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Pharaoh Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Photo#2 | click={"kind":"view"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Piano | click={"kind":"text","text":"This is a piano."} ctrl={"kind":"text","text":"This is a piano."} ctrlStrong={"kind":"text","text":"This is a piano."} ctrlMine={"kind":"text","text":"This is a piano."}
+Pie | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Pig | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Plate Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Plate Armor +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Plate Armor +2 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Plate Boots | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Plate Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Portal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Portal Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Potion Bottle | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Premium Seeds | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Purple Arrows | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Purple Crystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Purple Potion | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Purple Sand | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+PurpleCrystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+RIGHT RAY | click={"kind":"silent"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Radar Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Raise Dead Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Raw Fish | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Raw Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Red Arrows | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Red Crystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Red Potion | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Red Sand | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+RedCrystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Replenish Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ring of Experience | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ring of Quickness | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Robe of Invisibility | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Rose Seeds | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Roses | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Royal Ninja Uniform | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Ruby Ring | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Saw | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Scimitar | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Scroll | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Seeds | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Short Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Short Sword +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Shovel | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Sign 1 | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Sign 2 | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Sign 3 | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Silver Crossbow | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Silver Crown | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Silver Token | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Sirius's Newspaper | click={"kind":"newspaper"} ctrl={"kind":"newspaper"} ctrlStrong={"kind":"newspaper"} ctrlMine={"kind":"newspaper"}
+Slash Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Slash Master Platform | click={"kind":"text","text":"This is a slash master's platform, only a master of slash can pass through this."} ctrl={"kind":"text","text":"This is a slash master's platform, only a master of slash can pass through this.","unpause":true} ctrlStrong={"kind":"text","text":"This is a slash master's platform, only a master of slash can pass through this.","unpause":true} ctrlMine={"kind":"text","text":"This is a slash master's platform, only a master of slash can pass through this.","unpause":true}
+Slim's House Vault | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Slim's Mailbox | click={"kind":"mail","universal":false} ctrl={"kind":"mail","universal":false} ctrlStrong={"kind":"mail","universal":false} ctrlMine={"kind":"mail","universal":false}
+Slot Machine | click={"kind":"casino","game":"slots"} ctrl={"kind":"casino","game":"slots"} ctrlStrong={"kind":"casino","game":"slots"} ctrlMine={"kind":"take"}
+Small Farm Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Small Guild Hall Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Small House Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Small Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Small Shield +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Small Shop Deed | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Smoke Bomb Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Special's Newspaper | click={"kind":"newspaper"} ctrl={"kind":"newspaper"} ctrlStrong={"kind":"newspaper"} ctrlMine={"kind":"newspaper"}
+Spell Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Splash Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Squid | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Squid Platter | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Star Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Star Sword +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Star Sword +2 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Steel Bow | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Steel Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Steel Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Steel Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Steel Scimitar | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Steel Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Steel Shield +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Steel Staff | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Stone Skin Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Stool | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Stove | click={"kind":"text","text":"This is a stove, used for cooking food."} ctrl={"kind":"text","text":"This is a stove, used for cooking food."} ctrlStrong={"kind":"text","text":"This is a stove, used for cooking food."} ctrlMine={"kind":"take"}
+Street Lamp | click={"kind":"text","text":"This is a street lamp."} ctrl={"kind":"text","text":"This is a street lamp.","unpause":true} ctrlStrong={"kind":"text","text":"This is a street lamp.","unpause":true} ctrlMine={"kind":"text","text":"This is a street lamp.","unpause":true}
+Summon Creature Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Switch Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Sword of Hope | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Sword of Hope +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Swordfish | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Swordfish Steak | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Table | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+The X's Guild Vault | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Thor's Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Thrust Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Titanium Armor | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Tom Tom | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Torch | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Trout | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Trout Fillet | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Trumpet | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Tuxedo | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Unholy Combat Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Unholy Lance | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Universal Mail | click={"kind":"mail","universal":true} ctrl={"kind":"mail","universal":true} ctrlStrong={"kind":"mail","universal":true} ctrlMine={"kind":"mail","universal":true}
+Vault | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Wall Torch | click={"kind":"text","text":"This is a brightly lit torch."} ctrl={"kind":"text","text":"This is a brightly lit torch."} ctrlStrong={"kind":"text","text":"This is a brightly lit torch."} ctrlMine={"kind":"text","text":"This is a brightly lit torch."}
+War Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+War Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+War Helm +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+War Helm +2 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+War Helm +3 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Warrior's Head | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Water Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Watering Bucket | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Watermelon | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Weaken Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Web Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Whirlwind Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+White Arrows | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+White Crystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+White Potion | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+White Robe | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+White Sand | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+WhiteCrystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wind Cabinet | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wind Cabinet#5 | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wind Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Wind Wave Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Windmill | click={"kind":"text","text":"This is a windmill."} ctrl={"kind":"text","text":"This is a windmill."} ctrlStrong={"kind":"text","text":"This is a windmill."} ctrlMine={"kind":"text","text":"This is a windmill."}
+Wizard's Robe | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wooden Bow | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wooden Crossbow | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wooden Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
+Wooden Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wooden Staff | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Yellow Arrows | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Yellow Crystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Yellow Potion | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Yellow Sand | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+YellowCrystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Yeti Burger | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Yeti Meat | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Zieg's Boat | click={"kind":"vehicle"} ctrl={"kind":"vehicle"} ctrlStrong={"kind":"vehicle"} ctrlMine={"kind":"vehicle"}
+cloud | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+kahuna's Boat | click={"kind":"vehicle"} ctrl={"kind":"vehicle"} ctrlStrong={"kind":"vehicle"} ctrlMine={"kind":"vehicle"}

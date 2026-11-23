@@ -36,6 +36,19 @@ The starter landscape is defined in [seed-map.json](../packages/data/content/see
 
 Release baseline rows are fingerprinted in `packages/data/tests/content-baseline.json`; the corresponding test detects changed, removed or reordered rows. For intentional changes, review and update only the affected fingerprints and relevant behavior documentation.
 
+### The safety net
+
+Two golden-file tests record how the Classic pack plays today, so a change to the engine or the content that alters play shows up as a diff rather than going unnoticed.
+
+- **The behaviour snapshot** (`packages/server/tests/behaviour-snapshot.test.ts`) records what every name-based decision returns for every Classic item, masterwork, monster and spell, and for names the game builds at run time (`Crate#12`, `Long Sword+3`, `Bob's Door`, `5 Gold`, `Damaged Helm, Fire`). The checks include keyword tests (keys, books, bows, hidden names, gathering tools), the item rule tables, ground click and Ctrl routing, keys and doors, attack power, kill skill gain over a grid of skills, stats and factions, spell power and school gain, monster body rules and spell hits, faction perks, and each item used, equipped, clicked and taken through the server. Each group is a file in `packages/server/tests/golden/behaviour/`, one sorted line per name. A roll is recorded by running it with every draw answering 1 and again answering the largest value, with the sizes drawn.
+- **The seeded replay** (`packages/server/tests/replay.test.ts`) runs a whole server on a seeded random number generator and a fixed clock for 4,000 ticks. Scripted players walk, fight, cast, chop, mine, dig, fish, farm, cook, smith, build, mix potions, buy and sell, use items, open containers, sail a boat, die and respawn. The world state is hashed every tick into `packages/server/tests/golden/replay.txt`, with a breakdown by player and room every 100 ticks and a hash of every database table at the end. A failure names the first tick that differs and the parts that changed. To see the change, dump the state at that tick before and after it and diff the two files: `SSO_REPLAY_DUMP=<tick>:<file> bun test tests/replay.test.ts` from `packages/server`.
+
+Both record behaviour as it is, 1.6 bugs included. When one of them fails:
+
+1. Review the diff. An unexpected line is a regression, so fix the change.
+2. If every changed line is intended, record the new behaviour from `packages/server` with `SSO_UPDATE_GOLDEN=1 bun test tests/behaviour-snapshot.test.ts tests/replay.test.ts` and commit the golden files with the change.
+3. If the new behaviour differs from 1.6, add an entry to [the differences document](differences-from-fso.md), with a pinning test.
+
 ## Ordered name tables
 
 The original engine classified items, monsters, and spells by testing their names in script order using case-insensitive exact equality (`exact`) or substring matching (`contains`). In SSO, those tests are stored as ordered `{ "match": "exact" | "contains", "pattern": "...", ...result }` rows. Each table uses one of five combination rules:
