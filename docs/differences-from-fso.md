@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 82 |
-| [Fixed bugs](#fixed-bugs) | 299 |
+| [Fixed bugs](#fixed-bugs) | 300 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 137 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **570** |
+| **Total** | **571** |
 
 By system (the code folder that holds the change):
 
@@ -43,7 +43,7 @@ By system (the code folder that holds the change):
 | admin | [14](#admin) | [24](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
-| combat | [26](#combat) | [7](#server-side-combat) |
+| combat | [27](#combat) | [7](#server-side-combat) |
 | core | [3](#core) | [9](#server-side-core) |
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
@@ -1340,6 +1340,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The list was written so these monsters would not break armour; it had no effect only because of the name mismatch.
 - **In the code:** `packages/shared/src/rules/combat/armour.ts` (`rollArmourBreak`)
 - **Pinned by:** `bug fixed: the armour exclusion list matches "a <name>"` (packages/shared/tests/inventory/inventory.test.ts)
+
+#### An Adventurer's armour bonus follows the Adventurers' standing
+- **Kind:** Bug fixed
+- **What you notice:** An Adventurer takes 1 less damage from each hit while the Adventurers' faction bonus is above 0, and 2 less above 6, whatever the Warriors' standing.
+- **1.6:** The faction reduction read the Warriors' bonus for Adventurers too, so an Adventurer's armour rose and fell with the rival faction's standing.
+- **SSO:** `factionRows` reads the Adventurer bonus (`f3Bonus`) for an Adventurer and the Warrior bonus (`f2Bonus`) for a Warrior.
+- **Why:** Every other Adventurer perk reads the Adventurers' own bonus; reading the Warriors' was a slip.
+- **In the code:** `packages/shared/src/rules/combat/armour.ts` (`factionRows`)
+- **Pinned by:** `bug fixed: an Adventurer's faction armour reads the Adventurer bonus, not the Warrior one` (packages/shared/tests/combat/combat.test.ts)
 
 #### Administrators take no damage of any kind
 - **Kind:** Bug fixed

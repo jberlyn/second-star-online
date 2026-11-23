@@ -79,14 +79,18 @@ export function elementalRows(
   return p;
 }
 
-/** The faction reductions (HitMe, HitMe2). */
+/**
+ * The faction reductions (HitMe, HitMe2): a Warrior by the Warrior bonus, an Adventurer by the
+ * Adventurer bonus (a bug fixed: 1.6 read the Warrior bonus for both).
+ */
 export function factionRows(power: number, f: Fighter): number {
   let p = power;
-  const b = f.faction.f2Bonus;
   if (f.faction.id === 2) {
+    const b = f.faction.f2Bonus;
     p -= (b > 0 ? 1 : 0) + (b > 4 ? 1 : 0) + (b > 8 ? 1 : 0);
   }
   if (f.faction.id === 3) {
+    const b = f.faction.f3Bonus;
     p -= (b > 0 ? 1 : 0) + (b > 6 ? 1 : 0);
   }
   return p;

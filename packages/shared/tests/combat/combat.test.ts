@@ -5,6 +5,7 @@ import { classicData } from "@secondstaronline/data/classic";
 const { classes: classesData } = classicData;
 
 import { STEPFRAMES_PER_FRAME } from "../../src/constants.ts";
+import { factionRows } from "../../src/rules/combat/armour.ts";
 import { attackPower, bowRefusal, evalValue } from "../../src/rules/combat/attpower.ts";
 import {
   type AttackTimers,
@@ -282,6 +283,18 @@ describe("monsters hitting players", () => {
     const rng = scripted([1]);
     expect(monsterHitsPlayer(35, fighter(), 0, rng, true)).toEqual({ kind: "shield" });
     expect(rng.calls).toEqual([]);
+  });
+  test("bug fixed: an Adventurer's faction armour reads the Adventurer bonus, not the Warrior one", () => {
+    const adventurer = (f2Bonus: number, f3Bonus: number) =>
+      fighter({ faction: { id: 3, f1Bonus: 0, f2Bonus, f3Bonus } });
+    // 1 off above bonus 0, 2 off above 6, by the Adventurer bonus alone.
+    expect(factionRows(10, adventurer(0, 0))).toBe(10);
+    expect(factionRows(10, adventurer(9, 0))).toBe(10);
+    expect(factionRows(10, adventurer(0, 1))).toBe(9);
+    expect(factionRows(10, adventurer(0, 7))).toBe(8);
+    // A Warrior still reads the Warrior bonus: 1, 2 and 3 off above 0, 4 and 8.
+    const warrior = fighter({ faction: { id: 2, f1Bonus: 0, f2Bonus: 9, f3Bonus: 0 } });
+    expect(factionRows(10, warrior)).toBe(7);
   });
   test("bug fixed: ice armour against a Yeti cuts the hit points lost", () => {
     const iced = fighter({ equip: { ...NO_EQUIPMENT, body: "Ice Armor" } });
