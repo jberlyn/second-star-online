@@ -42,132 +42,6 @@
         "value": 3
       }
     ],
-    "shovelLayer1": {
-      "test": "*G1*H1*O1"
-    },
-    "tools": [
-      {
-        "tool": "Axe",
-        "match": "contains",
-        "counter": "Chop",
-        "skill": "Lumberjacking",
-        "tiles": {
-          "from": "S3",
-          "to": "P3"
-        },
-        "successSound": {
-          "name": "treefalling",
-          "ch": 2
-        },
-        "hitSound": {
-          "name": "treechop",
-          "ch": 3
-        },
-        "imp": "LumberjackImp"
-      },
-      {
-        "tool": "Shovel",
-        "match": "=",
-        "counter": "Dig",
-        "skill": "Shoveling",
-        "tiles": {
-          "from": "G3",
-          "to": "1K"
-        },
-        "successSound": {
-          "name": "shoveling",
-          "ch": 2
-        },
-        "hitSound": null,
-        "imp": "ShovelingImp"
-      },
-      {
-        "tool": "Hoe",
-        "match": "=",
-        "counter": "Farm",
-        "skill": "Farming",
-        "tiles": {
-          "from": "TL",
-          "to": "SL"
-        },
-        "successSound": {
-          "name": "shoveling",
-          "ch": 2
-        },
-        "hitSound": null,
-        "imp": "FarmingImp"
-      },
-      {
-        "tool": "Watering Bucket",
-        "match": "=",
-        "counter": "Watering",
-        "skill": "Farming",
-        "successSound": null,
-        "hitSound": null,
-        "imp": null
-      },
-      {
-        "tool": "Mining Hammer",
-        "match": "=",
-        "counter": "Mine",
-        "skill": "Mining",
-        "tiles": {
-          "from": "B8",
-          "to": "O8"
-        },
-        "successSound": {
-          "name": "crush",
-          "ch": 2
-        },
-        "hitSound": {
-          "name": "swordhit2",
-          "ch": 3
-        },
-        "imp": "MiningImp"
-      },
-      {
-        "tool": "Ice Hammer",
-        "match": "=",
-        "counter": "Mine",
-        "skill": "Mining",
-        "tiles": {
-          "from": "1G",
-          "to": "0Z"
-        },
-        "successSound": {
-          "name": "crush",
-          "ch": 2
-        },
-        "hitSound": {
-          "name": "swordhit2",
-          "ch": 3
-        },
-        "imp": "MiningImp"
-      },
-      {
-        "tool": "Fire Hammer",
-        "match": "=",
-        "counter": "Mine",
-        "skill": "Mining",
-        "tiles": {
-          "from": "6O",
-          "to": "6N"
-        },
-        "successSound": {
-          "name": "crush",
-          "ch": 2
-        },
-        "hitSound": {
-          "name": "swordhit2",
-          "ch": 3
-        },
-        "imp": "MiningImp"
-      }
-    ],
-    "logs": {
-      "item": "Logs",
-      "chance": 3
-    },
     "mining": {
       "countDefault": 1,
       "count": [
@@ -338,23 +212,9 @@
           "Chunk of Star"
         ]
       },
-      "findChance": 5,
-      "chunks": [
-        {
-          "tool": "Ice Hammer",
-          "item": "Chunk of Ice",
-          "chance": 130
-        },
-        {
-          "tool": "Fire Hammer",
-          "item": "Chunk of Fire",
-          "chance": 130
-        }
-      ]
+      "findChance": 5
     },
     "fishing": {
-      "tool": "Fishing",
-      "match": "contains",
       "layers": [
         1,
         2
@@ -365,7 +225,6 @@
         "D2",
         "I2"
       ],
-      "atDelay": 20,
       "fxOffsets": {
         "E": [
           18,
@@ -494,6 +353,7 @@
         }
       ],
       "seedPause": 425,
+      "wateringSkill": "Farming",
       "watering": [
         {
           "from": "UL",
@@ -718,6 +578,137 @@
       "plant": "You plant the seeds.",
       "plantWrong": "You plant the seeds into the ground but realize this isn't going to grow anything here!",
       "advanced": "You have advanced in the art of <Skill>!"
+    }
+  },
+  "harvest": [
+    {
+      "tile": "G3",
+      "can": "Dig",
+      "tools": [
+        "Shovel"
+      ],
+      "under": [
+        "G1",
+        "H1",
+        "O1"
+      ],
+      "becomes": "1K",
+      "skill": "Shoveling",
+      "gains": true,
+      "treasure": true,
+      "hitSound": null,
+      "successSound": {
+        "name": "shoveling",
+        "ch": 2
+      }
+    },
+    {
+      "tile": "TL",
+      "can": "Farm",
+      "tools": [
+        "Hoe"
+      ],
+      "becomes": "SL",
+      "skill": "Farming",
+      "gains": true,
+      "hitSound": null,
+      "successSound": {
+        "name": "shoveling",
+        "ch": 2
+      }
+    },
+    {
+      "tile": "B8",
+      "can": "Mine",
+      "tools": [
+        "Mining Hammer"
+      ],
+      "becomes": "O8",
+      "skill": "Mining",
+      "gains": true,
+      "yield": "Mining",
+      "hitSound": {
+        "name": "swordhit2",
+        "ch": 3
+      },
+      "successSound": {
+        "name": "crush",
+        "ch": 2
+      }
+    },
+    {
+      "tile": "1G",
+      "can": "Mine",
+      "tools": [
+        "Ice Hammer"
+      ],
+      "becomes": "0Z",
+      "skill": "Mining",
+      "gains": true,
+      "yield": "Chunk of Ice",
+      "hitSound": {
+        "name": "swordhit2",
+        "ch": 3
+      },
+      "successSound": {
+        "name": "crush",
+        "ch": 2
+      }
+    },
+    {
+      "tile": "6O",
+      "can": "Mine",
+      "tools": [
+        "Fire Hammer"
+      ],
+      "becomes": "6N",
+      "skill": "Mining",
+      "gains": true,
+      "yield": "Chunk of Fire",
+      "hitSound": {
+        "name": "swordhit2",
+        "ch": 3
+      },
+      "successSound": {
+        "name": "crush",
+        "ch": 2
+      }
+    },
+    {
+      "tile": "S3",
+      "can": "Chop",
+      "becomes": "P3",
+      "skill": "Lumberjacking",
+      "gains": true,
+      "yield": "Logs",
+      "hitSound": {
+        "name": "treechop",
+        "ch": 3
+      },
+      "successSound": {
+        "name": "treefalling",
+        "ch": 2
+      }
+    }
+  ],
+  "yields": {
+    "Logs": {
+      "kind": "chance",
+      "item": "Logs",
+      "chance": 3
+    },
+    "Mining": {
+      "kind": "ore"
+    },
+    "Chunk of Ice": {
+      "kind": "chance",
+      "item": "Chunk of Ice",
+      "chance": 130
+    },
+    "Chunk of Fire": {
+      "kind": "chance",
+      "item": "Chunk of Fire",
+      "chance": 130
     }
   },
   "skillGain": [

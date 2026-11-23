@@ -443,10 +443,10 @@ describe("monsters, NPCs and tiles", () => {
         }
       }
     }
-    for (const [i, t] of gatherData.gathering.tools.entries()) {
+    for (const [i, t] of gatherData.harvest.entries()) {
       for (const k of ["successSound", "hitSound"] as const) {
         if (t[k]) {
-          named.push([`gather tools[${i}].${k}`, t[k].name]);
+          named.push([`gather harvest[${i}].${k}`, t[k].name]);
         }
       }
     }

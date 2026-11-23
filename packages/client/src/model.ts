@@ -845,8 +845,8 @@ function predictSwing(m: Model, s: Self, intent: Intent): void {
   if (bowRefusal(equip, m.inv?.bag ?? []) !== null) {
     return;
   }
-  // `startSwing`: the cooldowns start. They depend on skills only for axes and
-  // mining hammers, which the client does not have; the server's `swing` corrects them.
+  // `startSwing`: the cooldowns start. A swing ladder that reads a skill (Classic: axes and mining
+  // hammers) needs skills the client does not have; the server's `swing` corrects them.
   const cd = swingCooldowns(equip, []);
   intent.attackPress = null;
   t.atDelay = cd.atDelay;

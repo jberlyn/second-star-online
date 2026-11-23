@@ -5,10 +5,14 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
+  buildContentStore,
+  type ContentData,
   type DeltaEvent,
   FISHING_STOPPED_TEXT,
   footWalkGrid,
+  installContent,
   type ServerMsg,
   skillIndex,
   tileAt,
@@ -311,6 +315,95 @@ describe("farming", () => {
     out = useIntent(ctx(), room, g.a, 1);
     expect(lines(out, "a")).toEqual([wrong]);
     expect(g.a.char.bag[0]).toEqual({ item: "Seeds", qty: 2 });
+  });
+});
+
+describe("harvest nodes from content (issue #37 stage 5)", () => {
+  /**
+   * Classic plus a quarry: tile Q9 becomes R9 for any tier-2 Mine tool, needs Mining 20, trains
+   * Mining and drops Pebbles (Logs, here) on random(5), every time from Mining 10 up. A Long Sword
+   * is a tier-2 Mine tool; the Mining Hammer stays tier 1.
+   */
+  function withQuarry(body: () => void) {
+    const d = structuredClone(classicData) as ContentData;
+    d.gather.harvest.push({
+      tile: "Q9",
+      can: "Mine",
+      tier: 2,
+      requires: { needs: "Mining", atLeast: 20 },
+      becomes: "R9",
+      skill: "Mining",
+      gains: true,
+      yield: "Pebbles",
+      hitSound: { name: "swordhit2", ch: 3 },
+      successSound: null,
+    });
+    d.gather.yields.Pebbles = {
+      kind: "chance",
+      item: "Logs",
+      chance: 5,
+      bySkill: [{ gt: 10, value: 1 }],
+    };
+    d.itemRules.tools.push({ match: "exact", pattern: "Long Sword", can: "Mine", tier: 2 });
+    installContent(buildContentStore(d));
+    try {
+      body();
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  }
+
+  test("a new node needs no code: the tool's hits, the tile change, the skill-scaled yield and the gain", () => {
+    withQuarry(() => {
+      const g = swinger("Long Sword", rngByN({ 3: ones(), 22: [1] }));
+      setLayer(g.map, 1, 5, 5, "Q9");
+      setSkill(g.a, "Mining", 30);
+      // Mining 30 is above 20 but not 30 in the counter table: 14 hits.
+      const first = g.swings(13);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("Q9");
+      expect(
+        events(first, "a")
+          .filter((e) => e.e === "swing")
+          .every((e) => e.e === "swing" && e.sound === "swordhit2"),
+      ).toBe(true);
+      const out = g.swings(1);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("R9");
+      expect(g.map.ground.map((x) => x.item)).toEqual(["Logs"]);
+      expect(lines(out, "a")).toEqual(["You have advanced in the art of Mining!"]);
+      expect(skill(g.a, "Mining")).toBe(31);
+      expect(g.a.gather["Long Sword"]).toBe(0);
+    });
+  });
+
+  test("a node's requirement refuses once per press and counts nothing", () => {
+    withQuarry(() => {
+      const g = swinger("Long Sword");
+      setLayer(g.map, 1, 5, 5, "Q9");
+      setSkill(g.a, "Mining", 19);
+      const out = g.swings(3);
+      expect(lines(out, "a")).toEqual(["You need Mining 20 to mine this."]);
+      expect(g.a.gather["Long Sword"]).toBeUndefined();
+      // A new press says it again.
+      expect(lines(g.swings(1), "a")).toEqual(["You need Mining 20 to mine this."]);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("Q9");
+    });
+  });
+
+  test("a tool below the node's tier is refused; Classic's own nodes stay tier 1", () => {
+    withQuarry(() => {
+      const g = swinger("Mining Hammer");
+      setLayer(g.map, 1, 5, 5, "Q9");
+      setSkill(g.a, "Mining", 50);
+      expect(lines(g.swings(2), "a")).toEqual(["You need a better tool to mine this."]);
+      expect(g.a.gather["Mining Hammer"]).toBeUndefined();
+      // The hammer still breaks Classic's rock (B8), and the sword, which names no rock, does not.
+      setLayer(g.map, 1, 5, 5, "B8");
+      g.swings(1);
+      expect(g.a.gather["Mining Hammer"]).toBeGreaterThan(0);
+      g.a.char.equip.weapon = "Long Sword";
+      g.swings(1);
+      expect(g.a.gather["Long Sword"]).toBeUndefined();
+    });
   });
 });
 

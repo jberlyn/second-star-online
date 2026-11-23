@@ -104,6 +104,8 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `containers.uniqueIds` | Containers assigned a `#id` in a bag | Any | Boolean |
 | `gear` | Stat bonus from worn item | Every match adds | `power` (`spell`, `blackArts`, `martialArts`, `attack`, `killXp`), `add`, `slot` |
 | `swing.cooldowns` | Swing delays for a worn item | Last | `atDelay`, `actionDelay`; default `14, 14` |
+| `tools` | What a tool can do, and its swing ladder (see [Tools and gathering](#tools-and-gathering)) | Every match adds; last `ladder` | `can`, `tier`, `ladder` |
+| `requires` | What an item needs before it is equipped or used (see [Requirements](#requirements)) | Every match must be met | `on` (`equip`, `use`), `needs` skill or `level`, `atLeast`, `text` |
 | `swing.sounds` | Swing sound by weapon | First | Sound name or `null` (silent); default `swordswing` |
 | `armour.*`, `breaks.*` | Armour mitigation and breakage | See schema | Mitigation / broken form |
 
@@ -146,6 +148,35 @@ The click and Ctrl gates test these in 1.6's order, so where a name has two beha
 
 The **engine fixtures** never take a behaviour, and no new content item may take one of their names: the owner-named `<owner>'s Door`, `'s Opened Door`, `'s Mailbox`, `'s Board`, `'s House Vault`, `'s Guild Vault`, `'s Airship`, `'s Boat` and `'s Battleship`, and `Exit`, `Exit2`, `Sign 1` to `Sign 3` and `Street Lamp`. The engine builds or reads these names itself and knows each by its kind, before any other test and from the whole name (a guild called "Stars #1" keeps its board); a pack supplies their art. So a guild named "Crate Club" has a board, not a crate, and a player named "Doorman" a mailbox, not a door. A house type's guild hall and shop are its `guild` flag and `header`, not words in its name.
 
+### Tools and gathering
+
+1.6 knew its tools by name: an "Axe" fell trees, a "Mining" tool swung faster with Mining, a "Fishing" item fished. In SSO (issue #37) content says what each tool does, and what each tile gives.
+
+**`item-rules.json` `tools`** gives a weapon what it `can` do: `Chop`, `Mine`, `Dig`, `Farm`, `Fish` or `Water`. These are the engine's kinds of gathering. Each row is `{ "match", "pattern", "can"?, "tier"?, "ladder"? }`, and a weapon can do everything a matching row gives it, at that row's `tier` (1 when left out). Each `can` row keeps its own hit counter, named by its pattern, so an Axe and a Gold Axe share one and each hammer has its own. The last matching row with a `ladder` sets the weapon's swing speed from **`ladders`**: `{ "skill"?, "steps": [{ "below"?, "delay" }], "gearSpeedUp"? }`. The first step whose `below` is above the skill (or that has no `below`) sets the attack delay. `gearSpeedUp` takes the worn gear's speed-up (the Ring of Quickness's) off the step; without it the step replaces the delay outright. A ladder whose `skill` the world lacks is off. Classic's rows: contains `Axe` (`Chop`, and ladder `axe` on Axe Fighting), `Shovel` (`Dig`), `Hoe` (`Farm`), `Watering Bucket` (`Water`), the three hammers (`Mine`), contains `Fishing` (`Fish`), contains `Mining` (ladder `mining` on Mining) and contains `Fishing` again (ladder `fishing`: a flat 20 less the gear's speed-up, never below 1).
+
+**`gather.json` `harvest`** lists the harvest nodes: what a tool that can work a layer-2 tile does there. Several nodes may share a tile, each for its own `tools`; the first one the swung tool can work decides.
+
+| Field | Meaning |
+|---|---|
+| `tile`, `becomes` | The tile, and what it turns into on a success |
+| `can` | The kind of tool that works it: `Chop`, `Mine`, `Dig` or `Farm` |
+| `tools` | Only these tools work it, by exact item name (Classic: each hammer its own rock, the Shovel, the Hoe) |
+| `tier` | The lowest tool tier that works it (1 when left out). A lower tier is refused: "You need a better tool to mine this." |
+| `under` | The layer-1 tile under it must be one of these (the shovel's diggable grounds); two nodes on one tile can split by ground |
+| `requires` | `{ "needs", "atLeast", "text"? }` (see [Requirements](#requirements)): "You need Mining 20 to mine this." |
+| `skill`, `gains` | The skill whose value reads the shared hit table (`gathering.counterTable`), and whether each success rolls its `skillGain` row |
+| `yield` | A table in `yields`, rolled on every success |
+| `treasure` | Every success may uncover the buried treasure (Classic: the dig) |
+| `hitSound`, `successSound` | The swing sound when the faced tile is the node's, and the sound to the gatherer on a success |
+
+A refusal is said once, not on every swing, while the attack key stays held. **`yields`** holds the drop tables by name: `{ "kind": "chance", "item", "chance", "bySkill"? }` drops its item on `random(chance) = 1` (Classic's Logs, 1 in 3, and the two chunks, 1 in 130), with the chance taken from the last `bySkill` `{ gt, value }` row the skill is above when it has them; `{ "kind": "ore" }` is the mining strike, whose crystal count, colour pool and ore odds stay in `gathering.mining`. Fishing and watering are their own kinds: a `Fish` tool fishes the `gathering.fishing` water with its catch bands, and a `Water` tool waters `gathering.farming.watering` soil, reading `farming.wateringSkill` for its hits, and sprinkles on every swing. Regrowth stays in `gathering.regrowth.checks`: a new node that should grow back adds a check row there.
+
+So a new gathering skill needs no code. For example, add a `Panning` skill, a `Gold Pan` item with a `tools` row `{ "match": "exact", "pattern": "Gold Pan", "can": "Dig" }`, a node `{ "tile": "Q9", "can": "Dig", "tools": ["Gold Pan"], "becomes": "R9", "skill": "Panning", "gains": true, "yield": "Gold Dust", ... }`, a `Gold Dust` chance table, a `skillGain` row for Panning, and a regrowth check from `R9` back to `Q9`.
+
+### Requirements
+
+An item can need a skill, or the level, before it is equipped or used, and a harvest node before it is gathered. A requirement is `{ "needs", "atLeast", "text"? }`: `needs` is a skill key, or exactly `level`, the shape the skill platforms use. `item-rules.json` `requires` rows add `match`, `pattern` and `on` (`equip` or `use`); a row tests the name without its `#id` or `+N` ending, as the behaviours do (a masterwork needs what its item needs). Every matching row of that kind must be met, and the first that is not refuses with its `text`, else "You need Cooking 10 to use this." ("You need to be level 5 to equip this." for the level). Equip tests it after 1.6's own equip gates, Use before anything else, and the character editor's wear check honours it too. Classic needs nothing.
+
 ### Names the engine still builds or reads
 
 These are the engine's own names, or wait for a later stage of issue #37:
@@ -155,7 +186,6 @@ These are the engine's own names, or wait for a later stage of issue #37:
 | `Painting#<id>`, `Photo#<id>` | The engine names the paintings and photos it saves; their pictures and the viewer read the words |
 | `Map` (a name containing it) | Drawn with the `MapPic` picture on the ground (no Classic item has it; give an item a `sprite` instead) |
 | The newspaper's `'s Newspaper` | `social.json` `newspaper.suffix`: content already |
-| `Axe`, `Mining`, `Fishing` | Swing-speed cascades and the fishing delay: tool behaviours, stage 5 |
 | `+N` at the end (`Long Sword+3`) | A masterwork: adds `N` to attack power |
 | `<Colour> Arrows`, `<Colour> Crystal` | A bow's ammunition: arrows of one of the six colours spend crystals of that colour |
 
@@ -232,7 +262,7 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 - **Hover names (`catalogue[].name`):** the playfield hover tip names a layer-2 tile with a `name` when no player, monster or named ground item is under the mouse. The shipped names cover the tiles you gather from and what they turn into (`S3` is `Tree`, `P3` is `Tree Stump`, `XL` is `Corn Plant`). Leave plain ground, water and decorative tiles unnamed, so most of the map shows no tip. A tile you add for a gathering tool should get a name too.
 - **Walk whitelist (`walkable`):** every code in `walkable` must be exactly 2 characters.
 - **Checked by tests, not the build:** the schema accepts any non-empty tile `code`; the rule that an added tile's code is 2 characters and unique in any case is enforced by `packages/data/tests/data.test.ts`, so run `bun run test` (or `bun run gate`) as well as `data:build`.
-- **Other tile codes live with their systems:** tool tile changes and fishing water in `gather.json`, the newspaper stand (`K2`) in `social.json`, and rough terrain and house tiles in `houses.json`.
+- **Other tile codes live with their systems:** harvest nodes and fishing water in `gather.json`, the newspaper stand (`K2`) in `social.json`, and rough terrain and house tiles in `houses.json`.
 - **Palette order:** original tiles (with `member`) fill World Editor pages `1`–`10` in member order (stopping at member `589`, leaving slots `50`–`60` on page `10` free). Added tiles (without `member`) fill page `10` slots `50`–`60` first in `catalogue` order, then pages `11+` at `60` tiles per page. Every slot with no tile is blank and cannot be clicked (stale slots on page `10` are not kept).
 
 ### Example: Deep-water tile (`Z9`)
@@ -338,7 +368,7 @@ The NPC Editor checks these forms when you save; see the [economy guide](guides/
 
 These files have no worked example here; their schemas in [packages/data/schema/](../packages/data/schema/) document every field, and the matching [system guide](guides/README.md) describes what they do in play.
 
-- **`gather.json`:** `gathering` (tools, the tiles they work on, finds by skill, regrowth, fishing water) and `skillGain` (the gathering and crafting skill rolls: chance, the skill range and the advance line).
+- **`gather.json`:** `gathering` (the hit table, mining strikes, fishing, farming, regrowth and treasure), `harvest` and `yields` (see [Tools and gathering](#tools-and-gathering)), and `skillGain` (the gathering and crafting skill rolls: chance, the skill range and the advance line).
 - **`craft.json`:** `stations`: what each crafting station makes, from what, and at what skill.
 - **`houses.json`:** house deeds and types, placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
 - **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
@@ -513,11 +543,10 @@ Notes on the single bindings:
 | `archery`, `martialArts` | the gains on an arrow shot (`martialArts` with a crossbow) | that gain never rolls (Smoke Bomb's Martial Arts is its spell school, below) |
 | `staffFighting` | the power of the fireballs a staff swings | the plain `1 + random(3)` |
 | `magery` | the tiers of every cast's base power, and the Magery gain | no Magery tiers; no gain |
-| `axeFighting`, `mining` | the swing-speed ladders of axes and mining tools | the tool swings at its plain speed (what it gathers, and the gain, follow its `gather.json` tool row) |
 | `fishing` | the catch bands, the gain and the cast itself | no fishing: the pole is only a weapon |
 | `blacksmithing`, `cooking`, `alchemy`, `carpentry` | the four crafts' timers, results and gains | that craft's button does nothing |
 
-A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. The spell schools are each spell's `school` and `power` (see [Spells](#spells-spellsjson)). Some skills are still read by name: the gathering tools' skills move to tool behaviours in stage 5 of #37, and the kill-gain handlers in `RULES` to progression models in stage 6.
+A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. The spell schools are each spell's `school` and `power` (see [Spells](#spells-spellsjson)). The gathering skills are each harvest node's `skill` and the swing ladders' `skill` (see [Tools and gathering](#tools-and-gathering)). The kill-gain handlers in `RULES` move to progression models in stage 6 of #37.
 
 ## The content contract
 

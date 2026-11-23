@@ -13,7 +13,7 @@ Lumberjacking is chopping trees with an axe. Higher skill fells a tree in fewer 
 
 ## How it works
 
-Equip any weapon whose name contains "Axe" and swing at a tree (tile `S3` on layer 2). Each swing at a tree counts down the axe's hits ([gathering hits](README.md#gathering-hits)); the last one fells it, turning it into a stump (`P3`). A felled tree drops Logs one time in three, at any skill (`rollLogs`). Stumps grow back over time through world regrowth.
+Equip any weapon whose name contains "Axe" and swing at a tree (tile `S3` on layer 2). Each swing at a tree counts down the axe's hits ([gathering hits](README.md#gathering-hits)); the last one fells it, turning it into a stump (`P3`). A felled tree drops Logs one time in three, at any skill (the tree's harvest node and its `Logs` yield in gather.json, `rollYield`). Stumps grow back over time through world regrowth.
 
 How fast you swing is set by [Axe Fighting](axe-fighting.md), not Lumberjacking.
 

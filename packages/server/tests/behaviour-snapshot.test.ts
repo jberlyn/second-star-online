@@ -56,7 +56,6 @@ import {
   fishCheck,
   fishFor,
   fixedInPlace,
-  gatherTool,
   gearBonus,
   groundDrawOffset,
   groundLayer,
@@ -75,6 +74,7 @@ import {
   isKey,
   isTrap,
   isUniqueContainer,
+  isWateringTool,
   itemLabel,
   keyConsumed,
   keyPause,
@@ -89,6 +89,7 @@ import {
   NO_FACTION,
   NOTHING,
   newFx,
+  nodeTool,
   normaliseLook,
   orePool,
   overlayWhenInUse,
@@ -99,11 +100,11 @@ import {
   regenTarget,
   repairResult,
   rollArmourBreak,
-  rollChunk,
   rollKillSkillGain,
   rollMiningFind,
   rollSkillGain,
   rollWeaponBreak,
+  rollYield,
   ruleMatches,
   runBook,
   seedTile,
@@ -121,15 +122,16 @@ import {
   summonFor,
   swingCooldowns,
   switchState,
+  toolCan,
   turnKey,
   useDeferred,
   useItem,
+  WATERING_SKILL,
   weaponSkillList,
   wisAdd,
 } from "@secondstaronline/shared";
 
 import { swingSound } from "../src/systems/combat/melee.ts";
-import { isWateringBucket } from "../src/systems/crafting/gather.ts";
 import { containerCapacity, mayUseContainer } from "../src/systems/economy/containers.ts";
 import { sellName } from "../src/systems/economy/shop.ts";
 import {
@@ -390,19 +392,46 @@ const SPELL_SKILLS = [
   "Sorcery",
 ];
 
-/** What a gathering tool does, without how the table row is written. */
+/**
+ * What a gathering tool does, without how the tables are written: the watering it does, else the
+ * first harvest node it can work, in the shape the old one-row-per-tool table gave.
+ */
 function toolBehaviour(n: string) {
-  const t = gatherTool(n);
-  return t
-    ? {
-        tool: t.tool,
-        counter: t.counter,
-        skill: t.skill,
-        tiles: t.tiles ?? null,
-        sounds: [t.hitSound?.name ?? null, t.successSound?.name ?? null],
-        gains: t.imp !== null,
-      }
-    : null;
+  const water = toolCan(n, "Water");
+  if (water) {
+    return {
+      tool: water.counter,
+      counter: "Watering",
+      skill: WATERING_SKILL,
+      tiles: null,
+      sounds: [null, null],
+      gains: false,
+    };
+  }
+  for (const node of content().gather.harvest) {
+    const use = nodeTool(n, node);
+    if (use) {
+      return {
+        tool: use.counter,
+        counter: node.can,
+        skill: node.skill,
+        tiles: { from: node.tile, to: node.becomes },
+        sounds: [node.hitSound?.name ?? null, node.successSound?.name ?? null],
+        gains: node.gains,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * The chunk a mining tool's success rolls: the chance yield of the Mine node it works (the old
+ * per-hammer chunk table), drawing nothing for a tool with none.
+ */
+function rollChunk(tool: string, skill: number, rng: Rng): string | null {
+  const node = content().gather.harvest.find((h) => h.can === "Mine" && nodeTool(tool, h));
+  const table = node?.yield === undefined ? undefined : content().gather.yields[node.yield];
+  return table?.kind === "chance" ? rollYield(node?.yield, skill, rng) : null;
 }
 
 /** A bag holding one line of `item`. */
@@ -433,7 +462,7 @@ describe("the behaviour snapshot", () => {
           hidesName: hidesName({ ...NO_EQUIPMENT, body: n }),
           gatherTool: show(toolBehaviour(n)),
           fishingPole: isFishingPole(n),
-          wateringBucket: isWateringBucket(n),
+          wateringBucket: isWateringTool(n),
           fireballs: show(freeFireballs(n, true)),
           seed: show(seedTile(n)),
           deed: show(deedUse(n)),
@@ -482,15 +511,23 @@ describe("the behaviour snapshot", () => {
   });
 
   test("item rule tables", () => {
-    const weak = { str: 0, wanted: false, equip: NO_EQUIPMENT };
-    const strong = { str: 40, wanted: false, equip: NO_EQUIPMENT };
-    const wanted = { str: 40, wanted: true, equip: NO_EQUIPMENT };
+    const weak = { level: 1, skills: [], str: 0, wanted: false, equip: NO_EQUIPMENT };
+    const strong = { level: 1, skills: [], str: 40, wanted: false, equip: NO_EQUIPMENT };
+    const wanted = { level: 1, skills: [], str: 40, wanted: true, equip: NO_EQUIPMENT };
     const shielded = {
+      level: 1,
+      skills: [],
       str: 40,
       wanted: true,
       equip: { ...NO_EQUIPMENT, offHand: "Wooden Shield" },
     };
-    const twoHanded = { str: 40, wanted: true, equip: { ...NO_EQUIPMENT, weapon: "War Hammer" } };
+    const twoHanded = {
+      level: 1,
+      skills: [],
+      str: 40,
+      wanted: true,
+      equip: { ...NO_EQUIPMENT, weapon: "War Hammer" },
+    };
     const eq = (r: ReturnType<typeof checkEquip>) => (r.ok ? r.slot : r.text);
     const vitals = { hp: 10, hpMax: 50, sp: 10, spMax: 50, hunger: 10000 };
     golden(

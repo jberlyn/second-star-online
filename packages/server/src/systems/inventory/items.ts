@@ -39,6 +39,7 @@ import {
   isGoldName,
   isWalkable,
   itemLabel,
+  itemRequirementRefusal,
   kitTileOk,
   lingoContains,
   lingoEq,
@@ -209,6 +210,15 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   if (paused(p) || !line) {
     return io.out;
   }
+  // What content says the item needs before anything uses it (`item-rules.json` `requires`).
+  const needs = itemRequirementRefusal(line.item, "use", {
+    level: p.char.vitals.level,
+    skills: p.char.skills,
+  });
+  if (needs !== null) {
+    io.tell(p, needs);
+    return io.out;
+  }
   // Seeds are planted on the faced tile, and used up only when they take.
   if (seedTile(line.item)) {
     const r = plantSeeds(ctx.world, room, p, line.item);
@@ -307,6 +317,8 @@ export function equipIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): 
     str: statsOf(p).str,
     wanted: p.char.wanted,
     equip: p.char.equip,
+    level: p.char.vitals.level,
+    skills: p.char.skills,
   });
   if (!c.ok) {
     io.tell(p, c.text);

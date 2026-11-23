@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { classicData } from "@secondstaronline/data/classic";
+import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
 import { startingCharacter } from "@secondstaronline/shared";
 
 import { readPackBlob } from "../src/content/packs.ts";
 import { rowHash } from "../src/content/rows.ts";
+import { ContentService } from "../src/content/service.ts";
 import { insertCharacter as insertCurrent } from "../src/persistence/characters.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import {
@@ -59,6 +61,15 @@ const panelName = (skill: string) =>
 
 /** The settings migration 59 (bindings_and_jail) seeds on every server, left out where a test is about others. */
 const SEEDED = "'jailPoint', 'bellMap'";
+
+/** The Classic pack's manifest, as a pack blob stores one. */
+const classicManifest = () =>
+  JSON.parse(
+    readFileSync(
+      join(MIGRATIONS_DIR, "..", "..", "data", "packs", "classic", "manifest.json"),
+      "utf8",
+    ),
+  );
 
 describe("migrations (real SQL on in-memory SQLite)", () => {
   test("applies the shipped migrations once", () => {
@@ -1168,8 +1179,15 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         ],
       );
     // "old" is Classic's item rules as they were before this stage.
+    // Classic's item rules before stage 3, and so before stage 5's tool sections too.
     const classic = classicData.itemRules;
-    const { behaviours: _b, ...before } = structuredClone(classic);
+    const {
+      behaviours: _b,
+      tools: _tools,
+      ladders: _ladders,
+      requires: _requires,
+      ...before
+    } = structuredClone(classic);
     before.gear = before.gear.filter((g) => g.power !== "killXp");
     before.use.refusals = before.use.refusals.filter((r) => r.pattern !== "Piano");
     pack("old", before);
@@ -1221,7 +1239,9 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         ).r,
       );
     expect(rules("old")).toEqual(classic);
-    expect(rules("own")).toEqual({ use: ownUse, gear: ownGear, behaviours: own });
+    // Stage 5 gives every pack's item rules the tools and ladders Classic's gathering implied.
+    const stage5 = { tools: classic.tools, ladders: classic.ladders, requires: [] };
+    expect(rules("own")).toEqual({ use: ownUse, gear: ownGear, behaviours: own, ...stage5 });
     // The old pack loads again.
     const old = db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as {
       data: string;
@@ -1697,5 +1717,333 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         .get() as { f: string }
     ).f;
     expect([packFlag, rowFlag]).toEqual(["", "warrior"]);
+  });
+
+  test("tools_and_harvest turns older gathering tools into tool rows, ladders, harvest nodes and yields", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_64"),
+    );
+    // Classic's gather.json as it was before this stage.
+    const oldGather = JSON.parse(
+      readFileSync(join(import.meta.dir, "fixtures", "gather-before-stage5.json"), "utf8"),
+    );
+    const oldGathering = oldGather.gathering as Record<string, unknown>;
+    const {
+      tools: _tools,
+      ladders: _ladders,
+      requires: _requires,
+      ...oldRules
+    } = structuredClone(classicData.itemRules);
+    const oldSkills = {
+      ...classicData.bindings.skills,
+      axeFighting: "AxeFighting",
+      mining: "Mining",
+    };
+    // An imported pack that renamed Axe Fighting and bound no Mining.
+    const { mining: _m, ...packSkills } = { ...oldSkills, axeFighting: "Woodcraft" };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: {},
+          data: {
+            gather: oldGather,
+            "item-rules": oldRules,
+            bindings: { ...classicData.bindings, skills: packSkills },
+          },
+        }),
+      ],
+    );
+    // An operator who made Logs drop 1 in 2, and a draft that bound Mining to Digging.
+    const opGathering = { ...structuredClone(oldGathering), logs: { item: "Logs", chance: 2 } };
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('gather', 'gathering', '', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(opGathering)],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('bindings', 'skills', '', 'set', ?, 'a', 'A', 'then')",
+      [JSON.stringify({ ...packSkills, mining: "Digging" })],
+    );
+    // The draft also reverts the operator's gathering to the pack's.
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('gather', 'gathering', '', 'revert', NULL, 'a', 'A', 'then')",
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "gather",
+            part: "gathering",
+            key: null,
+            before: null,
+            after: { op: "set", data: opGathering },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    // Run again by hand once it is recorded, it changes nothing.
+    const dump = () =>
+      JSON.stringify(
+        ["content_packs", "content_rows", "content_draft", "content_publishes"].map((t) =>
+          db.query(`SELECT * FROM ${t} ORDER BY 1, 2, 3`).all(),
+        ),
+      );
+    const once = dump();
+    const sql = all.find((m) => m.name === "20261123_64_tools_and_harvest.sql")?.sql ?? "";
+    db.run(sql);
+    expect(dump()).toBe(once);
+
+    const pack = JSON.parse(
+      (db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as { data: string }).data,
+    ) as { data: Record<string, Record<string, unknown>> };
+    const classic = classicData;
+    expect(pack.data.gather?.gathering).toEqual(classic.gather.gathering);
+    expect(pack.data.gather?.harvest).toEqual(classic.gather.harvest);
+    expect(pack.data.gather?.yields).toEqual(classic.gather.yields);
+    // Axe's ladder reads the renamed skill; with Mining unbound, no Mining ladder.
+    expect(pack.data["item-rules"]?.tools).toEqual(
+      classic.itemRules.tools.filter((t) => t.ladder !== "mining"),
+    );
+    const { mining: _cm, ...ladders } = classic.itemRules.ladders;
+    expect(pack.data["item-rules"]?.ladders).toEqual({
+      ...ladders,
+      axe: { ...classic.itemRules.ladders.axe, skill: "Woodcraft" },
+    });
+    expect(pack.data["item-rules"]?.requires).toEqual([]);
+    expect(pack.data.bindings?.skills).toEqual({ ...classic.bindings.skills });
+    // The converted pack loads: every dataset passes its schema.
+    const manifest = JSON.parse(
+      readFileSync(
+        join(MIGRATIONS_DIR, "..", "..", "data", "packs", "classic", "manifest.json"),
+        "utf8",
+      ),
+    );
+    const loaded = readPackBlob(
+      JSON.stringify({ ...pack, manifest: { ...manifest, id: "old", art: undefined } }),
+    );
+    expect(loaded.data.gather?.harvest).toEqual(classic.gather.harvest);
+
+    const rows = (table: string) =>
+      Object.fromEntries(
+        (
+          db.query(`SELECT dataset, part, data FROM ${table}`).all() as {
+            dataset: string;
+            part: string;
+            data: string;
+          }[]
+        ).map((r) => [`${r.dataset}/${r.part}`, JSON.parse(r.data)]),
+      );
+    // The operator's gathering keeps its Logs change, now as a yields row; nothing else differs.
+    const op = rows("content_rows");
+    expect(Object.keys(op).sort()).toEqual(["gather/gathering", "gather/yields"]);
+    expect(op["gather/gathering"]).toEqual(classic.gather.gathering);
+    expect(op["gather/yields"]).toEqual({
+      ...classic.gather.yields,
+      Logs: { kind: "chance", item: "Logs", chance: 2 },
+    });
+    // The draft binds Mining (the pack left it unbound) to Digging: Mining's ladder comes back,
+    // reading it, over the pack's Woodcraft axe. Its revert of the gathering reverts the yields.
+    const draft = rows("content_draft");
+    expect(Object.keys(draft).sort()).toEqual([
+      "bindings/skills",
+      "gather/gathering",
+      "gather/yields",
+      "itemRules/ladders",
+      "itemRules/tools",
+    ]);
+    const { axeFighting: _a, ...unbound } = classic.bindings.skills as Record<string, string>;
+    expect(draft["bindings/skills"]).toEqual(unbound);
+    expect(draft["itemRules/tools"]).toEqual(classic.itemRules.tools);
+    expect(draft["itemRules/ladders"]).toEqual({
+      ...classic.itemRules.ladders,
+      axe: { ...classic.itemRules.ladders.axe, skill: "Woodcraft" },
+      mining: { ...classic.itemRules.ladders.mining, skill: "Digging" },
+    });
+    const ops = Object.fromEntries(
+      (
+        db.query("SELECT dataset, part, op FROM content_draft").all() as {
+          dataset: string;
+          part: string;
+          op: string;
+        }[]
+      ).map((r) => [`${r.dataset}/${r.part}`, r.op]),
+    );
+    expect(ops["gather/yields"]).toBe("revert");
+    expect(draft["gather/yields"]).toBeNull();
+    const changes = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(changes[0].after.data).toEqual(classic.gather.gathering);
+    // The publish also made the yields row, so undoing it takes that away again.
+    expect(changes.map((c: { part: string }) => c.part)).toEqual(["gathering", "yields"]);
+    expect(changes[1].before).toBeNull();
+    expect(rowHash(changes[1].after.data)).toBe(rowHash(op["gather/yields"]));
+  });
+
+  test("tools_and_harvest: undoing an older gathering publish still undoes it", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_64"),
+    );
+    const oldGather = JSON.parse(
+      readFileSync(join(import.meta.dir, "fixtures", "gather-before-stage5.json"), "utf8"),
+    );
+    // An operator who made Logs drop 1 in 2, in a publish of its own.
+    const logs2 = { ...oldGather.gathering, logs: { item: "Logs", chance: 2 } };
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('gather', 'gathering', '', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(logs2)],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "gather",
+            part: "gathering",
+            key: null,
+            before: null,
+            after: { op: "set", data: logs2, baseHash: null, baseData: null },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    const service = new ContentService({ db, now: () => "x", releasePacks: RELEASE_PACK_DIRS });
+    expect(service.publishedContent().gather?.yields.Logs).toEqual({
+      kind: "chance",
+      item: "Logs",
+      chance: 2,
+    });
+    const u = service.undo({ accountId: "a", name: "A" }, "p1");
+    expect(u.ok).toBe(true);
+    expect(service.publishedContent().gather?.yields.Logs).toEqual(classicData.gather.yields.Logs);
+    expect(service.publishedContent().gather?.gathering).toEqual(classicData.gather.gathering);
+  });
+
+  test("tools_and_harvest keeps odd older gathering valid, undo chains working and pack notices quiet", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_64"),
+    );
+    const oldGather = JSON.parse(
+      readFileSync(join(import.meta.dir, "fixtures", "gather-before-stage5.json"), "utf8"),
+    );
+    // A pack whose gathering 1.6's engine took as it was: a Saw felling trees after the Axe, a
+    // tool training a skill no gain row rolls, a ragged shovel test and a slow rod.
+    const g = structuredClone(oldGather.gathering);
+    g.tools.push(
+      {
+        tool: "Saw",
+        match: "=",
+        counter: "Chop",
+        skill: "Lumberjacking",
+        tiles: { from: "S3", to: "P3" },
+        successSound: null,
+        hitSound: null,
+        imp: "LumberjackImp",
+      },
+      {
+        tool: "Hammer",
+        match: "=",
+        counter: "Mine",
+        skill: "Slash",
+        tiles: { from: "6P", to: "6Q" },
+        successSound: null,
+        hitSound: null,
+        imp: "SlashImp",
+      },
+    );
+    g.shovelLayer1 = { test: "*G1**H1*X*" };
+    g.fishing.atDelay = 2000;
+    g.logs.chance = 2;
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: { ...classicManifest(), id: "old", name: "old", art: undefined },
+          data: { gather: { ...oldGather, gathering: g } },
+        }),
+      ],
+    );
+    // The operator then made Logs 1 in 4 (p1), and bound Mining to Archery (p2).
+    const opG = { ...structuredClone(g), logs: { item: "Logs", chance: 4 } };
+    const opB = { ...classicData.bindings.skills, axeFighting: "AxeFighting", mining: "Archery" };
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('gather', 'gathering', '', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(opG)],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('bindings', 'skills', '', 'set', ?, 2, 'a', 'then')",
+      [JSON.stringify(opB)],
+    );
+    const state = (data: unknown) => ({ op: "set", data, baseHash: null, baseData: null });
+    const publish = (id: string, at: string, change: Record<string, unknown>) =>
+      db.run(
+        "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES (?, ?, 'a', 'A', '', ?, 'h')",
+        [id, at, JSON.stringify([change])],
+      );
+    publish("p1", "2026-11-22T01:00:00.000Z", {
+      dataset: "gather",
+      part: "gathering",
+      key: null,
+      before: null,
+      after: state(opG),
+    });
+    publish("p2", "2026-11-22T02:00:00.000Z", {
+      dataset: "bindings",
+      part: "skills",
+      key: null,
+      before: null,
+      after: state(opB),
+    });
+    runMigrations(db, all);
+
+    const pack = JSON.parse(
+      (db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as { data: string }).data,
+    ) as { data: { gather: { harvest: Record<string, unknown>[] } } };
+    // It loads: every dataset passes its schema.
+    const loaded = readPackBlob(JSON.stringify(pack));
+    const harvest = loaded.data.gather?.harvest ?? [];
+    const tiles = harvest.map((n) => `${n.tile}:${(n.tools ?? ["*"]).join("/")}`);
+    // The Saw's node comes before the Axe's open one, so each tool keeps its own.
+    expect(tiles.indexOf("S3:Saw")).toBeLessThan(tiles.indexOf("S3:*"));
+    expect(harvest.find((n) => n.tools?.[0] === "Hammer")?.gains).toBe(false);
+    expect(harvest.find((n) => n.can === "Dig")?.under).toEqual(["G1", "H1"]);
+
+    const service = new ContentService({ db, now: () => "x", releasePacks: RELEASE_PACK_DIRS });
+    const live = service.publishedContent();
+    expect(live.itemRules?.ladders.fishing?.steps).toEqual([{ delay: 1000 }]);
+    expect(live.itemRules?.ladders.mining?.skill).toBe("Archery");
+    expect(live.gather?.yields.Logs).toMatchObject({ chance: 4 });
+    // The rows the migration made are based on the pack's sections: no notice says a pack changed.
+    const made = ["harvest", "yields", "tools", "ladders"];
+    expect(service.notices().filter((n) => made.includes(n.part))).toEqual([]);
+    expect(
+      (db.query("SELECT part FROM content_rows ORDER BY part").all() as { part: string }[]).map(
+        (r) => r.part,
+      ),
+    ).toEqual(["gathering", "ladders", "skills", "tools", "yields"]);
+    // Each publish undoes, the later first, and puts back what it changed.
+    const actor = { accountId: "a", name: "A" };
+    expect(service.undo(actor, "p2").ok).toBe(true);
+    expect(service.publishedContent().itemRules?.ladders.mining?.skill).toBe("Mining");
+    const u1 = service.undo(actor, "p1");
+    expect(u1.ok ? "" : JSON.stringify(u1)).toBe("");
+    expect(service.publishedContent().gather?.yields.Logs).toMatchObject({ chance: 2 });
+    expect(service.publishedContent().itemRules?.ladders.fishing?.steps).toEqual([{ delay: 1000 }]);
   });
 });

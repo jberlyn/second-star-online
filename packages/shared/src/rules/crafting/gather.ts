@@ -3,12 +3,13 @@
  * seeds, watering, regrowth and the skill handlers. Pure: the server applies the results; tables
  * come from the content store's `gather`, gathering and skill-gain data.
  */
-import type { GatherTool, SkillGainRule } from "@secondstaronline/data";
+import type { HarvestNode, SkillGainRule, YieldTable } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import { type ContentStore, content, onContent } from "../../content/store.ts";
-import { boundSkillIndex, SKILL_KEYS } from "../core/fighter.ts";
+import { boundSkillIndex, SKILL_KEYS, skillNorm } from "../core/fighter.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
+import { ruleMatches } from "../core/patterns.ts";
 import type { Facing } from "../movement/movement.ts";
 
 let G: ContentStore["gather"]["gathering"];
@@ -89,8 +90,19 @@ export function ltCascade(rows: readonly LtRow[], skill: number): number | null 
 
 // ---- tools and counters -----------------------------------------------------------------------
 
-export type CounterName = GatherTool["counter"];
-/** Hits left per tool, by the tool's name (each hammer has its own); a missing tool starts fresh. */
+/** What a tool can do: an engine kind of gathering (`item-rules.json` `tools`). */
+export type ToolCan = ContentStore["itemRules"]["tools"][number]["can"] & string;
+
+/** One thing a weapon can do, from one `tools` row. */
+export interface ToolUse {
+  can: ToolCan;
+  /** The row's tier, 1 when it gives none. */
+  tier: number;
+  /** The hit counter it advances: the row's pattern, so an Axe and a Gold Axe share one. */
+  counter: string;
+}
+
+/** Hits left per counter (each hammer has its own); a missing counter starts fresh. */
 export type GatherCounters = Record<string, number>;
 
 /** No tool has been swung yet: each one's first hit loads its count. */
@@ -98,46 +110,111 @@ export function newGatherCounters(): GatherCounters {
   return {};
 }
 
-/** The tool a swing's weapon is: names containing "Axe", exact matches for the rest. */
-export function gatherTool(weapon: string): GatherTool | null {
-  for (const t of G.tools) {
-    if (t.match === "contains" ? lingoContains(weapon, t.tool) : lingoEq(weapon, t.tool)) {
-      return t;
+/** Everything a weapon can do, one entry per matching `tools` row with a `can`, in table order. */
+export function toolUses(weapon: string): ToolUse[] {
+  const out: ToolUse[] = [];
+  for (const r of content().itemRules.tools) {
+    if (r.can !== undefined && ruleMatches(weapon, r)) {
+      out.push({ can: r.can, tier: r.tier ?? 1, counter: r.pattern });
+    }
+  }
+  return out;
+}
+
+/** The first thing a weapon can do of one kind, or null when it cannot. */
+export function toolCan(weapon: string, can: ToolCan): ToolUse | null {
+  return toolUses(weapon).find((u) => u.can === can) ?? null;
+}
+
+/** The harvest nodes on a layer-2 tile, in table order. */
+export function harvestNodes(tile: string): HarvestNode[] {
+  if (tile === "") {
+    return [];
+  }
+  return content().gather.harvest.filter((n) => lingoEq(n.tile, tile));
+}
+
+/** The first harvest node on a tile, or null. */
+export function harvestNode(tile: string): HarvestNode | null {
+  return harvestNodes(tile)[0] ?? null;
+}
+
+/**
+ * The node a weapon works on a tile, and how: the first node on the tile the weapon can work and
+ * whose ground test `ground` passes (so nodes may share a tile, each for its own tools or its own
+ * ground beneath), or null.
+ */
+export function workedNode(
+  weapon: string,
+  tile: string,
+  ground: (node: HarvestNode) => boolean = () => true,
+): { node: HarvestNode; use: ToolUse } | null {
+  for (const node of harvestNodes(tile)) {
+    const use = nodeTool(weapon, node);
+    if (use && ground(node)) {
+      return { node, use };
     }
   }
   return null;
 }
 
 /**
+ * How a weapon works a node, or null when it cannot: a use of the node's kind, by one of the node's
+ * `tools` when it names them. The tier is the caller's to check, so a low tier can say so.
+ */
+export function nodeTool(weapon: string, node: HarvestNode): ToolUse | null {
+  if (node.tools && !node.tools.some((t) => lingoEq(t, weapon))) {
+    return null;
+  }
+  const uses = toolUses(weapon).filter((u) => u.can === node.can);
+  // The best tier the weapon has for the kind.
+  return uses.reduce<ToolUse | null>((best, u) => (best && best.tier >= u.tier ? best : u), null);
+}
+
+/** The node's lowest tool tier. */
+export function nodeTier(node: HarvestNode): number {
+  return node.tier ?? 1;
+}
+
+/** Told when a tool's tier is below a node's. */
+export function tierText(node: HarvestNode): string {
+  return `You need a better tool to ${node.can.toLowerCase()} this.`;
+}
+
+/**
  * One hit on a tool's counter: an empty counter loads the skill table's count, each hit takes one,
  * and the hit that empties it succeeds. Every success takes exactly the table's number of hits.
- * Each tool keeps its own count; one table serves them all.
+ * Each counter keeps its own count; one table serves them all.
  */
-export function hitCounter(counters: GatherCounters, tool: string, skill: number): boolean {
-  let c = counters[tool] ?? 0;
+export function hitCounter(counters: GatherCounters, counter: string, skill: number): boolean {
+  let c = counters[counter] ?? 0;
   if (c < 1) {
     c = gtCascade(G.counterTable, skill, 1) ?? 1;
   }
   c -= 1;
-  counters[tool] = c;
+  counters[counter] = c;
   return c === 0;
 }
 
 /**
- * The shovel's ground test: the layer-1 tile under the dug tile must be one of the diggable
- * grounds (`*G1*H1*O1`), on every row. Off the map nothing is diggable.
+ * A node's ground test: the layer-1 tile under the worked tile must be one of the node's `under`
+ * tiles (the shovel's diggable grounds). Off the map nothing passes; a node with no `under` always
+ * does.
  */
-export function shovelLayer1Ok(layer1: readonly string[], x: number, y: number): boolean {
+export function underOk(
+  node: HarvestNode,
+  layer1: readonly string[],
+  x: number,
+  y: number,
+): boolean {
+  if (!node.under) {
+    return true;
+  }
   const code = tileAt(layer1, x, y);
-  return code !== "" && G.shovelLayer1.test.split("*").some((c) => c !== "" && lingoEq(c, code));
+  return code !== "" && node.under.some((c) => lingoEq(c, code));
 }
 
 // ---- drops ----------------------------------------------------------------------------------
-
-/** Logs: `random(3) = 1` on every fell, at any Lumberjacking. */
-export function rollLogs(_skill: number, rng: Rng): string | null {
-  return rng.random(G.logs.chance) === 1 ? G.logs.item : null;
-}
 
 /**
  * The Iron pool for a Mining skill: the first (tightest) "below N" row the skill is under, so the
@@ -175,20 +252,36 @@ export function rollMiningFind(skill: number, rng: Rng): string | null {
   return rng.random(m.findChance) === 1 ? item : null;
 }
 
-/** The Ice and Fire Hammers: their chunk on `random(130) = 1`, at any Mining skill. */
-export function rollChunk(tool: string, _skill: number, rng: Rng): string | null {
-  const c = G.mining.chunks.find((k) => lingoEq(k.tool, tool));
-  if (!c) {
+/**
+ * A success's drop from a `yields` table, or null: a `chance` table drops its item on
+ * `random(chance) = 1` (Logs 1 in 3, a Chunk of Ice 1 in 130, at any skill), with the chance from
+ * the last `bySkill` row the skill is above when it has them; `ore` is the mining strike. A table
+ * the store does not have drops nothing and draws nothing.
+ */
+export function rollYield(name: string | undefined, skill: number, rng: Rng): string | null {
+  const yields = content().gather.yields;
+  const t: YieldTable | undefined =
+    name !== undefined && Object.hasOwn(yields, name) ? yields[name] : undefined;
+  if (!t) {
     return null;
   }
-  return rng.random(c.chance) === 1 ? c.item : null;
+  if (t.kind === "ore") {
+    return rollMiningFind(skill, rng);
+  }
+  const chance = t.bySkill ? (gtCascade(t.bySkill, skill, t.chance) ?? t.chance) : t.chance;
+  return rng.random(chance) === 1 ? t.item : null;
 }
 
 // ---- fishing ---------------------------------------------------------------------------------
 
-/** Fishing requires the left-hand item name to contain "Fishing", ignoring case. */
+/** The weapon can fish (a `tools` row gives it `Fish`). */
 export function isFishingPole(weapon: string): boolean {
-  return lingoContains(weapon, G.fishing.tool);
+  return toolCan(weapon, "Fish") !== null;
+}
+
+/** The weapon waters seeded soil and sprinkles on every swing (a `tools` row gives it `Water`). */
+export function isWateringTool(weapon: string): boolean {
+  return toolCan(weapon, "Water") !== null;
 }
 
 /** A tile code is fishing water: W1, N1, D2 or I2. */
@@ -198,8 +291,6 @@ export function isFishingWater(code: string): boolean {
 
 /** The map layers fishing reads: water drawn on any of them can be fished. */
 export let FISHING_LAYERS: readonly (1 | 2)[];
-
-export let FISHING_AT_DELAY: typeof G.fishing.atDelay;
 
 /** The Fishing FX's offset from sprite 112. */
 export function fishingOffset(facing: Facing): readonly [number, number] {
@@ -291,6 +382,9 @@ export function canPlant(code: string): boolean {
 }
 
 export let SEED_PAUSE: typeof G.farming.seedPause;
+
+/** The skill whose counter table a Water tool's hits read. */
+export let WATERING_SKILL: string;
 
 /** The watering routine: the watered form, or null (a wasted success). */
 export function wateredTile(code: string): string | null {
@@ -406,9 +500,9 @@ export function rumourLine(npc: string, header: string, roll: number): string {
 
 let RULES: readonly SkillGainRule[];
 
-/** The skill handler for a skill. */
+/** The skill handler for a skill, matched as skill names are (case and spaces ignored). */
 export function skillGainRule(skill: string): SkillGainRule | null {
-  return RULES.find((r) => lingoEq(r.skill, skill)) ?? null;
+  return RULES.find((r) => skillNorm(r.skill) === skillNorm(skill)) ?? null;
 }
 
 /**
@@ -427,10 +521,10 @@ onContent((c) => {
   G = c.gather.gathering;
   RULES = c.gather.skillGain;
   FISHING_LAYERS = G.fishing.layers;
-  FISHING_AT_DELAY = G.fishing.atDelay;
   ANTI_MACRO_START = G.fishing.antiMacroStart;
   FISHING_STOPPED_TEXT = G.fishing.stoppedText;
   SEED_PAUSE = G.farming.seedPause;
+  WATERING_SKILL = G.farming.wateringSkill;
   SPRINKLE_FX = G.sprinkle.fx;
   GATHER_TEXT = G.texts;
   TREASURE = G.treasure;

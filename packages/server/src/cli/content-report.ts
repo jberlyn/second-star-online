@@ -138,6 +138,18 @@ export const TABLES: Record<string, TableInfo> = {
     wins: "adds",
     note: "each matching row gives its behaviour; rows test the name without its #id or +N, and never an engine fixture's (Bob's Door)",
   },
+  // toolUses, swingCooldowns
+  [`item-rules.json tools`]: {
+    decides: "what a tool can do (chop, mine, dig, fish, farm, water) and its swing ladder",
+    wins: "adds",
+    note: "each matching row gives its can and tier; the last matching row with a ladder sets the swing speed",
+  },
+  // itemRequirementRefusal
+  [`item-rules.json requires`]: {
+    decides: "the skill or level an item needs to be equipped or used",
+    wins: "adds",
+    note: "every matching row of its kind must be met; rows test the name without its #id or +N",
+  },
   [`item-rules.json equip.strength`]: { decides: "the Strength needed to equip", wins: "last" },
   [`item-rules.json equip.slots`]: { decides: "which slot the item goes in", wins: "last" },
   [`item-rules.json menu`]: {

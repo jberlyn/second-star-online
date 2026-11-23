@@ -8,13 +8,29 @@ import { type ContentStore, onContent } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
-import { hasBehaviour } from "./behaviours.ts";
+import { firstUnmet, type Qualifications } from "../core/requirements.ts";
+import { behaviourName, hasBehaviour } from "./behaviours.ts";
 
 let R: ContentStore["itemRules"];
 
 /** The strength requirement: 0 unless a rule matches, last match wins. */
 export function strengthRequirement(name: string): number {
   return lastMatch(R.equip.strength, name)?.strength ?? 0;
+}
+
+/**
+ * What an item needs before it can be equipped or used (`item-rules.json` `requires`): the refusal
+ * for the first matching row of that kind the player does not meet, or null.
+ */
+export function itemRequirementRefusal(
+  name: string,
+  on: "equip" | "use",
+  who: Qualifications,
+): string | null {
+  // As the behaviours do, without its `#id` or `+N` ending: a masterwork needs what its item needs.
+  const base = behaviourName(name);
+  const rows = R.requires.filter((r) => r.on === on && ruleMatches(base, r));
+  return firstUnmet(rows, who, on);
 }
 
 /** The equip type: "No" unless a rule matches, last match wins. */
@@ -49,11 +65,12 @@ export type EquipCheck = { ok: true; slot: EquipSlot } | { ok: false; text: stri
 /**
  * The client's equip gates in order. An occupied slot is no refusal: the server swaps the worn item
  * back into the bag (1.6's server refused with "You have to remove the current item you're wearing
- * to equip this!").
+ * to equip this!"). Content's `requires` rows come after 1.6's gates (an SSO addition; Classic has
+ * none), so a refusal 1.6 gave is never hidden behind one.
  */
 export function checkEquip(
   name: string,
-  who: { str: number; wanted: boolean; equip: Equipment },
+  who: { str: number; wanted: boolean; equip: Equipment } & Qualifications,
 ): EquipCheck {
   if (who.str < strengthRequirement(name)) {
     return { ok: false, text: EQUIP_TEXT.weak };
@@ -71,6 +88,10 @@ export function checkEquip(
   }
   if (!who.wanted && ruleMatches(name, R.equip.murder)) {
     return { ok: false, text: EQUIP_TEXT.vile };
+  }
+  const needs = itemRequirementRefusal(name, "equip", who);
+  if (needs !== null) {
+    return { ok: false, text: needs };
   }
   return { ok: true, slot };
 }

@@ -24,6 +24,7 @@ import {
   NOTHING,
   type SkillValues,
   skillDisplay,
+  skillsFromKeys,
 } from "../core/fighter.ts";
 import { lingoEq } from "../core/lingo.ts";
 import { isStorageContainer } from "../inventory/behaviours.ts";
@@ -586,7 +587,8 @@ function storageIdErrors(before: EditableCharacter, after: EditableCharacter): s
 /**
  * The worn gear in `after` that the wear rules would refuse, one line each: an item in the wrong
  * slot, one the character is not strong enough for, an off-hand item with a two-handed weapon,
- * or a murder weapon worn while not wanted. `str` is the strength played with (class and medal
+ * a murder weapon worn while not wanted, or one whose content requirement the edited level and
+ * skills do not meet. `str` is the strength played with (class and medal
  * points included). Only slots the edit changed count, so gear already worn stays legal (a wear
  * rule change keeps worn gear on).
  */
@@ -596,6 +598,7 @@ export function wearBreaks(
   str: number,
 ): string[] {
   const out: string[] = [];
+  const quals = { level: after.level, skills: skillsFromKeys(after.skills) };
   const equip = {
     weapon: after.equip.weapon ?? NOTHING,
     offHand: after.equip.offHand ?? NOTHING,
@@ -613,7 +616,12 @@ export function wearBreaks(
     if (item === before.equip[f]) {
       // Gear already worn stays legal; only clearing the wanted flag can break it (murder gear).
       if (before.wanted && !after.wanted) {
-        const check = checkEquip(item, { str, wanted: false, equip: { ...equip, [f]: NOTHING } });
+        const check = checkEquip(item, {
+          str,
+          wanted: false,
+          equip: { ...equip, [f]: NOTHING },
+          ...quals,
+        });
         if (!check.ok && check.text === EQUIP_TEXT.vile) {
           out.push(`${displayName(item)}: ${check.text}`);
         }
@@ -625,6 +633,7 @@ export function wearBreaks(
       str,
       wanted: after.wanted,
       equip: { ...equip, [f]: NOTHING },
+      ...quals,
     });
     if (!check.ok) {
       out.push(`${displayName(item)}: ${check.text}`);

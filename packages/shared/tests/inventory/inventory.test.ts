@@ -190,7 +190,9 @@ describe("equip", () => {
     expect(equipSlotFor("Purple Sand")).toBe("RightHand");
   });
   test("bug fixed: the Dragon Sword is wielded in the left hand", () => {
-    expect(checkEquip("Dragon Sword", { str: 26, wanted: false, equip: gear({}) })).toEqual({
+    expect(
+      checkEquip("Dragon Sword", { level: 1, skills: [], str: 26, wanted: false, equip: gear({}) }),
+    ).toEqual({
       ok: true,
       slot: "LeftHand",
     });
@@ -205,24 +207,42 @@ describe("equip", () => {
     expect(normaliseLook(gear({ weapon: "Dragon Sword" })).weapon).toBe("Fire Sword");
   });
   test('bug fixed: "You cannot equip the ..." ends with a full stop', () => {
-    expect(checkEquip("Apple", { str: 99, wanted: false, equip: gear({}) })).toEqual({
+    expect(
+      checkEquip("Apple", { level: 1, skills: [], str: 99, wanted: false, equip: gear({}) }),
+    ).toEqual({
       ok: false,
       text: "You cannot equip the Apple.",
     });
   });
   test("strength comes first", () => {
     expect(strengthRequirement("Pharaoh Sword")).toBe(28);
-    expect(checkEquip("Pharaoh Sword", { str: 27, wanted: false, equip: gear({}) })).toEqual({
+    expect(
+      checkEquip("Pharaoh Sword", {
+        level: 1,
+        skills: [],
+        str: 27,
+        wanted: false,
+        equip: gear({}),
+      }),
+    ).toEqual({
       ok: false,
       text: EQUIP_TEXT.weak,
     });
   });
   test("two-handed rules", () => {
     expect(
-      checkEquip("Small Shield", { str: 99, wanted: false, equip: gear({ weapon: "War Hammer" }) }),
+      checkEquip("Small Shield", {
+        level: 1,
+        skills: [],
+        str: 99,
+        wanted: false,
+        equip: gear({ weapon: "War Hammer" }),
+      }),
     ).toEqual({ ok: false, text: EQUIP_TEXT.twoHandedHeld });
     expect(
       checkEquip("War Hammer", {
+        level: 1,
+        skills: [],
         str: 99,
         wanted: false,
         equip: gear({ offHand: "Small Shield" }),
@@ -230,18 +250,28 @@ describe("equip", () => {
     ).toEqual({ ok: false, text: EQUIP_TEXT.shieldHeld });
   });
   test("murder gear needs the flag", () => {
-    expect(checkEquip("Murder Helm", { str: 99, wanted: false, equip: gear({}) })).toEqual({
+    expect(
+      checkEquip("Murder Helm", { level: 1, skills: [], str: 99, wanted: false, equip: gear({}) }),
+    ).toEqual({
       ok: false,
       text: EQUIP_TEXT.vile,
     });
-    expect(checkEquip("Murder Helm", { str: 99, wanted: true, equip: gear({}) })).toEqual({
+    expect(
+      checkEquip("Murder Helm", { level: 1, skills: [], str: 99, wanted: true, equip: gear({}) }),
+    ).toEqual({
       ok: true,
       slot: "Head",
     });
   });
   test("bug fixed: an occupied slot is no refusal (the server swaps)", () => {
     expect(
-      checkEquip("Knife", { str: 99, wanted: false, equip: gear({ weapon: "Dagger" }) }),
+      checkEquip("Knife", {
+        level: 1,
+        skills: [],
+        str: 99,
+        wanted: false,
+        equip: gear({ weapon: "Dagger" }),
+      }),
     ).toEqual({ ok: true, slot: "LeftHand" });
   });
   test("the menu swaps Equip for Cook/Mix/Build/Smith/Storage", () => {

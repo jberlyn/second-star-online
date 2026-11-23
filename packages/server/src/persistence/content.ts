@@ -4,6 +4,7 @@
  */
 import type { DatasetId } from "@secondstaronline/shared";
 
+import { rowHash } from "../content/rows.ts";
 import type { Db } from "./database.ts";
 
 /** An installed pack, in load order. */
@@ -103,13 +104,23 @@ interface ContentRowRecord {
 
 const parse = (s: string | null): unknown => (s === null ? null : JSON.parse(s));
 
+/**
+ * A row's base hash. A row a migration made records the pack row it was based on but no hash (SQL
+ * cannot work one out), so it is worked out from that row here.
+ */
+const baseHashOf = (hash: string | null, data: unknown): string | null =>
+  hash ?? (data === null || data === undefined ? null : rowHash(data));
+
+const withBaseHash = (s: PublishedState | null): PublishedState | null =>
+  s === null ? null : { ...s, baseHash: baseHashOf(s.baseHash ?? null, s.baseData) };
+
 const toContentRow = (r: ContentRowRecord): StoredContentRow => ({
   dataset: r.dataset as DatasetId,
   part: r.part,
   key: r.row_key === "" ? null : r.row_key,
   op: r.op,
   data: parse(r.data),
-  baseHash: r.base_hash,
+  baseHash: baseHashOf(r.base_hash, parse(r.base_data)),
   baseData: parse(r.base_data),
   seq: r.seq,
   updatedBy: r.updated_by,
@@ -291,7 +302,11 @@ const toPublish = (r: PublishRecord): StoredPublish => ({
   at: r.created_at,
   actorName: r.actor_name,
   summary: r.summary,
-  changes: JSON.parse(r.changes) as PublishChange[],
+  changes: (JSON.parse(r.changes) as PublishChange[]).map((c) => ({
+    ...c,
+    before: withBaseHash(c.before),
+    after: withBaseHash(c.after),
+  })),
   hash: r.hash,
   undoOf: r.undo_of,
   undoneBy: r.undone_by,

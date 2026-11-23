@@ -15,7 +15,6 @@ const skillKey = z.string().min(1).optional();
  * - `archery`, `martialArts`: trained by a bow kill and an empty-handed kill;
  * - `staffFighting`: the staff's bonus to spell damage;
  * - `magery`: every cast's power and its gain roll;
- * - `axeFighting`, `mining`: the swing speed ladders of axes and mining tools;
  * - `fishing`: the catch bands and the fishing gain;
  * - `blacksmithing`, `cooking`, `alchemy`, `carpentry`: the four crafts.
  */
@@ -26,8 +25,6 @@ export const skillBindingsSchema = z.strictObject({
   martialArts: skillKey,
   staffFighting: skillKey,
   magery: skillKey,
-  axeFighting: skillKey,
-  mining: skillKey,
   fishing: skillKey,
   blacksmithing: skillKey,
   cooking: skillKey,

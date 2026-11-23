@@ -306,19 +306,32 @@ describe("where content refers to an item, and its cleanup", () => {
     expect(broken.length).toBe(usesOf(data, "item", "Ruby Ring").length);
   });
 
+  test("a requirement row names its item: a typo is a broken reference, and the row goes with its item", () => {
+    const data = structuredClone(classicData) as ContentData;
+    data.itemRules.requires.push(
+      { match: "exact", pattern: "Dragon Swrod", on: "equip", needs: "level", atLeast: 30 },
+      { match: "exact", pattern: "Long Sword", on: "equip", needs: "level", atLeast: 5 },
+    );
+    const broken = brokenReferences(data).filter((r) => r.where === "itemRules/requires");
+    expect(broken.map((r) => [r.name, r.drop])).toEqual([["Dragon Swrod", [0]]]);
+    const uses = usesOf(data, "item", "Long Sword").filter((r) => r.where === "itemRules/requires");
+    expect(uses.map((r) => r.drop)).toEqual([[1]]);
+  });
+
   test("stock Classic has no problems: a treasure's gold pile and a contains-matched tool resolve", () => {
     const data = classic();
     expect(brokenReferences(data)).toEqual([]);
     // The fishing tool "Fishing" and the Axe tool are parts of names, matched with contains.
     const g = (r: { where: string }) => r.where === "gather/gathering";
-    expect(usesOf(data, "item", "Fishing Pole").filter(g)).toEqual([]);
+    const tools = (r: { where: string }) => r.where === "itemRules/tools";
+    expect(usesOf(data, "item", "Fishing Pole").filter(tools)).toEqual([]);
     const poles = data.items.items.map((i) =>
       /fishing/i.test(i.name) ? { ...i, retired: true as const } : i,
     );
     const noPoles = { ...data, items: { ...data.items, items: poles } };
     expect(
       brokenReferences(noPoles)
-        .filter(g)
+        .filter(tools)
         .map((r) => r.name),
     ).toContain("Fishing");
     // "300 Gold" is dropped as a pile of gold, so removing the Gold item leaves it alone.

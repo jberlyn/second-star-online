@@ -358,24 +358,43 @@ export function referencesOf(data: ContentData): Reference[] {
   const gathering = section("gather", "gathering");
   const gather = (path: JsonPath, n: string, drop: JsonPath | null) =>
     add(gathering, path, "item", n, drop);
-  g.tools.forEach((t, i) => {
-    if (t.match === "contains") {
-      add(gathering, ["tools", i, "tool"], "itemPattern", t.tool, null);
-    } else {
-      gather(["tools", i, "tool"], t.tool, ["tools", i]);
-    }
-  });
-  gather(["logs", "item"], g.logs.item, null);
   // The ore list is a fixed three, read by position.
   g.mining.ore.items.forEach((n, i) => {
     gather(["mining", "ore", "items", i], n, null);
   });
-  g.mining.chunks.forEach((c, i) => {
-    gather(["mining", "chunks", i, "tool"], c.tool, ["mining", "chunks", i]);
-    gather(["mining", "chunks", i, "item"], c.item, ["mining", "chunks", i]);
+  // A harvest node's tools (dropped from its list, or the node goes with its only one) and what its
+  // yield tables drop (replaced, never dropped: a table holds one item).
+  const harvest = section("gather", "harvest");
+  data.gather.harvest.forEach((n, i) => {
+    (n.tools ?? []).forEach((t, j) => {
+      add(harvest, [i, "tools", j], "item", t, (n.tools ?? []).length > 1 ? [i, "tools", j] : [i]);
+    });
   });
-  // The fishing tool is always matched with "contains" (shared gather.ts `isFishingPole`).
-  add(gathering, ["fishing", "tool"], "itemPattern", g.fishing.tool, null);
+  const yields = section("gather", "yields");
+  for (const [name, t] of Object.entries(data.gather.yields)) {
+    if (t.kind === "chance") {
+      add(yields, [name, "item"], "item", t.item, null);
+    }
+  }
+  // A requirement row matched exactly names one item and goes with it; a "contains" row is a
+  // pattern.
+  const requiresRows = section("itemRules", "requires");
+  data.itemRules.requires.forEach((r, i) => {
+    if (r.match === "contains") {
+      add(requiresRows, [i, "pattern"], "itemPattern", r.pattern, null);
+    } else {
+      add(requiresRows, [i, "pattern"], "item", r.pattern, [i]);
+    }
+  });
+  // A tool row matched exactly names one item and goes with it; a "contains" row is a pattern.
+  const tools = section("itemRules", "tools");
+  data.itemRules.tools.forEach((t, i) => {
+    if (t.match === "contains") {
+      add(tools, [i, "pattern"], "itemPattern", t.pattern, null);
+    } else {
+      add(tools, [i, "pattern"], "item", t.pattern, [i]);
+    }
+  });
   g.fishing.bands.forEach((b, i) => {
     gather(["fishing", "bands", i, "fish"], b.fish, null);
   });
@@ -491,8 +510,24 @@ export function referencesOf(data: ContentData): Reference[] {
       skill(skillGain, ["weaponSkills", i, "skills", j], s);
     });
   });
-  data.gather.gathering.tools.forEach((t, i) => {
-    skill(gathering, ["tools", i, "skill"], (t as { skill?: unknown }).skill);
+  skill(gathering, ["farming", "wateringSkill"], data.gather.gathering.farming.wateringSkill);
+  // A requirement reads exactly "level" as the level (shared requirements.ts `requirementMet`).
+  const needs = (row: RowRef, path: JsonPath, r: { needs?: unknown } | undefined) => {
+    if (r && r.needs !== "level") {
+      skill(row, [...path, "needs"], r.needs);
+    }
+  };
+  data.gather.harvest.forEach((n, i) => {
+    skill(harvest, [i, "skill"], (n as { skill?: unknown }).skill);
+    needs(harvest, [i, "requires"], n.requires);
+  });
+  const ladders = section("itemRules", "ladders");
+  for (const [name, l] of Object.entries(data.itemRules.ladders)) {
+    skill(ladders, [name, "skill"], l.skill);
+  }
+  const requires = section("itemRules", "requires");
+  data.itemRules.requires.forEach((r, i) => {
+    needs(requires, [i], r);
   });
   const gatherGain = section("gather", "skillGain");
   data.gather.skillGain.forEach((r, i) => {

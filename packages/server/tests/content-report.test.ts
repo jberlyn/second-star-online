@@ -7,7 +7,11 @@ const text = (name: string) => contentReport(name).join("\n");
 
 describe("content report (lists every name rule a name matches)", () => {
   test("every name table in content has a catalogue entry, and every catalogue entry exists", () => {
-    expect([...patternTables().keys()].sort()).toEqual(Object.keys(TABLES).sort());
+    // A table Classic leaves empty (`requires`) has no rows to find, but is catalogued all the same.
+    const emptyInClassic = ["item-rules.json requires"];
+    expect([...patternTables().keys(), ...emptyInClassic].sort()).toEqual(
+      Object.keys(TABLES).sort(),
+    );
   });
 
   test("Wind Cabinet: both containers.capacity rows match and the later one decides (last match wins)", () => {

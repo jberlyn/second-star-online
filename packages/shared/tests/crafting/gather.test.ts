@@ -4,6 +4,9 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
+
+import { buildContentStore, type ContentData, installContent } from "../../src/content/store.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
   asksAboutTreasure,
@@ -15,26 +18,31 @@ import {
   fishFor,
   fishingOffset,
   fishingSpot,
-  gatherTool,
+  harvestNode,
   hitCounter,
   isFishingWater,
   newGatherCounters,
+  nodeTier,
+  nodeTool,
   orePool,
   type RegrowthHooks,
   regrowthFrame,
-  rollChunk,
-  rollLogs,
   rollMiningFind,
   rollSkillGain,
+  rollYield,
   rumourLine,
   seedTile,
-  shovelLayer1Ok,
   skillGainRule,
   sprinkleOffset,
   TREASURE,
+  tierText,
   tileAt,
+  toolCan,
+  toolUses,
+  underOk,
   wateredTile,
   withTile,
+  workedNode,
 } from "../../src/rules/crafting/gather.ts";
 
 /** Answers `random(n)` from per-n queues; otherwise `n` (never 1 unless n = 1). */
@@ -54,14 +62,88 @@ const row = (codes: string[]) => codes.join(" ");
 const grass = Array.from({ length: 12 }, () => row(Array(17).fill("G3")));
 
 describe("tools and counters", () => {
-  test('the axe name contains "Axe" (Gold Axe too); the rest are exact', () => {
-    expect(gatherTool("Gold Axe")?.counter).toBe("Chop");
-    expect(gatherTool("Shovel")?.counter).toBe("Dig");
-    expect(gatherTool("Golden Shovel")).toBeNull();
-    expect(gatherTool("ice hammer")?.counter).toBe("Mine");
-    expect(gatherTool("Fire Hammer")?.counter).toBe("Mine");
-    expect(gatherTool("Watering Bucket")?.counter).toBe("Watering");
-    expect(gatherTool("Long Sword")).toBeNull();
+  test('Classic\'s tools: an axe contains "Axe" (Gold Axe too); the rest are exact', () => {
+    expect(toolCan("Gold Axe", "Chop")).toEqual({ can: "Chop", tier: 1, counter: "Axe" });
+    expect(toolCan("Shovel", "Dig")?.counter).toBe("Shovel");
+    expect(toolCan("Golden Shovel", "Dig")).toBeNull();
+    expect(toolCan("ice hammer", "Mine")?.counter).toBe("Ice Hammer");
+    expect(toolCan("Fire Hammer", "Mine")?.counter).toBe("Fire Hammer");
+    expect(toolCan("Watering Bucket", "Water")?.counter).toBe("Watering Bucket");
+    expect(toolCan("Fishing Pole", "Fish")?.counter).toBe("Fishing");
+    expect(toolUses("Long Sword")).toEqual([]);
+  });
+
+  test("Classic's nodes: each hammer works only its own rock; any axe fells a tree", () => {
+    const rock = harvestNode("B8");
+    const ice = harvestNode("1g");
+    const tree = harvestNode("S3");
+    expect(rock?.becomes).toBe("O8");
+    expect(ice?.becomes).toBe("0Z");
+    expect(harvestNode("G1")).toBeNull();
+    expect(harvestNode("")).toBeNull();
+    if (!rock || !ice || !tree) {
+      throw new Error("Classic's nodes are missing");
+    }
+    expect(nodeTool("Mining Hammer", rock)?.counter).toBe("Mining Hammer");
+    expect(nodeTool("Ice Hammer", rock)).toBeNull();
+    expect(nodeTool("Mining Hammer", ice)).toBeNull();
+    expect(nodeTool("Ice Hammer", ice)?.counter).toBe("Ice Hammer");
+    expect(nodeTool("Gold Axe", tree)?.counter).toBe("Axe");
+    expect(nodeTool("Shovel", tree)).toBeNull();
+    expect(nodeTier(tree)).toBe(1);
+    expect(tierText(tree)).toBe("You need a better tool to chop this.");
+  });
+
+  test("nodes may share a tile: the first one the swung tool can work decides", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.gather.harvest.push({
+      tile: "B8",
+      can: "Mine",
+      tools: ["Ice Hammer"],
+      becomes: "0Z",
+      skill: "Mining",
+      gains: false,
+      hitSound: null,
+      successSound: null,
+    });
+    installContent(buildContentStore(d));
+    try {
+      expect(workedNode("Mining Hammer", "B8")?.node.becomes).toBe("O8");
+      expect(workedNode("Ice Hammer", "B8")?.node.becomes).toBe("0Z");
+      expect(workedNode("Axe", "B8")).toBeNull();
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
+
+  test("nodes may share a tile over different grounds: the ground test picks among them", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.gather.harvest.push({
+      tile: "G3",
+      can: "Dig",
+      tools: ["Shovel"],
+      under: ["S1"],
+      becomes: "2K",
+      skill: "Shoveling",
+      gains: false,
+      hitSound: null,
+      successSound: null,
+    });
+    installContent(buildContentStore(d));
+    try {
+      const layer1 = (code: string) => Array.from({ length: 12 }, () => row(Array(17).fill(code)));
+      const on = (code: string) =>
+        workedNode("Shovel", "G3", (n) => underOk(n, layer1(code), 5, 5))?.node.becomes ?? null;
+      expect(on("G1")).toBe("1K");
+      expect(on("S1")).toBe("2K");
+      expect(on("W1")).toBeNull();
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
+
+  test("a skill's gain row is found however its name is spaced or cased", () => {
+    expect(skillGainRule("lumber jacking")?.skill).toBe("Lumberjacking");
   });
 
   test("bug fixed: every success takes exactly the table's number of hits, the first too", () => {
@@ -103,21 +185,35 @@ describe("tools and counters", () => {
       row(["D6", ...Array(16).fill("W1")]),
       ...Array.from({ length: 10 }, () => row([...Array(8).fill("O1"), ...Array(9).fill("N1")])),
     ];
-    expect(shovelLayer1Ok(layer1, 5, 1)).toBe(true);
-    expect(shovelLayer1Ok(layer1, 17, 1)).toBe(true); // H1: no longer joined to row 2
-    expect(shovelLayer1Ok(layer1, 1, 2)).toBe(false); // D6
-    expect(shovelLayer1Ok(layer1, 5, 2)).toBe(false); // W1 water
-    expect(shovelLayer1Ok(layer1, 8, 12)).toBe(true); // O1
-    expect(shovelLayer1Ok(layer1, 9, 12)).toBe(false); // N1 water
-    expect(shovelLayer1Ok(layer1, 0, 5)).toBe(false); // off the map
+    const dig = harvestNode("G3");
+    if (!dig) {
+      throw new Error("Classic's dig node is missing");
+    }
+    expect(underOk(dig, layer1, 5, 1)).toBe(true);
+    expect(underOk(dig, layer1, 17, 1)).toBe(true); // H1: no longer joined to row 2
+    expect(underOk(dig, layer1, 1, 2)).toBe(false); // D6
+    expect(underOk(dig, layer1, 5, 2)).toBe(false); // W1 water
+    expect(underOk(dig, layer1, 8, 12)).toBe(true); // O1
+    expect(underOk(dig, layer1, 9, 12)).toBe(false); // N1 water
+    expect(underOk(dig, layer1, 0, 5)).toBe(false); // off the map
+    // A node with no ground test works anywhere.
+    const tree = harvestNode("S3");
+    expect(tree && underOk(tree, layer1, 1, 2)).toBe(true);
   });
 });
 
 describe("drops", () => {
   test("bug fixed: Lumberjacking 0 drops logs like any other skill", () => {
-    expect(rollLogs(0, rngByN({ 3: [1] }))).toBe("Logs");
-    expect(rollLogs(1, rngByN({ 3: [1] }))).toBe("Logs");
-    expect(rollLogs(50, rngByN({ 3: [2] }))).toBeNull();
+    expect(rollYield("Logs", 0, rngByN({ 3: [1] }))).toBe("Logs");
+    expect(rollYield("Logs", 1, rngByN({ 3: [1] }))).toBe("Logs");
+    expect(rollYield("Logs", 50, rngByN({ 3: [2] }))).toBeNull();
+  });
+
+  test("a yield table the store lacks, or none, drops nothing and draws nothing", () => {
+    const rng = rngByN({ 3: [1] });
+    expect(rollYield(undefined, 50, rng)).toBeNull();
+    expect(rollYield("Nothing Here", 50, rng)).toBeNull();
+    expect(rng.calls).toEqual([]);
   });
 
   test("a find: count, colour, three ore rolls, then random(5)", () => {
@@ -157,9 +253,10 @@ describe("drops", () => {
     expect(rollMiningFind(0, rng)).toBe("Chunk of Iron");
     expect(rng.calls).toEqual([100, 130, 230, 5]);
     expect(rollMiningFind(0, rngByN({ 5: [1] }))).toBe("1 Blue Crystal");
-    expect(rollChunk("Ice Hammer", 5, rngByN({ 130: [1] }))).toBe("Chunk of Ice");
-    expect(rollChunk("Fire Hammer", 5, rngByN({ 130: [1] }))).toBe("Chunk of Fire");
-    expect(rollChunk("Fire Hammer", 0, rngByN({ 130: [1] }))).toBe("Chunk of Fire");
+    expect(rollYield("Mining", 0, rngByN({ 100: [1], 5: [1] }))).toBe("Chunk of Iron");
+    expect(rollYield("Chunk of Ice", 5, rngByN({ 130: [1] }))).toBe("Chunk of Ice");
+    expect(rollYield("Chunk of Fire", 5, rngByN({ 130: [1] }))).toBe("Chunk of Fire");
+    expect(rollYield("Chunk of Fire", 0, rngByN({ 130: [1] }))).toBe("Chunk of Fire");
   });
 });
 

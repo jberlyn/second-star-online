@@ -11,12 +11,12 @@ For modding workflows, rule precedence, and worked examples, see the [Modding gu
 | `seed-map.json` | the title and four layers of Willowbrook Wilds, the fresh-server starter landscape | first map creation; existing maps are preserved |
 | `tiles.json` | the tile catalogue (`code`, hover `name`, `member`, `flags`), the walk whitelist (`walkable`), and single-tile `defaults` | movement, housing, spells, the map editor, the client draw and hover tip |
 | `items.json` | the item catalogue (name, which is the item's permanent key; an optional `display` name and `sprite` art key; archived spellings; icon: an original member or added art), fixtures, the World Editor's item list, the player-shop whitelist | inventory, shops, drops, the World Editor |
-| `attpower.json`, `item-rules.json` | weapon power; the item rules: item behaviours, equip, use, armour, breaks, the item menu, the paperdoll, ground items, containers, gear bonuses, the swing | combat, inventory, spells, the paperdoll |
+| `attpower.json`, `item-rules.json` | weapon power; the item rules: item behaviours, tools and their swing ladders, requirements, equip, use, armour, breaks, the item menu, the paperdoll, ground items, containers, gear bonuses, the swing | combat, inventory, spells, the paperdoll |
 | `classes.json` | classes, their stat bonuses and promotions, the skills (keyed by `skill`, with their `display` names and `hidden` marks), the start classes and their starting skills, the skills each weapon trains on a kill | creation, promotion, skill gain, the Skills tab |
 | `bindings.json` | what the engine needs a world to name: the currency, a new character's vitals and bag, the cannon's ammo, the special bodies and the skills its mechanics read; a binding left out turns its mechanic off (the currency is required) | the purse and gold piles, creation, the cannon, Morph, Nature Shift, Smoke Bomb, vehicles, combat, spells, gathering, crafting |
 | `monsters.json` | monster stats and species `flags`, `editorLists`, name-matched `rules`, `casting`, melee affinities, skill caps, `generic` | the monster, combat, quest and editor systems |
 | `spells.json` | spell rows: cost, crystals, harmful, book, Info, summon, school, power table, Create Food's items, FX runs with frames and sounds; `effect`; the `power` tables | spells, client audio, spellbook |
-| `gather.json`, `craft.json` | gathering and crafting tables | gathering, crafting |
+| `gather.json`, `craft.json` | gathering (the hit table, harvest nodes and their yields, mining, fishing, farming, regrowth, treasure) and crafting tables | gathering, crafting |
 | `houses.json` | house types, placement, doors and keys | housing |
 | `social.json` | factions (keyed by `key`, with their perks by tier), guilds, chat rooms, Bios, medals, mail, boards, art tools | the social systems |
 | `casino.json`, `quests.json`, `help.json` | the casino tables, quest pools, help topics | casino, quests, help |

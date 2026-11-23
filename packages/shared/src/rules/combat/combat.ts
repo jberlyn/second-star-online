@@ -11,7 +11,13 @@
  */
 
 import { content } from "../../content/store.ts";
-import { boundSkillIndex, boundSkillValue, type Equipment, type Fighter } from "../core/fighter.ts";
+import {
+  boundSkillIndex,
+  boundSkillValue,
+  type Equipment,
+  type Fighter,
+  findSkillIndex,
+} from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
@@ -78,43 +84,24 @@ export function tickAttackTimers(t: AttackTimers): void {
   }
 }
 
-/** The axe ladder: the first step whose skill bound is above your Axe Fighting sets the delay. */
-const AXE_LADDER: readonly (readonly [number, number])[] = [
-  [10, 25],
-  [20, 22],
-  [30, 21],
-  [40, 20],
-  [50, 19],
-  [60, 18],
-  [70, 17],
-  [80, 16],
-  [90, 15],
-];
-
-/** The Mining Hammer ladder: 15 below Mining 10, one frame faster per 10 skill, 7 from 80 on. */
-const MINING_LADDER: readonly (readonly [number, number])[] = [
-  [10, 15],
-  [20, 14],
-  [30, 13],
-  [40, 12],
-  [50, 11],
-  [60, 10],
-  [70, 9],
-  [80, 8],
-  [Number.POSITIVE_INFINITY, 7],
-];
-
-/** The first ladder step whose bound is above `skill`, or null when none is. */
-function ladderStep(ladder: readonly (readonly [number, number])[], skill: number): number | null {
-  return ladder.find(([lt]) => skill < lt)?.[1] ?? null;
+/**
+ * A ladder's step for a skill: the first step whose `below` is above it (or that has no `below`), or
+ * null when none is.
+ */
+function ladderStep(
+  steps: readonly { below?: number | undefined; delay: number }[],
+  skill: number,
+): number | null {
+  return steps.find((st) => st.below === undefined || skill < st.below)?.delay ?? null;
 }
 
 /**
- * The cooldowns a swing sets: 14/14, Ring of Quickness 10/10. An axe below Axe Fighting 90 and a
- * Mining Hammer use their skill ladders, the lowest matching step winning (bugs fixed: 1.6 let the
- * last step win, so every skill below 90 got 15 for an axe and 7 for a hammer, and a hammer at 90+
- * fell back to 14). A Fishing Pole waits 20, less the Ring of Quickness's speed-up (a bug fixed: 1.6
- * set 20 after the ring and so ignored it).
+ * The cooldowns a swing sets: 14/14, Ring of Quickness 10/10. A weapon with a swing ladder takes
+ * the attack delay from it (Classic: an axe below Axe Fighting 90 and a Mining Hammer by their skill,
+ * the lowest matching step winning — bugs fixed: 1.6 let the last step win, so every skill below 90
+ * got 15 for an axe and 7 for a hammer, and a hammer at 90+ fell back to 14; a Fishing Pole waits
+ * 20, less the Ring of Quickness's speed-up — a bug fixed: 1.6 set 20 after the ring and so ignored
+ * it).
  */
 export function swingCooldowns(
   equip: Equipment,
@@ -132,17 +119,24 @@ export function swingCooldowns(
     }
   }
   const quickness = BASE - atDelay;
-  // A world that binds no Axe Fighting (or Mining) skill has no ladder: the delay stays as the
-  // gear set it.
-  if (lingoContains(equip.weapon, "Axe") && boundSkillIndex("axeFighting") !== undefined) {
-    atDelay = ladderStep(AXE_LADDER, boundSkillValue(skills, "axeFighting")) ?? atDelay;
+  // The weapon's swing ladder (`item-rules.json` `tools`, last match with a `ladder`): an Axe's by
+  // Axe Fighting, a Mining Hammer's by Mining, a Fishing Pole's flat 20 less the gear's speed-up. A
+  // ladder whose skill the world does not have is off: the delay stays as the gear set it.
+  let ladder: string | undefined;
+  for (const row of content().itemRules.tools) {
+    if (row.ladder !== undefined && ruleMatches(equip.weapon, row)) {
+      ladder = row.ladder;
+    }
   }
-  if (lingoContains(equip.weapon, "Mining") && boundSkillIndex("mining") !== undefined) {
-    atDelay = ladderStep(MINING_LADDER, boundSkillValue(skills, "mining")) ?? atDelay;
-  }
-  if (lingoContains(equip.weapon, "Fishing")) {
-    // A Fishing Pole's attack delay without the Ring of Quickness.
-    atDelay = content().gather.gathering.fishing.atDelay - quickness;
+  const ladders = content().itemRules.ladders;
+  const l = ladder !== undefined && Object.hasOwn(ladders, ladder) ? ladders[ladder] : undefined;
+  const at = l?.skill === undefined ? undefined : findSkillIndex(l.skill);
+  if (l && (l.skill === undefined || at !== undefined)) {
+    const step = ladderStep(l.steps, at === undefined ? 0 : (skills[at] ?? 0));
+    if (step !== null) {
+      // A step less the gear's speed-up never drops below 1, or the attack would never rearm.
+      atDelay = Math.max(1, l.gearSpeedUp ? step - quickness : step);
+    }
   }
   return { atDelay, actionDelay };
 }

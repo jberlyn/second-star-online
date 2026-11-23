@@ -16,33 +16,38 @@ import {
   fishingOffset,
   fishingSpot,
   GATHER_TEXT,
-  gatherTool,
   hitCounter,
   isFishingPole,
   isFishingWater,
+  isWateringTool,
   lingoContains,
   lingoEq,
+  nodeTier,
   REGROWTH_CATCH_UP_FRAMES,
   type Rng,
   RUMOUR_NPCS,
   regrowthFrame,
-  rollChunk,
-  rollLogs,
-  rollMiningFind,
+  requirementMet,
+  requirementText,
   rollSkillGain,
+  rollYield,
   rumourLine,
   SKILL_KEYS,
   SPRINKLE_FX,
   type SwingSound,
   seedTile,
-  shovelLayer1Ok,
   skillGainRule,
   skillValue,
   sprinkleOffset,
   swingCooldowns,
   TREASURE,
+  tierText,
   tileAt,
+  toolCan,
+  underOk,
+  WATERING_SKILL,
   wateredTile,
+  workedNode,
 } from "@secondstaronline/shared";
 
 import { logPlaced } from "../admin/activity.ts";
@@ -134,21 +139,16 @@ const sound = (p: Player, name: string, ch: number): Outgoing => ({
   msg: { t: "sound", name, ch },
 });
 
-/** A weapon that sprinkles water on a swing: any name containing "watering bucket". */
-export function isWateringBucket(weapon: string): boolean {
-  return lingoEq(weapon, "Watering Bucket") || weapon.toLowerCase().includes("watering bucket");
-}
-
 /**
- * The attack routine's tool casts, before the attack power: the Watering Bucket's `sprinkle` on
- * every swing not facing north, and the Fishing Pole facing water on either layer (the `Fishing`
- * FX, an attack delay of 20, less the Ring of Quickness's speed-up, and the fish drop). Returns the
- * attack delay the swing leaves, or null.
+ * The attack routine's tool casts, before the attack power: a Water tool's `sprinkle` (the
+ * Watering Bucket's) on every swing not facing north, and a Fish tool (the Fishing Pole) facing water
+ * on either layer (the `Fishing` FX and the fish drop). Returns the attack delay the swing leaves
+ * (the weapon's swing ladder: Classic's 20, less the Ring of Quickness's speed-up), or null.
  */
 export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents): number | null {
   const weapon = p.char.equip.weapon;
   const me = playerLoc(p);
-  if (isWateringBucket(weapon)) {
+  if (isWateringTool(weapon)) {
     const off = sprinkleOffset(p.facing);
     if (off) {
       const h = me.h + off[0];
@@ -208,68 +208,73 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
 }
 
 /**
- * The tool block of 1.6's attack routine, for the attacker: the tool's tile in front, its counter,
- * the tile change, the drop, the sounds and the skill handler. Any other tile does nothing (the
- * swing stays an ordinary attack). The Watering Bucket counts only swings at a seeded tile. A
- * success mid-step drops on the changed tile like any other.
+ * The tool block of 1.6's attack routine, for the attacker. A Water tool facing seeded soil
+ * advances its counter, and the hit that empties it waters the soil (only a swing at a seeded tile
+ * counts). Otherwise the faced tile's harvest node, worked by a tool that can: the node's ground
+ * test, its requirement and tier, its hit sound, the counter, the tile change, the yield, the
+ * treasure, the success sound and the skill's gain roll. Any other tile does nothing (the swing
+ * stays an ordinary attack). A success mid-step drops on the changed tile like any other.
  */
 export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents): void {
-  const tool = gatherTool(p.char.equip.weapon);
-  if (!tool) {
-    return;
-  }
+  const weapon = p.char.equip.weapon;
   const t = faced(p);
-  const layer2 = room.map.layers[1];
-  const code = tileAt(layer2, t.x, t.y);
-  const skill = skillOf(p, tool.skill);
+  const code = tileAt(room.map.layers[1], t.x, t.y);
   const io = new ItemOut(room);
-  if (tool.counter === "Watering") {
-    // Only a seeded tile takes water, so only a swing at one counts.
-    const next = wateredTile(code);
-    if (next && hitCounter(p.gather, tool.tool, skill)) {
-      change(ctx, room, io, 2, t.x, t.y, next);
+  const water = toolCan(weapon, "Water");
+  const watered = water ? wateredTile(code) : null;
+  if (water && watered) {
+    if (hitCounter(p.gather, water.counter, skillOf(p, WATERING_SKILL))) {
+      change(ctx, room, io, 2, t.x, t.y, watered);
     }
     ev.out.push(...io.out);
     return;
   }
-  if (tool.counter === "Dig" && !shovelLayer1Ok(room.map.layers[0], t.x, t.y)) {
+  const worked = workedNode(weapon, code, (n) => underOk(n, room.map.layers[0], t.x, t.y));
+  if (!worked) {
     return;
   }
-  if (!tool.tiles || !lingoEq(code, tool.tiles.from)) {
+  const { node, use } = worked;
+  // A node the gatherer cannot work yet says why, once per press.
+  const who = { level: p.char.vitals.level, skills: p.char.skills };
+  const refusal =
+    node.requires && !requirementMet(node.requires, who)
+      ? requirementText(node.requires, node.can.toLowerCase())
+      : use.tier < nodeTier(node)
+        ? tierText(node)
+        : null;
+  if (refusal !== null) {
+    if (p.attackRefused !== refusal) {
+      p.attackRefused = refusal;
+      ev.lines.push(refusal);
+    }
     return;
   }
-  if (tool.hitSound) {
-    ev.sound = tool.hitSound.name;
+  if (node.hitSound) {
+    ev.sound = node.hitSound.name;
   }
-  if (!hitCounter(p.gather, tool.tool, skill)) {
+  const skill = skillOf(p, node.skill);
+  if (!hitCounter(p.gather, use.counter, skill)) {
     return;
   }
-  change(ctx, room, io, 2, t.x, t.y, tool.tiles.to);
-  let found: string | null = null;
-  if (tool.counter === "Chop") {
-    found = rollLogs(skill, ctx.rng);
-  } else if (tool.counter === "Mine") {
-    found = lingoEq(tool.tool, "Mining Hammer")
-      ? rollMiningFind(skill, ctx.rng)
-      : rollChunk(tool.tool, skill, ctx.rng);
-  }
+  change(ctx, room, io, 2, t.x, t.y, node.becomes);
+  const found = rollYield(node.yield, skill, ctx.rng);
   if (found) {
     drop(ctx, room, io, found, t.x, t.y, p);
   }
-  if (tool.counter === "Dig") {
+  if (node.treasure) {
     digTreasure(ctx, room, io, ev, t.x, t.y, p);
   }
-  if (tool.successSound) {
-    io.out.push(sound(p, tool.successSound.name, tool.successSound.ch));
+  if (node.successSound) {
+    io.out.push(sound(p, node.successSound.name, node.successSound.ch));
   }
-  if (tool.imp) {
-    gain(p, tool.skill, ctx.rng, ev.lines);
+  if (node.gains) {
+    gain(p, node.skill, ctx.rng, ev.lines);
   }
   ev.out.push(...io.out);
 }
 
 /**
- * `treack` → 1.6's treasure check on every successful dig: on the treasure's map (exactly, not
+ * `treack` → 1.6's treasure check on every success at a treasure node (Classic: every dig): on the treasure's map (exactly, not
  * 1.6's `contains`) `random(5) = 1` puts the item on the dug tile, tells the digger, and picks a
  * new treasure.
  */

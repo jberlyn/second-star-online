@@ -274,15 +274,47 @@ describe("monsters hitting players", () => {
     expect(monsterHitsPlayer(1, zero, 0, rng)).toEqual({ kind: "parry" });
     expect(rng.calls).toEqual([3, 90]);
   });
-  test("a world that binds no Axe Fighting skill keeps the gear's delay for an axe", () => {
+  test("an axe ladder reading a skill the world lacks keeps the gear's delay", () => {
     const ring = { ...NO_EQUIPMENT, weapon: "Axe", ring: "Ring of Quickness" };
     const before = swingCooldowns(ring, startingSkills(1)).atDelay;
     const d = structuredClone(classicData) as ContentData;
-    d.bindings.skills = {};
+    const axe = d.itemRules.ladders.axe;
+    if (!axe) {
+      throw new Error("Classic has no axe ladder");
+    }
+    d.itemRules.ladders.axe = { ...axe, skill: "Woodsmanship" };
     installContent(buildContentStore(d));
     try {
       expect(swingCooldowns(ring, startingSkills(1)).atDelay).toBe(10);
       expect(before).not.toBe(10);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
+  test("swing ladders come from content: a new tool row and ladder set its speed", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.itemRules.ladders.pick = {
+      skill: "Mining",
+      steps: [{ below: 50, delay: 12 }, { delay: 6 }],
+      gearSpeedUp: true,
+    };
+    d.itemRules.tools.push({ match: "exact", pattern: "Long Sword", ladder: "pick" });
+    installContent(buildContentStore(d));
+    try {
+      const sword = { ...NO_EQUIPMENT, weapon: "Long Sword" };
+      const mining = (v: number) => {
+        const s = startingSkills(1);
+        s[skillIndex("Mining")] = v;
+        return s;
+      };
+      expect(swingCooldowns(sword, mining(10)).atDelay).toBe(12);
+      expect(swingCooldowns(sword, mining(60)).atDelay).toBe(6);
+      // `gearSpeedUp`: the Ring of Quickness's 4 comes off the step.
+      expect(swingCooldowns({ ...sword, ring: "Ring of Quickness" }, mining(60)).atDelay).toBe(2);
+      // Never below 1, or the attack would never rearm.
+      d.itemRules.ladders.pick = { steps: [{ delay: 3 }], gearSpeedUp: true };
+      installContent(buildContentStore(d));
+      expect(swingCooldowns({ ...sword, ring: "Ring of Quickness" }, mining(60)).atDelay).toBe(1);
     } finally {
       installContent(buildContentStore(classicData));
     }

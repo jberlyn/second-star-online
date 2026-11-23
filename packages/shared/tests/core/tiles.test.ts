@@ -23,10 +23,8 @@ describe("tile hover names", () => {
 
   test("design change: every tile a tool, seed or watering changes has a name, before and after", () => {
     const codes = new Set<string>();
-    for (const tool of G.tools) {
-      if (tool.tiles) {
-        codes.add(tool.tiles.from).add(tool.tiles.to);
-      }
+    for (const node of gatherData.harvest) {
+      codes.add(node.tile).add(node.becomes);
     }
     for (const s of G.farming.seeds) {
       codes.add(s.plants);

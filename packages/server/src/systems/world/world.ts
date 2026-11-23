@@ -359,7 +359,7 @@ export interface Player {
   attackPress: number | null;
   /**
    * The refusal line already said while the attack key has been held ("You cannot fight here!",
-   * a bow's missing arrows or crystal), so it is said once per press, not every tick. Cleared on
+   * a bow's missing arrows or crystal, a harvest node's requirement or tier), so it is said once per press, not every tick. Cleared on
    * release.
    */
   attackRefused: string | null;

@@ -17,7 +17,7 @@ Axe Fighting makes axes swing faster. It is the only weapon skill that changes s
 
 ## What it does
 
-The attack delay of any weapon containing "Axe", in frames between swings (`AXE_LADDER` in [combat.ts](../../../packages/shared/src/rules/combat/combat.ts)). Other weapons wait 14, or 10 with a Ring of Quickness.
+The attack delay of any weapon containing "Axe", in frames between swings (the `axe` ladder in `item-rules.json` `ladders`, read by `swingCooldowns` in [combat.ts](../../../packages/shared/src/rules/combat/combat.ts)). Other weapons wait 14, or 10 with a Ring of Quickness.
 
 | Axe Fighting | Delay |
 |---|---|

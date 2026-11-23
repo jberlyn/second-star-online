@@ -4,15 +4,22 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
   ADMINISTRATOR,
+  buildContentStore,
+  type ContentData,
+  checkEquip,
   DEFAULT_DEATH_DROPS,
   type DeathDropRules,
   type DeltaEvent,
+  EQUIP_TEXT,
+  installContent,
   MODERATOR,
   NO_EQUIPMENT,
   PICKUP_TEXT,
   type ServerMsg,
+  skillIndex,
 } from "@secondstaronline/shared";
 
 import { handleDrop, NO_SUCH_ITEM, parseDrop } from "../src/systems/admin/drop.ts";
@@ -1127,5 +1134,98 @@ describe("container capacity", () => {
     expect(containerCapacity("Bob's House Vault")).toBe(15);
     expect(containerCapacity("Cauldron#1")).toBe(15);
     expect(containerCapacity("Apple")).toBe(15);
+  });
+});
+
+describe("requirements (item-rules.json requires)", () => {
+  /** Classic with `rows` added to `requires`, for the length of `body`. */
+  function withRequires(rows: ContentData["itemRules"]["requires"], body: () => void) {
+    const d = structuredClone(classicData) as ContentData;
+    d.itemRules.requires.push(...rows);
+    installContent(buildContentStore(d));
+    try {
+      body();
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  }
+
+  test("Classic needs nothing of anyone", () => {
+    expect(classicData.itemRules.requires).toEqual([]);
+  });
+
+  test("an equip requirement on the level refuses below it and lets the item on at it", () => {
+    withRequires(
+      [{ match: "exact", pattern: "Long Sword", on: "equip", needs: "level", atLeast: 5 }],
+      () => {
+        const s = scene();
+        const p = s.join("A", 5, 5);
+        p.char.stats.str = 40;
+        give(p, 1, "Long Sword");
+        p.char.vitals.level = 4;
+        expect(chat(equipIntent(s.ctx(), s.room(), p, 1), "A")).toEqual([
+          "You need to be level 5 to equip this.",
+        ]);
+        expect(p.char.equip.weapon).toBe("NOTHING");
+        p.char.vitals.level = 5;
+        equipIntent(s.ctx(), s.room(), p, 1);
+        expect(p.char.equip.weapon).toBe("Long Sword");
+      },
+    );
+  });
+
+  test("a requirement covers a masterwork, and never hides 1.6's own refusals", () => {
+    withRequires(
+      [
+        { match: "exact", pattern: "Long Sword", on: "equip", needs: "level", atLeast: 5 },
+        { match: "contains", pattern: "Murder", on: "equip", needs: "level", atLeast: 50 },
+      ],
+      () => {
+        const who = { str: 40, wanted: false, equip: NO_EQUIPMENT, level: 1, skills: [] };
+        expect(checkEquip("Long Sword+3", who)).toEqual({
+          ok: false,
+          text: "You need to be level 5 to equip this.",
+        });
+        // The character editor reads the murder gear's refusal: the requirement comes after it.
+        const murder =
+          classicData.items.items.find((i) => /murder/i.test(i.name) && !/damaged/i.test(i.name))
+            ?.name ?? "";
+        expect(murder).not.toBe("");
+        expect(checkEquip(murder, who)).toEqual({ ok: false, text: EQUIP_TEXT.vile });
+      },
+    );
+  });
+
+  test("a use requirement on a skill keeps the item and says the row's own line when it has one", () => {
+    withRequires(
+      [
+        { match: "exact", pattern: "Apple", on: "use", needs: "Cooking", atLeast: 10 },
+        {
+          match: "contains",
+          pattern: "Purple",
+          on: "use",
+          needs: "Alchemy",
+          atLeast: 50,
+          text: "Too strong for you.",
+        },
+      ],
+      () => {
+        const s = scene({ 3: [2] });
+        const p = s.join("A", 5, 5);
+        p.char.hunger = 1000;
+        give(p, 1, "Apple", 2);
+        give(p, 2, "Purple Potion");
+        p.char.skills[skillIndex("Cooking")] = 9;
+        expect(chat(useIntent(s.ctx(), s.room(), p, 1), "A")).toEqual([
+          "You need Cooking 10 to use this.",
+        ]);
+        expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 2 });
+        expect(chat(useIntent(s.ctx(), s.room(), p, 2), "A")).toEqual(["Too strong for you."]);
+        p.char.skills[skillIndex("Cooking")] = 10;
+        expect(chat(useIntent(s.ctx(), s.room(), p, 1), "A")).toEqual(["You eat an apple."]);
+        // An equip row does not gate use.
+        expect(p.char.bag[0]).toEqual({ item: "Apple", qty: 1 });
+      },
+    );
   });
 });

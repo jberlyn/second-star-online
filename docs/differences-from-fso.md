@@ -1495,7 +1495,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** The drop rolls were made, but each drop was guarded by "skill above 0".
 - **SSO:** The guard is gone; a skill of 0 uses the lowest row of each table.
 - **Why:** New gatherers should get something for their work.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`rollLogs`, `rollMiningFind`, `rollChunk`)
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`rollYield`, `rollMiningFind`)
 - **Pinned by:** `bug fixed: Lumberjacking 0 drops logs like any other skill`; `bug fixed: Mining 0 finds crystals, ore and chunks` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: Lumberjacking 0 fells trees, drops logs and can rise` (packages/server/tests/gather.test.ts)
 
 #### Ore odds improve with Mining
@@ -1531,7 +1531,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** The shovel read a word of the one-line map data, which was empty below row 1, and empty text passed the test. So the check applied only on the top row, where column 17 straddled the `#` joining two layers and never matched.
 - **SSO:** The shovel reads the first-layer tile at the dug position and tests it against the same three codes. Off the map nothing can be dug.
 - **Why:** The ground restriction was meant to apply everywhere.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`shovelLayer1Ok`)
+- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`underOk`)
 - **Pinned by:** `bug fixed: the shovel checks the ground under every tile, on every row` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: the shovel will not dig G3 over water on any row` (packages/server/tests/gather.test.ts)
 
 #### Crafting at skill 10 can fail

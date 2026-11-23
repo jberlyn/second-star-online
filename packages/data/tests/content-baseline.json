@@ -1673,16 +1673,6 @@
       "44c4b807caa3a63b"
     ]
   ],
-  "gather.json#/gathering/mining/chunks": [
-    [
-      "Chunk of Ice",
-      "92b561839d46841d"
-    ],
-    [
-      "Chunk of Fire",
-      "b9dc2c773b9c68f0"
-    ]
-  ],
   "gather.json#/gathering/mining/colourPool": [
     [
       "0",
@@ -2015,36 +2005,6 @@
       "b7a56873cd771f2c"
     ]
   ],
-  "gather.json#/gathering/tools": [
-    [
-      "Lumberjacking",
-      "041e01a29d118ad9"
-    ],
-    [
-      "Shoveling",
-      "977f1d89cb5cd7b2"
-    ],
-    [
-      "Farming",
-      "cc9d0a0b12a0f1ee"
-    ],
-    [
-      "Farming",
-      "fee9562fd5a6eb91"
-    ],
-    [
-      "Mining",
-      "191e1e3b6dc3c709"
-    ],
-    [
-      "Mining",
-      "9177190cc905ab7b"
-    ],
-    [
-      "Mining",
-      "ddaea74d4b92ee52"
-    ]
-  ],
   "gather.json#/gathering/treasure/items": [
     [
       "0",
@@ -2269,6 +2229,32 @@
     [
       "4",
       "4a318e8b9746ff96"
+    ]
+  ],
+  "gather.json#/harvest": [
+    [
+      "Shoveling",
+      "f787510ef10a8fe6"
+    ],
+    [
+      "Farming",
+      "c3bcac635b60d16f"
+    ],
+    [
+      "Mining",
+      "3e42c7830653634f"
+    ],
+    [
+      "Mining",
+      "75369909a4e0d165"
+    ],
+    [
+      "Mining",
+      "f62df2aa2f63cc77"
+    ],
+    [
+      "Lumberjacking",
+      "7e9a35e6f949c470"
     ]
   ],
   "gather.json#/skillGain": [
@@ -4587,6 +4573,52 @@
     [
       "laser sword",
       "7de0f8b796275fe6"
+    ]
+  ],
+  "item-rules.json#/tools": [
+    [
+      "Axe",
+      "d990af9808c92121"
+    ],
+    [
+      "Shovel",
+      "c8449afd3a0d6567"
+    ],
+    [
+      "Hoe",
+      "7a1af2f95c718a6b"
+    ],
+    [
+      "Watering Bucket",
+      "8841cc3946a0754a"
+    ],
+    [
+      "Mining Hammer",
+      "e963f8c31cf04ca9"
+    ],
+    [
+      "Ice Hammer",
+      "d4fe57419d68c0bb"
+    ],
+    [
+      "Fire Hammer",
+      "ddb965cf3acf46f2"
+    ],
+    [
+      "Fishing",
+      "496a7ad85800431f"
+    ],
+    [
+      "Axe",
+      "8343e898ee1743c3"
+    ],
+    [
+      "Mining",
+      "62ecbeabb13d92b0"
+    ],
+    [
+      "Fishing",
+      "028d7ad2c5aa2ef2"
     ]
   ],
   "item-rules.json#/use/books": [

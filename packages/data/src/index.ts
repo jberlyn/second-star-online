@@ -17,7 +17,7 @@ export type {
   WeaponSkills,
 } from "../schema/classes.ts";
 export type { CraftData } from "../schema/craft.ts";
-export type { GatherData, GatherTool, SkillGainRule } from "../schema/gather.ts";
+export type { GatherData, HarvestNode, SkillGainRule, YieldTable } from "../schema/gather.ts";
 export type { HelpData, HelpTopic } from "../schema/help.ts";
 export type { HouseData, HouseType } from "../schema/houses.ts";
 export type { EquipSlot, ItemBehaviour, ItemRulesData } from "../schema/item-rules.ts";

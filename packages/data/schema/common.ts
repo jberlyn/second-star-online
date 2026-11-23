@@ -20,3 +20,16 @@ export const ruleMatchSchema = z.enum(["exact", "contains"]);
 
 /** The test every item rule row starts with. */
 export const patternRow = { match: ruleMatchSchema, pattern: z.string().min(1) };
+
+/** What a tool can do (issue #37 stage 5): each is an engine kind of gathering. */
+export const toolCanSchema = z.enum(["Chop", "Mine", "Dig", "Fish", "Farm", "Water"]);
+
+/**
+ * A requirement: a skill (by key) or, written exactly `level`, the level must reach `atLeast`. `text`
+ * replaces the engine's refusal line.
+ */
+export const requirementSchema = z.strictObject({
+  needs: z.string().min(1),
+  atLeast: z.number().int().min(0).max(1_000_000),
+  text: z.string().min(1).optional(),
+});

@@ -235,7 +235,7 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
   // neither of those draws, so after `startSwing` keeps the original draw order.
   swingFireballs(room, p, { rng: ctx.rng });
   // The Watering Bucket's sprinkle and the Fishing Pole's cast come next, before the attack power:
-  // fishing sets the attack delay to 20.
+  // a cast sets the attack delay from the weapon's swing ladder (Classic: 20).
   const gctx = gatherCtx(ctx);
   const gev: GatherEvents = { sound: undefined, lines: ev.lines, out: ev.out };
   if (gctx) {

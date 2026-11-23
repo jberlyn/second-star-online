@@ -28,7 +28,7 @@ Each swing at the rock counts down the hammer's hits ([gathering hits](README.md
 
 The Ice and Fire Hammers' chunk chance does not depend on skill.
 
-The **Mining Hammer swings faster** with Mining (`MINING_LADDER` in [combat.ts](../../../packages/shared/src/rules/combat/combat.ts)): 15 frames below 10, one frame less for every ten points, down to 7 from 80.
+The **Mining Hammer swings faster** with Mining (the `mining` ladder in `item-rules.json` `ladders`, read by `swingCooldowns` in [combat.ts](../../../packages/shared/src/rules/combat/combat.ts)): 15 frames below 10, one frame less for every ten points, down to 7 from 80.
 
 ## How it rises
 
