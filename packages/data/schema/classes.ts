@@ -18,7 +18,11 @@ export const MAX_START_CLASS_CODE = 10_000;
  * page lists the shown skills in this order.
  */
 export const skillSchema = z.strictObject({
-  skill: z.string().min(1),
+  // `__proto__` cannot be a key of the plain objects skills are saved and sent in.
+  skill: z
+    .string()
+    .min(1)
+    .refine((k) => k !== "__proto__", "a skill cannot be called __proto__"),
   display: z.string().min(1).optional(),
   hidden: z.literal(true).optional(),
 });
@@ -32,8 +36,8 @@ export const startClassSchema = z.strictObject({
   /** At most `MAX_START_CLASS_CODE`, the most the creation message carries. */
   code: z.number().int().min(1).max(MAX_START_CLASS_CODE),
   label: z.string().min(1).optional(),
-  /** Each 1 to 100, as a skill can be (the character editor's limits). */
-  skills: z.record(z.string(), z.number().int().min(1).max(100)),
+  /** Each 0 to 100, as a skill can be (0: it never rises, as in 1.6). */
+  skills: z.record(z.string(), z.number().int().min(0).max(100)),
 });
 
 const ruleSchema = z.strictObject({ rule: z.string() });

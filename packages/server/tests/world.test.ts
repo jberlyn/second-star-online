@@ -350,6 +350,46 @@ describe("saving skills (open skill count)", () => {
     expect(loadSkills(db, id)[skillIndex("Thrust")]).toBe(2);
   });
 
+  test("a skill back under another spelling keeps the newer value, and keeps one row", () => {
+    const { id, progress } = newCharacter();
+    // Swimming is trained to 40, removed, added back as swimming and trained to 60, removed,
+    // then added back as Swimming.
+    withSkills(
+      (skills) => skills.push({ skill: "Swimming" }),
+      () => {
+        const l = loadSkills(db, id);
+        saveProgress(
+          db,
+          id,
+          { ...progress, skills: l.map((v, i) => (i === l.length - 1 ? 40 : v)) },
+          NOW,
+        );
+      },
+    );
+    withSkills(
+      (skills) => skills.push({ skill: "swimming" }),
+      () => {
+        const l = loadSkills(db, id);
+        expect(l.at(-1)).toBe(40);
+        saveProgress(
+          db,
+          id,
+          { ...progress, skills: l.map((v, i) => (i === l.length - 1 ? 60 : v)) },
+          NOW,
+        );
+        expect(Object.keys(rowsOf(id)).filter((k) => k.toLowerCase() === "swimming")).toEqual([
+          "swimming",
+        ]);
+      },
+    );
+    withSkills(
+      (skills) => skills.push({ skill: "Swimming" }),
+      () => {
+        expect(loadSkills(db, id).at(-1)).toBe(60);
+      },
+    );
+  });
+
   test("reordered skills load by key, not by position", () => {
     const { id } = newCharacter();
     withSkills(

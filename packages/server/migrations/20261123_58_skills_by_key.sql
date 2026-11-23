@@ -160,7 +160,8 @@ CREATE TABLE panel_58 (
   idx INTEGER NOT NULL,
   skill TEXT NOT NULL,
   name TEXT,
-  base TEXT NOT NULL,
+  -- Null when nothing names the skill's row (dropped below).
+  base TEXT,
   PRIMARY KEY (source, idx)
 );
 INSERT INTO panel_58 (source, idx, skill, name, base)
@@ -188,6 +189,13 @@ SELECT 'rows', k.idx, k.skill,
         )
       )
       FROM classic_skills_58 c WHERE c.idx = k.idx AND c.skill = k.skill
+    ),
+    -- A skill an imported pack supplies.
+    (
+      SELECT json_object('skill', json_extract(ps.value, '$.skill'))
+      FROM content_packs pk, json_each(pk.data, '$.data.classes.skills') ps
+      WHERE pk.source = 'imported' AND lower(json_extract(ps.value, '$.skill')) = lower(k.skill)
+      LIMIT 1
     )
   )
 FROM skill_keys_58 k
@@ -198,14 +206,6 @@ WHERE EXISTS (
     SELECT 1 FROM content_rows r
     WHERE r.dataset = 'classes' AND r.part = 'skills' AND r.op = 'remove'
       AND lower(r.row_key) = lower(k.skill)
-  )
-  AND (
-    EXISTS (SELECT 1 FROM classic_skills_58 c WHERE c.idx = k.idx AND c.skill = k.skill)
-    OR EXISTS (
-      SELECT 1 FROM content_rows r
-      WHERE r.dataset = 'classes' AND r.part = 'skills' AND r.op = 'set'
-        AND lower(r.row_key) = lower(k.skill)
-    )
   );
 DELETE FROM panel_58 WHERE base IS NULL;
 -- What each row should hold: the page's name as `display` (none when it is the key), or hidden,
@@ -300,6 +300,12 @@ SELECT 'draft', k.idx, k.skill,
       FROM classic_skills_58 c WHERE c.idx = k.idx AND c.skill = k.skill
     ),
     (
+      SELECT json_object('skill', json_extract(ps.value, '$.skill'))
+      FROM content_packs pk, json_each(pk.data, '$.data.classes.skills') ps
+      WHERE pk.source = 'imported' AND lower(json_extract(ps.value, '$.skill')) = lower(k.skill)
+      LIMIT 1
+    ),
+    (
       SELECT json_object('skill', k.skill) FROM content_draft d
       WHERE d.dataset = 'classes' AND d.part = 'skills' AND d.op = 'set'
         AND lower(d.row_key) = lower(k.skill)
@@ -308,7 +314,26 @@ SELECT 'draft', k.idx, k.skill,
 FROM skill_keys_58 k
 WHERE EXISTS (
   SELECT 1 FROM content_draft WHERE dataset = 'classes' AND part = 'skillPanel' AND op = 'set'
-);
+)
+  -- A skill the draft removes stays removed.
+  AND NOT EXISTS (
+    SELECT 1 FROM content_draft d
+    WHERE d.dataset = 'classes' AND d.part = 'skills' AND d.op = 'remove'
+      AND lower(d.row_key) = lower(k.skill)
+  )
+  -- So does one the operator removed, unless the draft adds it back.
+  AND (
+    NOT EXISTS (
+      SELECT 1 FROM content_rows r
+      WHERE r.dataset = 'classes' AND r.part = 'skills' AND r.op = 'remove'
+        AND lower(r.row_key) = lower(k.skill)
+    )
+    OR EXISTS (
+      SELECT 1 FROM content_draft d
+      WHERE d.dataset = 'classes' AND d.part = 'skills' AND d.op = 'set'
+        AND lower(d.row_key) = lower(k.skill)
+    )
+  );
 DELETE FROM panel_58 WHERE base IS NULL;
 CREATE TABLE panel_want_58 AS
 SELECT source, skill, base,
@@ -339,7 +364,8 @@ DELETE FROM content_rows WHERE dataset = 'classes' AND part = 'skillPanel';
 DELETE FROM content_draft WHERE dataset = 'classes' AND part = 'skillPanel';
 
 -- An operator's start classes, from a changed `creation` row: one row per class whose label or
--- starting values differ from what its change was based on.
+-- starting values differ from what its change was based on. A starting value is kept within a
+-- skill's 0 to 100 (the old rows took any whole number).
 CREATE TABLE start_classes_58 (pos INTEGER PRIMARY KEY, code TEXT NOT NULL);
 INSERT INTO start_classes_58 (pos, code) VALUES (1, '1'), (2, '3'), (3, '2');
 INSERT OR REPLACE INTO content_rows
@@ -351,7 +377,7 @@ SELECT 'classes', 'startClasses', sc.code, 'set',
     json_object(
     'code', CAST(sc.code AS INTEGER),
     'skills', json(COALESCE((
-      SELECT json_group_object(k.skill, v.value)
+      SELECT json_group_object(k.skill, MAX(0, MIN(100, v.value)))
       FROM json_each(r.data, '$.startingSkills."' || sc.code || '".values') v
       JOIN skill_keys_58 k ON k.idx = v.key + 1
       WHERE v.value <> 1
@@ -376,7 +402,7 @@ SELECT 'classes', 'startClasses', sc.code, 'set',
     json_object(
     'code', CAST(sc.code AS INTEGER),
     'skills', json(COALESCE((
-      SELECT json_group_object(k.skill, v.value)
+      SELECT json_group_object(k.skill, MAX(0, MIN(100, v.value)))
       FROM json_each(r.data, '$.startingSkills."' || sc.code || '".values') v
       JOIN skill_keys_58 k ON k.idx = v.key + 1
       WHERE v.value <> 1
@@ -442,7 +468,7 @@ SET data = json_set(
       json_object(
       'code', CAST(sc.code AS INTEGER),
       'skills', json(COALESCE((
-        SELECT json_group_object(json_extract(sk.value, '$.skill'), v.value)
+        SELECT json_group_object(json_extract(sk.value, '$.skill'), MAX(0, MIN(100, v.value)))
         FROM json_each(
           content_packs.data, '$.data.classes.creation.startingSkills."' || sc.code || '".values'
         ) v

@@ -573,6 +573,12 @@ describe("monsters, NPCs and tiles", () => {
     expect(names.slice(-2)).toEqual(["Radar", "Haste"]);
   });
 
+  test("classes refuse a skill called __proto__", () => {
+    const bad = structuredClone(classesData);
+    bad.skills.push({ skill: "__proto__" });
+    expect(classesDataSchema.safeParse(bad).success).toBe(false);
+  });
+
   test("classes refuse a start class of no class", () => {
     const bad = structuredClone(classesData);
     bad.startClasses.push({ code: 999, skills: {} });

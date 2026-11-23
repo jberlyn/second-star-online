@@ -131,10 +131,12 @@ export function swingCooldowns(
     }
   }
   const quickness = BASE - atDelay;
-  if (lingoContains(equip.weapon, "Axe")) {
+  // A world that binds no Axe Fighting (or Mining) skill has no ladder: the delay stays as the
+  // gear set it.
+  if (lingoContains(equip.weapon, "Axe") && boundSkillIndex("axeFighting") !== undefined) {
     atDelay = ladderStep(AXE_LADDER, boundSkillValue(skills, "axeFighting")) ?? atDelay;
   }
-  if (lingoContains(equip.weapon, "Mining")) {
+  if (lingoContains(equip.weapon, "Mining") && boundSkillIndex("mining") !== undefined) {
     atDelay = ladderStep(MINING_LADDER, boundSkillValue(skills, "mining")) ?? atDelay;
   }
   if (lingoContains(equip.weapon, "Fishing")) {

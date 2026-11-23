@@ -267,8 +267,22 @@ export function writeSkills(db: Db, id: string, skills: readonly number[]): void
   );
 }
 
-/** Writes skill values by key (an unchanged value is not rewritten). */
+/**
+ * Writes skill values by key (an unchanged value is not rewritten). A row saved under another
+ * spelling of a written key (a skill removed and added back spelled differently) goes, so a skill
+ * never has two rows to choose between.
+ */
 export function saveSkillValues(db: Db, id: string, values: Readonly<SkillValues>): void {
+  const keys = Object.keys(values);
+  db.query(
+    `DELETE FROM character_skills WHERE character_id = ?
+     AND skill NOT IN (SELECT value FROM json_each(?))
+     AND lower(replace(skill, ' ', '')) IN (SELECT value FROM json_each(?))`,
+  ).run(
+    id,
+    JSON.stringify(keys),
+    JSON.stringify(keys.map((k) => k.replace(/\s+/g, "").toLowerCase())),
+  );
   const q = db.prepare(
     `INSERT INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)
      ON CONFLICT (character_id, skill) DO UPDATE SET value = excluded.value

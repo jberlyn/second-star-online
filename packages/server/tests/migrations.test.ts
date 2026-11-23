@@ -822,6 +822,8 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     db.run("UPDATE character_skills SET value = skill * 2 WHERE character_id = ?", [id]);
     // An operator skill the server recorded at 39, and a row no record names.
     db.run("INSERT INTO content_skills (skill, idx) VALUES ('Swimming', 39)");
+    // A live skill only an imported pack supplies (no Classic or operator row).
+    db.run("INSERT INTO content_skills (skill, idx) VALUES ('Gliding', 42)");
     db.run(
       "INSERT INTO character_skills (character_id, skill, value) VALUES (?, 39, 7), (?, 40, 8)",
       [id, id],
@@ -844,7 +846,8 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       classes: { "1": "Knight", "2": "Mage", "3": "Ranger" },
       startingSkills: {
         "1": { values: [25, 20], valuesWritten: 47, nonDefault: { Slash: 25, Thrust: 20 } },
-        "2": { values: [1, 1, 1, 1, 1, 1, 1, 30], valuesWritten: 49, nonDefault: { Magery: 30 } },
+        // Out of a skill's 0 to 100, which the old rows allowed.
+        "2": { values: [0, 150, 1, 1, 1, 1, 1, 30], valuesWritten: 49, nonDefault: {} },
         "3": { values: [10], valuesWritten: 49, nonDefault: { Slash: 10 } },
       },
       skillsWritten: "",
@@ -856,6 +859,7 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       startingSkills: {
         ...creation.startingSkills,
         "1": { values: [20, 20], valuesWritten: 47, nonDefault: { Slash: 20, Thrust: 20 } },
+        "2": { values: [1, 1, 1, 1, 1, 1, 1, 30], valuesWritten: 49, nonDefault: { Magery: 30 } },
       },
     };
     const row = db.prepare(
@@ -876,7 +880,20 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     // A draft page that shows Meditation again, under another name.
     db.run(
       "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', 'skillPanel', '', 'set', ?, 'a1', 'God', 'now')",
-      [JSON.stringify([...classicPanel, { name: "Calm", index: 12 }])],
+      [
+        JSON.stringify([
+          // Leaves out Shoveling (37) and Farming (38): one the operator removed, one the draft
+          // removes.
+          ...classicPanel.filter((r) => r.index < 37),
+          { name: "Calm", index: 12 },
+        ]),
+      ],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('classes', 'skills', 'Shoveling', 'remove', NULL, 'h', NULL, 9, 'God', 'now')",
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', 'skills', 'Farming', 'remove', NULL, 'a1', 'God', 'now')",
     );
     row.run("creation", "", JSON.stringify(creation), JSON.stringify(base), 4);
     db.run(
@@ -912,6 +929,7 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
             { index: 1, skill: "Slash" },
             { index: 2, skill: "Tinkering" },
             { index: 3, skill: "Secret" },
+            { index: 4, skill: "Gliding" },
           ],
           skillPanel: [
             { name: "Slash", index: 1 },
@@ -979,11 +997,16 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(rows.get("skills/Slash")).toEqual({ skill: "Slash", display: "Slashing" });
     expect(rows.get("skills/Thrust")).toEqual({ skill: "Thrust", hidden: true });
     expect([...rows.keys()].filter((k) => k.startsWith("skills/")).sort()).toEqual([
+      "skills/Gliding",
       "skills/HeavyArms",
       "skills/Meditation",
+      "skills/Shoveling",
       "skills/Slash",
       "skills/Thrust",
     ]);
+    expect(rows.get("skills/Shoveling")).toBeNull();
+    // The operator's page did not show the pack's Gliding.
+    expect(rows.get("skills/Gliding")).toEqual({ skill: "Gliding", hidden: true });
     expect(rows.has("skillPanel/")).toBe(false);
     // The draft's page: Meditation shown as Calm, over the published rows.
     const drafted = new Map(
@@ -998,6 +1021,12 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(drafted.get("skills/Slash")).toEqual({ skill: "Slash" });
     expect(drafted.get("skills/Thrust")).toEqual({ skill: "Thrust" });
     expect(drafted.has("skillPanel/")).toBe(false);
+    // Removed skills stay removed: the draft's page does not bring them back as hidden.
+    expect(
+      db
+        .query("SELECT row_key, op FROM content_draft WHERE row_key IN ('Farming', 'Shoveling')")
+        .all(),
+    ).toEqual([{ row_key: "Farming", op: "remove" }]);
     // The drafted HeavyArms row keeps the name it shows by.
     expect(drafted.get("skills/HeavyArms")).toEqual({ skill: "HeavyArms", display: "Heavy Arms" });
     // The drafted Fighter: no label (it was empty), and the draft-only skill kept by key.
@@ -1013,7 +1042,13 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       label: "Knight",
       skills: { Slash: 25, Thrust: 20 },
     });
-    expect(rows.has("startClasses/2")).toBe(false);
+    // Mage's values, kept within 0 to 100.
+    expect(rows.get("startClasses/2")).toEqual({
+      code: 2,
+      label: "Mage",
+      skills: { Slash: 0, Thrust: 100, Magery: 30 },
+    });
+    expect(rows.has("startClasses/3")).toBe(false);
     expect(
       JSON.parse(
         (
@@ -1035,6 +1070,7 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       { skill: "Slash" },
       { skill: "Tinkering", display: "Tinker" },
       { skill: "Secret", hidden: true },
+      { skill: "Gliding", hidden: true },
     ]);
     expect(migrated.data.classes.startClasses).toEqual([
       { code: 1, label: "A", skills: { Slash: 5, Secret: 2 } },

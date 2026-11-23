@@ -274,6 +274,19 @@ describe("monsters hitting players", () => {
     expect(monsterHitsPlayer(1, zero, 0, rng)).toEqual({ kind: "parry" });
     expect(rng.calls).toEqual([3, 90]);
   });
+  test("a world that binds no Axe Fighting skill keeps the gear's delay for an axe", () => {
+    const ring = { ...NO_EQUIPMENT, weapon: "Axe", ring: "Ring of Quickness" };
+    const before = swingCooldowns(ring, startingSkills(1)).atDelay;
+    const d = structuredClone(classicData) as ContentData;
+    d.bindings.skills = {};
+    installContent(buildContentStore(d));
+    try {
+      expect(swingCooldowns(ring, startingSkills(1)).atDelay).toBe(10);
+      expect(before).not.toBe(10);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
   test("a world that binds no Parry or Block skill makes no parry or block roll", () => {
     const d = structuredClone(classicData) as ContentData;
     d.bindings.skills = {};

@@ -113,6 +113,10 @@ body {
     sans-serif;
   color: #000;
   line-height: 15px;
+  /* One line per class, level with its radio: a long label is cut, never wrapped. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* The class radios: 1.6's three rows, scrolling when the content offers more classes. */
 .cc-class-list {
@@ -121,6 +125,8 @@ body {
 .cc-class-list.cc-class-scroll {
   overflow-x: hidden;
   overflow-y: auto;
+  /* The page blocks touch gestures (html, body); a long class list still scrolls by touch. */
+  touch-action: pan-y;
   overscroll-behavior: contain;
 }
 
