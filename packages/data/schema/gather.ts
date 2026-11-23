@@ -40,10 +40,12 @@ export const harvestNodeSchema = z.strictObject({
   requires: requirementSchema.optional(),
   /** Layer 2 becomes this on success. */
   becomes: z.string().length(2),
-  /** Reads the counter table, and is the skill the gain row trains. */
+  /** Reads the counter table, and is the skill a success trains. */
   skill: z.string().min(1),
-  /** Rolls the skill's `skillGain` row on every success. */
+  /** Every success trains the skill by its `gather` progression (the skill must have one). */
   gains: z.boolean(),
+  /** The XP a success gives an `xp`-model skill, replacing the skill's own `gather` amount. */
+  xp: z.number().int().min(0).max(1_000_000_000).optional(),
   /** A table in `yields`, rolled on every success. */
   yield: z.string().min(1).optional(),
   /** Every success may uncover the buried treasure. */
@@ -70,17 +72,6 @@ export const yieldTableSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({ kind: z.literal("ore") }),
 ]);
-
-export const skillGainSchema = z.strictObject({
-  handler: z.string().min(1),
-  skill: z.string().min(1),
-  /** `random(chance) = 1`. */
-  chance: z.number().int().positive(),
-  /** Rolls only while min <= skill < below (0 to 99). */
-  min: z.number().int(),
-  below: z.number().int(),
-  text: z.string().min(1),
-});
 
 export const gatherDataSchema = z
   .strictObject({
@@ -150,11 +141,10 @@ export const gatherDataSchema = z
         chance: z.number().int().positive(),
         text: z.string(),
       }),
-      texts: z.strictObject({ plant: z.string(), plantWrong: z.string(), advanced: z.string() }),
+      texts: z.strictObject({ plant: z.string(), plantWrong: z.string() }),
     }),
     harvest: z.array(harvestNodeSchema),
     yields: z.record(z.string().min(1), yieldTableSchema),
-    skillGain: z.array(skillGainSchema).min(1),
   })
   .superRefine((data, ctx) => {
     // A node after one on the same tile, of the same kind, open to every tool and every ground, is
@@ -176,14 +166,6 @@ export const gatherDataSchema = z
           message: `an earlier ${n.can} node on tile ${JSON.stringify(n.tile)} takes every tool on any ground, so this one is never reached`,
         });
       }
-      const norm = (k: string) => k.replace(/\s+/g, "").toLowerCase();
-      if (n.gains && !data.skillGain.some((r) => norm(r.skill) === norm(n.skill))) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["harvest", i, "gains"],
-          message: `no skillGain row trains ${JSON.stringify(n.skill)}`,
-        });
-      }
       if (n.yield !== undefined && !Object.hasOwn(data.yields, n.yield)) {
         ctx.addIssue({
           code: "custom",
@@ -196,5 +178,4 @@ export const gatherDataSchema = z
 
 export type HarvestNode = z.infer<typeof harvestNodeSchema>;
 export type YieldTable = z.infer<typeof yieldTableSchema>;
-export type SkillGainRule = z.infer<typeof skillGainSchema>;
 export type GatherData = z.infer<typeof gatherDataSchema>;

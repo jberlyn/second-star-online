@@ -323,15 +323,5 @@ export function monsterHitsPlayer(
   return { kind: "hit", lost: power };
 }
 
-/** The parry gain: `random(Parry) = 1` and 0 < Parry < 100. */
-export function rollParryGain(parry: number, rng: Rng): boolean {
-  return rng.random(parry) === 1 && parry < 100 && parry > 0;
-}
-
-/** The block gain: also needs Parry > 50. */
-export function rollBlockGain(block: number, parry: number, rng: Rng): boolean {
-  return rng.random(block) === 1 && block < 100 && block > 0 && parry > 50;
-}
-
 /** The hit flicker: 40 frames of i-frames. */
 export const FLICKER_FRAMES = 40;

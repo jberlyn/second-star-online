@@ -4,7 +4,7 @@
  * (monster, player) per tick, so each player's hazard is the original's.
  */
 import {
-  advancedText,
+  advancedLines,
   anyMatch,
   boundSkillIndex,
   content,
@@ -12,15 +12,15 @@ import {
   EQUIP_FIELD,
   type Fighter,
   FLICKER_FRAMES,
+  findSkillIndex,
   isTrap,
   monsterHitsPlayer,
   monsterReaches,
   type Rng,
   rollArmourBreak,
-  rollBlockGain,
-  rollParryGain,
-  SKILL_KEYS,
   shattersText,
+  train,
+  trainsFrom,
 } from "@secondstaronline/shared";
 
 import { logTransform } from "../admin/activity.ts";
@@ -135,26 +135,9 @@ function hitMe2(
   const shielded = onHolyShield(p, map.slots);
   const hit = monsterHitsPlayer(attack, f, p.defenseBonus, ctx.rng, shielded, p.lastToHitMe);
   const lines: string[] = [];
-  const parry = boundSkillIndex("parry");
-  const block = boundSkillIndex("block");
-  // Read when it rolls: on a plain hit the Parry gain rolls first, and Block's gain reads the
-  // Parry that leaves.
-  const parryValue = () => (parry === undefined ? 0 : (p.char.skills[parry] ?? 0));
-  // An unbound Parry or Block skill is never trained.
-  const gainParry = () => {
-    const now = parryValue();
-    if (parry !== undefined && rollParryGain(now, ctx.rng)) {
-      p.char.skills[parry] = now + 1;
-      lines.push(advancedText(SKILL_KEYS[parry] ?? ""));
-    }
-  };
-  const gainBlock = () => {
-    const b = block === undefined ? 0 : (p.char.skills[block] ?? 0);
-    if (block !== undefined && rollBlockGain(b, parryValue(), ctx.rng)) {
-      p.char.skills[block] = b + 1;
-      lines.push(advancedText(SKILL_KEYS[block] ?? ""));
-    }
-  };
+  // On a plain hit the Parry gain rolls first, and Block's requirement reads the Parry that leaves.
+  const gainParry = () => gainDefence(p, "parry", ctx.rng, lines);
+  const gainBlock = () => gainDefence(p, "block", ctx.rng, lines);
   p.flicker = FLICKER_FRAMES;
   p.vitalsDirty = true;
   if (hit.kind === "shield") {
@@ -201,15 +184,59 @@ function hitMe2(
 }
 
 /** The rules' view of a player. */
+/**
+ * The Parry or Block gain when struck (the `defend` source): the bound skill's progression, a line
+ * for each level gained. An unbound skill rolls nothing.
+ */
+export function gainDefence(p: Player, b: "parry" | "block", rng: Rng, lines: string[]): void {
+  const i = boundSkillIndex(b);
+  if (i !== undefined) {
+    lines.push(...advancedLines(i, train(fighterOf(p), i, "defend", rng)));
+  }
+}
+
+/**
+ * A hit that did damage trains the hitter's skills (the `hit` source): `skills` by name (the
+ * weapon's `weaponSkills`, or a spell's school), each once, `damage` already capped at what the
+ * target had left. A line for each level gained. A skill with no `hit` settings rolls nothing.
+ */
+export function gainOnHit(
+  p: Player,
+  skills: readonly string[],
+  damage: number,
+  rng: Rng,
+): string[] {
+  const out: string[] = [];
+  // A hit on a target with nothing left to lose did no damage.
+  if (!(damage > 0)) {
+    return out;
+  }
+  const seen = new Set<number>();
+  for (const name of skills) {
+    const i = findSkillIndex(name);
+    if (i === undefined || seen.has(i) || !trainsFrom(i, "hit")) {
+      continue;
+    }
+    seen.add(i);
+    out.push(
+      ...advancedLines(i, train(fighterOf(p), i, "hit", rng, { damage: Math.max(0, damage) })),
+    );
+  }
+  return out;
+}
+
 export function fighterOf(p: Player): Fighter {
   const s = statsOf(p);
+  p.char.skillXp ??= [];
   return {
     level: p.char.vitals.level,
     str: s.str,
     sta: s.sta,
     int: s.int,
     wis: s.wis,
+    dex: s.dex,
     skills: p.char.skills,
+    skillXp: p.char.skillXp,
     equip: p.char.equip,
     faction: p.char.faction,
     attackBonus: p.attackBonus,

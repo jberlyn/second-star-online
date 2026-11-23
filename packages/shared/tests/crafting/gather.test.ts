@@ -6,7 +6,13 @@ import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
 
-import { buildContentStore, type ContentData, installContent } from "../../src/content/store.ts";
+import {
+  buildContentStore,
+  type ContentData,
+  content,
+  installContent,
+} from "../../src/content/store.ts";
+import { NO_FACTION, skillIndex } from "../../src/rules/core/fighter.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
   asksAboutTreasure,
@@ -28,11 +34,9 @@ import {
   type RegrowthHooks,
   regrowthFrame,
   rollMiningFind,
-  rollSkillGain,
   rollYield,
   rumourLine,
   seedTile,
-  skillGainRule,
   sprinkleOffset,
   TREASURE,
   tierText,
@@ -44,6 +48,22 @@ import {
   withTile,
   workedNode,
 } from "../../src/rules/crafting/gather.ts";
+import { train } from "../../src/rules/progression/progress.ts";
+
+/** Skill `skill` at `value`, trained once from `source`: whether it rose. */
+function gainAt(skill: string, source: "gather" | "craft", value: number, rng: Rng): boolean {
+  const skills = content().classes.skills.map(() => 0);
+  skills[skillIndex(skill)] = value;
+  const t = { level: 1, str: 1, sta: 1, int: 1, wis: 1, skills, faction: NO_FACTION };
+  return train(t, skillIndex(skill), source, rng) === 1;
+}
+
+/** A cast of the line and, as the server does next, the Fishing gain (the `gather` source). */
+function fish(skill: number, left: number, rng: Rng) {
+  const r = castLine(skill, left, rng);
+  const gained = r.trains && gainAt("Fishing", "gather", skill, rng);
+  return { fish: r.fish, gained, antiMacro: r.antiMacro };
+}
 
 /** Answers `random(n)` from per-n queues; otherwise `n` (never 1 unless n = 1). */
 function rngByN(queues: Record<number, number[]> = {}): Rng & { calls: number[] } {
@@ -140,10 +160,6 @@ describe("tools and counters", () => {
     } finally {
       installContent(buildContentStore(classicData));
     }
-  });
-
-  test("a skill's gain row is found however its name is spaced or cased", () => {
-    expect(skillGainRule("lumber jacking")?.skill).toBe("Lumberjacking");
   });
 
   test("bug fixed: every success takes exactly the table's number of hits, the first too", () => {
@@ -284,23 +300,23 @@ describe("fishing", () => {
     expect(fishCheck(0)).toBe(30);
     expect(fishCheck(1)).toBe(30);
     const rng = rngByN({ 30: [1], 16: [1] });
-    expect(castLine(0, 5, rng)).toEqual({ fish: "Raw Fish", gained: true, antiMacro: 4 });
+    expect(fish(0, 5, rng)).toEqual({ fish: "Raw Fish", gained: true, antiMacro: 4 });
     expect(rng.calls).toEqual([30, 16]);
   });
 
   test("bug fixed: only a catch spends the anti-macro counter; the Imp rolls every cast", () => {
-    expect(castLine(20, 5, rngByN({ 28: [1], 16: [1] }))).toEqual({
+    expect(fish(20, 5, rngByN({ 28: [1], 16: [1] }))).toEqual({
       fish: "Trout",
       gained: true,
       antiMacro: 4,
     });
     // No bite: the Imp still rolls while the count lasts, and a skill-up costs nothing.
     const rng = rngByN({ 16: [1] });
-    expect(castLine(20, 5, rng)).toEqual({ fish: null, gained: true, antiMacro: 5 });
+    expect(fish(20, 5, rng)).toEqual({ fish: null, gained: true, antiMacro: 5 });
     expect(rng.calls).toEqual([28, 16]); // FishCheck 28 at Fishing 11-20
     // At 0 nothing but the bite roll.
     const spent = rngByN({ 28: [1] });
-    expect(castLine(20, 0, spent)).toEqual({ fish: null, gained: false, antiMacro: 0 });
+    expect(fish(20, 0, spent)).toEqual({ fish: null, gained: false, antiMacro: 0 });
     expect(spent.calls).toEqual([28]);
   });
 
@@ -314,7 +330,7 @@ describe("fishing", () => {
 
   test("the last allowance goes to the catch, so no Imp roll follows", () => {
     const rng = rngByN({ 28: [1] });
-    expect(castLine(20, 1, rng)).toEqual({ fish: "Trout", gained: false, antiMacro: 0 });
+    expect(fish(20, 1, rng)).toEqual({ fish: "Trout", gained: false, antiMacro: 0 });
     expect(rng.calls).toEqual([28]);
   });
 });
@@ -448,7 +464,11 @@ describe("skill gain", () => {
         "Blacksmithing",
         "Alchemy",
         "Carpentry",
-      ].map((s) => [s, skillGainRule(s)?.chance]),
+      ].map((s) => {
+        const on = content().classes.skills.find((r) => r.skill === s)?.progression?.on;
+        const settings = on?.gather || on?.craft || undefined;
+        return [s, settings && "roll" in settings ? settings.roll : undefined];
+      }),
     );
     expect(rolls).toEqual({
       Lumberjacking: 12,
@@ -461,16 +481,21 @@ describe("skill gain", () => {
       Alchemy: 15,
       Carpentry: 9,
     });
-    expect(skillGainRule("Mining")?.text).toBe("You have advanced in the art of Mining!");
   });
 
   test("bug fixed: a skill at 0 can rise; 100 is the cap", () => {
-    for (const skill of ["Lumberjacking", "Blacksmithing", "Alchemy", "Carpentry", "Fishing"]) {
-      expect(rollSkillGain(skill, 0, { random: () => 1 })).toBe(true);
+    for (const [skill, source] of [
+      ["Lumberjacking", "gather"],
+      ["Blacksmithing", "craft"],
+      ["Alchemy", "craft"],
+      ["Carpentry", "craft"],
+      ["Fishing", "gather"],
+    ] as const) {
+      expect(gainAt(skill, source, 0, { random: () => 1 })).toBe(true);
     }
     const rng = rngByN({ 12: [1, 1] });
-    expect(rollSkillGain("Lumberjacking", 100, rng)).toBe(false);
+    expect(gainAt("Lumberjacking", "gather", 100, rng)).toBe(false);
     expect(rng.calls).toEqual([]);
-    expect(rollSkillGain("Lumberjacking", 99, rng)).toBe(true);
+    expect(gainAt("Lumberjacking", "gather", 99, rng)).toBe(true);
   });
 });

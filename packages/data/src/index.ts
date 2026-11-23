@@ -17,7 +17,7 @@ export type {
   WeaponSkills,
 } from "../schema/classes.ts";
 export type { CraftData } from "../schema/craft.ts";
-export type { GatherData, HarvestNode, SkillGainRule, YieldTable } from "../schema/gather.ts";
+export type { GatherData, HarvestNode, YieldTable } from "../schema/gather.ts";
 export type { HelpData, HelpTopic } from "../schema/help.ts";
 export type { HouseData, HouseType } from "../schema/houses.ts";
 export type { EquipSlot, ItemBehaviour, ItemRulesData } from "../schema/item-rules.ts";
@@ -32,6 +32,18 @@ export type {
   MonstersData,
 } from "../schema/monsters.ts";
 export type { NpcFilesData, NpcFileText } from "../schema/npcfiles.ts";
+export type {
+  Cap,
+  ChanceSettings,
+  Curve,
+  Formula,
+  FormulaRow,
+  ProgressionData,
+  ProgressionSource,
+  SkillProgression,
+  StatTable,
+  XpSettings,
+} from "../schema/progression.ts";
 export type { QuestData } from "../schema/quests.ts";
 export type { MemberRect, RectsData } from "../schema/rects.ts";
 export type { SeedMapData } from "../schema/seed-map.ts";

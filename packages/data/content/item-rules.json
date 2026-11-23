@@ -1421,31 +1421,61 @@
         "match": "exact",
         "pattern": "Unholy Combat Book",
         "skill": "UnholyCombat",
-        "shown": "Unholy Combat"
+        "points": [
+          {
+            "op": "set",
+            "value": "1 + random(5)"
+          }
+        ],
+        "upTo": 77
       },
       {
         "match": "exact",
         "pattern": "Thrust Book",
         "skill": "Thrust",
-        "shown": "Thrust"
+        "points": [
+          {
+            "op": "set",
+            "value": "1 + random(5)"
+          }
+        ],
+        "upTo": 77
       },
       {
         "match": "exact",
         "pattern": "Heavy Arms Book",
         "skill": "HeavyArms",
-        "shown": "Heavy Arms"
+        "points": [
+          {
+            "op": "set",
+            "value": "1 + random(5)"
+          }
+        ],
+        "upTo": 77
       },
       {
         "match": "exact",
         "pattern": "Parry Book",
         "skill": "Parry",
-        "shown": "Parry"
+        "points": [
+          {
+            "op": "set",
+            "value": "1 + random(5)"
+          }
+        ],
+        "upTo": 77
       },
       {
         "match": "exact",
         "pattern": "Slash Book",
         "skill": "Slash",
-        "shown": "Slash"
+        "points": [
+          {
+            "op": "set",
+            "value": "1 + random(5)"
+          }
+        ],
+        "upTo": 77
       }
     ],
     "usable": [

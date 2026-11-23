@@ -357,24 +357,122 @@
       "skill": "Slash"
     },
     {
-      "skill": "Thrust"
+      "skill": "Thrust",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "kill": {
+            "roll": [
+              {
+                "op": "set",
+                "value": "skill"
+              },
+              {
+                "op": "add",
+                "value": 40
+              },
+              {
+                "op": "subtract",
+                "value": "stamina"
+              },
+              {
+                "op": "add",
+                "value": "wisdomBonus"
+              }
+            ],
+            "requires": {
+              "skill": "Slash",
+              "above": 30
+            }
+          }
+        }
+      }
     },
     {
       "skill": "Parry"
     },
     {
       "skill": "HeavyArms",
-      "display": "Heavy Arms"
+      "display": "Heavy Arms",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "kill": {
+            "requires": {
+              "skill": "Thrust",
+              "above": 60
+            }
+          }
+        }
+      }
     },
     {
       "skill": "AxeFighting",
       "display": "Axe Fighting"
     },
     {
-      "skill": "Swordsmanship"
+      "skill": "Swordsmanship",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "kill": {
+            "roll": [
+              {
+                "op": "set",
+                "value": "skill"
+              },
+              {
+                "op": "add",
+                "value": 25
+              },
+              {
+                "op": "subtract",
+                "value": "stamina"
+              },
+              {
+                "op": "add",
+                "value": "wisdomBonus"
+              }
+            ],
+            "requires": {
+              "skill": "Slash",
+              "above": 50
+            }
+          }
+        }
+      }
     },
     {
-      "skill": "Fencing"
+      "skill": "Fencing",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "kill": {
+            "roll": [
+              {
+                "op": "set",
+                "value": "skill"
+              },
+              {
+                "op": "add",
+                "value": 25
+              },
+              {
+                "op": "subtract",
+                "value": "stamina"
+              },
+              {
+                "op": "add",
+                "value": "wisdomBonus"
+              }
+            ],
+            "requires": {
+              "skill": "Swordsmanship",
+              "above": 20
+            }
+          }
+        }
+      }
     },
     {
       "skill": "Magery"
@@ -385,7 +483,21 @@
     },
     {
       "skill": "UnholyCombat",
-      "display": "Unholy Combat"
+      "display": "Unholy Combat",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "kill": {
+            "roll": [
+              {
+                "op": "set",
+                "value": "skill"
+              }
+            ],
+            "cap": "mage"
+          }
+        }
+      }
     },
     {
       "skill": "Archery"
@@ -410,7 +522,15 @@
     },
     {
       "skill": "StaffFighting",
-      "display": "Staff Fighting"
+      "display": "Staff Fighting",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "kill": {
+            "cap": "mage"
+          }
+        }
+      }
     },
     {
       "skill": "ItemIdentification",
@@ -422,7 +542,32 @@
     },
     {
       "skill": "HammerWielding",
-      "display": "Hammer Wielding"
+      "display": "Hammer Wielding",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "kill": {
+            "roll": [
+              {
+                "op": "set",
+                "value": "skill"
+              },
+              {
+                "op": "add",
+                "value": 40
+              },
+              {
+                "op": "subtract",
+                "value": "stamina"
+              },
+              {
+                "op": "add",
+                "value": "wisdomBonus"
+              }
+            ]
+          }
+        }
+      }
     },
     {
       "skill": "fire",
@@ -439,7 +584,18 @@
       "skill": "Earth"
     },
     {
-      "skill": "Block"
+      "skill": "Block",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "defend": {
+            "requires": {
+              "skill": "Parry",
+              "above": 50
+            }
+          }
+        }
+      }
     },
     {
       "skill": "MartialArts",
@@ -455,31 +611,112 @@
       "skill": "Punch"
     },
     {
-      "skill": "Cooking"
+      "skill": "Cooking",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "craft": {
+            "roll": 8,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Alchemy"
+      "skill": "Alchemy",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "craft": {
+            "roll": 15,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Lumberjacking"
+      "skill": "Lumberjacking",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "gather": {
+            "roll": 12,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Carpentry"
+      "skill": "Carpentry",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "craft": {
+            "roll": 9,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Fishing"
+      "skill": "Fishing",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "gather": {
+            "roll": 16,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Blacksmithing"
+      "skill": "Blacksmithing",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "craft": {
+            "roll": 9,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Mining"
+      "skill": "Mining",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "gather": {
+            "roll": 22,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Shoveling"
+      "skill": "Shoveling",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "gather": {
+            "roll": 12,
+            "cap": 100
+          }
+        }
+      }
     },
     {
-      "skill": "Farming"
+      "skill": "Farming",
+      "progression": {
+        "model": "chance",
+        "on": {
+          "gather": {
+            "roll": 12,
+            "cap": 100
+          }
+        }
+      }
     }
   ],
   "startClasses": [
@@ -542,8 +779,8 @@
         "weapon": "Dagger",
         "match": "exact",
         "skills": [
-          "Slash",
-          "Thrust"
+          "Thrust",
+          "Slash"
         ]
       },
       {
@@ -557,26 +794,26 @@
         "weapon": "Knife",
         "match": "exact",
         "skills": [
-          "Slash",
-          "Thrust"
+          "Thrust",
+          "Slash"
         ]
       },
       {
         "weapon": "Axe",
         "match": "contains",
         "skills": [
-          "Slash",
+          "Axe Fighting",
           "Thrust",
-          "Heavy Arms",
-          "Axe Fighting"
+          "Slash",
+          "Heavy Arms"
         ]
       },
       {
         "weapon": "Short Sword",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -586,11 +823,11 @@
         "match": "exact",
         "skills": [
           "Unholy Combat",
-          "Slash",
           "Thrust",
+          "Slash",
+          "Heavy Arms",
           "Swordsmanship",
-          "Fencing",
-          "Heavy Arms"
+          "Fencing"
         ]
       },
       {
@@ -598,8 +835,8 @@
         "match": "exact",
         "skills": [
           "Unholy Combat",
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -609,39 +846,39 @@
         "match": "exact",
         "skills": [
           "Unholy Combat",
-          "Slash",
           "Thrust",
+          "Slash",
+          "Heavy Arms",
           "Swordsmanship",
-          "Fencing",
-          "Heavy Arms"
+          "Fencing"
         ]
       },
       {
         "weapon": "Broad Sword",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
-          "Swordsmanship",
-          "Heavy Arms"
+          "Slash",
+          "Heavy Arms",
+          "Swordsmanship"
         ]
       },
       {
         "weapon": "Knight's Sword",
         "match": "exact",
         "skills": [
-          "Slash",
           "Thrust",
-          "Swordsmanship",
-          "Heavy Arms"
+          "Slash",
+          "Heavy Arms",
+          "Swordsmanship"
         ]
       },
       {
         "weapon": "Scimitar",
         "match": "exact",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -650,19 +887,19 @@
         "weapon": "Long Sword",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
+          "Heavy Arms",
           "Swordsmanship",
-          "Fencing",
-          "Heavy Arms"
+          "Fencing"
         ]
       },
       {
         "weapon": "Gold Sword",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -671,8 +908,8 @@
         "weapon": "Laser Sword",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -681,19 +918,19 @@
         "weapon": "Sword of Hope",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
+          "Heavy Arms",
           "Swordsmanship",
-          "Fencing",
-          "Heavy Arms"
+          "Fencing"
         ]
       },
       {
         "weapon": "Star Sword",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -702,8 +939,8 @@
         "weapon": "Pharaoh Sword",
         "match": "contains",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -712,30 +949,30 @@
         "weapon": "Ice Sword",
         "match": "exact",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
+          "Heavy Arms",
           "Swordsmanship",
-          "Fencing",
-          "Heavy Arms"
+          "Fencing"
         ]
       },
       {
         "weapon": "Fire Sword",
         "match": "exact",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
+          "Heavy Arms",
           "Swordsmanship",
-          "Fencing",
-          "Heavy Arms"
+          "Fencing"
         ]
       },
       {
         "weapon": "Steel Scimitar",
         "match": "exact",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -744,8 +981,8 @@
         "weapon": "Dragon Sword",
         "match": "exact",
         "skills": [
-          "Slash",
           "Thrust",
+          "Slash",
           "Swordsmanship",
           "Fencing"
         ]
@@ -804,9 +1041,9 @@
         "skills": [
           "Martial Arts",
           "Thrust",
+          "Slash",
           "Swordsmanship",
-          "Fencing",
-          "Slash"
+          "Fencing"
         ]
       },
       {
@@ -815,9 +1052,9 @@
         "skills": [
           "Martial Arts",
           "Thrust",
+          "Slash",
           "Swordsmanship",
-          "Fencing",
-          "Slash"
+          "Fencing"
         ]
       },
       {
@@ -826,9 +1063,9 @@
         "skills": [
           "Martial Arts",
           "Thrust",
+          "Slash",
           "Swordsmanship",
-          "Fencing",
-          "Slash"
+          "Fencing"
         ]
       },
       {
@@ -867,10 +1104,92 @@
         "weapon": "Crossbow",
         "match": "contains",
         "skills": [
-          "Martial Arts",
-          "Archery"
+          "Archery",
+          "Martial Arts"
         ]
       }
     ]
+  },
+  "progression": {
+    "line": "You have advanced in the art of {skill}!",
+    "tables": {
+      "wisdomBonus": {
+        "stat": "wisdom",
+        "start": 30,
+        "tiers": [
+          {
+            "above": 5,
+            "add": -5
+          },
+          {
+            "above": 10,
+            "add": -7
+          },
+          {
+            "above": 15,
+            "add": -8
+          },
+          {
+            "above": 20,
+            "add": -5
+          },
+          {
+            "above": 22,
+            "add": -2
+          },
+          {
+            "above": 23,
+            "add": -3
+          }
+        ]
+      }
+    },
+    "curves": {},
+    "defaults": {
+      "chance": {
+        "kill": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            },
+            {
+              "op": "add",
+              "value": "wisdomBonus"
+            }
+          ],
+          "cap": "faction",
+          "monsterCap": true
+        },
+        "shot": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            }
+          ],
+          "cap": 100
+        },
+        "defend": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            }
+          ],
+          "cap": 100
+        },
+        "cast": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            }
+          ],
+          "cap": "mage"
+        }
+      },
+      "xp": {}
+    }
   }
 }

@@ -7,7 +7,11 @@
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 
-import { comparePackVersions, DATASET_SCHEMAS } from "@secondstaronline/data/schema";
+import {
+  comparePackVersions,
+  DATASET_SCHEMAS,
+  skillDependents,
+} from "@secondstaronline/data/schema";
 import {
   buildContentStore,
   CONTENT_FORMAT,
@@ -404,6 +408,13 @@ export interface ContentServiceOptions {
   points?: () => ContentProblem[];
 }
 
+/** "A", "A and B", "A, B and C". */
+function listOf(names: readonly string[]): string {
+  return names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 export class ContentService {
   private readonly db: Db;
   private readonly now: () => string;
@@ -789,6 +800,16 @@ export class ContentService {
     }
     if (op === "revert" && !contentRows(this.db).some((r) => sameRow(r, ref))) {
       return fail(`${rowLabel(ref)} has no change to revert`);
+    }
+    // A skill another skill's progression names (a requirement, a formula) cannot go first.
+    if (op === "remove" && ref.dataset === "classes" && ref.part === "skills" && ref.key !== null) {
+      const classes = this.draftContent().classes;
+      const needs = skillDependents(classes.progression, classes.skills, ref.key);
+      if (needs.length > 0) {
+        return fail(
+          `${ref.key} cannot be removed: ${listOf(needs)} ${needs.length === 1 && needs[0] !== "the world's defaults" ? "depends" : "depend"} on it (a requirement or a formula in the progression names it). Change that progression first.`,
+        );
+      }
     }
     if (op === "remove" && rowValue(this.published, ref) === undefined) {
       return fail(

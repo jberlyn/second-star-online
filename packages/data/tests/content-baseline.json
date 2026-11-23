@@ -514,7 +514,7 @@
     ],
     [
       "1",
-      "8772ce408b93ae38"
+      "f7dcb1c91c149119"
     ],
     [
       "2",
@@ -522,71 +522,79 @@
     ],
     [
       "3",
-      "8e0ae2928e718274"
+      "df17be76d406dd80"
     ],
     [
       "4",
-      "39bba8ca62d53e59"
+      "b66c1ab5629bbabf"
     ],
     [
       "5",
-      "14d6b976ce6eac60"
+      "c790486ae1d67316"
     ],
     [
       "6",
-      "f89aef143f185690"
+      "dacdc5a324556b19"
     ],
     [
       "7",
-      "84adad3f0ab074b5"
+      "8a2bd8e0a28dc7d9"
     ],
     [
       "8",
-      "9867ad0dd52f98a6"
+      "923cc65ac93748fa"
     ],
     [
       "9",
-      "153704dc4e96c3a3"
+      "747d5254fd72dd4a"
     ],
     [
       "10",
-      "5b7fbc30a6bef3b4"
+      "d42fa8bdcd691a06"
     ],
     [
       "11",
-      "1b60b6963285e9dc"
+      "98c1e067227174bc"
     ],
     [
       "12",
-      "8fd691a05eec35be"
+      "d948dd6a71513af7"
     ],
     [
       "13",
-      "5e6fc9ff11cf93d6"
+      "fdb881f9edc38583"
     ],
     [
       "14",
-      "ea19b383965cee7a"
+      "8f3dd522aa0d3e10"
     ],
     [
       "15",
-      "2d182f293cb89408"
+      "a1fbcb1b884d4184"
     ],
     [
       "16",
-      "52275060eca8d884"
+      "901dbcf528f363ee"
     ],
     [
       "17",
-      "03984f399038194b"
+      "205038cb637d9d83"
     ],
     [
       "18",
-      "9e3ff4d4d1c52445"
+      "30f8f3b897ad9234"
     ],
     [
       "19",
-      "767ae2dd28d0e013"
+      "64f0ba876f10d049"
+    ],
+    [
+      "20",
+      "a76eabf2443d7514"
+    ],
+    [
+      "21",
+      "0b581216e2927364"
     ],
     [
       "22",
@@ -614,15 +622,15 @@
     ],
     [
       "28",
-      "7e54e49995dd6744"
+      "772158f173e7e3b0"
     ],
     [
       "29",
-      "021ff39689b778c8"
+      "3343e583f67e29b5"
     ],
     [
       "30",
-      "757f8aada67dba52"
+      "d4aae79f9b9b31be"
     ],
     [
       "31",
@@ -642,7 +650,7 @@
     ],
     [
       "35",
-      "f9dd47d1f4a3cab0"
+      "795faaa907785171"
     ]
   ],
   "classes.json#/skills": [
@@ -652,7 +660,7 @@
     ],
     [
       "Thrust",
-      "5abc6f8ee97cefca"
+      "3a7bd154b04483a1"
     ],
     [
       "Parry",
@@ -660,7 +668,7 @@
     ],
     [
       "HeavyArms",
-      "62acc20779e9954d"
+      "9449ed6882cdc977"
     ],
     [
       "AxeFighting",
@@ -668,11 +676,11 @@
     ],
     [
       "Swordsmanship",
-      "d36a36acf5271d88"
+      "b630f62612355e5b"
     ],
     [
       "Fencing",
-      "3ba09018d523c727"
+      "4d0366627ae91e9e"
     ],
     [
       "Magery",
@@ -684,7 +692,7 @@
     ],
     [
       "UnholyCombat",
-      "3e0be0446cba9faa"
+      "a5757ebe1045aa34"
     ],
     [
       "Archery",
@@ -712,7 +720,7 @@
     ],
     [
       "StaffFighting",
-      "945d3413a4e4ba5d"
+      "fd6084cca3717750"
     ],
     [
       "ItemIdentification",
@@ -724,7 +732,7 @@
     ],
     [
       "HammerWielding",
-      "145f7eb7ee70ff8b"
+      "020b63cfac8f364b"
     ],
     [
       "fire",
@@ -744,7 +752,7 @@
     ],
     [
       "Block",
-      "81246dfa1ffa837a"
+      "121d543653f28773"
     ],
     [
       "MartialArts",
@@ -764,39 +772,39 @@
     ],
     [
       "Cooking",
-      "82d933f87aaded40"
+      "1a75e23fbe07bd65"
     ],
     [
       "Alchemy",
-      "f188e8746ff552eb"
+      "9c09907af7d948bb"
     ],
     [
       "Lumberjacking",
-      "301f83199ca4ebde"
+      "0f6ed5e82aeb2f1d"
     ],
     [
       "Carpentry",
-      "daec8046cb2dd825"
+      "752e457d27bbc750"
     ],
     [
       "Fishing",
-      "a4df7e06156d33d2"
+      "ca90e890c1038c71"
     ],
     [
       "Blacksmithing",
-      "1f94dd59b667dbee"
+      "d488cf7b35ffd239"
     ],
     [
       "Mining",
-      "2448bc8f21eec6ee"
+      "5399e34412832df4"
     ],
     [
       "Shoveling",
-      "9bf0a6be7398de6b"
+      "0accc2d9352aa3aa"
     ],
     [
       "Farming",
-      "c4ca77b3e70a91ff"
+      "1d661503becda8ee"
     ]
   ],
   "classes.json#/startClasses": [
@@ -2255,44 +2263,6 @@
     [
       "Lumberjacking",
       "7e9a35e6f949c470"
-    ]
-  ],
-  "gather.json#/skillGain": [
-    [
-      "Lumberjacking",
-      "7db40b4a5935640a"
-    ],
-    [
-      "Shoveling",
-      "3eaf8ce9904878f7"
-    ],
-    [
-      "Farming",
-      "d5badc107f7c0b72"
-    ],
-    [
-      "Mining",
-      "edd0e79c3637e4d0"
-    ],
-    [
-      "Fishing",
-      "c3d164f868379278"
-    ],
-    [
-      "Cooking",
-      "1b1f3f76e689ef25"
-    ],
-    [
-      "Blacksmithing",
-      "e30d7d3af290c560"
-    ],
-    [
-      "Alchemy",
-      "511971116f51fcf0"
-    ],
-    [
-      "Carpentry",
-      "79030d20da170635"
     ]
   ],
   "help.json#/topics": [
@@ -5080,23 +5050,23 @@
   "item-rules.json#/use/skillBooks": [
     [
       "UnholyCombat",
-      "6b9f54a9abfc54e3"
+      "9333286e298e6465"
     ],
     [
       "Thrust",
-      "12265eb63f702630"
+      "5c4546ef1f3984b8"
     ],
     [
       "HeavyArms",
-      "16f0c2aa7679f3e1"
+      "5f23f7d3381754aa"
     ],
     [
       "Parry",
-      "abb31498044468a7"
+      "8bcc70db58648757"
     ],
     [
       "Slash",
-      "74cb8892c632f3da"
+      "63974901ccea339d"
     ]
   ],
   "item-rules.json#/use/usable": [
@@ -10830,31 +10800,31 @@
   "spells.json#/spells": [
     [
       "Smoke Bomb",
-      "c82f0df81c173ccf"
+      "9268d0e5918d48c4"
     ],
     [
       "Minor Heal",
-      "4fb1ea107154fd20"
+      "a8f701f452a0a308"
     ],
     [
       "Morph",
-      "1b13f8398ef6d12e"
+      "9578ed80bf6c7334"
     ],
     [
       "Stone Skin",
-      "93740c6c8b3a4739"
+      "03c9182918eafd59"
     ],
     [
       "Crush",
-      "4b105b730521ee1f"
+      "cc053913465d3eee"
     ],
     [
       "Whirlwind",
-      "614952219621d931"
+      "0fffaa243125166b"
     ],
     [
       "Meteor",
-      "0aac596caf396f69"
+      "06fcff963b42d50d"
     ],
     [
       "Identify",
@@ -10866,27 +10836,27 @@
     ],
     [
       "Fireball",
-      "5fd6025ab8f172b1"
+      "d65308ce2e39801e"
     ],
     [
       "Summon Creature",
-      "be8b9ad33c3ff077"
+      "36a3f37c9552efec"
     ],
     [
       "Holy Shield",
-      "b53fb3cb26101106"
+      "ec7921f8a09583bb"
     ],
     [
       "Wind Wave",
-      "5536705645d7c759"
+      "724159c46c928446"
     ],
     [
       "Bolt",
-      "1a93b98b25a955d9"
+      "d46a411f5653715e"
     ],
     [
       "Firebolt",
-      "d991f082b7e9b0cb"
+      "5250a91b99a77516"
     ],
     [
       "Poison Dart",
@@ -10902,19 +10872,19 @@
     ],
     [
       "Firesword",
-      "0b54739750a2b520"
+      "baa489264793dcff"
     ],
     [
       "Major Heal",
-      "cf1d60e3246d77f9"
+      "720e4e5b2dc020d0"
     ],
     [
       "Replenish",
-      "d5a9c4d01f74f9ed"
+      "d755c0da3973cb05"
     ],
     [
       "Splash",
-      "7e868a56289aac37"
+      "cc7b340727c04af6"
     ],
     [
       "Nature Shift",
@@ -10926,7 +10896,7 @@
     ],
     [
       "Illusionary Spikes",
-      "5e747097d7e33add"
+      "edb13825e2c44722"
     ],
     [
       "Argon's Fist",
@@ -10938,7 +10908,7 @@
     ],
     [
       "Magic Shield",
-      "174bb7c467d5eb16"
+      "67f80b2e34953747"
     ],
     [
       "Create Food",
@@ -10946,27 +10916,27 @@
     ],
     [
       "Dispel Illusions",
-      "f2493ac3de5c7187"
+      "48b3b22caebb798a"
     ],
     [
       "Hold",
-      "ab7026c6ee3beef1"
+      "493c37275dbda5fd"
     ],
     [
       "Raise Dead",
-      "1fea4ebe886defe9"
+      "1a32e19fecf999ee"
     ],
     [
       "Web",
-      "6fc07f9198c92fd3"
+      "7ed5ac7e87d3b72d"
     ],
     [
       "Diminish Hunger",
-      "17eee8cbed209ab3"
+      "402ba60bf0dc4ed3"
     ],
     [
       "Radar",
-      "f396215f23bea6b7"
+      "8e6e5a60afba8d50"
     ],
     [
       "Haste",

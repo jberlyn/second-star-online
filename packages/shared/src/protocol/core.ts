@@ -389,6 +389,8 @@ export type CoreServerMsg =
       };
       /** Every skill's value by skill key (`classes.json` `skills`). */
       skills: Record<string, number>;
+      /** The running XP totals of the skills on the `xp` model, by key; absent when none are. */
+      xp?: Record<string, number>;
     }
   | { t: "vitals"; vitals: VitalsView }
   | { t: "you"; self: SelfState }

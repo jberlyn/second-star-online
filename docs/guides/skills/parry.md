@@ -13,7 +13,7 @@ Parry gives a chance to avoid a melee hit entirely, from monsters and players al
 
 ## How it rises
 
-- **Being attacked in melee**, by a monster or a player. Parry rolls `random(Parry) = 1` while it is from 1 to 99 when a hit lands, when you parry and when a Holy Shield stops the hit (`rollParryGain` in [combat.ts](../../../packages/shared/src/rules/combat/combat.ts)). Neither the combat cap nor the monster cap applies.
+- **Being attacked in melee**, by a monster or a player. Parry rolls `random(Parry) = 1` while it is from 1 to 99 when a hit lands, when you parry and when a Holy Shield stops the hit (its `defend` progression, `train` in [progress.ts](../../../packages/shared/src/rules/progression/progress.ts)). Neither the combat cap nor the monster cap applies.
 - **The Parry Book** adds 1 to 5 while Parry is below 77.
 
 ## What it does

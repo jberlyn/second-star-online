@@ -3,7 +3,7 @@
  * seeds, watering, regrowth and the skill handlers. Pure: the server applies the results; tables
  * come from the content store's `gather`, gathering and skill-gain data.
  */
-import type { HarvestNode, SkillGainRule, YieldTable } from "@secondstaronline/data";
+import type { HarvestNode, YieldTable } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import { type ContentStore, content, onContent } from "../../content/store.ts";
@@ -347,14 +347,15 @@ export function fishCheck(skill: number): number {
 
 /**
  * The fish-drop routine and its fishing helper. Returns the fish caught (or null) and whether the
- * skill rose. Only a catch spends the anti-macro counter, and the skill roll runs while it lasts.
+ * cast trains the bound Fishing skill (the caller trains it next, the `gather` source, as 1.6 rolled
+ * the gain last). Only a catch spends the anti-macro counter, and the skill trains while it lasts.
  * A cast mid-step catches like any other.
  */
 export function castLine(
   skill: number,
   antiMacro: number,
   rng: Rng,
-): { fish: string | null; gained: boolean; antiMacro: number } {
+): { fish: string | null; trains: boolean; antiMacro: number } {
   const bite = rng.random(fishCheck(skill)) === 1;
   let left = antiMacro;
   let fish: string | null = null;
@@ -362,11 +363,7 @@ export function castLine(
     fish = fishFor(skill);
     left -= 1;
   }
-  // The gain row of the bound skill, by its key as the skills list spells it.
-  const fishing = boundSkillIndex("fishing");
-  const gained =
-    left > 0 && fishing !== undefined && rollSkillGain(SKILL_KEYS[fishing] ?? "", skill, rng);
-  return { fish, gained, antiMacro: left };
+  return { fish, trains: left > 0 && boundSkillIndex("fishing") !== undefined, antiMacro: left };
 }
 
 // ---- farming ---------------------------------------------------------------------------------
@@ -496,30 +493,8 @@ export function rumourLine(npc: string, header: string, roll: number): string {
     : `${npc} says "A man came in here earlier and said he heard some treasure was near ${header}."`;
 }
 
-// ---- skill gain ------------------------------------------------------------------------------
-
-let RULES: readonly SkillGainRule[];
-
-/** The skill handler for a skill, matched as skill names are (case and spaces ignored). */
-export function skillGainRule(skill: string): SkillGainRule | null {
-  return RULES.find((r) => skillNorm(r.skill) === skillNorm(skill)) ?? null;
-}
-
-/**
- * One handler's roll: only while `min <= skill < below` (0 to 99), then `random(chance) = 1`. The
- * caller adds the point and prints `rule.text`.
- */
-export function rollSkillGain(skill: string, value: number, rng: Rng): boolean {
-  const r = skillGainRule(skill);
-  if (!r || value < r.min || value >= r.below) {
-    return false;
-  }
-  return rng.random(r.chance) === 1;
-}
-
 onContent((c) => {
   G = c.gather.gathering;
-  RULES = c.gather.skillGain;
   FISHING_LAYERS = G.fishing.layers;
   ANTI_MACRO_START = G.fishing.antiMacroStart;
   FISHING_STOPPED_TEXT = G.fishing.stoppedText;

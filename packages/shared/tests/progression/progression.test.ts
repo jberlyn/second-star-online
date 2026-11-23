@@ -23,7 +23,6 @@ import {
   monsterSkillCap,
   rollKillSkillGain,
   weaponSkillList,
-  wisAdd,
 } from "../../src/rules/progression/skillgain.ts";
 
 const minRng: Rng = { random: (n) => (n >= 1 ? 1 : 0) };
@@ -195,8 +194,8 @@ describe("kill skill gain", () => {
   test("a Dark Scimitar trains Unholy Combat, Slash, Thrust, Swordsmanship and Fencing", () => {
     expect(weaponSkillList("Dark Scimitar")).toEqual([
       "Unholy Combat",
-      "Slash",
       "Thrust",
+      "Slash",
       "Swordsmanship",
       "Fencing",
     ]);
@@ -208,9 +207,17 @@ describe("kill skill gain", () => {
     expect(monsterSkillCap(30, 1)).toBe(30);
     expect(monsterSkillCap(30, 21)).toBe(48);
   });
-  test("WisAdd 30 minus the Wisdom tiers", () => {
-    expect(wisAdd(1)).toBe(30);
-    expect(wisAdd(24)).toBe(0);
+  test("the kill roll adds 1.6's WisAdd (Classic's wisdomBonus): 30 minus the Wisdom tiers", () => {
+    const sizes = (wis: number) => {
+      const drawn: number[] = [];
+      rollKillSkillGain({ ...f(), wis }, 30, { random: (n) => (drawn.push(n), n) });
+      return drawn;
+    };
+    // Punch and Martial Arts at 1: random(1 + WisAdd) each.
+    expect(sizes(1)).toEqual([31, 31]);
+    expect(sizes(6)).toEqual([26, 26]);
+    expect(sizes(23)).toEqual([4, 4]);
+    expect(sizes(24)).toEqual([1, 1]);
   });
   test("Punch rises on random(Punch + WisAdd) = 1", () => {
     const x = f();

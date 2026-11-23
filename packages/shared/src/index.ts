@@ -76,6 +76,7 @@ export * from "./rules/monsters/loot.ts";
 export * from "./rules/movement/movement.ts";
 export * from "./rules/progression/creation.ts";
 export * from "./rules/progression/medals.ts";
+export * from "./rules/progression/progress.ts";
 export * from "./rules/progression/progression.ts";
 export * from "./rules/progression/promotion.ts";
 export * from "./rules/progression/skillgain.ts";

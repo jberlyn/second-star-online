@@ -88,7 +88,7 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `use.silent` | Use does and says nothing (keys, deeds, seeds, `Map`) | Any | Boolean |
 | `use.refusals` | The line Use shows for an item it does not accept (burned food) | Last | `text`; default "You cannot use the X." |
 | `use.books` | Mysticism needed for a spell book | Last | `mysticism`; default `1` |
-| `use.skillBooks` | Combat-skill books | First | `skill` raised and `shown` name |
+| `use.skillBooks` | Items that teach a skill when read (used up when they teach) | First | `skill`, `points` (a [formula](#formulas)), `xp` and `upTo`; see [Progression](#progression) |
 | `menu` | Item menu button in place of Equip | Last | `Cook`, `Mix`, `Build`, `Smith`, or `Storage`; default `Equip` |
 | `paperdoll.aliases` | Worn item sprite name | In order, per `layer` | `becomes` sprite name; default is the item's own name |
 | `ground.blocks` | Ground items that block players and monsters; one the world placed cannot be picked up | Any | Boolean |
@@ -164,14 +164,15 @@ The **engine fixtures** never take a behaviour, and no new content item may take
 | `tier` | The lowest tool tier that works it (1 when left out). A lower tier is refused: "You need a better tool to mine this." |
 | `under` | The layer-1 tile under it must be one of these (the shovel's diggable grounds); two nodes on one tile can split by ground |
 | `requires` | `{ "needs", "atLeast", "text"? }` (see [Requirements](#requirements)): "You need Mining 20 to mine this." |
-| `skill`, `gains` | The skill whose value reads the shared hit table (`gathering.counterTable`), and whether each success rolls its `skillGain` row |
+| `skill`, `gains` | The skill whose value reads the shared hit table (`gathering.counterTable`), and whether each success trains it by its `gather` [progression](#progression) (the publish check refuses `gains` on a skill with none) |
+| `xp` | The XP a success gives an `xp`-model skill, in place of the skill's own `gather` amount (Copper can give less than Gold) |
 | `yield` | A table in `yields`, rolled on every success |
 | `treasure` | Every success may uncover the buried treasure (Classic: the dig) |
 | `hitSound`, `successSound` | The swing sound when the faced tile is the node's, and the sound to the gatherer on a success |
 
 A refusal is said once, not on every swing, while the attack key stays held. **`yields`** holds the drop tables by name: `{ "kind": "chance", "item", "chance", "bySkill"? }` drops its item on `random(chance) = 1` (Classic's Logs, 1 in 3, and the two chunks, 1 in 130), with the chance taken from the last `bySkill` `{ gt, value }` row the skill is above when it has them; `{ "kind": "ore" }` is the mining strike, whose crystal count, colour pool and ore odds stay in `gathering.mining`. Fishing and watering are their own kinds: a `Fish` tool fishes the `gathering.fishing` water with its catch bands, and a `Water` tool waters `gathering.farming.watering` soil, reading `farming.wateringSkill` for its hits, and sprinkles on every swing. Regrowth stays in `gathering.regrowth.checks`: a new node that should grow back adds a check row there.
 
-So a new gathering skill needs no code. For example, add a `Panning` skill, a `Gold Pan` item with a `tools` row `{ "match": "exact", "pattern": "Gold Pan", "can": "Dig" }`, a node `{ "tile": "Q9", "can": "Dig", "tools": ["Gold Pan"], "becomes": "R9", "skill": "Panning", "gains": true, "yield": "Gold Dust", ... }`, a `Gold Dust` chance table, a `skillGain` row for Panning, and a regrowth check from `R9` back to `Q9`.
+So a new gathering skill needs no code. For example, add a `Panning` skill, a `Gold Pan` item with a `tools` row `{ "match": "exact", "pattern": "Gold Pan", "can": "Dig" }`, a node `{ "tile": "Q9", "can": "Dig", "tools": ["Gold Pan"], "becomes": "R9", "skill": "Panning", "gains": true, "yield": "Gold Dust", ... }`, a `Gold Dust` chance table, a `gather` progression on Panning (`"progression": { "model": "chance", "on": { "gather": { "roll": 12, "cap": 100 } } }`), and a regrowth check from `R9` back to `Q9`.
 
 ### Requirements
 
@@ -368,7 +369,7 @@ The NPC Editor checks these forms when you save; see the [economy guide](guides/
 
 These files have no worked example here; their schemas in [packages/data/schema/](../packages/data/schema/) document every field, and the matching [system guide](guides/README.md) describes what they do in play.
 
-- **`gather.json`:** `gathering` (the hit table, mining strikes, fishing, farming, regrowth and treasure), `harvest` and `yields` (see [Tools and gathering](#tools-and-gathering)), and `skillGain` (the gathering and crafting skill rolls: chance, the skill range and the advance line).
+- **`gather.json`:** `gathering` (the hit table, mining strikes, fishing, farming, regrowth and treasure), and `harvest` and `yields` (see [Tools and gathering](#tools-and-gathering)). How the gathering and crafting skills rise is each skill's [progression](#progression).
 - **`craft.json`:** `stations`: what each crafting station makes, from what, and at what skill.
 - **`houses.json`:** house deeds and types, placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
 - **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
@@ -389,7 +390,7 @@ Each entry in `packages/data/content/spells.json` defines one spell's data:
 - `info`: Spellbook Info text, or `null`.
 - `summon` (optional): `{ monster, skilled: { skill, above, monster } | null }` for the five summon effects (`Web`, `Illusionary Spikes`, `Holy Shield`, `Raise Dead`, `Summon Creature`).
 - `fx`: array of FX runs (`member` unique across all rows, `effect` naming a run of the spell's `effect`, `frames`, `lastFrame`, `projectile`, `sounds` as `{ name, ch }[]`).
-- `school` (optional): `{ skill, line, cap? }`, the skill a cast of this spell trains after Magery, the line printed when it rises, and the value it rises only below (left out: the caster's Mage skill cap, a [faction perk](#factions-socialjson)). Classic's Smoke Bomb trains `MartialArts` up to 100; a spell with no school trains Magery alone.
+- `school` (optional): `{ skill, cap? }`, the skill a cast of this spell trains after Magery (by the skill's `cast` [progression](#progression)), and a cap that replaces the progression's (left out: the progression's own; Classic's is the caster's Mage skill cap, a [faction perk](#factions-socialjson)). A spell hit that does damage trains the school too, by its `hit` progression. Classic's Smoke Bomb trains `MartialArts` up to 100; a spell with no school trains Magery alone.
 - `power` (optional): the name of a table in the file's `power.tables` that the spell's power takes after the base power. Left out, the spell has the base power.
 - `creates` (optional, read by the Create Food effect): `{ item, article? }[]`, one taken at random; `article` goes before the item in the line ("Suddenly, an Apple appears in your inventory.").
 
@@ -417,7 +418,7 @@ Add to the end of `spells.json` `spells` (it trains and is powered by Water, whe
   "harmful": true,
   "book": { "match": "contains", "pattern": "Ice Shard" },
   "info": "Launch a shard of ice at your foe.",
-  "school": { "skill": "Water", "line": "You have advanced in the art of Water!" },
+  "school": { "skill": "Water" },
   "power": "Water",
   "fx": [
     {
@@ -488,17 +489,80 @@ A faction an operator removes keeps its members' saved memberships, their loyalt
 - `skills`: each skill's `skill` (its permanent key), an optional `display` name, and `hidden` for a skill the Skills page leaves out;
 - `startClasses`: the classes the creation screen offers, in its order, each with its class `code`, an optional `label` (the class's name when absent) and its starting `skills` by key;
 - `creation`: the rest of the new-character record (the starting gold, hunger, profile text and so on);
-- `skillGain.weaponSkills`: which skills a kill trains for each weapon (`weapon`, `match`, `skills`).
+- `skillGain.weaponSkills`: which skills a kill or a hit trains for each weapon (`weapon`, `match`, `skills`). A kill rolls them in the list's order (Classic's lists are in 1.6's roll order);
+- `progression`: the world's progression settings, and each skill's own `progression` (see [Progression](#progression)).
 
 How skills behave:
 
 - **Saved by key.** A character stores each skill's value under its `skill` key, so skills can be added, removed or reordered at any time. A character who has never had a skill starts it at `1` (`NEW_SKILL_VALUE`), and their next save writes it. A removed skill's values stay saved, and come back if the skill returns. Two skills whose keys read the same with case and spaces ignored (`MartialArts` and `Martial Arts`) are refused, because the rules find skills that way.
-- **Shown by `display`.** The Skills page lists every skill without `hidden`, in the order of `skills`, under its `display` name (the key when absent). The same name is used in "You have advanced in the art of …!" and in the character editor. Classic hides Meditation, Terrain Navigating and Item Identification, as 1.6 did.
+- **Shown by `display`.** The Skills page lists every skill without `hidden`, in the order of `skills`, under its `display` name (the key when absent); with more skills than fit, its arrows scroll the list, as 1.6's did. The same name is used in the advance line (`progression.line`) and in the character editor. Classic hides Meditation, Terrain Navigating and Item Identification, as 1.6 did.
 - **Starting values by key.** A start class names only the skills it starts above 1. The creation screen draws one radio per start class in the space 1.6 gave its three; more than three scroll there.
-- Which skills a weapon trains is data (`classes.json` `skillGain.weaponSkills`), as are the gathering and crafting gain rows (`gather.json` `skillGain`), but each skill's roll is a handler in code (`RULES` in `packages/shared/src/rules/progression/skillgain.ts`, the cast gains in `packages/shared/src/rules/spells/spells.ts`, and the gathering and crafting systems). So an added skill rises only via an `item-rules.json` `use.skillBooks` row, a promotion's `skillGrants`, or code.
+- How each skill rises is content: its [progression](#progression).
 - The skills the engine reads for a mechanic (parrying, the crafts and so on) are named in `bindings.json`, below.
 - A class's `statBonus` (for example `{ "dex": 3 }`) is added to the stats of every character in that class while they are in it; change it and every such character follows.
 - A class's `promotion.skillGrants` lists skills (by `skill` key) that the promotion raises to a roll of 1 to 10; a skill already higher keeps its value. `data:build` refuses a key not in `skills`.
+
+### Progression
+
+How a skill rises is content (issue #37). Each skill picks a **model**, and each model has settings by **source**: the engine events that train skills. World **defaults** (`classes.json` `progression.defaults`) apply to every skill, and a skill's own `progression` overrides them field by field.
+
+```json
+"progression": {
+  "line": "You have advanced in the art of {skill}!",
+  "tables": { "wisdomBonus": { "stat": "wisdom", "start": 30, "tiers": [{ "above": 5, "add": -5 }, …] } },
+  "curves": {},
+  "defaults": {
+    "chance": {
+      "kill": { "roll": [{ "op": "set", "value": "skill" }, { "op": "add", "value": "wisdomBonus" }], "cap": "faction", "monsterCap": true },
+      "shot": { "roll": [{ "op": "set", "value": "skill" }], "cap": 100 },
+      "defend": { "roll": [{ "op": "set", "value": "skill" }], "cap": 100 },
+      "cast": { "roll": [{ "op": "set", "value": "skill" }], "cap": "mage" }
+    },
+    "xp": {}
+  }
+}
+```
+
+**Sources.** Which skills a source trains is decided elsewhere; the progression decides how:
+
+| Source | When | Which skills | `chance` guard and dice (code, as 1.6 had them) |
+|---|---|---|---|
+| `kill` | the holder kills a monster | the weapon's `skillGain.weaponSkills` row, in its order | 0 < skill < cap; then the roll; then the monster's cap (`monsterCap`) and `requires` |
+| `shot` | each arrow shot | the bound `archery`, and `martialArts` with a crossbow | 0 < skill < cap; then the roll |
+| `defend` | struck by a player or monster | the bound `parry` (also on a shield) or `block` | the roll first, then 0 < skill < cap and `requires` |
+| `cast` | each of your own casts | the bound `magery`, then the spell's `school` | 0 < skill < cap; then the roll |
+| `gather` | each harvest success at a node that `gains`, and each cast of the line | the node's `skill`; the bound `fishing` | `min` ≤ skill < cap; then the roll |
+| `craft` | each craft that makes something | the craft's bound skill | `min` ≤ skill < cap; then the roll |
+| `hit` | each melee, arrow or spell hit that does damage, PvP included | the weapon's skills (melee, arrows) or the spell's school | 0 < skill < cap; then the roll |
+
+A skill with no settings for a source never trains from it and rolls nothing. Classic sets no `hit` settings.
+
+**The `chance` model** is 1.6's: one point when `random(n) = 1`. Its settings are `{ roll, cap, requires?, monsterCap?, min? }`: `roll` is the [formula](#formulas) for `n`; `cap` the value the skill must stay below, `"faction"` (the faction perk `skillCap`), `"mage"` (the perk `mageCap`) or a number; `requires` `{ skill, above }` another skill over a value, tested after the roll (Classic: Thrust needs Slash over 30, Block needs Parry over 50); `monsterCap` (kill only) also needs the skill below the killed monster's cap (`monsters.json` `skillCaps`); `min` (gather and craft) the lowest value that rolls (0 when left out; the other sources need the skill above 0). A skill's own settings replace the default's fields one by one, and `false` turns a source off: `{ "model": "chance", "on": { "kill": { "cap": 70 }, "shot": false } }`.
+
+**The `xp` model** gives XP per action, with no chance roll: `{ "model": "xp", "curve": "<name>", "cap"?, "on"? }`, its settings by source `{ xp, requires? }`. `xp` is a formula; a harvest node's `xp`, a craft row's `xp` (a cooking recipe, a smithing repair, an alchemy sand or a carpentry result) and a monster's `skillXp` replace it for that action. The skill's level is its value, so every rule that reads the skill reads the level, and the level follows the XP through the curve, never past `cap` (a cap as above), the curve's own `cap`, or 100. A level-up prints the advance line once per level. On the Skills page an `xp` skill's row shows its XP in the hover tip, `212 / 404 XP`, in full up to 99,999 and then to three figures, `13.0M / 14.4M XP`; a `chance` skill's row shows none, as 1.6's page.
+
+**Curves** (`progression.curves`, by name; the format character levels will share in #42): `{ counting, table?, formula?, cap? }`. Leaving level L takes `table[L]` while the table lasts, then the formula (which may read only `level`, L). With `counting: "perLevel"` that is the XP from L to L + 1, counted from 0 within each level with leftovers carried (1.6's character levels: 30, then 400, then `400 + 2 × level`); with `"total"` it is the running total that reaches L + 1 (RuneScape's 83, 174, 276 …). The publish check refuses a curve that leaves a level below its cap uncovered, falls, rolls dice or passes 10¹² XP.
+
+**XP is saved** as each skill's running total beside its value (`character_skills.xp`). Switching a skill from `chance` to `xp` starts its XP at its level's total; switching back keeps the value and leaves the XP unread; changing a curve keeps the level and holds the XP inside its range. None of these lowers a skill.
+
+**The advance line** is `progression.line`, the same for every skill and source, `{skill}` being the skill's display name.
+
+**Teaching items** (`item-rules.json` `use.skillBooks`): reading one uses it up only when it teaches: at its `upTo` or the skill's own cap, or when its formula gives nothing this read, it says there is nothing more to learn and stays. On a `chance` skill it adds `points` (a formula), never past `upTo`; on an `xp` skill it gives `xp` (or, without one, the points), the level never passing `upTo`. Classic's books add `1 + random(5)` up to 77.
+
+#### Formulas
+
+A formula is a number, or rows in attack power's tier form applied in order to a result that starts at 0: `{ "when"?: ["<name> <op> <n>", …], "op": "set" | "add" | "subtract" | "multiply", "value": <number>, "random(n)", "a + random(n)" or <name> }`. A row applies when every `when` condition holds (`<` or `>`), and rolls its dice only then, in row order. A name is a stat (`strength`, `stamina`, `intelligence`, `wisdom`, `dexterity`), `skill` (the skill being trained), any skill by key, `level`, `tier` (the tool's tier; 0 without one), `damage` (a hit's damage, capped at what the target had left; `hit` only) or a **stat table** from `progression.tables`: `{ stat, start, tiers: [{ above, add }] }`, `start` plus every tier's `add` whose `above` the stat (or `level`) is over. Classic's `wisdomBonus` is 1.6's: 30, less 5, 7, 8, 5, 2 and 3 as Wisdom passes 5, 10, 15, 20, 22 and 23, so higher Wisdom makes kill gains likelier. The publish check refuses unknown names, `damage` outside a hit, a roll or XP amount that can never reach 1, and one that can pass 10⁹. A roll that falls below 1 for some characters is allowed: for them that source never gains, as 1.6's own Thrust roll (`40 − Stamina + skill + W`) did at a high enough Stamina. Teaching items' formulas are checked the same way. There is no scripting: a new kind of source is a new release.
+
+#### Example: an XP world
+
+Mining on a RuneScape-style curve to level 10 (a longer table, or a formula, goes further), 25 XP a rock, 70 for gold ore's rock:
+
+```json
+"curves": { "runescape": { "counting": "total", "table": [0, 83, 174, 276, 388, 512, 650, 801, 969, 1154], "cap": 10 } },
+"defaults": { "chance": { … }, "xp": { "gather": { "xp": 25 }, "hit": { "xp": [{ "op": "set", "value": "damage" }, { "op": "multiply", "value": 4 }] } } }
+```
+
+with `{ "skill": "Mining", "progression": { "model": "xp", "curve": "runescape" } }` on the skill and `"xp": 70` on the gold rock's harvest node. The `hit` default gives every `xp`-model weapon skill 4 XP per point of damage; with `requires` rows on the bigger weapons ([Requirements](#requirements)), the skill gates the damage and the damage pays the XP.
 
 ### Example: Swimming
 
@@ -508,7 +572,7 @@ Append to `classes.json` `skills`:
 { "skill": "Swimming" }
 ```
 
-It shows on the Skills page at once, at 1 for everyone. To have Fighters start at 10, add it to their start class:
+It shows on the Skills page at once, at 1 for everyone, and rises from whatever source the world defaults give it (in Classic, kills by a weapon that lists it, and none else). To have Fighters start at 10, add it to their start class:
 
 ```json
 { "code": 1, "skills": { "Slash": 20, "Thrust": 20, "Swimming": 10 } }
@@ -546,7 +610,7 @@ Notes on the single bindings:
 | `fishing` | the catch bands, the gain and the cast itself | no fishing: the pole is only a weapon |
 | `blacksmithing`, `cooking`, `alchemy`, `carpentry` | the four crafts' timers, results and gains | that craft's button does nothing |
 
-A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. The spell schools are each spell's `school` and `power` (see [Spells](#spells-spellsjson)). The gathering skills are each harvest node's `skill` and the swing ladders' `skill` (see [Tools and gathering](#tools-and-gathering)). The kill-gain handlers in `RULES` move to progression models in stage 6 of #37.
+A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. The spell schools are each spell's `school` and `power` (see [Spells](#spells-spellsjson)). The gathering skills are each harvest node's `skill` and the swing ladders' `skill` (see [Tools and gathering](#tools-and-gathering)). How each of these skills rises is its [progression](#progression).
 
 ## The content contract
 

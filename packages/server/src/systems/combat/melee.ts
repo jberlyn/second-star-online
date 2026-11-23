@@ -11,6 +11,7 @@
 import {
   ATTACK_ANIM_FRAMES,
   ATTACK_LATCH_TICKS,
+  advancedLines,
   advancedText,
   attackPower,
   boundSkillIndex,
@@ -37,16 +38,16 @@ import {
   monsterDrawnTile,
   pvpHit,
   type Rng,
-  rollBlockGain,
   rollKillSkillGain,
   rollLoot,
-  rollParryGain,
   rollWeaponBreak,
   SKILL_KEYS,
   type SwingSound,
   shattersText,
   startSwing,
   swingBlocked,
+  train,
+  weaponSkillList,
   xpGained,
 } from "@secondstaronline/shared";
 
@@ -54,7 +55,7 @@ import { logActivity, logPlaced, logTransform } from "../admin/activity.ts";
 import { isCrafting } from "../crafting/craft.ts";
 import { type GatherCtx, type GatherEvents, preSwing, toolSwing } from "../crafting/gather.ts";
 import { addGround, ItemOut } from "../inventory/items.ts";
-import { DODGE_COLOR, fighterOf, HIT_COLOR } from "../monsters/attack.ts";
+import { DODGE_COLOR, fighterOf, gainDefence, gainOnHit, HIT_COLOR } from "../monsters/attack.ts";
 import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, isFootprint, type MonsterSlot, species } from "../monsters/slots.ts";
 import { fireCannonball, shootArrow, swingFireballs } from "../spells/cast.ts";
@@ -330,17 +331,12 @@ function gatherCtx(ctx: MeleeCtx): GatherCtx | null {
   };
 }
 
-/** Archery (and Martial Arts with a crossbow) on every arrow shot. */
+/** Archery (and Martial Arts with a crossbow) on every arrow shot: the `shot` source. */
 function gainOnShot(p: Player, ctx: MeleeCtx, ev: SwingEvents): void {
   // An unbound skill is never trained.
   const gain = (i: number | undefined) => {
-    if (i === undefined) {
-      return;
-    }
-    const v = p.char.skills[i] ?? 0;
-    if (v > 0 && v < 100 && ctx.rng.random(v) === 1) {
-      p.char.skills[i] = v + 1;
-      ev.lines.push(advancedText(SKILL_KEYS[i] ?? ""));
+    if (i !== undefined) {
+      ev.lines.push(...advancedLines(i, train(fighterOf(p), i, "shot", ctx.rng)));
     }
   };
   gain(boundSkillIndex("archery"));
@@ -400,26 +396,10 @@ function pvpSwing(
     v.flicker = FLICKER_FRAMES;
     v.vitalsDirty = true;
     const lines: string[] = [];
-    const parry = boundSkillIndex("parry");
-    const block = boundSkillIndex("block");
-    // Read when it rolls: on a plain hit the Parry gain rolls first, and Block's gain reads the
-    // Parry that leaves.
-    const parryValue = () => (parry === undefined ? 0 : (v.char.skills[parry] ?? 0));
-    // An unbound Parry or Block skill is never trained.
-    const gainParry = () => {
-      const now = parryValue();
-      if (parry !== undefined && rollParryGain(now, ctx.rng)) {
-        v.char.skills[parry] = now + 1;
-        lines.push(advancedText(SKILL_KEYS[parry] ?? ""));
-      }
-    };
-    const gainBlock = () => {
-      const b = block === undefined ? 0 : (v.char.skills[block] ?? 0);
-      if (block !== undefined && rollBlockGain(b, parryValue(), ctx.rng)) {
-        v.char.skills[block] = b + 1;
-        lines.push(advancedText(SKILL_KEYS[block] ?? ""));
-      }
-    };
+    // On a plain hit the Parry gain rolls first, and Block's requirement reads the Parry that
+    // leaves.
+    const gainParry = () => gainDefence(v, "parry", ctx.rng, lines);
+    const gainBlock = () => gainDefence(v, "block", ctx.rng, lines);
     if (r.kind === "shield") {
       // "6:Shield" with no `hitsound`, then the Parry skill gain.
       gainParry();
@@ -441,7 +421,9 @@ function pvpSwing(
       continue;
     }
     // HP loses the attack power, floor 0, floatie with splat and sound, then both gains.
+    const left = v.char.vitals.hp;
     v.char.vitals.hp = Math.max(0, v.char.vitals.hp - r.dmg);
+    ev.lines.push(...gainOnHit(p, weaponSkillList(weapon), Math.min(r.dmg, left), ctx.rng));
     if (ctx.lightning) {
       // `ltass`: floored at 1 instead, so the frame script's own death test never fires; the death
       // script runs after the floatie, the gains and the save.
@@ -495,8 +477,11 @@ function smash(
       o.npcAttackFlag = true;
     }
   }
+  // A monster dies below 0 HP, so it had `hp + 1` to lose.
+  const left = m.hp + 1;
   m.hp -= dmg;
   slot.dirty = true;
+  ev.lines.push(...gainOnHit(p, weaponSkillList(e.weapon), Math.min(dmg, left), ctx.rng));
   if (m.hp >= 0) {
     ev.hits.push({ slot, dmg, kill: false });
     return;
@@ -541,7 +526,7 @@ function smash(
   p.vitalsDirty = true;
   // Skill gain, then the level check.
   const f = fighterOf(p);
-  for (const s of rollKillSkillGain(f, sp?.body ?? 0, ctx.rng)) {
+  for (const s of rollKillSkillGain(f, sp?.body ?? 0, ctx.rng, sp?.skillXp)) {
     ev.lines.push(advancedText(s));
   }
   // One line for each level gained.

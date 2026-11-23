@@ -4,6 +4,7 @@
  * The rules are in shared/rules/crafting/craft.ts; this applies them to the player.
  */
 import {
+  advancedLines,
   boundSkillIndex,
   CRAFT_ORDER,
   CRAFT_SKILL,
@@ -17,14 +18,13 @@ import {
   ID_CONTAINERS,
   lingoEq,
   type Rng,
-  rollSkillGain,
-  SKILL_KEYS,
   SMITH_FX_CHANCE,
-  skillGainRule,
   startCraft,
+  train,
 } from "@secondstaronline/shared";
 
 import { holdingsOf, logBagChange } from "../admin/activity.ts";
+import { fighterOf } from "../monsters/attack.ts";
 import { queueCast } from "../spells/fx.ts";
 import { playerLoc } from "../spells/geometry.ts";
 import type { Outgoing, Player, Room, World } from "../world/world.ts";
@@ -124,18 +124,14 @@ const tell = (p: Player, text: string): Outgoing => ({
 });
 const lock = (p: Player, on: boolean): Outgoing => ({ to: p.id, msg: { t: "lock", on } });
 
-/** A skill handler's roll and, on a hit, the point and its line. */
-function gain(p: Player, kind: CraftKind, rng: Rng, out: Outgoing[]): void {
+/** A craft trains its bound skill (the `craft` source), a line for each level gained. */
+function gain(p: Player, kind: CraftKind, rng: Rng, out: Outgoing[], xp?: number): void {
   const i = boundSkillIndex(CRAFT_SKILL[kind]);
-  const skill = i === undefined ? undefined : SKILL_KEYS[i];
-  if (i === undefined || skill === undefined) {
+  if (i === undefined) {
     return;
   }
-  const v = p.char.skills[i] ?? 0;
-  if (rollSkillGain(skill, v, rng)) {
-    p.char.skills[i] = v + 1;
-    out.push(tell(p, skillGainRule(skill)?.text ?? ""));
-  }
+  const levels = train(fighterOf(p), i, "craft", rng, xp === undefined ? {} : { xp });
+  out.push(...advancedLines(i, levels).map((l) => tell(p, l)));
 }
 
 /**
@@ -228,7 +224,7 @@ function finish(p: Player, kind: CraftKind, job: CraftJob, ctx: CraftCtx, now: n
   p.invDirty = true;
   out.push(...r.lines.map((l) => tell(p, l)));
   if (r.gain) {
-    gain(p, kind, ctx.rng, out);
+    gain(p, kind, ctx.rng, out, r.xp);
   }
   return out;
 }

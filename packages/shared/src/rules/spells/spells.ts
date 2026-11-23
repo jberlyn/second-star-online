@@ -22,12 +22,30 @@ import { content, onContent } from "../../content/store.ts";
 import { slotItem } from "../combat/armour.ts";
 import { applyTierRow } from "../combat/attpower.ts";
 import { gearBonus } from "../combat/gear.ts";
-import { boundSkillIndex, type Equipment, type Faction, findSkillIndex } from "../core/fighter.ts";
+import {
+  boundSkillIndex,
+  type Equipment,
+  type Faction,
+  findSkillIndex,
+  SKILL_KEYS,
+} from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { firstMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 import { crystalColour } from "../inventory/inventory.ts";
 import { flagHasEffect } from "../monsters/flags.ts";
 import type { Facing } from "../movement/movement.ts";
+import {
+  addXp,
+  advancedLines,
+  advancedText,
+  evalTeaching,
+  levelCap,
+  progressionModel,
+  SKILL_MAX,
+  setLevel,
+  type Trainee,
+  train,
+} from "../progression/progress.ts";
 import { mageSkillCap } from "../progression/skillgain.ts";
 import { factionPerk } from "../social/factions.ts";
 import { PLAYFIELD_RECT } from "./spellfx.ts";
@@ -522,18 +540,17 @@ function castSchool(member: string, eff: string, cast: string | undefined) {
 }
 
 /**
- * The cast skill gain for your own cast: Magery `random(Magery) = 1` while 0 < Magery < the Mage
- * skill cap, then the spell's school the same way, below its own cap or the Mage cap (Classic:
- * Smoke Bomb trains Martial Arts up to 100). Raises the skills in place and returns the lines, in
- * order. A directional name trains its base spell's school (a bug fixed: 1.6 compared "BoltR" and
- * "Wind waveR" with "Bolt" and "Wind Wave", so they never trained). The "Music" row
- * (Musicianship) is not built: only the unreachable composer sends a "Music" cast, so Musicianship
- * never rises in 1.6.
+ * The cast skill gain for your own cast (the `cast` source): Magery, then the spell's school, each
+ * by its progression (Classic: `random(skill) = 1` while 0 < skill < the Mage skill cap; a school's
+ * own `cap` replaces the skill's, so Smoke Bomb trains Martial Arts up to 100). Raises the skills in
+ * place and returns the lines, in order. A directional name trains its base spell's school (a bug
+ * fixed: 1.6 compared "BoltR" and "Wind waveR" with "Bolt" and "Wind Wave", so they never trained).
+ * The "Music" row (Musicianship) is not built: only the unreachable composer sends a "Music" cast,
+ * so Musicianship never rises in 1.6.
  */
 export function spellImp(
   spellName: string,
-  skills: number[],
-  faction: Faction,
+  t: Trainee,
   rng: Rng,
   /** The spell the player cast, when known: its school, whichever spell's FX it ran. */
   cast?: string,
@@ -543,22 +560,16 @@ export function spellImp(
     return [];
   }
   const lines: string[] = [];
-  const cap = castMageCap(faction);
   // A skill the world does not have (or a Magery it does not bind) is never rolled.
-  const roll = (i: number | undefined, max: number, text: string) => {
-    if (i === undefined) {
-      return;
-    }
-    const v = skills[i] ?? 0;
-    if (v > 0 && v < max && rng.random(v) === 1) {
-      lines.push(text);
-      skills[i] = v + 1;
+  const roll = (i: number | undefined, cap?: number) => {
+    if (i !== undefined) {
+      lines.push(...advancedLines(i, train(t, i, "cast", rng, cap === undefined ? {} : { cap })));
     }
   };
-  roll(boundSkillIndex("magery"), cap, "You have advanced in the art of magery!");
+  roll(boundSkillIndex("magery"));
   const school = castSchool(spellName, eff, cast);
   if (school) {
-    roll(findSkillIndex(school.skill), school.cap ?? cap, school.line);
+    roll(findSkillIndex(school.skill), school.cap);
   }
   return lines;
 }
@@ -570,7 +581,6 @@ export const BOOK_TEXT = {
   read: "You read the book...",
   known: "You already know this spell.",
   learned: (spell: string) => `You have learned the spell of ${spell}.`,
-  advanced: (skill: string) => `You have advanced in the art of ${skill}!`,
   nothingMore: "There is nothing more you can learn from this book.",
 } as const;
 
@@ -590,27 +600,38 @@ export type BookResult =
   | { kind: "spell"; spell: string; lines: string[] }
   | { kind: "none"; lines: string[] };
 
-/** A combat book teaches only below this skill, and never takes the skill past it. */
-export const SKILL_BOOK_CAP = 77;
-
 /**
  * Reading a book: a combat book below 77 adds `1 + random(5)`, stopping at 77 (a bug fixed: 1.6
  * let the last read reach 82); a spell book appends its spell unless an exact line already holds
  * it. `skills` and `spellbook` change in place. Only a `skill` or `spell` result teaches anything,
  * and only then is the book used up.
  */
-export function runBook(book: string, skills: number[], spellbook: string[], rng: Rng): BookResult {
+export function runBook(book: string, t: Trainee, spellbook: string[], rng: Rng): BookResult {
   const skillBook = firstMatch(content().itemRules.use.skillBooks, book);
   if (skillBook) {
     // A book whose skill the world no longer has teaches nothing.
     const i = findSkillIndex(skillBook.skill);
-    if (i !== undefined && (skills[i] ?? 0) < SKILL_BOOK_CAP) {
-      skills[i] = Math.min(SKILL_BOOK_CAP, (skills[i] ?? 0) + 1 + rng.random(5));
-      return {
-        kind: "skill",
-        skill: skillBook.shown,
-        lines: [BOOK_TEXT.advanced(skillBook.shown)],
-      };
+    // Nothing to learn at its `upTo` or the skill's own cap: the book stays.
+    const upTo = Math.min(skillBook.upTo ?? SKILL_MAX, i === undefined ? 0 : levelCap(t, i));
+    const v = i === undefined ? 0 : (t.skills[i] ?? 0);
+    if (i !== undefined && v < upTo) {
+      const key = SKILL_KEYS[i] ?? skillBook.skill;
+      // A read that would teach nothing (a formula giving 0 or less) keeps the book and says so,
+      // as one at its limit does.
+      if (progressionModel(i) === "xp" && skillBook.xp !== undefined) {
+        const xp = Math.trunc(evalTeaching(skillBook.xp, t, v, rng));
+        if (xp > 0) {
+          const levels = addXp(t, i, xp, upTo);
+          return { kind: "skill", skill: key, lines: advancedLines(i, levels) };
+        }
+      } else if (skillBook.points !== undefined) {
+        const points = Math.trunc(evalTeaching(skillBook.points, t, v, rng));
+        const next = Math.min(upTo, v + points);
+        if (next > v) {
+          setLevel(t, i, next);
+          return { kind: "skill", skill: key, lines: [advancedText(key)] };
+        }
+      }
     }
     return { kind: "none", lines: [BOOK_TEXT.nothingMore] };
   }

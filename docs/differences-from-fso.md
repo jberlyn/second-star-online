@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 82 |
+| [Design changes](#design-changes) | 83 |
 | [Fixed bugs](#fixed-bugs) | 304 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 137 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **575** |
+| **Total** | **576** |
 
 By system (the code folder that holds the change):
 
@@ -806,6 +806,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Losing gear to a monster punishes players who only fight monsters, for no gain, so the default keeps the drop where it is earned: on a murderer's death. Servers differ in how harsh they want death to be, so the operator chooses, from 1.6's rules to none.
 - **In the code:** `packages/shared/src/rules/monsters/loot.ts` (`dropsOnDeath`, `rollDeathDrop`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/settings.ts` (`deathDropRules`), `packages/server/migrations/20261119_40_death_drop_settings.sql`
 - **Pinned by:** `divergence: whose deaths drop: off, wanted only (the default), killed by a player, everyone`; `divergence: below the protected level nothing drops, unless wanted`; `divergence: what drops: gold only, or items only, with no coin toss`; `gold over the cap is redrawn as random(cap), unless wanted or the cap is 0` (packages/shared/tests/inventory/inventory.test.ts); `divergence: a death that is not wanted drops nothing, gold or items`; `divergence: Killed by a player drops on a player's kill, not a monster's`; `divergence: Everyone drops on any death; Off drops nothing, even when wanted` (packages/server/tests/inventory.test.ts); `divergence: death_drop_settings turns Drops on death off where drops were off` (packages/server/tests/migrations.test.ts); `a choice is a list of its labels; Save sends the value and Reset names the default` (packages/client/tests/settings.test.ts)
+
+#### Every skill prints the same advance line
+- **Kind:** Other
+- **What you notice:** A skill rising always says "You have advanced in the art of <skill>!", with the skill's Skills page name. A cast's Magery line reads "Magery" (1.6: "magery"); Minor Heal, Major Heal, Replenish and Diminish Hunger say "Blessing" and Morph and Illusionary Spikes "Illusion" (1.6: lower case); Hold and Raise Dead say "You have advanced in the art of Black Arts!" (1.6: "You have advanced in the Black Arts!").
+- **1.6:** Each gain handler wrote its own line: the cast handler's Magery line and some spells' school lines in lower case, and two Black Arts spells in their own wording, so the same skill could rise with different lines.
+- **SSO:** How skills rise is content (#37), and the line is one world setting, `classes.json` `progression.line`, for every skill and source, so an operator words it once.
+- **Why:** Per-source and per-spell lines were inconsistent and could not be kept in step as operators add skills; one line keeps every gain alike.
+- **In the code:** `packages/shared/src/rules/progression/progress.ts` (`advancedText`), `packages/shared/src/rules/spells/spells.ts` (`spellImp`)
+- **Pinned by:** `design change: one advance line for every skill; Magery then the school, each random(skill) = 1` (packages/shared/tests/spells/spells.test.ts)
 
 ## Fixed bugs
 
@@ -1673,9 +1682,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A gathering or crafting skill at 0 can rise through use.
 - **1.6:** All nine skill-raising handlers required the skill to be above 0, and nothing else raised these skills from 0.
-- **SSO:** The handlers roll from 0 to 99.
+- **SSO:** The handlers roll from 0 to 99: the `gather` and `craft` sources test `min` (0 when left out), where the other sources need the skill above 0.
 - **Why:** A skill at 0 should be trainable.
-- **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`skillGainRule`, `rollSkillGain`)
+- **In the code:** `packages/shared/src/rules/progression/progress.ts` (`train`)
 - **Pinned by:** `bug fixed: a skill at 0 can rise; 100 is the cap` (packages/shared/tests/crafting/gather.test.ts); `the skill line follows 'is ready!'; a skill of 0 can rise` (packages/server/tests/craft.test.ts)
 
 #### The Watering Bucket counts only useful swings
@@ -3462,9 +3471,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** The Radar Book teaches Radar, and a book with no picture is read like any other. A book for a spell you know, or a combat book at 77 or more, says so and stays in your bag. Reading a Bolt Book uses up that book. A combat book never takes a skill past 77.
 - **1.6:** The book routine had no line for Radar or Haste. The Poison Dart Book had no inventory picture, so using it stopped before reading. The server removed the first bag line containing "<name>-" before the routine ran, so a book that taught nothing was lost and a Bolt Book could use up a Firebolt Book above it. A combat book added `1 + random(5)` below 77, reaching up to 82.
-- **SSO:** Radar and Haste have book rows; any book can be read; the book read is the one used up, and only when it teaches something; a combat book stops at 77.
+- **SSO:** Radar and Haste have book rows; any book can be read; the book read is the one used up, and only when it teaches something; a combat book stops at 77 (its row's `upTo`).
 - **Why:** Each was an omission or an ordering slip; 77 is the limit the book routine tests.
-- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`runBook`, `SKILL_BOOK_CAP`), `packages/server/src/systems/spells/learn.ts` (`readBook`)
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`runBook`), `packages/server/src/systems/spells/learn.ts` (`readBook`)
 - **Pinned by:** `bug fixed: the Radar and Haste books teach their spells`; `bug fixed: combat books add 1 + random(5) below 77 and stop at 77` (packages/shared/tests/spells/spells.test.ts); `bug fixed: reading a Bolt Book uses up that Bolt Book, not a Firebolt Book above it`; `bug fixed: a book is kept when the spell is already known`; `bug fixed: a skill book is kept when the skill is 77 or more and it teaches nothing`; `bug fixed: a book with no picture is read like any other book`; `bug fixed: the Radar Book teaches Radar` (packages/server/tests/spells.test.ts)
 
 #### The spellbook is saved in full

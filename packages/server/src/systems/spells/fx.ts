@@ -21,6 +21,7 @@ import {
   stepFx,
 } from "@secondstaronline/shared";
 
+import { fighterOf } from "../monsters/attack.ts";
 import type { CastMessage, Player, Room, SpellFx } from "../world/world.ts";
 
 /** Queues a cast for the next frame script. */
@@ -77,13 +78,7 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
     }
     const caster = q.ownerId ? room.players.find((p) => p.id === q.ownerId) : undefined;
     if (q.train !== false && casterH > 0 && casterV > 0 && caster && caster.loading === 0) {
-      for (const text of spellImp(
-        q.name,
-        caster.char.skills,
-        caster.char.faction,
-        rng,
-        q.castSpell,
-      )) {
+      for (const text of spellImp(q.name, fighterOf(caster), rng, q.castSpell)) {
         res.lines.push({ to: caster, text });
       }
     }
@@ -100,6 +95,7 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
       owner: q.owner,
       ownerId: q.ownerId,
       ...(q.castSpell === undefined ? {} : { castSpell: q.castSpell }),
+      ...(q.firedFrom === undefined ? {} : { firedFrom: q.firedFrom }),
     };
     room.fx.push(fx);
     room.fx.sort((a, b) => a.slot - b.slot);

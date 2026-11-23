@@ -14,6 +14,7 @@ import {
   skillIndex,
 } from "../../src/rules/core/fighter.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
+import type { Trainee } from "../../src/rules/progression/progress.ts";
 import { skillCaps } from "../../src/rules/progression/skillgain.ts";
 import { newFx, placeFx, stepFx } from "../../src/rules/spells/spellfx.ts";
 import {
@@ -33,7 +34,6 @@ import {
   morphCounterFor,
   playerSpellAmount,
   runBook,
-  SKILL_BOOK_CAP,
   type SpellTarget,
   savedSpellbook,
   spCost,
@@ -43,6 +43,14 @@ import {
   spellPower,
   spellTable,
 } from "../../src/rules/spells/spells.ts";
+
+/** A reader of these skills with no faction, as progression reads one. */
+function trainee(skills: number[]): Trainee {
+  return { level: 1, str: 1, sta: 1, int: 1, wis: 1, skills, faction: NO_FACTION };
+}
+
+/** Classic's skill books teach up to 77 (item-rules.json `use.skillBooks` `upTo`). */
+const CLASSIC_BOOK_UP_TO = 77;
 
 /** `random(n)` answers from a list, then `n`. */
 function queue(results: number[] = []): Rng & { calls: number[] } {
@@ -181,21 +189,22 @@ describe("direction", () => {
 });
 
 describe("SpellImp", () => {
-  test("Magery then the school, each random(skill) = 1", () => {
+  test("design change: one advance line for every skill; Magery then the school, each random(skill) = 1", () => {
     const s = skills({ Magery: 5, Wrath: 4 });
-    const lines = spellImp("Meteor", s, { ...NO_FACTION }, queue([1, 1]));
+    const lines = spellImp("Meteor", trainee(s), queue([1, 1]));
     expect(lines).toEqual([
-      "You have advanced in the art of magery!",
+      // A design change: every gain prints the one line, so Magery is capitalised (1.6: "magery").
+      "You have advanced in the art of Magery!",
       "You have advanced in the art of Wrath!",
     ]);
     expect(s[skillIndex("Magery")]).toBe(6);
   });
   test("bug fixed: Bolt and Wind Wave raise their school from their directional names", () => {
     const s = skills({ Magery: 0, Wrath: 4, Wind: 4 });
-    expect(spellImp("BoltR", s, { ...NO_FACTION }, queue([1]))).toEqual([
+    expect(spellImp("BoltR", trainee(s), queue([1]))).toEqual([
       "You have advanced in the art of Wrath!",
     ]);
-    expect(spellImp("Wind waveU", s, { ...NO_FACTION }, queue([1]))).toEqual([
+    expect(spellImp("Wind waveU", trainee(s), queue([1]))).toEqual([
       "You have advanced in the art of Wind!",
     ]);
     expect(s[skillIndex("Wrath")]).toBe(5);
@@ -203,7 +212,7 @@ describe("SpellImp", () => {
   });
   test("a cast Fireball trains Magery and Fire from its directional name", () => {
     const s = skills({ Magery: 3, Fire: 3 });
-    expect(spellImp("FireballU", s, { ...NO_FACTION }, queue([1, 1]))).toHaveLength(2);
+    expect(spellImp("FireballU", trainee(s), queue([1, 1]))).toHaveLength(2);
   });
   test("baseSpell reads a directional name as its spell", () => {
     expect(baseSpell("FireballL")).toBe("Fireball");
@@ -214,8 +223,8 @@ describe("SpellImp", () => {
   });
   test("arrows and the smoke puff skip it", () => {
     const r = queue([1, 1]);
-    expect(spellImp("Blue ArrowsL", skills({ Magery: 3 }), { ...NO_FACTION }, r)).toEqual([]);
-    expect(spellImp("xSmokeoBomb", skills({ Magery: 3 }), { ...NO_FACTION }, r)).toEqual([]);
+    expect(spellImp("Blue ArrowsL", trainee(skills({ Magery: 3 })), r)).toEqual([]);
+    expect(spellImp("xSmokeoBomb", trainee(skills({ Magery: 3 })), r)).toEqual([]);
     expect(r.calls).toEqual([]);
   });
   test("Mage skill cap 30; Mage faction 50/60/70/90/100", () => {
@@ -256,29 +265,35 @@ describe("books", () => {
   });
   test("RunBook: the last contains match wins: Firebolt Book teaches Firebolt", () => {
     const book: string[] = [];
-    expect(runBook("Firebolt Book", [], book, queue())).toMatchObject({
+    expect(runBook("Firebolt Book", trainee([]), book, queue())).toMatchObject({
       kind: "spell",
       spell: "Firebolt",
     });
     expect(book).toEqual(["Firebolt"]);
   });
   test("bug fixed: the Radar and Haste books teach their spells", () => {
-    expect(runBook("Radar Book", [], [], queue())).toMatchObject({ kind: "spell", spell: "Radar" });
-    expect(runBook("Haste Book", [], [], queue())).toMatchObject({ kind: "spell", spell: "Haste" });
+    expect(runBook("Radar Book", trainee([]), [], queue())).toMatchObject({
+      kind: "spell",
+      spell: "Radar",
+    });
+    expect(runBook("Haste Book", trainee([]), [], queue())).toMatchObject({
+      kind: "spell",
+      spell: "Haste",
+    });
   });
   test("already known: an exact line", () => {
-    expect(runBook("Hold Book", [], ["Hold"], queue())).toEqual({
+    expect(runBook("Hold Book", trainee([]), ["Hold"], queue())).toEqual({
       kind: "none",
       lines: [BOOK_TEXT.known],
     });
   });
   test("bug fixed: combat books add 1 + random(5) below 77 and stop at 77", () => {
     const s = skills({ Parry: 70 });
-    expect(runBook("Parry Book", s, [], queue([3]))).toMatchObject({ kind: "skill" });
+    expect(runBook("Parry Book", trainee(s), [], queue([3]))).toMatchObject({ kind: "skill" });
     expect(s[skillIndex("Parry")]).toBe(74);
-    expect(runBook("Parry Book", s, [], queue([5]))).toMatchObject({ kind: "skill" });
-    expect(s[skillIndex("Parry")]).toBe(SKILL_BOOK_CAP);
-    expect(runBook("Parry Book", s, [], queue())).toEqual({
+    expect(runBook("Parry Book", trainee(s), [], queue([5]))).toMatchObject({ kind: "skill" });
+    expect(s[skillIndex("Parry")]).toBe(CLASSIC_BOOK_UP_TO);
+    expect(runBook("Parry Book", trainee(s), [], queue())).toEqual({
       kind: "none",
       lines: [BOOK_TEXT.nothingMore],
     });

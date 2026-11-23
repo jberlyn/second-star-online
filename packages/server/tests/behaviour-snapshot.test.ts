@@ -102,13 +102,13 @@ import {
   rollArmourBreak,
   rollKillSkillGain,
   rollMiningFind,
-  rollSkillGain,
   rollWeaponBreak,
   rollYield,
   ruleMatches,
   runBook,
   seedTile,
   skillCaps,
+  skillDisplay,
   skillIndex,
   smithChunk,
   spCost,
@@ -123,12 +123,12 @@ import {
   swingCooldowns,
   switchState,
   toolCan,
+  train,
   turnKey,
   useDeferred,
   useItem,
   WATERING_SKILL,
   weaponSkillList,
-  wisAdd,
 } from "@secondstaronline/shared";
 
 import { swingSound } from "../src/systems/combat/melee.ts";
@@ -287,6 +287,36 @@ const line = (name: string, fields: Record<string, unknown>) =>
     .join(" ")}`;
 
 /** Skills by name; the rest 0. */
+/**
+ * The gathering and crafting gains, in the order gather.json's `skillGain` rows listed them before
+ * stage 6 (#37) moved them onto the skills' progression.
+ */
+const GAIN_SKILLS: [string, "gather" | "craft"][] = [
+  ["Lumberjacking", "gather"],
+  ["Shoveling", "gather"],
+  ["Farming", "gather"],
+  ["Mining", "gather"],
+  ["Fishing", "gather"],
+  ["Cooking", "craft"],
+  ["Blacksmithing", "craft"],
+  ["Alchemy", "craft"],
+  ["Carpentry", "craft"],
+];
+
+/**
+ * 1.6's Wisdom addition to the kill roll, now Classic's `wisdomBonus` stat table (#37 stage 6):
+ * the table read as the roll reads it.
+ */
+function wisAdd(wisdom: number): number {
+  const t = content().classes.progression.tables.wisdomBonus;
+  return t ? t.tiers.reduce((v, r) => (wisdom > r.above ? v + r.add : v), t.start) : 0;
+}
+
+/** A book's result with its skill as the shown name the snapshot recorded before stage 6. */
+function bookProjection(r: ReturnType<typeof runBook>) {
+  return r.kind === "skill" ? { ...r, skill: skillDisplay(r.skill) } : r;
+}
+
 function skillArray(skills: Record<string, number> = {}, all = 0): number[] {
   const out = Array(content().classes.skills.length).fill(all) as number[];
   for (const [k, v] of Object.entries(skills)) {
@@ -548,7 +578,7 @@ describe("the behaviour snapshot", () => {
           use: roll((rng) => useItem(n, vitals, rng)),
           useStuffed: show(useItem(n, { ...vitals, hunger: 40000 }, rec("min"))),
           bookDex: bookDex(n),
-          book: roll((rng) => runBook(n, skillArray({}, 10), [], rng)),
+          book: roll((rng) => bookProjection(runBook(n, fighter({ allSkills: 10 }), [], rng))),
           look: show(look),
           gear: show({
             spell: gearBonus(worn, "spell"),
@@ -970,8 +1000,7 @@ describe("the behaviour snapshot", () => {
       // The cast gain: Magery alone, then each school alone, then Magery and the school together.
       const gain = (skills: Record<string, number>, faction: Faction) => {
         const lo = rec("min");
-        const arr = skillArray(skills);
-        const out = spellImp(s, arr, faction, lo);
+        const out = spellImp(s, { ...fighter({ faction }), skills: skillArray(skills) }, lo);
         return `${out.join("/") || "-"}[${lo.draws.join(",")}]`;
       };
       const mage4: Faction = { key: "mage", tier: 4 };
@@ -1154,11 +1183,10 @@ describe("the behaviour snapshot", () => {
             .join(","),
           fish: show(fishFor(skill)),
           fishCheck: fishCheck(skill),
-          gains: content()
-            .gather.skillGain.map(
-              (r) => `${r.skill}:${roll((rng) => rollSkillGain(r.skill, skill, rng))}`,
-            )
-            .join(","),
+          gains: GAIN_SKILLS.map(
+            ([k, source]) =>
+              `${k}:${roll((rng) => train(fighter({ skills: { [k]: skill } }), skillIndex(k), source, rng) === 1)}`,
+          ).join(","),
           timers: (["Smith", "Cook", "Mix", "Build"] as const)
             .map((k) => `${k}:${craftTimer(k, skill)}`)
             .join(","),

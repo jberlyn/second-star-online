@@ -65,7 +65,7 @@ export type DatasetId = keyof ContentData;
  * The format of the store file the server sends clients (`/content/<hash>.json`). A client built
  * for another format reloads to get the matching client.
  */
-export const CONTENT_FORMAT = 4;
+export const CONTENT_FORMAT = 5;
 
 /** The datasets only the server reads. */
 export const SERVER_ONLY_DATASETS = ["npcFiles", "rects"] as const satisfies readonly DatasetId[];

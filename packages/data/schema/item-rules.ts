@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { patternRow as pattern, requirementSchema, toolCanSchema } from "./common.ts";
+import { formulaSchema } from "./progression.ts";
 
 const int = z.number().int();
 const strictRow = <T extends z.ZodRawShape>(shape: T) => z.strictObject({ ...pattern, ...shape });
@@ -155,13 +156,20 @@ export const itemRulesDataSchema = z
       silent: z.array(z.strictObject(pattern)),
       /** The Mysticism a spell book needs, last match wins, else 1. */
       books: z.array(strictRow({ mysticism: int })),
-      /** The combat-skill books matched exactly, first match. */
+      /**
+       * Items that teach a skill when read, matched exactly, first match; always used up. On a
+       * `chance` skill `points` (a formula) are added, never past `upTo`; on an `xp` skill `xp`
+       * is given (or, without `xp`, the points), the level never passing `upTo`. Classic: `1 +
+       * random(5)` points, up to 77.
+       */
       skillBooks: z.array(
         z.strictObject({
           match: z.literal("exact"),
           pattern: pattern.pattern,
           skill: z.string(),
-          shown: z.string(),
+          points: formulaSchema.optional(),
+          xp: formulaSchema.optional(),
+          upTo: z.number().int().min(0).max(100).optional(),
         }),
       ),
       /** 35 rules; anything else is "You cannot use the X." */

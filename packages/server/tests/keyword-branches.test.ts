@@ -6,7 +6,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { type ServerMsg, skillIndex, tileLoc, wisAdd } from "@secondstaronline/shared";
+import { type ServerMsg, skillIndex, tileLoc } from "@secondstaronline/shared";
 
 import { pollAttack, setAttackHeld } from "../src/systems/combat/melee.ts";
 import { castIntent, freeFireballs, swingFireballs } from "../src/systems/spells/cast.ts";
@@ -59,8 +59,9 @@ function facingMonster(weapon: string, name: string, hp: number, queues = {}) {
 
 describe("a melee kill's skill gain", () => {
   test("a kill with a Long Sword rolls Slash and says so", () => {
-    // Slash 10 and Wisdom 10: the roll is random(10 + wisAdd(10)); a 1 gains.
-    const n = 10 + wisAdd(10);
+    // Slash 10 and Wisdom 10: the roll is random(10 + wisdomBonus), Classic's 1.6 WisAdd (25 at
+    // Wisdom 6-10); a 1 gains.
+    const n = 10 + 25;
     const { s, a } = facingMonster("Long Sword", "Slime", 1, { [n]: [1] });
     a.char.stats.str = 500;
     a.char.skills[skillIndex("Slash")] = 10;
@@ -175,7 +176,8 @@ describe("spell effects on a player, by FX name", () => {
     const r = castOnBob("Diminish Hunger");
     expect(r.bob).toEqual(["Your hunger has diminished."]);
     expect(r.b.char.hunger).toBe(4000);
-    expect(r.ann).toContain("You have advanced in the art of blessing!");
+    // One line for every gain (#37 stage 6): 1.6 wrote this one "blessing".
+    expect(r.ann).toContain("You have advanced in the art of Blessing!");
   });
 
   test("Nature Shift, Smoke Bomb and Dispel Illusions set and clear the body", () => {

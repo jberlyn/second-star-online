@@ -576,8 +576,7 @@
     },
     "texts": {
       "plant": "You plant the seeds.",
-      "plantWrong": "You plant the seeds into the ground but realize this isn't going to grow anything here!",
-      "advanced": "You have advanced in the art of <Skill>!"
+      "plantWrong": "You plant the seeds into the ground but realize this isn't going to grow anything here!"
     }
   },
   "harvest": [
@@ -710,79 +709,5 @@
       "item": "Chunk of Fire",
       "chance": 130
     }
-  },
-  "skillGain": [
-    {
-      "handler": "LumberjackImp",
-      "skill": "Lumberjacking",
-      "chance": 12,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Lumberjacking!"
-    },
-    {
-      "handler": "ShovelingImp",
-      "skill": "Shoveling",
-      "chance": 12,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Shoveling!"
-    },
-    {
-      "handler": "FarmingImp",
-      "skill": "Farming",
-      "chance": 12,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Farming!"
-    },
-    {
-      "handler": "MiningImp",
-      "skill": "Mining",
-      "chance": 22,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Mining!"
-    },
-    {
-      "handler": "FishingImp",
-      "skill": "Fishing",
-      "chance": 16,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Fishing!"
-    },
-    {
-      "handler": "CookImp",
-      "skill": "Cooking",
-      "chance": 8,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Cooking!"
-    },
-    {
-      "handler": "SmithImp",
-      "skill": "Blacksmithing",
-      "chance": 9,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Blacksmithing!"
-    },
-    {
-      "handler": "AlchemyImp",
-      "skill": "Alchemy",
-      "chance": 15,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Alchemy!"
-    },
-    {
-      "handler": "CarpentryImp",
-      "skill": "Carpentry",
-      "chance": 9,
-      "min": 0,
-      "below": 100,
-      "text": "You have advanced in the art of Carpentry!"
-    }
-  ]
+  }
 }

@@ -960,9 +960,15 @@ describe("arrow shots", () => {
     const dirs = { E: "R", W: "L", N: "U", S: "D" } as const;
     for (const colour of ["Blue", "Green", "Purple", "Red", "White", "Yellow"]) {
       for (const [facing, d] of Object.entries(dirs)) {
-        const p = { name: "Ann", id: "a", x: 5, y: 6, facing };
+        const p = { name: "Ann", id: "a", x: 5, y: 6, facing, char: { equip: { weapon: "Bow" } } };
         shootArrow(room as never, p as never, colour, 3);
-        expect(room.fxQueue.at(-1)).toMatchObject({ name: `${colour} Arrows${d}`, h: 174, v: 189 });
+        // The arrow keeps the bow it left, for the skills its hit trains.
+        expect(room.fxQueue.at(-1)).toMatchObject({
+          name: `${colour} Arrows${d}`,
+          h: 174,
+          v: 189,
+          firedFrom: "Bow",
+        });
       }
     }
     expect(room.fxQueue.map((c) => c.name)).toContain("Yellow ArrowsD");

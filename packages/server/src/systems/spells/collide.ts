@@ -42,12 +42,14 @@ import {
   spellOfFx,
   treeBody,
   vehicleOfItem,
+  weaponSkillList,
   xpGained,
 } from "@secondstaronline/shared";
 
 import { logActivity, logPlaced } from "../admin/activity.ts";
 import { onArenaTile } from "../combat/melee.ts";
 import { addGround, type ItemCtx, ItemOut } from "../inventory/items.ts";
+import { gainOnHit } from "../monsters/attack.ts";
 import { chatterOut } from "../monsters/npc.ts";
 import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, type MonsterSlot, species } from "../monsters/slots.ts";
@@ -127,7 +129,9 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     if (aboard && p.hull !== null) {
       p.hull = p.hull <= dmg ? 0 : p.hull - dmg;
     } else {
+      const left = v.hp;
       v.hp = v.hp <= dmg ? 0 : v.hp - dmg;
+      trainHitter(room, fx, Math.min(dmg, left), ctx, res);
     }
     p.lastToHitMe = fx.owner;
     // A monster's spell has no owner id.
@@ -303,6 +307,28 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
   }
 }
 
+/**
+ * A player's spell or arrow that did damage trains its owner (the `hit` source): an arrow the
+ * owner's weapon skills, a spell its school. A cannonball trains nothing.
+ */
+function trainHitter(room: Room, fx: SpellFx, damage: number, ctx: CollideCtx, res: CollideOut) {
+  const owner = fx.ownerId ? room.players.find((o) => o.id === fx.ownerId) : undefined;
+  if (!owner || isCannonball(fx.name)) {
+    return;
+  }
+  let skills: readonly string[];
+  if (lingoContains(fx.name, " Arrows")) {
+    // The bow it left, not whatever the shooter holds when it lands.
+    skills = weaponSkillList(fx.firedFrom ?? owner.char.equip.weapon);
+  } else {
+    const spell = fx.castSpell ? spellByName(fx.castSpell) : spellOfFx(fx.name);
+    skills = spell?.school ? [spell.school.skill] : [];
+  }
+  for (const line of gainOnHit(owner, skills, damage, ctx.rng)) {
+    tell(res.out, owner, line);
+  }
+}
+
 /** Stone Skin's defense bonus. */
 export const STONE_SKIN_BONUS = 1;
 
@@ -371,7 +397,12 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
       if (!hit) {
         continue;
       }
+      // A monster dies below 0 HP, so it had `hp + 1` to lose.
+      const left = m.hp + 1;
       m.hp += hit.heal ? hit.n : -hit.n;
+      if (!hit.heal) {
+        trainHitter(room, fx, Math.min(hit.n, left), ctx, res);
+      }
       m.hitCountb = 16;
       m.lockedBy = { fx, member: mem };
       slot.dirty = true;

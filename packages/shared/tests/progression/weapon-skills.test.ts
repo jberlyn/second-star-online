@@ -21,7 +21,8 @@ import { masterworkBase, weaponIs } from "../../src/rules/crafting/masterwork.ts
 import { startingSkills } from "../../src/rules/progression/creation.ts";
 import { rollKillSkillGain, weaponSkillList } from "../../src/rules/progression/skillgain.ts";
 
-const SWORD = ["Slash", "Thrust", "Swordsmanship", "Fencing"];
+/** In 1.6's roll order (Thrust before Slash), the order a kill now rolls a list in. */
+const SWORD = ["Thrust", "Slash", "Swordsmanship", "Fencing"];
 
 function fighter(weapon: string, skills: Record<string, number> = {}): Fighter {
   const s = startingSkills(1);
@@ -54,10 +55,10 @@ describe("kill skill gain by weapon", () => {
       expect(weaponSkillList(`Knight's Sword +${n}`)).toEqual(weaponSkillList("Knight's Sword"));
     }
     expect(weaponSkillList("Knight's Sword +1")).toEqual([
-      "Slash",
       "Thrust",
-      "Swordsmanship",
+      "Slash",
       "Heavy Arms",
+      "Swordsmanship",
     ]);
     expect(weaponSkillList("Sword of Hope +1")).toEqual(weaponSkillList("Sword of Hope"));
     expect(weaponSkillList("Star Sword +2")).toEqual(weaponSkillList("Star Sword"));

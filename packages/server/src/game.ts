@@ -49,6 +49,7 @@ import {
   mergePlayerPrefs,
   NEW_SKILL_VALUE,
   NO_FOG,
+  normaliseXp,
   PASSWORD_TEXT,
   type Permission,
   parseHouseMapName,
@@ -131,6 +132,7 @@ import {
   insertCharacter,
   loadSkills,
   loadSkillValues,
+  loadSkillXp,
   saveProfileText,
   saveProgress,
   savePromotion,
@@ -622,6 +624,19 @@ export function createGame(deps: GameDeps): Game {
    * and the world's rollback puts every list back as it was.
    */
   const followSkills = (restoring: boolean) => {
+    remapSkills(restoring);
+    // XP totals held to the new content: a skill switched to `chance` keeps none, one switched to
+    // `xp` starts at its level's total, and a changed curve holds each inside its level. A failed
+    // publish's rollback puts the snapshot back instead.
+    if (!restoring) {
+      for (const o of world.players.values()) {
+        if (o.char.skillXp) {
+          o.char.skillXp = normaliseXp(o.char.skills, o.char.skillXp, o.char.faction);
+        }
+      }
+    }
+  };
+  const remapSkills = (restoring: boolean) => {
     const was = skillKeys;
     skillKeys = SKILL_KEYS;
     if (was.length === skillKeys.length && was.every((k, i) => k === skillKeys[i])) {
@@ -632,8 +647,15 @@ export function createGame(deps: GameDeps): Game {
     const dropped = was.filter((k) => findSkillIndex(k) === undefined);
     for (const o of world.players.values()) {
       const values = byKey(o.char.skills);
+      // A dropped skill's value and XP are written, for it to come back to.
+      const xpBy = Object.fromEntries(was.map((k, i) => [k, o.char.skillXp?.[i] ?? 0]));
       if (dropped.length > 0 && !restoring) {
-        saveSkillValues(db, o.id, Object.fromEntries(dropped.map((k) => [k, values[k] ?? 0])));
+        saveSkillValues(
+          db,
+          o.id,
+          Object.fromEntries(dropped.map((k) => [k, values[k] ?? 0])),
+          Object.fromEntries(dropped.map((k) => [k, xpBy[k] ?? 0])),
+        );
       }
       // Saved values are matched as a login matches them (another spelling counts).
       const saved = skillsFromKeys(loadSkillValues(db, o.id));
@@ -646,6 +668,11 @@ export function createGame(deps: GameDeps): Game {
       }
       if (o.awardSkills) {
         o.awardSkills = copy(o.awardSkills);
+      }
+      // XP totals follow their skills by key; a skill the store added takes its saved total.
+      if (o.char.skillXp) {
+        const savedXp = loadSkillXp(db, o.id);
+        o.char.skillXp = skillsFromKeys(xpBy, (k) => savedXp[findSkillIndex(k) ?? -1] ?? 0);
       }
       o.char.skills = now;
     }
@@ -2014,6 +2041,9 @@ export function createGame(deps: GameDeps): Game {
         vitals: p.char.vitals,
         hunger: p.char.hunger,
         skills: p.char.skills,
+        ...(p.char.skillXp === undefined
+          ? {}
+          : { skillXp: normaliseXp(p.char.skills, p.char.skillXp, p.char.faction) }),
         respawn: p.char.respawn,
         faction: { key: p.char.faction.key, count: p.char.factionCount },
         wanted: p.char.wanted,
@@ -2524,6 +2554,7 @@ export function createGame(deps: GameDeps): Game {
           vitals: { ...c.vitals },
           stats: { ...c.stats },
           skills: loadSkills(db, c.id),
+          skillXp: loadSkillXp(db, c.id),
           hunger: c.hunger,
           equip: inv.equip,
           gold: inv.gold,
@@ -2546,6 +2577,8 @@ export function createGame(deps: GameDeps): Game {
           body: c.vehicle ? VEHICLE_BODY[c.vehicle] : null,
         },
       };
+      // XP held to the current content (a curve change, a model switch while offline).
+      p.char.skillXp = normaliseXp(p.char.skills, p.char.skillXp ?? [], p.char.faction);
       p.jailUntil = jailUntil;
       p.muteUntil = muteUntil;
       p.ignore = loadIgnores(db, c.accountId);

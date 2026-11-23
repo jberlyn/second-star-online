@@ -504,11 +504,13 @@ const BOTS: BotSpec[] = [
 
 /**
  * Keys left out: the NPC files the game lays over the content, `lastSheet`, the copy of the last
- * character sheet sent (derived, and its skills by position; what was sent is hashed itself), and
+ * character sheet sent (derived, and its skills by position; what was sent is hashed itself),
  * `castSpell`, the cast's spell name a queued cast and its FX carry (#37 stage 4; the name sent is
- * hashed itself).
+ * hashed itself), and two #37 stage 6 keys: `skillXp`, each skill's XP total for the `xp` model
+ * (Classic's skills all use `chance`, so it stays 0 and is never sent), and `firedFrom`, the
+ * weapon an arrow left (its hit trains that weapon's skills; Classic trains none on a hit).
  */
-const SKIP = new Set(["npcs", "lastSheet", "castSpell"]);
+const SKIP = new Set(["npcs", "lastSheet", "castSpell", "skillXp", "firedFrom"]);
 
 /**
  * The world's own keys left out: `jail`, the game's copy of the `jailPoint` setting (a setting, not

@@ -5,7 +5,7 @@
  * Classic pack has references 1.6 never resolved ("scroll" in the quests), and those stay as they
  * were. Pure.
  */
-import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
+import { DATASET_SCHEMAS, FORMULA_MAX, formulaRange } from "@secondstaronline/data/schema";
 import {
   buildContentStore,
   type ContentData,
@@ -172,6 +172,68 @@ export function skillProblems(next: ContentData, published?: ContentData): Conte
     }
     spelled.set(skillNorm(s.skill), s.skill);
   }
+  return out;
+}
+
+/**
+ * The progression rules a schema cannot see alone: a harvest node that `gains` trains a skill that
+ * rises from gathering (its own `gather` settings, or the world default for its model, not turned
+ * off, and for the `chance` model with a roll).
+ */
+export function progressionProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const p = data.classes.progression;
+  const rows = new Map(data.classes.skills.map((s) => [skillNorm(s.skill), s]));
+  data.gather.harvest.forEach((n, i) => {
+    const row = rows.get(skillNorm(n.skill));
+    // A node naming no skill is a broken reference, told on its own.
+    if (!n.gains || !row) {
+      return;
+    }
+    const prog = row.progression;
+    const own = prog?.on?.gather;
+    const base = prog?.model === "xp" ? p.defaults.xp.gather : p.defaults.chance.gather;
+    const merged = own === false ? undefined : { ...(base || {}), ...(own || {}) };
+    // An `xp` skill needs an amount: its own or the default's, or the node's.
+    const trains =
+      own !== false &&
+      (own !== undefined || base) &&
+      merged !== undefined &&
+      (prog?.model === "xp" ? "xp" in merged || n.xp !== undefined : "roll" in merged);
+    if (!trains) {
+      out.push({
+        where: `gather/harvest/${n.tile}`,
+        message: `gains, but ${n.skill} does not rise from gathering (give it a gather progression)`,
+      });
+    }
+  });
+  // A teaching item's formulas, as a progression's are checked: known names, and an amount that
+  // can reach 1. They read the reader's stats and skills, never damage or a tool.
+  const skills = new Set(data.classes.skills.map((s) => skillNorm(s.skill)));
+  data.itemRules.use.skillBooks.forEach((b) => {
+    for (const key of ["points", "xp"] as const) {
+      const f = b[key];
+      if (f === undefined) {
+        continue;
+      }
+      const { range, problems } = formulaRange(f, {
+        skills,
+        tables: p.tables,
+        damage: false,
+        curve: false,
+      });
+      const where = `itemRules/use/skillBooks/${b.pattern}/${key}`;
+      for (const q of problems) {
+        out.push({ where, message: q.message });
+      }
+      if (problems.length === 0 && (range.hi < 1 || range.hi > FORMULA_MAX)) {
+        out.push({
+          where,
+          message: `gives ${range.lo} to ${range.hi}: it must be able to give 1, and at most ${FORMULA_MAX}`,
+        });
+      }
+    }
+  });
   return out;
 }
 
@@ -529,10 +591,6 @@ export function referencesOf(data: ContentData): Reference[] {
   data.itemRules.requires.forEach((r, i) => {
     needs(requires, [i], r);
   });
-  const gatherGain = section("gather", "skillGain");
-  data.gather.skillGain.forEach((r, i) => {
-    skill(gatherGain, [i, "skill"], r.skill);
-  });
   const use = section("itemRules", "use");
   data.itemRules.use.skillBooks.forEach((b, i) => {
     skill(use, ["skillBooks", i, "skill"], b.skill);
@@ -752,6 +810,7 @@ export function checkStore(
   return [
     ...keyProblems(next, packKeys),
     ...skillProblems(next, published),
+    ...progressionProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

@@ -15,7 +15,12 @@ const skillRow = z.union([
   z.strictObject({ lt: z.number().int(), value: z.number().int() }),
 ]);
 const timer = z.strictObject({ default: z.number().int().positive(), rows: z.array(gtRow).min(1) });
-const recipe = z.strictObject({ input: z.string().min(1), output: z.string().min(1) });
+/**
+ * The XP a craft gives an `xp`-model skill, replacing the skill's own `craft` amount: on a cooking
+ * recipe, a smithing repair, an alchemy sand or a carpentry result.
+ */
+const xp = z.number().int().min(0).max(1_000_000_000).optional();
+const recipe = z.strictObject({ input: z.string().min(1), output: z.string().min(1), xp });
 /** A cooking recipe also names what a burn makes. */
 const cookRecipe = recipe.extend({ burned: z.string().min(1) });
 
@@ -68,6 +73,7 @@ export const craftDataSchema = z.strictObject({
             potion: z.string(),
             crystal: z.string(),
             need: z.string(),
+            xp,
           }),
         )
         .min(1),
@@ -94,6 +100,7 @@ export const craftDataSchema = z.strictObject({
                    * 1.6 appended a client-chosen random number from 1 to 100000; SSO mints the id.
                    */
                   id: z.boolean(),
+                  xp,
                 }),
               )
               .min(1),

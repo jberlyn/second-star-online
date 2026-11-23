@@ -47,8 +47,12 @@ export interface Fighter {
   sta: number;
   int: number;
   wis: number;
+  /** Read only by progression formulas (`dexterity`); 0 when absent. */
+  dex?: number;
   /** One value per skill, in the order of the content's `classes.skills` (`SKILL_KEYS`). */
   skills: number[];
+  /** Each skill's running XP total (`xp`-model skills), by skill index, raised in place. */
+  skillXp?: number[];
   equip: Equipment;
   faction: Faction;
   /** The Purple Potion's attack bonus flag (spells and potions arrive in later slices). */

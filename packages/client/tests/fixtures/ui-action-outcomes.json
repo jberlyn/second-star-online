@@ -691,6 +691,15 @@
     "errors": []
   },
   {
+    "action": "skills-list",
+    "tag": "DIV",
+    "events": ["pointerdown", "pointerenter", "pointerleave", "pointermove"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "skills-scroll-up",
     "tag": "BUTTON",
     "events": ["click", "pointerdown"],
@@ -7726,6 +7735,15 @@
     "action": "inventory-unequip-ring",
     "tag": "BUTTON",
     "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "skills-list",
+    "tag": "DIV",
+    "events": ["pointerdown", "pointerenter", "pointerleave", "pointermove"],
     "hidden": false,
     "changed": false,
     "calls": [],

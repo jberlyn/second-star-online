@@ -63,11 +63,11 @@ The values are each start class's `skills` in `startClasses` in classes.json, by
 
 ## How skills rise
 
-Skills rise one point at a time. Most rolls take the form "draw `random(n)` and succeed on a 1", a 1-in-n chance; `random` of 0 or less never returns 1, so a bound of 0 or less means the skill cannot rise that way. The ways a skill can rise are listed below.
+How each skill rises is content: its `progression` in classes.json (see [Progression](../../modding.md#progression)). Classic's skills all use the `chance` model, with 1.6's numbers, so they rise one point at a time. Most rolls take the form "draw `random(n)` and succeed on a 1", a 1-in-n chance; `random` of 0 or less never returns 1, so a bound of 0 or less means the skill cannot rise that way. The ways a skill can rise are listed below.
 
 ### Melee kills
 
-When a melee swing kills a monster, `rollKillSkillGain` ([skillgain.ts](../../../packages/shared/src/rules/progression/skillgain.ts)) rolls each skill the weapon trains. The weapon's list is the **last** matching row of `skillGain.weaponSkills` in classes.json, so a weapon matched by two rows trains only the later row's skills. An `exact` row also matches the masterworks made from its weapon (Knight's Sword +2 trains like Knight's Sword). Monsters killed by spells or arrows train nothing this way. Each skill rolls only if it is above 0, below its cap (see below) and below the killed monster's cap, and then needs `random(n) = 1`:
+When a melee swing kills a monster, `rollKillSkillGain` ([skillgain.ts](../../../packages/shared/src/rules/progression/skillgain.ts)) rolls each skill the weapon trains, in the list's order, by its `kill` progression ([progress.ts](../../../packages/shared/src/rules/progression/progress.ts) `train`). The weapon's list is the **last** matching row of `skillGain.weaponSkills` in classes.json, so a weapon matched by two rows trains only the later row's skills. An `exact` row also matches the masterworks made from its weapon (Knight's Sword +2 trains like Knight's Sword). Monsters killed by spells or arrows train nothing this way. Each skill rolls only if it is above 0 and below its cap (see below), and then needs `random(n) = 1` and to be below the killed monster's cap. Classic's numbers (the world's `kill` default, and the skills' own overrides):
 
 | Skill | n | Also needs |
 |---|---|---|
@@ -79,7 +79,7 @@ When a melee swing kills a monster, `rollKillSkillGain` ([skillgain.ts](../../..
 | Swordsmanship | 25 − Stamina + skill + W | Slash above 50 |
 | Fencing | 25 − Stamina + skill + W | Swordsmanship above 20 |
 
-W is the Wisdom term (`wisAdd`): it falls as Wisdom rises, so wiser characters learn faster.
+W is the Wisdom term, Classic's `wisdomBonus` stat table (`progression.tables`): it falls as Wisdom rises, so wiser characters learn faster.
 
 | Wisdom | W |
 |---|---|
@@ -107,7 +107,7 @@ Each arrow shot rolls Archery, and Martial Arts too when the weapon is a crossbo
 
 ### Gathering and crafting
 
-A successful gather or a finished craft rolls the skill's handler (`skillGain` in [gather.json](../../../packages/data/content/gather.json)): `random(chance) = 1` while the skill is from 0 to 99. The chance does not change with the skill value.
+A successful gather or a finished craft trains the skill by its `gather` or `craft` progression (in [classes.json](../../../packages/data/content/classes.json)): Classic's roll `random(chance) = 1` while the skill is from 0 to 99. The chance does not change with the skill value.
 
 | Skill | Chance per success |
 |---|---|
@@ -156,7 +156,7 @@ Cooking at a Campfire takes twice as long. Blacksmithing has its own, longer tim
 
 ### Combat books
 
-Reading a combat book (`use.skillBooks` in [item-rules.json](../../../packages/data/content/item-rules.json)) adds `1 + random(5)` to its skill, but only below 77, and never takes the skill past 77 (`SKILL_BOOK_CAP`). A book that teaches nothing stays in the bag. Books exist for Slash, Thrust, Heavy Arms, Parry and Unholy Combat.
+Reading a combat book (`use.skillBooks` in [item-rules.json](../../../packages/data/content/item-rules.json)) adds its `points`, Classic's `1 + random(5)`, to its skill, but only below its `upTo`, 77, and never takes the skill past it. A book that teaches nothing stays in the bag. Books exist for Slash, Thrust, Heavy Arms, Parry and Unholy Combat.
 
 ### Promotion
 

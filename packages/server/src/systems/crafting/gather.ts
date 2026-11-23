@@ -4,6 +4,7 @@
  * applies them to the map, the ground and the player.
  */
 import {
+  advancedLines,
   boundSkillIndex,
   buildTreasure,
   canPlant,
@@ -29,21 +30,21 @@ import {
   regrowthFrame,
   requirementMet,
   requirementText,
-  rollSkillGain,
   rollYield,
   rumourLine,
   SKILL_KEYS,
   SPRINKLE_FX,
   type SwingSound,
   seedTile,
-  skillGainRule,
   skillValue,
   sprinkleOffset,
   swingCooldowns,
   TREASURE,
+  type TrainExtra,
   tierText,
   tileAt,
   toolCan,
+  train,
   underOk,
   WATERING_SKILL,
   wateredTile,
@@ -52,6 +53,7 @@ import {
 
 import { logPlaced } from "../admin/activity.ts";
 import { addGround, ItemOut } from "../inventory/items.ts";
+import { fighterOf } from "../monsters/attack.ts";
 import { aqsToMap } from "../social/factions.ts";
 import { queueCast } from "../spells/fx.ts";
 import { playerLoc } from "../spells/geometry.ts";
@@ -77,16 +79,12 @@ export interface GatherEvents {
 
 const skillOf = (p: Player, skill: string) => skillValue(p.char.skills, skill);
 
-/** A skill handler's roll and, on a hit, the point and its line. */
-function gain(p: Player, skill: string, rng: Rng, lines: string[]): boolean {
-  const i = findSkillIndex(skill);
-  const v = i === undefined ? 0 : (p.char.skills[i] ?? 0);
-  if (i === undefined || !rollSkillGain(skill, v, rng)) {
-    return false;
-  }
-  p.char.skills[i] = v + 1;
-  lines.push(skillGainRule(skill)?.text ?? "");
-  return true;
+/**
+ * A gathering success trains the skill (the `gather` source), a line for each level gained. `xp` is
+ * the harvest node's own amount for an `xp` skill; `tier` the tool's.
+ */
+function gain(p: Player, i: number | undefined, rng: Rng, extra: TrainExtra): string[] {
+  return i === undefined ? [] : advancedLines(i, train(fighterOf(p), i, "gather", rng, extra));
 }
 
 function faced(p: Player): { x: number; y: number } {
@@ -188,6 +186,9 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
     // The allowance belongs to the tile you fish from, and outlasts a logout.
     const spot = fishingSpot(ctx.world.fishingSpots.get(p.id), p.map.id, p.x, p.y);
     const r = castLine(p.char.skills[fishing] ?? 0, spot.left, ctx.rng);
+    // The skill trains before the catch drops, as 1.6 rolled it inside the fishing helper.
+    const tier = toolCan(weapon, "Fish")?.tier ?? 0;
+    const gained = r.trains ? gain(p, fishing, ctx.rng, { tier }) : [];
     ctx.world.fishingSpots.set(p.id, { ...spot, left: r.antiMacro });
     // A spent tile says so, once per press like a movement refusal.
     if (spot.left === 0 && p.told !== FISHING_STOPPED_TEXT) {
@@ -197,10 +198,7 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
     if (r.fish) {
       drop(ctx, room, io, r.fish, t.x, t.y, p);
     }
-    if (r.gained) {
-      p.char.skills[fishing] = (p.char.skills[fishing] ?? 0) + 1;
-      ev.lines.push(skillGainRule(SKILL_KEYS[fishing] ?? "")?.text ?? "");
-    }
+    ev.lines.push(...gained);
   }
   ev.out.push(...io.out);
   // The Ring of Quickness shortens the cast (`swingCooldowns`).
@@ -268,7 +266,11 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
     io.out.push(sound(p, node.successSound.name, node.successSound.ch));
   }
   if (node.gains) {
-    gain(p, node.skill, ctx.rng, ev.lines);
+    const extra: TrainExtra = { tier: use.tier };
+    if (node.xp !== undefined) {
+      extra.xp = node.xp;
+    }
+    ev.lines.push(...gain(p, findSkillIndex(node.skill), ctx.rng, extra));
   }
   ev.out.push(...io.out);
 }

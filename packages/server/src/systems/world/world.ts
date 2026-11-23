@@ -265,6 +265,11 @@ export interface CharacterState {
   };
   /** One value per skill in `classesData.skills`, index 0 = Slash. */
   skills: number[];
+  /**
+   * Each skill's running XP total (`xp`-model skills), in `skills`' order; saved beside the
+   * values. Made on first use when absent.
+   */
+  skillXp?: number[];
   hunger: number;
   equip: Equipment;
   /** The membership with the faction sort's bonuses. */
@@ -675,6 +680,8 @@ export interface SpellFx extends FxSprite {
   sweptTo?: { h: number; v: number };
   /** The spell a player cast to place it (`CastMessage.castSpell`). */
   castSpell?: string;
+  /** An arrow's weapon as it was shot (`CastMessage.firedFrom`): the skills its hit trains. */
+  firedFrom?: string;
 }
 
 /** Fresh per-session combat state for a character entering the world. */
@@ -885,6 +892,8 @@ export interface CastMessage {
    * spell's FX, so the FX name alone does not say whose it is. Absent for every other sender.
    */
   castSpell?: string;
+  /** An arrow's weapon when it was shot, so its hit trains that weapon's skills. */
+  firedFrom?: string;
 }
 
 /** One line for the chat log (`systems/chat/log.ts`). */

@@ -8,6 +8,7 @@ import { classicData } from "@secondstaronline/data/classic";
 
 const { craft: craftData, items: itemsData } = classicData;
 
+import { buildContentStore, type ContentData, installContent } from "../../src/content/store.ts";
 import { damagedForm } from "../../src/rules/combat/armour.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import {
@@ -502,5 +503,33 @@ describe("the Cauldron", () => {
 
   test("bug fixed: no recipe brews the artless Magic Shield item", () => {
     expect(cauldronBrew(["Magic Shield Book", "Small Shield"])).toBeNull();
+  });
+});
+
+describe("craft XP (#37 stage 6)", () => {
+  test("the XP comes from the row that made the result: the last matching repair", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.craft.stations.smith.repairs.push(
+      { input: "Damaged Sword, Knight", output: "Knight's Sword", xp: 40 },
+      { input: "Damaged Sword, Knight", output: "Knight's Sword", xp: 90 },
+    );
+    installContent(buildContentStore(d));
+    try {
+      const bag = inv(bagOf(["Damaged Sword, Knight", 1], ["Chunk of Steel", 1]));
+      const job: CraftJob = {
+        kind: "Smith",
+        item: "Damaged Sword, Knight",
+        chunk: "Chunk of Steel",
+      };
+      expect(finishCraft(bag, job, 0, rngByN()).xp).toBe(90);
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  });
+
+  test("Classic's rows give no XP of their own", () => {
+    const bag = inv(bagOf(["Damaged Sword, Knight", 1], ["Chunk of Steel", 1]));
+    const job: CraftJob = { kind: "Smith", item: "Damaged Sword, Knight", chunk: "Chunk of Steel" };
+    expect(finishCraft(bag, job, 0, rngByN()).xp).toBeUndefined();
   });
 });

@@ -10,6 +10,7 @@ A new character chooses a class and starting stats. As they defeat monsters, exp
 - [packages/shared/src/rules/progression/progression.ts](../../packages/shared/src/rules/progression/progression.ts): calculates experience, levels, regeneration, hunger and death values.
 - [packages/shared/src/rules/progression/promotion.ts](../../packages/shared/src/rules/progression/promotion.ts): parses trainer data and checks promotion.
 - [packages/shared/src/rules/progression/skillgain.ts](../../packages/shared/src/rules/progression/skillgain.ts): calculates skill caps and kill-based skill gains.
+- [packages/shared/src/rules/progression/progress.ts](../../packages/shared/src/rules/progression/progress.ts): trains a skill from each source by its progression (`chance` or `xp`), works out XP curves, and writes the advance line.
 - [packages/shared/src/rules/progression/medals.ts](../../packages/shared/src/rules/progression/medals.ts): calculates held medals, their stat bonus and the award lines from skills.
 - [packages/server/src/systems/progression/vitals.ts](../../packages/server/src/systems/progression/vitals.ts): advances regeneration and hunger and handles death and recovery.
 - [packages/server/src/systems/progression/medals.ts](../../packages/server/src/systems/progression/medals.ts): prints a medal's line when a skill reaches 90 in play.

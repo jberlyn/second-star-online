@@ -557,6 +557,13 @@ describe("review fixes", () => {
         .check()
         .filter((p) => p.where === "bindings/skills")
         .map((p) => p.message);
+    // Nor while a progression names it: Block's needs Parry over 50.
+    expect(service.draftSet(ADMIN, skill("Parry"), "remove", null)).toMatchObject({
+      ok: false,
+      error:
+        "Parry cannot be removed: Block depends on it (a requirement or a formula in the progression names it). Change that progression first.",
+    });
+    service.draftSet(ADMIN, skill("Block"), "set", { skill: "Block" });
     service.draftSet(ADMIN, skill("Parry"), "remove", null);
     expect(fromBindings()).toEqual(["names a skill that does not exist: Parry"]);
     const bindings = { dataset: "bindings" as const, part: "skills", key: null };
@@ -565,6 +572,31 @@ describe("review fixes", () => {
     expect(fromBindings()).toEqual([]);
     service.draftSet(ADMIN, bindings, "set", { ...unbound, block: "Blok" });
     expect(fromBindings()).toEqual(["names a skill that does not exist: Blok"]);
+  });
+
+  test("a skill other progressions name cannot be removed, and the refusal says which", () => {
+    const { service } = setup();
+    const skill = (key: string) => ({ dataset: "classes" as const, part: "skills", key });
+    // Carpentry needs Lumberjacking over 20; Farming's roll reads it.
+    service.draftSet(ADMIN, skill("Carpentry"), "set", {
+      skill: "Carpentry",
+      progression: {
+        model: "chance",
+        on: { craft: { roll: 9, cap: 100, requires: { skill: "Lumberjacking", above: 20 } } },
+      },
+    });
+    service.draftSet(ADMIN, skill("Farming"), "set", {
+      skill: "Farming",
+      progression: {
+        model: "chance",
+        on: { gather: { roll: [{ op: "set", value: "Lumberjacking" }], cap: 100 } },
+      },
+    });
+    expect(service.draftSet(ADMIN, skill("Lumberjacking"), "remove", null)).toMatchObject({
+      ok: false,
+      error:
+        "Lumberjacking cannot be removed: Carpentry and Farming depend on it (a requirement or a formula in the progression names it). Change that progression first.",
+    });
   });
 
   test("a published skill keeps its key's exact spelling", () => {

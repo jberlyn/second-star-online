@@ -11,6 +11,7 @@ import {
   runBook,
 } from "@secondstaronline/shared";
 
+import { fighterOf } from "../monsters/attack.ts";
 import { type Player, statsOf } from "../world/world.ts";
 
 /**
@@ -30,7 +31,7 @@ export function readBook(p: Player, slot: number, rng: Rng): string[] {
     return [BOOK_TEXT.dex];
   }
   const lines: string[] = [BOOK_TEXT.read];
-  const r = runBook(name, p.char.skills, p.spell.book, rng);
+  const r = runBook(name, fighterOf(p), p.spell.book, rng);
   lines.push(...r.lines);
   if (r.kind === "none") {
     return lines;

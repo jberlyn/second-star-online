@@ -1252,7 +1252,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "sheet":
         panel.setStats(msg.stats);
-        panel.setSkills(msg.skills);
+        panel.setSkills(msg.skills, msg.xp);
         return;
       case "permissions":
         // Sent at entry and whenever your role or its definition changes.

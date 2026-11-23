@@ -68,10 +68,8 @@ export const spellPowerTableSchema = z.strictObject({
 export const spellSchoolSchema = z.strictObject({
   /** A skill key (classes.json `skills`). */
   skill: z.string().min(1),
-  /** The line printed when the skill rises ("You have advanced in the art of Fire!"). */
-  line: z.string().min(1),
   /** The skill rises only below this. Absent = the caster's Mage skill cap (faction perks). */
-  cap: int.positive().optional(),
+  cap: int.positive().max(100).optional(),
 });
 
 /** One item Create Food can make, and the article its line puts before it ("an Apple"). */

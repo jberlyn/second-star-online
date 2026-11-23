@@ -29,7 +29,6 @@
       "info": "Disappear into the shadows with the rest of the ninja.",
       "school": {
         "skill": "MartialArts",
-        "line": "You have advanced in the art of Martial Arts!",
         "cap": 100
       },
       "power": "MartialArts",
@@ -73,8 +72,7 @@
       },
       "info": "A lower level healing spell.",
       "school": {
-        "skill": "Blessing",
-        "line": "You have advanced in the art of blessing!"
+        "skill": "Blessing"
       },
       "power": "Blessing",
       "fx": [
@@ -109,8 +107,7 @@
       },
       "info": "Creates an illusion that makes you appear to be a monster.",
       "school": {
-        "skill": "Illusion",
-        "line": "You have advanced in the art of illusion!"
+        "skill": "Illusion"
       },
       "power": "Illusion",
       "fx": [
@@ -145,8 +142,7 @@
       },
       "info": "Turns the target's skin into pure stone.",
       "school": {
-        "skill": "Earth",
-        "line": "You have advanced in the art of Earth!"
+        "skill": "Earth"
       },
       "power": "Earth",
       "fx": [
@@ -181,8 +177,7 @@
       },
       "info": "The fist of the Earth strikes down your foes.",
       "school": {
-        "skill": "Earth",
-        "line": "You have advanced in the art of Earth!"
+        "skill": "Earth"
       },
       "power": "Earth",
       "fx": [
@@ -217,8 +212,7 @@
       },
       "info": "A whirling wind causes confusion for your foe.",
       "school": {
-        "skill": "wind",
-        "line": "You have advanced in the art of Wind!"
+        "skill": "wind"
       },
       "power": "Wind",
       "fx": [
@@ -253,8 +247,7 @@
       },
       "info": "A powerful, crushing blow from the sky.",
       "school": {
-        "skill": "Wrath",
-        "line": "You have advanced in the art of Wrath!"
+        "skill": "Wrath"
       },
       "power": "Wrath",
       "fx": [
@@ -347,8 +340,7 @@
       },
       "info": "Send a shot of fire through an enemy with this spell.",
       "school": {
-        "skill": "fire",
-        "line": "You have advanced in the art of Fire!"
+        "skill": "fire"
       },
       "power": "Fire",
       "fx": [
@@ -442,8 +434,7 @@
         }
       },
       "school": {
-        "skill": "Sorcery",
-        "line": "You have advanced in the art of Sorcery!"
+        "skill": "Sorcery"
       },
       "fx": [
         {
@@ -481,8 +472,7 @@
         "skilled": null
       },
       "school": {
-        "skill": "Blessing",
-        "line": "You have advanced in the art of Blessing!"
+        "skill": "Blessing"
       },
       "fx": [
         {
@@ -516,8 +506,7 @@
       },
       "info": "This wind blast will definately hurt your foes.",
       "school": {
-        "skill": "wind",
-        "line": "You have advanced in the art of Wind!"
+        "skill": "wind"
       },
       "power": "Wind",
       "fx": [
@@ -603,8 +592,7 @@
       },
       "info": "Send a jolt of electricity through your opponent's body.",
       "school": {
-        "skill": "Wrath",
-        "line": "You have advanced in the art of Wrath!"
+        "skill": "Wrath"
       },
       "power": "Wrath",
       "fx": [
@@ -678,8 +666,7 @@
       },
       "info": "Fry your oppoent with this deadly bolt of flames.",
       "school": {
-        "skill": "fire",
-        "line": "You have advanced in the art of Fire!"
+        "skill": "fire"
       },
       "power": "Fire",
       "fx": [
@@ -791,8 +778,7 @@
       },
       "info": "Turns an ordinary sword into a flaming sword.",
       "school": {
-        "skill": "fire",
-        "line": "You have advanced in the art of Fire!"
+        "skill": "fire"
       },
       "power": "Fire",
       "fx": [
@@ -827,8 +813,7 @@
       },
       "info": "A very strong healing spell.",
       "school": {
-        "skill": "Blessing",
-        "line": "You have advanced in the art of blessing!"
+        "skill": "Blessing"
       },
       "power": "Blessing",
       "fx": [
@@ -860,8 +845,7 @@
       },
       "info": "A medium level healing spell.",
       "school": {
-        "skill": "Blessing",
-        "line": "You have advanced in the art of blessing!"
+        "skill": "Blessing"
       },
       "fx": [
         {
@@ -890,8 +874,7 @@
       },
       "info": "Soak your foe in this deadly downpour.",
       "school": {
-        "skill": "Water",
-        "line": "You have advanced in the art of Water!"
+        "skill": "Water"
       },
       "power": "Water",
       "fx": [
@@ -984,8 +967,7 @@
         "skilled": null
       },
       "school": {
-        "skill": "Illusion",
-        "line": "You have advanced in the art of illusion!"
+        "skill": "Illusion"
       },
       "power": "Illusion",
       "fx": [
@@ -1082,8 +1064,7 @@
       },
       "info": "A protective barrier to keep out harmful spells.",
       "school": {
-        "skill": "Wrath",
-        "line": "You have advanced in the art of Wrath!"
+        "skill": "Wrath"
       },
       "power": "Wrath",
       "fx": [
@@ -1167,8 +1148,7 @@
       },
       "info": "Reveals the true-colors of all illusionist magics in an area.",
       "school": {
-        "skill": "Wizardry",
-        "line": "You have advanced in the art of Wizardry!"
+        "skill": "Wizardry"
       },
       "fx": [
         {
@@ -1202,8 +1182,7 @@
       },
       "info": "The black arts allows you to briefly hold your foe in place.",
       "school": {
-        "skill": "BlackArts",
-        "line": "You have advanced in the Black Arts!"
+        "skill": "BlackArts"
       },
       "power": "BlackArts",
       "fx": [
@@ -1242,8 +1221,7 @@
         "skilled": null
       },
       "school": {
-        "skill": "BlackArts",
-        "line": "You have advanced in the Black Arts!"
+        "skill": "BlackArts"
       },
       "power": "BlackArts",
       "fx": [
@@ -1282,8 +1260,7 @@
         "skilled": null
       },
       "school": {
-        "skill": "Wizardry",
-        "line": "You have advanced in the art of Wizardry!"
+        "skill": "Wizardry"
       },
       "fx": [
         {
@@ -1317,8 +1294,7 @@
       },
       "info": "Eases the target's hunger.",
       "school": {
-        "skill": "Blessing",
-        "line": "You have advanced in the art of blessing!"
+        "skill": "Blessing"
       },
       "power": "Blessing",
       "fx": [
@@ -1353,8 +1329,7 @@
       },
       "info": "Learn the strengths and weaknesses of a foe.",
       "school": {
-        "skill": "Wrath",
-        "line": "You have advanced in the art of Wrath!"
+        "skill": "Wrath"
       },
       "power": "Wrath",
       "fx": [

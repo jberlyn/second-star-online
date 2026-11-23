@@ -37,6 +37,8 @@ import {
   type EquipSlot,
   type EquipView,
   equipSlotFor,
+  findSkillIndex,
+  formatXp,
   type InventoryView,
   isCrystal,
   itemLabel,
@@ -44,6 +46,7 @@ import {
   PAPERDOLL_SIZE,
   paperdollLayers,
   portraitLayers,
+  xpShown,
 } from "@secondstaronline/shared";
 
 import { type Assets, drawSprite } from "../assets.ts";
@@ -111,7 +114,11 @@ export interface Panel {
   setLevel(level: number): void;
   resetCharacter(): void;
   /** Every skill's value by skill key. */
-  setSkills(skills: Readonly<Record<string, number>>): void;
+  setSkills(
+    skills: Readonly<Record<string, number>>,
+    /** The running XP totals of the skills on the `xp` model, by key. */
+    xp?: Readonly<Record<string, number>>,
+  ): void;
   /** The Spellbook page (frame 67). */
   spellbook: Spellbook;
   /** The hover tip, in the menu layer; the playfield shows it too. */
@@ -555,7 +562,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   // ---- skills page ---------------------------------------------------------------------
   const skillsPage = document.createElement("div");
   skillsPage.className = "page page-skills";
-  const clip = document.createElement("div");
+  // The list answers the pointer only for its hover tip (an `xp` skill's XP).
+  const clip = tagAction(document.createElement("div"), "skills-list");
   clip.className = "skills-clip";
   // The backdrop's rect y 114-278 clips the columns, as 1.6; the rows start 3 px inside it, at y
   // 117.
@@ -608,6 +616,39 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     });
     return b;
   };
+  // An `xp`-model skill's row shows its XP in the hover tip ("212 / 404 XP"); a `chance` skill's
+  // shows nothing, so Classic's page is as 1.6's.
+  let shownSkills: string[] = [];
+  let skillXp: Readonly<Record<string, number>> = {};
+  let skillValues: Readonly<Record<string, number>> = {};
+  let pointerY: number | null = null;
+  for (const type of ["pointerenter", "pointermove"] as const) {
+    clip.addEventListener(type, (e) => {
+      pointerY = e.clientY;
+    });
+  }
+  clip.addEventListener("pointerleave", () => {
+    pointerY = null;
+  });
+  tips.attach(clip, () => {
+    const rows = shownSkills.length;
+    const r = names.getBoundingClientRect();
+    if (pointerY === null || rows === 0 || r.height <= 0) {
+      return null;
+    }
+    const key = shownSkills[Math.floor(((pointerY - r.top) / r.height) * rows)];
+    const i = key === undefined ? undefined : findSkillIndex(key);
+    if (key === undefined || i === undefined) {
+      return null;
+    }
+    const shown = xpShown(i, skillValues[key] ?? 0, skillXp[key] ?? 0);
+    if (!shown) {
+      return null;
+    }
+    return shown.need === null
+      ? `${formatXp(shown.have)} XP`
+      : `${formatXp(shown.have)} / ${formatXp(shown.need)} XP`;
+  });
   const up = arrow(162, 122, "Scroll skills up", 32);
   const down = arrow(161, 274, "Scroll skills down", -32);
   skillsPage.append(uiAt(a, "internal", 223, 694, 80), clip, up, down);
@@ -1121,12 +1162,19 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       bagLayer.replaceChildren();
       equipLayer.replaceChildren();
       menu.hidden = true;
+      // The next character's sheet fills these; until then no row shows the last one's XP.
+      shownSkills = [];
+      skillValues = {};
+      skillXp = {};
     },
     setLevel(level) {
       levelValue.textContent = String(level);
     },
-    setSkills(skills) {
+    setSkills(skills, xp = {}) {
       const rows = content().classes.skills.filter((s) => !s.hidden);
+      shownSkills = rows.map((r) => r.skill);
+      skillValues = skills;
+      skillXp = xp;
       names.textContent = rows.map((r) => r.display ?? r.skill).join("\n");
       amounts.textContent = rows.map((r) => skills[r.skill] ?? 0).join("\n");
       // Fewer rows than before (a publish hid or removed skills) keep the list in view.

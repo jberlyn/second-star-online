@@ -46,6 +46,7 @@ import {
   tickAttackTimers,
   tickSpriteTimers,
   USE_TEXT,
+  xpByKey,
 } from "@secondstaronline/shared";
 
 import { logActivity } from "../admin/activity.ts";
@@ -691,10 +692,12 @@ export function tick(world: World, deps: TickDeps): TickResult {
     }
     // The sheet shows the stats played with: allocated plus the held medals' points.
     const stats = statsOf(p);
-    const sheet = JSON.stringify([stats, p.char.skills]);
+    const xp = xpByKey(p.char.skills, p.char.skillXp, p.char.faction);
+    const sheet = JSON.stringify(xp ? [stats, p.char.skills, xp] : [stats, p.char.skills]);
     if (sheet !== p.lastSheet) {
       p.lastSheet = sheet;
-      out.push({ to: p.id, msg: { t: "sheet", stats, skills: skillsByKey(p.char.skills) } });
+      const skills = skillsByKey(p.char.skills);
+      out.push({ to: p.id, msg: { t: "sheet", stats, skills, ...(xp ? { xp } : {}) } });
     }
     if (p.invSaveDue) {
       p.invSaveDue = false;

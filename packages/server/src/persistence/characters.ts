@@ -205,6 +205,8 @@ export interface CharacterProgress {
   vitals: StoredVitals;
   hunger: number;
   skills: readonly number[];
+  /** Each skill's running XP total; saved XP stays when absent. */
+  skillXp?: readonly number[];
   respawn: { mapId: string; x: number; y: number } | null;
   faction: StoredFaction;
   wanted: boolean;
@@ -250,7 +252,7 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     now,
     id,
   );
-  writeSkills(db, id, c.skills);
+  writeSkills(db, id, c.skills, c.skillXp);
 }
 
 /**
@@ -258,22 +260,32 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
  * skill new to the character gains its row; an unchanged value is not rewritten; rows of skills
  * the content no longer lists are left alone, so a skill that returns finds its values.
  */
-export function writeSkills(db: Db, id: string, skills: readonly number[]): void {
-  saveSkillValues(
-    db,
-    id,
+export function writeSkills(
+  db: Db,
+  id: string,
+  skills: readonly number[],
+  /** Each skill's running XP total, by the same index; left as saved when absent. */
+  xp?: readonly number[],
+): void {
+  const byKey = (list: readonly number[]) =>
     Object.fromEntries(
-      skills.flatMap((v, i) => (SKILL_KEYS[i] === undefined ? [] : [[SKILL_KEYS[i], v]])),
-    ),
-  );
+      list.flatMap((v, i) => (SKILL_KEYS[i] === undefined ? [] : [[SKILL_KEYS[i], v]])),
+    );
+  saveSkillValues(db, id, byKey(skills), xp === undefined ? undefined : byKey(xp));
 }
 
 /**
- * Writes skill values by key (an unchanged value is not rewritten). A row saved under another
- * spelling of a written key (a skill removed and added back spelled differently) goes, so a skill
- * never has two rows to choose between.
+ * Writes skill values by key (an unchanged value is not rewritten), and their XP totals when given
+ * (a skill without one keeps its saved XP). A row saved under another spelling of a written key (a
+ * skill removed and added back spelled differently) goes, so a skill never has two rows to choose
+ * between.
  */
-export function saveSkillValues(db: Db, id: string, values: Readonly<SkillValues>): void {
+export function saveSkillValues(
+  db: Db,
+  id: string,
+  values: Readonly<SkillValues>,
+  xp?: Readonly<SkillValues>,
+): void {
   const keys = Object.keys(values);
   db.query(
     `DELETE FROM character_skills WHERE character_id = ?
@@ -284,13 +296,18 @@ export function saveSkillValues(db: Db, id: string, values: Readonly<SkillValues
     JSON.stringify(keys),
     JSON.stringify(keys.map((k) => k.replace(/\s+/g, "").toLowerCase())),
   );
+  if (keys.length === 0) {
+    return;
+  }
   const q = db.prepare(
-    `INSERT INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)
-     ON CONFLICT (character_id, skill) DO UPDATE SET value = excluded.value
-     WHERE character_skills.value <> excluded.value`,
+    `INSERT INTO character_skills (character_id, skill, value, xp) VALUES (?, ?, ?, coalesce(?, 0))
+     ON CONFLICT (character_id, skill) DO UPDATE SET value = excluded.value,
+       xp = coalesce(?, character_skills.xp)
+     WHERE character_skills.value <> excluded.value OR character_skills.xp <> coalesce(?, character_skills.xp)`,
   );
   for (const [key, value] of Object.entries(values)) {
-    q.run(id, key, value);
+    const x = xp?.[key] ?? null;
+    q.run(id, key, value, x, x, x);
   }
 }
 
@@ -358,6 +375,19 @@ export function loadSkillValues(db: Db, id: string): SkillValues {
  */
 export function loadSkills(db: Db, id: string): number[] {
   return skillsFromKeys(loadSkillValues(db, id));
+}
+
+/** A character's saved XP totals in the content's order; 0 for a skill with no row. */
+export function loadSkillXp(db: Db, id: string): number[] {
+  const out: SkillValues = {};
+  for (const r of db
+    .query<{ skill: string; xp: number }, [string]>(
+      "SELECT skill, xp FROM character_skills WHERE character_id = ?",
+    )
+    .all(id)) {
+    out[r.skill] = r.xp;
+  }
+  return skillsFromKeys(out, () => 0);
 }
 
 export function loadBag(db: Db, id: string): { slot: number; item: string; qty: number }[] {

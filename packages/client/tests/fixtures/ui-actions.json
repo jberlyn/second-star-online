@@ -1754,6 +1754,11 @@
     "hidden": 2,
     "disabled": 0
   },
+  "skills-list": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
   "skills-scroll-down": {
     "count": 2,
     "hidden": 0,

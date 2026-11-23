@@ -1,0 +1,714 @@
+{
+  "classes": {
+    "classes": [
+      {
+        "code": 1,
+        "name": "Fighter",
+        "promotion": null
+      },
+      {
+        "code": 2,
+        "name": "Mage",
+        "promotion": null
+      },
+      {
+        "code": 3,
+        "name": "Ranger",
+        "promotion": null
+      },
+      {
+        "code": 4,
+        "name": "Grunt",
+        "promotion": {
+          "from": ["Fighter"],
+          "requirement": {
+            "stat": "Slash",
+            "min": 30
+          },
+          "statChanges": [],
+          "skillGrants": ["Thrust"]
+        }
+      },
+      {
+        "code": 5,
+        "name": "Swordsman",
+        "promotion": null
+      },
+      {
+        "code": 6,
+        "name": "Brawler",
+        "promotion": null
+      },
+      {
+        "code": 7,
+        "name": "Illusionist",
+        "promotion": {
+          "from": ["Mage"],
+          "requirement": {
+            "stat": "Magery",
+            "min": 30
+          },
+          "statChanges": [],
+          "skillGrants": ["Illusion"]
+        }
+      },
+      {
+        "code": 8,
+        "name": "Wizard",
+        "promotion": {
+          "from": ["Priest"],
+          "requirement": {
+            "stat": "Blessing",
+            "min": 30
+          },
+          "statChanges": [],
+          "skillGrants": ["Wizardry"]
+        }
+      },
+      {
+        "code": 9,
+        "name": "Sorcerer",
+        "promotion": {
+          "from": ["Ninja", "Necromancer"],
+          "requirement": {
+            "stat": "HPmax",
+            "min": 59
+          },
+          "statChanges": [],
+          "skillGrants": ["Sorcery"]
+        }
+      },
+      {
+        "code": 10,
+        "name": "Paladin",
+        "promotion": {
+          "from": ["Ninja"],
+          "requirement": {
+            "stat": "MartialArts",
+            "min": 35
+          },
+          "statChanges": [
+            {
+              "stat": "SPmax",
+              "atLeast": 1
+            }
+          ],
+          "skillGrants": ["Fencing", "Magery"]
+        }
+      },
+      {
+        "code": 11,
+        "name": "Druid",
+        "statBonus": {
+          "dex": 3,
+          "wis": 3,
+          "int": 3
+        },
+        "promotion": {
+          "from": ["Illusionist"],
+          "requirement": {
+            "stat": "SPmax",
+            "min": 30
+          },
+          "statChanges": [],
+          "skillGrants": []
+        }
+      },
+      {
+        "code": 12,
+        "name": "Ninja",
+        "promotion": null
+      },
+      {
+        "code": 13,
+        "name": "Warlock",
+        "promotion": null
+      },
+      {
+        "code": 14,
+        "name": "Dragoon",
+        "promotion": {
+          "from": ["Swordsman"],
+          "requirement": {
+            "stat": "Swordsmanship",
+            "min": 40
+          },
+          "statChanges": [],
+          "skillGrants": ["Block", "Fencing"]
+        }
+      },
+      {
+        "code": 15,
+        "name": "Priest",
+        "promotion": {
+          "from": ["Mage", "Ranger"],
+          "requirement": {
+            "stat": "Magery",
+            "min": 30
+          },
+          "statChanges": [],
+          "skillGrants": ["Blessing"]
+        }
+      },
+      {
+        "code": 16,
+        "name": "Necromancer",
+        "promotion": {
+          "from": ["Warlock"],
+          "requirement": {
+            "stat": "SPmax",
+            "min": 50
+          },
+          "statChanges": [],
+          "skillGrants": ["BlackArts"]
+        }
+      },
+      {
+        "code": 17,
+        "name": "Death Knight",
+        "promotion": null
+      },
+      {
+        "code": 18,
+        "name": "Immortal",
+        "promotion": null
+      },
+      {
+        "code": 19,
+        "name": "Bard",
+        "statBonus": {
+          "wis": 1
+        },
+        "promotion": {
+          "from": ["Swordsman", "Priest", "Archer"],
+          "requirement": {
+            "stat": "HPmax",
+            "min": 35
+          },
+          "statChanges": [],
+          "skillGrants": ["Musicianship"]
+        }
+      },
+      {
+        "code": 20,
+        "name": "Barbarian",
+        "statBonus": {
+          "str": 1
+        },
+        "promotion": {
+          "from": ["Grunt", "Brawler"],
+          "requirement": {
+            "stat": "Slash",
+            "min": 60
+          },
+          "statChanges": [],
+          "skillGrants": ["HammerWielding"]
+        }
+      },
+      {
+        "code": 21,
+        "name": "Fire Mage",
+        "promotion": {
+          "from": ["Paladin", "Sorcerer", "Death Knight"],
+          "requirement": {
+            "stat": "Magery",
+            "min": 70
+          },
+          "statChanges": [],
+          "skillGrants": ["fire"]
+        }
+      },
+      {
+        "code": 22,
+        "name": "Water Mage",
+        "promotion": {
+          "from": ["Paladin", "Sorcerer", "Death Knight"],
+          "requirement": {
+            "stat": "Magery",
+            "min": 70
+          },
+          "statChanges": [],
+          "skillGrants": ["Water"]
+        }
+      },
+      {
+        "code": 23,
+        "name": "Wind Mage",
+        "promotion": {
+          "from": ["Paladin", "Sorcerer", "Death Knight"],
+          "requirement": {
+            "stat": "Magery",
+            "min": 70
+          },
+          "statChanges": [],
+          "skillGrants": ["wind"]
+        }
+      },
+      {
+        "code": 24,
+        "name": "Earth Mage",
+        "promotion": {
+          "from": ["Paladin", "Sorcerer", "Death Knight"],
+          "requirement": {
+            "stat": "Magery",
+            "min": 70
+          },
+          "statChanges": [],
+          "skillGrants": ["Earth"]
+        }
+      },
+      {
+        "code": 25,
+        "name": "Gladiator",
+        "promotion": null
+      },
+      {
+        "code": 26,
+        "name": "Archer",
+        "promotion": {
+          "from": ["Ranger"],
+          "requirement": {
+            "stat": "HPmax",
+            "min": 40
+          },
+          "statChanges": [],
+          "skillGrants": ["Archery"]
+        }
+      }
+    ],
+    "skills": [
+      {
+        "skill": "Slash"
+      },
+      {
+        "skill": "Thrust"
+      },
+      {
+        "skill": "Parry"
+      },
+      {
+        "skill": "HeavyArms",
+        "display": "Heavy Arms"
+      },
+      {
+        "skill": "AxeFighting",
+        "display": "Axe Fighting"
+      },
+      {
+        "skill": "Swordsmanship"
+      },
+      {
+        "skill": "Fencing"
+      },
+      {
+        "skill": "Magery"
+      },
+      {
+        "skill": "BlackArts",
+        "display": "Black Arts"
+      },
+      {
+        "skill": "UnholyCombat",
+        "display": "Unholy Combat"
+      },
+      {
+        "skill": "Archery"
+      },
+      {
+        "skill": "Meditation",
+        "hidden": true
+      },
+      {
+        "skill": "Blessing"
+      },
+      {
+        "skill": "Sorcery"
+      },
+      {
+        "skill": "Musicianship"
+      },
+      {
+        "skill": "TerrainNavigating",
+        "display": "Terrain Navigating",
+        "hidden": true
+      },
+      {
+        "skill": "StaffFighting",
+        "display": "Staff Fighting"
+      },
+      {
+        "skill": "ItemIdentification",
+        "display": "Item Identification",
+        "hidden": true
+      },
+      {
+        "skill": "Illusion"
+      },
+      {
+        "skill": "HammerWielding",
+        "display": "Hammer Wielding"
+      },
+      {
+        "skill": "fire",
+        "display": "Fire"
+      },
+      {
+        "skill": "Water"
+      },
+      {
+        "skill": "wind",
+        "display": "Wind"
+      },
+      {
+        "skill": "Earth"
+      },
+      {
+        "skill": "Block"
+      },
+      {
+        "skill": "MartialArts",
+        "display": "Martial Arts"
+      },
+      {
+        "skill": "Wizardry"
+      },
+      {
+        "skill": "Wrath"
+      },
+      {
+        "skill": "Punch"
+      },
+      {
+        "skill": "Cooking"
+      },
+      {
+        "skill": "Alchemy"
+      },
+      {
+        "skill": "Lumberjacking"
+      },
+      {
+        "skill": "Carpentry"
+      },
+      {
+        "skill": "Fishing"
+      },
+      {
+        "skill": "Blacksmithing"
+      },
+      {
+        "skill": "Mining"
+      },
+      {
+        "skill": "Shoveling"
+      },
+      {
+        "skill": "Farming"
+      }
+    ],
+    "startClasses": [
+      {
+        "code": 1,
+        "skills": {
+          "Slash": 20,
+          "Thrust": 20
+        }
+      },
+      {
+        "code": 3,
+        "skills": {
+          "Slash": 10,
+          "Magery": 10,
+          "Archery": 20
+        }
+      },
+      {
+        "code": 2,
+        "skills": {
+          "Magery": 30
+        }
+      }
+    ],
+    "creation": {
+      "statBudget": {
+        "rule": "xStrength + xStamina + xIntelligence + xWisdom + xDexterity <= 66 (Agility, Speed, Aim not counted); over -> 'Stop hacking' and quit (client-only)"
+      },
+      "startingVitals": {
+        "written": "class:1:20:20:20:20:0:30:sex -> HP 20/20, SP 20/20, exp 0, ExpNeeded 30 for every class",
+        "notes": "The rolled HP = Str + random(Sta) and SP formulas, and the Fighter SP = 0 lines, are computed but the Vit string uses literal 20s."
+      },
+      "startingMap": {
+        "value": "x1000y992:6-4",
+        "notes": "x1000y992 is the 'Test map' (field 17)."
+      },
+      "otherFields": {
+        "gold": 0,
+        "faction": "0:0",
+        "profile": "I have not edited my profile yet",
+        "hunger": 50000,
+        "breakCount": 100
+      },
+      "nameRules": {
+        "rule": "letters only, either case: characters 1-20 are each compared with \"a\"..\"z\" ignoring case, and anything else alerts first; Admin/Guide/Guardian are refused anywhere in the name (`contains`, any case). The monster-name check does nothing, so monster names are allowed. The server refuses only a name whose file exists (case-insensitive on Windows)."
+      }
+    },
+    "skillGain": {
+      "weaponSkills": [
+        {
+          "weapon": "NOTHING",
+          "match": "exact",
+          "skills": ["Punch", "Martial Arts"]
+        },
+        {
+          "weapon": "Dagger",
+          "match": "exact",
+          "skills": ["Slash", "Thrust"]
+        },
+        {
+          "weapon": "Bow",
+          "match": "contains",
+          "skills": ["Archery"]
+        },
+        {
+          "weapon": "Knife",
+          "match": "exact",
+          "skills": ["Slash", "Thrust"]
+        },
+        {
+          "weapon": "Axe",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Heavy Arms", "Axe Fighting"]
+        },
+        {
+          "weapon": "Short Sword",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Dark Sword",
+          "match": "exact",
+          "skills": ["Unholy Combat", "Slash", "Thrust", "Swordsmanship", "Fencing", "Heavy Arms"]
+        },
+        {
+          "weapon": "Dark Scimitar",
+          "match": "exact",
+          "skills": ["Unholy Combat", "Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Unholy Lance",
+          "match": "exact",
+          "skills": ["Unholy Combat", "Slash", "Thrust", "Swordsmanship", "Fencing", "Heavy Arms"]
+        },
+        {
+          "weapon": "Broad Sword",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Heavy Arms"]
+        },
+        {
+          "weapon": "Knight's Sword",
+          "match": "exact",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Heavy Arms"]
+        },
+        {
+          "weapon": "Scimitar",
+          "match": "exact",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Long Sword",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing", "Heavy Arms"]
+        },
+        {
+          "weapon": "Gold Sword",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Laser Sword",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Sword of Hope",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing", "Heavy Arms"]
+        },
+        {
+          "weapon": "Star Sword",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Pharaoh Sword",
+          "match": "contains",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Ice Sword",
+          "match": "exact",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing", "Heavy Arms"]
+        },
+        {
+          "weapon": "Fire Sword",
+          "match": "exact",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing", "Heavy Arms"]
+        },
+        {
+          "weapon": "Steel Scimitar",
+          "match": "exact",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Dragon Sword",
+          "match": "exact",
+          "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+        },
+        {
+          "weapon": "Wooden Staff",
+          "match": "exact",
+          "skills": ["Staff Fighting"]
+        },
+        {
+          "weapon": "Steel Staff",
+          "match": "exact",
+          "skills": ["Staff Fighting"]
+        },
+        {
+          "weapon": "Lord's Staff",
+          "match": "exact",
+          "skills": ["Staff Fighting"]
+        },
+        {
+          "weapon": "Gold Staff",
+          "match": "exact",
+          "skills": ["Staff Fighting"]
+        },
+        {
+          "weapon": "Hammer",
+          "match": "exact",
+          "skills": ["Hammer Wielding", "Thrust", "Slash", "Heavy Arms"]
+        },
+        {
+          "weapon": "Thor's Hammer",
+          "match": "contains",
+          "skills": ["Hammer Wielding", "Thrust", "Slash", "Heavy Arms"]
+        },
+        {
+          "weapon": "Katana",
+          "match": "exact",
+          "skills": ["Martial Arts", "Thrust", "Swordsmanship", "Fencing", "Slash"]
+        },
+        {
+          "weapon": "Scimitar",
+          "match": "exact",
+          "skills": ["Martial Arts", "Thrust", "Swordsmanship", "Fencing", "Slash"]
+        },
+        {
+          "weapon": "Bo",
+          "match": "exact",
+          "skills": ["Martial Arts", "Thrust", "Swordsmanship", "Fencing", "Slash"]
+        },
+        {
+          "weapon": "Mining Hammer",
+          "match": "exact",
+          "skills": ["Hammer Wielding", "Heavy Arms"]
+        },
+        {
+          "weapon": "Ice Hammer",
+          "match": "exact",
+          "skills": ["Hammer Wielding", "Heavy Arms"]
+        },
+        {
+          "weapon": "Fire Hammer",
+          "match": "exact",
+          "skills": ["Hammer Wielding", "Heavy Arms"]
+        },
+        {
+          "weapon": "Blacksmith Hammer",
+          "match": "exact",
+          "skills": ["Hammer Wielding", "Heavy Arms"]
+        },
+        {
+          "weapon": "Crossbow",
+          "match": "contains",
+          "skills": ["Martial Arts", "Archery"]
+        }
+      ]
+    }
+  },
+  "skillGain": [
+    {
+      "handler": "LumberjackImp",
+      "skill": "Lumberjacking",
+      "chance": 12,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Lumberjacking!"
+    },
+    {
+      "handler": "ShovelingImp",
+      "skill": "Shoveling",
+      "chance": 12,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Shoveling!"
+    },
+    {
+      "handler": "FarmingImp",
+      "skill": "Farming",
+      "chance": 12,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Farming!"
+    },
+    {
+      "handler": "MiningImp",
+      "skill": "Mining",
+      "chance": 22,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Mining!"
+    },
+    {
+      "handler": "FishingImp",
+      "skill": "Fishing",
+      "chance": 16,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Fishing!"
+    },
+    {
+      "handler": "CookImp",
+      "skill": "Cooking",
+      "chance": 8,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Cooking!"
+    },
+    {
+      "handler": "SmithImp",
+      "skill": "Blacksmithing",
+      "chance": 9,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Blacksmithing!"
+    },
+    {
+      "handler": "AlchemyImp",
+      "skill": "Alchemy",
+      "chance": 15,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Alchemy!"
+    },
+    {
+      "handler": "CarpentryImp",
+      "skill": "Carpentry",
+      "chance": 9,
+      "min": 0,
+      "below": 100,
+      "text": "You have advanced in the art of Carpentry!"
+    }
+  ]
+}

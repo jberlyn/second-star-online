@@ -13,7 +13,7 @@ Block is a second chance to avoid a melee hit after Parry fails. It needs no shi
 
 ## How it rises
 
-- **Being attacked in melee**, by a monster or a player. Block rolls `random(Block) = 1` while it is from 1 to 99 and Parry is above 50, when a hit lands and when you block (`rollBlockGain` in [combat.ts](../../../packages/shared/src/rules/combat/combat.ts)).
+- **Being attacked in melee**, by a monster or a player. Block rolls `random(Block) = 1` while it is from 1 to 99 and Parry is above 50, when a hit lands and when you block (its `defend` progression, which needs Parry over 50; `train` in [progress.ts](../../../packages/shared/src/rules/progression/progress.ts)).
 - **Promotion to Dragoon** raises Block to a roll of 1 to 10 if it is lower.
 
 ## What it does

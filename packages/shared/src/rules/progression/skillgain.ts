@@ -1,20 +1,14 @@
 /**
- * Kill skill gain: the weapon skill increase for the left-hand item and the body, called by the original's kill routine
- * on the killer's client before the level check. Data: the classes `skillGain` and
- * monsters `skillCaps`.
+ * Kill skill gain: the skills the weapon trains (classes `skillGain.weaponSkills`), each by its
+ * `kill` progression, capped by the killed monster's body (monsters `skillCaps`). 1.6 ran it on the
+ * killer's client before the level check.
  */
 import { content } from "../../content/store.ts";
-import {
-  type Faction,
-  type Fighter,
-  findSkillIndex,
-  skillDisplay,
-  skillNorm,
-  skillValue,
-} from "../core/fighter.ts";
+import { type Faction, type Fighter, findSkillIndex, SKILL_KEYS } from "../core/fighter.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 import { factionPerk } from "../social/factions.ts";
+import { train } from "./progress.ts";
 
 /** The skills the weapon trains: the last matching row wins; an exact row covers its masterworks. */
 export function weaponSkillList(weapon: string): readonly string[] {
@@ -63,107 +57,35 @@ export function monsterSkillCap(body: number, intelligence: number): number {
   return cap;
 }
 
-/** The Wisdom addition to the skill-gain roll. */
-export function wisAdd(wisdom: number): number {
-  let w = 30;
-  const tiers: [number, number][] = [
-    [5, 5],
-    [10, 7],
-    [15, 8],
-    [20, 5],
-    [22, 2],
-    [23, 3],
-  ];
-  for (const [gt, sub] of tiers) {
-    if (wisdom > gt) {
-      w -= sub;
-    }
-  }
-  return w;
-}
-
-interface GainRule {
-  skill: string;
-  /** The `random(n)` size from the skill value. */
-  n(f: Fighter, value: number, wis: number): number;
-  cap: "max" | "mage";
-  /** An extra requirement tested only after the roll succeeds. */
-  requires?(f: Fighter): boolean;
-}
-
-const v = (f: Fighter, s: string) => skillValue(f.skills, s);
-
-/** In source order. */
-const RULES: readonly GainRule[] = [
-  { skill: "HammerWielding", n: (f, x, w) => 40 - f.sta + x + w, cap: "max" },
-  { skill: "AxeFighting", n: (_f, x, w) => x + w, cap: "max" },
-  { skill: "Punch", n: (_f, x, w) => x + w, cap: "max" },
-  { skill: "Archery", n: (_f, x, w) => x + w, cap: "max" },
-  { skill: "MartialArts", n: (_f, x, w) => x + w, cap: "max" },
-  { skill: "UnholyCombat", n: (_f, x) => x, cap: "mage" },
-  {
-    skill: "Thrust",
-    n: (f, x, w) => 40 - f.sta + x + w,
-    cap: "max",
-    requires: (f) => v(f, "Slash") > 30,
-  },
-  { skill: "StaffFighting", n: (_f, x, w) => x + w, cap: "mage" },
-  { skill: "Slash", n: (_f, x, w) => x + w, cap: "max" },
-  {
-    skill: "HeavyArms",
-    n: (_f, x, w) => x + w,
-    cap: "max",
-    requires: (f) => v(f, "Thrust") > 60,
-  },
-  {
-    skill: "Swordsmanship",
-    n: (f, x, w) => 25 - f.sta + x + w,
-    cap: "max",
-    requires: (f) => v(f, "Slash") > 50,
-  },
-  {
-    skill: "Fencing",
-    n: (f, x, w) => 25 - f.sta + x + w,
-    cap: "max",
-    requires: (f) => v(f, "Swordsmanship") > 20,
-  },
-];
-
 /**
- * The chat line for a gain, e.g. "You have advanced in the art of Punch!": the skill's `display`
- * name (`classes.json` `skills`), else its key.
- */
-export function advancedText(skill: string): string {
-  return `You have advanced in the art of ${skillDisplay(skill)}!`;
-}
-
-/**
- * Rolls every skill the weapon trains, in the original order; each needs skill > 0, below
- * its cap and below the monster's cap. Mutates `f.skills`; returns the skills that rose.
+ * Trains every skill the weapon trains, in the weapon row's list order (Classic's lists are in 1.6's
+ * order), by each skill's `kill` progression. Each `chance` skill needs skill > 0, below its cap
+ * and (with `monsterCap`) below the monster's cap. Mutates `f.skills` (and XP); returns the key of
+ * each skill that rose, once per level gained.
  * 1.6's `oSkills contains` was a substring test on the comma list of shown names; the list's
  * entries are matched to skills by name here (case and spaces ignored), so a skill's `display`
  * may change without it stopping training. For Classic's lists the two agree.
  */
-export function rollKillSkillGain(f: Fighter, monsterBody: number, rng: Rng): string[] {
-  const trained = new Set(weaponSkillList(f.equip.weapon).map(skillNorm));
-  const caps = skillCaps(f);
+export function rollKillSkillGain(
+  f: Fighter,
+  monsterBody: number,
+  rng: Rng,
+  /** The killed species' own `skillXp`, for `xp` skills. */
+  xp?: number,
+): string[] {
   const monsterCap = monsterSkillCap(monsterBody, f.int);
-  const w = wisAdd(f.wis);
   const gained: string[] = [];
-  for (const r of RULES) {
-    // A skill the world does not have is never rolled.
-    const i = findSkillIndex(r.skill);
-    if (i === undefined || !trained.has(skillNorm(r.skill))) {
+  const seen = new Set<number>();
+  for (const name of weaponSkillList(f.equip.weapon)) {
+    // A skill the world does not have is never rolled; a skill listed twice trains once.
+    const i = findSkillIndex(name);
+    if (i === undefined || seen.has(i)) {
       continue;
     }
-    const x = f.skills[i] ?? 0;
-    if (!(x > 0) || !(x < caps[r.cap])) {
-      continue;
-    }
-    const roll = rng.random(r.n(f, x, w));
-    if (x < monsterCap && roll === 1 && (!r.requires || r.requires(f))) {
-      f.skills[i] = x + 1;
-      gained.push(r.skill);
+    seen.add(i);
+    const levels = train(f, i, "kill", rng, xp === undefined ? { monsterCap } : { monsterCap, xp });
+    for (let n = 0; n < levels; n++) {
+      gained.push(SKILL_KEYS[i] ?? name);
     }
   }
   return gained;

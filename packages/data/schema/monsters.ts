@@ -61,6 +61,11 @@ export const monsterSchema = z.strictObject({
   /** Base XP, melee kill table and spell kill table. */
   xpMelee: int,
   xpSpell: int,
+  /**
+   * The XP a kill gives each `xp`-model skill the weapon trains, replacing the skills' own `kill`
+   * amount. Kill XP for the character level is `xpMelee`/`xpSpell`.
+   */
+  skillXp: int.min(0).max(1_000_000_000).optional(),
   /** Zombie and Skeleton: spawn only while `gt < server minute < lt`. */
   spawnMinute: z.strictObject({ gt: int, lt: int }).nullable(),
   /** The species' engine flags. Absent = none. */

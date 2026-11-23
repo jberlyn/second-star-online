@@ -210,6 +210,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       vault: [...p.char.vault],
       gold: p.char.gold,
       skills: [...p.char.skills],
+      skillXp: p.char.skillXp ? [...p.char.skillXp] : p.char.skillXp,
       // The baselines the activity log and the medal check compare skills against follow a
       // publish that moves the skills, so they go back with them.
       progress: p.activityProgress
@@ -267,6 +268,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         s.p.char.vault = s.vault;
         s.p.char.gold = s.gold;
         s.p.char.skills.splice(0, s.p.char.skills.length, ...s.skills);
+        s.p.char.skillXp = s.skillXp;
         s.p.activityProgress = s.progress;
         s.p.awardSkills = s.awardSkills;
         s.p.lastSheet = s.lastSheet;

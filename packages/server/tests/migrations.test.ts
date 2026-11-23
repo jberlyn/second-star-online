@@ -40,8 +40,19 @@ function insertCharacter(db: Db, input: Parameters<typeof insertCurrent>[1]): st
     (
       db.query("PRAGMA table_info(character_skills)").all() as { name: string; type: string }[]
     ).find((c) => c.name === "skill")?.type === "INTEGER";
+  // Before progression, skills had no XP total: the insert writes one, so it is given one for the
+  // insert and taken away again.
+  const noXp = !(db.query("PRAGMA table_info(character_skills)").all() as { name: string }[]).some(
+    (c) => c.name === "xp",
+  );
   if (!bySkillNumber) {
-    return insertCurrent(db, input);
+    if (!noXp) {
+      return insertCurrent(db, input);
+    }
+    db.run("ALTER TABLE character_skills ADD COLUMN xp INTEGER NOT NULL DEFAULT 0");
+    const id = insertCurrent(db, input);
+    db.run("ALTER TABLE character_skills DROP COLUMN xp");
+    return id;
   }
   const id = insertCurrent(db, { ...input, start: { ...input.start, skills: [] } });
   input.start.skills.forEach((v, i) => {
@@ -972,7 +983,11 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       [JSON.stringify(pack)],
     );
 
-    runMigrations(db, loadMigrations(MIGRATIONS_DIR));
+    // Up to progression (#37 stage 6), which gives skill rows their progression.
+    runMigrations(
+      db,
+      loadMigrations(MIGRATIONS_DIR).filter((m) => m.name < "20261123_65"),
+    );
 
     const skills = Object.fromEntries(
       (
@@ -1363,9 +1378,13 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
           .get() as { s: string }
       ).s,
     );
-    // Drench keeps its own school and gains Splash's power table, which it had none of.
+    // Drench keeps its own school (its own line went with progression, #37 stage 6) and gains
+    // Splash's power table, which it had none of.
     expect(pack).toEqual({
-      spells: [...classic.spells, { ...own, power: byName("Splash").power }],
+      spells: [
+        ...classic.spells,
+        { ...own, school: { skill: "Water" }, power: byName("Splash").power },
+      ],
       power: classic.power,
     });
     const row = (table: string) =>
@@ -1717,6 +1736,350 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         .get() as { f: string }
     ).f;
     expect([packFlag, rowFlag]).toEqual(["", "warrior"]);
+  });
+
+  test("progression gives older skills the progression 1.6's rules gave them and reshapes older content", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_65"),
+    );
+    const map = db.query("SELECT id FROM maps LIMIT 1").get() as { id: string };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    const id = insertCharacter(db, {
+      accountId: "a1",
+      start: startingCharacter({
+        name: "old",
+        sex: 1,
+        head: 1,
+        classCode: 1,
+        str: 1,
+        sta: 1,
+        int: 1,
+        wis: 1,
+        dex: 1,
+      }),
+      position: { mapId: map.id, x: 5, y: 5, facing: "N" },
+      now: "now",
+    });
+    // Classic's classes and gain rows as they were before this stage.
+    const before = JSON.parse(
+      readFileSync(join(import.meta.dir, "fixtures", "classes-before-stage6.json"), "utf8"),
+    );
+    const oldGather = {
+      ...structuredClone(classicData.gather),
+      gathering: {
+        ...structuredClone(classicData.gather.gathering),
+        texts: {
+          ...classicData.gather.gathering.texts,
+          advanced: "You have advanced in the art of <Skill>!",
+        },
+      },
+      skillGain: before.skillGain,
+    };
+    const oldRules = structuredClone(classicData.itemRules) as unknown as {
+      use: { skillBooks: Record<string, unknown>[] };
+    };
+    oldRules.use.skillBooks = oldRules.use.skillBooks.map(({ points: _p, upTo: _u, ...b }) => ({
+      ...b,
+      shown: panelName(String(b.skill)),
+    }));
+    const oldSpells = structuredClone(classicData.spells) as unknown as {
+      spells: { school?: Record<string, unknown> }[];
+    };
+    for (const sp of oldSpells.spells) {
+      if (sp.school) {
+        sp.school.line = "You have advanced!";
+      }
+    }
+    // The weapon lists as 1.6 wrote them: Dagger trained "Slash, Thrust".
+    const oldClasses = structuredClone(before.classes);
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: classicManifest(),
+          data: {
+            classes: oldClasses,
+            gather: oldGather,
+            "item-rules": oldRules,
+            spells: oldSpells,
+          },
+        }),
+      ],
+    );
+    // An operator who made Mining rise 1 in 5 and renamed Slash; a draft that bound cooking to
+    // Farming; a publish that changed both.
+    const opGains = before.skillGain.map((r: { skill: string }) =>
+      r.skill === "Mining" ? { ...r, chance: 5 } : r,
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('gather', 'skillGain', '', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(opGains)],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('classes', 'skills', 'Thrust', 'set', ?, 2, 'a', 'then')",
+      [JSON.stringify({ skill: "Thrust", display: "Stab" })],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('bindings', 'skills', '', 'set', ?, 'a', 'A', 'then')",
+      [JSON.stringify({ ...classicData.bindings.skills, cooking: "Farming" })],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "gather",
+            part: "skillGain",
+            key: null,
+            before: null,
+            after: { op: "set", data: opGains },
+          },
+          {
+            dataset: "classes",
+            part: "skills",
+            key: "Thrust",
+            before: null,
+            after: { op: "set", data: { skill: "Thrust", display: "Stab" } },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+
+    // Every character's skills gain an XP total of 0.
+    expect(
+      db.query("SELECT DISTINCT xp FROM character_skills WHERE character_id = ?").all(id),
+    ).toEqual([{ xp: 0 }]);
+    // The imported pack's datasets come out as Classic's are now, and read whole.
+    const row = db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as {
+      data: string;
+    };
+    const pack = JSON.parse(row.data).data;
+    expect(pack.classes).toEqual(classicData.classes);
+    expect(pack.gather).toEqual(classicData.gather);
+    expect(pack["item-rules"]).toEqual(classicData.itemRules);
+    expect(pack.spells).toEqual(classicData.spells);
+    expect(() => readPackBlob(row.data)).not.toThrow();
+
+    const rows = db
+      .query("SELECT dataset, part, row_key, data, base_data FROM content_rows ORDER BY seq")
+      .all() as {
+      dataset: string;
+      part: string;
+      row_key: string;
+      data: string;
+      base_data: string | null;
+    }[];
+    const skill = (key: string) => classicData.classes.skills.find((s) => s.skill === key);
+    // The gain rows go; Mining's own row carries its chance; Thrust keeps its kill rules.
+    expect(rows.map((r) => `${r.dataset}/${r.part}/${r.row_key}`)).toEqual([
+      "classes/skills/Thrust",
+      "classes/skills/Mining",
+    ]);
+    expect(JSON.parse(rows[0]?.data ?? "")).toEqual({ ...skill("Thrust"), display: "Stab" });
+    expect(JSON.parse(rows[1]?.data ?? "")).toEqual({
+      skill: "Mining",
+      progression: { model: "chance", on: { gather: { roll: 5, cap: 100 } } },
+    });
+    expect(JSON.parse(rows[1]?.base_data ?? "")).toEqual(skill("Mining"));
+    // The draft's binding gives Farming's gain to crafting too (a harvest node still names it, and
+    // 1.6's one row served both), and moves Cooking's to gathering.
+    const draft = db
+      .query("SELECT row_key, data FROM content_draft WHERE dataset = 'classes' ORDER BY row_key")
+      .all() as { row_key: string; data: string }[];
+    expect(draft.map((d) => [d.row_key, JSON.parse(d.data).progression.on])).toEqual([
+      ["Cooking", { gather: { roll: 8, cap: 100 } }],
+      ["Farming", { gather: { roll: 12, cap: 100 }, craft: { roll: 12, cap: 100 } }],
+    ]);
+    // The publish log keeps the skill row with its progression; its gain rows become an entry for
+    // the skill whose rate they changed, so undoing it puts Mining back to 1 in 22.
+    const changes = JSON.parse(
+      (db.query("SELECT changes FROM content_publishes").get() as { changes: string }).changes,
+    );
+    const mining = (roll: number) => ({
+      ...skill("Mining"),
+      progression: { model: "chance", on: { gather: { roll, cap: 100 } } },
+    });
+    expect(changes).toEqual([
+      {
+        dataset: "classes",
+        part: "skills",
+        key: "Mining",
+        before: { op: "set", data: mining(22), baseHash: null, baseData: mining(22) },
+        after: { op: "set", data: mining(5), baseHash: null, baseData: mining(22) },
+      },
+      {
+        dataset: "classes",
+        part: "skills",
+        key: "Thrust",
+        before: null,
+        after: { op: "set", data: { ...skill("Thrust"), display: "Stab" } },
+      },
+    ]);
+  });
+
+  test("progression keeps a gather-only pack's rates, a draft revert's rate and an older publish's undo", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_65"),
+    );
+    const before = JSON.parse(
+      readFileSync(join(import.meta.dir, "fixtures", "classes-before-stage6.json"), "utf8"),
+    );
+    const gains = (mining: number) =>
+      before.skillGain.map((r: { skill: string }) =>
+        r.skill === "Mining" ? { ...r, chance: mining } : r,
+      );
+    // An imported pack with gather rows of its own (Mining 1 in 5) and no skills.
+    const oldGather = { ...structuredClone(classicData.gather), skillGain: gains(5) };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [JSON.stringify({ manifest: classicManifest(), data: { gather: oldGather } })],
+    );
+    // The operator renamed Lumberjacking; the draft reverts that, and the operator's rate for it
+    // (1 in 6, published in p1) stays.
+    const lumber = before.classes.skills.find(
+      (s: { skill: string }) => s.skill === "Lumberjacking",
+    );
+    const opGains = gains(5).map((r: { skill: string }) =>
+      r.skill === "Lumberjacking" ? { ...r, chance: 6 } : r,
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('gather', 'skillGain', '', 'set', ?, 1, 'a', 'then')",
+      [JSON.stringify(opGains)],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_data, seq, updated_by, updated_at) VALUES ('classes', 'skills', 'Lumberjacking', 'set', ?, ?, 2, 'a', 'then')",
+      [JSON.stringify({ ...lumber, display: "Woodcutting" }), JSON.stringify(lumber)],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', 'skills', 'Lumberjacking', 'revert', NULL, 'a', 'A', 'then')",
+    );
+    // The operator's Pickaxe lists Mining, a skill 1.6 never rolled on a kill.
+    const weaponSkills = [
+      ...before.classes.skillGain.weaponSkills,
+      { weapon: "Pickaxe", match: "exact", skills: ["Mining", "Slash"] },
+      { weapon: "Spade", match: "exact", skills: ["Shoveling"] },
+    ];
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, seq, updated_by, updated_at) VALUES ('classes', 'skillGain', '', 'set', ?, 4, 'a', 'then')",
+      [JSON.stringify({ weaponSkills })],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "gather",
+            part: "skillGain",
+            key: null,
+            before: null,
+            after: { op: "set", data: opGains },
+          },
+        ]),
+      ],
+    );
+    // A removed spell, based on its old row (with its own line), and the publish that removed it.
+    const fire = structuredClone(classicData.spells.spells.find((x) => x.name === "Firebolt")) as {
+      school?: Record<string, unknown>;
+    };
+    if (fire.school) {
+      fire.school.line = "You have advanced in the art of Fire!";
+    }
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('spells', 'spells', 'Firebolt', 'remove', NULL, 'old', ?, 3, 'a', 'then')",
+      [JSON.stringify(fire)],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p2', 'then2', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "spells",
+            part: "spells",
+            key: "Firebolt",
+            before: null,
+            after: { op: "remove", data: null, baseHash: "old", baseData: fire },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+
+    // The removal marker, and the publish that made it, are based on the spell as it is now.
+    const firebolt = classicData.spells.spells.find((x) => x.name === "Firebolt");
+    const marker = db
+      .query("SELECT base_hash, base_data FROM content_rows WHERE row_key = 'Firebolt'")
+      .get() as { base_hash: string | null; base_data: string };
+    expect(marker.base_hash).toBeNull();
+    expect(JSON.parse(marker.base_data)).toEqual(firebolt);
+    const p2 = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p2'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(p2[0].after).toEqual({ op: "remove", data: null, baseHash: null, baseData: firebolt });
+
+    const prog = (on: Record<string, unknown>) => ({ model: "chance", on });
+    const skill = (key: string) => classicData.classes.skills.find((s) => s.skill === key);
+    const rows = new Map(
+      (
+        db.query("SELECT row_key, data FROM content_rows WHERE dataset = 'classes'").all() as {
+          row_key: string;
+          data: string;
+        }[]
+      ).map((r) => [r.row_key, JSON.parse(r.data)]),
+    );
+    // The pack's Mining rate lands in the operator layer, as Classic's skills carry Classic's, and
+    // the Pickaxe's kills still never raise it (1.6 rolled only its twelve kill skills).
+    expect(rows.get("Mining")).toEqual({
+      ...skill("Mining"),
+      progression: prog({ kill: false, gather: { roll: 5, cap: 100 } }),
+    });
+    // Shoveling, its rate unchanged, gets a row only for that.
+    expect(rows.get("Shoveling")).toEqual({
+      ...skill("Shoveling"),
+      progression: prog({ kill: false, gather: { roll: 12, cap: 100 } }),
+    });
+    expect(rows.get("Lumberjacking")).toEqual({
+      ...skill("Lumberjacking"),
+      display: "Woodcutting",
+      progression: prog({ gather: { roll: 6, cap: 100 } }),
+    });
+    // The draft's revert drops the name and keeps the operator's rate.
+    const draft = db
+      .query("SELECT op, data FROM content_draft WHERE row_key = 'Lumberjacking'")
+      .get() as { op: string; data: string };
+    expect(draft.op).toBe("set");
+    expect(JSON.parse(draft.data)).toEqual({
+      ...skill("Lumberjacking"),
+      progression: prog({ gather: { roll: 6, cap: 100 } }),
+    });
+    // Undoing p1 puts Lumberjacking back to the pack's rate (Classic's, 1 in 12).
+    const changes = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({
+      dataset: "classes",
+      part: "skills",
+      key: "Lumberjacking",
+      before: { op: "set", data: { progression: prog({ gather: { roll: 12, cap: 100 } }) } },
+      after: { op: "set", data: { progression: prog({ gather: { roll: 6, cap: 100 } }) } },
+    });
   });
 
   test("tools_and_harvest turns older gathering tools into tool rows, ladders, harvest nodes and yields", () => {

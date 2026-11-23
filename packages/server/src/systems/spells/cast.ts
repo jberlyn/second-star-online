@@ -434,6 +434,7 @@ export function shootArrow(room: Room, p: Player, colour: string, power: number)
     h: p.x * 32 + 14,
     v: p.y * 32 - 3,
     power,
+    firedFrom: p.char.equip.weapon,
   });
 }
 

@@ -6,7 +6,7 @@
  */
 import type { CraftData } from "@secondstaronline/data";
 
-import { onContent } from "../../content/store.ts";
+import { content, onContent } from "../../content/store.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { menuAction } from "../inventory/equip.ts";
 import { type AddResult, type Bag, invAdd } from "../inventory/inventory.ts";
@@ -427,8 +427,34 @@ export interface CraftFinish {
   lines: string[];
   /** The item added, or null (a failure that makes nothing, or no room in the bag). */
   added: AddResult | null;
-  /** The craft made something, so the skill handler rolls. */
+  /** The craft made something, so the skill trains. */
   gain: boolean;
+  /** The recipe's own XP for an `xp`-model skill (`craft.json` rows' `xp`), when it gives one. */
+  xp?: number;
+}
+
+/**
+ * The XP the row a job used gives, if any: the repair's, recipe's or sand's `xp` (the last matching
+ * row, as the result was found; the first sand row, as the sand is), or the carpentry result's in the last band the skill is under.
+ */
+function craftXp(job: CraftJob, result: string, skill: number): number | undefined {
+  const st = content().craft.stations;
+  switch (job.kind) {
+    case "Smith":
+      return st.smith.repairs.findLast((r) => lingoEq(r.input, job.item))?.xp;
+    case "Cook":
+      return st.cook.recipes.findLast((r) => lingoEq(r.input, job.raw))?.xp;
+    case "Mix":
+      // The held sand picks the first matching row, so the first with this brew.
+      return st.mix.sands.find(
+        (r) => lingoEq(r.potion, job.potion) && lingoEq(r.crystal, job.crystal),
+      )?.xp;
+    case "Build":
+      return st.build.bands
+        .filter((b) => skill < b.lt)
+        .flatMap((b) => b.results)
+        .findLast((r) => lingoEq(r.item, result))?.xp;
+  }
 }
 
 /** The materials a job takes when it finishes. */
@@ -522,7 +548,9 @@ export function finishCraft(
       : job.kind === "Build"
         ? CRAFT_TEXT.built(result)
         : CRAFT_TEXT.ready(result);
-  return make(result, line, true);
+  const made = make(result, line, true);
+  const xp = made.gain ? craftXp(job, result, skill) : undefined;
+  return xp === undefined ? made : { ...made, xp };
 }
 
 /**

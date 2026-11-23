@@ -10,8 +10,14 @@ import { buildContentStore, type ContentData, installContent } from "../../src/c
 import { editValueText } from "../../src/rules/admin/character-edit.ts";
 import { NO_EQUIPMENT, NO_FACTION, skillIndex } from "../../src/rules/core/fighter.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
+import type { Trainee } from "../../src/rules/progression/progress.ts";
 import { newFx, stepFx } from "../../src/rules/spells/spellfx.ts";
 import { MAX_SPELL_POWER, spellImp, spellPower } from "../../src/rules/spells/spells.ts";
+
+/** A reader of these skills with no faction, as progression reads one. */
+function trainee(skills: number[]): Trainee {
+  return { level: 1, str: 1, sta: 1, int: 1, wis: 1, skills, faction: NO_FACTION };
+}
 
 function withContent(change: (d: ContentData) => void, body: () => void): void {
   const d = structuredClone(classicData) as ContentData;
@@ -67,7 +73,7 @@ describe("spells as content", () => {
             name: "Summon Bread",
             id: null,
             book: null,
-            school: { skill: "Sorcery", line: "Bread!" },
+            school: { skill: "Sorcery" },
             creates: [{ item: "Bread" }],
             fx: [],
           });
@@ -76,9 +82,11 @@ describe("spells as content", () => {
       () => {
         // The cast runs Create Food's FX; the school is Summon Bread's.
         const s = skills({ Magery: 0, Sorcery: 5 });
-        expect(spellImp("Create Food", s, NO_FACTION, always, "Summon Bread")).toEqual(["Bread!"]);
+        expect(spellImp("Create Food", trainee(s), always, "Summon Bread")).toEqual([
+          "You have advanced in the art of Sorcery!",
+        ]);
         // Create Food itself has no school.
-        expect(spellImp("Create Food", skills({ Sorcery: 5 }), NO_FACTION, always)).toEqual([]);
+        expect(spellImp("Create Food", trainee(skills({ Sorcery: 5 })), always)).toEqual([]);
       },
     );
   });

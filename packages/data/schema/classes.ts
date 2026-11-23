@@ -6,6 +6,8 @@
  */
 import { z } from "zod";
 
+import { checkProgression, progressionSchema, skillProgressionSchema } from "./progression.ts";
+
 /** The largest class code a start class may offer (the creation message's bound). */
 export const MAX_START_CLASS_CODE = 10_000;
 
@@ -25,6 +27,8 @@ export const skillSchema = z.strictObject({
     .refine((k) => k !== "__proto__", "a skill cannot be called __proto__"),
   display: z.string().min(1).optional(),
   hidden: z.literal(true).optional(),
+  /** How the skill rises (`progression.ts`); absent: the `chance` model with the world defaults. */
+  progression: skillProgressionSchema.optional(),
 });
 
 /**
@@ -57,9 +61,8 @@ export const creationSchema = z.strictObject({
 });
 
 /**
- * Kill skill gain: which skills the equipped weapon
- * trains, in source order (the last matching row wins). The per-skill chances and caps are
- * code, ported in shared/rules/progression/skillgain.ts.
+ * Which skills the equipped weapon trains on a kill or a hit, in source order (the last matching row
+ * wins). A kill rolls the row's skills in its list order. How each skill rises is its progression.
  */
 export const skillGainSchema = z.object({
   weaponSkills: z.array(
@@ -113,8 +116,12 @@ export const classesDataSchema = z
     startClasses: z.array(startClassSchema).min(1),
     creation: creationSchema,
     skillGain: z.strictObject({ weaponSkills: skillGainSchema.shape.weaponSkills }),
+    progression: progressionSchema,
   })
   .superRefine((data, ctx) => {
+    for (const issue of checkProgression(data.progression, data.skills)) {
+      ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
+    }
     const names = new Set(data.skills.map((s) => s.skill));
     data.classes.forEach((c, i) => {
       c.promotion?.skillGrants.forEach((skill, j) => {
