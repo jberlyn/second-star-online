@@ -34,7 +34,9 @@ import {
   rectsIntersect,
   rollLoot,
   type SpellTarget,
+  smokeBody,
   spellHitOnMonster,
+  treeBody,
   vehicleOfItem,
   xpGained,
 } from "@secondstaronline/shared";
@@ -239,24 +241,34 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     }
     // Morph, Nature Shift and Smoke Bomb do nothing in a vehicle or as a boss (not built); Hold
     // the same, its vehicle test first.
+    // A world that binds no such body (`bindings.json` `bodies`) has the spell do nothing.
     if (has("morph-3")) {
       if (p.vehicle) {
         continue;
       }
-      setBody(p, morphBody(P, ctx.rng), res);
+      const body = morphBody(P, ctx.rng);
+      if (body !== null) {
+        setBody(p, body, res);
+      }
     }
     if (has("Nature Shift-3")) {
       if (p.vehicle) {
         continue;
       }
-      setBody(p, 80, res);
+      const tree = treeBody();
+      if (tree !== null) {
+        setBody(p, tree, res);
+      }
     }
     if (has("Smoke Bomb-3")) {
       if (p.vehicle) {
         continue;
       }
-      p.spell.smokeBomb = P;
-      setBody(p, 100, res);
+      const smoke = smokeBody();
+      if (smoke !== null) {
+        p.spell.smokeBomb = P;
+        setBody(p, smoke, res);
+      }
     }
     if (has("Hold-3")) {
       if (p.vehicle || spared(fx)) {

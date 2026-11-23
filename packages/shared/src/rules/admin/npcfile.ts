@@ -12,7 +12,7 @@
 
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord } from "../core/lingo.ts";
-import { isCrystal } from "../inventory/inventory.ts";
+import { afterCountIsGold, isCrystal } from "../inventory/inventory.ts";
 import { parseTrn } from "../progression/promotion.ts";
 
 /** The longest file the editor shows and saves (the NPC editor's display routine). */
@@ -302,7 +302,7 @@ export function npcLootItemOk(name: string, store: ContentStore = content()): bo
   if (!(n > 0) || !/^\d+$/.test(lingoWord(name, 1))) {
     return false;
   }
-  if (lingoEq(lingoWord(name, 2), "gold")) {
+  if (afterCountIsGold(name, store.bindings.currency.item ?? null)) {
     return true;
   }
   const rest = name.trim().slice(lingoWord(name, 1).length).trim();

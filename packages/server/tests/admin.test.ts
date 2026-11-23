@@ -3,11 +3,15 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
   ADMIN_TEXT,
   ADMINISTRATOR,
   banNotice,
+  buildContentStore,
   CHAT_COLOR,
+  type ContentData,
+  installContent,
   MODERATION_TEXT,
   MODERATOR,
   PERMISSIONS,
@@ -406,8 +410,29 @@ describe("warps", () => {
 describe("the jail", () => {
   test("SSO: with no map x0y0 the jail is refused", () => {
     const { imm, bob, say } = scene(false);
-    expect(texts(say(imm, "/jail Bob"), "Imm")).toEqual(["*** Jailing Bob...", ADMIN_TEXT.noJail]);
+    expect(texts(say(imm, "/jail Bob"), "Imm")).toEqual([
+      "*** Jailing Bob...",
+      "There is no jail map: save a map at x0y0 in the World Editor first, or move the Jail in Server Settings.",
+    ]);
     expect(bob.map.name).toBe("x1001y992");
+  });
+
+  test("SSO: the jail is the jailPoint setting's map and tile", () => {
+    const { world, imm, bob, say } = scene();
+    world.jail = { map: "x1000y992", x: 2, y: 9 };
+    expect(texts(say(imm, "/jail Bob 2m"), "Imm")[0]).toBe("*** Jailing Bob...");
+    expect([bob.map.name, bob.x, bob.y]).toEqual(["x1000y992", 2, 9]);
+    // x0y0 is an ordinary map now, and the jail's map takes no one by a warp.
+    expect(texts(say(imm, "/unjail Bob"), "Imm")).toEqual([MODERATION_TEXT.unjailed("Bob")]);
+    expect(texts(say(imm, "/warp Bob x0y0 4 4"), "Imm")[1]).not.toBe(MODERATION_TEXT.useJail);
+    expect(bob.map.name).toBe("x0y0");
+    expect(texts(say(imm, "/warp Bob x1000y992 4 4"), "Imm")[1]).toBe(MODERATION_TEXT.useJail);
+    // A jail point whose map is gone refuses the jail.
+    world.jail = { map: "x5y5", x: 4, y: 4 };
+    expect(texts(say(imm, "/jail Bob"), "Imm")).toEqual([
+      "*** Jailing Bob...",
+      ADMIN_TEXT.noJail("x5y5"),
+    ]);
   });
 
   test("divergence: the sentence is stored and ends at its time, then releases to the respawn point", () => {
@@ -1227,6 +1252,138 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       text: expect.stringMatching(/^Longest chat line/),
     });
     expect(game.settings.jailSentence).toBe(600);
+  });
+
+  test("Settings: a start, fallback or jail point must hold a player (the content contract)", async () => {
+    const { game, make } = await start();
+    const alice = await make("Alice", "administrator");
+    const save = (values: Record<string, unknown>) => {
+      game.intent(alice.characterId, { t: "settingsSave", values });
+      return sent.at(-1)?.msg;
+    };
+    // The seeded jail's walls are not walkable; (4, 4) inside is.
+    expect(save({ jailPoint: { map: "x0y0", x: 1, y: 1 } })).toEqual({
+      t: "settingsResult",
+      ok: false,
+      key: "jailPoint",
+      text: "x0y0 (1, 1) is not a walkable tile.",
+    });
+    expect(save({ fallbackPoint: { map: "x5y5", x: 4, y: 4 } })).toEqual({
+      t: "settingsResult",
+      ok: false,
+      key: "fallbackPoint",
+      text: "x5y5 does not exist.",
+    });
+    expect(game.settings.fallbackPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
+    expect(save({ jailPoint: { map: "x1000y992", x: 5, y: 5 } })).toEqual({
+      t: "settingsResult",
+      ok: true,
+    });
+    expect(game.world.jail).toEqual({ map: "x1000y992", x: 5, y: 5 });
+    // A point already broken (its map deleted since) does not stop another setting's save, and is
+    // named by the contract check.
+    saveSettingOverride(db, "startPoint", { map: "x5y5", x: 4, y: 4 }, NOW);
+    game.intent(alice.characterId, { t: "chat", text: "/Refresh" });
+    expect(save({ chatMaxChars: 150 })).toEqual({ t: "settingsResult", ok: true });
+    expect(game.contractPointProblems()).toEqual([
+      { where: "settings/startPoint", message: "Starting map: x5y5 does not exist" },
+    ]);
+  });
+
+  test("Settings: moving the jail takes its prisoners; another spelling of a map is that map", async () => {
+    const { game, make } = await start();
+    const alice = await make("Alice", "administrator");
+    const bob = await make("Bob");
+    game.intent(alice.characterId, { t: "chat", text: "/jail Bob 2m" });
+    const p = () => game.world.players.get(bob.characterId);
+    expect([p()?.map.name, p()?.x, p()?.y]).toEqual(["x0y0", 4, 4]);
+    // `x00y0` is x0y0: the prisoner stays held, and stays put.
+    game.intent(alice.characterId, {
+      t: "settingsSave",
+      values: { jailPoint: { map: "x00y0", x: 4, y: 4 } },
+    });
+    expect(sent.at(-1)?.msg).toEqual({ t: "settingsResult", ok: true });
+    expect(game.world.jail).toEqual({ map: "x0y0", x: 4, y: 4 });
+    expect(p()?.map.name).toBe("x0y0");
+    // A jail on another map takes the prisoner there, sentence and all.
+    const until = p()?.jailUntil;
+    game.intent(alice.characterId, {
+      t: "settingsSave",
+      values: { jailPoint: { map: "x1000y992", x: 5, y: 5 } },
+    });
+    expect([p()?.map.name, p()?.x, p()?.y, p()?.jailUntil]).toEqual(["x1000y992", 5, 5, until]);
+    // A player who is no prisoner, on the map that becomes the jail, goes to their respawn point
+    // (the Fallback map when that is on the jail's map); staff stay.
+    const cat = await make("Cat");
+    game.intent(alice.characterId, { t: "chat", text: "/warp Cat x999y999 9 4" });
+    game.intent(alice.characterId, { t: "chat", text: "/warp Alice x999y999 9 5" });
+    const c = () => game.world.players.get(cat.characterId);
+    const a = () => game.world.players.get(alice.characterId);
+    expect([c()?.map.name, a()?.map.name]).toEqual(["x999y999", "x999y999"]);
+    game.intent(alice.characterId, {
+      t: "settingsSave",
+      values: { jailPoint: { map: "x999y999", x: 9, y: 4 } },
+    });
+    expect(sent.at(-1)?.msg).toEqual({ t: "settingsResult", ok: true });
+    // Entering the church made it Cat's respawn point, so Cat goes to the Fallback map.
+    expect([c()?.map.name, c()?.x, c()?.y]).toEqual(["x1000y992", 5, 5]);
+    expect([a()?.map.name, p()?.map.name]).toEqual(["x999y999", "x999y999"]);
+  });
+
+  test("a publish that rebinds a body puts it on the players who wear it", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann");
+    const bob = await make("Bob");
+    const cat = await make("Cat");
+    const a = game.world.players.get(ann.characterId) as Player;
+    const b = game.world.players.get(bob.characterId) as Player;
+    const c = game.world.players.get(cat.characterId) as Player;
+    const publish = (change: (d: ContentData) => void) => {
+      const d = structuredClone(classicData) as ContentData;
+      change(d);
+      installContent(buildContentStore(d));
+      sent.length = 0;
+      game.contentPublished("next");
+      return sent.flatMap((o) =>
+        o.to === bob.characterId && o.msg.t === "delta"
+          ? o.msg.events.filter((e) => e.e === "body")
+          : [],
+      );
+    };
+    try {
+      a.vehicle = "Boat";
+      a.spell.body = 55;
+      b.spell.body = 80; // Nature Shift's tree
+      c.spell.body = 100; // Smoke Bomb's smoke, with time left
+      c.spell.smokeBomb = 10;
+      const first = publish((d) => {
+        d.bindings.bodies.riders = { Boat: 155, Battleship: 156, Airship: 157 };
+        delete d.bindings.bodies.tree;
+        delete d.bindings.bodies.smoke;
+      });
+      expect(a.spell.body).toBe(155);
+      expect(b.spell.body).toBeNull();
+      // The smoke ends with its timer, so it cannot end a later body.
+      expect(c.spell.body).toBeNull();
+      expect(c.spell.smokeBomb).toBe(0);
+      expect(first).toEqual([
+        { e: "body", id: ann.characterId, body: 155 },
+        { e: "body", id: bob.characterId, body: null },
+        { e: "body", id: cat.characterId, body: null },
+      ]);
+      // Back to Classic, the rider follows; then a morph that becomes a rider's body ends.
+      publish(() => {});
+      expect(a.spell.body).toBe(55);
+      c.spell.body = 30;
+      const second = publish((d) => {
+        d.bindings.bodies.riders = { Boat: 55, Battleship: 30, Airship: 57 };
+        d.bindings.bodies.morph = d.bindings.bodies.morph?.filter((r) => r.body !== 30);
+      });
+      expect(c.spell.body).toBeNull();
+      expect(second).toEqual([{ e: "body", id: cat.characterId, body: null }]);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
   });
 
   test("/Refresh reads the stored settings again", async () => {

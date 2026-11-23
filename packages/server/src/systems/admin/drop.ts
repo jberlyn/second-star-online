@@ -5,6 +5,7 @@
  * item lands on the faced tile and never decays (SSO's own rule).
  */
 import {
+  afterCountIsGold,
   can,
   content,
   FACING_DELTA,
@@ -59,7 +60,7 @@ function inventoryItem(name: string): string | null {
  *   each its own `#id`) take no count.
  */
 export function parseDrop(text: string): DropPile | null {
-  if (lingoEq(lingoWord(text, 2), "gold") && Number.parseInt(lingoWord(text, 1), 10) > 0) {
+  if (afterCountIsGold(text) && Number.parseInt(lingoWord(text, 1), 10) > 0) {
     return { item: text, qty: 1 };
   }
   const plain = inventoryItem(text);

@@ -14,6 +14,7 @@ import {
   type ChatChannel,
   type ChatOutcome,
   content,
+  DEFAULT_JAIL,
   type DeltaEvent,
   type Dir,
   defaultPlayerPrefs,
@@ -935,6 +936,8 @@ export interface World {
   timeouts: number;
   /** The church bell's counter. */
   npcAct: number;
+  /** The jail (setting `jailPoint`): where `/jail` sends a player, and the map that holds them. */
+  jail: { map: string; x: number; y: number };
   /** Maps whose tiles changed since the last write. */
   tileLog: Set<WorldMap>;
   /** The one treasure, or null while the `treasureMaps` setting is empty. */
@@ -1104,6 +1107,7 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     timeouts: 0,
     // The church bell's counter starts at 1 at server start.
     npcAct: 1,
+    jail: { ...DEFAULT_JAIL },
     tileLog: new Set(),
     treasure: null,
     treasureMaps: [],
@@ -1254,7 +1258,7 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   // Drawing an O-O-O map (no fighting, indoors, no PvP) saves the respawn point, except in jail.
   const f = p.map.flags;
   if (
-    !isJailMap(p.map.name) &&
+    !isJailMap(p.map.name, world.jail.map) &&
     `${f.canFight}-${f.isIndoors}-${f.canPvp}`.toUpperCase().includes("O-O-O")
   ) {
     p.char.respawn = { mapId: p.map.id, x: p.x, y: p.y };

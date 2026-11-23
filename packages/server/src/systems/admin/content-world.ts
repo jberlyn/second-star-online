@@ -227,6 +227,10 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       held: p.activityHeld ? new Map(p.activityHeld) : undefined,
       storeDirty: p.char.storeDirty,
       invSaveDue: p.invSaveDue,
+      // A publish puts a rebound special body (a rider's, the tree, the smoke) on the players who
+      // wear it.
+      body: p.spell.body,
+      smokeBomb: p.spell.smokeBomb,
     }));
     // Writing the touched players flushes every pending save; a rollback undoes those writes, so
     // what was pending is pending again.
@@ -274,6 +278,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         s.p.activityHeld = s.held;
         s.p.char.storeDirty = s.storeDirty;
         s.p.invSaveDue = s.invSaveDue;
+        s.p.spell.body = s.body;
+        s.p.spell.smokeBomb = s.smokeBomb;
         s.p.invDirty = true;
         s.p.lookDirty = true;
       }

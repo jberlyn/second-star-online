@@ -6,7 +6,8 @@
  *   into the hazard map, an operator setting that is unset by default, as no archived map is named
  *   `xSlimmySlimm` (SSO ships no invented content).
  * - **The church bell**: the NPC routine counts the runs; at 20 it plays the `Churchy:5:200` sound on
- *   map `x999y999`, and past 460 it starts again at 1.
+ *   the bell map, and past 460 it starts again at 1. 1.6 hard-wired the group `@x999y999`; SSO's
+ *   bell map is a setting (`bellMap`, Classic's `x999y999`), and empty means no bell.
  */
 import type { Rng } from "@secondstaronline/shared";
 
@@ -15,9 +16,6 @@ import { queueCast } from "./fx.ts";
 
 /** Ticks per run of the server timer (350 ms at 20 Hz). */
 export const TIMEOUT_TICKS = 7;
-
-/** The bell's map: 1.6 hard-wires the group `@x999y999`. */
-export const CHURCH_MAP = "x999y999";
 
 /** The eight sends, in order: [odds, spell, casterH, casterV, mouseH, mouseV, power]. */
 const SPIRIT: readonly [number, string, number, number, number, number, number][] = [
@@ -31,8 +29,14 @@ const SPIRIT: readonly [number, string, number, number, number, number, number][
   [10, "BoltD", 78, 93, 118, 220, 30],
 ];
 
+/** The maps the server timer plays on (settings `hazardMap` and `bellMap`); null for none. */
+export interface TimerMaps {
+  hazardMap: string | null;
+  bellMap: string | null;
+}
+
 /** One tick of the server timer; does nothing between runs. */
-export function serverTimer(world: World, hazardMap: string | null, rng: Rng): Outgoing[] {
+export function serverTimer(world: World, { hazardMap, bellMap }: TimerMaps, rng: Rng): Outgoing[] {
   if (world.tickNo % TIMEOUT_TICKS !== 0) {
     return [];
   }
@@ -56,8 +60,8 @@ export function serverTimer(world: World, hazardMap: string | null, rng: Rng): O
   }
   const out: Outgoing[] = [];
   world.npcAct += 1;
-  if (world.npcAct === 20) {
-    for (const p of world.rooms.get(CHURCH_MAP)?.players ?? []) {
+  if (world.npcAct === 20 && bellMap) {
+    for (const p of world.rooms.get(bellMap)?.players ?? []) {
       out.push({ to: p.id, msg: { t: "sound", name: "churchy", ch: 5, volume: 200 } });
     }
   }

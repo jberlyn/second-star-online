@@ -335,7 +335,7 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       }
       // The cooldown starts before the jail check, so a failed shout still costs it.
       p.broadcastIn = deps.broadcastCooldownFrames;
-      if (isJailMap(p.map.name)) {
+      if (isJailMap(p.map.name, world.jail.map)) {
         logChat(world, p, "broadcast", cmd.text, "jail");
         return [{ to: p.id, msg: line(CHAT_TEXT.jailShout) }];
       }

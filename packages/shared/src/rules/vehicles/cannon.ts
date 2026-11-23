@@ -1,8 +1,9 @@
 /**
  * The Battleship's cannon (issue #2, an SSO addition: 1.6 drew the cannonball but never fired it).
  * The attack key fires one shot per press forward along the rider's facing, spending one
- * `Cannonball` from the bag. The shot is a FX, `CannonballShot<L|R|U|D>`, placed 48 px out from
- * the rider (as 1.6's cast handler placed its cannonballs) and moved 5 px each `stepFrame` call.
+ * cannonball (the world's cannon ammo) from the bag. The shot is a FX, `CannonballShot<L|R|U|D>`,
+ * placed 48 px out from the rider (as 1.6's cast handler placed its cannonballs) and moved 5 px
+ * each `stepFrame` call.
  * It stops at the first player, monster or vehicle it meets, over a tile an Airship cannot cross,
  * or at the playfield's edge.
  *
@@ -10,16 +11,22 @@
  * editable).
  */
 import { TICK_HZ } from "../../constants.ts";
+import { content } from "../../content/store.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import type { Bag } from "../inventory/inventory.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 
-/** The bag item a shot spends. */
-export const CANNONBALL_ITEM = "Cannonball";
-
-/** The bag slot (0-based) a shot takes its cannonball from: the first, or -1 with none. */
+/**
+ * The bag slot (0-based) a shot takes its cannonball from: the first line of the world's cannon
+ * ammo (`bindings.json` `cannon`, Classic's `Cannonball`), or -1 with none. A world that binds no
+ * ammo has a cannon that never fires.
+ */
 export function cannonballSlot(bag: Bag): number {
-  return bag.findIndex((l) => l !== null && l.qty > 0 && lingoEq(l.item, CANNONBALL_ITEM));
+  const ammo = content().bindings.cannon.ammo;
+  if (ammo === undefined) {
+    return -1;
+  }
+  return bag.findIndex((l) => l !== null && l.qty > 0 && lingoEq(l.item, ammo));
 }
 
 /** Frames (ticks) between shots: about 5 seconds. */

@@ -178,22 +178,24 @@ export function startingSkills(code: number): number[] {
 /**
  * The starting record.
  *
- * Kept on purpose: the written vitals are the literals `20:20:20:20` for every class, so a Fighter
- * starts with SP 20/20 although the screen computed SP 0. 1.6 computed HP and SP rolls and discarded
- * them; rolling would reward remaking a character until it rolled well, so nothing is rolled here.
+ * The vitals and the bag are the world's (`bindings.json` `start`). Kept on purpose: Classic's
+ * vitals are 1.6's literals `20:20:20:20` for every class, so a Fighter starts with SP 20/20
+ * although the screen computed SP 0. 1.6 computed HP and SP rolls and discarded them; rolling would
+ * reward remaking a character until it rolled well, so nothing is rolled here.
  */
 export function startingCharacter(c: CreationChoice): StartingCharacter {
   const other = content().classes.creation.otherFields;
+  const start = content().bindings.start;
   return {
     name: c.name,
     sex: c.sex,
     head: c.head,
     classCode: c.classCode,
     level: 1,
-    hp: 20,
-    hpMax: 20,
-    sp: 20,
-    spMax: 20,
+    hp: start.hp,
+    hpMax: start.hp,
+    sp: start.sp,
+    spMax: start.sp,
     exp: 0,
     expNeeded: 30,
     stats: { str: c.str, sta: c.sta, int: c.int, wis: c.wis, dex: c.dex },
@@ -202,10 +204,7 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     profile: other.profile,
     hunger: other.hunger,
     breakCount: other.breakCount,
-    bag: [
-      { item: "Apple", qty: 2 },
-      { item: "Knife", qty: 1 },
-    ],
+    bag: start.bag.map((l) => ({ item: l.item, qty: l.qty })),
   };
 }
 

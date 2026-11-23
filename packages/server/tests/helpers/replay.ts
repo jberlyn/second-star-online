@@ -508,6 +508,12 @@ const BOTS: BotSpec[] = [
 const SKIP = new Set(["npcs", "lastSheet"]);
 
 /**
+ * The world's own keys left out: `jail`, the game's copy of the `jailPoint` setting (a setting, not
+ * state; what it does shows in the players it moves).
+ */
+const SKIP_WORLD = new Set(["jail"]);
+
+/**
  * The state as sorted `path = value` lines: objects by key, maps and arrays in their own order (the
  * order is behaviour), a repeated object as a reference to its first path.
  */
@@ -572,7 +578,7 @@ export function flatten(root: unknown): string[] {
       return;
     }
     for (const k of Object.keys(v).sort()) {
-      if (SKIP.has(k)) {
+      if (SKIP.has(k) || (path === "world" && SKIP_WORLD.has(k))) {
         continue;
       }
       walk((v as Record<string, unknown>)[k], `${path}.${k}`);

@@ -21,7 +21,7 @@ import { species } from "../src/systems/monsters/slots.ts";
 import { castIntent, npcBlocked, shootArrow } from "../src/systems/spells/cast.ts";
 import { queueCast } from "../src/systems/spells/fx.ts";
 import { playerLoc } from "../src/systems/spells/geometry.ts";
-import { CHURCH_MAP, serverTimer, TIMEOUT_TICKS } from "../src/systems/spells/hazards.ts";
+import { serverTimer, TIMEOUT_TICKS } from "../src/systems/spells/hazards.ts";
 import { readBook } from "../src/systems/spells/learn.ts";
 import { monsterSpells } from "../src/systems/spells/monsterspells.ts";
 import { tick } from "../src/systems/world/tick.ts";
@@ -646,11 +646,12 @@ describe("books", () => {
 });
 
 describe("the server timer", () => {
-  test("the church bell rings at the 20th run to x999y999, Churchy:5:200", () => {
+  /** The timer runs at which the bell rang for a player on `on`, with the bell on `bellMap`. */
+  const bellRuns = (on: string, bellMap: string | null) => {
     const world = createWorld();
-    const map = testMap(CHURCH_MAP);
+    const map = testMap(on);
     const p = player("Ann", map, 1, 1);
-    world.rooms.set(CHURCH_MAP, {
+    world.rooms.set(on, {
       map,
       npcs: ARCHIVE_NPCS,
       players: [p],
@@ -659,14 +660,26 @@ describe("the server timer", () => {
       doorLock: 0,
     });
     const rng = rngByN();
-    let rang = -1;
+    const rang: number[] = [];
     for (let t = 1; t <= TIMEOUT_TICKS * 25; t++) {
       world.tickNo = t;
-      if (serverTimer(world, null, rng).length > 0) {
-        rang = world.timeouts;
+      const out = serverTimer(world, { hazardMap: null, bellMap }, rng);
+      if (out.length > 0) {
+        expect(out).toEqual([
+          { to: p.id, msg: { t: "sound", name: "churchy", ch: 5, volume: 200 } },
+        ]);
+        rang.push(world.timeouts);
       }
     }
-    expect(rang).toBe(19);
+    return rang;
+  };
+  test("the church bell rings at the 20th run to the bell map, Churchy:5:200", () => {
+    expect(bellRuns("x999y999", "x999y999")).toEqual([19]);
+  });
+  test("SSO: the bell map is a setting; empty means no bell", () => {
+    expect(bellRuns("x3y4", "x3y4")).toEqual([19]);
+    expect(bellRuns("x999y999", "x3y4")).toEqual([]);
+    expect(bellRuns("x999y999", null)).toEqual([]);
   });
   test("the Server Spirit casts only into the hazard map's room", () => {
     const world = createWorld();
@@ -680,7 +693,7 @@ describe("the server timer", () => {
       doorLock: 0,
     });
     world.tickNo = TIMEOUT_TICKS;
-    serverTimer(world, "x5y5", rngByN({ 50: [1], 10: [1] }));
+    serverTimer(world, { hazardMap: "x5y5", bellMap: null }, rngByN({ 50: [1], 10: [1] }));
     const room = world.rooms.get("x5y5");
     expect(room?.fxQueue.map((c) => c.name)).toEqual(["FireballL", "BoltD"]);
     expect(room?.fxQueue[1]).toMatchObject({ owner: "The Server Spirit", power: 30 });

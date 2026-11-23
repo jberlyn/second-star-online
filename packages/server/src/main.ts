@@ -120,6 +120,7 @@ export function startServer(options: ServerOptions): RunningServer {
       installContent(store);
       live?.contentPublished(store.hash, restoring);
     },
+    points: () => live?.contractPointProblems() ?? [],
   });
   installContent(content.store());
   // The minute window behind the operator's lag line, and (only with a perf file) the per-phase
@@ -146,6 +147,11 @@ export function startServer(options: ServerOptions): RunningServer {
     config: { ...DEFAULT_SERVER_CONFIG, ...options.config },
   });
   live = game;
+  // The contract's points: a server whose start, fallback or jail point cannot hold a player still
+  // starts, so the operator can fix it in Server Settings, but no publish passes until then.
+  for (const p of game.contractPointProblems()) {
+    console.log(`content: ${p.where}: ${p.message} (the world does not meet the content contract)`);
+  }
   // Stored references the content does not resolve (an item removed outside the Content page, a
   // database edit, a pack import): they never crash the game, and are listed on the Content page.
   const worldProblems = game.contentWorld.problems();

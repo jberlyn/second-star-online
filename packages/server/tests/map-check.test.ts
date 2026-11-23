@@ -33,3 +33,20 @@ test("lists dangling exits, Exit tiles with no exit set and setting points on mi
   ]);
   db.close();
 });
+
+test("names a jail or bell map that is missing, and a contract point that cannot hold a player", () => {
+  const db = openDatabase();
+  migrate(db);
+  // `x00y0` is x0y0; its (1, 1) is the jail's wall.
+  saveSettingOverride(db, "jailPoint", { map: "x00y0", x: 1, y: 1 }, "now");
+  saveSettingOverride(db, "bellMap", "x5y5", "now");
+  expect(mapCheck(db)).toEqual([
+    "setting bellMap: x5y5 does not exist",
+    "setting jailPoint: x00y0 (1, 1) is not a walkable tile",
+  ]);
+  // Back on its floor under another spelling, the jail passes.
+  saveSettingOverride(db, "jailPoint", { map: "x00y0", x: 4, y: 4 }, "now");
+  saveSettingOverride(db, "bellMap", "x0999y999", "now");
+  expect(mapCheck(db)).toEqual([]);
+  db.close();
+});

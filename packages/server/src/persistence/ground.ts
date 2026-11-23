@@ -71,6 +71,22 @@ export function loadGround(db: Db, mapId: string, now: string): StoredGroundItem
     }));
 }
 
+/**
+ * A map's ground items, read only and without the ones already decayed (which loading the map
+ * deletes): where each lies and what it is (the content contract's check).
+ */
+export function peekGround(
+  db: Db,
+  mapId: string,
+  now: string,
+): { x: number; y: number; item: string }[] {
+  return db
+    .query<{ x: number; y: number; item: string }, [string, string]>(
+      "SELECT x, y, item FROM ground_items WHERE map_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY id",
+    )
+    .all(mapId, now);
+}
+
 export function insertGround(db: Db, g: StoredGroundItem, now: string): void {
   db.query(
     "INSERT INTO ground_items (id, map_id, x, y, item, qty, kind, expires_at, owner_id, hull, parked_at, facing, dropped_by_id, dropped_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

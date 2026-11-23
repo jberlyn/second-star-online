@@ -418,7 +418,24 @@ It shows on the Skills page at once, at 1 for everyone. To have Fighters start a
 
 ## Bindings (`bindings.json`)
 
-`packages/data/content/bindings.json` names the content the engine needs for its mechanics, so no mechanic depends on a 1.6 name in code (issue #37). Every binding is optional: one a world leaves out turns its mechanic off.
+`packages/data/content/bindings.json` names the content the engine needs for its mechanics, so no mechanic depends on a 1.6 name in code (issue #37). A binding a world leaves out turns its mechanic off. The currency is the exception: the [content contract](#the-content-contract) requires one.
+
+Each top-level field is one row on the Content page:
+
+| Row | What it holds | Classic | Left out |
+|---|---|---|---|
+| `currency` | `item`: the item a character carries as their purse ("gold" in the engine's words). A pile on the ground is named with its amount and the item's key, `15 Gold` (only that form: with a currency named `Coin`, an item named `Silver Coin` stays an item), and the purse, trades, shops, drops, `/drop 50 Gold`, NPC drop lines (`INV|50 Gold`) and treasure rows all read it | `Gold` | refused at publish |
+| `start` | `hp`, `sp`: a new character's full vitals; `bag`: its first bag lines (`item`, `qty`), at most 15 | 20 and 20; 2 Apple, 1 Knife | required (the bag may be empty) |
+| `cannon` | `ammo`: the item each Battleship cannon shot spends | `Cannonball` | the cannon never fires ("You have no cannonballs!") |
+| `bodies` | the `Chars` body numbers the engine puts on a player: `morph` (Morph's table), `tree` (Nature Shift), `smoke` (Smoke Bomb, drawn as nothing to others), `riders` (one per vehicle: `Boat`, `Battleship`, `Airship`) | 30-41; 80; 100; 55, 56, 57 | `morph`, `tree`, `smoke`: that spell does nothing. `riders` is required: vehicles are engine kinds |
+| `skills` | the skills the engine reads, below | 1.6's skills | that mechanic is off |
+
+Notes on the single bindings:
+
+- **Changing the currency strands old piles.** Piles already on the ground, and NPC drop lines, treasure rows and Assassin prizes written as `<n> Gold`, keep the old name, which is then an ordinary item name that does not exist. The publish check names every content line that breaks; fix those in the same draft. The three pile pictures (`SmallGold`, `MediumGold`, `LargeGold`) are the engine's, whatever the currency is called.
+- **Morph's table** is a list of `{ "above": n, "body": b }` rows. The spell rolls `3 + power + random(5)`, and the last row whose `above` the roll is over picks the body.
+- **A body is what peers see.** Each rider needs its own body, and no spell body may be a rider's, or clients would draw a player as riding. The publish check refuses both, and a smoke body equal to the tree body.
+- **Items named here are references.** Removing Apple, Knife, Cannonball or Gold on the Content page lists these rows among its uses: a start bag line or the cannon's ammo can be dropped by the cleanup, and the currency can only be replaced.
 
 `skills` binds the skills the engine reads, by skill key:
 
@@ -433,6 +450,25 @@ It shows on the Skills page at once, at 1 for everyone. To have Fighters start a
 | `blacksmithing`, `cooking`, `alchemy`, `carpentry` | the four crafts' timers, results and gains | that craft's button does nothing |
 
 A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. Some skills are still read by name: the spell schools (Smoke Bomb's Martial Arts among them) move to the spell rows in stage 4 of #37, the gathering tools' skills to tool behaviours in stage 5, and the kill-gain handlers in `RULES` to progression models in stage 6.
+
+## The content contract
+
+What a world must have before it can run (issue #37). It is checked:
+
+- at every publish, undo and "take the pack's version" on the Content page, which are refused while anything is missing;
+- when Server Settings are saved: a start, fallback or jail point that cannot hold a player is refused (a point already broken does not stop other settings being saved);
+- at start, where anything missing is printed (the server still starts, so the operator can fix it), and by `bun run maps:check`.
+
+A world must have:
+
+| What | Where | Rule |
+|---|---|---|
+| A currency | `bindings.json` `currency` | an item that exists, is not retired, and is named by its exact key |
+| A start class | `classes.json` `startClasses` | at least one |
+| A skill | `classes.json` `skills` | at least one |
+| Start, fallback and jail points | Server Settings: Starting map, Fallback map, Jail | each on a map that exists, on a tile walkable on foot with nothing in a new character's way (no item from `item-rules.json` `ground.blocks`, and no skill or level platform from `ground.platforms`) |
+
+The points are judged with the content being published, so a draft that takes a tile off `tiles.json` `walkable` is refused if a point stands on it. Every other binding and setting is optional. The church bell's map is the **Church bell map** setting (`bellMap`; empty means no bell), which Classic servers start at x999y999.
 
 ## Art and sound
 

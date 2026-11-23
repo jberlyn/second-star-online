@@ -52,7 +52,7 @@ function entryOf(name: string) {
 }
 
 /** Drawn without an icon of its own: gold, and the carried containers' bag pictures. */
-const drawnByEngine = (name: string) => isGoldName(` ${name}`) || bagPicture(name) !== name;
+const drawnByEngine = (name: string) => isGoldName(`1 ${name}`) || bagPicture(name) !== name;
 
 describe("the Classic pack", () => {
   test("bug fixed: everything content hands out or asks for has a picture and can still be made", () => {

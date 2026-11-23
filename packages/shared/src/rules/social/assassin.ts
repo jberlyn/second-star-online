@@ -4,7 +4,7 @@
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { skillValue } from "../core/fighter.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
-import { isGoldName } from "../inventory/inventory.ts";
+import { CURRENCY, isGoldName } from "../inventory/inventory.ts";
 
 let A: ContentStore["social"]["assassin"];
 
@@ -197,7 +197,8 @@ export function prizeLineOk(line: string): boolean {
     return (
       /^\d+$/.test(lingoWord(s, 1)) &&
       Number(lingoWord(s, 1)) > 0 &&
-      lingoEq(s.split(" ").slice(1).join(" "), "Gold")
+      CURRENCY !== null &&
+      lingoEq(s.split(" ").slice(1).join(" "), CURRENCY)
     );
   }
   return (

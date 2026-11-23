@@ -184,10 +184,12 @@ describe("house and jail rules", () => {
     expect(heardSqa('Bob says "hi"', "x5H1y2", 10)).toBe('Bob says "hi"');
   });
 
-  test("jail is map x0y0", () => {
-    expect(isJailMap("x0y0")).toBe(true);
-    expect(isJailMap("X0Y0")).toBe(true);
-    expect(isJailMap("x0y01")).toBe(false);
+  test("the jail is the jail point's map, case ignored", () => {
+    expect(isJailMap("x0y0", "x0y0")).toBe(true);
+    expect(isJailMap("X0Y0", "x0y0")).toBe(true);
+    expect(isJailMap("x0y01", "x0y0")).toBe(false);
+    expect(isJailMap("x0y0", "x5y5")).toBe(false);
+    expect(isJailMap("x5Y5", "x5y5")).toBe(true);
   });
 });
 

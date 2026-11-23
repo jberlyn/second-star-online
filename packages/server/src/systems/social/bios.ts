@@ -13,15 +13,13 @@ import {
   giveBio,
   medalField,
   saveProfile,
+  treeBody,
 } from "@secondstaronline/shared";
 
 import { logChat } from "../chat/log.ts";
 import type { Outgoing, Player, World } from "../world/world.ts";
 import { guildOf } from "./guilds.ts";
 import { onlineNamed } from "./presence.ts";
-
-/** Nature Shift's tree (`setBody(p, 80)`): its `Chars` members are named "80-…". */
-const TREE_BODY = 80;
 
 /** What the bio composer reads from the target. */
 export function bioSource(world: World, t: Player): BioSource {
@@ -41,7 +39,7 @@ export function bioSource(world: World, t: Player): BioSource {
     faction: t.char.faction.id,
     wanted: t.char.wanted,
     body: t.spell.body,
-    tree: t.spell.body === TREE_BODY,
+    tree: t.spell.body !== null && t.spell.body === treeBody(),
     bodyItem: t.char.equip.body,
     // The `Vehicle` field: the Robe's disguise is skipped aboard.
     inVehicle: t.vehicle !== null,

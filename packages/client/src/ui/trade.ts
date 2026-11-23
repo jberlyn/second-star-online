@@ -14,7 +14,7 @@
  * member 2's art at [395, 394], left of B's Trade); it hides once you have accepted, and the trade
  * goes through when both have. (1.6 locked an offer once sent and gave only A an Accept.)
  */
-import { type InventoryView, itemLabel, type TradeView } from "@secondstaronline/shared";
+import { CURRENCY, type InventoryView, itemLabel, type TradeView } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
 import { action, gameInput } from "./action.ts";
@@ -156,7 +156,8 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
     slots = [];
     c.rows.forEach((r, i) => {
       const line = i === 0 ? null : (inv?.bag[i - 1] ?? null);
-      r.name.textContent = i === 0 ? "Gold" : line ? itemLabel(line.item) : "";
+      r.name.textContent =
+        i === 0 ? itemLabel(CURRENCY ?? "Gold") : line ? itemLabel(line.item) : "";
       r.amount.value = "0";
       r.amount.readOnly = false;
       slots.push(line ? i : null);
@@ -167,7 +168,7 @@ export function createTradeWindow(a: Assets, layer: WindowLayer, act: TradeActio
     c: Column,
     o: { gold: number; items: { item: string; qty: number }[] } | null,
   ) => {
-    const lines = o ? [{ item: "Gold", qty: o.gold }, ...o.items] : [];
+    const lines = o ? [{ item: CURRENCY ?? "Gold", qty: o.gold }, ...o.items] : [];
     c.rows.forEach((r, i) => {
       const l = lines[i];
       r.name.textContent = l ? itemLabel(l.item) : "";

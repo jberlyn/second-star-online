@@ -22,6 +22,7 @@ import {
   className,
   content,
   creationError,
+  type DeltaEvent,
   diffEdit,
   EDIT_TEXT,
   type EditorMap,
@@ -43,7 +44,6 @@ import {
   isActivityType,
   isJailMap,
   isStaff,
-  JAIL,
   MODERATION_TEXT,
   mapName,
   mergePlayerPrefs,
@@ -77,8 +77,16 @@ import {
 } from "@secondstaronline/shared";
 
 import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "./config.ts";
+import {
+  CONTRACT_POINTS,
+  type ContractPoint,
+  type PointMap,
+  pointProblem,
+  pointProblems,
+} from "./content/contract.ts";
 import { CONTENT_INTENTS, contentIntent } from "./content/page.ts";
 import type { ContentService } from "./content/service.ts";
+import type { ContentProblem } from "./content/validate.ts";
 import type { ContentWorld } from "./content/world.ts";
 import {
   findAccountById,
@@ -141,7 +149,13 @@ import {
   saveShop,
   saveVault,
 } from "./persistence/economy.ts";
-import { deleteGround, insertGround, loadGround, renameGround } from "./persistence/ground.ts";
+import {
+  deleteGround,
+  insertGround,
+  loadGround,
+  peekGround,
+  renameGround,
+} from "./persistence/ground.ts";
 import {
   loadCharacterGuild,
   loadGuilds,
@@ -233,7 +247,13 @@ import {
   prepareUndo,
 } from "./systems/admin/character-edit.ts";
 import { characterHub, type HubDeps, liveSheet, searchRows } from "./systems/admin/characters.ts";
-import { type AdminDeps, applyRole, moderate, permissionsMsg } from "./systems/admin/commands.ts";
+import {
+  type AdminDeps,
+  adminWarp,
+  applyRole,
+  moderate,
+  permissionsMsg,
+} from "./systems/admin/commands.ts";
 import { createContentWorld } from "./systems/admin/content-world.ts";
 import { openControlPanel } from "./systems/admin/control-panel.ts";
 import {
@@ -372,6 +392,7 @@ import {
   newSpellState,
   type Outgoing,
   type Player,
+  type Room,
   removePlayer,
   sessionCombatState,
   toWorldMap,
@@ -477,6 +498,11 @@ export interface Game {
   contentPublished(hash: string, restoring?: boolean): void;
   /** The world as the content service sees it: where-used, removal cleanup and problems (#28). */
   readonly contentWorld: ContentWorld;
+  /**
+   * The content contract's point settings (start, fallback, jail) that cannot hold a player, judged
+   * with the content installed now (issue #37).
+   */
+  contractPointProblems(): ContentProblem[];
 }
 
 /**
@@ -570,6 +596,16 @@ function editingOk(p: Player, t: string): boolean {
   return true;
 }
 
+/**
+ * A grid map's name as the world spells it, `x0y0` for `X00Y0`: a setting naming a map (the jail,
+ * the bell's map) is compared with live maps' names, so a spelling `/warp` would accept must not
+ * miss them.
+ */
+function canonicalMapName(name: string): string {
+  const c = parseMapName(name);
+  return c ? mapName(c.mx, c.my) : name;
+}
+
 export function createGame(deps: GameDeps): Game {
   const { db, send, isoNow, rng } = deps;
   const minute = deps.minute ?? (() => new Date().getUTCMinutes());
@@ -634,7 +670,10 @@ export function createGame(deps: GameDeps): Game {
   };
   layNpcFiles();
   const world = createWorld(npcs);
+  /** The special bodies bound when the store was installed, to follow them across a publish. */
+  let boundBodies = content().bindings.bodies;
   world.roleTags = settings.roleTags;
+  world.jail = { ...settings.jailPoint, map: canonicalMapName(settings.jailPoint.map) };
   /** The operator's roles by id (persistence/roles.ts), read at start and after every change. */
   let roles = new Map<string, RoleDef>();
   const reloadRoles = () => {
@@ -734,26 +773,53 @@ export function createGame(deps: GameDeps): Game {
   resetTreasure(world, settings.treasureMaps, rng);
   const mapCache = new Map<string, WorldMap | null>();
 
-  const loadMap = (name: string): WorldMap | null => {
+  /** Where a map name is: its grid position, exit slot and cache key, or null for no map name. */
+  const mapPlace = (name: string) => {
     // A house interior is its outdoor map's position and exit slot. Names match ignoring case, so
     // the cache is keyed by the map's own spelling: a second copy of a live map (`X1000Y992`) would
-    // write stale monster slots over the live ones at the next save. A name that is no map at all
-    // is not cached, so typed names cannot grow the cache.
+    // write stale monster slots over the live ones at the next save.
     const h = parseHouseMapName(name);
     const c = h ?? parseMapName(name);
     if (!c) {
       return null;
     }
-    const key = anyMapName(c.mx, c.my, h ? h.slot : 0);
+    const slot: 0 | 1 | 2 = h ? h.slot : 0;
+    return { mx: c.mx, my: c.my, slot, key: anyMapName(c.mx, c.my, slot) };
+  };
+
+  const loadMap = (name: string): WorldMap | null => {
+    // A name that is no map at all is not cached, so typed names cannot grow the cache.
+    const c = mapPlace(name);
+    if (!c) {
+      return null;
+    }
+    const key = c.key;
     if (mapCache.has(key)) {
       return mapCache.get(key) ?? null;
     }
-    const rec = findMapByCoords(db, c.mx, c.my, h ? h.slot : 0);
+    const rec = findMapByCoords(db, c.mx, c.my, c.slot);
     const m = rec
       ? toWorldMap({ ...rec, slots: slotsFor(rec.id), ground: groundFor(rec.id) })
       : null;
     mapCache.set(key, m);
     return m;
+  };
+
+  /**
+   * A map as the content contract's check reads it, changing nothing: the loaded map when it is in
+   * memory, else its saved tiles and ground items (a map loaded only to be checked would be saved
+   * back with empty monster slots).
+   */
+  const peekMap = (name: string): PointMap | null => {
+    const c = mapPlace(name);
+    if (!c) {
+      return null;
+    }
+    if (mapCache.has(c.key)) {
+      return mapCache.get(c.key) ?? null;
+    }
+    const rec = findMapByCoords(db, c.mx, c.my, c.slot);
+    return rec ? { layers: rec.layers, ground: peekGround(db, rec.id, isoNow()) } : null;
   };
 
   const loadMapById = (id: string): WorldMap | null => {
@@ -848,7 +914,8 @@ export function createGame(deps: GameDeps): Game {
     npcChatterSeconds: settings.npcChatter,
     deathDrops: deathDropRules(settings),
     portalTargets: settings.portalTargets,
-    hazardMap: settings.hazardMap,
+    hazardMap: settings.hazardMap && canonicalMapName(settings.hazardMap),
+    bellMap: settings.bellMap && canonicalMapName(settings.bellMap),
     saveIntervalTicks: secondsToTicks(config.saveInterval),
     rng,
   };
@@ -1153,19 +1220,59 @@ export function createGame(deps: GameDeps): Game {
   };
 
   /**
+   * Where a player who is no prisoner leaves the jail's map for: their respawn point, or the
+   * Fallback map when that is gone or on the jail's map (a jail moved onto a map they had made
+   * their respawn point).
+   */
+  const outOfJail = (respawn: Player["char"]["respawn"]) => {
+    const to = respawnTarget(respawn, tickDeps);
+    return to && !isJailMap(to.map.name, world.jail.map) ? to : fallbackTarget(tickDeps);
+  };
+
+  /**
+   * Puts a jail point in force. A jail moved to another map takes its online prisoners with it, so
+   * the old map no longer holds them (it is an ordinary map now) and their release still sends them
+   * home. Offline prisoners arrive at the new jail at their next login. Anyone else on the new
+   * jail's map, staff apart, goes to their respawn point, as a login there would send them.
+   */
+  const moveJail = (
+    jail: { map: string; x: number; y: number },
+    tell: (out: readonly Outgoing[]) => void,
+  ) => {
+    const old = world.jail;
+    world.jail = jail;
+    if (isJailMap(old.map, jail.map)) {
+      return;
+    }
+    const warpDeps = { loadMap, casino: casinoDeps };
+    for (const p of [...world.players.values()]) {
+      if (p.jailUntil !== null && isJailMap(p.map.name, old.map)) {
+        tell(adminWarp(world, p, jail.map, jail.x, jail.y, warpDeps));
+      } else if (p.jailUntil === null && isJailMap(p.map.name, jail.map) && !isStaff(p.role)) {
+        const to = outOfJail(p.char.respawn);
+        if (to) {
+          tell(adminWarp(world, p, to.map.name, to.x, to.y, warpDeps));
+        }
+      }
+    }
+  };
+
+  /**
    * Puts new settings in force at once: every reader takes its value from these deps, and clients
    * get the rules they predict with.
    */
-  const applySettings = (next: Settings) => {
+  const applySettings = (next: Settings, tell: (out: readonly Outgoing[]) => void = deliver) => {
     const rulesBefore = settings.chatMaxChars;
     settings = next;
+    moveJail({ ...settings.jailPoint, map: canonicalMapName(settings.jailPoint.map) }, tell);
     Object.assign(tickDeps, {
       fallbackPoint: settings.fallbackPoint,
       lootDecayMinutes: settings.lootDecay / 60,
       npcChatterSeconds: settings.npcChatter,
       deathDrops: deathDropRules(settings),
       portalTargets: settings.portalTargets,
-      hazardMap: settings.hazardMap,
+      hazardMap: settings.hazardMap && canonicalMapName(settings.hazardMap),
+      bellMap: settings.bellMap && canonicalMapName(settings.bellMap),
     });
     Object.assign(chatDeps, {
       maxChars: settings.chatMaxChars,
@@ -1584,6 +1691,17 @@ export function createGame(deps: GameDeps): Game {
     if (!r.ok) {
       send(p.id, { t: "settingsResult", ok: false, key: r.key, text: r.error });
       return;
+    }
+    // The content contract: a start, fallback or jail point must hold a player. One already broken
+    // (a map deleted since) may stay while another setting is saved.
+    for (const key of Object.keys(CONTRACT_POINTS) as ContractPoint[]) {
+      const problem = r.changed.some((c) => c.key === key)
+        ? pointProblem(r.settings[key], peekMap)
+        : null;
+      if (problem !== null) {
+        send(p.id, { t: "settingsResult", ok: false, key, text: `${problem}.` });
+        return;
+      }
     }
     const now = isoNow();
     db.transaction(() => {
@@ -2187,6 +2305,7 @@ export function createGame(deps: GameDeps): Game {
     },
     config,
     contentWorld,
+    contractPointProblems: () => pointProblems(settings, peekMap),
 
     async login(name, password, ip = "") {
       const account = findAccountByUsername(db, name);
@@ -2353,13 +2472,19 @@ export function createGame(deps: GameDeps): Game {
       const jailUntil = isActive(sentence, now) ? endMs(sentence?.expiresAt ?? null) : null;
       const mute = accountMute(db, account.id);
       const muteUntil = isActive(mute, now) ? endMs(mute?.expiresAt ?? null) : null;
-      const jailMap = jailUntil !== null && !isJailMap(map.name) ? loadMap(JAIL.map) : null;
+      const jail = world.jail;
+      const jailMap =
+        jailUntil !== null && !isJailMap(map.name, jail.map) ? loadMap(jail.map) : null;
       if (jailMap) {
         map = jailMap;
-        x = JAIL.x;
-        y = JAIL.y;
-      } else if (jailUntil === null && isJailMap(map.name) && !isStaff(roleOf(account.role))) {
-        const to = respawnTarget(c.respawn, tickDeps);
+        x = jail.x;
+        y = jail.y;
+      } else if (
+        jailUntil === null &&
+        isJailMap(map.name, jail.map) &&
+        !isStaff(roleOf(account.role))
+      ) {
+        const to = outOfJail(c.respawn);
         if (to) {
           ({ map, x, y } = to);
         }
@@ -3146,7 +3271,43 @@ export function createGame(deps: GameDeps): Game {
         o.lastSheet = "";
       }
       // Setting defaults drawn from content (the Assassin prizes) follow it.
-      applySettings(resolveSettings(loadSettingOverrides(db)));
+      // Its moves (a jail point changed since the settings were read) wait with the publish.
+      applySettings(resolveSettings(loadSettingOverrides(db)), (o) => contentWorld.tell(o));
+      // A body the engine put on a player follows its binding: a rider shows the vehicle's new
+      // body, and a tree or smoke shows the new one (or ends, unbound), so clients that now read
+      // the new bindings see what the player is. Any other body (a morph) that is now a rider's,
+      // the tree or the smoke ends, or clients would take the player for one.
+      const bodiesWere = boundBodies;
+      boundBodies = content().bindings.bodies;
+      const special = new Set([
+        ...Object.values(boundBodies.riders),
+        ...(boundBodies.tree === undefined ? [] : [boundBodies.tree]),
+        ...(boundBodies.smoke === undefined ? [] : [boundBodies.smoke]),
+      ]);
+      const bodyEvents = new Map<Room, DeltaEvent[]>();
+      for (const o of world.players.values()) {
+        const body = o.spell.body;
+        let next = body;
+        if (o.vehicle) {
+          next = VEHICLE_BODY[o.vehicle];
+        } else if (body !== null && body === bodiesWere.tree) {
+          next = boundBodies.tree ?? null;
+        } else if (body !== null && body === bodiesWere.smoke) {
+          next = boundBodies.smoke ?? null;
+        } else if (body !== null && special.has(body)) {
+          next = null;
+        }
+        if (body !== null && body === bodiesWere.smoke && next === null) {
+          o.spell.smokeBomb = 0; // its timer would end a later body
+        }
+        const room = world.rooms.get(o.map.name);
+        if (next !== body && room) {
+          o.spell.body = next;
+          const events = bodyEvents.get(room) ?? [];
+          events.push({ e: "body", id: o.id, body: next });
+          bodyEvents.set(room, events);
+        }
+      }
       // Walkability comes from the tile tables: every loaded map's grids are worked out again.
       for (const room of world.rooms.values()) {
         const m = room.map;
@@ -3160,7 +3321,10 @@ export function createGame(deps: GameDeps): Game {
       const told = new Set<string>();
       const out: Outgoing[] = [];
       for (const room of world.rooms.values()) {
-        const events = room.map.ground.map((g) => ({ e: "gadd" as const, item: groundView(g) }));
+        const events: DeltaEvent[] = [
+          ...(bodyEvents.get(room) ?? []),
+          ...room.map.ground.map((g) => ({ e: "gadd" as const, item: groundView(g) })),
+        ];
         for (const o of room.players) {
           told.add(o.id);
           out.push({ to: o.id, msg: { t: "content", hash } });

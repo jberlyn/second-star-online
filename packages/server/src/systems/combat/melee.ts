@@ -159,7 +159,7 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
 
 /**
  * The Battleship's cannon (an SSO addition): one shot a press, forward along the facing, when
- * loaded and with a `Cannonball` in the bag. A rider is never in an arena, so on a no-fight map it
+ * loaded and with the cannon ammo (`Cannonball`) in the bag. A rider is never in an arena, so on a no-fight map it
  * cannot fire even over arena tiles.
  */
 function pollCannon(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void {

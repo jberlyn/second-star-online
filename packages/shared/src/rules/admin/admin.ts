@@ -67,7 +67,8 @@ export const ADMIN_TEXT = {
   // ---- SSO lines: the jail map, the unban chat command, the set-class tool ----
   notOnline: (name: string) => `${name} is not online.`,
   noSuchCharacter: (name: string) => `There is no character called ${name}.`,
-  noJail: "There is no jail map: save a map at X 0, Y 0 in the World Editor first.",
+  noJail: (map: string) =>
+    `There is no jail map: save a map at ${map} in the World Editor first, or move the Jail in Server Settings.`,
   warpUsage: "Usage: /warp <name> <map> <x> <y>, for example /warp Slim x1000y992 5 5",
   noMap: (map: string) => `There is no map ${map}.`,
   banSelf: "You cannot ban yourself.",
@@ -81,8 +82,11 @@ export const ADMIN_TEXT = {
   classSet: (name: string, cls: string) => `${name} is now a ${cls}.`,
 } as const;
 
-/** The jail map and tile of `/jail` (`"!!! !!! x0y0 4 4"`). */
-export const JAIL = { map: "x0y0", x: 4, y: 4 } as const;
+/**
+ * The jail's default map and tile, 1.6's `/jail` (`"!!! !!! x0y0 4 4"`). The server's jail is the
+ * `jailPoint` setting.
+ */
+export const DEFAULT_JAIL = { map: "x0y0", x: 4, y: 4 } as const;
 
 /**
  * A warp line as the original's warp routine reads it: items 3, 4 and 5 split on single spaces (so

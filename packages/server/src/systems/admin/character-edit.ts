@@ -152,7 +152,7 @@ function placeChecks(
     }
     after.respawn.map = m.name;
     respawn = m.id;
-    if (changed("respawn") && !isStaff(target.role) && isJailMap(m.name)) {
+    if (changed("respawn") && !isStaff(target.role) && isJailMap(m.name, world.jail.map)) {
       return { ok: false, text: EDIT_TEXT.jailMap };
     }
   }
@@ -164,7 +164,7 @@ function placeChecks(
     if (jailed) {
       return { ok: false, text: EDIT_TEXT.jailed(target.name) };
     }
-    if (!isStaff(target.role) && isJailMap(pos.name)) {
+    if (!isStaff(target.role) && isJailMap(pos.name, world.jail.map)) {
       return { ok: false, text: EDIT_TEXT.jailMap };
     }
   }

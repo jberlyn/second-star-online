@@ -376,9 +376,9 @@ export function heardSqa(text: string, mapName: string, y: number): string {
   return text;
 }
 
-/** The jail map (case-insensitive comparison). */
-export function isJailMap(mapName: string): boolean {
-  return lingoEq(mapName, "x0y0");
+/** Whether a map is the jail's (setting `jailPoint`), case ignored. */
+export function isJailMap(mapName: string, jailMap: string): boolean {
+  return lingoEq(mapName, jailMap);
 }
 
 /** The who reply's chat line. */

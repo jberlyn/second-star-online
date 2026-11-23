@@ -40,7 +40,6 @@ import {
   isActive,
   isJailMap,
   isStaff,
-  JAIL,
   keyLabel,
   lingoEq,
   lingoWord,
@@ -306,7 +305,7 @@ export function handleAdmin(
       if (shieldedFrom(t)) {
         return [...out, ...tell(p, ADMIN_TEXT.outranked)];
       }
-      const stop = jailWarpRefusal(t, to.map);
+      const stop = jailWarpRefusal(world, t, to.map);
       if (stop) {
         return [...out, ...tell(p, stop)];
       }
@@ -379,7 +378,7 @@ export function handleAdmin(
       if (shieldedFrom(t)) {
         return [...out, ...tell(p, ADMIN_TEXT.outranked)];
       }
-      const stop = jailWarpRefusal(t, p.map.name);
+      const stop = jailWarpRefusal(world, t, p.map.name);
       if (stop) {
         return [...out, ...tell(p, stop)];
       }
@@ -570,11 +569,11 @@ const live = <T extends ModerationRecord>(r: T | null, now: string): T | null =>
  * Why a staff warp may not move `t` to `map`: a prisoner leaves jail only by `/unjail` or the end
  * of the sentence, and a player goes to jail only by `/jail`.
  */
-function jailWarpRefusal(t: Player, map: string): string | null {
+function jailWarpRefusal(world: World, t: Player, map: string): string | null {
   if (t.jailUntil !== null) {
     return MODERATION_TEXT.prisoner(t.name);
   }
-  if (!isStaff(t.role) && isJailMap(map)) {
+  if (!isStaff(t.role) && isJailMap(map, world.jail.map)) {
     return MODERATION_TEXT.useJail;
   }
   return null;
@@ -678,8 +677,8 @@ function jail(
   if (!mayTarget(p.role, c.role)) {
     return tell(p, MODERATION_TEXT.staffTarget);
   }
-  if (!deps.loadMap(JAIL.map)) {
-    return tell(p, ADMIN_TEXT.noJail);
+  if (!deps.loadMap(world.jail.map)) {
+    return tell(p, ADMIN_TEXT.noJail(world.jail.map));
   }
   const base = by(p, deps);
   const was = live(deps.moderation.jail(c.characterId), base.createdAt);
@@ -706,8 +705,8 @@ function jail(
   const t = world.players.get(c.characterId);
   if (t) {
     t.jailUntil = endMs(expiresAt);
-    if (!isJailMap(t.map.name)) {
-      out.push(...adminWarp(world, t, JAIL.map, JAIL.x, JAIL.y, deps));
+    if (!isJailMap(t.map.name, world.jail.map)) {
+      out.push(...adminWarp(world, t, world.jail.map, world.jail.x, world.jail.y, deps));
     }
     out.push(...tell(t, MODERATION_TEXT.youAreJailed(expiresAt)));
   }
@@ -1129,7 +1128,7 @@ export function warpscriptOnBroadcast(
       continue;
     }
     // A player goes to jail only by /jail.
-    if (!isStaff(speaker.role) && isJailMap(staff.map.name)) {
+    if (!isStaff(speaker.role) && isJailMap(staff.map.name, world.jail.map)) {
       continue;
     }
     if (!warpscriptMatches(staff.warpscript, message)) {

@@ -745,26 +745,37 @@ export const EFFECT_TEXT = {
   magicShieldEnds: "The magic barrier that protects you has died down.",
 } as const;
 
-/** Morph: `N = 3 + P + random(5)`; the last threshold passed picks the body. */
-export function morphBody(power: number, rng: Rng): number {
+/**
+ * Morph: `N = 3 + P + random(5)`; the last row of the world's morph table (`bindings.json`
+ * `bodies.morph`) that N is above picks the body. Null, with nothing rolled, when the world binds
+ * no table: Morph does nothing. Null too when N is above no row.
+ */
+export function morphBody(power: number, rng: Rng): number | null {
+  const rows = content().bindings.bodies.morph ?? [];
+  if (rows.length === 0) {
+    return null;
+  }
   const n = 3 + power + rng.random(5);
-  let body = 0;
-  const rows: [number, number][] = [
-    [0, 30],
-    [10, 32],
-    [13, 31],
-    [16, 33],
-    [19, 37],
-    [21, 34],
-    [23, 41],
-    [24, 40],
-  ];
-  for (const [gt, b] of rows) {
-    if (n > gt) {
-      body = b;
+  let body: number | null = null;
+  for (const r of rows) {
+    if (n > r.above) {
+      body = r.body;
     }
   }
   return body;
+}
+
+/** Nature Shift's tree body (`bindings.json` `bodies.tree`), or null: Nature Shift does nothing. */
+export function treeBody(): number | null {
+  return content().bindings.bodies.tree ?? null;
+}
+
+/**
+ * Smoke Bomb's body (`bindings.json` `bodies.smoke`), which clients draw as nothing, or null: Smoke
+ * Bomb does nothing.
+ */
+export function smokeBody(): number | null {
+  return content().bindings.bodies.smoke ?? null;
 }
 
 /** The morph counter from a body change: unchanged at exactly 300. */

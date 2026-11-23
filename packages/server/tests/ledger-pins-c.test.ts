@@ -242,7 +242,7 @@ describe("Hazard timer on ticks", () => {
     for (let t = 1; t <= 21; t++) {
       world.tickNo = t;
       const before = world.timeouts;
-      serverTimer(world, null, rngByN());
+      serverTimer(world, { hazardMap: null, bellMap: null }, rngByN());
       if (world.timeouts !== before) {
         ran.push(t);
       }

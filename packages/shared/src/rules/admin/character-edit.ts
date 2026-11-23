@@ -29,6 +29,7 @@ import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { checkEquip, EQUIP_TEXT } from "../inventory/equip.ts";
 import {
   BAG_SLOTS,
+  CURRENCY,
   displayName,
   EQUIP_FIELD,
   EQUIP_SLOTS,
@@ -341,7 +342,8 @@ export function knownItem(name: string): boolean {
 }
 
 /** Gold in any spelling: a pile (`5 Gold`, which adds to the purse) or the bare catalogue name. */
-const isGold = (name: string): boolean => isGoldName(name) || lingoEq(displayName(name), "Gold");
+const isGold = (name: string): boolean =>
+  isGoldName(name) || (CURRENCY !== null && lingoEq(displayName(name), CURRENCY));
 
 /** A container with storage of its own, which the vault refuses (vault.ts `depositVault`). */
 const isStorage = (name: string): boolean =>

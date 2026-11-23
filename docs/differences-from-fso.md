@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 82 |
-| [Fixed bugs](#fixed-bugs) | 300 |
+| [Fixed bugs](#fixed-bugs) | 301 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 137 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **571** |
+| **Total** | **572** |
 
 By system (the code folder that holds the change):
 
@@ -48,7 +48,7 @@ By system (the code folder that holds the change):
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
-| inventory | [36](#inventory) | [11](#server-side-inventory) |
+| inventory | [37](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [20](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
@@ -169,10 +169,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** `/jail` works on a fresh server. The stone jail at x0y0 has barred cells, an enclosed perimeter, no exits, and no landing pads. Prisoners arrive at tile 4,4 and remain until their sentence ends or staff use `/unjail`.
 - **1.6:** Used the archived Jail map. Portal and death respawn could bypass the sentence.
-- **SSO:** A migration adds a validated jail landscape if x0y0 is absent, preserving operator-authored jails. Portal, map exits and edge crossings cannot leave x0y0. Death revives prisoners at 4,4 and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal.
-- **Why:** A fresh server needs a working jail, and confinement must not depend on a prisoner's spells or inventory.
-- **In the code:** `packages/data/content/jail-map.json`, `packages/server/src/persistence/seed-map.ts` (`jailMapSql`), `packages/server/src/systems/world/tick.ts` (`portal`, `takeExit`, `crossMapEdge`, `respawn`), `packages/server/src/systems/world/world.ts` (`enterRoom`)
-- **Pinned by:** `the seeded jail encloses every walkable area and has no exits or landing pads`; `jail blocks Portal and exits while keeping the sentence and normal respawn point`; `death revives a prisoner in jail without restarting the sentence; expiry still releases`; `every jail edge refuses a map crossing, even for an arriving airship rider` (packages/server/tests/jail.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
+- **SSO:** A migration adds a validated jail landscape if x0y0 is absent, preserving operator-authored jails. Portal, map exits and edge crossings cannot leave the jail. Death revives prisoners on the jail's tile and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal. The jail is the Server Settings point **Jail** (`jailPoint`), which existing servers keep at x0y0 (4, 4); an operator may move it to any map, and a save that puts it on a missing map or an unwalkable tile is refused.
+- **Why:** A fresh server needs a working jail, and confinement must not depend on a prisoner's spells or inventory. The jail is a setting so a world built without 1.6's maps can have one (issue #37).
+- **In the code:** `packages/data/content/jail-map.json`, `packages/server/src/persistence/seed-map.ts` (`jailMapSql`), `packages/server/src/settings.ts` (`jailPoint`), `packages/server/src/systems/world/tick.ts` (`portal`, `takeExit`, `crossMapEdge`, `respawn`), `packages/server/src/systems/world/world.ts` (`enterRoom`, `jail`)
+- **Pinned by:** `the seeded jail encloses every walkable area and has no exits or landing pads`; `jail blocks Portal and exits while keeping the sentence and normal respawn point`; `death revives a prisoner in jail without restarting the sentence; expiry still releases`; `every jail edge refuses a map crossing, even for an arriving airship rider`; `SSO: the jail is the jailPoint setting's map and tile, not x0y0` (packages/server/tests/jail.test.ts); `SSO: the jail is the jailPoint setting's map and tile` (packages/server/tests/admin.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
 
 #### Control Panel
 - **Kind:** World content
@@ -268,10 +268,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** A fresh server has the Church of the Bells at x999y999, the enclosed sanctuary where the church bell sounds. It has no exits or landing pads; players reach it by an operator warp.
 - **1.6:** The bell rang for players on the hard-wired map x999y999.
-- **SSO:** A migration adds the validated church landscape if x999y999 is absent, preserving operator-authored maps there. The map is fully enclosed, so walking cannot reach it or leak through its edges into a nonexistent neighbour. The bell's timer and sound behavior are unchanged.
-- **Why:** The hard-wired bell map should exist on a fresh server.
-- **In the code:** `packages/data/content/church-map.json`, `packages/server/src/persistence/seed-map.ts` (`churchMapSql`), `packages/server/src/systems/spells/hazards.ts` (`CHURCH_MAP`, `serverTimer`)
-- **Pinned by:** `the seeded church is the validated Church of the Bells at x999y999 with no exits` (packages/server/tests/church.test.ts); `the church bell rings at the 20th run to x999y999, Churchy:5:200` (packages/server/tests/spells.test.ts)
+- **SSO:** A migration adds the validated church landscape if x999y999 is absent, preserving operator-authored maps there. The map is fully enclosed, so walking cannot reach it or leak through its edges into a nonexistent neighbour. The bell's timer and sound behavior are unchanged. The bell's map is the Server Settings map **Church bell map** (`bellMap`), which existing servers keep at x999y999; empty turns the bell off.
+- **Why:** The bell map should exist on a fresh server. The map is a setting so a world built without 1.6's maps can ring the bell elsewhere, or not at all (issue #37).
+- **In the code:** `packages/data/content/church-map.json`, `packages/server/src/persistence/seed-map.ts` (`churchMapSql`), `packages/server/src/settings.ts` (`bellMap`), `packages/server/src/systems/spells/hazards.ts` (`serverTimer`)
+- **Pinned by:** `the seeded church is the validated Church of the Bells at x999y999 with no exits` (packages/server/tests/church.test.ts); `the church bell rings at the 20th run to the bell map, Churchy:5:200`; `SSO: the bell map is a setting; empty means no bell` (packages/server/tests/spells.test.ts)
 
 #### Burned food and Cooked Meat
 - **Kind:** World content
@@ -2432,6 +2432,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`GIVE_TEXT`, `receiveGive`)
 - **Pinned by:** `bug fixed: give says 'Offering the 50 gold to B.'; B has it at once`; `bug fixed: a gold give says "A is giving you 50 Gold."` (packages/server/tests/inventory.test.ts)
 
+#### Only `<n> Gold` is a pile of gold
+- **Kind:** Bug fixed
+- **What you notice:** Nothing on a Classic server: every gold pile is still `<n> Gold`, and `/drop 5 gold coins` still makes one.
+- **1.6:** Any name containing " Gold" was gold: picking it up added its first word, read as a number, to the purse, and destroyed the item. Classic's one such name is the fixture `Open Gold Door`, which no player can pick up.
+- **SSO:** A pile is a whole number followed by the currency's name (`bindings.json` `currency`). A staff `/drop Open Gold Door` is logged as an item placed, and the character editor takes it as an item.
+- **Why:** A world whose currency is `Coin` must not turn an item named `Silver Coin` into nothing (issue #37).
+- **In the code:** `packages/shared/src/rules/inventory/inventory.ts` (`isGoldName`, `afterCountIsGold`)
+- **Pinned by:** `only `<n> <currency>` is a pile: a currency named Coin leaves Silver Coin an item` (packages/shared/tests/core/bindings.test.ts)
+
 #### A given painting is named without its number
 - **Kind:** Bug fixed
 - **What you notice:** When someone gives you a painting, you read "Bob is giving you a Painting.", as the giver's line names it.
@@ -3560,7 +3569,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Kept on purpose
 - **What you notice:** the character you build always begins at HP 20/20 and SP 20/20, whatever the class, including Fighters, whose creation screen showed 0 SP.
 - **1.6:** The creation screen rolled HP as Strength plus a random number up to Stamina and worked out SP (0 for a Fighter), then threw the rolls away and saved the fixed numbers 20, 20, 20, 20.
-- **SSO:** The same: every class starts at 20/20/20/20.
+- **SSO:** The same: every class starts at 20/20/20/20. The numbers are the Classic pack's `bindings.json` `start` (with the starting bag), so another world sets its own.
 - **Why:** Rolled vitals would reward deleting and remaking a character until it rolled the best health. If starting vitals change, each class would get fixed values as a balance change, never a roll.
 - **In the code:** `packages/shared/src/rules/progression/creation.ts` (`startingCharacter`)
 - **Pinned by:** `kept on purpose: vitals are the literal 20/20/20/20 for every class, Fighter included` (packages/shared/tests/progression/creation.test.ts)

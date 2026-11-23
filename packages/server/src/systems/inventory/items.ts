@@ -27,6 +27,7 @@ import {
   FACING_DELTA,
   filledLines,
   fixedInPlace,
+  goldPileName,
   groundLayer,
   groundTipName,
   headDrop,
@@ -731,8 +732,11 @@ export function goldIntent(ctx: ItemCtx, room: Room, p: Player, n: number): Outg
   if (busy(p)) {
     return io.out; // the give blocker is set
   }
+  const pile = goldPileName(n);
+  if (pile === null) {
+    return io.out; // a world with no currency has no gold to give
+  }
   const t = faced(p);
-  const pile = `${n} Gold`;
   const target = p.stepFrames === 0 ? playerOn(room, p, t.x, t.y) : null;
   const path = amountPath({
     gold: true,

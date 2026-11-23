@@ -12,6 +12,7 @@ import {
   DATASET_IDS,
   type DatasetId,
   lingoContains,
+  lingoEq,
   npcLootItemOk,
   npcShopItemOk,
 } from "@secondstaronline/shared";
@@ -216,6 +217,12 @@ export interface Reference {
 /** Every checked reference in a store. */
 export function referencesOf(data: ContentData): Reference[] {
   const out: Reference[] = [];
+  /** A ground name that is a pile of this content's currency, `300 Gold`. */
+  const currency = data.bindings.currency.item;
+  const currencyPile = (name: string) => {
+    const t = name.trim();
+    return currency !== undefined && /^\d+ /.test(t) && lingoEq(t.replace(/^\d+ /, ""), currency);
+  };
   const section = (dataset: DatasetId, part: string): RowRef => ({ dataset, part, key: null });
   const add = (
     row: RowRef,
@@ -368,9 +375,9 @@ export function referencesOf(data: ContentData): Reference[] {
   g.farming.produce.forEach((pr, i) => {
     gather(["farming", "produce", i, "item"], pr.item, ["farming", "produce", i]);
   });
-  // A treasure is dropped as a ground name, so "300 Gold" is a pile of gold, not an item.
+  // A treasure is dropped as a ground name, so "300 Gold" is a pile of the currency, not an item.
   g.treasure.items.forEach((n, i) => {
-    if (!/^\d+ gold$/i.test(n.trim())) {
+    if (!currencyPile(n)) {
       gather(["treasure", "items", i], n, ["treasure", "items", i]);
     }
   });
@@ -383,7 +390,8 @@ export function referencesOf(data: ContentData): Reference[] {
   }
   const assassinRow = section("social", "assassin");
   for (const prize of data.social.assassin.prizes.archived.split(":")) {
-    if (prize.trim() !== "" && !/^\d+ gold$/i.test(prize.trim())) {
+    // "500 Gold" is a pile of this content's currency (as the treasure rows are).
+    if (prize.trim() !== "" && !currencyPile(prize)) {
       add(assassinRow, ["prizes", "archived"], "item", prize.trim(), null, false, true);
     }
   }
@@ -450,6 +458,18 @@ export function referencesOf(data: ContentData): Reference[] {
   const skillBindings = section("bindings", "skills");
   for (const [b, name] of Object.entries(data.bindings.skills)) {
     skill(skillBindings, [b], name);
+  }
+  // The currency cannot simply go (the contract needs one): it is replaced. A start bag line and the
+  // cannon ammo can (a smaller bag; a cannon that cannot fire).
+  const b = data.bindings;
+  if (b.currency.item !== undefined) {
+    add(section("bindings", "currency"), ["item"], "item", b.currency.item, null);
+  }
+  b.start.bag.forEach((l, i) => {
+    add(section("bindings", "start"), ["bag", i, "item"], "item", l.item, ["bag", i]);
+  });
+  if (b.cannon.ammo !== undefined) {
+    add(section("bindings", "cannon"), ["ammo"], "item", b.cannon.ammo, ["ammo"]);
   }
   const skillGain = section("classes", "skillGain");
   data.classes.skillGain.weaponSkills.forEach((w, i) => {

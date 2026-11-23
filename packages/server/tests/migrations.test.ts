@@ -55,6 +55,9 @@ const classicSkillNames = classicData.classes.skills.map((s) => s.skill);
 const panelName = (skill: string) =>
   classicData.classes.skills.find((s) => s.skill === skill)?.display ?? skill;
 
+/** The settings migration 59 (bindings_and_jail) seeds on every server, left out where a test is about others. */
+const SEEDED = "'jailPoint', 'bellMap'";
+
 describe("migrations (real SQL on in-memory SQLite)", () => {
   test("applies the shipped migrations once", () => {
     const db = openDatabase();
@@ -374,7 +377,7 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         // The setting names a missing map: no point, and the fallback point covers it.
         expect(point(none)).toEqual({ respawn_map_id: null, respawn_x: null, respawn_y: null });
       }
-      expect(db.query("SELECT key FROM settings").all()).toEqual(
+      expect(db.query(`SELECT key FROM settings WHERE key NOT IN (${SEEDED})`).all()).toEqual(
         override ? [{ key: "fallbackPoint" }] : [],
       );
     }
@@ -447,7 +450,7 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       db.run("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, 'then')", [key, value]);
     }
     runMigrations(db, all);
-    expect(db.query("SELECT key, value FROM settings").all()).toEqual([
+    expect(db.query(`SELECT key, value FROM settings WHERE key NOT IN (${SEEDED})`).all()).toEqual([
       { key: "chatCooldown", value: "5" },
     ]);
   });
@@ -520,7 +523,9 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         ]);
       }
       runMigrations(db, all);
-      expect(db.query("SELECT key, value FROM settings").all()).toEqual([...after]);
+      expect(
+        db.query(`SELECT key, value FROM settings WHERE key NOT IN (${SEEDED})`).all(),
+      ).toEqual([...after]);
     }
   });
 
@@ -1078,5 +1083,67 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       { code: 2, label: "B", skills: {} },
     ]);
     expect(db.query("PRAGMA foreign_key_check").all()).toEqual([]);
+  });
+
+  test("bindings_and_jail keeps the jail and the bell where 1.6 had them, and fills older packs' bindings", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_59"),
+    );
+    // An imported pack made before stage 2 binds only skills; another already binds its own start.
+    const pack = (id: string, bindings: unknown) =>
+      db.run(
+        "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES (?, ?, '1.0.0', ?, 'imported', ?, 'now')",
+        [id, id, id === "old" ? 1 : 2, JSON.stringify({ manifest: {}, data: { bindings } })],
+      );
+    pack("old", { skills: { parry: "Parry" } });
+    pack("own", {
+      skills: {},
+      start: { hp: 9, sp: 9, bag: [] },
+      currency: { item: "Shell" },
+    });
+    expect(db.query("SELECT key FROM settings").all()).toEqual([]);
+    runMigrations(db, all);
+    expect(db.query("SELECT key, value FROM settings ORDER BY key").all()).toEqual([
+      { key: "bellMap", value: '"x999y999"' },
+      { key: "jailPoint", value: '{"map":"x0y0","x":4,"y":4}' },
+    ]);
+    const bindings = (id: string) =>
+      JSON.parse(
+        (
+          db
+            .query(
+              "SELECT json_extract(data, '$.data.bindings') AS b FROM content_packs WHERE id = ?",
+            )
+            .get(id) as { b: string }
+        ).b,
+      );
+    const { skills: _skills, ...classic } = classicData.bindings;
+    expect(bindings("old")).toEqual({ ...classic, skills: { parry: "Parry" } });
+    expect(bindings("own")).toEqual({
+      ...classic,
+      skills: {},
+      start: { hp: 9, sp: 9, bag: [] },
+      currency: { item: "Shell" },
+    });
+  });
+
+  test("bindings_and_jail keeps an operator's own jail and bell", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261123_59"),
+    );
+    db.run(
+      "INSERT INTO settings (key, value, updated_at) VALUES ('jailPoint', '{\"map\":\"x5y5\",\"x\":2,\"y\":2}', 'then'), ('bellMap', 'null', 'then')",
+    );
+    runMigrations(db, all);
+    expect(db.query("SELECT key, value, updated_at FROM settings ORDER BY key").all()).toEqual([
+      { key: "bellMap", value: "null", updated_at: "then" },
+      { key: "jailPoint", value: '{"map":"x5y5","x":2,"y":2}', updated_at: "then" },
+    ]);
   });
 });

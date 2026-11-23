@@ -5,7 +5,9 @@
  *
  * - an Exit or Exit2 whose target map does not exist;
  * - an `Exit` or `Exit2` tile on a map with no such exit set;
- * - a start point, fallback point or Portal target setting whose map does not exist.
+ * - a start point, fallback point, jail, church bell map or Portal target setting whose map does not
+ *   exist;
+ * - a start point, fallback point or jail whose tile cannot hold a player (the content contract).
  *
  * Builders may add an exit before its map, so the World Editor saves it regardless.
  *
@@ -14,10 +16,18 @@
 import "../content-classic.ts";
 
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
-import { exitTarget, installContent, lingoEq } from "@secondstaronline/shared";
+import {
+  exitTarget,
+  installContent,
+  lingoEq,
+  mapName,
+  parseMapName,
+} from "@secondstaronline/shared";
 
+import { CONTRACT_POINTS, type ContractPoint, pointProblem } from "../content/contract.ts";
 import { ContentService } from "../content/service.ts";
 import { type Db, openDatabase } from "../persistence/database.ts";
+import { peekGround } from "../persistence/ground.ts";
 import { listMaps } from "../persistence/maps.ts";
 import { migrate } from "../persistence/migrations.ts";
 import { loadSettingOverrides } from "../persistence/settings.ts";
@@ -54,11 +64,35 @@ export function mapCheck(db: Db): string[] {
   const points = [
     ["startPoint", settings.startPoint],
     ["fallbackPoint", settings.fallbackPoint],
+    ["jailPoint", settings.jailPoint],
     ...settings.portalTargets.map((t, i) => [`portalTargets ${i + 1}`, t] as const),
   ] as const;
+  // A setting may spell a grid map another way (`x00y0`); the game reads it as that map.
+  const canon = (name: string) => {
+    const c = parseMapName(name);
+    return c ? mapName(c.mx, c.my) : name;
+  };
   for (const [name, pt] of points) {
-    if (!names.has(pt.map)) {
+    if (!names.has(canon(pt.map))) {
       lines.push(`setting ${name}: ${pt.map} (${pt.x}, ${pt.y}) does not exist`);
+    }
+  }
+  if (settings.bellMap !== null && !names.has(canon(settings.bellMap))) {
+    lines.push(`setting bellMap: ${settings.bellMap} does not exist`);
+  }
+  // A point whose map exists must also hold a player: a walkable tile, nothing in the way.
+  const byName = new Map(maps.map((m) => [m.name, m]));
+  for (const key of Object.keys(CONTRACT_POINTS) as ContractPoint[]) {
+    const pt = settings[key];
+    const m = byName.get(canon(pt.map));
+    const problem = m
+      ? pointProblem(pt, () => ({
+          layers: m.layers,
+          ground: peekGround(db, m.id, new Date().toISOString()),
+        }))
+      : null;
+    if (problem !== null) {
+      lines.push(`setting ${key}: ${problem}`);
     }
   }
   return lines;

@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import {
   ARCHIVED_PRIZES,
+  DEFAULT_JAIL,
   type DeathDropKind,
   type DeathDropRules,
   type DeathDropWho,
@@ -153,6 +154,17 @@ export const SETTINGS = {
       "Where characters go when their place is gone: their saved map was deleted or their house decayed. Also where a death or jail release goes if their respawn point's map is gone. Never use a tutorial map here.",
     source:
       "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), which every death used because no 1.6 map saved a respawn point; keeps its tile on the seed map.",
+  }),
+  jailPoint: def({
+    page: "world",
+    label: "Jail",
+    form: { kind: "point" },
+    schema: point,
+    default: { ...DEFAULT_JAIL },
+    tooltip:
+      "Where /jail sends a player. A prisoner stays on this map until their sentence ends, and only staff may go there any other way.",
+    source:
+      "SSO setting. Replaces the jail 1.6 hard-coded in /jail (x0y0 4-4) and in every jail check.",
   }),
   chatMaxChars: def({
     page: "chat",
@@ -329,6 +341,20 @@ export const SETTINGS = {
       "A map where the Server Spirit throws fireballs and lightning bolts every 0.35 s. Empty turns it off.",
     source:
       "The @xSlimmySlimm sends of 1.6's timer script. No archived map has that name, so in 1.6 they hit nobody.",
+  }),
+  bellMap: def({
+    page: "world",
+    label: "Church bell map",
+    form: { kind: "map" },
+    schema: z
+      .string()
+      .regex(/^x-?\d+y-?\d+$/)
+      .nullable(),
+    default: null as string | null,
+    tooltip:
+      "A map where a church bell rings about every 2 minutes 40 seconds for everyone on it. Empty turns it off.",
+    source:
+      "1.6's NPC routine rang the bell (Churchy:5:200) for the group @x999y999, hard-coded. Classic servers start with x999y999.",
   }),
   treasureMaps: def({
     page: "world",

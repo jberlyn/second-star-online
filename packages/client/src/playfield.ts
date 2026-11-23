@@ -46,6 +46,7 @@ import {
   PLAYFIELD_RECT,
   paperdollLayers,
   showsClockFace,
+  smokeBody,
   stationInUse,
   trailFrames,
   VEHICLE_BODY,
@@ -386,8 +387,8 @@ export function createPlayfield(assets: Assets): Playfield {
         }
       }
       for (const p of model.peers.values()) {
-        // Body 100 (Smoke Bomb) hides the sprite from everyone else.
-        if (p.body === 100) {
+        // Smoke Bomb's body (Classic's 100) hides the sprite from everyone else.
+        if (p.body !== null && p.body === smokeBody()) {
           continue;
         }
         // A step always starts one tile behind the destination, toward its facing.
@@ -504,8 +505,8 @@ export function createPlayfield(assets: Assets): Playfield {
         x < px - PAPERDOLL_REG.x + PAPERDOLL_SIZE.w &&
         y >= py - PAPERDOLL_REG.y &&
         y < py - PAPERDOLL_REG.y + PAPERDOLL_SIZE.h;
-      // A changed body is clicked by its `Chars` member's rect; an invisible sprite (body 100)
-      // takes no click.
+      // A changed body is clicked by its `Chars` member's rect; an invisible sprite (Smoke Bomb's
+      // body) takes no click.
       const onWalker = (
         body: number | null,
         frames: number,
@@ -517,7 +518,7 @@ export function createPlayfield(assets: Assets): Playfield {
           ? onChar(px, py)
           : inRect("bodies", `${body}-${bodyFrame(model, body, frames)}-${facing}`, px, py);
       for (const p of [...model.peers.values()].reverse()) {
-        if (p.body === 100) {
+        if (p.body !== null && p.body === smokeBody()) {
           continue;
         }
         const { px, py } = walkerPixel(p.x, p.y, p.facing, p.frames, lenOf(p.body));

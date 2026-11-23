@@ -79,7 +79,7 @@ export interface BioSource {
   wanted: boolean;
   /** The current body (morphs included); sent but never shown. */
   body: number | null;
-  /** Nature Shift's tree: sprite 112's member name contains "80-" (body 80). */
+  /** Nature Shift's tree: the body is the world's tree body (Classic's 80). */
   tree: boolean;
   /** `BodyE`, the equipped body item. */
   bodyItem: string;
@@ -100,7 +100,7 @@ export function giveBio(s: BioSource): BioItems {
     return [tx("robe"), "", "", "", "", "", ""];
   }
   if (s.tree) {
-    return [tx("tree"), "", "", "", "", "80"];
+    return [tx("tree"), "", "", "", "", String(s.body)];
   }
   const guild = s.guild
     ? fill(tx(s.guild.leader ? "leader" : "member"), "GUILD", s.guild.name)

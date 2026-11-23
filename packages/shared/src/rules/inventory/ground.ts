@@ -10,7 +10,14 @@ import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
 import { isFurniture } from "../housing/houses.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
-import { crystalColour, crystalPile, itemLabel, itemSprite, leadingInteger } from "./inventory.ts";
+import {
+  crystalColour,
+  crystalPile,
+  isGoldName,
+  itemLabel,
+  itemSprite,
+  leadingInteger,
+} from "./inventory.ts";
 
 /** The pixel anchor of a tile (`32·x + 14`, `32·y − 3`). */
 export function tilePixel(x: number, y: number): { px: number; py: number } {
@@ -146,9 +153,10 @@ export function groundMember(name: string): string {
 /** The picture a ground item shows: an atlas name, or the name. */
 export function groundPicture(name: string): string {
   let pic = name;
-  if (lingoContains(name, " gold")) {
+  if (isGoldName(name)) {
     const n = leadingInteger(name);
-    // 1-49 small, 50-99 medium, 100+ large; 0 or less keeps no picture.
+    // 1-49 small, 50-99 medium, 100+ large; 0 or less keeps no picture. The three pictures are the
+    // currency's whatever it is called.
     pic = n > 99 ? "LargeGold" : n > 49 ? "MediumGold" : n > 0 ? "SmallGold" : pic;
   }
   for (const [part, picture] of PICTURES) {

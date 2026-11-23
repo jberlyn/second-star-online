@@ -135,3 +135,63 @@ test("every jail edge refuses a map crossing, even for an arriving airship rider
     expect(bob.jailUntil).toBe(sentence);
   }
 });
+
+test("SSO: the jail is the jailPoint setting's map and tile, not x0y0", () => {
+  // A jail moved to x7y7 (3, 9): x0y0 is an ordinary map, and the new map holds the prisoner.
+  const cell = testMap("x7y7");
+  const home = testMap("x1000y992");
+  const oldJail = testMap("x0y0");
+  const world = createWorld();
+  world.jail = { map: cell.name, x: 3, y: 9 };
+  const bob = player("Bob", cell, 6, 6);
+  bob.char.respawn = { mapId: home.id, x: 5, y: 5 };
+  addPlayer(world, bob);
+  bob.loading = 0;
+  const clock = { ms: Date.parse("2026-11-23T09:00:00.000Z") };
+  bob.jailUntil = clock.ms + 100_000;
+  const deps = {
+    now: () => clock.ms,
+    loadMap: (name: string) => [cell, home, oldJail].find((m) => m.name === name) ?? null,
+    loadMapById: () => home,
+    fallbackPoint: { map: home.name, x: 6, y: 4 },
+    casino: NO_CASINO,
+    saveIntervalTicks: 600,
+    rng: rngByN(),
+  };
+  const step = (n = 1) => {
+    for (let i = 0; i < n; i++) {
+      clock.ms += 1000;
+      tick(world, deps);
+    }
+  };
+  // Death in jail revives on the jail's own tile.
+  bob.deadLock = 1;
+  step();
+  expect([bob.map.name, bob.x, bob.y]).toEqual(["x7y7", 3, 9]);
+  // Its edges hold the prisoner.
+  expect(
+    crossMapEdge(world, deps, {
+      player: bob,
+      outcome: { kind: "edge", facing: "S", toX: 5, toY: 5, dmx: 0, dmy: 1 },
+    }),
+  ).toEqual([]);
+  expect(bob.map.name).toBe("x7y7");
+  // The sentence ends and the prisoner goes home.
+  step(120);
+  expect([bob.map.name, bob.x, bob.y]).toEqual([home.name, 5, 5]);
+  expect(bob.jailUntil).toBeNull();
+  // x0y0 no longer holds anyone: someone there crosses its edge freely.
+  const ann = player("Ann", oldJail, 5, 12);
+  addPlayer(world, ann);
+  ann.loading = 0;
+  expect(
+    crossMapEdge(
+      world,
+      { ...deps, loadMap: () => home },
+      {
+        player: ann,
+        outcome: { kind: "edge", facing: "S", toX: 5, toY: 1, dmx: 0, dmy: 1 },
+      },
+    ),
+  ).not.toEqual([]);
+});

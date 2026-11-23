@@ -4089,5 +4089,5 @@ db npc_shop_lines rows=14 6493bfe93824
 db npc_shops rows=1 eec824dab041
 db player_shops rows=0 da39a3ee5e6b
 db quests rows=40 80965a736456
-db settings rows=0 da39a3ee5e6b
+db settings rows=2 3fade1d5ef98
 db vault_items rows=0 da39a3ee5e6b

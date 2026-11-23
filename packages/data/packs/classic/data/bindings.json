@@ -1,4 +1,67 @@
 {
+  "currency": {
+    "item": "Gold"
+  },
+  "start": {
+    "hp": 20,
+    "sp": 20,
+    "bag": [
+      {
+        "item": "Apple",
+        "qty": 2
+      },
+      {
+        "item": "Knife",
+        "qty": 1
+      }
+    ]
+  },
+  "cannon": {
+    "ammo": "Cannonball"
+  },
+  "bodies": {
+    "morph": [
+      {
+        "above": 0,
+        "body": 30
+      },
+      {
+        "above": 10,
+        "body": 32
+      },
+      {
+        "above": 13,
+        "body": 31
+      },
+      {
+        "above": 16,
+        "body": 33
+      },
+      {
+        "above": 19,
+        "body": 37
+      },
+      {
+        "above": 21,
+        "body": 34
+      },
+      {
+        "above": 23,
+        "body": 41
+      },
+      {
+        "above": 24,
+        "body": 40
+      }
+    ],
+    "tree": 80,
+    "smoke": 100,
+    "riders": {
+      "Boat": 55,
+      "Battleship": 56,
+      "Airship": 57
+    }
+  },
   "skills": {
     "parry": "Parry",
     "block": "Block",

@@ -586,9 +586,52 @@ describe("monsters, NPCs and tiles", () => {
   });
 
   test("bindings refuse a binding the engine does not read", () => {
-    const bad = { skills: { ...classicData.bindings.skills, juggling: "Slash" } };
+    const b = classicData.bindings;
+    const bad = { ...b, skills: { ...b.skills, juggling: "Slash" } };
     expect(bindingsDataSchema.safeParse(bad).success).toBe(false);
-    expect(bindingsDataSchema.safeParse({ skills: {} }).success).toBe(true);
+    expect(bindingsDataSchema.safeParse({ ...b, skills: {} }).success).toBe(true);
+  });
+
+  test("Classic binds 1.6's currency, start, cannon ammo and bodies", () => {
+    const b = classicData.bindings;
+    expect(b.currency).toEqual({ item: "Gold" });
+    expect(b.start).toEqual({
+      hp: 20,
+      sp: 20,
+      bag: [
+        { item: "Apple", qty: 2 },
+        { item: "Knife", qty: 1 },
+      ],
+    });
+    expect(b.cannon).toEqual({ ammo: "Cannonball" });
+    expect(b.bodies.riders).toEqual({ Boat: 55, Battleship: 56, Airship: 57 });
+    expect([b.bodies.tree, b.bodies.smoke]).toEqual([80, 100]);
+    expect(b.bodies.morph?.map((r) => [r.above, r.body])).toEqual([
+      [0, 30],
+      [10, 32],
+      [13, 31],
+      [16, 33],
+      [19, 37],
+      [21, 34],
+      [23, 41],
+      [24, 40],
+    ]);
+  });
+
+  test("the optional bindings may be left out; the start and the riders may not", () => {
+    const b = classicData.bindings;
+    const ok = (v: unknown) => bindingsDataSchema.safeParse(v).success;
+    expect(ok({ ...b, currency: {}, cannon: {}, bodies: { riders: b.bodies.riders } })).toBe(true);
+    expect(ok({ ...b, start: { ...b.start, bag: [] } })).toBe(true);
+    const { riders: _riders, ...noRiders } = b.bodies;
+    expect(ok({ ...b, bodies: noRiders })).toBe(false);
+    const { start: _start, ...noStart } = b;
+    expect(ok(noStart)).toBe(false);
+    const line = { item: "Apple", qty: 1 };
+    expect(ok({ ...b, start: { ...b.start, bag: Array.from({ length: 16 }, () => line) } })).toBe(
+      false,
+    );
+    expect(ok({ ...b, start: { ...b.start, hp: 0 } })).toBe(false);
   });
 
   test("spells refuse a new spell whose effect is its own unimplemented name", () => {

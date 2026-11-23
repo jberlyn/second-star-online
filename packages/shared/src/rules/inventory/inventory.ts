@@ -66,9 +66,41 @@ export function leadingInteger(s: string): number {
   return /^-?\d+$/.test(w) ? Number(w) : 0;
 }
 
-/** A gold pile: any name containing " Gold". */
+/**
+ * The currency's item key (`bindings.json` `currency`, Classic's `Gold`), or null when the world
+ * binds none. Characters carry it as a purse ("gold" in the engine's words), and a pile of it on
+ * the ground is named with its amount, `15 Gold`.
+ */
+export let CURRENCY: string | null = null;
+onContent((c) => {
+  CURRENCY = c.bindings.currency.item ?? null;
+});
+
+/**
+ * A currency pile, `<n> Gold`: a whole number, then the currency's words (`/drop 5 gold coins` made
+ * one too). 1.6 took any name containing " Gold" (in Classic only the fixture `Open Gold Door`
+ * differs, and no player can pick it up); a world's own currency (`Coin`) must not swallow an item
+ * named `Silver Coin`.
+ */
 export function isGoldName(name: string): boolean {
-  return lingoContains(name, " Gold");
+  return /^-?\d+$/.test(lingoWord(name, 1)) && afterCountIsGold(name);
+}
+
+/** The ground name of a pile of `n` of the currency, `15 Gold`, or null with no currency. */
+export function goldPileName(n: number): string | null {
+  return CURRENCY === null ? null : `${n} ${CURRENCY}`;
+}
+
+/**
+ * Whether the words after a pile's count begin with the currency's own words (`5 Gold`, but also
+ * `5 gold coins`, as `/drop` and the NPC files took it).
+ */
+export function afterCountIsGold(name: string, currency: string | null = CURRENCY): boolean {
+  if (currency === null) {
+    return false;
+  }
+  const words = currency.split(" ").filter((w) => w !== "");
+  return words.length > 0 && words.every((w, i) => lingoEq(lingoWord(name, i + 2), w));
 }
 
 /** The six crystal colours, in the order the bag loads them. */

@@ -199,8 +199,12 @@ export function cleanUses(
         continue; // NPC lines are removed together below
       }
       const list = getAt(value, d.slice(0, -1));
+      const last = d.at(-1);
       if (Array.isArray(list)) {
-        list.splice(d.at(-1) as number, 1);
+        list.splice(last as number, 1);
+      } else if (typeof last === "string" && list !== null && typeof list === "object") {
+        // An optional field (the cannon's ammo): left out, its mechanic is off.
+        delete (list as Record<string, unknown>)[last];
       }
     }
     const npcLines = kept.filter((d) => rowUses.some((u) => u.npcLine && u.drop === d));

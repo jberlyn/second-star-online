@@ -70,6 +70,7 @@ import {
   usesOf,
   useView,
 } from "./cleanup.ts";
+import { contractProblems } from "./contract.ts";
 import { type LoadedPack, readPackBlob, readPackDir } from "./packs.ts";
 import {
   applyRows,
@@ -394,6 +395,13 @@ export interface ContentServiceOptions {
   /** `restoring`: the store that was live goes back after a failed publish. */
   onPublish?: (store: ContentStore, restoring: boolean) => void;
   log?: (line: string) => void;
+  /**
+   * The contract's point settings that cannot hold a player (`pointProblems`), judged with the
+   * content installed when it is called: a publish asks it with the next content installed, as a
+   * change to the tiles can make a point unwalkable. The game passes it; without it no point is
+   * checked.
+   */
+  points?: () => ContentProblem[];
 }
 
 export class ContentService {
@@ -401,6 +409,7 @@ export class ContentService {
   private readonly now: () => string;
   private readonly onPublish: (store: ContentStore, restoring: boolean) => void;
   private readonly log: (line: string) => void;
+  private readonly points: () => ContentProblem[];
   /** The packs merged in install order, without the operator layer. */
   private packData: ContentData;
   private packs: PackInfo[];
@@ -418,6 +427,7 @@ export class ContentService {
     this.now = opts.now;
     this.onPublish = opts.onPublish ?? (() => {});
     this.log = opts.log ?? (() => {});
+    this.points = opts.points ?? (() => []);
     const { data, packs, owners, updates } = this.loadPacks(opts.releasePacks);
     this.owners = owners;
     this.packData = data;
@@ -472,6 +482,11 @@ export class ContentService {
     // So does a skill binding to no skill: its mechanic is off, and every publish names it.
     for (const p of bindingProblems(this.published)) {
       this.log(`content: ${p.where}: ${p.message} (that mechanic is off)`);
+    }
+    // A world that breaks the contract still starts (an upgrade must not lock an operator out of
+    // the Control Panel that fixes it), but no publish passes until it is fixed.
+    for (const p of contractProblems(this.published)) {
+      this.log(`content: ${p.where}: ${p.message} (the world does not meet the content contract)`);
     }
   }
 
@@ -876,12 +891,13 @@ export class ContentService {
    * Installs `next` for a moment and puts the store that was installed back: every module rebuilds
    * from it, so a row the schemas accept but a rule cannot read (a missing text key, say) is
    * refused before it is written, instead of failing the publish halfway or every start after.
+   * While it is installed, the contract's points are judged by its tiles.
    */
   private installProblems(next: ContentData): ContentProblem[] {
     const before = hasContent() ? content() : null;
     try {
       installContent(buildContentStore(next));
-      return [];
+      return this.points();
     } catch (e) {
       return [
         {
@@ -896,7 +912,10 @@ export class ContentService {
     }
   }
 
-  /** Every check a write must pass: the publish checks, then a trial install. */
+  /**
+   * Every check a write must pass: the publish checks and the content contract, then a trial
+   * install (which judges the contract's points with the next content's tiles).
+   */
   private fullProblems(next: ContentData, actions: readonly WorldAction[] = []): ContentProblem[] {
     const problems = checkStore(
       next,
@@ -906,7 +925,14 @@ export class ContentService {
         f.text === null ? [] : [{ npc: f.npc, text: f.text }],
       ),
     );
-    return problems.length > 0 ? problems : this.installProblems(next);
+    // Content that does not match its schemas is named by them alone. Otherwise the contract is
+    // named first, beside any broken references: a world with no currency also breaks every
+    // `300 Gold` that named the old one.
+    const contract = schemaProblems(next).length > 0 ? [] : contractProblems(next);
+    if (problems.length > 0 || contract.length > 0) {
+      return [...contract, ...problems];
+    }
+    return this.installProblems(next);
   }
 
   /**

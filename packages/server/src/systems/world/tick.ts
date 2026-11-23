@@ -35,7 +35,6 @@ import {
   exitTarget,
   isJailMap,
   isWalkable,
-  JAIL,
   lingoEq,
   MODERATION_TEXT,
   neighbourMapName,
@@ -142,6 +141,8 @@ export interface TickDeps {
   portalTargets?: readonly { map: string; x: number; y: number }[];
   /** The Server Spirit's map (setting `hazardMap`), or null. */
   hazardMap?: string | null;
+  /** The church bell's map (setting `bellMap`), or null for no bell. */
+  bellMap?: string | null;
   /**
    * The blackjack reset and reconnect grace. Required: every warp needs it to pay out a stake
    * forfeited by leaving mid-hand (tests with no casino pass `NO_CASINO`).
@@ -617,7 +618,13 @@ export function tick(world: World, deps: TickDeps): TickResult {
       saves.add(p);
     }
   }
-  out.push(...serverTimer(world, deps.hazardMap ?? null, rng));
+  out.push(
+    ...serverTimer(
+      world,
+      { hazardMap: deps.hazardMap ?? null, bellMap: deps.bellMap ?? null },
+      rng,
+    ),
+  );
 
   out.push(...dueGives(itemCtx));
   out.push(...decayLoot(itemCtx));
@@ -759,8 +766,8 @@ function respawn(world: World, deps: TickDeps, p: Player, saves: Set<Player>): O
   finishDeath(p);
   p.vitalsDirty = true;
   // Death cannot bypass confinement. Revive at the jail arrival; the sentence runs on.
-  if (isJailMap(p.map.name)) {
-    out.push(...warp(world, p, p.map, JAIL.x, JAIL.y, deps.casino, "respawn"));
+  if (isJailMap(p.map.name, world.jail.map)) {
+    out.push(...warp(world, p, p.map, world.jail.x, world.jail.y, deps.casino, "respawn"));
     return out;
   }
   const to = respawnTarget(p.char.respawn, deps);
@@ -808,7 +815,7 @@ export function fallbackTarget(deps: FallbackDeps): Target | null {
  * refused before then (`portalOpen`), so this only happens when a map went missing meanwhile.
  */
 function portal(world: World, deps: TickDeps, p: Player): Outgoing[] {
-  if (isJailMap(p.map.name)) {
+  if (isJailMap(p.map.name, world.jail.map)) {
     return [];
   }
   const open = openPortalTargets(deps);
@@ -859,7 +866,7 @@ export function exitUnder(p: Player): "Exit" | "Exit2" | null {
  * map sent you to the start point).
  */
 function takeExit(world: World, deps: TickDeps, p: Player, which: "Exit" | "Exit2"): Outgoing[] {
-  if (isJailMap(p.map.name)) {
+  if (isJailMap(p.map.name, world.jail.map)) {
     return [];
   }
   const e = which === "Exit" ? p.map.exit1 : p.map.exit2;
@@ -888,7 +895,7 @@ function refuseTravel(p: Player): Outgoing[] {
  */
 export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Outgoing[] {
   const { player: p, outcome: o } = c;
-  if (isJailMap(p.map.name)) {
+  if (isJailMap(p.map.name, world.jail.map)) {
     return [];
   }
   const from = p.map.name;
@@ -937,7 +944,7 @@ export function releaseFromJail(
   deps: FallbackDeps & Pick<TickDeps, "casino">,
 ): Outgoing[] {
   p.jailUntil = null;
-  if (!isJailMap(p.map.name) || p.editing) {
+  if (!isJailMap(p.map.name, world.jail.map) || p.editing) {
     return [];
   }
   const to = respawnTarget(p.char.respawn, deps);

@@ -247,7 +247,11 @@ describe("Hard-coded world references become operator settings", () => {
     const room: Room = { map, npcs: ARCHIVE_NPCS, players: [], fx: [], fxQueue: [], doorLock: 0 };
     world.rooms.set("x5y5", room);
     world.tickNo = TIMEOUT_TICKS;
-    serverTimer(world, s.hazardMap, rngByN({ 50: [1], 10: [1] }));
+    serverTimer(
+      world,
+      { hazardMap: s.hazardMap, bellMap: s.bellMap },
+      rngByN({ 50: [1], 10: [1] }),
+    );
     expect(room.fxQueue).toEqual([]);
   });
 });

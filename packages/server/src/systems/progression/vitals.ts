@@ -11,6 +11,7 @@ import {
   deathHead,
   deathVitals,
   exileAtDeath,
+  goldPileName,
   hungerTick,
   invDelSlot,
   lingoEq,
@@ -192,12 +193,13 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
         out.push(...io.out);
       }
     }
-    if (d.kind === "gold") {
+    const pile = d.kind === "gold" ? goldPileName(d.amount) : null;
+    if (d.kind === "gold" && pile !== null) {
       // A "<n> Gold" pile goes on the death pixel; the server takes the gold since n ≤ gold. No
-      // chat line.
+      // chat line. A world with no currency drops none.
       const io = new ItemOut(room);
       addGround(drop.item, room, io, {
-        item: `${d.amount} Gold`,
+        item: pile,
         x: p.x,
         y: p.y,
         kind: "drop",

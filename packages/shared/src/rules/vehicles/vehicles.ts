@@ -6,33 +6,28 @@
  * boarding check and unboarding, and the drop refusal while aboard.
  */
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
+import { onContent } from "../../content/store.ts";
 import { lingoWord } from "../core/lingo.ts";
 import { tileHas } from "../core/tiles.ts";
 import type { Facing, Vehicle } from "../movement/movement.ts";
 import { FACING_DELTA } from "../movement/movement.ts";
 
-/** The body number every peer sees on a rider (body 57). */
-export const AIRSHIP_BODY = 57;
+/**
+ * Each vehicle's rider body (`bindings.json` `bodies.riders`), as 1.6's `MyBody`: Classic's 55 the
+ * Boat, 56 the Battleship, 57 the Airship. Every peer sees a rider as this body.
+ */
+export let VEHICLE_BODY: Readonly<Record<Vehicle, number>> = { Boat: 0, Battleship: 0, Airship: 0 };
+let VEHICLE_OF_BODY = new Map<number, Vehicle>();
+onContent((c) => {
+  VEHICLE_BODY = { ...c.bindings.bodies.riders };
+  VEHICLE_OF_BODY = new Map(
+    (Object.entries(VEHICLE_BODY) as [Vehicle, number][]).map(([v, b]) => [b, v]),
+  );
+});
 
-/** Each vehicle's rider body, as 1.6's `MyBody`: 55 the Boat, 56 the Battleship, 57 the Airship. */
-export const VEHICLE_BODY: Readonly<Record<Vehicle, number>> = {
-  Boat: 55,
-  Battleship: 56,
-  Airship: AIRSHIP_BODY,
-};
-
-/** The vehicle a body number means: 55-57 (morphs are 30-41; others 80, 100). */
+/** The vehicle a body number means: a rider body (Classic's 55-57), or null. */
 export function vehicleOfBody(body: number | null | undefined): Vehicle | null {
-  switch (body) {
-    case 55:
-      return "Boat";
-    case 56:
-      return "Battleship";
-    case AIRSHIP_BODY:
-      return "Airship";
-    default:
-      return null;
-  }
+  return body === null || body === undefined ? null : (VEHICLE_OF_BODY.get(body) ?? null);
 }
 
 /** The vehicle a parked ground item is: `<owner>'s Airship`, `'s Boat` or `'s Battleship`. */
