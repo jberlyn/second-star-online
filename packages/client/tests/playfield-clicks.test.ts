@@ -200,3 +200,15 @@ describe("playfield clicks", () => {
     );
   });
 });
+
+describe("Smoke Bomb's body", () => {
+  test("a player in body 100 cannot be clicked; the same player in no body can", () => {
+    const { model, at } = world();
+    const p = at.player as { x: number; y: number };
+    const field = createPlayfield(assets);
+    expect(field.pick(model, p.x, p.y)).toEqual({ kind: "player", id: "ann", name: "Ann" });
+    const ann = model.peers.get("ann") as Peer;
+    ann.body = 100;
+    expect(field.pick(model, p.x, p.y)).not.toEqual({ kind: "player", id: "ann", name: "Ann" });
+  });
+});

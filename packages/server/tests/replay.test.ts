@@ -47,7 +47,6 @@ const EXERCISED: [string, RegExp][] = [
   ["smithing", /^Your Fire Helm is ready!$/],
   ["building", /^You begin to build/],
   ["mixing", /^Your potion is ready!$/],
-  ["casting a spell", /advanced in the art of (magery|Fire|blessing)/],
   ["buying", /says "Thanks for the business!"/],
   ["eating", /^You eat an apple\.$/],
   ["drinking", /^You drink the Red Potion\.$/],
@@ -87,8 +86,24 @@ function watcher() {
     if (t === 330 && by("User")?.char.equip.weapon === "NOTHING") {
       seen.add("unequipping");
     }
-    if (t === REPLAY_TICKS - 1 && by("Victim")?.map.name === "x1001y992") {
-      seen.add("respawning on the field");
+    // A cast spends its crystals.
+    const crystals = (by("Mage")?.char.bag ?? [])
+      .filter((l) => l?.item.endsWith(" Crystal"))
+      .reduce((n, l) => n + (l?.qty ?? 0), 0);
+    if (crystals > 0 && crystals < 6 * 99) {
+      seen.add("casting spells");
+    }
+    // The Victim fights on the field and respawns at its point in town.
+    const victim = by("Victim");
+    if (victim?.map.name === "x1001y992") {
+      seen.add("the victim on the field");
+    } else if (
+      seen.has("the victim on the field") &&
+      victim?.map.name === "x1000y992" &&
+      victim.x === 9 &&
+      victim.y === 9
+    ) {
+      seen.add("respawning at the respawn point");
     }
   };
   return { seen, onTick };
@@ -107,7 +122,8 @@ const WATCHED = [
   "fishing from a second spot",
   "digging a second spot",
   "buying seeds",
-  "respawning on the field",
+  "respawning at the respawn point",
+  "casting spells",
   "unequipping",
 ];
 

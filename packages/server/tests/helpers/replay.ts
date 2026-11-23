@@ -104,6 +104,8 @@ interface BotSpec {
   name: string;
   /** Where the bot starts: the start map unless it names the field or the church. */
   map?: "field" | "church";
+  /** Where it respawns, when not where it starts: a tile on the start map. */
+  respawn?: { map: "town"; x: number; y: number };
   at: { x: number; y: number; facing: Facing };
   bag?: [string, number][];
   equip?: Partial<Player["char"]["equip"]>;
@@ -484,6 +486,7 @@ const BOTS: BotSpec[] = [
   {
     name: "Victim",
     map: "field",
+    respawn: { map: "town", x: 9, y: 9 },
     at: { x: 12, y: 11, facing: "S" },
     hp: 3,
     script: (t, p, c) => (t >= 1000 && t < 3000 ? hunt(t, p, c, 2) : []),
@@ -498,8 +501,11 @@ const BOTS: BotSpec[] = [
 
 // ---- hashing ------------------------------------------------------------------------------
 
-/** World keys left out: static content, and the NPC files the game lays over it. */
-const SKIP = new Set(["npcs"]);
+/**
+ * Keys left out: the NPC files the game lays over the content, and `lastSheet`, the copy of the last
+ * character sheet sent (derived, and its skills by position; what was sent is hashed itself).
+ */
+const SKIP = new Set(["npcs", "lastSheet"]);
 
 /**
  * The state as sorted `path = value` lines: objects by key, maps and arrays in their own order (the
@@ -550,7 +556,6 @@ export function flatten(root: unknown): string[] {
       /\.(skills|awardSkills)$/.test(path) &&
       v.length === skillNames.length
     ) {
-      out.push(`${path} = Skills`);
       skillNames
         .map((name, i) => [name, v[i]] as const)
         .sort(([a], [b]) => (a < b ? -1 : 1))
@@ -575,6 +580,25 @@ export function flatten(root: unknown): string[] {
   };
   walk(root, "world");
   return out;
+}
+
+/**
+ * A `JSON.stringify` replacer: a list of skill values (a character sheet's `skills`) is written by
+ * skill name, so sending skills by key instead of position changes nothing.
+ */
+function skillsByName(key: string, value: unknown): unknown {
+  const skillNames = content().classes.skills.map((s) => s.skill);
+  if (
+    /skills$/i.test(key) &&
+    Array.isArray(value) &&
+    value.length === skillNames.length &&
+    value.every((x) => typeof x === "number")
+  ) {
+    return Object.fromEntries(
+      skillNames.map((n, i) => [n, value[i]] as const).sort(([a], [b]) => (a < b ? -1 : 1)),
+    );
+  }
+  return value;
 }
 
 const sha = (s: string) => createHash("sha1").update(s).digest("hex");
@@ -617,9 +641,14 @@ function dbDigest(db: Db): string[] {
       .query<Record<string, unknown>, []>(`SELECT * FROM "${name}"`)
       .all()
       .map((r) =>
-        // Skills by name, not by their position in the skill list.
+        // A character's skill by name, not by its position in the skill list (a later layout keyed
+        // by skill projects to the same three fields).
         name === "character_skills"
-          ? JSON.stringify({ ...r, skill: skillNames[Number(r.skill) - 1] ?? r.skill })
+          ? JSON.stringify({
+              character: r.character_id,
+              skill: skillNames[Number(r.skill) - 1] ?? r.skill,
+              value: r.value,
+            })
           : JSON.stringify(r),
       )
       .sort();
@@ -738,7 +767,7 @@ export async function runReplay(
     const game = createGame({
       db,
       send: (id, msg) => {
-        sent.push(`${names.get(id) ?? id} ${JSON.stringify(msg)}`);
+        sent.push(`${names.get(id) ?? id} ${JSON.stringify(msg, skillsByName)}`);
         let m = inboxes.get(id);
         if (!m) {
           m = new Map();
@@ -781,9 +810,12 @@ export async function runReplay(
       }
       // The bot starts where it works, and respawns there.
       const at = mapIdOf(bot);
+      const back = bot.respawn
+        ? { map: town.id, x: bot.respawn.x, y: bot.respawn.y }
+        : { map: at, x: bot.at.x, y: bot.at.y };
       db.run(
         "UPDATE characters SET map_id = ?, x = ?, y = ?, facing = ?, respawn_map_id = ?, respawn_x = ?, respawn_y = ? WHERE name = ?",
-        [at, bot.at.x, bot.at.y, bot.at.facing, at, bot.at.x, bot.at.y, bot.name],
+        [at, bot.at.x, bot.at.y, bot.at.facing, back.map, back.x, back.y, bot.name],
       );
       const l = await game.login(bot.name, "replay", ip);
       if (!l.ok) {

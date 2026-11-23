@@ -43,19 +43,19 @@ Golden-file tests record how the Classic pack plays today, so a change to the en
 - **The behaviour snapshot** (`packages/server/tests/behaviour-snapshot.test.ts`) records what every name-based decision returns for every Classic item, masterwork, monster and spell, and for names the game builds at run time (`Crate#12`, `Long Sword+3`, `Bob's Door`, `5 Gold`, `Damaged Helm, Fire`). Each group is a file in `packages/server/tests/golden/behaviour/`, one sorted line per name. The groups cover:
   - keyword tests (keys, books, bows, hidden names, gathering tools), the item rule tables, ground pictures and click and Ctrl routing, containers, and keys turning doors directly and through the server;
   - attack power with the skills each weapon reads, melee damage against each monster, spell defence, paperdoll layers, and equipment breaks for each slot;
-  - kill skill gain with each skill and its requirement apart, its roll sizes, the caps and the monster's cap;
-  - spell power with each school skill, faction bonus and robe apart, cast skill gain, costs and refusals;
-  - monster bodies and name tables, and what the server does on a click, a Ctrl, a Holy Shield and an attack, for innocent and wanted players;
+  - kill skill gain with each skill and its requirement apart, the order the skills roll in, its roll sizes, the caps and the monster's cap;
+  - spell power with each school skill, faction bonus and robe apart, cast skill gain, costs and refusals, and where each spell effect is placed and how it moves;
+  - monster bodies and name tables, and what the server does on a click, a Ctrl, a Holy Shield and an attack, for innocent and wanted players, on fighting and no-fight maps;
   - faction perks with each bonus field apart, gathering and crafting tables, and each item used, equipped, clicked and taken through the server.
 
   Inputs vary one at a time, so a rule wired to the wrong skill or field shows. A roll is recorded by running it with every draw answering 1 and again answering the largest value, with the sizes drawn.
-- **The client's goldens**: `packages/client/tests/spell-sounds-snapshot.test.ts` records the sounds of every spell's FX, and `creation-classes.test.ts` pins the class each creation radio sends.
+- **The client's goldens**: `packages/client/tests/spell-sounds-snapshot.test.ts` records the sounds of every spell's FX, `creation-classes.test.ts` pins the class each creation radio sends, and `playfield-clicks.test.ts` pins that Smoke Bomb's body cannot be clicked.
 - **The seeded replay** (`packages/server/tests/replay.test.ts`) runs a whole server on a seeded random number generator and a fixed clock for 4,000 ticks. Seventeen scripted players, created with each start class in turn, play on three maps:
   - On the start map, with PvP off, they walk, chop, mine, dig, fish from two spots, hoe, plant and water, cook, smith, build, mix potions, buy and sell, eat, drink, read, equip and unequip, open a crate and a carried cabinet, use a key on a door, drop gold, and build and sail a boat.
-  - On a field with PvP on, they fight an Orc, cast spells, die and respawn.
+  - On a field with PvP on, they fight an Orc and cast spells; one dies and respawns at its point in town.
   - In the church, one hears the bell.
 
-  Every tick, the world state (skills by name) and everything the game sent are hashed into `packages/server/tests/golden/replay.txt`, with a breakdown by player and room every 100 ticks and a hash of every database table at the end. The test also checks that each activity still happens. A failure names the first tick that differs, whether the state or the messages changed, and the parts that changed. To see the change, dump that tick before and after it and diff the two files: `SSO_REPLAY_DUMP=<tick>:<file> bun test tests/replay.test.ts` from `packages/server`.
+  Every tick, the world state and everything the game sent are hashed (skills by name in both, and in the database) into `packages/server/tests/golden/replay.txt`, with a breakdown by player and room every 100 ticks and a hash of every database table at the end. The test also checks that each activity still happens. A failure names the first tick that differs, whether the state or the messages changed, and the parts that changed. To see the change, dump that tick before and after it and diff the two files: `SSO_REPLAY_DUMP=<tick>:<file> bun test tests/replay.test.ts` from `packages/server`.
 
 They record behaviour as it is, 1.6 bugs included. When one of them fails:
 
