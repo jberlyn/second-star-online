@@ -13,8 +13,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { CLOSE, inGameSchema, MAX_MESSAGE_BYTES, TEXT } from "@secondstaronline/shared";
 
-import { setRole } from "../src/persistence/accounts.ts";
+import { setHashOptionsForTests, setRole } from "../src/persistence/accounts.ts";
 import { scriptedRng } from "../src/rng.ts";
+import { TEST_HASH_OPTIONS } from "../tests/helpers/fast-hash.ts";
 import {
   type Bot,
   connectBot,
@@ -422,10 +423,13 @@ describe("login, creation and socket limits", () => {
 describe("tries sent together on several sockets count before the hash", () => {
   let server: TestServer;
   beforeAll(() => {
+    // The real hash cost, so the tries overlap the hashing as they would in play.
+    setHashOptionsForTests(null);
     server = startTestServer({ limits: true });
   });
   afterAll(async () => {
     await server.stop();
+    setHashOptionsForTests(TEST_HASH_OPTIONS);
   });
 
   /** Sends one message on each of `n` fresh sockets at once; the replies in socket order. */

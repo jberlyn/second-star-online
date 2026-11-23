@@ -24,11 +24,11 @@ See the [modding guide](modding.md) before changing content or adding art. Run `
 | `bun run lint` | Runs Biome checks over the configured files without applying fixes. |
 | `bun run format` | Formats configured files in place. |
 | `bun run fix` | Runs Biome checks and applies its permitted fixes in place. |
-| `bun run test` | Runs repository-wide tests, then each workspace's tests with its own configuration. This includes client happy-dom tests and server bot end-to-end tests. |
+| `bun run test` | Runs repository-wide tests, then every workspace's tests at once, each with its own configuration. This includes client happy-dom tests and server bot end-to-end tests; the server's test files run on parallel workers. It needs no build first. |
 | `bun run test:sweep` | Runs the content removal sweep over every Classic item and monster with every cleanup option (a few minutes); `bun run test` runs a seeded sample of it. Set `SSO_SWEEP_SEED` to try another seed. |
 | `bun run gate` | Runs typecheck, lint, test and `data:check` in that order. |
 
-Each workspace also has a `test` script; from its directory, `bun run test` runs that package's tests only. Use the root test script for the full suite so the client loads its happy-dom configuration.
+Each workspace also has a `test` script; from its directory, `bun run test` runs that package's tests only. Use the root test script for the full suite so the client loads its happy-dom configuration. Server tests hash passwords at a cheaper Argon2id cost than a server does (`packages/server/tests/helpers/fast-hash.ts`), and the bot harness's `settle()` waits until both ends of every bot's socket have caught up rather than for a fixed time.
 
 The behaviour snapshot and the seeded replay compare against golden files. After reviewing an intended change, set `SSO_UPDATE_GOLDEN=1` to record the new files; see [the safety net](modding.md#the-safety-net).
 

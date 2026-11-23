@@ -77,6 +77,8 @@ export interface ServerOptions {
   onLag?: (line: string) => void;
   /** Bytes waiting on a socket (tests make one look behind; default the socket's own). */
   backlogOf?: GatewayOptions["backlogOf"];
+  /** Per-socket counters (the bot harness waits on them instead of sleeping). */
+  probe?: GatewayOptions["probe"];
   /** The folders of the packs the release ships, by id (tests pass a changed copy). */
   releasePacks?: Readonly<Record<string, string>>;
   /** Ends the process after too many failed ticks (tests record it; default `process.exit`). */
@@ -176,6 +178,7 @@ export function startServer(options: ServerOptions): RunningServer {
     frameAncestors: options.frameAncestors,
     clientDir: options.clientDir,
     backlogOf: options.backlogOf,
+    probe: options.probe,
   });
   let failures = 0;
   const exit = options.exit ?? ((code: number) => process.exit(code));

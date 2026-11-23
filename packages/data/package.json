@@ -11,7 +11,7 @@
     "./schema": "./schema/datasets.ts"
   },
   "scripts": {
-    "test": "bun test"
+    "test": "bun test --timeout=15000"
   },
   "dependencies": {
     "zod": "^4.6.7"

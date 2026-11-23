@@ -23,8 +23,29 @@ interface AccountRow {
   updated_at: string;
 }
 
-/** Argon2id parameters. */
-const HASH_OPTIONS = { algorithm: "argon2id", memoryCost: 65536, timeCost: 2 } as const;
+interface HashOptions {
+  algorithm: "argon2id";
+  memoryCost: number;
+  timeCost: number;
+}
+
+/** Argon2id parameters for every stored password. */
+export const HASH_OPTIONS: Readonly<HashOptions> = {
+  algorithm: "argon2id",
+  memoryCost: 65536,
+  timeCost: 2,
+};
+
+let hashOptions: Readonly<HashOptions> = HASH_OPTIONS;
+
+/**
+ * Tests only: hash new passwords with cheaper parameters (null restores `HASH_OPTIONS`). The
+ * server test preload sets this, because the real cost was over half the suite's CPU time.
+ * Verifying reads the parameters from the stored hash, so hashes of either cost still verify.
+ */
+export function setHashOptionsForTests(options: Readonly<HashOptions> | null): void {
+  hashOptions = options ?? HASH_OPTIONS;
+}
 
 const COLUMNS = "id, username, password_hash, role, created_at, updated_at";
 
@@ -77,7 +98,7 @@ async function inHashSlot<T>(work: () => Promise<T>): Promise<T> {
 
 /** Hashes a password with the Argon2id parameters above. */
 export function hashPassword(password: string): Promise<string> {
-  return inHashSlot(() => Bun.password.hash(password, HASH_OPTIONS));
+  return inHashSlot(() => Bun.password.hash(password, hashOptions));
 }
 
 /**

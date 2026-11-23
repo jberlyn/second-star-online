@@ -2,7 +2,9 @@
  * Bot E2E harness: a real server on a free port with an in-memory database, and headless
  * WebSocket bots that speak the real protocol.
  *
- * Tests run the sim by hand (`tickNow`), so every run is the same tick for tick.
+ * Tests run the sim by hand (`tickNow`), so every run is the same tick for tick. `settle()` waits
+ * until the server has handled every message the bots sent and the bots have received every
+ * message the server sent them (the gateway's per-socket probe), instead of sleeping.
  */
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,7 +18,7 @@ import type {
   ServerMsg,
 } from "@secondstaronline/shared";
 
-import { WS_PATH } from "../src/gateway/server.ts";
+import { type SocketProbe, WS_PATH } from "../src/gateway/server.ts";
 import { type RunningServer, type ServerOptions, startServer } from "../src/main.ts";
 import type { Db } from "../src/persistence/database.ts";
 import { saveSettingOverride } from "../src/persistence/settings.ts";
@@ -77,9 +79,26 @@ function defaultFixtureClientDir(): string {
   return dir;
 }
 
+/** A bot's own side of its socket's traffic, matched against the server's probe in `settle()`. */
+interface BotWire {
+  sent: number;
+  received: number;
+  /** The bot has seen its socket close. */
+  closeSeen: boolean;
+  /** The server's counters for this socket; unset when the server is not a test server's. */
+  probe?: SocketProbe;
+}
+
+/** Bots `settle()` still waits for. A bot leaves once its socket is closed at both ends. */
+const wires = new Set<BotWire>();
+/** Server probes by bot id, filled in when a test server upgrades the bot's socket. */
+const probesByBot = new Map<string, SocketProbe>();
+let nextBotId = 0;
+
 export function startTestServer(options: TestServerOptions = {}): TestServer {
   const clock = manualClock();
   const faults: { where: string; err: unknown }[] = [];
+  const probes: SocketProbe[] = [];
   const server = startServer({
     dbPath: options.dbPath ?? ":memory:",
     port: 0,
@@ -110,10 +129,35 @@ export function startTestServer(options: TestServerOptions = {}): TestServer {
     backlogOf: options.backlogOf,
     perfOut: options.perfOut,
     onLag: options.onLag,
+    probe: (req) => {
+      const id = new URL(req.url).searchParams.get("bot");
+      if (id === null) {
+        return undefined;
+      }
+      const probe: SocketProbe = { handled: 0, sent: 0, closed: false };
+      probesByBot.set(id, probe);
+      probes.push(probe);
+      return probe;
+    },
   });
   const wsUrl = new URL(WS_PATH, server.url);
   wsUrl.protocol = "ws:";
-  return { ...server, faults, wsUrl: wsUrl.href, clock };
+  return {
+    ...server,
+    stop: async () => {
+      try {
+        await server.stop();
+      } finally {
+        // A stopped server handles nothing more: its bots only wait for their close.
+        for (const p of probes) {
+          p.closed = true;
+        }
+      }
+    },
+    faults,
+    wsUrl: wsUrl.href,
+    clock,
+  };
 }
 
 /** Opens a WebSocket and resolves with how it was closed. */
@@ -149,7 +193,11 @@ export interface Bot {
 }
 
 export async function connectBot(url: string): Promise<Bot> {
-  const ws = new WebSocket(url);
+  const id = String(++nextBotId);
+  const tagged = new URL(url);
+  tagged.searchParams.set("bot", id);
+  const ws = new WebSocket(tagged.href);
+  const wire: BotWire = { sent: 0, received: 0, closeSeen: false };
   const inbox: ServerMsg[] = [];
   const waiters: { pred: (m: ServerMsg) => boolean; resolve: (m: ServerMsg) => void }[] = [];
   let resolveClosed: (v: { code: number; reason: string }) => void = () => {};
@@ -157,6 +205,7 @@ export async function connectBot(url: string): Promise<Bot> {
     resolveClosed = r;
   });
   ws.addEventListener("message", (e) => {
+    wire.received += 1;
     const msg = JSON.parse(String(e.data)) as ServerMsg;
     inbox.push(msg);
     for (let i = waiters.length - 1; i >= 0; i--) {
@@ -167,16 +216,28 @@ export async function connectBot(url: string): Promise<Bot> {
       }
     }
   });
-  ws.addEventListener("close", (e) => resolveClosed({ code: e.code, reason: e.reason }));
+  ws.addEventListener("close", (e) => {
+    wire.closeSeen = true;
+    resolveClosed({ code: e.code, reason: e.reason });
+  });
   await new Promise<void>((resolve, reject) => {
     ws.addEventListener("open", () => resolve(), { once: true });
     ws.addEventListener("error", () => reject(new Error(`could not connect to ${url}`)), {
       once: true,
     });
   });
+  // The server made the probe when it upgraded the socket, before the bot saw it open.
+  wire.probe = probesByBot.get(id);
+  probesByBot.delete(id);
+  wires.add(wire);
   const bot: Bot = {
     inbox,
-    send: (msg) => ws.send(JSON.stringify(msg)),
+    send: (msg) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        wire.sent += 1;
+      }
+      ws.send(JSON.stringify(msg));
+    },
     waitFor(pred: (m: ServerMsg) => boolean, timeoutMs = 3000): Promise<ServerMsg> {
       const seen = inbox.find(pred);
       if (seen) {
@@ -202,9 +263,63 @@ export async function connectBot(url: string): Promise<Bot> {
   return bot;
 }
 
-/** Lets in-flight socket messages arrive. */
-export function settle(ms = 30): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+/**
+ * With no argument, waits until every bot's messages are handled and every message to a bot has
+ * arrived (and a socket closed at one end is closed at both). With `ms`, sleeps that long: for
+ * tests that need real time to pass.
+ */
+export function settle(ms?: number): Promise<void> {
+  if (ms !== undefined) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+  return drain();
+}
+
+/** True once each bot's traffic matches its server's; drops bots closed at both ends. */
+function caughtUp(): boolean {
+  let done = true;
+  for (const w of wires) {
+    const p = w.probe;
+    if (!p) {
+      if (w.closeSeen) {
+        wires.delete(w);
+      }
+      continue;
+    }
+    if (w.closeSeen && p.closed) {
+      wires.delete(w);
+    } else if (w.closeSeen || p.closed || p.handled < w.sent || w.received < p.sent) {
+      done = false;
+    }
+  }
+  return done;
+}
+
+const DRAIN_LIMIT_MS = 10_000;
+
+async function drain(): Promise<void> {
+  // A bot on a server without a probe (none today): the old fixed wait.
+  if ([...wires].some((w) => !w.probe && !w.closeSeen)) {
+    await new Promise((r) => setTimeout(r, 30));
+  }
+  const deadline = performance.now() + DRAIN_LIMIT_MS;
+  // Twice in a row, a macrotask apart, so work a handled message started has run too.
+  let quiet = 0;
+  while (quiet < 2) {
+    await new Promise((r) => setTimeout(r, 0));
+    quiet = caughtUp() ? quiet + 1 : 0;
+    if (quiet < 2 && performance.now() > deadline) {
+      const behind = [...wires]
+        .filter((w) => w.probe)
+        .map((w) => {
+          const p = w.probe as SocketProbe;
+          return `sent ${w.sent}/handled ${p.handled}, server sent ${p.sent}/received ${w.received}, closed ${w.closeSeen}/${p.closed}`;
+        });
+      throw new Error(
+        `settle: traffic still in flight after ${DRAIN_LIMIT_MS} ms: ${behind.join("; ")}`,
+      );
+    }
+  }
 }
 
 /** A `create` message for a character with every stat 11 (classCode 1 Fighter, 2 Mage). */

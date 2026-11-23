@@ -5,7 +5,12 @@
 import { describe, expect, test } from "bun:test";
 
 import { clientIp, securityHeaders } from "../src/gateway/server.ts";
-import { hashPassword } from "../src/persistence/accounts.ts";
+import {
+  HASH_OPTIONS,
+  hashPassword,
+  setHashOptionsForTests,
+  verifyPassword,
+} from "../src/persistence/accounts.ts";
 import { applySettingValues, defaultSettings } from "../src/settings.ts";
 import {
   allowCreate,
@@ -21,6 +26,7 @@ import {
   noteUnknownName,
   unnoteCreate,
 } from "../src/systems/admin/login-limits.ts";
+import { TEST_HASH_OPTIONS } from "./helpers/fast-hash.ts";
 
 describe("settings save", () => {
   test.each(["constructor", "toString", "__proto__", "hasOwnProperty"])(
@@ -151,5 +157,21 @@ describe("the hash queue", () => {
   test("many hashes at once all finish, two at a time", async () => {
     const hashes = await Promise.all(Array.from({ length: 5 }, (_, i) => hashPassword(`pw${i}`)));
     expect(hashes.every((h) => h.startsWith("$argon2id$"))).toBe(true);
+  });
+
+  test("a server hashes with Argon2id at 64 MiB and two passes; tests swap in a cheaper cost", async () => {
+    expect(HASH_OPTIONS).toEqual({ algorithm: "argon2id", memoryCost: 65536, timeCost: 2 });
+    const cheap = await hashPassword("secret");
+    expect(cheap).toContain("$m=1024,t=1,");
+    setHashOptionsForTests(null);
+    try {
+      const real = await hashPassword("secret");
+      expect(real).toContain("$m=65536,t=2,");
+      const account = { passwordHash: real } as Parameters<typeof verifyPassword>[0];
+      expect(await verifyPassword(account, "secret")).toBe(true);
+      expect(await verifyPassword({ ...account, passwordHash: cheap }, "secret")).toBe(true);
+    } finally {
+      setHashOptionsForTests(TEST_HASH_OPTIONS);
+    }
   });
 });

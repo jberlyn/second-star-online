@@ -116,6 +116,24 @@ export interface GatewayOptions {
    * look behind with it.
    */
   backlogOf?(ws: ServerWebSocket<ConnData>): number;
+  /**
+   * Tests only: counters for a socket, chosen from its upgrade request (none: not counted). The
+   * bot harness waits until both ends have caught up instead of sleeping.
+   */
+  probe?(req: Request): SocketProbe | undefined;
+}
+
+/**
+ * One socket's traffic as the server saw it (tests only). A message counts as handled once its
+ * handling is over, a login's or creation's password hash included.
+ */
+export interface SocketProbe {
+  /** Messages received and fully handled, refused ones included. */
+  handled: number;
+  /** Messages handed to the socket (not those skipped or dropped). */
+  sent: number;
+  /** The close handler has run. */
+  closed: boolean;
 }
 
 /**
@@ -162,6 +180,8 @@ export interface ConnData {
   counted: boolean;
   /** Closed with `CLOSE.behind`: later sends to it are skipped. */
   behind?: boolean;
+  /** Tests only (`GatewayOptions.probe`). */
+  probe?: SocketProbe;
 }
 
 interface Session {
@@ -381,6 +401,9 @@ export function startGateway(options: GatewayOptions): Gateway {
     const json = JSON.stringify(msg);
     const t1 = performance.now();
     const result = ws.send(json);
+    if (result !== 0 && ws.data.probe) {
+      ws.data.probe.sent += 1;
+    }
     traffic.encodeMs += t1 - t0;
     const sent = performance.now() - t1;
     traffic.sendMs += sent;
@@ -563,8 +586,13 @@ export function startGateway(options: GatewayOptions): Gateway {
       message(ws, raw) {
         traffic.messagesIn += 1;
         traffic.bytesIn += typeof raw === "string" ? raw.length : raw.byteLength;
+        const probe = ws.data.probe;
+        let pending: Promise<void> | undefined;
         try {
-          onMessage(ws, raw);
+          const handling = onMessage(ws, raw);
+          if (handling instanceof Promise) {
+            pending = handling;
+          }
         } catch (err) {
           // Not reached by any message today (the game catches its own throws). A player in game is
           // logged out as for a server error, so the character leaves the map and is saved (marking
@@ -576,11 +604,24 @@ export function startGateway(options: GatewayOptions): Gateway {
           } else {
             ws.close(CLOSE.badMessage.code, CLOSE.badMessage.reason);
           }
+        } finally {
+          if (probe) {
+            if (pending) {
+              void pending.finally(() => {
+                probe.handled += 1;
+              });
+            } else {
+              probe.handled += 1;
+            }
+          }
         }
       },
       close(ws) {
         uncount(ws.data);
         onClose(ws);
+        if (ws.data.probe) {
+          ws.data.probe.closed = true;
+        }
       },
     },
   });
@@ -603,6 +644,7 @@ export function startGateway(options: GatewayOptions): Gateway {
           lastRefill: clock.now(),
           handled: false,
           busy: false,
+          probe: options.probe?.(req),
         };
         if (srv.upgrade(req, { data })) {
           return undefined;
@@ -685,7 +727,8 @@ export function startGateway(options: GatewayOptions): Gateway {
     }
   }
 
-  function onMessage(ws: Ws, raw: string | Buffer) {
+  /** Handles one message; a login or creation returns its (never rejecting) promise. */
+  function onMessage(ws: Ws, raw: string | Buffer): Promise<void> | void {
     if (ws.data.phase === "closed") {
       return;
     }
@@ -726,7 +769,7 @@ export function startGateway(options: GatewayOptions): Gateway {
         return strike(ws);
       }
       ws.data.busy = true;
-      handlePreAuth(ws, parsed.data)
+      return handlePreAuth(ws, parsed.data)
         .catch((err) => {
           console.error("gateway: pre-auth failed", err);
           sendWs(ws, { t: "denied", text: "Something went wrong. Please try again." });
@@ -734,7 +777,6 @@ export function startGateway(options: GatewayOptions): Gateway {
         .finally(() => {
           ws.data.busy = false;
         });
-      return;
     }
     const parsed = inGameSchema.safeParse(json);
     if (!parsed.success) {

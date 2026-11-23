@@ -223,6 +223,10 @@ describe("each installed pack's art is served under /assets/packs/<id>/", () => 
     );
     writeFileSync(join(art, "tiles-0.png"), new Uint8Array([137, 80, 78, 71]));
     writeFileSync(join(art, "sounds", "hitsound.wav"), new Uint8Array([82, 73, 70, 70]));
+    // A client folder of its own, so the test does not need `bun run build`.
+    const client = join(root, "client");
+    mkdirSync(client);
+    writeFileSync(join(client, "index.html"), "<!doctype html><title>t</title>\n");
     const db = openDatabase(":memory:");
     migrate(db);
     gateway = startGateway({
@@ -238,6 +242,7 @@ describe("each installed pack's art is served under /assets/packs/<id>/", () => 
       }),
       clock: systemClock,
       assetsDir: engine,
+      clientDir: client,
       packArt: () => (classicInstalled ? [{ id: "classic", artDir: art }] : []),
     });
   });
