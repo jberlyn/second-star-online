@@ -66,6 +66,12 @@ export function lineDiff(want: string, got: string): string {
   for (const rest of pending.values()) {
     lines.push(...rest);
   }
+  // The same lines in another order: show the first lines that moved.
+  if (lines.length === 0 && first >= 0) {
+    for (let i = first; i < Math.min(first + 5, a.length, b.length); i++) {
+      lines.push(`- ${a[i]}`, `+ ${b[i]}`);
+    }
+  }
   return [
     `first difference at line ${first < 0 ? Math.min(a.length, b.length) + 1 : first + 1}; ${removed.length} removed, ${added.length} added`,
     ...lines.slice(0, SHOWN),

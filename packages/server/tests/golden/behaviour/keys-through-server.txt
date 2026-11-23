@@ -1,0 +1,147 @@
+Emerald Key on Bob's Door | {} door[Bob's Door] bag[Emerald Keyx1] pause0
+Emerald Key on Bob's Opened Door | {} door[Bob's Opened Door] bag[Emerald Keyx1] pause0
+Emerald Key on Doorman's Newspaper | {} door[Doorman's Newspaper] bag[Emerald Keyx1] pause0
+Emerald Key on Emerald Door | {} door[Open Emerald Door] bag[] pause100
+Emerald Key on Fire Door | {} door[Fire Door] bag[Emerald Keyx1] pause0
+Emerald Key on Gold Door | {} door[Gold Door] bag[Emerald Keyx1] pause0
+Emerald Key on OFF Switch | {} door[OFF Switch] bag[Emerald Keyx1] pause0
+Emerald Key on ON Switch | {} door[ON Switch] bag[Emerald Keyx1] pause0
+Emerald Key on Open Emerald Door | {} door[Emerald Door] bag[Emerald Keyx1] pause100
+Emerald Key on Open Fire Door | {} door[Open Fire Door] bag[Emerald Keyx1] pause0
+Emerald Key on Open Gold Door | {} door[Open Gold Door] bag[Emerald Keyx1] pause0
+Emerald Key on Open Steel Door | {} door[Open Steel Door] bag[Emerald Keyx1] pause0
+Emerald Key on Open Switch Door | {} door[Open Switch Door] bag[Emerald Keyx1] pause0
+Emerald Key on Open Wooden Door | {} door[Open Wooden Door] bag[Emerald Keyx1] pause0
+Emerald Key on Steel Door | {} door[Steel Door] bag[Emerald Keyx1] pause0
+Emerald Key on Switch Door | {} door[Switch Door] bag[Emerald Keyx1] pause0
+Emerald Key on Wooden Door | {} door[Wooden Door] bag[Emerald Keyx1] pause0
+Emerald Key on The X's Door | {} door[The X's Door] bag[Emerald Keyx1] pause0
+Emerald Key on The X's Opened Door | {} door[The X's Opened Door] bag[Emerald Keyx1] pause0
+Emerald Key on The Y's Door | {} door[The Y's Door] bag[Emerald Keyx1] pause0
+Emerald Key on Al's Door | {} door[Al's Door] bag[Emerald Keyx1] pause0
+Fire Key on Bob's Door | {} door[Bob's Door] bag[Fire Keyx1] pause0
+Fire Key on Bob's Opened Door | {} door[Bob's Opened Door] bag[Fire Keyx1] pause0
+Fire Key on Doorman's Newspaper | {} door[Doorman's Newspaper] bag[Fire Keyx1] pause0
+Fire Key on Emerald Door | {} door[Emerald Door] bag[Fire Keyx1] pause0
+Fire Key on Fire Door | {} door[Open Fire Door] bag[] pause100
+Fire Key on Gold Door | {} door[Gold Door] bag[Fire Keyx1] pause0
+Fire Key on OFF Switch | {} door[OFF Switch] bag[Fire Keyx1] pause0
+Fire Key on ON Switch | {} door[ON Switch] bag[Fire Keyx1] pause0
+Fire Key on Open Emerald Door | {} door[Open Emerald Door] bag[Fire Keyx1] pause0
+Fire Key on Open Fire Door | {} door[Fire Door] bag[Fire Keyx1] pause100
+Fire Key on Open Gold Door | {} door[Open Gold Door] bag[Fire Keyx1] pause0
+Fire Key on Open Steel Door | {} door[Open Steel Door] bag[Fire Keyx1] pause0
+Fire Key on Open Switch Door | {} door[Open Switch Door] bag[Fire Keyx1] pause0
+Fire Key on Open Wooden Door | {} door[Open Wooden Door] bag[Fire Keyx1] pause0
+Fire Key on Steel Door | {} door[Steel Door] bag[Fire Keyx1] pause0
+Fire Key on Switch Door | {} door[Switch Door] bag[Fire Keyx1] pause0
+Fire Key on Wooden Door | {} door[Wooden Door] bag[Fire Keyx1] pause0
+Fire Key on The X's Door | {} door[The X's Door] bag[Fire Keyx1] pause0
+Fire Key on The X's Opened Door | {} door[The X's Opened Door] bag[Fire Keyx1] pause0
+Fire Key on The Y's Door | {} door[The Y's Door] bag[Fire Keyx1] pause0
+Fire Key on Al's Door | {} door[Al's Door] bag[Fire Keyx1] pause0
+Gold Key on Bob's Door | {} door[Bob's Door] bag[Gold Keyx1] pause0
+Gold Key on Bob's Opened Door | {} door[Bob's Opened Door] bag[Gold Keyx1] pause0
+Gold Key on Doorman's Newspaper | {} door[Doorman's Newspaper] bag[Gold Keyx1] pause0
+Gold Key on Emerald Door | {} door[Emerald Door] bag[Gold Keyx1] pause0
+Gold Key on Fire Door | {} door[Fire Door] bag[Gold Keyx1] pause0
+Gold Key on Gold Door | {} door[Open Gold Door] bag[] pause100
+Gold Key on OFF Switch | {} door[OFF Switch] bag[Gold Keyx1] pause0
+Gold Key on ON Switch | {} door[ON Switch] bag[Gold Keyx1] pause0
+Gold Key on Open Emerald Door | {} door[Open Emerald Door] bag[Gold Keyx1] pause0
+Gold Key on Open Fire Door | {} door[Open Fire Door] bag[Gold Keyx1] pause0
+Gold Key on Open Gold Door | {} door[Gold Door] bag[Gold Keyx1] pause100
+Gold Key on Open Steel Door | {} door[Open Steel Door] bag[Gold Keyx1] pause0
+Gold Key on Open Switch Door | {} door[Open Switch Door] bag[Gold Keyx1] pause0
+Gold Key on Open Wooden Door | {} door[Open Wooden Door] bag[Gold Keyx1] pause0
+Gold Key on Steel Door | {} door[Steel Door] bag[Gold Keyx1] pause0
+Gold Key on Switch Door | {} door[Switch Door] bag[Gold Keyx1] pause0
+Gold Key on Wooden Door | {} door[Wooden Door] bag[Gold Keyx1] pause0
+Gold Key on The X's Door | {} door[The X's Door] bag[Gold Keyx1] pause0
+Gold Key on The X's Opened Door | {} door[The X's Opened Door] bag[Gold Keyx1] pause0
+Gold Key on The Y's Door | {} door[The Y's Door] bag[Gold Keyx1] pause0
+Gold Key on Al's Door | {} door[Al's Door] bag[Gold Keyx1] pause0
+Guild Key on Bob's Door | {} door[Bob's Door] bag[Guild Keyx1] pause0
+Guild Key on Bob's Opened Door | {} door[Bob's Opened Door] bag[Guild Keyx1] pause0
+Guild Key on Doorman's Newspaper | {} door[Doorman's Newspaper] bag[Guild Keyx1] pause0
+Guild Key on Emerald Door | {} door[Emerald Door] bag[Guild Keyx1] pause0
+Guild Key on Fire Door | {} door[Fire Door] bag[Guild Keyx1] pause0
+Guild Key on Gold Door | {} door[Gold Door] bag[Guild Keyx1] pause0
+Guild Key on OFF Switch | {} door[OFF Switch] bag[Guild Keyx1] pause0
+Guild Key on ON Switch | {} door[ON Switch] bag[Guild Keyx1] pause0
+Guild Key on Open Emerald Door | {} door[Open Emerald Door] bag[Guild Keyx1] pause0
+Guild Key on Open Fire Door | {} door[Open Fire Door] bag[Guild Keyx1] pause0
+Guild Key on Open Gold Door | {} door[Open Gold Door] bag[Guild Keyx1] pause0
+Guild Key on Open Steel Door | {} door[Open Steel Door] bag[Guild Keyx1] pause0
+Guild Key on Open Switch Door | {} door[Open Switch Door] bag[Guild Keyx1] pause0
+Guild Key on Open Wooden Door | {} door[Open Wooden Door] bag[Guild Keyx1] pause0
+Guild Key on Steel Door | {} door[Steel Door] bag[Guild Keyx1] pause0
+Guild Key on Switch Door | {} door[Switch Door] bag[Guild Keyx1] pause0
+Guild Key on Wooden Door | {} door[Wooden Door] bag[Guild Keyx1] pause0
+Guild Key on The X's Door | {} door[The X's Opened Door] bag[Guild Keyx1] pause100
+Guild Key on The X's Opened Door | {} door[The X's Door] bag[Guild Keyx1] pause100
+Guild Key on The Y's Door | {"Your key doesn't fit this lock!"} door[The Y's Door] bag[Guild Keyx1] pause0
+Guild Key on Al's Door | {} door[Al's Door] bag[Guild Keyx1] pause0
+House Key on Bob's Door | {} door[Bob's Opened Door] bag[House Keyx1] pause100
+House Key on Bob's Opened Door | {} door[Bob's Door] bag[House Keyx1] pause100
+House Key on Doorman's Newspaper | {} door[Doorman's Newspaper] bag[House Keyx1] pause0
+House Key on Emerald Door | {} door[Emerald Door] bag[House Keyx1] pause0
+House Key on Fire Door | {} door[Fire Door] bag[House Keyx1] pause0
+House Key on Gold Door | {} door[Gold Door] bag[House Keyx1] pause0
+House Key on OFF Switch | {} door[OFF Switch] bag[House Keyx1] pause0
+House Key on ON Switch | {} door[ON Switch] bag[House Keyx1] pause0
+House Key on Open Emerald Door | {} door[Open Emerald Door] bag[House Keyx1] pause0
+House Key on Open Fire Door | {} door[Open Fire Door] bag[House Keyx1] pause0
+House Key on Open Gold Door | {} door[Open Gold Door] bag[House Keyx1] pause0
+House Key on Open Steel Door | {} door[Open Steel Door] bag[House Keyx1] pause0
+House Key on Open Switch Door | {} door[Open Switch Door] bag[House Keyx1] pause0
+House Key on Open Wooden Door | {} door[Open Wooden Door] bag[House Keyx1] pause0
+House Key on Steel Door | {} door[Steel Door] bag[House Keyx1] pause0
+House Key on Switch Door | {} door[Switch Door] bag[House Keyx1] pause0
+House Key on Wooden Door | {} door[Wooden Door] bag[House Keyx1] pause0
+House Key on The X's Door | {"Your key doesn't fit this lock!"} door[The X's Door] bag[House Keyx1] pause0
+House Key on The X's Opened Door | {"Your key doesn't fit this lock!"} door[The X's Opened Door] bag[House Keyx1] pause0
+House Key on The Y's Door | {"Your key doesn't fit this lock!"} door[The Y's Door] bag[House Keyx1] pause0
+House Key on Al's Door | {"Your key doesn't fit this lock!"} door[Al's Door] bag[House Keyx1] pause0
+Steel Key on Bob's Door | {} door[Bob's Door] bag[Steel Keyx1] pause0
+Steel Key on Bob's Opened Door | {} door[Bob's Opened Door] bag[Steel Keyx1] pause0
+Steel Key on Doorman's Newspaper | {} door[Doorman's Newspaper] bag[Steel Keyx1] pause0
+Steel Key on Emerald Door | {} door[Emerald Door] bag[Steel Keyx1] pause0
+Steel Key on Fire Door | {} door[Fire Door] bag[Steel Keyx1] pause0
+Steel Key on Gold Door | {} door[Gold Door] bag[Steel Keyx1] pause0
+Steel Key on OFF Switch | {} door[OFF Switch] bag[Steel Keyx1] pause0
+Steel Key on ON Switch | {} door[ON Switch] bag[Steel Keyx1] pause0
+Steel Key on Open Emerald Door | {} door[Open Emerald Door] bag[Steel Keyx1] pause0
+Steel Key on Open Fire Door | {} door[Open Fire Door] bag[Steel Keyx1] pause0
+Steel Key on Open Gold Door | {} door[Open Gold Door] bag[Steel Keyx1] pause0
+Steel Key on Open Steel Door | {} door[Steel Door] bag[Steel Keyx1] pause100
+Steel Key on Open Switch Door | {} door[Open Switch Door] bag[Steel Keyx1] pause0
+Steel Key on Open Wooden Door | {} door[Open Wooden Door] bag[Steel Keyx1] pause0
+Steel Key on Steel Door | {} door[Open Steel Door] bag[] pause100
+Steel Key on Switch Door | {} door[Switch Door] bag[Steel Keyx1] pause0
+Steel Key on Wooden Door | {} door[Wooden Door] bag[Steel Keyx1] pause0
+Steel Key on The X's Door | {} door[The X's Door] bag[Steel Keyx1] pause0
+Steel Key on The X's Opened Door | {} door[The X's Opened Door] bag[Steel Keyx1] pause0
+Steel Key on The Y's Door | {} door[The Y's Door] bag[Steel Keyx1] pause0
+Steel Key on Al's Door | {} door[Al's Door] bag[Steel Keyx1] pause0
+Wooden Key on Bob's Door | {} door[Bob's Door] bag[Wooden Keyx1] pause0
+Wooden Key on Bob's Opened Door | {} door[Bob's Opened Door] bag[Wooden Keyx1] pause0
+Wooden Key on Doorman's Newspaper | {} door[Doorman's Newspaper] bag[Wooden Keyx1] pause0
+Wooden Key on Emerald Door | {} door[Emerald Door] bag[Wooden Keyx1] pause0
+Wooden Key on Fire Door | {} door[Fire Door] bag[Wooden Keyx1] pause0
+Wooden Key on Gold Door | {} door[Gold Door] bag[Wooden Keyx1] pause0
+Wooden Key on OFF Switch | {} door[OFF Switch] bag[Wooden Keyx1] pause0
+Wooden Key on ON Switch | {} door[ON Switch] bag[Wooden Keyx1] pause0
+Wooden Key on Open Emerald Door | {} door[Open Emerald Door] bag[Wooden Keyx1] pause0
+Wooden Key on Open Fire Door | {} door[Open Fire Door] bag[Wooden Keyx1] pause0
+Wooden Key on Open Gold Door | {} door[Open Gold Door] bag[Wooden Keyx1] pause0
+Wooden Key on Open Steel Door | {} door[Open Steel Door] bag[Wooden Keyx1] pause0
+Wooden Key on Open Switch Door | {} door[Open Switch Door] bag[Wooden Keyx1] pause0
+Wooden Key on Open Wooden Door | {} door[Wooden Door] bag[Wooden Keyx1] pause100
+Wooden Key on Steel Door | {} door[Steel Door] bag[Wooden Keyx1] pause0
+Wooden Key on Switch Door | {} door[Switch Door] bag[Wooden Keyx1] pause0
+Wooden Key on Wooden Door | {} door[Open Wooden Door] bag[] pause100
+Wooden Key on The X's Door | {} door[The X's Door] bag[Wooden Keyx1] pause0
+Wooden Key on The X's Opened Door | {} door[The X's Opened Door] bag[Wooden Keyx1] pause0
+Wooden Key on The Y's Door | {} door[The Y's Door] bag[Wooden Keyx1] pause0
+Wooden Key on Al's Door | {} door[Al's Door] bag[Wooden Keyx1] pause0

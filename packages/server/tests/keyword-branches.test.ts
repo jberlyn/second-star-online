@@ -97,8 +97,11 @@ describe("arrow shots", () => {
     a.char.skills[skillIndex("Archery")] = 9;
     a.char.skills[skillIndex("MartialArts")] = 7;
     setAttackHeld(a, true);
-    pollAttack(s.room(), a, { rng: s.rng, now: 0, world: s.world });
+    const ev = pollAttack(s.room(), a, { rng: s.rng, now: 0, world: s.world });
+    expect(s.room().fxQueue.map((c) => c.name)).toContain("Blue ArrowsR");
+    expect(a.char.skills[skillIndex("Archery")]).toBe(10);
     expect(a.char.skills[skillIndex("MartialArts")]).toBe(7);
+    expect(ev.lines).toEqual(["You have advanced in the art of Archery!"]);
   });
 });
 

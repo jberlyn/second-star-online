@@ -1,0 +1,54 @@
+Argon's Fist | fx2@4
+BSmith | Swordhit2@4 / Swordhit1@4
+Bless | -
+Blue ArrowsL | -
+Bolt | -
+BoltD | lightning@4
+BoltL | lightning@4
+BoltR | lightning@4
+BoltU | lightning@4
+Cannonball | cannonball@4
+Create Food | fx@4
+Crush | crush@4
+Diminish Hunger | heal1@4
+Dispel Illusions | heal1@4
+Fireball | -
+FireballD | fireballs@4
+FireballL | fireballs@4
+FireballR | fireballs@4
+FireballU | fireballs@4
+Firebolt | firebolt@4
+Firesword | clear2@4
+Fishing | splash@4
+Haste | -
+Hold | land@4
+Holy Shield | clear@4
+Holy Weapon | -
+Identify | -
+Illusionary Spikes | bad@4
+Inxition | fx2@4
+Magic Shield | fx2@4
+Major Heal | fx2@4
+Meteor | monsterdeath@4
+Minor Heal | fx2@4
+Morph | clear2@4
+Nature Shift | clear2@4
+Poison Dart | -
+Portal | heal2@4,heal1@3
+Radar | fx2@4
+Raise Dead | bad@4
+Replenish | -
+Slot Machine | SlotMachine@6
+Smoke Bomb | fireballs@4
+Splash | splash@4
+Stone Skin | stone skin@4
+Summon Creature | clear@4
+Weaken | -
+Web | bad@4
+Whirlwind | whirlwind@4
+Wind Wave | -
+Wind waveD | fx3@4
+Wind waveL | fx3@4
+Wind waveR | fx3@4
+Wind waveU | fx3@4
+xSmokeoBomb | -

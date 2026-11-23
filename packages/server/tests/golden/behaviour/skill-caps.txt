@@ -1,37 +1,103 @@
 faction none | caps={"max":50,"mage":30} mage=30 castMage=30
-faction f1b0 | caps={"max":50,"mage":50} mage=50 castMage=50
-faction f1b1 | caps={"max":50,"mage":60} mage=60 castMage=60
-faction f1b2 | caps={"max":50,"mage":70} mage=70 castMage=70
-faction f1b3 | caps={"max":50,"mage":90} mage=90 castMage=90
-faction f1b4 | caps={"max":50,"mage":100} mage=100 castMage=100
-faction f1b5 | caps={"max":50,"mage":100} mage=100 castMage=100
-faction f1b6 | caps={"max":50,"mage":100} mage=100 castMage=100
-faction f1b7 | caps={"max":50,"mage":100} mage=100 castMage=100
-faction f1b8 | caps={"max":50,"mage":100} mage=100 castMage=100
-faction f1b9 | caps={"max":50,"mage":100} mage=100 castMage=100
-faction f1b10 | caps={"max":50,"mage":100} mage=100 castMage=100
-faction f2b0 | caps={"max":55,"mage":30} mage=30 castMage=30
-faction f2b1 | caps={"max":60,"mage":30} mage=30 castMage=30
-faction f2b2 | caps={"max":70,"mage":30} mage=30 castMage=30
-faction f2b3 | caps={"max":80,"mage":30} mage=30 castMage=30
-faction f2b4 | caps={"max":90,"mage":30} mage=30 castMage=30
-faction f2b5 | caps={"max":100,"mage":30} mage=30 castMage=30
-faction f2b6 | caps={"max":100,"mage":30} mage=30 castMage=30
-faction f2b7 | caps={"max":100,"mage":30} mage=30 castMage=30
-faction f2b8 | caps={"max":100,"mage":30} mage=30 castMage=30
-faction f2b9 | caps={"max":100,"mage":30} mage=30 castMage=30
-faction f2b10 | caps={"max":100,"mage":30} mage=30 castMage=30
-faction f3b0 | caps={"max":55,"mage":30} mage=30 castMage=30
-faction f3b1 | caps={"max":60,"mage":30} mage=30 castMage=30
-faction f3b2 | caps={"max":65,"mage":30} mage=30 castMage=30
-faction f3b3 | caps={"max":70,"mage":30} mage=30 castMage=30
-faction f3b4 | caps={"max":75,"mage":30} mage=30 castMage=30
-faction f3b5 | caps={"max":80,"mage":30} mage=30 castMage=30
-faction f3b6 | caps={"max":80,"mage":30} mage=30 castMage=30
-faction f3b7 | caps={"max":80,"mage":30} mage=30 castMage=30
-faction f3b8 | caps={"max":80,"mage":30} mage=30 castMage=30
-faction f3b9 | caps={"max":80,"mage":30} mage=30 castMage=30
-faction f3b10 | caps={"max":80,"mage":30} mage=30 castMage=30
+faction f1.f1b0 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f1b1 | caps={"max":50,"mage":60} mage=60 castMage=60
+faction f1.f1b2 | caps={"max":50,"mage":70} mage=70 castMage=70
+faction f1.f1b3 | caps={"max":50,"mage":90} mage=90 castMage=90
+faction f1.f1b4 | caps={"max":50,"mage":100} mage=100 castMage=100
+faction f1.f1b5 | caps={"max":50,"mage":100} mage=100 castMage=100
+faction f1.f1b6 | caps={"max":50,"mage":100} mage=100 castMage=100
+faction f1.f1b7 | caps={"max":50,"mage":100} mage=100 castMage=100
+faction f1.f1b8 | caps={"max":50,"mage":100} mage=100 castMage=100
+faction f1.f1b9 | caps={"max":50,"mage":100} mage=100 castMage=100
+faction f1.f1b10 | caps={"max":50,"mage":100} mage=100 castMage=100
+faction f1.f2b0 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b1 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b2 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b3 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b4 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b5 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b6 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b7 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b8 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b9 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f2b10 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b0 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b1 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b2 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b3 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b4 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b5 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b6 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b7 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b8 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b9 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f1.f3b10 | caps={"max":50,"mage":50} mage=50 castMage=50
+faction f2.f1b0 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b1 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b2 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b3 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b4 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b5 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b6 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b7 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b8 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b9 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f1b10 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f2b0 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f2b1 | caps={"max":60,"mage":30} mage=30 castMage=30
+faction f2.f2b2 | caps={"max":70,"mage":30} mage=30 castMage=30
+faction f2.f2b3 | caps={"max":80,"mage":30} mage=30 castMage=30
+faction f2.f2b4 | caps={"max":90,"mage":30} mage=30 castMage=30
+faction f2.f2b5 | caps={"max":100,"mage":30} mage=30 castMage=30
+faction f2.f2b6 | caps={"max":100,"mage":30} mage=30 castMage=30
+faction f2.f2b7 | caps={"max":100,"mage":30} mage=30 castMage=30
+faction f2.f2b8 | caps={"max":100,"mage":30} mage=30 castMage=30
+faction f2.f2b9 | caps={"max":100,"mage":30} mage=30 castMage=30
+faction f2.f2b10 | caps={"max":100,"mage":30} mage=30 castMage=30
+faction f2.f3b0 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b1 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b2 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b3 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b4 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b5 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b6 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b7 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b8 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b9 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f2.f3b10 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b0 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b1 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b2 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b3 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b4 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b5 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b6 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b7 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b8 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b9 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f1b10 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b0 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b1 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b2 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b3 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b4 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b5 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b6 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b7 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b8 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b9 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f2b10 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f3b0 | caps={"max":55,"mage":30} mage=30 castMage=30
+faction f3.f3b1 | caps={"max":60,"mage":30} mage=30 castMage=30
+faction f3.f3b2 | caps={"max":65,"mage":30} mage=30 castMage=30
+faction f3.f3b3 | caps={"max":70,"mage":30} mage=30 castMage=30
+faction f3.f3b4 | caps={"max":75,"mage":30} mage=30 castMage=30
+faction f3.f3b5 | caps={"max":80,"mage":30} mage=30 castMage=30
+faction f3.f3b6 | caps={"max":80,"mage":30} mage=30 castMage=30
+faction f3.f3b7 | caps={"max":80,"mage":30} mage=30 castMage=30
+faction f3.f3b8 | caps={"max":80,"mage":30} mage=30 castMage=30
+faction f3.f3b9 | caps={"max":80,"mage":30} mage=30 castMage=30
+faction f3.f3b10 | caps={"max":80,"mage":30} mage=30 castMage=30
 wisdom 0 | add=30
 wisdom 1 | add=30
 wisdom 2 | add=30
@@ -63,60 +129,60 @@ wisdom 27 | add=0
 wisdom 28 | add=0
 wisdom 29 | add=0
 wisdom 30 | add=0
-body 0 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 1 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int25=33 int26=33
-body 3 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int25=33 int26=33
-body 5 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int25=33 int26=33
-body 30 | int0=30 int5=30 int6=33 int10=33 int11=38 int15=38 int16=43 int20=43 int21=48 int25=53 int26=53
-body 31 | int0=45 int5=45 int6=48 int10=48 int11=53 int15=53 int16=58 int20=58 int21=63 int25=68 int26=68
-body 32 | int0=35 int5=35 int6=38 int10=38 int11=43 int15=43 int16=48 int20=48 int21=53 int25=58 int26=58
-body 33 | int0=65 int5=65 int6=68 int10=68 int11=73 int15=73 int16=78 int20=78 int21=83 int25=88 int26=88
-body 34 | int0=55 int5=55 int6=58 int10=58 int11=63 int15=63 int16=68 int20=68 int21=73 int25=78 int26=78
-body 35 | int0=50 int5=50 int6=53 int10=53 int11=58 int15=58 int16=63 int20=63 int21=68 int25=73 int26=73
-body 36 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 37 | int0=65 int5=65 int6=68 int10=68 int11=73 int15=73 int16=78 int20=78 int21=83 int25=88 int26=88
-body 38 | int0=70 int5=70 int6=73 int10=73 int11=78 int15=78 int16=83 int20=83 int21=88 int25=93 int26=93
-body 40 | int0=75 int5=75 int6=78 int10=78 int11=83 int15=83 int16=88 int20=88 int21=93 int25=98 int26=98
-body 41 | int0=80 int5=80 int6=83 int10=83 int11=88 int15=88 int16=93 int20=93 int21=98 int25=103 int26=103
-body 42 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 45 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 46 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 47 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 50 | int0=62 int5=62 int6=65 int10=65 int11=70 int15=70 int16=75 int20=75 int21=80 int25=85 int26=85
-body 51 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 52 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 58 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 59 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 60 | int0=70 int5=70 int6=73 int10=73 int11=78 int15=78 int16=83 int20=83 int21=88 int25=93 int26=93
-body 61 | int0=70 int5=70 int6=73 int10=73 int11=78 int15=78 int16=83 int20=83 int21=88 int25=93 int26=93
-body 62 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 89 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 90 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int25=33 int26=33
-body 91 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int25=33 int26=33
-body 92 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int25=33 int26=33
-body 94 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 99 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 200 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 201 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 202 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 203 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 204 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 207 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 210 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 311 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 444 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 445 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 477 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 498 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 500 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 501 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 502 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 503 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 621 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 622 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 855 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 856 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 857 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 858 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 891 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
-body 988 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int25=108 int26=108
+body 0 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 1 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int22=28 int23=33 int25=33 int26=33
+body 3 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int22=28 int23=33 int25=33 int26=33
+body 5 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int22=28 int23=33 int25=33 int26=33
+body 30 | int0=30 int5=30 int6=33 int10=33 int11=38 int15=38 int16=43 int20=43 int21=48 int22=48 int23=53 int25=53 int26=53
+body 31 | int0=45 int5=45 int6=48 int10=48 int11=53 int15=53 int16=58 int20=58 int21=63 int22=63 int23=68 int25=68 int26=68
+body 32 | int0=35 int5=35 int6=38 int10=38 int11=43 int15=43 int16=48 int20=48 int21=53 int22=53 int23=58 int25=58 int26=58
+body 33 | int0=65 int5=65 int6=68 int10=68 int11=73 int15=73 int16=78 int20=78 int21=83 int22=83 int23=88 int25=88 int26=88
+body 34 | int0=55 int5=55 int6=58 int10=58 int11=63 int15=63 int16=68 int20=68 int21=73 int22=73 int23=78 int25=78 int26=78
+body 35 | int0=50 int5=50 int6=53 int10=53 int11=58 int15=58 int16=63 int20=63 int21=68 int22=68 int23=73 int25=73 int26=73
+body 36 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 37 | int0=65 int5=65 int6=68 int10=68 int11=73 int15=73 int16=78 int20=78 int21=83 int22=83 int23=88 int25=88 int26=88
+body 38 | int0=70 int5=70 int6=73 int10=73 int11=78 int15=78 int16=83 int20=83 int21=88 int22=88 int23=93 int25=93 int26=93
+body 40 | int0=75 int5=75 int6=78 int10=78 int11=83 int15=83 int16=88 int20=88 int21=93 int22=93 int23=98 int25=98 int26=98
+body 41 | int0=80 int5=80 int6=83 int10=83 int11=88 int15=88 int16=93 int20=93 int21=98 int22=98 int23=103 int25=103 int26=103
+body 42 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 45 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 46 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 47 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 50 | int0=62 int5=62 int6=65 int10=65 int11=70 int15=70 int16=75 int20=75 int21=80 int22=80 int23=85 int25=85 int26=85
+body 51 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 52 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 58 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 59 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 60 | int0=70 int5=70 int6=73 int10=73 int11=78 int15=78 int16=83 int20=83 int21=88 int22=88 int23=93 int25=93 int26=93
+body 61 | int0=70 int5=70 int6=73 int10=73 int11=78 int15=78 int16=83 int20=83 int21=88 int22=88 int23=93 int25=93 int26=93
+body 62 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 89 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 90 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int22=28 int23=33 int25=33 int26=33
+body 91 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int22=28 int23=33 int25=33 int26=33
+body 92 | int0=10 int5=10 int6=13 int10=13 int11=18 int15=18 int16=23 int20=23 int21=28 int22=28 int23=33 int25=33 int26=33
+body 94 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 99 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 200 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 201 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 202 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 203 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 204 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 207 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 210 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 311 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 444 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 445 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 477 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 498 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 500 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 501 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 502 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 503 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 621 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 622 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 855 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 856 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 857 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 858 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 891 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108
+body 988 | int0=85 int5=85 int6=88 int10=88 int11=93 int15=93 int16=98 int20=98 int21=103 int22=103 int23=108 int25=108 int26=108

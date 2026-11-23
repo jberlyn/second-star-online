@@ -16,6 +16,7 @@ import { join } from "node:path";
 
 import type { ServerMsg } from "@secondstaronline/shared";
 import {
+  ARROW_COLOURS,
   armourRows,
   attackPower,
   bagPicture,
@@ -24,12 +25,15 @@ import {
   blocksPlayer,
   bookDex,
   bowRefusal,
+  burnedResult,
   castEffect,
   castMageCap,
   checkEquip,
   clickGate,
   closedName,
   content,
+  cookResult,
+  craftTimer,
   crystalColour,
   crystalPile,
   crystalsFor,
@@ -40,11 +44,15 @@ import {
   EQUIP_FIELD,
   type Equipment,
   elementalRows,
+  emptyBag,
   equipSlotFor,
   type Faction,
   type Fighter,
   facedDoor,
   factionRows,
+  failurePool,
+  fishCheck,
+  fishFor,
   fixedInPlace,
   gatherTool,
   gearBonus,
@@ -58,6 +66,7 @@ import {
   isCrystal,
   isDoorOrSwitch,
   isFishingPole,
+  isFootprint,
   isGoldName,
   isHarmful,
   isInert,
@@ -68,6 +77,9 @@ import {
   keyConsumed,
   keyPause,
   mageSkillCap,
+  masterworkPool,
+  meleeDamageVsMonster,
+  meleeKillXp,
   menuAction,
   monsterHitsPlayer,
   monsterSkillCap,
@@ -75,21 +87,31 @@ import {
   NO_FACTION,
   NOTHING,
   normaliseLook,
+  orePool,
   overlayWhenInUse,
+  paperdollLayers,
   pvpHit,
   type Rng,
   regenTarget,
+  repairResult,
   rollArmourBreak,
+  rollChunk,
   rollKillSkillGain,
+  rollMiningFind,
+  rollSkillGain,
   rollWeaponBreak,
+  ruleMatches,
   runBook,
   seedTile,
   skillCaps,
   skillIndex,
+  smithChunk,
   spCost,
+  spellDefense,
   spellHitOnMonster,
   spellImp,
   spellPower,
+  startCraft,
   strengthRequirement,
   summonFor,
   swingCooldowns,
@@ -104,6 +126,7 @@ import {
 import { swingSound } from "../src/systems/combat/melee.ts";
 import { isWateringBucket } from "../src/systems/crafting/gather.ts";
 import { containerCapacity, mayUseContainer } from "../src/systems/economy/containers.ts";
+import { sellName } from "../src/systems/economy/shop.ts";
 import {
   actionIntent,
   equipIntent,
@@ -111,10 +134,26 @@ import {
   pickupIntent,
   useIntent,
 } from "../src/systems/inventory/items.ts";
-import { BODY, bodyOf, leansToward, neverMoves } from "../src/systems/monsters/slots.ts";
+import { monsterAttack, monsterAttackValue } from "../src/systems/monsters/attack.ts";
+import { clickNpc, ctrlPig } from "../src/systems/monsters/npc.ts";
+import {
+  bodyOf,
+  defenseOf,
+  leansToward,
+  type MonsterSlot,
+  neverMoves,
+} from "../src/systems/monsters/slots.ts";
+import { regenStep } from "../src/systems/progression/vitals.ts";
 import { freeFireballs } from "../src/systems/spells/cast.ts";
+import { onHolyShield } from "../src/systems/spells/geometry.ts";
 import { isBook } from "../src/systems/spells/learn.ts";
-import { addPlayer, createWorld, type Room, type World } from "../src/systems/world/world.ts";
+import {
+  addPlayer,
+  createWorld,
+  type Player,
+  type Room,
+  type World,
+} from "../src/systems/world/world.ts";
 import { expectGolden } from "./helpers/golden.ts";
 import { player, rngByN, testMap } from "./helpers/sim.ts";
 
@@ -207,6 +246,20 @@ function roll<T>(f: (rng: Rng) => T): string {
   return `${sa === sb ? sa : `${sa}→${sb}`} [${lo.draws.join(",")}]`;
 }
 
+/** An Rng that answers the given values in turn, then 1, and records the sizes drawn. */
+function seq(values: number[]): Rng & { draws: number[] } {
+  const draws: number[] = [];
+  let i = 0;
+  return {
+    draws,
+    random(n) {
+      draws.push(n);
+      const v = values[i++] ?? 1;
+      return Math.min(v, Math.max(1, Math.floor(n)));
+    },
+  };
+}
+
 function show(v: unknown): string {
   if (v === null || v === undefined) {
     return "-";
@@ -268,15 +321,68 @@ function wearing(name: string): Equipment {
   return { ...NO_EQUIPMENT, [field]: name };
 }
 
+/**
+ * Factions: none, then each faction with one bonus field set at a time, so a perk that reads the
+ * wrong field shows.
+ */
 const FACTIONS: [string, Faction][] = [
   ["none", NO_FACTION],
   ...[1, 2, 3].flatMap((id) =>
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((b): [string, Faction] => [
-      `f${id}b${b}`,
-      { id: id as 1 | 2 | 3, f1Bonus: b, f2Bonus: b, f3Bonus: b },
-    ]),
+    (["f1Bonus", "f2Bonus", "f3Bonus"] as const).flatMap((field, i) =>
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((b): [string, Faction] => [
+        `f${id}.f${i + 1}b${b}`,
+        { ...NO_FACTION, id: id as 1 | 2 | 3, [field]: b },
+      ]),
+    ),
   ),
 ];
+
+const SKILL_NAMES = content().classes.skills.map((s) => s.skill);
+
+/** The skills the kill gain rolls, and the requirement each tests after its roll. */
+const KILL_SKILLS = [
+  "HammerWielding",
+  "AxeFighting",
+  "Punch",
+  "Archery",
+  "MartialArts",
+  "UnholyCombat",
+  "Thrust",
+  "StaffFighting",
+  "Slash",
+  "HeavyArms",
+  "Swordsmanship",
+  "Fencing",
+];
+const KILL_REQUIRES: Record<string, [string, number]> = {
+  Thrust: ["Slash", 30],
+  HeavyArms: ["Thrust", 60],
+  Swordsmanship: ["Slash", 50],
+  Fencing: ["Swordsmanship", 20],
+};
+
+/** The skills spell power and the cast gain read. */
+const SPELL_SKILLS = [
+  "Magery",
+  "Blessing",
+  "Wrath",
+  "Illusion",
+  "Water",
+  "Earth",
+  "Fire",
+  "Wind",
+  "BlackArts",
+  "MartialArts",
+  "Wizardry",
+  "Sorcery",
+];
+
+/** A bag holding one line of `item`. */
+function bagWith(item: string) {
+  const bag = emptyBag();
+  bag[0] = { item, qty: 1 };
+  return bag;
+}
 
 // ---- the checks ---------------------------------------------------------------------------
 
@@ -319,11 +425,8 @@ describe("the behaviour snapshot", () => {
     golden(
       "swing.txt",
       NAMES.map((n) => {
-        const at = (axe: number, mining: number) => {
-          const c = swingCooldowns(
-            { ...NO_EQUIPMENT, weapon: n },
-            skillArray({ AxeFighting: axe, Mining: mining }),
-          );
+        const at = (skills: Record<string, number>) => {
+          const c = swingCooldowns({ ...NO_EQUIPMENT, weapon: n }, skillArray(skills));
           return `${c.atDelay}/${c.actionDelay}`;
         };
         const ring = swingCooldowns(
@@ -331,10 +434,14 @@ describe("the behaviour snapshot", () => {
           skillArray(),
         );
         return line(n, {
-          s0: at(0, 0),
-          s45: at(45, 45),
-          s75: at(75, 75),
-          s95: at(95, 95),
+          s0: at({}),
+          // Axe Fighting and Mining apart, so a ladder reading the other skill shows.
+          ...Object.fromEntries(
+            [45, 75, 95].flatMap((v) => [
+              [`axe${v}`, at({ AxeFighting: v })],
+              [`mining${v}`, at({ Mining: v })],
+            ]),
+          ),
           quick: `${ring.atDelay}/${ring.actionDelay}`,
           worn: (() => {
             const c = swingCooldowns(wearing(n), skillArray());
@@ -393,9 +500,11 @@ describe("the behaviour snapshot", () => {
 
   test("elemental armour by trigger", () => {
     const triggers = [
-      ...new Set(content().itemRules.armour.elemental.map((r) => r.trigger)),
-      "a Yeti",
-      "Ice Sword",
+      ...new Set([
+        ...content().itemRules.armour.elemental.map((r) => r.trigger),
+        "a Yeti",
+        "Ice Sword",
+      ]),
     ].sort();
     golden(
       "elemental.txt",
@@ -414,8 +523,28 @@ describe("the behaviour snapshot", () => {
     );
   });
 
+  test("spell defence by worn item", () => {
+    golden(
+      "spell-defence.txt",
+      NAMES.map((n) => {
+        const equip = wearing(n);
+        return line(n, {
+          plain: roll((rng) => spellDefense(20, { equip, magicShield: false }, rng)),
+          shield: roll((rng) => spellDefense(20, { equip, magicShield: true }, rng)),
+          low: roll((rng) => spellDefense(2, { equip, magicShield: false }, rng)),
+        });
+      }),
+    );
+  });
+
   test("equipment breaks", () => {
     const monsters = ["Slime", "Orc", "a Slime", "a Orc"];
+    // The slot pick is the second draw: 1 Body, 2 Head, 3 Right Hand.
+    const picks: [string, number][] = [
+      ["body", 1],
+      ["head", 2],
+      ["hand", 3],
+    ];
     golden(
       "breaks.txt",
       NAMES.map((n) => {
@@ -423,11 +552,15 @@ describe("the behaviour snapshot", () => {
         const all = { ...NO_EQUIPMENT, body: n, head: n, offHand: n, weapon: n };
         return line(n, {
           ...Object.fromEntries(
-            monsters.map((m) => [
-              `armour(${m})`,
-              roll((rng) => rollArmourBreak(all, 10, 0, m, rng)),
-            ]),
+            monsters.flatMap((m) =>
+              picks.map(([slot, pick]) => {
+                const rng = seq([1, pick, pick, pick, pick]);
+                const r = rollArmourBreak(all, 10, 0, m, rng);
+                return [`armour(${m},${slot})`, `${show(r)}[${rng.draws.join(",")}]`];
+              }),
+            ),
           ),
+          armourNoBreak: roll((rng) => rollArmourBreak(all, 10, 0, "Orc", rng)),
           ...Object.fromEntries(
             monsters.map((m) => [
               `weapon(${m})`,
@@ -530,11 +663,21 @@ describe("the behaviour snapshot", () => {
       ["mid", fighter({ str: 16, level: 20, allSkills: 45 })],
       ["master", fighter({ str: 20, level: 60, allSkills: 100 })],
     ];
+    const power = (f: Fighter) => attackPower(f, rec("min"), () => true).power;
     golden(
       "attack-power.txt",
-      NAMES.map((n) =>
-        line(n, {
+      NAMES.map((n) => {
+        // Each skill alone at 60 (Strength 16, level 30): the skills this weapon's blocks read.
+        const alone = (skills: Record<string, number>, offHand = NOTHING) =>
+          power(fighter({ str: 16, level: 30, skills, equip: { weapon: n, offHand } }));
+        const base = alone({});
+        const reads = SKILL_NAMES.map((s) => [s, alone({ [s]: 60 }) - base] as const)
+          .filter(([, d]) => d !== 0)
+          .map(([s, d]) => `${s}${d > 0 ? "+" : ""}${d}`);
+        return line(n, {
           trains: weaponSkillList(n).join(",") || "-",
+          base,
+          reads: reads.join(",") || "-",
           ...Object.fromEntries(
             grid.flatMap(([k, f]) => {
               const plain = { ...f, equip: { ...f.equip, weapon: n } };
@@ -545,12 +688,43 @@ describe("the behaviour snapshot", () => {
               ];
             }),
           ),
-        }),
-      ),
+          // Every arrow colour, for a master.
+          arrows: ARROW_COLOURS.map((c) => {
+            const f = fighter({
+              str: 20,
+              level: 60,
+              allSkills: 100,
+              equip: { weapon: n, offHand: `${c} Arrows` },
+            });
+            return `${c}:${power(f)}`;
+          }).join(","),
+        });
+      }),
     );
   });
 
-  test("kill skill gain rolls", () => {
+  test("melee damage against each monster", () => {
+    // Only the weapon and monster pairs whose damage differs from a weapon no row names.
+    const dmg = (weapon: string, m: string) => {
+      const lo = rec("min");
+      const d = meleeDamageVsMonster(60, { name: m, defense: defenseOf(m) }, weapon, lo);
+      return `${d}[${lo.draws.join(",")}]`;
+    };
+    const plain = new Map(SPECIES.map((m) => [m, dmg("~", m)]));
+    const lines: string[] = [];
+    for (const n of NAMES) {
+      const hits = SPECIES.flatMap((m) => {
+        const d = dmg(n, m);
+        return d === plain.get(m) ? [] : [`${m}:${d}`];
+      });
+      if (hits.length) {
+        lines.push(`${n} | ${hits.join(" ")}`);
+      }
+    }
+    golden("melee-affinities.txt", lines);
+  });
+
+  test("kill skill gain: which skill each weapon trains, and its requirement", () => {
     // One weapon per distinct skill list, and bare hands.
     const byList = new Map<string, string>();
     for (const n of [NOTHING, ...NAMES]) {
@@ -559,32 +733,63 @@ describe("the behaviour snapshot", () => {
         byList.set(list, n);
       }
     }
-    // Bodies with a monster cap of 10 (Spikes), 50 and the default 85.
-    const bodies = [90, 35, 0];
     const lines: string[] = [];
     for (const [list, weapon] of [...byList].sort()) {
-      for (const x of list === "" ? [50] : [0, 1, 29, 31, 49, 51, 61, 81, 99, 100]) {
-        for (const [fk, faction] of FACTIONS.filter(([k]) =>
-          ["none", "f1b3", "f2b2", "f2b5", "f3b4", "f3b9"].includes(k),
-        )) {
-          for (const [sta, wis] of [
-            [5, 5],
-            [20, 24],
-          ] as const) {
-            const outs = bodies.map((body) => {
-              const lo = rec("min");
-              const f = fighter({ sta, wis, int: 12, allSkills: x, faction, equip: { weapon } });
-              const gained = rollKillSkillGain(f, body, lo);
-              return `${body}:${gained.join("+") || "-"}[${lo.draws.join(",")}]`;
-            });
-            lines.push(
-              `${weapon} (${list || "-"}) x=${x} ${fk} sta=${sta} wis=${wis} | ${outs.join(" ")}`,
-            );
-          }
+      for (const skill of KILL_SKILLS) {
+        // The skill alone, then its requirement just failed and just met.
+        const req = KILL_REQUIRES[skill];
+        const cases: [string, Record<string, number>][] = [["alone", {}]];
+        if (req) {
+          cases.push([`${req[0]}=${req[1]}`, { [req[0]]: req[1] }]);
+          cases.push([`${req[0]}=${req[1] + 1}`, { [req[0]]: req[1] + 1 }]);
         }
+        const outs = cases.flatMap(([label, extra]) =>
+          [1, 20, 21, 49, 51].map((x) => {
+            const lo = rec("min");
+            const f = fighter({ skills: { ...extra, [skill]: x }, equip: { weapon } });
+            const gained = rollKillSkillGain(f, 0, lo);
+            return `${label}/${x}:${gained.join("+") || "-"}[${lo.draws.join(",")}]`;
+          }),
+        );
+        lines.push(`${weapon} (${list || "-"}) ${skill} | ${outs.join(" ")}`);
       }
     }
     golden("kill-skill-gain.txt", lines);
+  });
+
+  test("kill skill gain: roll sizes, caps and the monster's cap", () => {
+    const lines: string[] = [];
+    for (const skill of KILL_SKILLS) {
+      // A weapon that trains it, with its requirement met.
+      const weapon =
+        [NOTHING, ...NAMES].find((n) =>
+          weaponSkillList(n).some((s) => s.replace(/\s/g, "") === skill),
+        ) ?? NOTHING;
+      const req = KILL_REQUIRES[skill];
+      const met = req ? { [req[0]]: 100 } : {};
+      const draw = (o: Partial<Parameters<typeof fighter>[0]>, x: number, body = 0) => {
+        const lo = rec("min");
+        const f = fighter({ ...o, skills: { ...met, [skill]: x }, equip: { weapon } });
+        const gained = rollKillSkillGain(f, body, lo).includes(skill);
+        return `${gained ? "+" : "-"}[${lo.draws.join(",")}]`;
+      };
+      const sizes = [5, 10, 20].flatMap((sta) =>
+        [0, 6, 11, 16, 21, 23, 24].map((wis) => `sta${sta}wis${wis}:${draw({ sta, wis }, 40)}`),
+      );
+      lines.push(`${skill} via ${weapon} | ${sizes.join(" ")}`);
+      const caps = FACTIONS.filter(([k]) => /^(none|f[123]\.f\db(0|3|5|9))$/.test(k)).flatMap(
+        ([k, faction]) =>
+          [29, 30, 31, 49, 50, 51, 79, 80, 81, 99].map((x) => `${k}/${x}:${draw({ faction }, x)}`),
+      );
+      lines.push(`${skill} caps | ${caps.join(" ")}`);
+      const bodies = [90, 35, 0].flatMap((body) =>
+        [9, 11, 49, 51].flatMap((x) =>
+          [5, 21].map((int) => `body${body}/int${int}/${x}:${draw({ int }, x, body)}`),
+        ),
+      );
+      lines.push(`${skill} monster cap | ${bodies.join(" ")}`);
+    }
+    golden("kill-skill-rolls.txt", lines);
   });
 
   test("skill caps and the Wisdom and Intelligence tiers", () => {
@@ -606,7 +811,7 @@ describe("the behaviour snapshot", () => {
     ];
     for (const b of bodies) {
       lines.push(
-        `body ${b} | ${[0, 5, 6, 10, 11, 15, 16, 20, 21, 25, 26].map((i) => `int${i}=${monsterSkillCap(b, i)}`).join(" ")}`,
+        `body ${b} | ${[0, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 25, 26].map((i) => `int${i}=${monsterSkillCap(b, i)}`).join(" ")}`,
       );
     }
     golden("skill-caps.txt", lines);
@@ -624,6 +829,7 @@ describe("the behaviour snapshot", () => {
           pvpHit: roll((rng) => pvpHit(10, f, "Long Sword", 0, rng)),
           spellBase: basePower({ skills: f.skills, equip: f.equip, faction }),
           regen: regenTarget(faction.id === 3 ? faction.f3Bonus : null),
+          regenServer: regenOf(faction),
         });
       }),
     );
@@ -632,6 +838,7 @@ describe("the behaviour snapshot", () => {
   test("spells: power, school gain, cost and refusal", () => {
     const lines: string[] = [];
     const forms = [...SPELLS, "FireballL", "BoltR", "Wind waveU", "wind wave"];
+    const gearItems = [...new Set(content().itemRules.gear.map((r) => r.pattern))];
     for (const s of forms) {
       lines.push(
         line(s, {
@@ -640,63 +847,73 @@ describe("the behaviour snapshot", () => {
           harmful: isHarmful(s),
           sp: spCost(s, NOTHING),
           spNinja: spCost(s, "Ninja Outfit"),
+          spRoyalNinja: spCost(s, "Royal Ninja Uniform"),
           crystals: show(crystalsFor(s)),
           summon: show(summonFor(s)),
         }),
       );
-      const powers = [0, 5, 11, 15, 25, 35, 55, 75, 85, 95, 98].map((v) => {
-        const c = { skills: skillArray({}, v), equip: NO_EQUIPMENT, faction: NO_FACTION };
-        const m = {
-          skills: skillArray({}, v),
-          equip: NO_EQUIPMENT,
-          faction: { id: 1, f1Bonus: 3, f2Bonus: 0, f3Bonus: 0 } as Faction,
-        };
-        return `${v}:${spellPower(s, c)}/${spellPower(s, m)}`;
-      });
-      lines.push(`${s} | power ${powers.join(" ")}`);
-      const imps = [1, 29, 30, 49, 50, 99].flatMap((v) =>
-        [NO_FACTION, { id: 1, f1Bonus: 4, f2Bonus: 0, f3Bonus: 0 } as Faction].map((fac) => {
-          const skills = skillArray({}, v);
-          const lo = rec("min");
-          const out = spellImp(s, skills, fac, lo);
-          return `${v}/${fac.id}:${out.length}[${lo.draws.join(",")}]`;
-        }),
+      // Each school skill alone, so a spell read from the wrong skill shows.
+      const caster = (skills: Record<string, number>, faction = NO_FACTION, equip = NO_EQUIPMENT) =>
+        spellPower(s, { skills: skillArray(skills), equip, faction });
+      const base = caster({});
+      const bySkill = SPELL_SKILLS.flatMap((k) =>
+        [5, 11, 25, 55, 75, 85, 95, 98].map((v) => [k, v, caster({ [k]: v }) - base] as const),
+      )
+        .filter(([, , d]) => d !== 0)
+        .map(([k, v, d]) => `${k}${v}:${d}`);
+      const byFaction = [0, 1, 2, 3, 4].map(
+        (b) => `f1b${b}:${caster({}, { id: 1, f1Bonus: b, f2Bonus: 0, f3Bonus: 0 }) - base}`,
       );
-      lines.push(`${s} | gain ${imps.join(" ")}`);
-      const skills = skillArray({}, 10);
-      lines.push(`${s} | gainLines ${show(spellImp(s, skills, NO_FACTION, rec("min")))}`);
+      const byOther = [2, 3].map(
+        (id) =>
+          `f${id}:${caster({}, { id: id as 2 | 3, f1Bonus: 4, f2Bonus: 4, f3Bonus: 4 }) - base}`,
+      );
+      const byGear = gearItems
+        .map((g) => [g, caster({}, NO_FACTION, wearing(g)) - base] as const)
+        .filter(([, d]) => d !== 0)
+        .map(([g, d]) => `${g}:${d}`);
+      lines.push(
+        `${s} | power base=${base} ${bySkill.join(" ")} ${byFaction.join(" ")} ${byOther.join(" ")} gear ${byGear.join(",") || "-"}`,
+      );
+      // The cast gain: Magery alone, then each school alone, then Magery and the school together.
+      const gain = (skills: Record<string, number>, faction: Faction) => {
+        const lo = rec("min");
+        const arr = skillArray(skills);
+        const out = spellImp(s, arr, faction, lo);
+        return `${out.join("/") || "-"}[${lo.draws.join(",")}]`;
+      };
+      const mage4: Faction = { id: 1, f1Bonus: 4, f2Bonus: 0, f3Bonus: 0 };
+      const gains = ["Magery", ...SPELL_SKILLS.filter((k) => k !== "Magery")].flatMap((k) =>
+        [10, 29, 31, 99].map((v) => `${k}${v}:${gain({ [k]: v }, NO_FACTION)}`),
+      );
+      lines.push(`${s} | gain ${gains.join(" ")}`);
+      lines.push(
+        `${s} | gainMage ${[29, 31, 99].map((v) => `${v}:${gain({ Magery: v, Fire: v, Blessing: v, MartialArts: v }, mage4)}`).join(" ")}`,
+      );
     }
     golden("spells.txt", lines);
   });
 
-  test("monster species: bodies, rule tables and spell hits", () => {
+  test("monster species: bodies, predicates and what the server does with them", () => {
     const rules = content().monsters.rules;
     const ruleNames = Object.keys(rules) as (keyof typeof rules)[];
-    const matches = (n: string, rows: unknown): boolean => {
-      if (!Array.isArray(rows)) {
-        return false;
-      }
-      return rows.some((r: { match?: string; pattern?: string; name?: string }) => {
-        const p = r.pattern ?? r.name ?? (typeof r === "string" ? r : "");
-        if (typeof p !== "string" || p === "") {
-          return false;
-        }
-        return r.match === "contains"
-          ? n.toLowerCase().includes(p.toLowerCase())
-          : n.toLowerCase() === p.toLowerCase();
-      });
-    };
+    // The name tables with no predicate of their own, matched as the engine matches them.
+    const inRows = (n: string, rows: unknown): boolean =>
+      Array.isArray(rows) &&
+      rows.some((r) => typeof r === "object" && r !== null && ruleMatches(n, r as never));
     const lines = SPECIES.map((n) => {
       const body = bodyOf(n);
       return line(n, {
         body,
+        defense: defenseOf(n),
+        attack: show(monsterAttackValue(n)),
         neverMoves: neverMoves(body),
         web: isWebBody(body),
-        pig: body === BODY.pig,
-        holyShield: body === BODY.holyShield,
-        undead: body === 61,
+        footprint: isFootprint(n),
         leans: leansToward(n),
-        rules: ruleNames.filter((k) => matches(n, rules[k])).join(",") || "-",
+        killXp: `${meleeKillXp(30, n, NOTHING)}/${meleeKillXp(30, n, "Ring of Experience")}`,
+        rows: ruleNames.filter((k) => inRows(n, rules[k])).join(",") || "-",
+        ...throughMonster(n),
       });
     });
     // Each FX member against every body: the result, grouped by the bodies that share it.
@@ -746,6 +963,102 @@ describe("the behaviour snapshot", () => {
       lines.push(`fx ${m} | ${parts.join(" ; ")}`);
     }
     golden("monsters.txt", lines);
+  });
+
+  test("keys used on doors through the server", () => {
+    const doors = NAMES.filter((n) => /door|switch/i.test(n)).concat([
+      "The X's Door",
+      "The X's Opened Door",
+      "The Y's Door",
+      "Al's Door",
+    ]);
+    const lines: string[] = [];
+    for (const key of NAMES.filter(isKey)) {
+      for (const door of doors) {
+        lines.push(`${key} on ${door} | ${keyThroughServer(key, door)}`);
+      }
+    }
+    golden("keys-through-server.txt", lines);
+  });
+
+  test("paperdoll layers by worn item and facing", () => {
+    golden(
+      "paperdoll.txt",
+      NAMES.map((n) => {
+        const look = { head: 1, equip: wearing(n) };
+        const helmed = { head: 1, equip: { ...wearing(n), head: "Chain Helm" } };
+        return line(n, {
+          ...Object.fromEntries(
+            (["S", "W", "N", "E"] as const).map((f) => [
+              f,
+              paperdollLayers(look, "F1", f).slice(1).join(","),
+            ]),
+          ),
+          attackN: paperdollLayers(look, "F4", "N").slice(1).join(","),
+          helmedS: paperdollLayers(helmed, "F1", "S").slice(1).join(","),
+          hidesName: hidesName(wearing(n)),
+        });
+      }),
+    );
+  });
+
+  test("gathering and crafting tables", () => {
+    const lines: string[] = [];
+    for (let skill = 0; skill <= 100; skill += 1) {
+      lines.push(
+        line(`skill ${skill}`, {
+          ore: orePool(skill),
+          find: roll((rng) => rollMiningFind(skill, rng)),
+          chunks: ["Ice Hammer", "Fire Hammer", "Mining Hammer", "Axe"]
+            .map((t) => `${t}:${roll((rng) => rollChunk(t, skill, rng))}`)
+            .join(","),
+          fish: show(fishFor(skill)),
+          fishCheck: fishCheck(skill),
+          gains: content()
+            .gather.skillGain.map(
+              (r) => `${r.skill}:${roll((rng) => rollSkillGain(r.skill, skill, rng))}`,
+            )
+            .join(","),
+          timers: (["Smith", "Cook", "Mix", "Build"] as const)
+            .map((k) => `${k}:${craftTimer(k, skill)}`)
+            .join(","),
+          campfire: craftTimer("Cook", skill, true),
+          failure: show(failurePool(skill)),
+          masterwork: masterworkPool(skill),
+        }),
+      );
+    }
+    // Every item started at a station that is there, with each set of tools.
+    const views: [string, { leftHand: string; rightHand: string }][] = [
+      ["hammerSaw", { leftHand: "Blacksmith Hammer", rightHand: "Saw" }],
+      ["sand", { leftHand: NOTHING, rightHand: "Red Sand" }],
+      ["bare", { leftHand: NOTHING, rightHand: NOTHING }],
+    ];
+    for (const n of NAMES) {
+      const starts = views.map(([k, tools]) => {
+        const bag = emptyBag();
+        bag[0] = { item: n, qty: 2 };
+        bag[1] = { item: "Chunk of Iron", qty: 1 };
+        bag[2] = { item: "Red Crystal", qty: 1 };
+        bag[3] = { item: "Chunk of Fire", qty: 1 };
+        const r = startCraft(
+          {
+            bag,
+            ...tools,
+            skill: () => 40,
+            facing: () => true,
+            keyLock: false,
+            itemPause: 0,
+          },
+          1,
+        );
+        return `${k}=${show(r)}`;
+      });
+      lines.push(
+        `${n} | smithChunk=${show(smithChunk(n))} repair=${show(repairResult(n))} cook=${show(cookResult(n))} burned=${show(burnedResult(n))} sell=${show(sellName(n, 1, bagWith(`${n}#4`)))} ${starts.join(" ")}`,
+      );
+    }
+    golden("gather-craft.txt", lines);
   });
 
   test("items through the server's use, equip, click and Ctrl", () => {
@@ -805,7 +1118,122 @@ function throughSystem(name: string, action: "use" | "equip" | "click" | "ctrl")
       .join(",");
     const ground = map.ground.map((g) => g.item).join(",");
     const v = p.char.vitals;
-    return `{${said.join(" ")}} bag[${bag}] worn[${worn}] ground[${ground}] hp${v.hp} sp${v.sp} hunger${p.char.hunger}${p.container ? ` open:${p.container.name}` : ""}`;
+    return `{${said.join(" ")}} bag[${bag}] worn[${worn}] ground[${ground}] gold${p.char.gold} hp${v.hp} sp${v.sp} hunger${p.char.hunger}${p.container ? ` open:${p.container.name}` : ""}`;
+  } catch (e) {
+    return `throws ${(e as Error).message}`;
+  }
+}
+
+/** What one action on a monster did: the lines and message kinds Bob got, and what changed. */
+function throughMonster(name: string): Record<string, string> {
+  const scene = (x: number, y: number) => {
+    const map = testMap("x1000y992");
+    map.flags.canFight = "X";
+    const world = createWorld();
+    const p = player("Bob", map, 5, 5);
+    p.facing = "E";
+    p.flicker = 0;
+    addPlayer(world, p);
+    p.loading = 0;
+    const slot = map.slots[0] as MonsterSlot;
+    slot.species = name;
+    slot.live = {
+      name,
+      hp: 50,
+      x,
+      y,
+      facing: "W",
+      anim: 0,
+      fromX: x,
+      fromY: y,
+      queue: [],
+      hitCountb: 0,
+    };
+    return { map, world, p, slot, room: world.rooms.get(map.name) as Room };
+  };
+  const said = (
+    out: { to: string; msg: ServerMsg }[] | undefined,
+    p: Player,
+    slot: MonsterSlot,
+  ) => {
+    const told = (out ?? [])
+      .filter((m) => m.to === p.id)
+      .map((m) => (m.msg.t === "chat" ? JSON.stringify(m.msg.text) : m.msg.t));
+    const bag = p.char.bag.filter((l) => l !== null).map((l) => l.item);
+    return `{${told.join(" ")}}${slot.live ? "" : " gone"}${bag.length ? ` bag[${bag.join(",")}]` : ""}${p.bio ? " bio" : ""}`;
+  };
+  const click = (x: number, y: number) => {
+    const s = scene(x, y);
+    return said(clickNpc(s.room, s.p, 1, rec("min")).out, s.p, s.slot);
+  };
+  const ctrl = (() => {
+    const s = scene(6, 5);
+    const r = ctrlPig(s.room, s.p, rec("min"));
+    return r ? said(r.out, s.p, s.slot) : "-";
+  })();
+  const shield = (wanted: boolean) => {
+    const s = scene(5, 5);
+    s.p.char.wanted = wanted;
+    return onHolyShield(s.p, s.map.slots);
+  };
+  const attack = (wanted: boolean) => {
+    const s = scene(6, 5);
+    s.p.char.wanted = wanted;
+    const r = monsterAttack(s.map, s.slot, s.p, {
+      rng: rec("min"),
+      npcs: s.world.npcs,
+      invulnerable: () => false,
+    });
+    return r ? r.text : "-";
+  };
+  return {
+    clickFaced: click(6, 5),
+    clickFar: click(12, 9),
+    ctrl,
+    shieldsInnocent: String(shield(false)),
+    shieldsWanted: String(shield(true)),
+    attacksInnocent: attack(false),
+    attacksWanted: attack(true),
+  };
+}
+
+/** The regeneration target the server uses for a faction: the frames until 1 HP comes back. */
+function regenOf(faction: Faction): number {
+  const map = testMap("x1");
+  const p = player("Bob", map, 5, 5);
+  p.char.faction = faction;
+  p.char.hunger = 10000;
+  p.char.vitals = { ...p.char.vitals, hp: 1, hpMax: 100 };
+  p.regenCounter = 1;
+  for (let i = 1; i < 1000; i++) {
+    regenStep(p);
+    if (p.char.vitals.hp > 1) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/** Bob uses `key` facing `door`: what was said and what the door and key became. */
+function keyThroughServer(key: string, door: string): string {
+  const map = testMap("x1000y992");
+  const world = createWorld();
+  const ctx: ItemCtx = { world, rng: rngByN(), now: 1_000_000 };
+  const p = player("Bob", map, 5, 5);
+  p.guild = "X";
+  p.facing = "E";
+  addPlayer(world, p);
+  p.loading = 0;
+  map.ground.push({ id: "d1", item: door, x: 6, y: 5, kind: "admin", expiresAt: null });
+  p.char.bag[0] = { item: key, qty: 1 };
+  const room = world.rooms.get(map.name) as Room;
+  try {
+    const out = useIntent(ctx, room, p, 1);
+    const told = out
+      .filter((m) => m.to === p.id && m.msg.t === "chat")
+      .map((m) => JSON.stringify((m.msg as { text: string }).text));
+    const bag = p.char.bag.filter((l) => l !== null).map((l) => `${l.item}x${l.qty}`);
+    return `{${told.join(" ")}} door[${map.ground.map((g) => g.item).join(",")}] bag[${bag.join(",")}] pause${p.itemPause}`;
   } catch (e) {
     return `throws ${(e as Error).message}`;
   }

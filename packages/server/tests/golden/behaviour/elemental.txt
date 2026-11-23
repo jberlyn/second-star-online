@@ -1,6 +1,6 @@
-Fire Armor | Fire Sword:13/20 Ice Sword:27/20 Ice Sword:27/20 a Fire Demon:20/13 a Snow Demon:20/27 a Snow Serpent:20/27 a Yeti:20/27 a Yeti:20/27
-Fire Helm | Fire Sword:17/20 Ice Sword:23/20 Ice Sword:23/20 a Fire Demon:20/17 a Snow Demon:20/23 a Snow Serpent:20/23 a Yeti:20/23 a Yeti:20/23
-Fire Shield | Fire Sword:16/20 Ice Sword:24/20 Ice Sword:24/20 a Fire Demon:20/16 a Snow Demon:20/24 a Snow Serpent:20/24 a Yeti:20/24 a Yeti:20/24
-Ice Armor | Fire Sword:27/20 Ice Sword:13/20 Ice Sword:13/20 a Fire Demon:20/27 a Snow Demon:20/13 a Snow Serpent:20/13 a Yeti:20/13 a Yeti:20/13
-Ice Helm | Fire Sword:23/20 Ice Sword:17/20 Ice Sword:17/20 a Fire Demon:20/23 a Snow Demon:20/17 a Snow Serpent:20/17 a Yeti:20/17 a Yeti:20/17
-Ice Shield | Fire Sword:24/20 Ice Sword:16/20 Ice Sword:16/20 a Fire Demon:20/24 a Snow Demon:20/16 a Snow Serpent:20/16 a Yeti:20/16 a Yeti:20/16
+Fire Armor | Fire Sword:13/20 Ice Sword:27/20 a Fire Demon:20/13 a Snow Demon:20/27 a Snow Serpent:20/27 a Yeti:20/27
+Fire Helm | Fire Sword:17/20 Ice Sword:23/20 a Fire Demon:20/17 a Snow Demon:20/23 a Snow Serpent:20/23 a Yeti:20/23
+Fire Shield | Fire Sword:16/20 Ice Sword:24/20 a Fire Demon:20/16 a Snow Demon:20/24 a Snow Serpent:20/24 a Yeti:20/24
+Ice Armor | Fire Sword:27/20 Ice Sword:13/20 a Fire Demon:20/27 a Snow Demon:20/13 a Snow Serpent:20/13 a Yeti:20/13
+Ice Helm | Fire Sword:23/20 Ice Sword:17/20 a Fire Demon:20/23 a Snow Demon:20/17 a Snow Serpent:20/17 a Yeti:20/17
+Ice Shield | Fire Sword:24/20 Ice Sword:16/20 a Fire Demon:20/24 a Snow Demon:20/16 a Snow Serpent:20/16 a Yeti:20/16

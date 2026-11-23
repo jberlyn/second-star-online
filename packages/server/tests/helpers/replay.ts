@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  content,
   type Facing,
   type InGameMsg,
   MAP_HEIGHT,
@@ -24,7 +25,7 @@ import { createGame, type Game } from "../../src/game.ts";
 import { saveContainer } from "../../src/persistence/containers.ts";
 import { type Db, openDatabase } from "../../src/persistence/database.ts";
 import { insertGround } from "../../src/persistence/ground.ts";
-import { findMapByCoords } from "../../src/persistence/maps.ts";
+import { findMapByCoords, saveMap } from "../../src/persistence/maps.ts";
 import { migrate } from "../../src/persistence/migrations.ts";
 import { saveSlots } from "../../src/persistence/monsters.ts";
 import { seededRng } from "../../src/rng.ts";
@@ -38,29 +39,28 @@ export const REPLAY_CHECKPOINT = 100;
 const T0 = Date.parse("2026-11-22T00:00:00.000Z");
 const TICK_MS = 50;
 
-// ---- the map ------------------------------------------------------------------------------
+// ---- the maps ---------------------------------------------------------------------------
+
+const grid = (f: (x: number, y: number) => string) =>
+  Array.from({ length: MAP_HEIGHT }, (_, y) =>
+    Array.from({ length: MAP_WIDTH }, (_, x) => f(x + 1, y + 1)).join(" "),
+  );
 
 /**
- * The start map, x1000y992, laid out for the scripted players (x 1-17, y 1-12):
+ * The start map, x1000y992, laid out for the gatherers, crafters and traders (x 1-17, y 1-12),
+ * with PvP off so a stray swing hurts no one:
  *
  * - layer 1: grass (G1), with sea (W1) in columns 14-17;
- * - layer 2: trees (S3) at x 2, y 2-4; rocks (B8) at x 2, y 6-7; farmland (TL) at x 2, y 10-11.
+ * - layer 2: trees (S3) at x 2, y 1-6; rocks (B8) at x 2, y 7-12; farmland (TL) at x 4, y 7-12.
  */
-function layers(): [string[], string[], string[], string[]] {
-  const grid = (f: (x: number, y: number) => string) =>
-    Array.from({ length: MAP_HEIGHT }, (_, y) =>
-      Array.from({ length: MAP_WIDTH }, (_, x) => f(x + 1, y + 1)).join(" "),
-    );
+function townLayers(): [string[], string[], string[], string[]] {
   return [
     grid((x) => (x >= 14 ? "W1" : "G1")),
     grid((x, y) => {
-      if (x === 2 && y >= 2 && y <= 4) {
-        return "S3";
+      if (x === 2) {
+        return y <= 6 ? "S3" : "B8";
       }
-      if (x === 2 && (y === 6 || y === 7)) {
-        return "B8";
-      }
-      if (x === 2 && (y === 10 || y === 11)) {
+      if (x === 4 && y >= 7) {
         return "TL";
       }
       return "G3";
@@ -70,20 +70,26 @@ function layers(): [string[], string[], string[], string[]] {
   ];
 }
 
-/** Fixtures on the ground: the crafting stations and a crate. */
+/** The fighting map, x1001y992: open grass with PvP on, an Orc and a Wolf. */
+const FIELD = { mx: 1001, my: 992, name: "x1001y992" };
+/** The church map, where the bell rings. */
+const CHURCH = { mx: 999, my: 999 };
+
+/** Fixtures on the start map: the crafting stations, a crate and a locked door. */
 const GROUND: { item: string; x: number; y: number }[] = [
   { item: "Stove", x: 8, y: 2 },
   { item: "Anvil", x: 10, y: 2 },
   { item: "Carpentry Bench", x: 12, y: 2 },
   { item: "Alchemy Lab", x: 8, y: 6 },
   { item: "Crate#1", x: 10, y: 6 },
+  { item: "Gold Door", x: 11, y: 7 },
 ];
 
-/** The roster: a shopkeeper, an Orc to fight and a Wolf by the victim. */
-const SLOTS = [
-  { slot: 1, species: "Agavar", x: 5, y: 9 },
-  { slot: 2, species: "Orc", x: 11, y: 10 },
-  { slot: 3, species: "Wolf", x: 12, y: 12 },
+/** The rosters: a shopkeeper at home; an Orc and a Wolf on the field. */
+const TOWN_SLOTS = [{ slot: 1, species: "Agavar", x: 7, y: 9 }];
+const FIELD_SLOTS = [
+  { slot: 1, species: "Orc", x: 11, y: 6 },
+  { slot: 2, species: "Wolf", x: 13, y: 10 },
 ];
 
 // ---- the players --------------------------------------------------------------------------
@@ -96,6 +102,8 @@ interface BotCtx {
 
 interface BotSpec {
   name: string;
+  /** Where the bot starts: the start map unless it names the field or the church. */
+  map?: "field" | "church";
   at: { x: number; y: number; facing: Facing };
   bag?: [string, number][];
   equip?: Partial<Player["char"]["equip"]>;
@@ -109,6 +117,13 @@ interface BotSpec {
 }
 
 const hold = (held: boolean): InGameMsg => ({ t: "attack", seq: 1, held });
+/** One step, or with `turn` only a turn to face that way. */
+const step = (dir: "L" | "R" | "U" | "D", turn = false): InGameMsg => ({
+  t: "step",
+  seq: 1,
+  dir,
+  turn,
+});
 const walk = (held: "L" | "R" | "U" | "D" | null): InGameMsg => ({
   t: "move",
   seq: 1,
@@ -118,6 +133,41 @@ const walk = (held: "L" | "R" | "U" | "D" | null): InGameMsg => ({
 /** Holds attack from tick `from`, releasing it at `to`. */
 const swingBetween = (t: number, from: number, to: number): InGameMsg[] =>
   t === from ? [hold(true)] : t === to ? [hold(false)] : [];
+/**
+ * Works along a line of tiles: swings from `from` and, every `period` ticks, stops, takes one step
+ * the next way in `walk`, turns back to `face` and swings again, until `to`.
+ */
+function patrol(
+  t: number,
+  o: {
+    from: number;
+    to: number;
+    period: number;
+    walk: readonly ("L" | "R" | "U" | "D")[];
+    face: "L" | "R" | "U" | "D";
+  },
+): InGameMsg[] {
+  if (t === o.from) {
+    return [hold(true)];
+  }
+  if (t >= o.to) {
+    return t === o.to ? [hold(false)] : [];
+  }
+  const k = Math.floor((t - o.from) / o.period);
+  const at = (t - o.from) % o.period;
+  if (k === 0) {
+    return [];
+  }
+  const dir = o.walk[(k - 1) % o.walk.length] ?? o.face;
+  return at === 0
+    ? [hold(false), step(dir)]
+    : at === 10
+      ? [step(o.face, true)]
+      : at === 15
+        ? [hold(true)]
+        : [];
+}
+
 /** Every `n` ticks from `from`. */
 const every = (t: number, from: number, n: number) => t >= from && (t - from) % n === 0;
 
@@ -172,6 +222,14 @@ function hunt(t: number, p: Player, c: BotCtx, slot: number): InGameMsg[] {
   ];
 }
 
+/**
+ * The scripted players. Walker, the gatherers, crafters, Trader, User and Sailor share the start map
+ * (PvP off); Fighter, Mage and Victim fight on the field; Listener stands in the church.
+ */
+/** Five steps down a column and five back up; five right along a row and five back. */
+const DOWN_AND_BACK = ["D", "D", "D", "D", "D", "U", "U", "U", "U", "U"] as const;
+const RIGHT_AND_BACK = ["R", "R", "R", "R", "R", "L", "L", "L", "L", "L"] as const;
+
 const BOTS: BotSpec[] = [
   {
     name: "Walker",
@@ -185,21 +243,21 @@ const BOTS: BotSpec[] = [
   },
   {
     name: "Lumberjack",
-    at: { x: 3, y: 3, facing: "W" },
+    at: { x: 3, y: 1, facing: "W" },
     equip: { weapon: "Axe" },
-    skills: { Lumberjacking: 20, AxeFighting: 20 },
-    script: (t) => swingBetween(t, 5, 3500),
+    skills: { Lumberjacking: 60, AxeFighting: 20 },
+    script: (t) => patrol(t, { from: 5, to: 3600, period: 150, walk: DOWN_AND_BACK, face: "L" }),
   },
   {
     name: "Miner",
-    at: { x: 3, y: 6, facing: "W" },
+    at: { x: 3, y: 7, facing: "W" },
     equip: { weapon: "Mining Hammer" },
-    skills: { Mining: 40 },
-    script: (t) => swingBetween(t, 5, 3500),
+    skills: { Mining: 60 },
+    script: (t) => patrol(t, { from: 5, to: 3600, period: 150, walk: DOWN_AND_BACK, face: "L" }),
   },
   {
     name: "Farmer",
-    at: { x: 3, y: 10, facing: "W" },
+    at: { x: 5, y: 7, facing: "W" },
     equip: { weapon: "Hoe" },
     bag: [
       ["Seeds", 3],
@@ -211,21 +269,21 @@ const BOTS: BotSpec[] = [
       ...(t === 820 ? [{ t: "use", slot: 1 } as const] : []),
       ...(t === 900 ? [{ t: "equip", slot: 2 } as const] : []),
       ...swingBetween(t, 920, 2000),
-      ...(t === 2010 ? [{ t: "equip", slot: 2 } as const] : []),
-      ...swingBetween(t, 2020, 3000),
+      // The next patch down: hoe it, plant it and water it.
+      ...(t === 2010 ? [step("D")] : []),
+      ...(t === 2030 ? [step("L", true), { t: "equip", slot: 2 } as const] : []),
+      ...swingBetween(t, 2040, 2800),
+      ...(t === 2810 ? [{ t: "use", slot: 1 } as const] : []),
+      ...(t === 2820 ? [{ t: "equip", slot: 2 } as const] : []),
+      ...swingBetween(t, 2830, 3500),
     ],
   },
   {
     name: "Digger",
-    at: { x: 6, y: 10, facing: "S" },
+    at: { x: 7, y: 11, facing: "S" },
     equip: { weapon: "Shovel" },
-    skills: { Shoveling: 30 },
-    script: (t) => [
-      ...swingBetween(t, 5, 1500),
-      ...(t === 1510 ? [walk("R"), walk(null)] : []),
-      ...(t === 1530 ? [{ t: "step", seq: 1, dir: "D", turn: true } as const] : []),
-      ...swingBetween(t, 1540, 3000),
-    ],
+    skills: { Shoveling: 60 },
+    script: (t) => patrol(t, { from: 5, to: 3600, period: 150, walk: RIGHT_AND_BACK, face: "D" }),
   },
   {
     name: "Fisher",
@@ -234,9 +292,9 @@ const BOTS: BotSpec[] = [
     skills: { Fishing: 30 },
     script: (t) => [
       ...swingBetween(t, 5, 1800),
-      // The fish stop biting at one spot: move along the shore.
-      ...(t === 1810 ? [walk("U"), walk(null)] : []),
-      ...(t === 1830 ? [{ t: "step", seq: 1, dir: "R", turn: true } as const] : []),
+      // The fish stop biting at one spot: one step along the shore, then face the sea again.
+      ...(t === 1810 ? [step("U")] : []),
+      ...(t === 1830 ? [step("R", true)] : []),
       ...swingBetween(t, 1840, 3800),
     ],
   },
@@ -305,7 +363,7 @@ const BOTS: BotSpec[] = [
   },
   {
     name: "Trader",
-    at: { x: 5, y: 8, facing: "S" },
+    at: { x: 6, y: 3, facing: "S" },
     gold: 1000,
     bag: [["Corn", 5]],
     script: (t, _p, c) => {
@@ -322,8 +380,9 @@ const BOTS: BotSpec[] = [
         case 25:
           return [{ t: "shopList", mode: "buy" }];
         case 30: {
-          // Seeds, then a Hoe, by turns.
-          const row = rows("buy")[(t / 300) % 2 === 0 ? 2 : 0];
+          // Seeds and a Hoe, by turns.
+          const want = Math.floor(t / 300) % 2 === 0 ? "Seeds" : "Hoe";
+          const row = rows("buy").find((r) => r.item === want);
           return row ? [{ t: "buy", line: row.line, count: 2 }] : [];
         }
         case 35:
@@ -348,6 +407,7 @@ const BOTS: BotSpec[] = [
     at: { x: 10, y: 7, facing: "N" },
     hp: 200,
     hunger: 10000,
+    gold: 50,
     bag: [
       ["Apple", 3],
       ["Red Potion", 2],
@@ -364,30 +424,40 @@ const BOTS: BotSpec[] = [
         30: [{ t: "use", slot: 2 }],
         50: [{ t: "use", slot: 3 }],
         70: [{ t: "equip", slot: 4 }],
+        // The crate: open it, take a line out, put an apple in, close it.
         90: crate ? [{ t: "pickup", id: crate.id }] : [],
         100: [{ t: "vaultTake", index: 1 }],
-        110: [{ t: "action" }],
-        140: [{ t: "storage", slot: 5 }],
-        150: [{ t: "vaultTake", index: 1 }],
-        170: [{ t: "use", slot: 6 }],
-        180: [{ t: "drop", slot: 1 }],
-        200: [{ t: "unequip", slot: "LeftHand" }],
-        220: [{ t: "gold", n: 1 }],
+        110: [{ t: "drop", slot: 1 }],
+        120: [{ t: "shopCancel" }],
+        // Ctrl at the crate: too weak to carry it off.
+        130: [{ t: "action" }],
+        // The carried cabinet: open it from the bag, take its crystal, close it.
+        150: [{ t: "storage", slot: 5 }],
+        160: [{ t: "vaultTake", index: 1 }],
+        170: [{ t: "shopCancel" }],
+        // Face the Gold Door and use the Gold Key on it.
+        180: [step("R", true)],
+        200: [{ t: "use", slot: 6 }],
+        // After the key's pause.
+        320: [{ t: "unequip", slot: "LeftHand" }],
+        340: [{ t: "gold", n: 5 }],
       };
       return steps[t] ?? [];
     },
   },
   {
     name: "Fighter",
-    at: { x: 10, y: 10, facing: "E" },
+    map: "field",
+    at: { x: 8, y: 6, facing: "E" },
     equip: { weapon: "Long Sword", body: "Chain Armor" },
     skills: { Slash: 25, Parry: 20, Block: 10 },
     script: (t, p, c) =>
-      t < 3900 ? hunt(t, p, c, 2) : t === 3900 ? [hold(false), walk(null)] : [],
+      t < 3900 ? hunt(t, p, c, 1) : t === 3900 ? [hold(false), walk(null)] : [],
   },
   {
     name: "Mage",
-    at: { x: 9, y: 10, facing: "E" },
+    map: "field",
+    at: { x: 6, y: 6, facing: "E" },
     spells: ["Minor Heal", "Firebolt", "Fireball", "Magic Shield"],
     bag: [
       ["Red Crystal", 99],
@@ -402,7 +472,7 @@ const BOTS: BotSpec[] = [
       if (!every(t, 30, 45)) {
         return [];
       }
-      const target = c.game.world.rooms.get(p.map.name)?.map.slots[2]?.live;
+      const target = c.game.world.rooms.get(p.map.name)?.map.slots[0]?.live;
       const spell =
         ["Firebolt", "Minor Heal", "Fireball", "Magic Shield"][Math.floor((t - 30) / 45) % 4] ?? "";
       // The playfield starts at (30, 31); aim at the middle of the target's tile.
@@ -413,9 +483,16 @@ const BOTS: BotSpec[] = [
   },
   {
     name: "Victim",
+    map: "field",
     at: { x: 12, y: 11, facing: "S" },
     hp: 3,
-    script: (t, p, c) => (t >= 1000 && t < 3000 ? hunt(t, p, c, 3) : []),
+    script: (t, p, c) => (t >= 1000 && t < 3000 ? hunt(t, p, c, 2) : []),
+  },
+  {
+    name: "Listener",
+    map: "church",
+    at: { x: 9, y: 9, facing: "N" },
+    script: () => [],
   },
 ];
 
@@ -431,6 +508,7 @@ const SKIP = new Set(["npcs"]);
 export function flatten(root: unknown): string[] {
   const out: string[] = [];
   const seen = new Map<object, string>();
+  const skillNames = content().classes.skills.map((s) => s.skill);
   const walk = (v: unknown, path: string) => {
     if (v === null || typeof v !== "object") {
       if (typeof v === "function") {
@@ -463,6 +541,22 @@ export function flatten(root: unknown): string[] {
       for (const x of v) {
         walk(x, `${path}{${i++}}`);
       }
+      return;
+    }
+    // A list of skill values reads by skill name, so storing skills by key instead of position
+    // changes no line.
+    if (
+      Array.isArray(v) &&
+      /\.(skills|awardSkills)$/.test(path) &&
+      v.length === skillNames.length
+    ) {
+      out.push(`${path} = Skills`);
+      skillNames
+        .map((name, i) => [name, v[i]] as const)
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .forEach(([name, x]) => {
+          walk(x, `${path}.${name}`);
+        });
       return;
     }
     if (Array.isArray(v)) {
@@ -517,11 +611,17 @@ function dbDigest(db: Db): string[] {
     )
     .all()
     .filter((t) => !MIGRATION_TABLES.has(t.name));
+  const skillNames = content().classes.skills.map((s) => s.skill);
   return tables.map(({ name }) => {
     const rows = db
       .query<Record<string, unknown>, []>(`SELECT * FROM "${name}"`)
       .all()
-      .map((r) => JSON.stringify(r))
+      .map((r) =>
+        // Skills by name, not by their position in the skill list.
+        name === "character_skills"
+          ? JSON.stringify({ ...r, skill: skillNames[Number(r.skill) - 1] ?? r.skill })
+          : JSON.stringify(r),
+      )
       .sort();
     return `db ${name} rows=${rows.length} ${sha(rows.join("\n")).slice(0, 12)}`;
   });
@@ -545,6 +645,8 @@ export async function runReplay(
     dumpAt?: readonly number[];
     /** Sees every message the game sends (the probe's view of what happened). */
     send?: (playerId: string, msg: ServerMsg) => void;
+    /** Runs after each tick. */
+    onTick?: (t: number, game: Game) => void;
   } = {},
 ): Promise<ReplayResult> {
   const ticks = opts.ticks ?? REPLAY_TICKS;
@@ -564,21 +666,39 @@ export async function runReplay(
     const iso = () => new Date(now).toISOString();
     const db = openDatabase();
     migrate(db);
-    const [l1, l2, l3, l4] = layers();
+    const json = (ls: string[][]) => ls.map((l) => JSON.stringify(l));
+    const [l1, l2, l3, l4] = json(townLayers());
     db.run(
-      "UPDATE maps SET title = 'Replay', layer1 = ?, layer2 = ?, layer3 = ?, layer4 = ? WHERE mx = 1000 AND my = 992 AND slot = 0",
-      [JSON.stringify(l1), JSON.stringify(l2), JSON.stringify(l3), JSON.stringify(l4)],
+      "UPDATE maps SET title = 'Replay', layer1 = ?, layer2 = ?, layer3 = ?, layer4 = ?, can_pvp = 'O' WHERE mx = 1000 AND my = 992 AND slot = 0",
+      [l1 as string, l2 as string, l3 as string, l4 as string],
     );
-    const map = findMapByCoords(db, 1000, 992);
-    if (!map) {
-      throw new Error("no seed map");
+    const town = findMapByCoords(db, 1000, 992);
+    const church = findMapByCoords(db, CHURCH.mx, CHURCH.my);
+    if (!town || !church) {
+      throw new Error("no seed or church map");
+    }
+    saveMap(
+      db,
+      {
+        ...town,
+        mx: FIELD.mx,
+        my: FIELD.my,
+        title: "Field",
+        layers: [grid(() => "G1"), grid(() => "G3"), grid(() => "G3"), grid(() => "5A")],
+        flags: { ...town.flags, canFight: "X", canPvp: "X" },
+      },
+      iso(),
+    );
+    const field = findMapByCoords(db, FIELD.mx, FIELD.my);
+    if (!field) {
+      throw new Error("no field map");
     }
     for (const g of GROUND) {
       insertGround(
         db,
         {
           id: Bun.randomUUIDv7(),
-          mapId: map.id,
+          mapId: town.id,
           x: g.x,
           y: g.y,
           item: g.item,
@@ -591,28 +711,34 @@ export async function runReplay(
     }
     saveContainer(db, "Crate#1", ["Apple", "Red Potion", "Long Sword"]);
     saveContainer(db, "Cabinet#2", ["Blue Crystal"]);
-    saveSlots(
-      db,
-      map.id,
-      SLOTS.map((s) => ({
-        slot: s.slot,
-        species: s.species,
-        live: {
-          name: s.species,
-          hp: 40,
-          x: s.x,
-          y: s.y,
-          facing: "S" as const,
-        },
-        home: { x: s.x, y: s.y },
-      })),
-      iso(),
-    );
+    for (const [mapId, slots] of [
+      [town.id, TOWN_SLOTS],
+      [field.id, FIELD_SLOTS],
+    ] as const) {
+      saveSlots(
+        db,
+        mapId,
+        slots.map((s) => ({
+          slot: s.slot,
+          species: s.species,
+          live: { name: s.species, hp: 40, x: s.x, y: s.y, facing: "S" as const },
+          home: { x: s.x, y: s.y },
+        })),
+        iso(),
+      );
+    }
+    const mapIdOf = (bot: BotSpec) =>
+      bot.map === "field" ? field.id : bot.map === "church" ? church.id : town.id;
     const rng = seededRng(REPLAY_SEED);
     const inboxes = new Map<string, Map<string, ServerMsg>>();
+    /** What the game sent since the last hash, in order, by player name. */
+    const sent: string[] = [];
+    /** Player names by id, as they enter. */
+    const names = new Map<string, string>();
     const game = createGame({
       db,
       send: (id, msg) => {
+        sent.push(`${names.get(id) ?? id} ${JSON.stringify(msg)}`);
         let m = inboxes.get(id);
         if (!m) {
           m = new Map();
@@ -640,7 +766,8 @@ export async function runReplay(
           password: "replay",
           sex: 1,
           head: 1,
-          classCode: 1,
+          // Every start class: Fighter, Mage and Ranger by turns.
+          classCode: ((i % 3) + 1) as 1 | 2 | 3,
           str: 11,
           sta: 11,
           int: 11,
@@ -652,18 +779,24 @@ export async function runReplay(
       if (!made.ok) {
         throw new Error(`${bot.name}: ${made.text}`);
       }
+      // The bot starts where it works, and respawns there.
+      const at = mapIdOf(bot);
+      db.run(
+        "UPDATE characters SET map_id = ?, x = ?, y = ?, facing = ?, respawn_map_id = ?, respawn_x = ?, respawn_y = ? WHERE name = ?",
+        [at, bot.at.x, bot.at.y, bot.at.facing, at, bot.at.x, bot.at.y, bot.name],
+      );
       const l = await game.login(bot.name, "replay", ip);
       if (!l.ok) {
         throw new Error(`${bot.name}: ${l.text}`);
       }
+      names.set(l.characterId, bot.name);
       game.enter(l.characterId, false, ip);
       const p = game.world.players.get(l.characterId);
       if (!p) {
         throw new Error(`${bot.name} did not enter`);
       }
       game.intent(p.id, { t: "mapReady" });
-      p.x = bot.at.x;
-      p.y = bot.at.y;
+      // A login faces south; the bot faces its work.
       p.facing = bot.at.facing;
       p.char.equip = { ...p.char.equip, ...bot.equip };
       for (const [skill, v] of Object.entries(bot.skills ?? {})) {
@@ -683,12 +816,14 @@ export async function runReplay(
       }
       if (bot.spells) {
         p.spell.book = [...bot.spells];
+        p.spell.bookDirty = true;
         p.char.vitals.sp = p.char.vitals.spMax = 200;
       }
       p.invDirty = true;
       players.push({ bot, p });
     }
-    const lines: string[] = [];
+    const lines: string[] = [`setup sent ${sha(sent.join("\n")).slice(0, 12)}`];
+    sent.length = 0;
     const dumps = new Map<number, string[]>();
     for (let t = 0; t < ticks; t++) {
       for (const { bot, p } of players) {
@@ -705,14 +840,17 @@ export async function runReplay(
         throw new Error(`tick ${t} threw`);
       }
       now += TICK_MS;
+      opts.onTick?.(t, game);
       const flat = flatten(game.world);
-      lines.push(`${t} ${sha(flat.join("\n")).slice(0, 12)}`);
+      // The world after the tick, then everything sent during it (intents and the tick).
+      lines.push(`${t} ${sha(flat.join("\n")).slice(0, 12)} ${sha(sent.join("\n")).slice(0, 8)}`);
       if ((t + 1) % REPLAY_CHECKPOINT === 0) {
         lines.push(`@${t} ${[...components(flat)].map(([k, h]) => `${k}=${h}`).join(" ")}`);
       }
       if (dumpAt.has(t)) {
-        dumps.set(t, flat);
+        dumps.set(t, [...flat, ...sent.map((m) => `sent ${m}`)]);
       }
+      sent.length = 0;
     }
     game.saveAll();
     game.flushLogs();

@@ -87,17 +87,23 @@ describe("paperdoll shield and arrow layers", () => {
   test("a shield is drawn over the body facing south and west, behind the head facing north", () => {
     for (const facing of ["S", "W"] as const) {
       const out = paperdollLayers(look("Wooden Shield"), "F1", facing);
+      expect(out).toContain(`Wooden Shield-F1-${facing}`);
+      expect(out).toContain(`Head1-F1-${facing}`);
       expect(out.indexOf(`Wooden Shield-F1-${facing}`)).toBeGreaterThan(
         out.indexOf(`Head1-F1-${facing}`),
       );
     }
     const north = paperdollLayers(look("Wooden Shield"), "F1", "N");
+    expect(north).toContain("Wooden Shield-F1-N");
+    expect(north).toContain("Head1-F1-N");
     expect(north.indexOf("Wooden Shield-F1-N")).toBeLessThan(north.indexOf("Head1-F1-N"));
     expect(paperdollLayers(look("Wooden Shield"), "F1", "E")).not.toContain("Wooden Shield-F1-E");
   });
 
   test("arrows (drawn as Arrows) go behind the body facing south and west, and last facing north", () => {
     const south = paperdollLayers(look("Blue Arrows"), "F1", "S");
+    expect(south).toContain("Arrows-F1-S");
+    expect(south).toContain("DEFBOD-F1-S");
     expect(south.indexOf("Arrows-F1-S")).toBeLessThan(south.indexOf("DEFBOD-F1-S"));
     const north = paperdollLayers(look("Blue Arrows"), "F1", "N");
     expect(north.at(-1)).toBe("Arrows-F1-N");
