@@ -4,6 +4,7 @@
  * read and edited the character's text files by hand. Pure.
  */
 import { content } from "../../content/store.ts";
+import type { SkillValues } from "../core/fighter.ts";
 import type { CharacterEditRow } from "./character-edit.ts";
 import type { ChatLogRow } from "./chatlog.ts";
 import {
@@ -67,8 +68,8 @@ export interface CharacterSheet {
     int: number;
     wis: number;
   };
-  /** One value per skill in the content store's `classes.skills`, index 0 = Slash. */
-  skills: number[];
+  /** Every skill the content lists, by skill key (`classes.skills`). */
+  skills: SkillValues;
   hunger: number;
   /** `Fctnme`: 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
   faction: number;

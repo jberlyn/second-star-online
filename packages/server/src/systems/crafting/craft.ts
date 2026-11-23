@@ -4,20 +4,23 @@
  * The rules are in shared/rules/crafting/craft.ts; this applies them to the player.
  */
 import {
+  boundSkillIndex,
   CRAFT_ORDER,
+  CRAFT_SKILL,
   CRAFT_SOUND,
   CRAFT_TEXT,
   type CraftJob,
   type CraftKind,
+  type CraftSkill,
   FACING_DELTA,
   finishCraft,
   ID_CONTAINERS,
   lingoEq,
   type Rng,
   rollSkillGain,
+  SKILL_KEYS,
   SMITH_FX_CHANCE,
   skillGainRule,
-  skillIndex,
   startCraft,
 } from "@secondstaronline/shared";
 
@@ -109,13 +112,10 @@ export interface CraftCtx {
   rng: Rng;
 }
 
-const skillOf = (p: Player, skill: string) => p.char.skills[skillIndex(skill)] ?? 0;
-
-const SKILL: Record<CraftKind, string> = {
-  Smith: "Blacksmithing",
-  Cook: "Cooking",
-  Mix: "Alchemy",
-  Build: "Carpentry",
+/** A craft's bound skill value, or undefined when the world binds none (the craft is off). */
+const skillOf = (p: Player, b: CraftSkill): number | undefined => {
+  const i = boundSkillIndex(b);
+  return i === undefined ? undefined : (p.char.skills[i] ?? 0);
 };
 
 const tell = (p: Player, text: string): Outgoing => ({
@@ -126,10 +126,14 @@ const lock = (p: Player, on: boolean): Outgoing => ({ to: p.id, msg: { t: "lock"
 
 /** A skill handler's roll and, on a hit, the point and its line. */
 function gain(p: Player, kind: CraftKind, rng: Rng, out: Outgoing[]): void {
-  const skill = SKILL[kind];
-  const v = skillOf(p, skill);
+  const i = boundSkillIndex(CRAFT_SKILL[kind]);
+  const skill = i === undefined ? undefined : SKILL_KEYS[i];
+  if (i === undefined || skill === undefined) {
+    return;
+  }
+  const v = p.char.skills[i] ?? 0;
   if (rollSkillGain(skill, v, rng)) {
-    p.char.skills[skillIndex(skill)] = v + 1;
+    p.char.skills[i] = v + 1;
     out.push(tell(p, skillGainRule(skill)?.text ?? ""));
   }
 }
@@ -210,7 +214,7 @@ function finish(p: Player, kind: CraftKind, job: CraftJob, ctx: CraftCtx, now: n
   const out: Outgoing[] = [];
   p.keyLock = false;
   out.push(lock(p, false));
-  const skill = skillOf(p, SKILL[kind]);
+  const skill = skillOf(p, CRAFT_SKILL[kind]) ?? 0;
   const before = holdingsOf(p.char);
   const r = finishCraft(p.char, job, skill, ctx.rng, withId(ctx, now));
   if (!r.reached) {

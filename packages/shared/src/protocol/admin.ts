@@ -216,7 +216,10 @@ const editValues = z
     dex: editInt,
     int: editInt,
     wis: editInt,
-    skills: z.array(editInt).max(64),
+    /** By skill key: only the skills the edit changes need be named. */
+    skills: z
+      .record(z.string().max(80), editInt)
+      .refine((o) => Object.keys(o).length <= 1000, "too many skills"),
     hunger: editInt,
     faction: editInt,
     factionCount: editInt,

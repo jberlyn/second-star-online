@@ -4,6 +4,7 @@
  * applies them to the map, the ground and the player.
  */
 import {
+  boundSkillIndex,
   buildTreasure,
   canPlant,
   castLine,
@@ -11,6 +12,7 @@ import {
   FACING_DELTA,
   FISHING_LAYERS,
   FISHING_STOPPED_TEXT,
+  findSkillIndex,
   fishingOffset,
   fishingSpot,
   GATHER_TEXT,
@@ -29,12 +31,13 @@ import {
   rollMiningFind,
   rollSkillGain,
   rumourLine,
+  SKILL_KEYS,
   SPRINKLE_FX,
   type SwingSound,
   seedTile,
   shovelLayer1Ok,
   skillGainRule,
-  skillIndex,
+  skillValue,
   sprinkleOffset,
   swingCooldowns,
   TREASURE,
@@ -67,15 +70,16 @@ export interface GatherEvents {
   out: Outgoing[];
 }
 
-const skillOf = (p: Player, skill: string) => p.char.skills[skillIndex(skill)] ?? 0;
+const skillOf = (p: Player, skill: string) => skillValue(p.char.skills, skill);
 
 /** A skill handler's roll and, on a hit, the point and its line. */
 function gain(p: Player, skill: string, rng: Rng, lines: string[]): boolean {
-  const v = skillOf(p, skill);
-  if (!rollSkillGain(skill, v, rng)) {
+  const i = findSkillIndex(skill);
+  const v = i === undefined ? 0 : (p.char.skills[i] ?? 0);
+  if (i === undefined || !rollSkillGain(skill, v, rng)) {
     return false;
   }
-  p.char.skills[skillIndex(skill)] = v + 1;
+  p.char.skills[i] = v + 1;
   lines.push(skillGainRule(skill)?.text ?? "");
   return true;
 }
@@ -161,7 +165,9 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
       });
     }
   }
-  if (!isFishingPole(weapon)) {
+  // A world that binds no Fishing skill has no fishing.
+  const fishing = boundSkillIndex("fishing");
+  if (!isFishingPole(weapon) || fishing === undefined) {
     return null;
   }
   const t = faced(p);
@@ -181,7 +187,7 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
     });
     // The allowance belongs to the tile you fish from, and outlasts a logout.
     const spot = fishingSpot(ctx.world.fishingSpots.get(p.id), p.map.id, p.x, p.y);
-    const r = castLine(skillOf(p, "Fishing"), spot.left, ctx.rng);
+    const r = castLine(p.char.skills[fishing] ?? 0, spot.left, ctx.rng);
     ctx.world.fishingSpots.set(p.id, { ...spot, left: r.antiMacro });
     // A spent tile says so, once per press like a movement refusal.
     if (spot.left === 0 && p.told !== FISHING_STOPPED_TEXT) {
@@ -192,8 +198,8 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
       drop(ctx, room, io, r.fish, t.x, t.y, p);
     }
     if (r.gained) {
-      p.char.skills[skillIndex("Fishing")] = skillOf(p, "Fishing") + 1;
-      ev.lines.push(skillGainRule("Fishing")?.text ?? "");
+      p.char.skills[fishing] = (p.char.skills[fishing] ?? 0) + 1;
+      ev.lines.push(skillGainRule(SKILL_KEYS[fishing] ?? "")?.text ?? "");
     }
   }
   ev.out.push(...io.out);

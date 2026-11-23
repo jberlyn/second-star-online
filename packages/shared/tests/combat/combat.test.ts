@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
 
+import { startingSkills } from "../../src/rules/progression/creation.ts";
+
 const { classes: classesData } = classicData;
 
 import { STEPFRAMES_PER_FRAME } from "../../src/constants.ts";
@@ -53,7 +55,7 @@ function fighter(over: Partial<Fighter> = {}, cls: 1 | 2 | 3 = 1): Fighter {
     sta: 1,
     int: 1,
     wis: 1,
-    skills: [...classesData.creation.startingSkills[cls].values],
+    skills: startingSkills(cls),
     equip: { ...NO_EQUIPMENT },
     faction: { ...NO_FACTION },
     attackBonus: 0,

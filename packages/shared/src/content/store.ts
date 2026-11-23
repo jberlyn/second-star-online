@@ -15,6 +15,7 @@
  */
 import type {
   AttPowerData,
+  BindingsData,
   CasinoData,
   ClassesData,
   CraftData,
@@ -40,6 +41,7 @@ import type {
  */
 export interface ContentData {
   attPower: AttPowerData;
+  bindings: BindingsData;
   casino: CasinoData;
   classes: ClassesData;
   craft: CraftData;
@@ -71,6 +73,7 @@ export const SERVER_ONLY_DATASETS = ["npcFiles", "rects"] as const satisfies rea
 /** Every dataset id, in a fixed order (the order hashes and pack files use). */
 export const DATASET_IDS = [
   "attPower",
+  "bindings",
   "casino",
   "classes",
   "craft",

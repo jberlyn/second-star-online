@@ -65,7 +65,7 @@ describe("promotions at a trainer", () => {
   const thrust = () =>
     server.db
       .query<{ value: number }, []>(
-        "SELECT value FROM character_skills WHERE skill = 2 AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
+        "SELECT value FROM character_skills WHERE skill = 'Thrust' AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
       )
       .get()?.value;
 
@@ -88,10 +88,10 @@ describe("promotions at a trainer", () => {
     server.db.run("UPDATE characters SET x = 6, y = 6 WHERE name = 'Alice'");
     server.db.run("UPDATE characters SET x = 6, y = 4, gold = 150 WHERE name = 'Bob'");
     server.db.run(
-      "UPDATE character_skills SET value = 30 WHERE skill = 1 AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
+      "UPDATE character_skills SET value = 30 WHERE skill = 'Slash' AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
     );
     server.db.run(
-      "UPDATE character_skills SET value = 1 WHERE skill = 2 AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
+      "UPDATE character_skills SET value = 1 WHERE skill = 'Thrust' AND character_id = (SELECT id FROM characters WHERE name = 'Bob')",
     );
   });
   afterAll(async () => {

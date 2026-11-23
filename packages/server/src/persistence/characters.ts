@@ -3,10 +3,11 @@
  * transactions.
  */
 import {
-  content,
   type Facing,
-  NEW_SKILL_VALUE,
+  SKILL_KEYS,
+  type SkillValues,
   type StartingCharacter,
+  skillsFromKeys,
   type Vehicle,
 } from "@secondstaronline/shared";
 
@@ -162,12 +163,7 @@ export function insertCharacter(
     now,
     now,
   );
-  const skill = db.prepare(
-    "INSERT INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)",
-  );
-  for (const [i, value] of c.skills.entries()) {
-    skill.run(id, i + 1, value);
-  }
+  writeSkills(db, id, c.skills);
   const bag = db.prepare(
     "INSERT INTO inventory (id, character_id, slot, item, qty) VALUES (?, ?, ?, ?, ?)",
   );
@@ -253,15 +249,33 @@ export function saveProgress(db: Db, id: string, c: CharacterProgress, now: stri
     now,
     id,
   );
-  // A row for every skill the content lists (a longer list adds the missing rows); an
-  // unchanged value is not rewritten.
-  const skill = db.prepare(
+  writeSkills(db, id, c.skills);
+}
+
+/**
+ * Writes a character's skills, one row per skill the content lists, under each skill's key. A
+ * skill new to the character gains its row; an unchanged value is not rewritten; rows of skills
+ * the content no longer lists are left alone, so a skill that returns finds its values.
+ */
+export function writeSkills(db: Db, id: string, skills: readonly number[]): void {
+  saveSkillValues(
+    db,
+    id,
+    Object.fromEntries(
+      skills.flatMap((v, i) => (SKILL_KEYS[i] === undefined ? [] : [[SKILL_KEYS[i], v]])),
+    ),
+  );
+}
+
+/** Writes skill values by key (an unchanged value is not rewritten). */
+export function saveSkillValues(db: Db, id: string, values: Readonly<SkillValues>): void {
+  const q = db.prepare(
     `INSERT INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)
      ON CONFLICT (character_id, skill) DO UPDATE SET value = excluded.value
      WHERE character_skills.value <> excluded.value`,
   );
-  for (const [i, value] of c.skills.entries()) {
-    skill.run(id, i + 1, value);
+  for (const [key, value] of Object.entries(values)) {
+    q.run(id, key, value);
   }
 }
 
@@ -284,14 +298,7 @@ export function savePromotion(
     db.query(
       "UPDATE characters SET class_code = ?, gold = ?, sp_max = ?, updated_at = ? WHERE id = ?",
     ).run(r.classCode, r.gold, r.spMax, now, id);
-    const skill = db.prepare(
-      `INSERT INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)
-       ON CONFLICT (character_id, skill) DO UPDATE SET value = excluded.value
-       WHERE character_skills.value <> excluded.value`,
-    );
-    for (const [i, value] of r.skills.entries()) {
-      skill.run(id, i + 1, value);
-    }
+    writeSkills(db, id, r.skills);
   })();
 }
 
@@ -316,24 +323,26 @@ export function saveProfileText(db: Db, id: string, profile: string, now: string
   db.query("UPDATE characters SET profile = ?, updated_at = ? WHERE id = ?").run(profile, now, id);
 }
 
-/**
- * Load a character's skills by skill number, padded to `count` with `NEW_SKILL_VALUE` (1).
- * A character saved before a skill was added gets 1, and the next save writes its row;
- * rows above `count` (a skill since removed from content) are ignored and kept.
- */
-export function loadSkills(db: Db, id: string, count = content().classes.skills.length): number[] {
-  const skills = Array<number>(count).fill(NEW_SKILL_VALUE);
-  const rows = db
-    .query<{ skill: number; value: number }, [string]>(
-      "SELECT skill, value FROM character_skills WHERE character_id = ? ORDER BY skill",
+/** A character's saved skill values by skill key, including skills the content no longer lists. */
+export function loadSkillValues(db: Db, id: string): SkillValues {
+  const out: SkillValues = {};
+  for (const r of db
+    .query<{ skill: string; value: number }, [string]>(
+      "SELECT skill, value FROM character_skills WHERE character_id = ?",
     )
-    .all(id);
-  for (const r of rows) {
-    if (r.skill >= 1 && r.skill <= count) {
-      skills[r.skill - 1] = r.value;
-    }
+    .all(id)) {
+    out[r.skill] = r.value;
   }
-  return skills;
+  return out;
+}
+
+/**
+ * Load a character's skills in the content's order (`SKILL_KEYS`), each by its key. A skill the
+ * character has no row for (added to content since it was saved) starts at `NEW_SKILL_VALUE` (1),
+ * and the next save writes its row; rows of skills since removed from content are kept, unread.
+ */
+export function loadSkills(db: Db, id: string): number[] {
+  return skillsFromKeys(loadSkillValues(db, id));
 }
 
 export function loadBag(db: Db, id: string): { slot: number; item: string; qty: number }[] {

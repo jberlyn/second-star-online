@@ -387,29 +387,52 @@ Reusing an existing `effect` is data-only. Creating a brand-new effect requires 
 `packages/data/content/classes.json` defines:
 
 - `classes`: each class's `code`, `name`, optional `statBonus` and `promotion` (its `skillGrants`, and `statChanges`, an SPmax floor applied before the grants);
-- `skills` (1-based `index` and `skill`) and `skillPanel` (`name` and 1-based `index` shown on the Skills page);
-- `creation`: the new-character screen's data, including `creation.startingSkills["1"|"2"|"3"].values`, the starting skills of each starting class;
+- `skills`: each skill's `skill` (its permanent key), an optional `display` name, and `hidden` for a skill the Skills page leaves out;
+- `startClasses`: the classes the creation screen offers, in its order, each with its class `code`, an optional `label` (the class's name when absent) and its starting `skills` by key;
+- `creation`: the rest of the new-character record (the starting gold, hunger, profile text and so on);
 - `skillGain.weaponSkills`: which skills a kill trains for each weapon (`weapon`, `match`, `skills`).
 
-- Shorter `startingSkills` `values` arrays are padded to `skills.length` with `NEW_SKILL_VALUE` (`1`).
-- Existing characters saved with fewer skill rows load `1` for any newly added skill and persist it on their next save.
-- Which skills a weapon trains is data (`classes.json` `skillGain.weaponSkills`), as are the gathering and crafting gain rows (`gather.json` `skillGain`), but each skill's roll is a handler in code (`RULES` in `packages/shared/src/rules/progression/skillgain.ts`, the cast gains in `packages/shared/src/rules/spells/spells.ts`, and the gathering and crafting systems that name their skill). So an added skill rises only via an `item-rules.json` `use.skillBooks` row, a promotion's `skillGrants`, or code.
+How skills behave:
+
+- **Saved by key.** A character stores each skill's value under its `skill` key, so skills can be added, removed or reordered at any time. A character who has never had a skill starts it at `1` (`NEW_SKILL_VALUE`), and their next save writes it. A removed skill's values stay saved, and come back if the skill returns. Two skills whose keys read the same with case and spaces ignored (`MartialArts` and `Martial Arts`) are refused, because the rules find skills that way.
+- **Shown by `display`.** The Skills page lists every skill without `hidden`, in the order of `skills`, under its `display` name (the key when absent). The same name is used in "You have advanced in the art of …!" and in the character editor. Classic hides Meditation, Terrain Navigating and Item Identification, as 1.6 did.
+- **Starting values by key.** A start class names only the skills it starts above 1. The creation screen draws one radio per start class in the space 1.6 gave its three; more than three scroll there.
+- Which skills a weapon trains is data (`classes.json` `skillGain.weaponSkills`), as are the gathering and crafting gain rows (`gather.json` `skillGain`), but each skill's roll is a handler in code (`RULES` in `packages/shared/src/rules/progression/skillgain.ts`, the cast gains in `packages/shared/src/rules/spells/spells.ts`, and the gathering and crafting systems). So an added skill rises only via an `item-rules.json` `use.skillBooks` row, a promotion's `skillGrants`, or code.
+- The skills the engine reads for a mechanic (parrying, the crafts and so on) are named in `bindings.json`, below.
 - A class's `statBonus` (for example `{ "dex": 3 }`) is added to the stats of every character in that class while they are in it; change it and every such character follows.
-- A class's `promotion.skillGrants` lists skills (by `skill` name) that the promotion raises to a roll of 1 to 10; a skill already higher keeps its value. `data:build` refuses a name not in `skills`.
+- A class's `promotion.skillGrants` lists skills (by `skill` key) that the promotion raises to a roll of 1 to 10; a skill already higher keeps its value. `data:build` refuses a key not in `skills`.
 
 ### Example: Swimming
 
 Append to `classes.json` `skills`:
 
 ```json
-{ "index": 39, "skill": "Swimming" }
+{ "skill": "Swimming" }
 ```
 
-And to `classes.json` `skillPanel`:
+It shows on the Skills page at once, at 1 for everyone. To have Fighters start at 10, add it to their start class:
 
 ```json
-{ "name": "Swimming", "index": 39 }
+{ "code": 1, "skills": { "Slash": 20, "Thrust": 20, "Swimming": 10 } }
 ```
+
+## Bindings (`bindings.json`)
+
+`packages/data/content/bindings.json` names the content the engine needs for its mechanics, so no mechanic depends on a 1.6 name in code (issue #37). Every binding is optional: one a world leaves out turns its mechanic off.
+
+`skills` binds the skills the engine reads, by skill key:
+
+| Binding | What reads it | Unbound |
+|---|---|---|
+| `parry`, `block` | the dodge rolls against player and monster hits, and their gains | no parrying or blocking: no roll is made |
+| `archery`, `martialArts` | the gains on an arrow shot (`martialArts` with a crossbow) | that gain never rolls |
+| `staffFighting` | the power of the fireballs a staff swings | the plain `1 + random(3)` |
+| `magery` | the tiers of every cast's base power, and the Magery gain | no Magery tiers; no gain |
+| `axeFighting`, `mining` | the swing-speed ladders of axes and mining tools | the tool swings at its plain speed |
+| `fishing` | the catch bands, the gain and the cast itself | no fishing: the pole is only a weapon |
+| `blacksmithing`, `cooking`, `alchemy`, `carpentry` | the four crafts' timers, results and gains | that craft's button does nothing |
+
+A binding that names a skill which does not exist is refused at publish. Classic binds each to its 1.6 skill. Other skills the engine still reads by name (the spell schools, and the kill-gain handlers in `RULES`) move to content in later stages of #37.
 
 ## Art and sound
 

@@ -54,7 +54,7 @@ const editable = (): EditableCharacter => ({
   dex: 10,
   int: 10,
   wis: 10,
-  skills: [1, 1, 1],
+  skills: { Slash: 1, Thrust: 1, Parry: 1 },
   hunger: 30000,
   faction: 0,
   factionCount: 0,

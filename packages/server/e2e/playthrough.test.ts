@@ -34,6 +34,7 @@ import {
   type EditorMap,
   LEVEL_UP_TEXT,
   type ServerMsg,
+  SKILL_KEYS,
   skillIndex,
   TEXT,
   WEB_TEXT,
@@ -830,7 +831,7 @@ describe("the playthrough", () => {
     const setSkill = (name: string, skill: string, value: number) =>
       server.db.run(
         "INSERT OR REPLACE INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)",
-        [idOf(server.db, name), skillIndex(skill) + 1, value],
+        [idOf(server.db, name), SKILL_KEYS[skillIndex(skill)] ?? skill, value],
       );
     setSkill("Alice", "Lumberjacking", 5);
     setSkill("Carol", "Fishing", 20);
@@ -1782,7 +1783,7 @@ describe("the playthrough", () => {
     await logout(alice);
     server.db.run(
       "INSERT OR REPLACE INTO character_skills (character_id, skill, value) VALUES (?, ?, 30)",
-      [idOf(server.db, "Alice"), skillIndex("Slash") + 1],
+      [idOf(server.db, "Alice"), SKILL_KEYS[skillIndex("Slash")] ?? "Slash"],
     );
     server.db.run(
       "INSERT INTO inventory (id, character_id, slot, item, qty) VALUES (?, ?, 15, 'Fire Orb', 1)",

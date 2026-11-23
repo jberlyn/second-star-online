@@ -69,7 +69,7 @@ async function scene(npc = "Amber") {
     .get(id);
   setRole(db, acc?.account_id ?? "", "administrator", NOW);
   db.run("UPDATE characters SET gold = 150 WHERE id = ?", [id]);
-  db.run("UPDATE character_skills SET value = 30 WHERE character_id = ? AND skill = 1", [id]);
+  db.run("UPDATE character_skills SET value = 30 WHERE character_id = ? AND skill = 'Slash'", [id]);
   g.enter(id, false);
   g.intent(id, { t: "mapReady" });
   g.intent(id, { t: "chat", text: `/roster 1 ${npc}` });

@@ -3,9 +3,12 @@
  * and the exact-name rows (skill gain and attack-power skill blocks) missed the masterworks a
  * repair makes, such as Knight's Sword +1 and Sword of Hope +1.
  */
+
 import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
+
+import { startingSkills } from "../../src/rules/progression/creation.ts";
 
 const { classes: classesData } = classicData;
 
@@ -23,7 +26,7 @@ import { weaponSkillList } from "../../src/rules/progression/skillgain.ts";
 const SWORD = ["Slash", "Thrust", "Swordsmanship", "Fencing"];
 
 function fighter(weapon: string, skills: Record<string, number> = {}): Fighter {
-  const s = [...classesData.creation.startingSkills[1].values];
+  const s = startingSkills(1);
   for (const [name, v] of Object.entries(skills)) {
     s[skillIndex(name)] = v;
   }

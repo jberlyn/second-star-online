@@ -167,13 +167,28 @@ export function occupiedSlots(bag: Bag): number {
 
 // ---- starting a craft ------------------------------------------------------------------------
 
+/** The skill bindings of the four crafts. */
+export type CraftSkill = "blacksmithing" | "cooking" | "alchemy" | "carpentry";
+
+/** Which bound skill each craft reads and trains. */
+export const CRAFT_SKILL: Readonly<Record<CraftKind, CraftSkill>> = {
+  Smith: "blacksmithing",
+  Cook: "cooking",
+  Mix: "alchemy",
+  Build: "carpentry",
+};
+
 /** What a craft button reads (the client's globals in 1.6, the server's state in SSO). */
 export interface CraftView {
   bag: Bag;
   /** `LeftHandE`, `RightHandE`. */
   leftHand: string;
   rightHand: string;
-  skill: (name: string) => number;
+  /**
+   * The value of the skill content binds to a craft (`bindings.json` `skills`), or undefined when
+   * the world binds none: that craft is off, and its button does nothing.
+   */
+  skill: (b: CraftSkill) => number | undefined;
   /** True when the faced tile holds a ground item with exactly this name and you stand still. */
   facing: (station: string) => boolean;
   keyLock: boolean;
@@ -214,6 +229,9 @@ export function startCraft(v: CraftView, slot: number): CraftStartResult {
   // Every button starts with the same two checks: the key lock-out, then the pause between item
   // actions.
   if (!kind || v.keyLock || v.itemPause > 0 || !line) {
+    return none();
+  }
+  if (v.skill(CRAFT_SKILL[kind]) === undefined) {
     return none();
   }
   const item = line.item;
@@ -263,7 +281,7 @@ function startSmith(v: CraftView, item: string): CraftStartResult {
     started: {
       kind: "Smith",
       job: { kind: "Smith", item, chunk },
-      frames: craftTimer("Smith", v.skill("Blacksmithing")),
+      frames: craftTimer("Smith", v.skill("blacksmithing") ?? 0),
     },
   };
 }
@@ -276,7 +294,7 @@ function startCook(v: CraftView, item: string): CraftStartResult {
   if (!stove && !campfire) {
     return none([CRAFT_TEXT.noStove]);
   }
-  const cooking = v.skill("Cooking");
+  const cooking = v.skill("cooking") ?? 0;
   if (cooking < ST.cook.minSkill) {
     return none([CRAFT_TEXT.unskilled]);
   }
@@ -314,7 +332,7 @@ function startMix(v: CraftView, item: string): CraftStartResult {
     started: {
       kind: "Mix",
       job: { kind: "Mix", bottle: item, crystal: sand.crystal, potion: sand.potion },
-      frames: craftTimer("Mix", v.skill("Alchemy")),
+      frames: craftTimer("Mix", v.skill("alchemy") ?? 0),
     },
   };
 }
@@ -326,7 +344,7 @@ function startBuild(v: CraftView, item: string): CraftStartResult {
   if (!lingoEq(v.rightHand, ST.build.tool)) {
     return none([CRAFT_TEXT.noSaw]);
   }
-  const carpentry = v.skill("Carpentry");
+  const carpentry = v.skill("carpentry") ?? 0;
   if (carpentry < ST.build.minSkill) {
     return none([CRAFT_TEXT.unskilledBuild]);
   }

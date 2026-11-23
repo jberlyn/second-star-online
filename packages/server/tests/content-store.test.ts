@@ -17,12 +17,7 @@ import { readPackDir } from "../src/content/packs.ts";
 import { rowDetailOf } from "../src/content/page.ts";
 import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
-import {
-  badKeyForm,
-  nameProblems,
-  referenceProblems,
-  skillProblems,
-} from "../src/content/validate.ts";
+import { badKeyForm, nameProblems, referenceProblems } from "../src/content/validate.ts";
 import {
   contentRows,
   insertPack,
@@ -62,7 +57,7 @@ const classic = readPackDir(RELEASE_PACK_DIRS.classic as string);
 describe("the Classic pack", () => {
   test("loads every dataset and matches its schemas", () => {
     expect(classic.manifest.id).toBe("classic");
-    expect(Object.keys(classic.data).sort()).toHaveLength(16);
+    expect(Object.keys(classic.data).sort()).toHaveLength(17);
   });
 
   test("a server with only Classic installed builds the Classic store unchanged", () => {
@@ -520,26 +515,33 @@ describe("the protocol carries an item's art separately from its key", () => {
 });
 
 describe("review fixes", () => {
-  test("a skill keeps its index, indices run 1 to n, and a trained skill cannot be removed", () => {
+  test("skills may be added or removed; two spelled alike, or a binding to no skill, are refused", () => {
     const { service } = setup();
-    const skills = service.publishedContent().classes.skills;
-    const ref = { dataset: "classes" as const, part: "skills", key: skills[0]?.skill as string };
-    service.draftSet(ADMIN, ref, "set", { ...skills[0], index: skills[1]?.index });
-    expect(service.check().some((p) => p.message.includes("cannot change"))).toBe(true);
-    expect(service.check().some((p) => p.message.includes("in index order"))).toBe(true);
-    service.draftDiscard(ref);
-    // Removing a skill: refused (here the classes' starting values already outnumber the skills).
-    const published = service.publishedContent();
-    const without = {
-      ...published,
-      classes: { ...published.classes, skills: published.classes.skills.slice(0, -1) },
-    };
-    expect(skillProblems(without, published.classes.skills).map((p) => p.message)).toContain(
-      "a skill characters have trained cannot be removed",
-    );
-    const added = { dataset: "classes" as const, part: "skills", key: "Swimming" };
-    service.draftSet(ADMIN, added, "set", { index: skills.length + 1, skill: "Swimming" });
+    const skill = (key: string) => ({ dataset: "classes" as const, part: "skills", key });
+    // Characters keep each skill by key, so a skill nothing else names may go.
+    service.draftSet(ADMIN, skill("Meditation"), "remove", null);
+    service.draftSet(ADMIN, skill("Swimming"), "set", { skill: "Swimming" });
     expect(service.check()).toEqual([]);
+    service.draftSet(ADMIN, skill("Heavy arms"), "set", { skill: "Heavy arms" });
+    expect(service.check().map((p) => p.message)).toContain(
+      "its name reads the same as HeavyArms (case and spaces are ignored)",
+    );
+    service.draftDiscard(skill("Heavy arms"));
+    // A skill a binding names cannot go without the binding: unbind it to turn the mechanic off.
+    // (Classic's medals and Bios name Parry too.)
+    const fromBindings = () =>
+      service
+        .check()
+        .filter((p) => p.where === "bindings/skills")
+        .map((p) => p.message);
+    service.draftSet(ADMIN, skill("Parry"), "remove", null);
+    expect(fromBindings()).toEqual(["names a skill that does not exist: Parry"]);
+    const bindings = { dataset: "bindings" as const, part: "skills", key: null };
+    const { parry: _parry, ...unbound } = service.publishedContent().bindings.skills;
+    service.draftSet(ADMIN, bindings, "set", unbound);
+    expect(fromBindings()).toEqual([]);
+    service.draftSet(ADMIN, bindings, "set", { ...unbound, block: "Blok" });
+    expect(fromBindings()).toEqual(["names a skill that does not exist: Blok"]);
   });
 
   test("undo runs every publish check: it cannot strand a reference a later publish made", () => {
@@ -721,9 +723,7 @@ describe("third review fixes", () => {
 
   test("a new skill whose name reads like an existing one (spaces ignored) is refused", () => {
     const { service } = setup();
-    const n = service.publishedContent().classes.skills.length;
     service.draftSet(ADMIN, { dataset: "classes", part: "skills", key: "Martial Arts" }, "set", {
-      index: n + 1,
       skill: "Martial Arts",
     });
     expect(service.check().some((p) => p.message.includes("reads the same as MartialArts"))).toBe(
@@ -985,17 +985,22 @@ describe("council review fixes", () => {
     expect(service.store().casino.slots).toEqual(classic.data.casino?.slots as never);
   });
 
-  test("skills are listed in index order: two new ones drafted out of order are refused", () => {
+  test("skills have no fixed order: two new ones drafted in any order are accepted", () => {
     const { service } = setup();
-    const n = service.publishedContent().classes.skills.length;
-    const skill = (index: number, name: string) =>
+    const skill = (name: string) =>
       service.draftSet(ADMIN, { dataset: "classes", part: "skills", key: name }, "set", {
-        index,
         skill: name,
       });
-    skill(n + 2, "Swimming");
-    skill(n + 1, "Climbing");
-    expect(service.check().some((p) => p.message.includes("in index order"))).toBe(true);
+    skill("Swimming");
+    skill("Climbing");
+    expect(service.check()).toEqual([]);
+    expect(service.publish(ADMIN, seen(service), "").ok).toBe(true);
+    expect(
+      service
+        .store()
+        .classes.skills.slice(-2)
+        .map((s) => s.skill),
+    ).toEqual(["Swimming", "Climbing"]);
   });
 
   test("an attack-power condition is read as combat reads it: an unknown skill is refused", () => {
@@ -1064,23 +1069,37 @@ describe("council review fixes", () => {
     expect(service.draftSet(ADMIN, ref, "set", row).ok).toBe(true);
   });
 
-  test("a release that moves a saved skill stops the start, and its version waits for a start that works", () => {
+  test("a release that reorders the skills starts: characters keep their skills by key", () => {
+    const { db } = setup();
+    const dir = mkdtempSync(join(tmpdir(), "sso-pack-"));
+    cpSync(RELEASE_PACK_DIRS.classic as string, dir, { recursive: true });
+    const file = join(dir, "data", "classes.json");
+    const classes = JSON.parse(readFileSync(file, "utf8"));
+    classes.skills.reverse();
+    writeFileSync(file, JSON.stringify(classes));
+    try {
+      const service = new ContentService({ db, now: () => "x", releasePacks: { classic: dir } });
+      expect(service.store().classes.skills[0]?.skill).toBe("Farming");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a release with two skills spelled alike stops the start, and its version waits for a start that works", () => {
     const { db } = setup();
     const before = installedPacks(db)[0]?.version;
     const dir = mkdtempSync(join(tmpdir(), "sso-pack-"));
     cpSync(RELEASE_PACK_DIRS.classic as string, dir, { recursive: true });
     const file = join(dir, "data", "classes.json");
     const classes = JSON.parse(readFileSync(file, "utf8"));
-    const [s1, s2] = classes.skills;
-    classes.skills[0] = { ...s2, index: 1 };
-    classes.skills[1] = { ...s1, index: 2 };
+    classes.skills.push({ skill: "S lash" });
     writeFileSync(file, JSON.stringify(classes));
     const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
     writeFileSync(join(dir, "manifest.json"), JSON.stringify({ ...m, version: "9.0.0" }));
     try {
       expect(
         () => new ContentService({ db, now: () => "x", releasePacks: { classic: dir } }),
-      ).toThrow(/move skills characters are saved with/);
+      ).toThrow(/skills the rules cannot tell apart/);
       expect(installedPacks(db)[0]?.version).toBe(before);
     } finally {
       rmSync(dir, { recursive: true, force: true });

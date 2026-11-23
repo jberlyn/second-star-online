@@ -2,14 +2,23 @@
  * Character creation: the rules the original creation screen enforced, run on the server, plus the
  * starting record.
  */
+import type { StartClassRow } from "@secondstaronline/data";
+
 import { content, onContent } from "../../content/store.ts";
-import { NEW_SKILL_VALUE } from "../core/fighter.ts";
+import { skillsFromKeys } from "../core/fighter.ts";
 
 export type Sex = 1 | 2;
-export type StartClass = 1 | 2 | 3;
 
-/** Class codes offered on the screen: Fighter 1, Mage 2, Ranger 3. */
-export let START_CLASSES: Readonly<Record<StartClass, string>>;
+/**
+ * The classes offered on the creation screen, in its order, each with the name it shows (the
+ * start class's `label`, else the class's name). Classic offers Fighter 1, Ranger 3 and Mage 2.
+ */
+export let START_CLASSES: readonly (StartClassRow & { label: string })[] = [];
+
+/** The start class that creates class `code`, or undefined when the screen does not offer it. */
+export function startClass(code: number): (StartClassRow & { label: string }) | undefined {
+  return START_CLASSES.find((c) => c.code === code);
+}
 
 /**
  * Heads the screen can show. Choosing Male shows Head1 and Female shows Head2. The right arrow
@@ -59,7 +68,7 @@ export interface CreationChoice extends SpentStats {
   name: string;
   sex: Sex;
   head: number;
-  classCode: StartClass;
+  classCode: number;
 }
 
 /**
@@ -128,7 +137,7 @@ export function creationError(c: CreationChoice): string | null {
   if (!HEADS_BY_SEX[c.sex].includes(c.head)) {
     return "That head is not available.";
   }
-  if (!(c.classCode in START_CLASSES)) {
+  if (!startClass(c.classCode)) {
     return "Choose a class.";
   }
   return statsError(c);
@@ -139,7 +148,7 @@ export interface StartingCharacter {
   name: string;
   sex: Sex;
   head: number;
-  classCode: StartClass;
+  classCode: number;
   level: number;
   hp: number;
   hpMax: number;
@@ -148,7 +157,7 @@ export interface StartingCharacter {
   exp: number;
   expNeeded: number;
   stats: SpentStats;
-  /** One value per skill, skill index 1.. (the classes data's `skills`). */
+  /** One value per skill, in the order of the classes data's `skills`. */
   skills: number[];
   gold: number;
   profile: string;
@@ -158,13 +167,12 @@ export interface StartingCharacter {
   bag: { item: string; qty: number }[];
 }
 
-/** Pad a class's starting skill list to `count` with `NEW_SKILL_VALUE`. */
-export function padStartingSkills(values: readonly number[], count: number): number[] {
-  const out = values.slice(0, count);
-  while (out.length < count) {
-    out.push(NEW_SKILL_VALUE);
-  }
-  return out;
+/**
+ * The skills a start class begins with, in the content's order: its `skills` by key, every other
+ * skill `NEW_SKILL_VALUE` (1).
+ */
+export function startingSkills(code: number): number[] {
+  return skillsFromKeys(startClass(code)?.skills ?? {});
 }
 
 /**
@@ -189,10 +197,7 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     exp: 0,
     expNeeded: 30,
     stats: { str: c.str, sta: c.sta, int: c.int, wis: c.wis, dex: c.dex },
-    skills: padStartingSkills(
-      content().classes.creation.startingSkills[c.classCode].values,
-      content().classes.skills.length,
-    ),
+    skills: startingSkills(c.classCode),
     gold: other.gold,
     profile: other.profile,
     hunger: other.hunger,
@@ -205,5 +210,9 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
 }
 
 onContent((c) => {
-  START_CLASSES = c.classes.creation.classes;
+  START_CLASSES = c.classes.startClasses.map((sc) => ({
+    ...sc,
+    label:
+      sc.label ?? c.classes.classes.find((k) => k.code === sc.code)?.name ?? `Class ${sc.code}`,
+  }));
 });

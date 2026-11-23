@@ -6,6 +6,7 @@
  */
 import {
   boltForm,
+  boundSkillValue,
   CAST_DELAY,
   CAST_TEXT,
   cannonballName,
@@ -27,7 +28,7 @@ import {
   MAP_WIDTH,
   type Rng,
   rectsIntersect,
-  skillIndex,
+  skillValue,
   spCost,
   spellPower,
   spriteRect,
@@ -289,7 +290,7 @@ function planSummon(
     return { refuse: false, place: null };
   }
   const monster =
-    spec.skilled && (p.char.skills[skillIndex(spec.skilled.skill)] ?? 0) > spec.skilled.above
+    spec.skilled && skillValue(p.char.skills, spec.skilled.skill) > spec.skilled.above
       ? spec.skilled.monster
       : spec.monster;
   return { refuse: false, place: { monster, at } };
@@ -363,7 +364,7 @@ export function freeFireballs(
  */
 export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
   const weapon = p.char.equip.weapon;
-  const staff = p.char.skills[skillIndex("StaffFighting")] ?? 0;
+  const staff = boundSkillValue(p.char.skills, "staffFighting");
   const me = playerLoc(p);
   const send = (power: number) =>
     queueCast(room, {

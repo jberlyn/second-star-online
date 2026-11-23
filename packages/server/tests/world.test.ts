@@ -3,13 +3,19 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
   blankMap,
+  buildContentStore,
+  type ContentData,
   EDGE_BLOCKED_TEXT,
   footWalkGrid,
   inGameSchema,
+  installContent,
   mapName,
   type ServerMsg,
+  SKILL_KEYS,
+  skillIndex,
   startingCharacter,
 } from "@secondstaronline/shared";
 
@@ -261,15 +267,6 @@ describe("saving skills (open skill count)", () => {
   }
   const changes = () => (db.query("SELECT total_changes() AS n").get() as { n: number }).n;
 
-  test("a longer skill list inserts the missing rows", () => {
-    const { id, progress } = newCharacter();
-    const before = loadSkills(db, id);
-    saveProgress(db, id, { ...progress, skills: [...before, 7] }, NOW);
-    const after = loadSkills(db, id, before.length + 1);
-    expect(after).toHaveLength(before.length + 1);
-    expect(after.at(-1)).toBe(7);
-  });
-
   test("changed values are updated without adding rows; unchanged ones are not rewritten", () => {
     const { id, progress } = newCharacter();
     const before = loadSkills(db, id);
@@ -289,21 +286,81 @@ describe("saving skills (open skill count)", () => {
     expect(changes() - n).toBe(1 + 2);
   });
 
-  test("a character saved with 38 skill rows loads a 39th skill as 1, and the next save writes its row", () => {
+  /** Installs Classic with its skills changed, runs `fn`, then puts Classic back. */
+  const withSkills = (change: (skills: { skill: string }[]) => void, fn: () => void) => {
+    const d = structuredClone(classicData) as ContentData;
+    change(d.classes.skills);
+    installContent(buildContentStore(d));
+    try {
+      fn();
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  };
+  const rowsOf = (id: string) =>
+    Object.fromEntries(
+      (
+        db.query("SELECT skill, value FROM character_skills WHERE character_id = ?").all(id) as {
+          skill: string;
+          value: number;
+        }[]
+      ).map((r) => [r.skill, r.value]),
+    );
+
+  test("skills are saved under their keys", () => {
+    const { id } = newCharacter();
+    const rows = rowsOf(id);
+    expect(Object.keys(rows)).toHaveLength(SKILL_KEYS.length);
+    expect([rows.Slash, rows.Thrust, rows.Magery, rows.fire]).toEqual([20, 20, 1, 1]);
+  });
+
+  test("a skill added to content loads as 1, and the next save writes its row", () => {
     const { id, progress } = newCharacter();
-    const before = loadSkills(db, id);
-    expect(before).toHaveLength(38);
-    const loaded39 = loadSkills(db, id, 39);
-    expect(loaded39).toHaveLength(39);
-    expect(loaded39[38]).toBe(1);
-    saveProgress(db, id, { ...progress, skills: loaded39 }, NOW);
-    const rowCount = (
-      db.query("SELECT COUNT(*) AS n FROM character_skills WHERE character_id = ?").get(id) as {
-        n: number;
-      }
-    ).n;
-    expect(rowCount).toBe(39);
-    expect(loadSkills(db, id, 39)[38]).toBe(1);
+    withSkills(
+      (skills) => skills.splice(3, 0, { skill: "Swimming" }),
+      () => {
+        const loaded = loadSkills(db, id);
+        expect(loaded).toHaveLength(classicData.classes.skills.length + 1);
+        expect(loaded[3]).toBe(1);
+        // Everything after it moved along, and kept its own value.
+        expect(loaded[skillIndex("Slash")]).toBe(20);
+        saveProgress(db, id, { ...progress, skills: loaded.map((v, i) => (i === 3 ? 7 : v)) }, NOW);
+        expect(rowsOf(id).Swimming).toBe(7);
+        expect(loadSkills(db, id)[3]).toBe(7);
+      },
+    );
+  });
+
+  test("a removed skill keeps its row, and its value is back when the skill returns", () => {
+    const { id, progress } = newCharacter();
+    const classic = loadSkills(db, id);
+    saveProgress(db, id, { ...progress, skills: classic.map((v, i) => (i === 0 ? 33 : v)) }, NOW);
+    withSkills(
+      (skills) => skills.splice(0, 1),
+      () => {
+        const loaded = loadSkills(db, id);
+        expect(loaded).toHaveLength(classic.length - 1);
+        expect(loaded[skillIndex("Thrust")]).toBe(20);
+        // A save leaves the dropped skill's row as it was.
+        saveProgress(db, id, { ...progress, skills: loaded.map(() => 2) }, NOW);
+        expect(rowsOf(id).Slash).toBe(33);
+      },
+    );
+    expect(loadSkills(db, id)[skillIndex("Slash")]).toBe(33);
+    expect(loadSkills(db, id)[skillIndex("Thrust")]).toBe(2);
+  });
+
+  test("reordered skills load by key, not by position", () => {
+    const { id } = newCharacter();
+    withSkills(
+      (skills) => skills.reverse(),
+      () => {
+        const loaded = loadSkills(db, id);
+        expect(SKILL_KEYS[0]).toBe("Farming");
+        expect(loaded[skillIndex("Slash")]).toBe(20);
+        expect(loaded[0]).toBe(1);
+      },
+    );
   });
 });
 

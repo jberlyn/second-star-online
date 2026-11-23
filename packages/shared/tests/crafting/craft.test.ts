@@ -60,7 +60,8 @@ function view(over: Partial<CraftView> & { skills?: Record<string, number> }): C
     bag: emptyBag(),
     leftHand: "NOTHING",
     rightHand: "NOTHING",
-    skill: (s) => skills[s] ?? 0,
+    // The view reads a craft's bound skill: Classic binds Cooking to Cooking and so on.
+    skill: (b) => skills[classicData.bindings.skills[b] ?? ""] ?? 0,
     facing: () => false,
     keyLock: false,
     itemPause: 0,
@@ -256,6 +257,14 @@ describe("Cook", () => {
     expect(bag[0]).toEqual({ item: "Trout", qty: 1 });
     const fire = startCraft(view({ bag, facing: at("Campfire"), skills: { Cooking: 1 } }), 1);
     expect(fire.started?.frames).toBe(400);
+  });
+
+  test("a world that binds no cooking skill has no cooking: the button does nothing", () => {
+    const bag = bagOf(["Trout", 1]);
+    const v = view({ bag, facing: at("Stove"), skills: { Cooking: 50 } });
+    const unbound = { ...v, skill: (b: string) => (b === "cooking" ? undefined : 50) };
+    expect(startCraft(unbound, 1)).toEqual({ lines: [], started: null });
+    expect(startCraft(v, 1).started).not.toBeNull();
   });
 
   test("bug fixed: a burned meal uses up its raw food and makes its burned form", () => {

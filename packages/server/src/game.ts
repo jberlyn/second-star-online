@@ -30,6 +30,7 @@ import {
   endMs,
   factionIdOf,
   findNewQuest,
+  findSkillIndex,
   footWalkGrid,
   HUB_EDITS,
   HUB_TEXT,
@@ -63,8 +64,11 @@ import {
   rolesError,
   roleToData,
   type ServerMsg,
+  SKILL_KEYS,
+  type SkillValues,
   savedSpellbook,
   shipWalkGrid,
+  skillsFromKeys,
   sortFaction,
   startingCharacter,
   TEXT,
@@ -117,9 +121,11 @@ import {
   findCharacterById,
   insertCharacter,
   loadSkills,
+  loadSkillValues,
   saveProfileText,
   saveProgress,
   savePromotion,
+  saveSkillValues,
   saveVehicle,
 } from "./persistence/characters.ts";
 import { chatLogLines, insertChatLog, pruneChatLog } from "./persistence/chatlog.ts";
@@ -568,6 +574,42 @@ export function createGame(deps: GameDeps): Game {
   const { db, send, isoNow, rng } = deps;
   const minute = deps.minute ?? (() => new Date().getUTCMinutes());
   let lastMinute = minute();
+  /** The skill keys online characters' skill lists are in (`SKILL_KEYS` when they were built). */
+  let skillKeys = SKILL_KEYS;
+  /**
+   * Puts every online character's skills (and the copies the activity log and the medal check
+   * compare against) in the order of the installed store's skills, by key. A skill the store
+   * dropped has its value written, so it is there if the skill returns; a skill the store added
+   * takes the value saved for it, else `NEW_SKILL_VALUE`, as a login does.
+   */
+  const followSkills = () => {
+    const was = skillKeys;
+    skillKeys = SKILL_KEYS;
+    if (was.length === skillKeys.length && was.every((k, i) => k === skillKeys[i])) {
+      return;
+    }
+    const byKey = (list: readonly number[]): SkillValues =>
+      Object.fromEntries(was.map((k, i) => [k, list[i] ?? NEW_SKILL_VALUE]));
+    const dropped = was.filter((k) => findSkillIndex(k) === undefined);
+    for (const o of world.players.values()) {
+      const values = byKey(o.char.skills);
+      if (dropped.length > 0) {
+        saveSkillValues(db, o.id, Object.fromEntries(dropped.map((k) => [k, values[k] ?? 0])));
+      }
+      const saved = loadSkillValues(db, o.id);
+      const now = skillsFromKeys(values, (k) => saved[k] ?? NEW_SKILL_VALUE);
+      // A new skill reads the same in the copies as on the character, so it logs no gain.
+      const copy = (list: readonly number[]) =>
+        skillsFromKeys(byKey(list), (k) => now[findSkillIndex(k) ?? -1] ?? NEW_SKILL_VALUE);
+      if (o.activityProgress) {
+        o.activityProgress.skills = copy(o.activityProgress.skills);
+      }
+      if (o.awardSkills) {
+        o.awardSkills = copy(o.awardSkills);
+      }
+      o.char.skills = now;
+    }
+  };
   /** Accounts with a `Password=` hash in flight. */
   const passwordBusy = new Set<string>();
   const crashPoint = (label: string) => deps.crashPoint?.(label);
@@ -1375,7 +1417,7 @@ export function createGame(deps: GameDeps): Game {
             expNeeded: a.expNeeded,
           },
           hunger: a.hunger,
-          skills: a.skills,
+          skills: skillsFromKeys(a.skills),
           respawn:
             a.respawn && mapIds.respawn
               ? { mapId: mapIds.respawn, x: a.respawn.x, y: a.respawn.y }
@@ -3088,13 +3130,10 @@ export function createGame(deps: GameDeps): Game {
           restart(f.name);
         }
       }
-      // A skill added by the publish starts at its starting value for everyone online (as a login
-      // pads it), and every sheet is sent again: the Skills tab's rows may have changed.
-      const skillCount = content().classes.skills.length;
+      // Everyone online keeps their skills by key when the publish adds, removes or moves one,
+      // and every sheet is sent again: the Skills tab's rows may have changed.
+      followSkills();
       for (const o of world.players.values()) {
-        while (o.char.skills.length < skillCount) {
-          o.char.skills.push(NEW_SKILL_VALUE);
-        }
         o.lastSheet = "";
       }
       // Setting defaults drawn from content (the Assassin prizes) follow it.

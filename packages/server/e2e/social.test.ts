@@ -41,6 +41,7 @@ import {
   type DeltaEvent,
   type GroundView,
   type ServerMsg,
+  SKILL_KEYS,
   skillIndex,
 } from "@secondstaronline/shared";
 
@@ -774,7 +775,7 @@ describe("friends, bios and medals", () => {
     db.run("UPDATE character_skills SET value = ? WHERE character_id = ? AND skill = ?", [
       value,
       idOf(db, name),
-      skillIndex(skill) + 1,
+      SKILL_KEYS[skillIndex(skill)] ?? skill,
     ]);
 
   beforeAll(async () => {

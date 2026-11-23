@@ -40,7 +40,7 @@ describe("the content store holder", () => {
       d.casino.blackjack.maxBid = 5;
       d.tiles.walkable.push({ code: "Z9" } as never);
       d.items.editorItems.push("Moonblade");
-      d.classes.skills.push({ index: 99, skill: "Swimming" });
+      d.classes.skills.push({ skill: "Swimming" });
       const first = d.tiles.catalogue[0] as { code: string; name?: string };
       first.name = "Renamed tile";
     });
@@ -49,7 +49,7 @@ describe("the content store holder", () => {
     expect(BJ_MAX_BID).toBe(5);
     expect(WALK_WHITELIST).toContain("Z9\r");
     expect(EDITOR_ITEMS.at(-1)).toBe("Moonblade");
-    expect(skillIndex("Swimming")).toBe(98);
+    expect(skillIndex("Swimming")).toBe(classicData.classes.skills.length);
     expect(tileName(classicData.tiles.catalogue[0]?.code as string)).toBe("Renamed tile");
     installContent(classic);
     expect(BJ_MAX_BID).toBe(classicData.casino.blackjack.maxBid);

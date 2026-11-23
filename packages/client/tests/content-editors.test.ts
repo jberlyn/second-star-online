@@ -20,7 +20,7 @@ test("the character editor's skills, classes and item suggestions follow a publi
   const before = skillInputs();
   expect(before).toBe(classicData.classes.skills.length);
   const next = structuredClone(classicData) as ContentData;
-  next.classes.skills.push({ index: next.classes.skills.length + 1, skill: "Swimming" });
+  next.classes.skills.push({ skill: "Swimming" });
   next.items.items.push({ name: "Moonblade", icon: null });
   installContent(buildContentStore(next, "p1"));
   expect(skillInputs()).toBe(before + 1);

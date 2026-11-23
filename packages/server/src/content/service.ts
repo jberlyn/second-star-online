@@ -44,10 +44,8 @@ import {
   publishById,
   publishesAfter,
   recentPublishes,
-  recordSkills,
   type StoredContentRow,
   type StoredPublish,
-  savedSkills,
   setPackVersion,
   setPublishCleanup,
   upsertContentRow,
@@ -437,16 +435,11 @@ export class ContentService {
           .join("\n")}`,
       );
     }
-    // Characters are saved with each skill's index: a release that would move or drop a skill
-    // that has been live stops the server, before anything plays with the wrong skills.
-    const saved = savedSkills(this.db);
-    const skills = skillProblems(
-      this.published,
-      saved.length > 0 ? saved : this.published.classes.skills,
-    );
+    // Two skills spelled alike would hide one another from the rules.
+    const skills = skillProblems(this.published);
     if (skills.length > 0) {
       throw new Error(
-        `the installed packs and the operator's changes move skills characters are saved with:\n${skills
+        `the installed packs and the operator's changes have skills the rules cannot tell apart:\n${skills
           .map((p) => `  ${p.where}: ${p.message}`)
           .join("\n")}`,
       );
@@ -454,13 +447,12 @@ export class ContentService {
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
-    // Only a start that got this far records the pack versions and the live skills, so a start
-    // that fails still says "updated from" the next time.
+    // Only a start that got this far records the pack versions, so a start that fails still says
+    // "updated from" the next time.
     this.db.transaction(() => {
       for (const u of updates) {
         setPackVersion(this.db, u.id, u.name, u.version);
       }
-      recordSkills(this.db, this.published.classes.skills);
     })();
     for (const u of updates) {
       // The first start after the migration records the version quietly; a release that brings
@@ -908,7 +900,6 @@ export class ContentService {
       this.npcSavesAfter(actions).flatMap((f) =>
         f.text === null ? [] : [{ npc: f.npc, text: f.text }],
       ),
-      savedSkills(this.db),
     );
     return problems.length > 0 ? problems : this.installProblems(next);
   }
@@ -936,7 +927,6 @@ export class ContentService {
   /** Rebuilds the published store from the database and swaps it in. */
   private rebuild(restoring = false): void {
     this.published = applyRows(this.packData, contentRows(this.db).map(toLayer));
-    recordSkills(this.db, this.published.classes.skills);
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);

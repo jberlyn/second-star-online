@@ -26,6 +26,7 @@ import npcsData from "../test-fixtures/npc-expectations.json";
 
 const CONTENT_DIR = resolve(import.meta.dir, "../content");
 
+import { bindingsDataSchema } from "../schema/bindings.ts";
 import { churchMapDataSchema } from "../schema/church-map.ts";
 import { classesDataSchema } from "../schema/classes.ts";
 import { itemRulesDataSchema } from "../schema/item-rules.ts";
@@ -181,18 +182,19 @@ describe("content files (packages/data/content/)", () => {
     }
   });
 
-  test("a skill added to classes.json can have fewer starting values (padded with 1), and classes refuse more starting values than skills", () => {
+  test("a skill can be added to classes.json, and a start class may only name skills that exist", () => {
     const dir = mkdtempSync(join(tmpdir(), "sso-content-skills-"));
     try {
       cpSync(CONTENT_DIR, dir, { recursive: true });
       const file = join(dir, "classes.json");
       const classes = JSON.parse(readFileSync(file, "utf8"));
-      classes.skills.push({ index: classes.skills.length + 1, skill: "Tinkering" });
+      classes.skills.push({ skill: "Tinkering" });
+      classes.startClasses[0].skills.Tinkering = 5;
       writeFileSync(file, JSON.stringify(classes));
       expect(renderClassicPack(dir).files.get("data/classes.json")).toContain("Tinkering");
-      classes.creation.startingSkills["1"].values.push(1, 1);
+      classes.startClasses[0].skills.Juggling = 5;
       writeFileSync(file, JSON.stringify(classes));
-      expect(() => renderClassicPack(dir)).toThrow(/more starting values/);
+      expect(() => renderClassicPack(dir)).toThrow(/Juggling is not in skills/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -571,10 +573,16 @@ describe("monsters, NPCs and tiles", () => {
     expect(names.slice(-2)).toEqual(["Radar", "Haste"]);
   });
 
-  test("classes refuse more starting values than skills", () => {
+  test("classes refuse a start class of no class", () => {
     const bad = structuredClone(classesData);
-    bad.creation.startingSkills["1"].values.push(1);
+    bad.startClasses.push({ code: 999, skills: {} });
     expect(classesDataSchema.safeParse(bad).success).toBe(false);
+  });
+
+  test("bindings refuse a binding the engine does not read", () => {
+    const bad = { skills: { ...classicData.bindings.skills, juggling: "Slash" } };
+    expect(bindingsDataSchema.safeParse(bad).success).toBe(false);
+    expect(bindingsDataSchema.safeParse({ skills: {} }).success).toBe(true);
   });
 
   test("spells refuse a new spell whose effect is its own unimplemented name", () => {

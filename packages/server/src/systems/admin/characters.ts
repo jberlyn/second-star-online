@@ -32,6 +32,7 @@ import {
   type ModerationLogRow,
   type ModerationRecord,
   type Role,
+  skillsByKey,
 } from "@secondstaronline/shared";
 
 import { savedGold } from "../casino/blackjack.ts";
@@ -176,7 +177,7 @@ export function liveSheet(
     sp: c.vitals.sp,
     spMax: c.vitals.spMax,
     stats: statsOf5(c.stats),
-    skills: [...c.skills],
+    skills: skillsByKey(c.skills),
     hunger: c.hunger,
     faction: c.faction.id,
     factionCount: c.factionCount,
@@ -212,7 +213,7 @@ export function storedSheet(world: World, s: StoredCharacter): CharacterSheet {
     sp: r.vitals.sp,
     spMax: r.vitals.spMax,
     stats: statsOf5(r.stats),
-    skills: [...s.skills],
+    skills: skillsByKey(s.skills),
     hunger: r.hunger,
     faction: r.faction.id,
     factionCount: r.faction.count,

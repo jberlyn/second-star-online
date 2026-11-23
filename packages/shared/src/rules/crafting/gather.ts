@@ -6,7 +6,7 @@
 import type { GatherTool, SkillGainRule } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
-import { type ContentStore, onContent } from "../../content/store.ts";
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
 import type { Facing } from "../movement/movement.ts";
 
@@ -270,7 +270,7 @@ export function castLine(
     fish = fishFor(skill);
     left -= 1;
   }
-  const gained = left > 0 && rollSkillGain("Fishing", skill, rng);
+  const gained = left > 0 && rollSkillGain(content().bindings.skills.fishing ?? "", skill, rng);
   return { fish, gained, antiMacro: left };
 }
 

@@ -127,30 +127,15 @@ export function keyProblems(
 }
 
 /**
- * The skill rules: a character's saved skills are a list read by each skill's `index`, so the
- * skills are listed in index order, 1 to the number of skills; a skill characters have saved
- * (`saved`) keeps its index, and none goes (its saved values would move onto another skill).
+ * The skill rules. Characters save each skill under its key, so skills may be added, removed or
+ * reordered (a removed skill's saved values wait for it to return). The rules find a skill by its
+ * key with case and spaces ignored ("Martial Arts" is MartialArts), so two skills may not share
+ * that spelling: one would hide the other.
  */
-export function skillProblems(
-  next: ContentData,
-  saved: readonly { skill: string; index: number }[],
-): ContentProblem[] {
+export function skillProblems(next: ContentData): ContentProblem[] {
   const out: ContentProblem[] = [];
-  const skills = next.classes.skills;
-  for (let i = 1; i <= skills.length; i++) {
-    // Listed in index order too: the character editor and sheet show a skill by its position.
-    if (skills[i - 1]?.index !== i) {
-      out.push({
-        where: "classes/skills",
-        message: `the skills must be listed in index order, 1 to ${skills.length}, with none missing or repeated (${i} is not ${i === 1 ? "first" : `after ${i - 1}`})`,
-      });
-      break;
-    }
-  }
-  // The rules find a skill by its name with case and spaces ignored ("Martial Arts" is
-  // MartialArts), so two skills may not share that spelling: the later would take the other's slot.
   const spelled = new Map<string, string>();
-  for (const s of skills) {
+  for (const s of next.classes.skills) {
     const other = spelled.get(skillNorm(s.skill));
     if (other !== undefined) {
       out.push({
@@ -159,20 +144,6 @@ export function skillProblems(
       });
     }
     spelled.set(skillNorm(s.skill), s.skill);
-  }
-  for (const before of saved) {
-    const now = skills.find((s) => s.skill.toLowerCase() === before.skill.toLowerCase());
-    if (!now) {
-      out.push({
-        where: `classes/skills/${before.skill}`,
-        message: "a skill characters have trained cannot be removed",
-      });
-    } else if (now.index !== before.index) {
-      out.push({
-        where: `classes/skills/${before.skill}`,
-        message: `its index is ${before.index} in every saved character and cannot change`,
-      });
-    }
   }
   return out;
 }
@@ -432,8 +403,9 @@ export function referencesOf(data: ContentData): Reference[] {
       }
     });
   }
-  // Skill names written in other rows: `skillIndex` throws on a name it does not know, so a typo
-  // would fail every tick that reads it. An empty name is a reference too: the rules look it up
+  // Skill names written in other rows: `skillIndex` throws on a name it does not know, and a
+  // binding to no skill turns its mechanic off, so a typo would fail every tick that reads it or
+  // quietly switch a mechanic off. An empty name is a reference too: the rules look it up
   // all the same, and find nothing. Skills are never cleaned up, so these carry no drop.
   const skill = (row: RowRef, path: JsonPath, name: unknown) => {
     if (typeof name === "string") {
@@ -450,6 +422,18 @@ export function referencesOf(data: ContentData): Reference[] {
     if (typeof stat === "string" && stat !== "HPmax" && stat !== "SPmax") {
       skill(row, ["promotion", "requirement", "stat"], stat);
     }
+  }
+  for (const sc of data.classes.startClasses) {
+    const row: RowRef = { dataset: "classes", part: "startClasses", key: String(sc.code) };
+    for (const name of Object.keys(sc.skills)) {
+      skill(row, ["skills", name], name);
+    }
+  }
+  // A binding may be left out (its mechanic is off), but one that names a skill must name a real
+  // one.
+  const skillBindings = section("bindings", "skills");
+  for (const [b, name] of Object.entries(data.bindings.skills)) {
+    skill(skillBindings, [b], name);
   }
   const skillGain = section("classes", "skillGain");
   data.classes.skillGain.weaponSkills.forEach((w, i) => {
@@ -636,7 +620,6 @@ export function checkStore(
   published: ContentData,
   packKeys: Parameters<typeof keyProblems>[1],
   npcSaves: readonly NpcSave[] = [],
-  publishedSkills: readonly { skill: string; index: number }[] = published.classes.skills,
 ): ContentProblem[] {
   const schema = schemaProblems(next);
   if (schema.length > 0) {
@@ -644,7 +627,7 @@ export function checkStore(
   }
   return [
     ...keyProblems(next, packKeys),
-    ...skillProblems(next, publishedSkills),
+    ...skillProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

@@ -354,451 +354,160 @@
   ],
   "skills": [
     {
-      "index": 1,
       "skill": "Slash"
     },
     {
-      "index": 2,
       "skill": "Thrust"
     },
     {
-      "index": 3,
       "skill": "Parry"
     },
     {
-      "index": 4,
-      "skill": "HeavyArms"
+      "skill": "HeavyArms",
+      "display": "Heavy Arms"
     },
     {
-      "index": 5,
-      "skill": "AxeFighting"
+      "skill": "AxeFighting",
+      "display": "Axe Fighting"
     },
     {
-      "index": 6,
       "skill": "Swordsmanship"
     },
     {
-      "index": 7,
       "skill": "Fencing"
     },
     {
-      "index": 8,
       "skill": "Magery"
     },
     {
-      "index": 9,
-      "skill": "BlackArts"
+      "skill": "BlackArts",
+      "display": "Black Arts"
     },
     {
-      "index": 10,
-      "skill": "UnholyCombat"
+      "skill": "UnholyCombat",
+      "display": "Unholy Combat"
     },
     {
-      "index": 11,
       "skill": "Archery"
     },
     {
-      "index": 12,
-      "skill": "Meditation"
+      "skill": "Meditation",
+      "hidden": true
     },
     {
-      "index": 13,
       "skill": "Blessing"
     },
     {
-      "index": 14,
       "skill": "Sorcery"
     },
     {
-      "index": 15,
       "skill": "Musicianship"
     },
     {
-      "index": 16,
-      "skill": "TerrainNavigating"
+      "skill": "TerrainNavigating",
+      "display": "Terrain Navigating",
+      "hidden": true
     },
     {
-      "index": 17,
-      "skill": "StaffFighting"
+      "skill": "StaffFighting",
+      "display": "Staff Fighting"
     },
     {
-      "index": 18,
-      "skill": "ItemIdentification"
+      "skill": "ItemIdentification",
+      "display": "Item Identification",
+      "hidden": true
     },
     {
-      "index": 19,
       "skill": "Illusion"
     },
     {
-      "index": 20,
-      "skill": "HammerWielding"
+      "skill": "HammerWielding",
+      "display": "Hammer Wielding"
     },
     {
-      "index": 21,
-      "skill": "fire"
+      "skill": "fire",
+      "display": "Fire"
     },
     {
-      "index": 22,
       "skill": "Water"
     },
     {
-      "index": 23,
-      "skill": "wind"
+      "skill": "wind",
+      "display": "Wind"
     },
     {
-      "index": 24,
       "skill": "Earth"
     },
     {
-      "index": 25,
       "skill": "Block"
     },
     {
-      "index": 26,
-      "skill": "MartialArts"
+      "skill": "MartialArts",
+      "display": "Martial Arts"
     },
     {
-      "index": 27,
       "skill": "Wizardry"
     },
     {
-      "index": 28,
       "skill": "Wrath"
     },
     {
-      "index": 29,
       "skill": "Punch"
     },
     {
-      "index": 30,
       "skill": "Cooking"
     },
     {
-      "index": 31,
       "skill": "Alchemy"
     },
     {
-      "index": 32,
       "skill": "Lumberjacking"
     },
     {
-      "index": 33,
       "skill": "Carpentry"
     },
     {
-      "index": 34,
       "skill": "Fishing"
     },
     {
-      "index": 35,
       "skill": "Blacksmithing"
     },
     {
-      "index": 36,
       "skill": "Mining"
     },
     {
-      "index": 37,
       "skill": "Shoveling"
     },
     {
-      "index": 38,
       "skill": "Farming"
     }
   ],
-  "skillPanel": [
+  "startClasses": [
     {
-      "name": "Slash",
-      "index": 1
+      "code": 1,
+      "skills": {
+        "Slash": 20,
+        "Thrust": 20
+      }
     },
     {
-      "name": "Thrust",
-      "index": 2
+      "code": 3,
+      "skills": {
+        "Slash": 10,
+        "Magery": 10,
+        "Archery": 20
+      }
     },
     {
-      "name": "Parry",
-      "index": 3
-    },
-    {
-      "name": "Heavy Arms",
-      "index": 4
-    },
-    {
-      "name": "Axe Fighting",
-      "index": 5
-    },
-    {
-      "name": "Swordsmanship",
-      "index": 6
-    },
-    {
-      "name": "Fencing",
-      "index": 7
-    },
-    {
-      "name": "Magery",
-      "index": 8
-    },
-    {
-      "name": "Black Arts",
-      "index": 9
-    },
-    {
-      "name": "Unholy Combat",
-      "index": 10
-    },
-    {
-      "name": "Archery",
-      "index": 11
-    },
-    {
-      "name": "Blessing",
-      "index": 13
-    },
-    {
-      "name": "Sorcery",
-      "index": 14
-    },
-    {
-      "name": "Musicianship",
-      "index": 15
-    },
-    {
-      "name": "Staff Fighting",
-      "index": 17
-    },
-    {
-      "name": "Illusion",
-      "index": 19
-    },
-    {
-      "name": "Hammer Wielding",
-      "index": 20
-    },
-    {
-      "name": "Fire",
-      "index": 21
-    },
-    {
-      "name": "Water",
-      "index": 22
-    },
-    {
-      "name": "Wind",
-      "index": 23
-    },
-    {
-      "name": "Earth",
-      "index": 24
-    },
-    {
-      "name": "Block",
-      "index": 25
-    },
-    {
-      "name": "Martial Arts",
-      "index": 26
-    },
-    {
-      "name": "Wizardry",
-      "index": 27
-    },
-    {
-      "name": "Wrath",
-      "index": 28
-    },
-    {
-      "name": "Punch",
-      "index": 29
-    },
-    {
-      "name": "Cooking",
-      "index": 30
-    },
-    {
-      "name": "Alchemy",
-      "index": 31
-    },
-    {
-      "name": "Lumberjacking",
-      "index": 32
-    },
-    {
-      "name": "Carpentry",
-      "index": 33
-    },
-    {
-      "name": "Fishing",
-      "index": 34
-    },
-    {
-      "name": "Blacksmithing",
-      "index": 35
-    },
-    {
-      "name": "Mining",
-      "index": 36
-    },
-    {
-      "name": "Shoveling",
-      "index": 37
-    },
-    {
-      "name": "Farming",
-      "index": 38
+      "code": 2,
+      "skills": {
+        "Magery": 30
+      }
     }
   ],
   "creation": {
     "statBudget": {
       "rule": "xStrength + xStamina + xIntelligence + xWisdom + xDexterity <= 66 (Agility, Speed, Aim not counted); over -> 'Stop hacking' and quit (client-only)"
-    },
-    "classes": {
-      "1": "Fighter",
-      "2": "Mage",
-      "3": "Ranger"
-    },
-    "startingSkills": {
-      "1": {
-        "values": [
-          20,
-          20,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "valuesWritten": 47,
-        "nonDefault": {
-          "Slash": 20,
-          "Thrust": 20
-        }
-      },
-      "2": {
-        "values": [
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          30,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "valuesWritten": 49,
-        "nonDefault": {
-          "Magery": 30
-        }
-      },
-      "3": {
-        "values": [
-          10,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          10,
-          1,
-          1,
-          20,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "valuesWritten": 49,
-        "nonDefault": {
-          "Slash": 10,
-          "Magery": 10,
-          "Archery": 20
-        }
-      }
     },
     "startingVitals": {
       "written": "class:1:20:20:20:20:0:30:sex -> HP 20/20, SP 20/20, exp 0, ExpNeeded 30 for every class",
@@ -817,8 +526,7 @@
     },
     "nameRules": {
       "rule": "letters only, either case: characters 1-20 are each compared with \"a\"..\"z\" ignoring case, and anything else alerts first; Admin/Guide/Guardian are refused anywhere in the name (`contains`, any case). The monster-name check does nothing, so monster names are allowed. The server refuses only a name whose file exists (case-insensitive on Windows)."
-    },
-    "skillsWritten": "Fighter 47 values, Mage/Ranger 49 values; only 38 are read back"
+    }
   },
   "skillGain": {
     "weaponSkills": [

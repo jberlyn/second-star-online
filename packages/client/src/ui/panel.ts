@@ -24,7 +24,8 @@
  *   to the stat icons' 21 px height. The six rows sit on one 30 px grid, each icon centred on its
  *   row (see the stats page).
  * - Spellbook (frame 67): the spell list, Info and the cast button (spellbook.ts).
- * - Skills (frame 65): the 35 rows of 1.6's fixed list (`classesData.skillPanel`): names
+ * - Skills (frame 65): a row for each skill the content shows (`classes.skills` without
+ *   `hidden`, in their order: 1.6's fixed list of 35 for Classic): names
  *   (the skill name field, Arial 12 bold) at (620, 117) and values (the skill value field,
  *   Arial 12) at (736, 117), one per line. The arrows #162 (up, loc (609, 122)) and #161 (down,
  *   (609, 274)) move both columns 32 px on mouse-down with no limit either way.
@@ -109,7 +110,8 @@ export interface Panel {
   /** The Stats tab's Level row, from the server's vitals. */
   setLevel(level: number): void;
   resetCharacter(): void;
-  setSkills(skills: readonly number[]): void;
+  /** Every skill's value by skill key. */
+  setSkills(skills: Readonly<Record<string, number>>): void;
   /** The Spellbook page (frame 67). */
   spellbook: Spellbook;
   /** The hover tip, in the menu layer; the playfield shows it too. */
@@ -1124,9 +1126,9 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       levelValue.textContent = String(level);
     },
     setSkills(skills) {
-      const rows = content().classes.skillPanel;
-      names.textContent = rows.map((r) => r.name).join("\n");
-      amounts.textContent = rows.map((r) => skills[r.index - 1] ?? 0).join("\n");
+      const rows = content().classes.skills.filter((s) => !s.hidden);
+      names.textContent = rows.map((r) => r.display ?? r.skill).join("\n");
+      amounts.textContent = rows.map((r) => skills[r.skill] ?? 0).join("\n");
     },
   };
   panel.setTab("stats");

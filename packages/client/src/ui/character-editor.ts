@@ -209,6 +209,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     note("The allocated points, 1 to 20. Class and medal points are added in play."),
   );
   let skills: HTMLInputElement[] = [];
+  /** The skill key each of `skills` edits. */
+  let skillKeys: string[] = [];
   const skillsGrid = grid();
   const skillsBox = section("Skills", skillsGrid, note("1 to 100."));
 
@@ -357,13 +359,18 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       }),
     );
     cls.value = picked;
-    const values = skills.map((s) => s.value);
-    skills = c.classes.skills.map((_s, i) => numberInput(`hub-edit-skill-${i + 1}`));
+    // What was typed stays with its skill, wherever the publish moved it.
+    const typed = new Map(skillKeys.map((k, i) => [k, skills[i]?.value]));
+    skillKeys = c.classes.skills.map((s) => s.skill);
+    skills = skillKeys.map((_k, i) => numberInput(`hub-edit-skill-${i + 1}`));
     skills.forEach((s, i) => {
-      s.value = values[i] ?? String(original?.skills[i] ?? "");
+      const k = skillKeys[i] as string;
+      s.value = typed.get(k) ?? String(original?.skills[k] ?? "");
     });
     skillsGrid.replaceChildren(
-      ...c.classes.skills.map((s, i) => formField(s.skill, skills[i] as HTMLInputElement)),
+      ...c.classes.skills.map((s, i) =>
+        formField(s.display ?? s.skill, skills[i] as HTMLInputElement),
+      ),
     );
     items.replaceChildren(
       ...c.items.items.map((i) => {
@@ -395,8 +402,10 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     for (const f of STAT_FIELDS) {
       (stats.get(f) as HTMLInputElement).value = String(c[f]);
     }
+    // A skill the sheet does not list (it came with a publish since) stays empty and unsent.
     skills.forEach((s, i) => {
-      s.value = String(c.skills[i] ?? 1);
+      const v = c.skills[skillKeys[i] as string];
+      s.value = v === undefined ? "" : String(v);
     });
     gold.value = String(c.gold);
     bank.value = c.bank === null ? "" : String(c.bank);
@@ -442,10 +451,15 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     factionCount: num(factionCount),
     wanted: wanted.value === "true",
     ...Object.fromEntries(STAT_FIELDS.map((f) => [f, num(stats.get(f) as HTMLInputElement)])),
-    skills: c.skills.map((v, i) => {
-      const input = skills[i];
-      return input ? num(input) : v;
-    }),
+    skills: {
+      ...c.skills,
+      ...Object.fromEntries(
+        skillKeys.flatMap((k, i) => {
+          const input = skills[i] as HTMLInputElement;
+          return c.skills[k] === undefined && input.value.trim() === "" ? [] : [[k, num(input)]];
+        }),
+      ),
+    },
     gold: num(gold),
     bank: c.bank === null ? null : num(bank),
     bag: bagItems.map((item, i) => {

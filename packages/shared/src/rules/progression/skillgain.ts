@@ -4,7 +4,13 @@
  * monsters `skillCaps`.
  */
 import { content } from "../../content/store.ts";
-import { type Faction, type Fighter, skillIndex } from "../core/fighter.ts";
+import {
+  type Faction,
+  type Fighter,
+  findSkillIndex,
+  skillDisplay,
+  skillValue,
+} from "../core/fighter.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 
@@ -98,7 +104,7 @@ interface GainRule {
   requires?(f: Fighter): boolean;
 }
 
-const v = (f: Fighter, s: string) => f.skills[skillIndex(s)] ?? 0;
+const v = (f: Fighter, s: string) => skillValue(f.skills, s);
 
 /** In source order. */
 const RULES: readonly GainRule[] = [
@@ -136,17 +142,12 @@ const RULES: readonly GainRule[] = [
   },
 ];
 
-/** The chat line for a gain, e.g. "You have advanced in the art of Punch!" */
+/**
+ * The chat line for a gain, e.g. "You have advanced in the art of Punch!": the skill's `display`
+ * name (`classes.json` `skills`), else its key.
+ */
 export function advancedText(skill: string): string {
-  const shown: Record<string, string> = {
-    HammerWielding: "Hammer Wielding",
-    AxeFighting: "Axe Fighting",
-    MartialArts: "Martial Arts",
-    UnholyCombat: "Unholy Combat",
-    StaffFighting: "Staff Fighting",
-    HeavyArms: "Heavy Arms",
-  };
-  return `You have advanced in the art of ${shown[skill] ?? skill}!`;
+  return `You have advanced in the art of ${skillDisplay(skill)}!`;
 }
 
 /**
@@ -161,11 +162,11 @@ export function rollKillSkillGain(f: Fighter, monsterBody: number, rng: Rng): st
   const w = wisAdd(f.wis);
   const gained: string[] = [];
   for (const r of RULES) {
-    const label = advancedText(r.skill).slice("You have advanced in the art of ".length, -1);
-    if (!lingoContains(list, label)) {
+    // A skill the world does not have is never rolled.
+    const i = findSkillIndex(r.skill);
+    if (i === undefined || !lingoContains(list, skillDisplay(r.skill))) {
       continue;
     }
-    const i = skillIndex(r.skill);
     const x = f.skills[i] ?? 0;
     if (!(x > 0) || !(x < caps[r.cap])) {
       continue;

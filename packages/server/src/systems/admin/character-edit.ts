@@ -38,7 +38,9 @@ import {
   type Rng,
   type Role,
   SETTABLE_FIELDS,
+  type SkillValues,
   sameValue,
+  skillsFromKeys,
   sortFaction,
   staleCheckFields,
   undoConflicts,
@@ -186,7 +188,7 @@ function containerIds(world: World, before: EditableCharacter, after: EditableCh
 /** The strength played with: allocated, plus the class's and the held medals' points. */
 function strengthOf(c: EditableCharacter): number {
   const { str, sta, dex, int, wis } = c;
-  return effectiveStats({ str, sta, dex, int, wis }, c.classCode, c.skills).str;
+  return effectiveStats({ str, sta, dex, int, wis }, c.classCode, skillsFromKeys(c.skills)).str;
 }
 
 /**
@@ -291,7 +293,11 @@ export function prepareUndo(
   const before = cur.now;
   const after = structuredClone(before);
   for (const c of live) {
-    (after as unknown as Record<string, unknown>)[c.field] = structuredClone(c.before);
+    (after as unknown as Record<string, unknown>)[c.field] =
+      // A skills change holds only the skills it moved: they go back over the current ones.
+      c.field === "skills"
+        ? { ...after.skills, ...(c.before as SkillValues) }
+        : structuredClone(c.before);
   }
   // The restored state must hold together as it stands now: an HP max put back below the HP
   // gained since, say, is a conflict too.
@@ -348,7 +354,7 @@ export function applyLive(world: World, p: Player, e: PreparedEdit, deps: EditDe
   });
   p.vitalsDirty = true;
   c.stats = { str: a.str, sta: a.sta, dex: a.dex, int: a.int, wis: a.wis };
-  c.skills = [...a.skills];
+  c.skills = skillsFromKeys(a.skills);
   c.hunger = a.hunger;
   if (changed.has("faction")) {
     c.faction = sortFaction(factionIdOf(a.faction), world.factionPowers);

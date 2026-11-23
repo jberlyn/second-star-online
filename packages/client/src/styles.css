@@ -114,6 +114,14 @@ body {
   color: #000;
   line-height: 15px;
 }
+/* The class radios: 1.6's three rows, scrolling when the content offers more classes. */
+.cc-class-list {
+  overflow: hidden;
+}
+.cc-class-list.cc-class-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 /* ---- game ------------------------------------------------------------------------------- */
 .game {

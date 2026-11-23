@@ -4,6 +4,7 @@
  * layer and each draft with the same schemas.
  */
 import { attPowerDataSchema } from "./attpower.ts";
+import { bindingsDataSchema } from "./bindings.ts";
 import { casinoDataSchema } from "./casino.ts";
 import { classesDataSchema } from "./classes.ts";
 import { craftDataSchema } from "./craft.ts";
@@ -22,6 +23,7 @@ import { tilesDataSchema } from "./tiles.ts";
 
 export const DATASET_SCHEMAS = {
   attPower: attPowerDataSchema,
+  bindings: bindingsDataSchema,
   casino: casinoDataSchema,
   classes: classesDataSchema,
   craft: craftDataSchema,
@@ -44,6 +46,7 @@ export type SchemaDatasetId = keyof typeof DATASET_SCHEMAS;
 /** Each dataset's file stem in `content/` and in a pack's `data/` folder. */
 export const DATASET_FILES: Record<SchemaDatasetId, string> = {
   attPower: "attpower",
+  bindings: "bindings",
   casino: "casino",
   classes: "classes",
   craft: "craft",

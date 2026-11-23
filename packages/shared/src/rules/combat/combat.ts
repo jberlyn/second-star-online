@@ -11,7 +11,7 @@
  */
 
 import { content } from "../../content/store.ts";
-import { type Equipment, type Fighter, skillValue } from "../core/fighter.ts";
+import { boundSkillIndex, boundSkillValue, type Equipment, type Fighter } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
@@ -132,10 +132,10 @@ export function swingCooldowns(
   }
   const quickness = BASE - atDelay;
   if (lingoContains(equip.weapon, "Axe")) {
-    atDelay = ladderStep(AXE_LADDER, skillValue(skills, "AxeFighting")) ?? atDelay;
+    atDelay = ladderStep(AXE_LADDER, boundSkillValue(skills, "axeFighting")) ?? atDelay;
   }
   if (lingoContains(equip.weapon, "Mining")) {
-    atDelay = ladderStep(MINING_LADDER, skillValue(skills, "Mining")) ?? atDelay;
+    atDelay = ladderStep(MINING_LADDER, boundSkillValue(skills, "mining")) ?? atDelay;
   }
   if (lingoContains(equip.weapon, "Fishing")) {
     // A Fishing Pole's attack delay without the Ring of Quickness.
@@ -315,10 +315,13 @@ export function monsterHitsPlayer(
   power = factionRows(power, f);
   power = randomAndDefense(power, defenseBonus, rng);
   const adventurer = f.faction.id === 3;
-  if (dodgeRoll(skillValue(f.skills, "Parry"), adventurer, rng) === 1) {
+  // A world that binds no Parry (or Block) skill has no parrying (or blocking): no roll at all.
+  const parry = boundSkillIndex("parry");
+  if (parry !== undefined && dodgeRoll(f.skills[parry] ?? 0, adventurer, rng) === 1) {
     return { kind: "parry" };
   }
-  if (dodgeRoll(skillValue(f.skills, "Block"), adventurer, rng) === 1) {
+  const block = boundSkillIndex("block");
+  if (block !== undefined && dodgeRoll(f.skills[block] ?? 0, adventurer, rng) === 1) {
     return { kind: "block" };
   }
   return { kind: "hit", lost: power };

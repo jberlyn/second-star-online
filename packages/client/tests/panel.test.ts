@@ -265,21 +265,30 @@ describe("the right panel (frames 50-65)", () => {
       style.remove();
     }
   });
+  /** Every skill's value by key: its 1-based position in Classic's list. */
+  const numbered = () =>
+    Object.fromEntries(classesData.skills.map((s, i) => [s.skill, i + 1])) as Record<
+      string,
+      number
+    >;
+  const zeros = () =>
+    Object.fromEntries(classesData.skills.map((s) => [s.skill, 0])) as Record<string, number>;
+  const shownRows = () => classesData.skills.filter((s) => !s.hidden).length;
   test("skills show 1.6's fixed 35 rows with display names (the stats text)", () => {
     const { panel } = panelWith([]);
-    const skills = Array.from({ length: classesData.skills.length }, (_, i) => i + 1);
-    panel.setSkills(skills);
+    panel.setSkills(numbered());
     const names = panel.el.querySelector(".skill-names")?.textContent?.split("\n") ?? [];
     const values = panel.el.querySelector(".skill-values")?.textContent?.split("\n") ?? [];
-    expect(names).toHaveLength(classesData.skillPanel.length);
+    expect(names).toHaveLength(35);
+    expect(shownRows()).toBe(35);
     expect(names.slice(0, 5)).toEqual(["Slash", "Thrust", "Parry", "Heavy Arms", "Axe Fighting"]);
     expect(names.slice(17, 21)).toEqual(["Fire", "Water", "Wind", "Earth"]);
     expect(names.at(-1)).toBe("Farming");
     expect(names).not.toContain("Meditation");
     expect(names).not.toContain("Terrain Navigating");
     expect(names).not.toContain("Item Identification");
-    // Row n shows the value of skill `skillPanel[n].index`: Heavy Arms (row 4) is skill 4;
-    // Meditation (skill 12) is skipped, so Blessing (row 12) is skill 13.
+    // Each row shows its own skill's value: Heavy Arms (row 4) is skill 4; Meditation (skill 12)
+    // is hidden, so Blessing (row 12) is skill 13.
     expect(values[3]).toBe("4");
     expect(values[11]).toBe("13");
     expect(values.at(-1)).toBe("38");
@@ -289,7 +298,7 @@ describe("the right panel (frames 50-65)", () => {
     style.textContent = await Bun.file(new URL("../src/styles.css", import.meta.url)).text();
     document.head.append(style);
     const { panel } = panelWith([]);
-    panel.setSkills(Array.from({ length: classesData.skills.length }, () => 0));
+    panel.setSkills(zeros());
     document.body.append(panel.el);
     try {
       const up = panel.el.querySelector<HTMLButtonElement>('[aria-label="Scroll skills up"]');
@@ -318,7 +327,7 @@ describe("the right panel (frames 50-65)", () => {
   });
   test("bug fixed: the skills list stops at its first and last rows", () => {
     const { panel } = panelWith([]);
-    panel.setSkills(Array.from({ length: classesData.skills.length }, () => 0));
+    panel.setSkills(zeros());
     const up = panel.el.querySelector<HTMLButtonElement>('[aria-label="Scroll skills up"]');
     const down = panel.el.querySelector<HTMLButtonElement>('[aria-label="Scroll skills down"]');
     const names = panel.el.querySelector<HTMLElement>(".skill-names");
@@ -332,7 +341,7 @@ describe("the right panel (frames 50-65)", () => {
     press(up, 3);
     expect(names?.style.top).toBe("3px");
     // Down stops with the last row's bottom 3 px above the clip's 165 px bottom edge.
-    const rows = classesData.skillPanel.length;
+    const rows = shownRows();
     const lastTop = 165 - 3 - rows * 15;
     press(down, 40);
     expect(names?.style.top).toBe(`${lastTop}px`);

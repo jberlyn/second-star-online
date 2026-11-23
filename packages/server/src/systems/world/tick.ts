@@ -41,6 +41,7 @@ import {
   neighbourMapName,
   type Rng,
   STEPFRAMES_PER_FRAME,
+  skillsByKey,
   sunkText,
   TICK_HZ,
   tickAttackTimers,
@@ -686,7 +687,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
     const sheet = JSON.stringify([stats, p.char.skills]);
     if (sheet !== p.lastSheet) {
       p.lastSheet = sheet;
-      out.push({ to: p.id, msg: { t: "sheet", stats, skills: [...p.char.skills] } });
+      out.push({ to: p.id, msg: { t: "sheet", stats, skills: skillsByKey(p.char.skills) } });
     }
     if (p.invSaveDue) {
       p.invSaveDue = false;

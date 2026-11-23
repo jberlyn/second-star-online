@@ -1,44 +1,40 @@
 /**
- * Schema for `packages/data/content/classes.json`: the skill names, the Skills
- * page rows and the character-creation record (shorter starting-value lists take
- * `NEW_SKILL_VALUE`).
+ * Schema for `packages/data/content/classes.json`: the classes, the skills (each keyed by its
+ * `skill`, which characters are saved with), the start classes, the character-creation record and
+ * the skills each weapon trains on a kill.
  *
  */
 import { z } from "zod";
 
+/**
+ * A skill. `skill` is its permanent key: characters store each skill's value under it, so the
+ * list may grow, shrink or be reordered without moving anyone's training (a removed skill's values
+ * stay saved and come back if it returns). `display` is the name players see on the Skills page
+ * and in "You have advanced in the art of …!" (the key when absent); `hidden` keeps it off the
+ * Skills page (1.6 never showed Meditation, Terrain Navigating or Item Identification). The Skills
+ * page lists the shown skills in this order.
+ */
 export const skillSchema = z.strictObject({
-  index: z.number().int().min(1),
   skill: z.string().min(1),
+  display: z.string().min(1).optional(),
+  hidden: z.literal(true).optional(),
 });
 
 /**
- * One row of the Skills page (frame 65): the display name from field MyStats (DBAdmin #15)
- * and the 1-based skill index whose value the skills page writes on that line of
- * MyStatAmounts. 35 rows, in 1.6's fixed order;
- * Meditation, Terrain Navigating and Item Identification are not shown.
+ * A class offered on the creation screen, in the order the screen lists them. `code` is the class
+ * row it creates; `label` is the name the screen shows (the class's name when absent); `skills`
+ * are the starting values by skill key, every other skill starting at `NEW_SKILL_VALUE` (1).
  */
-export const skillPanelRowSchema = z.strictObject({
-  name: z.string().min(1),
-  index: z.number().int().min(1),
-});
-
-const startingSkillsSchema = z.strictObject({
-  values: z.array(z.number().int()).min(1),
-  valuesWritten: z.number().int(),
-  nonDefault: z.record(z.string(), z.number().int()),
+export const startClassSchema = z.strictObject({
+  code: z.number().int().min(1),
+  label: z.string().min(1).optional(),
+  skills: z.record(z.string(), z.number().int()),
 });
 
 const ruleSchema = z.strictObject({ rule: z.string() });
 
 export const creationSchema = z.strictObject({
   statBudget: ruleSchema,
-  // The three start classes (protocol/core.ts, creation.ts).
-  classes: z.strictObject({ "1": z.string(), "2": z.string(), "3": z.string() }),
-  startingSkills: z.strictObject({
-    "1": startingSkillsSchema,
-    "2": startingSkillsSchema,
-    "3": startingSkillsSchema,
-  }),
   startingVitals: z.strictObject({ written: z.string(), notes: z.string() }),
   startingMap: z.strictObject({ value: z.string(), notes: z.string() }),
   otherFields: z.strictObject({
@@ -49,7 +45,6 @@ export const creationSchema = z.strictObject({
     breakCount: z.number().int(),
   }),
   nameRules: ruleSchema,
-  skillsWritten: z.string(),
 });
 
 /**
@@ -106,22 +101,11 @@ export const classesDataSchema = z
   .strictObject({
     classes: z.array(classSchema).min(1),
     skills: z.array(skillSchema).min(1),
-    skillPanel: z.array(skillPanelRowSchema).min(1),
+    startClasses: z.array(startClassSchema).min(1),
     creation: creationSchema,
     skillGain: z.strictObject({ weaponSkills: skillGainSchema.shape.weaponSkills }),
   })
   .superRefine((data, ctx) => {
-    // No fixed number of skills: the Skills page rows and the starting values follow `skills`.
-    const count = data.skills.length;
-    data.skillPanel.forEach((row, i) => {
-      if (row.index > count) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["skillPanel", i, "index"],
-          message: `skill ${row.index} is not in skills (${count})`,
-        });
-      }
-    });
     const names = new Set(data.skills.map((s) => s.skill));
     data.classes.forEach((c, i) => {
       c.promotion?.skillGrants.forEach((skill, j) => {
@@ -134,20 +118,30 @@ export const classesDataSchema = z
         }
       });
     });
-    for (const cls of ["1", "2", "3"] as const) {
-      const values = data.creation.startingSkills[cls].values;
-      if (values.length > count) {
+    const codes = new Set(data.classes.map((c) => c.code));
+    data.startClasses.forEach((sc, i) => {
+      if (!codes.has(sc.code)) {
         ctx.addIssue({
           code: "custom",
-          path: ["creation", "startingSkills", cls, "values"],
-          message: `more starting values (${values.length}) than skills (${count})`,
+          path: ["startClasses", i, "code"],
+          message: `class ${sc.code} is not in classes`,
         });
       }
-    }
+      for (const skill of Object.keys(sc.skills)) {
+        if (!names.has(skill)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["startClasses", i, "skills", skill],
+            message: `${skill} is not in skills`,
+          });
+        }
+      }
+    });
   });
 
 export type Promotion = z.infer<typeof promotionSchema>;
 export type Skill = z.infer<typeof skillSchema>;
+export type StartClass = z.infer<typeof startClassSchema>;
 export type Creation = z.infer<typeof creationSchema>;
 export type WeaponSkills = z.infer<typeof skillGainSchema>["weaponSkills"];
 export type ClassesData = z.infer<typeof classesDataSchema>;

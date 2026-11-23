@@ -16,7 +16,8 @@ import {
 
 /**
  * `insertCharacter` writes today's columns. On a schema from before drop_unused_stats, Agility,
- * Speed and Aim are first given a default of 1 (what 1.6 always saved), so the insert fits.
+ * Speed and Aim are first given a default of 1 (what 1.6 always saved), so the insert fits; on one
+ * from before skills_by_key, the skills are written by position.
  */
 function insertCharacter(db: Db, input: Parameters<typeof insertCurrent>[1]): string {
   const cols = db.query("PRAGMA table_info(characters)").all() as {
@@ -29,7 +30,23 @@ function insertCharacter(db: Db, input: Parameters<typeof insertCurrent>[1]): st
       db.run(`ALTER TABLE characters ADD COLUMN ${c.name} INTEGER NOT NULL DEFAULT 1`);
     }
   }
-  return insertCurrent(db, input);
+  // Before skills_by_key, a character's skills were rows by position (1 = Slash).
+  const bySkillNumber =
+    (
+      db.query("PRAGMA table_info(character_skills)").all() as { name: string; type: string }[]
+    ).find((c) => c.name === "skill")?.type === "INTEGER";
+  if (!bySkillNumber) {
+    return insertCurrent(db, input);
+  }
+  const id = insertCurrent(db, { ...input, start: { ...input.start, skills: [] } });
+  input.start.skills.forEach((v, i) => {
+    db.run("INSERT INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)", [
+      id,
+      i + 1,
+      v,
+    ]);
+  });
+  return id;
 }
 
 describe("migrations (real SQL on in-memory SQLite)", () => {
@@ -170,7 +187,9 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     const db = openDatabase();
     runMigrations(
       db,
-      loadMigrations(MIGRATIONS_DIR).filter((m) => !m.name.startsWith("20261112_26")),
+      loadMigrations(MIGRATIONS_DIR).filter(
+        (m) => !m.name.startsWith("20261112_26") && m.name < "20261123_58",
+      ),
     );
     const map = db.query("SELECT id FROM maps LIMIT 1").get() as { id: string };
     db.run(
@@ -201,7 +220,10 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(() =>
       db.run("INSERT INTO character_skills (character_id, skill, value) VALUES (?, 39, 1)", [id]),
     ).toThrow();
-    runMigrations(db, loadMigrations(MIGRATIONS_DIR));
+    runMigrations(
+      db,
+      loadMigrations(MIGRATIONS_DIR).filter((m) => m.name < "20261123_58"),
+    );
     const rows = db
       .query("SELECT skill, value FROM character_skills WHERE character_id = ? ORDER BY skill")
       .all(id) as { skill: number; value: number }[];
@@ -762,5 +784,193 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       (c) => c.name,
     );
     expect(cols.filter((c) => ["agi", "spd", "aim"].includes(c))).toEqual([]);
+  });
+
+  test("skills_by_key saves skills, edit logs and the content's classes by skill key", () => {
+    const db = openDatabase();
+    runMigrations(
+      db,
+      loadMigrations(MIGRATIONS_DIR).filter((m) => m.name < "20261123_58"),
+    );
+    const map = db.query("SELECT id FROM maps LIMIT 1").get() as { id: string };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    const start = startingCharacter({
+      name: "old",
+      sex: 1,
+      head: 1,
+      classCode: 1,
+      str: 1,
+      sta: 1,
+      int: 1,
+      wis: 1,
+      dex: 1,
+    });
+    const id = insertCharacter(db, {
+      accountId: "a1",
+      start,
+      position: { mapId: map.id, x: 5, y: 5, facing: "N" },
+      now: "now",
+    });
+    db.run("UPDATE character_skills SET value = skill * 2 WHERE character_id = ?", [id]);
+    // An operator skill the server recorded at 39, and a row no record names.
+    db.run("INSERT INTO content_skills (skill, idx) VALUES ('Swimming', 39)");
+    db.run(
+      "INSERT INTO character_skills (character_id, skill, value) VALUES (?, 39, 7), (?, 40, 8)",
+      [id, id],
+    );
+    const before = Array.from({ length: 38 }, (_, i) => i + 1);
+    const after = before.map((v, i) => (i === 7 ? 50 : v));
+    db.run(
+      "INSERT INTO character_edits (id, created_at, actor_account_id, actor_name, character_id, character, reason, changes) VALUES ('e1', 'now', 'a1', 'God', ?, 'old', 'test', ?)",
+      [
+        id,
+        JSON.stringify([
+          { field: "gold", before: 1, after: 2 },
+          { field: "skills", before, after },
+        ]),
+      ],
+    );
+    // The operator's layer: a changed Classic skill, a changed page list, changed starting skills.
+    const classicSkill = { index: 4, skill: "HeavyArms" };
+    const creation = {
+      classes: { "1": "Knight", "2": "Mage", "3": "Ranger" },
+      startingSkills: {
+        "1": { values: [25, 20], valuesWritten: 47, nonDefault: { Slash: 25, Thrust: 20 } },
+        "2": { values: [1, 1, 1, 1, 1, 1, 1, 30], valuesWritten: 49, nonDefault: { Magery: 30 } },
+        "3": { values: [10], valuesWritten: 49, nonDefault: { Slash: 10 } },
+      },
+      skillsWritten: "",
+      statBudget: { rule: "" },
+    };
+    const base = {
+      ...creation,
+      classes: { "1": "Fighter", "2": "Mage", "3": "Ranger" },
+      startingSkills: {
+        ...creation.startingSkills,
+        "1": { values: [20, 20], valuesWritten: 47, nonDefault: { Slash: 20, Thrust: 20 } },
+      },
+    };
+    const row = db.prepare(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('classes', ?, ?, 'set', ?, 'h', ?, ?, 'God', 'now')",
+    );
+    row.run("skills", "HeavyArms", JSON.stringify(classicSkill), JSON.stringify(classicSkill), 1);
+    row.run("skills", "Meditation", JSON.stringify({ index: 12, skill: "Meditation" }), null, 2);
+    row.run("skillPanel", "", JSON.stringify([]), null, 3);
+    row.run("creation", "", JSON.stringify(creation), JSON.stringify(base), 4);
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', 'skills', 'Swimming', 'set', ?, 'a1', 'God', 'now')",
+      [JSON.stringify({ index: 39, skill: "Swimming" })],
+    );
+    // An imported pack's classes in the old shape.
+    const pack = {
+      manifest: { id: "extra" },
+      data: {
+        classes: {
+          skills: [
+            { index: 1, skill: "Slash" },
+            { index: 2, skill: "Tinkering" },
+            { index: 3, skill: "Secret" },
+          ],
+          skillPanel: [
+            { name: "Slash", index: 1 },
+            { name: "Tinker", index: 2 },
+          ],
+          creation: {
+            classes: { "1": "A", "2": "B", "3": "C" },
+            startingSkills: {
+              "1": { values: [5, 1, 2], valuesWritten: 3, nonDefault: {} },
+              "2": { values: [1], valuesWritten: 1, nonDefault: {} },
+              "3": { values: [1, 9], valuesWritten: 2, nonDefault: {} },
+            },
+            skillsWritten: "",
+          },
+        },
+      },
+    };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('extra', 'Extra', '1.0.0', 1, 'imported', ?, 'now')",
+      [JSON.stringify(pack)],
+    );
+
+    runMigrations(db, loadMigrations(MIGRATIONS_DIR));
+
+    const skills = Object.fromEntries(
+      (
+        db.query("SELECT skill, value FROM character_skills WHERE character_id = ?").all(id) as {
+          skill: string;
+          value: number;
+        }[]
+      ).map((r) => [r.skill, r.value]),
+    );
+    expect(Object.keys(skills)).toHaveLength(40);
+    expect([skills.Slash, skills.Thrust, skills.Magery, skills.fire, skills.Farming]).toEqual([
+      2, 4, 16, 42, 76,
+    ]);
+    expect([skills.Swimming, skills["#40"]]).toEqual([7, 8]);
+    expect(
+      db.query("SELECT name FROM sqlite_master WHERE name = 'content_skills'").get(),
+    ).toBeNull();
+    expect(() =>
+      db.run("INSERT INTO character_skills (character_id, skill, value) VALUES (?, '', 1)", [id]),
+    ).toThrow();
+
+    const changes = JSON.parse(
+      (db.query("SELECT changes FROM character_edits WHERE id = 'e1'").get() as { changes: string })
+        .changes,
+    );
+    expect(changes[0]).toEqual({ field: "gold", before: 1, after: 2 });
+    expect(changes[1].field).toBe("skills");
+    expect(changes[1].before.Magery).toBe(8);
+    expect(changes[1].after.Magery).toBe(50);
+    expect(changes[1].after.Slash).toBe(1);
+    expect(Object.keys(changes[1].after)).toHaveLength(38);
+
+    const rows = new Map(
+      (
+        db
+          .query("SELECT part, row_key, data FROM content_rows WHERE dataset = 'classes'")
+          .all() as { part: string; row_key: string; data: string }[]
+      ).map((r) => [`${r.part}/${r.row_key}`, JSON.parse(r.data)]),
+    );
+    expect(rows.get("skills/HeavyArms")).toEqual({ skill: "HeavyArms", display: "Heavy Arms" });
+    expect(rows.get("skills/Meditation")).toEqual({ skill: "Meditation", hidden: true });
+    expect(rows.has("skillPanel/")).toBe(false);
+    expect(rows.get("creation/")).toEqual({ statBudget: { rule: "" } });
+    // Only Fighter changed: it becomes a start class row with its label and values by key.
+    expect(rows.get("startClasses/1")).toEqual({
+      code: 1,
+      label: "Knight",
+      skills: { Slash: 25, Thrust: 20 },
+    });
+    expect(rows.has("startClasses/2")).toBe(false);
+    expect(
+      JSON.parse(
+        (
+          db.query("SELECT data FROM content_draft WHERE row_key = 'Swimming'").get() as {
+            data: string;
+          }
+        ).data,
+      ),
+    ).toEqual({ skill: "Swimming" });
+
+    const migrated = JSON.parse(
+      (db.query("SELECT data FROM content_packs WHERE id = 'extra'").get() as { data: string })
+        .data,
+    );
+    expect(migrated.data.classes.skillPanel).toBeUndefined();
+    expect(migrated.data.classes.creation).toEqual({});
+    expect(migrated.data.classes.skills).toEqual([
+      { skill: "Slash" },
+      { skill: "Tinkering", display: "Tinker" },
+      { skill: "Secret", hidden: true },
+    ]);
+    expect(migrated.data.classes.startClasses).toEqual([
+      { code: 1, label: "A", skills: { Slash: 5, Secret: 2 } },
+      { code: 3, label: "C", skills: { Tinkering: 9 } },
+      { code: 2, label: "B", skills: {} },
+    ]);
+    expect(db.query("PRAGMA foreign_key_check").all()).toEqual([]);
   });
 });

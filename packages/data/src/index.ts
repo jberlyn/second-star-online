@@ -5,9 +5,17 @@
  */
 
 export type { AttPowerData, AttPowerTier } from "../schema/attpower.ts";
+export type { BindingsData, SkillBinding } from "../schema/bindings.ts";
 export type { CasinoData } from "../schema/casino.ts";
 export type { ChurchMapData } from "../schema/church-map.ts";
-export type { ClassesData, Creation, Promotion, Skill, WeaponSkills } from "../schema/classes.ts";
+export type {
+  ClassesData,
+  Creation,
+  Promotion,
+  Skill,
+  StartClass as StartClassRow,
+  WeaponSkills,
+} from "../schema/classes.ts";
 export type { CraftData } from "../schema/craft.ts";
 export type { GatherData, GatherTool, SkillGainRule } from "../schema/gather.ts";
 export type { HelpData, HelpTopic } from "../schema/help.ts";

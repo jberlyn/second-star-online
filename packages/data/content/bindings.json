@@ -1,0 +1,17 @@
+{
+  "skills": {
+    "parry": "Parry",
+    "block": "Block",
+    "archery": "Archery",
+    "martialArts": "MartialArts",
+    "staffFighting": "StaffFighting",
+    "magery": "Magery",
+    "axeFighting": "AxeFighting",
+    "mining": "Mining",
+    "fishing": "Fishing",
+    "blacksmithing": "Blacksmithing",
+    "cooking": "Cooking",
+    "alchemy": "Alchemy",
+    "carpentry": "Carpentry"
+  }
+}

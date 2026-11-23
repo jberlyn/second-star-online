@@ -4064,7 +4064,6 @@ db content_draft rows=0 da39a3ee5e6b
 db content_draft_actions rows=0 da39a3ee5e6b
 db content_publishes rows=0 da39a3ee5e6b
 db content_rows rows=0 da39a3ee5e6b
-db content_skills rows=0 da39a3ee5e6b
 db equipment rows=10 3dc502158921
 db faction_powers rows=1 00e2c136ce56
 db ground_items rows=22 2cfa74ec7635

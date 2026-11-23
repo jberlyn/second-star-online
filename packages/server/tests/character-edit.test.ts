@@ -10,8 +10,10 @@ import {
   type CharacterHub,
   changeText,
   deriveEdit,
+  diffEdit,
   EDIT_TEXT,
   type EditableCharacter,
+  type EditChange,
   editableOf,
   editErrors,
   inGameSchema,
@@ -43,7 +45,7 @@ const base = (): EditableCharacter => ({
   dex: 10,
   int: 10,
   wis: 10,
-  skills: [1, 1, 1],
+  skills: { Slash: 1, Thrust: 1, Parry: 1 },
   hunger: 30000,
   faction: 0,
   factionCount: 0,
@@ -86,8 +88,8 @@ describe("the editor's rules", () => {
     expect(err({ level: 0 })[0]).toContain("Level");
     expect(err({ exp: 410 })[0]).toContain("Experience");
     expect(err({ hp: 25 })).toEqual(["HP: a whole number from 1 to 24."]);
-    expect(err({ skills: [1, 101, 1] })[0]).toContain("from 1 to 100");
-    expect(err({ skills: [1, 1] })).toEqual(["Skills: there are 3."]);
+    expect(err({ skills: { Thrust: 101 } })).toEqual(["Thrust: a whole number from 1 to 100."]);
+    expect(err({ skills: { Swimming: 5 } })).toEqual(["Skills: there is no skill Swimming."]);
     expect(err({ gold: -1 })[0]).toContain("Gold");
     expect(err({ bank: 5 })).toEqual(["Bank: they have no bank account yet."]);
     expect(err({ classCode: 99 })).toEqual(["Class: there is no such class."]);
@@ -163,6 +165,25 @@ describe("the editor's rules", () => {
     ];
     expect(undoConflicts({ ...b, gold: 500, level: 6 }, changes)).toEqual([]);
     expect(undoConflicts({ ...b, gold: 450, level: 6 }, changes)).toEqual(["gold"]);
+  });
+
+  test("a skills change names only the skills it moved, and its undo checks only those", () => {
+    const b = base();
+    const after = deriveEdit(b, { skills: { Thrust: 30 } });
+    expect(after.skills).toEqual({ Slash: 1, Thrust: 30, Parry: 1 });
+    const changes = diffEdit(b, after);
+    expect(changes).toEqual([{ field: "skills", before: { Thrust: 1 }, after: { Thrust: 30 } }]);
+    expect(changeText(changes[0] as EditChange)).toBe("Skills: Thrust 1 → 30");
+    // A skill added since, or another skill trained since, is no conflict; Thrust moving is.
+    expect(
+      undoConflicts({ ...b, skills: { ...after.skills, Slash: 9, Swimming: 1 } }, changes),
+    ).toEqual([]);
+    expect(undoConflicts({ ...b, skills: { ...after.skills, Thrust: 31 } }, changes)).toEqual([
+      "skills",
+    ]);
+    // A skill removed since cannot be put back.
+    const { Thrust: _gone, ...rest } = after.skills;
+    expect(undoConflicts({ ...b, skills: rest }, changes)).toEqual(["skills"]);
   });
 
   test("the intents are strict: no derived field, no stray field", () => {
@@ -366,9 +387,7 @@ describe("editing a character from the hub", () => {
     bag[4] = { item: "Broad Sword", qty: 2 };
     const r = edit(game, god.characterId, {
       bag,
-      skills: editableOf(hubOf(game, god.characterId).sheet).skills.map((v, i) =>
-        i === 0 ? 40 : v,
-      ),
+      skills: { Slash: 40 },
       spellbook: ["Minor Heal"],
       hunger: 1234,
       sex: 2,

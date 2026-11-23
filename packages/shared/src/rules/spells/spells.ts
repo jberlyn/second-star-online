@@ -15,7 +15,15 @@ import type { Spell, SpellFx, SpellSummon } from "@secondstaronline/data";
 import { content, onContent } from "../../content/store.ts";
 import { slotItem } from "../combat/armour.ts";
 import { gearBonus } from "../combat/gear.ts";
-import { type Equipment, type Faction, skillIndex } from "../core/fighter.ts";
+import {
+  boundSkillIndex,
+  boundSkillValue,
+  type Equipment,
+  type Faction,
+  findSkillIndex,
+  skillIndex,
+  skillValue,
+} from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { firstMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 import { crystalColour } from "../inventory/inventory.ts";
@@ -186,12 +194,12 @@ export interface Caster {
   faction: Faction;
 }
 
-const skill = (c: Caster, name: string) => c.skills[skillIndex(name)] ?? 0;
+const skill = (c: Caster, name: string) => skillValue(c.skills, name);
 
 /** The base power, starting from 1. */
 export function basePower(c: Caster): number {
   let p = 1;
-  const magery = skill(c, "Magery");
+  const magery = boundSkillValue(c.skills, "magery");
   for (const t of [10, 20, 30, 40, 50, 60, 70, 80, 90]) {
     if (magery > t) {
       p += 1;
@@ -631,19 +639,22 @@ export function spellImp(
   }
   const lines: string[] = [];
   const cap = castMageCap(faction);
-  const roll = (name: string, max: number, text: string) => {
-    const i = skillIndex(name);
+  // A skill the world does not have (or a Magery it does not bind) is never rolled.
+  const roll = (i: number | undefined, max: number, text: string) => {
+    if (i === undefined) {
+      return;
+    }
     const v = skills[i] ?? 0;
     if (v > 0 && v < max && rng.random(v) === 1) {
       lines.push(text);
       skills[i] = v + 1;
     }
   };
-  roll("Magery", cap, "You have advanced in the art of magery!");
+  roll(boundSkillIndex("magery"), cap, "You have advanced in the art of magery!");
   for (const row of SCHOOL_ROWS) {
     const hit = row.match === "=" ? lingoEq(eff, row.spell) : lingoContains(eff, row.spell);
     if (hit) {
-      roll(row.skill, row.skill === "MartialArts" ? 100 : cap, impText(row));
+      roll(findSkillIndex(row.skill), row.skill === "MartialArts" ? 100 : cap, impText(row));
     }
   }
   return lines;

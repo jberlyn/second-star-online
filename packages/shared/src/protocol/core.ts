@@ -27,7 +27,8 @@ export const createSchema = z.strictObject({
   password,
   sex: z.union([z.literal(1), z.literal(2)]),
   head: z.number().int().min(1).max(17),
-  classCode: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  /** A class the creation screen offers (`classes.json` `startClasses`); the server checks it. */
+  classCode: z.number().int().min(1).max(10_000),
   str: stat,
   sta: stat,
   int: stat,
@@ -386,7 +387,8 @@ export type CoreServerMsg =
         int: number;
         wis: number;
       };
-      skills: number[];
+      /** Every skill's value by skill key (`classes.json` `skills`). */
+      skills: Record<string, number>;
     }
   | { t: "vitals"; vitals: VitalsView }
   | { t: "you"; self: SelfState }

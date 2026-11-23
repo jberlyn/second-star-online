@@ -18,7 +18,13 @@
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import { content } from "../../content/store.ts";
-import { type Equipment, NOTHING } from "../core/fighter.ts";
+import {
+  type Equipment,
+  findSkillIndex,
+  NOTHING,
+  type SkillValues,
+  skillDisplay,
+} from "../core/fighter.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { checkEquip, EQUIP_TEXT } from "../inventory/equip.ts";
 import {
@@ -63,8 +69,11 @@ export interface EditableCharacter {
   dex: number;
   int: number;
   wis: number;
-  /** One value per skill in the content store's `classes.skills`, index 0 = Slash. */
-  skills: number[];
+  /**
+   * Every skill the content lists, by skill key. An edit's change names only the skills it moved,
+   * so it (and its undo) never touches a skill added or removed since.
+   */
+  skills: SkillValues;
   hunger: number;
   /** 0 none, 1 Mage, 2 Warrior, 3 Adventurer. */
   faction: number;
@@ -203,7 +212,7 @@ export function editableOf(s: CharacterSheet): EditableCharacter {
     sp: s.sp,
     spMax: s.spMax,
     ...s.stats,
-    skills: [...s.skills],
+    skills: { ...s.skills },
     hunger: s.hunger,
     faction: s.faction,
     factionCount: s.factionCount,
@@ -260,11 +269,26 @@ export interface EditChange {
 
 /** The fields whose values differ, in `EDIT_FIELDS` order. */
 export function diffEdit(before: EditableCharacter, after: EditableCharacter): EditChange[] {
-  return EDIT_FIELDS.filter((f) => !sameValue(before[f], after[f])).map((f) => ({
-    field: f,
-    before: structuredClone(before[f]),
-    after: structuredClone(after[f]),
-  }));
+  return EDIT_FIELDS.filter((f) => !sameValue(before[f], after[f])).map((f) =>
+    f === "skills"
+      ? { field: f, ...movedSkills(before.skills, after.skills) }
+      : { field: f, before: structuredClone(before[f]), after: structuredClone(after[f]) },
+  );
+}
+
+/** The skills whose values differ, before and after, keyed by skill key. */
+function movedSkills(
+  before: Readonly<SkillValues>,
+  after: Readonly<SkillValues>,
+): { before: SkillValues; after: SkillValues } {
+  const out = { before: {} as SkillValues, after: {} as SkillValues };
+  for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (before[k] !== after[k]) {
+      out.before[k] = before[k] as number;
+      out.after[k] = after[k] as number;
+    }
+  }
+  return out;
 }
 
 /**
@@ -277,6 +301,8 @@ export function deriveEdit(
   changes: Partial<EditableCharacter>,
 ): EditableCharacter {
   const after: EditableCharacter = structuredClone({ ...current, ...changes });
+  // Skills typed in are laid over the current ones: an edit may name only some.
+  after.skills = { ...current.skills, ...(changes.skills ?? {}) };
   for (const f of DERIVED_FIELDS) {
     after[f] = current[f];
   }
@@ -382,15 +408,15 @@ export function editErrors(
     }
   }
   if (changed("skills")) {
-    if (after.skills.length !== before.skills.length) {
-      errors.push(`Skills: there are ${before.skills.length}.`);
-    } else {
-      after.skills.forEach((v, i) => {
-        if (v !== before.skills[i] && !isInt(v, L.skillMin, L.skillMax)) {
-          const name = content().classes.skills[i]?.skill ?? `Skill ${i + 1}`;
-          errors.push(`${name}: a whole number from ${L.skillMin} to ${L.skillMax}.`);
-        }
-      });
+    for (const [k, v] of Object.entries(after.skills)) {
+      if (v === before.skills[k]) {
+        continue;
+      }
+      if (findSkillIndex(k) === undefined) {
+        errors.push(`Skills: there is no skill ${k}.`);
+      } else if (!isInt(v, L.skillMin, L.skillMax)) {
+        errors.push(`${skillDisplay(k)}: a whole number from ${L.skillMin} to ${L.skillMax}.`);
+      }
     }
   }
   if (changed("hunger") && !isInt(after.hunger, 0, L.hungerMax)) {
@@ -623,7 +649,14 @@ export function undoConflicts(
   current: EditableCharacter,
   changes: readonly EditChange[],
 ): EditField[] {
-  return changes.filter((c) => !sameValue(current[c.field], c.after)).map((c) => c.field);
+  return changes
+    .filter((c) =>
+      // A skills change names only the skills it moved: those must still hold what it set.
+      c.field === "skills" && c.after && typeof c.after === "object"
+        ? Object.entries(c.after as SkillValues).some(([k, v]) => current.skills[k] !== v)
+        : !sameValue(current[c.field], c.after),
+    )
+    .map((c) => c.field);
 }
 
 /** One row of a character's edit log, as the hub shows it. */
@@ -673,7 +706,9 @@ export function editValueText(field: EditField, v: unknown): string {
       return `${p.map} (${p.x}, ${p.y})`;
     }
     case "skills":
-      return (v as number[]).join(", ");
+      return Object.entries(v as SkillValues)
+        .map(([k, n]) => `${skillDisplay(k)} ${n}`)
+        .join(", ");
     case "bag": {
       const lines = (v as (EditBagLine | null)[]).flatMap((l, i) =>
         l ? [`${i + 1}: ${l.item}${l.qty === 1 ? "" : ` ×${l.qty}`}`] : [],
@@ -712,12 +747,10 @@ export const RETIRED_FIELD_LABELS: Readonly<Record<string, string>> = {
  */
 export function changeText(c: EditChange): string {
   const label = FIELD_LABELS[c.field] ?? RETIRED_FIELD_LABELS[c.field] ?? c.field;
-  if (c.field === "skills" && Array.isArray(c.before) && Array.isArray(c.after)) {
-    const a = c.after as number[];
-    const moved = (c.before as number[]).flatMap((v, i) =>
-      v === a[i]
-        ? []
-        : [`${content().classes.skills[i]?.skill ?? `Skill ${i + 1}`} ${v} → ${a[i]}`],
+  if (c.field === "skills" && c.before && c.after && typeof c.after === "object") {
+    const b = c.before as SkillValues;
+    const moved = Object.entries(c.after as SkillValues).flatMap(([k, v]) =>
+      v === b[k] ? [] : [`${skillDisplay(k)} ${b[k]} → ${v}`],
     );
     return `${label}: ${moved.join(", ")}`;
   }

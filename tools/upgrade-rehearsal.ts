@@ -15,7 +15,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { classicData } from "../packages/data/src/classic.ts";
+import { classicData, classicManifest } from "../packages/data/src/classic.ts";
 import { connectBot, make, settle } from "../packages/server/e2e/harness.ts";
 import { startServer } from "../packages/server/src/main.ts";
 import { manualClock } from "../packages/server/tests/helpers/manual-clock.ts";
@@ -47,19 +47,40 @@ function dump(path: string): Dump {
     .query<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
     .all()
     .map((t) => t.name);
+  // Skills were saved by position until skills_by_key (#37): a numbered row reads as the skill the
+  // server recorded at that position, else Classic's, so both layouts compare by skill.
+  const recorded = tables.includes("content_skills")
+    ? new Map(
+        db
+          .query<{ skill: string; idx: number }, []>("SELECT skill, idx FROM content_skills")
+          .all()
+          .map((r) => [r.idx, r.skill]),
+      )
+    : new Map<number, string>();
+  const skillAt = (n: number) =>
+    recorded.get(n) ?? classicData.classes.skills[n - 1]?.skill ?? `#${n}`;
   for (const t of tables) {
     out.set(
       t,
       db
         .query<Record<string, unknown>, []>(`SELECT * FROM "${t}"`)
         .all()
-        .map((r) => JSON.stringify(r))
+        .map((r) =>
+          JSON.stringify(
+            t === "character_skills" && typeof r.skill === "number"
+              ? { ...r, skill: skillAt(r.skill) }
+              : r,
+          ),
+        )
         .sort(),
     );
   }
   db.close();
   return out;
 }
+
+/** Tables a migration drops on purpose. */
+const DROPPED = new Set(["content_skills"]);
 
 // ---- run 1: migrate, start, compare, play -----------------------------------------------------
 const db1 = join(work, "run1.sqlite");
@@ -84,7 +105,8 @@ const migrations = server.db
 check(migrations.includes("20261122_53_content_store.sql"), `migrated to ${migrations[0]}`);
 const packs = server.db.query("SELECT id, version, source FROM content_packs").all();
 check(
-  JSON.stringify(packs) === JSON.stringify([{ id: "classic", version: "1.0.0", source: "release" }]),
+  JSON.stringify(packs) ===
+    JSON.stringify([{ id: "classic", version: classicManifest.version, source: "release" }]),
   `Classic is installed: ${JSON.stringify(packs)}`,
 );
 const store = shared.content();
@@ -169,6 +191,10 @@ const botMapId = (() => {
 const expected = (table: string, row: string) =>
   table === "_migrations" || table === "sqlite_sequence" || (table === "map_slots" && row.includes(botMapId));
 for (const [table, rows] of before) {
+  if (DROPPED.has(table) && !after.has(table)) {
+    console.log(`dropped table: ${table} (${rows.length} rows), as its migration does`);
+    continue;
+  }
   const now = new Set(after.get(table) ?? []);
   const lost = rows.filter((r) => !now.has(r) && !expected(table, r));
   const added = (after.get(table) ?? []).filter(

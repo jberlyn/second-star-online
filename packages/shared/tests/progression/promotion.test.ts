@@ -16,7 +16,7 @@ import {
 } from "../../src/rules/progression/promotion.ts";
 import { classStatBonus, effectiveStats } from "../../src/rules/progression/stats.ts";
 
-const skillIndex = (name: string) => classesData.skills.find((s) => s.skill === name)?.index ?? 0;
+const skillIndex = (name: string) => classesData.skills.findIndex((s) => s.skill === name) + 1;
 
 /** A character of class `cls` with every skill 1 except `skills`. */
 function state(
@@ -242,7 +242,7 @@ describe("skill grants", () => {
       const s = state(from, { hpMax: 60, spMax: 60 }, skills);
       const r = promoteClass(s, to, 0, NPC, rng).result;
       const changed = classesData.skills
-        .filter((k) => r?.skills[k.index - 1] !== s.skills[k.index - 1])
+        .filter((_k, i) => r?.skills[i] !== s.skills[i])
         .map((k) => k.skill);
       expect([to, changed.sort()]).toEqual([to, [...granted].sort()]);
       for (const g of granted) {

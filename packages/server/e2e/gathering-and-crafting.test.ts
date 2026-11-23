@@ -16,6 +16,7 @@ import {
   type CreateMsg,
   type DeltaEvent,
   type ServerMsg,
+  SKILL_KEYS,
   skillIndex,
   tileAt,
   withTile,
@@ -84,7 +85,7 @@ function bag(db: Db, name: string, items: [string, number][]) {
 function setSkill(db: Db, name: string, skill: string, value: number) {
   db.run("INSERT OR REPLACE INTO character_skills (character_id, skill, value) VALUES (?, ?, ?)", [
     idOf(db, name),
-    skillIndex(skill) + 1,
+    SKILL_KEYS[skillIndex(skill)] ?? skill,
     value,
   ]);
 }

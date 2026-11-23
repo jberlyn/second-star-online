@@ -521,7 +521,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
           key: (r) => r[0],
         });
         skills.setRows(
-          s.skills.map((v, i) => [content().classes.skills[i]?.skill ?? `Skill ${i + 1}`, v]),
+          content().classes.skills.map((k) => [k.display ?? k.skill, s.skills[k.skill] ?? 0]),
         );
         return [
           section(

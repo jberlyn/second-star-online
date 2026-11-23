@@ -201,7 +201,7 @@ describe("the player hub", () => {
     const live = open(game, god.characterId, "al");
     expect(live?.presence).toBe("playing");
     expect(live?.sheet).toMatchObject({ name: "Al", gold: 1234, bank: 50, vault: ["Steel Sword"] });
-    expect(live?.sheet.skills[0]).toBe(7);
+    expect(live?.sheet.skills.Slash).toBe(7);
     expect(live?.sheet.bag[0]).toEqual({ item: "Apple", qty: expect.any(Number) });
     game.leave(al.characterId);
     game.tick();

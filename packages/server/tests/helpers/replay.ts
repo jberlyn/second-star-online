@@ -598,6 +598,18 @@ function skillsByName(key: string, value: unknown): unknown {
       skillNames.map((n, i) => [n, value[i]] as const).sort(([a], [b]) => (a < b ? -1 : 1)),
     );
   }
+  // Skills sent by key (#37 stage 1) are written in the same sorted order.
+  if (
+    /skills$/i.test(key) &&
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.values(value).every((x) => typeof x === "number")
+  ) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, number>).sort(([a], [b]) => (a < b ? -1 : 1)),
+    );
+  }
   return value;
 }
 

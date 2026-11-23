@@ -5,7 +5,7 @@
  */
 import { content } from "../../content/store.ts";
 import type { Equipment, Fighter } from "../core/fighter.ts";
-import { skillValue } from "../core/fighter.ts";
+import { boundSkillIndex } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
 
@@ -157,10 +157,19 @@ function pvpDodge(
   p = factionRows(p, victim);
   p = randomAndDefense(p, defenseBonus, rng);
   const adventurer = victim.faction.id === 3;
-  if (pvpDodgeRoll(skillValue(victim.skills, "Parry"), adventurer ? 4 : 0, rng) === 1) {
+  // A world that binds no Parry (or Block) skill has no parrying (or blocking): no roll at all.
+  const parry = boundSkillIndex("parry");
+  if (
+    parry !== undefined &&
+    pvpDodgeRoll(victim.skills[parry] ?? 0, adventurer ? 4 : 0, rng) === 1
+  ) {
     return { kind: "parry" };
   }
-  if (pvpDodgeRoll(skillValue(victim.skills, "Block"), adventurer ? 10 : 0, rng) === 1) {
+  const block = boundSkillIndex("block");
+  if (
+    block !== undefined &&
+    pvpDodgeRoll(victim.skills[block] ?? 0, adventurer ? 10 : 0, rng) === 1
+  ) {
     return { kind: "block" };
   }
   return { kind: "hit", dmg: p };

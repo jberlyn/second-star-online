@@ -13,6 +13,7 @@ import {
   ATTACK_LATCH_TICKS,
   advancedText,
   attackPower,
+  boundSkillIndex,
   bowRefusal,
   CANNON_RELOAD_FRAMES,
   CANNON_TEXT,
@@ -41,9 +42,9 @@ import {
   rollLoot,
   rollParryGain,
   rollWeaponBreak,
+  SKILL_KEYS,
   type SwingSound,
   shattersText,
-  skillIndex,
   startSwing,
   swingBlocked,
   xpGained,
@@ -331,17 +332,20 @@ function gatherCtx(ctx: MeleeCtx): GatherCtx | null {
 
 /** Archery (and Martial Arts with a crossbow) on every arrow shot. */
 function gainOnShot(p: Player, ctx: MeleeCtx, ev: SwingEvents): void {
-  const gain = (skill: string) => {
-    const i = skillIndex(skill);
+  // An unbound skill is never trained.
+  const gain = (i: number | undefined) => {
+    if (i === undefined) {
+      return;
+    }
     const v = p.char.skills[i] ?? 0;
     if (v > 0 && v < 100 && ctx.rng.random(v) === 1) {
       p.char.skills[i] = v + 1;
-      ev.lines.push(advancedText(skill));
+      ev.lines.push(advancedText(SKILL_KEYS[i] ?? ""));
     }
   };
-  gain("Archery");
+  gain(boundSkillIndex("archery"));
   if (lingoContains(p.char.equip.weapon, "Crossbow")) {
-    gain("MartialArts");
+    gain(boundSkillIndex("martialArts"));
   }
 }
 
@@ -396,18 +400,21 @@ function pvpSwing(
     v.flicker = FLICKER_FRAMES;
     v.vitalsDirty = true;
     const lines: string[] = [];
-    const parry = skillIndex("Parry");
-    const block = skillIndex("Block");
+    const parry = boundSkillIndex("parry");
+    const block = boundSkillIndex("block");
+    const parryValue = parry === undefined ? 0 : (v.char.skills[parry] ?? 0);
+    // An unbound Parry or Block skill is never trained.
     const gainParry = () => {
-      if (rollParryGain(v.char.skills[parry] ?? 0, ctx.rng)) {
-        v.char.skills[parry] = (v.char.skills[parry] ?? 0) + 1;
-        lines.push(advancedText("Parry"));
+      if (parry !== undefined && rollParryGain(parryValue, ctx.rng)) {
+        v.char.skills[parry] = parryValue + 1;
+        lines.push(advancedText(SKILL_KEYS[parry] ?? ""));
       }
     };
     const gainBlock = () => {
-      if (rollBlockGain(v.char.skills[block] ?? 0, v.char.skills[parry] ?? 0, ctx.rng)) {
-        v.char.skills[block] = (v.char.skills[block] ?? 0) + 1;
-        lines.push(advancedText("Block"));
+      const b = block === undefined ? 0 : (v.char.skills[block] ?? 0);
+      if (block !== undefined && rollBlockGain(b, parryValue, ctx.rng)) {
+        v.char.skills[block] = b + 1;
+        lines.push(advancedText(SKILL_KEYS[block] ?? ""));
       }
     };
     if (r.kind === "shield") {

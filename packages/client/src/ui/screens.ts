@@ -13,9 +13,9 @@ import {
   nextHead,
   prevHead,
   type Sex,
+  START_CLASSES,
   STAT_MAX,
   STAT_MIN,
-  type StartClass,
 } from "@secondstaronline/shared";
 
 import { type Assets, drawSprite } from "../assets.ts";
@@ -190,7 +190,7 @@ export interface CreationValues {
   password: string;
   sex: Sex;
   head: number;
-  classCode: StartClass;
+  classCode: number;
   str: number;
   sta: number;
   int: number;
@@ -206,6 +206,18 @@ const STAT_ROWS = [
   { key: "dex", y: 242 }, // labelled "Mysticism" on the art
 ] as const;
 
+/** The rows 1.6's class list had room for, 15 px apart. */
+const CLASS_ROWS = 3;
+const CLASS_ROW_H = 15;
+
+/** A label as part of an action id: "Fighter" → "fighter", "Dark Knight" → "dark-knight". */
+function actionSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 /**
  * Character creation (frame 26). The + and − buttons, the stat bars that slide 7 px per
  * point (I220/I221), the two head arrows, the sex and class radio buttons and the name and
@@ -220,7 +232,7 @@ export function creationScreen(
     password: "",
     sex: 1,
     head: 1,
-    classCode: 1, // class = 1, sex = 1
+    classCode: 1, // class = 1, sex = 1; the first class offered, below
     str: STAT_MIN,
     sta: STAT_MIN,
     int: STAT_MIN,
@@ -324,16 +336,18 @@ export function creationScreen(
   // Radio buttons: member 62 = selected, 63 = not (I64-I68).
   const radio = () => artImg(ui(a, 63));
   const sexRadios = [radio(), radio()];
-  const classRadios = [radio(), radio(), radio()];
-  const classOrder: StartClass[] = [1, 3, 2]; // Fighter, Ranger, Mage (field Internal #196)
-  // fighter on channel 22, ranger on 24, mage on 23 (score frame 25). The fourth radio, business
-  // (channel 25), sits off-stage at (189, 638) and nothing moves it.
+  // The classes the content offers, in its order: Classic's Fighter, Ranger, Mage (field Internal
+  // #196). fighter on channel 22, ranger on 24, mage on 23 (score frame 25). The fourth radio,
+  // business (channel 25), sits off-stage at (189, 638) and nothing moves it.
+  const offered = START_CLASSES;
+  const classRadios = offered.map(() => radio());
+  v.classCode = offered[0]?.code ?? 1;
   const refreshRadios = () => {
     sexRadios.forEach((r, i) => {
       r.src = ui(a, v.sex === i + 1 ? 62 : 63);
     });
     classRadios.forEach((r, i) => {
-      r.src = ui(a, v.classCode === classOrder[i] ? 62 : 63);
+      r.src = ui(a, v.classCode === offered[i]?.code ? 62 : 63);
     });
   };
   const setSex = (sex: Sex) => {
@@ -355,27 +369,43 @@ export function creationScreen(
       z: 100,
     });
   });
+  // The class list holds 1.6's three rows; more classes scroll within them.
+  const classList = document.createElement("div");
+  classList.className = "cc-class-list";
+  classList.classList.toggle("cc-class-scroll", offered.length > CLASS_ROWS);
+  const inList = (el: HTMLElement, x: number, y: number, w: number, h: number, z: number) => {
+    el.style.position = "absolute";
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    el.style.zIndex = String(z);
+    classList.append(el);
+  };
   const classText = label("cc-classes", "");
-  classText.innerHTML = "Fighter<br>Ranger<br>Mage";
-  items.push({ el: classText, x: 544, y: 223, w: 100, h: 48, z: 26 });
+  for (const [i, c] of offered.entries()) {
+    if (i > 0) {
+      classText.append(document.createElement("br"));
+    }
+    classText.append(c.label);
+  }
+  inList(classText, 20, 0, 90, CLASS_ROW_H * Math.max(CLASS_ROWS, offered.length) + 3, 26);
   classRadios.forEach((r, i) => {
-    items.push({ el: r, x: 526, y: 225 + i * 15, w: 12, h: 12, z: 22 + i });
-    items.push({
-      el: hit(
-        ["Fighter", "Ranger", "Mage"][i] ?? "",
-        `creation-class-${["fighter", "ranger", "mage"][i]}`,
-        () => {
-          v.classCode = classOrder[i] ?? 1;
-          refreshRadios();
-        },
-      ),
-      x: 524,
-      y: 223 + i * 15,
-      w: 110,
-      h: 15,
-      z: 100,
-    });
+    const c = offered[i];
+    inList(r, 2, 2 + i * CLASS_ROW_H, 12, 12, 22 + i);
+    inList(
+      hit(c?.label ?? "", `creation-class-${actionSlug(c?.label ?? "")}`, () => {
+        v.classCode = c?.code ?? 1;
+        refreshRadios();
+      }),
+      0,
+      i * CLASS_ROW_H,
+      110,
+      CLASS_ROW_H,
+      100,
+    );
   });
+  items.push({ el: classList, x: 524, y: 223, w: 110, h: CLASS_ROWS * CLASS_ROW_H + 3 });
 
   const name = field("text", "Name");
   name.maxLength = 20;

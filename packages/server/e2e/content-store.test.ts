@@ -7,6 +7,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import { content, type ServerMsg } from "@secondstaronline/shared";
 
 import { setRole } from "../src/persistence/accounts.ts";
@@ -16,6 +17,7 @@ import {
   type Bot,
   chats,
   connectBot,
+  idOf,
   login,
   make,
   settle,
@@ -212,23 +214,53 @@ describe("the live content store", () => {
 
     // A new skill: Bob, online, has it at its starting value and his sheet comes again.
     const n = content().classes.skills.length;
-    await ask<Result>(
-      alice,
-      {
-        t: "contentDraft",
-        dataset: "classes",
-        part: "skills",
-        key: "Swimming",
-        op: "set",
-        data: { index: n + 1, skill: "Swimming" },
-      },
-      "contentResult",
-    );
+    const draftSkill = (key: string, op: "set" | "remove") =>
+      ask<Result>(
+        alice,
+        {
+          t: "contentDraft",
+          dataset: "classes",
+          part: "skills",
+          key,
+          op,
+          data: op === "set" ? { skill: key } : null,
+        },
+        "contentResult",
+      );
+    const nextSheet = async () => {
+      bob.inbox.length = 0;
+      await tick(server, 2);
+      const m = await bob.waitFor((x) => x.t === "sheet");
+      return m.t === "sheet" ? m.skills : {};
+    };
+    await draftSkill("Swimming", "set");
     expect((await publish("Swimming")).ok).toBe(true);
-    bob.inbox.length = 0;
-    await tick(server, 2);
-    const sheet = await bob.waitFor((m) => m.t === "sheet");
-    expect(sheet.t === "sheet" ? sheet.skills.length : 0).toBe(n + 1);
-    expect(sheet.t === "sheet" ? sheet.skills[n] : 0).toBe(1);
+    let skills = await nextSheet();
+    expect(Object.keys(skills)).toHaveLength(n + 1);
+    expect(skills.Swimming).toBe(1);
+
+    // Bob trains Meditation, then it goes from the content while he plays: his other skills stay
+    // on their own keys, and when Meditation returns he has what he had.
+    const live = server.game.world.players.get(idOf(server.db, "Bob"));
+    const at = (key: string) => content().classes.skills.findIndex((k) => k.skill === key);
+    if (!live) {
+      throw new Error("Bob is not online");
+    }
+    live.char.skills[at("Meditation")] = 44;
+    live.char.skills[at("Farming")] = 12;
+    await draftSkill("Meditation", "remove");
+    expect((await publish("No meditation")).ok).toBe(true);
+    skills = await nextSheet();
+    expect(skills.Meditation).toBeUndefined();
+    expect([skills.Farming, skills.Swimming]).toEqual([12, 1]);
+    expect(live.char.skills[at("Farming")]).toBe(12);
+    await draftSkill("Meditation", "set");
+    expect((await publish("Meditation again")).ok).toBe(true);
+    skills = await nextSheet();
+    expect([skills.Meditation, skills.Farming]).toEqual([44, 12]);
+    // A Classic skill set again takes its own place in the list.
+    expect(at("Meditation")).toBe(
+      classicData.classes.skills.findIndex((k) => k.skill === "Meditation"),
+    );
   });
 });

@@ -1084,7 +1084,9 @@ describe("on the server (real SQL)", () => {
     setNpcFile(g.world.npcs, "Amber", ["BIO|A trainer", "TRN|Grunt:100"].join("\r"));
     const id = await makeChar(g, "Al", true);
     db.run("UPDATE characters SET gold = 150 WHERE id = ?", [id]);
-    db.run("UPDATE character_skills SET value = 30 WHERE character_id = ? AND skill = 1", [id]);
+    db.run("UPDATE character_skills SET value = 30 WHERE character_id = ? AND skill = 'Slash'", [
+      id,
+    ]);
     g.enter(id, false);
     g.intent(id, { t: "mapReady" });
     g.intent(id, { t: "chat", text: "/roster 1 Amber" });

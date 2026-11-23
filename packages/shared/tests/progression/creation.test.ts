@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
 
+import { buildContentStore, type ContentData, installContent } from "../../src/content/store.ts";
+import { SKILL_KEYS, skillIndex } from "../../src/rules/core/fighter.ts";
+
 const { classes: classesData } = classicData;
 
 import { mapName, neighbourMapName, parseMapName } from "../../src/rules/core/maps.ts";
@@ -12,8 +15,8 @@ import {
   HEADS_BY_SEX,
   nameError,
   nextHead,
-  padStartingSkills,
   prevHead,
+  START_CLASSES,
   startingCharacter,
   statsError,
 } from "../../src/rules/progression/creation.ts";
@@ -112,8 +115,51 @@ describe("starting record", () => {
     expect(startingCharacter(base).skills).toHaveLength(classesData.skills.length);
   });
 
-  test("a class with fewer starting values than skills gets 1 for the rest", () => {
-    expect(padStartingSkills([20, 20], 5)).toEqual([20, 20, 1, 1, 1]);
+  test("Classic offers Fighter, Ranger and Mage, in the screen's order", () => {
+    expect(START_CLASSES.map((c) => [c.code, c.label])).toEqual([
+      [1, "Fighter"],
+      [3, "Ranger"],
+      [2, "Mage"],
+    ]);
+  });
+
+  test("the start classes come from content, their skills by key wherever the skills sit", () => {
+    const d = structuredClone(classicData) as ContentData;
+    // Parry moves to the end, and a fourth class starts with some.
+    const parry = d.classes.skills.splice(2, 1)[0];
+    d.classes.skills.push(parry as (typeof d.classes.skills)[number]);
+    d.classes.startClasses.push({ code: 4, label: "Squire", skills: { Parry: 5, Slash: 7 } });
+    installContent(buildContentStore(d));
+    try {
+      expect(START_CLASSES.map((c) => c.label)).toEqual(["Fighter", "Ranger", "Mage", "Squire"]);
+      expect(creationError({ ...base, classCode: 4 })).toBeNull();
+      // A class the screen does not offer is refused, even one that exists.
+      expect(creationError({ ...base, classCode: 5 })).toBe("Choose a class.");
+      const squire = startingCharacter({ ...base, classCode: 4 }).skills;
+      expect(SKILL_KEYS.at(-1)).toBe("Parry");
+      expect(squire[skillIndex("Parry")]).toBe(5);
+      expect(squire[skillIndex("Slash")]).toBe(7);
+      expect(squire.filter((v) => v !== 1)).toHaveLength(2);
+      // Fighter's Slash and Thrust follow their keys, not their old positions.
+      const fighter = startingCharacter({ ...base, classCode: 1 }).skills;
+      expect([fighter[skillIndex("Slash")], fighter[skillIndex("Thrust")]]).toEqual([20, 20]);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
+
+  test("a start class's label defaults to its class's name", () => {
+    const d = structuredClone(classicData) as ContentData;
+    const fighter = d.classes.classes.find((c) => c.code === 1);
+    if (fighter) {
+      fighter.name = "Knight";
+    }
+    installContent(buildContentStore(d));
+    try {
+      expect(START_CLASSES[0]?.label).toBe("Knight");
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
   });
 
   test("other fields and the starting bag", () => {

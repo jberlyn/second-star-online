@@ -13,8 +13,8 @@ Terrain Navigating is stored for every character but has no effect. It is a hidd
 
 ## How it works
 
-Terrain Navigating is skill 16 in the stored list (`skills` in [classes.json](../../../packages/data/content/classes.json)). It is not in the skill panel, nothing raises it, and no rule reads it. It is kept so that saved characters keep the original's layout.
+Terrain Navigating is in the stored skills (`skills` in [classes.json](../../../packages/data/content/classes.json)), marked `hidden`, so the Skills page leaves it out. Nothing raises it and no rule reads it. It is kept because 1.6 saved it.
 
 ## Adding content
 
-A new use for it needs a way to raise it, something that reads it, and an entry in `skillPanel` to show it; see [Meditation](meditation.md#adding-content).
+A new use for it needs a way to raise it, something that reads it, and the `hidden` mark taken off its row to show it; see [Meditation](meditation.md#adding-content).

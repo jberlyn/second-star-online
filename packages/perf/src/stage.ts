@@ -18,6 +18,7 @@ import {
   type Equipment,
   emptyBag,
   NO_EQUIPMENT,
+  SKILL_KEYS,
   skillIndex,
   startingCharacter,
 } from "@secondstaronline/shared";
@@ -167,7 +168,7 @@ function kit(db: ReturnType<typeof openDatabase>, id: string, bot: BotPlan): voi
       equip.weapon = "Axe";
       db.run(
         "INSERT OR REPLACE INTO character_skills (character_id, skill, value) VALUES (?, ?, 5)",
-        [id, skillIndex("Lumberjacking") + 1],
+        [id, SKILL_KEYS[skillIndex("Lumberjacking")] ?? "Lumberjacking"],
       );
       break;
     case "trader":

@@ -47,7 +47,7 @@ The [progression guide](../progression.md) covers character growth as a whole. T
 | [Shoveling](shoveling.md) | Gathering | Yes |
 | [Farming](farming.md) | Gathering | Yes |
 
-The table is in storage order: a character's skills are saved as a list in this order, and the `index` in [classes.json](../../../packages/data/content/classes.json) (`skills`) is each skill's position, counting from 1. The skill panel (`skillPanel`) shows 35 of them; Meditation, Terrain Navigating and Item Identification are stored but never shown. Code finds a skill by name with `skillIndex` in [fighter.ts](../../../packages/shared/src/rules/core/fighter.ts), which accepts the spellings the original used (`HeavyArms`, `Heavy Arms`, `fire`).
+The table is in the order of `skills` in [classes.json](../../../packages/data/content/classes.json), which is the order of the Skills page. A character saves each skill under its key (`skill`), so the list can change without moving anyone's training. The Skills page shows 35 of them under their `display` names; Meditation, Terrain Navigating and Item Identification are `hidden`, stored but never shown. Code finds a skill by name with `skillIndex` in [fighter.ts](../../../packages/shared/src/rules/core/fighter.ts), which accepts the spellings the original used (`HeavyArms`, `Heavy Arms`, `fire`). The skills a mechanic reads (Parry, Block, the crafts and others) are named in [bindings.json](../../../packages/data/content/bindings.json); see [Bindings](../../modding.md#bindings-bindingsjson).
 
 ## Starting values
 
@@ -59,7 +59,7 @@ A new character starts every skill at 1, except:
 | Mage | Magery 30 |
 | Ranger | Slash 10, Magery 10, Archery 20 |
 
-The values are in `creation.startingSkills` in classes.json. A skill added to content later starts at 1 (`NEW_SKILL_VALUE`) for every existing character.
+The values are each start class's `skills` in `startClasses` in classes.json, by skill key. A skill added to content later starts at 1 (`NEW_SKILL_VALUE`) for every existing character.
 
 ## How skills rise
 

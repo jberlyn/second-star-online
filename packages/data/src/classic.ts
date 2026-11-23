@@ -6,6 +6,7 @@
  */
 
 import attPower from "../packs/classic/data/attpower.json" with { type: "json" };
+import bindings from "../packs/classic/data/bindings.json" with { type: "json" };
 import casino from "../packs/classic/data/casino.json" with { type: "json" };
 import classes from "../packs/classic/data/classes.json" with { type: "json" };
 import craft from "../packs/classic/data/craft.json" with { type: "json" };
@@ -23,6 +24,7 @@ import spells from "../packs/classic/data/spells.json" with { type: "json" };
 import tiles from "../packs/classic/data/tiles.json" with { type: "json" };
 import manifest from "../packs/classic/manifest.json" with { type: "json" };
 import type { AttPowerData } from "../schema/attpower.ts";
+import type { BindingsData } from "../schema/bindings.ts";
 import type { CasinoData } from "../schema/casino.ts";
 import type { ClassesData } from "../schema/classes.ts";
 import type { CraftData } from "../schema/craft.ts";
@@ -44,6 +46,7 @@ export const classicManifest = manifest as PackManifest;
 
 export const classicData = {
   attPower: attPower as unknown as AttPowerData,
+  bindings: bindings as unknown as BindingsData,
   casino: casino as unknown as CasinoData,
   classes: classes as unknown as ClassesData,
   craft: craft as unknown as CraftData,

@@ -6,6 +6,7 @@
 import {
   advancedText,
   anyMatch,
+  boundSkillIndex,
   content,
   damagedForm,
   EQUIP_FIELD,
@@ -17,8 +18,8 @@ import {
   rollArmourBreak,
   rollBlockGain,
   rollParryGain,
+  SKILL_KEYS,
   shattersText,
-  skillIndex,
 } from "@secondstaronline/shared";
 
 import { logTransform } from "../admin/activity.ts";
@@ -134,18 +135,21 @@ function hitMe2(
   const shielded = onHolyShield(p, map.slots);
   const hit = monsterHitsPlayer(attack, f, p.defenseBonus, ctx.rng, shielded, p.lastToHitMe);
   const lines: string[] = [];
-  const parry = skillIndex("Parry");
-  const block = skillIndex("Block");
+  const parry = boundSkillIndex("parry");
+  const block = boundSkillIndex("block");
+  const parryValue = parry === undefined ? 0 : (p.char.skills[parry] ?? 0);
+  // An unbound Parry or Block skill is never trained.
   const gainParry = () => {
-    if (rollParryGain(p.char.skills[parry] ?? 0, ctx.rng)) {
-      p.char.skills[parry] = (p.char.skills[parry] ?? 0) + 1;
-      lines.push(advancedText("Parry"));
+    if (parry !== undefined && rollParryGain(parryValue, ctx.rng)) {
+      p.char.skills[parry] = parryValue + 1;
+      lines.push(advancedText(SKILL_KEYS[parry] ?? ""));
     }
   };
   const gainBlock = () => {
-    if (rollBlockGain(p.char.skills[block] ?? 0, p.char.skills[parry] ?? 0, ctx.rng)) {
-      p.char.skills[block] = (p.char.skills[block] ?? 0) + 1;
-      lines.push(advancedText("Block"));
+    const b = block === undefined ? 0 : (p.char.skills[block] ?? 0);
+    if (block !== undefined && rollBlockGain(b, parryValue, ctx.rng)) {
+      p.char.skills[block] = b + 1;
+      lines.push(advancedText(SKILL_KEYS[block] ?? ""));
     }
   };
   p.flicker = FLICKER_FRAMES;

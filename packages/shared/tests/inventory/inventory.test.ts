@@ -1,7 +1,10 @@
 /** Golden tests for the bag, equipment, use, armour, breaks, ground items and paperdoll rules. */
+
 import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
+
+import { startingSkills } from "../../src/rules/progression/creation.ts";
 
 const { classes: classesData } = classicData;
 
@@ -95,7 +98,7 @@ function fighter(over: Partial<Fighter> = {}): Fighter {
     sta: 10,
     int: 1,
     wis: 1,
-    skills: [...classesData.creation.startingSkills[1].values],
+    skills: startingSkills(1),
     equip: { ...NO_EQUIPMENT },
     faction: { ...NO_FACTION },
     attackBonus: 0,
