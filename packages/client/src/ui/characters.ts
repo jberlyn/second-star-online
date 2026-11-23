@@ -511,17 +511,22 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
           key: (r) => r[0],
         });
         stats.setRows(STAT_LABELS.map(([k, label]) => [label, s.stats[k]]));
-        const skills = createTable<[string, number]>({
+        // Keyed by skill key: two skills may share a display name.
+        const skills = createTable<[string, number, string]>({
           label: "Skills",
           columns: [
             { label: "Skill", cell: (r) => r[0] },
             { label: "Level", cell: (r) => String(r[1]), numeric: true },
           ],
           empty: "",
-          key: (r) => r[0],
+          key: (r) => r[2],
         });
         skills.setRows(
-          content().classes.skills.map((k) => [k.display ?? k.skill, s.skills[k.skill] ?? 0]),
+          content().classes.skills.map((k) => [
+            k.display ?? k.skill,
+            s.skills[k.skill] ?? 0,
+            k.skill,
+          ]),
         );
         return [
           section(

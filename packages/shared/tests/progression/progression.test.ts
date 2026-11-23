@@ -2,10 +2,6 @@ import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
 
-import { startingSkills } from "../../src/rules/progression/creation.ts";
-
-const { classes: classesData } = classicData;
-
 import {
   type Fighter,
   NO_EQUIPMENT,
@@ -13,6 +9,7 @@ import {
   skillValue,
 } from "../../src/rules/core/fighter.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
+import { startingSkills } from "../../src/rules/progression/creation.ts";
 import {
   checkLevelUp,
   deathText,

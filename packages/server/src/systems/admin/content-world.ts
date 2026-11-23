@@ -210,6 +210,12 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       vault: [...p.char.vault],
       gold: p.char.gold,
       skills: [...p.char.skills],
+      // The baselines the activity log and the medal check compare skills against follow a
+      // publish that moves the skills, so they go back with them.
+      progress: p.activityProgress
+        ? { ...p.activityProgress, skills: [...p.activityProgress.skills] }
+        : p.activityProgress,
+      awardSkills: p.awardSkills ? [...p.awardSkills] : p.awardSkills,
       lastSheet: p.lastSheet,
       container: p.container,
       // A changed NPC file closes the shop or Bio window open on it.
@@ -257,6 +263,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         s.p.char.vault = s.vault;
         s.p.char.gold = s.gold;
         s.p.char.skills.splice(0, s.p.char.skills.length, ...s.skills);
+        s.p.activityProgress = s.progress;
+        s.p.awardSkills = s.awardSkills;
         s.p.lastSheet = s.lastSheet;
         s.p.container = s.container;
         s.p.shop = s.shop;

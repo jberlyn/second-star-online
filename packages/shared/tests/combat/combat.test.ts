@@ -2,11 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
 
-import { startingSkills } from "../../src/rules/progression/creation.ts";
-
-const { classes: classesData } = classicData;
-
 import { STEPFRAMES_PER_FRAME } from "../../src/constants.ts";
+import { buildContentStore, type ContentData, installContent } from "../../src/content/store.ts";
 import { factionRows } from "../../src/rules/combat/armour.ts";
 import { attackPower, bowRefusal, evalValue } from "../../src/rules/combat/attpower.ts";
 import {
@@ -30,6 +27,7 @@ import {
   skillIndex,
 } from "../../src/rules/core/fighter.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
+import { startingSkills } from "../../src/rules/progression/creation.ts";
 
 /** A random source with fixed results, repeating the last one when exhausted. */
 function scripted(results: readonly number[]): Rng & { calls: number[] } {
@@ -275,6 +273,19 @@ describe("monsters hitting players", () => {
     const rng = scripted([3, 1]);
     expect(monsterHitsPlayer(1, zero, 0, rng)).toEqual({ kind: "parry" });
     expect(rng.calls).toEqual([3, 90]);
+  });
+  test("a world that binds no Parry or Block skill makes no parry or block roll", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.bindings.skills = {};
+    installContent(buildContentStore(d));
+    try {
+      const zero = fighter({ skills: Array(38).fill(0) as number[] });
+      const rng = scripted([3, 1]);
+      expect(monsterHitsPlayer(1, zero, 0, rng)).toEqual({ kind: "hit", lost: 4 });
+      expect(rng.calls).toEqual([3]);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
   });
   test("bug fixed: a negative DefenseBonus adds damage", () => {
     // 35 + random(3) = 38, then 38 − (−5) = 43.

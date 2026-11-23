@@ -130,12 +130,28 @@ export function keyProblems(
  * The skill rules. Characters save each skill under its key, so skills may be added, removed or
  * reordered (a removed skill's saved values wait for it to return). The rules find a skill by its
  * key with case and spaces ignored ("Martial Arts" is MartialArts), so two skills may not share
- * that spelling: one would hide the other.
+ * that spelling (one would hide the other), and a published skill's key keeps its exact spelling.
  */
-export function skillProblems(next: ContentData): ContentProblem[] {
+export function skillProblems(next: ContentData, published?: ContentData): ContentProblem[] {
   const out: ContentProblem[] = [];
+  // Characters' rows are saved under the exact key, so a live skill keeps its spelling: a key
+  // written another way would leave two rows for one skill.
+  const live = new Map((published?.classes.skills ?? []).map((s) => [skillNorm(s.skill), s.skill]));
+  for (const s of next.classes.skills) {
+    const was = live.get(skillNorm(s.skill));
+    if (was !== undefined && was !== s.skill) {
+      out.push({
+        where: `classes/skills/${s.skill}`,
+        message: `a skill's key cannot be spelled another way (it is ${was})`,
+      });
+    }
+  }
   const spelled = new Map<string, string>();
   for (const s of next.classes.skills) {
+    if (skillNorm(s.skill) === "") {
+      out.push({ where: `classes/skills/${s.skill}`, message: "a skill's key needs a letter" });
+      continue;
+    }
     const other = spelled.get(skillNorm(s.skill));
     if (other !== undefined) {
       out.push({
@@ -566,8 +582,19 @@ export function referenceProblems(next: ContentData, published: ContentData): Co
     .filter((r) => {
       const left = before.get(refKey(r)) ?? 0;
       before.set(refKey(r), left - 1);
-      return left <= 0;
+      // A binding to no skill quietly turns a mechanic off, so it is named every time, not only
+      // when this publish makes it.
+      return left <= 0 || r.where === BINDINGS_WHERE;
     })
+    .map((r) => ({ where: r.where, message: referenceMessage(r) }));
+}
+
+const BINDINGS_WHERE = "bindings/skills";
+
+/** The skill bindings that name no skill: their mechanics are off until they are fixed. */
+export function bindingProblems(data: ContentData): ContentProblem[] {
+  return brokenReferences(data)
+    .filter((r) => r.where === BINDINGS_WHERE)
     .map((r) => ({ where: r.where, message: referenceMessage(r) }));
 }
 
@@ -627,7 +654,7 @@ export function checkStore(
   }
   return [
     ...keyProblems(next, packKeys),
-    ...skillProblems(next),
+    ...skillProblems(next, published),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

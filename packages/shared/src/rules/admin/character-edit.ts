@@ -412,7 +412,9 @@ export function editErrors(
       if (v === before.skills[k]) {
         continue;
       }
-      if (findSkillIndex(k) === undefined) {
+      // Exactly a key the sheet lists: another spelling would be logged under a name its undo
+      // could not find.
+      if (!(k in before.skills) || findSkillIndex(k) === undefined) {
         errors.push(`Skills: there is no skill ${k}.`);
       } else if (!isInt(v, L.skillMin, L.skillMax)) {
         errors.push(`${skillDisplay(k)}: a whole number from ${L.skillMin} to ${L.skillMax}.`);

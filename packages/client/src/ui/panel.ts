@@ -1129,6 +1129,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       const rows = content().classes.skills.filter((s) => !s.hidden);
       names.textContent = rows.map((r) => r.display ?? r.skill).join("\n");
       amounts.textContent = rows.map((r) => skills[r.skill] ?? 0).join("\n");
+      // Fewer rows than before (a publish hid or removed skills) keep the list in view.
+      scrollBy(0);
     },
   };
   panel.setTab("stats");

@@ -8,10 +8,7 @@ import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
 
-import { startingSkills } from "../../src/rules/progression/creation.ts";
-
-const { classes: classesData } = classicData;
-
+import { buildContentStore, type ContentData, installContent } from "../../src/content/store.ts";
 import { attackPower } from "../../src/rules/combat/attpower.ts";
 import {
   type Fighter,
@@ -21,7 +18,8 @@ import {
 } from "../../src/rules/core/fighter.ts";
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import { masterworkBase, weaponIs } from "../../src/rules/crafting/masterwork.ts";
-import { weaponSkillList } from "../../src/rules/progression/skillgain.ts";
+import { startingSkills } from "../../src/rules/progression/creation.ts";
+import { rollKillSkillGain, weaponSkillList } from "../../src/rules/progression/skillgain.ts";
 
 const SWORD = ["Slash", "Thrust", "Swordsmanship", "Fencing"];
 
@@ -63,6 +61,23 @@ describe("kill skill gain by weapon", () => {
     ]);
     expect(weaponSkillList("Sword of Hope +1")).toEqual(weaponSkillList("Sword of Hope"));
     expect(weaponSkillList("Star Sword +2")).toEqual(weaponSkillList("Star Sword"));
+  });
+
+  test("a skill whose display name changes still trains on a kill", () => {
+    const d = structuredClone(classicData) as ContentData;
+    const heavy = d.classes.skills.find((k) => k.skill === "HeavyArms");
+    if (heavy) {
+      heavy.display = "Big Weapons";
+    }
+    installContent(buildContentStore(d));
+    try {
+      // Every roll answers 1: Heavy Arms (Thrust > 60) rises with the rest of a Broad Sword's list.
+      const f = fighter("Broad Sword", { Slash: 60, Thrust: 70, HeavyArms: 10, Swordsmanship: 10 });
+      const ones: Rng = { random: (n) => (n >= 1 ? 1 : 0) };
+      expect(rollKillSkillGain(f, 0, ones)).toContain("HeavyArms");
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
   });
 
   test("an exact row still needs the name: a longer name is not a masterwork", () => {

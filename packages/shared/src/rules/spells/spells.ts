@@ -21,7 +21,6 @@ import {
   type Equipment,
   type Faction,
   findSkillIndex,
-  skillIndex,
   skillValue,
 } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
@@ -699,8 +698,9 @@ export const SKILL_BOOK_CAP = 77;
 export function runBook(book: string, skills: number[], spellbook: string[], rng: Rng): BookResult {
   const skillBook = firstMatch(content().itemRules.use.skillBooks, book);
   if (skillBook) {
-    const i = skillIndex(skillBook.skill);
-    if ((skills[i] ?? 0) < SKILL_BOOK_CAP) {
+    // A book whose skill the world no longer has teaches nothing.
+    const i = findSkillIndex(skillBook.skill);
+    if (i !== undefined && (skills[i] ?? 0) < SKILL_BOOK_CAP) {
       skills[i] = Math.min(SKILL_BOOK_CAP, (skills[i] ?? 0) + 1 + rng.random(5));
       return {
         kind: "skill",

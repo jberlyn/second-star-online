@@ -4289,7 +4289,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Your skills page remains aligned after a promotion.
 - **1.6:** A promotion appended each granted skill and value to one list while leaving the separate amounts list unchanged, misaligning the panel until restart.
-- **SSO:** The skills panel is a fixed table indexed by skill. A promotion raises each granted skill to at least random(10) in its own row, so nothing can misalign.
+- **SSO:** The skills panel is one table, a row per shown skill, each showing its own skill's value by key. A promotion raises each granted skill to at least random(10) in its own row, so nothing can misalign.
 - **Why:** There are no separate lists to misalign.
 - **In the code:** `packages/server/src/systems/economy/intents.ts` (`trainIntent`), `packages/shared/src/rules/progression/promotion.ts` (`promoteClass`)
 - **Pinned by:** `bug fixed: each promotion raises its skills to a roll of 1-10`; `a grant never lowers a skill already above the roll` (packages/shared/tests/progression/promotion.test.ts)

@@ -90,6 +90,8 @@ describe("the editor's rules", () => {
     expect(err({ hp: 25 })).toEqual(["HP: a whole number from 1 to 24."]);
     expect(err({ skills: { Thrust: 101 } })).toEqual(["Thrust: a whole number from 1 to 100."]);
     expect(err({ skills: { Swimming: 5 } })).toEqual(["Skills: there is no skill Swimming."]);
+    // Another spelling of a key the sheet lists is refused: its undo could not find it.
+    expect(err({ skills: { slash: 5 } })).toEqual(["Skills: there is no skill slash."]);
     expect(err({ gold: -1 })[0]).toContain("Gold");
     expect(err({ bank: 5 })).toEqual(["Bank: they have no bank account yet."]);
     expect(err({ classCode: 99 })).toEqual(["Class: there is no such class."]);

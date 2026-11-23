@@ -405,7 +405,8 @@ export function creationScreen(
       100,
     );
   });
-  items.push({ el: classList, x: 524, y: 223, w: 110, h: CLASS_ROWS * CLASS_ROW_H + 3 });
+  // Above the backdrop (channel 1), so a scrolling list's bar shows; its rows keep their order.
+  items.push({ el: classList, x: 524, y: 223, w: 110, h: CLASS_ROWS * CLASS_ROW_H + 3, z: 22 });
 
   const name = field("text", "Name");
   name.maxLength = 20;

@@ -3,11 +3,6 @@
 import { describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
-
-import { startingSkills } from "../../src/rules/progression/creation.ts";
-
-const { classes: classesData } = classicData;
-
 import npcsData from "@secondstaronline/data/test-fixtures/npc-expectations";
 
 import { content } from "../../src/content/store.ts";
@@ -73,6 +68,7 @@ import {
   rollDeathDrop,
   rollLoot,
 } from "../../src/rules/monsters/loot.ts";
+import { startingSkills } from "../../src/rules/progression/creation.ts";
 
 /** Ctrl by a player of middling Strength away from their own premises. */
 const STRANGER = { str: 50, mine: false };

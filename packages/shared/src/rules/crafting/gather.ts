@@ -7,6 +7,7 @@ import type { GatherTool, SkillGainRule } from "@secondstaronline/data";
 
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import { type ContentStore, content, onContent } from "../../content/store.ts";
+import { boundSkillIndex, SKILL_KEYS } from "../core/fighter.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
 import type { Facing } from "../movement/movement.ts";
 
@@ -270,7 +271,10 @@ export function castLine(
     fish = fishFor(skill);
     left -= 1;
   }
-  const gained = left > 0 && rollSkillGain(content().bindings.skills.fishing ?? "", skill, rng);
+  // The gain row of the bound skill, by its key as the skills list spells it.
+  const fishing = boundSkillIndex("fishing");
+  const gained =
+    left > 0 && fishing !== undefined && rollSkillGain(SKILL_KEYS[fishing] ?? "", skill, rng);
   return { fish, gained, antiMacro: left };
 }
 

@@ -119,6 +119,7 @@ body {
   overflow: hidden;
 }
 .cc-class-list.cc-class-scroll {
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }

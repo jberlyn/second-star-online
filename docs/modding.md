@@ -425,14 +425,14 @@ It shows on the Skills page at once, at 1 for everyone. To have Fighters start a
 | Binding | What reads it | Unbound |
 |---|---|---|
 | `parry`, `block` | the dodge rolls against player and monster hits, and their gains | no parrying or blocking: no roll is made |
-| `archery`, `martialArts` | the gains on an arrow shot (`martialArts` with a crossbow) | that gain never rolls |
+| `archery`, `martialArts` | the gains on an arrow shot (`martialArts` with a crossbow) | that gain never rolls (Smoke Bomb's Martial Arts is its spell school, below) |
 | `staffFighting` | the power of the fireballs a staff swings | the plain `1 + random(3)` |
 | `magery` | the tiers of every cast's base power, and the Magery gain | no Magery tiers; no gain |
-| `axeFighting`, `mining` | the swing-speed ladders of axes and mining tools | the tool swings at its plain speed |
+| `axeFighting`, `mining` | the swing-speed ladders of axes and mining tools | the tool swings at its plain speed (what it gathers, and the gain, follow its `gather.json` tool row) |
 | `fishing` | the catch bands, the gain and the cast itself | no fishing: the pole is only a weapon |
 | `blacksmithing`, `cooking`, `alchemy`, `carpentry` | the four crafts' timers, results and gains | that craft's button does nothing |
 
-A binding that names a skill which does not exist is refused at publish. Classic binds each to its 1.6 skill. Other skills the engine still reads by name (the spell schools, and the kill-gain handlers in `RULES`) move to content in later stages of #37.
+A binding that names a skill which does not exist is named at start and refused at every publish until it is fixed. Classic binds each to its 1.6 skill. Some skills are still read by name: the spell schools (Smoke Bomb's Martial Arts among them) move to the spell rows in stage 4 of #37, the gathering tools' skills to tool behaviours in stage 5, and the kill-gain handlers in `RULES` to progression models in stage 6.
 
 ## Art and sound
 

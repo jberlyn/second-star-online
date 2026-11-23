@@ -181,6 +181,27 @@ describe("PvP melee", () => {
     ]);
     expect(b.char.skills[skillIndex("Block")]).toBe(6);
   });
+
+  test("a PvP hit that raises Parry from 50 to 51 can raise Block in the same hit", () => {
+    // No parry, no block; the hit lands. Parry's gain random(50) = 1 makes it 51, and Block's
+    // gain random(7) = 1 reads that 51, past its Parry > 50 requirement.
+    const s = scene({ 50: [1], 7: [1] });
+    const a = s.add("Ann", 5, 5);
+    const b = s.add("Bob", 5, 4);
+    b.char.skills = Array(38).fill(0);
+    b.char.skills[skillIndex("Parry")] = 50;
+    b.char.skills[skillIndex("Block")] = 7;
+    a.timers.canAttack = true;
+    setAttackHeld(a, true);
+    const ev = s.poll(a);
+    expect(ev.pvp.flatMap((h) => h.lines)).toEqual([
+      "You have advanced in the art of Parry!",
+      "You have advanced in the art of Block!",
+    ]);
+    expect([b.char.skills[skillIndex("Parry")], b.char.skills[skillIndex("Block")]]).toEqual([
+      51, 8,
+    ]);
+  });
 });
 
 describe("the hit's i-frames", () => {

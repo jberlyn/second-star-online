@@ -17,7 +17,12 @@ import { readPackDir } from "../src/content/packs.ts";
 import { rowDetailOf } from "../src/content/page.ts";
 import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
-import { badKeyForm, nameProblems, referenceProblems } from "../src/content/validate.ts";
+import {
+  badKeyForm,
+  nameProblems,
+  referenceProblems,
+  skillProblems,
+} from "../src/content/validate.ts";
 import {
   contentRows,
   insertPack,
@@ -542,6 +547,55 @@ describe("review fixes", () => {
     expect(fromBindings()).toEqual([]);
     service.draftSet(ADMIN, bindings, "set", { ...unbound, block: "Blok" });
     expect(fromBindings()).toEqual(["names a skill that does not exist: Blok"]);
+  });
+
+  test("a published skill keeps its key's exact spelling", () => {
+    const { service } = setup();
+    // Drafting refuses it, as for every key.
+    expect(
+      service.draftSet(ADMIN, { dataset: "classes", part: "skills", key: "Slash" }, "set", {
+        skill: "slash",
+      }).ok,
+    ).toBe(false);
+    // So does the publish check, for a key that arrives another way (a pack's new version).
+    const published = service.publishedContent();
+    const respelled = structuredClone(published);
+    (respelled.classes.skills[0] as { skill: string }).skill = "slash";
+    expect(skillProblems(respelled, published).map((p) => p.message)).toEqual([
+      "a skill's key cannot be spelled another way (it is Slash)",
+    ]);
+  });
+
+  test("a pack that binds a skill to no skill is named at start, and every publish names it", () => {
+    const { db } = setup();
+    const dir = mkdtempSync(join(tmpdir(), "sso-pack-"));
+    cpSync(RELEASE_PACK_DIRS.classic as string, dir, { recursive: true });
+    const file = join(dir, "data", "bindings.json");
+    const bindings = JSON.parse(readFileSync(file, "utf8"));
+    bindings.skills.parry = "Parri";
+    writeFileSync(file, JSON.stringify(bindings));
+    const lines: string[] = [];
+    try {
+      const service = new ContentService({
+        db,
+        now: () => "x",
+        releasePacks: { classic: dir },
+        log: (l) => lines.push(l),
+      });
+      expect(lines).toContain(
+        "content: bindings/skills: names a skill that does not exist: Parri (that mechanic is off)",
+      );
+      // Not this publish's doing, but it is named until it is fixed.
+      service.draftSet(ADMIN, { dataset: "casino", part: "slots", key: null }, "set", {
+        ...service.publishedContent().casino.slots,
+        cost: 7,
+      });
+      expect(service.check().map((p) => p.message)).toEqual([
+        "names a skill that does not exist: Parri",
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test("undo runs every publish check: it cannot strand a reference a later publish made", () => {

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { classicData } from "@secondstaronline/data/classic";
 import { startingCharacter } from "@secondstaronline/shared";
 
 import { insertCharacter as insertCurrent } from "../src/persistence/characters.ts";
@@ -48,6 +49,11 @@ function insertCharacter(db: Db, input: Parameters<typeof insertCurrent>[1]): st
   });
   return id;
 }
+
+/** Classic's 38 skills in their saved order, and the Skills page name 1.6 gave each. */
+const classicSkillNames = classicData.classes.skills.map((s) => s.skill);
+const panelName = (skill: string) =>
+  classicData.classes.skills.find((s) => s.skill === skill)?.display ?? skill;
 
 describe("migrations (real SQL on in-memory SQLite)", () => {
   test("applies the shipped migrations once", () => {
@@ -857,11 +863,45 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     );
     row.run("skills", "HeavyArms", JSON.stringify(classicSkill), JSON.stringify(classicSkill), 1);
     row.run("skills", "Meditation", JSON.stringify({ index: 12, skill: "Meditation" }), null, 2);
-    row.run("skillPanel", "", JSON.stringify([]), null, 3);
+    // The page as Classic had it (35 rows), with Slash renamed and Thrust left out.
+    const classicPanel = classicSkillNames.flatMap((skill, i) =>
+      ["Meditation", "TerrainNavigating", "ItemIdentification"].includes(skill)
+        ? []
+        : [{ name: panelName(skill), index: i + 1 }],
+    );
+    const panel = classicPanel
+      .filter((r) => r.index !== 2)
+      .map((r) => (r.index === 1 ? { ...r, name: "Slashing" } : r));
+    row.run("skillPanel", "", JSON.stringify(panel), null, 3);
+    // A draft page that shows Meditation again, under another name.
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', 'skillPanel', '', 'set', ?, 'a1', 'God', 'now')",
+      [JSON.stringify([...classicPanel, { name: "Calm", index: 12 }])],
+    );
     row.run("creation", "", JSON.stringify(creation), JSON.stringify(base), 4);
     db.run(
       "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', 'skills', 'Swimming', 'set', ?, 'a1', 'God', 'now')",
       [JSON.stringify({ index: 39, skill: "Swimming" })],
+    );
+    // A drafted Classic skill row in the old shape, a skill only the draft adds, and drafted
+    // starting values that name it, with an empty label.
+    const draftRow = db.prepare(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', ?, ?, 'set', ?, 'a1', 'God', 'now')",
+    );
+    draftRow.run("skills", "HeavyArms", JSON.stringify({ index: 4, skill: "HeavyArms" }));
+    draftRow.run("skills", "Climbing", JSON.stringify({ index: 41, skill: "Climbing" }));
+    const draftValues = Array.from({ length: 41 }, (_, i) => (i === 40 ? 6 : i < 2 ? 20 : 1));
+    draftRow.run(
+      "creation",
+      "",
+      JSON.stringify({
+        ...creation,
+        classes: { "1": "", "2": "Mage", "3": "Ranger" },
+        startingSkills: {
+          ...creation.startingSkills,
+          "1": { ...creation.startingSkills["1"], values: draftValues },
+        },
+      }),
     );
     // An imported pack's classes in the old shape.
     const pack = {
@@ -876,6 +916,8 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
           skillPanel: [
             { name: "Slash", index: 1 },
             { name: "Tinker", index: 2 },
+            // A second row for one skill (the old schema allowed it): the first wins.
+            { name: "Tinkerer", index: 2 },
           ],
           creation: {
             classes: { "1": "A", "2": "B", "3": "C" },
@@ -921,11 +963,8 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         .changes,
     );
     expect(changes[0]).toEqual({ field: "gold", before: 1, after: 2 });
-    expect(changes[1].field).toBe("skills");
-    expect(changes[1].before.Magery).toBe(8);
-    expect(changes[1].after.Magery).toBe(50);
-    expect(changes[1].after.Slash).toBe(1);
-    expect(Object.keys(changes[1].after)).toHaveLength(38);
+    // Only the skill the edit moved.
+    expect(changes[1]).toEqual({ field: "skills", before: { Magery: 8 }, after: { Magery: 50 } });
 
     const rows = new Map(
       (
@@ -936,7 +975,37 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     );
     expect(rows.get("skills/HeavyArms")).toEqual({ skill: "HeavyArms", display: "Heavy Arms" });
     expect(rows.get("skills/Meditation")).toEqual({ skill: "Meditation", hidden: true });
+    // The operator's page: Slash renamed, Thrust hidden; nothing else changed.
+    expect(rows.get("skills/Slash")).toEqual({ skill: "Slash", display: "Slashing" });
+    expect(rows.get("skills/Thrust")).toEqual({ skill: "Thrust", hidden: true });
+    expect([...rows.keys()].filter((k) => k.startsWith("skills/")).sort()).toEqual([
+      "skills/HeavyArms",
+      "skills/Meditation",
+      "skills/Slash",
+      "skills/Thrust",
+    ]);
     expect(rows.has("skillPanel/")).toBe(false);
+    // The draft's page: Meditation shown as Calm, over the published rows.
+    const drafted = new Map(
+      (
+        db
+          .query("SELECT part, row_key, data FROM content_draft WHERE dataset = 'classes'")
+          .all() as { part: string; row_key: string; data: string }[]
+      ).map((r) => [`${r.part}/${r.row_key}`, JSON.parse(r.data)]),
+    );
+    expect(drafted.get("skills/Meditation")).toEqual({ skill: "Meditation", display: "Calm" });
+    // Shown again by the draft's page, as Classic shows it.
+    expect(drafted.get("skills/Slash")).toEqual({ skill: "Slash" });
+    expect(drafted.get("skills/Thrust")).toEqual({ skill: "Thrust" });
+    expect(drafted.has("skillPanel/")).toBe(false);
+    // The drafted HeavyArms row keeps the name it shows by.
+    expect(drafted.get("skills/HeavyArms")).toEqual({ skill: "HeavyArms", display: "Heavy Arms" });
+    // The drafted Fighter: no label (it was empty), and the draft-only skill kept by key.
+    expect(drafted.get("startClasses/1")).toEqual({
+      code: 1,
+      skills: { Slash: 20, Thrust: 20, Climbing: 6 },
+    });
+    expect(drafted.get("creation/")).toEqual({ statBudget: { rule: "" } });
     expect(rows.get("creation/")).toEqual({ statBudget: { rule: "" } });
     // Only Fighter changed: it becomes a start class row with its label and values by key.
     expect(rows.get("startClasses/1")).toEqual({
@@ -953,7 +1022,8 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
           }
         ).data,
       ),
-    ).toEqual({ skill: "Swimming" });
+      // Drafted, but not on the drafted page, so not shown: hidden.
+    ).toEqual({ skill: "Swimming", hidden: true });
 
     const migrated = JSON.parse(
       (db.query("SELECT data FROM content_packs WHERE id = 'extra'").get() as { data: string })

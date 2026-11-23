@@ -6,6 +6,9 @@
  */
 import { z } from "zod";
 
+/** The largest class code a start class may offer (the creation message's bound). */
+export const MAX_START_CLASS_CODE = 10_000;
+
 /**
  * A skill. `skill` is its permanent key: characters store each skill's value under it, so the
  * list may grow, shrink or be reordered without moving anyone's training (a removed skill's values
@@ -26,9 +29,11 @@ export const skillSchema = z.strictObject({
  * are the starting values by skill key, every other skill starting at `NEW_SKILL_VALUE` (1).
  */
 export const startClassSchema = z.strictObject({
-  code: z.number().int().min(1),
+  /** At most `MAX_START_CLASS_CODE`, the most the creation message carries. */
+  code: z.number().int().min(1).max(MAX_START_CLASS_CODE),
   label: z.string().min(1).optional(),
-  skills: z.record(z.string(), z.number().int()),
+  /** Each 1 to 100, as a skill can be (the character editor's limits). */
+  skills: z.record(z.string(), z.number().int().min(1).max(100)),
 });
 
 const ruleSchema = z.strictObject({ rule: z.string() });
@@ -119,7 +124,16 @@ export const classesDataSchema = z
       });
     });
     const codes = new Set(data.classes.map((c) => c.code));
+    const offered = new Set<number>();
     data.startClasses.forEach((sc, i) => {
+      if (offered.has(sc.code)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["startClasses", i, "code"],
+          message: `class ${sc.code} is offered twice`,
+        });
+      }
+      offered.add(sc.code);
       if (!codes.has(sc.code)) {
         ctx.addIssue({
           code: "custom",

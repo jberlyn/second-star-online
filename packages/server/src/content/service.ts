@@ -86,6 +86,7 @@ import {
   sameRow,
 } from "./rows.ts";
 import {
+  bindingProblems,
   brokenReferences,
   type ContentProblem,
   checkStore,
@@ -467,6 +468,10 @@ export class ContentService {
     // Say so at start: every publish names the problem until it is fixed.
     for (const p of keyProblems(this.published, this.packKeys)) {
       this.log(`content: ${p.where}: ${p.message}`);
+    }
+    // So does a skill binding to no skill: its mechanic is off, and every publish names it.
+    for (const p of bindingProblems(this.published)) {
+      this.log(`content: ${p.where}: ${p.message} (that mechanic is off)`);
     }
   }
 

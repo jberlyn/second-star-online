@@ -28,7 +28,7 @@ export const createSchema = z.strictObject({
   sex: z.union([z.literal(1), z.literal(2)]),
   head: z.number().int().min(1).max(17),
   /** A class the creation screen offers (`classes.json` `startClasses`); the server checks it. */
-  classCode: z.number().int().min(1).max(10_000),
+  classCode: z.number().int().min(1).max(10_000), // = MAX_START_CLASS_CODE (data schema classes.ts)
   str: stat,
   sta: stat,
   int: stat,

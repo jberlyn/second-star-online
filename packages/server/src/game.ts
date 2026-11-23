@@ -580,9 +580,11 @@ export function createGame(deps: GameDeps): Game {
    * Puts every online character's skills (and the copies the activity log and the medal check
    * compare against) in the order of the installed store's skills, by key. A skill the store
    * dropped has its value written, so it is there if the skill returns; a skill the store added
-   * takes the value saved for it, else `NEW_SKILL_VALUE`, as a login does.
+   * takes the value saved for it, else `NEW_SKILL_VALUE`, as a login does. `restoring` (the store
+   * a failed publish replaced going back) writes nothing: the publish's writes were rolled back,
+   * and the world's rollback puts every list back as it was.
    */
-  const followSkills = () => {
+  const followSkills = (restoring: boolean) => {
     const was = skillKeys;
     skillKeys = SKILL_KEYS;
     if (was.length === skillKeys.length && was.every((k, i) => k === skillKeys[i])) {
@@ -593,11 +595,12 @@ export function createGame(deps: GameDeps): Game {
     const dropped = was.filter((k) => findSkillIndex(k) === undefined);
     for (const o of world.players.values()) {
       const values = byKey(o.char.skills);
-      if (dropped.length > 0) {
+      if (dropped.length > 0 && !restoring) {
         saveSkillValues(db, o.id, Object.fromEntries(dropped.map((k) => [k, values[k] ?? 0])));
       }
-      const saved = loadSkillValues(db, o.id);
-      const now = skillsFromKeys(values, (k) => saved[k] ?? NEW_SKILL_VALUE);
+      // Saved values are matched as a login matches them (another spelling counts).
+      const saved = skillsFromKeys(loadSkillValues(db, o.id));
+      const now = skillsFromKeys(values, (k) => saved[findSkillIndex(k) ?? -1] ?? NEW_SKILL_VALUE);
       // A new skill reads the same in the copies as on the character, so it logs no gain.
       const copy = (list: readonly number[]) =>
         skillsFromKeys(byKey(list), (k) => now[findSkillIndex(k) ?? -1] ?? NEW_SKILL_VALUE);
@@ -2265,6 +2268,12 @@ export function createGame(deps: GameDeps): Game {
         unnoteCreate(limits, ip, counted);
         throw err;
       }
+      // A publish during the hash may have taken the class off the screen: checked again.
+      const late = creationError(choice);
+      if (late) {
+        unnoteCreate(limits, ip, counted);
+        return { ok: false, text: late };
+      }
       const now = isoNow();
       let made: { id: string; accountId: string; name: string } | null = null;
       try {
@@ -3132,7 +3141,7 @@ export function createGame(deps: GameDeps): Game {
       }
       // Everyone online keeps their skills by key when the publish adds, removes or moves one,
       // and every sheet is sent again: the Skills tab's rows may have changed.
-      followSkills();
+      followSkills(restoring);
       for (const o of world.players.values()) {
         o.lastSheet = "";
       }

@@ -7,9 +7,11 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
 import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
 import {
+  buildContentStore,
   type ContentData,
   checkNpcFile,
   content,
@@ -435,6 +437,105 @@ describe("removing content in use from a running game", () => {
   const ADMIN = (l: { accountId: string; name: string }): ContentActor => ({
     accountId: l.accountId,
     name: l.name,
+  });
+
+  test("a publish that removes a skill and then fails puts every skill list back, and the gain waiting to be logged is logged", async () => {
+    const { god, al, p } = await ringsEverywhere();
+    const skillDetails = () =>
+      db
+        .query<{ details: string }, [string]>(
+          "SELECT details FROM activity_log WHERE type = 'skill' AND character_id = ?",
+        )
+        .all(al.characterId)
+        .map((r) => JSON.parse(r.details));
+    const meditation = content().classes.skills.findIndex((k) => k.skill === "Meditation");
+    // A Meditation point the activity log has not seen yet, already saved.
+    p.char.skills[meditation] = (p.char.skills[meditation] ?? 0) + 1;
+    game.saveAll();
+    const skills = [...p.char.skills];
+    const progress = structuredClone(p.activityProgress);
+    const award = p.awardSkills ? [...p.awardSkills] : p.awardSkills;
+    const savedRows = db
+      .query("SELECT skill, value FROM character_skills WHERE character_id = ? ORDER BY skill")
+      .all(al.characterId);
+    expect(
+      service.draftSet(
+        ADMIN(god),
+        { dataset: "classes", part: "skills", key: "Meditation" },
+        "remove",
+        null,
+      ).ok,
+    ).toBe(true);
+    expect(
+      service.draftRemoval(
+        ADMIN(god),
+        {
+          kind: "item",
+          key: "Ruby Ring",
+          content: "remove",
+          copies: "purge",
+          replacement: null,
+          refundGold: 10,
+        },
+        game.contentWorld,
+      ).ok,
+    ).toBe(true);
+    const failing = {
+      ...game.contentWorld,
+      apply: (...args: Parameters<typeof game.contentWorld.apply>) => {
+        game.contentWorld.apply(...args);
+        throw new Error("write failed");
+      },
+    };
+    expect(() => service.publish(ADMIN(god), service.draftRev(), "", failing)).toThrow(
+      "write failed",
+    );
+    expect(content().classes.skills[meditation]?.skill).toBe("Meditation");
+    expect(p.char.skills).toEqual(skills);
+    expect(p.activityProgress).toEqual(progress);
+    expect(p.awardSkills).toEqual(award);
+    expect(
+      db
+        .query("SELECT skill, value FROM character_skills WHERE character_id = ? ORDER BY skill")
+        .all(al.characterId),
+    ).toEqual(savedRows);
+    // Not seen yet, so the next tick logs it.
+    expect(p.activityProgress?.skills[meditation]).toBe(1);
+    game.tick();
+    game.saveAll();
+    expect(skillDetails().some((d) => d.skill === "Meditation" && d.gained === 1)).toBe(true);
+  });
+
+  test("a class a publish takes off the creation screen while the password hashes is refused", async () => {
+    const pending = game.create(
+      {
+        t: "create",
+        name: "Late",
+        password: "pw",
+        sex: 1,
+        head: 1,
+        classCode: 3,
+        str: 10,
+        sta: 10,
+        int: 10,
+        wis: 10,
+        dex: 10,
+      },
+      "10.0.9.1",
+    );
+    const before = content();
+    const d = structuredClone(classicData) as ContentData;
+    d.classes.startClasses = d.classes.startClasses.filter((c) => c.code !== 3);
+    installContent(buildContentStore(d));
+    try {
+      const r = await pending;
+      expect(r).toEqual({ ok: false, text: "Choose a class." });
+      expect(db.query("SELECT count(*) AS n FROM characters WHERE name = 'Late'").get()).toEqual({
+        n: 0,
+      });
+    } finally {
+      installContent(before);
+    }
   });
 
   /** A world with Ruby Rings everywhere: Al's bag and ring finger, Bo's offline bag and vault, the ground, a container and a quest line. */

@@ -394,6 +394,28 @@ describe("kept bugs in the monster tables", () => {
     expect([r?.text, r?.lines]).toEqual(["Block", ["You have advanced in the art of Block!"]]);
     expect(a.char.skills[skillIndex("Block")]).toBe(6);
   });
+  test("a plain monster hit that raises Parry from 50 to 51 can raise Block in the same hit", () => {
+    const map = testMap("x1000y992");
+    live(map, 1, "Orc", 5, 6);
+    const a = player("a", map, 5, 5);
+    a.flicker = 0;
+    a.char.skills[skillIndex("Parry")] = 50;
+    a.char.skills[skillIndex("Block")] = 7;
+    // No parry, no block, the hit lands; then Parry's gain random(50) = 1 makes it 51, and Block's
+    // gain random(7) = 1 reads that 51, past its Parry > 50 requirement.
+    const r = monsterAttack(map, map.slots[0] as MonsterSlot, a, {
+      rng: rngByN({ 10: [1], 50: [1], 7: [1] }),
+      npcs: ARCHIVE_NPCS,
+      invulnerable: () => false,
+    });
+    expect(r?.lines).toEqual([
+      "You have advanced in the art of Parry!",
+      "You have advanced in the art of Block!",
+    ]);
+    expect([a.char.skills[skillIndex("Parry")], a.char.skills[skillIndex("Block")]]).toEqual([
+      51, 8,
+    ]);
+  });
   test("bug fixed: arena tiles on rows 10-12 are arena tiles", () => {
     const map = testMap("x1", [], () => "6P");
     const room = { map, npcs: ARCHIVE_NPCS, players: [], fx: [], fxQueue: [], doorLock: 0 };

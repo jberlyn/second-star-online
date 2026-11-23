@@ -137,17 +137,21 @@ export function skillsByKey(skills: readonly number[]): SkillValues {
 
 /**
  * Skill values keyed by skill key as the in-memory list, in the content's order. A key is matched
- * as `findSkillIndex` matches names; a skill with no value takes `fallback`.
+ * as `findSkillIndex` matches names, the exact key first; a skill with no value takes `fallback`.
  */
 export function skillsFromKeys(
   values: Readonly<SkillValues>,
   fallback: (key: string) => number = () => NEW_SKILL_VALUE,
 ): number[] {
   const found: (number | undefined)[] = SKILL_KEYS.map(() => undefined);
-  for (const [k, v] of Object.entries(values)) {
-    const i = SKILL_INDEX.get(skillNorm(k));
-    if (i !== undefined) {
-      found[i] = v;
+  // Another spelling of a key counts only where the exact key has no value, so the result never
+  // depends on the order the values come in.
+  for (const exact of [false, true]) {
+    for (const [k, v] of Object.entries(values)) {
+      const i = SKILL_INDEX.get(skillNorm(k));
+      if (i !== undefined && (SKILL_KEYS[i] === k) === exact) {
+        found[i] = v;
+      }
     }
   }
   return SKILL_KEYS.map((k, i) => found[i] ?? fallback(k));

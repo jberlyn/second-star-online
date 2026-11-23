@@ -402,17 +402,20 @@ function pvpSwing(
     const lines: string[] = [];
     const parry = boundSkillIndex("parry");
     const block = boundSkillIndex("block");
-    const parryValue = parry === undefined ? 0 : (v.char.skills[parry] ?? 0);
+    // Read when it rolls: on a plain hit the Parry gain rolls first, and Block's gain reads the
+    // Parry that leaves.
+    const parryValue = () => (parry === undefined ? 0 : (v.char.skills[parry] ?? 0));
     // An unbound Parry or Block skill is never trained.
     const gainParry = () => {
-      if (parry !== undefined && rollParryGain(parryValue, ctx.rng)) {
-        v.char.skills[parry] = parryValue + 1;
+      const now = parryValue();
+      if (parry !== undefined && rollParryGain(now, ctx.rng)) {
+        v.char.skills[parry] = now + 1;
         lines.push(advancedText(SKILL_KEYS[parry] ?? ""));
       }
     };
     const gainBlock = () => {
       const b = block === undefined ? 0 : (v.char.skills[block] ?? 0);
-      if (block !== undefined && rollBlockGain(b, parryValue, ctx.rng)) {
+      if (block !== undefined && rollBlockGain(b, parryValue(), ctx.rng)) {
         v.char.skills[block] = b + 1;
         lines.push(advancedText(SKILL_KEYS[block] ?? ""));
       }

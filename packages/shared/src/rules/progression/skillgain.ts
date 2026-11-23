@@ -9,6 +9,7 @@ import {
   type Fighter,
   findSkillIndex,
   skillDisplay,
+  skillNorm,
   skillValue,
 } from "../core/fighter.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
@@ -153,10 +154,12 @@ export function advancedText(skill: string): string {
 /**
  * Rolls every skill the weapon trains, in the original order; each needs skill > 0, below
  * its cap and below the monster's cap. Mutates `f.skills`; returns the skills that rose.
- * `oSkills contains` is a substring test on the comma list, as written.
+ * 1.6's `oSkills contains` was a substring test on the comma list of shown names; the list's
+ * entries are matched to skills by name here (case and spaces ignored), so a skill's `display`
+ * may change without it stopping training. For Classic's lists the two agree.
  */
 export function rollKillSkillGain(f: Fighter, monsterBody: number, rng: Rng): string[] {
-  const list = weaponSkillList(f.equip.weapon).join(", ");
+  const trained = new Set(weaponSkillList(f.equip.weapon).map(skillNorm));
   const caps = skillCaps(f);
   const monsterCap = monsterSkillCap(monsterBody, f.int);
   const w = wisAdd(f.wis);
@@ -164,7 +167,7 @@ export function rollKillSkillGain(f: Fighter, monsterBody: number, rng: Rng): st
   for (const r of RULES) {
     // A skill the world does not have is never rolled.
     const i = findSkillIndex(r.skill);
-    if (i === undefined || !lingoContains(list, skillDisplay(r.skill))) {
+    if (i === undefined || !trained.has(skillNorm(r.skill))) {
       continue;
     }
     const x = f.skills[i] ?? 0;
