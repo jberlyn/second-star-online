@@ -39,6 +39,17 @@ export const packManifestSchema = z.strictObject({
     .regex(/^[a-z0-9-]+$/)
     .optional(),
   /**
+   * The folder (inside the pack) holding the files its art rows (`data/art.json`) name, by content
+   * hash: `<files>/art/<sha256>.png` and `<files>/sounds/<sha256>.<wav|mp3|ogg>` (issue #29,
+   * stage 8). Each file's SHA-256 must match its name; a row whose file is missing or does not
+   * match draws nothing and is listed on the Content problems page. Absent: the rows' files come
+   * from the server's own upload store (an imported pack's files are stored there on import).
+   */
+  files: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
+  /**
    * The file (inside the pack) holding its world seed (`world.ts`): the maps and points a new world
    * created with this pack starts from. Absent: the pack seeds no world (the Classic pack's world
    * is still seeded by the migrations that made it, until #43 moves it here).

@@ -53,7 +53,7 @@ import {
   WORN_SHEET,
 } from "@secondstaronline/shared";
 
-import type { ArtFiles } from "../persistence/art-files.ts";
+import type { ArtFileExt, ArtFileKind, ArtFiles } from "../persistence/art-files.ts";
 import type { ContentProblem } from "./validate.ts";
 
 /** The largest file an upload may be. */
@@ -259,7 +259,48 @@ export class ArtLibrary {
   private decodedBytes = 0;
   private readonly builds = new Map<string, { built: BuiltArt; problems: ContentProblem[] }>();
 
+  /**
+   * Where files not in the upload store are found: the installed packs' own `files/` folders
+   * (issue #29, stage 8). A reader answers the bytes, null for none, or why the pack's file can't
+   * be used (its content does not match its name).
+   */
+  private readonly readers: ((
+    kind: ArtFileKind,
+    hash: string,
+    ext: ArtFileExt,
+  ) => Uint8Array | string | null)[] = [];
+
   constructor(readonly files: ArtFiles) {}
+
+  /** Adds a place files are read from after the upload store (a pack's `files/` folder). */
+  addReader(
+    read: (kind: ArtFileKind, hash: string, ext: ArtFileExt) => Uint8Array | string | null,
+  ): void {
+    this.readers.push(read);
+    this.decoded.clear();
+    this.decodedBytes = 0;
+    this.builds.clear();
+  }
+
+  /**
+   * A file's bytes from the upload store or a pack that carries it, or why it can't be read
+   * ("its file is missing", or a pack file whose content does not match its name).
+   */
+  read(kind: ArtFileKind, hash: string, ext: ArtFileExt): Uint8Array | string {
+    const own = this.files.read(kind, hash, ext);
+    if (own) {
+      return own;
+    }
+    let why: string | null = null;
+    for (const r of this.readers) {
+      const got = r(kind, hash, ext);
+      if (got instanceof Uint8Array) {
+        return got;
+      }
+      why ??= got;
+    }
+    return why ?? "its file is missing";
+  }
 
   /** A stored image, decoded, or why it cannot be read. */
   image(hash: string): Rgba | string {
@@ -269,10 +310,10 @@ export class ArtLibrary {
       this.decoded.delete(hash);
       this.decoded.set(hash, img);
     } else {
-      const bytes = this.files.read("art", hash, "png");
-      if (!bytes) {
+      const bytes = this.read("art", hash, "png");
+      if (typeof bytes === "string") {
         // Not remembered: the file may be uploaded next.
-        return "its file is missing";
+        return bytes;
       } else {
         try {
           img = decodePng(bytes, { maxSide: IMAGE_MAX_SIDE });
@@ -291,6 +332,13 @@ export class ArtLibrary {
       }
     }
     return img;
+  }
+
+  /** Lets go of every decoded picture and build (a pack's library, once its rows are built). */
+  forget(): void {
+    this.decoded.clear();
+    this.decodedBytes = 0;
+    this.builds.clear();
   }
 
   /** A file was stored: forget builds that may have missed it. */
@@ -548,17 +596,17 @@ export class ArtLibrary {
 
     const sounds = nullRecord<string>();
     for (const row of art.sounds) {
-      const bytes = this.files.read("sounds", row.file, row.format);
-      if (!bytes) {
+      const bytes = this.read("sounds", row.file, row.format);
+      if (typeof bytes === "string") {
         // Stored under another format: the row names the wrong one.
         const other = (["wav", "mp3", "ogg"] as const).find(
-          (f) => f !== row.format && this.files.read("sounds", row.file, f),
+          (f) => f !== row.format && typeof this.read("sounds", row.file, f) !== "string",
         );
         problems.push({
           where: where("sounds", row.name),
           message: other
             ? `its file is ${article(other)} ${other.toUpperCase()} sound, not ${article(row.format)} ${row.format.toUpperCase()}`
-            : "its file is missing",
+            : bytes,
         });
         continue;
       }
@@ -601,12 +649,11 @@ export class ArtLibrary {
     for (const group of ["bodies", "fx", "items", "paperdoll", "tiles"] as const) {
       const mine = unique.filter((p) => p.group === group);
       const layout = pack(mine.map((p) => ({ name: p.key, w: p.img.width, h: p.img.height })));
-      const imgs = layout.sheets.map((s) => createRgba(Math.max(1, s.w), Math.max(1, s.h)));
       const sprites = nullRecord<AtlasSprite>();
       const byKey = new Map(mine.map((p) => [p.key, p]));
-      for (const pl of [...layout.placements].sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const placed = [...layout.placements].sort((a, b) => (a.name < b.name ? -1 : 1));
+      for (const pl of placed) {
         const p = byKey.get(pl.name) as Prepared;
-        blit(imgs[pl.sheet] as Rgba, p.img, pl.x, pl.y);
         sprites[p.key] =
           p.trimX || p.trimY
             ? [
@@ -630,7 +677,15 @@ export class ArtLibrary {
           rects.items[p.key] = rect;
         }
       }
-      const names = imgs.map((img) => {
+      // One sheet's pixels at a time: drawn, encoded and let go before the next is made, so a
+      // big pack never holds every sheet of a group decoded at once.
+      const names = layout.sheets.map((size, n) => {
+        const img = createRgba(Math.max(1, size.w), Math.max(1, size.h));
+        for (const pl of placed) {
+          if (pl.sheet === n) {
+            blit(img, (byKey.get(pl.name) as Prepared).img, pl.x, pl.y);
+          }
+        }
         const bytes = encodePng(img);
         const name = `${group}-${createHash("sha256").update(bytes).digest("hex").slice(0, 16)}.png`;
         sheets.set(name, bytes);

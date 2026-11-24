@@ -57,7 +57,7 @@ export function overviewOf(service: ContentService, world?: ContentWorld): Conte
       undoneBy: p.undoneBy,
       cleanup: p.cleanup,
     })),
-    packs: service.installedPacks().map(({ artDir: _art, ...p }) => p),
+    packs: service.installedPacks().map(({ artDir: _art, filesDir: _files, ...p }) => p),
     notices: service.notices().map((n) => ({ ...n })),
     datasets: DATASET_IDS.map((id) => {
       const published = service.publishedContent()[id] as unknown as Record<string, unknown>;

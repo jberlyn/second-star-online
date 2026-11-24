@@ -673,7 +673,7 @@ Every world runs on a pack, chosen when its database is created (`SSO_CONTENT`; 
 | Art | 1.6's, plus `assets/added/` | the few pictures it needs, listed in `minimal/pictures.json` and packed by `bun run assets:build` from the same sources as Classic's (copies of 1.6's) |
 | World | SSO's seed, Jail and Church maps, seeded by the original migrations (they move into the pack with issue #43) | its [world seed](#world-seeds): an all-grass start at `x0y0` and an all-grass jail at `x50y50` |
 
-`bun run data:build` validates and versions both packs the same way: each has a source `pack.json`, and a content change bumps its version. The Minimal pack is a preview while art uploads arrive (issue #29): item pictures, worn layers and monster bodies can be uploaded on the Content page, and effect and tile art follow, so until then new content of those kinds can only reuse the pictures a pack ships.
+`bun run data:build` validates and versions both packs the same way: each has a source `pack.json`, and a content change bumps its version. Every kind of art and sound a world draws or plays can be uploaded on a running server's Content page: item pictures, worn layers, monster bodies, spell effects, tiles and sounds ([Art and sounds](running-a-server.md#art-and-sounds)).
 
 **Building your own game on Minimal.** On a running server, use the Control Panel's [Content page](running-a-server.md#the-content-page): every row the Minimal pack has can be changed or removed, and new rows (skills, classes, items, monsters, NPC files, spells, recipes, harvest nodes) are added the same way as on Classic. The contract keeps the world playable: a draft that removes the last start class or skill, or the currency, is refused. To change the pack itself (a fork), edit `packages/data/minimal/` and rebuild, as with Classic's content files.
 
@@ -715,6 +715,42 @@ Place new art and audio in [assets/added/](../assets/added/README.md) with a mat
 - **North frames:** draw paperdoll layers and bodies as seen from behind, with the right hand on the viewer's right. A north frame copied from an original keeps 1.6's mirror; set `"mirrored": true` on every north frame of that layer or body and the build flips them.
 
 Hit rectangles for `fx`, `bodies`, and `items` are computed from the images and their registration points by `bun run data:build` (which writes the Classic pack's `rects.json`; `assets:build` only builds the atlases). After adding art, run both; `data:check` in the gate fails on a stale `rects.json`.
+
+## Pack format
+
+A content pack is a folder. The release ships two, Classic and Minimal, under `packages/data/packs/`; an exported pack (#34) uses the same layout.
+
+```text
+<pack>/
+  manifest.json      id, name, version, format, sso, contentHash, and optionally art, files, world
+  data/<dataset>.json one file per dataset, each checked against its schema (packages/data/schema/)
+  art/               built atlases, sounds and index.json (manifest "art"; Classic and Minimal)
+  files/art/<sha256>.png          files the pack's art rows name (manifest "files")
+  files/sounds/<sha256>.<ext>     wav, mp3 or ogg
+  world.json         the maps and points a new world starts from (manifest "world")
+```
+
+| Manifest field | Meaning |
+|---|---|
+| `id` | The permanent id (`classic`): lower-case letters, digits and dashes. The pack owns the keys of the rows it defines. |
+| `name`, `version` | What operators see; `version` is `major.minor.patch`, bumped whenever the data changes (`data:build` bumps the shipped packs' patch). |
+| `format` | The pack layout this engine reads (`1`). |
+| `sso` | The Second Star Online release the pack was made for (`1.10`). |
+| `contentHash` | The first 16 hex digits of the SHA-256 of the pack's data at this version. |
+| `art` | Optional: the folder of built atlases (`bun run assets:build` makes Classic's and Minimal's). |
+| `files` | Optional: the folder of the files the pack's `data/art.json` rows name. |
+| `world` | Optional: the world seed file. |
+
+A pack may leave dataset files out: the installed packs are merged in order, and only the merge must have every dataset a world needs, so an add-on pack installed over Classic may hold just the files it changes. (That is not the same as [What a world may leave out](#what-a-world-may-leave-out), which is about optional tables inside the datasets.) `data/art.json` is always optional. Its rows have the same shape as the `art` rows operators write on the Content page ([Art and sounds](running-a-server.md#art-and-sounds)): item pictures, worn layers, bodies, spell effect runs, tiles and sounds, each naming its file by the SHA-256 of its bytes. Those files sit in the pack's `files/` folder under that hash; a pack without a `files` folder relies on the server's own upload store (an imported pack's files are stored there when it is imported).
+
+How a pack's art rows behave:
+
+- They are a layer of that pack's art: drawn over its built atlases, under any later pack's, and under the operator's uploads. An operator upload of the same name replaces one, and removing the upload brings the pack's back. The Content page lists them as the pack's, like its built art.
+- Each file is checked against its name when it is first read. A row whose file is missing or does not match draws nothing and is listed on the Content page under **Problems → In content**, never as an error in play. The operator can't change a pack's files, so a damaged one never blocks a publish.
+- The server's sweep of unused uploads only looks in its own upload store, so it never removes a pack's files. An operator row may name a file only a pack carries.
+- Classic and Minimal carry no art rows: their art is their built atlases.
+- A row's file is named by its SHA-256, so changing a file's bytes changes the row, and so the pack's `contentHash`: a pack update that changes a picture is a new version.
+- `bun run data:build` builds only the shipped packs, from `packages/data/content/`. It keeps a pack folder's `art/` and `files/` as they are, but it doesn't write or check `files/`. Put together a pack of your own (its `data/art.json` and the files it names) as its own folder, or export it from a running server ([#34](https://github.com/jberlyn/second-star-online/issues/34)).
 
 ## The content report
 

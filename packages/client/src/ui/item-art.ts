@@ -34,7 +34,7 @@ import {
   showsClockFace,
 } from "@secondstaronline/shared";
 
-import { type Assets, drawSprite } from "../assets.ts";
+import { type Assets, drawnFromUpload, drawSprite } from "../assets.ts";
 import { action } from "./action.ts";
 import { type StoredUpload, uploadUrl } from "./art-uploads.ts";
 import { createTable, formField, panelButton } from "./control-panel-kit.ts";
@@ -763,8 +763,7 @@ let pickerIds = 0;
 
 /** Whether the live atlas draws `name` from an upload (an operator sheet), not a pack's own. */
 function liveIsUpload(a: Assets, name: string): boolean {
-  const s = a.sprite("items", name);
-  return s !== undefined && (a.index.atlases.items.sheets[s[0]] ?? "").startsWith("operator/");
+  return drawnFromUpload(a, "items", name);
 }
 
 /** The settings of a saved upload, to edit it. */

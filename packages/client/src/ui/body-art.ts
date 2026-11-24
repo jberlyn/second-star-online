@@ -44,7 +44,7 @@ import {
   WORN_STEPS,
 } from "@secondstaronline/shared";
 
-import { type Assets, drawSprite } from "../assets.ts";
+import { type Assets, drawnFromUpload, drawSprite } from "../assets.ts";
 import { action } from "./action.ts";
 import { type StoredUpload, uploadUrl } from "./art-uploads.ts";
 import { createTable, formField, panelButton } from "./control-panel-kit.ts";
@@ -389,8 +389,7 @@ const GAP = 8;
 
 /** Whether the live atlas draws a body frame from an upload (an operator sheet). */
 function liveIsUpload(a: Assets, name: string): boolean {
-  const s = a.sprite("bodies", name);
-  return s !== undefined && (a.index.atlases.bodies.sheets[s[0]] ?? "").startsWith("operator/");
+  return drawnFromUpload(a, "bodies", name);
 }
 
 export function createBodyArtPicker(opts: BodyArtOptions, idPrefix = "body-art"): BodyArtPicker {

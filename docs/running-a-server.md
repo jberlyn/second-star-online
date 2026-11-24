@@ -287,7 +287,20 @@ The Content page's **Art and sounds** section uploads PNG pictures and WAV, MP3 
 | `tiles` | `{"code": "Q1", "file": "<hash>"}` | A map tile, by its code: exactly 32×32, pasted at its square's top-left (it also needs its `tiles/catalogue` row). The [Tiles](#tiles) section writes these for you and picks new tiles' codes. |
 | `sounds` | `{"name": "crack", "file": "<hash>", "format": "wav"}` | A sound, played where a content row or the engine names it ([Sounds](#sounds) uploads them without JSON). |
 
-Pictures use their own transparency; add `"transparency": "green"` for 1.6-style art drawn on pure green. A `paperdoll` or `bodies` row drawn with 1.6's mirrored back views takes `"mirrored": true`, and its north frames are flipped. A row may name a pack's picture or sound to replace it; removing the row brings the pack's back. A publish is refused while a row names a missing or misshapen file, while an uploaded worn layer lacks a frame something wearing it is drawn with, or while it takes away a picture or sound that content still uses and no pack supplies. A spell that gives a body (Morph, Nature Shift, Smoke Bomb) lasts its row's `lasts` seconds, 65 when unset, whatever the body's number. Files nothing names are removed a day after their upload, when the server starts.
+Pictures use their own transparency; add `"transparency": "green"` for 1.6-style art drawn on pure green. A `paperdoll` or `bodies` row drawn with 1.6's mirrored back views takes `"mirrored": true`, and its north frames are flipped. A row may name a pack's picture or sound to replace it; removing the row brings the pack's back. A publish is refused while a row names a missing or misshapen file, while an uploaded worn layer lacks a frame something wearing it is drawn with, or while it takes away a picture or sound that content still uses and no pack supplies. A spell that gives a body (Morph, Nature Shift, Smoke Bomb) lasts its row's `lasts` seconds, 65 when unset, whatever the body's number. Files nothing names are removed a day after their upload, when the server starts (only from the upload folder: a pack's own files are never touched).
+
+A pack can carry art rows and their files too (see [Pack format](modding.md#pack-format)). They count as the pack's art: your upload of the same name replaces one, and removing your upload brings the pack's back. A pack file that is missing, or whose content does not match its name, draws nothing and is listed under **Problems → In content**; it never blocks a publish.
+
+What can be uploaded, and where:
+
+| Kind | Where on the Content page | Shape |
+|---|---|---|
+| Item pictures | An item row's **Picture** panel; **Item pictures** for many at once | One PNG, at most 512×512 |
+| Worn layers | A worn item's **Worn picture** panel; **Worn layers** | 15 frames at most, each within 46×45, or one 184×180 sheet |
+| Monster bodies | A monster row's **Body** panel; **Bodies** | 16 frames, or one 4×4 sheet of equal cells up to 512×512 |
+| Spell effects | A spell row's **Effect** panel; **Spell effects** | A run of frames (and its trail), or one strip |
+| Tiles | **Tiles** | 32×32 PNGs, or tileset sheets cut into 32×32 tiles |
+| Sounds | **Sounds** | WAV, MP3 or OGG, at most 5 MB |
 
 #### Item pictures
 

@@ -23,6 +23,11 @@ export interface LoadedPack {
   data: Partial<ContentData>;
   /** The folder holding the pack's art (`<pack>/<manifest.art>`), when it has art there. */
   artDir: string | null;
+  /**
+   * The folder holding the files the pack's art rows name (`<pack>/<manifest.files>`), or null:
+   * they come from the server's upload store (issue #29, stage 8).
+   */
+  filesDir: string | null;
   /** The world a new database created with this pack starts from (`manifest.world`). */
   world: WorldSeed | null;
 }
@@ -73,6 +78,7 @@ export function readPackDir(dir: string): LoadedPack {
     manifest,
     data: data as Partial<ContentData>,
     artDir: artDir && existsSync(join(artDir, "index.json")) ? artDir : null,
+    filesDir: manifest.files ? join(dir, manifest.files) : null,
     world,
   };
 }
@@ -88,6 +94,12 @@ export function readPackBlob(json: string): LoadedPack {
       data[id] = validDataset(manifest.id, id, value);
     }
   }
-  // An imported pack's art arrives with art uploads (#29) and pack import (#34).
-  return { manifest, data: data as Partial<ContentData>, artDir: null, world: null };
+  // An imported pack has no built atlases; its art rows' files are stored with the uploads (#34).
+  return {
+    manifest,
+    data: data as Partial<ContentData>,
+    artDir: null,
+    filesDir: null,
+    world: null,
+  };
 }

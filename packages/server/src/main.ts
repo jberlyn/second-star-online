@@ -190,8 +190,10 @@ export function startServer(options: ServerOptions): RunningServer {
     packs: () => content.installedPacks(),
     built: () => content.builtArt(),
     files: artFiles,
+    packRows: () => content.packRowArt(),
+    packFile: (kind, hash, ext) => content.packRowFile(kind, hash, ext),
   });
-  const swept = sweepArtFiles(db, artFiles, Date.now());
+  const swept = sweepArtFiles(db, artFiles, Date.now(), content.packRowHashes());
   if (swept > 0) {
     console.log(`content: removed ${swept} uploaded file${swept === 1 ? "" : "s"} nothing uses`);
   }

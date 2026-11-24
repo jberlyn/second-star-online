@@ -41,7 +41,7 @@ import {
   visibleBounds,
 } from "@secondstaronline/shared";
 
-import { type Assets, drawSprite } from "../assets.ts";
+import { type Assets, drawnFromUpload, drawSprite } from "../assets.ts";
 import { action } from "./action.ts";
 import { type StoredUpload, uploadUrl } from "./art-uploads.ts";
 import { clampOffset, OFFSET_MAX } from "./body-art.ts";
@@ -73,12 +73,16 @@ export type FxSource =
   | { kind: "pack"; frames: number; trail: number }
   | { kind: "none" };
 
+/** A pack's run by name, an own entry only (a run may be called `__proto__`; issue #29). */
+const packRun = (view: ContentFxArtView, run: string) =>
+  Object.hasOwn(view.packRuns, run.toLowerCase()) ? view.packRuns[run.toLowerCase()] : undefined;
+
 export function fxSource(view: ContentFxArtView, run: string): FxSource {
   const art = fxUpload(view, run);
   if (art) {
     return { kind: "upload", art };
   }
-  const p = view.packRuns[run.toLowerCase()];
+  const p = packRun(view, run);
   return p ? { kind: "pack", ...p } : { kind: "none" };
 }
 
@@ -504,8 +508,7 @@ export function previewAt(
 
 /** Whether the live atlas draws a run's frame from an upload (an operator sheet). */
 function liveIsUpload(a: Assets, name: string): boolean {
-  const s = a.sprite("fx", name);
-  return s !== undefined && (a.index.atlases.fx?.sheets[s[0]] ?? "").startsWith("operator/");
+  return drawnFromUpload(a, "fx", name);
 }
 
 export function createFxArtPicker(opts: FxArtOptions, idPrefix = "fx-art"): FxArtPicker {
@@ -902,7 +905,7 @@ export function createFxArtPicker(opts: FxArtOptions, idPrefix = "fx-art"): FxAr
           error: true,
         });
       } else if (!working.trail && trailNeeds > 0) {
-        const pack = view?.packRuns[runName().toLowerCase()]?.trail ?? 0;
+        const pack = (view ? packRun(view, runName()) : undefined)?.trail ?? 0;
         lines.push({
           text:
             pack >= trailNeeds

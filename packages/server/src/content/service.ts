@@ -9,9 +9,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-import { type ArtFrameId, ASSET_INDEX_FILE, type PackArtIndex } from "@secondstaronline/data";
+import type { ArtFrameId, AssetIndex, RectsData } from "@secondstaronline/data";
 import { applyKey, encodePng, GREEN } from "@secondstaronline/data/art";
 import {
+  type ArtData,
   artDataSchema,
   comparePackVersions,
   DATASET_SCHEMAS,
@@ -80,6 +81,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { insertAudit } from "../persistence/admin.ts";
+import { memoryArtFiles, packArtFileReader } from "../persistence/art-files.ts";
 import {
   clearDraft,
   clearDraftActions,
@@ -116,7 +118,7 @@ import {
 import { loadPlayerShops } from "../persistence/playershops.ts";
 import {
   type ArtKeys,
-  type ArtLibrary,
+  ArtLibrary,
   type BuiltArt,
   checkUpload,
   keysOf,
@@ -168,6 +170,7 @@ import {
   sameRow,
   withOptionalDatasets,
 } from "./rows.ts";
+import { mergePackArt, packArtLayers } from "./served-assets.ts";
 import {
   bindingProblems,
   brokenReferences,
@@ -210,6 +213,8 @@ export interface PackInfo {
   id: string;
   /** The folder of the pack's art and sounds, or null when it brings none. */
   artDir: string | null;
+  /** The folder of the files its art rows name, or null (issue #29, stage 8). */
+  filesDir: string | null;
   name: string;
   version: string;
   source: "release" | "imported";
@@ -500,48 +505,62 @@ function listOf(names: readonly string[]): string {
     : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-/** The sprites and sounds the packs' built atlases supply (a pack with no art supplies none). */
-function packArtKeys(packs: readonly PackInfo[]): ArtKeys {
-  const all = keysOf({
-    atlases: { tiles: {}, bodies: {}, paperdoll: {}, fx: {}, items: {} } as never,
-    sounds: {},
+/**
+ * The packs' collision rects folded in the order the served index draws them (issue #29, stage
+ * 8): each pack's own rects (a later sprite of the same name wins), then its art rows' (whose runs
+ * and trails are whole, hiding the frames under them after their last), then the next pack's.
+ */
+function foldRects(
+  packs: readonly PackInfo[],
+  packRects: readonly (RectsData | undefined)[],
+  rows: readonly { id: string; built: BuiltArt }[],
+): RectsData {
+  let rects: RectsData = { fx: nullRecord(), chars: nullRecord(), items: nullRecord() };
+  packs.forEach((p, i) => {
+    const own = packRects[i];
+    if (own) {
+      rects = {
+        fx: nullRecord({ ...rects.fx, ...own.fx }),
+        chars: nullRecord({ ...rects.chars, ...own.chars }),
+        items: nullRecord({ ...rects.items, ...own.items }),
+      };
+    }
+    const built = rows.find((r) => r.id === p.id)?.built;
+    if (built) {
+      rects = withArtRects({ rects }, built.rects).rects;
+    }
   });
-  for (const p of packs) {
-    if (!p.artDir) {
-      continue;
-    }
-    const index = JSON.parse(
-      readFileSync(join(p.artDir, ASSET_INDEX_FILE), "utf8"),
-    ) as PackArtIndex;
-    const keys = keysOf(index);
-    for (const g of Object.keys(keys.sprites) as (keyof ArtKeys["sprites"])[]) {
-      for (const k of keys.sprites[g]) {
-        all.sprites[g].add(k);
-      }
-    }
-    for (const k of keys.sounds) {
-      all.sounds.add(k);
-    }
-  }
-  return all;
+  return rects;
 }
 
-/**
- * Where each installed pack's sounds are served, by lower-case name (a later pack's wins, as the
- * served index does): `/assets/packs/<id>/<file>?v=<inputHash>`.
- */
-function packSoundUrls(packs: readonly PackInfo[]): Record<string, string> {
-  const out = nullRecord<string>();
-  for (const p of packs) {
-    if (!p.artDir) {
-      continue;
-    }
-    const index = JSON.parse(
-      readFileSync(join(p.artDir, ASSET_INDEX_FILE), "utf8"),
-    ) as PackArtIndex;
-    const v = index.inputHash ? `?v=${index.inputHash}` : "";
-    for (const [name, file] of Object.entries(index.sounds)) {
-      out[name.toLowerCase()] = `/assets/packs/${p.id}/${file}${v}`;
+/** The files an `art` dataset's rows name: pictures as PNGs, sounds in their format. */
+function artFilesOf(
+  art: Partial<Record<string, readonly unknown[]>>,
+): { kind: "art" | "sounds"; hash: string; ext: "png" | "wav" | "mp3" | "ogg" }[] {
+  const out: { kind: "art" | "sounds"; hash: string; ext: "png" | "wav" | "mp3" | "ogg" }[] = [];
+  for (const [part, rows] of Object.entries(art)) {
+    for (const row of rows ?? []) {
+      if (part === "sounds") {
+        const r = row as { file?: unknown; format?: unknown };
+        if (typeof r.file === "string" && typeof r.format === "string") {
+          out.push({ kind: "sounds", hash: r.file, ext: r.format as "wav" | "mp3" | "ogg" });
+        }
+        continue;
+      }
+      const walk = (v: unknown): void => {
+        if (Array.isArray(v)) {
+          v.forEach(walk);
+        } else if (v && typeof v === "object") {
+          for (const [k, x] of Object.entries(v)) {
+            if (k === "file" && typeof x === "string") {
+              out.push({ kind: "art", hash: x, ext: "png" });
+            } else {
+              walk(x);
+            }
+          }
+        }
+      };
+      walk(row);
     }
   }
   return out;
@@ -563,8 +582,25 @@ export class ContentService {
   private readonly points: () => ContentProblem[];
   private readonly art: ArtLibrary | null;
   private readonly mayUpload: (accountId: string) => boolean;
-  /** The sprites and sounds the installed packs' own atlases supply. */
+  /** The sprites and sounds the installed packs' own atlases and art rows supply. */
   private packArt: ArtKeys;
+  /**
+   * Each installed pack's art rows built into atlases (issue #29, stage 8), in install order: a
+   * layer over that pack's built atlases and under the operator's art. Rows that can't be drawn
+   * (a file missing or damaged) are skipped and listed in `packRowProblems`.
+   */
+  private packRows: { id: string; built: BuiltArt }[] = [];
+  private packRowProblems: ContentProblem[] = [];
+  /** Each pack's own library for its art rows, by pack id. */
+  private readonly packRowLibraries = new Map<string, ArtLibrary>();
+  /** The readers of the packs' `files/` folders (each answering only its own rows' hashes). */
+  private readonly packReaders: ((
+    kind: "art" | "sounds",
+    hash: string,
+    ext: "png" | "wav" | "mp3" | "ogg",
+  ) => Uint8Array | string | null)[] = [];
+  /** Every file hash the packs' art rows name. */
+  private readonly packRowHashSet = new Set<string>();
   /** Where the packs' sounds are served, by lower-case name (issue #29, stage 7). */
   private packSounds: Record<string, string>;
   /** The packs merged in install order, without the operator layer. */
@@ -587,7 +623,27 @@ export class ContentService {
     this.points = opts.points ?? (() => []);
     this.art = opts.art ?? null;
     this.mayUpload = opts.mayUpload ?? (() => true);
-    const { data, packs, owners, updates } = this.loadPacks(opts.releasePacks);
+    const {
+      data: merged,
+      packs,
+      owners,
+      updates,
+      rowArt,
+      packRects,
+    } = this.loadPacks(opts.releasePacks);
+    this.buildPackRows(packs, rowArt);
+    // What the packs draw, hit and play, folded in the served index's order (each pack's atlases,
+    // then its art rows, then the next pack's), so a sprite's hit rect is the one drawn.
+    const layers = packArtLayers(packs, this.packRows);
+    // (With no art rows the packs' merged rects already are that order.)
+    const data =
+      this.packRows.length > 0
+        ? { ...merged, rects: foldRects(packs, packRects, this.packRows) }
+        : merged;
+    const drawn = mergePackArt(
+      { version: 1, atlases: {}, sounds: {} } as unknown as AssetIndex,
+      layers,
+    );
     this.owners = owners;
     this.packData = data;
     this.packs = packs;
@@ -596,8 +652,11 @@ export class ContentService {
       monsters: new Set(data.monsters.monsters.map((m) => m.name.toLowerCase())),
       npcFiles: new Set(data.npcFiles.files.map((f) => f.name.toLowerCase())),
     };
-    this.packArt = packArtKeys(packs);
-    this.packSounds = packSoundUrls(packs);
+    this.packArt = keysOf(drawn);
+    this.packSounds = nullRecord<string>();
+    for (const [name, url] of Object.entries(drawn.sounds)) {
+      this.packSounds[name.toLowerCase()] = `/assets/${url}`;
+    }
     this.published = this.withArt(applyRows(data, contentRows(this.db).map(toLayer)));
     const validArt = artDataSchema.safeParse(this.published.art).success;
     for (const p of (validArt && this.art?.problems(this.published.art)) || []) {
@@ -657,11 +716,124 @@ export class ContentService {
   }
 
   /** Reads every installed pack, records release versions, and merges them. */
+  /**
+   * Builds each pack's art rows into its own atlas layer (issue #29, stage 8), reading files from
+   * the pack's `files/` folder (each checked against its name) or the upload store, and lays their
+   * hit rects over the packs' own. Returns the packs' data with those rects.
+   */
+  private buildPackRows(
+    packs: readonly PackInfo[],
+    rowArt: readonly { pack: PackInfo; art: ArtData }[],
+  ): void {
+    for (const { pack, art } of rowArt) {
+      const files = artFilesOf(art);
+      if (files.length === 0) {
+        continue;
+      }
+      const declared = new Set(files.map((f) => f.hash));
+      for (const h of declared) {
+        this.packRowHashSet.add(h);
+      }
+      // A pack's rows are read only from its own files (or, with no `files` folder, from the
+      // upload store, where an imported pack's files are kept), never from another pack's.
+      let library: ArtLibrary;
+      if (pack.filesDir) {
+        const reader = packArtFileReader(pack.filesDir, pack.name, declared, UPLOAD_MAX_BYTES);
+        library = new ArtLibrary(memoryArtFiles());
+        library.addReader(reader);
+        // An operator row may name a file only a pack carries (it is copied to the upload store
+        // when the row is saved; this covers rows saved before).
+        this.art?.addReader(reader);
+        this.packReaders.push(reader);
+      } else {
+        library = new ArtLibrary(this.art?.files ?? memoryArtFiles());
+      }
+      // A row with any frame that can't be drawn is left out whole, so the art under it shows.
+      const problems = library.problems(art);
+      const bad = new Set(problems.map((p) => p.where));
+      const good = Object.fromEntries(
+        Object.entries(art).map(([part, rows]) => [
+          part,
+          (rows as { name?: string; code?: string }[]).filter(
+            (r) => !bad.has(`art/${part}/${r.name ?? r.code}`),
+          ),
+        ]),
+      ) as ArtData;
+      for (const problem of problems) {
+        this.packRowProblems.push({
+          where: `pack ${pack.name}: ${problem.where}`,
+          message: problem.message,
+        });
+        this.log(`content: pack ${pack.id}: ${problem.where}: ${problem.message}`);
+      }
+      this.packRows.push({ id: pack.id, built: library.build(good) });
+      // Built once: its decoded pictures need not stay in memory.
+      library.forget();
+      this.packRowLibraries.set(pack.id, library);
+    }
+  }
+
+  /** Every file hash the installed packs' art rows name: the upload sweep keeps them. */
+  packRowHashes(): ReadonlySet<string> {
+    return this.packRowHashSet;
+  }
+
+  /**
+   * Copies files an art row names that only a pack carries into the upload store, so the row
+   * keeps working if a later pack version drops them (issue #29, stage 8).
+   */
+  private adoptPackFiles(part: string, data: unknown): void {
+    if (!this.art || data === null || typeof data !== "object") {
+      return;
+    }
+    for (const f of artFilesOf({ [part]: [data] })) {
+      if (!this.packRowHashSet.has(f.hash) || this.art.files.read(f.kind, f.hash, f.ext)) {
+        continue;
+      }
+      for (const read of this.packReaders) {
+        const bytes = read(f.kind, f.hash, f.ext);
+        if (bytes instanceof Uint8Array) {
+          this.art.files.put(f.kind, f.ext, bytes);
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * The installed packs' art rows as built (issue #29, stage 8), in install order: the served
+   * index lays each over its pack's own atlases.
+   */
+  packRowArt(): readonly { id: string; built: BuiltArt }[] {
+    return this.packRows;
+  }
+
+  /** A file a pack's art rows name, from its `files/` folder or the upload store (or null). */
+  packRowFile(
+    kind: "art" | "sounds",
+    hash: string,
+    ext: "png" | "wav" | "mp3" | "ogg",
+  ): Uint8Array | null {
+    if (!this.packRowHashSet.has(hash)) {
+      return null;
+    }
+    for (const library of this.packRowLibraries.values()) {
+      const got = library.read(kind, hash, ext);
+      if (got instanceof Uint8Array) {
+        return got;
+      }
+    }
+    return null;
+  }
+
   private loadPacks(releasePacks: Readonly<Record<string, string>>): {
     data: ContentData;
     packs: PackInfo[];
     owners: Map<string, PackInfo>;
     updates: PackVersionUpdate[];
+    rowArt: { pack: PackInfo; art: ArtData }[];
+    /** Each pack's own collision rects (aligned with `packs`), for folding in draw order. */
+    packRects: (RectsData | undefined)[];
   } {
     const loaded: LoadedPack[] = [];
     const packs: PackInfo[] = [];
@@ -682,12 +854,23 @@ export class ContentService {
       packs.push({
         id: p.id,
         artDir: pack.artDir,
+        filesDir: pack.filesDir,
         name: pack.manifest.name,
         version: pack.manifest.version,
         source: p.source,
         updatedFrom,
       });
     }
+    // A pack's art rows are a layer of that pack's art, not rows of the operator's `art` dataset:
+    // the store's `art` is the operator's uploads alone, drawn over every pack (issue #29, stage 8).
+    const rowArt: { pack: PackInfo; art: ArtData }[] = [];
+    loaded.forEach((l, i) => {
+      if (l.data.art) {
+        rowArt.push({ pack: packs[i] as PackInfo, art: l.data.art as ArtData });
+        l.data = { ...l.data };
+        delete l.data.art;
+      }
+    });
     const merged = withOptionalDatasets(mergePacks(loaded.map((l) => l.data)));
     const owners = new Map<string, PackInfo>();
     loaded.forEach((l, i) => {
@@ -701,7 +884,14 @@ export class ContentService {
         `the installed packs leave out ${missing.join(", ")}: a server needs a pack with every dataset (the Classic pack)`,
       );
     }
-    return { data: merged as ContentData, packs, owners, updates };
+    return {
+      data: merged as ContentData,
+      packs,
+      owners,
+      updates,
+      rowArt,
+      packRects: loaded.map((l) => l.data.rects as RectsData | undefined),
+    };
   }
 
   private readInstalled(
@@ -1014,6 +1204,9 @@ export class ContentService {
     if (refError) {
       return fail(refError);
     }
+    if (op === "set" && ref.dataset === "art") {
+      this.adoptPackFiles(ref.part, data);
+    }
     const field = keyField(ref.dataset, ref.part);
     let key = ref.key;
     if (op === "set" && field !== null) {
@@ -1173,6 +1366,9 @@ export class ContentService {
         drops.push(r.ref);
         continue;
       }
+      if (r.op === "set" && r.ref.dataset === "art") {
+        this.adoptPackFiles(r.ref.part, r.data);
+      }
       writes.push({
         ...r.ref,
         op: r.op,
@@ -1222,7 +1418,7 @@ export class ContentService {
         });
       }
     }
-    const packLayers: Record<string, ArtFrameId[]> = {};
+    const packLayers = nullRecord<ArtFrameId[]>();
     for (const key of [...this.packArt.sprites.paperdoll].sort()) {
       const m = /^(.*)-(f[1-4]-[nesw])$/.exec(key);
       if (m) {
@@ -1471,7 +1667,7 @@ export class ContentService {
   /** The runs the installed packs draw, with their frame and trail counts (issue #29, stage 5). */
   private packRuns(): Record<string, { frames: number; trail: number }> {
     const frames = fxFramesOf(this.packArt.sprites.fx);
-    const out: Record<string, { frames: number; trail: number }> = {};
+    const out = nullRecord<{ frames: number; trail: number }>();
     for (const [run, set] of frames) {
       if (/^x/.test(run) && frames.has(run.slice(1))) {
         continue;
@@ -1967,7 +2163,9 @@ export class ContentService {
       if (!this.art) {
         return fail("this server stores no uploads");
       }
-      const bytes = this.art.files.read("sounds", change.file, change.format);
+      // The upload store, or a pack that carries the file (it is copied to the store on save).
+      const read = this.art.read("sounds", change.file, change.format);
+      const bytes = read instanceof Uint8Array ? read : null;
       if (!bytes) {
         return fail(
           `the sound file is not stored as ${change.format.toUpperCase()}: upload it again`,
@@ -2905,10 +3103,14 @@ export class ContentService {
   /** The references nothing resolves: in the published content, and in the world. */
   problems(world?: ContentWorld): ContentProblems {
     return {
-      content: brokenReferences(withNpcSaves(this.published, this.npcSaves())).map((r) => ({
-        where: r.where,
-        message: referenceMessage(r),
-      })),
+      content: [
+        ...brokenReferences(withNpcSaves(this.published, this.npcSaves())).map((r) => ({
+          where: r.where,
+          message: referenceMessage(r),
+        })),
+        // A pack's art row that can't be drawn: it draws nothing (issue #29, stage 8).
+        ...this.packRowProblems,
+      ],
       world: world ? world.problems() : [],
     };
   }

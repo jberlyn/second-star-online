@@ -146,6 +146,17 @@ export async function loadAssets(fetchImpl: typeof fetch = fetch): Promise<Asset
  * (x, y) when `topLeft` is set (paperdoll layers and the ground's pool pictures are pasted at
  * their top-left; a trimmed upload's corner is where its picture's was).
  */
+/**
+ * Whether the live atlas draws `name` from an operator upload (issue #29): an `operator/` sheet.
+ * A pack's art is not an upload, whether its built atlases (`packs/<id>/`) or its art rows
+ * (`operator/packs/<id>/`, stage 8).
+ */
+export function drawnFromUpload(a: Assets, group: AtlasGroup, name: string): boolean {
+  const s = a.sprite(group, name);
+  const sheet = s === undefined ? "" : (a.index.atlases[group]?.sheets[s[0]] ?? "");
+  return sheet.startsWith("operator/") && !sheet.startsWith("operator/packs/");
+}
+
 export function drawSprite(
   ctx: CanvasRenderingContext2D,
   assets: Assets,

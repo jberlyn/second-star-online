@@ -47,7 +47,7 @@ import {
   wornFrameReport,
 } from "@secondstaronline/shared";
 
-import { type Assets, drawSprite } from "../assets.ts";
+import { type Assets, drawnFromUpload, drawSprite } from "../assets.ts";
 import { action } from "./action.ts";
 import { type StoredUpload, uploadUrl } from "./art-uploads.ts";
 import { createTable, formField, panelButton } from "./control-panel-kit.ts";
@@ -74,7 +74,10 @@ export function wornUse(view: ContentWornArtView, layer: string): WornLayerUse |
 
 /** The frames the packs draw for a layer. */
 export const packFrames = (view: ContentWornArtView, layer: string): ArtFrameId[] =>
-  view.packLayers[layer.toLowerCase()] ?? [];
+  // An own entry only: a layer may be called `constructor` (issue #29).
+  Object.hasOwn(view.packLayers, layer.toLowerCase())
+    ? (view.packLayers[layer.toLowerCase()] ?? [])
+    : [];
 
 /** Where a layer's frames will come from once the draft is published. */
 export type WornSource =
@@ -456,8 +459,7 @@ const PREVIEW_GAP = 8;
 
 /** Whether the live atlas draws a layer frame from an upload (an operator sheet). */
 function liveIsUpload(a: Assets, name: string): boolean {
-  const s = a.sprite("paperdoll", name);
-  return s !== undefined && (a.index.atlases.paperdoll.sheets[s[0]] ?? "").startsWith("operator/");
+  return drawnFromUpload(a, "paperdoll", name);
 }
 
 export function createWornArtPicker(opts: WornArtOptions, idPrefix = "worn-art"): WornArtPicker {

@@ -19,13 +19,14 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 
 import type { Db } from "./database.ts";
 
@@ -197,8 +198,17 @@ export function referencedArtFiles(db: Db): Set<string> {
  * Removes uploads nothing names any more and that are older than the grace period. Returns how
  * many went.
  */
-export function sweepArtFiles(db: Db, files: ArtFiles, nowMs: number): number {
+export function sweepArtFiles(
+  db: Db,
+  files: ArtFiles,
+  nowMs: number,
+  /** Hashes something outside the database names: an installed pack's art rows (stage 8). */
+  keep: Iterable<string> = [],
+): number {
   const used = referencedArtFiles(db);
+  for (const h of keep) {
+    used.add(h);
+  }
   let n = 0;
   for (const f of files.list()) {
     if (!used.has(f.hash) && nowMs - f.storedAt > SWEEP_GRACE_MS) {
@@ -207,4 +217,82 @@ export function sweepArtFiles(db: Db, files: ArtFiles, nowMs: number): number {
     }
   }
   return n;
+}
+
+/**
+ * Reads the files a pack carries in its `files/` folder (issue #29, stage 8): `<dir>/art/<hash>.png`
+ * and `<dir>/sounds/<hash>.<ext>`. Read only, and only for the hashes the pack's rows declare.
+ *
+ * A file is used only when it is a regular file inside the pack (no link out of it), at most
+ * `maxBytes`, and its SHA-256 is its name; otherwise the reader answers why, so the row that names
+ * it is reported instead of drawing something else. A file is hashed again whenever its size or
+ * modification time changes, so bytes replaced while the server runs are never served unchecked.
+ */
+export function packArtFileReader(
+  dir: string,
+  packName: string,
+  declared: ReadonlySet<string>,
+  maxBytes: number,
+): (kind: ArtFileKind, hash: string, ext: ArtFileExt) => Uint8Array | string | null {
+  const checked = new Map<string, { size: number; mtimeMs: number; verdict: "ok" | string }>();
+  let root: string | null | undefined;
+  const rootOf = (): string | null => {
+    if (root === undefined) {
+      try {
+        // The folder itself must sit in the pack, not be a link to somewhere else.
+        const real = realpathSync(dir);
+        root = real === join(realpathSync(dirname(dir)), basename(dir)) ? real : null;
+      } catch {
+        root = null;
+      }
+    }
+    return root;
+  };
+  const damaged = (rel: string, why: string) =>
+    `its file in the ${packName} pack (${rel}) ${why}: the pack is damaged`;
+  return (kind, hash, ext) => {
+    if (!declared.has(hash) || !HASH.test(hash) || !EXTS[kind].includes(ext)) {
+      return null;
+    }
+    const rel = `${kind}/${hash}.${ext}`;
+    const base = rootOf();
+    if (base === null) {
+      return existsSync(dir) ? damaged("files", "is not a folder inside the pack") : null;
+    }
+    const path = join(base, kind, `${hash}.${ext}`);
+    try {
+      if (!existsSync(path)) {
+        return null;
+      }
+      const real = realpathSync(path);
+      if (!real.startsWith(`${base}${sep}`)) {
+        return damaged(rel, "is a link out of the pack");
+      }
+      const st = statSync(real);
+      if (!st.isFile()) {
+        return damaged(rel, "is not a file");
+      }
+      if (st.size > maxBytes) {
+        return damaged(rel, `is over ${Math.floor(maxBytes / 1048576)} MB`);
+      }
+      const bytes = new Uint8Array(readFileSync(real));
+      const known = checked.get(rel);
+      if (
+        !known ||
+        known.size !== st.size ||
+        known.mtimeMs !== st.mtimeMs ||
+        known.size !== bytes.length
+      ) {
+        checked.set(rel, {
+          size: bytes.length,
+          mtimeMs: st.mtimeMs,
+          verdict: sha256(bytes) === hash ? "ok" : damaged(rel, "does not match its name"),
+        });
+      }
+      const verdict = (checked.get(rel) as { verdict: string }).verdict;
+      return verdict === "ok" ? bytes : verdict;
+    } catch (e) {
+      return damaged(rel, `cannot be read (${(e as Error).message})`);
+    }
+  };
 }

@@ -27,6 +27,12 @@ import { type BuiltArt, fxTailHidden, nullRecord } from "./art.ts";
 export const PACK_ART_PREFIX = "packs/";
 /** Where the operator's built sheets and uploaded sounds are served, under `/assets/`. */
 export const OPERATOR_ART_PREFIX = "operator/";
+/**
+ * Where a pack's art rows are served once built (issue #29, stage 8), under `/assets/`:
+ * `operator/packs/<id>/<sheet>` and `operator/packs/<id>/sounds/<hash>.<ext>`. Named by content
+ * hashes like the operator's, so cached for good.
+ */
+export const PACK_ROWS_PREFIX = `${OPERATOR_ART_PREFIX}packs/`;
 /** Where uploads are served as they were stored (the Content page's previews), under `/assets/`. */
 export const UPLOADS_PREFIX = "uploads/";
 
@@ -83,6 +89,39 @@ export function mergePackArt(
   return { ...engine, atlases, sounds };
 }
 
+/** A layer of the packs' art, in the order the served index lays them. */
+export interface PackArtLayer {
+  id: string;
+  art: PackArtIndex;
+  /** Where its files are served: absent for a pack's built atlases (`packs/<id>/`). */
+  prefix?: string;
+}
+
+/**
+ * The installed packs' art in the order the served index lays it: each pack's built atlases,
+ * then its art rows (issue #29, stage 8), then the next pack's. The server folds hit rects and
+ * the packs' sprite and sound keys in the same order, so what is drawn is what is hit.
+ */
+export function packArtLayers(
+  packs: readonly { id: string; artDir: string | null }[],
+  rows: readonly { id: string; built: BuiltArt }[],
+): PackArtLayer[] {
+  const out: PackArtLayer[] = [];
+  for (const p of packs) {
+    if (p.artDir !== null) {
+      out.push({
+        id: p.id,
+        art: JSON.parse(readFileSync(join(p.artDir, ASSET_INDEX_FILE), "utf8")) as PackArtIndex,
+      });
+    }
+    const own = rows.find((r) => r.id === p.id);
+    if (own) {
+      out.push({ id: p.id, art: own.built.index, prefix: `${PACK_ROWS_PREFIX}${p.id}/` });
+    }
+  }
+  return out;
+}
+
 export interface ServedIndex {
   json: string;
   /** Identifies this index: the `content` message carries it. */
@@ -97,6 +136,14 @@ export interface ServedAssetsOptions {
   /** The operator's art as the published store draws it (null: none). */
   built: () => BuiltArt | null;
   files: ArtFiles;
+  /** Each installed pack's art rows as built, in install order (issue #29, stage 8). */
+  packRows?: () => readonly { id: string; built: BuiltArt }[];
+  /** A file a pack carries in its `files/` folder (checked against its name), or null. */
+  packFile?: (
+    kind: "art" | "sounds",
+    hash: string,
+    ext: "png" | "wav" | "mp3" | "ogg",
+  ) => Uint8Array | null;
 }
 
 /** How many published builds' sheets stay served, for clients that loaded an index just before. */
@@ -116,13 +163,7 @@ export class ServedAssets {
     const engine = JSON.parse(
       readFileSync(join(this.opts.engineDir, ASSET_INDEX_FILE), "utf8"),
     ) as AssetIndex;
-    const packs: { id: string; art: PackArtIndex; prefix?: string }[] = this.opts
-      .packs()
-      .filter((p): p is { id: string; artDir: string } => p.artDir !== null)
-      .map((p) => ({
-        id: p.id,
-        art: JSON.parse(readFileSync(join(p.artDir, ASSET_INDEX_FILE), "utf8")) as PackArtIndex,
-      }));
+    const packs = packArtLayers(this.opts.packs(), this.opts.packRows?.() ?? []);
     const built = this.opts.built();
     if (built) {
       packs.push({ id: "operator", art: built.index, prefix: OPERATOR_ART_PREFIX });
@@ -149,6 +190,22 @@ export class ServedAssets {
    * (`art/<hash>.png`, `sounds/<hash>.<ext>`). Null when there is none.
    */
   file(path: string): { bytes: Uint8Array; type: string } | null {
+    if (path.startsWith(PACK_ROWS_PREFIX)) {
+      // A pack's built art rows: a sheet, or a sound its rows name.
+      const [id = "", ...rest] = path.slice(PACK_ROWS_PREFIX.length).split("/");
+      const own = this.opts.packRows?.().find((r) => r.id === id);
+      const rel = rest.join("/");
+      if (!own) {
+        return null;
+      }
+      const sheet = own.built.sheets.get(rel);
+      if (sheet) {
+        return { bytes: sheet, type: "image/png" };
+      }
+      return rel.startsWith("sounds/") && Object.values(own.built.index.sounds).includes(rel)
+        ? this.stored(rel)
+        : null;
+    }
     if (path.startsWith(OPERATOR_ART_PREFIX)) {
       const rel = path.slice(OPERATOR_ART_PREFIX.length);
       for (const sheets of this.builds.values()) {
@@ -174,7 +231,8 @@ export class ServedAssets {
     if ((kind === "art") !== (ext === "png")) {
       return null;
     }
-    const bytes = this.opts.files.read(kind, hash, ext);
+    const bytes =
+      this.opts.files.read(kind, hash, ext) ?? this.opts.packFile?.(kind, hash, ext) ?? null;
     return bytes ? { bytes, type: MIME[ext] ?? "application/octet-stream" } : null;
   }
 }

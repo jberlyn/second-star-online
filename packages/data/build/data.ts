@@ -510,8 +510,9 @@ if (import.meta.main) {
           `data:build: the ${label} content changed, so the pack is now v${pack.manifest.version}`,
         );
       }
-      // The art folder belongs to the asset build: keep it.
-      for (const name of readdirSync(dir).filter((n) => n !== "art")) {
+      // The art folder belongs to the asset build, and a `files` folder (the files a pack's art
+      // rows name, issue #29) is put there by hand: keep both.
+      for (const name of readdirSync(dir).filter((n) => n !== "art" && n !== "files")) {
         rmSync(join(dir, name), { recursive: true, force: true });
       }
       mkdirSync(join(dir, "data"), { recursive: true });
