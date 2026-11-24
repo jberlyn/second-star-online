@@ -46,6 +46,7 @@ import {
   type FxSheetLayout,
   fxSheetCell,
   stripFrames,
+  tileShows,
   visibleBounds,
   WORN_CELL,
   WORN_SHEET,
@@ -520,6 +521,19 @@ export class ArtLibrary {
 
     for (const row of art.tiles) {
       const img = load("tiles", row.code, "the tile", row.file);
+      if (img && (img.width !== 32 || img.height !== 32)) {
+        // A tile is pasted at its cell's top-left: any other size would overlap or leave a gap.
+        problems.push({
+          where: where("tiles", row.code),
+          message: `the tile is ${img.width}×${img.height}; a tile is exactly 32×32`,
+        });
+        continue;
+      }
+      if (img && !tileShows(img, row.transparency ?? "alpha")) {
+        // Pasted whole, a tile that shows nothing would leave a hole wherever a map has it.
+        problems.push({ where: where("tiles", row.code), message: "the tile shows nothing" });
+        continue;
+      }
       if (img) {
         prepared.push({
           group: "tiles",

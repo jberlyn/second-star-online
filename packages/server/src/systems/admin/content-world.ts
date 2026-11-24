@@ -19,6 +19,7 @@ import {
   isUniqueContainer,
   lingoEq,
   liveNpcText,
+  mapCodes,
   NOTHING,
   type Rng,
   storedCopyAs,
@@ -82,6 +83,8 @@ export interface ContentWorldStore {
   ): { species: string | null; liveName: string | null; map: string }[];
   replaceSpecies(key: string, species: string | null, skip: readonly string[]): number;
   despawn(key: string, skip: readonly string[]): number;
+  /** Every map not in `skip`, with its four tile layers. */
+  mapLayers(skip: readonly string[]): { map: string; layers: string[][] }[];
   setInventoryQty(id: string, qty: number): void;
   saveShopFile(npc: string, text: string, ledger: ShopLedger, by: string, now: string): void;
 }
@@ -1049,6 +1052,25 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
   }
 
   return {
+    tileMaps() {
+      // Loaded maps are in memory and authoritative (gathering changes their tiles); the rest
+      // are read from the database.
+      const out = new Map<string, string[]>();
+      const note = (map: string, layers: readonly (readonly string[])[]) => {
+        for (const code of mapCodes(layers)) {
+          const list = out.get(code) ?? [];
+          list.push(map);
+          out.set(code, list);
+        }
+      };
+      for (const m of deps.loadedMaps()) {
+        note(m.name, m.layers);
+      }
+      for (const m of store.mapLayers(loaded())) {
+        note(m.map, m.layers);
+      }
+      return out;
+    },
     usage(kind: EntryKind, spellings: readonly string[]) {
       return kind === "item" ? itemUsage(spellings) : monsterUsage(spellings[0] ?? "");
     },

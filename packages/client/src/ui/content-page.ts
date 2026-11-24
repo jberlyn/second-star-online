@@ -23,6 +23,8 @@
  * - **Spell effects** (issue #29, fx-art.ts): an effect panel in a spell row's editor, and a section
  *   listing every effect run the content and the engine draw, with a panel for each, New effect and
  *   a bulk upload.
+ * - **Tiles** (issue #29, tile-art.ts): a section listing every tile in the catalogue, with a panel
+ *   for each (picture, name, walkable, flags, taking it out) and tilesets added in bulk.
  * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
  * - **Problems**: references nothing resolves, in content and in the world.
  */
@@ -41,11 +43,13 @@ import type {
   ContentRowDetail,
   ContentRowRef,
   ContentRowStatus,
+  ContentTileArtView,
   ContentUsageView,
   ContentWornArtView,
   FxChange,
   FxSheetLayout,
   PictureChange,
+  TileChange,
   WornChange,
 } from "@secondstaronline/shared";
 
@@ -63,6 +67,7 @@ import {
 } from "./control-panel-kit.ts";
 import { createFxArtPicker, createSpellEffects } from "./fx-art.ts";
 import { createItemArtPicker, createItemPictures } from "./item-art.ts";
+import { createTiles } from "./tile-art.ts";
 import { createWornArtPicker, createWornLayers } from "./worn-art.ts";
 
 /** What the page asks the server for (each answer comes back with its `seq`). */
@@ -105,6 +110,12 @@ export interface ContentPageActions {
   fxSheet(seq: number, sheet: string, layout: FxSheetLayout): void;
   /** One effect run change, made in the draft as a whole by the server. */
   fx(seq: number, change: FxChange): void;
+  /** The draft's tiles, for the tile panels. */
+  tileArt(seq: number): void;
+  /** Cuts an uploaded tileset into tile files. */
+  tileSheet(seq: number, sheet: string, transparency: "alpha" | "green"): void;
+  /** One tile change, made in the draft as a whole by the server. */
+  tile(seq: number, change: TileChange): void;
   /** Opens a character's hub (a holder in a usage report). */
   openCharacter(name: string): void;
 }
@@ -128,6 +139,7 @@ export type ContentReply =
       problems?: ContentProblemView[];
       body?: number;
       run?: string;
+      codes?: string[];
     }
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
   | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
@@ -153,6 +165,14 @@ export type ContentReply =
       frames: string[] | null;
       trail?: string[];
       cell?: { w: number; h: number };
+      error?: string;
+    }
+  | { t: "contentTileArt"; seq: number; view: ContentTileArtView }
+  | {
+      t: "contentTileSheet";
+      seq: number;
+      cells: { col: number; row: number; file: string }[] | null;
+      grid?: { cols: number; rows: number };
       error?: string;
     };
 
@@ -565,12 +585,28 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   // ---- item pictures (issue #29) --------------------------------------------------------------
   /** Draft changes waiting for their result, by seq (the picture picker's saves). */
   /** A content change's answer; `body` is the body a body change drew on. */
-  type ContentAnswer = { ok: boolean; text: string; body?: number; run?: string };
+  type ContentAnswer = {
+    ok: boolean;
+    text: string;
+    body?: number;
+    run?: string;
+    codes?: string[];
+    problems?: { where: string; message: string }[];
+  };
   const resultWaits = new Map<number, (r: ContentAnswer) => void>();
   const itemArtWaits = new Map<number, (v: ContentItemArtView) => void>();
   const wornArtWaits = new Map<number, (v: ContentWornArtView) => void>();
   const bodyArtWaits = new Map<number, (v: ContentBodyArtView) => void>();
   const fxArtWaits = new Map<number, (v: ContentFxArtView) => void>();
+  const tileArtWaits = new Map<number, (v: ContentTileArtView) => void>();
+  type TileCut =
+    | {
+        ok: true;
+        grid: { cols: number; rows: number };
+        cells: { col: number; row: number; file: string }[];
+      }
+    | { ok: false; error: string };
+  const tileSheetWaits = new Map<number, (r: TileCut) => void>();
   const fxSheetWaits = new Map<
     number,
     (
@@ -650,6 +686,18 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       actions.fxArt(s);
       setTimeout(() => {
         if (fxArtWaits.delete(s)) {
+          reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
+  /** The draft's tiles, as the tile panels need them. */
+  const askTileArt = (): Promise<ContentTileArtView> =>
+    new Promise((resolve, reject) => {
+      const s = next();
+      tileArtWaits.set(s, resolve);
+      actions.tileArt(s);
+      setTimeout(() => {
+        if (tileArtWaits.delete(s)) {
           reject(new Error("the server did not answer"));
         }
       }, 15_000);
@@ -791,6 +839,41 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
             actions.fxSheet(s, sheet, layout);
             setTimeout(() => {
               if (fxSheetWaits.delete(s)) {
+                resolve({ ok: false, error: "the server did not answer" });
+              }
+            }, 15_000);
+          });
+        },
+      }
+    : null;
+  const tileOptions = artOptions
+    ? {
+        assets: artOptions.assets,
+        upload: artOptions.upload,
+        apply(change: TileChange) {
+          return awaitResult((s) => actions.tile(s, change));
+        },
+        saved() {
+          refreshAll();
+          // The tiles are section rows: one open in the editor catches up unless its JSON (or a
+          // row panel) holds unsaved work.
+          const ref = editing;
+          if (!ref || ref.dataset !== "tiles" || rowPickerPending()) {
+            return;
+          }
+          if (editor.hidden || json.value === loaded) {
+            openRow(ref);
+          } else {
+            editorState.textContent = `${editorState.textContent?.replace(/ The draft changed the tiles.*$/, "") ?? ""} The draft changed the tiles: your unsaved JSON is kept, and saving it writes your version.`;
+          }
+        },
+        slice(sheet: string, transparency: "alpha" | "green") {
+          return new Promise<TileCut>((resolve) => {
+            const s = next();
+            tileSheetWaits.set(s, resolve);
+            actions.tileSheet(s, sheet, transparency);
+            setTimeout(() => {
+              if (tileSheetWaits.delete(s)) {
                 resolve({ ok: false, error: "the server did not answer" });
               }
             }, 15_000);
@@ -1330,6 +1413,16 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   } else {
     effectsSection.el.hidden = true;
   }
+  const tilesSection = section(
+    "Tiles",
+    "Every map tile in the catalogue, with its picture. Open one to change its picture, its name, whether it is walkable and its flags, or add many tiles at once from tilesets.",
+  );
+  const tiles = tileOptions ? createTiles(tileOptions) : null;
+  if (tiles) {
+    tilesSection.body.append(tiles.el);
+  } else {
+    tilesSection.el.hidden = true;
+  }
   const refreshPictures = () => {
     if (pictures) {
       void askItemArt()
@@ -1349,6 +1442,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     if (effects) {
       void askFxArt()
         .then((v) => effects.setView(v))
+        .catch(() => {});
+    }
+    if (tiles) {
+      void askTileArt()
+        .then((v) => tiles.setView(v))
         .catch(() => {});
     }
   };
@@ -1450,6 +1548,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     wornSection.el,
     bodiesSection.el,
     effectsSection.el,
+    tilesSection.el,
     artSection.el,
     history.el,
     problemsSection.el,
@@ -1544,6 +1643,22 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           wait?.(msg.view);
           return;
         }
+        case "contentTileArt": {
+          const wait = tileArtWaits.get(msg.seq);
+          tileArtWaits.delete(msg.seq);
+          wait?.(msg.view);
+          return;
+        }
+        case "contentTileSheet": {
+          const wait = tileSheetWaits.get(msg.seq);
+          tileSheetWaits.delete(msg.seq);
+          wait?.(
+            msg.cells && msg.grid
+              ? { ok: true, grid: msg.grid, cells: msg.cells }
+              : { ok: false, error: msg.error ?? "the tileset could not be cut" },
+          );
+          return;
+        }
         case "contentFxSheet": {
           const wait = fxSheetWaits.get(msg.seq);
           fxSheetWaits.delete(msg.seq);
@@ -1614,6 +1729,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
               text: msg.text,
               ...(msg.body !== undefined ? { body: msg.body } : {}),
               ...(msg.run !== undefined ? { run: msg.run } : {}),
+              ...(msg.codes !== undefined ? { codes: msg.codes } : {}),
+              ...(msg.problems !== undefined ? { problems: msg.problems } : {}),
             });
             return;
           }
@@ -1647,13 +1764,15 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       (bodyPicker?.pending() ? 1 : 0) +
       (bodies?.pending() ? 1 : 0) +
       (fxPicker?.pending() ? 1 : 0) +
-      (effects?.pending() ? 1 : 0),
+      (effects?.pending() ? 1 : 0) +
+      (tiles?.pending() ? 1 : 0),
     discard: () => {
       closeEditor();
       // Frames set up in the sections' own panels go too.
       wornLayers?.discard();
       bodies?.discard();
       effects?.discard();
+      tiles?.discard();
     },
     reset() {
       overview = null;
@@ -1676,6 +1795,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         wait({ ok: false, error: "the session ended" });
       }
       fxSheetWaits.clear();
+      tileArtWaits.clear();
+      for (const wait of tileSheetWaits.values()) {
+        wait({ ok: false, error: "the session ended" });
+      }
+      tileSheetWaits.clear();
       for (const wait of sheetWaits.values()) {
         wait({ ok: false, error: "the session ended" });
       }
@@ -1684,6 +1808,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       wornLayers?.reset();
       bodies?.reset();
       effects?.reset();
+      tiles?.reset();
       problemsBody.replaceChildren();
       closeEditor();
       datasetSel.replaceChildren();

@@ -246,6 +246,8 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 
 `packages/data/content/tiles.json` contains `walkable` (the 2-character walkable code whitelist), `catalogue` (tile codes, hover names and flags), and `defaults` (`ground`, `empty`, `shadow`, `editorTile`).
 
+On a running server, the Content page's [Tiles section](running-a-server.md#tiles) adds tiles from PNGs and tilesets, picks their codes, and edits a tile's picture, name, walkability and flags without JSON or a rebuild.
+
 ### Tile flags and defaults
 
 | Flag (`catalogue[].flags`) | Layer tested | What it does | Original codes |

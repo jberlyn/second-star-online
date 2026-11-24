@@ -46,7 +46,7 @@ export function overviewOf(service: ContentService, world?: ContentWorld): Conte
       author: d.author,
       updatedAt: d.updatedAt,
     })),
-    problems: service.check(),
+    problems: [...service.check(), ...service.draftMapProblems(world)],
     history: service.history().map((p) => ({
       id: p.id,
       at: p.at,
@@ -225,7 +225,10 @@ type ContentIntent = Extract<
       | "contentBody"
       | "contentFxArt"
       | "contentFxSheet"
-      | "contentFx";
+      | "contentFx"
+      | "contentTileArt"
+      | "contentTileSheet"
+      | "contentTile";
   }
 >;
 
@@ -254,6 +257,9 @@ export const CONTENT_INTENTS = [
   "contentFxArt",
   "contentFxSheet",
   "contentFx",
+  "contentTileArt",
+  "contentTileSheet",
+  "contentTile",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -378,6 +384,20 @@ export function contentIntent(
         ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value.text, run: r.value.run }
         : result(msg.seq, r, "");
     }
+    case "contentTileArt":
+      return { t: "contentTileArt", seq: msg.seq, view: service.tileArtView(world) };
+    case "contentTileSheet": {
+      const r = service.tileSheet(msg.sheet, msg.transparency, world);
+      return r.ok
+        ? { t: "contentTileSheet", seq: msg.seq, cells: r.cells, grid: r.grid }
+        : { t: "contentTileSheet", seq: msg.seq, cells: null, error: r.error };
+    }
+    case "contentTile": {
+      const r = service.draftTile(actor, msg.change, world);
+      return r.ok
+        ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value.text, codes: r.value.codes }
+        : result(msg.seq, r, "");
+    }
     case "contentProblems": {
       const p = service.problems(world);
       return { t: "contentProblems", seq: msg.seq, content: p.content, world: p.world };
@@ -439,7 +459,7 @@ export function contentIntent(
     case "contentUndo":
       return result(
         msg.seq,
-        service.undo(actor, msg.id),
+        service.undo(actor, msg.id, world),
         "Undone: the rows are back as they were.",
       );
     case "contentNotice": {
@@ -453,7 +473,11 @@ export function contentIntent(
         };
       }
       return msg.accept
-        ? result(msg.seq, service.acceptNotice(actor, ref), "Done: the pack's version is live.")
+        ? result(
+            msg.seq,
+            service.acceptNotice(actor, ref, world),
+            "Done: the pack's version is live.",
+          )
         : result(msg.seq, service.dismissNotice(actor, ref), "Kept your version.");
     }
   }

@@ -5,7 +5,17 @@
 import { describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
-import { blankMap, type EditorMap, PERMISSIONS, type ServerMsg } from "@secondstaronline/shared";
+import { classicData } from "@secondstaronline/data/classic";
+import {
+  blankMap,
+  buildContentStore,
+  type ContentData,
+  type EditorMap,
+  installContent,
+  PERMISSIONS,
+  type ServerMsg,
+  TILE_DEFAULTS,
+} from "@secondstaronline/shared";
 
 import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
@@ -418,6 +428,72 @@ describe("the World Editor tile palette (frame 261, channels 5-64)", () => {
     for (const b of s.slice(51)) {
       expect(b.dataset.code).toBeUndefined();
       expect(b.disabled).toBe(true);
+    }
+  });
+});
+
+describe("the World Editor after a publish (issue #29, stage 6)", () => {
+  test("a brush whose tile the publish took out goes back to the editor's first tile", async () => {
+    const e = editor();
+    e.ed.show(blankMap(1, 1), false);
+    await new Promise((r) => setTimeout(r, 0));
+    e.byLabel<HTMLButtonElement>("Tile B1").click();
+    const d = structuredClone(classicData) as ContentData;
+    d.tiles.catalogue = d.tiles.catalogue.filter((t) => t.code !== "B1");
+    installContent(buildContentStore(d));
+    try {
+      e.click(3, 3);
+      e.byLabel<HTMLButtonElement>("Save").click();
+      expect(at(e.saves[0]?.layers[0] ?? [], 3, 3)).toBe(TILE_DEFAULTS.editorTile);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
+});
+
+describe("the World Editor when tile art is published (issue #29, stage 6)", () => {
+  test("a reload of the tiles redraws the open palette and map from the new sheets", async () => {
+    const listeners: ((changed: string[]) => void)[] = [];
+    let lookups = 0;
+    const assets: Assets = {
+      ...fakeAssets,
+      sprite: (group) => {
+        if (group === "tiles") {
+          lookups += 1;
+        }
+        return undefined;
+      },
+      onReload: (fn) => {
+        listeners.push(fn as never);
+      },
+    };
+    // happy-dom has no 2D context: every canvas gets one that does nothing.
+    const ctx = new Proxy({} as Record<string | symbol, unknown>, {
+      get: (t, k) => (k in t ? t[k] : () => {}),
+      set: (t, k, v) => {
+        t[k] = v;
+        return true;
+      },
+    });
+    const real = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ctx) as never;
+    try {
+      const ed = createWorldEditor(assets, { load: () => {}, save: () => {} });
+      document.body.append(...ed.screen.items.map((i) => i.el));
+      ed.show(blankMap(1, 1), false);
+      await new Promise((r) => setTimeout(r, 0));
+      lookups = 0;
+      for (const fn of listeners) {
+        fn(["items"]);
+      }
+      expect(lookups).toBe(0);
+      for (const fn of listeners) {
+        fn(["tiles"]);
+      }
+      // The palette's squares, and the map's tiles.
+      expect(lookups).toBeGreaterThan(60);
+    } finally {
+      HTMLCanvasElement.prototype.getContext = real;
     }
   });
 });

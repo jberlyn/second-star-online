@@ -190,6 +190,20 @@ describe("Only server systems create items", () => {
         "change.expect:string",
       ],
       contentFxSheet: ["sheet:string"],
+      // A tile change (issue #29, stage 6): tiles by code, their uploaded files by SHA-256 (checked
+      // by the schema), a tile's name (what the hover tip calls it), and `expect` and `seen`, the
+      // upload's and the tile's 8-hex-digit fingerprints as the panel saw them. A tileset to cut
+      // into tiles, by SHA-256. The server gives new tiles their codes; nothing here names an item.
+      contentTile: [
+        "change.tiles[].file:string",
+        "change.tiles[].name:string",
+        "change.code:string",
+        "change.file:string",
+        "change.expect:string",
+        "change.name:string",
+        "change.seen:string",
+      ],
+      contentTileSheet: ["sheet:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
@@ -289,6 +303,8 @@ describe("File editor and path-based file access removed", () => {
       "contentBody: change.frames{}.file",
       "contentFx: change.frames[].file",
       "contentFx: change.trail[].file",
+      "contentTile: change.tiles[].file",
+      "contentTile: change.file",
     ]);
     const types = messages.map((m) => m.t);
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the

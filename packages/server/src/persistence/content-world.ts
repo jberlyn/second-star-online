@@ -165,6 +165,30 @@ export function contentWorldStore(db: Db) {
         .map((r) => ({ id: r.id, item: r.item, qty: r.qty, map: mapOf(r) }));
     },
 
+    /** Every map not in `skip`, with its four tile layers (issue #29, stage 6). */
+    mapLayers(skip: readonly string[]): { map: string; layers: string[][] }[] {
+      return db
+        .query<
+          { layer1: string; layer2: string; layer3: string; layer4: string } & MapCols,
+          string[]
+        >(
+          `SELECT m.layer1, m.layer2, m.layer3, m.layer4, m.mx AS mx, m.my AS my, m.slot AS mslot
+           FROM maps m WHERE 1 = 1${notIn("m.id", skip)}`,
+        )
+        .all(...skip)
+        .map((r) => ({
+          map: mapOf(r),
+          layers: [r.layer1, r.layer2, r.layer3, r.layer4].map((l) => {
+            try {
+              const rows = JSON.parse(l) as unknown;
+              return Array.isArray(rows) ? rows.map(String) : [];
+            } catch {
+              return [];
+            }
+          }),
+        }));
+    },
+
     deleteGround(id: string): void {
       db.query("DELETE FROM ground_items WHERE id = ?").run(id);
     },

@@ -1446,6 +1446,27 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(3);
   });
 
+  test("the tile intents need the Content page's permission (issue #29, stage 6)", async () => {
+    const { game, make } = await start();
+    const bob = await make("Bob");
+    sent.length = 0;
+    const sheet = "a".repeat(64);
+    game.intent(bob.characterId, { t: "contentTileArt", seq: 1 });
+    game.intent(bob.characterId, { t: "contentTileSheet", seq: 2, sheet, transparency: "alpha" });
+    game.intent(bob.characterId, {
+      t: "contentTile",
+      seq: 3,
+      change: { op: "add", tiles: [{ file: sheet, walkable: true }], transparency: "alpha" },
+    });
+    // Nothing comes back, and each is cheat-logged.
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 3).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(3);
+  });
+
   test("a publish that gives a live species another body tells everyone on its map (issue #29)", async () => {
     const { game, make } = await start();
     const ann = await make("Ann", "administrator");
@@ -1470,6 +1491,36 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
           : [],
       );
       expect(told).toEqual([{ e: "mbody", slot: live?.slot as number, body: 31 }]);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
+
+  test("a publish that changes walkability reaches cached maps nobody is on (issue #29, stage 6)", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann");
+    const a = game.world.players.get(ann.characterId) as Player;
+    const m = a.map;
+    const [x, y] = [a.x - 1, a.y - 1];
+    // The ground under Ann, which she can stand on.
+    const ground = (m.layers[0][y] ?? "").split(" ")[x] as string;
+    expect(m.walk[y]?.[x]).toBe(true);
+    // Ann leaves: the map stays cached, its room gone.
+    game.leave(ann.characterId);
+    expect(game.world.rooms.has(m.name)).toBe(false);
+    try {
+      const d = structuredClone(classicData) as ContentData;
+      d.tiles.walkable = d.tiles.walkable.filter(
+        (w) => w.code.toLowerCase() !== ground.toLowerCase(),
+      );
+      installContent(buildContentStore(d));
+      game.contentPublished("next");
+      expect(m.walk[y]?.[x]).toBe(false);
+      // Coming back reuses the cached map, with the new grid.
+      game.enter(ann.characterId, false, "10.0.0.1");
+      const back = (game.world.players.get(ann.characterId) as Player).map;
+      expect(back).toBe(m);
+      expect(back.walk[y]?.[x]).toBe(false);
     } finally {
       installContent(buildContentStore(classicData));
     }

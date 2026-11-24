@@ -218,11 +218,14 @@ export function templateUrl(): string {
   return c.toDataURL("image/png");
 }
 
-function templateLink(id: string): HTMLAnchorElement {
+export function templateLink(
+  id: string,
+  download = "item-picture-template.png",
+): HTMLAnchorElement {
   const a = action(document.createElement("a"), id);
   a.className = "item-art-template";
   a.textContent = "Download a 32×32 template";
-  a.download = "item-picture-template.png";
+  a.download = download;
   a.href = "#";
   a.addEventListener("click", () => {
     a.href = templateUrl();

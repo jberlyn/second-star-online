@@ -463,12 +463,32 @@ export function createWorldEditor(
   });
   add(itemList.box, { x: 243, y: 513, w: 110, h: 60 }, 72);
   // A publish can change what the editor places: the lists follow the content store.
+  let paletteFollows = false;
   onContent(() => {
     // The faction boxes follow `factionRules.editorBoxes`.
     drawBoxes();
     npcList.set(EDITOR_NPCS);
     monList.set(EDITOR_MONSTERS);
     itemList.set(EDITOR_ITEMS);
+    // The palette follows the tile catalogue (issue #29, stage 6): a publish can add or take out
+    // tiles, and so pages. (The editor draws it when shown; this is for stores after that.)
+    if (paletteFollows) {
+      page = Math.max(1, Math.min(page, palette.pages));
+      // A brush whose tile the publish took out goes back to the editor's first tile.
+      if (!content().tiles.catalogue.some((t) => t.code.toLowerCase() === tile.toLowerCase())) {
+        tile = TILE_DEFAULTS.editorTile;
+      }
+      drawPalette();
+    }
+    paletteFollows = true;
+  });
+  // Published tile pictures: the palette and the map being edited are drawn again from the new
+  // sheets (the map's tiles are drawn once per change, not every frame).
+  assets.onReload((changed) => {
+    if (changed.includes("tiles")) {
+      drawPalette();
+      draw();
+    }
   });
   let fog = { tex: "NoTex", blend: 0, r: 255, g: 255, b: 255 };
   const fogList = list("Fog texture", editorAction("Fog texture"), FOG_TEXTURES, (l) => {

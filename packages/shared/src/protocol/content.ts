@@ -12,6 +12,7 @@ import type {
   ArtFrameId,
   ArtFx,
   ArtItem,
+  ArtTile,
   ArtWorn,
   EquipSlot,
   Item,
@@ -20,6 +21,7 @@ import type {
 
 import type { BodyUse } from "../content/bodies.ts";
 import type { FxRunUse } from "../content/fx.ts";
+import type { TileRow } from "../content/tiles.ts";
 import type { WornLayerUse } from "../content/worn.ts";
 
 const seq = z
@@ -327,6 +329,69 @@ export const contentFxSchema = z.strictObject({
   ]),
 });
 
+/** Asks for the tile panels' view (issue #29, stage 6). */
+export const contentTileArtSchema = z.strictObject({ t: z.literal("contentTileArt"), seq });
+
+/**
+ * Cuts an uploaded tileset (sides multiples of 32, at most 2048) into 32×32 tile files, stored
+ * like any upload; cells that show nothing once `transparency` is applied are left out. Nothing
+ * goes in the draft: the answer names each cell's file, to add with `contentTile`.
+ */
+export const contentTileSheetSchema = z.strictObject({
+  t: z.literal("contentTileSheet"),
+  seq,
+  sheet: fileHash,
+  transparency: z.enum(["alpha", "green"]),
+});
+
+const tileCode = z.string().trim().min(1).max(16);
+const tileName = z.string().trim().max(80);
+
+/**
+ * One tile change (issue #29, stage 6), made in the draft as a whole: add tiles (the server gives
+ * each its code), paint a tile, take its upload out, change its name, walkability and flags, or
+ * take it out of the catalogue. See `TileChange`.
+ */
+export const contentTileSchema = z.strictObject({
+  t: z.literal("contentTile"),
+  seq,
+  change: z.discriminatedUnion("op", [
+    z.strictObject({
+      op: z.literal("add"),
+      tiles: z
+        .array(
+          z.strictObject({
+            file: fileHash,
+            name: tileName.optional(),
+            walkable: z.boolean(),
+          }),
+        )
+        .min(1)
+        .max(512),
+      transparency: z.enum(["alpha", "green"]),
+    }),
+    z.strictObject({
+      op: z.literal("set"),
+      code: tileCode,
+      file: fileHash,
+      transparency: z.enum(["alpha", "green"]),
+      /** The tile's upload as the panel saw it; refused if it changed since. */
+      expect: fingerprint,
+    }),
+    z.strictObject({ op: z.literal("remove"), code: tileCode, expect: fingerprint }),
+    z.strictObject({
+      op: z.literal("edit"),
+      code: tileCode,
+      name: tileName.nullable(),
+      walkable: z.boolean(),
+      flags: z.array(z.enum(["sea", "airshipBlock", "dock", "arena", "grave"])).max(5),
+      /** The tile as the panel showed it (`tileFingerprint`); refused if it changed since. */
+      seen: fingerprint,
+    }),
+    z.strictObject({ op: z.literal("delete"), code: tileCode, seen: fingerprint }),
+  ]),
+});
+
 export const contentPictureSchema = z.strictObject({
   t: z.literal("contentPicture"),
   seq,
@@ -444,6 +509,37 @@ export interface ContentFxArtView {
   /** A hairstyle the preview's player wears for scale (the first sex's first head). */
   head: number;
 }
+
+/**
+ * Everything the tile panels need at once (issue #29, stage 6), from the draft: the catalogue,
+ * which tiles are walkable, the uploads, the tiles the packs draw, who names each tile and the maps
+ * using it.
+ */
+export interface ContentTileArtView {
+  /** The catalogue as the draft would publish it. */
+  catalogue: TileRow[];
+  /** The walkable codes as the draft would publish them. */
+  walkable: string[];
+  /** The `art` dataset's tiles as the draft would publish them. */
+  art: ArtTile[];
+  /** The codes the installed packs draw, lower case. */
+  packTiles: string[];
+  /** Content rows naming each tile, by lower-case code. */
+  refs: Record<string, string[]>;
+  /** Maps using each tile, by lower-case code (up to `TILE_MAPS_SHOWN` named, then a count). */
+  maps: Record<string, { count: number; names: string[] }>;
+  /** The code the next new tile would take, or null with none left. */
+  next: string | null;
+  /** The map ground tile, for the preview. */
+  ground: string;
+  /** Codes (lower case) with a published upload: removing it in the draft brings a pack's back. */
+  liveUploads: string[];
+  /** A hairstyle the preview's player wears (the first sex's first head). */
+  head: number;
+}
+
+/** How many maps a tile's usage names. */
+export const TILE_MAPS_SHOWN = 20;
 
 /** Where uploads are posted: `/upload/image` or `/upload/sound`. */
 export const UPLOAD_PATH = "/upload/";
@@ -647,6 +743,16 @@ export type ContentServerMsg =
       cell?: { w: number; h: number };
       error?: string;
     }
+  /** The tile panels' view. */
+  | { t: "contentTileArt"; seq: number; view: ContentTileArtView }
+  /** A tileset cut into tiles (cells showing nothing left out), or why it could not be. */
+  | {
+      t: "contentTileSheet";
+      seq: number;
+      cells: { col: number; row: number; file: string }[] | null;
+      grid?: { cols: number; rows: number };
+      error?: string;
+    }
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
@@ -668,4 +774,6 @@ export type ContentServerMsg =
       body?: number;
       /** The run a `contentFx` change drew on, as the draft spells it. */
       run?: string;
+      /** The tiles a `contentTile` change drew on (new tiles' codes, given by the server). */
+      codes?: string[];
     };

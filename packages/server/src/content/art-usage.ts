@@ -16,6 +16,9 @@ import {
   fxRuns,
   fxUsersText,
   missingFrames,
+  removedTileCodes,
+  type TileRow,
+  tileRefs,
   wornByText,
   wornLayerOf,
   wornLayers,
@@ -375,4 +378,52 @@ function framesText(run: readonly Span[], trail: readonly Span[]): string {
     parts.push(`${word}${one ? "" : "s"} ${text}`);
   }
   return parts.join(" and ");
+}
+
+/**
+ * Tiles the change adds to the catalogue that nothing draws (issue #29, stage 6): no pack picture
+ * and no upload, so a map painted with one would show a hole. A tile the published catalogue
+ * already had is left alone (Classic's catalogue names a few codes it never drew).
+ */
+export function newTileGaps(
+  next: ContentData,
+  published: ContentData,
+  packs: ArtKeys,
+  after: ArtKeys,
+): ContentProblem[] {
+  const had = new Set(published.tiles.catalogue.map((t) => t.code.toLowerCase()));
+  const drawn = new Set([...packs.sprites.tiles, ...after.sprites.tiles]);
+  const out: ContentProblem[] = [];
+  const told = new Set<string>();
+  for (const t of next.tiles.catalogue) {
+    const k = t.code.toLowerCase();
+    if (had.has(k) || drawn.has(k) || told.has(k)) {
+      continue;
+    }
+    told.add(k);
+    out.push({ where: "tiles/catalogue", message: `tile ${t.code} has no picture` });
+  }
+  return out;
+}
+
+/**
+ * Tiles the change takes out of the catalogue that content rows still name (issue #29, stage 6):
+ * a gathering node, farming, a house, the blank map's defaults. Only codes this change removes.
+ */
+export function tileRefProblems(next: ContentData, published: ContentData): ContentProblem[] {
+  const refs = tileRefs(next);
+  const out: ContentProblem[] = [];
+  for (const code of removedTileCodes(
+    published.tiles.catalogue as TileRow[],
+    next.tiles.catalogue as TileRow[],
+  )) {
+    const who = refs.get(code.toLowerCase());
+    if (who && who.length > 0) {
+      out.push({
+        where: "tiles/catalogue",
+        message: `tile ${code} is taken out but ${who.join(", ")} still ${who.length === 1 ? "names" : "name"} it`,
+      });
+    }
+  }
+  return out;
 }

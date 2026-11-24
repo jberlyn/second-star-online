@@ -99,6 +99,11 @@ export type Removal = ItemRemoval | MonsterRemoval;
 export interface ContentWorld {
   /** Where the world holds an item (any of its spellings) or a monster. */
   usage(kind: EntryKind, spellings: readonly string[]): UsagePlace[];
+  /**
+   * The maps using each tile code (lower case), loaded maps as they are in memory (issue #29,
+   * stage 6). Optional: a world that cannot say leaves tile removals to the content checks.
+   */
+  tileMaps?(): Map<string, string[]>;
   /** How many different characters hold a copy of the item (bag, gear or vault). */
   holders(spellings: readonly string[]): number;
   /**

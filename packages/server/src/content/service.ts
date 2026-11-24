@@ -31,9 +31,11 @@ import {
   type ContentData,
   type ContentFxArtView,
   type ContentStore,
+  type ContentTileArtView,
   type ContentWornArtView,
   checkNpcFile,
   content,
+  cutTileCell,
   DATASET_IDS,
   type DatasetId,
   editorLines,
@@ -46,15 +48,27 @@ import {
   hasContent,
   installContent,
   isUniqueContainer,
+  nextTileCodes,
   orphanedFxUploads,
   ownLayerPossible,
   type PictureChange,
   planBody,
   planFx,
   planPicture,
+  planTile,
   planWorn,
+  removedTileCodes,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
+  TILE_MAPS_SHOWN,
+  TILES_PER_SHEET,
+  type TileChange,
+  type TileRow,
+  tileImageProblem,
+  tileRefs,
+  tileSheetGrid,
+  tileShows,
+  tileUsersText,
   visibleBounds,
   type WornChange,
   wornLayerOf,
@@ -109,7 +123,15 @@ import {
   type UploadKind,
   withArtRects,
 } from "./art.ts";
-import { lostArtProblems, newBodyGaps, newFxGaps, usedArt, wornSetProblems } from "./art-usage.ts";
+import {
+  lostArtProblems,
+  newBodyGaps,
+  newFxGaps,
+  newTileGaps,
+  tileRefProblems,
+  usedArt,
+  wornSetProblems,
+} from "./art-usage.ts";
 import {
   type CleanupRow,
   cleanUses,
@@ -816,8 +838,10 @@ export class ContentService {
   private artProblems(next: ContentData): ContentProblem[] {
     // A spell run that hides before the frame its effect acts on (issue #29, stage 5).
     const triggers = fxTriggerProblems(next, this.published);
+    // A tile the draft takes out of the catalogue that content still names (issue #29, stage 6).
+    const tileRefs = tileRefProblems(next, this.published);
     if (!this.art) {
-      return triggers;
+      return [...triggers, ...tileRefs];
     }
     const before = keysOf(this.art.build(this.published.art).index);
     const after = keysOf(this.art.build(next.art).index);
@@ -826,7 +850,9 @@ export class ContentService {
       ...lostArtProblems(next, this.packArt, before, after),
       ...newBodyGaps(next, this.published, this.packArt, before, after),
       ...newFxGaps(next, this.published, this.packArt),
+      ...newTileGaps(next, this.published, this.packArt, after),
       ...triggers,
+      ...tileRefs,
       ...wornSetProblems(next, this.published),
     ];
   }
@@ -1104,8 +1130,13 @@ export class ContentService {
     const writes: DraftRow[] = [];
     const drops: RowRef[] = [];
     for (const r of rows) {
-      // Taking out a row only the draft adds is dropping that draft change.
-      if (r.op === "remove" && rowValue(this.published, r.ref) === undefined) {
+      // Taking out a row only the draft adds is dropping that draft change, and so is setting a
+      // row back to what is published (a tile added and taken out again leaves no override).
+      const live = rowValue(this.published, r.ref);
+      if (
+        (r.op === "remove" && live === undefined) ||
+        (r.op === "set" && live !== undefined && rowHash(live) === rowHash(r.data))
+      ) {
         drops.push(r.ref);
         continue;
       }
@@ -1550,6 +1581,332 @@ export class ContentService {
     return { ok: true, cell: cut.cell, frames, trail };
   }
 
+  // ---- tiles (issue #29, stage 6) -------------------------------------------------------------
+
+  /**
+   * Every code a new tile may not take, lower case: what the packs, the published store and the
+   * draft name (catalogue, walkable list, content rows, uploads), the packs' pictures, and every
+   * code on a map, so a tile left on a map after its row went never comes back as another.
+   */
+  private takenTileCodes(
+    d: ContentData,
+    maps?: ReadonlyMap<string, readonly string[]>,
+  ): Set<string> {
+    const out = new Set<string>();
+    const add = (c: string) => out.add(c.toLowerCase());
+    for (const data of [this.packData, this.published, d]) {
+      for (const t of data.tiles.catalogue) {
+        add(t.code);
+      }
+      for (const w of data.tiles.walkable) {
+        add(w.code);
+      }
+      for (const k of tileRefs(data).keys()) {
+        add(k);
+      }
+      for (const a of data.art?.tiles ?? []) {
+        add(a.code);
+      }
+    }
+    for (const k of this.packArt.sprites.tiles) {
+      add(k);
+    }
+    for (const k of maps?.keys() ?? []) {
+      add(k);
+    }
+    // Every code a publish ever had, so a code taken out never comes back as another tile (an
+    // open panel or a stale link would act on the wrong one).
+    for (const k of this.historyTileCodes()) {
+      add(k);
+    }
+    return out;
+  }
+
+  /** Every tile code the publish history names (lower case), worked out once per published store. */
+  private historyCodes: { codes: Set<string> } | null = null;
+  private historyTileCodes(): Set<string> {
+    if (this.historyCodes) {
+      return this.historyCodes.codes;
+    }
+    const codes = new Set<string>();
+    for (const p of this.history(Number.MAX_SAFE_INTEGER)) {
+      for (const c of p.changes) {
+        if (c.dataset === "art" && c.part === "tiles" && c.key) {
+          codes.add(c.key.toLowerCase());
+        }
+        if (c.dataset === "tiles" && (c.part === "catalogue" || c.part === "walkable")) {
+          for (const state of [c.before, c.after]) {
+            const rows = state?.data;
+            if (Array.isArray(rows)) {
+              for (const r of rows as { code?: unknown }[]) {
+                if (typeof r?.code === "string") {
+                  codes.add(r.code.toLowerCase());
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    this.historyCodes = { codes };
+    return codes;
+  }
+
+  /** The tile panels' view, from the draft; the maps from `world` when it is known. */
+  tileArtView(world?: ContentWorld): ContentTileArtView {
+    const d = this.draftContent();
+    const maps = world?.tileMaps?.() ?? new Map<string, string[]>();
+    const shown: ContentTileArtView["maps"] = {};
+    for (const [code, names] of maps) {
+      shown[code] = { count: names.length, names: names.slice(0, TILE_MAPS_SHOWN) };
+    }
+    return {
+      catalogue: d.tiles.catalogue as TileRow[],
+      walkable: d.tiles.walkable.map((w) => w.code),
+      art: d.art.tiles,
+      packTiles: [...this.packArt.sprites.tiles].sort(),
+      refs: Object.fromEntries(tileRefs(d)),
+      maps: shown,
+      next: nextTileCodes(this.takenTileCodes(d, maps), 1)?.[0] ?? null,
+      ground: d.tiles.defaults.ground,
+      liveUploads: this.published.art.tiles.map((a) => a.code.toLowerCase()),
+      head: d.classes.creation.sexes[0]?.heads[0] ?? 1,
+    };
+  }
+
+  /**
+   * One tile change from the Content page, put in the draft as a whole: new tiles get their codes
+   * here, against the draft and every map as they are now, in the same change that adds their
+   * catalogue, walkable and art rows. Every picture is checked before anything is written.
+   */
+  draftTile(
+    actor: ContentActor,
+    change: TileChange,
+    world?: ContentWorld,
+  ): ContentResult<{ text: string; codes: string[] }> {
+    const base = this.draftContent();
+    // Only a new tile's code and a removal need the maps (every map not loaded is read).
+    const maps = change.op === "add" || change.op === "delete" ? world?.tileMaps?.() : undefined;
+    if (change.op === "add" || change.op === "set") {
+      const files =
+        change.op === "add"
+          ? change.tiles.map((t, i) => [t.name?.trim() || `tile ${i + 1}`, t.file] as const)
+          : [[`tile ${change.code}`, change.file] as const];
+      const bad = this.tileFileProblem(files, change.transparency);
+      if (bad) {
+        return fail(bad);
+      }
+    }
+    const plan = planTile(change, {
+      catalogue: base.tiles.catalogue as TileRow[],
+      walkable: base.tiles.walkable,
+      art: base.art.tiles,
+      taken: this.takenTileCodes(base, maps),
+      packTiles: this.packArt.sprites.tiles,
+      refs: tileRefs(base),
+      published: new Set(this.published.tiles.catalogue.map((t) => t.code.toLowerCase())),
+      ...(maps ? { maps } : {}),
+    });
+    if (!plan.ok) {
+      return fail(plan.error);
+    }
+    const wrote = this.writeDraftRows(actor, plan.rows, ["tiles", "art"]);
+    if (!wrote.ok) {
+      return fail("the change does not match the rows' schema", wrote.problems);
+    }
+    const one = plan.codes[0] ?? "";
+    const text = (() => {
+      switch (change.op) {
+        case "add":
+          return plan.codes.length === 1
+            ? `Tile ${one} is in the draft.`
+            : `${plan.codes.length} tiles are in the draft (${plan.codes.join(", ")}).`;
+        case "set":
+          return `Tile ${one}'s picture is in the draft.`;
+        case "remove":
+          return `Tile ${one}'s upload is out of the draft.`;
+        case "edit":
+          return `Tile ${one}'s changes are in the draft.`;
+        case "delete":
+          return `Tile ${one} is out of the catalogue in the draft; its walkable row and upload go when it is published.`;
+      }
+    })();
+    return { ok: true, value: { text, codes: plan.codes } };
+  }
+
+  /** What is wrong with tile picture files, or null when nothing is. */
+  private tileFileProblem(
+    files: readonly (readonly [string, string])[],
+    transparency: "alpha" | "green",
+  ): string | null {
+    if (!this.art) {
+      return "this server stores no uploads";
+    }
+    for (const [label, file] of files) {
+      const img = this.art.image(file);
+      if (typeof img === "string") {
+        return `${label}: ${img}`;
+      }
+      const bad = tileImageProblem(img, transparency);
+      if (bad) {
+        return `${label}: ${bad}`;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Cuts an uploaded tileset into its 32×32 tiles, stored like any upload; cells that show nothing
+   * once `transparency` is applied are left out. Nothing goes in the draft.
+   */
+  tileSheet(
+    sheet: string,
+    transparency: "alpha" | "green",
+    world?: ContentWorld,
+  ):
+    | {
+        ok: true;
+        grid: { cols: number; rows: number };
+        cells: { col: number; row: number; file: string }[];
+      }
+    | { ok: false; error: string } {
+    if (!this.art) {
+      return { ok: false, error: "this server stores no uploads" };
+    }
+    const img = this.art.image(sheet);
+    if (typeof img === "string") {
+      return { ok: false, error: `the tileset cannot be read: ${img}` };
+    }
+    const grid = tileSheetGrid(img.width, img.height);
+    if (typeof grid === "string") {
+      return { ok: false, error: grid };
+    }
+    // The cells that show something are counted before anything is written: a sheet with more
+    // than one change can add, or more than there are codes left, is refused whole.
+    const showing: { col: number; row: number; cell: ReturnType<typeof cutTileCell> }[] = [];
+    for (let row = 0; row < grid.rows; row++) {
+      for (let col = 0; col < grid.cols; col++) {
+        const cell = cutTileCell(img, col, row);
+        if (tileShows(cell, transparency)) {
+          showing.push({ col, row, cell });
+        }
+      }
+    }
+    if (showing.length === 0) {
+      return { ok: false, error: "every cell of the tileset shows nothing" };
+    }
+    if (showing.length > TILES_PER_SHEET) {
+      return {
+        ok: false,
+        error: `the tileset has ${showing.length} tiles; one file may add at most ${TILES_PER_SHEET}: split it`,
+      };
+    }
+    const free = nextTileCodes(
+      this.takenTileCodes(this.draftContent(), world?.tileMaps?.()),
+      showing.length,
+    );
+    if (!free) {
+      return {
+        ok: false,
+        error: `the tileset has ${showing.length} tiles, more than there are codes left`,
+      };
+    }
+    const cells: { col: number; row: number; file: string }[] = [];
+    if (grid.cols === 1 && grid.rows === 1) {
+      // A single tile is the uploaded file itself.
+      cells.push({ col: 0, row: 0, file: sheet });
+    } else {
+      for (const { col, row, cell } of showing) {
+        const file = this.art.files.put("art", "png", encodePng(cell));
+        this.art.stored(file);
+        cells.push({ col, row, file });
+      }
+    }
+    this.checked = null;
+    return { ok: true, grid, cells };
+  }
+
+  /**
+   * Tiles the draft takes out of the catalogue take their walkable rows and uploads with them
+   * (issue #29, stage 6). Worked out when the draft is published, so discarding the removal leaves
+   * every row as it was.
+   */
+  private settleTileOrphans(draft: readonly DraftRow[]): DraftRow[] {
+    const next = this.draftContent(draft);
+    const low = (c: string) => c.toLowerCase();
+    // Only tiles the draft takes out of the published catalogue: rows staged for a tile the
+    // catalogue does not list yet are the operator's to keep. (A tile added and taken out before
+    // its first publish loses its rows when it is taken out: `planTile`.)
+    const removed = new Set(
+      removedTileCodes(
+        this.published.tiles.catalogue as TileRow[],
+        next.tiles.catalogue as TileRow[],
+      ).map(low),
+    );
+    if (removed.size === 0) {
+      return [...draft];
+    }
+    const walkable = next.tiles.walkable.filter((w) => !removed.has(low(w.code)));
+    const art = next.art.tiles.filter((a) => removed.has(low(a.code)));
+    if (walkable.length === next.tiles.walkable.length && art.length === 0) {
+      return [...draft];
+    }
+    const by = draft.find((d) => d.dataset === "tiles" && d.part === "catalogue") ?? draft[0];
+    if (!by) {
+      return [...draft];
+    }
+    const stamp = {
+      authorAccountId: by.authorAccountId,
+      author: by.author,
+      updatedAt: by.updatedAt,
+    };
+    let out = [...draft];
+    const walkRef: RowRef = { dataset: "tiles", part: "walkable", key: null };
+    if (walkable.length !== next.tiles.walkable.length) {
+      out = out.filter((x) => !sameRow(x, walkRef));
+      if (JSON.stringify(rowValue(this.published, walkRef)) !== JSON.stringify(walkable)) {
+        out.push({ ...walkRef, op: "set", data: walkable, ...stamp });
+      }
+    }
+    for (const a of art) {
+      const ref: RowRef = { dataset: "art", part: "tiles", key: a.code };
+      out = out.filter((x) => !sameRow(x, ref));
+      if (rowValue(this.published, ref) !== undefined) {
+        out.push({ ...ref, op: "remove", data: null, ...stamp });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The draft's tiles taken out that a map uses now, for the Content page's checks: maps change
+   * without the draft changing, so this is worked out on each ask, not kept with `check`.
+   */
+  draftMapProblems(world?: ContentWorld): ContentProblem[] {
+    return this.draft().length === 0 ? [] : this.tileMapProblems(this.draftContent(), world);
+  }
+
+  /** Tiles the draft takes out of the catalogue that a map still uses (issue #29, stage 6). */
+  private tileMapProblems(next: ContentData, world?: ContentWorld): ContentProblem[] {
+    const maps = world?.tileMaps?.();
+    if (!maps) {
+      return [];
+    }
+    const out: ContentProblem[] = [];
+    for (const code of removedTileCodes(
+      this.published.tiles.catalogue as TileRow[],
+      next.tiles.catalogue as TileRow[],
+    )) {
+      if ((maps.get(code.toLowerCase()) ?? []).length > 0) {
+        out.push({
+          where: "tiles/catalogue",
+          message: `tile ${code} is taken out but is still on ${tileUsersText(code, new Map(), maps)}`,
+        });
+      }
+    }
+    return out;
+  }
+
   /** Drops a change from the draft. */
   draftDiscard(ref: RowRef): ContentResult {
     if (!this.draft().some((d) => sameRow(d, ref))) {
@@ -1678,6 +2035,7 @@ export class ContentService {
   private rebuild(restoring = false): void {
     // The uploaded art is server-only, so the store's hash may not change with it: check afresh.
     this.checked = null;
+    this.historyCodes = null;
     this.published = this.withArt(applyRows(this.packData, contentRows(this.db).map(toLayer)));
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
@@ -1722,13 +2080,14 @@ export class ContentService {
       return fail("the draft changed since you last looked: check it again before publishing");
     }
     const actions = this.liveActions(asDrafted);
-    const draft = this.settleFxOrphans(
-      world ? this.settleRetirements(asDrafted, actions, world) : asDrafted,
+    const draft = this.settleTileOrphans(
+      this.settleFxOrphans(world ? this.settleRetirements(asDrafted, actions, world) : asDrafted),
     );
     const nextData = this.draftContent(draft);
     const problems = [
       ...this.fullProblems(nextData, actions),
       ...this.actionProblems(nextData, draft),
+      ...this.tileMapProblems(nextData, world),
       // An already-retired item removed outright: copies that turned up since would be stranded.
       ...actions.flatMap((a) => {
         const d = draft.find((x) => sameRow(x, entryRef(a.kind, a.key)));
@@ -1751,6 +2110,9 @@ export class ContentService {
     ];
     if (problems.length > 0) {
       return fail("the draft does not pass its checks", problems);
+    }
+    if (draft.length === 0) {
+      return fail("the draft changes nothing once settled: discard it");
     }
     const now = this.now();
     const layer = contentRows(this.db);
@@ -1947,7 +2309,7 @@ export class ContentService {
    * Undoes a publish as a whole, as a publish of its own. Refused, naming the rows, when any row
    * it touched has changed since (as #26's undo is), or when it was already undone.
    */
-  undo(actor: ContentActor, publishId: string): ContentResult<StoredPublish> {
+  undo(actor: ContentActor, publishId: string, world?: ContentWorld): ContentResult<StoredPublish> {
     const p = publishById(this.db, publishId);
     if (!p) {
       return fail("there is no such publish");
@@ -2008,8 +2370,9 @@ export class ContentService {
         this.writeState(c, c.after, actor, now);
       }
     });
-    // Every publish check, not just the schemas: a later publish may refer to what this one added.
-    const problems = this.fullProblems(rows);
+    // Every publish check, not just the schemas: a later publish may refer to what this one added,
+    // and a map may by now use a tile it added.
+    const problems = [...this.fullProblems(rows), ...this.tileMapProblems(rows, world)];
     if (problems.length > 0) {
       return fail("undoing it would leave content that does not pass its checks", problems);
     }
@@ -2494,7 +2857,11 @@ export class ContentService {
   }
 
   /** Takes the pack's new version of a row: the operator's change goes (as a publish, so it can be undone). */
-  acceptNotice(actor: ContentActor, ref: RowRef): ContentResult<StoredPublish> {
+  acceptNotice(
+    actor: ContentActor,
+    ref: RowRef,
+    world?: ContentWorld,
+  ): ContentResult<StoredPublish> {
     const notice = this.notices().find((n) => sameRow(n, ref));
     if (!notice) {
       return fail(`${rowLabel(ref)} has no pack change waiting`);
@@ -2511,7 +2878,8 @@ export class ContentService {
       },
     ];
     const next = this.candidate(() => deleteContentRow(this.db, ref.dataset, ref.part, ref.key));
-    const problems = this.fullProblems(next);
+    // A pack's catalogue may lack a tile the operator added and a map now uses.
+    const problems = [...this.fullProblems(next), ...this.tileMapProblems(next, world)];
     if (problems.length > 0) {
       return fail(
         "taking the pack's version would leave content that does not pass its checks",

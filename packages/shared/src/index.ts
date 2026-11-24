@@ -11,6 +11,7 @@ export * from "./content/bodies.ts";
 export * from "./content/fx.ts";
 export * from "./content/picture.ts";
 export * from "./content/store.ts";
+export * from "./content/tiles.ts";
 export * from "./content/worn.ts";
 export * from "./protocol/index.ts";
 export * from "./rules/admin/activity.ts";

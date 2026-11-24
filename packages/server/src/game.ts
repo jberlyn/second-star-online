@@ -3418,9 +3418,13 @@ export function createGame(deps: GameDeps): Game {
           bodyEvents.set(room, events);
         }
       }
-      // Walkability comes from the tile tables: every loaded map's grids are worked out again.
-      for (const room of world.rooms.values()) {
-        const m = room.map;
+      // Walkability comes from the tile tables: every loaded map's grids are worked out again,
+      // the cached maps nobody is on included (they are reused when someone comes back).
+      const rooms = new Set([...world.rooms.values()].map((r) => r.map));
+      for (const m of new Set([...mapCache.values(), ...rooms])) {
+        if (!m) {
+          continue;
+        }
         m.walk = footWalkGrid(m.layers[0], m.layers[1]);
         m.walkAir = airshipWalkGrid(m.layers[1]);
         m.walkShip = shipWalkGrid(m.layers[0]);

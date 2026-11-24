@@ -5,7 +5,12 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-import type { ContentOverview, ContentRowDetail, ContentUsageView } from "@secondstaronline/shared";
+import type {
+  ContentOverview,
+  ContentRowDetail,
+  ContentTileArtView,
+  ContentUsageView,
+} from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";
 import { createContentPage, lineDiff, refLabel } from "../src/ui/content-page.ts";
@@ -79,6 +84,9 @@ function page(assets?: Assets) {
       fxArt: rec("fxArt"),
       fxSheet: rec("fxSheet"),
       fx: rec("fx"),
+      tileArt: rec("tileArt"),
+      tileSheet: rec("tileSheet"),
+      tile: rec("tile"),
       openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
     },
     assets,
@@ -1265,5 +1273,71 @@ describe("spell effects on the Content page (issue #29, stage 5)", () => {
     expect(p.changes()).toBe(1);
     p.discard();
     expect(p.changes()).toBe(0);
+  });
+});
+
+describe("tiles on the Content page (issue #29, stage 6)", () => {
+  const tileView: ContentTileArtView = {
+    catalogue: [
+      { code: "G1", member: 1 },
+      { code: "S3", name: "Tree", member: 55 },
+    ],
+    walkable: ["G1"],
+    art: [],
+    packTiles: ["g1", "s3"],
+    refs: {},
+    maps: {},
+    next: "AA",
+    ground: "G1",
+    liveUploads: [],
+    head: 1,
+  };
+
+  function showTiles(t: ReturnType<typeof page>) {
+    const { p, last } = t;
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({ t: "contentTileArt", seq: last("tileArt")?.seq ?? 0, view: tileView });
+  }
+
+  test("the Tiles section lists the catalogue; Discard drops a tile's unsaved changes", async () => {
+    const t = page(noArt);
+    const { p, $, settle } = t;
+    showTiles(t);
+    await settle();
+    expect(p.el.querySelectorAll('[data-action="tiles-open"]').length).toBe(2);
+    (p.el.querySelector('[data-action="tiles-open"][data-code="S3"]') as HTMLElement).click();
+    const name = $<HTMLInputElement>("tile-art-name");
+    expect(name.value).toBe("Tree");
+    name.value = "Oak";
+    name.dispatchEvent(new Event("input"));
+    expect(p.changes()).toBe(1);
+    p.discard();
+    expect(p.changes()).toBe(0);
+  });
+
+  test("a tile change goes into the draft, and the section refreshes from it", async () => {
+    const t = page(noArt);
+    const { p, $, last, settle, sent } = t;
+    showTiles(t);
+    await settle();
+    (p.el.querySelector('[data-action="tiles-open"][data-code="S3"]') as HTMLElement).click();
+    const walk = $<HTMLInputElement>("tile-art-walkable");
+    walk.checked = true;
+    walk.dispatchEvent(new Event("change"));
+    $<HTMLButtonElement>("tile-art-save").click();
+    const change = last("tile");
+    expect(change?.args[0]).toMatchObject({
+      op: "edit",
+      code: "S3",
+      name: "Tree",
+      walkable: true,
+      flags: [],
+    });
+    const before = sent.filter((x) => x.kind === "tileArt").length;
+    p.receive({ t: "contentResult", seq: change?.seq ?? 0, ok: true, text: "In the draft." });
+    await settle();
+    // The page refreshes the section from the draft.
+    expect(sent.filter((x) => x.kind === "tileArt").length).toBeGreaterThan(before);
   });
 });
