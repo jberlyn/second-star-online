@@ -325,6 +325,8 @@ export interface SettingPage {
   id: string;
   title: string;
   kind: "rows" | "roles" | "staff";
+  /** A line under the page's intro: where settings it once held have gone. */
+  note?: string;
 }
 
 /** A role on the Roles page, with how many accounts hold it. */

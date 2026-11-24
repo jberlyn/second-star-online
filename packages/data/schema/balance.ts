@@ -5,7 +5,7 @@
  * the defaults. The Classic pack writes 1.6's values out.
  *
  * Small groups are one row each (`spellHits`, `buffs`, `castPower`, `regen`, `hunger`, `death`,
- * `vehicles`, `cannon`); lists of like things are keyed rows (`spellEffects` by effect, `hulls` by
+ * `vehicles`, `cannon`, `drops`, `timings`, `combat`); lists of like things are keyed rows (`spellEffects` by effect, `hulls` by
  * vehicle), so a pack update that changes one value notices only its row.
  *
  * Every value is bounded, so a typo can never stall or break the game; the server refuses a value
@@ -41,6 +41,14 @@ export const BALANCE_LIMITS = {
   vitals: { min: 0, max: 100_000 },
   /** A chance, 1 in N. */
   oneIn: { min: 1, max: 1_000_000 },
+  /** The most gold a death drops (0: no cap). */
+  goldCap: { min: 0, max: 1_000_000_000 },
+  /** A character level. */
+  level: { min: 0, max: 100_000 },
+  /** How long monster loot lasts on the ground, in seconds: a minute to a week. */
+  lootSeconds: { min: 60, max: 7 * 24 * 60 * 60 },
+  /** A damage floor: damage below this rolls instead (at least 1, so a hit always does 1). */
+  floorBelow: { min: 1, max: 10_000 },
 } as const;
 
 const bounded = (l: { min: number; max: number }) => z.number().int().min(l.min).max(l.max);
@@ -249,6 +257,68 @@ export const cannonBalanceSchema = z.strictObject({
   reloadFrames: bounded(BALANCE_LIMITS.frames).min(1),
 });
 
+/** Whose deaths drop gold or an item. */
+export const BALANCE_DROP_WHO = ["off", "wanted", "pvp", "everyone"] as const;
+/** What a death drop can be. */
+export const BALANCE_DROP_KIND = ["either", "gold", "items"] as const;
+
+/**
+ * Death drops and monster loot (moved from Server Settings in issue #19 stage 4): whose deaths drop
+ * gold or one bag item, which of the two, the gold cap, the level below which nothing drops, and
+ * how long monster loot lasts on the ground.
+ */
+export const dropsSchema = z.strictObject({
+  who: z.enum(BALANCE_DROP_WHO),
+  kind: z.enum(BALANCE_DROP_KIND),
+  /** The most gold a death drops unless the character is wanted; 0 for no cap. */
+  goldCap: bounded(BALANCE_LIMITS.goldCap),
+  /** A character below this level drops nothing unless wanted; 0 protects no one. */
+  minLevel: bounded(BALANCE_LIMITS.level),
+  /** Seconds monster loot stays on the ground. */
+  lootDecaySeconds: bounded(BALANCE_LIMITS.lootSeconds),
+});
+
+/** Timings, in frames (20 a second). */
+export const timingsSchema = z.strictObject({
+  /** A hit player's flicker, in which no other hit lands. */
+  flickerFrames: bounded(BALANCE_LIMITS.frames),
+  /** After a cast, before the caster may act again (at least 1, or casts in one frame all pass). */
+  castDelayFrames: bounded(BALANCE_LIMITS.frames).min(1),
+  /** A swing's cooldown with no gear that sets one (at least 1, or a swing would never rearm). */
+  swingBaseFrames: bounded(BALANCE_LIMITS.frames).min(1),
+  /**
+   * How long a player's hit still counts as the kill (at least 1: a melee, monster or cannon hit
+   * lands after the tick's death check, so the fatal one is 1 frame old when judged).
+   */
+  killCreditFrames: bounded(BALANCE_LIMITS.frames).min(1),
+  /** After grabbing a pig, before the next grab. */
+  pigGrabFrames: bounded(BALANCE_LIMITS.frames),
+  /** Between a give's drop and the receiver picking it up. */
+  giveGrabFrames: bounded(BALANCE_LIMITS.frames),
+  /** After a monster's spell, before another monster spell may hit the same players. */
+  npcSpellBlockFrames: bounded(BALANCE_LIMITS.frames),
+});
+
+/** A damage floor: damage below `below` becomes `random(randomN)`. */
+export const floorSchema = z.strictObject({
+  below: bounded(BALANCE_LIMITS.floorBelow),
+  randomN: bounded(BALANCE_LIMITS.randomN).min(1),
+});
+
+/** The rolls inside the combat formulas. */
+export const combatSchema = z.strictObject({
+  /** A melee hit on a monster below this, after its Defense, rolls instead. */
+  meleeFloor: floorSchema,
+  /** A hit on a player (a monster's or a player's) below this, after defense, rolls instead. */
+  playerHitFloor: floorSchema,
+  /** A parry or block succeeds on a 1: its base roll, before the skill's ladder. */
+  dodgeBaseRandomN: bounded(BALANCE_LIMITS.randomN).min(1),
+  /** A monster next to a player attacks each frame with a chance of 1 in this. */
+  monsterMeleeOneIn: bounded(BALANCE_LIMITS.oneIn),
+  /** Walking into a player pushes them with a chance of 1 in this. */
+  pushOneIn: bounded(BALANCE_LIMITS.oneIn),
+});
+
 export const balanceDataSchema = z.strictObject({
   spellEffects: z
     .array(spellEffectRowSchema)
@@ -264,6 +334,9 @@ export const balanceDataSchema = z.strictObject({
   death: deathSchema.optional(),
   vehicles: vehicleBalanceSchema.optional(),
   cannon: cannonBalanceSchema.optional(),
+  drops: dropsSchema.optional(),
+  timings: timingsSchema.optional(),
+  combat: combatSchema.optional(),
   hulls: z
     .array(hullRowSchema)
     .refine((rows) => new Set(rows.map((r) => r.vehicle)).size === rows.length, {
@@ -281,4 +354,7 @@ export type HullRow = z.infer<typeof hullRowSchema>;
 export type BalanceVehicle = (typeof BALANCE_VEHICLES)[number];
 export type VehicleBalance = z.infer<typeof vehicleBalanceSchema>;
 export type CannonBalance = z.infer<typeof cannonBalanceSchema>;
+export type BalanceDrops = z.infer<typeof dropsSchema>;
+export type BalanceTimings = z.infer<typeof timingsSchema>;
+export type BalanceCombat = z.infer<typeof combatSchema>;
 export type BalanceData = z.infer<typeof balanceDataSchema>;

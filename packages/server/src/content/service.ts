@@ -619,6 +619,8 @@ export class ContentService {
   private owners: Map<string, PackInfo>;
   private packKeys: { items: Set<string>; monsters: Set<string>; npcFiles: Set<string> };
   private published: ContentData;
+  /** Values not yet moved into the operator layer, played over it in memory (`holdMoved`). */
+  private held: LayerRow[] = [];
   private copy: ClientCopy;
   /** The last few published stores, so a client that asked just before a publish still gets one. */
   private readonly recent = new Map<string, ClientCopy>();
@@ -2435,7 +2437,9 @@ export class ContentService {
     // The uploaded art is server-only, so the store's hash may not change with it: check afresh.
     this.checked = null;
     this.historyCodes = null;
-    this.published = this.withArt(applyRows(this.packData, contentRows(this.db).map(toLayer)));
+    const rows = contentRows(this.db).map(toLayer);
+    const held = this.held.filter((h) => !rows.some((r) => sameRow(r, h)));
+    this.published = this.withArt(applyRows(this.packData, [...rows, ...held]));
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
@@ -2702,6 +2706,165 @@ export class ContentService {
         now,
       );
     }
+  }
+
+  /**
+   * Publishes rows straight into the operator layer, outside the shared draft: values moved here
+   * from elsewhere (the death-drop and loot settings, issue #19 stage 4), logged as a publish of
+   * its own under `summary`, listed and undone like any other.
+   *
+   * It all runs under the database's write lock: `plan` reads what to move (and from the operator
+   * layer as committed) inside it, and its `alongside` (removing what the values moved from) runs
+   * in the same transaction, so two servers starting together move the values once; the one that
+   * finds nothing left still picks up the other's publish. The move is judged only on problems it
+   * adds, so a gap the published content already had elsewhere does not hold it back.
+   *
+   * An open draft of a moved row is rebased onto the moved values: a field the draft left as it
+   * was takes the moved value, and a field both changed keeps the draft's and is named in
+   * `conflicts`. A draft row left equal to the moved row is dropped.
+   */
+  publishMoved(
+    actor: ContentActor,
+    summary: string,
+    plan: (
+      current: ContentData,
+      operatorRows: readonly RowRef[],
+    ) => { rows: readonly { ref: RowRef; data: unknown }[]; alongside: () => void } | null,
+  ): ContentResult<{ id: string | null; conflicts: string[] }> {
+    let out: ContentResult<{ id: string | null; conflicts: string[] }> = {
+      ok: true,
+      value: { id: null, conflicts: [] },
+    };
+    this.db
+      .transaction(() => {
+        const layer = contentRows(this.db);
+        const current = this.withArt(applyRows(this.packData, layer.map(toLayer)));
+        const p = plan(current, layer);
+        if (!p) {
+          return;
+        }
+        if (p.rows.length === 0) {
+          p.alongside();
+          return;
+        }
+        const changes: PublishChange[] = p.rows.map(({ ref, data }) => {
+          const base = rowValue(this.packData, ref);
+          return {
+            dataset: ref.dataset,
+            part: ref.part,
+            key: ref.key,
+            before: this.stateOf(layer.find((r) => sameRow(r, ref))),
+            after: {
+              op: "set",
+              data,
+              baseHash: base === undefined ? null : rowHash(base),
+              baseData: base === undefined ? null : base,
+            },
+          };
+        });
+        const now = this.now();
+        const next = this.candidate(() => {
+          for (const c of changes) {
+            this.writeState(c, c.after, actor, now);
+          }
+        });
+        const key = (pr: ContentProblem) => JSON.stringify(pr);
+        const had = new Set(this.fullProblems(current).map(key));
+        const problems = this.fullProblems(next).filter((pr) => !had.has(key(pr)));
+        if (problems.length > 0) {
+          out = fail("the moved values do not pass their checks", problems);
+          return;
+        }
+        for (const c of changes) {
+          this.writeState(c, c.after, actor, now);
+        }
+        p.alongside();
+        const conflicts = this.rebaseDraft(p.rows, current);
+        const id = insertPublish(
+          this.db,
+          {
+            actorAccountId: actor.accountId,
+            actorName: actor.name,
+            summary,
+            changes,
+            hash: clientCopyOf(next).hash,
+            undoOf: null,
+          },
+          now,
+        );
+        insertAudit(
+          this.db,
+          {
+            actor: actor.accountId,
+            command: "content publish",
+            target: id,
+            after: changes.map(rowLabel),
+          },
+          now,
+        );
+        out = { ok: true, value: { id, conflicts } };
+      })
+      .immediate();
+    // Always: another server may have published the move meanwhile.
+    this.rebuild();
+    return out;
+  }
+
+  /**
+   * Rebases each open draft of a moved row onto its moved value (see `publishMoved`). Returns
+   * the fields both changed, as `row: field`.
+   */
+  private rebaseDraft(
+    rows: readonly { ref: RowRef; data: unknown }[],
+    current: ContentData,
+  ): string[] {
+    const conflicts: string[] = [];
+    const same = (a: unknown, b: unknown) => rowHash(a ?? null) === rowHash(b ?? null);
+    for (const { ref, data } of rows) {
+      const d = draftRows(this.db).find((r) => sameRow(r, ref));
+      const was = rowValue(current, ref);
+      if (
+        !d ||
+        d.op !== "set" ||
+        [d.data, was, data].some((v) => v === null || typeof v !== "object" || Array.isArray(v))
+      ) {
+        continue;
+      }
+      const draft = d.data as Record<string, unknown>;
+      const before = was as Record<string, unknown>;
+      const moved = data as Record<string, unknown>;
+      const rebased: Record<string, unknown> = { ...draft };
+      for (const f of new Set([...Object.keys(before), ...Object.keys(moved)])) {
+        if (same(moved[f], before[f])) {
+          continue;
+        }
+        if (same(draft[f], before[f])) {
+          if (moved[f] === undefined) {
+            delete rebased[f];
+          } else {
+            rebased[f] = moved[f];
+          }
+        } else if (!same(draft[f], moved[f])) {
+          conflicts.push(`${rowLabel(ref)}: ${f}`);
+        }
+      }
+      if (same(rebased, moved)) {
+        deleteDraftRow(this.db, ref.dataset, ref.part, ref.key);
+      } else if (!same(rebased, draft)) {
+        upsertDraftRow(this.db, { ...d, data: rebased });
+      }
+    }
+    return conflicts;
+  }
+
+  /**
+   * Plays `rows` over the operator layer in memory only, where the layer has no row of its own:
+   * values that could not be moved here yet (see `moveDropSettings`), kept in play until a later
+   * start moves them.
+   */
+  holdMoved(rows: readonly { ref: RowRef; data: unknown }[]): void {
+    this.held = rows.map(({ ref, data }) => ({ ...ref, op: "set" as const, data }));
+    this.rebuild();
   }
 
   /**

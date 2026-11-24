@@ -26,12 +26,13 @@ import {
   crystalSlotIn,
   damagedForm,
   FACING_DELTA,
-  FLICKER_FRAMES,
   firstMatch,
+  flickerFrames,
   hasBehaviour,
   invDelSlot,
   isArenaTile,
   LEVEL_UP_TEXT,
+  lootDecaySeconds,
   meleeDamageVsMonster,
   meleeKillXp,
   meleeReaches,
@@ -58,6 +59,7 @@ import { addGround, ItemOut } from "../inventory/items.ts";
 import { DODGE_COLOR, fighterOf, gainDefence, gainOnHit, HIT_COLOR } from "../monsters/attack.ts";
 import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, isFootprint, type MonsterSlot, species } from "../monsters/slots.ts";
+import { downed } from "../progression/vitals.ts";
 import { fireCannonball, shootArrow, swingFireballs } from "../spells/cast.ts";
 import { onHolyShield } from "../spells/geometry.ts";
 import { type Outgoing, type Player, type Room, statsOf, type World } from "../world/world.ts";
@@ -107,7 +109,7 @@ export interface MeleeCtx {
   rng: Rng;
   /** Wall-clock ms, for loot decay. */
   now?: number;
-  /** Minutes before monster loot decays (setting `lootDecay`, in minutes). */
+  /** Minutes before monster loot decays; absent, the balance row `drops.lootDecaySeconds`. */
   lootDecayMinutes?: number;
   /** Where loot is recorded; without it (unit tests) kills drop nothing. */
   world?: World;
@@ -327,7 +329,7 @@ function gatherCtx(ctx: MeleeCtx): GatherCtx | null {
     world: ctx.world,
     rng: ctx.rng,
     now: ctx.now ?? 0,
-    lootDecayMinutes: ctx.lootDecayMinutes ?? 30,
+    lootDecayMinutes: ctx.lootDecayMinutes ?? lootDecaySeconds() / 60,
   };
 }
 
@@ -370,6 +372,7 @@ function pvpSwing(
       v.deadLock > 0 ||
       v.loading > 0 ||
       v.flicker > 0 ||
+      downed(v) ||
       can(v.role, "invulnerable")
     ) {
       continue;
@@ -393,7 +396,7 @@ function pvpSwing(
     v.hitAge = 0;
     const shielded = onHolyShield(v, room.map.slots);
     const r = pvpHit(power, fighterOf(v), weapon, v.defenseBonus, ctx.rng, shielded);
-    v.flicker = FLICKER_FRAMES;
+    v.flicker = flickerFrames();
     v.vitalsDirty = true;
     const lines: string[] = [];
     // On a plain hit the Parry gain rolls first, and Block's requirement reads the Parry that
@@ -497,7 +500,7 @@ function smash(
   const loot = rollLoot(npcFileNamed(room.npcs, m.name)?.loot ?? null, ctx.rng);
   if (loot && ctx.world) {
     const io = new ItemOut(room);
-    const decayMs = (ctx.lootDecayMinutes ?? 30) * 60_000;
+    const decayMs = (ctx.lootDecayMinutes ?? lootDecaySeconds() / 60) * 60_000;
     const at = monsterDrawnTile(m.x, m.y, m.fromX, m.fromY, m.anim);
     addGround({ world: ctx.world, rng: ctx.rng, now: ctx.now ?? 0 }, room, io, {
       item: loot,

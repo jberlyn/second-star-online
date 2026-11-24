@@ -695,7 +695,7 @@ describe("the Balance page's spell, buff and vitals rows", () => {
     try {
       const rows = server.content
         .balanceView()
-        .groups.filter((g) => g.id !== "vehicles")
+        .groups.filter((g) => ["spells", "buffs", "vitals"].includes(g.id))
         .flatMap((g) => g.rows.map((r) => `${r.part}/${r.key ?? ""}`));
       expect(rows).toEqual([
         "spellEffects/Firebolt",

@@ -11,8 +11,8 @@ import {
   damagedForm,
   EQUIP_FIELD,
   type Fighter,
-  FLICKER_FRAMES,
   findSkillIndex,
+  flickerFrames,
   isTrap,
   monsterHitsPlayer,
   monsterReaches,
@@ -24,6 +24,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { logTransform } from "../admin/activity.ts";
+import { downed } from "../progression/vitals.ts";
 import { onHolyShield } from "../spells/geometry.ts";
 import { type Player, statsOf, type World, type WorldMap } from "../world/world.ts";
 import { hasFlag, type NpcStore } from "./npcfiles.ts";
@@ -88,7 +89,7 @@ export function monsterAttack(
   if (p.dontHitMeAgain || !canFight || isTrap(m.name) || attack === null) {
     return null;
   }
-  if (ctx.rng.random(10) !== 1) {
+  if (ctx.rng.random(content().balance.combat.monsterMeleeOneIn) !== 1) {
     return null;
   }
   if (hasFlag(ctx.npcs, m.name, "Passive") && !p.npcAttackFlag) {
@@ -124,7 +125,7 @@ function hitMe2(
     return null;
   }
   // A roll ignored while you blink names no one (a bug fixed: 1.6 recorded the attacker first).
-  if (p.flicker > 0) {
+  if (p.flicker > 0 || downed(p)) {
     return null;
   }
   p.lastToHitMe = `a ${m.name}`;
@@ -138,7 +139,7 @@ function hitMe2(
   // On a plain hit the Parry gain rolls first, and Block's requirement reads the Parry that leaves.
   const gainParry = () => gainDefence(p, "parry", ctx.rng, lines);
   const gainBlock = () => gainDefence(p, "block", ctx.rng, lines);
-  p.flicker = FLICKER_FRAMES;
+  p.flicker = flickerFrames();
   p.vitalsDirty = true;
   if (hit.kind === "shield") {
     // "6:Shield", then the Parry skill gain.

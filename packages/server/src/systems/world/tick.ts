@@ -24,10 +24,10 @@
  *     outgoing state and saves.
  */
 import {
+  balanceDeathDrops,
   CANNOT_FIGHT_TEXT,
   CHAT_COLOR,
   can,
-  DEFAULT_DEATH_DROPS,
   type DeathDropRules,
   type DeltaEvent,
   deathText,
@@ -36,6 +36,7 @@ import {
   isJailMap,
   isWalkable,
   lingoEq,
+  lootDecaySeconds,
   MODERATION_TEXT,
   neighbourMapName,
   type Rng,
@@ -132,11 +133,11 @@ export interface TickDeps {
   minute?(): number;
   /** Wall-clock ms, for loot decay. */
   now?(): number;
-  /** Minutes before monster loot decays (setting `lootDecay`, in minutes, default 30). */
+  /** Minutes before monster loot decays; absent, the balance row `drops.lootDecaySeconds`. */
   lootDecayMinutes?: number;
   /** Seconds between a talking NPC's RND lines (setting `npcChatter`, default 150). */
   npcChatterSeconds?: number;
-  /** Whose deaths drop gold or an item, and how (settings `deathDrops` and the rest of Items). */
+  /** Whose deaths drop gold or an item, and how; absent, the balance row `drops` (read live). */
   deathDrops?: DeathDropRules;
   /** Where Portal sends players (setting `portalTargets`); with none, a Portal cast is refused. */
   portalTargets?: readonly { map: string; x: number; y: number }[];
@@ -213,7 +214,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
   const collideCtx: CollideCtx = {
     rng,
     item: itemCtx,
-    lootDecayMinutes: deps.lootDecayMinutes ?? 30,
+    lootDecayMinutes: deps.lootDecayMinutes ?? lootDecaySeconds() / 60,
     tick: world.tickNo,
   };
 
@@ -415,7 +416,12 @@ export function tick(world: World, deps: TickDeps): TickResult {
     out.push(
       ...regrowthStep(
         room,
-        { world, rng, now: itemCtx.now, lootDecayMinutes: deps.lootDecayMinutes ?? 30 },
+        {
+          world,
+          rng,
+          now: itemCtx.now,
+          lootDecayMinutes: deps.lootDecayMinutes ?? lootDecaySeconds() / 60,
+        },
         world.tickNo,
       ),
     );
@@ -500,7 +506,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       swordShieldStep(p, (text) => tell(p, text));
       const death = checkDeath(room, p, rng, {
         item: itemCtx,
-        rules: deps.deathDrops ?? DEFAULT_DEATH_DROPS,
+        rules: deps.deathDrops ?? balanceDeathDrops(),
         everyDeath: can(p.role, "dropOnEveryDeath"),
         lightningGame: lightningOn(world),
       });
@@ -531,7 +537,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       const swing = pollAttack(room, p, {
         rng,
         now: itemCtx.now,
-        lootDecayMinutes: deps.lootDecayMinutes ?? 30,
+        lootDecayMinutes: deps.lootDecayMinutes ?? lootDecaySeconds() / 60,
         world,
         lightning: lightningOn(world),
       });

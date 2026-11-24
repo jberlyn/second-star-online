@@ -14,7 +14,7 @@ import {
 
 import { askForQuest, questGive } from "../src/systems/economy/quests.ts";
 import { type MonsterSlot, species } from "../src/systems/monsters/slots.ts";
-import { KILL_CREDIT_TICKS } from "../src/systems/progression/vitals.ts";
+import { killCreditFrames } from "../src/systems/progression/vitals.ts";
 import { askFactionPower, toFactionChannel } from "../src/systems/social/factions.ts";
 import type { WorldMap } from "../src/systems/world/world.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
@@ -109,7 +109,7 @@ describe("the murder flag", () => {
   test("a death within the credit window still credits the hit", () => {
     const { a, b, run } = murderScene();
     a.char.vitals.hp = 20;
-    run(KILL_CREDIT_TICKS - 2);
+    run(killCreditFrames() - 2);
     a.char.vitals.hp = 0;
     const msgs = run(28);
     expect(b.char.wanted).toBe(true);

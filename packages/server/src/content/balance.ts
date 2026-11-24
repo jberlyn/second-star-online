@@ -7,7 +7,12 @@
  * undone and noticed like any other row (the Content page's JSON editor edits the same rows).
  */
 import type { BalanceSpellEffect } from "@secondstaronline/data";
-import { BALANCE_HEAL_EFFECTS, BALANCE_LIMITS } from "@secondstaronline/data/schema";
+import {
+  BALANCE_DROP_KIND,
+  BALANCE_DROP_WHO,
+  BALANCE_HEAL_EFFECTS,
+  BALANCE_LIMITS,
+} from "@secondstaronline/data/schema";
 import {
   BALANCE_DEFAULTS,
   BALANCE_SPELL_EFFECT_ORDER,
@@ -51,6 +56,32 @@ const field = (
   max: limits.max,
   ...(help ? { help } : {}),
 });
+
+/** A pick from a list: each value with its label (in the list's order). */
+const choiceField = <T extends string>(
+  path: string[],
+  label: string,
+  values: readonly T[],
+  labels: Record<T, string>,
+  help?: string,
+): BalanceFieldView => ({
+  path,
+  label,
+  unit: "choice",
+  min: 0,
+  max: 0,
+  choices: values.map((value) => ({ value, label: labels[value] })),
+  ...(help ? { help } : {}),
+});
+
+/** A damage floor's two fields: below `below`, damage becomes `random(randomN)`. */
+const floorFields = (path: string[], name: string, help: string): BalanceFieldView[] => [
+  field([...path, "below"], `${name}: below`, "count", BALANCE_LIMITS.floorBelow, help),
+  field([...path, "randomN"], `${name}: becomes random(n)`, "random", {
+    min: 1,
+    max: BALANCE_LIMITS.randomN.max,
+  }),
+];
 
 /**
  * The three fields of an amount (`flat + power × P + random(randomN)`) at `path`, named `name`.
@@ -329,6 +360,152 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
             "frames",
             BALANCE_LIMITS.frames,
             "No monster rolls against a player for this long after a death.",
+          ),
+        ],
+      },
+    ],
+  },
+  {
+    id: "drops",
+    title: "Death drops and loot",
+    help: "Whose deaths drop gold or one random bag item (never crystals) where they died, and how long monster loot stays on the ground. These were Server Settings (the Items page) before.",
+    rows: [
+      {
+        part: "drops",
+        key: null,
+        label: "Death drops and loot",
+        fields: [
+          choiceField(
+            ["who"],
+            "Drops on death",
+            BALANCE_DROP_WHO,
+            {
+              off: "Off",
+              wanted: "Wanted only",
+              pvp: "Killed by a player",
+              everyone: "Everyone",
+            },
+            "Wanted only: characters wanted for murder. Killed by a player: anyone another player kills, and wanted characters however they die. Everyone: every death outside an arena, as in 1.6. A faction member killed on a PvP map drops the faction's head whatever this says, and a role with the drop-on-every-death permission always drops.",
+          ),
+          choiceField(["kind"], "What drops", BALANCE_DROP_KIND, {
+            either: "Gold or an item",
+            gold: "Gold only",
+            items: "Items only",
+          }),
+          field(
+            ["goldCap"],
+            "Most gold dropped",
+            "count",
+            BALANCE_LIMITS.goldCap,
+            "Unless the character is wanted for murder (a wanted character can drop all they carry). 0 means no cap; 1.6 capped it at 200.",
+          ),
+          field(
+            ["minLevel"],
+            "No drops below level",
+            "count",
+            BALANCE_LIMITS.level,
+            "Protects new players' first gear; not a character wanted for murder. 0 protects no one.",
+          ),
+          field(
+            ["lootDecaySeconds"],
+            "Monster loot lasts",
+            "seconds",
+            BALANCE_LIMITS.lootSeconds,
+            "Player drops and items placed with /drop never disappear. 1.6 never removed ground items.",
+          ),
+        ],
+      },
+    ],
+  },
+  {
+    id: "timings",
+    title: "Timings",
+    help: "Waits that pace fights and a few actions. The game runs 20 frames a second.",
+    rows: [
+      {
+        part: "timings",
+        key: null,
+        label: "Timings",
+        fields: [
+          field(
+            ["flickerFrames"],
+            "Hit flicker",
+            "passFrames",
+            BALANCE_LIMITS.frames,
+            "A hit player flickers this long, and no other hit lands meanwhile.",
+          ),
+          field(
+            ["castDelayFrames"],
+            "After a cast",
+            "passFrames",
+            { min: 1, max: BALANCE_LIMITS.frames.max },
+            "Before the caster may act again.",
+          ),
+          field(
+            ["swingBaseFrames"],
+            "Swing cooldown",
+            "frames",
+            { min: 1, max: BALANCE_LIMITS.frames.max },
+            "With no gear that sets one (Ring of Quickness, item rules). A ladder's own steps (an Axe's, a Fishing Pole's) are the item rules'.",
+          ),
+          field(
+            ["killCreditFrames"],
+            "A hit counts as the kill for",
+            "frames",
+            { min: 1, max: BALANCE_LIMITS.frames.max },
+            "A death after this, with no new hit, credits no killer.",
+          ),
+          field(["pigGrabFrames"], "Between pig grabs", "frames", BALANCE_LIMITS.frames),
+          field(["giveGrabFrames"], "A give is picked up after", "frames", BALANCE_LIMITS.frames),
+          field(
+            ["npcSpellBlockFrames"],
+            "Between monster spells on a map",
+            "frames",
+            BALANCE_LIMITS.frames,
+            "After a monster's spell, before another monster spell may hit the same players.",
+          ),
+        ],
+      },
+    ],
+  },
+  {
+    id: "combat",
+    title: "Combat rolls",
+    help: "The rolls inside the fight formulas. A chance of 1 in N means a roll of 1 to N hits on a 1.",
+    rows: [
+      {
+        part: "combat",
+        key: null,
+        label: "Combat rolls",
+        fields: [
+          ...floorFields(
+            ["meleeFloor"],
+            "Melee on a monster",
+            "Damage under this after the monster's Defense rolls instead.",
+          ),
+          ...floorFields(
+            ["playerHitFloor"],
+            "A hit on a player",
+            "A monster's or a player's hit under this after defense rolls instead.",
+          ),
+          field(
+            ["dodgeBaseRandomN"],
+            "Parry and block: base roll random(n)",
+            "random",
+            { min: 1, max: BALANCE_LIMITS.randomN.max },
+            "A parry or block succeeds on a 1. Past a little skill (over 10 against monsters, over 0 against players) the skill's own ladder rolls instead.",
+          ),
+          field(
+            ["monsterMeleeOneIn"],
+            "A monster next to you attacks each frame with a chance of",
+            "oneIn",
+            BALANCE_LIMITS.oneIn,
+          ),
+          field(
+            ["pushOneIn"],
+            "Walking into a player pushes them with a chance of",
+            "oneIn",
+            BALANCE_LIMITS.oneIn,
           ),
         ],
       },

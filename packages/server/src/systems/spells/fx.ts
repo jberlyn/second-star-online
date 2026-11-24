@@ -12,6 +12,7 @@ import {
   cannonballDir,
   cannonballLaunchFrom,
   cannonballLaunchTiles,
+  content,
   type DeltaEvent,
   isWalkable,
   newFx,
@@ -29,8 +30,10 @@ export function queueCast(room: Room, c: CastMessage): void {
   room.fxQueue.push(c);
 }
 
-/** The monster-spell block, 30 frames. */
-export const NPC_SPELL_BLOCK_FRAMES = 30;
+/** The monster-spell block (`balance.timings.npcSpellBlockFrames`; Classic 30). */
+export function npcSpellBlockFrames(): number {
+  return content().balance.timings.npcSpellBlockFrames;
+}
 
 /**
  * A monster's cast: no player owns it and it is sent as its sprite, "180"-"183" or "a 180"-"a 183".
@@ -73,7 +76,7 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
         continue;
       }
       if (isMonsterCaster(q)) {
-        p.spell.npcSpellBlock = NPC_SPELL_BLOCK_FRAMES;
+        p.spell.npcSpellBlock = npcSpellBlockFrames();
       }
     }
     const caster = q.ownerId ? room.players.find((p) => p.id === q.ownerId) : undefined;

@@ -584,6 +584,9 @@ describe("the Balance page", () => {
   test("values are written for people", () => {
     const f = { path: [], label: "x", min: 0, max: 1 };
     expect(shownValue(30, { ...f, unit: "frames" })).toBe("30 (1.5 s)");
+    // Counted down in both actor passes: Classic's flicker of 40 lasts about 1 s.
+    expect(shownValue(40, { ...f, unit: "passFrames" })).toBe("40 (1 s)");
+    expect(shownValue(20, { ...f, unit: "passFrames" })).toBe("20 (0.5 s)");
     expect(shownValue(0, { ...f, unit: "random" })).toBe("no roll");
     expect(shownValue(7, { ...f, unit: "count" })).toBe("7");
     expect(shownValue(2, { ...f, unit: "power" })).toBe("2 × power");
@@ -670,5 +673,135 @@ describe("the Balance page in the app", () => {
     c.onMessage({ t: "content", hash: content().hash } as ServerMsg);
     expect(sent.filter((m) => m.t === "contentOverview").length).toBe(overviews + 1);
     app.stop();
+  });
+});
+
+/** The drops row as the server sends it (stage 4): two picks, two counts and seconds. */
+const drops = (fp: string, who = "wanted"): BalanceRowView => ({
+  part: "drops",
+  key: null,
+  label: "Death drops and loot",
+  fields: [
+    {
+      path: ["who"],
+      label: "Drops on death",
+      unit: "choice",
+      min: 0,
+      max: 0,
+      choices: [
+        { value: "off", label: "Off" },
+        { value: "wanted", label: "Wanted only" },
+        { value: "everyone", label: "Everyone" },
+      ],
+    },
+    { path: ["goldCap"], label: "Most gold dropped", unit: "count", min: 0, max: 1_000_000_000 },
+    {
+      path: ["lootDecaySeconds"],
+      label: "Monster loot lasts",
+      unit: "seconds",
+      min: 60,
+      max: 604_800,
+    },
+  ],
+  engine: { who: "wanted", goldCap: 200, lootDecaySeconds: 1800 },
+  pack: { who: "wanted", goldCap: 200, lootDecaySeconds: 1800 },
+  published: { who, goldCap: 200, lootDecaySeconds: 1800 },
+  draft: { who, goldCap: 200, lootDecaySeconds: 1800 },
+  edited: false,
+  pending: null,
+  fingerprint: fp,
+  notice: null,
+});
+
+describe("the Balance page's picks, seconds and Find (#19 stages 4-6)", () => {
+  test("a pick shows its labels, saves its value, and locks while the save is on its way", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: view([drops("d1")]) });
+    const sel = t
+      .row("drops/")
+      .querySelector<HTMLSelectElement>('select[data-path="who"]') as HTMLSelectElement;
+    expect([...sel.options].map((o) => o.textContent)).toEqual(["Off", "Wanted only", "Everyone"]);
+    expect(sel.value).toBe("wanted");
+    expect(t.row("drops/").textContent).toContain("Now Wanted only");
+    expect(t.row("drops/").textContent).toContain("1800 s (30 min)");
+    sel.value = "everyone";
+    sel.dispatchEvent(new Event("change"));
+    t.button("drops/", "balance-save").click();
+    expect(t.sent.at(-1)?.change).toEqual({
+      part: "drops",
+      key: null,
+      op: "set",
+      data: { who: "everyone", goldCap: 200, lootDecaySeconds: 1800 },
+      expect: "d1",
+    });
+    expect(sel.disabled).toBe(true);
+    const seq = t.sent.at(-1)?.seq as number;
+    t.p.receive({
+      t: "contentBalance",
+      seq,
+      view: view([{ ...drops("d2", "everyone"), pending: "set" }]),
+      result: { ok: true, text: "Saved to the draft." },
+    });
+    expect(sel.disabled).toBe(false);
+    expect(sel.value).toBe("everyone");
+  });
+
+  test("a pick outside its list and loot under a minute are refused before sending", () => {
+    const f = drops("x").fields;
+    expect(fieldError("sometimes", f[0] as never)).toBe("Drops on death: pick one");
+    expect(fieldError("everyone", f[0] as never)).toBeNull();
+    expect(fieldError("59", f[2] as never)).toBe("Monster loot lasts: from 60 to 604800");
+    expect(shownValue(90_000, f[2] as never)).toBe("90000 s (1.04 days)");
+    expect(shownValue(90, f[2] as never)).toBe("90 s (1.5 min)");
+  });
+
+  test("Find shows only the rows whose names hold every word, and says when nothing does", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({
+      t: "contentBalance",
+      seq: 1,
+      view: view([hull("Boat", 60, "b"), cannon("c"), drops("d")]),
+    });
+    const find = t.p.el.querySelector<HTMLInputElement>("#balance-search") as HTMLInputElement;
+    const shown = () =>
+      [...t.p.el.querySelectorAll<HTMLElement>(".balance-row")]
+        .filter((r) => !r.hidden)
+        .map((r) => r.dataset.row);
+    find.value = "loot";
+    find.dispatchEvent(new Event("input"));
+    expect(shown()).toEqual(["drops/"]);
+    find.value = "cannon reload";
+    find.dispatchEvent(new Event("input"));
+    expect(shown()).toEqual(["cannon/"]);
+    const none = t.p.el.querySelector<HTMLElement>(".balance-no-match") as HTMLElement;
+    expect(none.hidden).toBe(true);
+    find.value = "zebra";
+    find.dispatchEvent(new Event("input"));
+    expect(shown()).toEqual([]);
+    expect(none.hidden).toBe(false);
+    find.value = "";
+    find.dispatchEvent(new Event("input"));
+    expect(shown()).toEqual(["hulls/Boat", "cannon/", "drops/"]);
+  });
+
+  test("a reset page (a new session) forgets the Find text and its 'Nothing matches.'", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: view([hull("Boat", 60, "b")]) });
+    const find = t.p.el.querySelector<HTMLInputElement>("#balance-search") as HTMLInputElement;
+    const none = t.p.el.querySelector<HTMLElement>(".balance-no-match") as HTMLElement;
+    find.value = "zebra";
+    find.dispatchEvent(new Event("input"));
+    expect(none.hidden).toBe(false);
+    t.p.reset();
+    expect(find.value).toBe("");
+    expect(none.hidden).toBe(true);
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 3, view: view([hull("Boat", 60, "b")]) });
+    expect(
+      [...t.p.el.querySelectorAll<HTMLElement>(".balance-row")].filter((r) => !r.hidden),
+    ).toHaveLength(1);
   });
 });

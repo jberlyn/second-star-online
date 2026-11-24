@@ -79,7 +79,7 @@ function at(value: unknown, path: readonly string[]): unknown {
 }
 
 /** A copy of `value` with `path` set to `n`. */
-function withValue(value: unknown, path: readonly string[], n: number): unknown {
+function withValue(value: unknown, path: readonly string[], n: unknown): unknown {
   const out = structuredClone(value ?? {}) as Record<string, unknown>;
   let o = out;
   path.forEach((p, i) => {
@@ -94,16 +94,38 @@ function withValue(value: unknown, path: readonly string[], n: number): unknown 
   return out;
 }
 
+/** Seconds as the largest whole-ish unit: 1800 → "30 min", 90 → "1.5 min", 86400 → "1 day". */
+export function duration(s: number): string {
+  const n = (x: number) => String(Number(x.toFixed(2)));
+  if (s >= 86_400) {
+    return `${n(s / 86_400)} day${s === 86_400 ? "" : "s"}`;
+  }
+  if (s >= 3_600) {
+    return `${n(s / 3_600)} h`;
+  }
+  if (s >= 60) {
+    return `${n(s / 60)} min`;
+  }
+  return `${s} s`;
+}
+
 /** Frames in seconds, to two places at most (148 → 7.4). */
 const seconds = (frames: number) => String(Number((frames / FPS).toFixed(2)));
 
 /** A value as the page writes it: frames also in seconds, a counter as the interval it gives. */
 export function shownValue(v: unknown, f: BalanceFieldView): string {
+  if (f.unit === "choice") {
+    return f.choices?.find((c) => c.value === v)?.label ?? (typeof v === "string" ? v : "none");
+  }
   if (typeof v !== "number") {
     return "none";
   }
   if (f.unit === "frames") {
     return `${v} (${seconds(v)} s)`;
+  }
+  if (f.unit === "passFrames") {
+    // Counted down in both actor passes, so twice a frame.
+    return `${v} (${seconds(v / 2)} s)`;
   }
   if (f.unit === "random") {
     return v === 0 ? "no roll" : `random(${v})`;
@@ -113,6 +135,9 @@ export function shownValue(v: unknown, f: BalanceFieldView): string {
   }
   if (f.unit === "oneIn") {
     return `1 in ${v}`;
+  }
+  if (f.unit === "seconds") {
+    return `${v} s (${duration(v)})`;
   }
   if (f.unit === "counter") {
     // The counter starts at 1, so it acts every target − 1 frames (every frame at 1 or 2).
@@ -168,7 +193,9 @@ export function amountPreview(flat: string, power: string | null, randomN: strin
 }
 
 /** Why the typed parts of each optional amount are refused: filled in part. */
-function partialErrors(fields: readonly { field: BalanceFieldView; input: HTMLInputElement }[]) {
+function partialErrors(
+  fields: readonly { field: BalanceFieldView; input: HTMLInputElement | HTMLSelectElement }[],
+) {
   const groups = new Map<string, { label: string; blank: number; all: number }>();
   for (const { field, input } of fields) {
     if (!field.optional) {
@@ -189,6 +216,9 @@ function partialErrors(fields: readonly { field: BalanceFieldView; input: HTMLIn
 /** Why a typed value is refused, or null. */
 export function fieldError(text: string, f: BalanceFieldView): string | null {
   const t = text.trim();
+  if (f.unit === "choice") {
+    return f.choices?.some((c) => c.value === t) ? null : `${f.label}: pick one`;
+  }
   if (t === "" && f.optional) {
     return null;
   }
@@ -206,7 +236,11 @@ export function fieldError(text: string, f: BalanceFieldView): string | null {
 interface RowUi {
   el: HTMLElement;
   view: BalanceRowView;
-  inputs: { field: BalanceFieldView; input: HTMLInputElement; info: HTMLElement }[];
+  inputs: {
+    field: BalanceFieldView;
+    input: HTMLInputElement | HTMLSelectElement;
+    info: HTMLElement;
+  }[];
   /** Each amount's range preview, by the amount's path. */
   previews: Map<string, HTMLElement>;
   /** The draft value and fingerprint the inputs were filled from. */
@@ -228,7 +262,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   el.append(
     pageHeading(
       "Balance",
-      "The game's global numbers: spell amounts, buffs, regeneration, hunger, death, hulls and the cannon, with timings and combat rolls to follow. Each value shows what plays now, the pack's value and the engine's default. Changes go into the content draft, published from the Content page.",
+      "The game's global numbers: spell amounts, buffs, regeneration, hunger, death, death drops and loot, timings, combat rolls, hulls and the cannon. Each value shows what plays now, the pack's value and the engine's default. Changes go into the content draft, published from the Content page.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -246,7 +280,23 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   loading.textContent = "Loading…";
   const cards = document.createElement("div");
   cards.className = "balance-cards";
-  el.append(draftLine, loading, cards);
+  // Narrows the cards to the rows whose names (a card's, a row's or a field's) hold the words.
+  const searchWrap = document.createElement("div");
+  searchWrap.className = "control-panel-field balance-search";
+  const search = noAutofill(action(document.createElement("input"), "balance-search"));
+  search.type = "search";
+  search.id = "balance-search";
+  search.placeholder = "Find a value (hunger, cannon, parry…)";
+  const searchLabel = document.createElement("label");
+  searchLabel.className = "control-panel-field-label";
+  searchLabel.htmlFor = search.id;
+  searchLabel.textContent = "Find";
+  const noMatch = document.createElement("p");
+  noMatch.className = "balance-no-match";
+  noMatch.hidden = true;
+  noMatch.textContent = "Nothing matches.";
+  searchWrap.append(searchLabel, search);
+  el.append(draftLine, searchWrap, loading, noMatch, cards);
 
   let seq = 0;
   /** The newest view request's seq: an older answer never replaces a newer view. */
@@ -307,7 +357,9 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       const parts = [`Now ${shownValue(at(v.published, field.path), field)}`];
       parts.push(pack === null ? "no pack value" : `pack ${shownValue(pack, field)}`);
       parts.push(`engine default ${shownValue(at(v.engine, field.path), field)}`);
-      parts.push(`limits ${field.min} to ${field.max}`);
+      if (field.unit !== "choice") {
+        parts.push(`limits ${field.min} to ${field.max}`);
+      }
       info.textContent = parts.join(" · ");
     }
     const tags: string[] = [];
@@ -347,7 +399,11 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     // A row being saved takes no typing until the answer comes: the answer fills the row with
     // what the draft now holds, which would silently drop a value typed meanwhile.
     for (const { input } of r.inputs) {
-      input.readOnly = r.busy;
+      if (input instanceof HTMLSelectElement) {
+        input.disabled = r.busy;
+      } else {
+        input.readOnly = r.busy;
+      }
     }
     if (errs.length > 0) {
       r.status.textContent = errs.join(". ");
@@ -371,7 +427,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         data =
           t === "" && field.optional
             ? without(data, field.path.slice(0, -1))
-            : withValue(data, field.path, Number(t));
+            : withValue(data, field.path, field.unit === "choice" ? t : Number(t));
       }
     }
     const change: BalanceChange = {
@@ -395,6 +451,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     const sec = document.createElement("section");
     sec.className = "balance-row";
     sec.dataset.row = rowId(v);
+    sec.dataset.words = [v.label, ...v.fields.map((f) => f.label)].join(" ");
     const h = document.createElement("h3");
     h.className = "balance-row-title";
     h.textContent = v.label;
@@ -424,18 +481,36 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     for (const f of v.fields) {
       const wrap = document.createElement("div");
       wrap.className = "control-panel-field balance-field";
-      const input = noAutofill(action(document.createElement("input"), "balance-value"));
-      input.type = "number";
-      input.min = String(f.min);
-      input.max = String(f.max);
-      input.step = "1";
+      let input: HTMLInputElement | HTMLSelectElement;
+      if (f.unit === "choice") {
+        const sel = action(document.createElement("select"), "balance-value");
+        for (const c of f.choices ?? []) {
+          const o = document.createElement("option");
+          o.value = c.value;
+          o.textContent = c.label;
+          sel.append(o);
+        }
+        input = sel;
+      } else {
+        const num = noAutofill(action(document.createElement("input"), "balance-value"));
+        num.type = "number";
+        num.min = String(f.min);
+        num.max = String(f.max);
+        num.step = "1";
+        input = num;
+      }
       input.dataset.path = f.path.join(".");
       input.id = `balance-${rowId(v).replace(/[^A-Za-z0-9]/g, "-")}-${f.path.join("-")}`;
       const label = document.createElement("label");
       label.className = "control-panel-field-label";
       label.htmlFor = input.id;
-      label.textContent = f.unit === "frames" ? `${f.label} (frames, 20 a second)` : f.label;
-      if (f.optional) {
+      label.textContent =
+        f.unit === "frames"
+          ? `${f.label} (frames, 20 a second)`
+          : f.unit === "seconds"
+            ? `${f.label} (seconds)`
+            : f.label;
+      if (f.optional && input instanceof HTMLInputElement) {
         input.placeholder = "none";
       }
       const info = document.createElement("p");
@@ -449,7 +524,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         help.textContent = f.help;
         wrap.append(help);
       }
-      input.addEventListener("input", () => {
+      input.addEventListener(f.unit === "choice" ? "change" : "input", () => {
         r.status.textContent = "";
         update(r);
       });
@@ -499,6 +574,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
           const card = document.createElement("section");
           card.className = "balance-card";
           card.dataset.group = g.id;
+          card.dataset.words = g.title;
           const t = document.createElement("h2");
           t.className = "content-section-title";
           t.textContent = g.title;
@@ -515,6 +591,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
           (g.elsewhere ?? []).forEach((e, i) => {
             const line = document.createElement("div");
             line.className = "balance-elsewhere";
+            line.dataset.words = e.label;
             const label = document.createElement("strong");
             label.textContent = `${e.label}: `;
             const now = document.createElement("span");
@@ -530,6 +607,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         }),
       );
       groupsShown = shape;
+      applySearch();
     }
     for (const g of view.groups) {
       (g.elsewhere ?? []).forEach((e, i) => {
@@ -559,6 +637,29 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         ? ""
         : `The draft holds ${mine === 1 ? "1 balance change" : `${mine} balance changes`}${view.otherDraft > 0 ? ` and ${view.otherDraft} other ${view.otherDraft === 1 ? "change" : "changes"}` : ""}, live once published. `;
   };
+
+  /** Shows only the rows (and cards) whose words hold every word typed in Find. */
+  const applySearch = () => {
+    const words = search.value
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w !== "");
+    let shown = 0;
+    for (const card of cards.querySelectorAll<HTMLElement>(".balance-card")) {
+      const title = (card.dataset.words ?? "").toLowerCase();
+      let any = false;
+      for (const rowEl of card.querySelectorAll<HTMLElement>(".balance-row, .balance-elsewhere")) {
+        const text = `${title} ${rowEl.dataset.words ?? ""}`.toLowerCase();
+        const hit = words.every((w) => text.includes(w));
+        rowEl.hidden = !hit;
+        any ||= hit;
+      }
+      card.hidden = !any;
+      shown += any ? 1 : 0;
+    }
+    noMatch.hidden = shown > 0 || cards.childElementCount === 0;
+  };
+  search.addEventListener("input", applySearch);
 
   const ask = () => {
     seq += 1;
@@ -645,6 +746,9 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       rows.clear();
       groupsShown = "";
       cards.replaceChildren();
+      elsewhereNow.clear();
+      search.value = "";
+      noMatch.hidden = true;
       loading.hidden = false;
       draftLine.hidden = true;
     },

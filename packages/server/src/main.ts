@@ -35,6 +35,7 @@ import {
 import { type Clock, systemClock } from "./clock.ts";
 import { DEFAULT_SERVER_CONFIG, readServerConfig, type ServerConfig } from "./config.ts";
 import { ArtLibrary } from "./content/art.ts";
+import { moveDropSettings } from "./content/moved-settings.ts";
 import { ServedAssets } from "./content/served-assets.ts";
 import { ContentService } from "./content/service.ts";
 import {
@@ -200,6 +201,10 @@ export function startServer(options: ServerOptions): RunningServer {
       );
     },
   });
+  // Settings that became balance content (issue #19 stage 4) move once, as a logged publish.
+  for (const line of moveDropSettings(db, content)) {
+    console.log(line);
+  }
   assets = new ServedAssets({
     engineDir: ASSETS_DIR,
     packs: () => content.installedPacks(),

@@ -50,6 +50,9 @@ describe("the balance dataset and its defaults", () => {
       regen: BALANCE_DEFAULTS.regen,
       hunger: BALANCE_DEFAULTS.hunger,
       death: BALANCE_DEFAULTS.death,
+      drops: BALANCE_DEFAULTS.drops,
+      timings: BALANCE_DEFAULTS.timings,
+      combat: BALANCE_DEFAULTS.combat,
       vehicles: BALANCE_DEFAULTS.vehicles,
       cannon: BALANCE_DEFAULTS.cannon,
       hulls: BALANCE_DEFAULTS.hulls,
@@ -249,14 +252,18 @@ describe("the Balance page on a running server", () => {
     const server = start();
     try {
       const view = server.content.balanceView();
-      expect(view.groups.map((g) => g.id)).toEqual(["spells", "buffs", "vitals", "vehicles"]);
-      expect(view.groups[3]?.rows.map((r) => `${r.part}/${r.key ?? ""}`)).toEqual([
-        "hulls/Boat",
-        "hulls/Airship",
-        "hulls/Battleship",
-        "vehicles/",
-        "cannon/",
+      expect(view.groups.map((g) => g.id)).toEqual([
+        "spells",
+        "buffs",
+        "vitals",
+        "drops",
+        "timings",
+        "combat",
+        "vehicles",
       ]);
+      expect(
+        view.groups.find((g) => g.id === "vehicles")?.rows.map((r) => `${r.part}/${r.key ?? ""}`),
+      ).toEqual(["hulls/Boat", "hulls/Airship", "hulls/Battleship", "vehicles/", "cannon/"]);
       const boat = row(server, "hulls", "Boat");
       expect(boat).toMatchObject({
         engine: { vehicle: "Boat", hull: 60 },

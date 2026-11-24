@@ -964,8 +964,19 @@ body {
 .balance-draft[hidden],
 .balance-loading[hidden],
 .balance-stale[hidden],
+.balance-card[hidden],
+.balance-row[hidden],
+.balance-elsewhere[hidden],
+.balance-no-match[hidden],
 .balance-page .control-panel-btn[hidden] {
   display: none;
+}
+.balance-search {
+  max-width: 28em;
+  margin-bottom: 12px;
+}
+.balance-no-match {
+  color: #b8c4dd;
 }
 .balance-loading {
   margin: 16px 20px;

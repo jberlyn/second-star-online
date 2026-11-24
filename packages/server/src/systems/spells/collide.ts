@@ -13,9 +13,9 @@ import {
   createFood,
   type DeltaEvent,
   EFFECT_TEXT,
-  FLICKER_FRAMES,
   filledLines,
   firstMatch,
+  flickerFrames,
   fxEffect,
   fxMember,
   hasBehaviour,
@@ -54,6 +54,7 @@ import { chatterOut } from "../monsters/npc.ts";
 import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, type MonsterSlot, species } from "../monsters/slots.ts";
 import { spawnHp } from "../monsters/spawn.ts";
+import { downed } from "../progression/vitals.ts";
 import type { Outgoing, Player, Room, SpellFx } from "../world/world.ts";
 import { fxRect, monsterRect, playerRect } from "./geometry.ts";
 
@@ -67,7 +68,7 @@ export const MONSTER_SPELL_HEAL_COLOR = 46;
 export interface CollideCtx {
   rng: Rng;
   item: ItemCtx;
-  /** Minutes before monster loot decays (setting `lootDecay`, in minutes). */
+  /** Minutes before monster loot decays (the balance row `drops.lootDecaySeconds`). */
   lootDecayMinutes: number;
   /** The world tick: which of F2, F3, F1 a standing Airship rider shows. */
   tick?: number;
@@ -109,7 +110,7 @@ function pvpOff(room: Room, p: Player): boolean {
  * caster).
  */
 export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: CollideOut): void {
-  if (p.deadLock > 0 || p.loading > 0 || p.flicker >= 1) {
+  if (p.deadLock > 0 || p.loading > 0 || p.flicker >= 1 || downed(p)) {
     return;
   }
   const me = playerRect(p, ctx.tick);
@@ -137,7 +138,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     // A monster's spell has no owner id.
     p.lastToHitId = fx.ownerId ?? null;
     p.hitAge = 0;
-    p.flicker = FLICKER_FRAMES; // the hit flicker starts
+    p.flicker = flickerFrames(); // the hit flicker starts
     p.vitalsDirty = true;
     res.events.push({ e: "phit", id: p.id, text: String(dmg), color: SPELL_HIT_COLOR });
   };
@@ -506,6 +507,10 @@ function shellPlayer(p: Player, fx: SpellFx, ctx: CollideCtx, res: CollideOut): 
   if (can(p.role, "invulnerable")) {
     return;
   }
+  // A shell on a player already downed neither hurts nor takes the kill (see `downed`).
+  if (downed(p)) {
+    return;
+  }
   const dmg = cannonDamage(ctx.rng);
   const v = p.char.vitals;
   if (p.vehicle !== null && p.hull !== null) {
@@ -516,7 +521,7 @@ function shellPlayer(p: Player, fx: SpellFx, ctx: CollideCtx, res: CollideOut): 
   p.lastToHitMe = fx.owner;
   p.lastToHitId = fx.ownerId ?? null;
   p.hitAge = 0;
-  p.flicker = FLICKER_FRAMES;
+  p.flicker = flickerFrames();
   p.vitalsDirty = true;
   res.events.push({ e: "phit", id: p.id, text: String(dmg), color: SPELL_HIT_COLOR });
 }

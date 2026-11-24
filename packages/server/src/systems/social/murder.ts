@@ -4,7 +4,7 @@
  * In 1.6 the victim's client sent `IWMD` to the player who last hit it after its death lock, and
  * the killer's client set its murder flag and printed the line. SSO does both on the server,
  * crediting the player by id: a monster never flags, and a player named like a monster flags like
- * anyone. The credit is whoever last hit, if that hit landed within `KILL_CREDIT_TICKS` of the death
+ * anyone. The credit is whoever last hit, if that hit landed within `killCreditFrames()` (balance `timings.killCreditFrames`) of the death
  * (a bug fixed: 1.6 credited the last hit however long ago). An arena death never reaches here, and
  * a death while a Lightning Assassin's game runs flags no one: its deaths carry no penalties (a bug
  * fixed: 1.6 still flagged the killer).

@@ -107,7 +107,7 @@ export function swingCooldowns(
   equip: Equipment,
   skills: readonly number[],
 ): { atDelay: number; actionDelay: number } {
-  const BASE = 14;
+  const BASE = content().balance.timings.swingBaseFrames;
   let atDelay = BASE;
   let actionDelay = BASE;
   // `swing.cooldowns`: each matching row sets both delays, so the last one wins (Ring of
@@ -118,7 +118,8 @@ export function swingCooldowns(
       actionDelay = row.actionDelay;
     }
   }
-  const quickness = BASE - atDelay;
+  // Gear's speed-up, never a slow-down (a swing base below the gear's delay gives none).
+  const quickness = Math.max(0, BASE - atDelay);
   // The weapon's swing ladder (`item-rules.json` `tools`, last match with a `ladder`): an Axe's by
   // Axe Fighting, a Mining Hammer's by Mining, a Fishing Pole's flat 20 less the gear's speed-up. A
   // ladder whose skill the world does not have is off: the delay stays as the gear set it.
@@ -216,8 +217,9 @@ export function meleeDamageVsMonster(
       }
     }
   }
-  if (dmg < 1) {
-    dmg = rng.random(3);
+  const floor = content().balance.combat.meleeFloor;
+  if (dmg < floor.below) {
+    dmg = rng.random(floor.randomN);
   }
   return dmg;
 }
@@ -254,7 +256,7 @@ export function monsterReaches(
  * 1.6 drew `random(3000)` until the skill was over 10, so a new character almost never parried).
  */
 function dodgeRoll(skill: number, bonus: number, rng: Rng): number {
-  let n = rng.random(90);
+  let n = rng.random(content().balance.combat.dodgeBaseRandomN);
   const ladder: [number, number][] = [
     [10, 90],
     [20, 85],
@@ -323,5 +325,7 @@ export function monsterHitsPlayer(
   return { kind: "hit", lost: power };
 }
 
-/** The hit flicker: 40 frames of i-frames. */
-export const FLICKER_FRAMES = 40;
+/** The hit flicker's i-frames (`balance.timings.flickerFrames`; Classic 40). */
+export function flickerFrames(): number {
+  return content().balance.timings.flickerFrames;
+}

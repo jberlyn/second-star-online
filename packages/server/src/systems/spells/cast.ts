@@ -7,9 +7,9 @@
 import {
   boltForm,
   boundSkillValue,
-  CAST_DELAY,
   CAST_TEXT,
   cannonballName,
+  castDelay,
   castEffect,
   content,
   crystalLine,
@@ -178,7 +178,7 @@ export function castIntent(
     },
     ctx.rng,
   );
-  t.actionDelay = CAST_DELAY;
+  t.actionDelay = castDelay();
   if (need) {
     if (ctx.world) {
       logActivity(ctx.world, p, "use", {

@@ -5,6 +5,7 @@
  * drop).
  */
 
+import { content } from "../../content/store.ts";
 import type { Rng } from "../core/lingo.ts";
 import { type Bag, isCrystal } from "../inventory/inventory.ts";
 
@@ -37,12 +38,12 @@ export type DeathDrop =
   /** `amount` gold goes on the death tile as `"<amount> Gold"`. */
   | { kind: "gold"; amount: number };
 
-/** Whose deaths drop gold or an item (setting `deathDrops`). */
+/** Whose deaths drop gold or an item (balance `drops.who`). */
 export type DeathDropWho = "off" | "wanted" | "pvp" | "everyone";
-/** What a death drop can be (setting `deathDropKind`): gold or an item as in 1.6, or only one. */
+/** What a death drop can be (balance `drops.kind`): gold or an item as in 1.6, or only one. */
 export type DeathDropKind = "either" | "gold" | "items";
 
-/** The operator's death-drop rules (Settings → Items). */
+/** The world's death-drop rules (the Balance page's Death drops and loot). */
 export interface DeathDropRules {
   who: DeathDropWho;
   kind: DeathDropKind;
@@ -59,6 +60,17 @@ export const DEFAULT_DEATH_DROPS: DeathDropRules = {
   goldCap: 200,
   minLevel: 0,
 };
+
+/** The world's death-drop rules: the balance row `drops` (Server Settings before issue #19). */
+export function balanceDeathDrops(): DeathDropRules {
+  const d = content().balance.drops;
+  return { who: d.who, kind: d.kind, goldCap: d.goldCap, minLevel: d.minLevel };
+}
+
+/** Seconds monster loot lasts on the ground: the balance row `drops.lootDecaySeconds`. */
+export function lootDecaySeconds(): number {
+  return content().balance.drops.lootDecaySeconds;
+}
 
 /** The character who died, as the drop sees it. */
 export interface DeathDropVictim {

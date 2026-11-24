@@ -93,12 +93,13 @@ describe("inventory, equipment and loot", () => {
     server = startTestServer({
       rng,
       isoNow: iso,
-      // One-minute loot decay so the script can watch it go (setting `lootDecay`).
-      prepare: (db) =>
-        db.run("INSERT INTO settings (key, value, updated_at) VALUES ('lootDecay', '60', ?)", [
-          iso(),
-        ]),
     });
+    // One-minute loot decay so the script can watch it go (balance `drops.lootDecaySeconds`).
+    const staff = { accountId: "acc-e2e", name: "E2E" };
+    const drops = { ...server.content.store().balance.drops, lootDecaySeconds: 60 };
+    const ref = { dataset: "balance", part: "drops", key: null } as const;
+    expect(server.content.draftSet(staff, ref, "set", drops).ok).toBe(true);
+    expect(server.content.publish(staff, server.content.draftRev(), "loot decay").ok).toBe(true);
     const bot = await connectBot(server.wsUrl);
     for (const name of ["Alice", "Bob"]) {
       bot.send(make(name));

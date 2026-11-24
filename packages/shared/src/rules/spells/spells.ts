@@ -125,8 +125,10 @@ export const fxForEffect = (spell: string, effectFx: string): string =>
 
 // ---- the cast ---------------------------------------------------------------------
 
-/** The action delay, 20 frames, shared with melee. */
-export const CAST_DELAY = 20;
+/** The action delay after a cast (`balance.timings.castDelayFrames`; Classic 20). */
+export function castDelay(): number {
+  return content().balance.timings.castDelayFrames;
+}
 
 /**
  * A cast click must fall on the playfield (a bug fixed: 1.6 took `8 < H < 580`, `5 < V < 420`, a

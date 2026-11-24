@@ -126,8 +126,13 @@ export const GIVE_TEXT = {
 /** How many items one tile holds before a player's drop finds the floor too crowded. */
 export const TILE_ITEM_CAP = 10;
 
-/** Ticks between a give's drop and the target's grab: 3 s, as 1.6's 180 frames of 1/60 s. */
-export const GIVE_GRAB_FRAMES = 60;
+/**
+ * Ticks between a give's drop and the target's grab (`balance.timings.giveGrabFrames`; Classic 60,
+ * 3 s, as 1.6's 180 frames of 1/60 s).
+ */
+export function giveGrabFrames(): number {
+  return content().balance.timings.giveGrabFrames;
+}
 
 export interface ItemCtx {
   world: World;
@@ -625,7 +630,7 @@ export function giveIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   invDelSlot(p.char.bag, slot - 1, n);
   changed(p);
   ctx.world.gives.push({
-    at: ctx.world.tickNo + GIVE_GRAB_FRAMES,
+    at: ctx.world.tickNo + giveGrabFrames(),
     giver: p.id,
     giverName: p.name,
     target: target.id,

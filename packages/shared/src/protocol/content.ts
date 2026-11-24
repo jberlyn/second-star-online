@@ -697,9 +697,22 @@ export interface BalanceFieldView {
   /**
    * How the page shows it: a count, frames (also shown in seconds), a `random(n)` roll, a multiple
    * of the caster's power, a chance of 1 in N, or a counter's target (a counter that starts at 1
-   * and acts on reaching it, so every target − 1 frames).
+   * and acts on reaching it, so every target − 1 frames), seconds of real time (also shown in
+   * minutes, hours or days), or a pick from `choices` (`min` and `max` are then 0).
    */
-  unit: "count" | "frames" | "random" | "power" | "oneIn" | "counter";
+  /** `passFrames`: frames counted down in both of a frame's actor passes, so twice a frame. */
+  unit:
+    | "count"
+    | "frames"
+    | "passFrames"
+    | "random"
+    | "power"
+    | "oneIn"
+    | "counter"
+    | "seconds"
+    | "choice";
+  /** A `choice` field's values, each with the label the page shows for it. */
+  choices?: { value: string; label: string }[];
   min: number;
   max: number;
   /** A line under the field. */

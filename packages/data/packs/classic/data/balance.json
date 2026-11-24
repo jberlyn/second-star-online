@@ -211,6 +211,35 @@
     },
     "reloadFrames": 100
   },
+  "drops": {
+    "who": "wanted",
+    "kind": "either",
+    "goldCap": 200,
+    "minLevel": 0,
+    "lootDecaySeconds": 1800
+  },
+  "timings": {
+    "flickerFrames": 40,
+    "castDelayFrames": 20,
+    "swingBaseFrames": 14,
+    "killCreditFrames": 40,
+    "pigGrabFrames": 500,
+    "giveGrabFrames": 60,
+    "npcSpellBlockFrames": 30
+  },
+  "combat": {
+    "meleeFloor": {
+      "below": 1,
+      "randomN": 3
+    },
+    "playerHitFloor": {
+      "below": 2,
+      "randomN": 3
+    },
+    "dodgeBaseRandomN": 90,
+    "monsterMeleeOneIn": 10,
+    "pushOneIn": 25
+  },
   "hulls": [
     {
       "vehicle": "Boat",

@@ -397,7 +397,7 @@ export interface Player {
   /**
    * The player behind `lastToHitMe`, by id, or null for a monster (the flag and points go to a
    * player id, never to a name). Cleared at death and login, and by a death that comes more than
-   * `KILL_CREDIT_TICKS` after the last hit.
+   * `killCreditFrames()` (balance `timings.killCreditFrames`) after the last hit.
    */
   lastToHitId: string | null;
   /** Ticks since the hit that set `lastToHitMe` landed. */

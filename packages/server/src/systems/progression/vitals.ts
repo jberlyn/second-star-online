@@ -4,6 +4,7 @@
 import {
   ARENA_TEXT,
   can,
+  content,
   DEATH_LOCK_FRAMES,
   type DeathDropRules,
   deathHead,
@@ -58,7 +59,19 @@ export function hungerStep(p: Player, noHunger: boolean, rng: Rng): string | nul
  * A death more than this many ticks (2 s) after the last hit credits no one: the hit did not kill
  * you (a bug fixed: 1.6 kept the last attacker until death or login, however long ago).
  */
-export const KILL_CREDIT_TICKS = 40;
+export function killCreditFrames(): number {
+  return content().balance.timings.killCreditFrames;
+}
+
+/**
+ * A player whose HP (or, aboard, hull) has run out, waiting for the death check: the hit that did
+ * it is the kill, and no later hit lands or takes the credit, so even a flicker of 0 frames
+ * (balance `timings`) credits the fatal hit. (The kill credit is at least 1 frame: a melee,
+ * monster or cannon hit lands after the tick's death check, so it is 1 frame old when judged.)
+ */
+export function downed(p: Player): boolean {
+  return p.char.vitals.hp < 1 || (p.vehicle !== null && p.hull !== null && p.hull <= 0);
+}
 
 /** Once a tick: the last hit grows older. */
 export function ageLastHit(p: Player): void {
@@ -104,7 +117,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   if ((v.hp >= 1 && !lightningHit && !hullGone) || p.dontHitMeAgain) {
     return { kind: "none" };
   }
-  if (p.hitAge > KILL_CREDIT_TICKS) {
+  if (p.hitAge > killCreditFrames()) {
     p.lastToHitMe = null;
     p.lastToHitId = null;
   }

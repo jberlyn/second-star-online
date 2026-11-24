@@ -227,7 +227,6 @@ import type { Rng } from "./rng.ts";
 import {
   applySettingValues,
   DAY_SECONDS,
-  deathDropRules,
   resolveSettings,
   type Settings,
   secondsToTicks,
@@ -948,9 +947,7 @@ export function createGame(deps: GameDeps): Game {
     fallbackPoint: settings.fallbackPoint,
     minute,
     now: nowMs,
-    lootDecayMinutes: settings.lootDecay / 60,
     npcChatterSeconds: settings.npcChatter,
-    deathDrops: deathDropRules(settings),
     portalTargets: settings.portalTargets,
     hazardMap: settings.hazardMap && canonicalMapName(settings.hazardMap),
     bellMap: settings.bellMap && canonicalMapName(settings.bellMap),
@@ -1305,9 +1302,7 @@ export function createGame(deps: GameDeps): Game {
     moveJail({ ...settings.jailPoint, map: canonicalMapName(settings.jailPoint.map) }, tell);
     Object.assign(tickDeps, {
       fallbackPoint: settings.fallbackPoint,
-      lootDecayMinutes: settings.lootDecay / 60,
       npcChatterSeconds: settings.npcChatter,
-      deathDrops: deathDropRules(settings),
       portalTargets: settings.portalTargets,
       hazardMap: settings.hazardMap && canonicalMapName(settings.hazardMap),
       bellMap: settings.bellMap && canonicalMapName(settings.bellMap),

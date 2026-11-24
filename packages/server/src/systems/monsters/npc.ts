@@ -32,8 +32,10 @@ export const NPC_TEXT = {
   thanksGold: (name: string) => `${name} says "Thanks for the gold!"`,
 } as const;
 
-/** The pig countdown after a grab. */
-export const PIG_GRAB_FRAMES = 500;
+/** The pig countdown after a grab (`balance.timings.pigGrabFrames`; Classic 500). */
+export function pigGrabFrames(): number {
+  return content().balance.timings.pigGrabFrames;
+}
 
 /**
  * The item the slot's monster is grabbed as (`flags.grabbable`; Classic: a Pig), or null. A bug
@@ -118,7 +120,7 @@ export function grabPig(room: Room, p: Player, slot: MonsterSlot, item: string, 
   if (addSlotFor(p.char.bag, item) < 0) {
     return { out: [say(p, NPC_TEXT.pigFull)], slotsChanged: false };
   }
-  p.piggie = PIG_GRAB_FRAMES;
+  p.piggie = pigGrabFrames();
   const out = cancelSlot(room, slot);
   invAdd(p.char, item, 1, rng);
   p.invDirty = true;

@@ -751,6 +751,10 @@ export function createSettingsPanel(actions: SettingsActions): SettingsPanel {
         : page === custom.roles
           ? "What each role may do. Saving applies the role to everyone who holds it at once."
           : "Changes apply to everyone online as soon as you save this page.";
+    const note = pages.find((p) => p.id === id)?.note;
+    if (note && page === null) {
+      intro.textContent += ` ${note}`;
+    }
     saveButton.hidden = page !== null && page.save === null;
     for (const a of links.children) {
       const on = (a as HTMLElement).dataset.page === id;

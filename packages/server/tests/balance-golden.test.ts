@@ -14,19 +14,21 @@ import { join } from "node:path";
 
 import type { MonsterFlags } from "@secondstaronline/data";
 import {
+  balanceDeathDrops,
   boardingHull,
-  CAST_DELAY,
   cannonDamage,
   cannonReloadFrames,
+  castDelay,
   content,
   deathHunger,
   deathPauseFrames,
   deathVitals,
   type Fighter,
-  FLICKER_FRAMES,
+  flickerFrames,
   hullHitDamage,
   hullMax,
   hungerTick,
+  lootDecaySeconds,
   meleeDamageVsMonster,
   monsterHitsPlayer,
   NO_EQUIPMENT,
@@ -46,18 +48,17 @@ import {
   type Vitals,
 } from "@secondstaronline/shared";
 
-import { defaultSettings } from "../src/settings.ts";
-import { GIVE_GRAB_FRAMES } from "../src/systems/inventory/items.ts";
+import { giveGrabFrames } from "../src/systems/inventory/items.ts";
 import { monsterAttack } from "../src/systems/monsters/attack.ts";
-import { PIG_GRAB_FRAMES } from "../src/systems/monsters/npc.ts";
+import { pigGrabFrames } from "../src/systems/monsters/npc.ts";
 import type { MonsterSlot } from "../src/systems/monsters/slots.ts";
 import { species } from "../src/systems/monsters/slots.ts";
 import type { MoveCtx } from "../src/systems/movement/movement.ts";
 import { rollPushes } from "../src/systems/movement/push.ts";
-import { KILL_CREDIT_TICKS } from "../src/systems/progression/vitals.ts";
+import { killCreditFrames } from "../src/systems/progression/vitals.ts";
 import { castIntent, swingFireballs } from "../src/systems/spells/cast.ts";
 import { argonsFist } from "../src/systems/spells/collide.ts";
-import { NPC_SPELL_BLOCK_FRAMES } from "../src/systems/spells/fx.ts";
+import { npcSpellBlockFrames } from "../src/systems/spells/fx.ts";
 import type { Player, Room } from "../src/systems/world/world.ts";
 import { ARCHIVE_NPCS, player, rngByN, setup, testMap } from "./helpers/sim.ts";
 
@@ -187,7 +188,6 @@ function freeFireballs(weapon: string, fireSword: boolean, at: "low" | "high") {
 function balanceNow(): Record<string, unknown> {
   const P = 7;
   const bare = { equip: NO_EQUIPMENT, magicShield: false };
-  const settings = defaultSettings();
   const regen = (hunger: number) => {
     const v = vitals(10, 10);
     regenTick(148, 149, hunger, v);
@@ -318,13 +318,13 @@ function balanceNow(): Record<string, unknown> {
       pauseFrames: deathPauseFrames(),
     },
     timings: {
-      flicker: FLICKER_FRAMES,
-      castDelay: CAST_DELAY,
+      flicker: flickerFrames(),
+      castDelay: castDelay(),
       swing: swingCooldowns(NO_EQUIPMENT, []),
-      killCredit: KILL_CREDIT_TICKS,
-      pigGrab: PIG_GRAB_FRAMES,
-      giveGrab: GIVE_GRAB_FRAMES,
-      npcSpellBlock: NPC_SPELL_BLOCK_FRAMES,
+      killCredit: killCreditFrames(),
+      pigGrab: pigGrabFrames(),
+      giveGrab: giveGrabFrames(),
+      npcSpellBlock: npcSpellBlockFrames(),
     },
     vehicles: {
       hulls: {
@@ -338,11 +338,11 @@ function balanceNow(): Record<string, unknown> {
       cannonReload: cannonReloadFrames(),
     },
     drops: {
-      deathDrops: settings.deathDrops,
-      deathDropKind: settings.deathDropKind,
-      deathDropGoldCap: settings.deathDropGoldCap,
-      deathDropMinLevel: settings.deathDropMinLevel,
-      lootDecay: settings.lootDecay,
+      deathDrops: balanceDeathDrops().who,
+      deathDropKind: balanceDeathDrops().kind,
+      deathDropGoldCap: balanceDeathDrops().goldCap,
+      deathDropMinLevel: balanceDeathDrops().minLevel,
+      lootDecay: lootDecaySeconds(),
     },
   };
 }

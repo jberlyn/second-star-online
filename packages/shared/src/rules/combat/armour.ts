@@ -96,8 +96,10 @@ export function factionRows(power: number, f: Fighter): number {
 export function randomAndDefense(power: number, defenseBonus: number, rng: Rng): number {
   let p = power + rng.random(3);
   p -= defenseBonus;
-  if (p < 2) {
-    p = rng.random(3);
+  // `balance.combat.playerHitFloor` (Classic: below 2, random(3)).
+  const floor = content().balance.combat.playerHitFloor;
+  if (p < floor.below) {
+    p = rng.random(floor.randomN);
   }
   return p;
 }
@@ -175,7 +177,7 @@ function pvpDodge(
  * Adventurer's bonus barely helped.
  */
 function pvpDodgeRoll(skill: number, bonus: number, rng: Rng): number {
-  let dodge = rng.random(90);
+  let dodge = rng.random(content().balance.combat.dodgeBaseRandomN);
   for (const [gt, n] of PVP_LADDER) {
     if (skill > gt) {
       dodge = rng.random(n);

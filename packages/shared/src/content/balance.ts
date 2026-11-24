@@ -32,6 +32,9 @@ export interface Balance {
   death: NonNullable<BalanceData["death"]>;
   vehicles: NonNullable<BalanceData["vehicles"]>;
   cannon: NonNullable<BalanceData["cannon"]>;
+  drops: NonNullable<BalanceData["drops"]>;
+  timings: NonNullable<BalanceData["timings"]>;
+  combat: NonNullable<BalanceData["combat"]>;
   /** One row for each vehicle, in `BALANCE_VEHICLE_ORDER`. */
   hulls: HullRow[];
 }
@@ -101,6 +104,31 @@ export const BALANCE_DEFAULTS: Readonly<Balance> = {
   death: { hp: 1, sp: 1, pauseFrames: 90 },
   vehicles: { hullHit: 2, repairPerMinute: 1 },
   cannon: { damage: { flat: 13, randomN: 3 }, reloadFrames: 5 * TICK_HZ },
+  // Moved from Server Settings (stage 4): SSO's defaults there. 1.6 dropped on every death.
+  drops: {
+    who: "wanted",
+    kind: "either",
+    goldCap: 200,
+    minLevel: 0,
+    lootDecaySeconds: 30 * 60,
+  },
+  timings: {
+    flickerFrames: 40,
+    castDelayFrames: 20,
+    swingBaseFrames: 14,
+    killCreditFrames: 40,
+    pigGrabFrames: 500,
+    // 3 s: 1.6's 180 frames of 1/60 s.
+    giveGrabFrames: 60,
+    npcSpellBlockFrames: 30,
+  },
+  combat: {
+    meleeFloor: { below: 1, randomN: 3 },
+    playerHitFloor: { below: 2, randomN: 3 },
+    dodgeBaseRandomN: 90,
+    monsterMeleeOneIn: 10,
+    pushOneIn: 25,
+  },
   hulls: [
     { vehicle: "Boat", hull: 60 },
     { vehicle: "Airship", hull: 80 },
@@ -138,6 +166,9 @@ export function fullBalance(data: BalanceData | undefined): Balance {
     death: part("death"),
     vehicles: structuredClone(d.vehicles ?? BALANCE_DEFAULTS.vehicles),
     cannon: structuredClone(d.cannon ?? BALANCE_DEFAULTS.cannon),
+    drops: part("drops"),
+    timings: part("timings"),
+    combat: part("combat"),
     hulls,
   };
 }
