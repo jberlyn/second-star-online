@@ -1588,12 +1588,15 @@ export function createBodies(opts: BodiesOptions): Bodies {
   );
   let attaching = false;
   let batch = 0;
+  /** The batch attaching now: one a Clear or Discard has cut short is no longer unsaved work. */
+  let activeBatch = -1;
   async function attachAll(): Promise<void> {
     if (!view || attaching) {
       return;
     }
     attaching = true;
     const mine = batch;
+    activeBatch = mine;
     redraw();
     let saved = 0;
     // What each line writes, and how, is fixed when Attach is pressed: a draft that changes while
@@ -1767,8 +1770,17 @@ export function createBodies(opts: BodiesOptions): Bodies {
 
   return {
     el,
-    pending: () => picker.pending(),
-    discard: () => picker.clear(),
+    // Files chosen and not yet attached, or a batch still attaching, are unsaved work too.
+    pending: () =>
+      picker.pending() || (attaching && activeBatch === batch) || lines.some((l) => !l.done),
+    discard() {
+      // A batch still uploading writes nothing more.
+      batch += 1;
+      lines = [];
+      status.textContent = "";
+      picker.clear();
+      redraw();
+    },
     reset() {
       batch += 1;
       lines = [];

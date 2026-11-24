@@ -12,6 +12,9 @@ import {
   bodyUses,
   type ContentData,
   CURRENCY_PILES,
+  fxFramesOf,
+  fxRuns,
+  fxUsersText,
   missingFrames,
   wornByText,
   wornLayerOf,
@@ -77,11 +80,20 @@ export function usedArt(data: ContentData): {
   for (const use of bodyUses(data).values()) {
     note(sprites.bodies, use.body, use.users[0] ?? "");
   }
+  // Spell runs and their trails, gathering's sprinkle, the casino's, and the engine's own runs
+  // while their mechanic is in the content (issue #29, stage 5).
+  for (const use of fxRuns(data).values()) {
+    if (use.needs === 0) {
+      continue;
+    }
+    note(sprites.fx, use.member, use.users[0] ?? "");
+    if (use.trail > 0) {
+      // Its trail, drawn as `x<member>-<n>`.
+      note(sprites.fx, `x${use.member}`, use.users[0] ?? "");
+    }
+  }
   for (const spell of data.spells.spells) {
     for (const run of spell.fx) {
-      note(sprites.fx, run.member, `spell ${spell.name}`);
-      // Its trail, drawn as `x<member>-<n>` when there is one.
-      note(sprites.fx, `x${run.member}`, `spell ${spell.name}`);
       for (const s of run.sounds) {
         note(sounds, s.name, `spell ${spell.name}`);
       }
@@ -236,4 +248,131 @@ function wornGaps(
     }
   }
   return out;
+}
+
+/**
+ * Effect runs drawn short of the frames they show (issue #29, stage 5): an uploaded run with fewer
+ * frames (or trail frames) than its spell row or the engine shows, which a pack's frames would
+ * otherwise fill, and a run content newly names that nothing draws at all. A gap the published
+ * content already had (the same run missing the same frames) is not reported: the change being
+ * checked did not make it.
+ */
+export function newFxGaps(
+  next: ContentData,
+  published: ContentData,
+  packs: ArtKeys,
+): ContentProblem[] {
+  const had = fxGaps(published, packs);
+  return fxGaps(next, packs)
+    .filter((g) => {
+      const before = had.find((h) => h.key === g.key);
+      // A gap is new when part of it was not missing before: fixing part of an old gap leaves
+      // what remains of it alone.
+      return (
+        g.run.some((span) => !covered(span, before?.run ?? [])) ||
+        g.trail.some((span) => !covered(span, before?.trail ?? []))
+      );
+    })
+    .map((g) => g.problem);
+}
+
+/** A run of frame numbers, first to last. */
+type Span = readonly [number, number];
+
+/** Whether every frame of `span` is in one of `spans`. */
+function covered(span: Span, spans: readonly Span[]): boolean {
+  let from = span[0];
+  for (const s of [...spans].sort((a, b) => a[0] - b[0])) {
+    if (s[0] <= from && s[1] >= from) {
+      from = s[1] + 1;
+    }
+    if (from > span[1]) {
+      return true;
+    }
+  }
+  return from > span[1];
+}
+
+/**
+ * The frames 1 to `needs` that are not drawn, as spans: an upload of `uploaded` frames (the whole
+ * run: a pack's frames never fill in after its last), else the pack's frames `have`. Bounded by the
+ * frames there are, whatever `needs` is.
+ */
+function missingSpans(
+  needs: number,
+  uploaded: number | null,
+  have: ReadonlySet<number> | undefined,
+): Span[] {
+  if (uploaded !== null) {
+    return uploaded < needs ? [[uploaded + 1, needs]] : [];
+  }
+  const out: Span[] = [];
+  const present = [...(have ?? [])].filter((n) => n >= 1 && n <= needs).sort((a, b) => a - b);
+  let next = 1;
+  for (const n of present) {
+    if (n > next) {
+      out.push([next, n - 1]);
+    }
+    next = n + 1;
+  }
+  if (next <= needs) {
+    out.push([next, needs]);
+  }
+  return out;
+}
+
+function fxGaps(
+  data: ContentData,
+  packs: ArtKeys,
+): { key: string; run: Span[]; trail: Span[]; problem: ContentProblem }[] {
+  const packFrames = fxFramesOf(packs.sprites.fx);
+  const out: { key: string; run: Span[]; trail: Span[]; problem: ContentProblem }[] = [];
+  for (const use of fxRuns(data).values()) {
+    // Only spell runs: a spell's hits come from its frames' boxes, so a frame with no art is a
+    // frame that cannot hit. The engine's own runs (and the names content gives them, such as the
+    // slot machine's) are only pictures, and are what the packs shipped.
+    if (use.spell === undefined || use.needs === 0) {
+      continue;
+    }
+    const upload = data.art.fx.find((a) => a.name.toLowerCase() === use.member.toLowerCase());
+    const key = use.member.toLowerCase();
+    // (Frames that are unreadable or blank are the art checks' to report.)
+    const run = missingSpans(use.needs, upload ? upload.frames.length : null, packFrames.get(key));
+    const trail =
+      use.trail > 0 && upload?.trail
+        ? missingSpans(use.trail, upload.trail.length, packFrames.get(`x${key}`))
+        : [];
+    if (run.length === 0 && trail.length === 0) {
+      continue;
+    }
+    out.push({
+      key,
+      run,
+      trail,
+      problem: {
+        where: upload ? `art/fx/${upload.name}` : "art/fx",
+        message: upload
+          ? `${upload.name} is missing ${framesText(run, trail)}, which ${fxUsersText(use)} shows`
+          : `the effect ${use.member} has no ${framesText(run, trail)}, so ${fxUsersText(use)} would show (and hit with) nothing there`,
+      },
+    });
+  }
+  return out;
+}
+
+/** Missing frames in words: "frames 3 to 30", "frame 2 and trail frames 1 to 4". */
+function framesText(run: readonly Span[], trail: readonly Span[]): string {
+  const parts: string[] = [];
+  for (const [spans, word] of [
+    [run, "frame"],
+    [trail, "trail frame"],
+  ] as const) {
+    if (spans.length === 0) {
+      continue;
+    }
+    const one = spans.length === 1 && spans[0]?.[0] === spans[0]?.[1];
+    const text = spans.map(([a, b]) => (a === b ? String(a) : `${a} to ${b}`)).join(", ");
+    parts.push(`${word}${one ? "" : "s"} ${text}`);
+  }
+  return parts.join(" and ");
 }

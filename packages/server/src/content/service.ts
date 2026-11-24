@@ -29,6 +29,7 @@ import {
   CONTENT_FORMAT,
   type ContentBodyArtView,
   type ContentData,
+  type ContentFxArtView,
   type ContentStore,
   type ContentWornArtView,
   checkNpcFile,
@@ -36,12 +37,20 @@ import {
   DATASET_IDS,
   type DatasetId,
   editorLines,
+  type FxChange,
+  type FxSheetLayout,
+  type FxSpellRow,
+  fxFramesOf,
+  fxRuns,
+  fxTriggerProblems,
   hasContent,
   installContent,
   isUniqueContainer,
+  orphanedFxUploads,
   ownLayerPossible,
   type PictureChange,
   planBody,
+  planFx,
   planPicture,
   planWorn,
   resolveNpcItemNames,
@@ -95,11 +104,12 @@ import {
   keysOf,
   SPRITE_MAX_SIDE,
   sliceBodySheet,
+  sliceFxSheet,
   sliceWornSheet,
   type UploadKind,
   withArtRects,
 } from "./art.ts";
-import { lostArtProblems, newBodyGaps, usedArt, wornSetProblems } from "./art-usage.ts";
+import { lostArtProblems, newBodyGaps, newFxGaps, usedArt, wornSetProblems } from "./art-usage.ts";
 import {
   type CleanupRow,
   cleanUses,
@@ -804,8 +814,10 @@ export class ContentService {
    * while content still draws or plays it.
    */
   private artProblems(next: ContentData): ContentProblem[] {
+    // A spell run that hides before the frame its effect acts on (issue #29, stage 5).
+    const triggers = fxTriggerProblems(next, this.published);
     if (!this.art) {
-      return [];
+      return triggers;
     }
     const before = keysOf(this.art.build(this.published.art).index);
     const after = keysOf(this.art.build(next.art).index);
@@ -813,6 +825,8 @@ export class ContentService {
       ...this.art.problems(next.art),
       ...lostArtProblems(next, this.packArt, before, after),
       ...newBodyGaps(next, this.published, this.packArt, before, after),
+      ...newFxGaps(next, this.published, this.packArt),
+      ...triggers,
       ...wornSetProblems(next, this.published),
     ];
   }
@@ -1390,6 +1404,152 @@ export class ContentService {
     return { ok: true, cell: cut.cell, frames };
   }
 
+  /** The runs the installed packs draw, with their frame and trail counts (issue #29, stage 5). */
+  private packRuns(): Record<string, { frames: number; trail: number }> {
+    const frames = fxFramesOf(this.packArt.sprites.fx);
+    const out: Record<string, { frames: number; trail: number }> = {};
+    for (const [run, set] of frames) {
+      if (/^x/.test(run) && frames.has(run.slice(1))) {
+        continue;
+      }
+      out[run] = { frames: set.size, trail: frames.get(`x${run}`)?.size ?? 0 };
+    }
+    return out;
+  }
+
+  /** The effect panels' view, from the draft (issue #29, stage 5). */
+  fxArtView(): ContentFxArtView {
+    const d = this.draftContent();
+    return {
+      runs: [...fxRuns(d).values()],
+      spells: d.spells.spells
+        .filter((s) => s.fx.length > 0)
+        .map((s) => ({
+          name: s.name,
+          ...((s as { display?: string }).display !== undefined
+            ? { display: (s as { display?: string }).display as string }
+            : {}),
+          fx: s.fx.map((f) => ({
+            member: f.member,
+            effect: f.effect,
+            frames: f.frames,
+            lastFrame: f.lastFrame,
+          })),
+        })),
+      art: d.art.fx,
+      packRuns: this.packRuns(),
+      maxSide: SPRITE_MAX_SIDE,
+      head: d.classes.creation.sexes[0]?.heads[0] ?? 1,
+    };
+  }
+
+  /**
+   * One effect run change from the Content page (issue #29, stage 5), put in the draft as a whole:
+   * a run's frames and trail and, from its spell, the spell row's length in the same change; or
+   * its upload taken out. Every frame is checked before anything is written.
+   */
+  draftFx(actor: ContentActor, change: FxChange): ContentResult<{ text: string; run: string }> {
+    const base = this.draftContent();
+    const plan = planFx(change, {
+      runs: fxRuns(base),
+      spells: base.spells.spells as unknown as FxSpellRow[],
+      art: base.art.fx,
+      packRuns: new Set(Object.keys(this.packRuns())),
+    });
+    if (!plan.ok) {
+      return fail(plan.error);
+    }
+    if (change.op === "set") {
+      const bad = this.fxFrameProblem(
+        [
+          ...change.frames.map((f, i) => [`frame ${i + 1}`, f.file] as const),
+          ...(change.trail ?? []).map((f, i) => [`trail frame ${i + 1}`, f.file] as const),
+        ],
+        change.transparency,
+      );
+      if (bad) {
+        return fail(bad);
+      }
+    }
+    const wrote = this.writeDraftRows(actor, plan.rows, ["spells", "art"]);
+    if (!wrote.ok) {
+      return fail("the change does not match the rows' schema", wrote.problems);
+    }
+    if (change.op === "remove") {
+      return {
+        ok: true,
+        value: { text: `${plan.run}'s upload is out of the draft.`, run: plan.run },
+      };
+    }
+    const fitted = plan.rows.some((r) => r.ref.dataset === "spells");
+    return {
+      ok: true,
+      value: {
+        text: `${plan.run}'s frames are in the draft${fitted ? `, and its spell plays all ${change.frames.length}` : ""}.`,
+        run: plan.run,
+      },
+    };
+  }
+
+  /** What is wrong with a run's frame files, or null when nothing is (issue #29, stage 5). */
+  private fxFrameProblem(
+    frames: readonly (readonly [string, string])[],
+    transparency: "alpha" | "green",
+  ): string | null {
+    if (!this.art) {
+      return "this server stores no uploads";
+    }
+    for (const [label, file] of frames) {
+      const img = this.art.image(file);
+      if (typeof img === "string") {
+        return `${label}: ${img}`;
+      }
+      if (img.width > SPRITE_MAX_SIDE || img.height > SPRITE_MAX_SIDE) {
+        return `${label} is ${img.width}×${img.height}; effect frames may be at most ${SPRITE_MAX_SIDE}×${SPRITE_MAX_SIDE}`;
+      }
+      const copy = { width: img.width, height: img.height, data: img.data.slice() };
+      if (transparency === "green") {
+        applyKey(copy, { kind: "color", rgb: GREEN });
+      }
+      if (visibleBounds(copy) === null) {
+        return `${label} shows nothing: every frame of a run is drawn`;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Cuts an uploaded effect strip into its run's and trail's frame files, stored like any upload
+   * (issue #29, stage 5). Nothing goes in the draft.
+   */
+  fxSheet(
+    sheet: string,
+    layout: FxSheetLayout,
+  ):
+    | { ok: true; cell: { w: number; h: number }; frames: string[]; trail: string[] }
+    | { ok: false; error: string } {
+    if (!this.art) {
+      return { ok: false, error: "this server stores no uploads" };
+    }
+    const img = this.art.image(sheet);
+    if (typeof img === "string") {
+      return { ok: false, error: `the sheet cannot be read: ${img}` };
+    }
+    const cut = sliceFxSheet(img, layout);
+    if (typeof cut === "string") {
+      return { ok: false, error: cut };
+    }
+    const store = (cell: (typeof cut.frames)[number]) => {
+      const file = (this.art as ArtLibrary).files.put("art", "png", encodePng(cell));
+      (this.art as ArtLibrary).stored(file);
+      return file;
+    };
+    const frames = cut.frames.map(store);
+    const trail = cut.trail.map(store);
+    this.checked = null;
+    return { ok: true, cell: cut.cell, frames, trail };
+  }
+
   /** Drops a change from the draft. */
   draftDiscard(ref: RowRef): ContentResult {
     if (!this.draft().some((d) => sameRow(d, ref))) {
@@ -1562,7 +1722,9 @@ export class ContentService {
       return fail("the draft changed since you last looked: check it again before publishing");
     }
     const actions = this.liveActions(asDrafted);
-    const draft = world ? this.settleRetirements(asDrafted, actions, world) : asDrafted;
+    const draft = this.settleFxOrphans(
+      world ? this.settleRetirements(asDrafted, actions, world) : asDrafted,
+    );
     const nextData = this.draftContent(draft);
     const problems = [
       ...this.fullProblems(nextData, actions),
@@ -1697,6 +1859,40 @@ export class ContentService {
           continue;
         }
         const ref: RowRef = { dataset: "art", part, key: art.name };
+        out = out.filter((x) => !sameRow(x, ref));
+        if (rowValue(this.published, ref) !== undefined) {
+          out.push({ ...d, ...ref, op: "remove", data: null });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * A spell the draft removes takes the uploads of the runs only it drew with it (issue #29, stage
+   * 5). Worked out when the draft is published, not when the removal is drafted, so discarding the
+   * removal leaves every upload as it was.
+   */
+  private settleFxOrphans(draft: readonly DraftRow[]): DraftRow[] {
+    const removed = draft.filter(
+      (d) => d.op === "remove" && d.dataset === "spells" && d.part === "spells" && d.key !== null,
+    );
+    if (removed.length === 0) {
+      return [...draft];
+    }
+    const before = this.draftContent(draft.filter((d) => !removed.includes(d)));
+    const next = this.draftContent(draft);
+    const runs = fxRuns(next);
+    let out = [...draft];
+    for (const d of removed) {
+      const spell = (before.spells.spells as unknown as FxSpellRow[]).find(
+        (x) => x.name.toLowerCase() === String(d.key).toLowerCase(),
+      );
+      if (!spell) {
+        continue;
+      }
+      for (const run of orphanedFxUploads(spell, next.art.fx, runs)) {
+        const ref: RowRef = { dataset: "art", part: "fx", key: run };
         out = out.filter((x) => !sameRow(x, ref));
         if (rowValue(this.published, ref) !== undefined) {
           out.push({ ...d, ...ref, op: "remove", data: null });

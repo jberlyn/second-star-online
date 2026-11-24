@@ -222,7 +222,10 @@ type ContentIntent = Extract<
       | "contentWorn"
       | "contentBodyArt"
       | "contentBodySheet"
-      | "contentBody";
+      | "contentBody"
+      | "contentFxArt"
+      | "contentFxSheet"
+      | "contentFx";
   }
 >;
 
@@ -248,6 +251,9 @@ export const CONTENT_INTENTS = [
   "contentBodyArt",
   "contentBodySheet",
   "contentBody",
+  "contentFxArt",
+  "contentFxSheet",
+  "contentFx",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -352,6 +358,24 @@ export function contentIntent(
       const r = service.draftBody(actor, msg.change);
       return r.ok
         ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value.text, body: r.value.body }
+        : result(msg.seq, r, "");
+    }
+    case "contentFxArt":
+      return { t: "contentFxArt", seq: msg.seq, view: service.fxArtView() };
+    case "contentFxSheet": {
+      const r = service.fxSheet(msg.sheet, {
+        across: msg.across,
+        runRows: msg.runRows,
+        trailRows: msg.trailRows,
+      });
+      return r.ok
+        ? { t: "contentFxSheet", seq: msg.seq, frames: r.frames, trail: r.trail, cell: r.cell }
+        : { t: "contentFxSheet", seq: msg.seq, frames: null, error: r.error };
+    }
+    case "contentFx": {
+      const r = service.draftFx(actor, msg.change);
+      return r.ok
+        ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value.text, run: r.value.run }
         : result(msg.seq, r, "");
     }
     case "contentProblems": {

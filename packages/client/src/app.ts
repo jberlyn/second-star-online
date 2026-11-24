@@ -680,6 +680,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       bodyArt: (seq) => send({ t: "contentBodyArt", seq }),
       bodySheet: (seq, sheet) => send({ t: "contentBodySheet", seq, sheet }),
       body: (seq, change) => send({ t: "contentBody", seq, change }),
+      fxArt: (seq) => send({ t: "contentFxArt", seq }),
+      fxSheet: (seq, sheet, layout) => send({ t: "contentFxSheet", seq, sheet, ...layout }),
+      fx: (seq, change) => send({ t: "contentFx", seq, change }),
       openCharacter: (name) => {
         controlPanel.go("characters");
         if (controlPanel.page === "characters") {
@@ -1320,6 +1323,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentWornSheet":
       case "contentBodyArt":
       case "contentBodySheet":
+      case "contentFxArt":
+      case "contentFxSheet":
         contentPage.receive(msg);
         return;
       case "content":

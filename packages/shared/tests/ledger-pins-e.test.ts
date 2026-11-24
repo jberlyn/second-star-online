@@ -178,6 +178,18 @@ describe("Only server systems create items", () => {
       // replacement is for. A body sheet to cut into frames, by SHA-256.
       contentBody: ["change.owner:string", "change.frames{}.file:string", "change.monster:string"],
       contentBodySheet: ["sheet:string"],
+      // An effect run change (issue #29, stage 5): a run by name, its frames' and trail's uploaded
+      // files by SHA-256 (checked by the schema), and `seen`, who the panel said draws the run (the
+      // change is refused if that changed), and `expect`, the upload's 8-hex-digit fingerprint as the
+      // panel saw it. A strip to cut into frames, by SHA-256.
+      contentFx: [
+        "change.run:string",
+        "change.frames[].file:string",
+        "change.trail[].file:string",
+        "change.seen[]:string",
+        "change.expect:string",
+      ],
+      contentFxSheet: ["sheet:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
@@ -275,6 +287,8 @@ describe("File editor and path-based file access removed", () => {
     expect(keys.filter((k) => /path|file|folder|directory/i.test(k.split(": ")[1] ?? ""))).toEqual([
       "contentPicture: change.art.file",
       "contentBody: change.frames{}.file",
+      "contentFx: change.frames[].file",
+      "contentFx: change.trail[].file",
     ]);
     const types = messages.map((m) => m.t);
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the

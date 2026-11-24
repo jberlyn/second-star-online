@@ -1418,6 +1418,34 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(3);
   });
 
+  test("the effect intents need the Content page's permission (issue #29, stage 5)", async () => {
+    const { game, make } = await start();
+    const bob = await make("Bob");
+    sent.length = 0;
+    const sheet = "a".repeat(64);
+    game.intent(bob.characterId, { t: "contentFxArt", seq: 1 });
+    game.intent(bob.characterId, {
+      t: "contentFxSheet",
+      seq: 2,
+      sheet,
+      across: 4,
+      runRows: 1,
+      trailRows: 0,
+    });
+    game.intent(bob.characterId, {
+      t: "contentFx",
+      seq: 3,
+      change: { op: "remove", run: "Crush" },
+    });
+    // Nothing comes back, and each is cheat-logged.
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 3).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(3);
+  });
+
   test("a publish that gives a live species another body tells everyone on its map (issue #29)", async () => {
     const { game, make } = await start();
     const ann = await make("Ann", "administrator");

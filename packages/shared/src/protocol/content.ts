@@ -10,6 +10,7 @@ import { z } from "zod";
 import type {
   ArtBody,
   ArtFrameId,
+  ArtFx,
   ArtItem,
   ArtWorn,
   EquipSlot,
@@ -18,6 +19,7 @@ import type {
 } from "@secondstaronline/data";
 
 import type { BodyUse } from "../content/bodies.ts";
+import type { FxRunUse } from "../content/fx.ts";
 import type { WornLayerUse } from "../content/worn.ts";
 
 const seq = z
@@ -274,6 +276,57 @@ export const contentBodySchema = z.strictObject({
   ]),
 });
 
+/** Asks for the effect panels' view (issue #29, stage 5). */
+export const contentFxArtSchema = z.strictObject({ t: z.literal("contentFxArt"), seq });
+
+/**
+ * Cuts an uploaded strip (rows of `across` equal frames: the run's rows, then its trail's) into
+ * frame files, stored like any upload. Nothing goes in the draft: the answer names the frames, to
+ * save with `contentFx`.
+ */
+export const contentFxSheetSchema = z.strictObject({
+  t: z.literal("contentFxSheet"),
+  seq,
+  sheet: fileHash,
+  across: z.number().int().min(1).max(99),
+  /** Rows of the run's frames, then rows of its trail's, read left to right, top to bottom. */
+  runRows: z.number().int().min(1).max(99),
+  trailRows: z.number().int().min(0).max(99),
+});
+
+const runName = z.string().trim().min(1).max(80);
+const runFrames = z.array(anchoredFile).min(1).max(99);
+/** An art row's fingerprint (`artRowFingerprint`), null for none, or left out for no check. */
+const fingerprint = z
+  .string()
+  .regex(/^[0-9a-f]{8}$/)
+  .nullable()
+  .optional();
+
+/**
+ * One effect run change (issue #29, stage 5), made in the draft as a whole: paint a run (its
+ * frames, its trail, and from its spell the spell row's length), or take its upload out. `seen` is
+ * who the panel said draws the run; the change is refused if that has changed. See `FxChange`.
+ */
+export const contentFxSchema = z.strictObject({
+  t: z.literal("contentFx"),
+  seq,
+  change: z.discriminatedUnion("op", [
+    z.strictObject({
+      op: z.literal("set"),
+      run: runName,
+      frames: runFrames,
+      trail: runFrames.nullable(),
+      transparency: z.enum(["alpha", "green"]),
+      seen: z.array(z.string().min(1).max(120)).max(64),
+      fit: z.boolean().optional(),
+      /** The run's upload as the panel saw it; refused if it changed since. */
+      expect: fingerprint,
+    }),
+    z.strictObject({ op: z.literal("remove"), run: runName, expect: fingerprint }),
+  ]),
+});
+
 export const contentPictureSchema = z.strictObject({
   t: z.literal("contentPicture"),
   seq,
@@ -363,6 +416,30 @@ export interface ContentBodyArtView {
   /** The number the next new body would take, or null with none left. */
   next: number | null;
   /** The largest side a body frame may have. */
+  maxSide: number;
+  /** A hairstyle the preview's player wears for scale (the first sex's first head). */
+  head: number;
+}
+
+/**
+ * Everything the effect panels need at once (issue #29, stage 5), from the draft: every run the
+ * content and the engine draw and who draws it, the spells and their runs, the uploads, and the
+ * runs the packs draw.
+ */
+export interface ContentFxArtView {
+  /** Every run drawn, with how many frames show and who draws it. */
+  runs: FxRunUse[];
+  /** Every spell with runs, as the draft would publish it: its key, its name, its runs' rows. */
+  spells: {
+    name: string;
+    display?: string;
+    fx: { member: string; effect: string; frames: number; lastFrame: number | null }[];
+  }[];
+  /** The `art` dataset's runs as the draft would publish them. */
+  art: ArtFx[];
+  /** The runs the installed packs draw, by lower-case member: their frame and trail counts. */
+  packRuns: Record<string, { frames: number; trail: number }>;
+  /** The largest side an effect frame may have. */
   maxSide: number;
   /** A hairstyle the preview's player wears for scale (the first sex's first head). */
   head: number;
@@ -559,6 +636,17 @@ export type ContentServerMsg =
       cell?: { w: number; h: number };
       error?: string;
     }
+  /** The effect panels' view. */
+  | { t: "contentFxArt"; seq: number; view: ContentFxArtView }
+  /** A strip cut into its run's and trail's frames, or why it could not be. */
+  | {
+      t: "contentFxSheet";
+      seq: number;
+      frames: string[] | null;
+      trail?: string[];
+      cell?: { w: number; h: number };
+      error?: string;
+    }
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
@@ -578,4 +666,6 @@ export type ContentServerMsg =
       problems?: ContentProblemView[];
       /** The body a `contentBody` change drew on (a new body's number, picked by the server). */
       body?: number;
+      /** The run a `contentFx` change drew on, as the draft spells it. */
+      run?: string;
     };

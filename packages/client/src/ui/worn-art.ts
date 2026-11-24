@@ -1395,12 +1395,15 @@ export function createWornLayers(opts: WornLayersOptions): WornLayers {
   let attaching = false;
   /** Bumped by Clear: a batch still running for a cleared list stops. */
   let batch = 0;
+  /** The batch attaching now: one a Clear or Discard has cut short is no longer unsaved work. */
+  let activeBatch = -1;
   async function attachAll(): Promise<void> {
     if (!view || attaching) {
       return;
     }
     attaching = true;
     const mine = batch;
+    activeBatch = mine;
     redraw();
     let saved = 0;
     try {
@@ -1414,7 +1417,7 @@ export function createWornLayers(opts: WornLayersOptions): WornLayers {
           l.done = "Skipped: it keeps its frames.";
           continue;
         }
-        const r = await attachOne(l, layer, view);
+        const r = await attachOne(l, layer, view, mine);
         if (mine !== batch) {
           return;
         }
@@ -1441,6 +1444,7 @@ export function createWornLayers(opts: WornLayersOptions): WornLayers {
     l: WornBulkLine,
     layer: string,
     v: ContentWornArtView,
+    mine: number,
   ): Promise<{ ok: boolean; text: string }> {
     const names = l.files.map((f) => f.name);
     const sorted = wornFiles(names);
@@ -1481,6 +1485,10 @@ export function createWornLayers(opts: WornLayersOptions): WornLayers {
         }
         frames.set(frame, up.stored.file);
       }
+    }
+    // The list may have been cleared (or discarded, or the page reset) while the files uploaded.
+    if (mine !== batch) {
+      return { ok: false, text: "The list was cleared." };
     }
     return opts.apply({
       op: "set",
@@ -1572,8 +1580,17 @@ export function createWornLayers(opts: WornLayersOptions): WornLayers {
 
   return {
     el,
-    pending: () => picker.pending(),
-    discard: () => picker.clear(),
+    // Files chosen and not yet attached, or a batch still attaching, are unsaved work too.
+    pending: () =>
+      picker.pending() || (attaching && activeBatch === batch) || lines.some((l) => !l.done),
+    discard() {
+      // A batch still uploading writes nothing more.
+      batch += 1;
+      lines = [];
+      status.textContent = "";
+      picker.clear();
+      redraw();
+    },
     reset() {
       batch += 1;
       lines = [];

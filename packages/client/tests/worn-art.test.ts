@@ -706,3 +706,42 @@ describe("review fixes (Neon)", () => {
     });
   });
 });
+
+describe("review fixes (Sol, stage 5)", () => {
+  test("Sol 7: chosen files count as unsaved work; Discard stops a batch before it writes", async () => {
+    const sent: unknown[] = [];
+    let open: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      open = r;
+    });
+    const list = createWornLayers({
+      assets: noArt,
+      upload: async () => {
+        await gate;
+        return stored(1);
+      },
+      slice: async () => ({ ok: false, error: "no" }),
+      decode: async () => frame(),
+      apply: async (c) => {
+        sent.push(c);
+        return { ok: true, text: "" };
+      },
+      saved: () => {},
+    });
+    document.body.append(list.el);
+    list.setView(view());
+    choose(list.el, "worn-layers-files", [new File([new Uint8Array(1)], "DEFBOD-f2-s.png")]);
+    await tick();
+    expect(list.pending()).toBe(true);
+    const attach = list.el.querySelector<HTMLButtonElement>('[data-action="worn-layers-attach"]');
+    expect(attach?.disabled).toBe(false);
+    attach?.click();
+    await tick();
+    list.discard();
+    expect(list.pending()).toBe(false);
+    open();
+    await tick();
+    await tick();
+    expect(sent).toEqual([]);
+  });
+});

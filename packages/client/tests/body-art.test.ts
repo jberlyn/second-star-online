@@ -806,3 +806,46 @@ describe("review fixes (Neon)", () => {
     expect(scaleHeight({ top: -10, bottom: 80 })).toBe(10 + 80);
   });
 });
+
+describe("review fixes (Sol, stage 5)", () => {
+  test("Sol 7: chosen files count as unsaved work; Discard stops a batch before it writes", async () => {
+    const sent: BodyChange[] = [];
+    let open: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      open = r;
+    });
+    const list = createBodies({
+      assets: noArt,
+      upload: async (f) => {
+        await gate;
+        return stored(f.size);
+      },
+      slice: async () => ({
+        ok: true,
+        cell: { w: 64, h: 64 },
+        frames: Object.fromEntries(BODY_FRAMES.map((f) => [f, "d".repeat(64)])),
+      }),
+      decode: async () => sheet(256, 256),
+      apply: async (c) => {
+        sent.push(c);
+        return { ok: true, text: "ok" };
+      },
+      saved: () => {},
+    });
+    document.body.append(list.el);
+    list.setView(view());
+    choose(list.el, "bodies-files", [new File([new Uint8Array(1)], "Orc.png")]);
+    await tick();
+    expect(list.pending()).toBe(true);
+    const attach = list.el.querySelector<HTMLButtonElement>('[data-action="bodies-attach"]');
+    expect(attach?.disabled).toBe(false);
+    attach?.click();
+    await tick();
+    list.discard();
+    expect(list.pending()).toBe(false);
+    open();
+    await tick();
+    await tick();
+    expect(sent).toEqual([]);
+  });
+});

@@ -28,10 +28,13 @@ export const spellFxSchema = z.strictObject({
   member: z.string().min(1),
   /** The 1.6 FX run member this run behaves as ("FireballL" for a new directional spell). */
   effect: z.string().min(1),
-  /** Members that exist in cast FX for this run (0 for the dead spells). */
-  frames: int.nonnegative(),
-  /** The frame at which the original's FX script hides the sprite, or null for a looping projectile. */
-  lastFrame: int.positive().nullable(),
+  /** Members that exist in cast FX for this run (0 for the dead spells); at most 99, an art row's. */
+  frames: int.nonnegative().max(99),
+  /**
+   * The frame at which the original's FX script hides the sprite, or null for a looping
+   * projectile. At most 99, the most frames an uploaded run may have (Classic's longest is 60).
+   */
+  lastFrame: int.positive().max(99).nullable(),
   /** Projectiles move every frame along one axis. */
   projectile: z.strictObject({ axis: z.enum(["locH", "locV"]), px: int }).nullable(),
   /** Cast sounds played in order when this FX run is received. */

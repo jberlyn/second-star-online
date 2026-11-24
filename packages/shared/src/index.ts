@@ -8,6 +8,7 @@ export {
   TILE_PX,
 } from "./constants.ts";
 export * from "./content/bodies.ts";
+export * from "./content/fx.ts";
 export * from "./content/picture.ts";
 export * from "./content/store.ts";
 export * from "./content/worn.ts";

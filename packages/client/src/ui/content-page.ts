@@ -20,6 +20,9 @@
  *   sheets named after their layers or items.
  * - **Bodies** (issue #29, body-art.ts): a body panel in a monster row's editor, and a section
  *   listing every body the content draws, with a panel for each, New body and a bulk upload.
+ * - **Spell effects** (issue #29, fx-art.ts): an effect panel in a spell row's editor, and a section
+ *   listing every effect run the content and the engine draw, with a panel for each, New effect and
+ *   a bulk upload.
  * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
  * - **Problems**: references nothing resolves, in content and in the world.
  */
@@ -28,6 +31,7 @@ import type {
   BodyChange,
   ContentBodyArtView,
   ContentDraftView,
+  ContentFxArtView,
   ContentItemArtView,
   ContentListing,
   ContentNoticeView,
@@ -39,6 +43,8 @@ import type {
   ContentRowStatus,
   ContentUsageView,
   ContentWornArtView,
+  FxChange,
+  FxSheetLayout,
   PictureChange,
   WornChange,
 } from "@secondstaronline/shared";
@@ -55,6 +61,7 @@ import {
   pageHeading,
   panelButton,
 } from "./control-panel-kit.ts";
+import { createFxArtPicker, createSpellEffects } from "./fx-art.ts";
 import { createItemArtPicker, createItemPictures } from "./item-art.ts";
 import { createWornArtPicker, createWornLayers } from "./worn-art.ts";
 
@@ -92,6 +99,12 @@ export interface ContentPageActions {
   bodySheet(seq: number, sheet: string): void;
   /** One body change, made in the draft as a whole by the server. */
   body(seq: number, change: BodyChange): void;
+  /** The draft's effect runs, for the effect panels. */
+  fxArt(seq: number): void;
+  /** Cuts an uploaded effect strip into its run's and trail's frame files. */
+  fxSheet(seq: number, sheet: string, layout: FxSheetLayout): void;
+  /** One effect run change, made in the draft as a whole by the server. */
+  fx(seq: number, change: FxChange): void;
   /** Opens a character's hub (a holder in a usage report). */
   openCharacter(name: string): void;
 }
@@ -114,6 +127,7 @@ export type ContentReply =
       text: string;
       problems?: ContentProblemView[];
       body?: number;
+      run?: string;
     }
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
   | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
@@ -129,6 +143,15 @@ export type ContentReply =
       t: "contentBodySheet";
       seq: number;
       frames: Partial<Record<ArtFrameId, string>> | null;
+      cell?: { w: number; h: number };
+      error?: string;
+    }
+  | { t: "contentFxArt"; seq: number; view: ContentFxArtView }
+  | {
+      t: "contentFxSheet";
+      seq: number;
+      frames: string[] | null;
+      trail?: string[];
       cell?: { w: number; h: number };
       error?: string;
     };
@@ -542,11 +565,20 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   // ---- item pictures (issue #29) --------------------------------------------------------------
   /** Draft changes waiting for their result, by seq (the picture picker's saves). */
   /** A content change's answer; `body` is the body a body change drew on. */
-  type ContentAnswer = { ok: boolean; text: string; body?: number };
+  type ContentAnswer = { ok: boolean; text: string; body?: number; run?: string };
   const resultWaits = new Map<number, (r: ContentAnswer) => void>();
   const itemArtWaits = new Map<number, (v: ContentItemArtView) => void>();
   const wornArtWaits = new Map<number, (v: ContentWornArtView) => void>();
   const bodyArtWaits = new Map<number, (v: ContentBodyArtView) => void>();
+  const fxArtWaits = new Map<number, (v: ContentFxArtView) => void>();
+  const fxSheetWaits = new Map<
+    number,
+    (
+      r:
+        | { ok: true; cell: { w: number; h: number }; frames: string[]; trail: string[] }
+        | { ok: false; error: string },
+    ) => void
+  >();
   const bodySheetWaits = new Map<
     number,
     (
@@ -610,6 +642,18 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         }
       }, 15_000);
     });
+  /** The draft's effect runs, as the effect panels need them. */
+  const askFxArt = (): Promise<ContentFxArtView> =>
+    new Promise((resolve, reject) => {
+      const s = next();
+      fxArtWaits.set(s, resolve);
+      actions.fxArt(s);
+      setTimeout(() => {
+        if (fxArtWaits.delete(s)) {
+          reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
   /** Waits for a draft change's `contentResult`. */
   const awaitResult = (send: (seq: number) => void) =>
     new Promise<ContentAnswer>((resolve) => {
@@ -650,7 +694,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         saved() {
           refreshAll();
           const ref = editing;
-          if (!ref) {
+          // Frames or a picture set up in a row panel stay as they are.
+          if (!ref || rowPickerPending()) {
             return;
           }
           const itemRow = ref.dataset === "items" && ref.part === "items";
@@ -727,6 +772,109 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const bodyPicker = bodyOptions
     ? createBodyArtPicker({ ...bodyOptions, saved: () => bodySaved(true) })
     : null;
+  const fxOptions = artOptions
+    ? {
+        ...artOptions,
+        apply(change: FxChange) {
+          return awaitResult((s) => actions.fx(s, change));
+        },
+        saved(spells: string[]) {
+          fxSaved(false, spells);
+        },
+        slice(sheet: string, layout: FxSheetLayout) {
+          return new Promise<
+            | { ok: true; cell: { w: number; h: number }; frames: string[]; trail: string[] }
+            | { ok: false; error: string }
+          >((resolve) => {
+            const s = next();
+            fxSheetWaits.set(s, resolve);
+            actions.fxSheet(s, sheet, layout);
+            setTimeout(() => {
+              if (fxSheetWaits.delete(s)) {
+                resolve({ ok: false, error: "the server did not answer" });
+              }
+            }, 15_000);
+          });
+        },
+      }
+    : null;
+  const fxPicker = fxOptions
+    ? createFxArtPicker({ ...fxOptions, saved: (spells: string[]) => fxSaved(true, spells) })
+    : null;
+  /** Whether any row panel holds work not yet saved to the draft. */
+  function rowPickerPending(): boolean {
+    return (
+      (picker?.pending() ?? false) ||
+      (wornPicker?.pending() ?? false) ||
+      (bodyPicker?.pending() ?? false) ||
+      (fxPicker?.pending() ?? false)
+    );
+  }
+  /**
+   * An effect change is in the draft: the page refreshes, and the open row catches up, unless that
+   * would lose something: a new row not yet saved (no key), unsaved JSON (only the effect panel
+   * catches up), or frames set up in the row's effect panel when the save came from elsewhere.
+   */
+  function fxSaved(fromRowPanel: boolean, spells: string[]): void {
+    refreshAll();
+    const ref = editing;
+    if (!ref || ref.key === null || ref.dataset !== "spells" || ref.part !== "spells") {
+      return;
+    }
+    // Only a change to the open spell's own row catches the row up, and never over work set up
+    // in a row panel.
+    const key = ref.key.toLowerCase();
+    if (!spells.some((x) => x.toLowerCase() === key) || rowPickerPending()) {
+      // The row's own Effect panel still catches up (a save in the section changes the upload it
+      // shows, and its fingerprint), unless work is set up in it.
+      if (!fxPicker?.pending()) {
+        showFxPicker(ref.key);
+      }
+      return;
+    }
+    const spellRow = ref.dataset === "spells" && ref.part === "spells";
+    if (!editor.hidden && json.value !== loaded) {
+      if (spellRow) {
+        editorState.textContent = `${editorState.textContent?.replace(/ The draft changed this row's effect.*$/, "") ?? ""} The draft changed this row's effect: your unsaved JSON is kept, and saving it writes your version.`;
+        showFxPicker(ref.key);
+      }
+    } else {
+      openRow(ref);
+    }
+  }
+  /** Shows the effect panel for the spell row open in the editor (the draft's version of it). */
+  let fxSeq = 0;
+  function showFxPicker(key: string): void {
+    if (!fxPicker) {
+      return;
+    }
+    const mine = ++fxSeq;
+    // The run chosen before stays chosen, even when the row was reloaded (which clears the panel).
+    const was = fxPicker.current() ?? fxPicker.remembered();
+    void askFxArt()
+      .then((view) => {
+        if (mine !== fxSeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
+          return;
+        }
+        const spell = view.spells.find((sp) => sp.name.toLowerCase() === key.toLowerCase());
+        if (spell) {
+          // The run chosen before stays chosen.
+          const run =
+            was?.kind === "spell" && was.spell.toLowerCase() === key.toLowerCase()
+              ? was.run
+              : undefined;
+          fxPicker.show({ kind: "spell", spell: key, ...(run !== undefined ? { run } : {}) }, view);
+        } else {
+          fxPicker.clear();
+        }
+        effects?.setView(view);
+      })
+      .catch(() => {
+        if (mine === fxSeq) {
+          fxPicker.clear();
+        }
+      });
+  }
   /**
    * A body change is in the draft: the page refreshes, and the open row catches up, unless that
    * would lose something: a new row not yet saved (no key), unsaved JSON (only the body panel
@@ -738,7 +886,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     if (!ref || ref.key === null) {
       return;
     }
-    if (!fromRowPanel && bodyPicker?.pending()) {
+    // Frames or a picture set up in any row panel stay as they are.
+    if (rowPickerPending()) {
       return;
     }
     const monsterRow = ref.dataset === "monsters" && ref.part === "monsters";
@@ -817,9 +966,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   function hidePicker(): void {
     pickerSeq += 1;
     bodySeq += 1;
+    fxSeq += 1;
     picker?.clear();
     wornPicker?.clear();
     bodyPicker?.clear();
+    fxPicker?.clear();
   }
 
   // ---- the row editor -------------------------------------------------------------------------
@@ -871,6 +1022,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     picker?.el ?? document.createElement("div"),
     wornPicker?.el ?? document.createElement("div"),
     bodyPicker?.el ?? document.createElement("div"),
+    fxPicker?.el ?? document.createElement("div"),
     formField(
       "JSON",
       json,
@@ -996,6 +1148,14 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     ) {
       hidePicker();
       showBodyPicker(d.key);
+    } else if (
+      d.dataset === "spells" &&
+      d.part === "spells" &&
+      d.key !== null &&
+      d.draft?.op !== "remove"
+    ) {
+      hidePicker();
+      showFxPicker(d.key);
     } else {
       hidePicker();
     }
@@ -1160,6 +1320,16 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   } else {
     bodiesSection.el.hidden = true;
   }
+  const effectsSection = section(
+    "Spell effects",
+    "Every effect run the content and the engine draw, with its frames. Open one to upload, check and play its frames, make a new run, or upload many runs at once. A spell's own row shows its runs and can make it play every frame.",
+  );
+  const effects = fxOptions ? createSpellEffects(fxOptions) : null;
+  if (effects) {
+    effectsSection.body.append(effects.el);
+  } else {
+    effectsSection.el.hidden = true;
+  }
   const refreshPictures = () => {
     if (pictures) {
       void askItemArt()
@@ -1174,6 +1344,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     if (bodies) {
       void askBodyArt()
         .then((v) => bodies.setView(v))
+        .catch(() => {});
+    }
+    if (effects) {
+      void askFxArt()
+        .then((v) => effects.setView(v))
         .catch(() => {});
     }
   };
@@ -1274,6 +1449,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     picturesSection.el,
     wornSection.el,
     bodiesSection.el,
+    effectsSection.el,
     artSection.el,
     history.el,
     problemsSection.el,
@@ -1362,6 +1538,22 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           );
           return;
         }
+        case "contentFxArt": {
+          const wait = fxArtWaits.get(msg.seq);
+          fxArtWaits.delete(msg.seq);
+          wait?.(msg.view);
+          return;
+        }
+        case "contentFxSheet": {
+          const wait = fxSheetWaits.get(msg.seq);
+          fxSheetWaits.delete(msg.seq);
+          wait?.(
+            msg.frames && msg.cell
+              ? { ok: true, cell: msg.cell, frames: msg.frames, trail: msg.trail ?? [] }
+              : { ok: false, error: msg.error ?? "the strip could not be cut" },
+          );
+          return;
+        }
         case "contentWornSheet": {
           const wait = sheetWaits.get(msg.seq);
           sheetWaits.delete(msg.seq);
@@ -1421,6 +1613,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
               ok: msg.ok,
               text: msg.text,
               ...(msg.body !== undefined ? { body: msg.body } : {}),
+              ...(msg.run !== undefined ? { run: msg.run } : {}),
             });
             return;
           }
@@ -1452,12 +1645,15 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       (wornPicker?.pending() ? 1 : 0) +
       (wornLayers?.pending() ? 1 : 0) +
       (bodyPicker?.pending() ? 1 : 0) +
-      (bodies?.pending() ? 1 : 0),
+      (bodies?.pending() ? 1 : 0) +
+      (fxPicker?.pending() ? 1 : 0) +
+      (effects?.pending() ? 1 : 0),
     discard: () => {
       closeEditor();
       // Frames set up in the sections' own panels go too.
       wornLayers?.discard();
       bodies?.discard();
+      effects?.discard();
     },
     reset() {
       overview = null;
@@ -1475,6 +1671,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         wait({ ok: false, error: "the session ended" });
       }
       bodySheetWaits.clear();
+      fxArtWaits.clear();
+      for (const wait of fxSheetWaits.values()) {
+        wait({ ok: false, error: "the session ended" });
+      }
+      fxSheetWaits.clear();
       for (const wait of sheetWaits.values()) {
         wait({ ok: false, error: "the session ended" });
       }
@@ -1482,6 +1683,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       pictures?.reset();
       wornLayers?.reset();
       bodies?.reset();
+      effects?.reset();
       problemsBody.replaceChildren();
       closeEditor();
       datasetSel.replaceChildren();

@@ -76,6 +76,9 @@ function page(assets?: Assets) {
       bodyArt: rec("bodyArt"),
       bodySheet: rec("bodySheet"),
       body: rec("body"),
+      fxArt: rec("fxArt"),
+      fxSheet: rec("fxSheet"),
+      fx: rec("fx"),
       openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
     },
     assets,
@@ -1078,6 +1081,185 @@ describe("monster bodies on the Content page (issue #29, stage 4)", () => {
     await settle();
     await settle();
     const right = $<HTMLInputElement>("body-right");
+    right.value = "2";
+    right.dispatchEvent(new Event("change"));
+    expect(p.changes()).toBe(1);
+    p.discard();
+    expect(p.changes()).toBe(0);
+  });
+});
+
+describe("spell effects on the Content page (issue #29, stage 5)", () => {
+  const crushRow: ContentRowDetail = {
+    dataset: "spells",
+    part: "spells",
+    key: "Crush",
+    keyField: "name",
+    readOnly: false,
+    status: "pack",
+    pack: { name: "Crush", fx: [] },
+    published: { name: "Crush", fx: [] },
+    draft: null,
+  };
+  const fxView = {
+    runs: [
+      {
+        member: "Crush",
+        effect: "Crush",
+        show: "point" as const,
+        needs: 2,
+        trail: 0,
+        trigger: 0,
+        users: ["spell Crush"],
+        spell: "Crush",
+        content: true,
+      },
+    ],
+    spells: [
+      { name: "Crush", fx: [{ member: "Crush", effect: "Crush", frames: 2, lastFrame: 2 }] },
+    ],
+    art: [
+      {
+        name: "Crush",
+        frames: [
+          { file: "a".repeat(64), regX: 4, regY: 4 },
+          { file: "a".repeat(64), regX: 4, regY: 4 },
+        ],
+      },
+    ],
+    packRuns: {},
+    maxSide: 512,
+    head: 1,
+  };
+  class LoadingImage {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    naturalWidth = 16;
+    naturalHeight = 16;
+    set src(_v: string) {
+      queueMicrotask(() => this.onload?.());
+    }
+  }
+  const realImage = globalThis.Image;
+  beforeEach(() => {
+    globalThis.Image = LoadingImage as unknown as typeof Image;
+  });
+  afterEach(() => {
+    globalThis.Image = realImage;
+  });
+
+  function openCrush(t: ReturnType<typeof page>) {
+    const { p, last } = t;
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({ t: "contentFxArt", seq: last("fxArt")?.seq ?? 0, view: fxView });
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: {
+        dataset: "spells",
+        part: "spells",
+        keyField: "name",
+        rows: [{ key: "Crush", status: "pack", draft: null }],
+      },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    p.receive({ t: "contentRow", seq: last("row")?.seq ?? 0, row: crushRow });
+    p.receive({ t: "contentFxArt", seq: last("fxArt")?.seq ?? 0, view: fxView });
+  }
+
+  test("a spell row shows its effect panel; a change there keeps unsaved JSON", async () => {
+    const t = page(noArt);
+    const { p, $, last, settle } = t;
+    openCrush(t);
+    await settle();
+    await settle();
+    const panel = p.el.querySelector(".content-editor section.fx-art") as HTMLElement;
+    expect(panel.hidden).toBe(false);
+    expect(panel.textContent).toContain("Crush shows 2 frames. Drawn by spell Crush.");
+    const json = $<HTMLTextAreaElement>("content-json");
+    json.value = JSON.stringify({ name: "Crush", display: "Big Crush", fx: [] });
+    const rowSeq = last("row")?.seq;
+    $("fx-art-remove").click();
+    await settle();
+    expect(last("fx")?.args[0]).toMatchObject({ op: "remove", run: "Crush" });
+    p.receive({
+      t: "contentResult",
+      seq: last("fx")?.seq ?? 0,
+      ok: true,
+      text: "ok",
+      run: "Crush",
+    });
+    await settle();
+    expect(last("row")?.seq).toBe(rowSeq);
+    // Taking the upload out does not change the spell's row: the row is left as it is.
+    expect(json.value).toContain("Big Crush");
+    expect(p.el.textContent).not.toContain("There is no such row.");
+  });
+
+  test("Sol 6: a save in the section leaves the open row and its panel's unsaved work alone", async () => {
+    const t = page(noArt);
+    const { p, $, last, settle } = t;
+    openCrush(t);
+    await settle();
+    await settle();
+    // Work set up in the row's Effect panel: its saved upload, moved 3 px.
+    const right = $<HTMLInputElement>("fx-art-right");
+    right.value = "3";
+    right.dispatchEvent(new Event("change"));
+    expect(p.changes()).toBe(1);
+    const rowSeq = last("row")?.seq;
+    // In the section, Crush's upload is taken out.
+    (p.el.querySelector('[data-action="fx-open"][data-key="crush"]') as HTMLElement).click();
+    await settle();
+    await settle();
+    $("fx-remove").click();
+    await settle();
+    p.receive({
+      t: "contentResult",
+      seq: last("fx")?.seq ?? 0,
+      ok: true,
+      text: "ok",
+      run: "Crush",
+    });
+    await settle();
+    expect(last("row")?.seq).toBe(rowSeq);
+    expect(p.changes()).toBe(1);
+  });
+
+  test("Neon 6: a save in the section refreshes the row's Effect panel when nothing is set up in it", async () => {
+    const t = page(noArt);
+    const { p, $, last, settle } = t;
+    openCrush(t);
+    await settle();
+    await settle();
+    (p.el.querySelector('[data-action="fx-open"][data-key="crush"]') as HTMLElement).click();
+    await settle();
+    await settle();
+    const before = t.sent.filter((x) => x.kind === "fxArt").length;
+    $("fx-remove").click();
+    await settle();
+    p.receive({
+      t: "contentResult",
+      seq: last("fx")?.seq ?? 0,
+      ok: true,
+      text: "ok",
+      run: "Crush",
+    });
+    await settle();
+    // The section's list and the row's own panel both ask for the draft's runs again.
+    expect(t.sent.filter((x) => x.kind === "fxArt").length).toBeGreaterThanOrEqual(before + 2);
+  });
+
+  test("Discard drops frames set up in the Spell effects section's panel too", async () => {
+    const t = page(noArt);
+    const { p, $, settle } = t;
+    openCrush(t);
+    await settle();
+    (p.el.querySelector('[data-action="fx-open"][data-key="crush"]') as HTMLElement).click();
+    await settle();
+    await settle();
+    const right = $<HTMLInputElement>("fx-right");
     right.value = "2";
     right.dispatchEvent(new Event("change"));
     expect(p.changes()).toBe(1);

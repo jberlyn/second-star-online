@@ -21,7 +21,7 @@ import {
 } from "@secondstaronline/data";
 
 import type { ArtFiles } from "../persistence/art-files.ts";
-import type { BuiltArt } from "./art.ts";
+import { type BuiltArt, fxTailHidden } from "./art.ts";
 
 /** Where a pack's art is served, under `/assets/`: `packs/<id>/<file>`. */
 export const PACK_ART_PREFIX = "packs/";
@@ -49,6 +49,16 @@ export function mergePackArt(
       AssetIndex["atlases"][AtlasGroup],
     ][]) {
       const into = atlases[group] ?? { sheets: [], sprites: {} };
+      // The operator's runs and trails are whole: the packs' frames after an uploaded run's last
+      // are not drawn (issue #29, stage 5).
+      if (prefix !== undefined && group === "fx") {
+        const hidden = fxTailHidden(Object.keys(atlas.sprites));
+        for (const name of Object.keys(into.sprites)) {
+          if (hidden(name)) {
+            delete into.sprites[name];
+          }
+        }
+      }
       const offset = into.sheets.length;
       into.sheets.push(...atlas.sheets.map((f) => `${base}${f}${v}`));
       for (const [name, sprite] of Object.entries(atlas.sprites)) {

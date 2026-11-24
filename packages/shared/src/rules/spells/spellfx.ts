@@ -148,7 +148,7 @@ export function placeFx(
  * The frame at which the FX script hides non-spell point FX (when the spell frame reaches n). Spell
  * runs read `lastFrame` and `projectile` from their spell data row via `fxRun`.
  */
-const OTHER_LAST_FRAME: Record<string, number> = {
+export const OTHER_LAST_FRAME: Readonly<Record<string, number>> = {
   sprinkle: 5,
   "slot machine": 52,
   fishing: 13,
@@ -207,7 +207,9 @@ export function stepFx(fx: FxSprite, blocked?: ShotBlocked): void {
   const run = fxRun(fx.name);
   if (run) {
     if (run.lastFrame !== null) {
-      if (fx.frame === run.lastFrame) {
+      // Past it as well as at it: a publish can shorten a run already on the map (issue #29), and
+      // a frame beyond the new last one must end rather than count up for good.
+      if (fx.frame >= run.lastFrame) {
         fx.gone = true; // locV = -5300
         return;
       }
@@ -229,7 +231,7 @@ export function stepFx(fx: FxSprite, blocked?: ShotBlocked): void {
   }
   const last = OTHER_LAST_FRAME[fx.name.toLowerCase()];
   if (last !== undefined) {
-    if (fx.frame === last) {
+    if (fx.frame >= last) {
       fx.gone = true; // locV = -5300
       return;
     }
@@ -273,6 +275,53 @@ export function rectsIntersect(
   b: { left: number; top: number; right: number; bottom: number },
 ): boolean {
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}
+
+/**
+ * The last frame on which each effect run does something (heals, hits, gives a body, opens a
+ * portal …), by the run it behaves as, in lower case: the engine's collision code acts when the
+ * run shows exactly that member (`crush-18`, `Radar-5`, `Portal-3`). A run that hides before that
+ * frame never does it, so a spell's run must show at least this many frames. A test pins this
+ * table against the members the engine's code names.
+ */
+export const FX_TRIGGER_FRAMES: Readonly<Record<string, number>> = {
+  "argon's fist": 3,
+  boltd: 1,
+  boltl: 1,
+  boltr: 1,
+  boltu: 1,
+  "create food": 3,
+  crush: 18,
+  "diminish hunger": 3,
+  "dispel illusions": 8,
+  fireballd: 1,
+  fireballl: 1,
+  fireballr: 1,
+  fireballu: 1,
+  firebolt: 12,
+  firesword: 3,
+  hold: 3,
+  inxition: 3,
+  "magic shield": 3,
+  "major heal": 3,
+  meteor: 19,
+  "minor heal": 3,
+  morph: 3,
+  "nature shift": 3,
+  portal: 3,
+  radar: 5,
+  "smoke bomb": 3,
+  splash: 18,
+  "stone skin": 9,
+  "wind waved": 1,
+  "wind wavel": 1,
+  "wind waver": 1,
+  "wind waveu": 1,
+};
+
+/** The last frame a run behaving as `effect` acts on, or 0 when it only shows. */
+export function fxTriggerFrame(effect: string): number {
+  return FX_TRIGGER_FRAMES[effect.toLowerCase()] ?? 0;
 }
 
 /** Trails (the FX sprite sender): follower `x<Spell>` members, by frames shown. */

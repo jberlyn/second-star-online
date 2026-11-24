@@ -43,6 +43,9 @@ import {
   blankCell,
   bodySheetCell,
   cutCell,
+  type FxSheetLayout,
+  fxSheetCell,
+  stripFrames,
   visibleBounds,
   WORN_CELL,
   WORN_SHEET,
@@ -156,6 +159,27 @@ export function sliceBodySheet(
     frames.set(id, cutCell(sheet, id, cell) as Rgba);
   }
   return { cell, frames };
+}
+
+/**
+ * Cuts an effect strip (issue #29, stage 5) into its run's frames and its trail's: rows of
+ * `across` equal cells, at most 512×512, the run's `runRows` then the trail's `trailRows`. Trailing blank cells of each row are dropped (a trail
+ * shorter than its run); a blank cell before a row's last drawn one is refused. The cells keep
+ * their pixels exactly.
+ */
+export function sliceFxSheet(
+  sheet: Rgba,
+  layout: FxSheetLayout,
+): { cell: { w: number; h: number }; frames: Rgba[]; trail: Rgba[] } | string {
+  const cell = fxSheetCell(sheet.width, sheet.height, layout);
+  if ("error" in cell) {
+    return cell.error;
+  }
+  const cut = stripFrames(sheet, cell, layout);
+  if ("error" in cut) {
+    return cut.error;
+  }
+  return { cell, frames: cut.frames as Rgba[], trail: cut.trail as Rgba[] };
 }
 
 /** "a WAV", "an MP3", "an OGG". */
@@ -613,10 +637,13 @@ export function withArtRects<T extends { rects: RectsData }>(data: T, rects: Bui
   ) {
     return data;
   }
+  // An uploaded run (or trail) is the whole run: the packs' frames after its last are not hit.
+  const hidden = fxTailHidden(Object.keys(rects.fx));
+  const packFx = Object.fromEntries(Object.entries(data.rects.fx).filter(([k]) => !hidden(k)));
   return {
     ...data,
     rects: {
-      fx: { ...data.rects.fx, ...rects.fx },
+      fx: { ...packFx, ...rects.fx },
       chars: { ...data.rects.chars, ...rects.chars },
       items: { ...data.rects.items, ...rects.items },
     },
@@ -632,4 +659,28 @@ export function keysOf(index: Pick<PackArtIndex, "atlases" | "sounds">): ArtKeys
     }
   }
   return { sprites, sounds: new Set(Object.keys(index.sounds)) };
+}
+
+/**
+ * Which of the packs' FX keys an operator's FX keys hide (issue #29, stage 5): an uploaded run,
+ * or an uploaded trail (`x<run>-<n>`), is the whole of it, so the packs' frames of the same name
+ * after its last one are not drawn or hit. A pack's trail stays when only the run is uploaded.
+ */
+export function fxTailHidden(operatorKeys: Iterable<string>): (packKey: string) => boolean {
+  const last = new Map<string, number>();
+  for (const k of operatorKeys) {
+    const m = /^(.*)-(\d+)$/.exec(k.toLowerCase());
+    if (m) {
+      const run = m[1] as string;
+      last.set(run, Math.max(last.get(run) ?? 0, Number(m[2])));
+    }
+  }
+  return (packKey) => {
+    const m = /^(.*)-(\d+)$/.exec(packKey.toLowerCase());
+    if (!m) {
+      return false;
+    }
+    const top = last.get(m[1] as string);
+    return top !== undefined && Number(m[2]) > top;
+  };
 }

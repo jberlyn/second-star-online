@@ -3314,3 +3314,21 @@ body {
 .worn-art .item-art-figure select {
   align-self: flex-start;
 }
+/* A panel's rows and fields are flex boxes, which outrank the browser's own [hidden] rule. */
+.item-art [hidden] {
+  display: none;
+}
+/* Spell effect runs on the Content page (issue #29, ui/fx-art.ts): drawn at their own size. */
+.fx-art-motion,
+.fx-art-scale,
+.fx-art-strip {
+  image-rendering: pixelated;
+  max-width: 100%;
+}
+.fx-art .item-art-figure {
+  max-width: 560px;
+}
+.fx-art .item-art-figure input[type="number"] {
+  align-self: flex-start;
+  width: 64px;
+}
