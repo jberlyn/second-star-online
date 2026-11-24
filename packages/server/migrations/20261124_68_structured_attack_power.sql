@@ -198,7 +198,8 @@ DROP TABLE res68;
 
 -- A tier value nothing above could read stops the upgrade with this table's name in the error,
 -- rather than a world that will not load: fix the row (or remove it) on the old version and upgrade
--- again. It is the last statement on purpose: a multi-statement run reports only the last
--- statement's error, and the whole migration then rolls back.
+-- again. The failing statement rolls the whole migration back.
 CREATE TEMP TABLE unreadable_attack_power_value_68 (value TEXT NOT NULL);
 INSERT INTO unreadable_attack_power_value_68 (value) SELECT NULL FROM vals68 WHERE ok IS NULL;
+DROP TABLE unreadable_attack_power_value_68;
+DROP TABLE vals68;

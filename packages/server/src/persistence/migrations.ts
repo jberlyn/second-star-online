@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import type { Db } from "./database.ts";
 import { churchMapSql, jailMapSql, seedMapSql } from "./seed-map.ts";
+import { splitSqlStatements } from "./sql-split.ts";
 
 /** `YYYYMMDD_NN_<name>.sql` */
 export const MIGRATION_FILE_PATTERN = /^\d{8}_\d{2}_[\w-]+\.sql$/;
@@ -83,9 +84,19 @@ export function runMigrations(db: Db, migrations: readonly Migration[]): Migrati
     const before = rebuild ? violations() : new Set<string>();
     try {
       db.transaction(() => {
-        // Trimmed: bun:sqlite reports only the error of a multi-statement run's last statement, and
-        // trailing whitespace counts as one, so a migration's last statement could fail silently.
-        db.run(m.sql.trimEnd());
+        // One statement at a time: bun:sqlite's multi-statement run raises only the last
+        // statement's runtime error, so a failing statement earlier in a migration was skipped.
+        // Any failure now throws, and the transaction rolls the whole migration back.
+        for (const [n, stmt] of splitSqlStatements(m.sql).entries()) {
+          try {
+            db.run(stmt);
+          } catch (e) {
+            throw new Error(
+              `${m.name}: statement ${n + 1} failed: ${e instanceof Error ? e.message : String(e)}`,
+              { cause: e },
+            );
+          }
+        }
         if (rebuild) {
           const broken = [...violations()].filter((v) => !before.has(v));
           if (broken.length > 0) {
