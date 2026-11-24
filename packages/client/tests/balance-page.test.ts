@@ -10,6 +10,7 @@ import type { AssetIndex } from "@secondstaronline/data";
 import {
   type BalanceRowView,
   type ContentBalanceView,
+  type ContentRowRef,
   content,
   PERMISSIONS,
   type ServerMsg,
@@ -19,6 +20,7 @@ import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
 import {
+  amountPreview,
   type BalanceChange,
   createBalancePage,
   fieldError,
@@ -65,6 +67,42 @@ const cannon = (fp: string, extra: Partial<BalanceRowView> = {}): BalanceRowView
   ...extra,
 });
 
+/** An amount's three fields at `path`, optional or not. */
+const amount = (path: string, name: string, optional = false) =>
+  (
+    [
+      { path: [path, "flat"], label: name, unit: "count", min: 0, max: 10_000 },
+      { path: [path, "power"], label: `${name}: × power`, unit: "power", min: 0, max: 100 },
+      { path: [path, "randomN"], label: `${name}: + random(n)`, unit: "random", min: 0, max: 1000 },
+    ] as const
+  ).map((f) => ({ ...f, path: [...f.path], ...(optional ? { optional: true } : {}) }));
+
+const firebolt = (fp: string): BalanceRowView => {
+  const v = {
+    effect: "Firebolt",
+    monster: { flat: 6, power: 1, randomN: 3 },
+    player: { flat: 8, power: 1, randomN: 3 },
+  };
+  return {
+    part: "spellEffects",
+    key: "Firebolt",
+    label: "Firebolt",
+    fields: [
+      ...amount("monster", "On a monster"),
+      ...amount("monsterHealed", "Heals a species it heals", true),
+      ...amount("player", "On a player"),
+    ],
+    engine: v,
+    pack: v,
+    published: v,
+    draft: v,
+    edited: false,
+    pending: null,
+    fingerprint: fp,
+    notice: null,
+  };
+};
+
 const view = (rows: BalanceRowView[], otherDraft = 0): ContentBalanceView => ({
   groups: [{ id: "vehicles", title: "Vehicles", help: "", rows }],
   otherDraft,
@@ -74,12 +112,14 @@ function page() {
   const asked: number[] = [];
   const sent: { seq: number; change: BalanceChange }[] = [];
   let opened = 0;
+  const openedRows: ContentRowRef[] = [];
   const p = createBalancePage({
     view: (seq) => asked.push(seq),
     set: (seq, change) => sent.push({ seq, change }),
     openContent: () => {
       opened += 1;
     },
+    openContentRow: (r) => openedRows.push(r),
   });
   document.body.append(p.el);
   const row = (id: string) => p.el.querySelector<HTMLElement>(`[data-row="${id}"]`) as HTMLElement;
@@ -92,10 +132,41 @@ function page() {
     i.value = value;
     i.dispatchEvent(new Event("input"));
   };
-  return { p, asked, sent, row, input, button, type, opened: () => opened };
+  return { p, asked, sent, row, input, button, type, opened: () => opened, openedRows };
 }
 
 describe("the Balance page", () => {
+  test("a card names a value kept in another dataset and opens its row there", () => {
+    // House rest lives in houses.restRegen (Sol's #19 review): shown, with a link to its row.
+    const t = page();
+    t.p.onShow();
+    const row = { dataset: "houses" as const, part: "restRegen", key: null };
+    const answer = (now: string) =>
+      t.p.receive({
+        t: "contentBalance",
+        seq: t.asked.at(-1) ?? 0,
+        view: {
+          groups: [
+            {
+              id: "vitals",
+              title: "Regeneration",
+              help: "",
+              rows: [],
+              elsewhere: [{ label: "Resting in a house", row, now }],
+            },
+          ],
+          otherDraft: 0,
+        },
+      });
+    answer("1 in 10");
+    expect(t.p.el.textContent).toContain("Resting in a house: 1 in 10");
+    t.p.published();
+    answer("1 in 4");
+    expect(t.p.el.textContent).toContain("Resting in a house: 1 in 4");
+    t.p.el.querySelector<HTMLButtonElement>('[data-action="balance-open-row"]')?.click();
+    expect(t.openedRows).toEqual([row]);
+  });
+
   test("shows each value with what plays now, the pack's and the engine's, and its limits", () => {
     const t = page();
     t.p.onShow();
@@ -234,6 +305,84 @@ describe("the Balance page", () => {
     expect(t.sent.at(-1)?.change.expect).toBe("c".repeat(16));
   });
 
+  test("a save answered first, while a newer view is on its way, shows what was saved (Neon's review)", () => {
+    // The save (seq 2) and a publish's view (seq 3) are answered in order: the save's view applies,
+    // and the row shows the saved value with the save's fingerprint, not the view from seq 1.
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: view([hull("Boat", 60, "a".repeat(16))]) });
+    t.type("hulls/Boat", "hull", "70");
+    t.button("hulls/Boat", "balance-save").click(); // seq 2
+    t.p.published(); // seq 3
+    const saved = hull("Boat", 60, "b".repeat(16), {
+      draft: { vehicle: "Boat", hull: 70 },
+      pending: "set",
+    });
+    t.p.receive({
+      t: "contentBalance",
+      seq: 2,
+      view: view([saved]),
+      result: { ok: true, text: "Boat hull is in the draft." },
+    });
+    expect(t.input("hulls/Boat", "hull").value).toBe("70");
+    expect(t.p.changes()).toBe(0);
+    t.type("hulls/Boat", "hull", "71");
+    t.button("hulls/Boat", "balance-save").click();
+    expect(t.sent.at(-1)?.change.expect).toBe("b".repeat(16));
+  });
+
+  test("a row is locked the moment its save is sent, and stays locked through a rebuild", () => {
+    const t = page();
+    let lockedWhenSent = null as boolean | null;
+    const p = createBalancePage({
+      view: (seq) => t.asked.push(seq),
+      set: () => {
+        lockedWhenSent =
+          p.el.querySelector<HTMLInputElement>('[data-row="hulls/Boat"] input')?.readOnly ?? null;
+      },
+      openContent: () => {},
+      openContentRow: () => {},
+    });
+    document.body.append(p.el);
+    p.onShow(); // seq 1
+    p.receive({ t: "contentBalance", seq: 1, view: view([hull("Boat", 60, "a".repeat(16))]) });
+    // A Reset leaves the row clean but busy.
+    const boat = () => p.el.querySelector<HTMLElement>('[data-row="hulls/Boat"]') as HTMLElement;
+    boat().querySelector<HTMLButtonElement>('[data-action="balance-reset"]')?.click();
+    expect(lockedWhenSent).toBe(true);
+    // A new release adds a row: the page rebuilds, and the busy row stays locked.
+    p.receive({
+      t: "contentBalance",
+      seq: 1,
+      view: view([hull("Boat", 60, "a".repeat(16)), hull("Airship", 80, "d".repeat(16))]),
+    });
+    expect(boat().querySelector<HTMLInputElement>("input")?.readOnly).toBe(true);
+  });
+
+  test("a refusal reads in the page's words", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: view([hull("Boat", 60, "a".repeat(16))]) });
+    t.type("hulls/Boat", "hull", "70");
+    t.button("hulls/Boat", "balance-save").click();
+    t.p.receive({
+      t: "contentBalance",
+      seq: t.sent.at(-1)?.seq ?? 0,
+      view: view([hull("Boat", 60, "a".repeat(16))]),
+      result: {
+        ok: false,
+        text: "Boat hull was not saved.",
+        problems: [
+          { where: "Full hull", message: `"Full hull" must be at most 9` },
+          { where: "Full hull", message: "too big" },
+        ],
+      },
+    });
+    expect(t.row("hulls/Boat").textContent).toContain(
+      `Boat hull was not saved. "Full hull" must be at most 9 Full hull: too big`,
+    );
+  });
+
   test("a value outside its limits, or not a whole number, is refused before sending", () => {
     const t = page();
     t.p.onShow();
@@ -349,11 +498,104 @@ describe("the Balance page", () => {
     expect(t.p.el.querySelector('[data-row="hulls/Boat"]')).toBeNull();
   });
 
+  test("an amount previews its range at a few powers, and follows typing", () => {
+    expect(amountPreview("6", "1", "3")).toBe(
+      "power 1: 8 to 10 · power 10: 17 to 19 · power 50: 57 to 59",
+    );
+    expect(amountPreview("13", null, "3")).toBe("Rolls 14 to 16");
+    expect(amountPreview("5", "0", "0")).toBe("Always 5");
+    expect(amountPreview("x", "1", "3")).toBeNull();
+    const t = page();
+    t.p.onShow();
+    t.p.receive({
+      t: "contentBalance",
+      seq: t.asked[0] ?? 0,
+      view: view([firebolt("f".repeat(16))]),
+    });
+    const previews = [...t.row("spellEffects/Firebolt").querySelectorAll(".balance-preview")];
+    expect(previews.map((e) => e.textContent)).toEqual([
+      "power 1: 8 to 10 · power 10: 17 to 19 · power 50: 57 to 59",
+      "None of its own",
+      "power 1: 10 to 12 · power 10: 19 to 21 · power 50: 59 to 61",
+    ]);
+    t.type("spellEffects/Firebolt", "monster.flat", "100");
+    expect(previews[0]?.textContent).toBe(
+      "power 1: 102 to 104 · power 10: 111 to 113 · power 50: 151 to 153",
+    );
+    expect(t.row("spellEffects/Firebolt").textContent).toContain("Now 1 × power");
+    // A required amount emptied is an error, not "none": its preview hides.
+    for (const part of ["flat", "power", "randomN"]) {
+      t.type("spellEffects/Firebolt", `monster.${part}`, "");
+    }
+    expect(previews[0]?.textContent).toBe("");
+    expect((previews[0] as HTMLElement).hidden).toBe(true);
+  });
+
+  test("an optional amount: empty is none, part-filled is refused, filled is sent, emptied is taken out", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({
+      t: "contentBalance",
+      seq: t.asked[0] ?? 0,
+      view: view([firebolt("f".repeat(16))]),
+    });
+    const id = "spellEffects/Firebolt";
+    expect(t.input(id, "monsterHealed.flat").value).toBe("");
+    // An absent amount shown empty is not an edit.
+    expect(t.p.changes()).toBe(0);
+    t.type(id, "monsterHealed.flat", "4");
+    expect(t.button(id, "balance-save").disabled).toBe(true);
+    expect(t.row(id).textContent).toContain(
+      "Heals a species it heals: fill every part, or leave them all empty",
+    );
+    t.type(id, "monsterHealed.power", "1");
+    t.type(id, "monsterHealed.randomN", "2");
+    expect(t.button(id, "balance-save").disabled).toBe(false);
+    t.button(id, "balance-save").click();
+    expect(t.sent[0]?.change.data).toEqual({
+      effect: "Firebolt",
+      monster: { flat: 6, power: 1, randomN: 3 },
+      monsterHealed: { flat: 4, power: 1, randomN: 2 },
+      player: { flat: 8, power: 1, randomN: 3 },
+    });
+    // The saved row has it; emptying the three takes it out of what is sent.
+    const healed = firebolt("g".repeat(16));
+    healed.draft = {
+      ...(healed.draft as object),
+      monsterHealed: { flat: 4, power: 1, randomN: 2 },
+    };
+    t.p.receive({
+      t: "contentBalance",
+      seq: t.sent[0]?.seq ?? 0,
+      view: view([healed]),
+      result: { ok: true, text: "Firebolt is in the draft." },
+    });
+    for (const part of ["flat", "power", "randomN"]) {
+      t.type(id, `monsterHealed.${part}`, "");
+    }
+    t.button(id, "balance-save").click();
+    expect(t.sent[1]?.change.data).toEqual({
+      effect: "Firebolt",
+      monster: { flat: 6, power: 1, randomN: 3 },
+      player: { flat: 8, power: 1, randomN: 3 },
+    });
+  });
+
   test("values are written for people", () => {
     const f = { path: [], label: "x", min: 0, max: 1 };
-    expect(shownValue(30, { ...f, unit: "frames" })).toBe("30 (1.50 s)");
+    expect(shownValue(30, { ...f, unit: "frames" })).toBe("30 (1.5 s)");
     expect(shownValue(0, { ...f, unit: "random" })).toBe("no roll");
     expect(shownValue(7, { ...f, unit: "count" })).toBe("7");
+    expect(shownValue(2, { ...f, unit: "power" })).toBe("2 × power");
+    expect(shownValue(0, { ...f, unit: "power" })).toBe("no power");
+    expect(shownValue(3, { ...f, unit: "oneIn" })).toBe("1 in 3");
+    // A counter that starts at 1: the regen period's 149 acts every 148 frames (Sol's #19 review).
+    expect(shownValue(149, { ...f, unit: "counter" })).toBe("149: acts every 148 frames (7.4 s)");
+    expect(shownValue(21, { ...f, unit: "counter" })).toBe("21: acts every 20 frames (1 s)");
+    expect(shownValue(1, { ...f, unit: "counter" })).toBe("1: acts every 1 frame (0.05 s)");
+    expect(shownValue(undefined, { ...f, unit: "count" })).toBe("none");
+    expect(fieldError("", { ...f, unit: "count", optional: true })).toBeNull();
+    expect(fieldError("", { ...f, unit: "count" })).toBe("x: a whole number");
   });
 });
 

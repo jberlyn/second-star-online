@@ -207,6 +207,8 @@ export interface ContentPage {
   receive(msg: ContentReply): void;
   /** The published store changed (a publish by anyone): refresh what is on screen. */
   published(): void;
+  /** Opens a row in the editor (the Balance page's links to other datasets' rows). */
+  openRow(r: ContentRowRef): void;
   /** Unsaved JSON in the row editor. */
   changes(): number;
   discard(): void;
@@ -1707,6 +1709,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   return {
     el: root,
     onShow: refreshAll,
+    openRow,
     onHide: () => sounds?.stop(),
     receive(msg) {
       switch (msg.t) {

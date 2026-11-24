@@ -18,12 +18,12 @@ import {
   content,
   deriveEdit,
   diffEdit,
-  EDIT_LIMITS,
   EDIT_TEXT,
   type EditableCharacter,
   editableOf,
   editErrors,
   factionLabel,
+  type HungerLimits,
   headsOf,
   onContent,
   SETTABLE_FIELDS,
@@ -145,7 +145,8 @@ export interface CharacterEditor {
   /** The form's sections. */
   readonly sections: HTMLElement[];
   /** Fills the form from the hub's sheet (a new hub, or after a save). */
-  load(name: string, sheet: CharacterSheet): void;
+  /** `hunger`: the world's hunger limits, sent with the character. */
+  load(name: string, sheet: CharacterSheet, hunger: HungerLimits): void;
   /** The server's answer to a save. */
   result(ok: boolean, text: string): void;
   /** Forgets the half-typed reason and the last result. */
@@ -198,6 +199,12 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   ]);
   const derived = document.createElement("p");
   derived.className = "control-panel-field-help hub-edit-note";
+  // The world's hunger limits come with each character (the server's balance rows).
+  let hungerLimits: HungerLimits | undefined;
+  const hungerHelp = (l: HungerLimits) =>
+    `0 to ${l.max}; a new character starts at ${l.start}, a death sets ${l.afterDeath}.`;
+  const hungerField = formField("Hunger", hunger, "…");
+  const hungerNote = hungerField.querySelector(".control-panel-field-help");
   const core = section(
     "Character",
     grid(
@@ -206,11 +213,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       formField("Experience", exp),
       formField("HP", hp),
       formField("SP", sp),
-      formField(
-        "Hunger",
-        hunger,
-        `0 to ${EDIT_LIMITS.hungerMax}; a new character starts at ${EDIT_LIMITS.hungerMax}, a death sets 40000.`,
-      ),
+      hungerField,
       formField("Faction", faction),
       formField("Faction time", factionCount, "Frames of play left in the faction."),
       formField("Wanted", wanted),
@@ -572,7 +575,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       return;
     }
     const after = deriveEdit(c, set);
-    const errors = editErrors(c, after);
+    const errors = editErrors(c, after, hungerLimits ? { hunger: hungerLimits } : {});
     if (errors.length > 0) {
       status.textContent = errors.join(" ");
       return;
@@ -602,7 +605,11 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
 
   return {
     sections: [core, statsBox, skillsBox, goldBox, bagBox, wornBox, storeBox, placeBox, saveBox],
-    load(n, sheet) {
+    load(n, sheet, limits) {
+      hungerLimits = limits;
+      if (hungerNote) {
+        hungerNote.textContent = hungerHelp(limits);
+      }
       if (n !== name) {
         reason.value = "";
         status.textContent = "";

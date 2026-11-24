@@ -4,11 +4,11 @@
 import {
   ARENA_TEXT,
   can,
-  DEATH_HUNGER,
   DEATH_LOCK_FRAMES,
-  DEATH_PAUSE_FRAMES,
   type DeathDropRules,
   deathHead,
+  deathHunger,
+  deathPauseFrames,
   deathVitals,
   exileAtDeath,
   factionPerk,
@@ -143,7 +143,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
     deathVitals(v);
     p.vitalsDirty = true;
     p.deadLock = DEATH_LOCK_FRAMES;
-    p.deathPause = DEATH_PAUSE_FRAMES;
+    p.deathPause = deathPauseFrames();
     return { kind: "death", lines, out };
   }
   if (drop) {
@@ -221,7 +221,7 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   deathVitals(v);
   p.vitalsDirty = true;
   p.deadLock = DEATH_LOCK_FRAMES;
-  p.deathPause = DEATH_PAUSE_FRAMES;
+  p.deathPause = deathPauseFrames();
   return { kind: "death", lines, out };
 }
 
@@ -258,7 +258,7 @@ function logDeath(
 
 /** What happens when the death lock ends: hunger 40000, then the respawn warp. */
 export function finishDeath(p: Player): void {
-  p.char.hunger = DEATH_HUNGER;
+  p.char.hunger = deathHunger();
   p.lastToHitMe = null;
   p.lastToHitId = null;
 }

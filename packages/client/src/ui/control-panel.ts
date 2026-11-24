@@ -72,7 +72,8 @@ export interface ControlPanel {
   /** Shows the Control Panel: the last page you had open, if you may still use it, else the first. */
   open(): void;
   /** Shows a page (asking first if the open one has changes). */
-  go(id: string): void;
+  /** Shows page `id` (asking first if the open page has changes), then runs `then` on it. */
+  go(id: string, then?: () => void): void;
   /** Your permissions changed: redraws the sidebar and leaves a page you may no longer use. */
   refresh(): void;
   /** An IM came while the Control Panel is open: counted on Send IM until it is clicked. */
@@ -243,12 +244,19 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
     p?.onShow?.();
   };
 
-  const go = (id: string) => {
+  const go = (id: string, then?: () => void) => {
     const p = allowed().find((x) => x.id === id);
-    if (!p || p === current) {
+    if (!p) {
       return;
     }
-    guard(() => show(p), "leave this page");
+    if (p === current) {
+      then?.();
+      return;
+    }
+    guard(() => {
+      show(p);
+      then?.();
+    }, "leave this page");
   };
 
   const drawSidebar = () => {

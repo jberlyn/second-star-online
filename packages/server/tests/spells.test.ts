@@ -390,14 +390,17 @@ describe("players", () => {
     expect(b.char.vitals.sp).toBe(200);
   });
   test("Hold: the hold counter = P·8, no step while it runs, the text", () => {
-    const { a, b, run, cast } = scene();
+    const { a, b, room, run, cast } = scene();
     a.spell.book = ["Hold"];
     give(a, "Purple Crystal", 10);
     const t = at(9, 6);
     cast(a, "Hold", t.h, t.v);
+    const P = room.fxQueue[0]?.power ?? 0;
     const out = run(4);
     expect(chat(out, "Bob")).toContain(EFFECT_TEXT.hold);
-    expect(b.spell.hold).toBeGreaterThan(0);
+    // P·8 (P = 1 here), counted down each frame from the one it landed in (frame 3 of 4 run).
+    expect(P).toBe(1);
+    expect(b.spell.hold).toBe(P * 8 - 3);
     b.held = "R";
     run(1);
     expect(b.x).toBe(9);

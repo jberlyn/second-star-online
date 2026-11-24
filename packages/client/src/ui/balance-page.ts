@@ -16,6 +16,7 @@ import type {
   BalanceRowView,
   ContentBalanceView,
   ContentProblemView,
+  ContentRowRef,
 } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
@@ -37,6 +38,8 @@ export interface BalancePageActions {
   set(seq: number, change: BalanceChange): void;
   /** Opens the Content page, where the draft is published. */
   openContent(): void;
+  /** Opens the Content page at a row of another dataset (house rest, in `houses`). */
+  openContentRow(row: ContentRowRef): void;
 }
 
 /** The answer the server sends the page. */
@@ -91,24 +94,104 @@ function withValue(value: unknown, path: readonly string[], n: number): unknown 
   return out;
 }
 
-/** A value as the page writes it: frames also in seconds. */
+/** Frames in seconds, to two places at most (148 → 7.4). */
+const seconds = (frames: number) => String(Number((frames / FPS).toFixed(2)));
+
+/** A value as the page writes it: frames also in seconds, a counter as the interval it gives. */
 export function shownValue(v: unknown, f: BalanceFieldView): string {
   if (typeof v !== "number") {
     return "none";
   }
   if (f.unit === "frames") {
-    const s = v / FPS;
-    return `${v} (${Number.isInteger(s) ? s : s.toFixed(2)} s)`;
+    return `${v} (${seconds(v)} s)`;
   }
   if (f.unit === "random") {
     return v === 0 ? "no roll" : `random(${v})`;
   }
+  if (f.unit === "power") {
+    return v === 0 ? "no power" : `${v} × power`;
+  }
+  if (f.unit === "oneIn") {
+    return `1 in ${v}`;
+  }
+  if (f.unit === "counter") {
+    // The counter starts at 1, so it acts every target − 1 frames (every frame at 1 or 2).
+    const every = Math.max(1, v - 1);
+    return `${v}: acts every ${every} frame${every === 1 ? "" : "s"} (${seconds(every)} s)`;
+  }
   return String(v);
+}
+
+/** A copy of `value` without the key at `path`. */
+function without(value: unknown, path: readonly string[]): unknown {
+  const out = structuredClone(value ?? {}) as Record<string, unknown>;
+  let o: Record<string, unknown> | undefined = out;
+  path.forEach((p, i) => {
+    if (!o) {
+      return;
+    }
+    if (i === path.length - 1) {
+      delete o[p];
+    } else {
+      const next = o[p];
+      o = next !== null && typeof next === "object" ? (next as Record<string, unknown>) : undefined;
+    }
+  });
+  return out;
+}
+
+/** The parent path of a field (the amount it is a part of), as a key. */
+const parentKey = (f: BalanceFieldView) => f.path.slice(0, -1).join(".");
+
+/** The powers an amount's range is previewed at. */
+const PREVIEW_POWERS = [1, 10, 50];
+
+/**
+ * An amount's range as the page previews it from its typed parts, or null when a part does not
+ * read: `flat + power × P + random(n)` at a few powers (just `flat + random(n)` with no power).
+ */
+export function amountPreview(flat: string, power: string | null, randomN: string): string | null {
+  const nums = [flat, power ?? "0", randomN].map((t) => t.trim());
+  if (!nums.every((t) => /^\d+$/.test(t))) {
+    return null;
+  }
+  const [f, pw, n] = nums.map(Number) as [number, number, number];
+  const range = (P: number) => {
+    const base = f + pw * P;
+    return n === 0 ? `${base}` : `${base + 1} to ${base + n}`;
+  };
+  // Neutral words: an amount is damage, a heal, a power or a body's roll.
+  if (power === null || pw === 0) {
+    return n === 0 ? `Always ${range(0)}` : `Rolls ${range(0)}`;
+  }
+  return PREVIEW_POWERS.map((P) => `power ${P}: ${range(P)}`).join(" · ");
+}
+
+/** Why the typed parts of each optional amount are refused: filled in part. */
+function partialErrors(fields: readonly { field: BalanceFieldView; input: HTMLInputElement }[]) {
+  const groups = new Map<string, { label: string; blank: number; all: number }>();
+  for (const { field, input } of fields) {
+    if (!field.optional) {
+      continue;
+    }
+    const g = groups.get(parentKey(field)) ?? { label: field.label, blank: 0, all: 0 };
+    g.all += 1;
+    if (input.value.trim() === "") {
+      g.blank += 1;
+    }
+    groups.set(parentKey(field), g);
+  }
+  return [...groups.values()]
+    .filter((g) => g.blank > 0 && g.blank < g.all)
+    .map((g) => `${g.label}: fill every part, or leave them all empty`);
 }
 
 /** Why a typed value is refused, or null. */
 export function fieldError(text: string, f: BalanceFieldView): string | null {
   const t = text.trim();
+  if (t === "" && f.optional) {
+    return null;
+  }
   if (!/^-?\d+$/.test(t)) {
     return `${f.label}: a whole number`;
   }
@@ -124,6 +207,8 @@ interface RowUi {
   el: HTMLElement;
   view: BalanceRowView;
   inputs: { field: BalanceFieldView; input: HTMLInputElement; info: HTMLElement }[];
+  /** Each amount's range preview, by the amount's path. */
+  previews: Map<string, HTMLElement>;
   /** The draft value and fingerprint the inputs were filled from. */
   filled: { value: unknown; fingerprint: string };
   badges: HTMLElement;
@@ -143,7 +228,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   el.append(
     pageHeading(
       "Balance",
-      "The game's global numbers: hulls and the cannon for now, with spells, regeneration, hunger, death, timings and combat rolls to follow. Each value shows what plays now, the pack's value and the engine's default. Changes go into the content draft, published from the Content page.",
+      "The game's global numbers: spell amounts, buffs, regeneration, hunger, death, hulls and the cannon, with timings and combat rolls to follow. Each value shows what plays now, the pack's value and the engine's default. Changes go into the content draft, published from the Content page.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -165,19 +250,47 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
 
   let seq = 0;
   /** The newest view request's seq: an older answer never replaces a newer view. */
-  let shownSeq = -1;
+  /** Answers to requests sent before the last `reset` (a new session) are dropped. */
+  let resetSeq = -1;
+  /** The newest view applied: an older one never replaces it, whichever arrives first. */
+  let appliedSeq = -1;
   /** Saves waiting for their answer, by seq: the row the answer is for. */
   const saving = new Map<number, string>();
   const rows = new Map<string, RowUi>();
   let groupsShown = "";
+  /** Each "elsewhere" line's value, by `<group>:<index>`. */
+  const elsewhereNow = new Map<string, HTMLElement>();
 
   const dirty = (r: RowUi) =>
     r.inputs.some(
-      ({ field, input }) => input.value.trim() !== String(at(r.filled.value, field.path)),
+      ({ field, input }) => input.value.trim() !== String(at(r.filled.value, field.path) ?? ""),
     );
 
-  const errors = (r: RowUi) =>
-    r.inputs.map(({ field, input }) => fieldError(input.value, field)).filter((e) => e !== null);
+  const errors = (r: RowUi) => [
+    ...r.inputs.map(({ field, input }) => fieldError(input.value, field)).filter((e) => e !== null),
+    ...partialErrors(r.inputs),
+  ];
+
+  /** The typed value of the field at `path` in a row, or null when the row has none there. */
+  const typed = (r: RowUi, path: string) =>
+    r.inputs.find(({ field }) => field.path.join(".") === path)?.input.value ?? null;
+
+  const updatePreviews = (r: RowUi) => {
+    for (const [key, el] of r.previews) {
+      const flat = typed(r, `${key}.flat`) ?? "";
+      const randomN = typed(r, `${key}.randomN`) ?? "";
+      const blank = [flat, typed(r, `${key}.power`) ?? "", randomN].every((t) => t.trim() === "");
+      // Only an optional amount can be left empty: a required one empty is an error, not "none".
+      const optional = r.inputs.some(({ field }) => parentKey(field) === key && field.optional);
+      const text = blank
+        ? optional
+          ? "None of its own"
+          : null
+        : amountPreview(flat, typed(r, `${key}.power`), randomN);
+      el.textContent = text ?? "";
+      el.hidden = text === null;
+    }
+  };
 
   const fill = (r: RowUi) => {
     r.filled = { value: structuredClone(r.view.draft), fingerprint: r.view.fingerprint };
@@ -188,6 +301,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
 
   const update = (r: RowUi) => {
     const v = r.view;
+    updatePreviews(r);
     for (const { field, info } of r.inputs) {
       const pack = v.pack === null ? null : at(v.pack, field.path);
       const parts = [`Now ${shownValue(at(v.published, field.path), field)}`];
@@ -252,22 +366,29 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       }
       data = r.filled.value;
       for (const { field, input } of r.inputs) {
-        data = withValue(data, field.path, Number(input.value.trim()));
+        const t = input.value.trim();
+        // An optional amount left empty is taken out (its parts are all empty: `errors`).
+        data =
+          t === "" && field.optional
+            ? without(data, field.path.slice(0, -1))
+            : withValue(data, field.path, Number(t));
       }
     }
-    r.busy = true;
-    r.status.textContent = "Saving…";
-    r.status.className = "balance-status";
-    seq += 1;
-    saving.set(seq, rowId(r.view));
-    actions.set(seq, {
+    const change: BalanceChange = {
       part: r.view.part,
       key: r.view.key,
       op,
       data,
       expect: op === "set" ? r.filled.fingerprint : r.view.fingerprint,
-    });
+    };
+    // Locked before the request goes, so nothing typed from here on can be lost.
+    r.busy = true;
+    r.status.textContent = "Saving…";
+    r.status.className = "balance-status";
     update(r);
+    seq += 1;
+    saving.set(seq, rowId(r.view));
+    actions.set(seq, change);
   };
 
   const makeRow = (v: BalanceRowView): RowUi => {
@@ -285,6 +406,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       el: sec,
       view: v,
       inputs: [],
+      previews: new Map(),
       filled: { value: null, fingerprint: "" },
       badges,
       status: document.createElement("p"),
@@ -313,6 +435,9 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       label.className = "control-panel-field-label";
       label.htmlFor = input.id;
       label.textContent = f.unit === "frames" ? `${f.label} (frames, 20 a second)` : f.label;
+      if (f.optional) {
+        input.placeholder = "none";
+      }
       const info = document.createElement("p");
       info.className = "control-panel-field-help balance-info";
       info.id = `${input.id}-info`;
@@ -329,6 +454,17 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         update(r);
       });
       fields.append(wrap);
+      // The last part of an amount carries the amount's range preview.
+      if (
+        f.path.at(-1) === "randomN" &&
+        v.fields.some((g) => g.path.join(".") === `${parentKey(f)}.flat`)
+      ) {
+        const preview = document.createElement("p");
+        preview.className = "control-panel-field-help balance-preview";
+        preview.setAttribute("aria-live", "polite");
+        wrap.append(preview);
+        r.previews.set(parentKey(f), preview);
+      }
       r.inputs.push({ field: f, input, info });
     }
     r.status.className = "balance-status";
@@ -347,13 +483,17 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
 
   const show = (view: ContentBalanceView) => {
     loading.hidden = true;
-    const shape = JSON.stringify(view.groups.map((g) => [g.id, g.rows.map(rowId)]));
+    const shape = JSON.stringify(
+      view.groups.map((g) => [g.id, g.rows.map(rowId), (g.elsewhere ?? []).map((e) => e.label)]),
+    );
     if (shape !== groupsShown) {
       // New rows (a new release): rebuild, keeping what is being edited where the row stays.
+      // A row being saved is kept too, still locked (a Reset or Drop leaves it clean but busy).
       const kept = new Map(
-        [...rows].filter(([, r]) => dirty(r)).map(([id, r]) => [id, r] as const),
+        [...rows].filter(([, r]) => dirty(r) || r.busy).map(([id, r]) => [id, r] as const),
       );
       rows.clear();
+      elsewhereNow.clear();
       cards.replaceChildren(
         ...view.groups.map((g) => {
           const card = document.createElement("section");
@@ -372,12 +512,32 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
             rows.set(rowId(v), r);
             card.append(r.el);
           }
+          (g.elsewhere ?? []).forEach((e, i) => {
+            const line = document.createElement("div");
+            line.className = "balance-elsewhere";
+            const label = document.createElement("strong");
+            label.textContent = `${e.label}: `;
+            const now = document.createElement("span");
+            elsewhereNow.set(`${g.id}:${i}`, now);
+            const open = panelButton("balance-open-row", "Edit on the Content page", () =>
+              actions.openContentRow(e.row),
+            );
+            open.dataset.row = `${e.row.dataset}/${e.row.part}`;
+            line.append(label, now, " ", open);
+            card.append(line);
+          });
           return card;
         }),
       );
       groupsShown = shape;
     }
     for (const g of view.groups) {
+      (g.elsewhere ?? []).forEach((e, i) => {
+        const now = elsewhereNow.get(`${g.id}:${i}`);
+        if (now) {
+          now.textContent = e.now;
+        }
+      });
       for (const v of g.rows) {
         const r = rows.get(rowId(v));
         if (!r) {
@@ -402,7 +562,6 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
 
   const ask = () => {
     seq += 1;
-    shownSeq = seq;
     actions.view(seq);
   };
 
@@ -422,18 +581,21 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       }
     },
     receive(msg) {
+      if (msg.seq <= resetSeq) {
+        return;
+      }
+      // An answer's view is newer than the one shown unless a later request's answer came first.
+      const newer = msg.seq >= appliedSeq;
       const row = saving.get(msg.seq);
       if (row !== undefined) {
         saving.delete(msg.seq);
         const r = rows.get(row);
-        // The answer's view is newer than the one shown unless a view asked after the save was
-        // answered first; an older view never replaces a newer one.
-        const newer = msg.seq >= shownSeq;
         if (r) {
           r.busy = false;
           if (msg.result) {
             if (msg.result.ok) {
-              // Saved: the row shows what the draft now holds (the newest view of it).
+              // Saved: the row shows what the draft now holds (the newest view of it: the save's,
+              // or one answered after it).
               if (newer) {
                 r.view =
                   msg.view.groups.flatMap((g) => g.rows).find((x) => rowId(x) === row) ?? r.view;
@@ -444,7 +606,11 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
               ? msg.result.text
               : [
                   msg.result.text,
-                  ...(msg.result.problems ?? []).map((p) => `${p.where}: ${p.message}`),
+                  // The server names the page's fields; a message that already names its field
+                  // stands alone.
+                  ...(msg.result.problems ?? []).map((p) =>
+                    p.message.includes(`"${p.where}"`) ? p.message : `${p.where}: ${p.message}`,
+                  ),
                 ].join(" ");
             r.status.className = msg.result.ok
               ? "balance-status"
@@ -452,7 +618,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
           }
         }
         if (newer) {
-          shownSeq = msg.seq;
+          appliedSeq = msg.seq;
           show(msg.view);
         } else if (r) {
           // The row's buttons follow its save finishing, whichever view is shown.
@@ -460,10 +626,10 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         }
         return;
       }
-      if (msg.seq < shownSeq) {
+      if (!newer) {
         return;
       }
-      shownSeq = msg.seq;
+      appliedSeq = msg.seq;
       show(msg.view);
     },
     published() {
@@ -473,7 +639,8 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     },
     reset() {
       seq += 1;
-      shownSeq = seq;
+      resetSeq = seq;
+      appliedSeq = seq;
       saving.clear();
       rows.clear();
       groupsShown = "";

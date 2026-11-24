@@ -396,6 +396,7 @@ function buildAll(): HTMLElement[] {
         jail: null,
         mute: null,
         history: [],
+        hunger: { max: 50_000, start: 50_000, afterDeath: 40_000 },
         edits: [
           {
             id: "e1",

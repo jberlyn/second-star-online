@@ -1,4 +1,75 @@
 {
+  "spellEffects": [
+    {
+      "effect": "Firebolt",
+      "monster": { "flat": 6, "power": 1, "randomN": 3 },
+      "player": { "flat": 8, "power": 1, "randomN": 3 }
+    },
+    {
+      "effect": "Fireball",
+      "monster": { "flat": 4, "power": 1, "randomN": 3 },
+      "player": { "flat": 9, "power": 1, "randomN": 3 }
+    },
+    {
+      "effect": "Bolt",
+      "monster": { "flat": 15, "power": 1, "randomN": 3 },
+      "player": { "flat": 18, "power": 1, "randomN": 8 }
+    },
+    {
+      "effect": "Meteor",
+      "monster": { "flat": 15, "power": 1, "randomN": 3 },
+      "player": { "flat": 15, "power": 1, "randomN": 3 }
+    },
+    {
+      "effect": "Splash",
+      "monster": { "flat": 20, "power": 1, "randomN": 3 },
+      "monsterHealed": { "flat": 10, "power": 1, "randomN": 5 },
+      "player": { "flat": 20, "power": 1, "randomN": 3 }
+    },
+    {
+      "effect": "Crush",
+      "monster": { "flat": 6, "power": 1, "randomN": 3 },
+      "monsterHealed": { "flat": 8, "power": 1, "randomN": 3 },
+      "player": { "flat": 6, "power": 1, "randomN": 3 }
+    },
+    {
+      "effect": "Wind Wave",
+      "monster": { "flat": 2, "power": 1, "randomN": 5 },
+      "player": { "flat": 2, "power": 1, "randomN": 5 }
+    },
+    {
+      "effect": "Arrows",
+      "monster": { "flat": 0, "power": 1, "randomN": 0 },
+      "player": { "flat": 0, "power": 1, "randomN": 2 }
+    },
+    {
+      "effect": "Minor Heal",
+      "monster": { "flat": 3, "power": 1, "randomN": 5 },
+      "monsterUndead": { "flat": 1, "power": 1, "randomN": 2 },
+      "player": { "flat": 2, "power": 1, "randomN": 2 }
+    },
+    {
+      "effect": "Major Heal",
+      "monster": { "flat": 15, "power": 1, "randomN": 10 },
+      "monsterUndead": { "flat": 5, "power": 1, "randomN": 5 },
+      "player": { "flat": 15, "power": 1, "randomN": 5 }
+    }
+  ],
+  "spellHits": { "dispel": 2000, "resistedRandomN": 3, "arrowsFloorRandomN": 2 },
+  "buffs": {
+    "magicShieldPerPower": 70,
+    "stoneSkinPerPower": 30,
+    "stoneSkinBonus": 1,
+    "fireSwordPerPower": 40,
+    "holdPerPower": 8,
+    "argonFrames": 400,
+    "diminishHunger": { "add": 3000, "below": 35000 },
+    "morph": { "flat": 3, "power": 1, "randomN": 5 }
+  },
+  "castPower": { "staffFireball": { "flat": 1, "randomN": 3 }, "swordFireball": { "flat": 4, "randomN": 3 } },
+  "regen": { "periodFrames": 149, "regenerate": 1, "starve": 1 },
+  "hunger": { "loseOneIn": 3, "regenAbove": 500, "starveBelow": 50, "stuffed": 35000, "afterDeath": 40000 },
+  "death": { "hp": 1, "sp": 1, "pauseFrames": 90 },
   "vehicles": { "hullHit": 2, "repairPerMinute": 1 },
   "cannon": { "damage": { "flat": 13, "randomN": 3 }, "reloadFrames": 100 },
   "hulls": [

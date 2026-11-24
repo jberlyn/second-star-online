@@ -19,8 +19,8 @@ import {
   cannonDamage,
   cannonReloadFrames,
   content,
-  DEATH_HUNGER,
-  DEATH_PAUSE_FRAMES,
+  deathHunger,
+  deathPauseFrames,
   deathVitals,
   type Fighter,
   FLICKER_FRAMES,
@@ -39,8 +39,8 @@ import {
   randomAndDefense,
   regenTarget,
   regenTick,
-  STUFFED,
   spellHitOnMonster,
+  stuffedHunger,
   swingCooldowns,
   tileLoc,
   type Vitals,
@@ -56,7 +56,7 @@ import type { MoveCtx } from "../src/systems/movement/movement.ts";
 import { rollPushes } from "../src/systems/movement/push.ts";
 import { KILL_CREDIT_TICKS } from "../src/systems/progression/vitals.ts";
 import { castIntent, swingFireballs } from "../src/systems/spells/cast.ts";
-import { ARGON_FRAMES, STONE_SKIN_BONUS } from "../src/systems/spells/collide.ts";
+import { argonsFist } from "../src/systems/spells/collide.ts";
 import { NPC_SPELL_BLOCK_FRAMES } from "../src/systems/spells/fx.ts";
 import type { Player, Room } from "../src/systems/world/world.ts";
 import { ARCHIVE_NPCS, player, rngByN, setup, testMap } from "./helpers/sim.ts";
@@ -210,8 +210,14 @@ function balanceNow(): Record<string, unknown> {
       ]),
     ),
     buffs: {
-      stoneSkinBonus: STONE_SKIN_BONUS,
-      argonFrames: ARGON_FRAMES,
+      stoneSkinBonus: castOnSelf("Stone Skin").defenseBonus,
+      // A Purple Potion's Argon's Fist, on a player with no counter running.
+      argonFrames: (() => {
+        const { a } = scene();
+        a.timers.attackCounter = 0;
+        argonsFist(a);
+        return a.timers.attackCounter;
+      })(),
       // Each buff cast once, as the game casts it (the caster's power from the spell's table).
       magicShield: castOnSelf("Magic Shield").spell.magicDef,
       stoneSkin: castOnSelf("Stone Skin").spell.defenseCounter,
@@ -225,6 +231,19 @@ function balanceNow(): Record<string, unknown> {
             p.char.hunger = h;
           }).char.hunger,
       ),
+      // Hold on Bob beside her (it never holds its caster): P·8, counting down from the frame it
+      // landed, read when the FX has run out.
+      hold: (() => {
+        const { a, b, room, run, rng } = scene();
+        a.spell.book = ["Hold"];
+        CRYSTALS.forEach((c, i) => {
+          a.char.bag[i] = { item: `${c} Crystal`, qty: 10 };
+        });
+        const at = tileLoc(6, 5);
+        castIntent(room, a, "Hold", at.h, at.v, { rng });
+        run(4);
+        return b.spell.hold;
+      })(),
       morph: (() => {
         const a = castOnSelf("Morph");
         return { counter: a.spell.morph, body: a.spell.body };
@@ -287,8 +306,8 @@ function balanceNow(): Record<string, unknown> {
     },
     hunger: {
       tick: probe((r) => hungerTick(100, false, r)),
-      stuffed: STUFFED,
-      deathHunger: DEATH_HUNGER,
+      stuffed: stuffedHunger(),
+      deathHunger: deathHunger(),
     },
     death: {
       vitals: (() => {
@@ -296,7 +315,7 @@ function balanceNow(): Record<string, unknown> {
         deathVitals(v);
         return [v.hp, v.sp];
       })(),
-      pauseFrames: DEATH_PAUSE_FRAMES,
+      pauseFrames: deathPauseFrames(),
     },
     timings: {
       flicker: FLICKER_FRAMES,

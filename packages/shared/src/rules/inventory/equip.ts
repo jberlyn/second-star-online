@@ -4,7 +4,7 @@
  */
 import type { EquipSlot } from "@secondstaronline/data";
 
-import { type ContentStore, onContent } from "../../content/store.ts";
+import { type ContentStore, content, onContent } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
@@ -127,8 +127,13 @@ export interface UseOutcome {
   argon: boolean;
 }
 
-/** Hunger at or above this refuses every usable item: "You're stuffed!", and the item is kept. */
-export const STUFFED = 35000;
+/**
+ * Hunger at or above this refuses every usable item: "You're stuffed!", and the item is kept. The
+ * balance row `hunger.stuffed` (1.6: 35,000).
+ */
+export function stuffedHunger(): number {
+  return content().balance.hunger.stuffed;
+}
 
 /**
  * The use handler from the whitelist on, for one item. `v` is HP/SP/Hunger and their caps; the
@@ -158,7 +163,7 @@ export function useItem(
     out.lines.push(USE_TEXT.cannot(name.includes("#") ? name.slice(0, name.indexOf("#")) : name));
     return out;
   }
-  if (out.hunger >= STUFFED) {
+  if (out.hunger >= stuffedHunger()) {
     out.lines.push(USE_TEXT.stuffed);
     return out;
   }
@@ -184,7 +189,8 @@ export function useItem(
     name,
   );
   let text = msg ? msg.text.replace('" & SelInventory & "', name) : null;
-  if (hasBehaviour(name, "argonsFist")) {
+  // With Argon's Fist set to last 0 frames (the balance row) the potion is just a drink.
+  if (hasBehaviour(name, "argonsFist") && content().balance.buffs.argonFrames > 0) {
     // The Argon line once (1.6 printed it twice).
     out.argon = true;
     text = USE_TEXT.argon;

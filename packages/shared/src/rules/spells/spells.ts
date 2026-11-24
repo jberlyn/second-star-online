@@ -11,14 +11,17 @@
  *   experience-band text; Create Food.
  */
 import type {
+  BalanceSpellEffect,
   MonsterFlags,
   Spell,
+  SpellAmountOverride,
   SpellCreates,
   SpellFx,
   SpellSummon,
 } from "@secondstaronline/data";
 
 import { TICK_HZ } from "../../constants.ts";
+import { rollAmount, spellAmounts } from "../../content/balance.ts";
 import { content, onContent } from "../../content/store.ts";
 import { slotItem } from "../combat/armour.ts";
 import { applyTierRow } from "../combat/attpower.ts";
@@ -295,7 +298,8 @@ function clampPower(p: number): number {
  * member name for text such as `"45-"`, so a Shark (body 445) took Firebolt and Fireball as a Ghoul
  * (body 45) does; SSO reads the species (a bug fixed). An effect a species is healed by heals by its
  * heal amount where 1.6 had one, else by its damage; a resisted hit rolls its damage, then deals
- * `random(3)`.
+ * `random(3)`. The amounts and rolls are balance rows (`spellEffects`, `spellHits`); `override` is
+ * the cast spell's own `amount`.
  */
 export function spellHitOnMonster(
   member: string,
@@ -303,80 +307,84 @@ export function spellHitOnMonster(
   defense: number,
   P: number,
   rng: Rng,
+  override?: SpellAmountOverride,
 ): { n: number; heal: boolean; splat: boolean } | null {
   const is = (n: string) => lingoEq(member, n);
   const r = rng;
+  const b = content().balance;
+  const amounts = (effect: BalanceSpellEffect) => spellAmounts(effectRow(effect), override);
   let hit: { n: number; heal: boolean; splat: boolean } | null = null;
-  /** A harmful effect's hit: `damage`, or for a species it heals, `heals` (else `damage`). */
-  const strike = (effect: string, damage: () => number, heals?: () => number) => {
+  /** A harmful effect's hit: its damage, or for a species it heals, its heal amount. */
+  const strike = (effect: BalanceSpellEffect) => {
+    const a = amounts(effect);
     if (flagHasEffect(flags.healedBy, effect)) {
-      return { n: (heals ?? damage)(), heal: true, splat: true };
+      return { n: rollAmount(a.monsterHealed, P, r), heal: true, splat: true };
     }
-    let n = damage();
+    let n = rollAmount(a.monster, P, r);
     if (flagHasEffect(flags.resists, effect)) {
-      n = r.random(3);
+      n = r.random(b.spellHits.resistedRandomN);
     }
     return { n, heal: false, splat: true };
   };
   if (lingoContains(member, " Arrows")) {
-    let n = P - defense;
+    let n = rollAmount(amounts("Arrows").monster, P, r) - defense;
     if (n < 1) {
-      n = r.random(2);
+      n = r.random(b.spellHits.arrowsFloorRandomN);
     }
     hit = { n, heal: false, splat: true };
   }
   const undead = flags.hurtByHealing === true;
+  const healing = (effect: BalanceSpellEffect) => {
+    const a = amounts(effect);
+    return undead
+      ? { n: rollAmount(a.monsterUndead, P, r), heal: false, splat: true }
+      : { n: rollAmount(a.monster, P, r), heal: true, splat: false };
+  };
   if (is("minor heal-3")) {
-    hit = undead
-      ? { n: 1 + P + r.random(2), heal: false, splat: true }
-      : { n: 3 + P + r.random(5), heal: true, splat: false };
+    hit = healing("Minor Heal");
   }
   if (is("major heal-3")) {
-    hit = undead
-      ? { n: 5 + P + r.random(5), heal: false, splat: true }
-      : { n: 15 + P + r.random(10), heal: true, splat: false };
+    hit = healing("Major Heal");
   }
   for (const n of ["meteor-13", "meteor-19"]) {
     if (is(n)) {
-      hit = strike("Meteor", () => 15 + P + r.random(3));
+      hit = strike("Meteor");
     }
   }
   for (const n of ["BoltL-1", "BoltR-1", "BoltU-1", "BoltD-1"]) {
     if (is(n)) {
-      hit = strike("Bolt", () => 15 + P + r.random(3));
+      hit = strike("Bolt");
     }
   }
   if (flags.dispellable === true && is("Dispel Illusions-8")) {
-    hit = { n: 2000, heal: false, splat: true };
+    hit = { n: b.spellHits.dispel, heal: false, splat: true };
   }
   if (is("splash-18")) {
-    hit = strike(
-      "Splash",
-      () => 20 + P + r.random(3),
-      () => 10 + P + r.random(5),
-    );
+    hit = strike("Splash");
   }
   if (is("crush-18")) {
-    hit = strike(
-      "Crush",
-      () => 6 + P + r.random(3),
-      () => 8 + P + r.random(3),
-    );
+    hit = strike("Crush");
   }
   if (is("Firebolt-12")) {
-    hit = strike("Firebolt", () => 6 + P + r.random(3));
+    hit = strike("Firebolt");
   }
   for (const n of ["FireballL-1", "FireballR-1", "FireballU-1", "FireballD-1"]) {
     if (is(n)) {
-      hit = strike("Fireball", () => 4 + P + r.random(3));
+      hit = strike("Fireball");
     }
   }
   for (const n of ["Wind waveL-1", "wind waveR-1", "wind waveU-1", "wind waveD-1"]) {
     if (is(n)) {
-      hit = strike("Wind Wave", () => 2 + P + r.random(5));
+      hit = strike("Wind Wave");
     }
   }
   return hit;
+}
+
+/** The balance row of a spell effect (every effect has one: `fullBalance` fills the defaults). */
+function effectRow(effect: BalanceSpellEffect) {
+  const rows = content().balance.spellEffects;
+  return (rows.find((x) => x.effect === effect) ?? rows[0]) as (typeof rows)[number];
 }
 
 /** The branches of the spell collision that deal or heal an amount to a player. */
@@ -433,32 +441,36 @@ export function playerSpellAmount(
   P: number,
   target: SpellTarget,
   rng: Rng,
+  override?: SpellAmountOverride,
 ): number {
   const r = rng;
   const def = (n: number) => spellDefense(n, target, r);
+  const roll = () =>
+    rollAmount(spellAmounts(effectRow(PLAYER_BRANCH_EFFECT[branch]), override).player, P, r);
   switch (branch) {
-    case "Arrows":
-      return def(P + r.random(2));
-    case "crush":
-      return def(6 + P + r.random(3));
     case "firebolt":
-      return 8 + P + r.random(3);
     case "Splash":
-      return 20 + P + r.random(3);
-    case "meteor":
-      return def(15 + P + r.random(3));
-    case "Fireball":
-      return def(9 + P + r.random(3));
-    case "Bolt":
-      return def(18 + P + r.random(8));
-    case "wind wave":
-      return def(2 + P + r.random(5));
     case "major heal":
-      return 15 + P + r.random(5);
     case "minor heal":
-      return 2 + P + r.random(2);
+      return roll();
+    default:
+      return def(roll());
   }
 }
+
+/** The balance effect each player branch deals or heals. */
+const PLAYER_BRANCH_EFFECT: Readonly<Record<PlayerSpellBranch, BalanceSpellEffect>> = {
+  Arrows: "Arrows",
+  crush: "Crush",
+  firebolt: "Firebolt",
+  Splash: "Splash",
+  meteor: "Meteor",
+  Fireball: "Fireball",
+  Bolt: "Bolt",
+  "wind wave": "Wind Wave",
+  "major heal": "Major Heal",
+  "minor heal": "Minor Heal",
+};
 
 /**
  * The Fireball and Ice Wave direction: from the caster's sprite to the mouse; the larger of |dx|
@@ -672,8 +684,8 @@ export const EFFECT_TEXT = {
 } as const;
 
 /**
- * Morph: `N = 3 + P + random(5)`; the last row of the world's morph table (`bindings.json`
- * `bodies.morph`) that N is above picks the body. Null, with nothing rolled, when the world binds
+ * Morph: `N`, rolled from the balance row `buffs.morph` (1.6: `3 + P + random(5)`); the last row of
+ * the world's morph table (`bindings.json` `bodies.morph`) that N is above picks the body. Null, with nothing rolled, when the world binds
  * no table: Morph does nothing. Null too when N is above no row.
  */
 export function morphBody(power: number, rng: Rng): number | null {
@@ -681,7 +693,7 @@ export function morphBody(power: number, rng: Rng): number | null {
   if (rows.length === 0) {
     return null;
   }
-  const n = 3 + power + rng.random(5);
+  const n = rollAmount(content().balance.buffs.morph, power, rng);
   let body: number | null = null;
   for (const r of rows) {
     if (n > r.above) {

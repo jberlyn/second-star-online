@@ -67,20 +67,21 @@ export function checkLevelUp(v: Vitals): number {
 // ---- regen -----------------------------------------------------------------------------
 
 /**
- * The regen target `60 − speed + speed increase`: 90, less the faction perk `regeneration` (Classic:
- * an Adventurer's 5·(tier + 1)). Speed is always 1 (1.6 stored a Speed stat that nothing could
- * raise; SSO dropped it), so the target is 149, or 144 down to 99 for an Adventurer.
+ * The regen target: the balance row `regen.periodFrames`, less the faction perk `regeneration`
+ * (Classic: an Adventurer's 5·(tier + 1)), at least 1. 1.6's was `60 − speed + (90 − perk)`; speed
+ * was always 1 (1.6 stored a Speed stat that nothing could raise; SSO dropped it), so the period is
+ * 149, or 144 down to 99 for an Adventurer.
  */
 export function regenTarget(regeneration: number): number {
-  const speed = 1;
-  const inc = 90 - regeneration;
-  return 60 - speed + inc;
+  return Math.max(1, content().balance.regen.periodFrames - regeneration);
 }
 
 /**
  * One frame of the regen timer. The counter starts at 1 at login and is raised first; when it
  * reaches the target it acts and starts again from 1, so at the usual target of 149 regen fires every 148 frames.
- * Hunger above 500 regenerates 1 HP and SP, below 50 starves 1 of each (floor 1), and in between the
+ * Hunger above the balance row `hunger.regenAbove` regenerates `regen.regenerate` HP and SP, below
+ * `hunger.starveBelow` starves `regen.starve` of each (floor 1) (1.6: above 500 regenerates 1, below 50
+ * starves 1), and in between the
  * period passes with no change (a bug fixed: 1.6 reset the counter only on a regen or a starve and
  * tested for exact equality, so it stalled until the next login). Mutates `v` and returns the new
  * counter.
@@ -90,16 +91,17 @@ export function regenTick(counter: number, target: number, hunger: number, v: Vi
   if (c < target) {
     return c;
   }
-  if (hunger > 500) {
-    v.hp = Math.min(v.hp + 1, v.hpMax);
-    v.sp = Math.min(v.sp + 1, v.spMax);
+  const { regen, hunger: h } = content().balance;
+  if (hunger > h.regenAbove) {
+    v.hp = Math.min(v.hp + regen.regenerate, v.hpMax);
+    v.sp = Math.min(v.sp + regen.regenerate, v.spMax);
   }
-  if (hunger < 50) {
+  if (hunger < h.starveBelow) {
     if (v.hp > 1) {
-      v.hp -= 1;
+      v.hp = Math.max(1, v.hp - regen.starve);
     }
     if (v.sp > 1) {
-      v.sp -= 1;
+      v.sp = Math.max(1, v.sp - regen.starve);
     }
   }
   return 1;
@@ -128,23 +130,26 @@ export function hungerTick(
     return { hunger, warning: null };
   }
   let h = hunger;
-  if (rng.random(3) === 1 && h > 0) {
+  if (rng.random(content().balance.hunger.loseOneIn) === 1 && h > 0) {
     h -= 1;
   }
   const warning = h !== hunger && h < 2000 ? (HUNGER_WARNINGS[h] ?? null) : null;
   return { hunger: h, warning };
 }
 
-/** Hunger after a death. */
-export const DEATH_HUNGER = 40000;
+/** Hunger after a death: the balance row `hunger.afterDeath` (1.6: 40,000). */
+export function deathHunger(): number {
+  return content().balance.hunger.afterDeath;
+}
 
 // ---- death -----------------------------------------------------------------------------
 
-/** HP and SP after a death. */
+/** HP and SP after a death: the balance row `death` (1.6: 1 and 1), at most the full HP and SP. */
 export function deathVitals(v: Vitals): void {
-  v.hp = 1;
+  const d = content().balance.death;
+  v.hp = Math.max(1, Math.min(d.hp, v.hpMax));
   if (v.spMax > 0) {
-    v.sp = 1;
+    v.sp = Math.min(d.sp, v.spMax);
   }
 }
 
@@ -159,5 +164,7 @@ export function deathText(name: string, killer: string | null): string {
  */
 export const DEATH_LOCK_FRAMES = 27;
 
-/** The death pause, 90 frames: no monster rolls against you for 90 frames. */
-export const DEATH_PAUSE_FRAMES = 90;
+/** The death pause: no monster rolls against you for the balance row `death.pauseFrames` (1.6: 90). */
+export function deathPauseFrames(): number {
+  return content().balance.death.pauseFrames;
+}

@@ -2265,9 +2265,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** At or above the hunger limit, using food or a potion says only "You're stuffed!" and the item stays in your bag. The bite that fills you up says just its eat line.
 - **1.6:** Eating while stuffed gave nothing and still used the item up. "You're stuffed!" also followed the bite that crossed the limit.
-- **SSO:** Hunger at or above 35000 refuses the use before any effect; "You're stuffed!" is that refusal's line. A new character starts stuffed, so they eat once their hunger has dropped.
+- **SSO:** Hunger at or above 35000 (Classic's balance row `hunger.stuffed`) refuses the use before any effect; "You're stuffed!" is that refusal's line. A new character starts stuffed, so they eat once their hunger has dropped.
 - **Why:** Losing food for nothing was a trap, and the line on the filling bite read as a refusal.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`, `STUFFED`)
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`, `stuffedHunger`)
 - **Pinned by:** `bug fixed: a stuffed player is refused and keeps the food`; `bug fixed: the bite that fills you only says the eat line; "You're stuffed!" is the refusal` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: a stuffed player is refused and keeps the food` (packages/server/tests/inventory.test.ts)
 
 #### Purple Potion says its line once and waits for hunger

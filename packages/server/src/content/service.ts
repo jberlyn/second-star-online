@@ -146,6 +146,7 @@ import {
 import {
   type BalanceLayers,
   balanceFingerprint,
+  balanceProblems,
   balanceRowDef,
   balanceView,
   engineValue,
@@ -2238,7 +2239,11 @@ export class ContentService {
       return r.ok ? { ok: true, value: `${def.label} is back to what plays now.` } : r;
     }
     const r = this.draftSet(actor, ref, "set", change.data);
-    return r.ok ? { ok: true, value: `${def.label} is in the draft.` } : r;
+    if (r.ok) {
+      return { ok: true, value: `${def.label} is in the draft.` };
+    }
+    // A refusal names the page's fields, not the dataset's paths and keys.
+    return r.problems ? fail(`${def.label} was not saved.`, balanceProblems(def, r.problems)) : r;
   }
 
   /** The sound panels' view, from the draft. */

@@ -388,11 +388,26 @@ These files have no worked example here; their schemas in [packages/data/schema/
 
 | Part | Row | Fields (Classic) |
 |---|---|---|
+| `spellEffects` | One per effect, keyed by `effect` (`Firebolt`, `Fireball`, `Bolt`, `Meteor`, `Splash`, `Crush`, `Wind Wave`, `Arrows`, `Minor Heal`, `Major Heal`) | `monster`: on a monster (a heal for the heals; an arrow's has the monster's Defense taken off); `monsterHealed`: on a species whose `healedBy` names the effect (optional, harmful effects other than Arrows; absent heals by `monster`); `monsterUndead`: a heal's damage to an undead monster (the heals only, required); `player`: on a player (a heal for the heals; all but Firebolt and Splash then pass the player's spell defense). Firebolt is `{ "monster": { "flat": 6, "power": 1, "randomN": 3 }, "player": { "flat": 8, "power": 1, "randomN": 3 } }` |
+| `spellHits` | One row | `dispel`: Dispel Illusions on a dispellable monster (2000); `resistedRandomN`: a resisted effect deals `random(n)` instead (3); `arrowsFloorRandomN`: an arrow under 1 after Defense deals `random(n)` (2) |
+| `buffs` | One row | `magicShieldPerPower` (70), `stoneSkinPerPower` (30), `fireSwordPerPower` (40), `holdPerPower` (8): frames for each point of power; `stoneSkinBonus`: the defense bonus (1); `argonFrames`: Argon's Fist and a Purple Potion (400); `diminishHunger`: `{ "add": 3000, "below": 35000 }`; `morph`: Morph's roll, an amount (`3 + P + random(5)`). A buff whose length works out to 0 frames does nothing at all (no bonus and no message), and Diminish Hunger adding 0 says nothing |
+| `castPower` | One row | `staffFireball` (`{ "flat": 1, "randomN": 3 }`, before the Fire Staff skill's steps) and `swordFireball` (`{ "flat": 4, "randomN": 3 }`): the free fireballs' power |
+| `regen` | One row | `periodFrames`: what the regeneration counter counts up to, less a faction's regeneration perk, at least 1 (149): the counter starts at 1 and starts again once it acts, so regeneration acts every `periodFrames` − 1 frames (148, 1.6's cadence); `regenerate` and `starve`: HP and SP each gains or loses a tick (1, 1; starving stops at 1) |
+| `hunger` | One row | `loseOneIn`: hunger falls by 1 each frame with a chance of 1 in this (3); `regenAbove` (500) and `starveBelow` (50); `stuffed`: food and potions refused from here (35000); `afterDeath` (40000). `starveBelow` < `regenAbove` ≤ `stuffed`, else refused |
+| `death` | One row | `hp` (1, at least 1) and `sp` (1) after a death, each at most the player's full; `pauseFrames`: no monster rolls against you for this long (90) |
 | `hulls` | One per vehicle, keyed by `vehicle` (`Boat`, `Airship`, `Battleship`) | `hull`: the full hull (60, 80, 150; 1 to 100,000) |
 | `vehicles` | One row | `hullHit`: hull one arrow or harmful spell takes off a rider (2); `repairPerMinute`: hull a parked vehicle mends each whole minute (1) |
 | `cannon` | One row | `damage`: `{ "flat": 13, "randomN": 3 }`, the flat amount plus `random(randomN)` (1 to n; 0 rolls nothing); `reloadFrames`: frames between shots, 20 a second (100) |
 
-An amount is always structured parts, never a formula string: `flat + random(randomN)` here, the same form [attpower.json](#items-itemsjson-item-rulesjson-attpowerjson) uses. Later stages of #19 add spell amounts, regeneration and hunger, death, timings and combat rolls to this file.
+An amount is always structured parts, never a formula string: `flat + power × P + random(randomN)`, where P is the caster's spell power (`power` 0 to 100; with no `power` field, as in `castPower` and `cannon`, just `flat + random(randomN)`), the same form [attpower.json](#items-itemsjson-item-rulesjson-attpowerjson) uses. A roll draws only when `randomN` is above 0. A later stage of #19 adds timings and combat rolls to this file.
+
+A spell row in `spells.json` may set its own `amount`, with any of `monster`, `monsterHealed`, `monsterUndead` and `player` in the same form: each part it sets replaces the effect's for hits from that spell's runs only. So a new spell that runs Firebolt's effect, such as [Ice Shard](#example-ice-shard-reusing-firebolt) below, can hit harder than Firebolt without changing it, by adding to its row (a fragment, not a whole row):
+
+```json
+"amount": { "monster": { "flat": 12, "power": 1, "randomN": 3 } }
+```
+
+Only a spell cast from a spellbook takes its own amounts: a free fireball, a monster's cast or a map hazard that runs the same FX takes the effect's.
 
 ### What a world may leave out
 
@@ -513,7 +528,7 @@ The faction system is the engine's: joining by turning a rival's head in to a le
 | `defence` | Taken off damage taken, from players and monsters | Warrior: 1 from tier 1, 2 from 5, 3 at 9; Adventurer: 1 from tier 1, 2 from 7 |
 | `skillCap` | The kill skill gain's cap | Warrior 55 … 90, then 100; Adventurer 55 … 75, then 80 |
 | `mageCap` | The Mage skill cap: Magery, the spell schools, Staff Fighting and Unholy Combat | Mage: 50, 60, 70, 90, then 100 |
-| `regeneration` | Frames off the HP and SP regeneration period (149) | Adventurer: 5 × (tier + 1) |
+| `regeneration` | Frames off the HP and SP regeneration period ([`balance.json`](#balance-balancejson) `regen.periodFrames`; Classic's 149) | Adventurer: 5 × (tier + 1) |
 | `pvpParry`, `pvpBlock` | Taken off the parry and block rolls against a player's swing | Adventurer: 4 and 10 |
 | `monsterDodge` | Taken off the parry and block rolls against a monster | Adventurer: 10 |
 
@@ -636,7 +651,7 @@ Each top-level field is one row on the Content page:
 Notes on the single bindings:
 
 - **Changing the currency strands old piles.** Piles already on the ground, and NPC drop lines, treasure rows and Assassin prizes written as `<n> Gold`, keep the old name, which is then an ordinary item name that does not exist. The publish check names every content line that breaks; fix those in the same draft. The three pile pictures (`SmallGold`, `MediumGold`, `LargeGold`) are the engine's, whatever the currency is called.
-- **Morph's table** is a list of `{ "above": n, "body": b }` rows. The spell rolls `3 + power + random(5)`, and the last row whose `above` the roll is over picks the body.
+- **Morph's table** is a list of `{ "above": n, "body": b }` rows. The spell rolls the [`balance.json`](#balance-balancejson) `buffs.morph` amount (Classic's `3 + power + random(5)`), and the last row whose `above` the roll is over picks the body.
 - **A body is what peers see.** Each rider needs its own body, and no spell body may be a rider's, or clients would draw a player as riding. The publish check refuses both, and a smoke body equal to the tree body.
 - **Items named here are references.** Removing Apple, Knife, Cannonball or Gold on the Content page lists these rows among its uses: a start bag line or the cannon's ammo can be dropped by the cleanup, and the currency can only be replaced.
 
@@ -646,7 +661,7 @@ Notes on the single bindings:
 |---|---|---|
 | `parry`, `block` | the dodge rolls against player and monster hits, and their gains | no parrying or blocking: no roll is made |
 | `archery`, `martialArts` | the gains on an arrow shot (`martialArts` with a crossbow) | that gain never rolls (Smoke Bomb's Martial Arts is its spell school, below) |
-| `staffFighting` | the power of the fireballs a staff swings | the plain `1 + random(3)` |
+| `staffFighting` | the power of the fireballs a staff swings | just [`balance.json`](#balance-balancejson) `castPower.staffFireball` (Classic's `1 + random(3)`) |
 | `magery` | the tiers of every cast's base power, and the Magery gain | no Magery tiers; no gain |
 | `fishing` | the catch bands, the gain and the cast itself | no fishing: the pole is only a weapon |
 | `blacksmithing`, `cooking`, `alchemy`, `carpentry` | the four crafts' timers, results and gains | that craft's button does nothing |

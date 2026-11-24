@@ -177,7 +177,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       if (spared(fx)) {
         continue;
       }
-      damage(fx, playerSpellAmount("Arrows", P, target(), ctx.rng));
+      damage(fx, playerSpellAmount("Arrows", P, target(), ctx.rng, own(fx)));
     }
     if (has("Whirlwind")) {
       if (spared(fx) || invulnerable) {
@@ -188,9 +188,12 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
         p.vitalsDirty = true;
       }
     }
-    if (has("Firesword-3")) {
+    // A buff whose length works out to 0 frames (a balance row of 0, or no power) does nothing at
+    // all: no bonus that no counter would ever take away, and no message (an SSO safeguard).
+    const fireSwordLasts = P * content().balance.buffs.fireSwordPerPower;
+    if (has("Firesword-3") && fireSwordLasts > 0) {
       if (hasBehaviour(p.char.equip.weapon, "sword")) {
-        p.spell.fireSword = P * 40;
+        p.spell.fireSword = fireSwordLasts;
         tell(res.out, p, EFFECT_TEXT.fireswordOn);
       } else {
         tell(res.out, p, EFFECT_TEXT.fireswordNoSword);
@@ -199,17 +202,20 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     // A buff cast again while it runs restarts its time, the longer of the two, and never adds
     // (a bug fixed: 1.6 added Magic Shield's, Stone Skin's and Argon's Fist's counters, and Stone
     // Skin's bonus, on each cast).
-    if (has("Magic Shield-3")) {
-      p.spell.magicDef = Math.max(p.spell.magicDef, P * 70);
+    const shieldLasts = P * content().balance.buffs.magicShieldPerPower;
+    if (has("Magic Shield-3") && shieldLasts > 0) {
+      p.spell.magicDef = Math.max(p.spell.magicDef, shieldLasts);
       tell(res.out, p, EFFECT_TEXT.magicShield);
     }
-    if (has("Diminish Hunger-3") && p.char.hunger < 35000) {
-      p.char.hunger += 3000;
+    const diminish = content().balance.buffs.diminishHunger;
+    if (has("Diminish Hunger-3") && diminish.add > 0 && p.char.hunger < diminish.below) {
+      p.char.hunger += diminish.add;
       tell(res.out, p, EFFECT_TEXT.hunger);
     }
-    if (has("Stone Skin-9")) {
-      p.defenseBonus = STONE_SKIN_BONUS;
-      p.spell.defenseCounter = Math.max(p.spell.defenseCounter, P * 30);
+    const skinLasts = P * content().balance.buffs.stoneSkinPerPower;
+    if (has("Stone Skin-9") && skinLasts > 0) {
+      p.defenseBonus = content().balance.buffs.stoneSkinBonus;
+      p.spell.defenseCounter = Math.max(p.spell.defenseCounter, skinLasts);
       tell(res.out, p, EFFECT_TEXT.stoneSkin);
     }
     if (has("Dispel Illusions-3")) {
@@ -218,8 +224,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
         setBody(p, null, res);
       }
     }
-    if (has("Argon's Fist-3")) {
-      argonsFist(p);
+    if (has("Argon's Fist-3") && argonsFist(p)) {
       tell(res.out, p, EFFECT_TEXT.argon);
     }
     if (has("Inxition-3")) {
@@ -246,10 +251,10 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       }
     }
     if (has("major heal-3")) {
-      heal(playerSpellAmount("major heal", P, target(), ctx.rng));
+      heal(playerSpellAmount("major heal", P, target(), ctx.rng, own(fx)));
     }
     if (has("minor heal-3")) {
-      heal(playerSpellAmount("minor heal", P, target(), ctx.rng));
+      heal(playerSpellAmount("minor heal", P, target(), ctx.rng, own(fx)));
     }
     // Morph, Nature Shift and Smoke Bomb do nothing in a vehicle or as a boss (not built); Hold
     // the same, its vehicle test first.
@@ -286,8 +291,11 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       if (p.vehicle || spared(fx)) {
         continue;
       }
-      p.spell.hold = P * 8;
-      tell(res.out, p, EFFECT_TEXT.hold);
+      const holdLasts = P * content().balance.buffs.holdPerPower;
+      if (holdLasts > 0) {
+        p.spell.hold = holdLasts;
+        tell(res.out, p, EFFECT_TEXT.hold);
+      }
     }
     // The harmful branches. Bolt's test leaves out Firebolt.
     const hits: [boolean, PlayerSpellBranch][] = [
@@ -301,7 +309,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     ];
     for (const [hit, branch] of hits) {
       if (hit && !spared(fx)) {
-        damage(fx, playerSpellAmount(branch, P, target(), ctx.rng));
+        damage(fx, playerSpellAmount(branch, P, target(), ctx.rng, own(fx)));
       }
     }
   }
@@ -329,24 +337,34 @@ function trainHitter(room: Room, fx: SpellFx, damage: number, ctx: CollideCtx, r
   }
 }
 
-/** Stone Skin's defense bonus. */
-export const STONE_SKIN_BONUS = 1;
-
 /**
  * Argon's Fist, from the spell or a Purple Potion: the attack bonus, and its counter restarted at
- * 400 frames unless more is left.
+ * the balance row `buffs.argonFrames` (1.6: 400 frames) unless more is left. False, and nothing
+ * given, when that row is 0.
  */
-export function argonsFist(p: Player): void {
+export function argonsFist(p: Player): boolean {
+  const frames = content().balance.buffs.argonFrames;
+  // At 0 frames there is nothing to count down, so no bonus is given (it would never end).
+  if (frames <= 0) {
+    return false;
+  }
   p.attackBonus = 1;
-  p.timers.attackCounter = Math.max(p.timers.attackCounter, ARGON_FRAMES);
+  p.timers.attackCounter = Math.max(p.timers.attackCounter, frames);
+  return true;
 }
-
-/** Argon's Fist's counter. */
-export const ARGON_FRAMES = 400;
 
 /** The spell an FX run was cast as: the cast's own spell, else the spell whose run it is. */
 function castSpellOf(fx: { castSpell?: string | null; name: string }) {
   return fx.castSpell ? spellByName(fx.castSpell) : spellOfFx(fx.name);
+}
+
+/**
+ * The cast spell's own amounts (its `amount`), which replace its effect's for its hits. Only a
+ * spell cast from a spellbook says which spell it is: a free fireball, a monster's cast or a map
+ * hazard reuses a spell's FX without being that spell, so it takes the effect's amounts.
+ */
+function own(fx: { castSpell?: string | null; name: string }) {
+  return fx.castSpell ? spellByName(fx.castSpell)?.amount : undefined;
 }
 
 /**
@@ -403,7 +421,7 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
           tell(res.out, o, `The ${m.name} has ${m.hp} hit points.`);
         }
       }
-      const hit = spellHitOnMonster(mem, monsterFlags(m.name), defenseOf(m.name), P, r);
+      const hit = spellHitOnMonster(mem, monsterFlags(m.name), defenseOf(m.name), P, r, own(fx));
       if (!hit) {
         continue;
       }

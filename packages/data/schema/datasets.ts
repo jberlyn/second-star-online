@@ -91,14 +91,21 @@ export {
   OPERATOR_BODY_MIN,
 } from "./art.ts";
 export {
+  type Amount,
+  amountSchema,
+  BALANCE_HEAL_EFFECTS,
   BALANCE_LIMITS,
+  BALANCE_SPELL_EFFECTS,
   BALANCE_VEHICLES,
   type BalanceData,
+  type BalanceSpellEffect,
   type BalanceVehicle,
   balanceDataSchema,
   type CannonBalance,
   type FlatAmount,
   type HullRow,
+  type SpellAmountOverride,
+  type SpellEffectRow,
   type VehicleBalance,
 } from "./balance.ts";
 export { comparePackVersions, PACK_FORMAT, type PackManifest, packManifestSchema } from "./pack.ts";

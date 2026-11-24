@@ -694,12 +694,21 @@ export interface BalanceFieldView {
   /** The value's path inside the row (`["damage", "flat"]`). */
   path: string[];
   label: string;
-  /** How the page shows it: a count, frames (also shown in seconds), or a `random(n)` roll. */
-  unit: "count" | "frames" | "random";
+  /**
+   * How the page shows it: a count, frames (also shown in seconds), a `random(n)` roll, a multiple
+   * of the caster's power, a chance of 1 in N, or a counter's target (a counter that starts at 1
+   * and acts on reaching it, so every target − 1 frames).
+   */
+  unit: "count" | "frames" | "random" | "power" | "oneIn" | "counter";
   min: number;
   max: number;
   /** A line under the field. */
   help?: string;
+  /**
+   * The value may be absent: an empty field leaves it out. Fields sharing the path's parent are
+   * filled or left empty together (an amount's three parts).
+   */
+  optional?: boolean;
 }
 
 /** One row of the `balance` dataset on the Balance page (issue #19). */
@@ -733,6 +742,11 @@ export interface BalanceGroupView {
   /** A line under the title. */
   help: string;
   rows: BalanceRowView[];
+  /**
+   * Values of the same kind that live in another dataset (house rest, in `houses`): what plays now,
+   * and the row the Content page opens to edit them.
+   */
+  elsewhere?: { label: string; row: ContentRowRef; now: string }[];
 }
 
 /** The Balance page's view. */

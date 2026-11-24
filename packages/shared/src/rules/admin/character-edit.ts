@@ -194,14 +194,33 @@ export const EDIT_LIMITS = {
   /** The highest skill cap any faction reaches (skillgain.ts). */
   skillMax: 100,
   skillMin: 1,
-  /** A new character starts with the most hunger the game gives (50000); a death sets 40000. */
-  get hungerMax(): number {
-    return Math.max(40_000, content().classes.creation.otherFields.hunger);
-  },
   intMax: 2_000_000_000,
   /** The personal vault's lines (systems/economy/vault.ts `VAULT_CAPACITY`). */
   vaultMax: 15,
 } as const;
+
+/**
+ * The hunger a character can be given: from 0 to the most the game itself gives, which is the
+ * most of a new character's hunger (Classic 50000), the hunger after a death (the balance row
+ * `hunger.afterDeath`, Classic 40000) and the stuffed level food stops at (`hunger.stuffed`).
+ */
+export interface HungerLimits {
+  max: number;
+  /** A new character's hunger. */
+  start: number;
+  /** The hunger a death sets. */
+  afterDeath: number;
+}
+
+/**
+ * The live hunger limits. Only the server's store has the world's balance (a client's holds the
+ * engine defaults), so the server sends them with a character (`CharacterHub.hunger`).
+ */
+export function hungerLimits(): HungerLimits {
+  const h = content().balance.hunger;
+  const start = content().classes.creation.otherFields.hunger;
+  return { max: Math.max(start, h.afterDeath, h.stuffed), start, afterDeath: h.afterDeath };
+}
 
 /** Experience needed for the next level at `level`: 30 at level 1, 400 at 2, then 400 + 2·level. */
 export function expNeededAt(level: number): number {
@@ -382,7 +401,7 @@ const pointError = (label: string, p: unknown): string | null => {
 export function editErrors(
   before: EditableCharacter,
   after: EditableCharacter,
-  opts: { restore?: boolean } = {},
+  opts: { restore?: boolean; hunger?: HungerLimits } = {},
 ): string[] {
   const errors: string[] = [];
   // An undo puts back values the character really held, so only the checks that tie fields
@@ -432,8 +451,9 @@ export function editErrors(
       }
     }
   }
-  if (changed("hunger") && !isInt(after.hunger, 0, L.hungerMax)) {
-    errors.push(`Hunger: a whole number from 0 to ${L.hungerMax}.`);
+  const hungerMax = (opts.hunger ?? hungerLimits()).max;
+  if (changed("hunger") && !isInt(after.hunger, 0, hungerMax)) {
+    errors.push(`Hunger: a whole number from 0 to ${hungerMax}.`);
   }
   if (changed("faction") && after.faction !== null && factionByKey(after.faction) === null) {
     errors.push(

@@ -1,5 +1,6 @@
 /**
- * The Balance page on the server (issue #19, stage 1): the `balance` dataset's rows with their
+ * The Balance page on the server (issue #19, stage 1; spell amounts, buffs, regeneration, hunger
+ * and death in balance-spells.test.ts): the `balance` dataset's rows with their
  * engine default, pack value and current value; changes go into the shared draft, refused when
  * the row changed since the page showed it or a value is outside its limits; a publish takes
  * effect at once with no restart; reverting brings the pack's value (or the engine's default)
@@ -42,6 +43,13 @@ describe("the balance dataset and its defaults", () => {
   test("Classic's balance.json is exactly the engine's defaults (1.6's values and SSO's for its additions)", () => {
     expect(fullBalance(classicData.balance)).toEqual(fullBalance(undefined));
     expect(classicData.balance).toEqual({
+      spellEffects: BALANCE_DEFAULTS.spellEffects,
+      spellHits: BALANCE_DEFAULTS.spellHits,
+      buffs: BALANCE_DEFAULTS.buffs,
+      castPower: BALANCE_DEFAULTS.castPower,
+      regen: BALANCE_DEFAULTS.regen,
+      hunger: BALANCE_DEFAULTS.hunger,
+      death: BALANCE_DEFAULTS.death,
       vehicles: BALANCE_DEFAULTS.vehicles,
       cannon: BALANCE_DEFAULTS.cannon,
       hulls: BALANCE_DEFAULTS.hulls,
@@ -241,8 +249,8 @@ describe("the Balance page on a running server", () => {
     const server = start();
     try {
       const view = server.content.balanceView();
-      expect(view.groups.map((g) => g.id)).toEqual(["vehicles"]);
-      expect(view.groups[0]?.rows.map((r) => `${r.part}/${r.key ?? ""}`)).toEqual([
+      expect(view.groups.map((g) => g.id)).toEqual(["spells", "buffs", "vitals", "vehicles"]);
+      expect(view.groups[3]?.rows.map((r) => `${r.part}/${r.key ?? ""}`)).toEqual([
         "hulls/Boat",
         "hulls/Airship",
         "hulls/Battleship",
@@ -342,8 +350,9 @@ describe("the Balance page on a running server", () => {
         expect: row(server, "vehicles").fingerprint,
       });
       expect(tooBig.ok).toBe(false);
+      // Named by the page's field, not the dataset's path.
       expect(tooBig.ok ? [] : (tooBig.problems ?? []).map((p) => p.where)).toEqual([
-        "balance/vehicles/repairPerMinute",
+        "Hull mended each minute parked",
       ]);
       // A row the page does not edit is refused, whatever it is.
       expect(

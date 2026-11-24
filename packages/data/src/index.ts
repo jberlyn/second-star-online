@@ -18,11 +18,15 @@ export type {
 } from "../schema/art.ts";
 export type { AttPowerData, AttPowerTier } from "../schema/attpower.ts";
 export type {
+  Amount,
   BalanceData,
+  BalanceSpellEffect,
   BalanceVehicle,
   CannonBalance,
   FlatAmount,
   HullRow,
+  SpellAmountOverride,
+  SpellEffectRow,
   VehicleBalance,
 } from "../schema/balance.ts";
 export type { BindingsData, SkillBinding } from "../schema/bindings.ts";

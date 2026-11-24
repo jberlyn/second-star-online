@@ -11,6 +11,7 @@ import {
   CAST_TEXT,
   cannonballName,
   castEffect,
+  content,
   crystalLine,
   crystalsFor,
   directional,
@@ -29,6 +30,7 @@ import {
   MAP_WIDTH,
   type Rng,
   rectsIntersect,
+  rollFlat,
   skillValue,
   spCost,
   spellPower,
@@ -394,8 +396,9 @@ export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
   const free = fxRun(fireballForm(p.facing))
     ? freeFireballs(weapon, p.spell.fireSword > 0)
     : { staff: false, sword: false };
+  const castPower = content().balance.castPower;
   if (free.staff) {
-    let power = 1 + ctx.rng.random(3);
+    let power = rollFlat(castPower.staffFireball, ctx.rng);
     if (staff > 20) {
       power += 1;
     }
@@ -414,7 +417,7 @@ export function swingFireballs(room: Room, p: Player, ctx: CastCtx): void {
     }
   }
   if (free.sword) {
-    send(4 + ctx.rng.random(3));
+    send(rollFlat(castPower.swordFireball, ctx.rng));
   }
 }
 

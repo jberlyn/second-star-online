@@ -782,6 +782,7 @@
     "argonsFist": 387,
     "fireSword": 107,
     "diminishHunger": [4000, 37999, 35000],
+    "hold": 5,
     "morph": {
       "counter": 1287,
       "body": 32

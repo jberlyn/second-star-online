@@ -27,6 +27,7 @@ import {
   HUB_HISTORY,
   type HubIpBan,
   type HubPresence,
+  hungerLimits,
   type IpBanRecord,
   isActive,
   type ModerationLogRow,
@@ -313,6 +314,7 @@ export function characterHub(
     jail: live(deps.jail(c.characterId)),
     mute: live(deps.mute(c.accountId)),
     edits: deps.edits(c.characterId),
+    hunger: hungerLimits(),
     history: deps
       .history(c.accountId, HUB_HISTORY)
       .map((r) => (seesAddresses ? r : { ...r, address: null })),

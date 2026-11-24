@@ -732,7 +732,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       hub = msg.hub;
       openName = msg.hub.name;
       hubStatus.textContent = "";
-      editor.load(msg.hub.name, msg.hub.sheet);
+      editor.load(msg.hub.name, msg.hub.sheet, msg.hub.hunger);
       editLog.show(msg.hub.name, msg.hub.edits);
       draw();
     },

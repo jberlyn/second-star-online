@@ -6,7 +6,7 @@
 import { content } from "../../content/store.ts";
 import type { SkillValues } from "../core/fighter.ts";
 import { factionByKey } from "../social/factions.ts";
-import type { CharacterEditRow } from "./character-edit.ts";
+import type { CharacterEditRow, HungerLimits } from "./character-edit.ts";
 import type { ChatLogRow } from "./chatlog.ts";
 import {
   type AddressSeen,
@@ -122,6 +122,8 @@ export interface CharacterHub {
   bypassesIpBans?: boolean;
   /** The character editor's log for them, newest first (the newest `HUB_EDITS`). */
   edits: CharacterEditRow[];
+  /** The world's hunger limits for the editor (a client's store has no balance rows). */
+  hunger: HungerLimits;
 }
 
 /** An IP ban in force on one of the character's addresses. */

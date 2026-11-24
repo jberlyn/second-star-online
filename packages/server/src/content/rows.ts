@@ -31,7 +31,7 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
     tiles: "code",
     sounds: "name",
   },
-  balance: { hulls: "vehicle" },
+  balance: { spellEffects: "effect", hulls: "vehicle" },
 };
 
 /**

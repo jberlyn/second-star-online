@@ -63,6 +63,7 @@ const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
     mute: null,
     history: [],
     edits: [],
+    hunger: { max: 50_000, start: 50_000, afterDeath: 40_000 },
     ...over,
   };
 };
@@ -415,6 +416,25 @@ describe("the editor", () => {
     const editor = page(["characterView", "characterEditor"]);
     editor.showHub();
     expect(editor.$("hub-tab-edit").hidden).toBe(false);
+  });
+
+  test("hunger is checked against the world's limits sent with the character", async () => {
+    // A world whose deaths set 90000 hunger: the client's own store has only the engine defaults.
+    const { p, $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub(hub({ hunger: { max: 90_000, start: 50_000, afterDeath: 90_000 } }));
+    $("hub-tab-edit").click();
+    expect(p.el.textContent).toContain(
+      "0 to 90000; a new character starts at 50000, a death sets 90000.",
+    );
+    $<HTMLInputElement>("hub-edit-hunger").value = "60000";
+    $<HTMLInputElement>("hub-edit-reason").value = "fed";
+    $("hub-edit-save").click();
+    confirm();
+    await flush();
+    expect(calls.edit.at(-1)?.set.hunger).toBe(60_000);
+    $<HTMLInputElement>("hub-edit-hunger").value = "90001";
+    $("hub-edit-save").click();
+    expect(p.el.textContent).toContain("Hunger: a whole number from 0 to 90000.");
   });
 
   test("Save sends only what changed, with what the hub showed, after asking; then reloads", async () => {

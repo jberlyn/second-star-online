@@ -6,8 +6,12 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
+  BALANCE_DEFAULTS,
+  buildContentStore,
   type CharacterHub,
+  type ContentData,
   changeText,
   deriveEdit,
   diffEdit,
@@ -16,7 +20,9 @@ import {
   type EditChange,
   editableOf,
   editErrors,
+  hungerLimits,
   inGameSchema,
+  installContent,
   type ServerMsg,
   staleCheckFields,
   undoConflicts,
@@ -79,6 +85,24 @@ describe("the editor's rules", () => {
     expect(deriveEdit(base(), { level: 1 }).expNeeded).toBe(30);
     // Derived values sent by a client are ignored.
     expect(deriveEdit(base(), { hpMax: 999 } as never).hpMax).toBe(24);
+  });
+
+  test("the hunger limit follows the world's hunger rows (#19)", () => {
+    // Classic: 50000 (a new character's), with a death at 40000.
+    expect(hungerLimits()).toEqual({ max: 50_000, start: 50_000, afterDeath: 40_000 });
+    const d = structuredClone(classicData) as ContentData;
+    d.balance.hunger = { ...BALANCE_DEFAULTS.hunger, afterDeath: 90_000 };
+    installContent(buildContentStore(d));
+    try {
+      expect(hungerLimits()).toEqual({ max: 90_000, start: 50_000, afterDeath: 90_000 });
+      const b = { ...base(), hunger: 80_000 };
+      expect(editErrors(b, deriveEdit(b, { hunger: 60_000 }))).toEqual([]);
+      expect(editErrors(b, deriveEdit(b, { hunger: 90_001 }))).toEqual([
+        "Hunger: a whole number from 0 to 90000.",
+      ]);
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
   });
 
   test("values outside the game's limits are refused", () => {
@@ -365,6 +389,8 @@ describe("editing a character from the hub", () => {
     );
     // The log row: who, why, and every field before and after.
     const hub = hubOf(game, god.characterId);
+    // The world's hunger limits come with the character, for the client's own check.
+    expect(hub.hunger).toEqual({ max: 50_000, start: 50_000, afterDeath: 40_000 });
     expect(hub.edits).toHaveLength(1);
     expect(hub.edits[0]).toMatchObject({
       actorName: "God",

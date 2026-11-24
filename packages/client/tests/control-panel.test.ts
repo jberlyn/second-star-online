@@ -183,6 +183,17 @@ describe("the Control Panel shell", () => {
     changes.n = 0;
     controlPanel.go("logs");
     expect(controlPanel.page).toBe("logs");
+    // `then` runs on the page once it shows (the Balance page opening a Content row), and not when
+    // the operator keeps editing.
+    const ran: string[] = [];
+    controlPanel.go("logs", () => ran.push(`on ${controlPanel.page}`));
+    controlPanel.go("settings", () => ran.push(`on ${controlPanel.page}`));
+    expect(ran).toEqual(["on logs", "on settings"]);
+    changes.n = 1;
+    controlPanel.go("logs", () => ran.push("kept"));
+    click(q('[data-action="control-panel-confirm-cancel"]'));
+    await Promise.resolve();
+    expect(ran).toEqual(["on logs", "on settings"]);
   });
 
   test("losing a page's permission drops its changes; while closed nothing is asked for", () => {

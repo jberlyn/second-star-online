@@ -13,6 +13,7 @@
 import { z } from "zod";
 
 import { tierFields } from "./attpower.ts";
+import { spellAmountOverrideSchema } from "./balance.ts";
 import { patternRow } from "./common.ts";
 
 const int = z.number().int();
@@ -110,6 +111,11 @@ export const spellSchema = z.strictObject({
    * effects), 1 to 3600. Absent = 65, 1.6's 1,300 frames.
    */
   lasts: int.min(1).max(3600).optional(),
+  /**
+   * This spell's own amounts (issue #19): each part set replaces the Balance page's amount for the
+   * effect its runs hit as, for hits from this spell only. Absent = the effect's amounts.
+   */
+  amount: spellAmountOverrideSchema.optional(),
   /** Create Food's choices, one taken at random. Read only by the Create Food effect. */
   creates: z.array(spellCreatesSchema).min(1).optional(),
   fx: z.array(spellFxSchema),

@@ -705,6 +705,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     view: (seq) => send({ t: "contentBalance", seq }),
     set: (seq, change) => send({ t: "contentBalanceSet", seq, ...change }),
     openContent: () => controlPanel.go("content"),
+    openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
   });
   const controlPanel = createControlPanel({
     pages: [
