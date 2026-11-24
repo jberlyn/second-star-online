@@ -56,6 +56,8 @@ import {
 import { attackSchema } from "./combat.ts";
 import {
   type ContentServerMsg,
+  contentBalanceSchema,
+  contentBalanceSetSchema,
   contentBodyArtSchema,
   contentBodySchema,
   contentBodySheetSchema,
@@ -239,6 +241,8 @@ export const inGameSchema = z.discriminatedUnion("t", [
   contentTileSchema,
   contentSoundArtSchema,
   contentSoundSchema,
+  contentBalanceSchema,
+  contentBalanceSetSchema,
   characterSearchSchema,
   characterOpenSchema,
   characterModerateSchema,

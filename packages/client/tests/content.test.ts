@@ -91,6 +91,25 @@ describe("the client's content", () => {
     expect(handled).toEqual(["death"]);
   });
 
+  test("every publish is announced once, a server-only one that keeps the hash too (issue #19)", async () => {
+    const { fetchImpl } = server({ pub2: fileWith(5, "pub2") }, "pub2");
+    const announced: string[] = [];
+    const sync = createContentSync({
+      handle: () => {},
+      fetch: fetchImpl,
+      published: () => announced.push(content().hash),
+    });
+    // A balance-only publish: the store the client has, so nothing is fetched or installed.
+    sync.receive({ t: "content", hash: classic.hash });
+    expect(announced).toEqual([classic.hash]);
+    // A publish naming a new store: announced once, after the store is in.
+    sync.receive({ t: "content", hash: "pub2" });
+    expect(announced).toHaveLength(1);
+    await settle();
+    await settle();
+    expect(announced).toEqual([classic.hash, "pub2"]);
+  });
+
   test("a login naming another store fetches it before the login is handled", async () => {
     const { fetchImpl, asked } = server({ dep: fileWith(9, "dep") }, "dep");
     const seen: { t: string; maxBid: number }[] = [];

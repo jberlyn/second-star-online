@@ -31,6 +31,7 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
     tiles: "code",
     sounds: "name",
   },
+  balance: { hulls: "vehicle" },
 };
 
 /**
@@ -245,5 +246,10 @@ export function missingDatasets(data: Partial<ContentData>): DatasetId[] {
 
 /** The packs' merge with every dataset a pack may leave out filled in empty. */
 export function withOptionalDatasets(data: Partial<ContentData>): Partial<ContentData> {
-  return data.art ? data : { ...data, art: structuredClone(EMPTY_ART) };
+  return {
+    ...data,
+    art: data.art ?? structuredClone(EMPTY_ART),
+    // A world's balance may leave out every part: the store plays the engine's defaults.
+    balance: data.balance ?? {},
+  };
 }

@@ -280,6 +280,53 @@ describe("the Content page", () => {
     ]);
   });
 
+  test("a balance row's save and discard send back the revision it was opened at (issue #19)", () => {
+    const { p, $, last } = page();
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: {
+        dataset: "balance",
+        part: "hulls",
+        keyField: "vehicle",
+        rows: [{ key: "Boat", status: "pack", draft: null }],
+      },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    p.receive({
+      t: "contentRow",
+      seq: last("row")?.seq ?? 0,
+      row: {
+        dataset: "balance",
+        part: "hulls",
+        key: "Boat",
+        keyField: "vehicle",
+        readOnly: false,
+        status: "pack",
+        pack: { vehicle: "Boat", hull: 60 },
+        published: { vehicle: "Boat", hull: 60 },
+        draft: { op: "set", data: { vehicle: "Boat", hull: 70 }, author: "Other" },
+        revision: "r".repeat(16),
+      },
+    });
+    const json = $<HTMLTextAreaElement>("content-json");
+    json.value = JSON.stringify({ vehicle: "Boat", hull: 75 });
+    $("content-save").click();
+    expect(last("draft")?.args).toEqual([
+      { dataset: "balance", part: "hulls", key: "Boat" },
+      "set",
+      { vehicle: "Boat", hull: 75 },
+      "r".repeat(16),
+    ]);
+    $("content-discard").click();
+    expect(last("discard")?.args).toEqual([
+      { dataset: "balance", part: "hulls", key: "Boat" },
+      "r".repeat(16),
+    ]);
+  });
+
   test("invalid JSON is caught before anything is sent, and a refusal shows its problems", () => {
     const { p, $, last, sent } = page();
     p.onShow();

@@ -81,8 +81,18 @@ export interface ContentPageActions {
   overview(seq: number): void;
   list(seq: number, dataset: string, part: string): void;
   row(seq: number, ref: ContentRowRef): void;
-  draft(seq: number, ref: ContentRowRef, op: "set" | "remove" | "revert", data: unknown): void;
-  discard(seq: number, ref: ContentRowRef): void;
+  /**
+   * Puts a change in the draft. `expect` is the row's revision as it was opened, for a row that
+   * carries one (a balance row): the server refuses the change once the row has changed since.
+   */
+  draft(
+    seq: number,
+    ref: ContentRowRef,
+    op: "set" | "remove" | "revert",
+    data: unknown,
+    expect?: string,
+  ): void;
+  discard(seq: number, ref: ContentRowRef, expect?: string): void;
   publish(seq: number, summary: string, draftRev: string): void;
   undo(seq: number, id: string): void;
   notice(seq: number, ref: ContentRowRef, accept: boolean): void;
@@ -479,7 +489,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
             resultSeq = next();
             resultInEditor = false;
             afterResult = refreshAll;
-            actions.discard(resultSeq, refOf(d));
+            actions.discard(resultSeq, refOf(d), d.revision);
           }),
       },
     ],
@@ -1158,7 +1168,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       resultSeq = next();
       resultInEditor = true;
       afterResult = refreshAll;
-      actions.discard(resultSeq, editing);
+      actions.discard(resultSeq, editing, editingRevision);
     }
   });
   const closeBtn = panelButton("content-close", "Close", () => closeEditor());
@@ -1195,6 +1205,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   let editingKeyField: string | null = null;
   /** The JSON as it was loaded, to tell whether it changed. */
   let loaded = "";
+  /** The open row's revision as it was loaded, for a row that carries one (a balance row). */
+  let editingRevision: string | undefined;
 
   const showError = (text: string, problems: readonly ContentProblemView[] = []) => {
     editorError.replaceChildren(text);
@@ -1228,6 +1240,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     removalBox.replaceChildren();
     editing = ref;
     editingKeyField = null;
+    editingRevision = undefined;
     hidePicker();
     editor.hidden = false;
     editorTitle.textContent = refLabel(ref);
@@ -1250,6 +1263,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     removalBox.replaceChildren();
     editing = { dataset: listing.dataset, part: listing.part, key: null };
     editingKeyField = listing.keyField;
+    editingRevision = undefined;
     hidePicker();
     editor.hidden = false;
     json.readOnly = false;
@@ -1268,6 +1282,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   function showRow(d: ContentRowDetail): void {
     editingKeyField = d.keyField;
+    editingRevision = d.revision;
     editorTitle.textContent = refLabel(d);
     const parts = [d.status ? STATUS_TEXT[d.status] : "Not published yet"];
     if (d.draft) {
@@ -1325,6 +1340,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     editor.hidden = true;
     editing = null;
     editingKeyField = null;
+    editingRevision = undefined;
     hidePicker();
     loaded = "";
     json.value = "";
@@ -1365,11 +1381,12 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       refreshAll();
       openRow(saved);
     };
-    actions.draft(resultSeq, ref, "set", data);
+    actions.draft(resultSeq, ref, "set", data, ref === editing ? editingRevision : undefined);
   }
 
   function removeRow(): void {
     const ref = editing;
+    const revision = editingRevision;
     if (!ref || ref.key === null) {
       return;
     }
@@ -1410,7 +1427,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           refreshAll();
           openRow(ref);
         };
-        actions.draft(resultSeq, ref, "remove", null);
+        actions.draft(resultSeq, ref, "remove", null, revision);
       }
     });
   }
@@ -1426,7 +1443,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       refreshAll();
       openRow(ref);
     };
-    actions.draft(resultSeq, ref, "revert", null);
+    actions.draft(resultSeq, ref, "revert", null, editingRevision);
   }
 
   // ---- publish history ------------------------------------------------------------------------

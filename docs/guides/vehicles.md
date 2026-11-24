@@ -18,7 +18,7 @@ Only the owner can board. Hits on a rider wear the vehicle's hull instead of the
 - [packages/server/src/systems/vehicles/vehicles.ts](../../packages/server/src/systems/vehicles/vehicles.ts): applies those checks, changes ground items and rider state, and handles death aboard.
 - [packages/shared/src/rules/vehicles/cannon.ts](../../packages/shared/src/rules/vehicles/cannon.ts): the cannon's numbers (reload, offset, speed, damage), the shot's FX name, tile and hit box.
 
-Hull numbers and rules (`HULL_MAX`, `HULL_HIT_DAMAGE`, `HULL_REPAIR_PER_MINUTE`, `boardingHull`, `sunkText`) live in the shared vehicles module; hits reach the hull in `packages/server/src/systems/spells/collide.ts` (`playerCollision`). Movement on each grid is chosen in `packages/server/src/systems/movement/movement.ts` (`walkWorld`) and, for map edges, `walkGridFor`.
+Hull rules (`hullMax`, `hullHitDamage`, `hullRepairPerMinute`, `boardingHull`, `sunkText`) live in the shared vehicles module, reading the numbers from the world's `balance` dataset (edited on the Control Panel's [Balance page](../running-a-server.md#the-balance-page)); hits reach the hull in `packages/server/src/systems/spells/collide.ts` (`playerCollision`). Movement on each grid is chosen in `packages/server/src/systems/movement/movement.ts` (`walkWorld`) and, for map edges, `walkGridFor`.
 
 Entry points include `packages/server/src/systems/vehicles/vehicles.ts` (`vehicleDeed`, `vehicleClick`, `unboardVehicle` and `vehicleDeath`). The cannon fires from `packages/server/src/systems/combat/melee.ts` (`pollAttack`), and its shots are moved by `packages/shared/src/rules/spells/spellfx.ts` (`stepFx`) and stopped by `packages/server/src/systems/spells/collide.ts` (`cannonballHits`).
 

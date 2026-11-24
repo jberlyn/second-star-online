@@ -2599,7 +2599,9 @@ export function createGame(deps: GameDeps): Game {
         facing: resumed ? c.position.facing : "S",
         stepFrames: 0,
         vehicle: c.vehicle,
-        hull: c.vehicle ? (c.hull ?? hullMax(c.vehicle)) : null,
+        // A saved hull above the vehicle's full hull (lowered on the Balance page while the rider
+        // was away) comes back at the full hull (issue #19).
+        hull: c.vehicle ? Math.min(c.hull ?? hullMax(c.vehicle), hullMax(c.vehicle)) : null,
         held: null,
         heldTurn: false,
         pending: null,
@@ -3459,6 +3461,14 @@ export function createGame(deps: GameDeps): Game {
       for (const o of world.players.values()) {
         if (!told.has(o.id)) {
           out.push({ to: o.id, msg: contentMsg });
+        }
+        // A rider's hull follows the published balance, for every rider online (one in an editor,
+        // out of any room, included): a lowered full hull takes the hull down with it, and the
+        // hull bar is sent again whatever changed, so it shows the new full hull too. The
+        // publish's snapshot keeps the hull, so a publish that rolls back puts it back (issue #19).
+        if (o.vehicle && o.hull !== null) {
+          o.hull = Math.min(o.hull, hullMax(o.vehicle));
+          out.push({ to: o.id, msg: { t: "vitals", vitals: vitalsView(o) } });
         }
       }
       contentWorld.tell(out);

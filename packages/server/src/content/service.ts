@@ -28,6 +28,7 @@ import {
   bodyUses,
   buildContentStore,
   CONTENT_FORMAT,
+  type ContentBalanceView,
   type ContentBodyArtView,
   type ContentData,
   type ContentFxArtView,
@@ -142,6 +143,13 @@ import {
   usedArt,
   wornSetProblems,
 } from "./art-usage.ts";
+import {
+  type BalanceLayers,
+  balanceFingerprint,
+  balanceRowDef,
+  balanceView,
+  engineValue,
+} from "./balance.ts";
 import {
   type CleanupRow,
   cleanUses,
@@ -2137,6 +2145,101 @@ export class ContentService {
   }
 
   // ---- sounds (issue #29, stage 7) ------------------------------------------------------------
+
+  /** The balance rows' layers, for the Balance page (issue #19). */
+  private balanceLayers(): BalanceLayers {
+    const draft = this.draft();
+    return {
+      pack: this.packData,
+      published: this.published,
+      draft: this.draftContent(draft),
+      operatorRows: contentRows(this.db).filter((r) => r.dataset === "balance"),
+      draftRows: draft.filter((d) => d.dataset === "balance"),
+      notices: this.notices().filter((n) => n.dataset === "balance"),
+      otherDraft: draft.filter((d) => d.dataset !== "balance").length,
+    };
+  }
+
+  /**
+   * A balance row's revision (the Balance page's fingerprint), or null for a row that is not a
+   * balance row. Every change to a balance row names it, from the Balance page or the Content
+   * page's JSON editor, so neither writes over a change it has not seen (issue #19).
+   */
+  balanceRevision(ref: RowRef): string | null {
+    if (ref.dataset !== "balance") {
+      return null;
+    }
+    const def = balanceRowDef(ref.part, ref.key);
+    return def ? balanceFingerprint(def, this.balanceLayers()) : null;
+  }
+
+  /** The Balance page's view (issue #19). */
+  balanceView(): ContentBalanceView {
+    return balanceView(this.balanceLayers());
+  }
+
+  /**
+   * One Balance page change (issue #19): `set` a balance row, `revert` it to the packs' value
+   * (the engine's default when no pack sets it) or `discard` the draft's change to it. Refused
+   * when the row changed since the page showed it (`expect`), for a row the page does not edit,
+   * and for a value outside its limits (the dataset's schema, as for every draft change).
+   */
+  draftBalance(
+    actor: ContentActor,
+    change: {
+      part: string;
+      key: string | null;
+      op: "set" | "revert" | "discard";
+      data: unknown;
+      expect: string;
+    },
+  ): ContentResult<string> {
+    const def = balanceRowDef(change.part, change.key);
+    if (!def) {
+      return fail(
+        `the Balance page has no row ${change.part}${change.key ? `/${change.key}` : ""}`,
+      );
+    }
+    const l = this.balanceLayers();
+    if (balanceFingerprint(def, l) !== change.expect) {
+      return fail(`${def.label} changed since you opened it: look at it again before saving.`);
+    }
+    const ref: RowRef = { dataset: "balance", part: def.part, key: def.key };
+    const inDraft = l.draftRows.some((d) => sameRow(d, ref));
+    const edited = l.operatorRows.some((r) => sameRow(r, ref));
+    if (change.op === "discard") {
+      if (!inDraft) {
+        return fail(`${def.label} has no change in the draft.`);
+      }
+      const r = this.draftDiscard(ref);
+      return r.ok ? { ok: true, value: `${def.label}: the draft's change is gone.` } : r;
+    }
+    if (change.op === "revert") {
+      const back =
+        rowValue(this.packData, ref) === undefined ? "the engine's default" : "the pack's value";
+      if (edited) {
+        const r = this.draftSet(actor, ref, "revert", null);
+        return r.ok ? { ok: true, value: `${def.label} goes back to ${back} when published.` } : r;
+      }
+      if (inDraft) {
+        const r = this.draftDiscard(ref);
+        return r.ok ? { ok: true, value: `${def.label} is back to ${back}.` } : r;
+      }
+      return fail(`${def.label} is already ${back}.`);
+    }
+    // Set back to what plays now: no change to stage, so a change in the draft is dropped (one
+    // staged would publish as an operator row, which a pack update would then notice).
+    const playing = rowValue(this.published, ref) ?? engineValue(def);
+    if (rowHash(playing) === rowHash(change.data)) {
+      if (!inDraft) {
+        return fail(`${def.label} already plays that value.`);
+      }
+      const r = this.draftDiscard(ref);
+      return r.ok ? { ok: true, value: `${def.label} is back to what plays now.` } : r;
+    }
+    const r = this.draftSet(actor, ref, "set", change.data);
+    return r.ok ? { ok: true, value: `${def.label} is in the draft.` } : r;
+  }
 
   /** The sound panels' view, from the draft. */
   soundArtView(): ContentSoundArtView {

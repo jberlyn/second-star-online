@@ -11,8 +11,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import {
-  CANNON_RELOAD_FRAMES,
   type CreateMsg,
+  cannonReloadFrames,
   type EditorMap,
   type ServerMsg,
 } from "@secondstaronline/shared";
@@ -219,7 +219,7 @@ describe("Boats and Battleships", () => {
   test("three more shots sink the Boat, and everyone reads the line", async () => {
     alice.clear();
     for (let n = 0; n < 3; n++) {
-      await tick(CANNON_RELOAD_FRAMES);
+      await tick(cannonReloadFrames());
       await fire();
       await tick(20);
     }
@@ -232,7 +232,7 @@ describe("Boats and Battleships", () => {
   });
 
   test("with no Cannonballs the cannon says so", async () => {
-    await tick(CANNON_RELOAD_FRAMES);
+    await tick(cannonReloadFrames());
     alice.clear();
     await fire();
     expect(chats(alice)).toEqual(["You have no cannonballs!"]);

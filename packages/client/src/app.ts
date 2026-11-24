@@ -81,6 +81,7 @@ import {
   stackTitle,
 } from "./ui/amount.ts";
 import { createAwayWindow } from "./ui/away.ts";
+import { createBalancePage } from "./ui/balance-page.ts";
 import { createBars } from "./ui/bars.ts";
 import { createBioWindow } from "./ui/bio.ts";
 import { createBlackjack } from "./ui/blackjack.ts";
@@ -663,8 +664,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       overview: (seq) => send({ t: "contentOverview", seq }),
       list: (seq, dataset, part) => send({ t: "contentList", seq, dataset, part }),
       row: (seq, ref) => send({ t: "contentRow", seq, ...ref }),
-      draft: (seq, ref, op, data) => send({ t: "contentDraft", seq, ...ref, op, data }),
-      discard: (seq, ref) => send({ t: "contentDiscard", seq, ...ref }),
+      draft: (seq, ref, op, data, expect) =>
+        send({ t: "contentDraft", seq, ...ref, op, data, ...(expect ? { expect } : {}) }),
+      discard: (seq, ref, expect) =>
+        send({ t: "contentDiscard", seq, ...ref, ...(expect ? { expect } : {}) }),
       publish: (seq, summary, draftRev) => send({ t: "contentPublish", seq, summary, draftRev }),
       undo: (seq, id) => send({ t: "contentUndo", seq, id }),
       notice: (seq, ref, accept) => send({ t: "contentNotice", seq, ...ref, accept }),
@@ -698,6 +701,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     },
     assets,
   );
+  const balancePage = createBalancePage({
+    view: (seq) => send({ t: "contentBalance", seq }),
+    set: (seq, change) => send({ t: "contentBalanceSet", seq, ...change }),
+    openContent: () => controlPanel.go("content"),
+  });
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -735,6 +743,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onHide: () => contentPage.onHide(),
         changes: () => contentPage.changes(),
         discard: () => contentPage.discard(),
+      },
+      {
+        id: "balance",
+        title: "Balance",
+        group: "Game",
+        permission: "contentEditor",
+        el: balancePage.el,
+        onShow: () => balancePage.onShow(),
+        changes: () => balancePage.changes(),
+        discard: () => balancePage.discard(),
       },
     ],
     // The classic editors, until their Control Panel pages arrive (#32, #33).
@@ -1127,15 +1145,20 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       handleMessage(msg);
       syncMenus();
     },
-    // A new store is live: walkability follows the tile tables, and the Content page shows the
-    // publish. The server sends the inventory and the ground items again after it.
+    // A new store is live: walkability follows the tile tables. The server sends the inventory
+    // and the ground items again after it.
     installed: () => {
       if (model.map) {
         model.walk = footWalkGrid(model.map.layers[0], model.map.layers[1]);
         model.walkAir = airshipWalkGrid(model.map.layers[1]);
         model.walkShip = shipWalkGrid(model.map.layers[0]);
       }
+    },
+    // Every publish, undo and accepted pack notice, a balance-only one too (its store's hash stays
+    // as it was): the Content and Balance pages ask again.
+    published: () => {
       contentPage.published();
+      balancePage.published();
     },
   });
   // Art published (issue #29): the map's tile layers are drawn once per map, so new tiles redraw
@@ -1149,6 +1172,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       panel.refreshArt();
     }
     contentPage.published();
+    balancePage.published();
   });
   conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
   const handleMessage = (msg: ServerMsg) => {
@@ -1302,6 +1326,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         }
         if (!permissions.has("contentEditor")) {
           contentPage.reset();
+          balancePage.reset();
         }
         if (permissions.has("characterView")) {
           charactersPage.permissionsChanged();
@@ -1336,6 +1361,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentTileSheet":
       case "contentSoundArt":
         contentPage.receive(msg);
+        return;
+      case "contentBalance":
+        balancePage.receive(msg);
         return;
       case "content":
         // The content sync fetches and installs the store; nothing else to do here.
@@ -1681,6 +1709,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     activityPage.reset();
     charactersPage.reset();
     contentPage.reset();
+    balancePage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

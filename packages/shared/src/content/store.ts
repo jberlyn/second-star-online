@@ -16,6 +16,7 @@
 import type {
   ArtData,
   AttPowerData,
+  BalanceData,
   BindingsData,
   CasinoData,
   ClassesData,
@@ -35,6 +36,8 @@ import type {
   SpellsData,
   TilesData,
 } from "@secondstaronline/data";
+
+import { type Balance, fullBalance } from "./balance.ts";
 
 /**
  * Every dataset in a content store. Server-only datasets (NPC file text, collision rects, the
@@ -61,6 +64,11 @@ export interface ContentData {
   rects: RectsData;
   /** Uploaded art and sounds (issue #29): rows naming files in the server's store. */
   art: ArtData;
+  /**
+   * The balance numbers (issue #19), as the packs and the operator set them: any part may be left
+   * out, and the store fills it from the engine's defaults (`content().balance` is always full).
+   */
+  balance: BalanceData;
 }
 
 export type DatasetId = keyof ContentData;
@@ -76,6 +84,7 @@ export const SERVER_ONLY_DATASETS = [
   "npcFiles",
   "rects",
   "art",
+  "balance",
 ] as const satisfies readonly DatasetId[];
 
 /** Every dataset id, in a fixed order (the order hashes and pack files use). */
@@ -98,10 +107,13 @@ export const DATASET_IDS = [
   "npcFiles",
   "rects",
   "art",
+  "balance",
 ] as const satisfies readonly DatasetId[];
 
 /** A built store: the data and its lookups. Treat it as read-only. */
-export interface ContentStore extends ContentData {
+export interface ContentStore extends Omit<ContentData, "balance"> {
+  /** The world's balance with every value present: what it sets, else the engine's default. */
+  readonly balance: Balance;
   /** Identifies this exact content (the hash of the client copy); "" for a fixture without one. */
   readonly hash: string;
   /** The catalogue item with this key (case ignored), or undefined. */
@@ -138,6 +150,7 @@ export function buildContentStore(data: ContentData, hash = ""): ContentStore {
   }
   return {
     ...data,
+    balance: fullBalance(data.balance),
     hash,
     item: (name) => items.get(name.toLowerCase()),
     itemNamed: (text) => items.get(text.toLowerCase()) ?? displays.get(text.toLowerCase()),

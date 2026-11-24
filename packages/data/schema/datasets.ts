@@ -5,6 +5,7 @@
  */
 import { artDataSchema } from "./art.ts";
 import { attPowerDataSchema } from "./attpower.ts";
+import { balanceDataSchema } from "./balance.ts";
 import { bindingsDataSchema } from "./bindings.ts";
 import { casinoDataSchema } from "./casino.ts";
 import { classesDataSchema } from "./classes.ts";
@@ -41,6 +42,7 @@ export const DATASET_SCHEMAS = {
   npcFiles: npcFilesDataSchema,
   rects: rectsDataSchema,
   art: artDataSchema,
+  balance: balanceDataSchema,
 } as const;
 
 export type SchemaDatasetId = keyof typeof DATASET_SCHEMAS;
@@ -65,13 +67,15 @@ export const DATASET_FILES: Record<SchemaDatasetId, string> = {
   npcFiles: "npc-files",
   rects: "rects",
   art: "art",
+  balance: "balance",
 };
 
 /**
  * Datasets a pack may leave out, each read as empty when it does: uploaded art (issue #29), which
- * the shipped packs don't carry (their art is their built atlases).
+ * the shipped packs don't carry (their art is their built atlases), and the balance numbers
+ * (issue #19), whose every value has an engine default.
  */
-export const OPTIONAL_DATASETS: readonly SchemaDatasetId[] = ["art"];
+export const OPTIONAL_DATASETS: readonly SchemaDatasetId[] = ["art", "balance"];
 
 export {
   ART_FRAME_IDS,
@@ -86,6 +90,17 @@ export {
   nextOperatorBody,
   OPERATOR_BODY_MIN,
 } from "./art.ts";
+export {
+  BALANCE_LIMITS,
+  BALANCE_VEHICLES,
+  type BalanceData,
+  type BalanceVehicle,
+  balanceDataSchema,
+  type CannonBalance,
+  type FlatAmount,
+  type HullRow,
+  type VehicleBalance,
+} from "./balance.ts";
 export { comparePackVersions, PACK_FORMAT, type PackManifest, packManifestSchema } from "./pack.ts";
 export { checkProgression, FORMULA_MAX, formulaRange, skillDependents } from "./progression.ts";
 export {

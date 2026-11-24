@@ -1,0 +1,27 @@
+{
+  "vehicles": {
+    "hullHit": 2,
+    "repairPerMinute": 1
+  },
+  "cannon": {
+    "damage": {
+      "flat": 13,
+      "randomN": 3
+    },
+    "reloadFrames": 100
+  },
+  "hulls": [
+    {
+      "vehicle": "Boat",
+      "hull": 60
+    },
+    {
+      "vehicle": "Airship",
+      "hull": 80
+    },
+    {
+      "vehicle": "Battleship",
+      "hull": 150
+    }
+  ]
+}

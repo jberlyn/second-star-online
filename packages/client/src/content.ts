@@ -23,7 +23,7 @@ export const CONTENT_URL = "/content/";
 export interface ContentFile {
   format: number;
   hash: string;
-  data: Omit<ContentData, "npcFiles" | "rects" | "art">;
+  data: Omit<ContentData, "npcFiles" | "rects" | "art" | "balance">;
 }
 
 /** The server's store is in a format this client was not built for: reload to get the new client. */
@@ -34,7 +34,8 @@ const SERVER_ONLY_EMPTY = {
   npcFiles: { files: [] },
   rects: { fx: {}, chars: {}, items: {} },
   art: { items: [], paperdoll: [], bodies: [], fx: [], tiles: [], sounds: [] },
-} satisfies Pick<ContentData, "npcFiles" | "rects" | "art">;
+  balance: {},
+} satisfies Pick<ContentData, "npcFiles" | "rects" | "art" | "balance">;
 
 /** Builds the client's store from a fetched file. */
 export function storeFromFile(file: ContentFile): ContentStore {
@@ -86,6 +87,12 @@ export interface ContentSyncOptions {
   reload?(): void;
   /** Runs after a new store is installed. */
   installed?(store: ContentStore): void;
+  /**
+   * Runs for each publish or undo the server announces (a `content` message), once the store it
+   * names is in. A publish of server-only data (the balance) leaves the store's hash as it was, so
+   * no store is installed for it, but pages showing that data still need to ask again.
+   */
+  published?(): void;
   /** Reports a store that could not be fetched (default `console.warn`). */
   warn?(text: string): void;
   /**
@@ -332,6 +339,9 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
       waiting.unshift(msg);
       fetchStore(hash);
       return;
+    }
+    if (msg.t === "content") {
+      opts.published?.();
     }
     // A publish, or a login after one, naming art other than the art loaded: load it first.
     const art = msg.t === "content" || msg.t === "welcome" ? msg.assets : undefined;

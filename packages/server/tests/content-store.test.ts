@@ -72,9 +72,11 @@ const classic = readPackDir(RELEASE_PACK_DIRS.classic as string);
 describe("the Classic pack", () => {
   test("loads every dataset and matches its schemas", () => {
     expect(classic.manifest.id).toBe("classic");
-    // Every dataset but the uploaded art, which Classic leaves out (its art is its atlases).
-    expect(Object.keys(classic.data).sort()).toHaveLength(17);
+    // Every dataset but the uploaded art, which Classic leaves out (its art is its atlases); its
+    // balance numbers are written out (issue #19).
+    expect(Object.keys(classic.data).sort()).toHaveLength(18);
     expect(classic.data.art).toBeUndefined();
+    expect(classic.data.balance).toBeDefined();
   });
 
   test("a server with only Classic installed builds the Classic store unchanged", () => {
@@ -90,6 +92,7 @@ describe("the Classic pack", () => {
     const body = JSON.parse(service.clientCopy().json) as { data: Record<string, unknown> };
     expect(body.data.npcFiles).toBeUndefined();
     expect(body.data.rects).toBeUndefined();
+    expect(body.data.balance).toBeUndefined();
     expect(body.data.items).toBeDefined();
   });
 });

@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   airshipWalkGrid,
-  CANNON_RELOAD_FRAMES,
+  cannonReloadFrames,
   type DeltaEvent,
   FACING_DELTA,
   type ServerMsg,
@@ -108,14 +108,14 @@ describe("firing", () => {
       caster: "Ann",
     });
     // The frame that placed it has already counted one off.
-    expect(s.ann.cannonReload).toBe(CANNON_RELOAD_FRAMES - 1);
+    expect(s.ann.cannonReload).toBe(cannonReloadFrames() - 1);
   });
 
   test("SSO: one shot a press, and none again until the 5 second reload ends", () => {
     const s = scene();
     s.bob.x = 1;
     setAttackHeld(s.ann, true);
-    s.run(CANNON_RELOAD_FRAMES + 20);
+    s.run(cannonReloadFrames() + 20);
     expect(balls(s.ann)).toBe(2); // held throughout: one shot
     setAttackHeld(s.ann, false);
     s.ann.cannonReload = 0;
@@ -123,7 +123,7 @@ describe("firing", () => {
     expect(balls(s.ann)).toBe(1);
     // A press during the reload fires nothing, even once it is over.
     s.fire();
-    s.run(CANNON_RELOAD_FRAMES);
+    s.run(cannonReloadFrames());
     // (the press is still owed a shot, but the key is up)
     expect(balls(s.ann)).toBe(1);
     s.fire();
@@ -135,7 +135,7 @@ describe("firing", () => {
     s.bob.x = 1;
     s.fire();
     setAttackHeld(s.ann, true);
-    s.run(CANNON_RELOAD_FRAMES - 2);
+    s.run(cannonReloadFrames() - 2);
     expect(balls(s.ann)).toBe(2);
     s.run(2);
     expect(balls(s.ann)).toBe(1);

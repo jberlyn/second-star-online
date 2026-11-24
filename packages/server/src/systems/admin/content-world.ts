@@ -235,6 +235,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       // wear it.
       body: p.spell.body,
       smokeBomb: p.spell.smokeBomb,
+      // A publish that lowers a vehicle's full hull takes riders' hulls down with it.
+      hull: p.hull,
     }));
     // Writing the touched players flushes every pending save; a rollback undoes those writes, so
     // what was pending is pending again.
@@ -285,6 +287,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         s.p.invSaveDue = s.invSaveDue;
         s.p.spell.body = s.body;
         s.p.spell.smokeBomb = s.smokeBomb;
+        s.p.hull = s.hull;
         s.p.invDirty = true;
         s.p.lookDirty = true;
       }

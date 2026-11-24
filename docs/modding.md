@@ -382,6 +382,18 @@ These files have no worked example here; their schemas in [packages/data/schema/
 - **`quests.json`:** the quest lines that seed a fresh database's `quests` table (`current`) and the pools a replacement quest is drawn from (`pools`).
 - **`help.json`:** the help topics `/help <topic>` shows, with their lines. The `Help` topic is also the greeting a character gets on logging in; a world without one sends none.
 
+### Balance (`balance.json`)
+
+`balance.json` holds the game's global balance numbers (issue #19), edited on the Control Panel's [Balance page](running-a-server.md#the-balance-page). Every value has an engine default, so a pack may leave the file, or any part of it, out (Minimal leaves it out and plays the defaults). Classic writes the defaults out: 1.6's values, and SSO's own for its additions. Every value is a whole number with limits the schema enforces ([balance.ts](../packages/data/schema/balance.ts)); a draft, publish, undo or pack update with a value outside them is refused.
+
+| Part | Row | Fields (Classic) |
+|---|---|---|
+| `hulls` | One per vehicle, keyed by `vehicle` (`Boat`, `Airship`, `Battleship`) | `hull`: the full hull (60, 80, 150; 1 to 100,000) |
+| `vehicles` | One row | `hullHit`: hull one arrow or harmful spell takes off a rider (2); `repairPerMinute`: hull a parked vehicle mends each whole minute (1) |
+| `cannon` | One row | `damage`: `{ "flat": 13, "randomN": 3 }`, the flat amount plus `random(randomN)` (1 to n; 0 rolls nothing); `reloadFrames`: frames between shots, 20 a second (100) |
+
+An amount is always structured parts, never a formula string: `flat + random(randomN)` here, the same form [attpower.json](#items-itemsjson-item-rulesjson-attpowerjson) uses. Later stages of #19 add spell amounts, regeneration and hunger, death, timings and combat rolls to this file.
+
 ### What a world may leave out
 
 1.6's game shaped many of these files: tables that name its items, tiles and NPCs. A world that does not want a mechanic leaves its table out, and the mechanic is off (Classic fills every one; the [Minimal pack](#starting-a-world-classic-or-minimal) leaves them out):

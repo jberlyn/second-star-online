@@ -1486,6 +1486,154 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(2);
   });
 
+  test("the Balance page's intents need the Content page's permission (issue #19)", async () => {
+    const { game, make } = await start();
+    const bob = await make("Bob");
+    sent.length = 0;
+    game.intent(bob.characterId, { t: "contentBalance", seq: 1 });
+    game.intent(bob.characterId, {
+      t: "contentBalanceSet",
+      seq: 2,
+      part: "vehicles",
+      key: null,
+      op: "set",
+      data: { hullHit: 0, repairPerMinute: 1 },
+      expect: "0".repeat(16),
+    });
+    // Nothing comes back, and each is cheat-logged.
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 2).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(2);
+  });
+
+  test("a publish that lowers a vehicle's full hull lowers a rider's hull and resends it (issue #19)", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann", "administrator");
+    const a = game.world.players.get(ann.characterId) as Player;
+    a.vehicle = "Battleship";
+    a.hull = 120;
+    try {
+      const d = structuredClone(classicData) as ContentData;
+      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      installContent(buildContentStore(d));
+      sent.length = 0;
+      game.contentPublished("next");
+      expect(a.hull).toBe(90);
+      const vitals = sent.find((o) => o.to === ann.characterId && o.msg.t === "vitals");
+      expect(vitals?.msg).toMatchObject({ t: "vitals", vitals: { hull: { hp: 90, max: 90 } } });
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  });
+
+  test("a lowered full hull reaches a rider in an editor, out of any room (issue #19)", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann", "administrator");
+    const a = game.world.players.get(ann.characterId) as Player;
+    a.vehicle = "Battleship";
+    a.hull = 120;
+    openEditor(
+      game.world,
+      a,
+      () => a.map,
+      { mx: 1000, my: 992 },
+      {
+        graceTicks: 600,
+        addGoldOffline: () => {},
+      },
+    );
+    expect([...game.world.rooms.values()].some((r) => r.players.includes(a))).toBe(false);
+    try {
+      const d = structuredClone(classicData) as ContentData;
+      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      installContent(buildContentStore(d));
+      sent.length = 0;
+      game.contentPublished("next");
+      expect(a.hull).toBe(90);
+      expect(sent.find((o) => o.to === ann.characterId && o.msg.t === "vitals")?.msg).toMatchObject(
+        { vitals: { hull: { hp: 90, max: 90 } } },
+      );
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  });
+
+  test("a publish that raises a vehicle's full hull resends the rider's hull bar with it (issue #19)", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann", "administrator");
+    const a = game.world.players.get(ann.characterId) as Player;
+    a.vehicle = "Battleship";
+    a.hull = 120;
+    try {
+      for (const full of [200, 130]) {
+        const d = structuredClone(classicData) as ContentData;
+        d.balance = { hulls: [{ vehicle: "Battleship", hull: full }] };
+        installContent(buildContentStore(d));
+        sent.length = 0;
+        game.contentPublished(`next-${full}`);
+        // Raised, or lowered but still above the hull: the hull stays, the bar's full hull moves.
+        expect(a.hull).toBe(120);
+        expect(
+          sent.find((o) => o.to === ann.characterId && o.msg.t === "vitals")?.msg,
+        ).toMatchObject({ vitals: { hull: { hp: 120, max: full } } });
+      }
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  });
+
+  test("a publish that rolls back puts a rider's hull back (issue #19)", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann", "administrator");
+    const a = game.world.players.get(ann.characterId) as Player;
+    a.vehicle = "Battleship";
+    a.hull = 120;
+    try {
+      const d = structuredClone(classicData) as ContentData;
+      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      sent.length = 0;
+      // The publish opens, the new store lowers the hull, then the publish fails and rolls back.
+      game.contentWorld.begin();
+      installContent(buildContentStore(d));
+      game.contentPublished("next");
+      expect(a.hull).toBe(90);
+      installContent(buildContentStore(classicData as ContentData));
+      game.contentWorld.rollback();
+      expect(a.hull).toBe(120);
+      // Nobody was told the lowered hull.
+      expect(sent.filter((o) => o.msg.t === "vitals")).toEqual([]);
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  });
+
+  test("a rider who logs back in after their full hull was lowered comes back at the new full hull (issue #19)", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann");
+    const a = game.world.players.get(ann.characterId) as Player;
+    a.vehicle = "Battleship";
+    a.hull = 120;
+    game.leave(ann.characterId);
+    try {
+      const d = structuredClone(classicData) as ContentData;
+      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      installContent(buildContentStore(d));
+      const l = await game.login("Ann", "pw", "10.0.0.1");
+      if (!l.ok) {
+        throw new Error(l.text);
+      }
+      game.enter(l.characterId, false, "10.0.0.1");
+      const back = game.world.players.get(l.characterId) as Player;
+      expect(back.vehicle).toBe("Battleship");
+      expect(back.hull).toBe(90);
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  });
+
   test("a publish that gives a live species another body tells everyone on its map (issue #29)", async () => {
     const { game, make } = await start();
     const ann = await make("Ann", "administrator");

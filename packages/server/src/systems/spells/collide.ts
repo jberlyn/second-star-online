@@ -18,8 +18,8 @@ import {
   firstMatch,
   fxEffect,
   fxMember,
-  HULL_HIT_DAMAGE,
   hasBehaviour,
+  hullHitDamage,
   invAdd,
   inxitionText,
   isCannonball,
@@ -125,7 +125,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     }
     // Aboard, the hit wears the hull by a fixed amount instead (an SSO addition).
     const aboard = p.vehicle !== null && p.hull !== null;
-    const dmg = aboard ? HULL_HIT_DAMAGE : spellDmg;
+    const dmg = aboard ? hullHitDamage() : spellDmg;
     if (aboard && p.hull !== null) {
       p.hull = p.hull <= dmg ? 0 : p.hull - dmg;
     } else {

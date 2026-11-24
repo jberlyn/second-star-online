@@ -948,6 +948,80 @@ body {
   justify-content: flex-end;
   gap: 8px;
 }
+/* The Balance page (ui/balance-page.ts): cards of balance rows, each value with what plays now,
+   the pack's and the engine's. */
+.balance-draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 20px 0;
+  padding: 6px 10px;
+  background: #23324f;
+  border: 1px solid #3c5a93;
+  border-radius: 4px;
+}
+.balance-draft[hidden],
+.balance-loading[hidden],
+.balance-stale[hidden],
+.balance-page .control-panel-btn[hidden] {
+  display: none;
+}
+.balance-loading {
+  margin: 16px 20px;
+  color: #aaa;
+}
+.balance-card {
+  margin: 16px 20px;
+  padding: 12px 16px;
+  background: #1d1d1d;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+.balance-row {
+  padding: 10px 0;
+  border-top: 1px solid #2c2c2c;
+}
+.balance-row-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.balance-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.balance-tag {
+  padding: 1px 6px;
+  background: #2a2618;
+  border: 1px solid #6b5a22;
+  border-radius: 3px;
+  color: #f0d98a;
+  font-size: 11px;
+}
+.balance-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.balance-field {
+  flex: 1 1 240px;
+  max-width: 420px;
+}
+.balance-status {
+  margin: 6px 0 0;
+  color: #9fd89f;
+}
+.balance-status:empty {
+  display: none;
+}
+.balance-status-error,
+.balance-stale {
+  color: #ffb0a8;
+}
 /* The Content page (ui/content-page.ts): packs, pack updates, the draft, rows and the history. */
 .content-section {
   margin: 0;

@@ -36,6 +36,24 @@ export function refOf(r: ContentRowRef): RowRef | null {
     : null;
 }
 
+/** A row's revision, where a change to it must name one (a balance row). */
+function revisionOf(service: ContentService, ref: RowRef): { revision?: string } {
+  const revision = service.balanceRevision(ref);
+  return revision === null ? {} : { revision };
+}
+
+/**
+ * Why a change to `ref` is refused because it does not name the row as it is now, or null. Only
+ * balance rows carry a revision; a change that names none, or another, is refused.
+ */
+function staleRow(service: ContentService, ref: RowRef, expect: string | undefined): string | null {
+  const revision = service.balanceRevision(ref);
+  if (revision === null || revision === expect) {
+    return null;
+  }
+  return `${rowLabel(ref)} changed since you opened it: open it again before saving.`;
+}
+
 export function overviewOf(service: ContentService, world?: ContentWorld): ContentOverview {
   return {
     draft: service.draft().map((d) => ({
@@ -45,6 +63,7 @@ export function overviewOf(service: ContentService, world?: ContentWorld): Conte
       op: d.op,
       author: d.author,
       updatedAt: d.updatedAt,
+      ...revisionOf(service, d),
     })),
     problems: [...service.check(), ...service.draftMapProblems(world)],
     history: service.history().map((p) => ({
@@ -173,6 +192,7 @@ export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDet
     pack: packValue ?? null,
     published: published ?? null,
     draft: d ? { op: d.op, data: d.data, author: d.author } : null,
+    ...revisionOf(service, ref),
     ...(ref.dataset === "npcFiles" && ref.key && service.npcEditorSaves().has(ref.key.toLowerCase())
       ? {
           note: "This NPC has a save from the NPC Editor, which is what plays: change it there, or this row has no effect.",
@@ -230,7 +250,9 @@ type ContentIntent = Extract<
       | "contentTileSheet"
       | "contentTile"
       | "contentSoundArt"
-      | "contentSound";
+      | "contentSound"
+      | "contentBalance"
+      | "contentBalanceSet";
   }
 >;
 
@@ -264,6 +286,8 @@ export const CONTENT_INTENTS = [
   "contentTile",
   "contentSoundArt",
   "contentSound",
+  "contentBalance",
+  "contentBalanceSet",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -404,6 +428,25 @@ export function contentIntent(
     }
     case "contentSoundArt":
       return { t: "contentSoundArt", seq: msg.seq, view: service.soundArtView() };
+    case "contentBalance":
+      return { t: "contentBalance", seq: msg.seq, view: service.balanceView() };
+    case "contentBalanceSet": {
+      const r = service.draftBalance(actor, {
+        part: msg.part,
+        key: msg.key,
+        op: msg.op,
+        data: msg.data ?? null,
+        expect: msg.expect,
+      });
+      return {
+        t: "contentBalance",
+        seq: msg.seq,
+        view: service.balanceView(),
+        result: r.ok
+          ? { ok: true, text: r.value }
+          : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },
+      };
+    }
     case "contentSound": {
       const r = service.draftSound(actor, msg.change);
       return r.ok
@@ -443,6 +486,10 @@ export function contentIntent(
           text: `There is no dataset ${msg.dataset}.`,
         };
       }
+      const stale = staleRow(service, ref, msg.expect);
+      if (stale) {
+        return { t: "contentResult", seq: msg.seq, ok: false, text: stale };
+      }
       return result(
         msg.seq,
         service.draftSet(actor, ref, msg.op, msg.data ?? null),
@@ -458,6 +505,10 @@ export function contentIntent(
           ok: false,
           text: `There is no dataset ${msg.dataset}.`,
         };
+      }
+      const stale = staleRow(service, ref, msg.expect);
+      if (stale) {
+        return { t: "contentResult", seq: msg.seq, ok: false, text: stale };
       }
       return result(msg.seq, service.draftDiscard(ref), `${rowLabel(ref)} is out of the draft.`);
     }

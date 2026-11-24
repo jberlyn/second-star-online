@@ -6,6 +6,7 @@
  */
 
 import attPower from "../packs/classic/data/attpower.json" with { type: "json" };
+import balance from "../packs/classic/data/balance.json" with { type: "json" };
 import bindings from "../packs/classic/data/bindings.json" with { type: "json" };
 import casino from "../packs/classic/data/casino.json" with { type: "json" };
 import classes from "../packs/classic/data/classes.json" with { type: "json" };
@@ -25,6 +26,7 @@ import tiles from "../packs/classic/data/tiles.json" with { type: "json" };
 import manifest from "../packs/classic/manifest.json" with { type: "json" };
 import type { ArtData } from "../schema/art.ts";
 import type { AttPowerData } from "../schema/attpower.ts";
+import type { BalanceData } from "../schema/balance.ts";
 import type { BindingsData } from "../schema/bindings.ts";
 import type { CasinoData } from "../schema/casino.ts";
 import type { ClassesData } from "../schema/classes.ts";
@@ -65,4 +67,5 @@ export const classicData = {
   rects: rects as unknown as RectsData,
   /** Classic carries no art rows: its art is its built atlases. */
   art: { items: [], paperdoll: [], bodies: [], fx: [], tiles: [], sounds: [] } as ArtData,
+  balance: balance as unknown as BalanceData,
 };

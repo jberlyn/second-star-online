@@ -17,6 +17,14 @@ export type {
   ArtWorn,
 } from "../schema/art.ts";
 export type { AttPowerData, AttPowerTier } from "../schema/attpower.ts";
+export type {
+  BalanceData,
+  BalanceVehicle,
+  CannonBalance,
+  FlatAmount,
+  HullRow,
+  VehicleBalance,
+} from "../schema/balance.ts";
 export type { BindingsData, SkillBinding } from "../schema/bindings.ts";
 export type { CasinoData } from "../schema/casino.ts";
 export type { ChurchMapData } from "../schema/church-map.ts";

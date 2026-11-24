@@ -7,10 +7,9 @@
  * It stops at the first player, monster or vehicle it meets, over a tile an Airship cannot cross,
  * or at the playfield's edge.
  *
- * The numbers are code constants, like the other combat numbers (issue #19 covers making them
- * editable).
+ * Its damage and reload are the world's balance (`balance.cannon`, issue #19).
  */
-import { TICK_HZ } from "../../constants.ts";
+import { rollFlat } from "../../content/balance.ts";
 import { content } from "../../content/store.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import type { Bag } from "../inventory/inventory.ts";
@@ -29,8 +28,10 @@ export function cannonballSlot(bag: Bag): number {
   return bag.findIndex((l) => l !== null && l.qty > 0 && lingoEq(l.item, ammo));
 }
 
-/** Frames (ticks) between shots: about 5 seconds. */
-export const CANNON_RELOAD_FRAMES = 5 * TICK_HZ;
+/** Frames (ticks) between shots (`balance.cannon.reloadFrames`; the engine's default is 5 seconds). */
+export function cannonReloadFrames(): number {
+  return content().balance.cannon.reloadFrames;
+}
 
 /** How far from the rider's loc the shot appears, along the facing (1.6's cast handler). */
 export const CANNONBALL_OFFSET = 48;
@@ -38,9 +39,12 @@ export const CANNONBALL_OFFSET = 48;
 /** Pixels the shot moves on each `stepFrame` call (two a drawn frame). */
 export const CANNONBALL_STEP_PX = 5;
 
-/** What a cannonball takes off a player's HP or a hull: 14 to 16. */
+/**
+ * What a cannonball takes off a player's HP or a hull (`balance.cannon.damage`; the engine's
+ * default is 13 + random(3), 14 to 16).
+ */
 export function cannonDamage(rng: Rng): number {
-  return 13 + rng.random(3);
+  return rollFlat(content().balance.cannon.damage, rng);
 }
 
 /**

@@ -156,8 +156,9 @@ describe("Only server systems create items", () => {
       // it against the dataset's schema and the pre-publish checks, and every publish can be undone.
       contentList: ["dataset:string", "part:string"],
       contentRow: ["dataset:string", "part:string", "key:string"],
-      contentDraft: ["dataset:string", "part:string", "key:string"],
-      contentDiscard: ["dataset:string", "part:string", "key:string"],
+      // `expect` is a balance row's revision as the page saw it (issue #19), compared, never stored.
+      contentDraft: ["dataset:string", "part:string", "key:string", "expect:string"],
+      contentDiscard: ["dataset:string", "part:string", "key:string", "expect:string"],
       contentPublish: ["summary:string", "draftRev:string"],
       contentUndo: ["id:string"],
       contentNotice: ["dataset:string", "part:string", "key:string"],
@@ -208,6 +209,11 @@ describe("Only server systems create items", () => {
       // sound by, the uploaded file by SHA-256, and its upload's fingerprint as the panel saw it.
       // A sound is never an item, and the server checks the file's bytes before writing the row.
       contentSound: ["change.name:string", "change.file:string", "change.expect:string"],
+      // A Balance page change (issue #19, contentEditor permission): a row of the balance dataset
+      // by field and key (the server accepts only the rows the page edits), and the row's
+      // fingerprint as the page saw it. Its `data` is the row's numbers, checked against the
+      // dataset's schema and limits; nothing here names an item.
+      contentBalanceSet: ["part:string", "key:string", "expect:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],

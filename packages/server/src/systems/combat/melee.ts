@@ -16,11 +16,11 @@ import {
   attackPower,
   boundSkillIndex,
   bowRefusal,
-  CANNON_RELOAD_FRAMES,
   CANNON_TEXT,
   type CrystalColour,
   can,
   cannonballSlot,
+  cannonReloadFrames,
   checkLevelUp,
   content,
   crystalSlotIn,
@@ -187,7 +187,7 @@ function pollCannon(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
   p.invDirty = true;
   p.attackPress = null;
   p.cannonArmed = false;
-  p.cannonReload = CANNON_RELOAD_FRAMES;
+  p.cannonReload = cannonReloadFrames();
   fireCannonball(room, p);
 }
 

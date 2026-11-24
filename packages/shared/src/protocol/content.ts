@@ -70,10 +70,20 @@ export const contentDraftSchema = z.strictObject({
   ...ref,
   op: z.enum(["set", "remove", "revert"]),
   data: z.unknown(),
+  /**
+   * The row's revision as the page last saw it (`ContentRowDetail.revision`). A balance row
+   * needs it, so a stale JSON editor cannot write over a Balance page save (issue #19).
+   */
+  expect: z.string().max(64).optional(),
 });
 
-/** Drops a change from the draft. */
-export const contentDiscardSchema = z.strictObject({ t: z.literal("contentDiscard"), seq, ...ref });
+/** Drops a change from the draft (`expect` as for `contentDraft`). */
+export const contentDiscardSchema = z.strictObject({
+  t: z.literal("contentDiscard"),
+  seq,
+  ...ref,
+  expect: z.string().max(64).optional(),
+});
 
 /**
  * Publishes the draft as the admin last saw it (`draftRev`, the overview's revision), so a change
@@ -394,6 +404,25 @@ export const contentTileSchema = z.strictObject({
   ]),
 });
 
+/** Asks for the Balance page's view (issue #19). */
+export const contentBalanceSchema = z.strictObject({ t: z.literal("contentBalance"), seq });
+
+/**
+ * One Balance page change (issue #19), as a row of the `balance` dataset: `set` its whole value,
+ * `revert` it to the packs' value (or the engine's default when no pack sets it), or `discard` the
+ * draft's change to it. `expect` is the row as the page last showed it (`BalanceRowView.fingerprint`):
+ * a change someone else made since refuses the save.
+ */
+export const contentBalanceSetSchema = z.strictObject({
+  t: z.literal("contentBalanceSet"),
+  seq,
+  part: z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,39}$/),
+  key: z.string().min(1).max(40).nullable(),
+  op: z.enum(["set", "revert", "discard"]),
+  data: z.unknown(),
+  expect: z.string().regex(/^[0-9a-f]{16}$/),
+});
+
 /** Asks for the sound panels' view (issue #29, stage 7). */
 export const contentSoundArtSchema = z.strictObject({ t: z.literal("contentSoundArt"), seq });
 
@@ -656,6 +685,61 @@ export interface ContentDraftView extends ContentRowRef {
   op: "set" | "remove" | "revert";
   author: string;
   updatedAt: string;
+  /** The row's revision, for a row a discard must name (as `ContentRowDetail.revision`). */
+  revision?: string;
+}
+
+/** One value a Balance page row edits: where it sits in the row, and its limits (issue #19). */
+export interface BalanceFieldView {
+  /** The value's path inside the row (`["damage", "flat"]`). */
+  path: string[];
+  label: string;
+  /** How the page shows it: a count, frames (also shown in seconds), or a `random(n)` roll. */
+  unit: "count" | "frames" | "random";
+  min: number;
+  max: number;
+  /** A line under the field. */
+  help?: string;
+}
+
+/** One row of the `balance` dataset on the Balance page (issue #19). */
+export interface BalanceRowView {
+  part: string;
+  key: string | null;
+  label: string;
+  fields: BalanceFieldView[];
+  /** The engine's default. */
+  engine: unknown;
+  /** The installed packs' value, or null when no pack sets it (the engine's default plays). */
+  pack: unknown;
+  /** What plays now: the published value. */
+  published: unknown;
+  /** What the draft would publish. */
+  draft: unknown;
+  /** Published with an operator change. */
+  edited: boolean;
+  /** The draft's change to it, if any. */
+  pending: "set" | "revert" | "remove" | null;
+  /** The row as shown, for `contentBalanceSet`'s `expect`. */
+  fingerprint: string;
+  /** A pack update changed a row the operator had changed. */
+  notice: { packName: string; packVersion: string; now: unknown } | null;
+}
+
+/** A card of the Balance page. */
+export interface BalanceGroupView {
+  id: string;
+  title: string;
+  /** A line under the title. */
+  help: string;
+  rows: BalanceRowView[];
+}
+
+/** The Balance page's view. */
+export interface ContentBalanceView {
+  groups: BalanceGroupView[];
+  /** Draft changes outside the balance dataset, published with it from the Content page. */
+  otherDraft: number;
 }
 
 /** A problem a check found, and where. */
@@ -742,6 +826,11 @@ export interface ContentRowDetail extends ContentRowRef {
   draft: { op: ContentDraftView["op"]; data: unknown; author: string } | null;
   /** Something the admin should know before editing (an NPC Editor save that plays instead). */
   note?: string;
+  /**
+   * The row's revision, for a row a change must name (a balance row, the Balance page's
+   * fingerprint): a save or discard sends it back, and is refused once the row has changed.
+   */
+  revision?: string;
 }
 
 export type ContentServerMsg =
@@ -796,6 +885,16 @@ export type ContentServerMsg =
   | { t: "contentTileArt"; seq: number; view: ContentTileArtView }
   /** The sound panels' view. */
   | { t: "contentSoundArt"; seq: number; view: ContentSoundArtView }
+  /**
+   * The Balance page's view, after a `contentBalance` ask or with a `contentBalanceSet`'s answer
+   * (`result`).
+   */
+  | {
+      t: "contentBalance";
+      seq: number;
+      view: ContentBalanceView;
+      result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
+    }
   /** A tileset cut into tiles (cells showing nothing left out), or why it could not be. */
   | {
       t: "contentTileSheet";

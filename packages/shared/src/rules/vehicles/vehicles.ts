@@ -6,7 +6,7 @@
  * boarding check and unboarding, and the drop refusal while aboard.
  */
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
-import { onContent } from "../../content/store.ts";
+import { content, onContent } from "../../content/store.ts";
 import { engineFixtureKind } from "../core/fixtures.ts";
 import { lingoWord } from "../core/lingo.ts";
 import { tileHas } from "../core/tiles.ts";
@@ -244,25 +244,23 @@ export function unboardCheck(a: {
 }
 
 /**
- * A vehicle's hull (issue #2, an SSO addition: 1.6 had none). Hits on a rider wear the hull, never
- * the rider: a fixed amount per hit, whatever the attacker's level or power. At 0 the vehicle is
- * lost and the rider dies.
+ * A vehicle's full hull (issue #2, an SSO addition: 1.6 had none), from the world's balance
+ * (`balance.hulls`, issue #19; the engine's defaults are Boat 60, Airship 80, Battleship 150).
+ * Hits on a rider wear the hull, never the rider: a fixed amount per hit, whatever the attacker's
+ * level or power. At 0 the vehicle is lost and the rider dies.
  */
-export const HULL_MAX: Readonly<Record<Vehicle, number>> = {
-  Boat: 60,
-  Airship: 80,
-  Battleship: 150,
-};
-
-/** What one arrow or harmful spell takes off a hull. */
-export const HULL_HIT_DAMAGE = 2;
-
-/** Hull a parked vehicle regains for each whole minute parked. */
-export const HULL_REPAIR_PER_MINUTE = 1;
-
-/** A vehicle's full hull. */
 export function hullMax(vehicle: Vehicle): number {
-  return HULL_MAX[vehicle];
+  return content().balance.hulls.find((h) => h.vehicle === vehicle)?.hull ?? 1;
+}
+
+/** What one arrow or harmful spell takes off a hull (`balance.vehicles.hullHit`). */
+export function hullHitDamage(): number {
+  return content().balance.vehicles.hullHit;
+}
+
+/** Hull a parked vehicle regains for each whole minute parked (`balance.vehicles.repairPerMinute`). */
+export function hullRepairPerMinute(): number {
+  return content().balance.vehicles.repairPerMinute;
 }
 
 /**
@@ -274,7 +272,7 @@ export function boardingHull(
   parked: { hull: number | null; parkedAt: number | null },
   max: number,
   now: number,
-  repairPerMinute = HULL_REPAIR_PER_MINUTE,
+  repairPerMinute = hullRepairPerMinute(),
 ): number {
   if (parked.hull === null) {
     return max;
