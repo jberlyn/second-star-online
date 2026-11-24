@@ -9,7 +9,15 @@ import { classicData } from "@secondstaronline/data/classic";
 
 const { classes: classesData } = classicData;
 
-import { type EquipView, emptyBag, NO_EQUIPMENT } from "@secondstaronline/shared";
+import {
+  buildContentStore,
+  type ContentData,
+  content,
+  type EquipView,
+  emptyBag,
+  installContent,
+  NO_EQUIPMENT,
+} from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";
 import { createInputState, keyDown } from "../src/input.ts";
@@ -503,6 +511,24 @@ describe("the right panel (frames 50-65)", () => {
     ).toHaveLength(0);
     panel.el.querySelector<HTMLButtonElement>('[aria-label="LeftHand: take off Knife"]')?.click();
     expect(sent).toEqual(["unequip LeftHand"]);
+  });
+  test("the × names the item as players see it, after a rename", () => {
+    const before = content();
+    const items = classicData.items.items.map((i) =>
+      i.name === "Chain Helm" ? { ...i, display: "Iron Hood" } : i,
+    );
+    installContent(
+      buildContentStore({
+        ...(classicData as unknown as ContentData),
+        items: { ...classicData.items, items },
+      }),
+    );
+    try {
+      const { panel } = panelWith([], { equip: { head: "Chain Helm" } });
+      expect(panel.el.querySelector('[aria-label="Head: take off Iron Hood"]')).not.toBeNull();
+    } finally {
+      installContent(before);
+    }
   });
   test("the Head × is shown and works", () => {
     const { panel, sent } = panelWith([], { equip: { head: "Chain Helm" } });

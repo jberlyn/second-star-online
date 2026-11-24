@@ -8,7 +8,7 @@ import { isBlackjackTable } from "../casino/blackjack.ts";
 import { isSlotMachine } from "../casino/casino.ts";
 import { isCheckersTable } from "../casino/checkers.ts";
 import { skillValue } from "../core/fighter.ts";
-import { engineFixtureKind, playerArt } from "../core/fixtures.ts";
+import { engineFixtureKind, playerArt, withoutId } from "../core/fixtures.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
@@ -33,6 +33,14 @@ export function tilePixel(x: number, y: number): { px: number; py: number } {
 let G: ContentStore["itemRules"]["ground"];
 
 /**
+ * The name the ground tables test: without a carried container's or picture's `#id`, so a
+ * `Barrel#12` sits on the ground as a Barrel does.
+ */
+function groundName(name: string): string {
+  return withoutId(name).trim();
+}
+
+/**
  * The item-action pause after Ctrl: 4 frames (200 ms). 1.6 set 40 frames on every Ctrl and held
  * the client until the server's inventory reply ended it, so a pickup waited one round trip while
  * a press with no reply (boarding, unboarding, a sign) waited the full 2 seconds. SSO answers in
@@ -49,12 +57,13 @@ export function blocksPlayer(
   name: string,
   who: { level: number; skills: readonly number[] },
 ): boolean {
-  if (anyMatch(G.blocks, name)) {
+  const base = groundName(name);
+  if (anyMatch(G.blocks, base)) {
     return true;
   }
   return G.platforms.some(
     (p) =>
-      ruleMatches(name, p) &&
+      ruleMatches(base, p) &&
       (p.needs === "level" ? who.level : skillValue(who.skills, p.needs)) < p.atLeast,
   );
 }
@@ -64,7 +73,7 @@ export function blocksPlayer(
  * newspapers stop monsters too (1.6 left those two off the monsters' list).
  */
 export function blocksMonster(name: string): boolean {
-  return anyMatch(G.blocks, name);
+  return anyMatch(G.blocks, groundName(name));
 }
 
 /**
@@ -73,7 +82,8 @@ export function blocksMonster(name: string): boolean {
  * player, such as a crafted Table, can be.
  */
 export function fixedInPlace(name: string, placedByWorld: boolean): boolean {
-  return placedByWorld && (anyMatch(G.blocks, name) || anyMatch(G.platforms, name));
+  const base = groundName(name);
+  return placedByWorld && (anyMatch(G.blocks, base) || anyMatch(G.platforms, base));
 }
 
 /** A placed carried container (`Crate#12`): its kind's behaviour, with an `#id`. */
@@ -209,7 +219,7 @@ export function groundPictureTopLeft(px: number, py: number): { x: number; y: nu
  * SSO stacks every item as a full load does.
  */
 export function groundLayer(name: string): "hidden" | "items" | "overChars" | "overLayer3" {
-  return firstMatch(G.layers, name)?.layer ?? "items";
+  return firstMatch(G.layers, groundName(name))?.layer ?? "items";
 }
 
 /**
@@ -217,7 +227,7 @@ export function groundLayer(name: string): "hidden" | "items" | "overChars" | "o
  * save keeps that pixel position. SSO keeps tiles only, so a Ray is always drawn there.
  */
 export function groundDrawOffset(name: string): { dx: number; dy: number } {
-  const row = firstMatch(G.offsets, name);
+  const row = firstMatch(G.offsets, groundName(name));
   return row ? { dx: row.dx, dy: row.dy } : { dx: 0, dy: 0 };
 }
 
@@ -226,7 +236,7 @@ export function groundDrawOffset(name: string): { dx: number; dy: number } {
  * frames 1-4 cycle.
  */
 export function groundOverlay(name: string): string | null {
-  return firstMatch(G.overlays, name)?.overlay ?? null;
+  return firstMatch(G.overlays, groundName(name))?.overlay ?? null;
 }
 
 /**
@@ -234,7 +244,7 @@ export function groundOverlay(name: string): string | null {
  * (an SSO change; 1.6's Alchemy Lab always bubbled).
  */
 export function overlayWhenInUse(name: string): boolean {
-  return anyMatch(G.inUse, name);
+  return anyMatch(G.inUse, groundName(name));
 }
 
 /** A player as the station test sees them: where they stand, the way they face, and if they craft. */
@@ -502,7 +512,7 @@ export function ctrlGate(name: string, who: { str: number; mine: boolean }): Pic
   }
   // The fixtures' one-line texts and the skill platforms', `pickup.ctrlTexts`, in 1.6's order, with
   // the stations' lines after them (docs/modding.md has the notes on the platforms).
-  const said = firstMatch(content().itemRules.pickup.ctrlTexts, name);
+  const said = firstMatch(content().itemRules.pickup.ctrlTexts, groundName(name));
   if (said) {
     return { kind: "text", text: said.text, ...(said.unpause ? { unpause: true } : {}) };
   }

@@ -203,7 +203,7 @@ What still needs code: a new mechanic (an item that does something no table or [
 
 #### Example: Moonblade
 
-This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power, Strength `15`, `LeftHand`, drawn on the paperdoll as `Broad Sword`):
+This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power, Strength `15`, `LeftHand`, drawn when worn as a `Broad Sword`). On a running server, the Control Panel's [Items page](running-a-server.md#the-items-page) does all of this in one form: **New item** `Moonblade`, copying `Long Sword`, then change what differs and publish. In a pack it is two records:
 
 1. **Catalogue (`items.json`, `items`):**
 
@@ -213,36 +213,25 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 
    `sprite` draws the Broad Sword's picture in the bag, the equipment boxes and on the ground. For a picture of its own, leave `sprite` out and place `items/Moonblade.png` and its sidecar under `assets/added/` (with `"icon": "added"`, so a data test checks the file is there), or upload it on a running server's [Content page](running-a-server.md#item-pictures). An item the art draws no picture for cannot be made with `/drop`.
 
-2. **Slot (`item-rules.json`, `equip.slots`, appended at end):**
+2. **Its rules, as an [item definition](#item-definitions) (`items.json`, `definitions`):**
 
    ```json
-   { "match": "exact", "pattern": "Moonblade", "slot": "LeftHand" }
+   {
+     "name": "Moonblade",
+     "slot": "LeftHand",
+     "strength": 15,
+     "behaviours": ["sword"],
+     "attack": { "base": [{ "flat": 9, "randomN": 6 }] },
+     "trains": ["Slash", "Thrust", "Swordsmanship", "Fencing"],
+     "paperdoll": [{ "layer": "weapon", "becomes": "Broad Sword" }],
+     "breaks": { "weapon": ["LeftHandE"] },
+     "damaged": "Damaged Sword, Broad"
+   }
    ```
 
-3. **Attack power (`attpower.json`, `attPower.base`, appended at end):**
+   A base roll is `flat + random(randomN)` (`flat` any whole number; `randomN` from 0, where 0 rolls nothing). `"strengthHalf": true` adds `random(strength) / 2` after it, as Classic's Gold Axe does. Every roll draws, in order, and the last one's stands. The Moonblade gets no skill tiers: give it `attack.blocks` for the Slash and sword tiers, and the Thrust block every Classic weapon gets (the Items page's copy of a Long Sword starts with the Long Sword's).
 
-   ```json
-   { "match": "contains", "pattern": "Moonblade", "flat": 9, "randomN": 6 }
-   ```
-
-   A base row rolls `flat + random(randomN)` (`flat` any whole number; `randomN` from 0, where 0 rolls nothing). `"strengthHalf": true` adds `random(strength) / 2` after it, as Classic's Gold Axe does. Every matching `base` row rolls, in file order, and the last one's roll stands: the earlier rolls still draw, so Classic's Gold Axe draws its `Axe` row's roll before its own. Then a matching `exactOverrides` row replaces it (Classic's bows); an override is tested by exact name whatever its `match` says, and never rolls Strength. A row is parts only: there is no formula text.
-
-4. **Strength requirement (`item-rules.json`, `equip.strength`):**
-
-   ```json
-   { "match": "exact", "pattern": "Moonblade", "strength": 15 }
-   ```
-
-5. **Paperdoll alias (`item-rules.json`, `paperdoll.aliases`):**
-
-   ```json
-   { "layer": "weapon", "match": "exact", "pattern": "Moonblade", "becomes": "Broad Sword" }
-   ```
-
-**Intentional omissions in this example:**
-- **Skill bonus to attack:** `attpower.json` `skillBlocks` adds Slash and sword-skill tiers to names containing "Sword", so `"Moonblade"` gets only its base roll, the Strength tiers and the Thrust block every weapon gets, unless renamed (e.g. `"Moonblade Sword"`) or given a `skillBlocks` entry.
-- **Kill training:** which skills a kill trains comes from `classes.json` `skillGain.weaponSkills`; with no row there, a kill with `"Moonblade"` trains nothing. Add `{ "weapon": "Moonblade", "match": "exact", "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"] }`.
-- **Breaking:** items break only if listed in `breaks.weapon.items` and `breaks.damaged`.
+**The same in the rule tables.** A pack can also give an item its rules as rows in the tables that match names, which is how Classic defines its own: rows that `contains` a name reach every item with that name in it. `"Elven Long Sword"` inherits the Long Sword's slot, attack power, Strength and kill training through Classic's "Long Sword" contains rows, and the generic Sword skill block; `"Elven Sword"` matches no slot row and cannot be equipped until it has one. The Moonblade above, as rows: an `equip.slots` row `{ "match": "exact", "pattern": "Moonblade", "slot": "LeftHand" }`, an `attPower.base` row `{ "match": "exact", "pattern": "Moonblade", "flat": 9, "randomN": 6 }`, an `equip.strength` row, a `behaviours` row, a `classes.json` `skillGain.weaponSkills` row `{ "weapon": "Moonblade", "match": "exact", "skills": [...] }`, a `paperdoll.aliases` row `{ "layer": "weapon", "match": "exact", "pattern": "Moonblade", "becomes": "Broad Sword" }`, and `breaks.weapon.items` and `breaks.damaged` rows. In `attPower.base`, every matching row rolls, in file order, and the last one's roll stands: the earlier rolls still draw, so Classic's Gold Axe draws its `Axe` row's roll before its own. A matching `exactOverrides` row then replaces it (Classic's bows); an override is tested by exact name whatever its `match` says, and never rolls Strength. A row is parts only: there is no formula text.
 
 ### Item definitions
 
@@ -250,18 +239,7 @@ An **item definition** (`items.json` `definitions`, keyed by the item's name) is
 
 On a running server, the Control Panel's [Items page](running-a-server.md#the-items-page) writes these for you: it opens any item as a definition of what it plays now, and saves the definition when you change it.
 
-The Moonblade above, as one definition (the catalogue entry and the paperdoll alias stay where they are):
-
-```json
-{
-  "name": "Moonblade",
-  "slot": "LeftHand",
-  "strength": 15,
-  "behaviours": ["sword"],
-  "attack": { "base": [{ "flat": 9, "randomN": 6 }] },
-  "trains": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
-}
-```
+The [Moonblade](#example-moonblade) above is one. Its fields, and the tables each compiles into:
 
 | Field | Table it compiles into |
 |---|---|
@@ -273,11 +251,22 @@ The Moonblade above, as one definition (the catalogue entry and the paperdoll al
 | `gear`, `cooldowns`, `sound` | `gear`, `swing.cooldowns` (one per worn slot), `swing.sounds` (null: silent) |
 | `use.usable`, `use.silent`, `use.effects`, `use.message`, `use.refusal` | `use.usable`, `use.silent`, `use.effects`, `use.messages`, `use.refusals` |
 | `trains` | `classes.json` `skillGain.weaponSkills` |
+| `tools` | `tools`: `{ can?, tier?, ladder?, counter? }`; items naming the same `counter` share a hit count (a seeded Gold Axe keeps the Axe's) |
+| `requires` | `requires`: `{ on: "equip" \| "use", needs, atLeast, text? }` (`needs` a skill or `level`) |
+| `menu` | `menu`: the button in place of Equip (`Cook`, `Mix`, `Build`, `Smith`, `Storage`) |
+| `use.mysticism`, `use.skillBook` | `use.books` (the Mysticism a spell book needs), `use.skillBooks` (`{ skill, points?, xp?, upTo? }`) |
+| `damaged`, `breaks.armour`, `breaks.weapon` | `breaks.damaged`, and `breaks.armour.items` and `breaks.weapon.items` (the slots it breaks in: armour in `BodyE`, `HeadE` or `RightHandE`, a weapon in `LeftHandE`, the slots the engine rolls a break in) |
+| `paperdoll` | `paperdoll.aliases`: `[{ layer, becomes }]`, one per layer |
+| `ground.blocks`, `.platforms` (every row must be met), `.overlay`, `.inUse`, `.layer`, `.offset`, `.tipless`, `.tipName`, `.ctrlText` | `ground.blocks`, `ground.platforms`, `ground.overlays`, `ground.inUse`, `ground.layers`, `ground.offsets`, `ground.tipless`, `ground.tipNames`, `pickup.ctrlTexts` |
+| `container.capacity`, `container.uniqueId` | `containers.capacity`, `containers.uniqueIds` |
+| `inEditorList`, `inPlayerShops` | membership of `editorItems` (the World Editor's list) and `playerShopWhitelist` |
 
 - **Left out means none.** A definition with only a `name` gives the item no slot, no behaviours, no attack rolls (power 1, then the Strength tiers), no skill tiers and no training. The every-weapon Thrust block is a skill block too: an item that should keep it lists it in `attack.blocks`.
-- **Not covered yet:** tools and swing ladders, requirements, menus, books, breaking, the paperdoll, ground and container rules keep the tables' rows for a defined item too.
-- **Names:** a definition is for its catalogue name exactly. Behaviour rows test a name without its `#id` or `+N`, so a runtime `"Long Sword+3"` has a defined Long Sword's behaviours but the tables' slot and power; a masterwork (`"Knight's Sword +1"`) takes its behaviours from its base item, so its definition sets none. A base item's definition leaves its masterworks on the pack's rows (or their own definitions). An engine fixture (a door, a sign) has none.
-- **Checks:** the schema's limits (Strength 0–200, attack `flat` −9999–9999 and `randomN` 0–9999, armour ±999, use effects ±99999), an item the catalogue has (a retired one too), skills that exist, and one swing cooldown per slot. Removing an item takes its definition with it.
+- **One rule stays the tables':** `equip.murder`, a single name test (1.6's "Murder"), is not part of a definition.
+- **Pictures when worn:** a definition's aliases go before the pack's aliases, so the pack's aliases of the name it becomes still apply (a Moonblade drawn as an Ice Hammer is drawn as an Ice Hammer is, a Mining Hammer). An alias naming another defined item follows that item's own alias on the same layer, whatever order the definitions are in; a loop is refused, and so is an alias to a picture with no worn frames. The Items page's copy of an item is drawn as that item when worn until it has worn frames of its own; **Give it a layer of its own** takes the copy's alias out.
+- **Lists:** an item a definition puts on a list it is not on goes at the end; one it leaves off comes off.
+- **Names:** a definition is for its catalogue name exactly. Behaviour and requirement rows test a name without its `#id` or `+N`, and paperdoll aliases without its `+N`, so a runtime `"Long Sword+3"` has a defined Long Sword's behaviours but the tables' slot and power; a masterwork (`"Knight's Sword +1"`) takes its behaviours, needs and worn picture from its base item, so its definition sets none of them (and leaves the base's alone). The item menu, a container's lines and the ground rules test a name without its `#id`, so a carried `Crate#12` opens, holds and sits on the ground as a defined Crate does. A base item's definition leaves its masterworks on the pack's rows (or their own definitions). An engine fixture (a door, a sign) has none.
+- **Checks:** the schema's limits (Strength 0–200, attack `flat` −9999–9999 and `randomN` 0–9999, armour ±999, use effects ±99999), an item the catalogue has (a retired one too), skills that exist (trained, in a skill tier, needed, a skill platform's, a skill book's), one swing cooldown per slot, two-handed only in LeftHand and never on a bow (a bow shoots arrows held in the off hand, and some arrows must be wearable there), a tool use that does something (a use or a ladder; a tier only with a use) with a ladder that exists, one picture per paperdoll layer, Storage only with a `#id` for each copy (a copy held from before gets its id when first opened), Smith only on an item a repair recipe takes (unless the pack already gave it Smith), a book that teaches only when it is a book, a spell book only when a spell's book is it, a skill book's formulas checked as the table's are, and a new item's name never a map fixture's (`Wooden Door`, `Gold Chest`, or a door's other form). Removing an item takes its definition with it.
 - **Editing a pack's item:** an operator who edits an item gets a definition seeded from what it plays now (saved unchanged, it plays identically). From then on the item no longer follows the pack's rule changes; when a pack update changes what the pack's rules play for it, the Content page raises a notice for the definition, and taking the pack's version drops the definition. `seedDefinition` and `resolveIn` in `packages/shared/src/content/definitions.ts` give an item's current rules as a definition.
 
 Definitions are edited on the Control Panel's [Items page](running-a-server.md#the-items-page), which shows each rule group with where it comes from, or as JSON on the Content page (dataset `items`, part `definitions`); both refuse a save over a change they have not seen.

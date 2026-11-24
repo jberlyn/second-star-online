@@ -110,7 +110,8 @@ export type GatherCounters = Record<string, number>;
 
 /** No tool has been swung yet: each one's first hit loads its count. */
 export function newGatherCounters(): GatherCounters {
-  return {};
+  // No prototype: a counter an operator names `constructor` or `__proto__` is a counter like any.
+  return Object.create(null) as GatherCounters;
 }
 
 /** Everything a weapon can do, one entry per matching `tools` row with a `can`, in table order. */
@@ -190,12 +191,18 @@ export function tierText(node: HarvestNode): string {
  * Each counter keeps its own count; one table serves them all.
  */
 export function hitCounter(counters: GatherCounters, counter: string, skill: number): boolean {
-  let c = counters[counter] ?? 0;
+  // Only the counter's own count (never an inherited property, should `counters` have a prototype).
+  let c = Object.hasOwn(counters, counter) ? (counters[counter] ?? 0) : 0;
   if (c < 1) {
     c = gtCascade(G.counterTable, skill, 1) ?? 1;
   }
   c -= 1;
-  counters[counter] = c;
+  Object.defineProperty(counters, counter, {
+    value: c,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
   return c === 0;
 }
 

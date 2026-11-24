@@ -387,7 +387,8 @@ const groundName = (name: string): string => (name.split("#")[0] ?? name).trim()
 
 /**
  * The name each table's rows test, as the game reads it: behaviour and requirement rows without
- * the `#id` or `+N`, the paperdoll's aliases without the `+N`, the ground tip without the `#id`.
+ * the `#id` or `+N`, the paperdoll's aliases without the `+N`, the ground tables, the item menu and
+ * a container's capacity without the `#id`.
  */
 const TESTED_NAME: Record<string, (name: string) => string> = {
   "itemRules behaviours": behaviourName,
@@ -395,6 +396,15 @@ const TESTED_NAME: Record<string, (name: string) => string> = {
   "itemRules paperdoll.aliases": lookName,
   "itemRules ground.tipless": groundName,
   "itemRules ground.tipNames": groundName,
+  "itemRules menu": groundName,
+  "itemRules containers.capacity": groundName,
+  "itemRules ground.blocks": groundName,
+  "itemRules ground.platforms": groundName,
+  "itemRules ground.overlays": groundName,
+  "itemRules ground.inUse": groundName,
+  "itemRules ground.layers": groundName,
+  "itemRules ground.offsets": groundName,
+  "itemRules pickup.ctrlTexts": groundName,
 };
 
 /** The name table `key`'s rows test when the game reads them for item `name`. */
@@ -489,7 +499,9 @@ export function matchTable(
     for (const r of all) {
       const layer = String(r.raw.layer ?? "");
       const text = cur.get(layer) ?? start;
-      if (rowTests(key, text, r, craft)) {
+      // A row an item definition took the name from (the store's compile) is skipped, as the
+      // renderer skips it.
+      if (!excepted(r.raw, text) && rowTests(key, text, r, craft)) {
         cur.set(layer, String(r.raw.becomes ?? text));
         rows.push(text === start ? r : { ...r, tested: text });
       }

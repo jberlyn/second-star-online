@@ -201,6 +201,11 @@ export function startServer(options: ServerOptions): RunningServer {
       );
     },
   });
+  // Item definitions saved before a definition held an item's whole rule set (issue #30) take the
+  // rules they played, once.
+  for (const line of content.backfillDefinitions()) {
+    console.log(line);
+  }
   // Settings that became balance content (issue #19 stage 4) move once, as a logged publish.
   for (const line of moveDropSettings(db, content)) {
     console.log(line);

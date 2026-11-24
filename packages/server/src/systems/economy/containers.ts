@@ -18,6 +18,7 @@ import {
   isFixtureKind,
   isGoldName,
   isStorageContainer,
+  isUniqueContainer,
   itemLabel,
   lastMatch,
   lingoEq,
@@ -26,6 +27,7 @@ import {
   QUEST_SAVE_BLOCK,
   questChestRefill,
   type Rng,
+  withoutId,
 } from "@secondstaronline/shared";
 
 import { logActivity } from "../admin/activity.ts";
@@ -35,7 +37,8 @@ import { VAULT_TEXT } from "./vault.ts";
 /** The capacity by name, `contains` cascade, last wins. */
 export function containerCapacity(name: string): number {
   const C = content().itemRules.containers;
-  return lastMatch(C.capacity, name)?.capacity ?? C.defaultCapacity;
+  // Tested without a carried container's `#id`: `Crate#12` holds what a Crate holds.
+  return lastMatch(C.capacity, withoutId(name))?.capacity ?? C.defaultCapacity;
 }
 
 export const CONTAINER_TEXT = {
@@ -51,6 +54,10 @@ export const CONTAINER_TEXT = {
       : `You see the ${name}, but you must be standing in front of it to use it.`,
   /** SSO, after the mailbox's "You can't check mail that's not yours!" */
   notYours: "You can't open a vault that's not yours!",
+  /** SSO: a carried container with no `#id` of its own (it would share its storage). */
+  shared: "This can't hold anything: it has no storage of its own.",
+  /** SSO: a stack of containers with no `#id` and no free bag line to take one out onto. */
+  makeRoom: "Make room in your bag to open one of these.",
 } as const;
 
 /**
@@ -115,7 +122,7 @@ export function openContainer(world: World, p: Player, g: GroundItem): Outgoing[
  * printed nothing). A chest cannot be carried in 1.6 (no item code; a click or Ctrl opens one), so
  * its Storage path is never reached.
  */
-export function storageIntent(world: World, p: Player, slot: number): Outgoing[] {
+export function storageIntent(world: World, p: Player, slot: number, rng?: Rng): Outgoing[] {
   const line = p.char.bag[slot - 1];
   if (!line || menuAction(line.item) !== "Storage" || p.keyLock || p.itemPause > 0) {
     return [];
@@ -123,7 +130,42 @@ export function storageIntent(world: World, p: Player, slot: number): Outgoing[]
   if (p.deadLock > 0 || p.loading > 0 || hasBehaviour(line.item, "chest")) {
     return [];
   }
+  // A carried container keeps its storage under its own `#id`. One held from before its item was
+  // given one (an operator turned a definition's per-copy id on) gets its id now, so copies never
+  // share one inventory; a stack gives one copy its id on a line of its own.
+  if (!line.item.includes("#")) {
+    if (!rng || !isUniqueContainer(line.item)) {
+      return [tell(p, CONTAINER_TEXT.shared)];
+    }
+    const named = freshContainerName(world, p, line.item, rng);
+    if (line.qty <= 1) {
+      line.item = named;
+    } else {
+      const free = p.char.bag.indexOf(null);
+      if (free < 0) {
+        return [tell(p, CONTAINER_TEXT.makeRoom)];
+      }
+      line.qty -= 1;
+      p.char.bag[free] = { item: named, qty: 1 };
+      p.invDirty = true;
+      return [show(world, p, named, true), tell(p, CONTAINER_TEXT.open(named))];
+    }
+    p.invDirty = true;
+  }
   return [show(world, p, line.item, true), tell(p, CONTAINER_TEXT.open(line.item))];
+}
+
+/** A container name `<name>#<n>` no container, bag or vault line holds yet. */
+function freshContainerName(world: World, p: Player, name: string, rng: Rng): string {
+  const held = (n: string) =>
+    world.containers.has(n) ||
+    p.char.bag.some((l) => l !== null && lingoEq(l.item, n)) ||
+    p.char.vault.some((v) => lingoEq(v, n));
+  let named = `${withoutId(name)}#${rng.random(999999)}`;
+  for (let i = 0; i < 20 && held(named); i++) {
+    named = `${withoutId(name)}#${rng.random(999999)}`;
+  }
+  return named;
 }
 
 /**

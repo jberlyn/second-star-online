@@ -7,7 +7,10 @@
  */
 import { DATASET_SCHEMAS, FORMULA_MAX, formulaRange } from "@secondstaronline/data/schema";
 import {
+  ARROW_COLOURS,
+  aliasCycles,
   behaviourName,
+  behaviourTest,
   buildContentStore,
   type ContentData,
   compileDefinitions,
@@ -15,10 +18,12 @@ import {
   type DatasetId,
   definesBehaviours,
   isEngineFixture,
+  lastMatch,
   lingoContains,
   lingoEq,
   npcLootItemOk,
   npcShopItemOk,
+  ruleMatches,
 } from "@secondstaronline/shared";
 
 import { type RowRef, rowLabel } from "./rows.ts";
@@ -110,6 +115,15 @@ export function nameProblems(
   return out;
 }
 
+/**
+ * Whether `name` is one of the item data's map fixtures (`items.fixtures`), or a door's other form
+ * (`Open Wooden Door` for `Wooden Door`, and back).
+ */
+export function isFixtureName(data: Pick<ContentData, "items">, name: string): boolean {
+  const forms = [name, `Open ${name}`, name.replace(/^open\s+/i, "")];
+  return data.items.fixtures.some((f) => forms.some((n) => lingoEq(f, n)));
+}
+
 /** The key rules over a merged store. */
 export function keyProblems(
   data: ContentData,
@@ -129,6 +143,14 @@ export function keyProblems(
         where: `items/items/${i.name}`,
         message:
           "a key may not be an engine fixture's name (Exit, Exit2, Sign 1-3, Street Lamp, or an owner's Door, Mailbox, Board, Vault or vehicle)",
+      })),
+    // A map fixture (a door, a chest, a platform) is read by the same name tables as an item: a new
+    // item named like one, or like a door's other form, would change the fixtures on every map.
+    ...data.items.items
+      .filter((i) => !packKeys.items.has(i.name.toLowerCase()) && isFixtureName(data, i.name))
+      .map((i) => ({
+        where: `items/items/${i.name}`,
+        message: `a key may not be a map fixture's name: ${i.name} is one (or a door's other form)`,
       })),
     ...nameProblems("monsters/monsters", data.monsters.monsters, packKeys.monsters),
     ...data.npcFiles.files
@@ -213,7 +235,19 @@ export function progressionProblems(data: ContentData): ContentProblem[] {
   // A teaching item's formulas, as a progression's are checked: known names, and an amount that
   // can reach 1. They read the reader's stats and skills, never damage or a tool.
   const skills = new Set(data.classes.skills.map((s) => skillNorm(s.skill)));
-  data.itemRules.use.skillBooks.forEach((b) => {
+  // The rows a definition's skill book becomes are checked as the table's are.
+  const books = [
+    ...data.itemRules.use.skillBooks.map((b) => ({
+      b,
+      at: `itemRules/use/skillBooks/${b.pattern}`,
+    })),
+    ...(data.items.definitions ?? []).flatMap((d) =>
+      d.use?.skillBook
+        ? [{ b: d.use.skillBook, at: `items/definitions/${d.name}/use/skillBook` }]
+        : [],
+    ),
+  ];
+  books.forEach(({ b, at }) => {
     for (const key of ["points", "xp"] as const) {
       const f = b[key];
       if (f === undefined) {
@@ -225,7 +259,7 @@ export function progressionProblems(data: ContentData): ContentProblem[] {
         damage: false,
         curve: false,
       });
-      const where = `itemRules/use/skillBooks/${b.pattern}/${key}`;
+      const where = `${at}/${key}`;
       for (const q of problems) {
         out.push({ where, message: q.message });
       }
@@ -533,6 +567,24 @@ export function referencesOf(data: ContentData): Reference[] {
     d.trains?.forEach((s, j) => {
       add(row, ["trains", j], "skill", s, null);
     });
+    // What it needs, its skill platform and its skill book name skills ("level" is the level).
+    d.requires?.forEach((r, j) => {
+      if (r.needs !== "level") {
+        add(row, ["requires", j, "needs"], "skill", r.needs, null);
+      }
+    });
+    (d.ground?.platforms ?? []).forEach((pl, i) => {
+      if (pl.needs !== "level") {
+        add(row, ["ground", "platforms", i, "needs"], "skill", pl.needs, null);
+      }
+    });
+    if (d.use?.skillBook) {
+      add(row, ["use", "skillBook", "skill"], "skill", d.use.skillBook.skill, null);
+    }
+    // What it breaks into is an item: removing that item takes the broken form off.
+    if (d.damaged !== undefined) {
+      add(row, ["damaged"], "item", d.damaged, ["damaged"]);
+    }
     d.attack?.blocks?.forEach((b, i) => {
       b.tiers.forEach((t, j) => {
         (t.when ?? []).forEach((w, k) => {
@@ -799,10 +851,23 @@ export function referenceProblems(next: ContentData, published: ContentData): Co
       // when this publish makes it.
       return left <= 0 || r.where === BINDINGS_WHERE;
     })
-    .map((r) => ({ where: r.where, message: referenceMessage(r) }));
+    .map((r) => ({ where: referenceWhere(r), message: referenceMessage(r) }));
+}
+
+/**
+ * Where a broken reference is: its row, and for an item definition the field too
+ * (`items/definitions/Sword/requires/0/needs`), so the Items page names the field it is in.
+ */
+function referenceWhere(r: Reference): string {
+  return r.row.dataset === "items" && r.row.part === "definitions" && r.path.length > 0
+    ? `${r.where}/${r.path.join("/")}`
+    : r.where;
 }
 
 const BINDINGS_WHERE = "bindings/skills";
+
+/** The behaviours that make a carried item a container (`isStorageContainer`). */
+const STORAGE_BEHAVIOURS: readonly string[] = ["cabinet", "windCabinet", "crate", "cauldron"];
 
 /** The skill bindings that name no skill: their mechanics are off until they are fixed. */
 export function bindingProblems(data: ContentData): ContentProblem[] {
@@ -864,15 +929,104 @@ export function withNpcSaves(data: ContentData, saves: readonly NpcSave[]): Cont
  */
 export function definitionProblems(data: ContentData): ContentProblem[] {
   const out: ContentProblem[] = [];
+  for (const [layer, names] of aliasCycles(data.items.definitions ?? [])) {
+    out.push({
+      where: `items/definitions/${names[0]}`,
+      message: `the ${layer} layer's "drawn as" goes round in a loop: ${[...names, names[0]].join(" → ")}`,
+    });
+  }
   for (const d of data.items.definitions ?? []) {
     const where = `items/definitions/${d.name}`;
     if (isEngineFixture(d.name)) {
       out.push({ where, message: `${d.name} is an engine fixture: it has no definition` });
     }
-    if (d.behaviours !== undefined && !definesBehaviours(d.name)) {
+    if (!definesBehaviours(d.name)) {
+      for (const [field, what] of [
+        ["behaviours", "behaviours"],
+        ["requires", "needs"],
+        ["paperdoll", "worn pictures"],
+      ] as const) {
+        if (d[field] !== undefined) {
+          out.push({
+            where,
+            message: `${d.name} takes its ${what} from ${behaviourName(d.name)}: give it none`,
+          });
+        }
+      }
+    }
+    // A bow shoots arrows held in the off hand: two-handed, it never could.
+    if (d.behaviours?.includes("bow")) {
+      if (d.twoHanded) {
+        out.push({
+          where,
+          message: `${d.name} is a bow, which shoots arrows held in the off hand: it cannot take both hands`,
+        });
+      }
+      const compiled = compileDefinitions(data);
+      const arrows = ARROW_COLOURS.some((c) =>
+        data.items.items.some(
+          (i) =>
+            !i.retired &&
+            lingoEq(i.name, `${c} Arrows`) &&
+            lastMatch(compiled.itemRules.equip.slots, i.name)?.slot === "RightHand",
+        ),
+      );
+      if (!arrows) {
+        out.push({
+          where,
+          message: `${d.name} is a bow, but no arrows (${ARROW_COLOURS[0]} Arrows …) can be held in the off hand to shoot`,
+        });
+      }
+    }
+    // Smith repairs at the anvil: an item no repair recipe takes would only lose its Equip button.
+    // (Not when the pack's own rules already give it Smith, as Classic's Damaged Armor has.)
+    if (
+      d.menu === "Smith" &&
+      !(data.craft.stations.smith?.repairs ?? []).some((r) => lingoEq(r.input, d.name)) &&
+      lastMatch(data.itemRules.menu, d.name)?.action !== "Smith"
+    ) {
       out.push({
         where,
-        message: `${d.name} takes its behaviours from ${behaviourName(d.name)}: give it none`,
+        message: `${d.name}'s menu button is Smith, but no repair recipe takes it: add one, or give it another button`,
+      });
+    }
+    // A book is read by Use: one that is no book (by its behaviours) is never read, and a spell
+    // book teaches the spell whose book it is. (Not when the pack's own rules already say so.)
+    const packTeaches =
+      lastMatch(data.itemRules.use.books, d.name) !== undefined ||
+      data.itemRules.use.skillBooks.some((b) => ruleMatches(d.name, b));
+    if ((d.use?.skillBook !== undefined || d.use?.mysticism !== undefined) && !packTeaches) {
+      const compiled = compileDefinitions(data);
+      if (!behaviourTest(compiled.itemRules.behaviours)(d.name, "book")) {
+        out.push({
+          where: `${where}/use`,
+          message: `${d.name} teaches when read, but it is no book: give it the book behaviour`,
+        });
+      }
+      if (
+        d.use?.mysticism !== undefined &&
+        !compiled.spells.spells.some((sp) => sp.book && ruleMatches(d.name, sp.book))
+      ) {
+        out.push({
+          where: `${where}/use/mysticism`,
+          message: `${d.name} needs Mysticism to read, but no spell's book is ${d.name}: set a spell's book to it, or give it no Mysticism`,
+        });
+      }
+    }
+    // A carried container's storage is kept under its copy's own `#id`: without one every copy
+    // would open the same storage.
+    if (d.menu === "Storage" && d.container?.uniqueId !== true) {
+      out.push({
+        where,
+        message: `${d.name} opens as Storage, so each copy needs its own #id: tick "gets a #id"`,
+      });
+    }
+    // Only a container behaviour makes the game treat the item as a container (one may not be
+    // put inside another, nor in the vault); Storage without one would let containers nest.
+    if (d.menu === "Storage" && !(d.behaviours ?? []).some((b) => STORAGE_BEHAVIOURS.includes(b))) {
+      out.push({
+        where: `${where}/behaviours`,
+        message: `${d.name} opens as Storage, so it needs a container behaviour: ${STORAGE_BEHAVIOURS.join(", ")}`,
       });
     }
     // Two-handed takes the off hand too: only a weapon held in the weapon hand can be.
@@ -882,10 +1036,42 @@ export function definitionProblems(data: ContentData): ContentProblem[] {
         message: `${d.name} is two-handed but ${d.slot === undefined ? "has no equip slot" : `goes in the ${d.slot} slot`}: only a LeftHand weapon can be two-handed`,
       });
     }
+    (d.tools ?? []).forEach((t, i) => {
+      if (t.can === undefined && t.tier !== undefined) {
+        out.push({
+          where: `${where}/tools/${i}`,
+          message: "a tier is for a use: give it a use, or no tier",
+        });
+      }
+      if (t.can === undefined && t.ladder === undefined) {
+        out.push({
+          where: `${where}/tools/${i}`,
+          message: "a tool use does nothing: give it a use or a ladder",
+        });
+      }
+      if (t.ladder !== undefined && !Object.hasOwn(data.itemRules.ladders, t.ladder)) {
+        out.push({
+          where: `${where}/tools/${i}`,
+          message: `names a swing ladder that does not exist: ${t.ladder}`,
+        });
+      }
+    });
+    // A layer draws one picture: two aliases for one layer would leave the first unseen.
+    const layers = (d.paperdoll ?? []).map((a) => a.layer);
+    const twiceLayer = layers.find((l, i) => layers.indexOf(l) !== i);
+    if (twiceLayer) {
+      out.push({
+        where: `${where}/paperdoll`,
+        message: `two pictures for the ${twiceLayer} layer: give it one`,
+      });
+    }
     const slots = (d.cooldowns ?? []).map((c) => c.slot);
     const twice = slots.find((s, i) => slots.indexOf(s) !== i);
     if (twice) {
-      out.push({ where, message: `two swing cooldowns for the ${twice} slot: give it one` });
+      out.push({
+        where: `${where}/cooldowns`,
+        message: `two swing cooldowns for the ${twice} slot: give it one`,
+      });
     }
   }
   return out;

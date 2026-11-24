@@ -235,6 +235,97 @@ export interface ItemPanels {
   pending(): boolean;
 }
 
+/** The part of a picture panel `makeItemPanels` drives. */
+interface PanelLike<V, A> {
+  readonly el: HTMLElement;
+  show(item: A, view: V): void;
+  clear(): void;
+  pending(): boolean;
+}
+
+/**
+ * The Items page's two panels over the server's views (exported for its tests). Each refreshes on
+ * its own: one holding unsaved work keeps it, but a panel that has just saved refreshes though it
+ * still looks pending, since what it held is in the draft now.
+ */
+export function makeItemPanels(
+  make: (
+    picSaved: () => void,
+    wornSaved: () => void,
+  ) => {
+    pic: PanelLike<ContentItemArtView, ContentItemArtView["items"][number]>;
+    worn: PanelLike<ContentWornArtView, { kind: "item"; item: string }>;
+  },
+  askItemArt: () => Promise<ContentItemArtView>,
+  askWornArt: () => Promise<ContentWornArtView>,
+  saved: () => void,
+): ItemPanels {
+  let picJustSaved = false;
+  let wornJustSaved = false;
+  const { pic, worn } = make(
+    () => {
+      picJustSaved = true;
+      saved();
+    },
+    () => {
+      wornJustSaved = true;
+      saved();
+    },
+  );
+  const el = document.createElement("div");
+  el.className = "items-pictures";
+  el.append(pic.el, worn.el);
+  let mine = 0;
+  let shown: string | null = null;
+  return {
+    el,
+    show(key, force = false) {
+      const at = ++mine;
+      const other = shown === null || shown.toLowerCase() !== key.toLowerCase();
+      shown = key;
+      const same = (n: string) => n.toLowerCase() === key.toLowerCase();
+      // Another item, or dropped edits, refresh both; otherwise a panel with unsaved work keeps
+      // it (saving the picture must not wipe frames set up beside it).
+      const keepPic = !force && !other && !picJustSaved && pic.pending();
+      const keepWorn = !force && !other && !wornJustSaved && worn.pending();
+      picJustSaved = false;
+      wornJustSaved = false;
+      void askItemArt()
+        .then((view) => {
+          if (at !== mine || shown === null || keepPic) {
+            return;
+          }
+          const item = view.items.find((i) => same(i.name));
+          if (item) {
+            pic.show(item, view);
+          } else {
+            pic.clear();
+          }
+        })
+        .catch(() => pic.clear());
+      void askWornArt()
+        .then((view) => {
+          if (at !== mine || shown === null || keepWorn) {
+            return;
+          }
+          if (view.items.some((i) => same(i.name))) {
+            worn.show({ kind: "item", item: key }, view);
+          } else {
+            worn.clear();
+          }
+        })
+        .catch(() => worn.clear());
+    },
+    clear() {
+      mine += 1;
+      shown = null;
+      pic.clear();
+      worn.clear();
+    },
+    pending: () => pic.pending() || worn.pending(),
+  };
+}
+
 /** Just a row's ref (a notice or draft row carries more, which an intent's strict schema refuses). */
 export function refOf(r: ContentRowRef): ContentRowRef {
   return { dataset: r.dataset, part: r.part, key: r.key };
@@ -1164,58 +1255,17 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     if (itemPanelsMade || !artOptions || !wornOptions) {
       return itemPanelsMade;
     }
-    const pic = createItemArtPicker({ ...artOptions, saved });
-    const worn = createWornArtPicker({ ...wornOptions, saved }, "items-worn-art");
-    const el = document.createElement("div");
-    el.className = "items-pictures";
-    el.append(pic.el, worn.el);
-    let mine = 0;
-    let shown: string | null = null;
-    itemPanelsMade = {
-      el,
-      show(key, force = false) {
-        const at = ++mine;
-        const other = shown === null || shown.toLowerCase() !== key.toLowerCase();
-        shown = key;
-        const same = (n: string) => n.toLowerCase() === key.toLowerCase();
-        // Another item, or dropped edits, refresh both; otherwise a panel with unsaved work keeps
-        // it (saving the picture must not wipe frames set up beside it).
-        const keepPic = !force && !other && pic.pending();
-        const keepWorn = !force && !other && worn.pending();
-        void askItemArt()
-          .then((view) => {
-            if (at !== mine || shown === null || keepPic) {
-              return;
-            }
-            const item = view.items.find((i) => same(i.name));
-            if (item) {
-              pic.show(item, view);
-            } else {
-              pic.clear();
-            }
-          })
-          .catch(() => pic.clear());
-        void askWornArt()
-          .then((view) => {
-            if (at !== mine || shown === null || keepWorn) {
-              return;
-            }
-            if (view.items.some((i) => same(i.name))) {
-              worn.show({ kind: "item", item: key }, view);
-            } else {
-              worn.clear();
-            }
-          })
-          .catch(() => worn.clear());
-      },
-      clear() {
-        mine += 1;
-        shown = null;
-        pic.clear();
-        worn.clear();
-      },
-      pending: () => pic.pending() || worn.pending(),
-    };
+    const art = artOptions;
+    const worn = wornOptions;
+    itemPanelsMade = makeItemPanels(
+      (picSaved, wornSaved) => ({
+        pic: createItemArtPicker({ ...art, saved: picSaved }),
+        worn: createWornArtPicker({ ...worn, saved: wornSaved }, "items-worn-art"),
+      }),
+      askItemArt,
+      askWornArt,
+      saved,
+    );
     return itemPanelsMade;
   }
   function hidePicker(): void {

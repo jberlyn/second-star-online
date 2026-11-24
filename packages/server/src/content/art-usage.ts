@@ -464,6 +464,17 @@ export function newItemArtGaps(
       // while its worn layer is set up.
       const icon = drawn("items", item.sprite ?? item.name);
       const layer = worn.layer === null || drawn("paperdoll", worn.layer);
+      // A definition's "drawn as" names another item's worn picture: that picture must exist,
+      // whatever the bag shows.
+      const aliased = (data.items.definitions ?? []).some(
+        (d) => d.paperdoll !== undefined && d.name.toLowerCase() === item.name.toLowerCase(),
+      );
+      if (aliased && worn.layer !== null && !layer) {
+        out.set(`${item.name.toLowerCase()}|alias`, {
+          where: `items/definitions/${item.name}/paperdoll`,
+          message: `${item.name} is drawn as ${worn.layer} when worn, but ${worn.layer} has no worn frames: draw it as an item that has some`,
+        });
+      }
       if (!icon && !layer) {
         out.set(item.name.toLowerCase(), {
           where: `items/items/${item.name}`,

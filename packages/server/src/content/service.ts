@@ -58,6 +58,7 @@ import {
   installContent,
   isEngineFixture,
   isUniqueContainer,
+  lingoEq,
   nextTileCodes,
   orphanedFxUploads,
   ownLayerPossible,
@@ -72,6 +73,7 @@ import {
   removedTileCodes,
   resolveIn,
   resolveNpcItemNames,
+  ruleMatches,
   SERVER_ONLY_DATASETS,
   type SoundChange,
   seedDefinition,
@@ -205,6 +207,11 @@ import {
   withNpcSaves,
 } from "./validate.ts";
 import type { ContentWorld, Removal, UsagePlace, WorldAction } from "./world.ts";
+
+/** The paperdoll layer an item in each equip slot is drawn on (boots have no aliases). */
+const PAPERDOLL_LAYER_OF_SLOT: Partial<
+  Record<string, "weapon" | "shield" | "helm" | "gloves" | "body">
+> = { LeftHand: "weapon", RightHand: "shield", Head: "helm", Ring: "gloves", Body: "body" };
 
 /** A release pack whose recorded version or name changes once the start succeeds. */
 interface PackVersionUpdate {
@@ -1452,7 +1459,7 @@ export class ContentService {
   /** The worn frame set panels' view, worked out from the draft's rules (issue #29, stage 3). */
   wornArtView(): ContentWornArtView {
     // With the item definitions compiled: a defined item's slot and behaviours are its own (#30).
-    const d = compileDefinitions(this.draftContent());
+    const d = this.compiledDraft(this.draft());
     const items: ContentWornArtView["items"] = [];
     for (const i of d.items.items) {
       const w = wornLayerOf(d.itemRules, i.name);
@@ -1493,7 +1500,30 @@ export class ContentService {
     const base = this.draftContent();
     // Whether an item is worn, and its behaviours, are its definition's (issue #30): read from the
     // compiled tables. The plan writes only the paperdoll part, which a compile never changes.
-    const compiled = compileDefinitions(base);
+    const compiled = this.compiledDraft(this.draft());
+    if (change.op === "ownLayer") {
+      // An item whose definition draws it as another item: its definition decides its aliases
+      // (the pack table's rows no longer apply to it), so its "drawn as" is what goes.
+      const def = (base.items.definitions ?? []).find((x) => lingoEq(x.name, change.item));
+      if (def?.paperdoll !== undefined) {
+        const { paperdoll: _, ...rest } = def;
+        const wrote = this.writeDraftRows(
+          actor,
+          [
+            {
+              ref: { dataset: "items", part: "definitions", key: def.name },
+              op: "set",
+              data: rest,
+            },
+          ],
+          ["items"],
+        );
+        if (!wrote.ok) {
+          return fail("the change does not match the rows' schema", wrote.problems);
+        }
+        return { ok: true, value: `${def.name} draws a layer of its own in the draft.` };
+      }
+    }
     const plan = planWorn(
       change,
       {
@@ -2355,7 +2385,11 @@ export class ContentService {
     return itemFingerprint({
       plays:
         definition === undefined
-          ? seedDefinition(name, resolveIn(name, this.compiledDraft(draft)))
+          ? seedDefinition(
+              name,
+              resolveIn(name, this.compiledDraft(draft)),
+              this.compiledDraft(draft).items,
+            )
           : null,
       definition: definition ?? null,
       catalogue: rowValue(d, catRef) ?? null,
@@ -2455,7 +2489,7 @@ export class ContentService {
       display: item.display ?? "",
       retired: item.retired === true,
       inPack,
-      form: structuredClone(own ?? seedDefinition(item.name, hits)),
+      form: structuredClone(own ?? seedDefinition(item.name, hits, compiled.items)),
       defined: own !== undefined,
       pack: inPack ? (structuredClone(this.packRowValue(defRef)) as ItemDefinition) : null,
       sources: ruleSources(
@@ -2600,7 +2634,7 @@ export class ContentService {
         const def = { ...(data as Record<string, unknown>), name };
         const own = rowValue(d, defRef);
         const compiled = this.compiledDraft(draft);
-        const playing = own ?? seedDefinition(name, resolveIn(name, compiled));
+        const playing = own ?? seedDefinition(name, resolveIn(name, compiled), compiled.items);
         if (rowHash(playing) === rowHash(def)) {
           return fail(
             own === undefined
@@ -2611,8 +2645,8 @@ export class ContentService {
         // Back to what plays now: the draft's change goes (one staged would publish a definition
         // that plays exactly as the item does).
         const published = rowValue(this.published, defRef);
-        const plays =
-          published ?? seedDefinition(name, resolveIn(name, compileDefinitions(this.published)));
+        const pub = compileDefinitions(this.published);
+        const plays = published ?? seedDefinition(name, resolveIn(name, pub), pub.items);
         if (defDraft && rowHash(plays) === rowHash(def)) {
           const r = this.draftDiscard(defRef);
           return r.ok ? { ok: true, value: `${label} is back to what plays now.` } : r;
@@ -2702,13 +2736,47 @@ export class ContentService {
     const own = rowValue(d, { dataset: "items", part: "definitions", key: from.name }) as
       | ItemDefinition
       | undefined;
-    const copy = structuredClone(own ?? seedDefinition(from.name, resolveIn(from.name, compiled)));
+    const copy = structuredClone(
+      own ?? seedDefinition(from.name, resolveIn(from.name, compiled), compiled.items),
+    );
+    // The copy is drawn when worn as the item it was copied from, unless it already says how.
+    const layer = copy.slot === undefined ? undefined : PAPERDOLL_LAYER_OF_SLOT[copy.slot];
+    if (layer && !(copy.paperdoll ?? []).some((a) => a.layer === layer)) {
+      copy.paperdoll = [...(copy.paperdoll ?? []), { layer, becomes: from.name }];
+    }
     // A skill tier that named the item it was copied from names the copy.
     for (const b of copy.attack?.blocks ?? []) {
       for (const t of b.tiers) {
         if (t.subWeapon && t.subWeapon.pattern.toLowerCase() === from.name.toLowerCase()) {
           t.subWeapon = { ...t.subWeapon, pattern: name };
         }
+      }
+    }
+    const notes: string[] = [];
+    // A spell book teaches the spell whose book it is: a copy teaches none until a spell's book is
+    // set to it, so it is no spell book until then.
+    if (
+      copy.use?.mysticism !== undefined &&
+      !compiled.spells.spells.some((sp) => sp.book && ruleMatches(name, sp.book))
+    ) {
+      delete copy.use.mysticism;
+      if (Object.keys(copy.use).length === 0) {
+        delete copy.use;
+      }
+      notes.push(
+        `It teaches no spell: set a spell's book to ${name} (dataset spells) to make it a spell book.`,
+      );
+    }
+    // A gathering node that names its tools works only with those: a copied tool is not one yet.
+    for (const node of compiled.gather.harvest) {
+      if (
+        (copy.tools ?? []).some((t) => t.can === node.can) &&
+        node.tools?.some((t) => lingoEq(t, from.name)) &&
+        !node.tools.some((t) => lingoEq(t, name))
+      ) {
+        notes.push(
+          `Only ${node.tools.join(", ")} can ${node.can.toLowerCase()} the ${node.tile} tile: add ${name} to that node's tools (dataset gather, harvest) for it to work there.`,
+        );
       }
     }
     const defRef: RowRef = { dataset: "items", part: "definitions", key: name };
@@ -2719,7 +2787,10 @@ export class ContentService {
     }
     return {
       ok: true,
-      value: `${name} is in the draft, playing as ${from.display ?? from.name} does: change what you like and publish it from the Content page.`,
+      value: [
+        `${name} is in the draft, playing as ${from.display ?? from.name} does: change what you like and publish it from the Content page.`,
+        ...notes,
+      ].join(" "),
     };
   }
 
@@ -2728,7 +2799,7 @@ export class ContentService {
     const d = this.draftContent();
     return {
       // A defined item's swing sound is its definition's (issue #30).
-      uses: Object.fromEntries(soundUses(compileDefinitions(d))),
+      uses: Object.fromEntries(soundUses(this.compiledDraft(this.draft()))),
       art: d.art.sounds,
       packSounds: { ...this.packSounds },
       liveUploads: this.published.art.sounds.map((a) => a.name.toLowerCase()),
@@ -2866,7 +2937,33 @@ export class ContentService {
    * Every check a write must pass: the publish checks and the content contract, then a trial
    * install (which judges the contract's points with the next content's tiles).
    */
+  /**
+   * The datasets an item definitions compile reads, by their JSON: data built afresh from the same
+   * rows (the checked draft, then the rebuilt store after a publish) shares the objects, so the
+   * compile (shared definitions.ts, cached by those objects) runs once, not once per build.
+   */
+  private readonly compileInputs = new Map<string, unknown>();
+  private shareCompileInputs(data: ContentData): void {
+    const d = data as unknown as Record<string, unknown>;
+    for (const id of ["items", "itemRules", "attPower", "classes", "craft"] as const) {
+      if (!(data.items.definitions?.length ?? 0)) {
+        return;
+      }
+      const key = `${id}\u0000${rowHash(d[id])}`;
+      const known = this.compileInputs.get(key);
+      if (known !== undefined) {
+        d[id] = known;
+      } else {
+        if (this.compileInputs.size >= 40) {
+          this.compileInputs.clear();
+        }
+        this.compileInputs.set(key, d[id]);
+      }
+    }
+  }
+
   private fullProblems(next: ContentData, actions: readonly WorldAction[] = []): ContentProblem[] {
+    this.shareCompileInputs(next);
     const problems = [
       ...checkStore(
         next,
@@ -2916,6 +3013,7 @@ export class ContentService {
     const rows = contentRows(this.db).map(toLayer);
     const held = this.held.filter((h) => !rows.some((r) => sameRow(r, h)));
     this.published = this.withArt(applyRows(this.packData, [...rows, ...held]));
+    this.shareCompileInputs(this.published);
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);
@@ -3976,6 +4074,59 @@ export class ContentService {
    * has (issue #30): what the packs' rule tables play for the item, as a definition, so a pack
    * update that changes those rules is noticed under the definition that overrides them.
    */
+  /**
+   * Fills in the definitions migration 69 listed (saved before a definition held an item's whole
+   * rule set, issue #30): each group they never had (tools, needs, menu, breaking, worn pictures,
+   * ground, container, the list toggles) takes what the item played then, the uncompiled tables
+   * of the layer it was saved in, so it plays on unchanged. A published row's pack base is worked
+   * out again, so it raises no pack notice for groups it never chose. Once: the list is emptied.
+   */
+  backfillDefinitions(): string[] {
+    const listed = this.db
+      .query<{ source: string; row_key: string }, []>(
+        "SELECT source, row_key FROM content_definition_backfill",
+      )
+      .all();
+    if (listed.length === 0) {
+      return [];
+    }
+    const lines: string[] = [];
+    const published = this.published;
+    const drafted = this.draftContent();
+    this.db.transaction(() => {
+      const layer = contentRows(this.db);
+      const draft = draftRows(this.db);
+      for (const l of listed) {
+        if (l.source === "layer") {
+          const r = layer.find(
+            (x) => x.dataset === "items" && x.part === "definitions" && x.key === l.row_key,
+          );
+          if (r?.op === "set" && r.data) {
+            const data = backfilled(r.data as ItemDefinition, published);
+            const base = this.packRowValue(r);
+            upsertContentRow(this.db, {
+              ...r,
+              data,
+              baseHash: base === undefined ? null : rowHash(base),
+              baseData: base === undefined ? null : base,
+            });
+            lines.push(`content: ${l.row_key}'s definition takes the rules it played (#30)`);
+          }
+        } else {
+          const d = draft.find(
+            (x) => x.dataset === "items" && x.part === "definitions" && x.key === l.row_key,
+          );
+          if (d?.op === "set" && d.data) {
+            upsertDraftRow(this.db, { ...d, data: backfilled(d.data as ItemDefinition, drafted) });
+          }
+        }
+      }
+      this.db.query("DELETE FROM content_definition_backfill").run();
+    })();
+    this.rebuild();
+    return lines;
+  }
+
   private packRowValue(ref: RowRef): unknown {
     const v = rowValue(this.packData, ref);
     if (v !== undefined || !isDefinitionRow(ref) || ref.key === null) {
@@ -3989,7 +4140,11 @@ export class ContentService {
     if (this.packCompiled?.from !== this.packData) {
       this.packCompiled = { from: this.packData, data: compileDefinitions(this.packData) };
     }
-    return seedDefinition(ref.key, resolveIn(ref.key, this.packCompiled.data));
+    return seedDefinition(
+      ref.key,
+      resolveIn(ref.key, this.packCompiled.data),
+      this.packCompiled.data.items,
+    );
   }
 
   /** Takes the pack's new version of a row: the operator's change goes (as a publish, so it can be undone). */
@@ -4073,4 +4228,45 @@ export class ContentService {
     })();
     return { ok: true, value: undefined };
   }
+}
+
+/** The groups a definition saved before #30 stage 4 never had. */
+const STAGE4_KEYS = [
+  "tools",
+  "requires",
+  "menu",
+  "damaged",
+  "breaks",
+  "paperdoll",
+  "ground",
+  "container",
+  "inEditorList",
+  "inPlayerShops",
+] as const;
+
+/**
+ * An old definition with the groups it never had filled in from what the item plays in `data`'s
+ * own (uncompiled) tables: what it played before those groups were a definition's.
+ */
+function backfilled(def: ItemDefinition, data: ContentData): ItemDefinition {
+  const seed = seedDefinition(def.name, resolveIn(def.name, data), data.items);
+  const out: ItemDefinition = { ...def };
+  const o = out as Record<string, unknown>;
+  const sd = seed as Record<string, unknown>;
+  for (const k of STAGE4_KEYS) {
+    if (o[k] === undefined && sd[k] !== undefined) {
+      o[k] = sd[k];
+    }
+  }
+  const use = { ...(def.use ?? {}) };
+  if (use.mysticism === undefined && seed.use?.mysticism !== undefined) {
+    use.mysticism = seed.use.mysticism;
+  }
+  if (use.skillBook === undefined && seed.use?.skillBook !== undefined) {
+    use.skillBook = seed.use.skillBook;
+  }
+  if (Object.keys(use).length > 0) {
+    out.use = use;
+  }
+  return out;
 }

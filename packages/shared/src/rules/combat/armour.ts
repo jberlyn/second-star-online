@@ -7,7 +7,7 @@ import { content } from "../../content/store.ts";
 import type { Equipment, Fighter } from "../core/fighter.ts";
 import { boundSkillIndex } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
-import { ruleMatches } from "../core/patterns.ts";
+import { excepted, ruleMatches } from "../core/patterns.ts";
 import { factionPerk } from "../social/factions.ts";
 
 type SlotVar = "RingE" | "HeadE" | "BodyE" | "RightHandE" | "LeftHandE" | "FeetE";
@@ -234,7 +234,10 @@ export function rollArmourBreak(
     const slot = ARMOUR_PICK[rng.random(3) - 1] as SlotVar;
     const item = slotItem(e, slot);
     if (
-      content().itemRules.breaks.armour.items.some((i) => i.slot === slot && lingoEq(item, i.item))
+      content().itemRules.breaks.armour.items.some(
+        // An item definition takes the item off the pack's row (`except`, issue #30).
+        (i) => i.slot === slot && lingoEq(item, i.item) && !excepted(i, item),
+      )
     ) {
       return slot === "BodyE" ? "Body" : slot === "HeadE" ? "Head" : "RightHand";
     }
@@ -256,7 +259,11 @@ export function rollWeaponBreak(
   if (content().itemRules.breaks.weapon.excludedMonsters.some((m) => lingoEq(monster, m))) {
     return false;
   }
-  if (!content().itemRules.breaks.weapon.items.some((i) => lingoEq(e.weapon, i.item))) {
+  if (
+    !content().itemRules.breaks.weapon.items.some(
+      (i) => lingoEq(e.weapon, i.item) && !excepted(i, e.weapon),
+    )
+  ) {
     return false;
   }
   return rng.random(breakOdds(sta, hunger, 500)) <= 1;

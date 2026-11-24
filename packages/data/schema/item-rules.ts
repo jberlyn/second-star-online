@@ -21,7 +21,7 @@ export const slotVarSchema = z.enum([
 
 /** The worn slots, named as `Equipment` names them. */
 export const wornSlotSchema = z.enum(["head", "body", "weapon", "offHand", "feet", "ring"]);
-const paperdollLayerSchema = z.enum(["weapon", "shield", "helm", "gloves", "body"]);
+export const paperdollLayerSchema = z.enum(["weapon", "shield", "helm", "gloves", "body"]);
 
 /**
  * The behaviours an item can have (issue #37 stage 3). 1.6 gave each of these to any item whose name

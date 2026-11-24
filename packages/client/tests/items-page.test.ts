@@ -72,11 +72,18 @@ const sword = (
   choices: {
     slots: ["Head", "Body", "LeftHand", "RightHand", "Feet", "Ring", "No"],
     slotVars: ["BodyE", "HeadE"],
+    breakArmourSlots: ["BodyE", "HeadE", "RightHandE"],
+    breakWeaponSlots: ["LeftHandE"],
     wornSlots: ["weapon", "ring"],
     behaviours: ["key", "sword"],
     powers: ["attack"],
     stats: ["HP", "SP", "Hunger"],
     skills: ["Slash", "Thrust"],
+    toolCans: ["Chop", "Mine"],
+    ladders: ["axe"],
+    menus: ["Cook", "Storage"],
+    layers: ["weapon", "shield"],
+    groundLayers: ["hidden", "overChars"],
   },
   ...extra,
 });
@@ -452,5 +459,99 @@ describe("the Items page", () => {
     expect(rollRange(6, 6)).toBe("Rolls 7 to 12");
     expect(rollRange(3, 0)).toBe("Always 3");
     expect(canonical({ b: 1, a: { x: [] }, use: {} })).toBe(canonical({ b: 1 }));
+  });
+});
+
+describe("the rest of the definition (#30 stage 4)", () => {
+  test("a tool use, a broken form, break slots, a ground flag and a list toggle save", () => {
+    const t = opened();
+    t.act("items-tools-add").click();
+    t.type("items-damaged", "Broken Sword");
+    t.act<HTMLInputElement>("items-breaks-weapon-LeftHandE").click();
+    t.act<HTMLInputElement>("items-ground-blocks").click();
+    t.act<HTMLInputElement>("items-in-shops").click();
+    const tier = t.act<HTMLInputElement>("items-tools-tier");
+    tier.value = "";
+    tier.dispatchEvent(new Event("input"));
+    t.act("items-save").click();
+    const data = t.sent.at(-1)?.change.data as Record<string, unknown>;
+    expect(data.tools).toEqual([{ can: "Chop" }]);
+    expect(data.damaged).toBe("Broken Sword");
+    expect(data.breaks).toEqual({ weapon: ["LeftHandE"] });
+    expect(data.ground).toEqual({ blocks: true });
+    expect(data.inPlayerShops).toBe(true);
+  });
+
+  test("clearing a group's last field leaves the group out, and bad JSON is refused", () => {
+    const t = opened();
+    t.act<HTMLInputElement>("items-ground-blocks").click();
+    t.act<HTMLInputElement>("items-ground-blocks").click();
+    t.type("items-ground-offset", "{not json");
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
+    t.type("items-ground-offset", "");
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
+  });
+});
+
+describe("stage 4 review fixes (#30)", () => {
+  test("the break slots offered are the ones the engine rolls (Sol 8)", () => {
+    const t = opened();
+    const ticks = (kind: string) =>
+      [...t.p.el.querySelectorAll(`[data-list="breaks-${kind}"] input`)].map(
+        (i) => (i as HTMLElement).dataset.action,
+      );
+    expect(ticks("armour")).toEqual([
+      "items-breaks-armour-BodyE",
+      "items-breaks-armour-HeadE",
+      "items-breaks-armour-RightHandE",
+    ]);
+    expect(ticks("weapon")).toEqual(["items-breaks-weapon-LeftHandE"]);
+  });
+
+  test("the pack's rules for one group leave another group's unread text and error (Sol 12)", () => {
+    const t = opened();
+    t.type("items-ground-offset", "{not json");
+    t.q<HTMLButtonElement>('[data-action="items-pack-equip"]').click();
+    expect(t.act<HTMLTextAreaElement>("items-ground-offset").value).toBe("{not json");
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
+  });
+
+  test("the pictures follow a saved worn alias, behaviour or ground offset (Neon 9)", () => {
+    const shows: string[] = [];
+    const p = createItemsPage({
+      view: () => {},
+      set: () => {},
+      openContent: () => {},
+      openContentRow: () => {},
+      panels: () => ({
+        el: document.createElement("div"),
+        show: (key) => shows.push(key),
+        clear: () => {},
+        pending: () => false,
+      }),
+    });
+    document.body.append(p.el);
+    p.onShow();
+    p.receive({ t: "contentItems", seq: 1, view: view(null) });
+    p.open("Long Sword");
+    p.receive({ t: "contentItems", seq: 2, view: view(sword("a".repeat(16))) });
+    expect(shows).toHaveLength(1);
+    p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("b".repeat(16), { paperdoll: [{ layer: "weapon", becomes: "Axe" }] })),
+    });
+    expect(shows).toHaveLength(2);
+    p.receive({
+      t: "contentItems",
+      seq: 4,
+      view: view(
+        sword("c".repeat(16), {
+          paperdoll: [{ layer: "weapon", becomes: "Axe" }],
+          ground: { offset: { dx: 1, dy: 2 } },
+        }),
+      ),
+    });
+    expect(shows).toHaveLength(3);
   });
 });

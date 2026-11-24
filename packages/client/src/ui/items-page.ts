@@ -115,7 +115,10 @@ const GROUP_KEYS: Record<string, readonly (keyof ItemDefinition)[]> = {
   equip: ["slot", "strength", "twoHanded", "behaviours"],
   attack: ["attack", "trains"],
   armour: ["armour", "elemental", "spellDefense", "gear", "cooldowns", "sound"],
-  use: ["use"],
+  use: ["use", "menu"],
+  tools: ["tools", "requires"],
+  breaking: ["damaged", "breaks", "paperdoll"],
+  ground: ["ground", "container", "inEditorList", "inPlayerShops"],
 };
 
 const GROUP_TITLES: Record<string, string> = {
@@ -123,6 +126,9 @@ const GROUP_TITLES: Record<string, string> = {
   attack: "Attack",
   armour: "Armour and gear",
   use: "Use",
+  tools: "Tools and needs",
+  breaking: "Breaking and look",
+  ground: "Ground, containers and lists",
 };
 
 const KIND_TEXT: Record<ItemListEntry["kind"], string> = {
@@ -140,6 +146,8 @@ interface Column {
   min?: number;
   max?: number;
   options?: () => string[];
+  /** An empty pick or text leaves the field out. */
+  optional?: boolean;
 }
 
 /** A list of records in the definition, at a path: its columns and a new record. */
@@ -165,6 +173,26 @@ function at(v: unknown, path: readonly string[]): unknown {
 
 /** Sets `path` to `n` (undefined deletes it), making objects on the way. */
 function put(root: Obj, path: readonly string[], n: unknown): void {
+  setAt(root, path, n);
+  // A group left empty goes too ({"ground": {}} is "no ground rules", as left out is).
+  if (n === undefined) {
+    for (let i = path.length - 1; i > 0; i--) {
+      const parent = at(root, path.slice(0, i));
+      if (
+        parent !== null &&
+        typeof parent === "object" &&
+        !Array.isArray(parent) &&
+        Object.keys(parent).length === 0
+      ) {
+        setAt(root, path.slice(0, i), undefined);
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+function setAt(root: Obj, path: readonly string[], n: unknown): void {
   let o = root;
   path.forEach((p, i) => {
     if (i === path.length - 1) {
@@ -631,7 +659,11 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
                 c.kind === "intOrNull",
                 `${spec.label} ${i + 1}: ${c.label}`,
                 (n) => {
-                  row[c.key] = n;
+                  if (c.optional && n === null) {
+                    delete row[c.key];
+                  } else {
+                    row[c.key] = n;
+                  }
                   showPreview();
                 },
                 id,
@@ -646,15 +678,26 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
                 showPreview();
               });
             } else if (c.kind === "select") {
-              const opts = (c.options?.() ?? []).map((o) => [o, o] as const);
+              const opts = [
+                ...(c.optional ? [["", "None"] as const] : []),
+                ...(c.options?.() ?? []).map((o) => [o, o] as const),
+              ];
               control = select(String(row[c.key] ?? ""), opts, id, (v) => {
-                row[c.key] = v;
+                if (c.optional && v === "") {
+                  delete row[c.key];
+                } else {
+                  row[c.key] = v;
+                }
               });
             } else {
               const t = noAutofill(action(document.createElement("input"), id));
               t.value = String(row[c.key] ?? "");
               t.addEventListener("input", () => {
-                row[c.key] = t.value;
+                if (c.optional && t.value.trim() === "") {
+                  delete row[c.key];
+                } else {
+                  row[c.key] = t.value;
+                }
                 edited();
               });
               control = t;
@@ -702,8 +745,11 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const rollPreview = (r: Obj) =>
     `${rollRange(Number(r.flat ?? 0), Number(r.randomN ?? 0))}${r.strengthHalf ? ", + random(Strength) / 2" : ""}`;
 
-  /** Builds the four rule groups from `work`. */
-  const drawGroups = () => {
+  /**
+   * Builds the rule groups from `work`; with `only`, redraws that group alone, so text another
+   * group holds that does not read yet (and its error) stays as it is.
+   */
+  const drawGroups = (only?: string) => {
     const c = choices();
     if (!c || !shown) {
       groupsEl.replaceChildren();
@@ -738,7 +784,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
               const v = (pack as Obj)[k];
               put(work, [k], v === undefined ? undefined : structuredClone(v));
             }
-            drawGroups();
+            drawGroups(id);
             forgetGone();
             edited();
           }),
@@ -1005,7 +1051,224 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       ),
       labelled("Refusal line", refusal, 'Shown in place of "You cannot use the X." Empty: none.'),
     );
-    groupsEl.replaceChildren(equip, attack, armour, use);
+    // Stage 4: books and the menu (in Use), tools and needs, breaking and look, ground.
+    const textAt = (path: string[], id: string, placeholder = "") => {
+      const t = noAutofill(action(document.createElement("input"), id));
+      t.value = String(at(work, path) ?? "");
+      t.placeholder = placeholder;
+      t.addEventListener("input", () => {
+        put(work, path, t.value.trim() === "" ? undefined : t.value.trim());
+        edited();
+      });
+      return t;
+    };
+    const intAt = (path: string[], min: number, max: number, label: string, id: string) =>
+      intInput(at(work, path), min, max, true, label, (n) => put(work, path, n ?? undefined), id);
+    const flagAt = (path: string[], label: string, id: string) =>
+      check(at(work, path) === true, label, id, (on) => put(work, path, on ? true : undefined));
+    /** A field holding JSON (an object or a list) at `path`; empty leaves it out. */
+    const jsonAt = (path: string[], label: string, id: string, list: boolean) => {
+      const area = noAutofill(action(document.createElement("textarea"), id));
+      area.rows = 2;
+      const v = at(work, path);
+      area.value = v === undefined ? "" : JSON.stringify(v);
+      area.addEventListener("input", () => {
+        const t = area.value.trim();
+        if (t === "") {
+          invalid.delete(area);
+          put(work, path, undefined);
+        } else {
+          try {
+            const parsed = JSON.parse(t) as unknown;
+            if (list !== Array.isArray(parsed) || parsed === null || typeof parsed !== "object") {
+              throw new Error("shape");
+            }
+            invalid.delete(area);
+            put(work, path, parsed);
+          } catch {
+            invalid.set(area, `${label}: JSON ${list ? "list" : "object"}`);
+          }
+        }
+        edited();
+      });
+      return area;
+    };
+    use.append(
+      labelled(
+        "Mysticism to read",
+        intAt(["use", "mysticism"], 0, 1000, "Mysticism to read", "items-mysticism"),
+        "A spell book: the Mysticism reading it needs. Empty: 1.",
+      ),
+      labelled(
+        "Skill book (JSON)",
+        jsonAt(["use", "skillBook"], "Skill book", "items-skill-book", false),
+        'Reading it teaches a skill and uses it up: {"skill":"Fishing","points":[{"op":"add","value":"1 + random(5)"}],"upTo":77}. Empty: not a skill book.',
+      ),
+      labelled(
+        "Menu button",
+        select(
+          String(work.menu ?? ""),
+          [["", "Equip (the default)"], ...c.menus.map((m) => [m, m] as const)],
+          "items-menu",
+          (v) => put(work, ["menu"], v === "" ? undefined : v),
+        ),
+        "The item menu's button in place of Equip.",
+      ),
+    );
+    const tools = group(
+      "tools",
+      listEditor({
+        id: "tools",
+        label: "Tool uses",
+        path: ["tools"],
+        help: "What it can do as a tool (its tier: 1 when empty) and the swing ladder that sets its speed. Items naming the same counter share their hit count.",
+        columns: [
+          { key: "can", label: "Can", kind: "select", options: () => c.toolCans, optional: true },
+          { key: "tier", label: "Tier", kind: "intOrNull", min: 1, max: 1000, optional: true },
+          {
+            key: "ladder",
+            label: "Ladder",
+            kind: "select",
+            options: () => c.ladders,
+            optional: true,
+          },
+          { key: "counter", label: "Counter", kind: "text", optional: true },
+        ],
+        fresh: () => ({ can: c.toolCans[0] ?? "Chop" }),
+      }),
+      listEditor({
+        id: "requires",
+        label: "Needs",
+        path: ["requires"],
+        help: 'What it needs before it is equipped or used: a skill (or "level") at least so high, and the line a refusal says (empty: the engine\'s).',
+        columns: [
+          { key: "on", label: "On", kind: "select", options: () => ["equip", "use"] },
+          { key: "needs", label: "Needs", kind: "select", options: () => ["level", ...c.skills] },
+          { key: "atLeast", label: "At least", kind: "int", min: 0, max: 1_000_000 },
+          { key: "text", label: "Refusal", kind: "text", optional: true },
+        ],
+        fresh: () => ({ on: "equip", needs: "level", atLeast: 1 }),
+      }),
+    );
+    const breakSlots = (kind: "armour" | "weapon") => {
+      const box = document.createElement("div");
+      box.className = "items-checks";
+      box.dataset.list = `breaks-${kind}`;
+      const has = new Set((at(work, ["breaks", kind]) as string[] | undefined) ?? []);
+      for (const v of kind === "armour" ? c.breakArmourSlots : c.breakWeaponSlots) {
+        box.append(
+          check(has.has(v), v, `items-breaks-${kind}-${v}`, (on) => {
+            if (on) {
+              has.add(v);
+            } else {
+              has.delete(v);
+            }
+            const list = (kind === "armour" ? c.breakArmourSlots : c.breakWeaponSlots).filter((x) =>
+              has.has(x),
+            );
+            put(work, ["breaks", kind], list.length > 0 ? list : undefined);
+          }),
+        );
+      }
+      return box;
+    };
+    const breaking = group(
+      "breaking",
+      labelled(
+        "Broken form",
+        textAt(["damaged"], "items-damaged", "it does not change"),
+        "The item it becomes when it breaks.",
+      ),
+      labelled(
+        "Breaks as armour, worn in",
+        breakSlots("armour"),
+        "None ticked: it never breaks as armour.",
+      ),
+      labelled(
+        "Breaks as a weapon, held in",
+        breakSlots("weapon"),
+        "None ticked: it never breaks as a weapon.",
+      ),
+      listEditor({
+        id: "paperdoll",
+        label: "Drawn when worn as",
+        path: ["paperdoll"],
+        help: "The worn picture a layer draws it with: another item's (a copy is drawn as the item it was copied from). Its own worn frames, uploaded below, need none.",
+        columns: [
+          { key: "layer", label: "Layer", kind: "select", options: () => c.layers },
+          { key: "becomes", label: "Drawn as", kind: "text" },
+        ],
+        fresh: () => ({ layer: "weapon", becomes: "" }),
+      }),
+    );
+    const ground = group(
+      "ground",
+      flagAt(["ground", "blocks"], "Stops a walker", "items-ground-blocks"),
+      listEditor({
+        id: "ground-platforms",
+        label: "Skill platform",
+        path: ["ground", "platforms"],
+        help: 'Blocks a walker until a skill (or "level") is at least so high; every row must be met. None: it is no platform.',
+        columns: [
+          { key: "needs", label: "Needs", kind: "select", options: () => ["level", ...c.skills] },
+          { key: "atLeast", label: "At least", kind: "int", min: 0, max: 1_000_000 },
+        ],
+        fresh: () => ({ needs: "level", atLeast: 1 }),
+      }),
+      labelled(
+        "Ground overlay",
+        textAt(["ground", "overlay"], "items-ground-overlay", "none"),
+        "The animated overlay drawn on it.",
+      ),
+      flagAt(
+        ["ground", "inUse"],
+        "Its overlay animates only while someone crafts at it",
+        "items-ground-in-use",
+      ),
+      labelled(
+        "Ground layer",
+        select(
+          String(at(work, ["ground", "layer"]) ?? ""),
+          [["", "With the items (the default)"], ...c.groundLayers.map((l) => [l, l] as const)],
+          "items-ground-layer",
+          (v) => put(work, ["ground", "layer"], v === "" ? undefined : v),
+        ),
+      ),
+      labelled(
+        "Ground offset (JSON)",
+        jsonAt(["ground", "offset"], "Ground offset", "items-ground-offset", false),
+        'Pixels from the tile: {"dx":0,"dy":-8}. Empty: none.',
+      ),
+      flagAt(["ground", "tipless"], "The hover tip never names it", "items-ground-tipless"),
+      labelled(
+        "Hover tip name",
+        textAt(["ground", "tipName"], "items-ground-tip", "its name"),
+        "What the hover tip calls it on the ground.",
+      ),
+      labelled(
+        "Ctrl line (JSON)",
+        jsonAt(["ground", "ctrlText"], "Ctrl line", "items-ground-ctrl", false),
+        'The one line Ctrl on it says, taking nothing: {"text":"It is too heavy.","unpause":false}. Empty: Ctrl picks it up.',
+      ),
+      labelled(
+        "Container lines",
+        intAt(["container", "capacity"], 0, 1000, "Container lines", "items-capacity"),
+        "The lines it holds as a container. Empty: the default.",
+      ),
+      flagAt(["container", "uniqueId"], "Gets a #id in a bag", "items-unique-id"),
+      flagAt(["inEditorList"], "On the World Editor's item list", "items-in-editor"),
+      flagAt(["inPlayerShops"], "Player shops accept it", "items-in-shops"),
+    );
+    const sections = [equip, attack, armour, use, tools, breaking, ground];
+    const old = only
+      ? [...groupsEl.children].find((e) => (e as HTMLElement).dataset.group === only)
+      : undefined;
+    const fresh = only ? sections.find((e) => e.dataset.group === only) : undefined;
+    if (old && fresh) {
+      old.replaceWith(fresh);
+    } else {
+      groupsEl.replaceChildren(...sections);
+    }
   };
 
   /** Fills the rules from the view (what the draft holds). */
@@ -1232,12 +1495,20 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
         fillName();
       }
     }
-    const slot = item.form.slot;
+    // What the picture panels draw from: the slot, the worn aliases, the behaviours and the ground
+    // offset. A saved change to any of them redraws the panels.
+    const f = item.form as Obj;
+    const slot = JSON.stringify([
+      f.slot,
+      f.paperdoll,
+      f.behaviours,
+      (f.ground as Obj | undefined)?.offset,
+    ]);
     if (first) {
       filled = { ...filled, slot };
       showPanels(item.name);
     } else if (slot !== filled.slot) {
-      // A new equip slot (saved): the worn panel appears or goes.
+      // A new equip slot, alias, behaviour or offset (saved): the panels catch up.
       filled = { ...filled, slot };
       panels?.show(item.name);
     }

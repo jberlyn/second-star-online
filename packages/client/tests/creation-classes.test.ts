@@ -53,7 +53,10 @@ test("Classic's class list sits where 1.6 drew it: radios at (526, 225 + 15n), n
   expect(list?.el.classList.contains("cc-class-scroll")).toBe(false);
   const radios = [...(list?.el.querySelectorAll<HTMLImageElement>("img") ?? [])];
   expect(
-    radios.map((r) => [524 + Number.parseInt(r.style.left), 223 + Number.parseInt(r.style.top)]),
+    radios.map((r) => [
+      524 + Number.parseInt(r.style.left, 10),
+      223 + Number.parseInt(r.style.top, 10),
+    ]),
   ).toEqual([
     [526, 225],
     [526, 240],

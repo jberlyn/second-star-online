@@ -863,11 +863,20 @@ export interface ContentItemView {
   choices: {
     slots: string[];
     slotVars: string[];
+    /** The slots armour can break in, and the one a weapon can. */
+    breakArmourSlots: string[];
+    breakWeaponSlots: string[];
     wornSlots: string[];
     behaviours: string[];
     powers: string[];
     stats: string[];
     skills: string[];
+    /** Stage 4's picks: tool uses, swing ladders, menu buttons, paperdoll and ground layers. */
+    toolCans: string[];
+    ladders: string[];
+    menus: string[];
+    layers: string[];
+    groundLayers: string[];
   };
 }
 

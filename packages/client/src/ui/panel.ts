@@ -1167,7 +1167,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
           .get(box.slot)
           ?.setAttribute(
             "aria-label",
-            item === "NOTHING" ? `${box.slot}: empty` : `${box.slot}: take off ${item}`,
+            item === "NOTHING" ? `${box.slot}: empty` : `${box.slot}: take off ${itemLabel(item)}`,
           );
       }
       drawDoll();

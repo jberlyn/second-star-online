@@ -3117,7 +3117,7 @@ export function createGame(deps: GameDeps): Game {
             msg.t === "craft"
               ? craftIntent(room, p, msg.slot, { world, rng })
               : msg.t === "storage"
-                ? storageIntent(world, p, msg.slot)
+                ? storageIntent(world, p, msg.slot, rng)
                 : msg.t === "use"
                   ? useIntent(ctx, room, p, msg.slot)
                   : msg.t === "equip"

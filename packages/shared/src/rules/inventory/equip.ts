@@ -6,6 +6,7 @@ import type { EquipSlot } from "@secondstaronline/data";
 
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
+import { withoutId } from "../core/fixtures.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 import { firstUnmet, type Qualifications } from "../core/requirements.ts";
@@ -42,7 +43,8 @@ export function equipSlotFor(name: string): EquipSlot | "No" {
 export type MenuAction = "Equip" | "Cook" | "Mix" | "Build" | "Smith" | "Storage";
 
 export function menuAction(name: string): MenuAction {
-  return lastMatch(R.menu, name)?.action ?? "Equip";
+  // Tested without a carried container's `#id`: `Crate#12` has the Crate's menu.
+  return lastMatch(R.menu, withoutId(name))?.action ?? "Equip";
 }
 
 export const EQUIP_TEXT = {

@@ -19,8 +19,10 @@ import type { ItemDefinition } from "@secondstaronline/data";
 
 import { lingoEq } from "../rules/core/lingo.ts";
 import { behaviourName, behaviourTest } from "../rules/inventory/behaviours.ts";
+import { lookName } from "../rules/inventory/paperdoll.ts";
 import {
   exactPatternFor,
+  exactRowsFor,
   ITEM_DATASETS,
   matchAllTables,
   type NameRow,
@@ -53,7 +55,34 @@ export const DEFINITION_TABLES = [
   "itemRules use.messages",
   "itemRules use.refusals",
   "classes skillGain.weaponSkills",
+  // Stage 4: the rest of an item's rules.
+  "itemRules tools",
+  "itemRules requires",
+  "itemRules menu",
+  "itemRules use.books",
+  "itemRules use.skillBooks",
+  "itemRules breaks.damaged",
+  "itemRules breaks.armour.items",
+  "itemRules breaks.weapon.items",
+  "itemRules paperdoll.aliases",
+  "itemRules ground.blocks",
+  "itemRules ground.platforms",
+  "itemRules ground.overlays",
+  "itemRules ground.inUse",
+  "itemRules ground.layers",
+  "itemRules ground.offsets",
+  "itemRules ground.tipless",
+  "itemRules ground.tipNames",
+  "itemRules pickup.ctrlTexts",
+  "itemRules containers.capacity",
+  "itemRules containers.uniqueIds",
 ] as const;
+
+/** Tables whose rows name the item in `item` (exactly), not in a `match` and `pattern`. */
+const ITEM_FIELD_TABLES = new Set<string>([
+  "itemRules breaks.armour.items",
+  "itemRules breaks.weapon.items",
+]);
 
 export type DefinitionTable = (typeof DEFINITION_TABLES)[number];
 
@@ -71,16 +100,27 @@ export function definesBehaviours(name: string): boolean {
   return lingoEq(behaviourName(name), name);
 }
 
+/**
+ * The tables whose rows test an item without its `+N` (and `#id`): a masterwork's rows there are
+ * its base item's, so a `+N` item's definition leaves them to its base (an exact row for
+ * `Knight's Sword +1` there would name `Knight's Sword` and change the base item too).
+ */
+export const INHERITED_TABLES: ReadonlySet<string> = new Set([
+  "itemRules behaviours",
+  "itemRules requires",
+  "itemRules paperdoll.aliases",
+]);
+
 /** The tables a definition of `name` covers. */
 export function definitionTables(name: string): DefinitionTable[] {
-  return DEFINITION_TABLES.filter((k) => k !== "itemRules behaviours" || definesBehaviours(name));
+  return DEFINITION_TABLES.filter((k) => !INHERITED_TABLES.has(k) || definesBehaviours(name));
 }
 
 /** A row's own fields, without its name test or a compile's `except`. */
 function fields(raw: Obj, drop: readonly string[] = []): Obj {
   const out: Obj = {};
   for (const [k, v] of Object.entries(raw)) {
-    if (k !== "match" && k !== "pattern" && k !== "except" && !drop.includes(k)) {
+    if (k !== "match" && k !== "pattern" && k !== "item" && k !== "except" && !drop.includes(k)) {
       out[k] = v;
     }
   }
@@ -129,6 +169,46 @@ export function definitionRows(def: ItemDefinition, key: DefinitionTable): Obj[]
       return def.use?.refusal === undefined ? [] : [{ text: def.use.refusal }];
     case "classes skillGain.weaponSkills":
       return def.trains ? [{ skills: def.trains }] : [];
+    case "itemRules tools":
+      return (def.tools ?? []).map((r) => ({ ...r }));
+    case "itemRules requires":
+      return (def.requires ?? []).map((r) => ({ ...r }));
+    case "itemRules menu":
+      return def.menu === undefined ? [] : [{ action: def.menu }];
+    case "itemRules use.books":
+      return def.use?.mysticism === undefined ? [] : [{ mysticism: def.use.mysticism }];
+    case "itemRules use.skillBooks":
+      return def.use?.skillBook ? [{ ...def.use.skillBook }] : [];
+    case "itemRules breaks.damaged":
+      return def.damaged === undefined ? [] : [{ damaged: def.damaged }];
+    case "itemRules breaks.armour.items":
+      return (def.breaks?.armour ?? []).map((slot) => ({ slot }));
+    case "itemRules breaks.weapon.items":
+      return (def.breaks?.weapon ?? []).map((slot) => ({ slot }));
+    case "itemRules paperdoll.aliases":
+      return (def.paperdoll ?? []).map((r) => ({ ...r }));
+    case "itemRules ground.blocks":
+      return def.ground?.blocks ? [{}] : [];
+    case "itemRules ground.platforms":
+      return (def.ground?.platforms ?? []).map((r) => ({ ...r }));
+    case "itemRules ground.overlays":
+      return def.ground?.overlay === undefined ? [] : [{ overlay: def.ground.overlay }];
+    case "itemRules ground.inUse":
+      return def.ground?.inUse ? [{}] : [];
+    case "itemRules ground.layers":
+      return def.ground?.layer === undefined ? [] : [{ layer: def.ground.layer }];
+    case "itemRules ground.offsets":
+      return def.ground?.offset ? [{ ...def.ground.offset }] : [];
+    case "itemRules ground.tipless":
+      return def.ground?.tipless ? [{}] : [];
+    case "itemRules ground.tipNames":
+      return def.ground?.tipName === undefined ? [] : [{ name: def.ground.tipName }];
+    case "itemRules pickup.ctrlTexts":
+      return def.ground?.ctrlText ? [{ ...def.ground.ctrlText }] : [];
+    case "itemRules containers.capacity":
+      return def.container?.capacity === undefined ? [] : [{ capacity: def.container.capacity }];
+    case "itemRules containers.uniqueIds":
+      return def.container?.uniqueId ? [{}] : [];
   }
 }
 
@@ -140,7 +220,9 @@ function exactRow(key: string, name: string, row: Obj, masterworks: readonly str
       ? { weaponMatch: "exact", pattern, ...row }
       : key === "classes skillGain.weaponSkills"
         ? { match: "exact", weapon: pattern, ...row }
-        : { match: "exact", pattern, ...row };
+        : ITEM_FIELD_TABLES.has(key)
+          ? { ...row, item: pattern }
+          : { match: "exact", pattern, ...row };
   // An exact weapon row also takes the masterworks made from the item; the definition is the
   // item's alone, so they keep the pack's rows (or their own definitions).
   if (MASTERWORK_TABLES.has(key) && masterworks.length > 0) {
@@ -160,16 +242,39 @@ function masterworksOf(name: string, craft: ContentData["craft"] | undefined): s
  * What an item plays now, as a definition: the resolver's deciding rows for each table a definition
  * covers. Saved unchanged, it plays identically.
  */
-export function seedDefinition(name: string, hits: readonly TableHit[]): ItemDefinition {
+export function seedDefinition(
+  name: string,
+  hits: readonly TableHit[],
+  /** The item lists (`editorItems`, `playerShopWhitelist`), for the list toggles. */
+  lists?: Pick<ContentData["items"], "editorItems" | "playerShopWhitelist">,
+): ItemDefinition {
   const def: ItemDefinition = { name };
   const covered = new Set<string>(definitionTables(name));
   const attack: NonNullable<ItemDefinition["attack"]> = {};
   const use: NonNullable<ItemDefinition["use"]> = {};
+  const ground: NonNullable<ItemDefinition["ground"]> = {};
+  const container: NonNullable<ItemDefinition["container"]> = {};
+  const breaks: NonNullable<ItemDefinition["breaks"]> = {};
   for (const h of hits) {
     if (!covered.has(h.key) || h.deciding.length === 0) {
       continue;
     }
-    const rows = h.deciding.map((r: NameRow) => r.raw);
+    // An alias row that tested a name another row rewrote to is that name's, not the item's: it
+    // stays in the pack's table and still applies after the item's own rewrite.
+    const own =
+      h.key === "itemRules paperdoll.aliases"
+        ? h.deciding.filter((r) => r.tested === undefined)
+        : h.deciding;
+    if (own.length === 0) {
+      continue;
+    }
+    // As the exact rows the resolver would write: a tool keeps the hit counter it shared, a tip
+    // name the text a contains row made of the item's name.
+    const exact = exactRowsFor(name, [{ ...h, deciding: own }]).get(h.key) ?? [];
+    const rows =
+      h.key === "itemRules tools" || h.key === "itemRules ground.tipNames"
+        ? exact
+        : own.map((r: NameRow) => r.raw);
     const first = rows[0] as Obj;
     const list = <T>(drop: readonly string[] = []) => rows.map((r) => fields(r, drop) as T);
     switch (h.key as DefinitionTable) {
@@ -233,6 +338,66 @@ export function seedDefinition(name: string, hits: readonly TableHit[]): ItemDef
       case "classes skillGain.weaponSkills":
         def.trains = first.skills as string[];
         break;
+      case "itemRules tools":
+        def.tools = list();
+        break;
+      case "itemRules requires":
+        def.requires = list();
+        break;
+      case "itemRules menu":
+        def.menu = first.action as ItemDefinition["menu"];
+        break;
+      case "itemRules use.books":
+        use.mysticism = first.mysticism as number;
+        break;
+      case "itemRules use.skillBooks":
+        use.skillBook = fields(first) as NonNullable<ItemDefinition["use"]>["skillBook"];
+        break;
+      case "itemRules breaks.damaged":
+        def.damaged = first.damaged as string;
+        break;
+      case "itemRules breaks.armour.items":
+        breaks.armour = rows.map((r) => r.slot as NonNullable<typeof breaks.armour>[0]);
+        break;
+      case "itemRules breaks.weapon.items":
+        breaks.weapon = rows.map((r) => r.slot as NonNullable<typeof breaks.weapon>[0]);
+        break;
+      case "itemRules paperdoll.aliases":
+        def.paperdoll = list();
+        break;
+      case "itemRules ground.blocks":
+        ground.blocks = true;
+        break;
+      case "itemRules ground.platforms":
+        ground.platforms = list();
+        break;
+      case "itemRules ground.overlays":
+        ground.overlay = first.overlay as string;
+        break;
+      case "itemRules ground.inUse":
+        ground.inUse = true;
+        break;
+      case "itemRules ground.layers":
+        ground.layer = first.layer as NonNullable<typeof ground.layer>;
+        break;
+      case "itemRules ground.offsets":
+        ground.offset = fields(first) as NonNullable<typeof ground.offset>;
+        break;
+      case "itemRules ground.tipless":
+        ground.tipless = true;
+        break;
+      case "itemRules ground.tipNames":
+        ground.tipName = first.name as string;
+        break;
+      case "itemRules pickup.ctrlTexts":
+        ground.ctrlText = fields(first) as NonNullable<typeof ground.ctrlText>;
+        break;
+      case "itemRules containers.capacity":
+        container.capacity = first.capacity as number;
+        break;
+      case "itemRules containers.uniqueIds":
+        container.uniqueId = true;
+        break;
     }
   }
   if (Object.keys(attack).length > 0) {
@@ -240,6 +405,21 @@ export function seedDefinition(name: string, hits: readonly TableHit[]): ItemDef
   }
   if (Object.keys(use).length > 0) {
     def.use = use;
+  }
+  if (Object.keys(breaks).length > 0) {
+    def.breaks = breaks;
+  }
+  if (Object.keys(ground).length > 0) {
+    def.ground = ground;
+  }
+  if (Object.keys(container).length > 0) {
+    def.container = container;
+  }
+  if (lists?.editorItems.some((n) => lingoEq(n, name))) {
+    def.inEditorList = true;
+  }
+  if (lists?.playerShopWhitelist.some((n) => lingoEq(n, name))) {
+    def.inPlayerShops = true;
   }
   return def;
 }
@@ -349,20 +529,70 @@ export function compileDefinitions(data: ContentData): ContentData {
     return data;
   }
   // The same data is compiled again and again through one publish (its checks, the art checks, the
-  // trial install, the rebuild): the answer is kept per data object, which is never changed.
+  // trial install, the rebuild), and again from shallow copies of it (a draft with an NPC save, a
+  // rebuilt store): the answer is kept per data object, and the compiled tables per the datasets
+  // the compile reads, so a copy that shares them reuses them.
   const known = compiled.get(data);
   if (known) {
     return known;
   }
-  const out = compileUncached(data, defs);
-  compiled.set(data, out);
   // A compiled store is never compiled again.
+  if (compiledItems.has(data.items)) {
+    return data;
+  }
+  const inputs = [data.items, data.itemRules, data.attPower, data.classes, data.craft];
+  let patch = patchFor(inputs);
+  if (!patch) {
+    const full = compileUncached(data, defs) as unknown as Obj;
+    patch = {};
+    for (const id of PATCHED) {
+      patch[id] = full[id];
+    }
+    setPatch(inputs, patch);
+    compiledItems.add(patch.items as object);
+  }
+  const out = { ...data, ...patch } as ContentData;
+  compiled.set(data, out);
   compiled.set(out, out);
   return out;
 }
 
 /** Compiled data, by the data it was compiled from. */
 const compiled = new WeakMap<ContentData, ContentData>();
+/** The `items` datasets a compile produced (data holding one is compiled already). */
+const compiledItems = new WeakSet<object>();
+/** The datasets a compile writes. */
+const PATCHED = ["items", "itemRules", "attPower", "classes"] as const;
+/** Compiled datasets by the datasets the compile read, one level of weak maps per input. */
+const patches = new WeakMap<object, unknown>();
+
+function patchFor(inputs: readonly object[]): Obj | undefined {
+  let level: WeakMap<object, unknown> | undefined = patches;
+  for (const [i, k] of inputs.entries()) {
+    const v: unknown = level?.get(k);
+    if (i === inputs.length - 1) {
+      return v as Obj | undefined;
+    }
+    level = v as WeakMap<object, unknown> | undefined;
+  }
+  return undefined;
+}
+
+function setPatch(inputs: readonly object[], patch: Obj): void {
+  let level = patches;
+  for (const [i, k] of inputs.entries()) {
+    if (i === inputs.length - 1) {
+      level.set(k, patch);
+      return;
+    }
+    let next = level.get(k) as WeakMap<object, unknown> | undefined;
+    if (!next) {
+      next = new WeakMap();
+      level.set(k, next);
+    }
+    level = next;
+  }
+}
 
 function compileUncached(
   data: ContentData,
@@ -370,6 +600,7 @@ function compileUncached(
 ): ContentData {
   const isBook = data.itemRules ? behaviourTest(data.itemRules.behaviours) : null;
   const { tables } = definitionIndex(data);
+  const resolveAlias = aliasResolver(defs);
   /** By table: the names each pack row (by 1-based index) leaves out, and the rows to put in. */
   const excepts = new Map<string, Map<number, string[]>>();
   const inserts = new Map<string, { at: number; rows: Obj[] }[]>();
@@ -389,7 +620,12 @@ function compileUncached(
         }
       }
       excepts.set(key, left);
-      const own = definitionRows(def, key);
+      const own: Obj[] =
+        key === "itemRules paperdoll.aliases"
+          ? definitionRows(def, key).map(
+              (r): Obj => ({ ...r, becomes: resolveAlias(r.layer as string, r.becomes as string) }),
+            )
+          : definitionRows(def, key);
       const list = inserts.get(key) ?? [];
       if (key === "itemRules swing.cooldowns") {
         // The cooldown table's last matching row wins across every worn slot (a ring's row after
@@ -402,14 +638,23 @@ function compileUncached(
         }
       } else {
         const rows = own.map((r) => exactRow(key, name, r, masterworks));
+        // A new alias goes first, so the pack's aliases of the name it becomes still apply after
+        // it (a Moonblade drawn as a Long Sword is drawn as a Long Sword is).
+        // A definition's aliases (followed through the other definitions: `aliasResolver`) all go
+        // first, whatever the pack had, so the definitions' order never changes what draws.
         const at =
-          hit && hit.rows.length > 0 ? Math.min(...hit.rows.map((r) => r.index)) : Infinity;
+          key === "itemRules paperdoll.aliases"
+            ? 1
+            : hit && hit.rows.length > 0
+              ? Math.min(...hit.rows.map((r) => r.index))
+              : Infinity;
         list.push({ at, rows });
       }
       inserts.set(key, list);
     }
   }
   const out = { ...data } as unknown as Obj;
+  out.items = compileLists(data.items, defs);
   // Every message row says whether it is a read line, decided by the uncompiled behaviours: a
   // definition giving the item Potion the book behaviour must not turn a shared meal row whose
   // pattern is "Potion" into a read line for Red Potion.
@@ -458,6 +703,98 @@ function compileUncached(
     t.set(next);
   }
   return out as unknown as ContentData;
+}
+
+/**
+ * Follows a definition's worn alias through the definitions it names, per layer: Moonblade drawn
+ * as Other Blade, whose definition draws it as Broad Sword, is drawn as Broad Sword, whatever order
+ * the definitions are in. A cycle stops where it would repeat (the checks refuse one).
+ */
+function aliasResolver(
+  defs: readonly ItemDefinition[],
+): (layer: string, becomes: string) => string {
+  const next = new Map<string, string>();
+  for (const d of defs) {
+    if (!definesBehaviours(d.name)) {
+      continue;
+    }
+    for (const a of d.paperdoll ?? []) {
+      next.set(`${a.layer}|${d.name.toLowerCase()}`, a.becomes);
+    }
+  }
+  return (layer, becomes) => {
+    const seen = new Set<string>();
+    let cur = becomes;
+    for (;;) {
+      const k = `${layer}|${lookName(cur).toLowerCase()}`;
+      const to = next.get(k);
+      if (to === undefined || seen.has(k)) {
+        return cur;
+      }
+      seen.add(k);
+      cur = to;
+    }
+  };
+}
+
+/** The worn-alias cycles among definitions: `[layer, the names round the loop]`. */
+export function aliasCycles(defs: readonly ItemDefinition[]): [string, string[]][] {
+  const out: [string, string[]][] = [];
+  const reported = new Set<string>();
+  for (const d of defs) {
+    for (const a of d.paperdoll ?? []) {
+      const path = [d.name];
+      let cur = a.becomes;
+      for (let i = 0; i < defs.length + 1; i++) {
+        const nd = defs.find((x) => lingoEq(x.name, lookName(cur)));
+        const na = nd?.paperdoll?.find((x) => x.layer === a.layer);
+        if (!nd || !na) {
+          break;
+        }
+        if (lingoEq(nd.name, d.name)) {
+          const key = `${a.layer}|${[...path]
+            .map((n) => n.toLowerCase())
+            .sort()
+            .join("|")}`;
+          if (!reported.has(key)) {
+            reported.add(key);
+            out.push([a.layer, path]);
+          }
+          break;
+        }
+        path.push(nd.name);
+        cur = na.becomes;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * The item lists a definition toggles: an item it puts on a list it is not on goes at the end, one
+ * it leaves off comes off (every spelling of it); a list it already holds it on is left as it is.
+ */
+function compileLists(
+  items: ContentData["items"],
+  defs: readonly ItemDefinition[],
+): ContentData["items"] {
+  const toggle = (list: readonly string[], on: (d: ItemDefinition) => boolean): string[] => {
+    let next = [...list];
+    for (const d of defs) {
+      const has = next.some((n) => lingoEq(n, d.name));
+      if (on(d) && !has) {
+        next.push(d.name);
+      } else if (!on(d) && has) {
+        next = next.filter((n) => !lingoEq(n, d.name));
+      }
+    }
+    return next;
+  };
+  return {
+    ...items,
+    editorItems: toggle(items.editorItems, (d) => d.inEditorList === true),
+    playerShopWhitelist: toggle(items.playerShopWhitelist, (d) => d.inPlayerShops === true),
+  };
 }
 
 setDefinitionCompiler(compileDefinitions);

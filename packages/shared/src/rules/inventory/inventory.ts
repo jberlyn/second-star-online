@@ -12,7 +12,7 @@ export type { EquipSlot };
 
 import { type Equipment, NOTHING } from "../core/fighter.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
-import { anyMatch } from "../core/patterns.ts";
+import { anyMatch, excepted } from "../core/patterns.ts";
 
 /** The Pig drop's two lines. */
 export const PIG_TEXT = {
@@ -354,5 +354,8 @@ export function equipped(e: Equipment, slot: EquipSlot): string {
 }
 
 onContent((c) => {
-  ID_CONTAINERS = c.itemRules.containers.uniqueIds.map((r) => r.pattern);
+  // A row an item definition took its item off (`except`, issue #30) names it no more.
+  ID_CONTAINERS = c.itemRules.containers.uniqueIds
+    .filter((r) => !excepted(r, r.pattern))
+    .map((r) => r.pattern);
 });

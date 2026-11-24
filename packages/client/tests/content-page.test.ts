@@ -6,15 +6,17 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import type {
+  ContentItemArtView,
   ContentOverview,
   ContentRowDetail,
   ContentSoundArtView,
   ContentTileArtView,
   ContentUsageView,
+  ContentWornArtView,
 } from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";
-import { createContentPage, lineDiff, refLabel } from "../src/ui/content-page.ts";
+import { createContentPage, lineDiff, makeItemPanels, refLabel } from "../src/ui/content-page.ts";
 import { removalHeadline } from "../src/ui/content-usage.ts";
 
 const overview = (over: Partial<ContentOverview> = {}): ContentOverview => ({
@@ -1452,5 +1454,72 @@ describe("sounds on the Content page (issue #29, stage 7)", () => {
     });
     await settle();
     expect(sent.filter((x) => x.kind === "soundArt").length).toBeGreaterThan(before);
+  });
+});
+
+describe("the Items page's picture panels (#30)", () => {
+  /** A fake panel: pending until shown again, recording what it was shown. */
+  const fake = () => {
+    const shows: string[] = [];
+    let pending = false;
+    return {
+      el: document.createElement("div"),
+      shows,
+      setPending: (v: boolean) => {
+        pending = v;
+      },
+      show(item: { name?: string; item?: string }) {
+        shows.push(item.name ?? item.item ?? "");
+        pending = false;
+      },
+      clear() {},
+      pending: () => pending,
+    };
+  };
+  const itemView = {
+    items: [{ name: "Stick" }],
+    art: [],
+    currency: "Gold",
+    maxSide: 512,
+    packPictures: [],
+  } as unknown as ContentItemArtView;
+  const wornView = { items: [{ name: "Stick" }] } as unknown as ContentWornArtView;
+
+  test("a panel that just saved refreshes, while the other keeps its unsaved work", async () => {
+    const pic = fake();
+    const worn = fake();
+    let picSaved = () => {};
+    let saves = 0;
+    const panels = makeItemPanels(
+      (ps) => {
+        picSaved = ps;
+        return { pic, worn };
+      },
+      async () => itemView,
+      async () => wornView,
+      () => {
+        saves += 1;
+      },
+    );
+    panels.show("Stick");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(pic.shows).toEqual(["Stick"]);
+    // A picture is uploaded and saved while frames are set up beside it; the save's refresh
+    // (and any refresh after it, such as the form's slot save) must not leave the saved picture
+    // marked unsaved, nor wipe the unsaved frames.
+    pic.setPending(true);
+    worn.setPending(true);
+    picSaved();
+    expect(saves).toBe(1);
+    panels.show("Stick");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(pic.shows).toEqual(["Stick", "Stick"]);
+    expect(panels.pending()).toBe(true); // the worn frames, still unsaved
+    expect(worn.shows).toEqual(["Stick"]);
+    // Unsaved picture work (no save) is kept by a later refresh.
+    pic.setPending(true);
+    panels.show("Stick");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(pic.shows).toEqual(["Stick", "Stick"]);
   });
 });

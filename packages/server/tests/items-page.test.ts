@@ -318,7 +318,9 @@ describe("the Items page's changes (#30 stage 3)", () => {
     expect(skill.result).toEqual({
       ok: false,
       text: "Long Sword was not saved.",
-      problems: [{ where: "Trains", message: "names a skill that does not exist: Basket Weaving" }],
+      problems: [
+        { where: "Trains 1", message: "names a skill that does not exist: Basket Weaving" },
+      ],
     });
     expect(s.draft()).toEqual([]);
     const roll = change(s, {

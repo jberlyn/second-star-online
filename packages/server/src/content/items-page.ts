@@ -10,9 +10,13 @@
  */
 import type { ItemDefinition } from "@secondstaronline/data";
 import {
+  BREAK_ARMOUR_SLOTS,
+  BREAK_WEAPON_SLOTS,
   equipSlotSchema,
   itemBehaviourSchema,
+  paperdollLayerSchema,
   slotVarSchema,
+  toolCanSchema,
   wornSlotSchema,
 } from "@secondstaronline/data/schema";
 import {
@@ -70,6 +74,41 @@ export const ITEM_GROUPS: readonly { id: string; title: string; tables: Definiti
       "itemRules use.effects",
       "itemRules use.messages",
       "itemRules use.refusals",
+      "itemRules use.books",
+      "itemRules use.skillBooks",
+      "itemRules menu",
+    ],
+  },
+  {
+    id: "tools",
+    title: "Tools and needs",
+    tables: ["itemRules tools", "itemRules requires"],
+  },
+  {
+    id: "breaking",
+    title: "Breaking and look",
+    tables: [
+      "itemRules breaks.damaged",
+      "itemRules breaks.armour.items",
+      "itemRules breaks.weapon.items",
+      "itemRules paperdoll.aliases",
+    ],
+  },
+  {
+    id: "ground",
+    title: "Ground and containers",
+    tables: [
+      "itemRules ground.blocks",
+      "itemRules ground.platforms",
+      "itemRules ground.overlays",
+      "itemRules ground.inUse",
+      "itemRules ground.layers",
+      "itemRules ground.offsets",
+      "itemRules ground.tipless",
+      "itemRules ground.tipNames",
+      "itemRules pickup.ctrlTexts",
+      "itemRules containers.capacity",
+      "itemRules containers.uniqueIds",
     ],
   },
 ];
@@ -95,6 +134,26 @@ export const TABLE_LABELS: Record<DefinitionTable, string> = {
   "itemRules use.effects": "Use effects",
   "itemRules use.messages": "Eat or drink line",
   "itemRules use.refusals": "Refusal line",
+  "itemRules use.books": "Mysticism to read",
+  "itemRules use.skillBooks": "Skill book",
+  "itemRules menu": "Menu button",
+  "itemRules tools": "Tool uses",
+  "itemRules requires": "Needs",
+  "itemRules breaks.damaged": "Broken form",
+  "itemRules breaks.armour.items": "Breaks as armour",
+  "itemRules breaks.weapon.items": "Breaks as a weapon",
+  "itemRules paperdoll.aliases": "Drawn when worn as",
+  "itemRules ground.blocks": "Blocks walkers",
+  "itemRules ground.platforms": "Skill platform",
+  "itemRules ground.overlays": "Ground overlay",
+  "itemRules ground.inUse": "Animates while in use",
+  "itemRules ground.layers": "Ground layer",
+  "itemRules ground.offsets": "Ground offset",
+  "itemRules ground.tipless": "No hover tip",
+  "itemRules ground.tipNames": "Hover tip name",
+  "itemRules pickup.ctrlTexts": "Ctrl line",
+  "itemRules containers.capacity": "Container lines",
+  "itemRules containers.uniqueIds": "Gets a #id",
 };
 
 /** What an item is, from what it plays: a weapon, armour, food or something else. */
@@ -169,7 +228,25 @@ const FIELD_LABELS: Record<string, string> = {
   "use/effects": "Use effect",
   "use/message": "Eat or drink line",
   "use/refusal": "Refusal line",
+  "use/mysticism": "Mysticism to read",
+  "use/skillBook": "Skill book",
   trains: "Trains",
+  tools: "Tool use",
+  requires: "Needs",
+  menu: "Menu button",
+  damaged: "Broken form",
+  "breaks/armour": "Breaks as armour",
+  "breaks/weapon": "Breaks as a weapon",
+  paperdoll: "Drawn when worn as",
+  "ground/platforms": "Skill platform",
+  "ground/overlay": "Ground overlay",
+  "ground/layer": "Ground layer",
+  "ground/offset": "Ground offset",
+  "ground/tipName": "Hover tip name",
+  "ground/ctrlText": "Ctrl line",
+  "container/capacity": "Container lines",
+  inEditorList: "World Editor list",
+  inPlayerShops: "Player shops",
 };
 
 /** A definition's field keys as the page names them in a message. */
@@ -233,11 +310,18 @@ export function itemChoices(data: ContentData): ContentItemView["choices"] {
   return {
     slots: [...equipSlotSchema.options, "No"],
     slotVars: [...slotVarSchema.options],
+    breakArmourSlots: [...BREAK_ARMOUR_SLOTS],
+    breakWeaponSlots: [...BREAK_WEAPON_SLOTS],
     wornSlots: [...wornSlotSchema.options],
     behaviours: [...itemBehaviourSchema.options],
     powers: ["spell", "blackArts", "martialArts", "attack", "killXp"],
     stats: ["HP", "SP", "Hunger"],
     skills: data.classes.skills.map((s) => s.skill),
+    toolCans: [...toolCanSchema.options],
+    ladders: Object.keys(data.itemRules.ladders),
+    menus: ["Cook", "Mix", "Build", "Smith", "Storage"],
+    layers: [...paperdollLayerSchema.options],
+    groundLayers: ["hidden", "overChars", "overLayer3"],
   };
 }
 

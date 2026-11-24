@@ -2,12 +2,15 @@
 import { z } from "zod";
 
 import { attPowerTierSchema } from "./attpower.ts";
+import { requirementSchema, toolCanSchema } from "./common.ts";
 import {
   equipSlotSchema,
   itemBehaviourSchema,
+  paperdollLayerSchema,
   slotVarSchema,
   wornSlotSchema,
 } from "./item-rules.ts";
+import { formulaSchema } from "./progression.ts";
 
 const strings = z.array(z.string());
 const int = z.number().int();
@@ -64,11 +67,15 @@ const definitionRollSchema = z.strictObject({
  * content store compiles it into exact rows for that item in the rule tables it covers (equip,
  * attack, armour, gear, swing, use, weapon skills and behaviours), and the pack's rows that matched
  * the item stop applying to it there: a defined item plays only what its definition says. A field
- * left out is "none" (no slot row, no armour, no behaviours…). Tables a definition does not cover
- * yet (tools, menus, books, breaking, ground and containers, the paperdoll) keep the pack's rows.
- * A masterwork (`Knight's Sword +1`) takes its behaviours from its base item, so its definition
- * sets none.
+ * left out is "none" (no slot row, no armour, no behaviours, no tools…). One rule stays the pack's:
+ * `equip.murder` (a single name test, 1.6's "Murder"). A masterwork (`Knight's Sword +1`) takes its
+ * behaviours from its base item, so its definition sets none.
  */
+/** The worn slots armour can break in (the engine rolls BodyE, HeadE and RightHandE). */
+export const BREAK_ARMOUR_SLOTS = ["BodyE", "HeadE", "RightHandE"] as const;
+/** The worn slot a weapon can break in. */
+export const BREAK_WEAPON_SLOTS = ["LeftHandE"] as const;
+
 export const itemDefinitionSchema = z.strictObject({
   /** The catalogue item's key. */
   name: z.string().min(1),
@@ -159,10 +166,83 @@ export const itemDefinitionSchema = z.strictObject({
       message: z.string().optional(),
       /** `use.refusals`: the line Use shows in place of "You cannot use the X.". */
       refusal: z.string().min(1).optional(),
+      /** `use.books`: the Mysticism reading it needs (a spell book; left out, 1). */
+      mysticism: int.min(0).max(1000).optional(),
+      /** `use.skillBooks`: reading it teaches a skill, and uses it up. */
+      skillBook: z
+        .strictObject({
+          skill: z.string().min(1),
+          points: formulaSchema.optional(),
+          xp: formulaSchema.optional(),
+          upTo: int.min(0).max(100).optional(),
+        })
+        .optional(),
     })
     .optional(),
   /** `skillGain.weaponSkills`: the skills a kill with it trains. */
   trains: z.array(z.string()).min(1).optional(),
+  /** `tools`: what it can do as a tool, and its swing ladder. */
+  tools: z
+    .array(
+      z.strictObject({
+        can: toolCanSchema.optional(),
+        tier: int.min(1).max(1000).optional(),
+        ladder: z.string().min(1).optional(),
+        /** The hit counter a swing advances (shared with the items that name the same one). */
+        counter: z.string().min(1).optional(),
+      }),
+    )
+    .optional(),
+  /** `requires`: what it needs before it is equipped or used. */
+  requires: z
+    .array(z.strictObject({ on: z.enum(["equip", "use"]), ...requirementSchema.shape }))
+    .optional(),
+  /** `menu`: the item menu's button in place of Equip. */
+  menu: z.enum(["Cook", "Mix", "Build", "Smith", "Storage"]).optional(),
+  /** `breaks.damaged`: what it becomes when it breaks. */
+  damaged: z.string().min(1).optional(),
+  /** `breaks.armour.items` and `breaks.weapon.items`: the worn slots it can break in. */
+  breaks: z
+    .strictObject({
+      // The slots the engine rolls a break in: armour in the body, head and shield slots, a
+      // weapon in the weapon hand.
+      armour: z.array(z.enum(BREAK_ARMOUR_SLOTS)).optional(),
+      weapon: z.array(z.enum(BREAK_WEAPON_SLOTS)).optional(),
+    })
+    .optional(),
+  /** `paperdoll.aliases`: the picture a layer draws it with (`becomes` another item's). */
+  paperdoll: z
+    .array(z.strictObject({ layer: paperdollLayerSchema, becomes: z.string().min(1) }))
+    .optional(),
+  /** `ground` and `pickup`: how it sits on the ground. */
+  ground: z
+    .strictObject({
+      blocks: z.literal(true).optional(),
+      /** Every skill or level platform row it meets (each must be met). */
+      platforms: z
+        .array(z.strictObject({ needs: z.string().min(1), atLeast: int }))
+        .min(1)
+        .optional(),
+      overlay: z.string().min(1).optional(),
+      inUse: z.literal(true).optional(),
+      layer: z.enum(["hidden", "overChars", "overLayer3"]).optional(),
+      offset: z.strictObject({ dx: int.min(-999).max(999), dy: int.min(-999).max(999) }).optional(),
+      tipless: z.literal(true).optional(),
+      tipName: z.string().min(1).optional(),
+      ctrlText: z.strictObject({ text: z.string().min(1), unpause: z.boolean() }).optional(),
+    })
+    .optional(),
+  /** `containers`: the lines it holds as a container, and whether it gets a `#id` in a bag. */
+  container: z
+    .strictObject({
+      capacity: int.min(0).max(1000).optional(),
+      uniqueId: z.literal(true).optional(),
+    })
+    .optional(),
+  /** On the World Editor's item list (`editorItems`). */
+  inEditorList: z.literal(true).optional(),
+  /** On the list a player shop accepts (`playerShopWhitelist`). */
+  inPlayerShops: z.literal(true).optional(),
 });
 
 /** The part of items.json that `data:build` emits. */
