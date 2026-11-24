@@ -228,7 +228,9 @@ type ContentIntent = Extract<
       | "contentFx"
       | "contentTileArt"
       | "contentTileSheet"
-      | "contentTile";
+      | "contentTile"
+      | "contentSoundArt"
+      | "contentSound";
   }
 >;
 
@@ -260,6 +262,8 @@ export const CONTENT_INTENTS = [
   "contentTileArt",
   "contentTileSheet",
   "contentTile",
+  "contentSoundArt",
+  "contentSound",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -396,6 +400,14 @@ export function contentIntent(
       const r = service.draftTile(actor, msg.change, world);
       return r.ok
         ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value.text, codes: r.value.codes }
+        : result(msg.seq, r, "");
+    }
+    case "contentSoundArt":
+      return { t: "contentSoundArt", seq: msg.seq, view: service.soundArtView() };
+    case "contentSound": {
+      const r = service.draftSound(actor, msg.change);
+      return r.ok
+        ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value.text, sound: r.value.sound }
         : result(msg.seq, r, "");
     }
     case "contentProblems": {

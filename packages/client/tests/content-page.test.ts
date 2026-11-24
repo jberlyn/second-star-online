@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type {
   ContentOverview,
   ContentRowDetail,
+  ContentSoundArtView,
   ContentTileArtView,
   ContentUsageView,
 } from "@secondstaronline/shared";
@@ -87,6 +88,8 @@ function page(assets?: Assets) {
       tileArt: rec("tileArt"),
       tileSheet: rec("tileSheet"),
       tile: rec("tile"),
+      soundArt: rec("soundArt"),
+      sound: rec("sound"),
       openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
     },
     assets,
@@ -1339,5 +1342,68 @@ describe("tiles on the Content page (issue #29, stage 6)", () => {
     await settle();
     // The page refreshes the section from the draft.
     expect(sent.filter((x) => x.kind === "tileArt").length).toBeGreaterThan(before);
+  });
+});
+
+describe("sounds on the Content page (issue #29, stage 7)", () => {
+  const soundView: ContentSoundArtView = {
+    uses: { crush: { name: "crush", users: ["spell Crush"] } },
+    art: [],
+    packSounds: { crush: "/assets/packs/classic/sounds/crush.wav?v=1" },
+    liveUploads: [],
+    maxBytes: 5 * 1024 * 1024,
+  };
+
+  function showSounds(t: ReturnType<typeof page>, view = soundView) {
+    const { p, last } = t;
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({ t: "contentSoundArt", seq: last("soundArt")?.seq ?? 0, view });
+  }
+
+  test("the Sounds section lists every sound; Discard drops a new sound's chosen files", async () => {
+    const t = page(noArt);
+    const { p, settle } = t;
+    showSounds(t);
+    await settle();
+    expect(p.el.querySelector('[data-action="sounds-open"][data-sound="crush"]')?.textContent).toBe(
+      "crush",
+    );
+    // Upload tickets never answer here, so a chosen file stays waiting: unsaved work.
+    const files = p.el.querySelector('[data-action="sounds-files"]') as HTMLInputElement;
+    Object.defineProperty(files, "files", {
+      configurable: true,
+      value: [new File([new Uint8Array(8)], "boom.wav")],
+    });
+    files.dispatchEvent(new Event("change"));
+    await settle();
+    expect(p.changes()).toBe(1);
+    p.discard();
+    expect(p.changes()).toBe(0);
+  });
+
+  test("a sound change goes into the draft, and the section refreshes from it", async () => {
+    const t = page(noArt);
+    const { p, last, settle, sent } = t;
+    showSounds(t, { ...soundView, art: [{ name: "crush", file: "a".repeat(64), format: "wav" }] });
+    await settle();
+    (p.el.querySelector('[data-action="sounds-open"][data-sound="crush"]') as HTMLElement).click();
+    expect(p.el.textContent).toContain("Replaces crush for spell Crush.");
+    const before = sent.filter((x) => x.kind === "soundArt").length;
+    // The section's own apply goes through the page's `sound` action and its result.
+    const remove = p.el.querySelector('[data-action="sound-art-remove"]') as HTMLButtonElement;
+    expect(remove.hidden || remove.disabled).toBe(false);
+    remove.click();
+    const change = last("sound");
+    expect(change?.args[0]).toMatchObject({ op: "remove", name: "crush" });
+    p.receive({
+      t: "contentResult",
+      seq: change?.seq ?? 0,
+      ok: true,
+      text: "Out.",
+      sound: "crush",
+    });
+    await settle();
+    expect(sent.filter((x) => x.kind === "soundArt").length).toBeGreaterThan(before);
   });
 });

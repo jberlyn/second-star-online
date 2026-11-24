@@ -687,6 +687,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       tileSheet: (seq, sheet, transparency) =>
         send({ t: "contentTileSheet", seq, sheet, transparency }),
       tile: (seq, change) => send({ t: "contentTile", seq, change }),
+      soundArt: (seq) => send({ t: "contentSoundArt", seq }),
+      sound: (seq, change) => send({ t: "contentSound", seq, change }),
       openCharacter: (name) => {
         controlPanel.go("characters");
         if (controlPanel.page === "characters") {
@@ -730,6 +732,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         permission: "contentEditor",
         el: contentPage.el,
         onShow: () => contentPage.onShow(),
+        onHide: () => contentPage.onHide(),
         changes: () => contentPage.changes(),
         discard: () => contentPage.discard(),
       },
@@ -1331,6 +1334,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentFxSheet":
       case "contentTileArt":
       case "contentTileSheet":
+      case "contentSoundArt":
         contentPage.receive(msg);
         return;
       case "content":

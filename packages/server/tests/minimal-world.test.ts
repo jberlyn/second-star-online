@@ -177,6 +177,39 @@ describe("a world created with the Minimal pack", () => {
       set("bindings", "start", null, { hp: 20, sp: 20, bag: [{ item: "Lore Book", qty: 1 }] });
       // A section the Minimal pack leaves out can be added: the slot machine's game.
       set("casino", "slots", null, classic.casino.slots);
+      // Its sounds are named now, and the Minimal pack has none: the operator uploads them
+      // (issue #29, stage 7), or the publish is refused rather than leaving the casino silent.
+      expect(svc.check().map((p) => p.message)).toEqual([
+        "the sound SlotMachine has no file, so the casino would be silent",
+        "the sound cash has no file, so the casino would be silent",
+      ]);
+      const wav = new Uint8Array([
+        ...new TextEncoder().encode("RIFF"),
+        36,
+        0,
+        0,
+        0,
+        ...new TextEncoder().encode("WAVEfmt "),
+      ]);
+      server.db
+        .query(
+          "INSERT OR IGNORE INTO accounts (id, username, password_hash, role, created_at, updated_at) VALUES (?, ?, 'x', 'administrator', 'now', 'now')",
+        )
+        .run(ADMIN.accountId, "admin");
+      const up = svc.upload(svc.uploadTicket(ADMIN), "sound", wav);
+      if (!up.body.ok) {
+        throw new Error(up.body.error);
+      }
+      for (const name of ["SlotMachine", "cash"]) {
+        const r = svc.draftSound(ADMIN, {
+          op: "set",
+          name,
+          file: up.body.file,
+          format: "wav",
+          expect: null,
+        });
+        expect(r.ok).toBe(true);
+      }
       expect(svc.check()).toEqual([]);
       const published = svc.publish(ADMIN, svc.draftRev(), "Lore", server.game.contentWorld);
       expect(published.ok ? "ok" : published.error).toBe("ok");

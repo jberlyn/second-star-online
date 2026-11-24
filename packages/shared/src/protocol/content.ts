@@ -12,6 +12,7 @@ import type {
   ArtFrameId,
   ArtFx,
   ArtItem,
+  ArtSound,
   ArtTile,
   ArtWorn,
   EquipSlot,
@@ -21,6 +22,7 @@ import type {
 
 import type { BodyUse } from "../content/bodies.ts";
 import type { FxRunUse } from "../content/fx.ts";
+import type { SoundUse } from "../content/sounds.ts";
 import type { TileRow } from "../content/tiles.ts";
 import type { WornLayerUse } from "../content/worn.ts";
 
@@ -392,6 +394,36 @@ export const contentTileSchema = z.strictObject({
   ]),
 });
 
+/** Asks for the sound panels' view (issue #29, stage 7). */
+export const contentSoundArtSchema = z.strictObject({ t: z.literal("contentSoundArt"), seq });
+
+const soundName = z.string().trim().min(1).max(80);
+/** A sound's upload as the panel saw it: its fingerprint, or null for none. Never left out. */
+const soundExpect = z
+  .string()
+  .regex(/^[0-9a-f]{8}$/)
+  .nullable();
+
+/**
+ * One sound change (issue #29, stage 7), made in the draft as a whole: a sound's file (a new sound,
+ * or replacing one), or its upload taken out. See `SoundChange`.
+ */
+export const contentSoundSchema = z.strictObject({
+  t: z.literal("contentSound"),
+  seq,
+  change: z.discriminatedUnion("op", [
+    z.strictObject({
+      op: z.literal("set"),
+      name: soundName,
+      file: fileHash,
+      format: z.enum(["wav", "mp3", "ogg"]),
+      /** The sound's upload as the panel saw it; refused if it changed since. */
+      expect: soundExpect,
+    }),
+    z.strictObject({ op: z.literal("remove"), name: soundName, expect: soundExpect }),
+  ]),
+});
+
 export const contentPictureSchema = z.strictObject({
   t: z.literal("contentPicture"),
   seq,
@@ -536,6 +568,23 @@ export interface ContentTileArtView {
   liveUploads: string[];
   /** A hairstyle the preview's player wears (the first sex's first head). */
   head: number;
+}
+
+/**
+ * Everything the sound panels need at once (issue #29, stage 7), from the draft: every sound the
+ * content and the engine play with who plays it, the uploads, and where the packs' sounds are.
+ */
+export interface ContentSoundArtView {
+  /** Every sound played, by lower-case name. */
+  uses: Record<string, SoundUse>;
+  /** The `art` dataset's sounds as the draft would publish them. */
+  art: ArtSound[];
+  /** Where each pack sound is served (`/assets/packs/…`), by lower-case name. */
+  packSounds: Record<string, string>;
+  /** Sounds (lower case) with a published upload: removing it in the draft brings a pack's back. */
+  liveUploads: string[];
+  /** The most a sound file may weigh. */
+  maxBytes: number;
 }
 
 /** How many maps a tile's usage names. */
@@ -745,6 +794,8 @@ export type ContentServerMsg =
     }
   /** The tile panels' view. */
   | { t: "contentTileArt"; seq: number; view: ContentTileArtView }
+  /** The sound panels' view. */
+  | { t: "contentSoundArt"; seq: number; view: ContentSoundArtView }
   /** A tileset cut into tiles (cells showing nothing left out), or why it could not be. */
   | {
       t: "contentTileSheet";
@@ -776,4 +827,6 @@ export type ContentServerMsg =
       run?: string;
       /** The tiles a `contentTile` change drew on (new tiles' codes, given by the server). */
       codes?: string[];
+      /** The sound a `contentSound` change wrote, as the draft spells it. */
+      sound?: string;
     };

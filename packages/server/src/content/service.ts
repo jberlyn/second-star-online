@@ -30,6 +30,7 @@ import {
   type ContentBodyArtView,
   type ContentData,
   type ContentFxArtView,
+  type ContentSoundArtView,
   type ContentStore,
   type ContentTileArtView,
   type ContentWornArtView,
@@ -55,11 +56,14 @@ import {
   planBody,
   planFx,
   planPicture,
+  planSound,
   planTile,
   planWorn,
   removedTileCodes,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
+  type SoundChange,
+  soundUses,
   TILE_MAPS_SHOWN,
   TILES_PER_SHEET,
   type TileChange,
@@ -116,10 +120,13 @@ import {
   type BuiltArt,
   checkUpload,
   keysOf,
+  nullRecord,
   SPRITE_MAX_SIDE,
   sliceBodySheet,
   sliceFxSheet,
   sliceWornSheet,
+  soundFormatOf,
+  UPLOAD_MAX_BYTES,
   type UploadKind,
   withArtRects,
 } from "./art.ts";
@@ -127,6 +134,7 @@ import {
   lostArtProblems,
   newBodyGaps,
   newFxGaps,
+  newSoundProblems,
   newTileGaps,
   tileRefProblems,
   usedArt,
@@ -518,6 +526,27 @@ function packArtKeys(packs: readonly PackInfo[]): ArtKeys {
   return all;
 }
 
+/**
+ * Where each installed pack's sounds are served, by lower-case name (a later pack's wins, as the
+ * served index does): `/assets/packs/<id>/<file>?v=<inputHash>`.
+ */
+function packSoundUrls(packs: readonly PackInfo[]): Record<string, string> {
+  const out = nullRecord<string>();
+  for (const p of packs) {
+    if (!p.artDir) {
+      continue;
+    }
+    const index = JSON.parse(
+      readFileSync(join(p.artDir, ASSET_INDEX_FILE), "utf8"),
+    ) as PackArtIndex;
+    const v = index.inputHash ? `?v=${index.inputHash}` : "";
+    for (const [name, file] of Object.entries(index.sounds)) {
+      out[name.toLowerCase()] = `/assets/packs/${p.id}/${file}${v}`;
+    }
+  }
+  return out;
+}
+
 /** How long an upload ticket lasts. */
 export const UPLOAD_TICKET_MS = 30 * 60 * 1000;
 
@@ -536,6 +565,8 @@ export class ContentService {
   private readonly mayUpload: (accountId: string) => boolean;
   /** The sprites and sounds the installed packs' own atlases supply. */
   private packArt: ArtKeys;
+  /** Where the packs' sounds are served, by lower-case name (issue #29, stage 7). */
+  private packSounds: Record<string, string>;
   /** The packs merged in install order, without the operator layer. */
   private packData: ContentData;
   private packs: PackInfo[];
@@ -566,6 +597,7 @@ export class ContentService {
       npcFiles: new Set(data.npcFiles.files.map((f) => f.name.toLowerCase())),
     };
     this.packArt = packArtKeys(packs);
+    this.packSounds = packSoundUrls(packs);
     this.published = this.withArt(applyRows(data, contentRows(this.db).map(toLayer)));
     const validArt = artDataSchema.safeParse(this.published.art).success;
     for (const p of (validArt && this.art?.problems(this.published.art)) || []) {
@@ -851,6 +883,7 @@ export class ContentService {
       ...newBodyGaps(next, this.published, this.packArt, before, after),
       ...newFxGaps(next, this.published, this.packArt),
       ...newTileGaps(next, this.published, this.packArt, after),
+      ...newSoundProblems(next, this.published, this.packArt, before, after),
       ...triggers,
       ...tileRefs,
       ...wornSetProblems(next, this.published),
@@ -1905,6 +1938,66 @@ export class ContentService {
       }
     }
     return out;
+  }
+
+  // ---- sounds (issue #29, stage 7) ------------------------------------------------------------
+
+  /** The sound panels' view, from the draft. */
+  soundArtView(): ContentSoundArtView {
+    const d = this.draftContent();
+    return {
+      uses: Object.fromEntries(soundUses(d)),
+      art: d.art.sounds,
+      packSounds: { ...this.packSounds },
+      liveUploads: this.published.art.sounds.map((a) => a.name.toLowerCase()),
+      maxBytes: UPLOAD_MAX_BYTES,
+    };
+  }
+
+  /**
+   * One sound change from the Content page, put in the draft as a whole: a sound's file, or its
+   * upload taken out. A file is checked before anything is written: it is stored, it is the
+   * format it says by its opening bytes, and it is within the upload limit.
+   */
+  draftSound(
+    actor: ContentActor,
+    change: SoundChange,
+  ): ContentResult<{ text: string; sound: string }> {
+    if (change.op === "set") {
+      if (!this.art) {
+        return fail("this server stores no uploads");
+      }
+      const bytes = this.art.files.read("sounds", change.file, change.format);
+      if (!bytes) {
+        return fail(
+          `the sound file is not stored as ${change.format.toUpperCase()}: upload it again`,
+        );
+      }
+      if (bytes.length > UPLOAD_MAX_BYTES) {
+        return fail(`the sound file is over ${UPLOAD_MAX_BYTES / 1048576} MB`);
+      }
+      if (soundFormatOf(bytes) !== change.format) {
+        return fail(`the file is not a ${change.format.toUpperCase()} sound`);
+      }
+    }
+    const plan = planSound(change, this.draftContent().art.sounds);
+    if (!plan.ok) {
+      return fail(plan.error);
+    }
+    const wrote = this.writeDraftRows(actor, plan.rows, ["art"]);
+    if (!wrote.ok) {
+      return fail("the change does not match the rows' schema", wrote.problems);
+    }
+    return {
+      ok: true,
+      value: {
+        text:
+          change.op === "remove"
+            ? `${plan.name}'s upload is out of the draft.`
+            : `${plan.name} is in the draft.`,
+        sound: plan.name,
+      },
+    };
   }
 
   /** Drops a change from the draft. */

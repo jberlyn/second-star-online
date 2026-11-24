@@ -137,7 +137,7 @@ export function createAudio(
     }
     // A removed sound goes, a decode still on its way included (it checks `loadedFrom`).
     for (const name of [...loadedFrom.keys()]) {
-      if (!(name in sounds)) {
+      if (!Object.hasOwn(sounds, name)) {
         buffers.delete(name);
         loadedFrom.delete(name);
       }
@@ -147,6 +147,9 @@ export function createAudio(
       if (loadedFrom.get(name) === file) {
         continue;
       }
+      // A replaced sound is silent until its new file has decoded, never its old file: an
+      // operator who replaced it (issue #29) is not to hear the old one after the publish.
+      buffers.delete(name);
       loadedFrom.set(name, file);
       loads.push(
         load(`/assets/${file}`)

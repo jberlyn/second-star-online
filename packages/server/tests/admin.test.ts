@@ -1467,6 +1467,25 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(3);
   });
 
+  test("the sound intents need the Content page's permission (issue #29, stage 7)", async () => {
+    const { game, make } = await start();
+    const bob = await make("Bob");
+    sent.length = 0;
+    game.intent(bob.characterId, { t: "contentSoundArt", seq: 1 });
+    game.intent(bob.characterId, {
+      t: "contentSound",
+      seq: 2,
+      change: { op: "set", name: "boom", file: "a".repeat(64), format: "wav", expect: null },
+    });
+    // Nothing comes back, and each is cheat-logged.
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 2).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(2);
+  });
+
   test("a publish that gives a live species another body tells everyone on its map (issue #29)", async () => {
     const { game, make } = await start();
     const ann = await make("Ann", "administrator");

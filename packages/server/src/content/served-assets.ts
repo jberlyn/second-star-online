@@ -21,7 +21,7 @@ import {
 } from "@secondstaronline/data";
 
 import type { ArtFiles } from "../persistence/art-files.ts";
-import { type BuiltArt, fxTailHidden } from "./art.ts";
+import { type BuiltArt, fxTailHidden, nullRecord } from "./art.ts";
 
 /** Where a pack's art is served, under `/assets/`: `packs/<id>/<file>`. */
 export const PACK_ART_PREFIX = "packs/";
@@ -40,7 +40,12 @@ export function mergePackArt(
   packs: readonly { id: string; art: PackArtIndex; prefix?: string }[],
 ): AssetIndex {
   const atlases = structuredClone(engine.atlases);
-  const sounds = { ...engine.sounds };
+  // Names are operator text: every record merged into is prototype-free, so `__proto__` or
+  // `constructor` is only ever an entry of its own (issue #29).
+  for (const atlas of Object.values(atlases)) {
+    atlas.sprites = nullRecord(atlas.sprites);
+  }
+  const sounds = nullRecord(engine.sounds);
   for (const { id, art, prefix } of packs) {
     const base = prefix ?? `${PACK_ART_PREFIX}${id}/`;
     const v = prefix === undefined && art.inputHash ? `?v=${art.inputHash}` : "";
@@ -48,7 +53,7 @@ export function mergePackArt(
       AtlasGroup,
       AssetIndex["atlases"][AtlasGroup],
     ][]) {
-      const into = atlases[group] ?? { sheets: [], sprites: {} };
+      const into = atlases[group] ?? { sheets: [], sprites: nullRecord() };
       // The operator's runs and trails are whole: the packs' frames after an uploaded run's last
       // are not drawn (issue #29, stage 5).
       if (prefix !== undefined && group === "fx") {
@@ -68,7 +73,11 @@ export function mergePackArt(
       atlases[group] = into;
     }
     for (const [name, file] of Object.entries(art.sounds)) {
-      sounds[name] = `${base}${file}${v}`;
+      // The engine's own sounds (the frame's clicks) stay the engine's.
+      if (Object.hasOwn(engine.sounds, name.toLowerCase())) {
+        continue;
+      }
+      sounds[name.toLowerCase()] = `${base}${file}${v}`;
     }
   }
   return { ...engine, atlases, sounds };

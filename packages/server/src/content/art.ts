@@ -43,6 +43,7 @@ import {
   blankCell,
   bodySheetCell,
   cutCell,
+  FRAME_SOUNDS,
   type FxSheetLayout,
   fxSheetCell,
   stripFrames,
@@ -545,7 +546,7 @@ export class ArtLibrary {
       }
     }
 
-    const sounds: Record<string, string> = {};
+    const sounds = nullRecord<string>();
     for (const row of art.sounds) {
       const bytes = this.files.read("sounds", row.file, row.format);
       if (!bytes) {
@@ -565,6 +566,13 @@ export class ArtLibrary {
         problems.push({
           where: where("sounds", row.name),
           message: `its file is not ${article(row.format)} ${row.format.toUpperCase()} sound`,
+        });
+        continue;
+      }
+      if (FRAME_SOUNDS.some((f) => f.toLowerCase() === row.name.toLowerCase())) {
+        problems.push({
+          where: where("sounds", row.name),
+          message: `${row.name} is the game frame's own click, which only the engine supplies`,
         });
         continue;
       }
@@ -589,12 +597,12 @@ export class ArtLibrary {
 
     const atlases = {} as Record<AtlasGroup, AtlasIndex>;
     const sheets = new Map<string, Uint8Array>();
-    const rects: BuiltArt["rects"] = { fx: {}, chars: {}, items: {} };
+    const rects: BuiltArt["rects"] = { fx: nullRecord(), chars: nullRecord(), items: nullRecord() };
     for (const group of ["bodies", "fx", "items", "paperdoll", "tiles"] as const) {
       const mine = unique.filter((p) => p.group === group);
       const layout = pack(mine.map((p) => ({ name: p.key, w: p.img.width, h: p.img.height })));
       const imgs = layout.sheets.map((s) => createRgba(Math.max(1, s.w), Math.max(1, s.h)));
-      const sprites: Record<string, AtlasSprite> = {};
+      const sprites = nullRecord<AtlasSprite>();
       const byKey = new Map(mine.map((p) => [p.key, p]));
       for (const pl of [...layout.placements].sort((a, b) => (a.name < b.name ? -1 : 1))) {
         const p = byKey.get(pl.name) as Prepared;
@@ -643,6 +651,14 @@ export class ArtLibrary {
 }
 
 /** The data with the operator's hit rects over the packs' (an upload replaces a pack's sprite). */
+/**
+ * A record with no prototype: names operators type (`constructor`, `__proto__`) are only ever its
+ * own entries, never Object.prototype's (issue #29).
+ */
+export function nullRecord<T>(from: Record<string, T> = {}): Record<string, T> {
+  return Object.assign(Object.create(null) as Record<string, T>, from);
+}
+
 export function withArtRects<T extends { rects: RectsData }>(data: T, rects: BuiltArt["rects"]): T {
   if (
     Object.keys(rects.fx).length === 0 &&
@@ -657,9 +673,9 @@ export function withArtRects<T extends { rects: RectsData }>(data: T, rects: Bui
   return {
     ...data,
     rects: {
-      fx: { ...packFx, ...rects.fx },
-      chars: { ...data.rects.chars, ...rects.chars },
-      items: { ...data.rects.items, ...rects.items },
+      fx: nullRecord({ ...packFx, ...rects.fx }),
+      chars: nullRecord({ ...data.rects.chars, ...rects.chars }),
+      items: nullRecord({ ...data.rects.items, ...rects.items }),
     },
   };
 }
@@ -672,7 +688,8 @@ export function keysOf(index: Pick<PackArtIndex, "atlases" | "sounds">): ArtKeys
       sprites[g].add(k);
     }
   }
-  return { sprites, sounds: new Set(Object.keys(index.sounds)) };
+  // Sounds are played by name ignoring case: a pack's index is read in lower case once, here.
+  return { sprites, sounds: new Set(Object.keys(index.sounds).map((k) => k.toLowerCase())) };
 }
 
 /**

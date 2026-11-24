@@ -14,6 +14,7 @@ import {
   installContent,
 } from "@secondstaronline/shared";
 
+import { ArtLibrary } from "../src/content/art.ts";
 import { readPackDir } from "../src/content/packs.ts";
 import { overviewOf, rowDetailOf } from "../src/content/page.ts";
 import {
@@ -31,6 +32,7 @@ import {
   referenceProblems,
   skillProblems,
 } from "../src/content/validate.ts";
+import { memoryArtFiles } from "../src/persistence/art-files.ts";
 import {
   contentRows,
   insertPack,
@@ -479,6 +481,35 @@ describe("pack updates", () => {
       expect(s.store().casino.slots!.cost).toBe(classic.data.casino?.slots?.cost as number);
       expect(s.notices()).toEqual([]);
       expect(s.undo(ADMIN, r.ok ? r.value.id : "").ok).toBe(true);
+      expect(s.store().casino.slots!.cost).toBe(25);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("accepting a pack's version is refused when it would play a sound nothing supplies (issue #29)", () => {
+    const { db, service } = setup();
+    const ref = { dataset: "casino" as const, part: "slots", key: null };
+    service.draftSet(ADMIN, ref, "set", { ...service.publishedContent().casino.slots, cost: 25 });
+    service.publish(ADMIN, seen(service), "");
+    // The new version's slot machine plays a sound no pack has.
+    const dir = changedClassic((d) =>
+      editJson(d, "casino.json", (c) => {
+        ((c.slots as Record<string, unknown>).sound as { name: string }).name = "Jackpot";
+      }),
+    );
+    try {
+      const s = new ContentService({
+        db,
+        now: () => "z",
+        releasePacks: { classic: dir },
+        art: new ArtLibrary(memoryArtFiles()),
+      });
+      const r = s.acceptNotice(ADMIN, ref);
+      expect(r.ok).toBe(false);
+      expect(JSON.stringify(r)).toContain(
+        "the sound Jackpot has no file, so the casino would be silent",
+      );
       expect(s.store().casino.slots!.cost).toBe(25);
     } finally {
       rmSync(dir, { recursive: true, force: true });

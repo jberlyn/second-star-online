@@ -263,3 +263,81 @@ describe("sounds an operator publishes (issue #29)", () => {
     expect(sources).toHaveLength(1);
   });
 });
+
+describe("a replaced sound (issue #29, stage 7)", () => {
+  test("never plays its old file once a publish replaces it, even when the new file fails", async () => {
+    const sources: FakeSource[] = [];
+    const ctx = {
+      state: "running" as AudioContextState,
+      destination: {},
+      resume: () => Promise.resolve(),
+      createBufferSource: () => {
+        const s = new FakeSource();
+        sources.push(s);
+        return s;
+      },
+      createGain: (): FakeGain => ({ gain: { value: 1 }, connect() {} }),
+      decodeAudioData: (b: ArrayBuffer) =>
+        b.byteLength === 0
+          ? Promise.reject(new Error("bad"))
+          : Promise.resolve({ bytes: b.byteLength }),
+    };
+    const a = assets({ hitsound: "sounds/hitsound.wav" });
+    let listener: (() => void | Promise<void>) | null = null;
+    a.onReload = (fn) => {
+      listener = fn as () => void | Promise<void>;
+    };
+    const audio = createAudio(
+      a,
+      true,
+      () => ctx as unknown as AudioCtx,
+      (url) => Promise.resolve(new ArrayBuffer(url.includes("broken") ? 0 : 8)),
+    );
+    audio.unlock();
+    await settle();
+    audio.play(SOUND.monsterHit);
+    expect(sources).toHaveLength(1);
+    // The publish replaces it with a file this browser cannot decode: silence, not the old file.
+    a.index.sounds = { hitsound: "operator/sounds/broken.wav" };
+    await (listener as unknown as () => Promise<void>)();
+    audio.play(SOUND.monsterHit);
+    expect(sources).toHaveLength(1);
+  });
+});
+
+describe("sounds named like Object.prototype's (issue #29, stage 7 review)", () => {
+  test("a removed sound called constructor unloads and never plays again", async () => {
+    const sources: FakeSource[] = [];
+    const ctx = {
+      state: "running" as AudioContextState,
+      destination: {},
+      resume: () => Promise.resolve(),
+      createBufferSource: () => {
+        const s = new FakeSource();
+        sources.push(s);
+        return s;
+      },
+      createGain: (): FakeGain => ({ gain: { value: 1 }, connect() {} }),
+      decodeAudioData: (b: ArrayBuffer) => Promise.resolve({ bytes: b.byteLength }),
+    };
+    const a = assets({ constructor: "operator/sounds/c.wav" });
+    let listener: (() => void | Promise<void>) | null = null;
+    a.onReload = (fn) => {
+      listener = fn as () => void | Promise<void>;
+    };
+    const audio = createAudio(
+      a,
+      true,
+      () => ctx as unknown as AudioCtx,
+      () => Promise.resolve(new ArrayBuffer(8)),
+    );
+    audio.unlock();
+    await settle();
+    audio.play({ name: "constructor", ch: 1 });
+    expect(sources).toHaveLength(1);
+    a.index.sounds = {};
+    await (listener as unknown as () => Promise<void>)();
+    audio.play({ name: "constructor", ch: 1 });
+    expect(sources).toHaveLength(1);
+  });
+});

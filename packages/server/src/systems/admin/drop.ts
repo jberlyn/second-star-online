@@ -45,7 +45,8 @@ export interface DropPile {
  * flag to keep in step (issue #29). Classic's `icon: null` items are the ones with no picture.
  */
 export function hasItemPicture(key: string): boolean {
-  return content().rects.items[itemSprite(key).toLowerCase()] !== undefined;
+  // Own entries only: an item called `constructor` is not given Object.prototype's.
+  return Object.hasOwn(content().rects.items, itemSprite(key).toLowerCase());
 }
 
 /**

@@ -16,7 +16,10 @@ import {
   fxRuns,
   fxUsersText,
   missingFrames,
+  newSoundGaps,
   removedTileCodes,
+  soundUsersText,
+  soundUses,
   type TileRow,
   tileRefs,
   wornByText,
@@ -95,41 +98,14 @@ export function usedArt(data: ContentData): {
       note(sprites.fx, `x${use.member}`, use.users[0] ?? "");
     }
   }
-  for (const spell of data.spells.spells) {
-    for (const run of spell.fx) {
-      for (const s of run.sounds) {
-        note(sounds, s.name, `spell ${spell.name}`);
-      }
-    }
-  }
   for (const tile of data.tiles.catalogue) {
     note(sprites.tiles, tile.code, `tile ${tile.code}`);
   }
-  // Sounds elsewhere: gathering's hit and success sounds, swing sounds, the casino's.
-  const walk = (v: unknown, who: string): void => {
-    if (Array.isArray(v)) {
-      for (const x of v) {
-        walk(x, who);
-      }
-    } else if (v && typeof v === "object") {
-      const o = v as Record<string, unknown>;
-      if (
-        typeof o.name === "string" &&
-        (typeof o.ch === "number" || typeof o.channels === "number")
-      ) {
-        note(sounds, o.name, who);
-      }
-      if (typeof o.sound === "string") {
-        note(sounds, o.sound, who);
-      }
-      for (const x of Object.values(o)) {
-        walk(x, who);
-      }
-    }
-  };
-  walk(data.gather, "gathering");
-  walk(data.itemRules, "the item rules");
-  walk(data.casino, "the casino");
+  // Spell runs, gathering, swings, the casino, and the sounds the engine plays by name (issue #29,
+  // stage 7): every user is listed, so a removal names them all.
+  for (const [k, use] of soundUses(data)) {
+    sounds.set(k, soundUsersText(use));
+  }
   return { sprites, sounds };
 }
 
@@ -181,6 +157,26 @@ export function lostArtProblems(
     }
   }
   return out;
+}
+
+/**
+ * Sounds the change newly makes content play that nothing will supply (issue #29, stage 7): no
+ * pack has the sound and no upload will. A gap the published content already had is left alone,
+ * and a sound that was supplied and is taken away is `lostArtProblems`'s to report.
+ */
+export function newSoundProblems(
+  next: ContentData,
+  published: ContentData,
+  packs: ArtKeys,
+  before: ArtKeys,
+  after: ArtKeys,
+): ContentProblem[] {
+  // A sound that was supplied and is taken away is `lostArtProblems`'s to report, once.
+  const supplied = new Set([...packs.sounds, ...before.sounds, ...after.sounds]);
+  return newSoundGaps(next, published, supplied).map((g) => ({
+    where: "art/sounds",
+    message: `the sound ${g.name} has no file, so ${g.users.join(", ")} would be silent`,
+  }));
 }
 
 /**

@@ -48,3 +48,23 @@ describe("reloading the art", () => {
     expect(heard).toEqual([["items"], []]);
   });
 });
+
+describe("sprite lookups (issue #29, stage 7 review)", () => {
+  test("a name like constructor or toString is never Object.prototype's", async () => {
+    const index = {
+      version: 1,
+      inputHash: "",
+      atlases: {
+        items: { sheets: [], sprites: { apple: [0, 0, 0, 1, 1, 0, 0] } },
+      },
+      ui: {},
+      sounds: {},
+    };
+    const assets = await loadAssets(
+      (async () => new Response(JSON.stringify(index))) as unknown as typeof fetch,
+    );
+    expect(assets.sprite("items", "Apple")).toEqual([0, 0, 0, 1, 1, 0, 0]);
+    expect(assets.sprite("items", "constructor")).toBeUndefined();
+    expect(assets.sprite("items", "toString")).toBeUndefined();
+  });
+});

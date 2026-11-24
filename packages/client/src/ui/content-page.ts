@@ -25,6 +25,9 @@
  *   a bulk upload.
  * - **Tiles** (issue #29, tile-art.ts): a section listing every tile in the catalogue, with a panel
  *   for each (picture, name, walkable, flags, taking it out) and tilesets added in bulk.
+ * - **Sounds** (issue #29, sound-art.ts): a section listing every sound the content and the engine
+ *   play, with a panel for each (hear it, replace its file, take the upload out), new sounds and a
+ *   bulk upload.
  * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
  * - **Problems**: references nothing resolves, in content and in the world.
  */
@@ -43,12 +46,14 @@ import type {
   ContentRowDetail,
   ContentRowRef,
   ContentRowStatus,
+  ContentSoundArtView,
   ContentTileArtView,
   ContentUsageView,
   ContentWornArtView,
   FxChange,
   FxSheetLayout,
   PictureChange,
+  SoundChange,
   TileChange,
   WornChange,
 } from "@secondstaronline/shared";
@@ -67,6 +72,7 @@ import {
 } from "./control-panel-kit.ts";
 import { createFxArtPicker, createSpellEffects } from "./fx-art.ts";
 import { createItemArtPicker, createItemPictures } from "./item-art.ts";
+import { createSounds } from "./sound-art.ts";
 import { createTiles } from "./tile-art.ts";
 import { createWornArtPicker, createWornLayers } from "./worn-art.ts";
 
@@ -116,6 +122,10 @@ export interface ContentPageActions {
   tileSheet(seq: number, sheet: string, transparency: "alpha" | "green"): void;
   /** One tile change, made in the draft as a whole by the server. */
   tile(seq: number, change: TileChange): void;
+  /** The draft's sounds, for the sound panels. */
+  soundArt(seq: number): void;
+  /** One sound change, made in the draft as a whole by the server. */
+  sound(seq: number, change: SoundChange): void;
   /** Opens a character's hub (a holder in a usage report). */
   openCharacter(name: string): void;
 }
@@ -140,6 +150,7 @@ export type ContentReply =
       body?: number;
       run?: string;
       codes?: string[];
+      sound?: string;
     }
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
   | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
@@ -168,6 +179,7 @@ export type ContentReply =
       error?: string;
     }
   | { t: "contentTileArt"; seq: number; view: ContentTileArtView }
+  | { t: "contentSoundArt"; seq: number; view: ContentSoundArtView }
   | {
       t: "contentTileSheet";
       seq: number;
@@ -180,6 +192,8 @@ export interface ContentPage {
   readonly el: HTMLElement;
   /** The page was shown: ask for the overview (and the rows on screen). */
   onShow(): void;
+  /** The page stopped showing: a sound preview stops. */
+  onHide(): void;
   receive(msg: ContentReply): void;
   /** The published store changed (a publish by anyone): refresh what is on screen. */
   published(): void;
@@ -591,6 +605,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     body?: number;
     run?: string;
     codes?: string[];
+    sound?: string;
     problems?: { where: string; message: string }[];
   };
   const resultWaits = new Map<number, (r: ContentAnswer) => void>();
@@ -599,6 +614,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const bodyArtWaits = new Map<number, (v: ContentBodyArtView) => void>();
   const fxArtWaits = new Map<number, (v: ContentFxArtView) => void>();
   const tileArtWaits = new Map<number, (v: ContentTileArtView) => void>();
+  const soundArtWaits = new Map<number, (v: ContentSoundArtView) => void>();
   type TileCut =
     | {
         ok: true;
@@ -698,6 +714,18 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       actions.tileArt(s);
       setTimeout(() => {
         if (tileArtWaits.delete(s)) {
+          reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
+  /** The draft's sounds, as the sound panels need them. */
+  const askSoundArt = (): Promise<ContentSoundArtView> =>
+    new Promise((resolve, reject) => {
+      const s = next();
+      soundArtWaits.set(s, resolve);
+      actions.soundArt(s);
+      setTimeout(() => {
+        if (soundArtWaits.delete(s)) {
           reject(new Error("the server did not answer"));
         }
       }, 15_000);
@@ -878,6 +906,51 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
               }
             }, 15_000);
           });
+        },
+      }
+    : null;
+  const soundOptions = assets
+    ? {
+        async upload(file: File, still: () => boolean = () => true) {
+          try {
+            if (!still()) {
+              return { ok: false as const, error: "" };
+            }
+            const t = await ticket();
+            // The section moved on while the ticket came: nothing is posted.
+            if (!still()) {
+              return { ok: false as const, error: "" };
+            }
+            if (file.size > t.maxBytes) {
+              return {
+                ok: false as const,
+                error: `the file is ${Math.ceil(file.size / 1024)} KB; uploads may be at most ${Math.floor(t.maxBytes / 1024)} KB`,
+              };
+            }
+            return (
+              (await postUpload(file, "sound", t.ticket)) ?? {
+                ok: false as const,
+                error: "the server did not answer",
+              }
+            );
+          } catch (e) {
+            return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+          }
+        },
+        apply(change: SoundChange) {
+          return awaitResult((s) => actions.sound(s, change));
+        },
+        saved() {
+          refreshAll();
+          // An art/sounds row open in the editor catches up unless its JSON (or a row panel) holds
+          // unsaved work.
+          const ref = editing;
+          if (!ref || ref.dataset !== "art" || ref.part !== "sounds" || rowPickerPending()) {
+            return;
+          }
+          if (ref.key !== null && (editor.hidden || json.value === loaded)) {
+            openRow(ref);
+          }
         },
       }
     : null;
@@ -1423,6 +1496,16 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   } else {
     tilesSection.el.hidden = true;
   }
+  const soundsSection = section(
+    "Sounds",
+    "Every sound the content and the engine play, with where it comes from and who plays it. Open one to hear it, replace its file or take its upload out; add new sounds one at a time or many at once.",
+  );
+  const sounds = soundOptions ? createSounds(soundOptions) : null;
+  if (sounds) {
+    soundsSection.body.append(sounds.el);
+  } else {
+    soundsSection.el.hidden = true;
+  }
   const refreshPictures = () => {
     if (pictures) {
       void askItemArt()
@@ -1447,6 +1530,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     if (tiles) {
       void askTileArt()
         .then((v) => tiles.setView(v))
+        .catch(() => {});
+    }
+    if (sounds) {
+      void askSoundArt()
+        .then((v) => sounds.setView(v))
         .catch(() => {});
     }
   };
@@ -1549,6 +1637,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     bodiesSection.el,
     effectsSection.el,
     tilesSection.el,
+    soundsSection.el,
     artSection.el,
     history.el,
     problemsSection.el,
@@ -1601,6 +1690,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   return {
     el: root,
     onShow: refreshAll,
+    onHide: () => sounds?.stop(),
     receive(msg) {
       switch (msg.t) {
         case "contentUploadTicket": {
@@ -1646,6 +1736,12 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         case "contentTileArt": {
           const wait = tileArtWaits.get(msg.seq);
           tileArtWaits.delete(msg.seq);
+          wait?.(msg.view);
+          return;
+        }
+        case "contentSoundArt": {
+          const wait = soundArtWaits.get(msg.seq);
+          soundArtWaits.delete(msg.seq);
           wait?.(msg.view);
           return;
         }
@@ -1730,6 +1826,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
               ...(msg.body !== undefined ? { body: msg.body } : {}),
               ...(msg.run !== undefined ? { run: msg.run } : {}),
               ...(msg.codes !== undefined ? { codes: msg.codes } : {}),
+              ...(msg.sound !== undefined ? { sound: msg.sound } : {}),
               ...(msg.problems !== undefined ? { problems: msg.problems } : {}),
             });
             return;
@@ -1765,7 +1862,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       (bodies?.pending() ? 1 : 0) +
       (fxPicker?.pending() ? 1 : 0) +
       (effects?.pending() ? 1 : 0) +
-      (tiles?.pending() ? 1 : 0),
+      (tiles?.pending() ? 1 : 0) +
+      (sounds?.pending() ? 1 : 0),
     discard: () => {
       closeEditor();
       // Frames set up in the sections' own panels go too.
@@ -1773,6 +1871,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       bodies?.discard();
       effects?.discard();
       tiles?.discard();
+      sounds?.discard();
     },
     reset() {
       overview = null;
@@ -1796,6 +1895,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       }
       fxSheetWaits.clear();
       tileArtWaits.clear();
+      soundArtWaits.clear();
       for (const wait of tileSheetWaits.values()) {
         wait({ ok: false, error: "the session ended" });
       }
@@ -1809,6 +1909,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       bodies?.reset();
       effects?.reset();
       tiles?.reset();
+      sounds?.reset();
       problemsBody.replaceChildren();
       closeEditor();
       datasetSel.replaceChildren();

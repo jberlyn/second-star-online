@@ -83,7 +83,12 @@ export async function loadAssets(fetchImpl: typeof fetch = fetch): Promise<Asset
       }
       return p;
     },
-    sprite: (group, name) => assets.index.atlases[group].sprites[name.toLowerCase()],
+    // Own entries only: a name like `constructor` or `toString` is never Object.prototype's.
+    sprite: (group, name) => {
+      const sprites = assets.index.atlases[group].sprites;
+      const k = name.toLowerCase();
+      return Object.hasOwn(sprites, k) ? sprites[k] : undefined;
+    },
     ui: (cast, member) => {
       const f = assets.index.ui[`${cast.toLowerCase()}:${member}`];
       return f ? ASSETS_URL + f.file : "";

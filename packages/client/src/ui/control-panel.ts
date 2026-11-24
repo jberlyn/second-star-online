@@ -30,6 +30,8 @@ export interface PanelPage {
   el: HTMLElement;
   /** Runs each time the page is shown: ask the server for what it lists. */
   onShow?(): void;
+  /** Runs when the page stops showing (another page, or the Control Panel closes): stop sound. */
+  onHide?(): void;
   /** Unsaved changes on the page: leaving it asks first and discards them. */
   changes?(): number;
   /** Drops the page's unsaved changes (the operator chose Discard changes). */
@@ -223,6 +225,9 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
   };
 
   const show = (p: PanelPage | null) => {
+    if (current && current !== p) {
+      current.onHide?.();
+    }
     current = p;
     if (p) {
       last = p.id;
@@ -313,16 +318,19 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
         if (root.isConnected) {
           show(allowed()[0] ?? null);
         } else {
+          current.onHide?.();
           current = null;
         }
       }
     },
     close() {
       closeQuestions();
+      current?.onHide?.();
       current = null;
     },
     reset() {
       closeQuestions();
+      current?.onHide?.();
       current = null;
       last = null;
     },

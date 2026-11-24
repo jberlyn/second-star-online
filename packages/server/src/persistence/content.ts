@@ -140,26 +140,63 @@ export function contentRows(db: Db): StoredContentRow[] {
 const keyOf = (key: string | null): string => key ?? "";
 
 /**
+ * The stored keys in `table` for a dataset part that match `key` ignoring case as the content
+ * store does (JavaScript's `toLowerCase`, which folds every letter, not only SQLite's A-Z), so
+ * `Écho` and `écho` are one row everywhere (issue #29).
+ */
+function sameKeys(
+  db: Db,
+  table: "content_rows" | "content_draft",
+  dataset: string,
+  part: string,
+  key: string | null,
+): string[] {
+  const want = keyOf(key).toLowerCase();
+  return db
+    .query<{ row_key: string }, [string, string]>(
+      `SELECT row_key FROM ${table} WHERE dataset = ? AND part = ?`,
+    )
+    .all(dataset, part)
+    .map((r) => r.row_key)
+    .filter((k) => k.toLowerCase() === want);
+}
+
+/** Deletes the rows `sameKeys` finds. */
+function deleteSameKeys(
+  db: Db,
+  table: "content_rows" | "content_draft",
+  dataset: string,
+  part: string,
+  key: string | null,
+): void {
+  for (const k of sameKeys(db, table, dataset, part, key)) {
+    db.query(`DELETE FROM ${table} WHERE dataset = ? AND part = ? AND row_key = ?`).run(
+      dataset,
+      part,
+      k,
+    );
+  }
+}
+
+/**
  * Writes an operator row, keeping its place (`seq`) when it already exists. Keys compare ignoring
  * case, so a row is found whatever case it was written in.
  */
 export function upsertContentRow(db: Db, r: Omit<StoredContentRow, "seq">): void {
-  const existing = db
-    .query<{ seq: number; row_key: string }, [string, string, string]>(
-      "SELECT seq, row_key FROM content_rows WHERE dataset = ? AND part = ? AND lower(row_key) = lower(?)",
-    )
-    .get(r.dataset, r.part, keyOf(r.key));
+  const keys = sameKeys(db, "content_rows", r.dataset, r.part, r.key);
+  const existing =
+    keys.length === 0
+      ? null
+      : db
+          .query<{ seq: number }, [string, string, string]>(
+            "SELECT seq FROM content_rows WHERE dataset = ? AND part = ? AND row_key = ?",
+          )
+          .get(r.dataset, r.part, keys[0] as string);
   const seq =
     existing?.seq ??
     (db.query<{ n: number | null }, []>("SELECT MAX(seq) AS n FROM content_rows").get()?.n ?? 0) +
       1;
-  if (existing) {
-    db.query("DELETE FROM content_rows WHERE dataset = ? AND part = ? AND row_key = ?").run(
-      r.dataset,
-      r.part,
-      existing.row_key,
-    );
-  }
+  deleteSameKeys(db, "content_rows", r.dataset, r.part, r.key);
   db.query(
     `INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -179,9 +216,7 @@ export function upsertContentRow(db: Db, r: Omit<StoredContentRow, "seq">): void
 
 /** Drops an operator row, so the pack row shows again. */
 export function deleteContentRow(db: Db, dataset: string, part: string, key: string | null): void {
-  db.query(
-    "DELETE FROM content_rows WHERE dataset = ? AND part = ? AND lower(row_key) = lower(?)",
-  ).run(dataset, part, keyOf(key));
+  deleteSameKeys(db, "content_rows", dataset, part, key);
 }
 
 /** One pending change in the shared draft. `revert` drops the operator row. */
@@ -227,9 +262,7 @@ export function draftRows(db: Db): DraftRow[] {
 }
 
 export function upsertDraftRow(db: Db, r: DraftRow): void {
-  db.query(
-    "DELETE FROM content_draft WHERE dataset = ? AND part = ? AND lower(row_key) = lower(?)",
-  ).run(r.dataset, r.part, keyOf(r.key));
+  deleteSameKeys(db, "content_draft", r.dataset, r.part, r.key);
   db.query(
     `INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -246,9 +279,7 @@ export function upsertDraftRow(db: Db, r: DraftRow): void {
 }
 
 export function deleteDraftRow(db: Db, dataset: string, part: string, key: string | null): void {
-  db.query(
-    "DELETE FROM content_draft WHERE dataset = ? AND part = ? AND lower(row_key) = lower(?)",
-  ).run(dataset, part, keyOf(key));
+  deleteSameKeys(db, "content_draft", dataset, part, key);
 }
 
 export function clearDraft(db: Db): void {
@@ -423,11 +454,25 @@ export function draftActions(db: Db): DraftAction[] {
     }));
 }
 
+/** Deletes a kind's draft actions whose key matches `key` ignoring case as JavaScript folds it. */
+function deleteSameActions(db: Db, kind: string, key: string): void {
+  const want = key.toLowerCase();
+  for (const r of db
+    .query<{ entry_key: string }, [string]>(
+      "SELECT entry_key FROM content_draft_actions WHERE kind = ?",
+    )
+    .all(kind)) {
+    if (r.entry_key.toLowerCase() === want) {
+      db.query("DELETE FROM content_draft_actions WHERE kind = ? AND entry_key = ?").run(
+        kind,
+        r.entry_key,
+      );
+    }
+  }
+}
+
 export function upsertDraftAction(db: Db, a: DraftAction): void {
-  db.query("DELETE FROM content_draft_actions WHERE kind = ? AND lower(entry_key) = lower(?)").run(
-    a.kind,
-    a.key,
-  );
+  deleteSameActions(db, a.kind, a.key);
   db.query(
     `INSERT INTO content_draft_actions (kind, entry_key, action, author_account_id, author, updated_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -435,10 +480,7 @@ export function upsertDraftAction(db: Db, a: DraftAction): void {
 }
 
 export function deleteDraftAction(db: Db, kind: string, key: string): void {
-  db.query("DELETE FROM content_draft_actions WHERE kind = ? AND lower(entry_key) = lower(?)").run(
-    kind,
-    key,
-  );
+  deleteSameActions(db, kind, key);
 }
 
 export function clearDraftActions(db: Db): void {

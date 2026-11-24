@@ -204,6 +204,10 @@ describe("Only server systems create items", () => {
         "change.seen:string",
       ],
       contentTileSheet: ["sheet:string"],
+      // A sound change (issue #29, stage 7, contentEditor permission): the name content plays the
+      // sound by, the uploaded file by SHA-256, and its upload's fingerprint as the panel saw it.
+      // A sound is never an item, and the server checks the file's bytes before writing the row.
+      contentSound: ["change.name:string", "change.file:string", "change.expect:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
@@ -305,6 +309,7 @@ describe("File editor and path-based file access removed", () => {
       "contentFx: change.trail[].file",
       "contentTile: change.tiles[].file",
       "contentTile: change.file",
+      "contentSound: change.file",
     ]);
     const types = messages.map((m) => m.t);
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the

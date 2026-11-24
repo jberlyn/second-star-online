@@ -541,3 +541,33 @@ describe("switching between the game and the Control Panel", () => {
     app.stop();
   });
 });
+
+describe("leaving a page (issue #29, stage 7 review)", () => {
+  test("a page is told when it stops showing: another page, closing, or a reset", () => {
+    const hidden: string[] = [];
+    const page = (id: string, permission: Permission) => ({
+      id,
+      title: id,
+      group: "G",
+      permission,
+      el: document.createElement("div"),
+      onHide: () => hidden.push(id),
+    });
+    const cp = createControlPanel({
+      pages: [page("settings", "settings"), page("logs", "activityLog")],
+      links: [],
+      actions: {} as ControlPanelActions,
+      can: () => true,
+    });
+    document.body.append(cp.el);
+    cp.open();
+    cp.go("logs");
+    expect(hidden).toEqual(["settings"]);
+    cp.close();
+    expect(hidden).toEqual(["settings", "logs"]);
+    cp.open();
+    cp.reset();
+    expect(hidden).toEqual(["settings", "logs", "logs"]);
+    cp.el.remove();
+  });
+});
