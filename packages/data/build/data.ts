@@ -19,7 +19,7 @@ import { type PackManifest, packManifestSchema } from "../schema/pack.ts";
 import { rectsDataSchema } from "../schema/rects.ts";
 import { seedMapDataSchema } from "../schema/seed-map.ts";
 import { tilesDataSchema } from "../schema/tiles.ts";
-import { worldSeedSchema } from "../schema/world.ts";
+import { type WorldSeed, worldItemProblems, worldSeedSchema } from "../schema/world.ts";
 import { centreLine2, standingFrameOf } from "../src/art/mirror.ts";
 import { pngSize } from "../src/art/png.ts";
 import { listAdded } from "./assets-lib/added.ts";
@@ -263,8 +263,7 @@ export function packContentHash(files: Map<string, string>): string {
     }
     h.update(`${path}\n${files.get(path) ?? ""}\n`);
   }
-  // Files beside the datasets (a world seed), by name; the Classic pack has none, so its hash is
-  // as before.
+  // Files beside the datasets (a world seed), by name.
   for (const path of [...files.keys()].filter((f) => !f.startsWith("data/")).sort()) {
     if (path !== "manifest.json") {
       h.update(`${path}\n${files.get(path) ?? ""}\n`);
@@ -300,7 +299,16 @@ export interface RenderedPack {
  * and records the new hash (`sourceStale`), and `data:check` fails until it has.
  */
 export function renderClassicPack(contentDir = CONTENT): RenderedPack {
-  return renderPack(readPackSource(contentDir), (id) => classicDataset(id, contentDir));
+  // The world seed: 1.6's distributed maps, converted by `bun run data:import-fso` (#43).
+  const world = JSON.parse(readFileSync(join(contentDir, "world.json"), "utf8"));
+  const parsedWorld = worldSeedSchema.safeParse(world);
+  if (!parsedWorld.success) {
+    throw new Error(`content/world.json does not match its schema:\n${parsedWorld.error.message}`);
+  }
+  checkWorldItems("content/world.json", parsedWorld.data, contentDir);
+  return renderPack(readPackSource(contentDir), (id) => classicDataset(id, contentDir), {
+    "world.json": `${JSON.stringify(world, null, 2)}\n`,
+  });
 }
 
 /**
@@ -347,7 +355,27 @@ export function renderMinimalPack(sourceDir = MINIMAL_SOURCE): RenderedPack {
   if (!parsedWorld.success) {
     throw new Error(`minimal/world.json does not match its schema:\n${parsedWorld.error.message}`);
   }
+  checkWorldItems("minimal/world.json", parsedWorld.data, sourceDir);
   return renderPack(source, dataset, { "world.json": `${JSON.stringify(world, null, 2)}\n` });
+}
+
+/** Throws when a world seed places an item its pack's `items.json` and `bindings.json` do not allow. */
+function checkWorldItems(from: string, world: WorldSeed, dir: string): void {
+  const items = JSON.parse(readFileSync(join(dir, "items.json"), "utf8")) as {
+    items: { name: string }[];
+    fixtures: string[];
+  };
+  const bindings = JSON.parse(readFileSync(join(dir, "bindings.json"), "utf8")) as {
+    currency: { item?: string | null };
+  };
+  const problems = worldItemProblems(
+    world,
+    [...items.items.map((i) => i.name), ...items.fixtures],
+    bindings.currency.item ?? null,
+  );
+  if (problems.length > 0) {
+    throw new Error(`${from} places items it cannot:\n${problems.join("\n")}`);
+  }
 }
 
 /**

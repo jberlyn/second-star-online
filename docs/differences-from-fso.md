@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 83 |
+| [Design changes](#design-changes) | 82 |
 | [Fixed bugs](#fixed-bugs) | 306 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **579** |
+| **Total** | **578** |
 
 By system (the code folder that holds the change):
 
@@ -165,14 +165,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 ### World content and operator tools
 
-#### Seeded jail and enforced confinement
+#### Enforced confinement in the jail
 - **Kind:** World content
-- **What you notice:** `/jail` works on a fresh server. The stone jail at x0y0 has barred cells, an enclosed perimeter, no exits, and no landing pads. Prisoners arrive at tile 4,4 and remain until their sentence ends or staff use `/unjail`.
-- **1.6:** Used the archived Jail map. Portal and death respawn could bypass the sentence.
-- **SSO:** A migration adds a validated jail landscape if x0y0 is absent, preserving operator-authored jails. Portal, map exits and edge crossings cannot leave the jail. Death revives prisoners on the jail's tile and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal. The jail is the Server Settings point **Jail** (`jailPoint`), which existing servers keep at x0y0 (4, 4); an operator may move it to any map, and a save that puts it on a missing map or an unwalkable tile is refused.
+- **What you notice:** `/jail` works on a fresh server. In a new Classic world the jail is 1.6's own Jail at x0y0, its barred cells walled in by stone; servers created earlier keep the enclosed jail SSO seeded there. Prisoners arrive at tile 4,4 and remain until their sentence ends or staff use `/unjail`.
+- **1.6:** Used its Jail map at x0y0. Portal and death respawn could bypass the sentence.
+- **SSO:** A new Classic world gets 1.6's Jail from the pack's world seed (see [A Classic world is 1.6's distributed maps](#a-classic-world-is-16s-distributed-maps)); upgrades still add SSO's validated jail landscape where x0y0 is absent, preserving operator-authored jails. Portal, map exits (1.6's Jail names two) and edge crossings cannot leave the jail. Death revives prisoners on the jail's tile and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal. The jail is the Server Settings point **Jail** (`jailPoint`), which existing servers keep at x0y0 (4, 4); an operator may move it to any map, and a save that puts it on a missing map or an unwalkable tile is refused.
 - **Why:** A fresh server needs a working jail, and confinement must not depend on a prisoner's spells or inventory. The jail is a setting so a world built without 1.6's maps can have one (issue #37).
-- **In the code:** `packages/data/content/jail-map.json`, `packages/server/src/persistence/seed-map.ts` (`jailMapSql`), `packages/server/src/settings.ts` (`jailPoint`), `packages/server/src/systems/world/tick.ts` (`portal`, `takeExit`, `crossMapEdge`, `respawn`), `packages/server/src/systems/world/world.ts` (`enterRoom`, `jail`)
-- **Pinned by:** `the seeded jail encloses every walkable area and has no exits or landing pads`; `jail blocks Portal and exits while keeping the sentence and normal respawn point`; `death revives a prisoner in jail without restarting the sentence; expiry still releases`; `every jail edge refuses a map crossing, even for an arriving airship rider`; `SSO: the jail is the jailPoint setting's map and tile, not x0y0` (packages/server/tests/jail.test.ts); `SSO: the jail is the jailPoint setting's map and tile` (packages/server/tests/admin.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
+- **In the code:** `packages/data/content/world.json`, `packages/data/content/jail-map.json`, `packages/server/src/persistence/seed-map.ts` (`jailMapSql`), `packages/server/src/settings.ts` (`jailPoint`), `packages/server/src/systems/world/tick.ts` (`portal`, `takeExit`, `crossMapEdge`, `respawn`), `packages/server/src/systems/world/world.ts` (`enterRoom`, `jail`)
+- **Pinned by:** `a new Classic world's jail is 1.6's x0y0: arrival (4,4) shut in a 13-tile cell, no landing pads, its exits refused by the jail rules`; `the jail migration preserves an operator-authored map at x0y0`; `jail blocks Portal and exits while keeping the sentence and normal respawn point`; `death revives a prisoner in jail without restarting the sentence; expiry still releases`; `every jail edge refuses a map crossing, even for an arriving airship rider`; `SSO: the jail is the jailPoint setting's map and tile, not x0y0` (packages/server/tests/jail.test.ts); `SSO: the jail is the jailPoint setting's map and tile` (packages/server/tests/admin.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
 
 #### Control Panel
 - **Kind:** World content
@@ -212,10 +212,10 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### New characters start on the operator's start point
 - **Kind:** World content
-- **What you notice:** A new character starts at the server's configured start point, on the seed map by default.
+- **What you notice:** A new character starts at the server's configured start point: in a Classic world, x1000y992 (6, 4), 1.6's Test map, as in 1.6.
 - **1.6:** The character file started at x1000y992 tile 6,4; a server override was commented out. The death-respawn seed was x0y102 tile 5,5.
-- **SSO:** The starting map (`startPoint`) and the fallback map (`fallbackPoint`, replacing `Starting Map.txt`) are operator settings; see [Every character has a respawn point](#every-character-has-a-respawn-point).
-- **Why:** Archived maps are not shipped, so the original Test map and Brinkston are absent on a fresh server.
+- **SSO:** The starting map (`startPoint`) and the fallback map (`fallbackPoint`, replacing `Starting Map.txt`) are operator settings, which a new world takes from its pack's world seed; see [Every character has a respawn point](#every-character-has-a-respawn-point) and [A Classic world is 1.6's distributed maps](#a-classic-world-is-16s-distributed-maps).
+- **Why:** An operator's world need not keep 1.6's maps, so where characters start is the operator's to choose.
 - **In the code:** `packages/server/src/game.ts` (`create`)
 - **Pinned by:** `SSO: new characters start on the operator's start point setting, x1000y992 (6, 4) on the seed map in a Classic world` (packages/server/tests/world.test.ts)
 
@@ -228,23 +228,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`), `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
 - **Pinned by:** `design change: the editor lists offer no art-less body; their data stays` (packages/server/tests/ledger-pins-d.test.ts); `an administrator lists, sets and clears slots; the change is saved` (packages/server/tests/monsters-db.test.ts)
 
-#### The seed map keeps its archived Slime roster
+#### A Classic world is 1.6's distributed maps
 - **Kind:** World content
-- **What you notice:** A fresh server's seed map has a Slime to fight.
-- **1.6:** The Test map at x1000y992 had a Slime in roster slot 1.
-- **SSO:** Willowbrook Wilds, the forest-and-lake seed map at the same grid position, starts with that roster; operators can change it with `/roster`. The [seed roster migration](../packages/server/migrations/20261105_03_monsters.sql) inserts it.
-- **Why:** Although archived maps are not shipped, the roster is the original one for that map position.
-- **In the code:** `packages/server/src/persistence/migrations.ts` (`runMigrations`)
-- **Pinned by:** `x1000y992 keeps its original roster, slot 1 Slime` (packages/server/tests/monsters-db.test.ts); `the seed map is named Willowbrook Wilds; a title already given is kept` (packages/server/tests/migrations.test.ts)
-
-#### Archived maps not shipped; seeded starter, jail and church
-- **Kind:** World content
-- **What you notice:** A fresh server starts with Willowbrook Wilds, the enclosed Jail at x0y0, and the Church of the Bells at x999y999; its operators build the rest of the world.
-- **1.6:** The server shipped 27 maps with item and monster sidecars, although community servers generally made their own worlds in the World Editor.
-- **SSO:** The starting landscape comes from `packages/data/content/seed-map.json` and is applied only when the original map migration creates a new world. The Jail and Church come from validated content files and are added only where those coordinates are absent, preserving operator-authored maps. Existing saved maps are otherwise preserved. Spawn and respawn tiles are clear, and every walkable tile on the seed map is connected. Operators author further maps, monster rosters and NPC placements with the in-game editors. Game rules and catalogues ship as data; there is no original-format map importer.
-- **Why:** Most community servers did not use the default world, and much of its placement data is missing from the archive; the jail and bell map are required by server rules.
-- **In the code:** `packages/server/src/persistence/seed-map.ts` (`seedMapSql`, `jailMapSql`, `churchMapSql`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
-- **Pinned by:** `Willowbrook Wilds has a 17×12 lake, forest and rocks with empty upper layers`; `the start (6,4) and respawn (5,5) tiles are walkable, trees are not, every edge is reachable` (packages/server/tests/world.test.ts); `upgrades preserve both the old seed landscape and operator-authored maps` (packages/server/tests/migrations.test.ts); `the seeded jail encloses every walkable area and has no exits or landing pads` (packages/server/tests/jail.test.ts); `the seeded church is the validated Church of the Bells at x999y999 with no exits` (packages/server/tests/church.test.ts)
+- **What you notice:** A new server created with the Classic pack starts with the 27 maps 1.6 shipped: the Test map at x1000y992 (with its Slime, its gold, Apples and Knife), Brinkston, the Meldein Sea, the Jail at x0y0 and the rest. A server created before this change keeps the maps it has.
+- **1.6:** The server shipped 27 maps in `DAT/Maps`, with a monster roster and placed items for x1000y992 and x1000y993 in `DAT/Mobs` and `DAT/Items`, characters, banks, mail, guilds, boards and two player houses. Its death respawn (`Starting Map.txt`) was x0y102 5,5, and its church bell rang for x999y999, a map it never shipped.
+- **SSO:** The Classic pack's world seed is those maps, converted once from 1.6's files (`bun run data:import-fso` writes `packages/data/content/world.json`) with their layers, switches, signs, headers, exit fields, rosters (the species and home tile, nothing live yet) and placed items. A new world gets it when its database is created; an existing world's maps are the operator's and are never replaced. Characters, banks, mail, guilds, boards and houses are player data, not content, so none is seeded. Deliberate differences: the fallback point is x1000y992 5,5 rather than 1.6's x0y102 tutorial area (see [Every character has a respawn point](#every-character-has-a-respawn-point)); no Church of the Bells is seeded any more, so, as in 1.6, the bell names x999y999 and does nothing until an operator builds that map. An exit field only works where its map has an `Exit` or `Exit2` item to step on, and the archive keeps placed items for x1000y992 and x1000y993 only, neither an Exit. So none of 1.6's exits works in a new world. Nine already lead to shipped maps (the Test map's Exit to Brinkston, Brinkston's houses and back, the Jail's): an operator activates one by placing its Exit item in the World Editor. The other 45 lead to maps 1.6 never shipped (most maps carry the template's house exit), and need both the destination map and the Exit item; `bun run maps:check` lists them. A placed pile of more than one gives its count as `qty`; only the currency and crystals carry it in their name (`"3 Gold"`), as the World Editor saves them.
+- **Why:** The Classic pack should match what 1.6 distributed, except where a documented difference fixes a bug or removes content. Earlier servers started on SSO's own Willowbrook Wilds, jail and church; maps are operator data, so they keep them.
+- **In the code:** `packages/data/build/fso-world.ts` (`importFsoWorld`), `packages/data/content/world.json`, `packages/server/src/content/world-seed.ts` (`seedNewWorld`), `packages/server/src/persistence/seed-map.ts` (`seedMapSql`, `jailMapSql`, `churchMapSql`, for upgrades)
+- **Pinned by:** `the 27 maps 1.6 shipped, each 17×12 on four layers, and no others`; `x1000y992 is 1.6's Test map: open grass, its Slime roster, its gold, Apples and Knife`; `the start (6,4), fallback (5,5) and jail (x0y0 4,4) points stand on walkable tiles; the bell names x999y999`; `maps:check lists the travel 1.6's maps name but never shipped, and no point problem` (packages/server/tests/world.test.ts); `an established server keeps its maps: 1.6's maps go only into a world being created (#43)`; `upgrades preserve both the old seed landscape and operator-authored maps` (packages/server/tests/migrations.test.ts); `a new Classic world's jail is 1.6's x0y0: arrival (4,4) shut in a 13-tile cell, no landing pads, its exits refused by the jail rules` (packages/server/tests/jail.test.ts); `a new Classic world has no church: the bell still names x999y999, which 1.6 never shipped` (packages/server/tests/church.test.ts); `1.6's map, Mobs and Items files convert as its scripts read them`; `a placed name carries a count only for the currency and crystals` (packages/data/tests/fso-world.test.ts); `a world the server has not finished creating is refused and left as it was; the server then seeds it`; `both see one recorded choice, and the second seed changes nothing once the first is in`; `a pile of more than one gives its count as qty, and seeds as the World Editor saves it` (packages/server/tests/world-create.test.ts)
 
 #### Hard-coded world references become operator settings
 - **Kind:** World content
@@ -264,14 +255,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/social/presence.ts` (`presenceOut`), `packages/shared/src/rules/core/preferences.ts` (`defaultPlayerPrefs`)
 - **Pinned by:** `per-player presenceChatLines prints logon and logoff lines for everyone or friends only` (packages/server/e2e/chat-and-presence.test.ts)
 
-#### Seeded church bell map
+#### The church bell's map is a setting
 - **Kind:** World content
-- **What you notice:** A fresh server has the Church of the Bells at x999y999, the enclosed sanctuary where the church bell sounds. It has no exits or landing pads; players reach it by an operator warp.
+- **What you notice:** The church bell rings for players on the operator's **Church bell map**. In a new Classic world that is x999y999, which, as in 1.6, does not exist until an operator builds it. Servers created before Classic carried 1.6's maps keep the enclosed Church of the Bells SSO seeded there.
 - **1.6:** The bell rang for players on the hard-wired map x999y999.
-- **SSO:** A migration adds the validated church landscape if x999y999 is absent, preserving operator-authored maps there. The map is fully enclosed, so walking cannot reach it or leak through its edges into a nonexistent neighbour. The bell's timer and sound behavior are unchanged. The bell's map is the Server Settings map **Church bell map** (`bellMap`), which existing servers keep at x999y999; empty turns the bell off.
-- **Why:** The bell map should exist on a fresh server. The map is a setting so a world built without 1.6's maps can ring the bell elsewhere, or not at all (issue #37).
-- **In the code:** `packages/data/content/church-map.json`, `packages/server/src/persistence/seed-map.ts` (`churchMapSql`), `packages/server/src/settings.ts` (`bellMap`), `packages/server/src/systems/spells/hazards.ts` (`serverTimer`)
-- **Pinned by:** `the seeded church is the validated Church of the Bells at x999y999 with no exits` (packages/server/tests/church.test.ts); `the church bell rings at the 20th run to the bell map, Churchy:5:200`; `SSO: the bell map is a setting; empty means no bell` (packages/server/tests/spells.test.ts)
+- **SSO:** The bell's map is the Server Settings map **Church bell map** (`bellMap`), x999y999 in a Classic world; empty turns the bell off. The bell's timer and sound behavior are unchanged. Upgrades still add the validated church landscape where x999y999 is absent, preserving operator-authored maps there, so a server that had it keeps it.
+- **Why:** A world built without 1.6's maps can ring the bell elsewhere, or not at all (issue #37).
+- **In the code:** `packages/server/src/settings.ts` (`bellMap`), `packages/server/src/systems/spells/hazards.ts` (`serverTimer`), `packages/server/src/persistence/seed-map.ts` (`churchMapSql`)
+- **Pinned by:** `a new Classic world has no church: the bell still names x999y999, which 1.6 never shipped`; `an upgraded server keeps its Church of the Bells: the migration's map is still validated content` (packages/server/tests/church.test.ts); `the church bell rings at the 20th run to the bell map, Churchy:5:200`; `SSO: the bell map is a setting; empty means no bell` (packages/server/tests/spells.test.ts)
 
 #### Burned food and Cooked Meat
 - **Kind:** World content

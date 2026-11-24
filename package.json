@@ -19,6 +19,7 @@
     "assets:build": "bun packages/data/build/assets.ts",
     "data:build": "bun packages/data/build/data.ts",
     "data:check": "bun packages/data/build/data.ts --check",
+    "data:import-fso": "bun packages/data/build/fso-world.ts",
     "typecheck": "tsc -b",
     "lint": "biome check .",
     "format": "biome format --write .",

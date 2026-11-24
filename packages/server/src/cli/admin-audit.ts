@@ -8,13 +8,11 @@
 import "../content-classic.ts";
 
 import { recentAudit } from "../persistence/admin.ts";
-import { openDatabase } from "../persistence/database.ts";
-import { migrate } from "../persistence/migrations.ts";
+import { openWorldDatabase } from "./world-db.ts";
 
 export function auditReport(dbPath: string, limit: number): string[] {
-  const db = openDatabase(dbPath);
+  const db = openWorldDatabase(dbPath);
   try {
-    migrate(db);
     return recentAudit(db, limit).map((r) =>
       [
         r.createdAt,
@@ -37,7 +35,12 @@ if (import.meta.main) {
     console.error("usage: bun run admin:audit [n]");
     process.exit(2);
   }
-  for (const line of auditReport(process.env.SSO_DB ?? "sso.sqlite", n)) {
-    console.log(line);
+  try {
+    for (const line of auditReport(process.env.SSO_DB ?? "sso.sqlite", n)) {
+      console.log(line);
+    }
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
   }
 }

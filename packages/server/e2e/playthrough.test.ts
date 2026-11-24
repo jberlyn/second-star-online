@@ -246,7 +246,8 @@ describe("the playthrough", () => {
     });
     await editMap(1000, 993, (m) => {
       m.header = "Plots";
-      m.layers[0] = m.layers[0].map((r) => r.replaceAll("H1", "8R"));
+      // 1.6's x1000y993 (all B1) becomes house ground.
+      m.layers[0] = m.layers[0].map((r) => r.replace(/\S+/g, "8R"));
     });
     await editMap(1001, 993, (m) => {
       m.header = "Casino";

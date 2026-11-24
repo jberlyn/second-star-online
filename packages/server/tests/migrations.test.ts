@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { classicData } from "@secondstaronline/data/classic";
@@ -9,6 +10,8 @@ import { startingCharacter } from "@secondstaronline/shared";
 import { readPackBlob } from "../src/content/packs.ts";
 import { rowHash } from "../src/content/rows.ts";
 import { ContentService } from "../src/content/service.ts";
+import { worldToCreate } from "../src/content/world-seed.ts";
+import { startServer } from "../src/main.ts";
 import { insertCharacter as insertCurrent } from "../src/persistence/characters.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import {
@@ -216,6 +219,53 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
           .all(),
       ).toEqual(before);
       existing.close();
+    }
+  });
+
+  test("an established server keeps its maps: 1.6's maps go only into a world being created (#43)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sso-classic-"));
+    try {
+      writeFileSync(join(dir, "index.html"), "<!doctype html><title>x</title>");
+      const dbPath = join(dir, "world.sqlite");
+      // A Classic world from before #43: the migrations' Willowbrook Wilds, jail and church.
+      const old = openDatabase(dbPath);
+      migrate(old);
+      old.run("UPDATE maps SET title = 'Home' WHERE mx = 1000 AND my = 992");
+      const before = old.query("SELECT * FROM maps ORDER BY id").all();
+      old.close(true);
+      const server = startServer({
+        dbPath,
+        port: 0,
+        development: false,
+        clientDir: dir,
+        autoTick: false,
+        onLag: () => {},
+      });
+      try {
+        expect(server.db.query("SELECT * FROM maps ORDER BY id").all()).toEqual(before);
+        expect(worldToCreate(server.db, "classic", RELEASE_PACK_DIRS)).toBeNull();
+      } finally {
+        await server.stop();
+      }
+      // A world created now is 1.6's.
+      const fresh = startServer({
+        dbPath: ":memory:",
+        port: 0,
+        development: false,
+        clientDir: dir,
+        autoTick: false,
+        onLag: () => {},
+      });
+      try {
+        expect(fresh.db.query("SELECT title FROM maps WHERE mx = 1000 AND my = 992").get()).toEqual(
+          { title: "Test map" },
+        );
+        expect(fresh.db.query("SELECT COUNT(*) AS n FROM maps").get()).toEqual({ n: 27 });
+      } finally {
+        await fresh.stop();
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 

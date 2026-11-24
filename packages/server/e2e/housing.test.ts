@@ -119,6 +119,8 @@ describe("house maps, deeds and building", () => {
         db.run("UPDATE maps SET layer1 = ?", [
           JSON.stringify(Array.from({ length: 12 }, () => row)),
         ]);
+        // Clear building ground: none of 1.6's placed items (the seed map's Apples, Knife and gold).
+        db.run("DELETE FROM ground_items");
         // A tree inside the first footprint Alice tries.
         const l2 = JSON.parse(
           (
@@ -297,6 +299,8 @@ describe("doors, keys and containers", () => {
         db.run("UPDATE maps SET layer1 = ?", [
           JSON.stringify(Array.from({ length: 12 }, () => row)),
         ]);
+        // Clear building ground: none of 1.6's placed items (the seed map's Apples, Knife and gold).
+        db.run("DELETE FROM ground_items");
         fixture(db, "Steel Door", 7, 7);
         // A crate a player put down, so it can be carried off.
         fixture(db, "Crate#501", 6, 6, "drop");
@@ -536,6 +540,8 @@ describe("player shops", () => {
         db.run("UPDATE maps SET layer1 = ?", [
           JSON.stringify(Array.from({ length: 12 }, () => row)),
         ]);
+        // Clear building ground: none of 1.6's placed items (the seed map's Apples, Knife and gold).
+        db.run("DELETE FROM ground_items");
       },
     });
     const bot = await connectBot(server.wsUrl);

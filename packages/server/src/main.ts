@@ -24,7 +24,13 @@
 import { join } from "node:path";
 
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
-import { can, installContent } from "@secondstaronline/shared";
+import {
+  type ContentStore,
+  can,
+  hasContent,
+  installContent,
+  content as installedContent,
+} from "@secondstaronline/shared";
 
 import { type Clock, systemClock } from "./clock.ts";
 import { DEFAULT_SERVER_CONFIG, readServerConfig, type ServerConfig } from "./config.ts";
@@ -164,13 +170,22 @@ export function startServer(options: ServerOptions): RunningServer {
     (options.dbPath === ":memory:" ? memoryArtFiles() : diskArtFiles(artFilesDir(options.dbPath)));
   const art = new ArtLibrary(artFiles);
   let assets: ServedAssets | null = null;
+  // The process holds one content store. The one in place before this server is put back when it
+  // stops, unless something else has replaced this server's since: a process that starts and stops
+  // servers (the tests) is left as it was.
+  const previousStore = hasContent() ? installedContent() : null;
+  let ownStore: ContentStore | null = null;
+  const install = (store: ContentStore) => {
+    ownStore = store;
+    installContent(store);
+  };
   const content = new ContentService({
     db,
     now: isoNow,
     releasePacks,
     log: (line) => console.log(line),
     onPublish: (store, restoring) => {
-      installContent(store);
+      install(store);
       assets?.refresh();
       live?.contentPublished(store.hash, restoring, assets?.index().hash);
     },
@@ -197,7 +212,7 @@ export function startServer(options: ServerOptions): RunningServer {
   if (swept > 0) {
     console.log(`content: removed ${swept} uploaded file${swept === 1 ? "" : "s"} nothing uses`);
   }
-  installContent(content.store());
+  install(content.store());
   // The minute window behind the operator's lag line, and (only with a perf file) the per-phase
   // probe and its one-second window.
   const lagStats = createTickStats();
@@ -325,6 +340,9 @@ export function startServer(options: ServerOptions): RunningServer {
       // checkpoints the WAL under an exclusive lock: a process opening the file at that moment gets
       // SQLITE_BUSY ("database is locked") and fails to start.
       db.close(true);
+      if (previousStore && ownStore && installedContent() === ownStore) {
+        installContent(previousStore);
+      }
     })();
     return stopped;
   };

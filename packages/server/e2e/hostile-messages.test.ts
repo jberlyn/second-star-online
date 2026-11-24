@@ -517,7 +517,10 @@ describe("a throw in an intent or a tick", () => {
         .query("SELECT slot, item, qty FROM inventory WHERE character_id = ? ORDER BY slot")
         .all(aId),
     ).toEqual(bagBefore);
-    expect(server.db.query("SELECT COUNT(*) AS n FROM ground_items").get()).toEqual({ n: 0 });
+    // Nothing was dropped: only the seed map's placed items (1.6's, `admin`) lie there.
+    expect(
+      server.db.query("SELECT COUNT(*) AS n FROM ground_items WHERE kind != 'admin'").get(),
+    ).toEqual({ n: 0 });
     // A bug is not cheating: the error log names it, the cheat log does not.
     expect(server.db.query("SELECT COUNT(*) AS n FROM cheat_log").get()).toEqual({ n: 0 });
     // The other bot is still in and a re-login reloads Alice from SQL.

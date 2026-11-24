@@ -6,9 +6,10 @@ For modding workflows, rule precedence, and worked examples, see the [Modding gu
 
 | File | What it holds | Read by |
 |---|---|---|
-| `jail-map.json` | the enclosed Jail at x0y0, with arrival tile 4,4 | migration inserts it when absent; existing jails are preserved |
-| `church-map.json` | the Church of the Bells at x999y999, the enclosed map the church bell sounds on | migration inserts it when absent; existing church maps are preserved |
-| `seed-map.json` | the title and four layers of Willowbrook Wilds, the fresh-server starter landscape | first map creation; existing maps are preserved |
+| `jail-map.json` | SSO's enclosed Jail at x0y0, with arrival tile 4,4 (a new Classic world has 1.6's) | migration inserts it when absent on an upgraded server; existing jails are preserved |
+| `church-map.json` | the Church of the Bells at x999y999, the enclosed map the church bell sounds on (a new Classic world has none, as in 1.6) | migration inserts it when absent on an upgraded server; existing church maps are preserved |
+| `seed-map.json` | the title and four layers of Willowbrook Wilds, the starter landscape servers made before the Classic world seed | the original map migration (a new world then replaces it with `world.json`); existing maps are preserved |
+| `world.json` | the Classic pack's world seed: 1.6's 27 distributed maps with their roster and placed items, and the start, fallback, jail and bell points (`bun run data:import-fso` writes it from a 1.6 reference copy) | a new world, when its database is created; existing maps are preserved |
 | `tiles.json` | the tile catalogue (`code`, hover `name`, `member`, `flags`), the walk whitelist (`walkable`), and single-tile `defaults` | movement, housing, spells, the map editor, the client draw and hover tip |
 | `items.json` | the item catalogue (name, which is the item's permanent key; an optional `display` name and `sprite` art key; archived spellings; icon: an original member or added art), fixtures, the World Editor's item list, the player-shop whitelist | inventory, shops, drops, the World Editor |
 | `attpower.json`, `item-rules.json` | weapon power; the item rules: item behaviours, tools and their swing ladders, requirements, equip, use, armour, breaks, the item menu, the paperdoll, ground items, containers, gear bonuses, the swing | combat, inventory, spells, the paperdoll |

@@ -13,6 +13,7 @@ import {
   packManifestSchema,
   type SchemaDatasetId,
   type WorldSeed,
+  worldItemProblems,
   worldSeedSchema,
 } from "@secondstaronline/data/schema";
 import type { ContentData } from "@secondstaronline/shared";
@@ -73,6 +74,19 @@ export function readPackDir(dir: string): LoadedPack {
       );
     }
     world = parsed.data;
+    // A placed pile of more than one gives its count as `qty`, except the currency and crystals.
+    const items = data.items as { items: { name: string }[]; fixtures: string[] } | undefined;
+    const bindings = data.bindings as { currency: { item?: string | null } } | undefined;
+    const problems = worldItemProblems(
+      world,
+      [...(items?.items.map((i) => i.name) ?? []), ...(items?.fixtures ?? [])],
+      bindings?.currency.item ?? null,
+    );
+    if (problems.length > 0) {
+      throw new Error(
+        `pack ${manifest.id}: ${manifest.world} places items it cannot:\n${problems.join("\n")}`,
+      );
+    }
   }
   return {
     manifest,

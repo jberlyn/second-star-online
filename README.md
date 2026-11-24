@@ -44,7 +44,7 @@ docker run -d --name second-star-online \
 
 Open [http://localhost:3000](http://localhost:3000) on the Docker host and create your account. Your world is saved in the `sso-data` Docker volume across container replacements. Published images target **Linux AMD64**. Prefer a host directory? The server guide includes a [bind mount alternative](docs/running-a-server.md#bind-mounts-alternative-to-named-volumes).
 
-Each new server begins in Willowbrook Wilds, a forest-and-lake seed world that you can expand with the in-game editors. Ready to invite players? Follow the [server guide](docs/running-a-server.md) for Docker Compose, public hosting with HTTPS, administrator access, updates, and backups. No repository checkout or local build is needed to host the standard game.
+Each new server begins on 1.6's own maps (the Classic pack), which you can expand with the in-game editors, or from a blank Minimal world of your own. Ready to invite players? Follow the [server guide](docs/running-a-server.md) for Docker Compose, public hosting with HTTPS, administrator access, updates, and backups. No repository checkout or local build is needed to host the standard game.
 
 ## Make it your own
 

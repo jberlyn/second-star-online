@@ -44,7 +44,7 @@ Open [http://localhost:3000](http://localhost:3000) on the Docker host and creat
 
 A new world starts from one of the two content packs shipped in each release:
 
-- **Classic** (the default): 1.6's items, monsters, NPCs, spells, skills and classes, its art and sounds, and SSO's starter maps (Willowbrook Wilds at `x1000y992`, the Jail at `x0y0` and the Church of the Bells at `x999y999`). This is the game as SSO plays it; you do not need to set anything.
+- **Classic** (the default): 1.6's items, monsters, NPCs, spells, skills and classes, its art and sounds, and its 27 distributed maps (the Test map at `x1000y992`, where characters start, Brinkston, the Meldein Sea and the Jail at `x0y0`). This is the game as SSO plays it; you do not need to set anything.
 - **Minimal**: the blank pack you build your own game from. It holds the least a world needs to run and nothing else: the start class Novice, one skill (Fighting), the currency Gold, the plain grass tile, a bare body with one head for each of its two sexes, and two all-grass maps: the start at `x0y0` (start and fallback points at `1, 1`) and a jail at `x50y50` (`1, 1`). There are no monsters, NPCs, spells, shops or quests until you add them on the [Content page](#the-content-page). Its few pictures are copies of 1.6's. Minimal is a preview for now. Pictures and sounds of your own are uploaded on the Content page (see [Art and sounds](#art-and-sounds) and [Sounds](#sounds)).
 
 Set `SSO_CONTENT` to `minimal` (or `classic`) before the **first** start:
@@ -124,7 +124,7 @@ bun run build
 bun run start
 ```
 
-On first start against a new SQLite file, the server runs database migrations automatically and starts with Willowbrook Wilds: a forest-and-lake starting map with rocks for mining, trees for woodcutting, and water for fishing, plus the seed NPC files, the enclosed Jail at x0y0, and the Church of the Bells at x999y999. Spawn and respawn tiles remain clear. Existing databases keep their saved maps when upgraded; the Jail and Church of the Bells are added only where those coordinates are empty. The jail and the bell's church are the Server Settings **Jail** point and **Church bell map** (World), so either can move to a map of your own. An operator builds maps in-game with the World Editor rather than importing an archived world.
+On first start against a new SQLite file, the server runs database migrations automatically and creates the world from the chosen pack. A Classic world is 1.6's 27 distributed maps: the Test map at x1000y992 (with its Slime, a little gold, Apples and a Knife), Brinkston, the Meldein Sea, the Jail at x0y0 and the rest, plus the seed NPC files. As in 1.6, the church bell names x999y999, which does not exist until you build it, and none of 1.6's exits works yet: an exit needs an `Exit` or `Exit2` item on its map, which the archive does not keep. Nine lead to shipped maps (the Test map's to Brinkston, for one) and work once you place the Exit item in the World Editor; the rest lead to maps 1.6 never shipped, which `bun run maps:check` lists. Existing databases keep their saved maps when upgraded (servers created before Classic carried 1.6's maps keep SSO's Willowbrook Wilds, and get its Jail and Church of the Bells where those coordinates are empty). The jail and the bell's map are the Server Settings **Jail** point and **Church bell map** (World), so either can move to a map of your own. Build further maps in-game with the World Editor.
 
 ### Building a custom Docker image
 
@@ -477,7 +477,7 @@ SSO_DB=sso.sqlite bun run maps:check
 bun run content:report "<name>"
 ```
 
-`maps:check` lists exits whose target map does not exist, `Exit` or `Exit2` tiles on a map with no such exit set, and start point, fallback point or Portal target settings whose map does not exist, and exits non-zero when it finds any. `content:report` shows which content rules and NPC seed text match a name (it reads the generated data, not your database).
+These commands (`maps:check`, `admin:role`, `admin:audit`, `admin:chatlog`) read an existing world: run against a database the server has not created yet (a wrong `SSO_DB`, or before the first start), they refuse and leave the file alone, since only the server creates a world from its pack. `maps:check` lists exits whose target map does not exist, `Exit` or `Exit2` tiles on a map with no such exit set, and start point, fallback point or Portal target settings whose map does not exist, and exits non-zero when it finds any. `content:report` shows which content rules and NPC seed text match a name (it reads the generated data, not your database).
 
 ### Reading the audit log
 

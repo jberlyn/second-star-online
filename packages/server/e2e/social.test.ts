@@ -423,6 +423,8 @@ describe("guilds", () => {
         db.run("UPDATE maps SET layer1 = ?", [
           JSON.stringify(Array.from({ length: 12 }, () => row)),
         ]);
+        // Clear building ground: none of 1.6's placed items (the seed map's Apples, Knife and gold).
+        db.run("DELETE FROM ground_items");
       },
     });
     const bot = await connectBot(server.wsUrl);

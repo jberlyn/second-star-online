@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test";
 
+import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
 import { footWalkGrid } from "@secondstaronline/shared";
 
+import { seedNewWorld } from "../src/content/world-seed.ts";
 import { openDatabase } from "../src/persistence/database.ts";
 import { findMapByCoords, saveMap } from "../src/persistence/maps.ts";
 import { loadMigrations, migrate, runMigrations } from "../src/persistence/migrations.ts";
@@ -11,18 +13,46 @@ import { crossMapEdge, tick } from "../src/systems/world/tick.ts";
 import { addPlayer, createWorld, toWorldMap } from "../src/systems/world/world.ts";
 import { NO_CASINO, player, rngByN, testMap } from "./helpers/sim.ts";
 
-test("the seeded jail encloses every walkable area and has no exits or landing pads", () => {
+/** A new Classic world, as the server creates one: the migrations, then the pack's world seed. */
+function classicWorld() {
   const db = openDatabase();
   migrate(db);
+  seedNewWorld(db, "classic", RELEASE_PACK_DIRS, "2026-11-24T00:00:00.000Z");
+  return db;
+}
+
+test("a new Classic world's jail is 1.6's x0y0: arrival (4,4) shut in a 13-tile cell, no landing pads, its exits refused by the jail rules", () => {
+  const db = classicWorld();
   const jail = findMapByCoords(db, 0, 0)!;
   expect(jail.title).toBe("Jail");
-  expect(jail.exit1).toBeNull();
-  expect(jail.exit2).toBeNull();
-  expect(jail.layers[0].join(" ")).not.toContain("J2");
-  expect(jail.flags).toEqual({ canFight: "O", canPvp: "O", isIndoors: "O", fctSpwn: "" });
+  // 1.6's own exit fields, which a prisoner can never take (see the tests below).
+  expect(jail.exit1).toEqual({ mx: 0, my: 0, x: 13, y: 3 });
+  expect(jail.exit2).toEqual({ mx: 0, my: 99, x: 9, y: 10 });
+  expect(jail.flags).toEqual({ canFight: "O", canPvp: "X", isIndoors: "X", fctSpwn: "" });
   const grid = footWalkGrid(jail.layers[0], jail.layers[1]);
   expect(grid[3]?.[3]).toBe(true); // /jail arrival (4,4)
-  // No walkable tile touches any screen edge, even outside the arrival cell.
+  // No landing pad: an airship cannot set down in it.
+  expect(jail.layers[0].join(" ")).not.toContain("J2");
+  // The prisoner's cell: everything a walk from (4,4) reaches is the 13 tiles of the top-left
+  // cell, none on the map's edge, so the bars and walls hold them there.
+  const seen = new Set<string>();
+  const queue: [number, number][] = [[4, 4]];
+  while (queue.length) {
+    const [x, y] = queue.pop() as [number, number];
+    const k = `${x},${y}`;
+    if (seen.has(k) || !grid[y - 1]?.[x - 1]) {
+      continue;
+    }
+    seen.add(k);
+    queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  expect(seen.size).toBe(13);
+  for (const k of seen) {
+    const [x, y] = k.split(",").map(Number) as [number, number];
+    expect(x > 1 && x < 17 && y > 1 && y < 12).toBe(true);
+    expect(x <= 7 && y <= 4).toBe(true);
+  }
+  // The stone walls (D8) ring the map, so no walkable tile reaches an edge.
   for (let y = 0; y < 12; y++) {
     for (let x = 0; x < 17; x++) {
       if (x === 0 || x === 16 || y === 0 || y === 11) {
@@ -48,12 +78,11 @@ test("the jail migration preserves an operator-authored map at x0y0", () => {
 });
 
 function scene() {
-  const db = openDatabase();
-  migrate(db);
+  const db = classicWorld();
   const jail = toWorldMap(findMapByCoords(db, 0, 0)!);
   const home = testMap("x1000y992");
   const world = createWorld();
-  world.jail = { map: "x0y0", x: 4, y: 4 }; // the seeded jail, as Classic servers store it
+  world.jail = { map: "x0y0", x: 4, y: 4 }; // 1.6's jail, as a Classic world stores it
   const bob = player("Bob", jail, 4, 4);
   bob.char.respawn = { mapId: home.id, x: 5, y: 5 };
   addPlayer(world, bob);

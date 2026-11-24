@@ -32,12 +32,12 @@ import {
   pointProblem,
 } from "../content/contract.ts";
 import { ContentService } from "../content/service.ts";
-import { type Db, openDatabase } from "../persistence/database.ts";
+import type { Db } from "../persistence/database.ts";
 import { peekGround } from "../persistence/ground.ts";
 import { listMaps } from "../persistence/maps.ts";
-import { migrate } from "../persistence/migrations.ts";
 import { loadSettingOverrides } from "../persistence/settings.ts";
 import { resolveSettings } from "../settings.ts";
+import { openWorldDatabase } from "./world-db.ts";
 
 /** The report's lines for a migrated database; empty when every exit and point leads somewhere. */
 export function mapCheck(db: Db): string[] {
@@ -109,8 +109,13 @@ export function mapCheck(db: Db): string[] {
 }
 
 if (import.meta.main) {
-  const db = openDatabase(process.env.SSO_DB ?? "sso.sqlite");
-  migrate(db);
+  let db: Db;
+  try {
+    db = openWorldDatabase(process.env.SSO_DB ?? "sso.sqlite");
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(2);
+  }
   // Judge the maps by the server's own content: its packs and the operator's published changes.
   installContent(
     new ContentService({

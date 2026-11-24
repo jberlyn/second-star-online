@@ -92,6 +92,7 @@ export {
   type WorldMap,
   type WorldPoint,
   type WorldSeed,
+  worldItemProblems,
   worldPointSchema,
   worldSeedSchema,
 } from "./world.ts";

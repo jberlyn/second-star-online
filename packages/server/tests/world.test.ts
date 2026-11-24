@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import { classicData } from "@secondstaronline/data/classic";
+import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
 import {
   blankMap,
   buildContentStore,
@@ -19,6 +20,8 @@ import {
   startingCharacter,
 } from "@secondstaronline/shared";
 
+import { mapCheck } from "../src/cli/map-check.ts";
+import { seedNewWorld } from "../src/content/world-seed.ts";
 import { createGame, type Game } from "../src/game.ts";
 import {
   findCharacterById,
@@ -29,8 +32,10 @@ import {
   saveProgress,
 } from "../src/persistence/characters.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
-import { findMapByCoords } from "../src/persistence/maps.ts";
+import { peekGround } from "../src/persistence/ground.ts";
+import { findMapByCoords, listMaps } from "../src/persistence/maps.ts";
 import { migrate } from "../src/persistence/migrations.ts";
+import { loadSlots } from "../src/persistence/monsters.ts";
 import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/settings.ts";
 import {
   defaultSettings,
@@ -53,69 +58,107 @@ beforeEach(() => {
   migrate(db);
 });
 
-describe("seed map migration", () => {
-  test("Willowbrook Wilds has a 17×12 lake, forest and rocks with empty upper layers", () => {
-    const m = findMapByCoords(db, 1000, 992);
-    if (!m) {
-      throw new Error("seed map missing");
-    }
-    expect(m.name).toBe("x1000y992");
-    expect(m.title).toBe("Willowbrook Wilds");
-    for (const layer of m.layers) {
-      expect(layer).toHaveLength(12);
-      for (const row of layer) {
-        expect(row.split(" ")).toHaveLength(17);
+/** A new Classic world, as the server creates one: the migrations, then the pack's world seed. */
+function classicWorld(): Db {
+  const fresh = openDatabase();
+  migrate(fresh);
+  seedNewWorld(fresh, "classic", RELEASE_PACK_DIRS, NOW);
+  return fresh;
+}
+
+describe("a new Classic world is 1.6's distributed maps (#43)", () => {
+  test("the 27 maps 1.6 shipped, each 17×12 on four layers, and no others", () => {
+    const w = classicWorld();
+    const names = listMaps(w).map((m) => m.name);
+    // DAT/Maps, in coordinate order.
+    expect(names).toEqual([
+      "x0y-1",
+      "x0y0",
+      "x0y1",
+      ...Array.from({ length: 19 }, (_, i) => `x0y${100 + i}`),
+      "x0y10000",
+      "x0y10001",
+      "x0y10101",
+      "x1000y992",
+      "x1000y993",
+    ]);
+    // No Church of the Bells: 1.6 never shipped x999y999.
+    expect(names).not.toContain("x999y999");
+    for (const m of listMaps(w)) {
+      for (const layer of m.layers) {
+        expect(layer).toHaveLength(12);
+        for (const row of layer) {
+          expect(row.split(" ")).toHaveLength(17);
+        }
       }
     }
-    expect(new Set(m.layers[0].join(" ").split(" "))).toEqual(new Set(["G1", "N1"]));
-    expect(new Set(m.layers[1].join(" ").split(" "))).toEqual(
-      new Set(["G3", "S3", "T3", "N3", "B8", "T8", "Q6", "T7", "P7", "B7"]),
-    );
-    expect(new Set(m.layers[2].join(" ").split(" "))).toEqual(new Set(["G3"]));
-    expect(new Set(m.layers[3].join(" ").split(" "))).toEqual(new Set(["5A"]));
+    w.close();
   });
 
-  test("the start (6,4) and respawn (5,5) tiles are walkable, trees are not, every edge is reachable", () => {
-    const m = findMapByCoords(db, 1000, 992);
+  test("x1000y992 is 1.6's Test map: open grass, its Slime roster, its gold, Apples and Knife", () => {
+    const w = classicWorld();
+    const m = findMapByCoords(w, 1000, 992);
     if (!m) {
-      throw new Error("seed map missing");
+      throw new Error("start map missing");
     }
-    const walk = footWalkGrid(m.layers[0], m.layers[1]);
-    const at = (x: number, y: number) => walk[y - 1]?.[x - 1];
-    expect(at(6, 4)).toBe(true);
-    expect(at(5, 5)).toBe(true);
-    expect(at(2, 2)).toBe(false); // lake
-    expect(at(7, 3)).toBe(false); // harvestable tree
-    expect(m.layers[0][2]?.split(" ")[6]).toBe("G1"); // tree stands on land
-    expect(at(12, 4)).toBe(false); // mineable rock
-    expect(m.layers[0][3]?.split(" ")[11]).toBe("G1");
-    // Flood fill from the start tile reaches all four edges.
-    const seen = new Set<string>();
-    const queue: [number, number][] = [[6, 4]];
-    while (queue.length) {
-      const [x, y] = queue.pop() as [number, number];
-      const k = `${x},${y}`;
-      if (seen.has(k) || !at(x, y)) {
-        continue;
+    expect(m.title).toBe("Test map");
+    expect(new Set(m.layers[0].join(" ").split(" "))).toEqual(new Set(["G1"]));
+    expect(new Set(m.layers[1].join(" ").split(" "))).toEqual(new Set(["G3"]));
+    expect(m.flags).toEqual({ canFight: "X", fctSpwn: "", isIndoors: "X", canPvp: "X" });
+    expect(m.exit1).toEqual({ mx: 0, my: 101, x: 10, y: 6 });
+    // DAT/Mobs/x1000y992.txt: the roster (before `+`) has a Slime in slot 1 at (11, 9); the live
+    // Slime after `+` is play state, so nothing is live yet.
+    expect(loadSlots(w, m.id)).toEqual([
+      { slot: 1, species: "Slime", live: null, home: { x: 11, y: 9 } },
+      { slot: 2, species: null, live: null, home: null },
+      { slot: 3, species: null, live: null, home: null },
+      { slot: 4, species: null, live: null, home: null },
+    ]);
+    // DAT/Items/x1000y992i.txt, from stage pixels to tiles, spelled as the items' keys.
+    expect(
+      peekGround(w, m.id, NOW)
+        .map((g) => `${g.item}@${g.x},${g.y}`)
+        .sort(),
+    ).toEqual(["3 Gold@5,8", "3 Gold@6,9", "Apple@5,5", "Apple@6,4", "Knife@5,5"]);
+    w.close();
+  });
+
+  test("the start (6,4), fallback (5,5) and jail (x0y0 4,4) points stand on walkable tiles; the bell names x999y999", () => {
+    const w = classicWorld();
+    const settings = resolveSettings(loadSettingOverrides(w));
+    expect(settings.startPoint).toEqual({ map: "x1000y992", x: 6, y: 4 });
+    expect(settings.fallbackPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
+    expect(settings.jailPoint).toEqual({ map: "x0y0", x: 4, y: 4 });
+    expect(settings.bellMap).toBe("x999y999");
+    for (const p of [settings.startPoint, settings.fallbackPoint, settings.jailPoint]) {
+      const at = /^x(-?\d+)y(-?\d+)$/.exec(p.map) as RegExpExecArray;
+      const m = findMapByCoords(w, Number(at[1]), Number(at[2]));
+      if (!m) {
+        throw new Error(`${p.map} missing`);
       }
-      seen.add(k);
-      queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      expect(footWalkGrid(m.layers[0], m.layers[1])[p.y - 1]?.[p.x - 1]).toBe(true);
     }
-    const reached = [...seen].map((k) => k.split(",").map(Number) as [number, number]);
-    // Every open tile belongs to the same clearing; resources can be approached on foot.
-    expect(seen.size).toBe(walk.flat().filter(Boolean).length);
-    for (const [x, y] of [
-      [6, 4],
-      [5, 5],
-      [4, 10],
-      [12, 5],
-    ]) {
-      expect(seen.has(`${x},${y}`)).toBe(true);
+    w.close();
+  });
+
+  test("maps:check lists the travel 1.6's maps name but never shipped, and no point problem", () => {
+    const w = classicWorld();
+    const lines = mapCheck(w);
+    // Every line is a dangling exit field or the bell's map; no point is unwalkable or missing.
+    for (const line of lines) {
+      expect(line).toMatch(
+        /(Exit2? leads to .* which does not exist|^setting bellMap: x999y999 does not exist)$/,
+      );
     }
-    expect(reached.some(([x]) => x === 1)).toBe(true);
-    expect(reached.some(([x]) => x === 17)).toBe(true);
-    expect(reached.some(([, y]) => y === 1)).toBe(true);
-    expect(reached.some(([, y]) => y === 12)).toBe(true);
+    expect(lines).toContain("x0y0: Exit2 leads to x0y99 (9, 10), which does not exist");
+    expect(lines).toContain(
+      "x1000y992: Exit2 leads to xH21000yH2992 (9, 11), which does not exist",
+    );
+    expect(lines).toContain("setting bellMap: x999y999 does not exist");
+    // 45 exit fields lead to maps 1.6 never shipped; the bell's map is the one other line.
+    expect(lines.filter((l) => l.includes("Exit"))).toHaveLength(45);
+    expect(lines).toHaveLength(46);
+    w.close();
   });
 });
 

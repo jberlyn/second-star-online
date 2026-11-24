@@ -13,16 +13,14 @@ import { roleToData } from "@secondstaronline/shared";
 
 import { findAccountByUsername, setRole } from "../persistence/accounts.ts";
 import { findCharacterAccount, insertAudit } from "../persistence/admin.ts";
-import { openDatabase } from "../persistence/database.ts";
-import { migrate } from "../persistence/migrations.ts";
 import { loadRoles, staffAccounts } from "../persistence/roles.ts";
+import { openWorldDatabase } from "./world-db.ts";
 
 const USAGE = "usage: bun run admin:role <name> <role id|none>  or  bun run admin:role --list";
 
 export function runSetRole(dbPath: string, name: string, roleWord: string): string {
-  const db = openDatabase(dbPath);
+  const db = openWorldDatabase(dbPath);
   try {
-    migrate(db);
     const roles = loadRoles(db);
     const roleId = roleWord === "none" ? null : roleWord;
     const role = roleId === null ? null : roles.find((r) => r.id === roleId);
@@ -57,9 +55,8 @@ export function runSetRole(dbPath: string, name: string, roleWord: string): stri
 
 /** The roles, highest rank first, each with its rank, permissions and holders. */
 export function listRoles(dbPath: string): string {
-  const db = openDatabase(dbPath);
+  const db = openWorldDatabase(dbPath);
   try {
-    migrate(db);
     const staff = staffAccounts(db);
     return loadRoles(db)
       .map((r) => {

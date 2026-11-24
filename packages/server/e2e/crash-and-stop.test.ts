@@ -161,7 +161,10 @@ describe("a kill inside a write lands on the state before it", () => {
         .query("SELECT item FROM inventory WHERE slot = 1 AND character_id = ?")
         .get(idOf(check.db, "Alice")),
     ).toEqual({ item: "Apple" });
-    expect(check.db.query("SELECT COUNT(*) AS n FROM ground_items").get()).toEqual({ n: 0 });
+    // Nothing was dropped: only the seed map's placed items (1.6's, `admin`) lie there.
+    expect(
+      check.db.query("SELECT COUNT(*) AS n FROM ground_items WHERE kind != 'admin'").get(),
+    ).toEqual({ n: 0 });
     await check.stop();
     await expectPlayable(dbPath, ["Alice", "Bob"]);
   }, 30_000);

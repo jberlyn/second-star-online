@@ -12,8 +12,7 @@ import "../content-classic.ts";
 import { CHAT_CHANNELS, type ChatChannel, chatlogLine } from "@secondstaronline/shared";
 
 import { chatLogLines } from "../persistence/chatlog.ts";
-import { openDatabase } from "../persistence/database.ts";
-import { migrate } from "../persistence/migrations.ts";
+import { openWorldDatabase } from "./world-db.ts";
 
 export interface ChatlogOptions {
   name?: string;
@@ -67,9 +66,8 @@ export function parseChatlogCli(argv: readonly string[]): ChatlogOptions | strin
 }
 
 export function chatlogReport(dbPath: string, o: ChatlogOptions): string[] {
-  const db = openDatabase(dbPath);
+  const db = openWorldDatabase(dbPath);
   try {
-    migrate(db);
     return chatLogLines(db, o).map(chatlogLine);
   } finally {
     db.close();
@@ -82,7 +80,12 @@ if (import.meta.main) {
     console.error(o);
     process.exit(2);
   }
-  for (const line of chatlogReport(process.env.SSO_DB ?? "sso.sqlite", o)) {
-    console.log(line);
+  try {
+    for (const line of chatlogReport(process.env.SSO_DB ?? "sso.sqlite", o)) {
+      console.log(line);
+    }
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
   }
 }
