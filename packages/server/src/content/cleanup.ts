@@ -18,6 +18,9 @@ export type EntryKind = "item" | "monster";
 export type ContentCleanup = "remove" | "replace" | "leave";
 
 const ITEM_KINDS = new Set<Reference["kind"]>(["item", "itemOrFixture", "shopItem", "lootItem"]);
+// An item's definition (`definedItem`) is the item's own row, not a use of it: it stays while the
+// item is retired (its held copies keep their rules) and goes when the catalogue entry goes
+// (`draftRemoval`, `settleRetirements`).
 
 /**
  * The spellings that name an entry: an item's key and its archived spellings, a monster's key.

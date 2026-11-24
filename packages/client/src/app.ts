@@ -97,6 +97,7 @@ import { createFriendsWindow } from "./ui/friends.ts";
 import { desktopMenus, type MenuActions, type MenuState } from "./ui/gamemenu.ts";
 import { createGuildCenter } from "./ui/guildcenter.ts";
 import { createImWindows } from "./ui/im.ts";
+import { createItemsPage } from "./ui/items-page.ts";
 import { createMailScreen } from "./ui/mail.ts";
 import { createMenuBar, MENU_BAR_H } from "./ui/menubar.ts";
 import { createNewspaper } from "./ui/newspaper.ts";
@@ -707,6 +708,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openContent: () => controlPanel.go("content"),
     openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
   });
+  const itemsPage = createItemsPage({
+    view: (seq, name) => send({ t: "contentItems", seq, ...(name !== undefined ? { name } : {}) }),
+    set: (seq, change) => send({ t: "contentItemSet", seq, ...change }),
+    openContent: () => controlPanel.go("content"),
+    openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
+    panels: (saved) => contentPage.itemPanels(saved),
+  });
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -754,6 +762,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onShow: () => balancePage.onShow(),
         changes: () => balancePage.changes(),
         discard: () => balancePage.discard(),
+      },
+      {
+        id: "items",
+        title: "Items",
+        group: "Game",
+        permission: "contentEditor",
+        el: itemsPage.el,
+        onShow: () => itemsPage.onShow(),
+        changes: () => itemsPage.changes(),
+        discard: () => itemsPage.discard(),
       },
     ],
     // The classic editors, until their Control Panel pages arrive (#32, #33).
@@ -1160,6 +1178,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     published: () => {
       contentPage.published();
       balancePage.published();
+      itemsPage.published();
     },
   });
   // Art published (issue #29): the map's tile layers are drawn once per map, so new tiles redraw
@@ -1174,6 +1193,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
     contentPage.published();
     balancePage.published();
+    itemsPage.published();
   });
   conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
   const handleMessage = (msg: ServerMsg) => {
@@ -1328,6 +1348,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (!permissions.has("contentEditor")) {
           contentPage.reset();
           balancePage.reset();
+          itemsPage.reset();
         }
         if (permissions.has("characterView")) {
           charactersPage.permissionsChanged();
@@ -1365,6 +1386,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "contentBalance":
         balancePage.receive(msg);
+        return;
+      case "contentItems":
+        itemsPage.receive(msg);
         return;
       case "content":
         // The content sync fetches and installs the store; nothing else to do here.
@@ -1711,6 +1735,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     charactersPage.reset();
     contentPage.reset();
     balancePage.reset();
+    itemsPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

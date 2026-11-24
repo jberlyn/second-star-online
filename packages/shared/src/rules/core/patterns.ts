@@ -6,10 +6,28 @@
  */
 import { lingoContains, lingoEq } from "./lingo.ts";
 
-export type PatternRow = { match: "exact" | "contains"; pattern: string };
+export type PatternRow = {
+  match: "exact" | "contains";
+  pattern: string;
+  /**
+   * Names the row does not match (issue #30): the content store sets it on a pack row whose item
+   * an item definition now decides, so the row stops applying to that item and only it. Never
+   * stored: the store compiles it from the definitions.
+   */
+  except?: readonly string[];
+};
+
+/** Whether a row leaves out `name` (its `except`: an item a definition decides). */
+export function excepted(r: object, name: string): boolean {
+  const except = (r as { except?: readonly string[] }).except;
+  return except?.some((n) => lingoEq(n, name)) === true;
+}
 
 /** A row uses either exact or substring matching, both ignoring case. */
 export function ruleMatches(name: string, r: PatternRow): boolean {
+  if (excepted(r, name)) {
+    return false;
+  }
   return r.match === "exact" ? lingoEq(name, r.pattern) : lingoContains(name, r.pattern);
 }
 

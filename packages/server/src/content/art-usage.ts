@@ -12,6 +12,7 @@ import {
   bodyUses,
   type ContentData,
   CURRENCY_PILES,
+  compileDefinitions,
   fxFramesOf,
   fxRuns,
   fxUsersText,
@@ -42,10 +43,12 @@ export function artEntity(group: AtlasGroup, key: string): string {
 }
 
 /** Every picture and sound the content names, by what draws it, with who names it. */
-export function usedArt(data: ContentData): {
+export function usedArt(raw: ContentData): {
   sprites: Record<AtlasGroup, Map<string, string>>;
   sounds: Map<string, string>;
 } {
+  // A defined item's slot is its definition's (issue #30), so read the compiled tables.
+  const data = compileDefinitions(raw);
   const sprites: Record<AtlasGroup, Map<string, string>> = {
     tiles: new Map(),
     bodies: new Map(),
@@ -229,7 +232,7 @@ export function wornSetProblems(data: ContentData, before?: ContentData): Conten
 function wornGaps(
   data: ContentData,
 ): { key: string; missing: string[]; problem: ContentProblem }[] {
-  const layers = wornLayers(data);
+  const layers = wornLayers(compileDefinitions(data));
   const out: { key: string; missing: string[]; problem: ContentProblem }[] = [];
   for (const row of data.art.paperdoll) {
     const use = layers.get(row.name.toLowerCase());
@@ -422,4 +425,54 @@ export function tileRefProblems(next: ContentData, published: ContentData): Cont
     }
   }
   return out;
+}
+
+/**
+ * An item that can be worn with nothing to draw (issue #30): no inventory picture (it could not be
+ * shown in a bag or given with `/drop`) or no worn layer. Read from the compiled tables, so an item
+ * worn only through its definition counts. Only a gap the published content did not already have:
+ * the draft may hold the item while its art is set up, but a publish refuses it.
+ */
+export function newItemArtGaps(
+  next: ContentData,
+  published: ContentData,
+  packs: ArtKeys,
+  after: ArtKeys,
+  before: ArtKeys,
+): ContentProblem[] {
+  const gaps = (data: ContentData, keys: ArtKeys): Map<string, ContentProblem> => {
+    const c = compileDefinitions(data);
+    // A worn layer's art is its frames (`<layer>-f1-s` …); a picture is its own key.
+    const drawn = (group: AtlasGroup, key: string) => {
+      const k = key.toLowerCase();
+      return [...packs.sprites[group], ...keys.sprites[group]].some((s) => {
+        const l = s.toLowerCase();
+        return l === k || (group === "paperdoll" && l.startsWith(`${k}-`));
+      });
+    };
+    const out = new Map<string, ContentProblem>();
+    for (const item of c.items.items) {
+      if (item.retired) {
+        continue;
+      }
+      const worn = wornLayerOf(c.itemRules, item.name);
+      if (worn === null) {
+        continue;
+      }
+      // Nothing at all to draw: no picture in a bag (and so no `/drop`) and nothing worn. A
+      // missing worn frame set alone is `wornSetProblems`'s, and an item may go without a picture
+      // while its worn layer is set up.
+      const icon = drawn("items", item.sprite ?? item.name);
+      const layer = worn.layer === null || drawn("paperdoll", worn.layer);
+      if (!icon && !layer) {
+        out.set(item.name.toLowerCase(), {
+          where: `items/items/${item.name}`,
+          message: `${item.name} is worn in the ${worn.slot} slot but has no picture and draws nothing worn: give it a picture before publishing`,
+        });
+      }
+    }
+    return out;
+  };
+  const had = gaps(published, before);
+  return [...gaps(next, after)].filter(([k]) => !had.has(k)).map(([, p]) => p);
 }

@@ -38,7 +38,7 @@ export function refOf(r: ContentRowRef): RowRef | null {
 
 /** A row's revision, where a change to it must name one (a balance row). */
 function revisionOf(service: ContentService, ref: RowRef): { revision?: string } {
-  const revision = service.balanceRevision(ref);
+  const revision = service.rowRevision(ref);
   return revision === null ? {} : { revision };
 }
 
@@ -47,8 +47,17 @@ function revisionOf(service: ContentService, ref: RowRef): { revision?: string }
  * balance rows carry a revision; a change that names none, or another, is refused.
  */
 function staleRow(service: ContentService, ref: RowRef, expect: string | undefined): string | null {
-  const revision = service.balanceRevision(ref);
+  const revision = service.rowRevision(ref);
+  if (revision === null && expect !== undefined) {
+    // It had a revision when it was opened, and the row has gone since (a discarded definition).
+    return `${rowLabel(ref)} is gone since you opened it: open it again before saving.`;
+  }
   if (revision === null || revision === expect) {
+    return null;
+  }
+  // An item's catalogue row is checked when the editor names the revision it opened (the Content
+  // page always does); a change naming none (a script, a test) is not refused.
+  if (ref.dataset === "items" && ref.part === "items" && expect === undefined) {
     return null;
   }
   return `${rowLabel(ref)} changed since you opened it: open it again before saving.`;
@@ -252,7 +261,9 @@ type ContentIntent = Extract<
       | "contentSoundArt"
       | "contentSound"
       | "contentBalance"
-      | "contentBalanceSet";
+      | "contentBalanceSet"
+      | "contentItems"
+      | "contentItemSet";
   }
 >;
 
@@ -288,6 +299,8 @@ export const CONTENT_INTENTS = [
   "contentSound",
   "contentBalance",
   "contentBalanceSet",
+  "contentItems",
+  "contentItemSet",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -442,6 +455,27 @@ export function contentIntent(
         t: "contentBalance",
         seq: msg.seq,
         view: service.balanceView(),
+        result: r.ok
+          ? { ok: true, text: r.value }
+          : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },
+      };
+    }
+    case "contentItems":
+      return { t: "contentItems", seq: msg.seq, view: service.itemsView(msg.name) };
+    case "contentItemSet": {
+      const r = service.draftItemChange(actor, {
+        name: msg.name,
+        op: msg.op,
+        ...(msg.data !== undefined ? { data: msg.data } : {}),
+        ...(msg.display !== undefined ? { display: msg.display } : {}),
+        ...(msg.copyFrom !== undefined ? { copyFrom: msg.copyFrom } : {}),
+        ...(msg.expect !== undefined ? { expect: msg.expect } : {}),
+      });
+      // The answer shows the item changed (a new one by the name it was made with).
+      return {
+        t: "contentItems",
+        seq: msg.seq,
+        view: service.itemsView(msg.name),
         result: r.ok
           ? { ok: true, text: r.value }
           : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },

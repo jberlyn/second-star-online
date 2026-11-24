@@ -49,6 +49,29 @@ END`;
     );
   });
 
+  test("a column named end inside a trigger body, and EXPLAIN CREATE TRIGGER, split as SQLite does", () => {
+    const { Database } = require("bun:sqlite") as typeof import("bun:sqlite");
+    const db = new Database(":memory:");
+    const sql = `CREATE TABLE t (a INTEGER, end INTEGER);
+CREATE TABLE log (v INTEGER);
+CREATE TRIGGER tg AFTER INSERT ON t BEGIN
+  UPDATE t SET end = NEW.a + 1 WHERE rowid = NEW.rowid;
+  INSERT INTO log (v) SELECT end FROM t WHERE rowid = NEW.rowid;
+END;
+INSERT INTO t (a) VALUES (4);
+EXPLAIN CREATE TRIGGER tg2 AFTER DELETE ON t BEGIN SELECT end FROM t; END;
+SELECT 1`;
+    const parts = splitSqlStatements(sql);
+    expect(parts).toHaveLength(6);
+    expect(parts[2]).toContain("SELECT end FROM t WHERE rowid = NEW.rowid;\nEND");
+    expect(parts[4]?.startsWith("EXPLAIN CREATE TRIGGER")).toBe(true);
+    // Each part is one complete statement SQLite accepts on its own.
+    for (const p of parts) {
+      db.run(p);
+    }
+    expect(db.query("SELECT v FROM log").get()).toEqual({ v: 5 });
+  });
+
   test("every shipped migration splits into statements", () => {
     for (const m of loadMigrations()) {
       const parts = splitSqlStatements(m.sql);

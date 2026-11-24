@@ -10,7 +10,7 @@
 
 import { isEngineFixture } from "../rules/core/fixtures.ts";
 import { lingoEq } from "../rules/core/lingo.ts";
-import { type PatternRow, ruleMatches } from "../rules/core/patterns.ts";
+import { excepted, type PatternRow, ruleMatches } from "../rules/core/patterns.ts";
 import { weaponIs } from "../rules/crafting/masterwork.ts";
 import { behaviourName, behaviourTest } from "../rules/inventory/behaviours.ts";
 import { lookName } from "../rules/inventory/paperdoll.ts";
@@ -64,8 +64,10 @@ export function nameTestOf(o: Obj): { match: string; pattern: string } | null {
   if (isStr(o.match) && isStr(o.item)) {
     return { match: o.match, pattern: o.item };
   }
-  if (isStr(o.weaponMatch) && isStr(o.pattern) && o.weaponMatch !== "any") {
-    return { match: o.weaponMatch, pattern: o.pattern };
+  // A skill block's pattern may be null, which combat reads as "" (a `contains` block with no
+  // pattern matches every weapon), so the resolver and the compile read it the same way.
+  if (isStr(o.weaponMatch) && (isStr(o.pattern) || o.pattern === null) && o.weaponMatch !== "any") {
+    return { match: o.weaponMatch, pattern: o.pattern ?? "" };
   }
   // A weapon-skill row (classes `skillGain.weaponSkills`).
   if (isStr(o.match) && isStr(o.weapon)) {
@@ -426,14 +428,19 @@ function rowTests(
 export function rowMatches(
   key: string,
   name: string,
-  r: { match: string; pattern: string },
+  r: { match: string; pattern: string; raw?: Obj },
   craft?: ContentData["craft"],
 ): boolean {
   if (key === "itemRules behaviours" && isEngineFixture(name)) {
     // Never an engine fixture's (Bob's Door).
     return false;
   }
-  return rowTests(key, testedName(key, name), r, craft);
+  const tested = testedName(key, name);
+  // A pack row an item definition took the item from (the store's compile, issue #30).
+  if (r.raw && excepted(r.raw as { except?: readonly string[] }, tested)) {
+    return false;
+  }
+  return rowTests(key, tested, r, craft);
 }
 
 /**
@@ -516,15 +523,20 @@ export function matchAllTables(
   name: string,
   data: Partial<ContentData>,
   craft: ContentData["craft"] | undefined = data.craft,
+  /** `nameTables(data)`, when the caller has it already (the store's compile, for each item). */
+  tables: Map<string, NameRow[]> = nameTables(data),
+  /** `behaviourTest(data.itemRules.behaviours)`, likewise. */
+  isBook: ((name: string, b: "book") => boolean) | null = data.itemRules
+    ? behaviourTest(data.itemRules.behaviours)
+    : null,
 ): TableHit[] {
   const hits: TableHit[] = [];
   // A meal's line never comes from a book's row (useItem): those rows are the read lines.
-  const isBook = data.itemRules ? behaviourTest(data.itemRules.behaviours) : null;
-  for (const [key, rows] of nameTables(data)) {
+  for (const [key, rows] of tables) {
     const info = NAME_TABLES[key];
     const all =
       key === "itemRules use.messages" && isBook
-        ? rows.filter((r) => !isBook(r.pattern, "book"))
+        ? rows.filter((r) => !((r.raw.read as boolean | undefined) ?? isBook(r.pattern, "book")))
         : rows;
     const hit = info ? matchTable(name, key, all, info, craft ?? NO_CRAFT) : null;
     if (hit) {

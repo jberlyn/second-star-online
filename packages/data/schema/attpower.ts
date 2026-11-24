@@ -45,7 +45,7 @@ export const tierFields = {
   value: z.union([int.min(-99999).max(99999), rolledValueSchema]),
 };
 
-const tierSchema = z.strictObject({
+export const attPowerTierSchema = z.strictObject({
   subWeapon: z.strictObject({ match: z.enum(["exact"]), pattern: z.string() }).nullable(),
   ...tierFields,
 });
@@ -70,13 +70,13 @@ export const attPowerDataSchema = z.strictObject({
       z.strictObject({
         weaponMatch: z.enum(["contains", "exact", "any"]),
         pattern: z.string().nullable(),
-        tiers: z.array(tierSchema),
+        tiers: z.array(attPowerTierSchema),
       }),
     ),
   }),
 });
 
 export type AttPowerData = z.infer<typeof attPowerDataSchema>;
-export type AttPowerTier = z.infer<typeof tierSchema>;
+export type AttPowerTier = z.infer<typeof attPowerTierSchema>;
 export type AttPowerBase = z.infer<typeof baseRowSchema>;
 export type RolledValue = z.infer<typeof rolledValueSchema>;

@@ -6,6 +6,7 @@
 import { content } from "../../content/store.ts";
 import { type Faction, type Fighter, findSkillIndex, SKILL_KEYS } from "../core/fighter.ts";
 import { lingoContains, type Rng } from "../core/lingo.ts";
+import { excepted } from "../core/patterns.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 import { factionPerk } from "../social/factions.ts";
 import { train } from "./progress.ts";
@@ -15,7 +16,8 @@ export function weaponSkillList(weapon: string): readonly string[] {
   let out: readonly string[] = [];
   for (const row of content().classes.skillGain.weaponSkills) {
     const hit =
-      row.match === "exact" ? weaponIs(weapon, row.weapon) : lingoContains(weapon, row.weapon);
+      !excepted(row, weapon) &&
+      (row.match === "exact" ? weaponIs(weapon, row.weapon) : lingoContains(weapon, row.weapon));
     if (hit) {
       out = row.skills;
     }

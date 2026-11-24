@@ -1,0 +1,456 @@
+/**
+ * The Control Panel's Items page (issue #30, stage 3): the item list with search and kinds, the
+ * form for the open item with where each rule comes from, edits sent with the item as the page saw
+ * it, a form locked while its save is on its way, refreshes that never overwrite an edit, stale
+ * answers ignored, and the app routing the page's messages.
+ */
+import { afterEach, describe, expect, test } from "bun:test";
+
+import type { ItemDefinition } from "@secondstaronline/data";
+import type {
+  ContentItemsView,
+  ContentItemView,
+  ContentRowRef,
+  ItemListEntry,
+} from "@secondstaronline/shared";
+
+import { canonical, createItemsPage, type ItemChange, rollRange } from "../src/ui/items-page.ts";
+
+afterEach(() => document.body.replaceChildren());
+
+const entry = (name: string, kind: ItemListEntry["kind"], extra: Partial<ItemListEntry> = {}) =>
+  ({
+    name,
+    display: name,
+    kind,
+    state: "pack",
+    retired: false,
+    pending: false,
+    ...extra,
+  }) satisfies ItemListEntry;
+
+const LIST = [
+  entry("Apple", "food"),
+  entry("Long Sword", "weapon"),
+  entry("Leather Armor", "armour"),
+  entry("Moon Sword", "weapon", { state: "yours", display: "Moonblade" }),
+];
+
+const sword = (
+  fp: string,
+  form: Partial<ItemDefinition> = {},
+  extra: Partial<ContentItemView> = {},
+): ContentItemView => ({
+  name: "Long Sword",
+  display: "",
+  retired: false,
+  inPack: true,
+  form: {
+    name: "Long Sword",
+    slot: "LeftHand",
+    strength: 8,
+    behaviours: ["sword"],
+    attack: { base: [{ flat: 6, randomN: 6 }] },
+    trains: ["Slash"],
+    ...form,
+  },
+  defined: false,
+  pack: {
+    name: "Long Sword",
+    slot: "LeftHand",
+    strength: 8,
+    attack: { base: [{ flat: 6, randomN: 6 }] },
+  },
+  sources: [
+    { group: "equip", label: "Slot", from: 'the pack\'s contains "Long Sword" (row 90)' },
+    { group: "attack", label: "Attack rolls", from: 'the pack\'s contains "Long Sword" (row 8)' },
+  ],
+  edited: false,
+  pending: { definition: null, catalogue: null },
+  fingerprint: fp,
+  notice: null,
+  choices: {
+    slots: ["Head", "Body", "LeftHand", "RightHand", "Feet", "Ring", "No"],
+    slotVars: ["BodyE", "HeadE"],
+    wornSlots: ["weapon", "ring"],
+    behaviours: ["key", "sword"],
+    powers: ["attack"],
+    stats: ["HP", "SP", "Hunger"],
+    skills: ["Slash", "Thrust"],
+  },
+  ...extra,
+});
+
+const view = (item: ContentItemView | null, items = LIST, itemDraft = 0): ContentItemsView => ({
+  items,
+  item,
+  otherDraft: 0,
+  itemDraft,
+});
+
+function page() {
+  const asked: { seq: number; name?: string }[] = [];
+  const sent: { seq: number; change: ItemChange }[] = [];
+  const openedRows: ContentRowRef[] = [];
+  const p = createItemsPage({
+    view: (seq, name) => asked.push({ seq, ...(name !== undefined ? { name } : {}) }),
+    set: (seq, change) => sent.push({ seq, change }),
+    openContent: () => {},
+    openContentRow: (r) => openedRows.push(r),
+    panels: () => null,
+  });
+  document.body.append(p.el);
+  const q = <T extends HTMLElement>(sel: string) => p.el.querySelector<T>(sel) as T;
+  const act = <T extends HTMLElement>(a: string) => q<T>(`[data-action="${a}"]`);
+  const type = (a: string, value: string) => {
+    const i = act<HTMLInputElement>(a);
+    i.value = value;
+    i.dispatchEvent(new Event("input"));
+  };
+  const listed = () =>
+    [...p.el.querySelectorAll<HTMLButtonElement>('[data-action="items-open"]')].map(
+      (b) => b.dataset.item,
+    );
+  return { p, asked, sent, openedRows, q, act, type, listed };
+}
+
+/** Opens Long Sword: the list, then its form. */
+function opened(fp = "a".repeat(16)) {
+  const t = page();
+  t.p.onShow();
+  t.p.receive({ t: "contentItems", seq: 1, view: view(null) });
+  t.p.open("Long Sword");
+  t.p.receive({ t: "contentItems", seq: 2, view: view(sword(fp)) });
+  return t;
+}
+
+describe("the Items page", () => {
+  test("lists every item; Find and the kind narrow it", () => {
+    const t = page();
+    t.p.onShow();
+    expect(t.asked).toEqual([{ seq: 1 }]);
+    t.p.receive({ t: "contentItems", seq: 1, view: view(null) });
+    expect(t.listed()).toEqual(["Apple", "Long Sword", "Leather Armor", "Moon Sword"]);
+    t.type("items-search", "moonblade");
+    expect(t.listed()).toEqual(["Moon Sword"]);
+    t.type("items-search", "");
+    const kind = t.act<HTMLSelectElement>("items-kind");
+    kind.value = "weapon";
+    kind.dispatchEvent(new Event("change"));
+    expect(t.listed()).toEqual(["Long Sword", "Moon Sword"]);
+    kind.value = "changed";
+    kind.dispatchEvent(new Event("change"));
+    expect(t.listed()).toEqual(["Moon Sword"]);
+  });
+
+  test("an item opens with what it plays and where each rule comes from", () => {
+    const t = opened();
+    expect(t.asked.at(-1)).toEqual({ seq: 2, name: "Long Sword" });
+    expect(t.q(".items-form").hidden).toBe(false);
+    expect(t.q(".items-form h2").textContent).toBe("Long Sword");
+    expect(t.act<HTMLSelectElement>("items-slot").value).toBe("LeftHand");
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("8");
+    expect(t.p.el.textContent).toContain('Slot: the pack\'s contains "Long Sword" (row 90)');
+    expect(t.p.el.textContent).toContain("Rolls 7 to 12");
+    // Nothing edited: nothing to save.
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
+    expect(t.p.changes()).toBe(0);
+  });
+
+  test("an edit is saved as the whole definition, with the item as the page saw it", () => {
+    const t = opened("a".repeat(16));
+    t.type("items-strength", "23");
+    expect(t.p.changes()).toBe(1);
+    t.act<HTMLButtonElement>("items-save").click();
+    expect(t.sent).toHaveLength(1);
+    const c = t.sent[0]?.change as ItemChange;
+    expect(c.op).toBe("set");
+    expect(c.expect).toBe("a".repeat(16));
+    expect(c.data).toEqual({
+      attack: { base: [{ flat: 6, randomN: 6 }] },
+      behaviours: ["sword"],
+      name: "Long Sword",
+      slot: "LeftHand",
+      strength: 23,
+      trains: ["Slash"],
+    });
+  });
+
+  test("a form being saved is locked, and keeps nothing typed meanwhile", () => {
+    const t = opened();
+    t.type("items-strength", "23");
+    t.act<HTMLButtonElement>("items-save").click();
+    // Locked before the request went: the rules' fieldset is disabled.
+    expect(t.q<HTMLFieldSetElement>(".items-rules").disabled).toBe(true);
+    expect(t.p.changes()).toBe(0);
+    // A publish refresh meanwhile does not unlock it or refill it.
+    t.p.published();
+    t.p.receive({ t: "contentItems", seq: 4, view: view(sword("b".repeat(16))) });
+    expect(t.q<HTMLFieldSetElement>(".items-rules").disabled).toBe(true);
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
+    // The save's answer (older than that view) unlocks it and keeps the newest view.
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("c".repeat(16), { strength: 23 })),
+      result: { ok: true, text: "Long Sword is in the draft." },
+    });
+    expect(t.q<HTMLFieldSetElement>(".items-rules").disabled).toBe(false);
+    expect(t.p.el.textContent).toContain("Long Sword is in the draft.");
+  });
+
+  test("a refresh never overwrites an edit, and says when the item changed under it", () => {
+    const t = opened("a".repeat(16));
+    t.type("items-strength", "30");
+    t.p.published();
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("b".repeat(16), { strength: 12 })),
+    });
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("30");
+    expect(t.q(".items-form .balance-stale:not([hidden])").textContent).toContain(
+      "Someone changed this item",
+    );
+    // Dropping the edit shows theirs.
+    t.act<HTMLButtonElement>("items-undo-edit").click();
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("12");
+  });
+
+  test("an answer older than the view shown is ignored", () => {
+    const t = opened("a".repeat(16));
+    t.p.receive({ t: "contentItems", seq: 1, view: view(sword("z".repeat(16), { strength: 99 })) });
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("8");
+  });
+
+  test("a value out of its limits is refused before sending", () => {
+    const t = opened();
+    t.type("items-strength", "999");
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
+    expect(t.p.el.textContent).toContain("Strength needed: a whole number from 0 to 200");
+  });
+
+  test("a refusal names the form's fields", () => {
+    const t = opened();
+    t.type("items-strength", "23");
+    t.act<HTMLButtonElement>("items-save").click();
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("a".repeat(16))),
+      result: {
+        ok: false,
+        text: "Long Sword was not saved.",
+        problems: [{ where: "Trains", message: "names a skill that does not exist: Basket" }],
+      },
+    });
+    expect(t.p.el.textContent).toContain(
+      "Long Sword was not saved. Trains: names a skill that does not exist: Basket",
+    );
+    // The edit stays to fix.
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
+  });
+
+  test("an attack roll is added, previewed and removed", () => {
+    const t = opened();
+    t.act<HTMLButtonElement>("items-base-add").click();
+    const rolls = t.p.el.querySelectorAll('[data-list="base"] .items-list-row');
+    expect(rolls.length).toBe(2);
+    expect(t.p.el.textContent).toContain("Rolls 2 to 7");
+    (
+      t.p.el.querySelectorAll<HTMLButtonElement>(
+        '[data-action="items-base-remove"]',
+      )[1] as HTMLButtonElement
+    ).click();
+    expect(t.p.el.querySelectorAll('[data-list="base"] .items-list-row').length).toBe(1);
+    expect(t.p.changes()).toBe(0);
+  });
+
+  test("the pack's rules for a group come back into the form", () => {
+    const t = opened();
+    t.type("items-strength", "40");
+    t.q<HTMLButtonElement>('[data-action="items-pack-equip"]').click();
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("8");
+    // The pack has no behaviours row: they go.
+    expect(t.act<HTMLInputElement>("items-behaviour-sword").checked).toBe(false);
+  });
+
+  test("switching items with an edit is refused until it is saved or dropped", () => {
+    const t = opened();
+    t.type("items-strength", "23");
+    t.p.open("Apple");
+    expect(t.asked.at(-1)).toEqual({ seq: 2, name: "Long Sword" });
+    expect(t.p.el.textContent).toContain("unsaved changes");
+  });
+
+  test("New makes an item from another and opens it", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentItems", seq: 1, view: view(null) });
+    t.type("items-new-name", "Star Sword");
+    t.type("items-new-copy", "Long Sword");
+    t.act<HTMLButtonElement>("items-create").click();
+    expect(t.sent[0]?.change).toEqual({ name: "Star Sword", op: "create", copyFrom: "Long Sword" });
+    t.p.receive({
+      t: "contentItems",
+      seq: 2,
+      view: view(
+        sword(
+          "d".repeat(16),
+          { name: "Star Sword" },
+          { name: "Star Sword", inPack: false, defined: true, pack: null },
+        ),
+      ),
+      result: { ok: true, text: "Star Sword is in the draft." },
+    });
+    expect(t.q(".items-form h2").textContent).toBe("Star Sword");
+    expect(t.act<HTMLInputElement>("items-new-name").value).toBe("");
+  });
+
+  test("Remove opens the item's where-used report on the Content page", () => {
+    const t = opened();
+    t.act<HTMLButtonElement>("items-remove").click();
+    expect(t.openedRows).toEqual([{ dataset: "items", part: "items", key: "Long Sword" }]);
+  });
+
+  test("a rename sends the display name; Play the pack's rules again drops the definition", () => {
+    const t = opened("a".repeat(16));
+    t.type("items-display", "Old Sword");
+    t.act<HTMLButtonElement>("items-rename").click();
+    expect(t.sent[0]?.change).toEqual({
+      name: "Long Sword",
+      op: "rename",
+      display: "Old Sword",
+      expect: "a".repeat(16),
+    });
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("e".repeat(16), {}, { defined: true, edited: true })),
+      result: { ok: true, text: "Long Sword is called Old Sword in the draft." },
+    });
+    t.act<HTMLButtonElement>("items-revert").click();
+    expect(t.sent[1]?.change).toEqual({ name: "Long Sword", op: "revert", expect: "e".repeat(16) });
+  });
+
+  test("a rename keeps unsaved rule edits, and a rules save keeps a typed name", () => {
+    const t = opened("a".repeat(16));
+    t.type("items-strength", "23");
+    t.type("items-display", "Old Sword");
+    t.act<HTMLButtonElement>("items-rename").click();
+    // The rename's answer: the catalogue changed, the rules did not.
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(
+        sword(
+          "b".repeat(16),
+          {},
+          { display: "Old Sword", pending: { definition: null, catalogue: "set" } },
+        ),
+      ),
+      result: { ok: true, text: "Long Sword is called Old Sword in the draft." },
+    });
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
+    expect(t.p.changes()).toBe(1);
+    // The edit is still saveable: it names the item as it is now.
+    t.act<HTMLButtonElement>("items-save").click();
+    expect(t.sent[1]?.change.expect).toBe("b".repeat(16));
+    // A typed (unsaved) name survives a rules save.
+    t.type("items-display", "Older Sword");
+    t.p.receive({
+      t: "contentItems",
+      seq: 4,
+      view: view(sword("c".repeat(16), { strength: 23 }, { display: "Old Sword" })),
+      result: { ok: true, text: "Long Sword is in the draft." },
+    });
+    expect(t.act<HTMLInputElement>("items-display").value).toBe("Older Sword");
+    expect(t.p.changes()).toBe(1);
+  });
+
+  test("a refused New item leaves the open item and its edits alone", () => {
+    const t = opened();
+    t.type("items-strength", "23");
+    t.type("items-new-name", "Crate#1");
+    t.act<HTMLButtonElement>("items-create").click();
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(null),
+      result: { ok: false, text: "Crate#1 is a name the game gives its own things" },
+    });
+    expect(t.q(".items-form").hidden).toBe(false);
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
+  });
+
+  test("removing a list row keeps another field's error", () => {
+    const t = opened();
+    t.type("items-strength", "999");
+    // Long Sword has one attack roll: take it out.
+    t.act<HTMLButtonElement>("items-base-remove").click();
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
+    expect(t.p.el.textContent).toContain("Strength needed: a whole number from 0 to 200");
+  });
+
+  test("a name the server could never answer is refused before the form locks", () => {
+    const t = opened();
+    t.type("items-display", "x".repeat(41));
+    t.act<HTMLButtonElement>("items-rename").click();
+    expect(t.sent).toHaveLength(0);
+    expect(t.q<HTMLFieldSetElement>(".items-rules").disabled).toBe(false);
+  });
+
+  test("the pictures follow a new slot, and Discard drops unsaved pictures too", () => {
+    const shows: [string, boolean | undefined][] = [];
+    const p = createItemsPage({
+      view: () => {},
+      set: () => {},
+      openContent: () => {},
+      openContentRow: () => {},
+      panels: () => ({
+        el: document.createElement("div"),
+        show: (key, force) => shows.push([key, force]),
+        clear: () => {},
+        pending: () => false,
+      }),
+    });
+    document.body.append(p.el);
+    p.onShow();
+    p.receive({ t: "contentItems", seq: 1, view: view(null) });
+    p.open("Long Sword");
+    p.receive({
+      t: "contentItems",
+      seq: 2,
+      view: view(sword("a".repeat(16), { slot: undefined })),
+    });
+    expect(shows).toEqual([["Long Sword", undefined]]);
+    // Its first slot saved: the worn panel is asked for again.
+    p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("b".repeat(16), { slot: "LeftHand" })),
+    });
+    expect(shows.at(-1)).toEqual(["Long Sword", undefined]);
+    expect(shows).toHaveLength(2);
+    p.discard();
+    expect(shows.at(-1)).toEqual(["Long Sword", true]);
+  });
+
+  test("reset drops everything, the search included", () => {
+    const t = opened();
+    t.type("items-search", "zebra");
+    t.p.reset();
+    expect(t.act<HTMLInputElement>("items-search").value).toBe("");
+    expect(t.q(".items-form").hidden).toBe(true);
+    expect(t.listed()).toEqual([]);
+    // An answer to a request sent before the reset is dropped.
+    t.p.receive({ t: "contentItems", seq: 2, view: view(sword("a".repeat(16))) });
+    expect(t.listed()).toEqual([]);
+  });
+
+  test("helpers: a roll's range, and a form compared without its empty parts", () => {
+    expect(rollRange(6, 6)).toBe("Rolls 7 to 12");
+    expect(rollRange(3, 0)).toBe("Always 3");
+    expect(canonical({ b: 1, a: { x: [] }, use: {} })).toBe(canonical({ b: 1 }));
+  });
+});

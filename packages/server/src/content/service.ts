@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-import type { ArtFrameId, AssetIndex, RectsData } from "@secondstaronline/data";
+import type { ArtFrameId, AssetIndex, ItemDefinition, RectsData } from "@secondstaronline/data";
 import { applyKey, encodePng, GREEN } from "@secondstaronline/data/art";
 import {
   type ArtData,
@@ -32,15 +32,20 @@ import {
   type ContentBodyArtView,
   type ContentData,
   type ContentFxArtView,
+  type ContentItemsView,
+  type ContentItemView,
   type ContentSoundArtView,
   type ContentStore,
   type ContentTileArtView,
   type ContentWornArtView,
   checkNpcFile,
+  compileDefinitions,
   content,
   cutTileCell,
   DATASET_IDS,
   type DatasetId,
+  DEFINITION_TABLES,
+  definesBehaviours,
   editorLines,
   type FxChange,
   type FxSheetLayout,
@@ -49,12 +54,15 @@ import {
   fxRuns,
   fxTriggerProblems,
   hasContent,
+  type ItemListEntry,
   installContent,
+  isEngineFixture,
   isUniqueContainer,
   nextTileCodes,
   orphanedFxUploads,
   ownLayerPossible,
   type PictureChange,
+  pictureOf,
   planBody,
   planFx,
   planPicture,
@@ -62,9 +70,11 @@ import {
   planTile,
   planWorn,
   removedTileCodes,
+  resolveIn,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
   type SoundChange,
+  seedDefinition,
   soundUses,
   TILE_MAPS_SHOWN,
   TILES_PER_SHEET,
@@ -137,6 +147,7 @@ import {
   lostArtProblems,
   newBodyGaps,
   newFxGaps,
+  newItemArtGaps,
   newSoundProblems,
   newTileGaps,
   tileRefProblems,
@@ -162,6 +173,7 @@ import {
   useView,
 } from "./cleanup.ts";
 import { contractProblems } from "./contract.ts";
+import { itemChoices, itemFingerprint, itemKind, itemProblems, ruleSources } from "./items-page.ts";
 import { type LoadedPack, readPackBlob, readPackDir } from "./packs.ts";
 import {
   applyRows,
@@ -181,6 +193,7 @@ import {
 } from "./rows.ts";
 import { mergePackArt, packArtLayers } from "./served-assets.ts";
 import {
+  badKeyForm,
   bindingProblems,
   brokenReferences,
   type ContentProblem,
@@ -242,7 +255,21 @@ export interface PackNotice extends RowRef {
   /** The operator's row (null for a removal marker). */
   yours: unknown;
   yoursOp: "set" | "remove";
+  /** What the notice means, when the row is not simply the pack's (an item definition, #30). */
+  note?: string;
 }
+
+/** Whether a row is an item definition (issue #30). */
+/** A new item's name from the Items page: at most 40 characters (an existing key may be 80). */
+const ITEM_NEW_NAME_MAX = 40;
+/** The tables an item's kind on the Items list is read from (`itemKind`). */
+const KIND_TABLES = [
+  "itemRules equip.slots",
+  "attPower attPower.base",
+  "itemRules armour.rows",
+  "itemRules use.effects",
+] as const;
+const isDefinitionRow = (r: RowRef): boolean => r.dataset === "items" && r.part === "definitions";
 
 /** Where an item or a monster is used, for its removal (issue #28). */
 export interface ContentUsage {
@@ -614,6 +641,8 @@ export class ContentService {
   private packSounds: Record<string, string>;
   /** The packs merged in install order, without the operator layer. */
   private packData: ContentData;
+  /** `packData` with its own item definitions compiled (for `packRowValue`). */
+  private packCompiled: { from: ContentData; data: ContentData } | null = null;
   private packs: PackInfo[];
   /** The pack that supplies each row (the last to define it), by lower-cased row label. */
   private owners: Map<string, PackInfo>;
@@ -1084,10 +1113,18 @@ export class ContentService {
       ...newBodyGaps(next, this.published, this.packArt, before, after),
       ...newFxGaps(next, this.published, this.packArt),
       ...newTileGaps(next, this.published, this.packArt, after),
-      ...newSoundProblems(next, this.published, this.packArt, before, after),
+      // A defined item's swing sound is its definition's (issue #30).
+      ...newSoundProblems(
+        compileDefinitions(next),
+        compileDefinitions(this.published),
+        this.packArt,
+        before,
+        after,
+      ),
       ...triggers,
       ...tileRefs,
       ...wornSetProblems(next, this.published),
+      ...newItemArtGaps(next, this.published, this.packArt, after, before),
     ];
   }
 
@@ -1414,7 +1451,8 @@ export class ContentService {
 
   /** The worn frame set panels' view, worked out from the draft's rules (issue #29, stage 3). */
   wornArtView(): ContentWornArtView {
-    const d = this.draftContent();
+    // With the item definitions compiled: a defined item's slot and behaviours are its own (#30).
+    const d = compileDefinitions(this.draftContent());
     const items: ContentWornArtView["items"] = [];
     for (const i of d.items.items) {
       const w = wornLayerOf(d.itemRules, i.name);
@@ -1453,7 +1491,19 @@ export class ContentService {
    */
   draftWorn(actor: ContentActor, change: WornChange): ContentResult<string> {
     const base = this.draftContent();
-    const plan = planWorn(change, base.itemRules, base.items.items, base.art.paperdoll);
+    // Whether an item is worn, and its behaviours, are its definition's (issue #30): read from the
+    // compiled tables. The plan writes only the paperdoll part, which a compile never changes.
+    const compiled = compileDefinitions(base);
+    const plan = planWorn(
+      change,
+      {
+        ...base.itemRules,
+        equip: compiled.itemRules.equip,
+        behaviours: compiled.itemRules.behaviours,
+      },
+      base.items.items,
+      base.art.paperdoll,
+    );
     if (!plan.ok) {
       return fail(plan.error);
     }
@@ -2248,11 +2298,437 @@ export class ContentService {
     return r.problems ? fail(`${def.label} was not saved.`, balanceProblems(def, r.problems)) : r;
   }
 
+  // ---- the Items page (issue #30, stage 3) ----------------------------------------------------
+
+  /** The draft's data with its item definitions compiled, and each item's kind, by draft. */
+  private itemsCache: {
+    key: string;
+    compiled: ContentData;
+    kinds: Map<string, ItemListEntry["kind"]> | null;
+  } | null = null;
+
+  private compiledDraft(draft: readonly DraftRow[]): ContentData {
+    const key = `${this.draftRev(draft)}\u0000${this.current.hash}`;
+    if (this.itemsCache?.key !== key) {
+      this.itemsCache = {
+        key,
+        compiled: compileDefinitions(this.draftContent(draft)),
+        kinds: null,
+      };
+    }
+    return this.itemsCache.compiled;
+  }
+
+  /** Each draft item's kind, from its definition or what it plays (in lower case). */
+  private itemKinds(draft: readonly DraftRow[]): Map<string, ItemListEntry["kind"]> {
+    const compiled = this.compiledDraft(draft);
+    const cache = this.itemsCache as NonNullable<typeof this.itemsCache>;
+    if (!cache.kinds) {
+      const own = new Map(
+        (compiled.items.definitions ?? []).map((d) => [d.name.toLowerCase(), d] as const),
+      );
+      cache.kinds = new Map(
+        compiled.items.items.map((i) => {
+          // A kind reads the slot, the attack roll, the armour and the use effects only.
+          const def =
+            own.get(i.name.toLowerCase()) ??
+            seedDefinition(i.name, resolveIn(i.name, compiled, KIND_TABLES));
+          return [i.name.toLowerCase(), itemKind(def)] as const;
+        }),
+      );
+    }
+    return cache.kinds;
+  }
+
+  /** The item an Items page change names, as the draft spells it, or undefined. */
+  private draftItem(d: ContentData, name: string) {
+    const k = name.toLowerCase();
+    return d.items.items.find((i) => i.name.toLowerCase() === k);
+  }
+
+  /** An item as the Items page shows it, for `expect` (see `itemFingerprint`). */
+  private itemFingerprintOf(name: string, draft: readonly DraftRow[] = this.draft()): string {
+    const d = this.draftContent(draft);
+    const defRef: RowRef = { dataset: "items", part: "definitions", key: name };
+    const catRef: RowRef = { dataset: "items", part: "items", key: name };
+    const definition = rowValue(d, defRef);
+    return itemFingerprint({
+      plays:
+        definition === undefined
+          ? seedDefinition(name, resolveIn(name, this.compiledDraft(draft)))
+          : null,
+      definition: definition ?? null,
+      catalogue: rowValue(d, catRef) ?? null,
+      pending: [
+        draft.find((r) => sameRow(r, defRef))?.op ?? null,
+        draft.find((r) => sameRow(r, catRef))?.op ?? null,
+      ],
+      edited: contentRows(this.db).some((r) => sameRow(r, defRef)),
+    });
+  }
+
+  /**
+   * A row's revision, where a change to it must name one: a balance row (the Balance page's
+   * fingerprint, issue #19) or an item definition (the Items page's, issue #30), so neither page
+   * nor the Content page's JSON editor writes over a change it has not seen. An item's catalogue
+   * row carries the same revision, so a stale JSON save cannot undo an Items page rename. Null for
+   * other rows, and for a definition no layer has yet (there is nothing to write over).
+   */
+  rowRevision(ref: RowRef): string | null {
+    if (ref.dataset === "balance") {
+      return this.balanceRevision(ref);
+    }
+    if (
+      ref.dataset === "items" &&
+      (ref.part === "definitions" || ref.part === "items") &&
+      ref.key !== null
+    ) {
+      const draft = this.draft();
+      const d = this.draftContent(draft);
+      const known =
+        rowValue(d, ref) !== undefined ||
+        draft.some((r) => sameRow(r, ref)) ||
+        contentRows(this.db).some((r) => sameRow(r, ref));
+      if (!known) {
+        return null;
+      }
+      // The Items page fingerprints an item by its catalogue key.
+      const item = this.draftItem(d, ref.key);
+      return this.itemFingerprintOf(item?.name ?? ref.key, draft);
+    }
+    return null;
+  }
+
+  /** The Items page's view: the list, and with `name` that item's form. */
+  itemsView(name?: string): ContentItemsView {
+    const draft = this.draft();
+    const d = this.draftContent(draft);
+    const kinds = this.itemKinds(draft);
+    const packItems = new Set(this.packData.items.items.map((i) => i.name.toLowerCase()));
+    const own = new Set((d.items.definitions ?? []).map((x) => x.name.toLowerCase()));
+    const operator = new Set(
+      contentRows(this.db)
+        .filter((r) => r.dataset === "items" && (r.part === "items" || r.part === "definitions"))
+        .map((r) => (r.key ?? "").toLowerCase()),
+    );
+    const itemRows = draft.filter(
+      (r) => r.dataset === "items" && (r.part === "items" || r.part === "definitions"),
+    );
+    const pending = new Set(itemRows.map((r) => (r.key ?? "").toLowerCase()));
+    const items = d.items.items
+      .map((i): ItemListEntry => {
+        const k = i.name.toLowerCase();
+        return {
+          name: i.name,
+          display: i.display ?? i.name,
+          kind: kinds.get(k) ?? "other",
+          state: !packItems.has(k) ? "yours" : own.has(k) || operator.has(k) ? "edited" : "pack",
+          retired: i.retired === true,
+          pending: pending.has(k),
+        };
+      })
+      .sort((a, b) => a.display.localeCompare(b.display));
+    const item = name === undefined ? undefined : this.draftItem(d, name);
+    return {
+      items,
+      item: item ? this.itemView(item.name, draft) : null,
+      otherDraft: draft.length - itemRows.length,
+      itemDraft: itemRows.length,
+    };
+  }
+
+  /** One item's form on the Items page (issue #30). */
+  private itemView(name: string, draft: readonly DraftRow[]): ContentItemView {
+    const d = this.draftContent(draft);
+    const compiled = this.compiledDraft(draft);
+    const item = this.draftItem(d, name) as NonNullable<ReturnType<typeof this.draftItem>>;
+    const defRef: RowRef = { dataset: "items", part: "definitions", key: item.name };
+    const catRef: RowRef = { dataset: "items", part: "items", key: item.name };
+    const own = rowValue(d, defRef) as ItemDefinition | undefined;
+    const hits = resolveIn(item.name, compiled);
+    const inPack = this.packData.items.items.some(
+      (i) => i.name.toLowerCase() === item.name.toLowerCase(),
+    );
+    const notice = this.notices().find((n) => sameRow(n, defRef));
+    return {
+      name: item.name,
+      display: item.display ?? "",
+      retired: item.retired === true,
+      inPack,
+      form: structuredClone(own ?? seedDefinition(item.name, hits)),
+      defined: own !== undefined,
+      pack: inPack ? (structuredClone(this.packRowValue(defRef)) as ItemDefinition) : null,
+      sources: ruleSources(
+        hits,
+        own === undefined
+          ? null
+          : contentRows(this.db).some((r) => sameRow(r, defRef)) ||
+              draft.some((r) => sameRow(r, defRef)) ||
+              rowValue(this.packData, defRef) === undefined
+            ? "yours"
+            : "pack",
+        (t) => {
+          const [dataset, path] = t.split(" ") as [string, string];
+          const part = path.split(".")[0] ?? "";
+          const touches = (r: RowRef) => r.dataset === dataset && r.part === part;
+          return contentRows(this.db).some(touches) || draft.some(touches);
+        },
+      ),
+      edited: contentRows(this.db).some((r) => sameRow(r, defRef)),
+      pending: {
+        definition: draft.find((r) => sameRow(r, defRef))?.op ?? null,
+        catalogue: draft.find((r) => sameRow(r, catRef))?.op ?? null,
+      },
+      fingerprint: this.itemFingerprintOf(item.name, draft),
+      notice: notice
+        ? {
+            packName: notice.packName,
+            packVersion: notice.packVersion,
+            note:
+              notice.note ??
+              `${notice.packName} v${notice.packVersion} changed this item's definition: answer it on the Content page.`,
+          }
+        : null,
+      choices: itemChoices(d),
+    };
+  }
+
+  /**
+   * One Items page change (issue #30): `set` the item's definition, `revert` it (the item follows
+   * the pack's rules again), `discard` the draft's changes to the item, `rename` it (its display
+   * name) or `create` a new item, copying another's rules and picture. Refused when the item
+   * changed since the page showed it (`expect`), and for a definition its checks refuse, named by
+   * the form's labels.
+   */
+  draftItemChange(
+    actor: ContentActor,
+    change: {
+      name: string;
+      op: "set" | "revert" | "discard" | "rename" | "create";
+      data?: unknown;
+      display?: string;
+      copyFrom?: string;
+      expect?: string;
+    },
+  ): ContentResult<string> {
+    const draft = this.draft();
+    const d = this.draftContent(draft);
+    if (change.op === "create") {
+      return this.createItem(actor, change, draft);
+    }
+    const item = this.draftItem(d, change.name);
+    if (!item) {
+      return fail(`there is no item ${change.name}`);
+    }
+    const name = item.name;
+    const label = item.display ?? name;
+    if (this.itemFingerprintOf(name, draft) !== change.expect) {
+      return fail(`${label} changed since you opened it: look at it again before saving.`);
+    }
+    const defRef: RowRef = { dataset: "items", part: "definitions", key: name };
+    const catRef: RowRef = { dataset: "items", part: "items", key: name };
+    const defDraft = draft.find((r) => sameRow(r, defRef));
+    const catDraft = draft.find((r) => sameRow(r, catRef));
+    const edited = contentRows(this.db).some((r) => sameRow(r, defRef));
+    switch (change.op) {
+      case "discard": {
+        if (!defDraft && !catDraft) {
+          return fail(`${label} has no change in the draft.`);
+        }
+        for (const ref of [defDraft ? defRef : null, catDraft ? catRef : null]) {
+          if (ref) {
+            const r = this.draftDiscard(ref);
+            if (!r.ok) {
+              return r;
+            }
+          }
+        }
+        return { ok: true, value: `${label}: the draft's changes are gone.` };
+      }
+      case "revert": {
+        const rules = this.packData.items.items.some(
+          (i) => i.name.toLowerCase() === name.toLowerCase(),
+        )
+          ? "the pack's rules"
+          : "no rules of its own";
+        if (edited) {
+          const op = rowValue(this.packData, defRef) === undefined ? "remove" : "revert";
+          const r = this.draftSet(actor, defRef, op, null);
+          return r.ok ? { ok: true, value: `${label} plays ${rules} again when published.` } : r;
+        }
+        if (defDraft) {
+          const r = this.draftDiscard(defRef);
+          return r.ok ? { ok: true, value: `${label} plays ${rules} again.` } : r;
+        }
+        return fail(`${label} already plays ${rules}.`);
+      }
+      case "rename": {
+        const display = (change.display ?? "").trim();
+        const row: Record<string, unknown> = { ...item };
+        if (display === "" || display === name) {
+          delete row.display;
+        } else {
+          row.display = display;
+        }
+        if (rowHash(row) === rowHash(item)) {
+          return fail(`${label} already has that name.`);
+        }
+        const clash = this.newKeyProblems(d, [{ ...catRef, op: "set", data: row }]);
+        if (clash.length > 0) {
+          return fail(`${label} was not renamed.`, itemProblems(name, clash));
+        }
+        const r = this.draftSet(actor, catRef, "set", row);
+        if (!r.ok) {
+          return r.problems ? fail(`${label} was not renamed.`, itemProblems(name, r.problems)) : r;
+        }
+        return {
+          ok: true,
+          value:
+            display === "" || display === name
+              ? `${name} goes back to its own name in the draft.`
+              : `${name} is called ${display} in the draft.`,
+        };
+      }
+      case "set": {
+        const data = change.data;
+        if (data === null || typeof data !== "object" || Array.isArray(data)) {
+          return fail("a definition is a JSON object");
+        }
+        if (String((data as { name?: unknown }).name ?? "").toLowerCase() !== name.toLowerCase()) {
+          return fail(`the definition's name must be ${name}`);
+        }
+        const def = { ...(data as Record<string, unknown>), name };
+        const own = rowValue(d, defRef);
+        const compiled = this.compiledDraft(draft);
+        const playing = own ?? seedDefinition(name, resolveIn(name, compiled));
+        if (rowHash(playing) === rowHash(def)) {
+          return fail(
+            own === undefined
+              ? `${label} already plays that: nothing to save.`
+              : `${label}'s definition in the draft already holds that.`,
+          );
+        }
+        // Back to what plays now: the draft's change goes (one staged would publish a definition
+        // that plays exactly as the item does).
+        const published = rowValue(this.published, defRef);
+        const plays =
+          published ?? seedDefinition(name, resolveIn(name, compileDefinitions(this.published)));
+        if (defDraft && rowHash(plays) === rowHash(def)) {
+          const r = this.draftDiscard(defRef);
+          return r.ok ? { ok: true, value: `${label} is back to what plays now.` } : r;
+        }
+        const r = this.draftSet(actor, defRef, "set", def);
+        if (!r.ok) {
+          return r.problems ? fail(`${label} was not saved.`, itemProblems(name, r.problems)) : r;
+        }
+        // The definition's own checks (its skills, a fixture, a masterwork's behaviours): a
+        // refused definition is not left in the draft.
+        const prefix = `items/definitions/${name.toLowerCase()}`;
+        const problems = this.check().filter((p) => {
+          const w = p.where.toLowerCase();
+          return w === prefix || w.startsWith(`${prefix}/`);
+        });
+        if (problems.length > 0) {
+          if (defDraft) {
+            upsertDraftRow(this.db, defDraft);
+          } else {
+            deleteDraftRow(this.db, "items", "definitions", name);
+          }
+          return fail(`${label} was not saved.`, itemProblems(name, problems, def));
+        }
+        return { ok: true, value: `${label} is in the draft.` };
+      }
+    }
+  }
+
+  /** A new item from the Items page, copying another's rules and picture when given. */
+  private createItem(
+    actor: ContentActor,
+    change: { name: string; display?: string; copyFrom?: string },
+    draft: readonly DraftRow[],
+  ): ContentResult<string> {
+    const d = this.draftContent(draft);
+    const name = change.name.trim();
+    if (name.length > ITEM_NEW_NAME_MAX) {
+      return fail(`A new item's name is at most ${ITEM_NEW_NAME_MAX} characters.`);
+    }
+    if (this.draftItem(d, name)) {
+      return fail(`there is already an item called ${name}`);
+    }
+    if (
+      isEngineFixture(name) ||
+      name.includes("#") ||
+      /\+\s*\d+$/.test(name) ||
+      !definesBehaviours(name)
+    ) {
+      return fail(
+        `${name} is a name the game gives its own things (a door, a sign, a +N masterwork, a #id): pick another`,
+      );
+    }
+    const from = change.copyFrom === undefined ? undefined : this.draftItem(d, change.copyFrom);
+    if (change.copyFrom !== undefined && !from) {
+      return fail(`there is no item ${change.copyFrom} to copy`);
+    }
+    const display = (change.display ?? "").trim();
+    const row = {
+      name,
+      ...(display !== "" && display !== name ? { display } : {}),
+      ...(from ? { sprite: pictureOf(from) } : {}),
+    };
+    const catRef: RowRef = { dataset: "items", part: "items", key: name };
+    // The same key checks as a catalogue row saved on the Content page: a key's form ("5 Swords"),
+    // and no key or display name that another item's key or display name already is.
+    const form = badKeyForm(name);
+    if (form) {
+      return fail(`${name} was not made: ${form}.`);
+    }
+    const clash = this.newKeyProblems(d, [{ ...catRef, op: "set", data: row }]);
+    if (clash.length > 0) {
+      return fail(`${name} was not made.`, itemProblems(name, clash));
+    }
+    const made = this.draftSet(actor, catRef, "set", row);
+    if (!made.ok) {
+      return made.problems
+        ? fail(`${name} was not made.`, itemProblems(name, made.problems))
+        : made;
+    }
+    if (!from) {
+      return {
+        ok: true,
+        value: `${name} is in the draft, with no rules yet: give it some and save.`,
+      };
+    }
+    const compiled = this.compiledDraft(this.draft());
+    const own = rowValue(d, { dataset: "items", part: "definitions", key: from.name }) as
+      | ItemDefinition
+      | undefined;
+    const copy = structuredClone(own ?? seedDefinition(from.name, resolveIn(from.name, compiled)));
+    // A skill tier that named the item it was copied from names the copy.
+    for (const b of copy.attack?.blocks ?? []) {
+      for (const t of b.tiers) {
+        if (t.subWeapon && t.subWeapon.pattern.toLowerCase() === from.name.toLowerCase()) {
+          t.subWeapon = { ...t.subWeapon, pattern: name };
+        }
+      }
+    }
+    const defRef: RowRef = { dataset: "items", part: "definitions", key: name };
+    const r = this.draftSet(actor, defRef, "set", { ...copy, name });
+    if (!r.ok) {
+      this.draftDiscard(catRef);
+      return r.problems ? fail(`${name} was not made.`, itemProblems(name, r.problems)) : r;
+    }
+    return {
+      ok: true,
+      value: `${name} is in the draft, playing as ${from.display ?? from.name} does: change what you like and publish it from the Content page.`,
+    };
+  }
+
   /** The sound panels' view, from the draft. */
   soundArtView(): ContentSoundArtView {
     const d = this.draftContent();
     return {
-      uses: Object.fromEntries(soundUses(d)),
+      // A defined item's swing sound is its definition's (issue #30).
+      uses: Object.fromEntries(soundUses(compileDefinitions(d))),
       art: d.art.sounds,
       packSounds: { ...this.packSounds },
       liveUploads: this.published.art.sounds.map((a) => a.name.toLowerCase()),
@@ -2522,11 +2998,13 @@ export class ContentService {
     const changes: PublishChange[] = draft
       .map((d): PublishChange => {
         const before = this.stateOf(layer.find((r) => sameRow(r, d)));
-        const base = rowValue(this.packData, d);
+        // What a pack update is noticed against: the pack's row, or for an item definition no pack
+        // has, what the packs' rules play for the item (issue #30).
+        const base = this.packRowValue(d);
         // Reverting drops the operator row; so does removing a row no pack has (an added one), which
         // leaves nothing behind to mark.
         const after: PublishedState | null =
-          d.op === "revert" || (d.op === "remove" && base === undefined)
+          d.op === "revert" || (d.op === "remove" && rowValue(this.packData, d) === undefined)
             ? null
             : {
                 op: d.op,
@@ -2617,6 +3095,13 @@ export class ContentService {
     const used = usedArt(next).sprites;
     for (const d of removed) {
       const key = String(d.key).toLowerCase();
+      // Its definition goes with it (issue #30): a draft change to it is dropped, and a published
+      // one removed.
+      const defRef: RowRef = { dataset: "items", part: "definitions", key: String(d.key) };
+      out = out.filter((x) => !sameRow(x, defRef));
+      if (rowValue(this.published, defRef) !== undefined) {
+        out.push({ ...d, ...defRef, op: "remove", data: null });
+      }
       // Its own picture and its own worn layer (issue #29), both named by its key.
       for (const part of ["items", "paperdoll"] as const) {
         const art = next.art[part].find((r) => r.name.toLowerCase() === key);
@@ -3127,6 +3612,14 @@ export class ContentService {
           ? { ref, op: "set", data: { ...current, retired: true } }
           : { ref, op: "remove", data: null },
       );
+      // An item that goes takes its definition with it (issue #30); a retired one keeps it, so the
+      // copies players hold keep their rules.
+      if (own[0]?.op === "remove") {
+        const defRef: RowRef = { dataset: "items", part: "definitions", key };
+        if (rowValue(base, defRef) !== undefined) {
+          own.push({ ref: defRef, op: "remove", data: null });
+        }
+      }
       // An item that goes takes its own upload with it, unless something else still draws that
       // picture (an item that borrows it as its `sprite`, an engine pile): issue #29.
       if (own[0]?.op === "remove") {
@@ -3391,6 +3884,45 @@ export class ContentService {
     return recentPublishes(this.db, limit);
   }
 
+  /** The key problems `rows` would add to `base` (a clash with another item's key or name). */
+  private newKeyProblems(base: ContentData, rows: LayerRow[]): ContentProblem[] {
+    const id = (p: ContentProblem) => `${p.where}\u0000${p.message}`;
+    const had = new Set(keyProblems(base, this.packKeys).map(id));
+    return keyProblems(applyRows(base, rows), this.packKeys).filter((p) => !had.has(id(p)));
+  }
+
+  /** Whether an installed pack's catalogue has the item. */
+  private isPackItem(name: string): boolean {
+    const k = name.toLowerCase();
+    return this.packData.items.items.some((i) => i.name.toLowerCase() === k);
+  }
+
+  /**
+   * The pack the rule tables an item definition covers come from (issue #30): the one pack that
+   * supplies them all, or "the installed packs" (no version) when several do.
+   */
+  private definitionTablesOwner(): { name: string; version: string } {
+    const owners = new Map<string, { name: string; version: string }>();
+    for (const key of DEFINITION_TABLES) {
+      const [dataset, path] = key.split(" ") as [string, string];
+      const part = path.split(".")[0] ?? "";
+      for (const label of [rowLabel({ dataset: dataset as DatasetId, part, key: null })]) {
+        const o = this.owners.get(label.toLowerCase());
+        if (o) {
+          owners.set(`${o.name}\u0000${o.version}`, o);
+        }
+      }
+    }
+    const list = [...owners.values()];
+    if (list.length === 1) {
+      return list[0] as { name: string; version: string };
+    }
+    if (list.length === 0 && this.packs.length === 1) {
+      return this.packs[0] as { name: string; version: string };
+    }
+    return { name: "the installed packs", version: "" };
+  }
+
   /**
    * The operator rows whose pack row changed since the change was made: "Classic v1.3 changed an
    * item you've customised". A pack version bump that leaves a row as it was shows nothing for
@@ -3402,24 +3934,62 @@ export class ContentService {
       // The pack that supplies the row now (a row no pack has any more: the newest pack).
       const owner = this.owners.get(rowLabel(r).toLowerCase()) ??
         this.packs.at(-1) ?? { name: "", version: "" };
-      const now = rowValue(this.packData, r);
+      const now = this.packRowValue(r);
       const nowHash = now === undefined ? null : rowHash(now);
       if (nowHash === r.baseHash) {
         continue;
       }
+      const defined = isDefinitionRow(r) && rowValue(this.packData, r) === undefined;
+      if (defined && (r.key === null || !this.isPackItem(r.key))) {
+        // The operator's own item: its definition follows no pack.
+        continue;
+      }
+      // A definition no pack supplies is compared against the rules the item plays from the
+      // packs' tables: name the pack those tables come from, or the installed packs when several do.
+      const from = defined ? this.definitionTablesOwner() : owner;
+      const who = from.version === "" ? from.name : `${from.name} v${from.version}`;
       out.push({
         dataset: r.dataset,
         part: r.part,
         key: r.key,
-        packName: owner.name,
-        packVersion: owner.version,
+        packName: from.name,
+        packVersion: from.version,
         was: r.baseData,
         now: now ?? null,
         yours: r.op === "set" ? r.data : null,
         yoursOp: r.op,
+        ...(defined
+          ? {
+              note:
+                r.op === "set"
+                  ? `${who} changed its rules for ${r.key}. Your definition still plays: a defined item no longer follows the packs' rule changes. "Was" and "now" are what the packs' rules play for it; taking the packs' version drops your definition, so the item plays their rules again.`
+                  : `${who} changed its rules for ${r.key}. You removed your definition, so the item already plays the packs' rules, "now" included; taking the packs' version or keeping yours both leave it so.`,
+            }
+          : {}),
       });
     }
     return out;
+  }
+
+  /**
+   * The pack's value of a row, which a pack notice compares against. For an item definition no pack
+   * has (issue #30): what the packs' rule tables play for the item, as a definition, so a pack
+   * update that changes those rules is noticed under the definition that overrides them.
+   */
+  private packRowValue(ref: RowRef): unknown {
+    const v = rowValue(this.packData, ref);
+    if (v !== undefined || !isDefinitionRow(ref) || ref.key === null) {
+      return v;
+    }
+    // An item no pack has (the operator's own) has no pack rules to follow: no pack value, so no
+    // notice, and taking "the pack's version" can never drop its definition.
+    if (!this.isPackItem(ref.key)) {
+      return undefined;
+    }
+    if (this.packCompiled?.from !== this.packData) {
+      this.packCompiled = { from: this.packData, data: compileDefinitions(this.packData) };
+    }
+    return seedDefinition(ref.key, resolveIn(ref.key, this.packCompiled.data));
   }
 
   /** Takes the pack's new version of a row: the operator's change goes (as a publish, so it can be undone). */

@@ -10,10 +10,17 @@ const strictRow = <T extends z.ZodRawShape>(shape: T) => z.strictObject({ ...pat
 /** The equip slot types. */
 export const equipSlotSchema = z.enum(["Head", "Body", "LeftHand", "RightHand", "Feet", "Ring"]);
 /** The `RingE`-style slot names the original uses (`RingE`, `HeadE` …). */
-const slotVarSchema = z.enum(["RingE", "HeadE", "BodyE", "RightHandE", "LeftHandE", "FeetE"]);
+export const slotVarSchema = z.enum([
+  "RingE",
+  "HeadE",
+  "BodyE",
+  "RightHandE",
+  "LeftHandE",
+  "FeetE",
+]);
 
 /** The worn slots, named as `Equipment` names them. */
-const wornSlotSchema = z.enum(["head", "body", "weapon", "offHand", "feet", "ring"]);
+export const wornSlotSchema = z.enum(["head", "body", "weapon", "offHand", "feet", "ring"]);
 const paperdollLayerSchema = z.enum(["weapon", "shield", "helm", "gloves", "body"]);
 
 /**
@@ -191,7 +198,14 @@ export const itemRulesDataSchema = z
         }),
       ),
       /** The eat/drink lines, last match wins. `& SelInventory &` marks the name. */
-      messages: z.array(z.strictObject({ ...pattern, text: z.string() })),
+      /**
+       * `read`: whether the row is a book's read line (never a meal's). Left out, a row is a read
+       * line when its pattern names a `book` item; an item definition's compile writes it on every
+       * row from the uncompiled behaviours, so one item's behaviours never reclassify a shared row.
+       */
+      messages: z.array(
+        z.strictObject({ ...pattern, text: z.string(), read: z.boolean().optional() }),
+      ),
       /** Not usable, with its own line in place of "You cannot use the X."; last match wins. */
       refusals: z.array(z.strictObject({ ...pattern, text: z.string().min(1) })),
     }),

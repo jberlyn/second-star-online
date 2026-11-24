@@ -7,10 +7,13 @@
  */
 import { DATASET_SCHEMAS, FORMULA_MAX, formulaRange } from "@secondstaronline/data/schema";
 import {
+  behaviourName,
   buildContentStore,
   type ContentData,
+  compileDefinitions,
   DATASET_IDS,
   type DatasetId,
+  definesBehaviours,
   isEngineFixture,
   lingoContains,
   lingoEq,
@@ -253,6 +256,11 @@ export type ReferenceKind =
    * cleanup never touches it.
    */
   | "itemPattern"
+  /**
+   * The item an item definition is for (issue #30): any catalogue item, a retired one too (its
+   * copies still play by it). The definition goes with the item when it is removed.
+   */
+  | "definedItem"
   | "skill"
   | "shopItem"
   | "lootItem";
@@ -518,6 +526,24 @@ export function referencesOf(data: ContentData): Reference[] {
     add(replies, ["oraku", "item"], "item", oraku.item, null);
     add(replies, ["oraku", "reward"], "item", oraku.reward, null);
   }
+  // An item definition is the item's: its row goes with it, and its skills must exist.
+  for (const d of data.items.definitions ?? []) {
+    const row: RowRef = { dataset: "items", part: "definitions", key: d.name };
+    add(row, ["name"], "definedItem", d.name, []);
+    d.trains?.forEach((s, j) => {
+      add(row, ["trains", j], "skill", s, null);
+    });
+    d.attack?.blocks?.forEach((b, i) => {
+      b.tiers.forEach((t, j) => {
+        (t.when ?? []).forEach((w, k) => {
+          const name = /^(\w+) [<>] \d+$/.exec(w)?.[1];
+          if (name && name !== "level") {
+            add(row, ["attack", "blocks", i, "tiers", j, "when", k], "skill", name, null);
+          }
+        });
+      });
+    });
+  }
   // A deed is an item: its row goes with it.
   for (const d of data.houses.deeds) {
     add({ dataset: "houses", part: "deeds", key: d.deed }, ["deed"], "item", d.deed, []);
@@ -711,9 +737,19 @@ export function brokenReferences(data: ContentData): Reference[] {
  * stay, but no content may make, sell, buy or use it (issue #28).
  */
 export function unresolved(data: ContentData): (r: Reference) => boolean {
+  // The definitions compiled once (kept for this data object), then the retired items left out: a
+  // fresh object here would compile every definition again.
+  const compiled = compileDefinitions(data);
   const live: ContentData = data.items.items.some((i) => i.retired)
-    ? { ...data, items: { ...data.items, items: data.items.items.filter((i) => !i.retired) } }
-    : data;
+    ? {
+        ...compiled,
+        items: {
+          ...compiled.items,
+          items: compiled.items.items.filter((i) => !i.retired),
+          definitions: [],
+        },
+      }
+    : compiled;
   const items = new Set(live.items.items.map((i) => i.name.toLowerCase()));
   const fixtures = new Set(data.items.fixtures.map((f) => f.toLowerCase()));
   const monsters = new Set(data.monsters.monsters.map((m) => m.name.toLowerCase()));
@@ -724,6 +760,8 @@ export function unresolved(data: ContentData): (r: Reference) => boolean {
     switch (r.kind) {
       case "item":
         return !items.has(n);
+      case "definedItem":
+        return !data.items.items.some((i) => i.name.toLowerCase() === n);
       case "itemOrFixture":
         return !items.has(n) && !fixtures.has(n);
       case "itemPattern":
@@ -785,6 +823,8 @@ export function referenceMessage(r: Reference): string {
       return `names an NPC that does not exist: ${name}`;
     case "itemPattern":
       return `matches no item (or only retired ones): ${name}`;
+    case "definedItem":
+      return `is the definition of an item that does not exist: ${name}`;
     default:
       return `names an item that does not exist (or is retired): ${name}`;
   }
@@ -817,6 +857,40 @@ export function withNpcSaves(data: ContentData, saves: readonly NpcSave[]): Cont
 }
 
 /** Every pre-publish check, in order: schemas first, then (if they pass) keys and references. */
+/**
+ * What an item definition may not say (issue #30), beyond its schema and references: an engine
+ * fixture (a door, a sign) has none, a masterwork-style `+N` item takes its behaviours from its
+ * base item, and each worn slot has one swing cooldown.
+ */
+export function definitionProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  for (const d of data.items.definitions ?? []) {
+    const where = `items/definitions/${d.name}`;
+    if (isEngineFixture(d.name)) {
+      out.push({ where, message: `${d.name} is an engine fixture: it has no definition` });
+    }
+    if (d.behaviours !== undefined && !definesBehaviours(d.name)) {
+      out.push({
+        where,
+        message: `${d.name} takes its behaviours from ${behaviourName(d.name)}: give it none`,
+      });
+    }
+    // Two-handed takes the off hand too: only a weapon held in the weapon hand can be.
+    if (d.twoHanded && d.slot !== "LeftHand") {
+      out.push({
+        where,
+        message: `${d.name} is two-handed but ${d.slot === undefined ? "has no equip slot" : `goes in the ${d.slot} slot`}: only a LeftHand weapon can be two-handed`,
+      });
+    }
+    const slots = (d.cooldowns ?? []).map((c) => c.slot);
+    const twice = slots.find((s, i) => slots.indexOf(s) !== i);
+    if (twice) {
+      out.push({ where, message: `two swing cooldowns for the ${twice} slot: give it one` });
+    }
+  }
+  return out;
+}
+
 export function checkStore(
   next: ContentData,
   published: ContentData,
@@ -829,6 +903,7 @@ export function checkStore(
   }
   return [
     ...keyProblems(next, packKeys),
+    ...definitionProblems(next),
     ...skillProblems(next, published),
     ...progressionProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),

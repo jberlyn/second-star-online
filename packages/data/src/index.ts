@@ -51,7 +51,7 @@ export type { GatherData, HarvestNode, YieldTable } from "../schema/gather.ts";
 export type { HelpData, HelpTopic } from "../schema/help.ts";
 export type { HouseData, HouseType } from "../schema/houses.ts";
 export type { EquipSlot, ItemBehaviour, ItemRulesData } from "../schema/item-rules.ts";
-export type { Item, ItemsData } from "../schema/items.ts";
+export type { Item, ItemDefinition, ItemsData } from "../schema/items.ts";
 export type { JailMapData } from "../schema/jail-map.ts";
 export type {
   MeleeAffinity,

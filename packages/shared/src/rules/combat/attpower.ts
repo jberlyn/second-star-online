@@ -13,6 +13,7 @@ import type { AttPowerBase, AttPowerTier, RolledValue } from "@secondstaronline/
 import { content } from "../../content/store.ts";
 import { type Fighter, skillValue } from "../core/fighter.ts";
 import { lingoContains, lingoDiv, lingoEq, type Rng } from "../core/lingo.ts";
+import { excepted, ruleMatches } from "../core/patterns.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 import { hasBehaviour } from "../inventory/behaviours.ts";
 import { type CrystalColour, crystalColour } from "../inventory/inventory.ts";
@@ -168,7 +169,7 @@ export function attackPower(
   let power = 1;
   // Base rows by `contains`; every match re-rolls, the last one wins.
   for (const row of content().attPower.attPower.base) {
-    if (row.match === "exact" ? lingoEq(w, row.pattern) : lingoContains(w, row.pattern)) {
+    if (ruleMatches(w, row)) {
       power = rollBase(row, f.str, rng);
     }
   }
@@ -178,7 +179,7 @@ export function attackPower(
   power += gearBonus(f.equip, "attack"); // Argon's Ring +3
   const isBow = hasBehaviour(w, "bow");
   for (const row of content().attPower.attPower.exactOverrides) {
-    if (lingoEq(w, row.pattern)) {
+    if (lingoEq(w, row.pattern) && !excepted(row, w)) {
       power = rollBase(row, f.str, rng);
     }
   }
@@ -223,9 +224,10 @@ export function attackPower(
   // Skill blocks in source order, the Thrust tiers last; an exact block covers its masterworks.
   for (const block of content().attPower.attPower.skillBlocks) {
     const hit =
-      block.weaponMatch === "any" ||
-      (block.weaponMatch === "contains" && lingoContains(w, block.pattern ?? "")) ||
-      (block.weaponMatch === "exact" && weaponIs(w, block.pattern ?? ""));
+      !excepted(block, w) &&
+      (block.weaponMatch === "any" ||
+        (block.weaponMatch === "contains" && lingoContains(w, block.pattern ?? "")) ||
+        (block.weaponMatch === "exact" && weaponIs(w, block.pattern ?? "")));
     if (!hit) {
       continue;
     }

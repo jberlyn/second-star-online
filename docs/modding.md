@@ -244,6 +244,44 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 - **Kill training:** which skills a kill trains comes from `classes.json` `skillGain.weaponSkills`; with no row there, a kill with `"Moonblade"` trains nothing. Add `{ "weapon": "Moonblade", "match": "exact", "skills": ["Slash", "Thrust", "Swordsmanship", "Fencing"] }`.
 - **Breaking:** items break only if listed in `breaks.weapon.items` and `breaks.damaged`.
 
+### Item definitions
+
+An **item definition** (`items.json` `definitions`, keyed by the item's name) is one item's rules in one record, in place of rows spread over the tables above. The content store compiles each definition into exact rows for that item, and the pack's rows that matched the item stop applying to it in every table the definition covers, including the every-match tables (behaviours, skill blocks, armour, gear, use effects). A defined item plays only what its definition says there, whatever `contains` rows its name would match; the rest of its family keeps them (defining `"Long Sword"` leaves `"Broad Sword"` and `"Elven Long Sword"` on the pack's rows).
+
+On a running server, the Control Panel's [Items page](running-a-server.md#the-items-page) writes these for you: it opens any item as a definition of what it plays now, and saves the definition when you change it.
+
+The Moonblade above, as one definition (the catalogue entry and the paperdoll alias stay where they are):
+
+```json
+{
+  "name": "Moonblade",
+  "slot": "LeftHand",
+  "strength": 15,
+  "behaviours": ["sword"],
+  "attack": { "base": [{ "flat": 9, "randomN": 6 }] },
+  "trains": ["Slash", "Thrust", "Swordsmanship", "Fencing"]
+}
+```
+
+| Field | Table it compiles into |
+|---|---|
+| `slot`, `strength`, `twoHanded: true` | `equip.slots`, `equip.strength`, `equip.twoHanded` |
+| `behaviours` | `behaviours` (one row per behaviour) |
+| `attack.base`, `attack.overrides` | `attPower.base`, `attPower.exactOverrides`: `{ flat, randomN, strengthHalf? }`, every roll drawing in order |
+| `attack.blocks` | `attPower.skillBlocks`: `[{ tiers }]`, the tiers as a skill block's |
+| `armour`, `elemental`, `spellDefense` | `armour.rows` (`{ slot, hitMe, hitMe2 }`), `armour.elemental`, `armour.spell.rows` |
+| `gear`, `cooldowns`, `sound` | `gear`, `swing.cooldowns` (one per worn slot), `swing.sounds` (null: silent) |
+| `use.usable`, `use.silent`, `use.effects`, `use.message`, `use.refusal` | `use.usable`, `use.silent`, `use.effects`, `use.messages`, `use.refusals` |
+| `trains` | `classes.json` `skillGain.weaponSkills` |
+
+- **Left out means none.** A definition with only a `name` gives the item no slot, no behaviours, no attack rolls (power 1, then the Strength tiers), no skill tiers and no training. The every-weapon Thrust block is a skill block too: an item that should keep it lists it in `attack.blocks`.
+- **Not covered yet:** tools and swing ladders, requirements, menus, books, breaking, the paperdoll, ground and container rules keep the tables' rows for a defined item too.
+- **Names:** a definition is for its catalogue name exactly. Behaviour rows test a name without its `#id` or `+N`, so a runtime `"Long Sword+3"` has a defined Long Sword's behaviours but the tables' slot and power; a masterwork (`"Knight's Sword +1"`) takes its behaviours from its base item, so its definition sets none. A base item's definition leaves its masterworks on the pack's rows (or their own definitions). An engine fixture (a door, a sign) has none.
+- **Checks:** the schema's limits (Strength 0–200, attack `flat` −9999–9999 and `randomN` 0–9999, armour ±999, use effects ±99999), an item the catalogue has (a retired one too), skills that exist, and one swing cooldown per slot. Removing an item takes its definition with it.
+- **Editing a pack's item:** an operator who edits an item gets a definition seeded from what it plays now (saved unchanged, it plays identically). From then on the item no longer follows the pack's rule changes; when a pack update changes what the pack's rules play for it, the Content page raises a notice for the definition, and taking the pack's version drops the definition. `seedDefinition` and `resolveIn` in `packages/shared/src/content/definitions.ts` give an item's current rules as a definition.
+
+Definitions are edited on the Control Panel's [Items page](running-a-server.md#the-items-page), which shows each rule group with where it comes from, or as JSON on the Content page (dataset `items`, part `definitions`); both refuse a save over a change they have not seen.
+
 ## Tiles (`tiles.json`)
 
 `packages/data/content/tiles.json` contains `walkable` (the 2-character walkable code whitelist), `catalogue` (tile codes, hover names and flags), and `defaults` (`ground`, `empty`, `shadow`, `editorTile`).

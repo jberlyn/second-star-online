@@ -113,6 +113,12 @@ export {
   type SpellEffectRow,
   type VehicleBalance,
 } from "./balance.ts";
+export {
+  equipSlotSchema,
+  itemBehaviourSchema,
+  slotVarSchema,
+  wornSlotSchema,
+} from "./item-rules.ts";
 export { comparePackVersions, PACK_FORMAT, type PackManifest, packManifestSchema } from "./pack.ts";
 export { checkProgression, FORMULA_MAX, formulaRange, skillDependents } from "./progression.ts";
 export {

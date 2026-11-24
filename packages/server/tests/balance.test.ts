@@ -595,13 +595,14 @@ describe("the Balance page on a running server", () => {
           expect: listed ?? "",
         }),
       ).toMatchObject({ ok: true });
-      // Rows of other datasets name no revision, as before.
+      // Rows of other datasets name no revision, as before (an item's catalogue row does since
+      // #30: the Items page renames it).
       const items = contentIntent(server.content, ADMIN, {
         t: "contentRow",
         seq: 10,
-        dataset: "items",
-        part: "items",
-        key: "Apple",
+        dataset: "monsters",
+        part: "monsters",
+        key: "Slime",
       }) as { row: { revision?: string } };
       expect(items.row.revision).toBeUndefined();
     } finally {

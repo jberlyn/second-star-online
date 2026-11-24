@@ -17,6 +17,7 @@ import type {
   ArtWorn,
   EquipSlot,
   Item,
+  ItemDefinition,
   ItemRulesData,
 } from "@secondstaronline/data";
 
@@ -423,6 +424,38 @@ export const contentBalanceSetSchema = z.strictObject({
   expect: z.string().regex(/^[0-9a-f]{16}$/),
 });
 
+/**
+ * Asks for the Items page's view (issue #30): the item list, and with `name` the item open in its
+ * form.
+ */
+export const contentItemsSchema = z.strictObject({
+  t: z.literal("contentItems"),
+  seq,
+  name: z.string().min(1).max(80).optional(),
+});
+
+/**
+ * One Items page change (issue #30). `set` writes the item's definition (`data`); `revert` drops
+ * it, so the item follows the pack's rules again; `discard` drops the draft's changes to the item;
+ * `rename` sets its display name (`display`, empty for none); `create` adds a new item `name`,
+ * copying `copyFrom`'s rules and picture if given. `expect` is the item as the page last showed it
+ * (`ContentItemView.fingerprint`); `create` names none.
+ */
+export const contentItemSetSchema = z.strictObject({
+  t: z.literal("contentItemSet"),
+  seq,
+  /** An existing item's key (a catalogue key may be 80 long); a new item's is at most 40. */
+  name: z.string().trim().min(1).max(80),
+  op: z.enum(["set", "revert", "discard", "rename", "create"]),
+  data: z.unknown().optional(),
+  display: z.string().max(40).optional(),
+  copyFrom: z.string().min(1).max(80).optional(),
+  expect: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .optional(),
+});
+
 /** Asks for the sound panels' view (issue #29, stage 7). */
 export const contentSoundArtSchema = z.strictObject({ t: z.literal("contentSoundArt"), seq });
 
@@ -769,6 +802,85 @@ export interface ContentBalanceView {
   otherDraft: number;
 }
 
+/** One item in the Items page's list (issue #30). */
+export interface ItemListEntry {
+  name: string;
+  /** The name players see. */
+  display: string;
+  /** What it is, from what it plays now. */
+  kind: "weapon" | "armour" | "food" | "other";
+  /**
+   * `pack`: the pack's item, unchanged; `edited`: a pack item with a definition or a catalogue
+   * change of the operator's; `yours`: an item the operator added.
+   */
+  state: "pack" | "edited" | "yours";
+  retired: boolean;
+  /** The draft changes it. */
+  pending: boolean;
+}
+
+/** Where one table of an item's rules comes from, as the Items page says it. */
+export interface ItemRuleSource {
+  /** The form's group (`equip`, `attack`, `armour`, `use`). */
+  group: string;
+  /** What the table is (`Slot`, `Attack roll`). */
+  label: string;
+  /** `your definition`, or the pack's rows that decide it (`contains "Sword" (row 12)`). */
+  from: string;
+}
+
+/** The item open in the Items page's form (issue #30). */
+export interface ContentItemView {
+  name: string;
+  /** The display name the draft gives it ("" for none). */
+  display: string;
+  retired: boolean;
+  /** The installed packs have the item. */
+  inPack: boolean;
+  /**
+   * What the form holds: the draft's definition, or (with none) what the item plays in the draft,
+   * as a definition. Saved unchanged it plays identically.
+   */
+  form: ItemDefinition;
+  /** The draft holds a definition for it (its own row). */
+  defined: boolean;
+  /** What the pack's own rules play for it (as a definition), or null for an item of yours. */
+  pack: ItemDefinition | null;
+  /** Each covered table's source in the draft. */
+  sources: ItemRuleSource[];
+  /** A definition of the operator's is published. */
+  edited: boolean;
+  /** The draft's change to its definition, and to its catalogue row. */
+  pending: {
+    definition: "set" | "revert" | "remove" | null;
+    catalogue: "set" | "remove" | "revert" | null;
+  };
+  /** The item as shown, for `contentItemSet`'s `expect`. */
+  fingerprint: string;
+  /** A pack update changed the rules under its definition. */
+  notice: { packName: string; packVersion: string; note: string } | null;
+  /** The values the form's picks offer. */
+  choices: {
+    slots: string[];
+    slotVars: string[];
+    wornSlots: string[];
+    behaviours: string[];
+    powers: string[];
+    stats: string[];
+    skills: string[];
+  };
+}
+
+/** The Items page's view: the list, and the open item. */
+export interface ContentItemsView {
+  items: ItemListEntry[];
+  item: ContentItemView | null;
+  /** Draft changes outside these items' rows, published with them from the Content page. */
+  otherDraft: number;
+  /** Draft changes to items' catalogue rows and definitions. */
+  itemDraft: number;
+}
+
 /** A problem a check found, and where. */
 export interface ContentProblemView {
   where: string;
@@ -807,6 +919,8 @@ export interface ContentNoticeView extends ContentRowRef {
   now: unknown;
   yours: unknown;
   yoursOp: "set" | "remove";
+  /** What the notice means, when the row is not simply the pack's (an item definition, #30). */
+  note?: string;
 }
 
 /** A dataset and its top-level fields, for browsing rows. */
@@ -920,6 +1034,13 @@ export type ContentServerMsg =
       t: "contentBalance";
       seq: number;
       view: ContentBalanceView;
+      result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
+    }
+  /** The Items page's view, after a `contentItems` ask or with a `contentItemSet`'s answer. */
+  | {
+      t: "contentItems";
+      seq: number;
+      view: ContentItemsView;
       result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
     }
   /** A tileset cut into tiles (cells showing nothing left out), or why it could not be. */

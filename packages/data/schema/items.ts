@@ -1,7 +1,16 @@
 /** Schema for the editable item catalogue. */
 import { z } from "zod";
 
+import { attPowerTierSchema } from "./attpower.ts";
+import {
+  equipSlotSchema,
+  itemBehaviourSchema,
+  slotVarSchema,
+  wornSlotSchema,
+} from "./item-rules.ts";
+
 const strings = z.array(z.string());
+const int = z.number().int();
 
 /**
  * One catalogue entry. The game reads the name, the display name, the picture (`sprite`) and the
@@ -43,6 +52,119 @@ export const itemSchema = z.strictObject({
     .optional(),
 });
 
+/** A base or override roll in an item definition: `flat + random(randomN)`, and the Gold Axe's Strength roll. */
+const definitionRollSchema = z.strictObject({
+  flat: int.min(-9999).max(9999),
+  randomN: int.min(0).max(9999),
+  strengthHalf: z.boolean().optional(),
+});
+
+/**
+ * An item definition (issue #30): one item's rules in one record, keyed by its catalogue name. The
+ * content store compiles it into exact rows for that item in the rule tables it covers (equip,
+ * attack, armour, gear, swing, use, weapon skills and behaviours), and the pack's rows that matched
+ * the item stop applying to it there: a defined item plays only what its definition says. A field
+ * left out is "none" (no slot row, no armour, no behaviours…). Tables a definition does not cover
+ * yet (tools, menus, books, breaking, ground and containers, the paperdoll) keep the pack's rows.
+ * A masterwork (`Knight's Sword +1`) takes its behaviours from its base item, so its definition
+ * sets none.
+ */
+export const itemDefinitionSchema = z.strictObject({
+  /** The catalogue item's key. */
+  name: z.string().min(1),
+  /** `equip.slots`: the slot it is equipped in ("No" refuses Equip). */
+  slot: z.union([equipSlotSchema, z.literal("No")]).optional(),
+  /** `equip.strength`: the Strength needed to equip it. */
+  strength: int.min(0).max(200).optional(),
+  /** `equip.twoHanded`: it takes both hands. */
+  twoHanded: z.literal(true).optional(),
+  /** `behaviours`: what it does (a bow, a key, a sword for Firesword…). */
+  behaviours: z.array(itemBehaviourSchema).optional(),
+  /** `attPower`: its attack power. */
+  attack: z
+    .strictObject({
+      /** `attPower.base`: every roll draws, in order, and the last stands. */
+      base: z.array(definitionRollSchema).optional(),
+      /** `attPower.exactOverrides`: rolled after the gear bonus, replacing the power. */
+      overrides: z.array(definitionRollSchema).optional(),
+      /** `attPower.skillBlocks`: the skill tiers added to its power, block by block. */
+      blocks: z.array(z.strictObject({ tiers: z.array(attPowerTierSchema) })).optional(),
+    })
+    .optional(),
+  /** `armour.rows`: mitigation while worn in the row's slot. */
+  armour: z
+    .array(
+      z.strictObject({
+        slot: slotVarSchema,
+        hitMe: int.min(-999).max(999),
+        hitMe2: int.min(-999).max(999).nullable(),
+      }),
+    )
+    .optional(),
+  /** `armour.elemental`: elemental armour against a trigger. */
+  elemental: z
+    .array(
+      z.strictObject({
+        handler: z.enum(["HitMe", "HitMe2"]),
+        trigger: z.string(),
+        slot: slotVarSchema,
+        delta: int.min(-999).max(999),
+      }),
+    )
+    .optional(),
+  /** `armour.spell.rows`: spell damage it adds or takes off while worn. */
+  spellDefense: z
+    .array(z.strictObject({ slot: slotVarSchema, delta: int.min(-999).max(999) }))
+    .optional(),
+  /** `gear`: power it adds while worn. */
+  gear: z
+    .array(
+      z.strictObject({
+        slot: wornSlotSchema,
+        power: z.enum(["spell", "blackArts", "martialArts", "attack", "killXp"]),
+        add: int.min(-999).max(999),
+      }),
+    )
+    .optional(),
+  /** `swing.cooldowns`: the swing delays it sets while worn, one per worn slot. */
+  cooldowns: z
+    .array(
+      z.strictObject({
+        slot: wornSlotSchema,
+        atDelay: int.min(0).max(1000),
+        actionDelay: int.min(0).max(1000),
+      }),
+    )
+    .optional(),
+  /** `swing.sounds`: its swing sound (null: silent). Left out: the default swing. */
+  sound: z.string().min(1).nullable().optional(),
+  /** `use`: what Use does with it. */
+  use: z
+    .strictObject({
+      /** `use.usable`: Use accepts it. */
+      usable: z.literal(true).optional(),
+      /** `use.silent`: Use says and does nothing. */
+      silent: z.literal(true).optional(),
+      /** `use.effects`: each adds `flat + random(randomN)` to the stat. */
+      effects: z
+        .array(
+          z.strictObject({
+            stat: z.enum(["HP", "SP", "Hunger"]),
+            flat: int.min(-99999).max(99999),
+            randomN: int.min(0).max(99999).nullable(),
+          }),
+        )
+        .optional(),
+      /** `use.messages`: the eat or drink line (`" & SelInventory & "` marks the name). */
+      message: z.string().optional(),
+      /** `use.refusals`: the line Use shows in place of "You cannot use the X.". */
+      refusal: z.string().min(1).optional(),
+    })
+    .optional(),
+  /** `skillGain.weaponSkills`: the skills a kill with it trains. */
+  trains: z.array(z.string()).min(1).optional(),
+});
+
 /** The part of items.json that `data:build` emits. */
 export const itemsDataSchema = z.strictObject({
   items: z.array(itemSchema),
@@ -63,7 +185,14 @@ export const itemsDataSchema = z.strictObject({
    * order. The editor places these by name.
    */
   editorItems: strings,
+  /**
+   * Item definitions (issue #30), keyed by item name: one record of an item's rules, which the
+   * store compiles into exact rows that win in every table they cover. Classic ships none: its
+   * items are defined by its rule tables.
+   */
+  definitions: z.array(itemDefinitionSchema).optional(),
 });
 
 export type Item = z.infer<typeof itemSchema>;
 export type ItemsData = z.infer<typeof itemsDataSchema>;
+export type ItemDefinition = z.infer<typeof itemDefinitionSchema>;

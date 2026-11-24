@@ -214,6 +214,13 @@ describe("Only server systems create items", () => {
       // fingerprint as the page saw it. Its `data` is the row's numbers, checked against the
       // dataset's schema and limits; nothing here names an item.
       contentBalanceSet: ["part:string", "key:string", "expect:string"],
+      // The Items page (issue #30, contentEditor permission): an item by key, a new item's key and
+      // display name, the item a new one copies, and the item's fingerprint as the page saw it.
+      // A definition (`data`) changes what an item does, never makes one: the server checks it
+      // against the schema and the pre-publish checks; a new item goes into the draft, published
+      // and undone like any other row.
+      contentItems: ["name:string"],
+      contentItemSet: ["name:string", "display:string", "copyFrom:string", "expect:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],

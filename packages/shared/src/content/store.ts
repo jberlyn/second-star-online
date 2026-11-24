@@ -77,7 +77,7 @@ export type DatasetId = keyof ContentData;
  * The format of the store file the server sends clients (`/content/<hash>.json`). A client built
  * for another format reloads to get the matching client.
  */
-export const CONTENT_FORMAT = 7;
+export const CONTENT_FORMAT = 8;
 
 /** The datasets only the server reads. */
 export const SERVER_ONLY_DATASETS = [
@@ -128,8 +128,27 @@ export interface ContentStore extends Omit<ContentData, "balance"> {
   monster(name: string): Monster | undefined;
 }
 
-/** Builds a store's lookups over a set of datasets. The data is not copied. */
-export function buildContentStore(data: ContentData, hash = ""): ContentStore {
+/**
+ * Compiles item definitions into the rule tables (content/definitions.ts, issue #30). Registered by
+ * that module when it loads: it imports rules that import this module, so this module cannot import
+ * it.
+ */
+let compileItems: ((data: ContentData) => ContentData) | null = null;
+
+/** Registers the item-definition compile (content/definitions.ts calls it once, as it loads). */
+export function setDefinitionCompiler(fn: (data: ContentData) => ContentData): void {
+  compileItems = fn;
+}
+
+/**
+ * Builds a store's lookups over a set of datasets, with its item definitions compiled into the rule
+ * tables. The data is not changed.
+ */
+export function buildContentStore(raw: ContentData, hash = ""): ContentStore {
+  if (!compileItems && (raw.items.definitions?.length ?? 0) > 0) {
+    throw new Error("item definitions need content/definitions.ts loaded");
+  }
+  const data = compileItems ? compileItems(raw) : raw;
   const items = new Map<string, Item>();
   for (const i of data.items.items) {
     if (!items.has(i.name.toLowerCase())) {

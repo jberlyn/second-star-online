@@ -209,10 +209,30 @@ export interface ContentPage {
   published(): void;
   /** Opens a row in the editor (the Balance page's links to other datasets' rows). */
   openRow(r: ContentRowRef): void;
+  /**
+   * The Items page's picture and worn panels (issue #30): #29's panels, made once, talking to the
+   * server through this page. `saved` runs when one of them put a change in the draft. Null with no
+   * art to draw them.
+   */
+  itemPanels(saved: () => void): ItemPanels | null;
   /** Unsaved JSON in the row editor. */
   changes(): number;
   discard(): void;
   reset(): void;
+}
+
+/** #29's picture and worn panels for one item, as the Items page shows them. */
+export interface ItemPanels {
+  readonly el: HTMLElement;
+  /**
+   * Shows the item's picture and, when it is worn, its worn layer (the draft's). Each panel is
+   * refreshed on its own: one holding a picture or frames not yet saved is left as it is, unless
+   * `force` (the page's edits were dropped).
+   */
+  show(key: string, force?: boolean): void;
+  clear(): void;
+  /** A picture or frames set up and not yet saved to the draft. */
+  pending(): boolean;
 }
 
 /** Just a row's ref (a notice or draft row carries more, which an intent's strict schema refuses). */
@@ -463,7 +483,14 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
             actions.notice(resultSeq, refOf(n), false);
           }),
         );
-        box.append(p, diffs, buttons);
+        box.append(p);
+        if (n.note) {
+          const note = document.createElement("p");
+          note.className = "content-notice-note";
+          note.textContent = n.note;
+          box.append(note);
+        }
+        box.append(diffs, buttons);
         return box;
       }),
     );
@@ -1131,6 +1158,66 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         .catch(() => wornPicker.clear());
     }
   }
+  /** The Items page's panels, once made. */
+  let itemPanelsMade: ItemPanels | null = null;
+  function itemPanels(saved: () => void): ItemPanels | null {
+    if (itemPanelsMade || !artOptions || !wornOptions) {
+      return itemPanelsMade;
+    }
+    const pic = createItemArtPicker({ ...artOptions, saved });
+    const worn = createWornArtPicker({ ...wornOptions, saved }, "items-worn-art");
+    const el = document.createElement("div");
+    el.className = "items-pictures";
+    el.append(pic.el, worn.el);
+    let mine = 0;
+    let shown: string | null = null;
+    itemPanelsMade = {
+      el,
+      show(key, force = false) {
+        const at = ++mine;
+        const other = shown === null || shown.toLowerCase() !== key.toLowerCase();
+        shown = key;
+        const same = (n: string) => n.toLowerCase() === key.toLowerCase();
+        // Another item, or dropped edits, refresh both; otherwise a panel with unsaved work keeps
+        // it (saving the picture must not wipe frames set up beside it).
+        const keepPic = !force && !other && pic.pending();
+        const keepWorn = !force && !other && worn.pending();
+        void askItemArt()
+          .then((view) => {
+            if (at !== mine || shown === null || keepPic) {
+              return;
+            }
+            const item = view.items.find((i) => same(i.name));
+            if (item) {
+              pic.show(item, view);
+            } else {
+              pic.clear();
+            }
+          })
+          .catch(() => pic.clear());
+        void askWornArt()
+          .then((view) => {
+            if (at !== mine || shown === null || keepWorn) {
+              return;
+            }
+            if (view.items.some((i) => same(i.name))) {
+              worn.show({ kind: "item", item: key }, view);
+            } else {
+              worn.clear();
+            }
+          })
+          .catch(() => worn.clear());
+      },
+      clear() {
+        mine += 1;
+        shown = null;
+        pic.clear();
+        worn.clear();
+      },
+      pending: () => pic.pending() || worn.pending(),
+    };
+    return itemPanelsMade;
+  }
   function hidePicker(): void {
     pickerSeq += 1;
     bodySeq += 1;
@@ -1710,6 +1797,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     el: root,
     onShow: refreshAll,
     openRow,
+    itemPanels,
     onHide: () => sounds?.stop(),
     receive(msg) {
       switch (msg.t) {

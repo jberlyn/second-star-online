@@ -185,7 +185,7 @@ export function useItem(
   // The eat/drink line, last match wins; a potion's is "You drink the <name>."
   const msg = lastMatch(
     // The book rows (in Classic, those whose pattern holds "Book") are the read lines, not a meal's.
-    R.use.messages.filter((m) => !hasBehaviour(m.pattern, "book")),
+    R.use.messages.filter((m) => !(m.read ?? hasBehaviour(m.pattern, "book"))),
     name,
   );
   let text = msg ? msg.text.replace('" & SelInventory & "', name) : null;

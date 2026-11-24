@@ -1509,6 +1509,34 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(2);
   });
 
+  test("the Items page's intents need the Content page's permission (issue #30)", async () => {
+    const { game, make } = await start();
+    const bob = await make("Bob");
+    sent.length = 0;
+    game.intent(bob.characterId, { t: "contentItems", seq: 1, name: "Long Sword" });
+    game.intent(bob.characterId, {
+      t: "contentItemSet",
+      seq: 2,
+      name: "Long Sword",
+      op: "set",
+      data: { name: "Long Sword", strength: 0 },
+      expect: "0".repeat(16),
+    });
+    game.intent(bob.characterId, {
+      t: "contentItemSet",
+      seq: 3,
+      name: "Bob's Sword",
+      op: "create",
+    });
+    // Nothing comes back, and each is cheat-logged.
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 3).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(3);
+  });
+
   test("a publish that lowers a vehicle's full hull lowers a rider's hull and resends it (issue #19)", async () => {
     const { game, make } = await start();
     const ann = await make("Ann", "administrator");

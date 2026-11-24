@@ -1033,6 +1033,106 @@ body {
 .balance-stale {
   color: #ffb0a8;
 }
+/* The Items page (ui/items-page.ts): the item list beside the open item's form. */
+.items-new {
+  margin: 12px 20px 0;
+}
+.items-new > summary {
+  cursor: pointer;
+  color: #fff;
+}
+.items-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 20px;
+  align-items: flex-start;
+}
+.items-list-box {
+  flex: 0 1 300px;
+  min-width: 220px;
+}
+.items-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+.items-list-item {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-bottom: 1px solid #262626;
+  background: transparent;
+  color: #ddd;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.items-list-item:hover,
+.items-list-item[aria-current="true"] {
+  background: #23324f;
+}
+.items-list-meta {
+  color: #8b96ad;
+  font-size: 11px;
+}
+.items-form {
+  flex: 1 1 480px;
+  min-width: 300px;
+  padding: 12px 16px;
+  background: #1d1d1d;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+.items-form[hidden],
+.items-page .balance-stale[hidden] {
+  display: none;
+}
+.items-rules {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.items-sources {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: #b8c4dd;
+  font-size: 12px;
+}
+.items-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.items-check {
+  white-space: nowrap;
+  color: #ddd;
+}
+.items-list-editor {
+  margin: 8px 0;
+}
+.items-list-title {
+  margin: 0;
+  font-size: 12px;
+  color: #fff;
+}
+.items-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px 10px;
+  padding: 4px 0;
+  border-top: 1px dashed #2c2c2c;
+}
+.items-list-row .balance-field {
+  flex: 0 1 140px;
+}
 /* The Content page (ui/content-page.ts): packs, pack updates, the draft, rows and the history. */
 .content-section {
   margin: 0;

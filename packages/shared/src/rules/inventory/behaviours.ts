@@ -9,20 +9,22 @@ import type { ItemBehaviour } from "@secondstaronline/data";
 
 import { onContent } from "../../content/store.ts";
 import { isEngineFixture, withoutId } from "../core/fixtures.ts";
-import { lingoContains, lingoEq } from "../core/lingo.ts";
+import { type PatternRow, ruleMatches } from "../core/patterns.ts";
 
 export type { ItemBehaviour };
 
-type BehaviourRows = Map<ItemBehaviour, { match: "exact" | "contains"; pattern: string }[]>;
+type BehaviourRows = Map<ItemBehaviour, PatternRow[]>;
 
 /** The behaviour rows grouped by behaviour. */
-function groupRows(
-  rows: readonly { match: "exact" | "contains"; pattern: string; behaviour: ItemBehaviour }[],
-): BehaviourRows {
+function groupRows(rows: readonly (PatternRow & { behaviour: ItemBehaviour })[]): BehaviourRows {
   const out: BehaviourRows = new Map();
   for (const r of rows) {
     const list = out.get(r.behaviour) ?? [];
-    list.push({ match: r.match, pattern: r.pattern });
+    list.push(
+      r.except
+        ? { match: r.match, pattern: r.pattern, except: r.except }
+        : { match: r.match, pattern: r.pattern },
+    );
     out.set(r.behaviour, list);
   }
   return out;
@@ -40,9 +42,7 @@ function hasIn(rows: BehaviourRows, name: string, behaviour: ItemBehaviour): boo
     return false;
   }
   const n = behaviourName(name);
-  return list.some((r) =>
-    r.match === "exact" ? lingoEq(n, r.pattern) : lingoContains(n, r.pattern),
-  );
+  return list.some((r) => ruleMatches(n, r));
 }
 
 /**
