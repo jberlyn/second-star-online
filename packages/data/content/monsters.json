@@ -1747,7 +1747,7 @@
       "monster": "Assasin",
       "monsterMatch": "exact",
       "delta": -7,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1755,7 +1755,7 @@
       "monster": "Lizard Warrior",
       "monsterMatch": "exact",
       "delta": -5,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1763,7 +1763,7 @@
       "monster": "Elf",
       "monsterMatch": "exact",
       "delta": -3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1771,7 +1771,7 @@
       "monster": "Skeleton",
       "monsterMatch": "exact",
       "delta": -6,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1779,7 +1779,7 @@
       "monster": "Officer",
       "monsterMatch": "exact",
       "delta": -8,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1787,7 +1787,7 @@
       "monster": "Imp",
       "monsterMatch": "exact",
       "delta": -3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1795,7 +1795,7 @@
       "monster": "Slime",
       "monsterMatch": "exact",
       "delta": 2,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1803,7 +1803,7 @@
       "monster": "Orc",
       "monsterMatch": "contains",
       "delta": 2,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1811,7 +1811,7 @@
       "monster": "Cyclops",
       "monsterMatch": "exact",
       "delta": 3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1819,7 +1819,7 @@
       "monster": "Faction Member",
       "monsterMatch": "contains",
       "delta": -3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Sword",
@@ -1827,7 +1827,7 @@
       "monster": "Gazer",
       "monsterMatch": "exact",
       "delta": 3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Ice Sword",
@@ -1835,7 +1835,7 @@
       "monster": "Yeti",
       "monsterMatch": "exact",
       "delta": -7,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Ice Sword",
@@ -1843,7 +1843,7 @@
       "monster": "Snow Serpent",
       "monsterMatch": "exact",
       "delta": -13,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Ice Sword",
@@ -1851,7 +1851,7 @@
       "monster": "Snow Demon",
       "monsterMatch": "exact",
       "delta": -13,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Ice Sword",
@@ -1859,7 +1859,7 @@
       "monster": "Fire Demon",
       "monsterMatch": "exact",
       "delta": 9,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Fire Sword",
@@ -1867,7 +1867,7 @@
       "monster": "Yeti",
       "monsterMatch": "exact",
       "delta": 7,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Fire Sword",
@@ -1875,7 +1875,7 @@
       "monster": "Snow Serpent",
       "monsterMatch": "exact",
       "delta": 13,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Fire Sword",
@@ -1883,7 +1883,7 @@
       "monster": "Snow Demon",
       "monsterMatch": "exact",
       "delta": 13,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Fire Sword",
@@ -1891,7 +1891,7 @@
       "monster": "Fire Demon",
       "monsterMatch": "exact",
       "delta": -9,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Scimitar",
@@ -1899,7 +1899,7 @@
       "monster": "Zombie",
       "monsterMatch": "exact",
       "delta": 6,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Scimitar",
@@ -1907,7 +1907,7 @@
       "monster": "Skeleton",
       "monsterMatch": "exact",
       "delta": 6,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Scimitar",
@@ -1915,7 +1915,7 @@
       "monster": "Death",
       "monsterMatch": "exact",
       "delta": 6,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Scimitar",
@@ -1923,7 +1923,7 @@
       "monster": "Demon",
       "monsterMatch": "exact",
       "delta": 6,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Scimitar",
@@ -1931,7 +1931,7 @@
       "monster": "Ghoul",
       "monsterMatch": "exact",
       "delta": 6,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Bo",
@@ -1939,7 +1939,7 @@
       "monster": "Mega Slime",
       "monsterMatch": "exact",
       "delta": 7,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Bo",
@@ -1947,7 +1947,7 @@
       "monster": "Poison Frog",
       "monsterMatch": "exact",
       "delta": 5,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Dark",
@@ -1955,7 +1955,7 @@
       "monster": "Overlord",
       "monsterMatch": "exact",
       "delta": -12,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hope",
@@ -1963,7 +1963,7 @@
       "monster": "Overlord",
       "monsterMatch": "exact",
       "delta": 14,
-      "deltaRandom": "random(6)"
+      "randomN": 6
     },
     {
       "weapon": "Hope",
@@ -1971,7 +1971,7 @@
       "monster": "Dark",
       "monsterMatch": "contains",
       "delta": 6,
-      "deltaRandom": "random(6)"
+      "randomN": 6
     },
     {
       "weapon": "Hammer",
@@ -1979,7 +1979,7 @@
       "monster": "Assasin",
       "monsterMatch": "exact",
       "delta": 7,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -1987,7 +1987,7 @@
       "monster": "Lizard Warrior",
       "monsterMatch": "exact",
       "delta": 5,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -1995,7 +1995,7 @@
       "monster": "Elf",
       "monsterMatch": "exact",
       "delta": 3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2003,7 +2003,7 @@
       "monster": "Skeleton",
       "monsterMatch": "exact",
       "delta": 6,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2011,7 +2011,7 @@
       "monster": "Officer",
       "monsterMatch": "exact",
       "delta": 8,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2019,7 +2019,7 @@
       "monster": "Imp",
       "monsterMatch": "exact",
       "delta": 3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2027,7 +2027,7 @@
       "monster": "Slime",
       "monsterMatch": "exact",
       "delta": -2,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2035,7 +2035,7 @@
       "monster": "Orc",
       "monsterMatch": "exact",
       "delta": -2,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2043,7 +2043,7 @@
       "monster": "Cyclops",
       "monsterMatch": "contains",
       "delta": -3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2051,7 +2051,7 @@
       "monster": "Faction Member",
       "monsterMatch": "contains",
       "delta": 3,
-      "deltaRandom": null
+      "randomN": 0
     },
     {
       "weapon": "Hammer",
@@ -2059,7 +2059,7 @@
       "monster": "Gazer",
       "monsterMatch": "exact",
       "delta": -3,
-      "deltaRandom": null
+      "randomN": 0
     }
   ],
   "skillCaps": {

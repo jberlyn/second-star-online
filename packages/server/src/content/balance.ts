@@ -12,6 +12,7 @@ import {
   BALANCE_DROP_WHO,
   BALANCE_HEAL_EFFECTS,
   BALANCE_LIMITS,
+  ROSTER_SLOTS,
 } from "@secondstaronline/data/schema";
 import {
   BALANCE_DEFAULTS,
@@ -506,6 +507,83 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
             "Walking into a player pushes them with a chance of",
             "oneIn",
             BALANCE_LIMITS.oneIn,
+          ),
+        ],
+      },
+    ],
+  },
+  {
+    id: "monsters",
+    title: "Monsters",
+    help: "How often a map's monsters move and spawn, by the players on the map, and the rolls inside a move and a spawn. What each species does is its own row on the Content page.",
+    // The generic stand-in is the monsters dataset's own row (`monsters.generic`).
+    elsewhere: [
+      {
+        label: "Generic stand-in (a name no species has, such as a player shop's shopkeeper)",
+        row: { dataset: "monsters", part: "generic", key: null },
+        describe: (v) => {
+          // Its `hp` is not read: a name no species has starts with 1 HP (and so does a new
+          // shopkeeper).
+          const g = v as { body?: number; defense?: number } | undefined;
+          return g ? `body ${g.body}, defense ${g.defense} (it starts with 1 HP)` : "none";
+        },
+      },
+    ],
+    rows: [
+      {
+        part: "monsters",
+        key: null,
+        label: "Monster rolls",
+        fields: [
+          ...[1, 2, 3, 4, 5, 6, 7, 8].map((n, i) =>
+            field(
+              ["moveLadder", String(i)],
+              `Move pick with ${n === 8 ? "8 or more players" : n === 1 ? "1 player" : `${n} players`}: random(n)`,
+              "random",
+              { min: ROSTER_SLOTS, max: BALANCE_LIMITS.oneIn.max },
+              i === 0
+                ? "Twice each frame, for each player on the map (at most 15), one slot is picked by this roll, and the monster in it moves when the roll is 1 to 4: a larger n moves monsters less often. At least 4, so every slot can be picked."
+                : undefined,
+            ),
+          ),
+          field(["walkStepsRandomN"], "A walk's steps: random(n)", "random", {
+            min: 1,
+            max: BALANCE_LIMITS.randomN.max,
+          }),
+          ...[1, 2, 3, 4, 5, 6, 7].map((n, i) =>
+            field(
+              ["spawnLadder", String(i)],
+              `Spawn pass with ${n === 7 ? "7 or more players" : n === 1 ? "1 player" : `${n} players`}: a chance of`,
+              "oneIn",
+              BALANCE_LIMITS.oneIn,
+              i === 0
+                ? "Twice each frame, for each player on the map (at most 15), a spawn pass goes ahead with this chance."
+                : undefined,
+            ),
+          ),
+          field(
+            ["slotOneIn"],
+            "In a pass, each empty slot spawns with a chance of",
+            "oneIn",
+            BALANCE_LIMITS.oneIn,
+          ),
+          field(
+            ["factionSlotRandomN"],
+            "A faction's member takes slot random(n)",
+            "random",
+            { min: ROSTER_SLOTS, max: BALANCE_LIMITS.randomN.max },
+            "On a faction's map; a roll above 4 swaps no slot. At least 4, so the member can take any slot and every slot's own species still spawns.",
+          ),
+          field(["npcSpawn", "randomN"], "An NPC spawns when random(n)", "random", {
+            min: 1,
+            max: BALANCE_LIMITS.randomN.max,
+          }),
+          field(
+            ["npcSpawn", "passAtMost"],
+            "… is at most",
+            "count",
+            BALANCE_LIMITS.randomN,
+            "So an NPC spawns at this many in n of a monster's rate.",
           ),
         ],
       },

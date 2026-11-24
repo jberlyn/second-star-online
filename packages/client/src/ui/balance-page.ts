@@ -262,7 +262,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   el.append(
     pageHeading(
       "Balance",
-      "The game's global numbers: spell amounts, buffs, regeneration, hunger, death, death drops and loot, timings, combat rolls, hulls and the cannon. Each value shows what plays now, the pack's value and the engine's default. Changes go into the content draft, published from the Content page.",
+      "The game's global numbers: spell amounts, buffs, regeneration, hunger, death, death drops and loot, timings, combat rolls, how monsters move and spawn, hulls and the cannon. Each value shows what plays now, the pack's value and the engine's default. Changes go into the content draft, published from the Content page.",
     ),
   );
   const draftLine = document.createElement("div");

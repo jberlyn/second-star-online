@@ -5,7 +5,7 @@
  * the defaults. The Classic pack writes 1.6's values out.
  *
  * Small groups are one row each (`spellHits`, `buffs`, `castPower`, `regen`, `hunger`, `death`,
- * `vehicles`, `cannon`, `drops`, `timings`, `combat`); lists of like things are keyed rows (`spellEffects` by effect, `hulls` by
+ * `vehicles`, `cannon`, `drops`, `timings`, `combat`, `monsters`); lists of like things are keyed rows (`spellEffects` by effect, `hulls` by
  * vehicle), so a pack update that changes one value notices only its row.
  *
  * Every value is bounded, so a typo can never stall or break the game; the server refuses a value
@@ -232,6 +232,50 @@ export const deathSchema = z.strictObject({
   pauseFrames: bounded(BALANCE_LIMITS.frames),
 });
 
+/**
+ * The monsters' global rolls (issue #31): how often a map's monsters move and spawn, by the players
+ * on the map, and the rolls inside a move and a spawn. Every chance is at least 1, so a roll is
+ * always drawn as it was.
+ */
+/**
+ * The four roster slots. The move pick and the faction slot pick are `random(n)` over them: below
+ * this a pick could never reach the later slots (and a faction pick would always take one).
+ */
+export const ROSTER_SLOTS = 4;
+
+export const monstersBalanceSchema = z.strictObject({
+  /**
+   * Twice each frame, for each player on the map (at most 15), one slot's monster is picked to move
+   * by `random(n)` (slot n moves, 1 to 4), n by the players on the map: 1, 2, … 8 or more. At least
+   * 4, so every slot of the roster can be picked.
+   */
+  moveLadder: z.array(bounded({ min: ROSTER_SLOTS, max: BALANCE_LIMITS.oneIn.max })).length(8),
+  /** A walk is `random(n)` steps long. */
+  walkStepsRandomN: bounded(BALANCE_LIMITS.randomN).min(1),
+  /**
+   * Twice each frame, for each player on the map (at most 15), a spawn pass goes ahead with a chance
+   * of 1 in n, n by the players on the map: 1, 2, … 7 or more.
+   */
+  spawnLadder: z.array(bounded(BALANCE_LIMITS.oneIn)).length(7),
+  /** In a pass, each empty slot spawns with a chance of 1 in this. */
+  slotOneIn: bounded(BALANCE_LIMITS.oneIn),
+  /**
+   * On a faction's map, `random(n)` picks the slot its member takes (1 to 4; above 4, none). At
+   * least 4, so the member can take any slot and every slot's own species can still spawn.
+   */
+  factionSlotRandomN: bounded({ min: ROSTER_SLOTS, max: BALANCE_LIMITS.randomN.max }),
+  /** An NPC's slot spawns only when `random(randomN)` is at most `passAtMost`. */
+  npcSpawn: z
+    .strictObject({
+      randomN: bounded(BALANCE_LIMITS.randomN).min(1),
+      passAtMost: bounded(BALANCE_LIMITS.randomN),
+    })
+    .refine((n) => n.passAtMost <= n.randomN, {
+      path: ["passAtMost"],
+      message: "passAtMost must be at most randomN",
+    }),
+});
+
 /** The vehicles a hull belongs to (the engine's vehicle kinds). */
 export const BALANCE_VEHICLES = ["Boat", "Airship", "Battleship"] as const;
 
@@ -337,6 +381,7 @@ export const balanceDataSchema = z.strictObject({
   drops: dropsSchema.optional(),
   timings: timingsSchema.optional(),
   combat: combatSchema.optional(),
+  monsters: monstersBalanceSchema.optional(),
   hulls: z
     .array(hullRowSchema)
     .refine((rows) => new Set(rows.map((r) => r.vehicle)).size === rows.length, {
@@ -357,4 +402,5 @@ export type CannonBalance = z.infer<typeof cannonBalanceSchema>;
 export type BalanceDrops = z.infer<typeof dropsSchema>;
 export type BalanceTimings = z.infer<typeof timingsSchema>;
 export type BalanceCombat = z.infer<typeof combatSchema>;
+export type BalanceMonsters = z.infer<typeof monstersBalanceSchema>;
 export type BalanceData = z.infer<typeof balanceDataSchema>;

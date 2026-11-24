@@ -35,6 +35,7 @@ export interface Balance {
   drops: NonNullable<BalanceData["drops"]>;
   timings: NonNullable<BalanceData["timings"]>;
   combat: NonNullable<BalanceData["combat"]>;
+  monsters: NonNullable<BalanceData["monsters"]>;
   /** One row for each vehicle, in `BALANCE_VEHICLE_ORDER`. */
   hulls: HullRow[];
 }
@@ -129,6 +130,16 @@ export const BALANCE_DEFAULTS: Readonly<Balance> = {
     monsterMeleeOneIn: 10,
     pushOneIn: 25,
   },
+  // 1.6's monster rolls (issue #31). The move ladder's eighth step is SSO's (a bug fixed: 1.6 fell
+  // back to 50 from the 9th player).
+  monsters: {
+    moveLadder: [30, 50, 70, 100, 200, 300, 400, 600],
+    walkStepsRandomN: 10,
+    spawnLadder: [80, 120, 230, 400, 600, 900, 1300],
+    slotOneIn: 5,
+    factionSlotRandomN: 35,
+    npcSpawn: { randomN: 60, passAtMost: 2 },
+  },
   hulls: [
     { vehicle: "Boat", hull: 60 },
     { vehicle: "Airship", hull: 80 },
@@ -169,6 +180,7 @@ export function fullBalance(data: BalanceData | undefined): Balance {
     drops: part("drops"),
     timings: part("timings"),
     combat: part("combat"),
+    monsters: part("monsters"),
     hulls,
   };
 }

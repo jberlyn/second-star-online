@@ -53,11 +53,12 @@ export function isWater(map: WorldMap, x: number, y: number): boolean {
 }
 
 /**
- * The odds for the move-author pick by players on the screen; 600 from the 8th player on (a bug
- * fixed: 1.6 fell back to 50 at the 9th, so crowded screens' monsters nearly never stopped).
+ * The odds for the move-author pick by players on the screen (`balance.monsters.moveLadder`;
+ * Classic 30 … 600), its last step from the 8th player on (a bug fixed: 1.6 fell back to 50 at the
+ * 9th, so crowded screens' monsters nearly never stopped).
  */
 export function moveLadder(players: number): number {
-  const ladder = [30, 50, 70, 100, 200, 300, 400, 600];
+  const ladder = content().balance.monsters.moveLadder;
   return ladder[Math.min(Math.max(players, 1), ladder.length) - 1] as number;
 }
 
@@ -83,7 +84,7 @@ export interface WalkPlan {
 }
 
 /**
- * Authors a walk of `random(10)` steps: a species on the hostile list chases `author`, others walk
+ * Authors a walk of `random(10)` steps (`balance.monsters.walkStepsRandomN`): a species on the hostile list chases `author`, others walk
  * at random. Returns null when the monster never moves (`FLG|Still`, or no NPC data).
  */
 export function authorPath(
@@ -92,7 +93,7 @@ export function authorPath(
   author: Player,
   rng: Rng,
 ): WalkPlan | null {
-  const steps = rng.random(10); // drawn before the Still test
+  const steps = rng.random(content().balance.monsters.walkStepsRandomN); // drawn before the Still test
   if (!npcData(npcs, m.name) || hasFlag(npcs, m.name, "Still")) {
     return null;
   }

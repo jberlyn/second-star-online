@@ -69,6 +69,11 @@ export function nameTestOf(o: Obj): { match: string; pattern: string } | null {
   if (isStr(o.weaponMatch) && (isStr(o.pattern) || o.pattern === null) && o.weaponMatch !== "any") {
     return { match: o.weaponMatch, pattern: o.pattern ?? "" };
   }
+  // A melee affinity row (monsters `meleeAffinities`): its monster side is the name it tests (its
+  // weapon side tests the weapon swung, part of the row's condition).
+  if (isStr(o.monsterMatch) && isStr(o.monster)) {
+    return { match: o.monsterMatch, pattern: o.monster };
+  }
   // A weapon-skill row (classes `skillGain.weaponSkills`).
   if (isStr(o.match) && isStr(o.weapon)) {
     return { match: o.match, pattern: o.weapon };
@@ -88,9 +93,11 @@ const isAnyBlock = (o: Obj): boolean => o.weaponMatch === "any";
 const subjectOf = (o: Obj): string | undefined =>
   isStr(o.name)
     ? o.name
-    : isStr(o.weaponMatch)
-      ? `${o.weaponMatch} "${o.pattern ?? ""}" weapon block`
-      : undefined;
+    : isStr(o.monsterMatch) && isStr(o.weapon)
+      ? `a weapon containing "${o.weapon}"`
+      : isStr(o.weaponMatch)
+        ? `${o.weaponMatch} "${o.pattern ?? ""}" weapon block`
+        : undefined;
 
 /** Whether an array is a name table: every element a name test (or an `any` skill block). */
 export const isNameTable = (v: unknown[]): boolean =>
@@ -350,6 +357,12 @@ export const NAME_TABLES: Record<string, TableInfo> = {
   },
   "monsters rules.noQuests": { decides: "gives no quests", wins: "any" },
   "monsters casting.neverCasts": { decides: "never casts monster spells", wins: "any" },
+  // meleeDamageVsMonster
+  "monsters meleeAffinities": {
+    decides: "melee damage added on a hit from a weapon family",
+    wins: "adds",
+    note: "each row also tests the weapon swung (contains its weapon text)",
+  },
   // runBook, spCost
   "spells spells[].book": {
     decides: "which spell a book teaches",
@@ -591,6 +604,55 @@ export function resolveItem(name: string, data?: Partial<ContentData>): TableHit
   return matchAllTables(name, items, d.craft).filter((h) => isItemTable(h.key));
 }
 
+/** The monster tables: every name table of the monsters dataset (the rules, never-casts, affinities). */
+export const isMonsterTable = (key: string): boolean => key.startsWith("monsters ");
+
+/**
+ * The kill skill cap by body (`skillCaps.byBody`, last match wins): a table keyed by the species'
+ * body number, not its name. `resolveMonster` answers it for the species' body.
+ */
+export const SKILL_CAP_TABLE = "monsters skillCaps.byBody";
+const SKILL_CAP_INFO: TableInfo = {
+  decides: "the kill skill cap, by the species' body",
+  wins: "last",
+  note: "matched by the species' body number, not its name",
+};
+
+/**
+ * What a monster plays now: every monster table's rows that match the name, in table order, and
+ * which decide (as `resolveItem` for items), over the published content (or `data`). A live
+ * monster's name is tested as it is. The kill skill cap's rows match the species' body.
+ */
+export function resolveMonster(name: string, data?: Partial<ContentData>): TableHit[] {
+  const d = data ?? (content() as unknown as Partial<ContentData>);
+  if (!d.monsters) {
+    return [];
+  }
+  const hits = matchAllTables(name, { monsters: d.monsters }, NO_CRAFT).filter((h) =>
+    isMonsterTable(h.key),
+  );
+  // As the kill path finds it (`content().monster`: the name, any case), and body 0 for a name no
+  // species has, as a kill of one rolls.
+  const lower = name.toLowerCase();
+  const sp = d.monsters.monsters.find((m) => m.name.toLowerCase() === lower);
+  const body = String(sp?.body ?? 0);
+  const rows: NameRow[] = [];
+  d.monsters.skillCaps.byBody.forEach((r, i) => {
+    if (r.body === body) {
+      rows.push({ match: "body", pattern: r.body, index: i + 1, raw: r as unknown as Obj });
+    }
+  });
+  if (rows.length > 0) {
+    hits.push({
+      key: SKILL_CAP_TABLE,
+      info: SKILL_CAP_INFO,
+      rows,
+      deciding: [rows.at(-1) as NameRow],
+    });
+  }
+  return hits;
+}
+
 /**
  * An item's answer as exact rows, by table: each deciding row rewritten to name the item alone
  * (`exactPatternFor`; an `order` table's later row names what it tested), in table order. A world
@@ -613,6 +675,16 @@ export function exactRowsFor(name: string, hits: readonly TableHit[]): Map<strin
           // A `contains` row replaces only the text it found: the exact row names the result.
           const at = pattern.toLowerCase().indexOf(r.pattern.toLowerCase());
           row.name = pattern.slice(0, at) + row.name + pattern.slice(at + r.pattern.length);
+        }
+        if (h.key === SKILL_CAP_TABLE) {
+          // Keyed by body: the row stands as it is.
+          return row;
+        }
+        if (isStr(row.monsterMatch)) {
+          // An affinity row keeps its weapon test; its monster side names the species alone.
+          row.monsterMatch = "exact";
+          row.monster = pattern;
+          return row;
         }
         if (IMPLIED_EXACT.has(h.key)) {
           row.item = pattern;

@@ -95,6 +95,14 @@
     "monsterMeleeOneIn": 10,
     "pushOneIn": 25
   },
+  "monsters": {
+    "moveLadder": [30, 50, 70, 100, 200, 300, 400, 600],
+    "walkStepsRandomN": 10,
+    "spawnLadder": [80, 120, 230, 400, 600, 900, 1300],
+    "slotOneIn": 5,
+    "factionSlotRandomN": 35,
+    "npcSpawn": { "randomN": 60, "passAtMost": 2 }
+  },
   "hulls": [
     { "vehicle": "Boat", "hull": 60 },
     { "vehicle": "Airship", "hull": 80 },

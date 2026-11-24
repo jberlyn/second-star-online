@@ -53,6 +53,7 @@ describe("the balance dataset and its defaults", () => {
       drops: BALANCE_DEFAULTS.drops,
       timings: BALANCE_DEFAULTS.timings,
       combat: BALANCE_DEFAULTS.combat,
+      monsters: BALANCE_DEFAULTS.monsters,
       vehicles: BALANCE_DEFAULTS.vehicles,
       cannon: BALANCE_DEFAULTS.cannon,
       hulls: BALANCE_DEFAULTS.hulls,
@@ -259,6 +260,7 @@ describe("the Balance page on a running server", () => {
         "drops",
         "timings",
         "combat",
+        "monsters",
         "vehicles",
       ]);
       expect(

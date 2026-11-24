@@ -212,8 +212,8 @@ export function meleeDamageVsMonster(
         : lingoContains(monster.name, a.monster);
     if (hit) {
       dmg += a.delta;
-      if (a.deltaRandom) {
-        dmg += rng.random(Number(/\d+/.exec(a.deltaRandom)?.[0]));
+      if (a.randomN > 0) {
+        dmg += rng.random(a.randomN);
       }
     }
   }

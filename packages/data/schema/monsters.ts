@@ -81,12 +81,25 @@ export const meleeAffinitySchema = z.strictObject({
   weaponMatch: z.enum(["contains"]),
   monster: z.string(),
   monsterMatch: z.enum(["exact", "contains"]),
-  delta: int,
-  /** `random(n)` added after `delta` (Sword of Hope rows), or null. */
-  deltaRandom: z
-    .string()
-    .regex(/^random\(\d+\)$/)
-    .nullable(),
+  /**
+   * Added to the damage. Any safe whole number, and one lower: migration 70 turns an old
+   * `random(0)` (which drew once and gave 0) into `random(1)` with `delta` one lower.
+   */
+  delta: z
+    .number()
+    .refine((n) => Number.isInteger(n) && n >= -(2 ** 53) && n <= Number.MAX_SAFE_INTEGER, {
+      message: "a whole number from -2^53 to 2^53 - 1",
+    }),
+  /**
+   * `random(randomN)` added after `delta` (Classic: the Sword of Hope rows' 6); 0 rolls nothing.
+   * Any whole number from 0, however large: the `"random(n)"` text it replaced (migration 70) took
+   * any digits, and the old reader drew `random(Number(digits))`, so a large n is kept as that very
+   * number.
+   */
+  randomN: z
+    .number()
+    .min(0)
+    .refine((n) => Number.isInteger(n), { message: "a whole number" }),
 });
 
 export const monsterSpellKindSchema = z.enum([

@@ -18,9 +18,9 @@ import type { WorldMap } from "../world/world.ts";
 import { FOOT_CELLS, isWater } from "./ai.ts";
 import { isFootprint, isNpced, type LiveMonster, type MonsterSlot, species } from "./slots.ts";
 
-/** The odds for the spawn gate by players on the screen, 1..7+. */
+/** The odds for the spawn gate by players on the screen, 1..7+ (`balance.monsters.spawnLadder`). */
 export function spawnLadder(players: number): number {
-  const ladder = [80, 120, 230, 400, 600, 900, 1300];
+  const ladder = content().balance.monsters.spawnLadder;
   return ladder[Math.min(Math.max(players, 1), ladder.length) - 1] as number;
 }
 
@@ -70,13 +70,13 @@ export interface SpawnCtx {
 
 /**
  * The monster in each slot this pass: the roster, with the faction swap (the map's faction's
- * `member`, in a slot picked by `random(35)`, 1-4 taking one).
+ * `member`, in a slot picked by `random(35)`, 1-4 taking one; `balance.monsters.factionSlotRandomN`).
  */
 function passRoster(map: WorldMap, rng: Rng): (string | null)[] {
   const mon = map.slots.map((s) => s.species);
   const member = factionByKey(map.flags.fctSpwn || null)?.member;
   if (member) {
-    const k = rng.random(35);
+    const k = rng.random(content().balance.monsters.factionSlotRandomN);
     if (k >= 1 && k <= 4) {
       mon[k - 1] = member;
     }
@@ -138,12 +138,14 @@ export function spawnPass(map: WorldMap, ctx: SpawnCtx): MonsterSlot[] {
     if (refusesTile(map, name, x, y)) {
       continue;
     }
-    const drop = rng.random(5); // drawn even while the slot is paused
+    // drawn even while the slot is paused (`balance.monsters.slotOneIn`; Classic 5)
+    const drop = rng.random(content().balance.monsters.slotOneIn);
     if (slot.pause !== 0 || drop !== 1) {
       continue;
     }
     // An NPC's extra roll; a failure skips only this slot (a bug fixed: 1.6 ended the whole pass).
-    if (isNpced(name) && rng.random(60) > 2) {
+    const npc = content().balance.monsters.npcSpawn;
+    if (isNpced(name) && rng.random(npc.randomN) > npc.passAtMost) {
       continue;
     }
     const sp = species(name);
