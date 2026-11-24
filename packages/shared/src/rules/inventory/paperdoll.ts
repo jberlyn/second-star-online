@@ -10,6 +10,8 @@
  * art), and with nothing on the feet the authored `Bare Feet` layer covers the shoes every body
  * paints; gloves are worn in the Ring slot. A layer member that does not exist is skipped.
  */
+import type { ItemBehaviour } from "@secondstaronline/data";
+
 import { content } from "../../content/store.ts";
 import type { Equipment } from "../core/fighter.ts";
 import { lingoEq } from "../core/lingo.ts";
@@ -52,8 +54,36 @@ const NOTHING = "NOTHING";
 /** Drawn over the body's painted shoes when the Feet slot is empty. */
 export const BARE_FEET = "Bare Feet";
 
+/**
+ * The rules the character renderer reads: the layer aliases and the item behaviours. The game
+ * draws with the installed store's (`liveRules`); the Content page's checks pass a draft's, so
+ * they see exactly what the renderer will draw once it is published.
+ */
+export interface PaperdollRules {
+  aliases: readonly {
+    layer: "weapon" | "shield" | "helm" | "gloves" | "body";
+    match: "exact" | "contains";
+    pattern: string;
+    becomes: string;
+  }[];
+  has(name: string, behaviour: ItemBehaviour): boolean;
+}
+
+/** The installed store's rules. */
+function liveRules(): PaperdollRules {
+  return { aliases: content().itemRules.paperdoll.aliases, has: hasBehaviour };
+}
+
 /** The layer names after the character renderer's normalisation. */
-export function normaliseLook(e: Equipment): {
+export function normaliseLook(e: Equipment): ReturnType<typeof normaliseLookWith> {
+  return normaliseLookWith(liveRules(), e);
+}
+
+/** `normaliseLook` with the rules given. */
+export function normaliseLookWith(
+  rules: PaperdollRules,
+  e: Equipment,
+): {
   weapon: string;
   shield: string;
   gloves: string;
@@ -73,7 +103,7 @@ export function normaliseLook(e: Equipment): {
   }
   // The aliases in the original's order, each rewriting its own layer (`paperdoll.aliases`).
   const layers = { weapon, shield, helm, gloves, body };
-  for (const row of content().itemRules.paperdoll.aliases) {
+  for (const row of rules.aliases) {
     if (ruleMatches(layers[row.layer], row)) {
       layers[row.layer] = row.becomes;
     }
@@ -95,18 +125,28 @@ export function hidesName(e: Equipment): boolean {
 
 /** `Characters` member names, bottom to top, for one frame. */
 export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): string[] {
+  return paperdollLayersWith(liveRules(), look, frame, facing);
+}
+
+/** `paperdollLayers` with the rules given. */
+export function paperdollLayersWith(
+  rules: PaperdollRules,
+  look: Look,
+  frame: BodyFrame,
+  facing: Facing,
+): string[] {
   const e = look.equip;
   const head = `Head${look.head}`;
   const f = (name: string) => `${name}-${frame}-${facing}`;
   if (!e) {
     return ["BIM", f("DEFBOD"), f(BARE_FEET), f(head)];
   }
-  const n = normaliseLook(e);
+  const n = normaliseLookWith(rules, e);
   const out = ["BIM"];
   // The off hand's and body's draw rules are their items' behaviours (Classic: anything named
   // "Arrows" is a quiver, the Torch is hidden facing N, and four robes cover the head).
   const offHand = strip(e.offHand);
-  const arrows = !isNothing(n.shield) && hasBehaviour(offHand, "quiver");
+  const arrows = !isNothing(n.shield) && rules.has(offHand, "quiver");
   const body = strip(e.body);
   // Weapon behind the body: W on every frame, N on the attack frame only.
   if (!isNothing(n.weapon) && (facing === "W" || (facing === "N" && frame === "F4"))) {
@@ -129,14 +169,14 @@ export function paperdollLayers(look: Look, frame: BodyFrame, facing: Facing): s
     facing === "N" &&
     !isNothing(n.shield) &&
     !arrows &&
-    !hasBehaviour(offHand, "hiddenFacingNorth")
+    !rules.has(offHand, "hiddenFacingNorth")
   ) {
     out.push(f(n.shield));
   }
-  if (isNothing(n.helm) && !hasBehaviour(body, "hidesHead")) {
+  if (isNothing(n.helm) && !rules.has(body, "hidesHead")) {
     out.push(f(head));
   }
-  if (!isNothing(n.helm) && !hasBehaviour(body, "hidesHelm")) {
+  if (!isNothing(n.helm) && !rules.has(body, "hidesHelm")) {
     out.push(f(n.helm));
   }
   if ((facing === "S" || facing === "W") && !isNothing(n.shield) && !arrows) {

@@ -7,7 +7,16 @@
 
 import { z } from "zod";
 
-import type { ArtItem, Item } from "@secondstaronline/data";
+import type {
+  ArtFrameId,
+  ArtItem,
+  ArtWorn,
+  EquipSlot,
+  Item,
+  ItemRulesData,
+} from "@secondstaronline/data";
+
+import type { WornLayerUse } from "../content/worn.ts";
 
 const seq = z
   .number()
@@ -151,6 +160,61 @@ const pictureSettings = z.strictObject({
  * draft has it now and changes only its `sprite` and its upload, so no other edit is lost and no
  * half of a change is left behind. See `PictureChange`.
  */
+/** Asks for the worn frame set panels' view (issue #29, stage 3). */
+export const contentWornArtSchema = z.strictObject({ t: z.literal("contentWornArt"), seq });
+
+const fileHash = z.string().regex(/^[0-9a-f]{64}$/);
+const frameIds = [
+  "f1-n",
+  "f1-e",
+  "f1-s",
+  "f1-w",
+  "f2-n",
+  "f2-e",
+  "f2-s",
+  "f2-w",
+  "f3-n",
+  "f3-e",
+  "f3-s",
+  "f3-w",
+  "f4-n",
+  "f4-e",
+  "f4-s",
+  "f4-w",
+] as const;
+const layerName = z.string().trim().min(1).max(80);
+
+/**
+ * Cuts an uploaded sheet (184×180: rows N, E, S, W of frames F1-F4) into frame files, stored like
+ * any upload. Nothing goes in the draft: the answer names the frames, to save with `contentWorn`.
+ */
+export const contentWornSheetSchema = z.strictObject({
+  t: z.literal("contentWornSheet"),
+  seq,
+  sheet: fileHash,
+});
+
+/**
+ * One worn layer change (issue #29, stage 3), made in the draft as a whole: set a layer's frames
+ * (the whole row), take its upload out, or give an item its own layer by taking out the exact
+ * alias rows that name it alone. See `WornChange`.
+ */
+export const contentWornSchema = z.strictObject({
+  t: z.literal("contentWorn"),
+  seq,
+  change: z.discriminatedUnion("op", [
+    z.strictObject({
+      op: z.literal("set"),
+      layer: layerName,
+      frames: z.partialRecord(z.enum(frameIds), fileHash),
+      mirrored: z.boolean(),
+      transparency: z.enum(["alpha", "green"]),
+    }),
+    z.strictObject({ op: z.literal("remove"), layer: layerName }),
+    z.strictObject({ op: z.literal("ownLayer"), item: z.string().min(1).max(80) }),
+  ]),
+});
+
 export const contentPictureSchema = z.strictObject({
   t: z.literal("contentPicture"),
   seq,
@@ -189,6 +253,38 @@ export interface ContentItemArtView {
   packPictures: string[];
   /** The largest side an item picture may have. */
   maxSide: number;
+}
+
+/**
+ * Everything the worn frame set panels need at once (issue #29, stage 3), worked out from the
+ * draft's rules: the items that are worn and the layer each draws, every layer the content draws
+ * with the frames it needs, the uploads, and the frames the packs draw.
+ */
+export interface ContentWornArtView {
+  /** Every item that is worn somewhere, as the draft would publish it. */
+  items: {
+    name: string;
+    display?: string;
+    retired?: boolean;
+    slot: EquipSlot;
+    /** The layer it draws, or null: an alias makes it draw nothing. */
+    layer: string | null;
+    aliases: { index: number; match: "exact" | "contains"; pattern: string; becomes: string }[];
+    ownLayerPossible: boolean;
+  }[];
+  /** Every layer the content draws, with its frames and who draws it. */
+  layers: WornLayerUse[];
+  /** The `art` dataset's worn layers as the draft would publish them. */
+  art: ArtWorn[];
+  /** The frames the installed packs draw, by layer name in lower case. */
+  packLayers: Record<string, ArtFrameId[]>;
+  /** The draft's renderer rules, so the preview stacks the layers as the game will. */
+  rules: {
+    aliases: ItemRulesData["paperdoll"]["aliases"];
+    behaviours: ItemRulesData["behaviours"];
+  };
+  /** A hairstyle the preview's bare character wears (the first sex's first head). */
+  head: number;
 }
 
 /** Where uploads are posted: `/upload/image` or `/upload/sound`. */
@@ -363,6 +459,15 @@ export type ContentServerMsg =
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
   /** The item picture picker's view. */
   | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
+  /** The worn frame set panels' view. */
+  | { t: "contentWornArt"; seq: number; view: ContentWornArtView }
+  /** A sheet cut into frames (blank cells left out), or why it could not be. */
+  | {
+      t: "contentWornSheet";
+      seq: number;
+      frames: Partial<Record<ArtFrameId, string>> | null;
+      error?: string;
+    }
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }

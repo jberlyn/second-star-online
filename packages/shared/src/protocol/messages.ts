@@ -70,6 +70,9 @@ import {
   contentUndoSchema,
   contentUploadTicketSchema,
   contentUsageSchema,
+  contentWornArtSchema,
+  contentWornSchema,
+  contentWornSheetSchema,
 } from "./content.ts";
 import {
   type CoreServerMsg,
@@ -211,6 +214,9 @@ export const inGameSchema = z.discriminatedUnion("t", [
   contentUploadTicketSchema,
   contentItemArtSchema,
   contentPictureSchema,
+  contentWornArtSchema,
+  contentWornSheetSchema,
+  contentWornSchema,
   characterSearchSchema,
   characterOpenSchema,
   characterModerateSchema,

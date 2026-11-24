@@ -9,6 +9,7 @@ export {
 } from "./constants.ts";
 export * from "./content/picture.ts";
 export * from "./content/store.ts";
+export * from "./content/worn.ts";
 export * from "./protocol/index.ts";
 export * from "./rules/admin/activity.ts";
 export * from "./rules/admin/admin.ts";

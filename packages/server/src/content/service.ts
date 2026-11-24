@@ -9,7 +9,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-import { ASSET_INDEX_FILE, type PackArtIndex } from "@secondstaronline/data";
+import { type ArtFrameId, ASSET_INDEX_FILE, type PackArtIndex } from "@secondstaronline/data";
+import { encodePng } from "@secondstaronline/data/art";
 import {
   artDataSchema,
   comparePackVersions,
@@ -21,6 +22,7 @@ import {
   CONTENT_FORMAT,
   type ContentData,
   type ContentStore,
+  type ContentWornArtView,
   checkNpcFile,
   content,
   DATASET_IDS,
@@ -29,10 +31,15 @@ import {
   hasContent,
   installContent,
   isUniqueContainer,
+  ownLayerPossible,
   type PictureChange,
   planPicture,
+  planWorn,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
+  type WornChange,
+  wornLayerOf,
+  wornLayers,
 } from "@secondstaronline/shared";
 
 import { insertAudit } from "../persistence/admin.ts";
@@ -76,10 +83,11 @@ import {
   type BuiltArt,
   checkUpload,
   keysOf,
+  sliceWornSheet,
   type UploadKind,
   withArtRects,
 } from "./art.ts";
-import { lostArtProblems, usedArt } from "./art-usage.ts";
+import { lostArtProblems, usedArt, wornSetProblems } from "./art-usage.ts";
 import {
   type CleanupRow,
   cleanUses,
@@ -789,7 +797,11 @@ export class ContentService {
     }
     const before = keysOf(this.art.build(this.published.art).index);
     const after = keysOf(this.art.build(next.art).index);
-    return [...this.art.problems(next.art), ...lostArtProblems(next, this.packArt, before, after)];
+    return [
+      ...this.art.problems(next.art),
+      ...lostArtProblems(next, this.packArt, before, after),
+      ...wornSetProblems(next, this.published),
+    ];
   }
 
   /** The operator layer with draft changes laid in, in the order the database will hold it. */
@@ -1040,10 +1052,31 @@ export class ContentService {
     if (!plan.ok) {
       return fail(plan.error);
     }
+    const wrote = this.writeDraftRows(actor, plan.rows, ["items", "art"]);
+    if (!wrote.ok) {
+      return fail("the picture does not match the art rows' schema", wrote.problems);
+    }
+    const what =
+      change.op === "pile"
+        ? change.pile
+        : `${base.items.items.find((i) => i.name.toLowerCase() === change.item.toLowerCase())?.name ?? change.item}'s picture`;
+    return { ok: true, value: `${what} is in the draft.` };
+  }
+
+  /**
+   * Puts rows a Content page change works out in the draft as a whole (issue #29): taking out a
+   * row only the draft adds drops that draft change. Refused, writing nothing, when the rows break
+   * the schema of one of `datasets`.
+   */
+  private writeDraftRows(
+    actor: ContentActor,
+    rows: readonly { ref: RowRef; op: "set" | "remove"; data: unknown }[],
+    datasets: readonly string[],
+  ): { ok: true } | { ok: false; problems: ContentProblem[] } {
     const now = this.now();
     const writes: DraftRow[] = [];
     const drops: RowRef[] = [];
-    for (const r of plan.rows) {
+    for (const r of rows) {
       // Taking out a row only the draft adds is dropping that draft change.
       if (r.op === "remove" && rowValue(this.published, r.ref) === undefined) {
         drops.push(r.ref);
@@ -1065,10 +1098,10 @@ export class ContentService {
       ...writes,
     ];
     const problems = schemaProblems(this.draftContent(draft)).filter((p) =>
-      ["items", "art"].some((d) => p.where === d || p.where.startsWith(`${d}/`)),
+      datasets.some((d) => p.where === d || p.where.startsWith(`${d}/`)),
     );
     if (problems.length > 0) {
-      return fail("the picture does not match the art rows' schema", problems);
+      return { ok: false, problems };
     }
     this.db.transaction(() => {
       for (const d of drops) {
@@ -1078,11 +1111,102 @@ export class ContentService {
         upsertDraftRow(this.db, w);
       }
     })();
-    const what =
-      change.op === "pile"
-        ? change.pile
-        : `${base.items.items.find((i) => i.name.toLowerCase() === change.item.toLowerCase())?.name ?? change.item}'s picture`;
-    return { ok: true, value: `${what} is in the draft.` };
+    return { ok: true };
+  }
+
+  /** The worn frame set panels' view, worked out from the draft's rules (issue #29, stage 3). */
+  wornArtView(): ContentWornArtView {
+    const d = this.draftContent();
+    const items: ContentWornArtView["items"] = [];
+    for (const i of d.items.items) {
+      const w = wornLayerOf(d.itemRules, i.name);
+      if (w) {
+        items.push({
+          name: i.name,
+          ...(i.display !== undefined ? { display: i.display } : {}),
+          ...(i.retired ? { retired: true } : {}),
+          ...w,
+          ownLayerPossible:
+            w.ownLayerPossible && ownLayerPossible(d.itemRules, d.items.items, i.name),
+        });
+      }
+    }
+    const packLayers: Record<string, ArtFrameId[]> = {};
+    for (const key of [...this.packArt.sprites.paperdoll].sort()) {
+      const m = /^(.*)-(f[1-4]-[nesw])$/.exec(key);
+      if (m) {
+        const layer = m[1] as string;
+        packLayers[layer] = [...(packLayers[layer] ?? []), m[2] as ArtFrameId];
+      }
+    }
+    return {
+      items,
+      layers: [...wornLayers(d).values()],
+      art: d.art.paperdoll,
+      packLayers,
+      rules: { aliases: d.itemRules.paperdoll.aliases, behaviours: d.itemRules.behaviours },
+      head: d.classes.creation.sexes[0]?.heads[0] ?? 1,
+    };
+  }
+
+  /**
+   * One worn layer change from the Content page (issue #29, stage 3), put in the draft as a whole:
+   * a layer's frames, taking its upload out, or an item's own layer (its exact aliases out).
+   */
+  draftWorn(actor: ContentActor, change: WornChange): ContentResult<string> {
+    const base = this.draftContent();
+    const plan = planWorn(change, base.itemRules, base.items.items, base.art.paperdoll);
+    if (!plan.ok) {
+      return fail(plan.error);
+    }
+    const wrote = this.writeDraftRows(actor, plan.rows, ["itemRules", "art"]);
+    if (!wrote.ok) {
+      return fail("the change does not match the rows' schema", wrote.problems);
+    }
+    if (change.op === "ownLayer") {
+      const item = base.items.items.find((i) => i.name.toLowerCase() === change.item.toLowerCase());
+      return {
+        ok: true,
+        value: `${item?.name ?? change.item} draws a layer of its own in the draft.`,
+      };
+    }
+    const row = plan.rows[0];
+    const name = row?.ref.key ?? change.layer;
+    return {
+      ok: true,
+      value:
+        change.op === "remove"
+          ? `${name}'s upload is out of the draft.`
+          : `${name}'s worn frames are in the draft.`,
+    };
+  }
+
+  /**
+   * Cuts an uploaded worn sheet into frame files, stored like any upload (issue #29, stage 3).
+   * Nothing goes in the draft.
+   */
+  wornSheet(
+    sheet: string,
+  ): { ok: true; frames: Partial<Record<ArtFrameId, string>> } | { ok: false; error: string } {
+    if (!this.art) {
+      return { ok: false, error: "this server stores no uploads" };
+    }
+    const img = this.art.image(sheet);
+    if (typeof img === "string") {
+      return { ok: false, error: `the sheet cannot be read: ${img}` };
+    }
+    const cells = sliceWornSheet(img);
+    if (typeof cells === "string") {
+      return { ok: false, error: cells };
+    }
+    const frames: Partial<Record<ArtFrameId, string>> = {};
+    for (const [id, cell] of cells) {
+      const file = this.art.files.put("art", "png", encodePng(cell));
+      this.art.stored(file);
+      frames[id] = file;
+    }
+    this.checked = null;
+    return { ok: true, frames };
   }
 
   /** Drops a change from the draft. */
@@ -1382,16 +1506,20 @@ export class ContentService {
     // unless something else still draws that picture (issue #29).
     let out = settled;
     const next = this.draftContent(out);
-    const used = usedArt(next).sprites.items;
+    const used = usedArt(next).sprites;
     for (const d of removed) {
-      const art = next.art.items.find((r) => r.name.toLowerCase() === String(d.key).toLowerCase());
-      if (!art || used.has(art.name.toLowerCase())) {
-        continue;
-      }
-      const ref: RowRef = { dataset: "art", part: "items", key: art.name };
-      out = out.filter((x) => !sameRow(x, ref));
-      if (rowValue(this.published, ref) !== undefined) {
-        out.push({ ...d, ...ref, op: "remove", data: null });
+      const key = String(d.key).toLowerCase();
+      // Its own picture and its own worn layer (issue #29), both named by its key.
+      for (const part of ["items", "paperdoll"] as const) {
+        const art = next.art[part].find((r) => r.name.toLowerCase() === key);
+        if (!art || used[part].has(art.name.toLowerCase())) {
+          continue;
+        }
+        const ref: RowRef = { dataset: "art", part, key: art.name };
+        out = out.filter((x) => !sameRow(x, ref));
+        if (rowValue(this.published, ref) !== undefined) {
+          out.push({ ...d, ...ref, op: "remove", data: null });
+        }
       }
     }
     return out;
@@ -1701,17 +1829,18 @@ export class ContentService {
       // picture (an item that borrows it as its `sprite`, an engine pile): issue #29.
       if (own[0]?.op === "remove") {
         // Its own upload, named by its key: a picture it borrowed through `sprite` is another's.
-        const art = base.art.items.find((a) => a.name.toLowerCase() === key.toLowerCase());
+        // Its own worn layer goes the same way (issue #29, stage 3), unless another item (or an
+        // alias) still draws it.
         const after = applyRows(
           base,
           [...cleaned.rows, ...own].map((r) => ({ ...r.ref, op: r.op, data: r.data })),
         );
-        if (art && !usedArt(after).sprites.items.has(art.name.toLowerCase())) {
-          own.push({
-            ref: { dataset: "art", part: "items", key: art.name },
-            op: "remove",
-            data: null,
-          });
+        const used = usedArt(after).sprites;
+        for (const part of ["items", "paperdoll"] as const) {
+          const art = base.art[part].find((a) => a.name.toLowerCase() === key.toLowerCase());
+          if (art && !used[part].has(art.name.toLowerCase())) {
+            own.push({ ref: { dataset: "art", part, key: art.name }, op: "remove", data: null });
+          }
         }
       }
       action = {

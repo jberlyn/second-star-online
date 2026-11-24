@@ -15,9 +15,13 @@
  *   the rows and the world's places that hold it, and a removal with its cleanup.
  * - **Item pictures** (issue #29, item-art.ts): a picture panel in an item row's editor, and a bulk
  *   upload that attaches PNGs named after items.
+ * - **Worn layers** (issue #29, worn-art.ts): a worn picture panel in a worn item's row editor, and
+ *   a section listing every worn layer, with a panel for each and a bulk upload of frames and
+ *   sheets named after their layers or items.
  * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
  * - **Problems**: references nothing resolves, in content and in the world.
  */
+import type { ArtFrameId } from "@secondstaronline/data";
 import type {
   ContentDraftView,
   ContentItemArtView,
@@ -30,7 +34,9 @@ import type {
   ContentRowRef,
   ContentRowStatus,
   ContentUsageView,
+  ContentWornArtView,
   PictureChange,
+  WornChange,
 } from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
@@ -45,6 +51,7 @@ import {
   panelButton,
 } from "./control-panel-kit.ts";
 import { createItemArtPicker, createItemPictures } from "./item-art.ts";
+import { createWornArtPicker, createWornLayers } from "./worn-art.ts";
 
 /** What the page asks the server for (each answer comes back with its `seq`). */
 export interface ContentPageActions {
@@ -68,6 +75,12 @@ export interface ContentPageActions {
   itemArt(seq: number): void;
   /** One picture change, made in the draft as a whole by the server. */
   picture(seq: number, change: PictureChange): void;
+  /** The draft's worn layers, for the worn picture panels. */
+  wornArt(seq: number): void;
+  /** Cuts an uploaded worn sheet into frame files. */
+  wornSheet(seq: number, sheet: string): void;
+  /** One worn layer change, made in the draft as a whole by the server. */
+  worn(seq: number, change: WornChange): void;
   /** Opens a character's hub (a holder in a usage report). */
   openCharacter(name: string): void;
 }
@@ -85,7 +98,14 @@ export type ContentReply =
     }
   | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] }
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
-  | { t: "contentItemArt"; seq: number; view: ContentItemArtView };
+  | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
+  | { t: "contentWornArt"; seq: number; view: ContentWornArtView }
+  | {
+      t: "contentWornSheet";
+      seq: number;
+      frames: Partial<Record<ArtFrameId, string>> | null;
+      error?: string;
+    };
 
 export interface ContentPage {
   readonly el: HTMLElement;
@@ -497,6 +517,13 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   /** Draft changes waiting for their result, by seq (the picture picker's saves). */
   const resultWaits = new Map<number, (r: { ok: boolean; text: string }) => void>();
   const itemArtWaits = new Map<number, (v: ContentItemArtView) => void>();
+  const wornArtWaits = new Map<number, (v: ContentWornArtView) => void>();
+  const sheetWaits = new Map<
+    number,
+    (
+      r: { ok: true; frames: Partial<Record<ArtFrameId, string>> } | { ok: false; error: string },
+    ) => void
+  >();
   /** Ticket requests waiting for their answer, by seq. */
   const ticketWaits = new Map<number, (t: { ticket: string; maxBytes: number }) => void>();
   const ticket = (): Promise<{ ticket: string; maxBytes: number }> =>
@@ -519,6 +546,30 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       setTimeout(() => {
         if (itemArtWaits.delete(s)) {
           reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
+  /** The draft's worn layers, as the worn panels need them. */
+  const askWornArt = (): Promise<ContentWornArtView> =>
+    new Promise((resolve, reject) => {
+      const s = next();
+      wornArtWaits.set(s, resolve);
+      actions.wornArt(s);
+      setTimeout(() => {
+        if (wornArtWaits.delete(s)) {
+          reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
+  /** Waits for a draft change's `contentResult`. */
+  const awaitResult = (send: (seq: number) => void) =>
+    new Promise<{ ok: boolean; text: string }>((resolve) => {
+      const s = next();
+      resultWaits.set(s, resolve);
+      send(s);
+      setTimeout(() => {
+        if (resultWaits.delete(s)) {
+          resolve({ ok: false, text: "The server did not answer." });
         }
       }, 15_000);
     });
@@ -545,21 +596,17 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           }
         },
         apply(change: PictureChange) {
-          return new Promise<{ ok: boolean; text: string }>((resolve) => {
-            const s = next();
-            resultWaits.set(s, resolve);
-            actions.picture(s, change);
-            setTimeout(() => {
-              if (resultWaits.delete(s)) {
-                resolve({ ok: false, text: "The server did not answer." });
-              }
-            }, 15_000);
-          });
+          return awaitResult((s) => actions.picture(s, change));
         },
         saved() {
           refreshAll();
           const ref = editing;
           if (!ref) {
+            return;
+          }
+          const itemRow = ref.dataset === "items" && ref.part === "items";
+          if (!editor.hidden && json.value !== loaded && !itemRow) {
+            // Another row's unsaved JSON stays as it is; picture changes never touch it.
             return;
           }
           if (!editor.hidden && json.value !== loaded) {
@@ -575,6 +622,29 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       }
     : null;
   const picker = artOptions ? createItemArtPicker(artOptions) : null;
+  const wornOptions = artOptions
+    ? {
+        ...artOptions,
+        apply(change: WornChange) {
+          return awaitResult((s) => actions.worn(s, change));
+        },
+        slice(sheet: string) {
+          return new Promise<
+            { ok: true; frames: Partial<Record<ArtFrameId, string>> } | { ok: false; error: string }
+          >((resolve) => {
+            const s = next();
+            sheetWaits.set(s, resolve);
+            actions.wornSheet(s, sheet);
+            setTimeout(() => {
+              if (sheetWaits.delete(s)) {
+                resolve({ ok: false, error: "the server did not answer" });
+              }
+            }, 15_000);
+          });
+        },
+      }
+    : null;
+  const wornPicker = wornOptions ? createWornArtPicker(wornOptions) : null;
   /** Shows the picker for the item row open in the editor (the draft's version of it). */
   let pickerSeq = 0;
   function showPicker(key: string): void {
@@ -596,10 +666,27 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         pictures?.setView(view);
       })
       .catch(() => picker.clear());
+    if (wornPicker) {
+      void askWornArt()
+        .then((view) => {
+          if (mine !== pickerSeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
+            return;
+          }
+          // Only an item that is worn has a worn picture.
+          if (view.items.some((i) => i.name.toLowerCase() === key.toLowerCase())) {
+            wornPicker.show({ kind: "item", item: key }, view);
+          } else {
+            wornPicker.clear();
+          }
+          wornLayers?.setView(view);
+        })
+        .catch(() => wornPicker.clear());
+    }
   }
   function hidePicker(): void {
     pickerSeq += 1;
     picker?.clear();
+    wornPicker?.clear();
   }
 
   // ---- the row editor -------------------------------------------------------------------------
@@ -649,6 +736,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     removalBox,
     packView,
     picker?.el ?? document.createElement("div"),
+    wornPicker?.el ?? document.createElement("div"),
     formField(
       "JSON",
       json,
@@ -910,10 +998,25 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   } else {
     picturesSection.el.hidden = true;
   }
+  const wornSection = section(
+    "Worn layers",
+    "Every worn (paperdoll) layer the content draws, with its frames. Open one to upload, check and preview its frames, or upload many layers' frames and sheets at once. An item's own row shows the layer it draws when worn.",
+  );
+  const wornLayers = wornOptions ? createWornLayers(wornOptions) : null;
+  if (wornLayers) {
+    wornSection.body.append(wornLayers.el);
+  } else {
+    wornSection.el.hidden = true;
+  }
   const refreshPictures = () => {
     if (pictures) {
       void askItemArt()
         .then((v) => pictures.setView(v))
+        .catch(() => {});
+    }
+    if (wornLayers) {
+      void askWornArt()
+        .then((v) => wornLayers.setView(v))
         .catch(() => {});
     }
   };
@@ -1012,6 +1115,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     draft.el,
     rows.el,
     picturesSection.el,
+    wornSection.el,
     artSection.el,
     history.el,
     problemsSection.el,
@@ -1076,6 +1180,22 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           const wait = itemArtWaits.get(msg.seq);
           itemArtWaits.delete(msg.seq);
           wait?.(msg.view);
+          return;
+        }
+        case "contentWornArt": {
+          const wait = wornArtWaits.get(msg.seq);
+          wornArtWaits.delete(msg.seq);
+          wait?.(msg.view);
+          return;
+        }
+        case "contentWornSheet": {
+          const wait = sheetWaits.get(msg.seq);
+          sheetWaits.delete(msg.seq);
+          wait?.(
+            msg.frames
+              ? { ok: true, frames: msg.frames }
+              : { ok: false, error: msg.error ?? "the sheet could not be cut" },
+          );
           return;
         }
         case "contentOverview":
@@ -1148,7 +1268,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         refreshAll();
       }
     },
-    changes: () => (!editor.hidden && json.value !== loaded ? 1 : 0) + (picker?.pending() ? 1 : 0),
+    changes: () =>
+      (!editor.hidden && json.value !== loaded ? 1 : 0) +
+      (picker?.pending() ? 1 : 0) +
+      (wornPicker?.pending() ? 1 : 0) +
+      (wornLayers?.pending() ? 1 : 0),
     discard: () => closeEditor(),
     reset() {
       overview = null;
@@ -1160,7 +1284,13 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       resultWaits.clear();
       ticketWaits.clear();
       itemArtWaits.clear();
+      wornArtWaits.clear();
+      for (const wait of sheetWaits.values()) {
+        wait({ ok: false, error: "the session ended" });
+      }
+      sheetWaits.clear();
       pictures?.reset();
+      wornLayers?.reset();
       problemsBody.replaceChildren();
       closeEditor();
       datasetSel.replaceChildren();

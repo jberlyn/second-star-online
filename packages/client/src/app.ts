@@ -674,6 +674,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       uploadTicket: (seq) => send({ t: "contentUploadTicket", seq }),
       itemArt: (seq) => send({ t: "contentItemArt", seq }),
       picture: (seq, change) => send({ t: "contentPicture", seq, change }),
+      wornArt: (seq) => send({ t: "contentWornArt", seq }),
+      wornSheet: (seq, sheet) => send({ t: "contentWornSheet", seq, sheet }),
+      worn: (seq, change) => send({ t: "contentWorn", seq, change }),
       openCharacter: (name) => {
         controlPanel.go("characters");
         if (controlPanel.page === "characters") {
@@ -1310,6 +1313,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentResult":
       case "contentUploadTicket":
       case "contentItemArt":
+      case "contentWornArt":
+      case "contentWornSheet":
         contentPage.receive(msg);
         return;
       case "content":

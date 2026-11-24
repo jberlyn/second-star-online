@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 
 import type {
   ArtData,
+  ArtFrameId,
   AtlasGroup,
   AtlasIndex,
   AtlasSprite,
@@ -36,7 +37,14 @@ import {
   type Rgba,
 } from "@secondstaronline/data/art";
 import { ART_FRAME_IDS, type ArtSoundFormat } from "@secondstaronline/data/schema";
-import { visibleBounds } from "@secondstaronline/shared";
+import {
+  ALL_FRAME_IDS,
+  blankCell,
+  sheetCell,
+  visibleBounds,
+  WORN_CELL,
+  WORN_SHEET,
+} from "@secondstaronline/shared";
 
 import type { ArtFiles } from "../persistence/art-files.ts";
 import type { ContentProblem } from "./validate.ts";
@@ -103,6 +111,35 @@ export function checkUpload(bytes: Uint8Array, kind: UploadKind): UploadCheck {
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
+}
+
+/**
+ * Cuts a worn sheet (issue #29, stage 3) into its frames: rows N, E, S, W of frames F1-F4, each a
+ * 46×45 cell. A blank cell (every pixel see-through, or every pixel pure green: blank whichever way
+ * the transparency is read) is left out, and so is F4-S, which is never drawn. The cells keep
+ * their pixels exactly; transparency and mirroring are applied when the atlas is built.
+ */
+export function sliceWornSheet(sheet: Rgba): Map<ArtFrameId, Rgba> | string {
+  if (sheet.width !== WORN_SHEET.w || sheet.height !== WORN_SHEET.h) {
+    return `the sheet is ${sheet.width}×${sheet.height}; a worn sheet is ${WORN_SHEET.w}×${WORN_SHEET.h} (rows N, E, S and W of frames F1 to F4, each ${WORN_CELL.w}×${WORN_CELL.h})`;
+  }
+  const out = new Map<ArtFrameId, Rgba>();
+  for (const id of ALL_FRAME_IDS) {
+    if (id === "f4-s") {
+      continue;
+    }
+    const { x: cx, y: cy } = sheetCell(id);
+    const cell = createRgba(WORN_CELL.w, WORN_CELL.h);
+    for (let y = 0; y < WORN_CELL.h; y++) {
+      const from = ((cy + y) * sheet.width + cx) * 4;
+      cell.data.set(sheet.data.subarray(from, from + WORN_CELL.w * 4), y * WORN_CELL.w * 4);
+    }
+    const blank = blankCell(cell);
+    if (!blank) {
+      out.set(id, cell);
+    }
+  }
+  return out.size > 0 ? out : "every cell of the sheet is blank";
 }
 
 /** "a WAV", "an MP3", "an OGG". */

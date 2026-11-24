@@ -13,6 +13,7 @@ Shared rules calculate outcomes; server systems apply them to world and player s
 - [packages/shared/src/rules/inventory/ground.ts](../../packages/shared/src/rules/inventory/ground.ts): defines ground item blocking, pictures and pickup gates.
 - [packages/shared/src/rules/inventory/inventory.ts](../../packages/shared/src/rules/inventory/inventory.ts): defines bags, stacking and equipment slots.
 - [packages/shared/src/rules/inventory/paperdoll.ts](../../packages/shared/src/rules/inventory/paperdoll.ts): selects character appearance layers.
+- [packages/shared/src/content/worn.ts](../../packages/shared/src/content/worn.ts): which layer a worn item draws and which frames the renderer asks a layer for (uploaded worn sets, issue #29).
 
 Entry points:
 
@@ -34,7 +35,7 @@ The bag has 15 lines. Ordinary items stack by case-insensitive exact name or use
 
 Dropping puts an item on the faced tile after the action's checks; ordinary items share a tile up to a cap, and a tile holding something that stands in the way is too crowded. Giving a normal item creates a ground item at the target and schedules its grab 60 frames later; gold, crystals and NPC hand-ins follow their own routes, and the crystal dialog drops or gives by the bag button that opened it. Pickup checks the current map, position and item before moving that one item to the bag. A click uses a thing that does something (opens a crate, plays a casino table, views a painting) and Ctrl carries off the ones that can be moved; a blocking fixture the world placed is never picked up. Ctrl, like every other item action, waits while a window holds the keys. The server records ground changes for persistence and removes expired monster loot on its decay step. Ground objects that block players block monsters too.
 
-The paperdoll combines body, head and equipment layers for the current frame and facing; boots are drawn over the body from authored layers (bare feet when none are worn, covering the shoes every body paints), and an absent layer is skipped. The north frames reach the atlas already flipped the right way round (the art library's `packages/data/src/art/mirror.ts`), so drawing needs no special case for them. Ground pictures and their draw layers are selected by shared name rules, independently of collision.
+The paperdoll combines body, head and equipment layers for the current frame and facing; boots are drawn over the body from authored layers (bare feet when none are worn, covering the shoes every body paints), and an absent layer is skipped. The north frames reach the atlas already flipped the right way round (the art library's `packages/data/src/art/mirror.ts`), so drawing needs no special case for them. `paperdollLayersWith` takes the aliases and behaviours as data, so the Content page and the publish checks stack a draft's layers exactly as the renderer will once it is published; the frames a layer needs are found by asking it frame by frame. Ground pictures and their draw layers are selected by shared name rules, independently of collision.
 
 ## Differences from 1.6
 

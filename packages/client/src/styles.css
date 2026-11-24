@@ -3295,3 +3295,22 @@ body {
   font-size: 12px;
   color: #9a9a9a;
 }
+/* Worn frame sets on the Content page (issue #29, ui/worn-art.ts): frames drawn at twice size. */
+.worn-art-motion {
+  width: 416px;
+  height: 90px;
+}
+.worn-art-doll {
+  width: 92px;
+  height: 90px;
+}
+.worn-art-grid {
+  width: 368px;
+  height: 360px;
+}
+.worn-art .item-art-figure {
+  max-width: 420px;
+}
+.worn-art .item-art-figure select {
+  align-self: flex-start;
+}

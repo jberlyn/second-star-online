@@ -6,7 +6,14 @@
  * its frames is left. Pure.
  */
 import type { AtlasGroup } from "@secondstaronline/data";
-import { type ContentData, CURRENCY_PILES } from "@secondstaronline/shared";
+import {
+  type ContentData,
+  CURRENCY_PILES,
+  missingFrames,
+  wornByText,
+  wornLayerOf,
+  wornLayers,
+} from "@secondstaronline/shared";
 
 import type { ArtKeys } from "./art.ts";
 import type { ContentProblem } from "./validate.ts";
@@ -46,15 +53,13 @@ export function usedArt(data: ContentData): {
   };
   for (const item of data.items.items) {
     note(sprites.items, item.sprite ?? item.name, `item ${item.name}`);
-    // A worn item draws the layer of its name (`+N` dropped).
-    note(sprites.paperdoll, item.name.split("+")[0]?.trimEnd(), `item ${item.name}`);
+    // A worn item draws its slot's layer: its key after the aliases (none for an alias to
+    // NOTHING, or an item never worn).
+    note(sprites.paperdoll, wornLayerOf(data.itemRules, item.name)?.layer, `item ${item.name}`);
   }
   // The engine's currency piles, drawn for a pile of the currency whatever it is called.
   for (const pile of CURRENCY_PILES) {
     note(sprites.items, pile.name, "the currency's piles");
-  }
-  for (const row of data.itemRules.paperdoll.aliases) {
-    note(sprites.paperdoll, row.becomes, "a paperdoll alias");
   }
   // The engine's own layers: the shadow, the bare body and feet, and each sex's heads.
   for (const layer of ["BIM", "DEFBOD", "Bare Feet"]) {
@@ -162,6 +167,46 @@ export function lostArtProblems(
       out.push({
         where: "art/sounds",
         message: `removing the sound ${name} leaves ${who} silent`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Uploaded worn layers missing frames their wearers need (issue #29, stage 3): a character would
+ * show nothing for that piece of gear on those frames. Only the uploads are checked; a pack's own
+ * layers are what the pack shipped. A gap `before` already had (the same layer missing the same
+ * frames) is not reported: the change being checked did not make it.
+ */
+export function wornSetProblems(data: ContentData, before?: ContentData): ContentProblem[] {
+  const had = new Set(
+    before ? wornGaps(before).flatMap((g) => g.missing.map((f) => `${g.key}:${f}`)) : [],
+  );
+  // A gap is new when one of its frames was not missing before: fixing part of an old gap leaves
+  // what remains of it alone.
+  return wornGaps(data)
+    .filter((g) => g.missing.some((f) => !had.has(`${g.key}:${f}`)))
+    .map((g) => g.problem);
+}
+
+function wornGaps(
+  data: ContentData,
+): { key: string; missing: string[]; problem: ContentProblem }[] {
+  const layers = wornLayers(data);
+  const out: { key: string; missing: string[]; problem: ContentProblem }[] = [];
+  for (const row of data.art.paperdoll) {
+    const use = layers.get(row.name.toLowerCase());
+    const missing = missingFrames(row, use);
+    if (missing.length > 0) {
+      const many = use !== undefined && use.engine.length + use.wornBy.length > 1;
+      out.push({
+        key: row.name.toLowerCase(),
+        missing,
+        problem: {
+          where: `art/paperdoll/${row.name}`,
+          message: `${row.name} is missing ${missing.join(", ")}, which ${wornByText(use)} draw${many ? "" : "s"}`,
+        },
       });
     }
   }

@@ -13,17 +13,48 @@ import { lingoContains, lingoEq } from "../core/lingo.ts";
 
 export type { ItemBehaviour };
 
-let ROWS: Map<ItemBehaviour, { match: "exact" | "contains"; pattern: string }[]> = new Map();
+type BehaviourRows = Map<ItemBehaviour, { match: "exact" | "contains"; pattern: string }[]>;
+
+/** The behaviour rows grouped by behaviour. */
+function groupRows(
+  rows: readonly { match: "exact" | "contains"; pattern: string; behaviour: ItemBehaviour }[],
+): BehaviourRows {
+  const out: BehaviourRows = new Map();
+  for (const r of rows) {
+    const list = out.get(r.behaviour) ?? [];
+    list.push({ match: r.match, pattern: r.pattern });
+    out.set(r.behaviour, list);
+  }
+  return out;
+}
+
+let ROWS: BehaviourRows = new Map();
 
 onContent((c) => {
-  const rows = new Map<ItemBehaviour, { match: "exact" | "contains"; pattern: string }[]>();
-  for (const r of c.itemRules.behaviours) {
-    const list = rows.get(r.behaviour) ?? [];
-    list.push({ match: r.match, pattern: r.pattern });
-    rows.set(r.behaviour, list);
-  }
-  ROWS = rows;
+  ROWS = groupRows(c.itemRules.behaviours);
 });
+
+function hasIn(rows: BehaviourRows, name: string, behaviour: ItemBehaviour): boolean {
+  const list = rows.get(behaviour);
+  if (!list || isEngineFixture(name)) {
+    return false;
+  }
+  const n = behaviourName(name);
+  return list.some((r) =>
+    r.match === "exact" ? lingoEq(n, r.pattern) : lingoContains(n, r.pattern),
+  );
+}
+
+/**
+ * `hasBehaviour` against rows that are not installed (a draft's item rules), for checks that must
+ * not read the live store.
+ */
+export function behaviourTest(
+  rows: readonly { match: "exact" | "contains"; pattern: string; behaviour: ItemBehaviour }[],
+): (name: string, behaviour: ItemBehaviour) => boolean {
+  const grouped = groupRows(rows);
+  return (name, behaviour) => hasIn(grouped, name, behaviour);
+}
 
 /**
  * The name a behaviour row tests: without its `#id` (`Crate#12`) or `+N` ending (`Long Sword+3`,
@@ -35,14 +66,7 @@ export function behaviourName(name: string): string {
 
 /** Whether the item `name` has `behaviour`. An engine fixture (`Bob's Door`) has none. */
 export function hasBehaviour(name: string, behaviour: ItemBehaviour): boolean {
-  const rows = ROWS.get(behaviour);
-  if (!rows || isEngineFixture(name)) {
-    return false;
-  }
-  const n = behaviourName(name);
-  return rows.some((r) =>
-    r.match === "exact" ? lingoEq(n, r.pattern) : lingoContains(n, r.pattern),
-  );
+  return hasIn(ROWS, name, behaviour);
 }
 
 /** A carried container with storage of its own: a cabinet, crate or cauldron. */

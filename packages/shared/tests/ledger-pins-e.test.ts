@@ -169,6 +169,10 @@ describe("Only server systems create items", () => {
       // digits, checked by the schema), a picture's name. The server resolves the item and the
       // picture against the draft and changes only the item's `sprite` and its upload.
       contentPicture: ["change.item:string", "change.art.file:string", "change.picture:string"],
+      // A worn layer change (issue #29, stage 3): a layer's name, its frames' uploaded files by
+      // SHA-256 (checked by the schema), an item by key. A sheet to cut into frames, by SHA-256.
+      contentWorn: ["change.layer:string", "change.frames{}:string", "change.item:string"],
+      contentWornSheet: ["sheet:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
