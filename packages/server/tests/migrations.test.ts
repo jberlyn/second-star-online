@@ -70,8 +70,11 @@ const classicSkillNames = classicData.classes.skills.map((s) => s.skill);
 const panelName = (skill: string) =>
   classicData.classes.skills.find((s) => s.skill === skill)?.display ?? skill;
 
-/** The settings migration 59 (bindings_and_jail) seeds on every server, left out where a test is about others. */
-const SEEDED = "'jailPoint', 'bellMap'";
+/**
+ * The settings migrations 59 (bindings_and_jail) and 66 (point_defaults) seed on every server,
+ * left out where a test is about others.
+ */
+const SEEDED = "'jailPoint', 'bellMap', 'startPoint', 'fallbackPoint'";
 
 /** The Classic pack's manifest, as a pack blob stores one. */
 const classicManifest = () =>
@@ -401,9 +404,11 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
         // The setting names a missing map: no point, and the fallback point covers it.
         expect(point(none)).toEqual({ respawn_map_id: null, respawn_x: null, respawn_y: null });
       }
-      expect(db.query(`SELECT key FROM settings WHERE key NOT IN (${SEEDED})`).all()).toEqual(
-        override ? [{ key: "fallbackPoint" }] : [],
-      );
+      // The renamed setting keeps its value; without one, migration 66 stores Classic's.
+      expect(db.query("SELECT value FROM settings WHERE key = 'fallbackPoint'").get()).toEqual({
+        value: JSON.stringify(override ?? { map: "x1000y992", x: 5, y: 5 }),
+      });
+      expect(db.query(`SELECT key FROM settings WHERE key NOT IN (${SEEDED})`).all()).toEqual([]);
     }
   });
 
@@ -1136,7 +1141,9 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     runMigrations(db, all);
     expect(db.query("SELECT key, value FROM settings ORDER BY key").all()).toEqual([
       { key: "bellMap", value: '"x999y999"' },
+      { key: "fallbackPoint", value: '{"map":"x1000y992","x":5,"y":5}' },
       { key: "jailPoint", value: '{"map":"x0y0","x":4,"y":4}' },
+      { key: "startPoint", value: '{"map":"x1000y992","x":6,"y":4}' },
     ]);
     const bindings = (id: string) =>
       JSON.parse(
@@ -1169,7 +1176,13 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       "INSERT INTO settings (key, value, updated_at) VALUES ('jailPoint', '{\"map\":\"x5y5\",\"x\":2,\"y\":2}', 'then'), ('bellMap', 'null', 'then')",
     );
     runMigrations(db, all);
-    expect(db.query("SELECT key, value, updated_at FROM settings ORDER BY key").all()).toEqual([
+    expect(
+      db
+        .query(
+          `SELECT key, value, updated_at FROM settings WHERE key IN ('bellMap', 'jailPoint') ORDER BY key`,
+        )
+        .all(),
+    ).toEqual([
       { key: "bellMap", value: "null", updated_at: "then" },
       { key: "jailPoint", value: '{"map":"x5y5","x":2,"y":2}', updated_at: "then" },
     ]);
@@ -2408,5 +2421,139 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     expect(u1.ok ? "" : JSON.stringify(u1)).toBe("");
     expect(service.publishedContent().gather?.yields.Logs).toMatchObject({ chance: 2 });
     expect(service.publishedContent().itemRules?.ladders.fishing?.steps).toEqual([{ delay: 1000 }]);
+  });
+
+  test("point_defaults keeps the start and fallback points Classic servers had, and an operator's own", () => {
+    for (const own of [false, true]) {
+      const db = openDatabase();
+      const all = loadMigrations(MIGRATIONS_DIR);
+      runMigrations(
+        db,
+        all.filter((m) => m.name < "20261124_66"),
+      );
+      if (own) {
+        db.run(
+          'INSERT INTO settings (key, value, updated_at) VALUES (\'startPoint\', \'{"map":"x3y3","x":2,"y":2}\', \'then\')',
+        );
+      }
+      runMigrations(db, all);
+      expect(
+        db
+          .query(
+            "SELECT key, value FROM settings WHERE key IN ('startPoint', 'fallbackPoint') ORDER BY key",
+          )
+          .all(),
+      ).toEqual([
+        { key: "fallbackPoint", value: '{"map":"x1000y992","x":5,"y":5}' },
+        {
+          key: "startPoint",
+          value: own ? '{"map":"x3y3","x":2,"y":2}' : '{"map":"x1000y992","x":6,"y":4}',
+        },
+      ]);
+    }
+  });
+
+  test("sexes_as_content keeps every character and lets a sex be any code; older creation records get Classic's sexes", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261124_67"),
+    );
+    const seed = db.query("SELECT id FROM maps WHERE mx = 1000 AND my = 992").get() as {
+      id: string;
+    };
+    db.run(
+      "INSERT INTO accounts (id, username, password_hash, created_at, updated_at) VALUES ('a1', 'old', 'x', 'now', 'now')",
+    );
+    const id = insertCharacter(db, {
+      accountId: "a1",
+      start: startingCharacter({
+        name: "Ivy",
+        sex: 2,
+        head: 7,
+        classCode: 1,
+        str: 1,
+        sta: 1,
+        int: 1,
+        wis: 1,
+        dex: 1,
+      }),
+      position: { mapId: seed.id, x: 6, y: 4, facing: "S" },
+      now: "now",
+    });
+    expect(() => db.run("UPDATE characters SET sex = 3 WHERE id = ?", [id])).toThrow();
+    const before = db.query("SELECT * FROM characters WHERE id = ?").get(id);
+    const bag = db.query("SELECT COUNT(*) AS n FROM inventory WHERE character_id = ?").get(id);
+    // An imported pack, an operator's creation row (from the pack row of the day), a draft and a
+    // publish made before the sexes.
+    const { sexes: _sexes, ...oldCreation } = classicData.classes.creation;
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [JSON.stringify({ manifest: {}, data: { classes: { creation: oldCreation } } })],
+    );
+    const mine = { ...oldCreation, otherFields: { ...oldCreation.otherFields, gold: 5 } };
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('classes', 'creation', '', 'set', ?, 'old', ?, 1, 'a1', 'now')",
+      [JSON.stringify(mine), JSON.stringify(oldCreation)],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('classes', 'creation', '', 'set', ?, 'a1', 'A', 'now')",
+      [JSON.stringify(mine)],
+    );
+    const state = { op: "set", data: mine, baseHash: "old", baseData: oldCreation };
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          { dataset: "classes", part: "creation", key: null, before: null, after: state },
+          { dataset: "items", part: "items", key: "Apple", before: null, after: null },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    expect(db.query("SELECT * FROM characters WHERE id = ?").get(id)).toEqual(before);
+    expect(db.query("SELECT COUNT(*) AS n FROM inventory WHERE character_id = ?").get(id)).toEqual(
+      bag,
+    );
+    db.run("UPDATE characters SET sex = 3 WHERE id = ?", [id]);
+    expect(() => db.run("UPDATE characters SET sex = 0 WHERE id = ?", [id])).toThrow();
+    expect(db.query("PRAGMA foreign_key_check").all()).toEqual([]);
+    const sexes = classicData.classes.creation.sexes;
+    const json = (sql: string) => JSON.parse((db.query(sql).get() as { j: string }).j);
+    expect(
+      json(
+        "SELECT json_extract(data, '$.data.classes.creation') AS j FROM content_packs WHERE id = 'old'",
+      ),
+    ).toEqual({ ...oldCreation, sexes });
+    const row = db
+      .query("SELECT data, base_data, base_hash FROM content_rows WHERE part = 'creation'")
+      .get() as { data: string; base_data: string; base_hash: string | null };
+    expect(JSON.parse(row.data)).toEqual({ ...mine, sexes });
+    expect(JSON.parse(row.base_data)).toEqual({ ...oldCreation, sexes });
+    expect(row.base_hash).toBeNull();
+    expect(json("SELECT data AS j FROM content_draft WHERE part = 'creation'")).toEqual({
+      ...mine,
+      sexes,
+    });
+    const changes = json("SELECT changes AS j FROM content_publishes WHERE id = 'p1'");
+    expect(changes[0].after).toEqual({
+      op: "set",
+      data: { ...mine, sexes },
+      baseHash: null,
+      baseData: { ...oldCreation, sexes },
+    });
+    expect(changes[1]).toEqual({
+      dataset: "items",
+      part: "items",
+      key: "Apple",
+      before: null,
+      after: null,
+    });
+    // Classic's own sexes are 1.6's two, with its heads.
+    expect(sexes).toEqual([
+      { code: 1, label: "Male", heads: [1, 3, 4, 5, 6, 9, 10] },
+      { code: 2, label: "Female", heads: [2, 7, 8, 11] },
+    ]);
   });
 });

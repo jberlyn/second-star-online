@@ -3,6 +3,9 @@
  *
  * Environment:
  * - SSO_DB: SQLite path (default `sso.sqlite`, gitignored); `:memory:` for a throwaway world.
+ * - SSO_CONTENT: the pack a new world is created with, `classic` (default) or `minimal`. Read only
+ *   when the server creates the database; afterwards it does nothing (a line says so when it
+ *   disagrees with the world).
  * - PORT: HTTP/WebSocket port (default 3000).
  * - NODE_ENV=development: live reload (`bun run dev`); anything else serves the minified build with
  *   the security headers.
@@ -26,6 +29,12 @@ import { installContent } from "@secondstaronline/shared";
 import { type Clock, systemClock } from "./clock.ts";
 import { DEFAULT_SERVER_CONFIG, readServerConfig, type ServerConfig } from "./config.ts";
 import { ContentService } from "./content/service.ts";
+import {
+  ContentChoiceError,
+  ignoredChoiceLine,
+  seedNewWorld,
+  worldToCreate,
+} from "./content/world-seed.ts";
 import { createGame, type Game } from "./game.ts";
 import {
   type Gateway,
@@ -81,6 +90,11 @@ export interface ServerOptions {
   probe?: GatewayOptions["probe"];
   /** The folders of the packs the release ships, by id (tests pass a changed copy). */
   releasePacks?: Readonly<Record<string, string>>;
+  /**
+   * `SSO_CONTENT` as given: the pack a new database is seeded with (`classic` when unset). Read
+   * only when this start creates the database.
+   */
+  content?: string;
   /** Ends the process after too many failed ticks (tests record it; default `process.exit`). */
   exit?: (code: number) => void;
 }
@@ -96,6 +110,8 @@ export type RunningServer = {
   db: Db;
   /** The live game (tests only: inspection and setting up a scene). */
   game: Game;
+  /** The live content store's service (tests only: publishing operator rows). */
+  content: ContentService;
   /** Traffic since the last call, and ticks dropped so far (tests and the rig). */
   stats(): { gateway: GatewayStats; droppedTicks: number };
   stop(): Promise<void>;
@@ -105,18 +121,34 @@ export type RunningServer = {
 export function startServer(options: ServerOptions): RunningServer {
   const clock = options.clock ?? systemClock;
   const db = openDatabase(options.dbPath);
+  const isoNow = options.isoNow ?? (() => new Date().toISOString());
+  const releasePacks = options.releasePacks ?? RELEASE_PACK_DIRS;
+  // A new database (or one whose creation a crash interrupted) is created with the chosen pack:
+  // the choice is recorded before the migrations, and the seed marks it done.
+  const creating = worldToCreate(db, options.content, releasePacks);
   migrate(db);
+  if (creating !== null) {
+    seedNewWorld(db, creating, releasePacks, isoNow());
+    // A throwaway world (`:memory:`, the tests') is created every start: only a real one is told.
+    if (options.dbPath !== ":memory:") {
+      console.log(`content: created a new world with the ${creating} pack`);
+    }
+  } else {
+    const ignored = ignoredChoiceLine(db, options.content);
+    if (ignored) {
+      console.log(ignored);
+    }
+  }
   options.prepare?.(db);
   let gateway: Gateway | null = null;
   // The content store: the installed packs (Classic, read from the release) with the operator's
   // published changes on top. It is installed before the game loads anything, and each publish
   // swaps it in and tells every client.
   let live: Game | null = null;
-  const isoNow = options.isoNow ?? (() => new Date().toISOString());
   const content = new ContentService({
     db,
     now: isoNow,
-    releasePacks: options.releasePacks ?? RELEASE_PACK_DIRS,
+    releasePacks,
     log: (line) => console.log(line),
     onPublish: (store, restoring) => {
       installContent(store);
@@ -255,6 +287,7 @@ export function startServer(options: ServerOptions): RunningServer {
     url: gw.url,
     db,
     game,
+    content,
     stats: () => ({ gateway: gw.takeStats(), droppedTicks: loop.droppedTicks }),
     tickNow(n = 1) {
       for (let i = 0; i < n; i++) {
@@ -294,23 +327,35 @@ function readProxyHops(raw: string | undefined): number {
 
 if (import.meta.main) {
   const crashAt = process.env.SSO_CRASH_AT;
-  const server = startServer({
-    dbPath: process.env.SSO_DB ?? "sso.sqlite",
-    port: Number(process.env.PORT ?? 3000),
-    development: process.env.NODE_ENV === "development",
-    proxyHops: readProxyHops(process.env.SSO_PROXY_HOPS),
-    config: readConfigOrExit(),
-    frameAncestors: process.env.SSO_FRAME_ANCESTORS || undefined,
-    clientDir: process.env.SSO_CLIENT_DIR || undefined,
-    perfOut: process.env.SSO_PERF_OUT || undefined,
-    crashPoint: crashAt
-      ? (label) => {
-          if (label === crashAt) {
-            process.kill(process.pid, "SIGKILL");
-          }
-        }
-      : undefined,
-  });
+  const server = (() => {
+    try {
+      return startServer({
+        dbPath: process.env.SSO_DB ?? "sso.sqlite",
+        content: process.env.SSO_CONTENT,
+        port: Number(process.env.PORT ?? 3000),
+        development: process.env.NODE_ENV === "development",
+        proxyHops: readProxyHops(process.env.SSO_PROXY_HOPS),
+        config: readConfigOrExit(),
+        frameAncestors: process.env.SSO_FRAME_ANCESTORS || undefined,
+        clientDir: process.env.SSO_CLIENT_DIR || undefined,
+        perfOut: process.env.SSO_PERF_OUT || undefined,
+        crashPoint: crashAt
+          ? (label) => {
+              if (label === crashAt) {
+                process.kill(process.pid, "SIGKILL");
+              }
+            }
+          : undefined,
+      });
+    } catch (err) {
+      // A new world with an SSO_CONTENT no release ships: one line, not a stack.
+      if (err instanceof ContentChoiceError) {
+        console.error(err.message);
+        process.exit(1);
+      }
+      throw err;
+    }
+  })();
   console.log(`Second Star Online listening on ${server.url}`);
   // docker stop sends SIGTERM: save and leave cleanly; a second signal exits at once.
   let stopping = false;

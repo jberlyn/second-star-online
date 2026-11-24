@@ -8,6 +8,7 @@
 import {
   type AssassinMode,
   type AssassinState,
+  assassinOn,
   CHAT_COLOR,
   combatRating,
   endLines,
@@ -41,9 +42,21 @@ const toAll = (world: World, text: string): Outgoing[] =>
     msg: { t: "chat", text, color: CHAT_COLOR.normal },
   }));
 
-/** One-hit PvP melee is on (1.6's `ltass`). */
+/** One-hit PvP melee is on (1.6's `ltass`), in a world that has the game. */
 export function lightningOn(world: World): boolean {
-  return world.assassin.mode === "LIGHTNING";
+  return assassinOn() && world.assassin.mode === "LIGHTNING";
+}
+
+/**
+ * A game left running when the world's content no longer has the Assassin's Game (a publish took
+ * `social.assassin` out, or the server started without it) ends there: no lines and no prizes, so
+ * putting the section back later never revives it. The tables stay for the statue.
+ */
+export function endRemovedGame(world: World): void {
+  if (!assassinOn() && world.assassin.mode !== "STOP") {
+    world.assassin.mode = "STOP";
+    world.assassinDirty = true;
+  }
 }
 
 /**
@@ -52,6 +65,10 @@ export function lightningOn(world: World): boolean {
  * Lightning game ends Lightning, which reading Lightning from the mode does by itself.
  */
 export function setAssassinMode(world: World, mode: AssassinMode, deps: AssassinDeps): Outgoing[] {
+  // A world without the game (`social.json` has no `assassin`): the menu does nothing.
+  if (!assassinOn()) {
+    return [];
+  }
   const s = world.assassin;
   world.assassinDirty = true;
   if (mode === "STOP") {
@@ -112,7 +129,7 @@ function endGame(world: World, s: AssassinState, deps: AssassinDeps): Outgoing[]
 export function scoreKill(world: World, victim: Player): Outgoing[] {
   const s = world.assassin;
   const id = victim.lastToHitId;
-  if (!scoring(s.mode) || id === null || id === victim.id) {
+  if (!assassinOn() || !scoring(s.mode) || id === null || id === victim.id) {
     return [];
   }
   const killer = world.players.get(id);
@@ -137,6 +154,9 @@ export function scoreKill(world: World, victim: Player): Outgoing[] {
  * line in colour 0.
  */
 export function statueLines(world: World): string[] {
+  if (!assassinOn()) {
+    return [];
+  }
   return [
     STATUE_TEXT,
     statueBlock("allTime", world.assassin.legends),

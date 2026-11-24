@@ -83,10 +83,14 @@ export const ADMIN_TEXT = {
 } as const;
 
 /**
- * The jail's default map and tile, 1.6's `/jail` (`"!!! !!! x0y0 4 4"`). The server's jail is the
- * `jailPoint` setting.
+ * The jail's default map and tile, where no `jailPoint` setting is stored: the Minimal pack's jail.
+ * A world stores the points of the pack it was created with (Classic's jail is 1.6's `/jail`,
+ * `"!!! !!! x0y0 4 4"`).
  */
-export const DEFAULT_JAIL = { map: "x0y0", x: 4, y: 4 } as const;
+export const DEFAULT_JAIL = { map: "x50y50", x: 1, y: 1 } as const;
+
+/** The start and fallback points' default, where none is stored: the Minimal pack's. */
+export const DEFAULT_START = { map: "x0y0", x: 1, y: 1 } as const;
 
 /**
  * A warp line as the original's warp routine reads it: items 3, 4 and 5 split on single spaces (so

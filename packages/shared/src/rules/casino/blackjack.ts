@@ -6,9 +6,11 @@ import { isEngineFixture } from "../core/fixtures.ts";
 import { lingoEq, lingoInteger, type Rng } from "../core/lingo.ts";
 import { hasBehaviour } from "../inventory/behaviours.ts";
 
-type Blackjack = CasinoData["blackjack"];
+type Blackjack = NonNullable<CasinoData["blackjack"]>;
 
-let B: Blackjack;
+let B: Blackjack | undefined;
+/** The rules the last store with this game had, for a game a publish leaves running. */
+let LAST_B: Blackjack | undefined;
 export let BJ_TEXT: Blackjack["texts"];
 export let BJ_MAX_BID: number;
 export let BJ_HAND_SIZE: number;
@@ -17,23 +19,54 @@ export let BJ_BID_BLOCK: Blackjack["bidBlock"];
 export let BJ_BUTTON_BLOCK: Blackjack["buttonBlock"];
 let ACE: number;
 
+const NO_TEXTS: Blackjack["texts"] = {
+  stand: "",
+  joined: "",
+  seat: "",
+  left: "",
+  bidMax: "",
+  noGold: "",
+  bid: "",
+  stake: "",
+  holding: "",
+  holds: "",
+  won: "",
+  draw: "",
+  taken: "",
+};
+
 onContent((c) => {
   B = c.casino.blackjack;
-  BJ_TEXT = B.texts;
-  BJ_MAX_BID = B.maxBid;
-  BJ_HAND_SIZE = B.handSize;
-  BJ_RESET_FRAMES = B.resetFrames;
-  BJ_BID_BLOCK = B.bidBlock;
-  BJ_BUTTON_BLOCK = B.buttonBlock;
-  ACE = B.cards.base + 1;
+  LAST_B = B ?? LAST_B;
+  const r = LAST_B;
+  // The last rules the world had: a hand a publish leaves running finishes on them, and with none
+  // ever, no item seats anyone (`isBlackjackTable`), so these are never read.
+  BJ_TEXT = r?.texts ?? NO_TEXTS;
+  BJ_MAX_BID = r?.maxBid ?? 0;
+  BJ_HAND_SIZE = r?.handSize ?? 0;
+  BJ_RESET_FRAMES = r?.resetFrames ?? 0;
+  BJ_BID_BLOCK = r?.bidBlock ?? 1;
+  BJ_BUTTON_BLOCK = r?.buttonBlock ?? 1;
+  ACE = (r?.cards.base ?? 0) + 1;
 });
+
+/** Blackjack, past the `isBlackjackTable` gate (which is false in a world without it). */
+function bj(): Blackjack {
+  // A game already running when a publish took this one out finishes on the rules it began with;
+  // no new one starts (the gate is false). A world that never had it has no game to finish.
+  const rules = B ?? LAST_B;
+  if (!rules) {
+    throw new Error("this world has no blackjack");
+  }
+  return rules;
+}
 
 /**
  * An item with the `blackjackTable` behaviour sits you down (Classic: exactly "Blackjack Table",
  * the only name 1.6 seated; its click and Ctrl also routed longer names, which then sat no one).
  */
 export function isBlackjackTable(name: string): boolean {
-  return hasBehaviour(name, "blackjackTable") || legacyItem(name, B.item);
+  return B !== undefined && (hasBehaviour(name, "blackjackTable") || legacyItem(name, B.item));
 }
 
 /**
@@ -51,12 +84,13 @@ export function fill(text: string, slots: Record<string, string | number>): stri
 
 /** A card is drawn from a 13-rank shoe: 51 (Ace)..59 (9) at 1/13 each, 60 (10/J/Q/K) at 4/13. */
 export function drawCard(rng: Rng): number {
-  return B.cards.base + Math.min(rng.random(13), B.cards.faces);
+  const { cards } = bj();
+  return cards.base + Math.min(rng.random(13), cards.faces);
 }
 
 /** A card's value with the Ace as 11. */
 export function cardValue(card: number): number {
-  return B.values[String(card)] ?? 0;
+  return bj().values[String(card)] ?? 0;
 }
 
 /**

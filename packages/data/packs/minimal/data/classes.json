@@ -1,0 +1,117 @@
+{
+  "classes": [
+    {
+      "code": 1,
+      "name": "Novice",
+      "promotion": null
+    }
+  ],
+  "skills": [
+    {
+      "skill": "Fighting"
+    }
+  ],
+  "startClasses": [
+    {
+      "code": 1,
+      "skills": {}
+    }
+  ],
+  "creation": {
+    "sexes": [
+      {
+        "code": 1,
+        "label": "Male",
+        "heads": [
+          1
+        ]
+      },
+      {
+        "code": 2,
+        "label": "Female",
+        "heads": [
+          2
+        ]
+      }
+    ],
+    "statBudget": {
+      "rule": "xStrength + xStamina + xIntelligence + xWisdom + xDexterity <= 66 (Agility, Speed, Aim not counted); over -> 'Stop hacking' and quit (client-only)"
+    },
+    "startingVitals": {
+      "written": "class:1:20:20:20:20:0:30:sex -> HP 20/20, SP 20/20, exp 0, ExpNeeded 30 for every class",
+      "notes": "The rolled HP = Str + random(Sta) and SP formulas, and the Fighter SP = 0 lines, are computed but the Vit string uses literal 20s."
+    },
+    "startingMap": {
+      "value": "x0y0:1-1",
+      "notes": "Unread: new characters start at the startPoint setting, which the pack's world seed (world.json) sets to x0y0 (1, 1)."
+    },
+    "otherFields": {
+      "gold": 0,
+      "faction": "0:0",
+      "profile": "I have not edited my profile yet",
+      "hunger": 50000,
+      "breakCount": 100
+    },
+    "nameRules": {
+      "rule": "letters only, either case: characters 1-20 are each compared with \"a\"..\"z\" ignoring case, and anything else alerts first; Admin/Guide/Guardian are refused anywhere in the name (`contains`, any case). The monster-name check does nothing, so monster names are allowed. The server refuses only a name whose file exists (case-insensitive on Windows)."
+    }
+  },
+  "skillGain": {
+    "weaponSkills": [
+      {
+        "weapon": "NOTHING",
+        "match": "exact",
+        "skills": [
+          "Fighting"
+        ]
+      }
+    ]
+  },
+  "progression": {
+    "line": "You have advanced in the art of {skill}!",
+    "tables": {},
+    "curves": {},
+    "defaults": {
+      "chance": {
+        "kill": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            }
+          ],
+          "cap": 100,
+          "monsterCap": true
+        },
+        "shot": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            }
+          ],
+          "cap": 100
+        },
+        "defend": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            }
+          ],
+          "cap": 100
+        },
+        "cast": {
+          "roll": [
+            {
+              "op": "set",
+              "value": "skill"
+            }
+          ],
+          "cap": 100
+        }
+      },
+      "xp": {}
+    }
+  }
+}

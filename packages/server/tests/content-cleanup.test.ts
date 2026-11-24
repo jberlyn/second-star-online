@@ -225,7 +225,7 @@ describe("where content refers to an item, and its cleanup", () => {
 
   test("the station that doubles the cooking time is a reference too", () => {
     const data = classic();
-    const doubles = data.craft.stations.cook.doubles;
+    const doubles = data.craft.stations.cook!.doubles;
     expect(usesOf(data, "item", doubles).some((u) => u.path.join(".") === "cook.doubles")).toBe(
       true,
     );
@@ -1129,7 +1129,7 @@ describe("removing content in use from a running game", () => {
         ...gathering,
         mining: {
           ...gathering.mining,
-          colours: gathering.mining.colours.map((c) => (c === "Blue" ? "Red" : c)),
+          colours: gathering.mining!.colours.map((c) => (c === "Blue" ? "Red" : c)),
         },
       }).ok,
     ).toBe(true);
@@ -1305,7 +1305,7 @@ describe("removing content in use from a running game", () => {
       ...gathering,
       mining: {
         ...gathering.mining,
-        colours: gathering.mining.colours.map((c) => (c === "Blue" ? "Red" : c)),
+        colours: gathering.mining!.colours.map((c) => (c === "Blue" ? "Red" : c)),
       },
     });
     // The player-shop list names the crystal as the bag does.

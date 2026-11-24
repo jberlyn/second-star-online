@@ -624,12 +624,12 @@ describe("gold to an NPC and quests", () => {
   test("Oraku's exchange logs the item given and the reward", () => {
     const s = scene();
     const a = s.join("A", 5, 5);
-    put(a, 1, ORAKU.item);
+    put(a, 1, ORAKU!.item);
     start(a);
-    questGive(s.world, a, 0, ORAKU.npc, s.rng);
+    questGive(s.world, a, 0, ORAKU!.npc, s.rng);
     expect(logged(s.world)).toEqual([
-      { type: "quest", who: "A", other: ORAKU.npc, item: ORAKU.item, qty: -1 },
-      { type: "quest", who: "A", other: ORAKU.npc, item: ORAKU.reward, qty: 1 },
+      { type: "quest", who: "A", other: ORAKU!.npc, item: ORAKU!.item, qty: -1 },
+      { type: "quest", who: "A", other: ORAKU!.npc, item: ORAKU!.reward, qty: 1 },
     ]);
     balanced(s.world, a);
   });

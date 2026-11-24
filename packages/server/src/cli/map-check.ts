@@ -7,7 +7,8 @@
  * - an `Exit` or `Exit2` tile on a map with no such exit set;
  * - a start point, fallback point, jail, church bell map or Portal target setting whose map does not
  *   exist;
- * - a start point, fallback point or jail whose tile cannot hold a player (the content contract).
+ * - a start point, fallback point or jail whose tile cannot hold a player, or a start or fallback
+ *   point on the jail's map (the content contract).
  *
  * Builders may add an exit before its map, so the World Editor saves it regardless.
  *
@@ -24,7 +25,12 @@ import {
   parseMapName,
 } from "@secondstaronline/shared";
 
-import { CONTRACT_POINTS, type ContractPoint, pointProblem } from "../content/contract.ts";
+import {
+  CONTRACT_POINTS,
+  type ContractPoint,
+  jailMapProblem,
+  pointProblem,
+} from "../content/contract.ts";
 import { ContentService } from "../content/service.ts";
 import { type Db, openDatabase } from "../persistence/database.ts";
 import { peekGround } from "../persistence/ground.ts";
@@ -93,6 +99,10 @@ export function mapCheck(db: Db): string[] {
       : null;
     if (problem !== null) {
       lines.push(`setting ${key}: ${problem}`);
+    }
+    const onJail = jailMapProblem(key, settings);
+    if (onJail !== null) {
+      lines.push(`setting ${key}: ${onJail}`);
     }
   }
   return lines;

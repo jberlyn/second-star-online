@@ -7,7 +7,7 @@ import { lingoEq } from "../core/lingo.ts";
 
 /** The base item a masterwork was made from, or the name itself when it is not a masterwork. */
 export function masterworkBase(name: string): string {
-  for (const m of content().craft.stations.smith.masterwork) {
+  for (const m of content().craft.stations.smith?.masterwork ?? []) {
     if (m.outcomes.some((o) => lingoEq(o.result, name))) {
       return m.item;
     }

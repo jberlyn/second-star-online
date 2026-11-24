@@ -20,11 +20,19 @@ import { FACING_DELTA } from "../movement/movement.ts";
 export let VEHICLE_BODY: Readonly<Record<Vehicle, number>> = { Boat: 0, Battleship: 0, Airship: 0 };
 let VEHICLE_OF_BODY = new Map<number, Vehicle>();
 onContent((c) => {
-  VEHICLE_BODY = { ...c.bindings.bodies.riders };
+  // A world with no riders has no vehicles: no deed may make one (the content contract), so body 0
+  // (drawn as nothing) is only ever seen on a character still aboard from before.
+  const riders = c.bindings.bodies.riders;
+  VEHICLE_BODY = riders ? { ...riders } : { Boat: 0, Battleship: 0, Airship: 0 };
   VEHICLE_OF_BODY = new Map(
-    (Object.entries(VEHICLE_BODY) as [Vehicle, number][]).map(([v, b]) => [b, v]),
+    (Object.entries(riders ?? {}) as [Vehicle, number][]).map(([v, b]) => [b, v]),
   );
 });
+
+/** Whether the world has vehicles: rider bodies are bound (`bindings.json` `bodies.riders`). */
+export function ridersBound(): boolean {
+  return VEHICLE_OF_BODY.size > 0;
+}
 
 /** The vehicle a body number means: a rider body (Classic's 55-57), or null. */
 export function vehicleOfBody(body: number | null | undefined): Vehicle | null {

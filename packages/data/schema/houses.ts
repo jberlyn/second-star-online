@@ -56,25 +56,23 @@ const houseType = z.strictObject({
 
 export const houseDataSchema = z
   .strictObject({
-    deeds: z
-      .array(
-        z.strictObject({
-          deed: text,
-          use: z.enum(["nothing", "airship", "boat", "battleship", "place"]),
-          house: text.nullable(),
-          /** What Use says for a deed that builds nothing; the deed is kept. */
-          text: text.nullable(),
-        }),
-      )
-      .min(1),
-    types: z.array(houseType).min(1),
+    deeds: z.array(
+      z.strictObject({
+        deed: text,
+        use: z.enum(["nothing", "airship", "boat", "battleship", "place"]),
+        house: text.nullable(),
+        /** What Use says for a deed that builds nothing; the deed is kept. */
+        text: text.nullable(),
+      }),
+    ),
+    types: z.array(houseType),
     /** Sprite 360's loc: `ThisX * 32 + baseX`, `ThisY * 32 + baseY`, plus the type's shift. */
     ghost: z.strictObject({ baseX: int, baseY: int }),
     placement: z.strictObject({
       edge: z.strictObject({ minX: int, minY: int, maxX: int, maxY: int, text }),
       terrain: z.strictObject({
         /** Every footprint tile's layer-1 code must be one of these (case ignored). */
-        layer1Codes: z.array(text).min(1),
+        layer1Codes: z.array(text),
         text,
       }),
       obstacles: text,
@@ -90,23 +88,21 @@ export const houseDataSchema = z
       arrival: z.strictObject({ x: int, y: int }),
     }),
     /** Dropped only where the map's header names you. */
-    furnitureDrop: z.strictObject({ items: z.array(text).min(1), text }),
+    furnitureDrop: z.strictObject({ items: z.array(text), text }),
     /**
      * Fixtures checked on a ground-item click after the Guild Vault, in order: a text, a silent exit
      * (both null) or a switch (`TheOnSwitchClick`, `TheOffSwitchClick`). They answer wherever they
      * stand. Since issue #37 a row with any other action (the Vault, the Guild Center, the casino
      * tables) is skipped: those are item behaviours.
      */
-    clickFixtures: z
-      .array(
-        z.strictObject({
-          item: text,
-          match: z.enum(["exact", "contains"]),
-          text: text.nullable(),
-          action: text.nullable(),
-        }),
-      )
-      .min(1),
+    clickFixtures: z.array(
+      z.strictObject({
+        item: text,
+        match: z.enum(["exact", "contains"]),
+        text: text.nullable(),
+        action: text.nullable(),
+      }),
+    ),
     restRegen: z.strictObject({ odds: int.positive(), maxY: int.positive() }),
     decay: z.strictObject({
       clockFrames: int.positive(),
@@ -118,7 +114,7 @@ export const houseDataSchema = z
       houseKey: text,
       guildKey: text,
       doesntFit: text,
-      coloured: z.array(z.strictObject({ key: text, closed: text, open: text })).min(1),
+      coloured: z.array(z.strictObject({ key: text, closed: text, open: text })),
       colouredPause: int.positive(),
       /** House and Guild Keys: the pause after turning a door (the key is kept). */
       housePause: int.positive(),
@@ -135,7 +131,7 @@ export const houseDataSchema = z
     /** Frames from the last door change to the relock, and the `[open, closed]` pairs it closes. */
     relock: z.strictObject({
       change: int.positive(),
-      closes: z.array(z.tuple([text, text])).min(1),
+      closes: z.array(z.tuple([text, text])),
     }),
     /** Drop's container routes in order and the click's pause. */
     containers: z.strictObject({
@@ -144,16 +140,15 @@ export const houseDataSchema = z
        * Unused since issue #37: Drop finds a container by its item behaviour or fixture kind. Kept
        * so packs made before still load.
        */
-      drop: z.array(z.strictObject({ name: text, match: z.enum(["exact", "contains"]) })).min(1),
+      drop: z.array(z.strictObject({ name: text, match: z.enum(["exact", "contains"]) })),
     }),
     /** Quest chest refill rolls on 1.6's periodic save. */
     questChest: z.strictObject({
       odds: int.positive(),
       saveBlock: int.positive(),
       saveRoll: int.positive(),
-      chests: z
-        .array(z.strictObject({ roll: int.positive(), chest: text, source: z.array(text) }))
-        .min(1),
+      /** Empty: no quest chest is ever refilled. */
+      chests: z.array(z.strictObject({ roll: int.positive(), chest: text, source: z.array(text) })),
     }),
   })
   .superRefine((data, ctx) => {

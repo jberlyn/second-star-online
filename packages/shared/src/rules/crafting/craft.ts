@@ -101,15 +101,28 @@ export function cascade(
   return v;
 }
 
+type Stations = CraftData["stations"];
+const STATION_KEY = { Smith: "smith", Cook: "cook", Mix: "mix", Build: "build" } as const;
+
+/** Whether the world has a craft's station (`craft.json` `stations`); one left out is off. */
+export function craftOn(kind: CraftKind): boolean {
+  return ST[STATION_KEY[kind]] !== undefined;
+}
+
+/** A station's table, past the `craftOn` gate (start and finish both check it first). */
+function station<K extends "smith" | "cook" | "mix" | "build" | "cauldron">(
+  key: K,
+): NonNullable<Stations[K]> {
+  const st = ST[key];
+  if (st === undefined) {
+    throw new Error(`this world has no ${key} station`);
+  }
+  return st as NonNullable<Stations[K]>;
+}
+
 /** A craft's frames from its skill; a Campfire doubles the cooking timer after the table. */
 export function craftTimer(kind: CraftKind, skill: number, campfire = false): number {
-  const table = {
-    Smith: ST.smith.timer,
-    Cook: ST.cook.timer,
-    Mix: ST.mix.timer,
-    Build: ST.build.timer,
-  }[kind];
-  const v = cascade(table, skill);
+  const v = cascade(station(STATION_KEY[kind]).timer, skill);
   return kind === "Cook" && campfire ? v * 2 : v;
 }
 
@@ -231,7 +244,8 @@ export function startCraft(v: CraftView, slot: number): CraftStartResult {
   if (!kind || v.keyLock || v.itemPause > 0 || !line) {
     return none();
   }
-  if (v.skill(CRAFT_SKILL[kind]) === undefined) {
+  // An unbound skill or a station the world leaves out: the craft is off, and the button does nothing.
+  if (v.skill(CRAFT_SKILL[kind]) === undefined || !craftOn(kind)) {
     return none();
   }
   const item = line.item;
@@ -249,8 +263,9 @@ export function startCraft(v: CraftView, slot: number): CraftStartResult {
 
 /** The chunk a damaged item needs: Iron by default, 21 named rows. */
 export function smithChunk(item: string): string {
-  let chunk = ST.smith.chunkDefault;
-  for (const r of ST.smith.chunks) {
+  const smith = station("smith");
+  let chunk = smith.chunkDefault;
+  for (const r of smith.chunks) {
     if (lingoEq(item, r.item)) {
       chunk = r.chunk;
     }
@@ -259,13 +274,14 @@ export function smithChunk(item: string): string {
 }
 
 function startSmith(v: CraftView, item: string): CraftStartResult {
-  if (!v.facing(ST.smith.station)) {
+  const smith = station("smith");
+  if (!v.facing(smith.station)) {
     return none([CRAFT_TEXT.noAnvil]);
   }
-  if (occupiedSlots(v.bag) > ST.smith.maxOccupied) {
+  if (occupiedSlots(v.bag) > smith.maxOccupied) {
     return none([CRAFT_TEXT.crowded]);
   }
-  if (!lingoEq(v.leftHand, ST.smith.tool)) {
+  if (!lingoEq(v.leftHand, smith.tool)) {
     return none([CRAFT_TEXT.noHammer]);
   }
   if (repairResult(item) === null) {
@@ -289,13 +305,14 @@ function startSmith(v: CraftView, item: string): CraftStartResult {
 function startCook(v: CraftView, item: string): CraftStartResult {
   // The station list in the crafting data is the only copy: every station except the Campfire (the
   // `doubles` entry, tested below) is a stove.
-  const stove = ST.cook.stations.some((st) => !lingoEq(st, ST.cook.doubles) && v.facing(st));
-  const campfire = v.facing(ST.cook.doubles);
+  const cook = station("cook");
+  const stove = cook.stations.some((st) => !lingoEq(st, cook.doubles) && v.facing(st));
+  const campfire = v.facing(cook.doubles);
   if (!stove && !campfire) {
     return none([CRAFT_TEXT.noStove]);
   }
   const cooking = v.skill("cooking") ?? 0;
-  if (cooking < ST.cook.minSkill) {
+  if (cooking < cook.minSkill) {
     return none([CRAFT_TEXT.unskilled]);
   }
   if (cookResult(item) === null) {
@@ -313,12 +330,13 @@ function startCook(v: CraftView, item: string): CraftStartResult {
 }
 
 function startMix(v: CraftView, item: string): CraftStartResult {
-  if (!v.facing(ST.mix.station)) {
+  const mix = station("mix");
+  if (!v.facing(mix.station)) {
     return none([CRAFT_TEXT.noLab]);
   }
   // The held sand is the alchemist's tool, like the Hammer and the Saw: one of the six sands
   // exactly, never used up. It picks the potion and the crystal it needs.
-  const sand = ST.mix.sands.find((s) => lingoEq(v.rightHand, s.sand));
+  const sand = mix.sands.find((s) => lingoEq(v.rightHand, s.sand));
   if (!sand) {
     return none([CRAFT_TEXT.noSand]);
   }
@@ -338,14 +356,15 @@ function startMix(v: CraftView, item: string): CraftStartResult {
 }
 
 function startBuild(v: CraftView, item: string): CraftStartResult {
-  if (!v.facing(ST.build.station)) {
+  const build = station("build");
+  if (!v.facing(build.station)) {
     return none([CRAFT_TEXT.noCarpentryBench]);
   }
-  if (!lingoEq(v.rightHand, ST.build.tool)) {
+  if (!lingoEq(v.rightHand, build.tool)) {
     return none([CRAFT_TEXT.noSaw]);
   }
   const carpentry = v.skill("carpentry") ?? 0;
-  if (carpentry < ST.build.minSkill) {
+  if (carpentry < build.minSkill) {
     return none([CRAFT_TEXT.unskilledBuild]);
   }
   return {
@@ -373,30 +392,30 @@ function recipeFor(rows: readonly { input: string; output: string }[], item: str
 
 /** What a damaged item repairs into, or null when it cannot be repaired. */
 export function repairResult(item: string): string | null {
-  return recipeFor(ST.smith.repairs, item);
+  return recipeFor(ST.smith?.repairs ?? [], item);
 }
 
 /** What a raw food cooks into, or null when it cannot be cooked. */
 export function cookResult(item: string): string | null {
-  return recipeFor(ST.cook.recipes, item);
+  return recipeFor(ST.cook?.recipes ?? [], item);
 }
 
 /** What a raw food becomes when it burns, or null when it cannot be cooked. */
 export function burnedResult(item: string): string | null {
   return recipeFor(
-    ST.cook.recipes.map((r) => ({ input: r.input, output: r.burned })),
+    (ST.cook?.recipes ?? []).map((r) => ({ input: r.input, output: r.burned })),
     item,
   );
 }
 
 /** The masterwork pool by skill: 250, then 100 (>50) … 35 (>98). */
 export function masterworkPool(skill: number): number {
-  return cascade(ST.smith.masterworkPool, skill);
+  return cascade(station("smith").masterworkPool, skill);
 }
 
 /** A repaired item's `+N` from a roll of its pool. */
 export function masterwork(item: string, roll: number): string {
-  const row = ST.smith.masterwork.find((m) => lingoEq(m.item, item));
+  const row = ST.smith?.masterwork.find((m) => lingoEq(m.item, item));
   return row?.outcomes.find((o) => o.roll === roll)?.result ?? item;
 }
 
@@ -406,7 +425,7 @@ export function masterwork(item: string, roll: number): string {
  */
 export function carpentryResult(carpentry: number, rng: Rng): string {
   let result = "";
-  for (const b of ST.build.bands) {
+  for (const b of station("build").bands) {
     if (carpentry >= b.lt) {
       continue;
     }
@@ -441,16 +460,16 @@ function craftXp(job: CraftJob, result: string, skill: number): number | undefin
   const st = content().craft.stations;
   switch (job.kind) {
     case "Smith":
-      return st.smith.repairs.findLast((r) => lingoEq(r.input, job.item))?.xp;
+      return st.smith?.repairs.findLast((r) => lingoEq(r.input, job.item))?.xp;
     case "Cook":
-      return st.cook.recipes.findLast((r) => lingoEq(r.input, job.raw))?.xp;
+      return st.cook?.recipes.findLast((r) => lingoEq(r.input, job.raw))?.xp;
     case "Mix":
       // The held sand picks the first matching row, so the first with this brew.
-      return st.mix.sands.find(
+      return st.mix?.sands.find(
         (r) => lingoEq(r.potion, job.potion) && lingoEq(r.crystal, job.crystal),
       )?.xp;
     case "Build":
-      return st.build.bands
+      return (st.build?.bands ?? [])
         .filter((b) => skill < b.lt)
         .flatMap((b) => b.results)
         .findLast((r) => lingoEq(r.item, result))?.xp;
@@ -488,7 +507,9 @@ export function finishCraft(
   addName: (name: string) => string = (n) => n,
 ): CraftFinish {
   const bag: Bag = inv.bag.map((l) => (l ? { ...l } : null));
-  if (!materials(job).every((m) => takeByName(bag, m))) {
+  // A station taken out of the world since the job began: the job ends silently, as a missing
+  // material does.
+  if (!craftOn(job.kind) || !materials(job).every((m) => takeByName(bag, m))) {
     return { reached: false, lines: [], added: null, gain: false };
   }
   const commit = () => {
@@ -559,7 +580,7 @@ export function finishCraft(
  * of the contents alone. Null is a fizzle.
  */
 export function cauldronBrew(lines: readonly string[]): string[] | null {
-  for (const r of ST.cauldron.recipes) {
+  for (const r of ST.cauldron?.recipes ?? []) {
     const next = [...lines];
     const ok = r.requires.every((need) => {
       const i = next.findIndex((l) => lingoEq(l, need));
@@ -576,13 +597,16 @@ export function cauldronBrew(lines: readonly string[]): string[] | null {
   return null;
 }
 
-/** The Cauldron's name test on Drop (name contains "Cauldron#") and capacity. */
-export let CAULDRON: { readonly match: string; readonly capacity: number };
+/**
+ * The Cauldron's name test on Drop (name contains "Cauldron#") and capacity; null when the world has
+ * no cauldron, so nothing dropped is taken for one.
+ */
+export let CAULDRON: { readonly match: string; readonly capacity: number } | null;
 
 onContent((c) => {
   ST = c.craft.stations;
   CRAFT_ORDER = ST.frameOrder.order;
   SMITH_FX_CHANCE = ST.frameOrder.smithFxChance;
   CRAFT_TEXT = craftTextOf();
-  CAULDRON = { match: ST.cauldron.match, capacity: ST.cauldron.capacity };
+  CAULDRON = ST.cauldron ? { match: ST.cauldron.match, capacity: ST.cauldron.capacity } : null;
 });

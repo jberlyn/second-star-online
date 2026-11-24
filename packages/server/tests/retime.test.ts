@@ -131,11 +131,14 @@ describe("walk speed is not a setting", () => {
     saveSettingOverride(db, "chatMaxChars", 150, "2026-11-08T00:00:00Z");
     expect(loadSettingOverrides(db).has("stepFrames")).toBe(true);
     runMigrations(db, mine);
-    // (The jail point and the bell map are rows every server gets, from migration 59.)
+    // (The jail point and the bell map are rows every server gets, from migration 59, and the
+    // start and fallback points from migration 66.)
     expect([...loadSettingOverrides(db).keys()].sort()).toEqual([
       "bellMap",
       "chatMaxChars",
+      "fallbackPoint",
       "jailPoint",
+      "startPoint",
     ]);
   });
 });

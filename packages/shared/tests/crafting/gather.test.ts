@@ -422,10 +422,10 @@ describe("treasure", () => {
 
   test("the original's lists", () => {
     // The 29 items and 21 maps of 1.6 are checked in packages/data/tests/content-baseline.test.ts.
-    expect(TREASURE.items.length).toBeGreaterThan(0);
-    expect(TREASURE.originalMaps.length).toBeGreaterThan(0);
-    expect(TREASURE.chance).toBe(5);
-    expect(TREASURE.text).toBe("*** You uncover some treasure in your digging!");
+    expect(TREASURE!.items.length).toBeGreaterThan(0);
+    expect(TREASURE!.originalMaps.length).toBeGreaterThan(0);
+    expect(TREASURE!.chance).toBe(5);
+    expect(TREASURE!.text).toBe("*** You uncover some treasure in your digging!");
   });
 });
 

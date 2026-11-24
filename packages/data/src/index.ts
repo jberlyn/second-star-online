@@ -12,6 +12,7 @@ export type {
   ClassesData,
   Creation,
   Promotion,
+  SexRow,
   Skill,
   StartClass as StartClassRow,
   WeaponSkills,

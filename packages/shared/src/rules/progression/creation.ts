@@ -2,12 +2,45 @@
  * Character creation: the rules the original creation screen enforced, run on the server, plus the
  * starting record.
  */
-import type { StartClassRow } from "@secondstaronline/data";
+import type { SexRow as SexContentRow, StartClassRow } from "@secondstaronline/data";
 
 import { content, onContent } from "../../content/store.ts";
 import { skillsFromKeys } from "../core/fighter.ts";
 
-export type Sex = 1 | 2;
+/** A sex's code, as `classes.json` `creation.sexes` lists it (Classic: 1 Male, 2 Female). */
+export type Sex = number;
+
+/** A sex the creation screen offers: its code, the name shown, and the heads it may wear. */
+export type SexRow = SexContentRow;
+
+/**
+ * The sexes, in screen order (`classes.json` `creation.sexes`). Classic: Male 1 (heads 1, 3, 4, 5,
+ * 6, 9, 10) and Female 2 (heads 2, 7, 8, 11).
+ */
+export let SEXES: readonly SexRow[] = [];
+
+/** The sex with code `code`, or undefined when the world has none. */
+export function sexOf(code: number): SexRow | undefined {
+  return SEXES.find((s) => s.code === code);
+}
+
+/** The heads a sex may wear, in arrow order (none for a sex the world lacks). */
+export function headsOf(code: number): readonly number[] {
+  return sexOf(code)?.heads ?? [];
+}
+
+/** The name a sex is shown by (the Bio, the player hub), or "" for a sex the world lacks. */
+export function sexLabel(code: number): string {
+  return sexOf(code)?.label ?? "";
+}
+
+/** The sexes' names for a refusal: "male or female" in Classic. */
+export function sexChoices(): string {
+  const names = SEXES.map((s) => s.label.toLowerCase());
+  return names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
+}
 
 /**
  * The classes offered on the creation screen, in its order, each with the name it shows (the
@@ -20,28 +53,16 @@ export function startClass(code: number): (StartClassRow & { label: string }) | 
   return START_CLASSES.find((c) => c.code === code);
 }
 
-/**
- * Heads the screen can show. Choosing Male shows Head1 and Female shows Head2. The right arrow
- * steps forward through the cycle and the left arrow back: 1→3→4→5→6→9→10→1 and 2→7→8→11→2 (in 1.6
- * both arrows stepped forward). These are
- * all 11 heads in the `Characters` cast (`HEAD1`-`HEAD11`); the original's code also maps
- * Head12-17, which have no art.
- */
-export const HEADS_BY_SEX: Readonly<Record<Sex, readonly number[]>> = {
-  1: [1, 3, 4, 5, 6, 9, 10],
-  2: [2, 7, 8, 11],
-};
-
 /** The next head after `head` in its sex's cycle. */
 export function nextHead(sex: Sex, head: number): number {
-  const cycle = HEADS_BY_SEX[sex];
+  const cycle = headsOf(sex);
   const i = cycle.indexOf(head);
   return cycle[(i + 1) % cycle.length] ?? cycle[0] ?? 1;
 }
 
 /** The head before `head` in its sex's cycle; a head outside the cycle goes to its first. */
 export function prevHead(sex: Sex, head: number): number {
-  const cycle = HEADS_BY_SEX[sex];
+  const cycle = headsOf(sex);
   const i = cycle.indexOf(head);
   if (i < 0) {
     return cycle[0] ?? 1;
@@ -131,10 +152,10 @@ export function creationError(c: CreationChoice): string | null {
   if (n) {
     return n;
   }
-  if (c.sex !== 1 && c.sex !== 2) {
-    return "Choose male or female.";
+  if (!sexOf(c.sex)) {
+    return `Choose ${sexChoices()}.`;
   }
-  if (!HEADS_BY_SEX[c.sex].includes(c.head)) {
+  if (!headsOf(c.sex).includes(c.head)) {
     return "That head is not available.";
   }
   if (!startClass(c.classCode)) {
@@ -209,6 +230,7 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
 }
 
 onContent((c) => {
+  SEXES = c.classes.creation.sexes;
   START_CLASSES = c.classes.startClasses.map((sc) => ({
     ...sc,
     label:

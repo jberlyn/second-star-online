@@ -13,6 +13,7 @@ import { cleanUses, usesOf } from "../src/content/cleanup.ts";
 import {
   type ContractPoint,
   contractProblems,
+  jailClash,
   type MapPoint,
   pointProblem,
   pointProblems,
@@ -108,6 +109,27 @@ describe("the content contract", () => {
       "bindings/bodies: morph[1] is the tree's body (80): give it another",
     ]);
   });
+
+  test("a world without rider bodies has no vehicles: no deed may make one", () => {
+    const noRiders = (d: ContentData) => {
+      const { riders: _riders, ...rest } = d.bindings.bodies;
+      d.bindings.bodies = rest;
+    };
+    expect(messages(changed(noRiders))).toEqual([
+      "bindings/bodies: Boat Deed makes a vehicle, so the world needs rider bodies (bodies.riders)",
+      "bindings/bodies: Airship Deed makes a vehicle, so the world needs rider bodies (bodies.riders)",
+      "bindings/bodies: Battleship Deed makes a vehicle, so the world needs rider bodies (bodies.riders)",
+    ]);
+    // Without the vehicle deeds, a world needs no riders.
+    expect(
+      messages(
+        changed((d) => {
+          noRiders(d);
+          d.houses.deeds = d.houses.deeds.filter((x) => x.use === "place" || x.use === "nothing");
+        }),
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe("the contract's points", () => {
@@ -147,6 +169,30 @@ describe("the contract's points", () => {
       },
       { where: "settings/jailPoint", message: "Jail: x0y0 does not exist" },
     ]);
+  });
+
+  test("the start and fallback points are never on the jail's map (any spelling of it)", () => {
+    // The jail's map holds whoever stands on it: a new character would start in jail.
+    const points: Record<ContractPoint, MapPoint> = {
+      startPoint: at(5, 5),
+      fallbackPoint: at(8, 8),
+      jailPoint: at(7, 7),
+    };
+    expect(pointProblems(points, maps)).toEqual([
+      { where: "settings/startPoint", message: "Starting map: x1y1 is the jail's map" },
+      { where: "settings/fallbackPoint", message: "Fallback map: x1y1 is the jail's map" },
+    ]);
+    // A settings save names the setting it changed; x01y1 is x1y1.
+    expect(jailClash({ ...points, fallbackPoint: at(6, 6, "x01y1") }, ["fallbackPoint"])).toEqual({
+      key: "fallbackPoint",
+      text: "x01y1 is the jail's map",
+    });
+    expect(jailClash(points, ["jailPoint"])).toEqual({
+      key: "jailPoint",
+      text: "x1y1 holds the Starting map point: the jail needs a map of its own",
+    });
+    expect(jailClash(points, ["chatMaxChars"])).toBeNull();
+    expect(jailClash({ ...points, jailPoint: at(4, 4, "x0y0") }, ["jailPoint"])).toBeNull();
   });
 });
 
@@ -201,14 +247,15 @@ describe("publishing", () => {
   test("an undo that would break the contract is refused", () => {
     // The jail stands on a tile code Classic does not walk on, Z9; a publish makes it walkable.
     const jail = testMap("x0y0", [], (x, y) => (x === 4 && y === 4 ? "Z9" : "G1"));
+    const start = testMap("x1y1");
     const points = () =>
       pointProblems(
         {
-          startPoint: { map: "x0y0", x: 5, y: 5 },
-          fallbackPoint: { map: "x0y0", x: 5, y: 5 },
+          startPoint: { map: "x1y1", x: 5, y: 5 },
+          fallbackPoint: { map: "x1y1", x: 5, y: 5 },
           jailPoint: { map: "x0y0", x: 4, y: 4 },
         },
-        (name) => (name === "x0y0" ? jail : null),
+        (name) => (name === "x0y0" ? jail : name === "x1y1" ? start : null),
       );
     const service = setup(points);
     const walkable = { dataset: "tiles" as const, part: "walkable", key: null };
@@ -230,22 +277,23 @@ describe("publishing", () => {
   test("the points are judged with the next content's tiles", () => {
     // The jail stands on G1 grass; a draft that takes G1 off the walkable list strands it.
     const jail = testMap("x0y0");
+    const start = testMap("x1y1");
     const service = setup(() =>
       pointProblems(
-        { startPoint: at(5, 5), fallbackPoint: at(5, 5), jailPoint: at(4, 4) },
-        (name) => (name === "x0y0" ? jail : null),
+        { startPoint: at(5, 5, "x1y1"), fallbackPoint: at(5, 5, "x1y1"), jailPoint: at(4, 4) },
+        (name) => (name === "x0y0" ? jail : name === "x1y1" ? start : null),
       ),
     );
-    function at(x: number, y: number): MapPoint {
-      return { map: "x0y0", x, y };
+    function at(x: number, y: number, map = "x0y0"): MapPoint {
+      return { map, x, y };
     }
     expect(service.check()).toEqual([]);
     const tiles = { dataset: "tiles" as const, part: "walkable", key: null };
     const walkable = service.publishedContent().tiles.walkable.filter((t) => t.code !== "G1");
     service.draftSet(ADMIN, tiles, "set", walkable);
     expect(service.check().map((p) => `${p.where}: ${p.message}`)).toEqual([
-      "settings/startPoint: Starting map: x0y0 (5, 5) is not a walkable tile",
-      "settings/fallbackPoint: Fallback map: x0y0 (5, 5) is not a walkable tile",
+      "settings/startPoint: Starting map: x1y1 (5, 5) is not a walkable tile",
+      "settings/fallbackPoint: Fallback map: x1y1 (5, 5) is not a walkable tile",
       "settings/jailPoint: Jail: x0y0 (4, 4) is not a walkable tile",
     ]);
     expect(service.publish(ADMIN, service.draftRev(), "").ok).toBe(false);
@@ -285,8 +333,8 @@ describe("the bindings' items are references", () => {
     const coin = changed((d) => {
       d.items.items.push({ name: "Coin", icon: null });
       d.bindings.currency = { item: "Coin" };
-      d.social.assassin.prizes.archived = "Long Sword:1000 Coin:500 Gold:Knife";
-      d.gather.gathering.treasure.items = ["300 Coin", "300 Gold"];
+      d.social.assassin!.prizes.archived = "Long Sword:1000 Coin:500 Gold:Knife";
+      d.gather.gathering.treasure!.items = ["300 Coin", "300 Gold"];
     });
     const named = referencesOf(coin)
       .filter((r) => r.where === "social/assassin" || r.where === "gather/gathering")

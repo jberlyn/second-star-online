@@ -282,7 +282,7 @@ describe("Cook", () => {
   });
 
   test("every cookable has a burned form: a catalogue item with art and no Cook button", () => {
-    const recipes = craftData.stations.cook.recipes;
+    const recipes = craftData.stations.cook!.recipes;
     expect(recipes.map((r) => [r.input, r.burned])).toEqual([
       ["Cyclops Meat", "Burned Cyclops Meat"],
       ["Orc Meat", "Burned Orc Meat"],
@@ -509,7 +509,7 @@ describe("the Cauldron", () => {
 describe("craft XP (#37 stage 6)", () => {
   test("the XP comes from the row that made the result: the last matching repair", () => {
     const d = structuredClone(classicData) as ContentData;
-    d.craft.stations.smith.repairs.push(
+    d.craft.stations.smith!.repairs.push(
       { input: "Damaged Sword, Knight", output: "Knight's Sword", xp: 40 },
       { input: "Damaged Sword, Knight", output: "Knight's Sword", xp: 90 },
     );

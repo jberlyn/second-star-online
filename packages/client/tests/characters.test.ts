@@ -4,12 +4,16 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
+  buildContentStore,
   type CharacterHub,
+  type ContentData,
   EDIT_TEXT,
   emptyBag,
   HUB_TEXT,
   type HubAction,
+  installContent,
   NO_EQUIPMENT,
   type Permission,
 } from "@secondstaronline/shared";
@@ -441,6 +445,56 @@ describe("the editor", () => {
     p.receiveResult({ seq: sent?.seq ?? 0, ok: true, text: "Saved" });
     expect(calls.open.length).toBe(opens + 1);
     expect($<HTMLInputElement>("hub-edit-reason").value).toBe("");
+  });
+
+  test("a head or sex a publish took out stays selected, so an unrelated edit keeps it", async () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.classes.creation.sexes = [
+      { code: 1, label: "Male", heads: [3, 4] },
+      { code: 5, label: "Orc", heads: [6, 7] },
+    ];
+    installContent(buildContentStore(d));
+    try {
+      const { $, calls, showHub } = page(["characterView", "characterEditor"]);
+      // Al wears Head1, which Male no longer lists.
+      showHub();
+      $("hub-tab-edit").click();
+      const sex = $<HTMLSelectElement>("hub-edit-sex");
+      const head = $<HTMLSelectElement>("hub-edit-head");
+      expect([...sex.options].map((o) => o.textContent)).toEqual(["Male", "Orc"]);
+      expect([...head.options].map((o) => o.value)).toEqual(["1", "3", "4"]);
+      expect(head.value).toBe("1");
+      $<HTMLInputElement>("hub-edit-gold").value = "5000";
+      $<HTMLInputElement>("hub-edit-reason").value = "refund";
+      $("hub-edit-save").click();
+      confirm();
+      await flush();
+      expect(Object.keys(calls.edit.at(-1)?.set ?? {})).toEqual(["gold"]);
+      // Picking another sex offers only its heads; back to their own, their own head again.
+      sex.value = "5";
+      sex.dispatchEvent(new Event("change"));
+      expect([...head.options].map((o) => o.value)).toEqual(["6", "7"]);
+      expect(head.value).toBe("6");
+      sex.value = "1";
+      sex.dispatchEvent(new Event("change"));
+      expect(head.value).toBe("1");
+      // A publish while the editor is open: the lists follow, keeping what is picked.
+      const next = structuredClone(d);
+      next.classes.creation.sexes = [
+        { code: 1, label: "Human", heads: [3] },
+        { code: 9, label: "Elf", heads: [8] },
+      ];
+      installContent(buildContentStore(next));
+      expect([...sex.options].map((o) => o.textContent)).toEqual(["Human", "Elf"]);
+      expect([sex.value, head.value]).toEqual(["1", "1"]);
+      // A sex the world lost entirely still lists a head (the character's own).
+      next.classes.creation.sexes = [{ code: 9, label: "Elf", heads: [8] }];
+      installContent(buildContentStore(next));
+      expect([...sex.options].map((o) => o.textContent)).toEqual(["Elf", "Sex 1"]);
+      expect([...head.options].map((o) => o.value)).toEqual(["1"]);
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
   });
 
   test("a value out of the game's limits is named and nothing is sent", () => {

@@ -364,56 +364,71 @@ export function referencesOf(data: ContentData): Reference[] {
     add(stations, path, "item", n, drop);
   const station = (path: JsonPath, n: string, drop: JsonPath | null) =>
     add(stations, path, "itemOrFixture", n, drop);
-  station(["smith", "station"], st.smith.station, null);
-  craft(["smith", "tool"], st.smith.tool, null);
-  craft(["smith", "chunkDefault"], st.smith.chunkDefault, null);
-  st.smith.chunks.forEach((c, i) => {
-    craft(["smith", "chunks", i, "item"], c.item, ["smith", "chunks", i]);
-    craft(["smith", "chunks", i, "chunk"], c.chunk, ["smith", "chunks", i]);
-  });
-  st.smith.repairs.forEach((r, i) => {
-    craft(["smith", "repairs", i, "input"], r.input, ["smith", "repairs", i]);
-    craft(["smith", "repairs", i, "output"], r.output, ["smith", "repairs", i]);
-  });
-  st.smith.masterwork.forEach((m, i) => {
-    craft(["smith", "masterwork", i, "item"], m.item, ["smith", "masterwork", i]);
-    m.outcomes.forEach((o, j) => {
-      craft(["smith", "masterwork", i, "outcomes", j, "result"], o.result, [
-        "smith",
-        "masterwork",
-        i,
-      ]);
+  const smith = st.smith;
+  if (smith) {
+    station(["smith", "station"], smith.station, null);
+    craft(["smith", "tool"], smith.tool, null);
+    craft(["smith", "chunkDefault"], smith.chunkDefault, null);
+    smith.chunks.forEach((c, i) => {
+      craft(["smith", "chunks", i, "item"], c.item, ["smith", "chunks", i]);
+      craft(["smith", "chunks", i, "chunk"], c.chunk, ["smith", "chunks", i]);
     });
-  });
-  station(["cook", "doubles"], st.cook.doubles, null);
-  st.cook.stations.forEach((n, i) => {
-    station(["cook", "stations", i], n, ["cook", "stations", i]);
-  });
-  st.cook.recipes.forEach((r, i) => {
-    for (const f of ["input", "output", "burned"] as const) {
-      craft(["cook", "recipes", i, f], r[f], ["cook", "recipes", i]);
-    }
-  });
-  station(["mix", "station"], st.mix.station, null);
-  st.mix.sands.forEach((m, i) => {
-    for (const f of ["sand", "potion", "crystal"] as const) {
-      craft(["mix", "sands", i, f], m[f], ["mix", "sands", i]);
-    }
-  });
-  station(["build", "station"], st.build.station, null);
-  craft(["build", "tool"], st.build.tool, null);
-  st.build.bands.forEach((b, i) => {
-    b.results.forEach((r, j) => {
-      // Each result answers a roll, so it is replaced, never dropped.
-      craft(["build", "bands", i, "results", j, "item"], r.item, null);
+    smith.repairs.forEach((r, i) => {
+      craft(["smith", "repairs", i, "input"], r.input, ["smith", "repairs", i]);
+      craft(["smith", "repairs", i, "output"], r.output, ["smith", "repairs", i]);
     });
-  });
-  st.cauldron.recipes.forEach((r, i) => {
-    r.requires.forEach((n, j) => {
-      craft(["cauldron", "recipes", i, "requires", j], n, ["cauldron", "recipes", i]);
+    smith.masterwork.forEach((m, i) => {
+      craft(["smith", "masterwork", i, "item"], m.item, ["smith", "masterwork", i]);
+      m.outcomes.forEach((o, j) => {
+        craft(["smith", "masterwork", i, "outcomes", j, "result"], o.result, [
+          "smith",
+          "masterwork",
+          i,
+        ]);
+      });
     });
-    craft(["cauldron", "recipes", i, "result"], r.result, ["cauldron", "recipes", i]);
-  });
+  }
+  const cook = st.cook;
+  if (cook) {
+    station(["cook", "doubles"], cook.doubles, null);
+    cook.stations.forEach((n, i) => {
+      station(["cook", "stations", i], n, ["cook", "stations", i]);
+    });
+    cook.recipes.forEach((r, i) => {
+      for (const f of ["input", "output", "burned"] as const) {
+        craft(["cook", "recipes", i, f], r[f], ["cook", "recipes", i]);
+      }
+    });
+  }
+  const mix = st.mix;
+  if (mix) {
+    station(["mix", "station"], mix.station, null);
+    mix.sands.forEach((m, i) => {
+      for (const f of ["sand", "potion", "crystal"] as const) {
+        craft(["mix", "sands", i, f], m[f], ["mix", "sands", i]);
+      }
+    });
+  }
+  const build = st.build;
+  if (build) {
+    station(["build", "station"], build.station, null);
+    craft(["build", "tool"], build.tool, null);
+    build.bands.forEach((b, i) => {
+      b.results.forEach((r, j) => {
+        // Each result answers a roll, so it is replaced, never dropped.
+        craft(["build", "bands", i, "results", j, "item"], r.item, null);
+      });
+    });
+  }
+  const cauldron = st.cauldron;
+  if (cauldron) {
+    cauldron.recipes.forEach((r, i) => {
+      r.requires.forEach((n, j) => {
+        craft(["cauldron", "recipes", i, "requires", j], n, ["cauldron", "recipes", i]);
+      });
+      craft(["cauldron", "recipes", i, "result"], r.result, ["cauldron", "recipes", i]);
+    });
+  }
   // What gathering takes and gives. A roll band's fish and the one-of tools are replaced, not
   // dropped.
   const g = data.gather.gathering;
@@ -421,7 +436,7 @@ export function referencesOf(data: ContentData): Reference[] {
   const gather = (path: JsonPath, n: string, drop: JsonPath | null) =>
     add(gathering, path, "item", n, drop);
   // The ore list is a fixed three, read by position.
-  g.mining.ore.items.forEach((n, i) => {
+  g.mining?.ore.items.forEach((n, i) => {
     gather(["mining", "ore", "items", i], n, null);
   });
   // A harvest node's tools (dropped from its list, or the node goes with its only one) and what its
@@ -457,23 +472,23 @@ export function referencesOf(data: ContentData): Reference[] {
       add(tools, [i, "pattern"], "item", t.pattern, [i]);
     }
   });
-  g.fishing.bands.forEach((b, i) => {
+  g.fishing?.bands.forEach((b, i) => {
     gather(["fishing", "bands", i, "fish"], b.fish, null);
   });
-  g.farming.seeds.forEach((sd, i) => {
+  g.farming?.seeds.forEach((sd, i) => {
     gather(["farming", "seeds", i, "item"], sd.item, ["farming", "seeds", i]);
   });
-  g.farming.produce.forEach((pr, i) => {
+  g.farming?.produce.forEach((pr, i) => {
     gather(["farming", "produce", i, "item"], pr.item, ["farming", "produce", i]);
   });
   // A treasure is dropped as a ground name, so "300 Gold" is a pile of the currency, not an item.
-  g.treasure.items.forEach((n, i) => {
+  g.treasure?.items.forEach((n, i) => {
     if (!currencyPile(n)) {
       gather(["treasure", "items", i], n, ["treasure", "items", i]);
     }
   });
   // What mining strikes, faction deaths and the Assassin's default prizes make.
-  g.mining.colours.forEach((c, i) => {
+  g.mining?.colours.forEach((c, i) => {
     add(gathering, ["mining", "colours", i], "item", `${c} Crystal`, null, false, true);
   });
   for (const f of data.social.factions) {
@@ -484,7 +499,7 @@ export function referencesOf(data: ContentData): Reference[] {
     add(row, ["leader"], "monster", f.leader, null);
   }
   const assassinRow = section("social", "assassin");
-  for (const prize of data.social.assassin.prizes.archived.split(":")) {
+  for (const prize of data.social.assassin?.prizes.archived.split(":") ?? []) {
     // "500 Gold" is a pile of this content's currency (as the treasure rows are).
     if (prize.trim() !== "" && !currencyPile(prize)) {
       add(assassinRow, ["prizes", "archived"], "item", prize.trim(), null, false, true);
@@ -499,8 +514,10 @@ export function referencesOf(data: ContentData): Reference[] {
   });
   const replies = section("social", "questReplies");
   const oraku = data.social.questReplies.oraku;
-  add(replies, ["oraku", "item"], "item", oraku.item, null);
-  add(replies, ["oraku", "reward"], "item", oraku.reward, null);
+  if (oraku) {
+    add(replies, ["oraku", "item"], "item", oraku.item, null);
+    add(replies, ["oraku", "reward"], "item", oraku.reward, null);
+  }
   // A deed is an item: its row goes with it.
   for (const d of data.houses.deeds) {
     add({ dataset: "houses", part: "deeds", key: d.deed }, ["deed"], "item", d.deed, []);
@@ -572,7 +589,10 @@ export function referencesOf(data: ContentData): Reference[] {
       skill(skillGain, ["weaponSkills", i, "skills", j], s);
     });
   });
-  skill(gathering, ["farming", "wateringSkill"], data.gather.gathering.farming.wateringSkill);
+  const farming = data.gather.gathering.farming;
+  if (farming) {
+    skill(gathering, ["farming", "wateringSkill"], farming.wateringSkill);
+  }
   // A requirement reads exactly "level" as the level (shared requirements.ts `requirementMet`).
   const needs = (row: RowRef, path: JsonPath, r: { needs?: unknown } | undefined) => {
     if (r && r.needs !== "level") {
@@ -603,7 +623,7 @@ export function referencesOf(data: ContentData): Reference[] {
     }
   });
   const assassin = section("social", "assassin");
-  data.social.assassin.rating.skills.forEach((s, i) => {
+  data.social.assassin?.rating.skills.forEach((s, i) => {
     skill(assassin, ["rating", "skills", i], s);
   });
   const bios = section("social", "bios");

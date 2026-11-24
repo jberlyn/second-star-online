@@ -232,7 +232,7 @@ export function periodicSave(rng: Rng): boolean {
  * trimmed). The server adds it when the chest has room (1.6 overwrote the chest with it).
  */
 export function questChestRefill(rng: Rng): { chest: string; item: string } | null {
-  if (rng.random(QC.odds) !== 1) {
+  if (rng.random(QC.odds) !== 1 || QC.chests.length === 0) {
     return null;
   }
   const roll = rng.random(QC.chests.length);

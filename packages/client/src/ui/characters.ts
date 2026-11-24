@@ -28,6 +28,7 @@ import {
   type ModerationLogRow,
   type ModerationRecord,
   type Permission,
+  sexLabel,
   TIMED_HUB_ACTIONS,
 } from "@secondstaronline/shared";
 
@@ -540,7 +541,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
               ["Hunger", String(s.hunger)],
               ["Faction", factionLabel(s.faction)],
               ["Wanted", s.wanted ? "Yes" : "No"],
-              ["Sex", s.sex === 2 ? "Female" : "Male"],
+              ["Sex", sexLabel(s.sex) || `Sex ${s.sex}`],
               ["Head", String(s.head)],
             ]),
           ),

@@ -12,7 +12,7 @@ import { paperdollLayers } from "../../src/rules/inventory/paperdoll.ts";
 import {
   type CreationChoice,
   creationError,
-  HEADS_BY_SEX,
+  headsOf,
   nameError,
   nextHead,
   prevHead,
@@ -72,7 +72,11 @@ describe("stats (the + and − buttons)", () => {
 
 describe("heads (the head arrows)", () => {
   test("each sex has its own head cycle; the right arrow steps forward", () => {
-    expect(HEADS_BY_SEX).toEqual({ 1: [1, 3, 4, 5, 6, 9, 10], 2: [2, 7, 8, 11] });
+    // Classic's sexes (classes.json creation.sexes): 1.6's two cycles.
+    expect([headsOf(1), headsOf(2)]).toEqual([
+      [1, 3, 4, 5, 6, 9, 10],
+      [2, 7, 8, 11],
+    ]);
     expect(nextHead(1, 10)).toBe(1);
     expect(nextHead(2, 11)).toBe(2);
     expect(nextHead(1, 6)).toBe(9);
@@ -84,7 +88,7 @@ describe("heads (the head arrows)", () => {
     expect(prevHead(2, 2)).toBe(11);
     expect(prevHead(2, 8)).toBe(7);
     for (const sex of [1, 2] as const) {
-      for (const head of HEADS_BY_SEX[sex]) {
+      for (const head of headsOf(sex)) {
         expect(prevHead(sex, nextHead(sex, head))).toBe(head);
       }
     }

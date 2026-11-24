@@ -7,6 +7,7 @@
  */
 import { createHash } from "node:crypto";
 
+import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
 import { type ContentData, DATASET_IDS, type DatasetId } from "@secondstaronline/shared";
 
 /**
@@ -23,6 +24,26 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
   houses: { deeds: "deed", types: "house" },
   social: { factions: "key" },
 };
+
+/**
+ * A dataset's top-level fields as its schema lists them, each with whether a world may leave it
+ * out (an optional section: a casino game, the Assassin's Game). A pack that leaves one out still
+ * offers it, so an operator can add it, and an operator can remove one a pack has.
+ */
+export function datasetParts(dataset: DatasetId): { part: string; optional: boolean }[] {
+  const schema = DATASET_SCHEMAS[dataset] as unknown as {
+    shape?: Record<string, { safeParse(v: unknown): { success: boolean } }>;
+  };
+  return Object.entries(schema.shape ?? {}).map(([part, field]) => ({
+    part,
+    optional: field.safeParse(undefined).success,
+  }));
+}
+
+/** Whether a dataset has a top-level field `part`, and whether it is optional. */
+export function partOf(dataset: DatasetId, part: string): { optional: boolean } | null {
+  return datasetParts(dataset).find((p) => p.part === part) ?? null;
+}
 
 /** Datasets operators cannot change: the collision rects are built from the art. */
 export const READ_ONLY_DATASETS: readonly DatasetId[] = ["rects"];
@@ -135,7 +156,8 @@ export interface LayerRow extends RowRef {
 /**
  * Applies changes to a set of datasets, returning new datasets (touched fields are copied, the
  * rest shared). A `set` of a keyed entry replaces it where it stands, or appends it when new;
- * a `remove` drops it; a `set` of a section replaces the field.
+ * a `remove` drops it; a `set` of a section replaces the field, and a `remove` of an optional
+ * section leaves it out.
  */
 export function applyRows<T extends Partial<ContentData>>(base: T, rows: readonly LayerRow[]): T {
   const out = { ...base } as Record<string, Record<string, unknown>>;
@@ -153,6 +175,9 @@ export function applyRows<T extends Partial<ContentData>>(base: T, rows: readonl
     if (r.key === null) {
       if (r.op === "set") {
         ds[r.part] = r.data;
+      } else if (r.op === "remove") {
+        // An optional section taken out (the schema refuses any other).
+        delete ds[r.part];
       }
       continue;
     }

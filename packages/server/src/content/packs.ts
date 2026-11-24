@@ -12,6 +12,8 @@ import {
   type PackManifest,
   packManifestSchema,
   type SchemaDatasetId,
+  type WorldSeed,
+  worldSeedSchema,
 } from "@secondstaronline/data/schema";
 import type { ContentData } from "@secondstaronline/shared";
 
@@ -21,6 +23,8 @@ export interface LoadedPack {
   data: Partial<ContentData>;
   /** The folder holding the pack's art (`<pack>/<manifest.art>`), when it has art there. */
   artDir: string | null;
+  /** The world a new database created with this pack starts from (`manifest.world`). */
+  world: WorldSeed | null;
 }
 
 /** An imported pack as the database stores it: the manifest and each dataset by file stem. */
@@ -53,10 +57,23 @@ export function readPackDir(dir: string): LoadedPack {
     }
   }
   const artDir = manifest.art ? join(dir, manifest.art) : null;
+  let world: WorldSeed | null = null;
+  if (manifest.world) {
+    const parsed = worldSeedSchema.safeParse(
+      JSON.parse(readFileSync(join(dir, manifest.world), "utf8")),
+    );
+    if (!parsed.success) {
+      throw new Error(
+        `pack ${manifest.id}: ${manifest.world} does not match its schema:\n${parsed.error.message}`,
+      );
+    }
+    world = parsed.data;
+  }
   return {
     manifest,
     data: data as Partial<ContentData>,
     artDir: artDir && existsSync(join(artDir, "index.json")) ? artDir : null,
+    world,
   };
 }
 
@@ -72,5 +89,5 @@ export function readPackBlob(json: string): LoadedPack {
     }
   }
   // An imported pack's art arrives with art uploads (#29) and pack import (#34).
-  return { manifest, data: data as Partial<ContentData>, artDir: null };
+  return { manifest, data: data as Partial<ContentData>, artDir: null, world: null };
 }

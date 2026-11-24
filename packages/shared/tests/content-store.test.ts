@@ -37,7 +37,7 @@ function changed(fn: (d: ContentData) => void): ContentData {
 describe("the content store holder", () => {
   test("a store swaps in one step, and every rebuilt value follows it", () => {
     const next = changed((d) => {
-      d.casino.blackjack.maxBid = 5;
+      d.casino.blackjack!.maxBid = 5;
       d.tiles.walkable.push({ code: "Z9" } as never);
       d.items.editorItems.push("Moonblade");
       d.classes.skills.push({ skill: "Swimming" });
@@ -52,7 +52,7 @@ describe("the content store holder", () => {
     expect(skillIndex("Swimming")).toBe(classicData.classes.skills.length);
     expect(tileName(classicData.tiles.catalogue[0]?.code as string)).toBe("Renamed tile");
     installContent(classic);
-    expect(BJ_MAX_BID).toBe(classicData.casino.blackjack.maxBid);
+    expect(BJ_MAX_BID).toBe(classicData.casino.blackjack!.maxBid);
     expect(EDITOR_ITEMS).not.toContain("Moonblade");
   });
 

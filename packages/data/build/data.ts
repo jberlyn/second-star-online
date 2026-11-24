@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 import type { z } from "zod";
 
@@ -14,6 +14,7 @@ import { type PackManifest, packManifestSchema } from "../schema/pack.ts";
 import { rectsDataSchema } from "../schema/rects.ts";
 import { seedMapDataSchema } from "../schema/seed-map.ts";
 import { tilesDataSchema } from "../schema/tiles.ts";
+import { worldSeedSchema } from "../schema/world.ts";
 import { listAdded } from "./assets-lib/added.ts";
 import { keyedAdded, keyedOriginal } from "./assets-lib/load.ts";
 import { centreLine2, standingFrameOf } from "./assets-lib/mirror.ts";
@@ -37,6 +38,10 @@ export const GENERATED_DIR = join(import.meta.dir, "..", "src", "generated");
 export const CLASSIC_PACK_DIR = join(import.meta.dir, "..", "packs", "classic");
 /** The Classic pack's source manifest. */
 const PACK_SOURCE = "pack.json";
+/** The Minimal pack's source folder: its manifest, datasets, world seed and art list. */
+export const MINIMAL_SOURCE = join(import.meta.dir, "..", "minimal");
+/** The built Minimal pack (committed, like the Classic pack; its art is built by assets:build). */
+export const MINIMAL_PACK_DIR = join(import.meta.dir, "..", "packs", "minimal");
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Obj = { [key: string]: Json };
@@ -242,6 +247,13 @@ export function packContentHash(files: Map<string, string>): string {
     const path = `data/${DATASET_FILES[id]}.json`;
     h.update(`${path}\n${files.get(path) ?? ""}\n`);
   }
+  // Files beside the datasets (a world seed), by name; the Classic pack has none, so its hash is
+  // as before.
+  for (const path of [...files.keys()].filter((f) => !f.startsWith("data/")).sort()) {
+    if (path !== "manifest.json") {
+      h.update(`${path}\n${files.get(path) ?? ""}\n`);
+    }
+  }
   return h.digest("hex").slice(0, 16);
 }
 
@@ -272,13 +284,68 @@ export interface RenderedPack {
  * and records the new hash (`sourceStale`), and `data:check` fails until it has.
  */
 export function renderClassicPack(contentDir = CONTENT): RenderedPack {
+  return renderPack(readPackSource(contentDir), (id) => classicDataset(id, contentDir));
+}
+
+/**
+ * Renders the Minimal pack from `minimal/`: each dataset file, the rects of the art it carries
+ * (`art.json`, cut from the Classic rects), and its world seed. Versioned like the Classic pack.
+ */
+export function renderMinimalPack(sourceDir = MINIMAL_SOURCE): RenderedPack {
+  const source = packManifestSchema.parse(
+    JSON.parse(readFileSync(join(sourceDir, PACK_SOURCE), "utf8")),
+  );
+  const art = JSON.parse(readFileSync(join(sourceDir, "art.json"), "utf8")) as Record<
+    string,
+    string[]
+  >;
+  const dataset = (id: SchemaDatasetId): Json => {
+    if (id === "rects") {
+      const all = rectsDataSchema.parse(renderRects());
+      const cut = (rects: Record<string, unknown>, keys: readonly string[] = []) =>
+        Object.fromEntries(
+          keys.map((k) => k.toLowerCase()).flatMap((k) => (k in rects ? [[k, rects[k]]] : [])),
+        );
+      return {
+        fx: cut(all.fx, art.fx),
+        chars: cut(all.chars, art.bodies),
+        items: cut(all.items, art.items),
+      } as Json;
+    }
+    const from = `minimal/${DATASET_FILES[id]}.json`;
+    const data = JSON.parse(readFileSync(join(sourceDir, `${DATASET_FILES[id]}.json`), "utf8"));
+    const parsed = DATASET_SCHEMAS[id].safeParse(data);
+    if (!parsed.success) {
+      throw new Error(`${from} does not match its schema:\n${parsed.error.message}`);
+    }
+    return data as Json;
+  };
+  const world = JSON.parse(readFileSync(join(sourceDir, "world.json"), "utf8"));
+  const parsedWorld = worldSeedSchema.safeParse(world);
+  if (!parsedWorld.success) {
+    throw new Error(`minimal/world.json does not match its schema:\n${parsedWorld.error.message}`);
+  }
+  return renderPack(source, dataset, { "world.json": `${JSON.stringify(world, null, 2)}\n` });
+}
+
+/**
+ * Renders a pack: `data/<file>.json` for every dataset and `manifest.json` from its source
+ * manifest, plus `extra` files (a world seed). The hash covers the datasets and the extra files.
+ */
+function renderPack(
+  source: PackManifest,
+  dataset: (id: SchemaDatasetId) => Json,
+  extra: Readonly<Record<string, string>> = {},
+): RenderedPack {
   const files = new Map<string, string>();
   for (const id of Object.keys(DATASET_FILES) as SchemaDatasetId[]) {
-    const data = classicDataset(id, contentDir);
+    const data = dataset(id);
     const text = id === "rects" ? JSON.stringify(data) : JSON.stringify(data, null, 2);
     files.set(`data/${DATASET_FILES[id]}.json`, `${text}\n`);
   }
-  const source = readPackSource(contentDir);
+  for (const [name, text] of Object.entries(extra)) {
+    files.set(name, text);
+  }
   const contentHash = packContentHash(files);
   const sourceStale = source.contentHash !== contentHash;
   const manifest: PackManifest = sourceStale
@@ -348,12 +415,37 @@ export function findStaleModules(modules: Map<string, string>, dir = GENERATED_D
   return problems.sort();
 }
 
+/** The packs the build writes: their rendering, source manifest and folder. */
+function releasePacks(): {
+  label: string;
+  pack: RenderedPack;
+  sourceManifest: string;
+  dir: string;
+}[] {
+  return [
+    {
+      label: "Classic",
+      pack: renderClassicPack(),
+      sourceManifest: join(CONTENT, PACK_SOURCE),
+      dir: CLASSIC_PACK_DIR,
+    },
+    {
+      label: "Minimal",
+      pack: renderMinimalPack(),
+      sourceManifest: join(MINIMAL_SOURCE, PACK_SOURCE),
+      dir: MINIMAL_PACK_DIR,
+    },
+  ];
+}
+
 if (import.meta.main) {
   const modules = renderDataModules();
-  const pack = renderClassicPack();
+  const packs = releasePacks();
+  const versions = packs
+    .map((p) => `the ${p.label} pack (v${p.pack.manifest.version})`)
+    .join(" and ");
   if (process.argv.includes("--check")) {
     const stale = findStaleModules(modules);
-    const stalePack = findStalePack(pack.files);
     const lines: string[] = [];
     if (stale.length > 0) {
       lines.push(
@@ -361,45 +453,49 @@ if (import.meta.main) {
         ...stale.map((p) => `  ${p}`),
       );
     }
-    if (pack.sourceStale) {
-      lines.push(
-        "data:check: the Classic content changed but content/pack.json still records the old hash. Run `bun run data:build` to bump the pack version.",
-      );
-    }
-    if (stalePack.length > 0) {
-      lines.push(
-        "data:check: packages/data/packs/classic/ is out of date. Run `bun run data:build`.",
-        ...stalePack.map((p) => `  ${p}`),
-      );
+    for (const { label, pack, sourceManifest, dir } of packs) {
+      if (pack.sourceStale) {
+        lines.push(
+          `data:check: the ${label} content changed but ${relative(REPO_ROOT, sourceManifest)} still records the old hash. Run \`bun run data:build\` to bump the pack version.`,
+        );
+      }
+      const stalePack = findStalePack(pack.files, dir);
+      if (stalePack.length > 0) {
+        lines.push(
+          `data:check: ${relative(REPO_ROOT, dir)}/ is out of date. Run \`bun run data:build\`.`,
+          ...stalePack.map((p) => `  ${p}`),
+        );
+      }
     }
     if (lines.length > 0) {
       console.error(lines.join("\n"));
       process.exit(1);
     }
-    console.log(
-      `data:check: all ${modules.size} generated modules and the Classic pack (v${pack.manifest.version}) are current`,
-    );
+    console.log(`data:check: all ${modules.size} generated modules and ${versions} are current`);
   } else {
     rmSync(GENERATED_DIR, { recursive: true, force: true });
     mkdirSync(GENERATED_DIR, { recursive: true });
     for (const [name, text] of modules) {
       writeFileSync(join(GENERATED_DIR, name), text);
     }
-    if (pack.sourceStale) {
-      writeFileSync(join(CONTENT, PACK_SOURCE), `${JSON.stringify(pack.manifest, null, 2)}\n`);
-      console.log(
-        `data:build: the Classic content changed, so the pack is now v${pack.manifest.version}`,
-      );
-    }
-    // The art folder belongs to the asset build: keep it.
-    rmSync(join(CLASSIC_PACK_DIR, "data"), { recursive: true, force: true });
-    rmSync(join(CLASSIC_PACK_DIR, "manifest.json"), { force: true });
-    mkdirSync(join(CLASSIC_PACK_DIR, "data"), { recursive: true });
-    for (const [name, text] of pack.files) {
-      writeFileSync(join(CLASSIC_PACK_DIR, name), text);
+    for (const { label, pack, sourceManifest, dir } of packs) {
+      if (pack.sourceStale) {
+        writeFileSync(sourceManifest, `${JSON.stringify(pack.manifest, null, 2)}\n`);
+        console.log(
+          `data:build: the ${label} content changed, so the pack is now v${pack.manifest.version}`,
+        );
+      }
+      // The art folder belongs to the asset build: keep it.
+      for (const name of readdirSync(dir).filter((n) => n !== "art")) {
+        rmSync(join(dir, name), { recursive: true, force: true });
+      }
+      mkdirSync(join(dir, "data"), { recursive: true });
+      for (const [name, text] of pack.files) {
+        writeFileSync(join(dir, name), text);
+      }
     }
     console.log(
-      `data:build wrote ${modules.size} modules to packages/data/src/generated/ and the Classic pack (v${pack.manifest.version}) to packages/data/packs/classic/`,
+      `data:build wrote ${modules.size} modules to packages/data/src/generated/ and ${versions} to packages/data/packs/`,
     );
   }
 }

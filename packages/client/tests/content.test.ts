@@ -27,7 +27,7 @@ function fileWith(maxBid: number, hash: string, format = CONTENT_FORMAT): Conten
   const data = structuredClone(classicData) as Partial<ContentData>;
   delete data.npcFiles;
   delete data.rects;
-  (data.casino as ContentData["casino"]).blackjack.maxBid = maxBid;
+  (data.casino as ContentData["casino"]).blackjack!.maxBid = maxBid;
   return { format, hash, data: data as ContentFile["data"] };
 }
 
@@ -65,7 +65,7 @@ describe("the client's content", () => {
     const store = await fetchContent(null, fetchImpl);
     expect(asked).toEqual(["/content/current.json", "/content/abc.json"]);
     expect(store.hash).toBe("abc");
-    expect(store.casino.blackjack.maxBid).toBe(7);
+    expect(store.casino.blackjack!.maxBid).toBe(7);
     // The server-only datasets are empty on the client.
     expect(store.npcFiles.files).toEqual([]);
   });
@@ -94,7 +94,7 @@ describe("the client's content", () => {
     const { fetchImpl, asked } = server({ dep: fileWith(9, "dep") }, "dep");
     const seen: { t: string; maxBid: number }[] = [];
     const sync = createContentSync({
-      handle: (m) => seen.push({ t: m.t, maxBid: content().casino.blackjack.maxBid }),
+      handle: (m) => seen.push({ t: m.t, maxBid: content().casino.blackjack!.maxBid }),
       fetch: fetchImpl,
     });
     sync.receive(welcome("dep"));

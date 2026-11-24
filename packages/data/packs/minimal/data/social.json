@@ -1,0 +1,664 @@
+{
+  "factions": [],
+  "factionRules": {
+    "tiers": {
+      "top": 9,
+      "below": [
+        {
+          "below": 90,
+          "tier": 9
+        },
+        {
+          "below": 80,
+          "tier": 8
+        },
+        {
+          "below": 70,
+          "tier": 7
+        },
+        {
+          "below": 60,
+          "tier": 6
+        },
+        {
+          "below": 50,
+          "tier": 5
+        },
+        {
+          "below": 40,
+          "tier": 4
+        },
+        {
+          "below": 30,
+          "tier": 3
+        },
+        {
+          "below": 20,
+          "tier": 2
+        },
+        {
+          "below": 10,
+          "tier": 1
+        },
+        {
+          "below": 5,
+          "tier": 0
+        }
+      ]
+    },
+    "perkDefaults": {
+      "skillCap": 50,
+      "mageCap": 30
+    },
+    "editorBoxes": [],
+    "loyaltyPerFrame": {
+      "rule": "Fctcnt - 1 every frame while Fctcnt > 0, floored at 0; the warnings print at exactly 20000, 10000 and 5000 after the decrement, and at 1 the player is kicked (Fctnme, Fctcnt and the bonuses 0, LeaveGroup @Faction, save)"
+    },
+    "headDrop": {
+      "rule": "On RunDeathScript after the arena exit and before the DropOnDeath item or gold: a faction member (Fctnme > 0) on a map whose DeathPenalty is X (the map's PvP flag CanPeeVeePee is X) drops its own faction's head on the death pixel, created from nothing (DropAnItem; no bag slot). Not in RunDeathScript2."
+    },
+    "exile": {
+      "rule": "After the death stat penalty (whether or not it fired), on the new HPmax: below the faction's threshold → Fctnme, Fctcnt and the bonuses 0, the text, save; no LeaveGroup"
+    },
+    "loginJoin": {
+      "rule": "Fctnme > 0 at load joins @Faction"
+    },
+    "turnIn": {
+      "rule": "QuestGive to Angela, Trianus or Corin with an item containing ' Head': the named slot must contain '<item>-', then one is removed from the first bag slot 1-15 containing '<item>-'; a head whose name contains the leader's own faction word gets ownHead and nothing else; any other head gets rivalHead (aqs), then 1 power moves from the rival to the leader's faction if the rival is > 0, the join message (mgfct, wrfct, adfct) is sent regardless, the powers are written and factnrtrn goes to the giver",
+      "ownHead": "{NPC} says \"A fallen member...I'll be sure to dispose of this so that our rivals don't see our weakness.\"",
+      "rivalHead": "{NPC} says \"You have done well in slaying one of our foes.\"",
+      "missingPowers": "50:50:50"
+    },
+    "sayFaction": {
+      "rule": "SayFaction <leader>: strictly highest power → absolute, else strictly lowest → weak, else fine; sent as aqs (the asker's map hears it). 1.6's lines had no closing quote; SSO closes them.",
+      "fine": "{NPC} says \"Our power is fine...for now.\"",
+      "weak": "{NPC} says \"We are very weak, I fear that we may be destroyed.\"",
+      "absolute": "{NPC} says \"We are currently in absolute power.\""
+    }
+  },
+  "murder": {
+    "wanted": {
+      "text": "*** You are now wanted for the murder of {NAME}.",
+      "sender": "the victim (newMessage.senderID)"
+    },
+    "pardoned": {
+      "text": "*** You have been pardoned by {NAME}.",
+      "sender": "the immortal"
+    },
+    "pardoning": {
+      "text": "Pardoning {NAME}...",
+      "rule": "/Pardon <word 2>, immortal only; anyone else's line is swallowed"
+    },
+    "flagRule": {
+      "rule": "After the death's HP reset and 80-tick wait: if the victim's gnL = 0 and LastToHitMe is not the victim and not a line 1-60 of mlists, IWMD goes to LastToHitMe. RunDeathScript2 (Lightning) sends it too. Arena (6P) deaths exit earlier."
+    }
+  },
+  "questReplies": {
+    "give": {
+      "rule": "GiveNPC sends QuestGive '<NPC>:<item>:<slot>' unless the WorldEdit MONSTER field contains the NPC's name. Quests.txt lines 1-40: the last line containing '<NPC>:<item>' wins; none → sorry (sqa, the giver only). Else one is taken from the first slot 1-15 containing '<item>-', the line's item 3 is added (InvAdd's stacking; a full bag reuses the slot just taken from), thanks (aqs), and the line is replaced by FindNewQuest unless the NPC is a faction leader.",
+      "thanks": "{NPC} says \"Wow thanks, just what I needed. Here take this reward!\"",
+      "sorry": "{NPC} says \"I'm sorry but I don't need that.\"",
+      "lines": 40
+    },
+    "say": {
+      "rule": "SayQuest n1:n2:n3:n4 (on-screen slots 180-183, less names the MONSTER field contains, Pig and Cow): per name, if Quests.txt contains it, one 'bring' per line 1-40 containing it (slot 1 by sqa, slots 2-4 by aqs); else 'nothing' by aqs. 'bring' has no closing quote; 'nothing' no full stop. SSO: one 'bring' per line naming the NPC exactly, every reply by aqs, 'bring' closes its quote and 'nothing' ends with a full stop.",
+      "bring": "{NPC} says \"Bring me a {ITEM} quickly and I'll reward you.\"",
+      "nothing": "{NPC} says \"Sorry but I don't need anything right now.\""
+    }
+  },
+  "highScores": {
+    "item": {
+      "text": "High Score Statue"
+    },
+    "text": "You read the high score list...",
+    "pause": 4,
+    "header": "                         Top FSO Player Scores",
+    "entry": "{N}. {NAME} - {POINTS} points",
+    "perLine": 4,
+    "separator": "      ",
+    "tableSize": 10,
+    "oneSaveIn": 3
+  },
+  "guilds": {
+    "texts": {
+      "notInFront": {
+        "text": "You see the guild center, but you must be standing in front of it to use it."
+      },
+      "taken": {
+        "text": "This guild name is already taken!"
+      },
+      "created": {
+        "text": "Guild created!"
+      },
+      "hail": {
+        "text": "Hail your guildmate {NAME}!"
+      },
+      "kicked": {
+        "text": "You have been kicked out of the {GUILD}"
+      },
+      "disbanded": {
+        "text": "The {GUILD} has been disband!"
+      },
+      "sending": {
+        "text": "*** Sending an invitation to {NAME}."
+      },
+      "notLeader": {
+        "text": "*** You are not the leader of a guild."
+      },
+      "alreadyIn": {
+        "text": "*** {NAME} already belongs to a guild."
+      },
+      "invited": {
+        "text": "*** {LEADER} has invited you to join the {GUILD}. If you would like to join type ACCEPT, to deny the invitation type REJECT."
+      },
+      "accepted": {
+        "text": "*** You have accepted the offer."
+      },
+      "rejected": {
+        "text": "*** You have rejected the offer."
+      },
+      "declined": {
+        "text": "*** {NAME} has declined your offer."
+      },
+      "joined": {
+        "text": "*** {NAME} has joined the {GUILD}."
+      },
+      "quitting": {
+        "text": "*** Quitting the {GUILD}"
+      },
+      "quit": {
+        "text": "*** {NAME} has just quit the {GUILD}"
+      },
+      "exiled": {
+        "text": "*** {NAME} was just exiled from the {GUILD}"
+      },
+      "abdicating": {
+        "text": "*** Abdicating to {NAME}"
+      },
+      "promoted": {
+        "text": "*** {NAME} has promoted {TARGET} to the new leader of the {GUILD}!!"
+      },
+      "notMember": {
+        "text": "You're not a member of this guild!"
+      },
+      "noGuild": {
+        "text": "You don't belong to a guild!"
+      },
+      "chat": {
+        "text": "{NAME} tells the {GUILD} \"{TEXT}\""
+      }
+    },
+    "sanitiser": {
+      "rule": "For each character, in this order, a forward pass over characters 1-100 deletes it; after a deletion the next character is skipped (it moved into the deleted place), so of two adjacent ones one survives. Then remove the first word if it is the, twice; remove one leading space; repeat the first-word check once more and remove one more leading space. The comparison ignores case.",
+      "strip": [
+        "/",
+        "?",
+        ".",
+        ":",
+        "*",
+        "@",
+        "&",
+        "\""
+      ],
+      "scan": 100
+    },
+    "defaultName": "Super Guild Guys ",
+    "alignments": [
+      "G",
+      "N",
+      "E"
+    ],
+    "colour": 0,
+    "listMax": 200,
+    "memberLines": [
+      2,
+      100
+    ]
+  },
+  "chat": {
+    "texts": {
+      "imEcho": {
+        "text": ">>> {NAME}: {TEXT}"
+      },
+      "imLine": {
+        "text": "{NAME}: {TEXT}"
+      },
+      "imTitle": {
+        "text": "IM from {NAME}"
+      },
+      "imSendTitle": {
+        "text": "Send an Instant Message"
+      },
+      "awayTitle": {
+        "text": "Away Message"
+      },
+      "awayOn": {
+        "text": "*** Your away message has been turned ON."
+      },
+      "awayOff": {
+        "text": "*** Your away message has been turned OFF."
+      },
+      "awayLog": {
+        "text": "{NAME}: {TEXT}"
+      },
+      "roomWindowTitle": {
+        "text": "Chat"
+      },
+      "roomLine": {
+        "text": "{NAME}: {TEXT}"
+      },
+      "noGuild": {
+        "text": "You don't belong to a guild!"
+      },
+      "ignoreAdded": {
+        "text": "Added {TEXT} to your ignore list."
+      },
+      "ignoreRemoved": {
+        "text": "Removed {TEXT} from your ignore list."
+      },
+      "ignoreListHeader": {
+        "text": "*** Your Ignore List "
+      },
+      "logging": {
+        "text": "Logging the chat to file."
+      }
+    },
+    "rooms": [
+      {
+        "key": "general",
+        "handler": "EnterGeneralChat",
+        "group": "@GeneralChat",
+        "title": "You are in: General Chat",
+        "entering": "     *** Entering General Chat     ***"
+      },
+      {
+        "key": "newPlayer",
+        "handler": "NewPlayerChat",
+        "group": "@NewPlayer",
+        "title": "You are in: New Player Chat",
+        "entering": "     *** Entering New Player Chat     ***"
+      },
+      {
+        "key": "tradingPost",
+        "handler": "TradingPostChat",
+        "group": "@TradingPostChat",
+        "title": "You are in: Trading Post Chat",
+        "entering": "     *** Entering Trading Post Chat     ***"
+      },
+      {
+        "key": "guild",
+        "handler": "xxGuildChat",
+        "group": "@x{GUILD}",
+        "title": "Chat for the {GUILD} Guild.",
+        "entering": "     *** Entering Chat for the {GUILD} Guild.     ***"
+      },
+      {
+        "key": "admin",
+        "handler": "EnterAdminChat",
+        "group": "@Adminss",
+        "title": "You are in: Admin Chat",
+        "entering": "     *** Entering Admin Chat     ***"
+      }
+    ],
+    "windows": {
+      "imSlots": 10,
+      "chatIgnoreLines": 50,
+      "imIgnoreLines": 40,
+      "unignoreScan": 100,
+      "returnScan": 200
+    }
+  },
+  "buddies": {
+    "texts": {
+      "added": {
+        "text": "*** {NAME} was added to your friend's list."
+      },
+      "already": {
+        "text": "*** {NAME} is already on your friend's list!"
+      },
+      "removed": {
+        "text": "*** {NAME} was removed from your friend's list."
+      },
+      "notOn": {
+        "text": "*** {NAME} is not on your friend's list!"
+      },
+      "title": {
+        "text": "Friends"
+      }
+    },
+    "windowLines": 100,
+    "entryNames": 200
+  },
+  "bios": {
+    "texts": {
+      "viewBio": {
+        "text": "You view the bio..."
+      },
+      "loadingProfile": {
+        "text": "Loading profile..."
+      },
+      "windowTitle": {
+        "text": "BioWindow"
+      },
+      "leader": {
+        "text": "Leader of the {GUILD}"
+      },
+      "member": {
+        "text": "Member of the {GUILD}"
+      },
+      "murderer": {
+        "text": "Vile Murderer"
+      },
+      "name": {
+        "text": "Name: {TEXT}"
+      },
+      "class": {
+        "text": "Class: {TEXT}"
+      },
+      "sex": {
+        "text": "Sex: {TEXT}"
+      },
+      "score": {
+        "text": "Score: {TEXT}"
+      },
+      "tree": {
+        "text": "A Tree"
+      },
+      "robe": {
+        "text": "????"
+      }
+    },
+    "firstTitle": "Adventurer",
+    "titles": [],
+    "score": {
+      "counted": [
+        "Fighting",
+        "HPmax",
+        "SPmax"
+      ]
+    },
+    "lastName": "Star",
+    "disguise": {
+      "treeMember": "80-",
+      "robeItem": "Robe of Invisibility"
+    },
+    "medalStrip": {
+      "slots": 14,
+      "items": 20,
+      "slotWidth": 16,
+      "blankMember": 15,
+      "stripMember": 7
+    },
+    "profile": {
+      "alerts": {
+        ":": {
+          "text": "You can't have a : in your profile!"
+        },
+        "/": {
+          "text": "You can't have a / in your profile!"
+        }
+      }
+    }
+  },
+  "medals": {
+    "rule": "Each skill at 90 or more holds its medal: the medal shows on the bio, in this table's order, and its stats are added to the allocated stats. Below 90 both are gone. Reaching 90 in play prints its line.",
+    "at": 90,
+    "awards": []
+  },
+  "mail": {
+    "texts": {
+      "notInFront": {
+        "text": "You see the mailbox, but you must be standing in front of it to check it."
+      },
+      "notYours": {
+        "text": "You can't check mail that's not yours!"
+      },
+      "checking": {
+        "text": "You check your mail..."
+      },
+      "sending": {
+        "text": "*** Sending Mail..."
+      },
+      "newMail": {
+        "text": "*** You have new mail from {NAME}"
+      },
+      "reply": {
+        "text": "Re: {TEXT}"
+      },
+      "tooMany": {
+        "text": "*** A message can go to at most 7 people."
+      }
+    },
+    "recipients": 7,
+    "listScan": 100
+  },
+  "boards": {
+    "texts": {
+      "view": {
+        "text": "You view the message board"
+      },
+      "notInFront": {
+        "text": "You see the message board, but you must be standing in front of it to read it."
+      },
+      "notMember": {
+        "text": "Only members of this guild can read its board."
+      },
+      "empty": {
+        "text": "Type in something before you post!!!"
+      },
+      "from": {
+        "text": "From: {NAME}"
+      }
+    },
+    "rule": "________________________",
+    "townSquare": "Town Square"
+  },
+  "art": {
+    "texts": {
+      "paintFull": {
+        "text": "You are carrying too much to add a painting to your inventory."
+      },
+      "paintSaving": {
+        "text": "Saving painting, please wait..."
+      },
+      "photoFull": {
+        "text": "You are carrying too much to add a photo to your inventory."
+      },
+      "photoSaving": {
+        "text": "Saving Photo, please wait..."
+      },
+      "saved": {
+        "text": "...Saved!"
+      },
+      "viewPhoto": {
+        "text": "You view the photo, please wait..."
+      },
+      "viewItem": {
+        "text": "You view the {NAME}, please wait..."
+      },
+      "author": {
+        "text": "Author: {NAME}"
+      },
+      "needCamera": {
+        "text": "You must equip a camera to take a picture!"
+      },
+      "noPicture": {
+        "text": "You can't take a picture here!"
+      },
+      "notInFront": {
+        "text": "You see the {NAME}, but you must be standing in front of it to view it."
+      }
+    },
+    "bagLines": 15,
+    "bagMax": 14,
+    "lens": {
+      "hMin": 72,
+      "hMax": 533,
+      "vMin": 67,
+      "vMax": 377
+    },
+    "size": 64,
+    "scale": 4,
+    "tools": [
+      {
+        "blends": [
+          150
+        ],
+        "rects": [
+          [
+            16,
+            16,
+            17,
+            17
+          ],
+          [
+            15,
+            15,
+            18,
+            18
+          ],
+          [
+            14,
+            14,
+            19,
+            19
+          ],
+          [
+            13,
+            13,
+            20,
+            20
+          ]
+        ]
+      },
+      {
+        "blends": [
+          100,
+          70
+        ],
+        "rects": [
+          [
+            15,
+            15,
+            17,
+            17
+          ],
+          [
+            14,
+            14,
+            18,
+            18
+          ],
+          [
+            13,
+            13,
+            19,
+            19
+          ],
+          [
+            12,
+            12,
+            20,
+            20
+          ]
+        ]
+      },
+      {
+        "blends": [
+          20,
+          20,
+          10,
+          8
+        ],
+        "rects": [
+          [
+            15,
+            15,
+            17,
+            17
+          ],
+          [
+            14,
+            14,
+            18,
+            18
+          ],
+          [
+            13,
+            13,
+            19,
+            19
+          ],
+          [
+            12,
+            12,
+            20,
+            20
+          ]
+        ]
+      },
+      {
+        "blends": [
+          80,
+          70,
+          60
+        ],
+        "rects": [
+          [
+            15,
+            15,
+            17,
+            17
+          ],
+          [
+            14,
+            14,
+            18,
+            18
+          ],
+          [
+            13,
+            13,
+            19,
+            19
+          ],
+          [
+            12,
+            12,
+            20,
+            20
+          ]
+        ]
+      }
+    ],
+    "shade": {
+      "centre": 14,
+      "arm": 8
+    }
+  },
+  "newspaper": {
+    "view": {
+      "text": "You view the newspaper"
+    },
+    "notInFront": {
+      "text": "You see the newspaper, but you must be standing in front of it to read it."
+    },
+    "saved": {
+      "text": "Newspaper saved!"
+    },
+    "noStand": {
+      "text": "You can't put a newspaper stand here!"
+    },
+    "standTile": {
+      "text": "K2"
+    },
+    "suffix": {
+      "text": "'s Newspaper"
+    },
+    "defaults": {
+      "title": "NEWSPAPER TITLE",
+      "photoName": "Photo Number",
+      "photo3": "5524916"
+    }
+  }
+}

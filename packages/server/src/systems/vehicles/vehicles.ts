@@ -19,6 +19,7 @@ import {
   isWalkable,
   lingoEq,
   ownerName,
+  ridersBound,
   SHIP_TEXT,
   shipDeedCheck,
   shipNoun,
@@ -135,7 +136,8 @@ export function vehicleDeed(
 export function vehicleClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem): Outgoing[] {
   const io = new ItemOut(room);
   const vehicle = vehicleOfItem(g.item);
-  if (!vehicle) {
+  // A world without rider bodies has no vehicles: one left on the ground cannot be boarded.
+  if (!vehicle || !ridersBound()) {
     return io.out;
   }
   const isOwner = g.ownerId ? g.ownerId === p.id : lingoEq(ownerName(g.item), p.name);

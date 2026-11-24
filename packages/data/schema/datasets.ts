@@ -66,3 +66,10 @@ export const DATASET_FILES: Record<SchemaDatasetId, string> = {
 
 export { comparePackVersions, PACK_FORMAT, type PackManifest, packManifestSchema } from "./pack.ts";
 export { checkProgression, FORMULA_MAX, formulaRange, skillDependents } from "./progression.ts";
+export {
+  type WorldMap,
+  type WorldPoint,
+  type WorldSeed,
+  worldPointSchema,
+  worldSeedSchema,
+} from "./world.ts";

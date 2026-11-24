@@ -38,6 +38,15 @@ export const packManifestSchema = z.strictObject({
     .string()
     .regex(/^[a-z0-9-]+$/)
     .optional(),
+  /**
+   * The file (inside the pack) holding its world seed (`world.ts`): the maps and points a new world
+   * created with this pack starts from. Absent: the pack seeds no world (the Classic pack's world
+   * is still seeded by the migrations that made it, until #43 moves it here).
+   */
+  world: z
+    .string()
+    .regex(/^[a-z0-9-]+\.json$/)
+    .optional(),
 });
 
 export type PackManifest = z.infer<typeof packManifestSchema>;

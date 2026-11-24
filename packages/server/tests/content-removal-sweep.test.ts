@@ -503,7 +503,7 @@ function recoloured(
   const g = data.gather.gathering;
   return {
     ...g,
-    mining: { ...g.mining, colours: g.mining.colours.map((c) => (gone.includes(c) ? kept : c)) },
+    mining: { ...g.mining!, colours: g.mining!.colours.map((c) => (gone.includes(c) ? kept : c)) },
   };
 }
 

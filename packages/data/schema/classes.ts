@@ -46,7 +46,35 @@ export const startClassSchema = z.strictObject({
 
 const ruleSchema = z.strictObject({ rule: z.string() });
 
+/** The most heads a world's paperdoll art may number (`Head<n>`). */
+export const MAX_HEAD = 999;
+
+/**
+ * A sex the creation screen offers, in its order (issue #37 stage 7): `code` is what characters
+ * are saved with, `label` what the screen, the Bio and the player hub show, and `heads` the heads
+ * it may wear, in the order the screen's arrows step through them (the first is shown when the sex
+ * is picked). Each head is drawn from the paperdoll art `Head<n>`.
+ */
+export const sexSchema = z.strictObject({
+  code: z.number().int().min(1).max(1000),
+  label: z.string().trim().min(1).max(20),
+  heads: z
+    .array(z.number().int().min(1).max(MAX_HEAD))
+    .min(1)
+    .max(64)
+    .refine((h) => new Set(h).size === h.length, "a head is listed twice"),
+});
+
 export const creationSchema = z.strictObject({
+  /**
+   * The sexes, in screen order. Classic: Male 1 and Female 2 with 1.6's heads (the screen's art
+   * names them; any other list is written over it).
+   */
+  sexes: z
+    .array(sexSchema)
+    .min(1)
+    .max(20)
+    .refine((s) => new Set(s.map((x) => x.code)).size === s.length, "a sex code is listed twice"),
   statBudget: ruleSchema,
   startingVitals: z.strictObject({ written: z.string(), notes: z.string() }),
   startingMap: z.strictObject({ value: z.string(), notes: z.string() }),
@@ -167,6 +195,7 @@ export const classesDataSchema = z
 export type Promotion = z.infer<typeof promotionSchema>;
 export type Skill = z.infer<typeof skillSchema>;
 export type StartClass = z.infer<typeof startClassSchema>;
+export type SexRow = z.infer<typeof sexSchema>;
 export type Creation = z.infer<typeof creationSchema>;
 export type WeaponSkills = z.infer<typeof skillGainSchema>["weaponSkills"];
 export type ClassesData = z.infer<typeof classesDataSchema>;

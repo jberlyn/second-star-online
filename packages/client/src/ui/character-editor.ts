@@ -24,10 +24,10 @@ import {
   editableOf,
   editErrors,
   factionLabel,
-  HEADS_BY_SEX,
+  headsOf,
   onContent,
   SETTABLE_FIELDS,
-  type Sex,
+  SEXES,
   STAT_FIELDS,
   sameValue,
   staleCheckFields,
@@ -300,13 +300,43 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   const resMap = textInput("hub-edit-respawn-map", undefined, 40);
   const resX = numberInput("hub-edit-respawn-x");
   const resY = numberInput("hub-edit-respawn-y");
-  const sex = select("hub-edit-sex", [
-    ["1", "Male"],
-    ["2", "Female"],
-  ]);
+  // The world's sexes (`classes.json` `creation.sexes`), each with its own heads.
+  const sex = select("hub-edit-sex", []);
+  /**
+   * The world's sexes as they are now, and the character's own (and the one picked) when the world
+   * no longer has it, so an edit that does not touch it keeps it.
+   */
+  const fillSexes = (pick: number) => {
+    const rows: [string, string][] = SEXES.map((x) => [String(x.code), x.label]);
+    for (const own of [original?.sex, pick]) {
+      if (own !== undefined && !rows.some(([v]) => v === String(own))) {
+        rows.push([String(own), `Sex ${own}`]);
+      }
+    }
+    sex.replaceChildren(
+      ...rows.map(([value, label]) => {
+        const o = document.createElement("option");
+        o.value = value;
+        o.textContent = label;
+        return o;
+      }),
+    );
+    sex.value = String(pick);
+  };
   const head = action(document.createElement("select"), "hub-edit-head");
-  const fillHeads = (keep: number) => {
-    const heads = HEADS_BY_SEX[(Number(sex.value) === 2 ? 2 : 1) as Sex];
+  /**
+   * The heads the chosen sex may wear. With the character's own sex chosen, their own head is
+   * listed even when that sex no longer has it (a publish took it out), so an unrelated edit
+   * changes nothing; never an empty list.
+   */
+  const fillHeads = (pick: number) => {
+    const chosen = Number(sex.value);
+    const known = headsOf(chosen);
+    const own = original && original.sex === chosen ? original.head : null;
+    const heads = own !== null && !known.includes(own) ? [own, ...known] : [...known];
+    if (heads.length === 0) {
+      heads.push(pick);
+    }
     head.replaceChildren(
       ...heads.map((h) => {
         const o = document.createElement("option");
@@ -315,7 +345,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
         return o;
       }),
     );
-    head.value = String(heads.includes(keep) ? keep : (heads[0] ?? 1));
+    head.value = String(heads.includes(pick) ? pick : heads[0]);
   };
   sex.addEventListener("change", () => fillHeads(Number(head.value)));
   const placeBox = section(
@@ -366,6 +396,13 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   // The class list, the factions, the skills and the item suggestions follow the content store, so
   // a publish that adds a class, a faction, a skill or an item shows here at once.
   onContent((c) => {
+    // The sexes and heads follow a publish, keeping what is picked.
+    const pickedSex = Number(sex.value);
+    const pickedHead = Number(head.value);
+    if (original) {
+      fillSexes(pickedSex);
+      fillHeads(pickedHead);
+    }
     const pickedFaction = faction.value;
     factionOptions(original?.faction, pickedFaction);
     faction.value = pickedFaction;
@@ -449,7 +486,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     resMap.value = c.respawn?.map ?? "";
     resX.value = c.respawn ? String(c.respawn.x) : "";
     resY.value = c.respawn ? String(c.respawn.y) : "";
-    sex.value = String(c.sex);
+    // From the content as it is now; a sex or head it no longer has is kept, so saving keeps it.
+    fillSexes(c.sex);
     fillHeads(c.head);
     override.checked = false;
   };

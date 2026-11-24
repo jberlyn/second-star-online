@@ -1,21 +1,23 @@
 # Modding
 
-Game data lives as JSON files in [packages/data/content/](../packages/data/content/README.md). Together they are the source of the **Classic pack**: each file is validated against its strict Zod schema in [packages/data/schema/](../packages/data/schema/) (unknown or missing fields fail the build) and written to the committed pack in `packages/data/packs/classic/` (a `manifest.json` and one file per dataset). The pack's version lives in `content/pack.json`; the build bumps it whenever the content changes, so servers can tell a changed row from an unchanged one. The server reads the pack from the release at every start and lays the operator's changes on top; clients fetch the result from the server. A few rules that span files or rows are checked by the tests in `packages/data/tests/` rather than by the build (noted below), so run the gate after editing.
+SSO is the engine; the content comes from **packs**. Each release ships two: the **Classic pack** (1.6's content, the default) and the **Minimal pack** (the bare minimum a world needs, for building your own game; see [Starting a world: Classic or Minimal](#starting-a-world-classic-or-minimal)). Most of this guide describes the datasets every pack fills, with Classic's rows as the examples.
+
+Classic's data lives as JSON files in [packages/data/content/](../packages/data/content/README.md). Together they are the source of the **Classic pack**: each file is validated against its strict Zod schema in [packages/data/schema/](../packages/data/schema/) (unknown or missing fields fail the build) and written to the committed pack in `packages/data/packs/classic/` (a `manifest.json` and one file per dataset). The pack's version lives in `content/pack.json`; the build bumps it whenever the content changes, so servers can tell a changed row from an unchanged one. The server reads the pack from the release at every start and lays the operator's changes on top; clients fetch the result from the server. A few rules that span files or rows are checked by the tests in `packages/data/tests/` rather than by the build (noted below), so run the gate after editing.
 
 The [public image](running-a-server.md#docker-compose-recommended) is ready to host the standard game. In-game map, NPC and settings edits, and content changes made on the Control Panel's [Content page](running-a-server.md#the-content-page), persist in your database without rebuilding. To change the content files, assets, or code described below, clone the repository and build a custom image; these files are baked into the image and are not hot-reloaded at runtime.
 
-The starter landscape is defined in [seed-map.json](../packages/data/content/seed-map.json), the enclosed Jail in [jail-map.json](../packages/data/content/jail-map.json), and the church bell map in [church-map.json](../packages/data/content/church-map.json). Each supplies a map title and four 17×12 tile layers. The seed map fills a fresh world; the Jail and Church are added where those coordinates are absent. Rebuild data and your image after changing them. Existing worlds keep their saved maps; use the in-game World Editor to change those. Keep the configured spawn and respawn tiles walkable.
+A Classic world's starter landscape is defined in [seed-map.json](../packages/data/content/seed-map.json), the enclosed Jail in [jail-map.json](../packages/data/content/jail-map.json), and the church bell map in [church-map.json](../packages/data/content/church-map.json). Each supplies a map title and four 17×12 tile layers. The seed map fills a fresh Classic world; the Jail and Church are added where those coordinates are absent (a Minimal world's maps come from [its world seed](#world-seeds) instead). Rebuild data and your image after changing them. Existing worlds keep their saved maps; use the in-game World Editor to change those. Keep the configured spawn and respawn tiles walkable.
 
 ## Workflow and validation
 
-1. Edit the relevant JSON file in [packages/data/content/](../packages/data/content/README.md) (and add any new art or audio under [assets/added/](../assets/added/README.md)).
-2. Rebuild the Classic pack (and bump its version):
+1. Edit the relevant JSON file in [packages/data/content/](../packages/data/content/README.md) (or, for the Minimal pack, `packages/data/minimal/`), and add any new art or audio under [assets/added/](../assets/added/README.md).
+2. Rebuild the packs (each changed pack's version is bumped):
 
    ```sh
    bun run data:build
    ```
 
-3. If you added or changed art or sounds, rebuild the sprite atlases and sound index (the Classic pack's art lands in `packages/data/packs/classic/art/`):
+3. If you added or changed art or sounds, rebuild the sprite atlases and sound index (each pack's art lands in its `art/` folder under `packages/data/packs/`):
 
    ```sh
    bun run assets:build
@@ -111,7 +113,7 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 
 ### Item behaviours
 
-1.6 gave an item a mechanic by a word in its name: "Key" opened doors, "bow" shot arrows, " Chest" opened as a chest. In SSO, `item-rules.json` `behaviours` says which items have each mechanic (issue #37). Each row is `{ "match", "pattern", "behaviour" }`, and an item has every behaviour a row matches. A row tests the name without its `#id` or `+N` ending, so `Crate#12` is a crate and `Knight's Sword +1` is a sword. An item that no row gives a behaviour does not have it: with no `key` rows, no item opens a door.
+1.6 gave an item a mechanic by a word in its name: "Key" opened doors, "bow" shot arrows, " Chest" opened as a chest. In SSO, `item-rules.json` `behaviours` says which items have each mechanic. Each row is `{ "match", "pattern", "behaviour" }`, and an item has every behaviour a row matches. A row tests the name without its `#id` or `+N` ending, so `Crate#12` is a crate and `Knight's Sword +1` is a sword. An item that no row gives a behaviour does not have it: with no `key` rows, no item opens a door.
 
 | Behaviour | What the item does | Classic's rows |
 |---|---|---|
@@ -150,7 +152,7 @@ The **engine fixtures** never take a behaviour, and no new content item may take
 
 ### Tools and gathering
 
-1.6 knew its tools by name: an "Axe" fell trees, a "Mining" tool swung faster with Mining, a "Fishing" item fished. In SSO (issue #37) content says what each tool does, and what each tile gives.
+1.6 knew its tools by name: an "Axe" fell trees, a "Mining" tool swung faster with Mining, a "Fishing" item fished. In SSO, content says what each tool does, and what each tile gives.
 
 **`item-rules.json` `tools`** gives a weapon what it `can` do: `Chop`, `Mine`, `Dig`, `Farm`, `Fish` or `Water`. These are the engine's kinds of gathering. Each row is `{ "match", "pattern", "can"?, "tier"?, "ladder"? }`, and a weapon can do everything a matching row gives it, at that row's `tier` (1 when left out). Each `can` row keeps its own hit counter, named by its pattern, so an Axe and a Gold Axe share one and each hammer has its own. The last matching row with a `ladder` sets the weapon's swing speed from **`ladders`**: `{ "skill"?, "steps": [{ "below"?, "delay" }], "gearSpeedUp"? }`. The first step whose `below` is above the skill (or that has no `below`) sets the attack delay. `gearSpeedUp` takes the worn gear's speed-up (the Ring of Quickness's) off the step; without it the step replaces the delay outright. A ladder whose `skill` the world lacks is off. Classic's rows: contains `Axe` (`Chop`, and ladder `axe` on Axe Fighting), `Shovel` (`Dig`), `Hoe` (`Farm`), `Watering Bucket` (`Water`), the three hammers (`Mine`), contains `Fishing` (`Fish`), contains `Mining` (ladder `mining` on Mining) and contains `Fishing` again (ladder `fishing`: a flat 20 less the gear's speed-up, never below 1).
 
@@ -180,7 +182,7 @@ An item can need a skill, or the level, before it is equipped or used, and a har
 
 ### Names the engine still builds or reads
 
-These are the engine's own names, or wait for a later stage of issue #37:
+These are the engine's own names:
 
 | Name | What reads it |
 |---|---|
@@ -255,7 +257,7 @@ This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power
 
 | Default (`defaults`) | Used for | Original code |
 |---|---|---|
-| `ground` | Blank-map layer 1 ground | `H1` |
+| `ground` | Blank-map layer 1 ground | `H1` (Minimal: `G1`) |
 | `empty` | Blank-map layers 2 and 3, house footprint layer 2, house demolish reset | `G3` |
 | `shadow` | Blank-map layer S shadow and the layer-3 `(7, 6)` mark | `5A` |
 | `editorTile` | Initial selected tile when opening the World Editor | `G1` |
@@ -332,7 +334,7 @@ A species' `flags` turn on the mechanics no table names (1.6 tied each one to a 
 
 `healedBy` and `resists` name the effects that hit monsters: `Meteor`, `Bolt`, `Splash`, `Crush`, `Firebolt`, `Fireball` and `Wind Wave`. A spell of your own heals or is resisted by its `effect`, so an Ice Shard on Firebolt's effect heals a Ghoul. A `grabbable` item must be an item.
 
-A species made before stage 4 of #37 took these mechanics from its body number; the upgrade gave each such row the flags its body had, so it plays the same. A new species on one of those bodies takes none unless you give it the flags.
+A species saved before these flags existed took its mechanics from its body number; the upgrade that added them gave each such row the flags its body had, so it plays the same. A new species on one of those bodies takes none unless you give it the flags.
 
 ### Example: Frost Wolf
 
@@ -375,7 +377,29 @@ These files have no worked example here; their schemas in [packages/data/schema/
 - **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
 - **`casino.json`:** the Slot Machine, Blackjack and Checkers games, including their sounds. Which items play them is the `slotMachine`, `blackjackTable` and `checkersTable` [behaviours](#item-behaviours). Classic no longer sets each game's `item`; a pack made before the behaviours that still sets it keeps that item playing.
 - **`quests.json`:** the quest lines that seed a fresh database's `quests` table (`current`) and the pools a replacement quest is drawn from (`pools`).
-- **`help.json`:** the help topics `/help <topic>` shows, with their lines.
+- **`help.json`:** the help topics `/help <topic>` shows, with their lines. The `Help` topic is also the greeting a character gets on logging in; a world without one sends none.
+
+### What a world may leave out
+
+1.6's game shaped many of these files: tables that name its items, tiles and NPCs. A world that does not want a mechanic leaves its table out, and the mechanic is off (Classic fills every one; the [Minimal pack](#starting-a-world-classic-or-minimal) leaves them out):
+
+| Left out or empty | Then |
+|---|---|
+| `gather.json` `gathering.mining` | No mining strike: no `yields` table may be `{ "kind": "ore" }` (the schema refuses one) |
+| `gathering.fishing` | No water can be fished, whatever a `Fish` tool's row says |
+| `gathering.farming`, `gathering.sprinkle` | No seed plants, a `Water` tool waters nothing, no sprinkle is shown |
+| `gathering.treasure` | No treasure is buried and no NPC tells a rumour; no harvest node may set `treasure` |
+| `gathering.regrowth.checks` (empty) | Nothing grows back |
+| `craft.json` `stations.smith`, `cook`, `mix`, `build`, `cauldron` | That craft is off: its menu button does nothing (as with an unbound skill), and a job running when a publish takes the station out ends silently; with no `cauldron`, nothing dropped is taken for one |
+| `casino.json` `slots`, `blackjack`, `checkers` | Its items play nothing: their click and Ctrl fall through to the item's other uses. A spin, hand or match a publish leaves running finishes on the rules it began with |
+| `social.json` `assassin` | No Assassin's Game: the menu does nothing, kills score nothing, and an `assassinStatue` item is a plain item. A game running when a publish takes it out ends there (Lightning's one-hit melee with it), without prizes, and does not come back with the section |
+| `social.json` `questReplies.oraku` | No NPC takes Oraku's orb |
+| `social.json` `factions`, `medals.awards`, `bios.titles` (empty) | No factions, no medals, no Bio titles beyond `firstTitle` |
+| `houses.json` `deeds`, `types` and the other lists (empty) | No houses or vehicles from deeds, no coloured keys, no relocking doors, no quest chest refills |
+| `help.json` `topics` (empty) | `/help` finds no topic |
+| `bindings.json` `cannon`, `bodies`, `skills` entries | See [Bindings](#bindings-bindingsjson) |
+
+The rest of each file is the engine's frame (texts, timers, the chat rooms, the art tools) and stays required; the Minimal pack carries Classic's values. On the [Content page](running-a-server.md#the-content-page), the casino games and the Assassin's Game are sections of their own: one the packs leave out is listed with no rows and can be added (paste its JSON), and one they have can be removed, which reverting puts back. The tables inside a section (a craft station, mining) are left out by editing the section.
 
 ## Spells (`spells.json`)
 
@@ -488,7 +512,7 @@ A faction an operator removes keeps its members' saved memberships, their loyalt
 - `classes`: each class's `code`, `name`, optional `statBonus` and `promotion` (its `skillGrants`, and `statChanges`, an SPmax floor applied before the grants);
 - `skills`: each skill's `skill` (its permanent key), an optional `display` name, and `hidden` for a skill the Skills page leaves out;
 - `startClasses`: the classes the creation screen offers, in its order, each with its class `code`, an optional `label` (the class's name when absent) and its starting `skills` by key;
-- `creation`: the rest of the new-character record (the starting gold, hunger, profile text and so on);
+- `creation`: the creation screen's `sexes` (below) and the rest of the new-character record (the starting gold, hunger, profile text and so on);
 - `skillGain.weaponSkills`: which skills a kill or a hit trains for each weapon (`weapon`, `match`, `skills`). A kill rolls them in the list's order (Classic's lists are in 1.6's roll order);
 - `progression`: the world's progression settings, and each skill's own `progression` (see [Progression](#progression)).
 
@@ -497,6 +521,7 @@ How skills behave:
 - **Saved by key.** A character stores each skill's value under its `skill` key, so skills can be added, removed or reordered at any time. A character who has never had a skill starts it at `1` (`NEW_SKILL_VALUE`), and their next save writes it. A removed skill's values stay saved, and come back if the skill returns. Two skills whose keys read the same with case and spaces ignored (`MartialArts` and `Martial Arts`) are refused, because the rules find skills that way.
 - **Shown by `display`.** The Skills page lists every skill without `hidden`, in the order of `skills`, under its `display` name (the key when absent); with more skills than fit, its arrows scroll the list, as 1.6's did. The same name is used in the advance line (`progression.line`) and in the character editor. Classic hides Meditation, Terrain Navigating and Item Identification, as 1.6 did.
 - **Starting values by key.** A start class names only the skills it starts above 1. The creation screen draws one radio per start class in the space 1.6 gave its three; more than three scroll there.
+- **Sexes and heads are content.** `creation.sexes` lists the sexes the creation screen offers, in order: `{ "code", "label", "heads" }`. `code` is what characters are saved with, `label` what the screen, the Bio and the player hub show, and `heads` the heads it may wear, in the order the head arrows step through them (picking the sex shows its first). Each head is drawn from the paperdoll art `Head<n>` (`Head<n>-F2-S` in the preview). Classic's are 1.6's: `{ "code": 1, "label": "Male", "heads": [1, 3, 4, 5, 6, 9, 10] }` and `{ "code": 2, "label": "Female", "heads": [2, 7, 8, 11] }`, beside the MALE and FEMALE the screen's art spells out; any other list is written over those words, two rows at a time, scrolling beyond. The server refuses a sex the world lacks or a head that sex does not have; a character saved with a sex later removed keeps it (the Bio leaves it blank). Adding a head needs its paperdoll frames, so for now only heads whose art a pack ships (Classic's eleven; the Minimal pack's `Head1` and `Head2`).
 - How each skill rises is content: its [progression](#progression).
 - The skills the engine reads for a mechanic (parrying, the crafts and so on) are named in `bindings.json`, below.
 - A class's `statBonus` (for example `{ "dex": 3 }`) is added to the stats of every character in that class while they are in it; change it and every such character follows.
@@ -504,7 +529,7 @@ How skills behave:
 
 ### Progression
 
-How a skill rises is content (issue #37). Each skill picks a **model**, and each model has settings by **source**: the engine events that train skills. World **defaults** (`classes.json` `progression.defaults`) apply to every skill, and a skill's own `progression` overrides them field by field.
+How a skill rises is content. Each skill picks a **model**, and each model has settings by **source**: the engine events that train skills. World **defaults** (`classes.json` `progression.defaults`) apply to every skill, and a skill's own `progression` overrides them field by field.
 
 ```json
 "progression": {
@@ -580,7 +605,7 @@ It shows on the Skills page at once, at 1 for everyone, and rises from whatever 
 
 ## Bindings (`bindings.json`)
 
-`packages/data/content/bindings.json` names the content the engine needs for its mechanics, so no mechanic depends on a 1.6 name in code (issue #37). A binding a world leaves out turns its mechanic off. The currency is the exception: the [content contract](#the-content-contract) requires one.
+`packages/data/content/bindings.json` names the content the engine needs for its mechanics, so no mechanic depends on a 1.6 name in code. A binding a world leaves out turns its mechanic off. The currency is the exception: the [content contract](#the-content-contract) requires one.
 
 Each top-level field is one row on the Content page:
 
@@ -589,7 +614,7 @@ Each top-level field is one row on the Content page:
 | `currency` | `item`: the item a character carries as their purse ("gold" in the engine's words). A pile on the ground is named with its amount and the item's key, `15 Gold` (only that form: with a currency named `Coin`, an item named `Silver Coin` stays an item), and the purse, trades, shops, drops, `/drop 50 Gold`, NPC drop lines (`INV|50 Gold`) and treasure rows all read it | `Gold` | refused at publish |
 | `start` | `hp`, `sp`: a new character's full vitals; `bag`: its first bag lines (`item`, `qty`), at most 15 | 20 and 20; 2 Apple, 1 Knife | required (the bag may be empty) |
 | `cannon` | `ammo`: the item each Battleship cannon shot spends | `Cannonball` | the cannon never fires ("You have no cannonballs!") |
-| `bodies` | the `Chars` body numbers the engine puts on a player: `morph` (Morph's table), `tree` (Nature Shift), `smoke` (Smoke Bomb, drawn as nothing to others), `riders` (one per vehicle: `Boat`, `Battleship`, `Airship`) | 30-41; 80; 100; 55, 56, 57 | `morph`, `tree`, `smoke`: that spell does nothing. `riders` is required: vehicles are engine kinds |
+| `bodies` | the `Chars` body numbers the engine puts on a player: `morph` (Morph's table), `tree` (Nature Shift), `smoke` (Smoke Bomb, drawn as nothing to others), `riders` (one per vehicle: `Boat`, `Battleship`, `Airship`) | 30-41; 80; 100; 55, 56, 57 | `morph`, `tree`, `smoke`: that spell does nothing. `riders`: the world has no vehicles, and a deed that makes one is refused (vehicles are engine kinds, each drawn as its rider body) |
 | `skills` | the skills the engine reads, below | 1.6's skills | that mechanic is off |
 
 Notes on the single bindings:
@@ -614,7 +639,7 @@ A binding that names a skill which does not exist is named at start and refused 
 
 ## The content contract
 
-What a world must have before it can run (issue #37). It is checked:
+What a world must have before it can run. It is checked:
 
 - at every publish, undo and "take the pack's version" on the Content page, which are refused while anything is missing;
 - when Server Settings are saved: a start, fallback or jail point that cannot hold a player is refused (a point already broken does not stop other settings being saved);
@@ -627,11 +652,51 @@ A world must have:
 | A currency | `bindings.json` `currency` | an item that exists, is not retired, and is named by its exact key |
 | A start class | `classes.json` `startClasses` | at least one |
 | A skill | `classes.json` `skills` | at least one |
-| Start, fallback and jail points | Server Settings: Starting map, Fallback map, Jail | each on a map that exists, on a tile walkable on foot with nothing in a new character's way (no item from `item-rules.json` `ground.blocks`, and no skill or level platform from `ground.platforms`) |
+| Start, fallback and jail points | Server Settings: Starting map, Fallback map, Jail | each on a map that exists, on a tile walkable on foot with nothing in a new character's way (no item from `item-rules.json` `ground.blocks`, and no skill or level platform from `ground.platforms`); and the start and fallback never on the jail's map (any spelling of it: `x00y0` is `x0y0`) |
+| Vehicles drawn | `bindings.json` `bodies.riders` | rider bodies, when a deed in `houses.json` makes a Boat, Battleship or Airship, or while any character is aboard a vehicle or one stands parked (a world without rider bodies boards no one) |
 
-The points are judged with the content being published, so a draft that takes a tile off `tiles.json` `walkable` is refused if a point stands on it. Every other binding and setting is optional. The church bell's map is the **Church bell map** setting (`bellMap`; empty means no bell), which Classic servers start at x999y999.
+The points are judged with the content being published, so a draft that takes a tile off `tiles.json` `walkable` is refused if a point stands on it. The jail's map holds whoever stands on it (no edges, exits or Portal, and anyone not serving a sentence is moved off), so a start there would put every new character in jail, and a fallback there would send released prisoners back in: a settings save that moves a start or fallback point onto the jail's map, or the jail onto theirs, is refused under the setting it changed. Every other binding and setting is optional, and so are the 1.6-shaped tables ([What a world may leave out](#what-a-world-may-leave-out)). The church bell's map is the **Church bell map** setting (`bellMap`; empty means no bell), which Classic servers start at x999y999.
+
+## Starting a world: Classic or Minimal
+
+Every world runs on a pack, chosen when its database is created (`SSO_CONTENT`; see [Choosing your starting content](running-a-server.md#choosing-your-starting-content)). There is no world without one.
+
+| | Classic (`classic`, the default) | Minimal (`minimal`) |
+|---|---|---|
+| Source | `packages/data/content/` | `packages/data/minimal/` |
+| Built pack | `packages/data/packs/classic/` | `packages/data/packs/minimal/` |
+| Content | 1.6's, every table filled | the bare minimum: the start class Novice, one skill (`Fighting`, trained by unarmed kills), the currency `Gold`, the tiles `G1` (grass), `G3` (empty) and `5A` (shadow), Male and Female with one head each; no monster, NPC, spell, shop, quest, house, faction or casino game, and every [optional table](#what-a-world-may-leave-out) left out |
+| Art | 1.6's, plus `assets/added/` | the few pictures it needs, listed in `minimal/art.json` and packed by `bun run assets:build` from the same sources as Classic's (copies of 1.6's) |
+| World | SSO's seed, Jail and Church maps, seeded by the original migrations (they move into the pack with issue #43) | its [world seed](#world-seeds): an all-grass start at `x0y0` and an all-grass jail at `x50y50` |
+
+`bun run data:build` validates and versions both packs the same way: each has a source `pack.json`, and a content change bumps its version. The Minimal pack is a preview until art uploads arrive (issue #29): until then, new content can only reuse the pictures a pack ships.
+
+**Building your own game on Minimal.** On a running server, use the Control Panel's [Content page](running-a-server.md#the-content-page): every row the Minimal pack has can be changed or removed, and new rows (skills, classes, items, monsters, NPC files, spells, recipes, harvest nodes) are added the same way as on Classic. The contract keeps the world playable: a draft that removes the last start class or skill, or the currency, is refused. To change the pack itself (a fork), edit `packages/data/minimal/` and rebuild, as with Classic's content files.
+
+**The pictures the engine names.** The engine draws a player from paperdoll layers it names itself, `BIM` (the shadow), `DEFBOD` (the bare body), `Bare Feet` and `Head<n>`, and a currency pile from `SmallGold`, `MediumGold` and `LargeGold` (by amount, whatever the currency is called). Like the [engine fixtures](#item-behaviours), the engine owns these names and a pack supplies their art; a pack that leaves one out draws nothing there. Both shipped packs carry them. The game frame (panels, menus, fonts, cursors, the interface clicks) is the engine's own art, served whatever pack a world runs.
+
+### World seeds
+
+A pack's manifest may name a world seed (`"world": "world.json"`), the world a new database created with that pack starts from (schema: `packages/data/schema/world.ts`):
+
+```json
+{
+  "maps": [
+    { "map": "x0y0", "title": "Grassland", "layers": [[...12 rows...], [...], [...], [...]] },
+    { "map": "x50y50", "title": "Jail", "layers": [...], "flags": { "canFight": "O", "isIndoors": "O", "canPvp": "O" } }
+  ],
+  "startPoint": { "map": "x0y0", "x": 1, "y": 1 },
+  "fallbackPoint": { "map": "x0y0", "x": 1, "y": 1 },
+  "jailPoint": { "map": "x50y50", "x": 1, "y": 1 },
+  "bellMap": null
+}
+```
+
+Each map is a grid map (`x<n>y<n>`, whole numbers, negatives allowed) with its title, four 17×12 layers as the seed map has them, and its switches (`"O"` turns fighting, indoors or PvP off; all on when left out). The points must stand on the seed's own maps, and the start and fallback not on the jail's. The seed is applied once, when the server creates the database: from then on the maps are the world's (the World Editor's) and the points are Server Settings, so a pack update never moves them. Where nothing is stored, the engine's own points are the Minimal pack's: start and fallback at `x0y0` (1, 1), jail at `x50y50` (1, 1).
 
 ## Art and sound
+
+The atlases are built per pack: Classic's into `packages/data/packs/classic/art/`, and the Minimal pack's few pictures (named in `packages/data/minimal/art.json`, by atlas group and lower-case key) into `packages/data/packs/minimal/art/`. The server serves only the art of the packs a world has installed, so a Minimal world sends no other 1.6 picture or sound.
 
 Original extracted assets are indexed in [assets/original/usage.md](../assets/original/usage.md); do not edit `assets/original/`.
 

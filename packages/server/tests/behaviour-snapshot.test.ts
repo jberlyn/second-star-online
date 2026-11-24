@@ -206,7 +206,7 @@ function allNames(): string[] {
   for (const f of c.items.fixtures) {
     names.add(typeof f === "string" ? f : (f as { name: string }).name);
   }
-  for (const m of c.craft.stations.smith.masterwork) {
+  for (const m of c.craft.stations.smith!.masterwork) {
     for (const o of m.outcomes) {
       names.add(o.result);
     }

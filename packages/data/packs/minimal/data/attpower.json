@@ -1,0 +1,10 @@
+{
+  "attPower": {
+    "handler": "GetAttackPower",
+    "base": [],
+    "exactOverrides": [],
+    "arrowBonus": [],
+    "ringBonus": [],
+    "skillBlocks": []
+  }
+}

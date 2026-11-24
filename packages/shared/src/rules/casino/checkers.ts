@@ -8,24 +8,41 @@ import { onContent } from "../../content/store.ts";
 import { hasBehaviour } from "../inventory/behaviours.ts";
 import { legacyItem } from "./blackjack.ts";
 
-type Checkers = CasinoData["checkers"];
+type Checkers = NonNullable<CasinoData["checkers"]>;
 
-let C: Checkers;
+let C: Checkers | undefined;
+/** The rules the last store with this game had, for a game a publish leaves running. */
+let LAST_C: Checkers | undefined;
 export let CK_TEXT: Checkers["texts"];
 export let CK_MARKER: Checkers["marker"];
 
 onContent((c) => {
   C = c.casino.checkers;
-  CK_TEXT = C.texts;
-  CK_MARKER = C.marker;
+  LAST_C = C ?? LAST_C;
+  const r = LAST_C;
+  // The last rules the world had: a match a publish leaves running finishes on them, and with none
+  // ever, no item seats anyone (`isCheckersTable`), so these are never read.
+  CK_TEXT = r?.texts ?? { stand: "", black: "", white: "", start: "", win: "", taken: "" };
+  CK_MARKER = r?.marker ?? { black: [0, 0], white: [0, 0] };
 });
+
+/** Checkers, past the `isCheckersTable` gate (which is false in a world without it). */
+function ck(): Checkers {
+  // A game already running when a publish took this one out finishes on the rules it began with;
+  // no new one starts (the gate is false). A world that never had it has no game to finish.
+  const rules = C ?? LAST_C;
+  if (!rules) {
+    throw new Error("this world has no checkers");
+  }
+  return rules;
+}
 
 /**
  * An item with the `checkersTable` behaviour sits you down (Classic: exactly "Checkers Table", the
  * only name 1.6 seated; its click and Ctrl also routed longer names, which then sat no one).
  */
 export function isCheckersTable(name: string): boolean {
-  return hasBehaviour(name, "checkersTable") || legacyItem(name, C.item);
+  return C !== undefined && (hasBehaviour(name, "checkersTable") || legacyItem(name, C.item));
 }
 
 export type PieceName = "Black" | "White" | "BlackKing" | "WhiteKing";
@@ -35,7 +52,7 @@ export type Side = 1 | 2;
 
 /** The 24 pieces of frame 1, channels 2-25 (0-11 Black, 12-23 White). */
 export function startBoard(): Piece[] {
-  return C.start.map((p) => ({ h: p.h, v: p.v, m: p.m }));
+  return ck().start.map((p) => ({ h: p.h, v: p.v, m: p.m }));
 }
 
 /** Side 1 owns names containing "Black", side 2 those containing "White". */
@@ -70,28 +87,28 @@ function rawMove(
   ) {
     return none;
   }
-  const B = C.bounds;
+  const B = ck().bounds;
   const inside = (n: number): boolean => {
-    const h = piece.h + C.step * n * dh;
-    const v = piece.v + C.step * n * dv;
+    const h = piece.h + ck().step * n * dh;
+    const v = piece.v + ck().step * n * dv;
     return h >= B.hMin && h <= B.hMax && v >= B.vMin && v <= B.vMax;
   };
   const at = (h: number, v: number): number => board.findIndex((p) => p.h === h && p.v === v);
-  const next = at(piece.h + C.step * dh, piece.v + C.step * dv);
+  const next = at(piece.h + ck().step * dh, piece.v + ck().step * dv);
   const moved = (n: number): Piece[] =>
     board.map((p, i) =>
-      i === index ? { ...p, h: piece.h + C.step * n * dh, v: piece.v + C.step * n * dv } : p,
+      i === index ? { ...p, h: piece.h + ck().step * n * dh, v: piece.v + ck().step * n * dv } : p,
     );
   const adjacent = board[next];
   if (adjacent) {
     if (ownedBy(side, adjacent.m)) {
       return none;
     }
-    if (at(piece.h + C.jump * dh, piece.v + C.jump * dv) >= 0 || !inside(2)) {
+    if (at(piece.h + ck().jump * dh, piece.v + ck().jump * dv) >= 0 || !inside(2)) {
       return none;
     }
     const after = moved(2);
-    after[next] = { ...adjacent, h: adjacent.h + C.captured, v: adjacent.v + C.captured };
+    after[next] = { ...adjacent, h: adjacent.h + ck().captured, v: adjacent.v + ck().captured };
     return { kind: "jump", board: after, captured: next };
   }
   return inside(1) ? { kind: "step", board: moved(1) } : none;
@@ -160,10 +177,10 @@ export function promote(board: readonly Piece[], index: number): Piece[] {
     if (i !== index) {
       return p;
     }
-    if (p.m === "Black" && p.v < C.kingBelow) {
+    if (p.m === "Black" && p.v < ck().kingBelow) {
       return { ...p, m: "BlackKing" };
     }
-    return p.m === "White" && p.v > C.kingAbove ? { ...p, m: "WhiteKing" } : p;
+    return p.m === "White" && p.v > ck().kingAbove ? { ...p, m: "WhiteKing" } : p;
   });
 }
 

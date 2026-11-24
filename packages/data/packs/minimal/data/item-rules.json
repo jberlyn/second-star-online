@@ -1,0 +1,70 @@
+{
+  "behaviours": [],
+  "tools": [],
+  "ladders": {},
+  "requires": [],
+  "equip": {
+    "strength": [],
+    "slots": [],
+    "twoHanded": [],
+    "murder": {
+      "match": "contains",
+      "pattern": "Murder"
+    }
+  },
+  "use": {
+    "silent": [],
+    "books": [],
+    "skillBooks": [],
+    "usable": [],
+    "effects": [],
+    "messages": [],
+    "refusals": []
+  },
+  "armour": {
+    "rows": [],
+    "elemental": [],
+    "spell": {
+      "rows": [],
+      "magicShield": -5
+    }
+  },
+  "breaks": {
+    "armour": {
+      "excludedMonsters": [],
+      "items": []
+    },
+    "weapon": {
+      "excludedMonsters": [],
+      "items": []
+    },
+    "damaged": []
+  },
+  "menu": [],
+  "paperdoll": {
+    "aliases": []
+  },
+  "ground": {
+    "blocks": [],
+    "platforms": [],
+    "overlays": [],
+    "inUse": [],
+    "layers": [],
+    "offsets": [],
+    "tipless": [],
+    "tipNames": []
+  },
+  "pickup": {
+    "ctrlTexts": []
+  },
+  "containers": {
+    "capacity": [],
+    "defaultCapacity": 15,
+    "uniqueIds": []
+  },
+  "gear": [],
+  "swing": {
+    "cooldowns": [],
+    "sounds": []
+  }
+}

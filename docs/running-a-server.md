@@ -19,6 +19,9 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       SSO_PROXY_HOPS: "0"
+      # The world's starting content, read only when the database is first created:
+      # classic (the default) or minimal. See "Choosing your starting content".
+      # SSO_CONTENT: classic
     volumes:
       - sso-data:/data
     restart: unless-stopped
@@ -36,6 +39,24 @@ docker compose up -d second-star-online
 ```
 
 Open [http://localhost:3000](http://localhost:3000) on the Docker host and create an account. The image runs as the non-root `bun` user (UID/GID `1000`) and stores the database in the named `sso-data` volume at `/data` (`SSO_DB=/data/sso.sqlite`). This example binds the service to loopback for local access; for public hosting, add a TLS reverse proxy and set `SSO_PROXY_HOPS` to the number of proxies in front of the game (see [Reverse proxies and TLS](#reverse-proxies-and-tls)).
+
+### Choosing your starting content
+
+A new world starts from one of the two content packs shipped in each release:
+
+- **Classic** (the default): 1.6's items, monsters, NPCs, spells, skills and classes, its art and sounds, and SSO's starter maps (Willowbrook Wilds at `x1000y992`, the Jail at `x0y0` and the Church of the Bells at `x999y999`). This is the game as SSO plays it; you do not need to set anything.
+- **Minimal**: the blank pack you build your own game from. It holds the least a world needs to run and nothing else: the start class Novice, one skill (Fighting), the currency Gold, the plain grass tile, a bare body with one head for each of its two sexes, and two all-grass maps: the start at `x0y0` (start and fallback points at `1, 1`) and a jail at `x50y50` (`1, 1`). There are no monsters, NPCs, spells, shops or quests until you add them on the [Content page](#the-content-page). Its few pictures are copies of 1.6's. Minimal is a preview for now: until art uploads arrive (issue #29), anything you add has no picture of its own unless it reuses one of these.
+
+Set `SSO_CONTENT` to `minimal` (or `classic`) before the **first** start:
+
+```yaml
+    environment:
+      SSO_CONTENT: minimal
+```
+
+**The choice is read only when the server creates its database.** That first start seeds the world from the chosen pack: the pack itself, its maps, and its start, fallback and jail points. From then on the maps and points are your world's (edit them in the World Editor and Server Settings), and `SSO_CONTENT` does nothing, whatever it is set to later, so restarting with another value can never wipe a world people play in. The server says which world it created (`content: created a new world with the minimal pack`), and on a later start it says when the variable disagrees with the world (`SSO_CONTENT=classic ignored: this world was created with minimal …`).
+
+To choose again, start from a new database: with Compose, a new volume (`docker compose down -v` deletes the `sso-data` volume, **and the world in it**, so back it up first if you may want it); from source, another `SSO_DB` file. While a world is being created, an unknown value refuses to start and names the choices; on an established world it is only logged and ignored, like any other value. If that first start is interrupted (the container is stopped mid-way), the next start finishes creating the world with the pack first chosen.
 
 If you used the README's `docker run` quick start, it uses a volume named `sso-data`. To keep that world when switching to Compose, replace the final `sso-data:` declaration above with `sso-data: { external: true, name: sso-data }` and stop the old container before starting Compose.
 
@@ -121,6 +142,7 @@ That source-build configuration sets `SSO_PROXY_HOPS=1` for a host reverse proxy
 |---|---|---|
 | `PORT` | `3000` | HTTP and WebSocket listening port. |
 | `SSO_DB` | `sso.sqlite` | SQLite database path relative to the working directory (`/data/sso.sqlite` in the container). `:memory:` runs a throwaway database that is lost on exit. |
+| `SSO_CONTENT` | `classic` | The content pack a **new** world starts from: `classic` or `minimal`. Read only when the server creates its database, where any other value refuses startup; ignored (and logged) afterwards (see [Choosing your starting content](#choosing-your-starting-content)). |
 | `NODE_ENV` | unset | Only `development` selects development serving (Bun's live-reloading page, which carries no CSP). Any other value (or unset) serves the prebuilt `dist/client` bundle, and every response carries `X-Content-Type-Options: nosniff` and a CSP of `script-src 'self'; object-src 'none'; base-uri 'none'` (plus `frame-ancestors` when `SSO_FRAME_ANCESTORS` is set). |
 | `SSO_CLIENT_DIR` | `dist/client` | Optional override for the prebuilt production client directory (used by tests). |
 | `SSO_PROXY_HOPS` | `0` | Number of trusted reverse proxies in front of the server (whole number `>= 0`; invalid values refuse startup). The recommended Compose example sets `0`; use `1` behind a single reverse proxy. |
@@ -228,7 +250,7 @@ The Control Panel shows for a role with a permission that has a page there: toda
 
 ### The content page
 
-Everything the game knows about items, monsters, NPCs, spells, rules and texts comes from the **installed packs** plus **your changes**. Every server runs the **Classic pack** (1.6's content, shipped inside each release and read from it, never copied into your database), so a server with no changes plays exactly as before. **Control Panel → Content** (permission **Control Panel: edit items, monsters and NPCs**) lists:
+Everything the game knows about items, monsters, NPCs, spells, rules and texts comes from the **installed packs** plus **your changes**. Every server runs one of the packs shipped inside each release, read from it and never copied into your database: the **Classic pack** (1.6's content, the default), so a server with no changes plays exactly as before, or the **Minimal pack**, for a world [created with it](#choosing-your-starting-content). **Control Panel → Content** (permission **Control Panel: edit items, monsters and NPCs**) lists:
 
 - **Installed packs**, with the version each runs at. A release that brings a newer Classic says so here once.
 - **Pack updates:** when a newer pack version changes a row you have customised, your version stays live and the row is listed with what the pack changed and how yours differs. **Use Classic's version** replaces yours (as a publish you can undo); **Keep mine** stops the notice. Rows you never changed take the new version on their own.

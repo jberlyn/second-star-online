@@ -119,8 +119,8 @@ describe("gates", () => {
 
 describe("the casino data", () => {
   test("round-trips the slot table", () => {
-    expect(casinoData.slots.payouts.length).toBeGreaterThan(0);
-    expect(casinoData.slots.cost).toBe(5);
-    expect(casinoData.slots.spinFrames).toBe(30);
+    expect(casinoData.slots!.payouts.length).toBeGreaterThan(0);
+    expect(casinoData.slots!.cost).toBe(5);
+    expect(casinoData.slots!.spinFrames).toBe(30);
   });
 });

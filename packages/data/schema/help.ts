@@ -13,7 +13,7 @@ export const helpTopicSchema = z.strictObject({
 });
 
 export const helpDataSchema = z.strictObject({
-  topics: z.array(helpTopicSchema).min(1),
+  topics: z.array(helpTopicSchema),
 });
 
 export type HelpTopic = z.infer<typeof helpTopicSchema>;

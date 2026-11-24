@@ -9,6 +9,9 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       SSO_PROXY_HOPS: "1"
+      # The world's starting content, read only when the database is first created:
+      # classic (the default) or minimal. See docs/running-a-server.md.
+      # SSO_CONTENT: classic
     volumes:
       - sso-data:/data
     restart: unless-stopped

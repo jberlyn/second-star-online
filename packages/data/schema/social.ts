@@ -244,11 +244,16 @@ export const biosSchema = z.strictObject({
     "class",
     "sex",
     "score",
-    "male",
-    "female",
     "tree",
     "robe",
-  ] as const),
+  ] as const).extend({
+    /**
+     * Unused since issue #37 stage 7: the Bio shows the sex's `label` (`classes.json`
+     * `creation.sexes`). Kept so packs made before still load.
+     */
+    male: guildText.optional(),
+    female: guildText.optional(),
+  }),
   firstTitle: z.string(),
   /** In script order; a row applies when every test holds; the last one that applies wins. */
   titles: z.array(z.strictObject({ tests: z.array(skillTest).min(1), title: z.string() })),
@@ -275,21 +280,19 @@ export const biosSchema = z.strictObject({
 export const medalsSchema = z.strictObject({
   rule,
   at: z.literal(90),
-  awards: z
-    .array(
-      z.strictObject({
-        skill: z.string(),
-        id: z.number().int().positive(),
-        text: z.string(),
-        /** Its BioWindow member, `Medal<id>`. */
-        member: z.number().int().positive(),
-        stats: z.partialRecord(
-          z.enum(["str", "sta", "dex", "int", "wis"]),
-          z.number().int().positive(),
-        ),
-      }),
-    )
-    .min(1),
+  awards: z.array(
+    z.strictObject({
+      skill: z.string(),
+      id: z.number().int().positive(),
+      text: z.string(),
+      /** Its BioWindow member, `Medal<id>`. */
+      member: z.number().int().positive(),
+      stats: z.partialRecord(
+        z.enum(["str", "sta", "dex", "int", "wis"]),
+        z.number().int().positive(),
+      ),
+    }),
+  ),
 });
 
 const mailTexts = [
@@ -468,15 +471,19 @@ export const socialDataSchema = z
         sorry: z.string(),
         lines: z.number().int().positive(),
       }),
-      oraku: z.strictObject({
-        npc: z.string(),
-        item: z.string(),
-        reward: z.string(),
-        text: z.string(),
-      }),
+      /** Oraku's orb quest; left out, no NPC takes an orb. */
+      oraku: z
+        .strictObject({
+          npc: z.string(),
+          item: z.string(),
+          reward: z.string(),
+          text: z.string(),
+        })
+        .optional(),
       say: z.strictObject({ rule, bring: z.string(), nothing: z.string() }),
     }),
-    assassin: assassinSchema,
+    /** The Assassin's game; left out, there is none (no /assassin, no score, no statue). */
+    assassin: assassinSchema.optional(),
     highScores: highScoresSchema,
     guilds: guildsSchema,
     chat: chatSchema,

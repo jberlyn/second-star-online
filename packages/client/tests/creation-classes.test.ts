@@ -84,3 +84,60 @@ test("the classes come from content, and more than three scroll within the same 
     installContent(buildContentStore(classicData));
   }
 });
+
+test("Classic's sexes are the backdrop's own MALE and FEMALE beside 1.6's two radios", () => {
+  const { s, sent, press, els } = screen();
+  expect(s.items.some((i) => i.el.classList.contains("cc-sex-list"))).toBe(false);
+  const radios = s.items.filter(
+    (i) => i.el instanceof HTMLImageElement && i.x === 426 && (i.y === 153 || i.y === 168),
+  );
+  expect(radios).toHaveLength(2);
+  expect(els.some((e) => e.dataset.action === "creation-male")).toBe(true);
+  expect(els.some((e) => e.dataset.action === "creation-female")).toBe(true);
+  press("OK");
+  press("Female");
+  press("Next head");
+  press("OK");
+  press("Male");
+  press("OK");
+  expect(sent.map((v) => [v.sex, v.head])).toEqual([
+    [1, 1],
+    [2, 7],
+    [1, 1],
+  ]);
+});
+
+test("other sexes come from content, written over the backdrop's words, scrolling past two", () => {
+  const d = structuredClone(classicData) as ContentData;
+  d.classes.creation.sexes = [
+    { code: 3, label: "Elf", heads: [9, 4] },
+    { code: 1, label: "Human", heads: [1] },
+    { code: 5, label: "Orc", heads: [6] },
+  ];
+  installContent(buildContentStore(d));
+  try {
+    const { s, sent, press } = screen();
+    const list = s.items.find((i) => i.el.classList.contains("cc-sex-list"));
+    expect(list && [list.x, list.y, list.w, list.h]).toEqual([424, 151, 98, 32]);
+    expect(list?.el.classList.contains("cc-sex-scroll")).toBe(true);
+    expect([...(list?.el.querySelectorAll(".cc-sex") ?? [])].map((e) => e.textContent)).toEqual([
+      "Elf",
+      "Human",
+      "Orc",
+    ]);
+    // The first sex and its first head are chosen at the start.
+    press("OK");
+    press("Orc");
+    press("OK");
+    press("Elf");
+    press("Next head");
+    press("OK");
+    expect(sent.map((v) => [v.sex, v.head])).toEqual([
+      [3, 9],
+      [5, 6],
+      [3, 4],
+    ]);
+  } finally {
+    installContent(buildContentStore(classicData));
+  }
+});

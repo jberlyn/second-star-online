@@ -38,7 +38,14 @@ import {
   isGoldName,
   isUniqueContainer,
 } from "../inventory/inventory.ts";
-import { HEADS_BY_SEX, type Sex, STAT_MAX, STAT_MIN } from "../progression/creation.ts";
+import {
+  headsOf,
+  STAT_MAX,
+  STAT_MIN,
+  sexChoices,
+  sexLabel,
+  sexOf,
+} from "../progression/creation.ts";
 import type { StatKey } from "../progression/stats.ts";
 import { factionByKey } from "../social/factions.ts";
 import { type CharacterSheet, factionLabel } from "./characters.ts";
@@ -531,11 +538,12 @@ export function editErrors(
     }
   }
   if (changed("sex") || changed("head")) {
-    if (after.sex !== 1 && after.sex !== 2) {
-      errors.push("Sex: male or female.");
-    } else if (!HEADS_BY_SEX[after.sex as Sex].includes(after.head)) {
+    const sex = sexOf(after.sex);
+    if (!sex) {
+      errors.push(`Sex: ${sexChoices()}.`);
+    } else if (!sex.heads.includes(after.head)) {
       errors.push(
-        `Head: a ${after.sex === 2 ? "female" : "male"} head is one of ${HEADS_BY_SEX[after.sex as Sex].join(", ")}.`,
+        `Head: a ${sex.label.toLowerCase()} head is one of ${headsOf(sex.code).join(", ")}.`,
       );
     }
   }
@@ -723,7 +731,7 @@ export function editValueText(field: EditField, v: unknown): string {
     case "wanted":
       return v ? "yes" : "no";
     case "sex":
-      return v === 2 ? "female" : "male";
+      return sexLabel(v as number).toLowerCase() || `sex ${String(v)}`;
     case "respawn":
     case "position": {
       const p = v as EditPoint;

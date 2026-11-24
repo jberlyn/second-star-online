@@ -130,6 +130,35 @@ body {
   overscroll-behavior: contain;
 }
 
+/*
+ * Sexes other than Classic's Male and Female: their names over the backdrop's own two words, in its
+ * dark grey, white capitals like them; scrolling past two rows.
+ */
+.cc-sex-list {
+  background: rgb(48, 48, 48);
+  overflow: hidden;
+}
+.cc-sex-list.cc-sex-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+.cc-sex {
+  position: absolute;
+  left: 17px;
+  right: 0;
+  font:
+    bold 11px Arial,
+    sans-serif;
+  color: #fff;
+  text-transform: uppercase;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- game ------------------------------------------------------------------------------- */
 .game {
   width: 100%;

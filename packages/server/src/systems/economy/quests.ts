@@ -14,10 +14,9 @@ import {
   findNewQuest,
   headFaction,
   heardSqa,
-  isOrakuExchange,
   leaderFaction,
   lingoContains,
-  ORAKU,
+  orakuExchange,
   orakuLine,
   questMatch,
   questReward,
@@ -76,15 +75,16 @@ export function questGive(
     p.invDirty = true;
     return giveHead(world, p, npc, given)?.out ?? [];
   }
-  if (isOrakuExchange(npc, given)) {
-    if (!questRoom(p.char.bag, slot, ORAKU.reward)) {
+  const oraku = orakuExchange(npc, given);
+  if (oraku) {
+    if (!questRoom(p.char.bag, slot, oraku.reward)) {
       return [tellNoRoom(p, npc)];
     }
     questTake(p.char.bag, slot);
-    questReward(p.char.bag, ORAKU.reward);
-    logQuest(world, p, npc, given, ORAKU.reward);
+    questReward(p.char.bag, oraku.reward);
+    logQuest(world, p, npc, given, oraku.reward);
     p.invDirty = true;
-    return aqsToMap(world, p, orakuLine());
+    return aqsToMap(world, p, orakuLine(oraku));
   }
   const match = questMatch(world.questLines, npc, given);
   if (!match) {

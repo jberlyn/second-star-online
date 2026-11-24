@@ -82,6 +82,7 @@ import {
   type LayerRow,
   mergePacks,
   missingDatasets,
+  partOf,
   READ_ONLY_DATASETS,
   type RowRef,
   rowHash,
@@ -724,8 +725,8 @@ export class ContentService {
     if (READ_ONLY_DATASETS.includes(ref.dataset)) {
       return `${ref.dataset} is built from the art and cannot be changed here`;
     }
-    const ds = this.packData[ref.dataset] as unknown as Record<string, unknown>;
-    if (!Object.hasOwn(ds, ref.part)) {
+    const part = partOf(ref.dataset, ref.part);
+    if (!part) {
       return `${ref.dataset} has no field ${ref.part}`;
     }
     const field = keyField(ref.dataset, ref.part);
@@ -735,7 +736,7 @@ export class ContentService {
     if (field !== null && (ref.key === null || ref.key === "")) {
       return `${ref.dataset}/${ref.part} needs the key of the row`;
     }
-    if (field === null && op === "remove") {
+    if (field === null && op === "remove" && !part.optional) {
       return `${ref.dataset}/${ref.part} cannot be removed, only changed`;
     }
     return null;

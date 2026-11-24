@@ -11,6 +11,7 @@
       "packages/**",
       "!packages/data/src/generated",
       "!packages/data/content",
+      "!packages/data/minimal",
       "!packages/data/packs",
       "!packages/data/tests/content-baseline.json",
       "tests/**",

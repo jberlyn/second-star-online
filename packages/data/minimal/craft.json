@@ -1,0 +1,142 @@
+{
+  "stations": {
+    "frameOrder": {
+      "order": [
+        "Smith",
+        "Cook",
+        "Build",
+        "Mix"
+      ],
+      "smithFxChance": 30
+    },
+    "failure": {
+      "rows": [
+        {
+          "lt": 11,
+          "value": 3
+        },
+        {
+          "gt": 10,
+          "value": 5
+        },
+        {
+          "gt": 20,
+          "value": 7
+        },
+        {
+          "gt": 40,
+          "value": 9
+        },
+        {
+          "gt": 50,
+          "value": 11
+        },
+        {
+          "gt": 60,
+          "value": 13
+        },
+        {
+          "gt": 70,
+          "value": 15
+        },
+        {
+          "gt": 80,
+          "value": 18
+        },
+        {
+          "gt": 90,
+          "value": 100
+        }
+      ]
+    },
+    "startPause": {
+      "Smith": 40,
+      "Cook": 440,
+      "Mix": 440,
+      "Build": 40
+    },
+    "texts": {
+      "noAnvil": {
+        "text": "You have to be standing in front of an anvil lab to blacksmith something!"
+      },
+      "crowded": {
+        "text": "Your inventory is too crowded!"
+      },
+      "noHammer": {
+        "text": "You need to equip a blacksmith tool to repair this!"
+      },
+      "needChunk": {
+        "text": "You need a {} to repair this!"
+      },
+      "cantRepair": {
+        "text": "You don't know how to repair that."
+      },
+      "smithBegin": {
+        "text": "You begin to smith the {}..."
+      },
+      "noStove": {
+        "text": "You have to be standing in front of a stove or a campfire to cook something!"
+      },
+      "unskilled": {
+        "text": "You aren't skilled in cooking, you'd just burn it"
+      },
+      "cookBegin": {
+        "text": "You begin to cook the {}."
+      },
+      "cantCook": {
+        "text": "You don't know how to cook that."
+      },
+      "burned": {
+        "text": "Your food is rea....wait a minute, you burned it! You need more practice!"
+      },
+      "noLab": {
+        "text": "You have to be standing in front of an alchemy lab to mix something!"
+      },
+      "noSand": {
+        "text": "You must be holding some alchemist sand in your hand to mix the potion!"
+      },
+      "mixBegin": {
+        "text": "You begin to mix the potion."
+      },
+      "potionOff": {
+        "text": "Your potion seems a little off...maybe you should practice more."
+      },
+      "potionReady": {
+        "text": "Your potion is ready!"
+      },
+      "noCarpentryBench": {
+        "text": "You have to be standing in front of a carpentry bench to build something!"
+      },
+      "noSaw": {
+        "text": "You need a carpentry tool equipped to build with!"
+      },
+      "unskilledBuild": {
+        "text": "You aren't skilled in carpentry, you'd just ruin the logs"
+      },
+      "buildBegin": {
+        "text": "You begin to build something..."
+      },
+      "buildFailed": {
+        "text": "You built a...a...you messed it all up!! You need more practice in carpentry"
+      },
+      "built": {
+        "text": "You built a {}!"
+      },
+      "ready": {
+        "text": "Your {} is ready!"
+      },
+      "error": {
+        "text": "!@@ Error!"
+      },
+      "fizzle": {
+        "text": "The cauldron bubbles...but then fizzles out."
+      },
+      "puff": {
+        "text": "The cauldron bubbles...and with a huge puff of smoke, a new item appears inside."
+      },
+      "interrupted": {
+        "text": "You stop what you were making."
+      }
+    }
+  }
+}

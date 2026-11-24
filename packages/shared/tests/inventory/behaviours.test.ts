@@ -193,8 +193,8 @@ describe("a world's own behaviours", () => {
   test("a casino item a pack set before the behaviours still plays", () => {
     const d = structuredClone(classicData) as ContentData;
     d.itemRules.behaviours = [];
-    d.casino.blackjack.item = { text: "Deluxe Blackjack Table" };
-    d.casino.slots.item = { text: "Slot Machine" };
+    d.casino.blackjack!.item = { text: "Deluxe Blackjack Table" };
+    d.casino.slots!.item = { text: "Slot Machine" };
     installContent(buildContentStore(d));
     try {
       expect(isBlackjackTable("Deluxe Blackjack Table")).toBe(true);

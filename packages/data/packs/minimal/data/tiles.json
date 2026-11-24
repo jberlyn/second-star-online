@@ -1,0 +1,30 @@
+{
+  "walkable": [
+    {
+      "code": "G1"
+    },
+    {
+      "code": "G3"
+    }
+  ],
+  "catalogue": [
+    {
+      "code": "G1",
+      "member": 1
+    },
+    {
+      "code": "G3",
+      "member": 49
+    },
+    {
+      "code": "5A",
+      "member": 529
+    }
+  ],
+  "defaults": {
+    "ground": "G1",
+    "empty": "G3",
+    "shadow": "5A",
+    "editorTile": "G1"
+  }
+}

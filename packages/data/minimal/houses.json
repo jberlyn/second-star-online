@@ -1,0 +1,96 @@
+{
+  "deeds": [],
+  "types": [],
+  "ghost": {
+    "baseX": 15,
+    "baseY": 13
+  },
+  "placement": {
+    "edge": {
+      "minX": 2,
+      "minY": 2,
+      "maxX": 14,
+      "maxY": 9,
+      "text": "You cannot build off the map, or on the edges of it!"
+    },
+    "terrain": {
+      "layer1Codes": [],
+      "text": "The terrain is too rough to build here!"
+    },
+    "obstacles": "You cannot build here because there seems to be something in the way!",
+    "slots": "There are already too many buildings here!",
+    "guild": "You have to belong to a guild to build a guild hall!"
+  },
+  "build": {
+    "exit": {
+      "dx": 1,
+      "dy": 2
+    },
+    "mailbox": {
+      "dx": 0,
+      "dy": 2
+    },
+    "lamp": {
+      "dx": 0,
+      "dy": 3
+    },
+    "headers": {
+      "house": "<name>'s House",
+      "farm": "<name>'s Farm",
+      "guild": "Hall of the <guild>",
+      "shop": "<name>'s Shop"
+    },
+    "arrival": {
+      "x": 9,
+      "y": 11
+    }
+  },
+  "furnitureDrop": {
+    "items": [],
+    "text": "This building does not belong to you, you can't place this here!"
+  },
+  "clickFixtures": [],
+  "restRegen": {
+    "odds": 10,
+    "maxY": 10
+  },
+  "decay": {
+    "clockFrames": 1230,
+    "staleAfterMonths": 2
+  },
+  "keys": {
+    "houseKey": "House Key",
+    "guildKey": "Guild Key",
+    "doesntFit": "Your key doesn't fit this lock!",
+    "coloured": [],
+    "colouredPause": 100,
+    "keysTxt": [
+      "Fire Key:1",
+      "Emerald Key:1",
+      "Wooden Key:1",
+      "Gold Key5",
+      "Steel Key:1"
+    ],
+    "housePause": 100
+  },
+  "switches": {
+    "on": "ON Switch",
+    "off": "OFF Switch",
+    "pause": 100,
+    "text": "You see the switch, but you must be standing in front of it to use it."
+  },
+  "relock": {
+    "change": 200,
+    "closes": []
+  },
+  "containers": {
+    "clickPause": 4,
+    "drop": []
+  },
+  "questChest": {
+    "odds": 4000,
+    "saveBlock": 400,
+    "saveRoll": 350,
+    "chests": []
+  }
+}

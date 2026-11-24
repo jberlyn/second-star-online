@@ -1,0 +1,13 @@
+{
+  "currency": {
+    "item": "Gold"
+  },
+  "start": {
+    "hp": 20,
+    "sp": 20,
+    "bag": []
+  },
+  "cannon": {},
+  "bodies": {},
+  "skills": {}
+}

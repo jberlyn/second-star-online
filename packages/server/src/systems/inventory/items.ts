@@ -9,6 +9,7 @@ import {
   amountPath,
   arrangeBag,
   artRef,
+  assassinOn,
   bagText,
   blocksMonster,
   blocksPlayer,
@@ -883,6 +884,10 @@ function bagFull(p: Player, name: string): boolean {
  * the server's all-time and current tables as two chat blocks.
  */
 function viewStatue(ctx: ItemCtx, io: ItemOut, p: Player): void {
+  // A world without the Assassin's game: the statue is a plain item.
+  if (!assassinOn()) {
+    return;
+  }
   p.itemPause = STATUE_PAUSE;
   for (const line of statueLines(ctx.world)) {
     io.tell(p, line);

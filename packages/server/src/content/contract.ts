@@ -1,7 +1,8 @@
 /**
  * The core content contract (issue #37): what a world must have before it can run. Content must
  * bind a currency item and have at least one start class and one skill; the start, fallback and
- * jail points (settings) must stand on walkable tiles of maps that exist. Every other binding is
+ * jail points (settings) must stand on walkable tiles of maps that exist, and the start and
+ * fallback may not be on the jail's map. Every other binding is
  * optional: one left out turns its mechanic off.
  *
  * The content service refuses a publish (and an undo, or taking a pack's change) that breaks the
@@ -16,6 +17,7 @@ import {
   lingoEq,
   MAP_HEIGHT,
   MAP_WIDTH,
+  parseMapName,
 } from "@secondstaronline/shared";
 
 import type { ContentProblem } from "./validate.ts";
@@ -57,7 +59,18 @@ export function contractProblems(data: ContentData): ContentProblem[] {
   // put a rider's body on a player who is not riding.
   const { riders, morph, tree, smoke } = data.bindings.bodies;
   const riderOf = new Map<number, string>();
-  for (const [vehicle, body] of Object.entries(riders)) {
+  // Vehicles are engine kinds drawn as their rider bodies: a world without riders has none.
+  if (!riders) {
+    data.houses.deeds.forEach((d) => {
+      if (d.use === "airship" || d.use === "boat" || d.use === "battleship") {
+        out.push({
+          where: "bindings/bodies",
+          message: `${d.deed} makes a vehicle, so the world needs rider bodies (bodies.riders)`,
+        });
+      }
+    });
+  }
+  for (const [vehicle, body] of Object.entries(riders ?? {})) {
     const other = riderOf.get(body);
     if (other) {
       out.push({
@@ -155,13 +168,64 @@ export function pointProblem(
 /** Who the points must hold: a new character, level 1 with no skill raised. */
 const NEW_PLAYER = { level: 1, skills: [] as number[] };
 
+/**
+ * Two map names are one map: grid names by their numbers (`x00y0` is `x0y0`), others as the jail
+ * check compares them (case ignored).
+ */
+export function sameMap(a: string, b: string): boolean {
+  const ga = parseMapName(a);
+  const gb = parseMapName(b);
+  return ga && gb ? ga.mx === gb.mx && ga.my === gb.my : lingoEq(a, b);
+}
+
+/**
+ * Why the start or fallback point cannot be on its map, or null: never the jail's. The jail map
+ * holds whoever stands on it (no edges, exits or Portal; anyone not serving a sentence is moved
+ * off), so a new character would start in jail, and a fallback there would send released
+ * prisoners back in.
+ */
+export function jailMapProblem(
+  key: ContractPoint,
+  points: Readonly<Record<ContractPoint, MapPoint>>,
+): string | null {
+  return key !== "jailPoint" && sameMap(points[key].map, points.jailPoint.map)
+    ? `${points[key].map} is the jail's map`
+    : null;
+}
+
+/**
+ * The jail-map clash a settings save makes, under the setting it changed: a start or fallback
+ * point moved onto the jail's map, or the jail moved onto the start's or the fallback's map.
+ */
+export function jailClash(
+  points: Readonly<Record<ContractPoint, MapPoint>>,
+  changed: readonly string[],
+): { key: ContractPoint; text: string } | null {
+  for (const key of ["startPoint", "fallbackPoint"] as const) {
+    if (changed.includes(key) && sameMap(points[key].map, points.jailPoint.map)) {
+      return { key, text: `${points[key].map} is the jail's map` };
+    }
+  }
+  if (changed.includes("jailPoint")) {
+    for (const key of ["startPoint", "fallbackPoint"] as const) {
+      if (sameMap(points[key].map, points.jailPoint.map)) {
+        return {
+          key: "jailPoint",
+          text: `${points.jailPoint.map} holds the ${CONTRACT_POINTS[key]} point: the jail needs a map of its own`,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 /** The contract's points that cannot hold a player. */
 export function pointProblems(
   points: Readonly<Record<ContractPoint, MapPoint>>,
   loadMap: (name: string) => PointMap | null,
 ): ContentProblem[] {
   return (Object.keys(CONTRACT_POINTS) as ContractPoint[]).flatMap((key) => {
-    const problem = pointProblem(points[key], loadMap);
+    const problem = pointProblem(points[key], loadMap) ?? jailMapProblem(key, points);
     return problem === null
       ? []
       : [{ where: `settings/${key}`, message: `${CONTRACT_POINTS[key]}: ${problem}` }];

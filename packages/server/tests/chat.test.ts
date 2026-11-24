@@ -3,7 +3,14 @@
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
-import type { ServerMsg } from "@secondstaronline/shared";
+import { classicData } from "@secondstaronline/data/classic";
+import {
+  buildContentStore,
+  CHAT_TEXT,
+  type ContentData,
+  installContent,
+  type ServerMsg,
+} from "@secondstaronline/shared";
 
 import { createGame, helpLines } from "../src/game.ts";
 import { setRole } from "../src/persistence/accounts.ts";
@@ -356,6 +363,21 @@ describe("presence and the login greeting", () => {
     sent.length = 0;
     game.enter(a.characterId, true);
     expect(texts(sent, a.characterId)).toEqual([]);
+  });
+
+  test("a world with no Help topic greets no one (no 'There is no help on that subject!')", async () => {
+    const { game, make } = await gameWith();
+    const a = await make("Alice");
+    const d = structuredClone(classicData) as ContentData;
+    d.help.topics = d.help.topics.filter((t) => t.topic !== "Help");
+    installContent(buildContentStore(d));
+    try {
+      game.enter(a.characterId, false);
+      expect(texts(sent, a.characterId)).not.toContain(CHAT_TEXT.noHelp);
+      expect(texts(sent, a.characterId).some((t) => t.startsWith("Welcome to"))).toBe(false);
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
   });
 
   test("a real login gets the operator's News after the greeting; none when empty or resumed", async () => {

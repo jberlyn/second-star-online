@@ -786,12 +786,6 @@
       "score": {
         "text": "Score: {TEXT}"
       },
-      "male": {
-        "text": "Male"
-      },
-      "female": {
-        "text": "Female"
-      },
       "tree": {
         "text": "A Tree"
       },

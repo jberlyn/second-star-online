@@ -6,7 +6,22 @@ import { skillValue } from "../core/fighter.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
 import { CURRENCY, isGoldName } from "../inventory/inventory.ts";
 
-let A: ContentStore["social"]["assassin"];
+type Assassin = NonNullable<ContentStore["social"]["assassin"]>;
+
+let A: Assassin | undefined;
+
+/** Whether the world has the Assassin's game (`social.json` `assassin`); left out, there is none. */
+export function assassinOn(): boolean {
+  return A !== undefined;
+}
+
+/** The game's tables, past the `assassinOn` gate. */
+function ass(): Assassin {
+  if (!A) {
+    throw new Error("this world has no Assassin's game");
+  }
+  return A;
+}
 
 /** `MODE.txt`: GO (normal), LIGHTNING, STOP (none running; the archive's value). */
 export type AssassinMode = "GO" | "LIGHTNING" | "STOP";
@@ -45,7 +60,7 @@ export function scoring(mode: AssassinMode): boolean {
 
 /** `MyCombatRating`: sixteen combat skills plus HPmax. */
 export function combatRating(skills: readonly number[], hpMax: number): number {
-  return A.rating.skills.reduce((sum, s) => sum + skillValue(skills, s), hpMax);
+  return ass().rating.skills.reduce((sum, s) => sum + skillValue(skills, s), hpMax);
 }
 
 /**
@@ -56,12 +71,14 @@ export function combatRating(skills: readonly number[], hpMax: number): number {
 export function compareAss(killer: number, victim: number): number {
   const band = (ladder: readonly { below: number; points: number }[], rating: number) =>
     (ladder.find((b) => rating < b.below) ?? ladder[ladder.length - 1])?.points ?? 0;
-  return killer >= victim ? band(A.compare.stronger, victim) : band(A.compare.weaker, killer);
+  return killer >= victim
+    ? band(ass().compare.stronger, victim)
+    : band(ass().compare.weaker, killer);
 }
 
 /** The points a kill is worth: Lightning forces 10. */
 export function killPoints(mode: AssassinMode, killer: number, victim: number): number {
-  return mode === "LIGHTNING" ? A.score.lightningPoints : compareAss(killer, victim);
+  return mode === "LIGHTNING" ? ass().score.lightningPoints : compareAss(killer, victim);
 }
 
 /**
@@ -74,7 +91,7 @@ export function killPoints(mode: AssassinMode, killer: number, victim: number): 
 export function rankEntry(
   table: AssassinTable,
   entry: AssassinEntry,
-  size: number = A.score.tableSize,
+  size: number = ass().score.tableSize,
 ): AssassinTable | null {
   const others = table.filter((e) => e.id !== entry.id).slice(0, size);
   const at = others.findIndex((e) => entry.points > e.points);
@@ -88,12 +105,12 @@ export function rankEntry(
 
 /** The start lines (Lightning and normal), to everyone. */
 export function startLines(mode: "GO" | "LIGHTNING"): readonly string[] {
-  return mode === "LIGHTNING" ? A.start.lightning : A.start.normal;
+  return mode === "LIGHTNING" ? ass().start.lightning : ass().start.normal;
 }
 
 /** "*** <name> just received <N> assassin points!" */
 export function scoreLine(name: string, points: number): string {
-  return A.score.text.replace("{NAME}", name).replace("{POINTS}", String(points));
+  return ass().score.text.replace("{NAME}", name).replace("{POINTS}", String(points));
 }
 
 /**
@@ -101,7 +118,7 @@ export function scoreLine(name: string, points: number): string {
  * prints blank, as in 1.6.
  */
 export function endLines(table: AssassinTable): string[] {
-  const [ended, first, second, back] = A.end.lines as [string, string, string, string];
+  const [ended, first, second, back] = ass().end.lines as [string, string, string, string];
   if (table.length === 0) {
     return [ended, back];
   }
@@ -115,10 +132,10 @@ export function endLines(table: AssassinTable): string[] {
 }
 
 /** The Statue's line, "You view the top Assassins of FSO..." */
-export let STATUE_ITEM: typeof A.statue.item;
-export let STATUE_TEXT: typeof A.statue.text;
+export let STATUE_ITEM: string;
+export let STATUE_TEXT: string;
 /** 20 frames: the original's pause between item actions. */
-export let STATUE_PAUSE: typeof A.statue.pause;
+export let STATUE_PAUSE: number;
 
 /**
  * The all-time scores display (both original draw routines): a return, the header, two returns,
@@ -126,14 +143,14 @@ export let STATUE_PAUSE: typeof A.statue.pause;
  * prints `N.  -  points`. The all-time block counts wins as "points".
  */
 export function statueBlock(kind: "allTime" | "current", table: AssassinTable): string {
-  const header = kind === "allTime" ? A.statue.allTimeHeader : A.statue.currentHeader;
+  const header = kind === "allTime" ? ass().statue.allTimeHeader : ass().statue.currentHeader;
   return topTenBlock(
     {
       header,
-      entry: A.statue.entry,
-      perLine: A.statue.perLine,
-      separator: A.statue.separator,
-      size: A.score.tableSize,
+      entry: ass().statue.entry,
+      perLine: ass().statue.perLine,
+      separator: ass().statue.separator,
+      size: ass().score.tableSize,
     },
     table,
   );
@@ -175,7 +192,7 @@ export let ARCHIVED_PRIZES: readonly string[];
  */
 export function prizesGiven(prizes: readonly string[]): string[] {
   const out: string[] = [];
-  for (const p of prizes.slice(0, A.prizes.awarded)) {
+  for (const p of prizes.slice(0, ass().prizes.awarded)) {
     if (p.trim() === "") {
       break;
     }
@@ -209,8 +226,9 @@ export function prizeLineOk(line: string): boolean {
 
 onContent((c) => {
   A = c.social.assassin;
-  STATUE_ITEM = A.statue.item;
-  STATUE_TEXT = A.statue.text;
-  STATUE_PAUSE = A.statue.pause;
-  ARCHIVED_PRIZES = A.prizes.archived.split(":");
+  STATUE_ITEM = A?.statue.item ?? "";
+  STATUE_TEXT = A?.statue.text ?? "";
+  STATUE_PAUSE = A?.statue.pause ?? 0;
+  // The setting always holds four lines (first to fourth place): blank without the game.
+  ARCHIVED_PRIZES = A ? A.prizes.archived.split(":") : ["", "", "", ""];
 });

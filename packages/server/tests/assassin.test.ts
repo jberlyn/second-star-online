@@ -4,11 +4,24 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { type ServerMsg, skillIndex } from "@secondstaronline/shared";
+import { classicData } from "@secondstaronline/data/classic";
+import {
+  buildContentStore,
+  type ContentData,
+  installContent,
+  type ServerMsg,
+  skillIndex,
+} from "@secondstaronline/shared";
 
 import { setAttackHeld } from "../src/systems/combat/melee.ts";
 import { type ItemCtx, pickupIntent } from "../src/systems/inventory/items.ts";
-import { type AssassinDeps, scoreKill, setAssassinMode } from "../src/systems/social/assassin.ts";
+import {
+  type AssassinDeps,
+  endRemovedGame,
+  lightningOn,
+  scoreKill,
+  setAssassinMode,
+} from "../src/systems/social/assassin.ts";
 import { tick } from "../src/systems/world/tick.ts";
 import {
   addPlayer,
@@ -277,6 +290,31 @@ describe("scoring", () => {
       { id: carol.id, name: "Carol", points: 20 },
       { id: s.alice.id, name: "Alice", points: 20 },
     ]);
+  });
+});
+
+describe("a world without the Assassin's Game", () => {
+  test("a running Lightning game ends when the section goes, and stays ended when it returns", () => {
+    const s = scene();
+    setAssassinMode(s.world, "LIGHTNING", s.game);
+    expect(lightningOn(s.world)).toBe(true);
+    const d = structuredClone(classicData) as ContentData;
+    delete d.social.assassin;
+    installContent(buildContentStore(d));
+    try {
+      // No one-hit melee from the moment the game is gone, even before the game is ended.
+      expect(lightningOn(s.world)).toBe(false);
+      s.world.assassinDirty = false;
+      endRemovedGame(s.world);
+      expect(s.world.assassin.mode).toBe("STOP");
+      expect(s.world.assassinDirty).toBe(true);
+      // The menu does nothing and kills score nothing.
+      expect(setAssassinMode(s.world, "GO", s.game)).toEqual([]);
+      expect(s.world.assassin.mode).toBe("STOP");
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+    expect(lightningOn(s.world)).toBe(false);
   });
 });
 

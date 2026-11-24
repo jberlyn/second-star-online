@@ -26,10 +26,10 @@ describe("tile hover names", () => {
     for (const node of gatherData.harvest) {
       codes.add(node.tile).add(node.becomes);
     }
-    for (const s of G.farming.seeds) {
+    for (const s of G.farming!.seeds) {
       codes.add(s.plants);
     }
-    for (const w of G.farming.watering) {
+    for (const w of G.farming!.watering) {
       codes.add(w.from).add(w.to);
     }
     // The shovel digs plain empty ground (`G3`), which is left unnamed so most tiles stay quiet.
@@ -40,7 +40,7 @@ describe("tile hover names", () => {
   test("design change: plain ground, water and unknown tiles have no name", () => {
     expect(tileName(TILE_DEFAULTS.empty)).toBeNull();
     expect(tileName(TILE_DEFAULTS.ground)).toBeNull();
-    for (const water of G.fishing.waterTiles) {
+    for (const water of G.fishing!.waterTiles) {
       expect(tileName(water)).toBeNull();
     }
     expect(tileName("")).toBeNull();

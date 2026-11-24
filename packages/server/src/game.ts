@@ -76,12 +76,14 @@ import {
   TEXT,
   TIMED_HUB_ACTIONS,
   VEHICLE_BODY,
+  vehicleOfItem,
 } from "@secondstaronline/shared";
 
 import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "./config.ts";
 import {
   CONTRACT_POINTS,
   type ContractPoint,
+  jailClash,
   type PointMap,
   pointProblem,
   pointProblems,
@@ -366,7 +368,7 @@ import { clickNpc, closeBio } from "./systems/monsters/npc.ts";
 import { archiveNpcStore, npcFileNamed, setNpcFile } from "./systems/monsters/npcfiles.ts";
 import type { MonsterSlot } from "./systems/monsters/slots.ts";
 import { noteShown, pressStep, scheduleStep, setHeld } from "./systems/movement/movement.ts";
-import { type AssassinDeps, setAssassinMode } from "./systems/social/assassin.ts";
+import { type AssassinDeps, endRemovedGame, setAssassinMode } from "./systems/social/assassin.ts";
 import { bioRequest, profileSave } from "./systems/social/bios.ts";
 import { friendsCommand, friendsEntry } from "./systems/social/friends.ts";
 import {
@@ -502,8 +504,9 @@ export interface Game {
   /** The world as the content service sees it: where-used, removal cleanup and problems (#28). */
   readonly contentWorld: ContentWorld;
   /**
-   * The content contract's point settings (start, fallback, jail) that cannot hold a player, judged
-   * with the content installed now (issue #37).
+   * The content contract's checks that read the world, judged with the content installed now
+   * (issue #37): the point settings (start, fallback, jail) that cannot hold a player, and rider
+   * bodies a world takes out while vehicles are in use.
    */
   contractPointProblems(): ContentProblem[];
 }
@@ -792,6 +795,7 @@ export function createGame(deps: GameDeps): Game {
   })();
   // The Assassin's game: nothing seeded, the all-time table starts empty.
   world.assassin = loadAssassinState(db);
+  endRemovedGame(world);
   // The High Score Statue: the archive's `highscore.txt` is empty, so it starts empty.
   world.highScores = loadHighScores(db);
   // Guilds: disbanded rows included, by lower-case name.
@@ -1712,6 +1716,52 @@ export function createGame(deps: GameDeps): Game {
   };
 
   /** Server Settings window SAVE: the `settings` permission only; every changed value audited. */
+  /**
+   * With no rider bodies the world has no vehicles: content may take them out only while nobody is
+   * aboard one (online or saved) and none stands parked, or those players would be drawn on foot
+   * while moving as a vehicle.
+   */
+  const vehicleProblems = (): ContentProblem[] => {
+    if (content().bindings.bodies.riders !== undefined) {
+      return [];
+    }
+    const aboard = new Set(
+      db
+        .query<{ id: string }, []>("SELECT id FROM characters WHERE vehicle IS NOT NULL")
+        .all()
+        .map((r) => r.id),
+    );
+    for (const o of world.players.values()) {
+      if (o.vehicle) {
+        aboard.add(o.id);
+      } else {
+        aboard.delete(o.id);
+      }
+    }
+    const parked = new Set(
+      db
+        .query<{ id: string; item: string }, []>("SELECT id, item FROM ground_items")
+        .all()
+        .filter((g) => vehicleOfItem(g.item) !== null)
+        .map((g) => g.id),
+    );
+    for (const room of world.rooms.values()) {
+      for (const g of room.map.ground) {
+        if (vehicleOfItem(g.item) !== null) {
+          parked.add(g.id);
+        }
+      }
+    }
+    return aboard.size + parked.size === 0
+      ? []
+      : [
+          {
+            where: "bindings/bodies",
+            message: `the world has vehicles in use (${aboard.size} aboard, ${parked.size} parked), so it keeps its rider bodies (bodies.riders)`,
+          },
+        ];
+  };
+
   const settingsSave = (p: Player, values: Record<string, unknown>) => {
     if (!can(p.role, "settings")) {
       cheat(p.name, p.ip, "Attempted Admin Access");
@@ -1722,8 +1772,9 @@ export function createGame(deps: GameDeps): Game {
       send(p.id, { t: "settingsResult", ok: false, key: r.key, text: r.error });
       return;
     }
-    // The content contract: a start, fallback or jail point must hold a player. One already broken
-    // (a map deleted since) may stay while another setting is saved.
+    // The content contract: a start, fallback or jail point must hold a player, and the start and
+    // fallback may not be on the jail's map (moving either, or the jail, is checked). One already
+    // broken (a map deleted since) may stay while another setting is saved.
     for (const key of Object.keys(CONTRACT_POINTS) as ContractPoint[]) {
       const problem = r.changed.some((c) => c.key === key)
         ? pointProblem(r.settings[key], peekMap)
@@ -1732,6 +1783,14 @@ export function createGame(deps: GameDeps): Game {
         send(p.id, { t: "settingsResult", ok: false, key, text: `${problem}.` });
         return;
       }
+    }
+    const clash = jailClash(
+      r.settings,
+      r.changed.map((c) => c.key),
+    );
+    if (clash) {
+      send(p.id, { t: "settingsResult", ok: false, key: clash.key, text: `${clash.text}.` });
+      return;
     }
     const now = isoNow();
     db.transaction(() => {
@@ -2338,7 +2397,7 @@ export function createGame(deps: GameDeps): Game {
     },
     config,
     contentWorld,
-    contractPointProblems: () => pointProblems(settings, peekMap),
+    contractPointProblems: () => [...pointProblems(settings, peekMap), ...vehicleProblems()],
 
     async login(name, password, ip = "") {
       const account = findAccountByUsername(db, name);
@@ -2612,9 +2671,12 @@ export function createGame(deps: GameDeps): Game {
       // Frame 50 fills the Friends window; it opens only from the menu.
       deliver(friendsEntry(world, p));
       deliver(presenceOut(world, p, true));
-      // Loading the character sends Help.txt as the greeting. A resumed session is not a login.
+      // Loading the character sends Help.txt as the greeting (a world with no `Help` topic sends
+      // none). A resumed session is not a login.
       if (!resumed) {
-        deliver(helpReply(p, "Help", chatDeps));
+        if (helpLines("Help") !== null) {
+          deliver(helpReply(p, "Help", chatDeps));
+        }
         // Game entry asks for the news after the greeting; the client decides whether to print
         // it.
         if (settings.news !== "") {
@@ -3276,6 +3338,11 @@ export function createGame(deps: GameDeps): Game {
     },
 
     contentPublished(hash, restoring = false) {
+      // An Assassin's Game the published content no longer has ends (not when a failed publish is
+      // putting the old store back: that store had the game, if it was running).
+      if (!restoring) {
+        endRemovedGame(world);
+      }
       // An NPC whose file changed starts its shop again, as an NPC Editor save does: its ledger and
       // saved shop go, and its open Bio and shop windows close. So does an NPC whose file the
       // publish removed.
@@ -3319,7 +3386,7 @@ export function createGame(deps: GameDeps): Game {
       const bodiesWere = boundBodies;
       boundBodies = content().bindings.bodies;
       const special = new Set([
-        ...Object.values(boundBodies.riders),
+        ...Object.values(boundBodies.riders ?? {}),
         ...(boundBodies.tree === undefined ? [] : [boundBodies.tree]),
         ...(boundBodies.smoke === undefined ? [] : [boundBodies.smoke]),
       ]);

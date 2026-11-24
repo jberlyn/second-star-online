@@ -114,6 +114,8 @@ export function setup(
 ) {
   const byName = new Map(maps.map((m) => [m.name, m]));
   const world: World = createWorld();
+  // Classic's jail, as every Classic server stores it (the engine's own default is Minimal's).
+  world.jail = { map: "x0y0", x: 4, y: 4 };
   const deps: TickDeps = {
     loadMap: (n: string) => byName.get(n) ?? null,
     loadMapById: (id: string) => maps.find((m) => m.id === id) ?? null,

@@ -9,6 +9,7 @@ import { z } from "zod";
 import {
   ARCHIVED_PRIZES,
   DEFAULT_JAIL,
+  DEFAULT_START,
   type DeathDropKind,
   type DeathDropRules,
   type DeathDropWho,
@@ -138,20 +139,20 @@ export const SETTINGS = {
     label: "Starting map",
     form: { kind: "point" },
     schema: point,
-    default: { map: "x1000y992", x: 6, y: 4 },
+    default: { ...DEFAULT_START },
     tooltip:
-      "Where new characters appear, and their first respawn point. Entering a no-fight, indoor, no-PvP map replaces their respawn point.",
+      "Where new characters appear, and their first respawn point. Entering a no-fight, indoor, no-PvP map replaces their respawn point. Never on the jail's map.",
     source:
-      "SSO setting. Replaces the creation position x1000y992 6-4 that 1.6 hard-coded. 1.6 also sent travel to a missing map here; SSO refuses that travel instead.",
+      "SSO setting. Replaces the creation position x1000y992 6-4 that 1.6 hard-coded, which Classic servers keep. 1.6 also sent travel to a missing map here; SSO refuses that travel instead.",
   }),
   fallbackPoint: def({
     page: "world",
     label: "Fallback map",
     form: { kind: "point" },
     schema: point,
-    default: { map: "x1000y992", x: 5, y: 5 },
+    default: { ...DEFAULT_START },
     tooltip:
-      "Where characters go when their place is gone: their saved map was deleted or their house decayed. Also where a death or jail release goes if their respawn point's map is gone. Never use a tutorial map here.",
+      "Where characters go when their place is gone: their saved map was deleted or their house decayed. Also where a death or jail release goes if their respawn point's map is gone. Never use a tutorial map or the jail's map here.",
     source:
       "SSO setting. Replaces 1.6's Starting Map file (x0y102 5-5), which every death used because no 1.6 map saved a respawn point; keeps its tile on the seed map.",
   }),
@@ -164,7 +165,7 @@ export const SETTINGS = {
     tooltip:
       "Where /jail sends a player. A prisoner stays on this map until their sentence ends, and only staff may go there any other way.",
     source:
-      "SSO setting. Replaces the jail 1.6 hard-coded in /jail (x0y0 4-4) and in every jail check.",
+      "SSO setting. Replaces the jail 1.6 hard-coded in /jail (x0y0 4-4) and in every jail check, which Classic servers keep.",
   }),
   chatMaxChars: def({
     page: "chat",

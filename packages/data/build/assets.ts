@@ -64,6 +64,56 @@ export const ASSETS_DIR = join(import.meta.dir, "..", "assets");
  * engine keeps the interface's own art, the UI files and `ENGINE_SOUNDS`, in ASSETS_DIR.
  */
 export const CLASSIC_ART_DIR = join(import.meta.dir, "..", "packs", "classic", "art");
+/** Where the Minimal pack's art goes (gitignored, like CLASSIC_ART_DIR). */
+export const MINIMAL_ART_DIR = join(import.meta.dir, "..", "packs", "minimal", "art");
+/**
+ * The list of the pictures the Minimal pack carries (relative to the repo), by atlas group and
+ * lower-case key: the grass, empty and shadow tiles, the bare body and the first two heads, and
+ * the three gold piles. They are copies of Classic's, packed from the same sources.
+ */
+export const MINIMAL_ART_LIST = "packages/data/minimal/art.json";
+
+/**
+ * Reads the Minimal pack's art list: every atlas group, each a list of sprite keys. A repo without
+ * one (a test's) builds a Minimal pack with no art.
+ */
+function readMinimalArt(path: string): Record<AtlasGroup, string[]> {
+  const raw = existsSync(path)
+    ? (JSON.parse(readFileSync(path, "utf8")) as Partial<Record<AtlasGroup, string[]>>)
+    : {};
+  const out = {} as Record<AtlasGroup, string[]>;
+  for (const group of Object.keys(GROUP_CAST) as AtlasGroup[]) {
+    out[group] = (raw[group] ?? []).map((k) => k.toLowerCase()).sort();
+  }
+  return out;
+}
+
+/** Packs sources into sheets: each sprite's sheet, place, size and anchor, in key order. */
+function packAtlas(
+  sources: readonly Source[],
+  images: ReadonlyMap<string, Rgba>,
+): { sheets: Rgba[]; sprites: Record<string, AtlasSprite>; layout: { w: number; h: number }[] } {
+  const layout = pack(
+    sources.map((s) => {
+      const img = images.get(s.key) as Rgba;
+      return { name: s.key, w: img.width, h: img.height };
+    }),
+  );
+  const sheets = layout.sheets.map((sz) => createRgba(Math.max(1, sz.w), Math.max(1, sz.h)));
+  const sprites: Record<string, AtlasSprite> = {};
+  const placed = new Map(layout.placements.map((p) => [p.name, p]));
+  for (const s of [...sources].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))) {
+    const p = placed.get(s.key);
+    const img = images.get(s.key);
+    if (!p || !img) {
+      continue;
+    }
+    blit(sheets[p.sheet] as Rgba, img, p.x, p.y);
+    sprites[s.key] = [p.sheet, p.x, p.y, img.width, img.height, s.regX, s.regY];
+  }
+  return { sheets, sprites, layout: layout.sheets };
+}
+
 /** The interface's click sounds: engine art, served whatever packs are installed. */
 export const ENGINE_SOUNDS: readonly string[] = ["clicksound", "clicksound2"];
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
@@ -90,6 +140,13 @@ export interface BuildOptions {
    */
   packArtDir?: string;
   addedDir?: string;
+  /**
+   * Where the Minimal pack's atlases go: MINIMAL_ART_DIR, or `<outDir>/minimal-art` when `outDir`
+   * is given.
+   */
+  minimalArtDir?: string;
+  /** The list of the Minimal pack's pictures (default `packages/data/minimal/art.json` in the repo). */
+  minimalArtList?: string;
   force?: boolean;
 }
 
@@ -179,9 +236,11 @@ function inputHash(
   bitmaps: ManifestBitmap[],
   sounds: ManifestSound[],
   addedDir: string,
+  minimalArt: string,
 ): string {
   const h = new Bun.CryptoHasher("sha256");
   h.update(`v${BUILD_VERSION}\n`);
+  h.update(`minimal ${minimalArt}\n`);
   h.update(readFileSync(join(repoRoot, mainManifestPath)));
   h.update(readFileSync(join(repoRoot, ORIGINAL_SIDECARS_PATH)));
   for (const movie of UI_SUB_MOVIES) {
@@ -238,22 +297,34 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
   const bitmaps = readManifest(repoRoot);
   const subBitmaps = readSubManifests(repoRoot);
   const selection = selectMembers(bitmaps, subBitmaps, readSounds(repoRoot));
+  const minimalArt = readMinimalArt(options.minimalArtList ?? join(repoRoot, MINIMAL_ART_LIST));
   const hash = inputHash(
     repoRoot,
     [...bitmaps, ...subBitmaps.filter((b) => UI_SUB_MOVIES.includes(b.cast))],
     selection.sounds,
     addedDir,
+    JSON.stringify(minimalArt),
   );
   const indexPath = join(outDir, "index.json");
   // A build into another folder (a test) keeps the pack's art beside it, never in the real pack.
   const packArtDir =
     options.packArtDir ?? (options.outDir ? join(options.outDir, "classic-art") : CLASSIC_ART_DIR);
   const packIndexPath = join(packArtDir, "index.json");
-  if (!options.force && existsSync(indexPath) && existsSync(packIndexPath)) {
+  const minimalArtDir =
+    options.minimalArtDir ??
+    (options.outDir ? join(options.outDir, "minimal-art") : MINIMAL_ART_DIR);
+  const minimalIndexPath = join(minimalArtDir, "index.json");
+  if (
+    !options.force &&
+    existsSync(indexPath) &&
+    existsSync(packIndexPath) &&
+    existsSync(minimalIndexPath)
+  ) {
     try {
       const old = JSON.parse(readFileSync(indexPath, "utf8")) as AssetIndex;
       const oldPack = JSON.parse(readFileSync(packIndexPath, "utf8")) as PackArtIndex;
-      if (old.inputHash === hash && oldPack.inputHash === hash) {
+      const oldMinimal = JSON.parse(readFileSync(minimalIndexPath, "utf8")) as PackArtIndex;
+      if (old.inputHash === hash && oldPack.inputHash === hash && oldMinimal.inputHash === hash) {
         return { skipped: true, files: 0, bytes: 0, sheets: {}, sprites: {}, uiFiles: 0 };
       }
     } catch {
@@ -279,6 +350,8 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
   const load = (b: ManifestBitmap) => () => loadOriginal(repoRoot, b);
 
   const atlases = {} as Record<AtlasGroup, AtlasIndex>;
+  const minimalAtlases = {} as Record<AtlasGroup, AtlasIndex>;
+  const minimalSheets = new Map<string, Uint8Array>();
   const added = listAdded(addedDir);
   const originalSides = readOriginalSidecars(repoRoot);
   const groups = Object.keys(GROUP_CAST).sort() as AtlasGroup[];
@@ -356,32 +429,27 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
         s.regX = flipped.regX;
       }
     }
-    const layout = pack(
-      sources.map((s) => {
-        const img = images.get(s.key) as Rgba;
-        return { name: s.key, w: img.width, h: img.height };
-      }),
-    );
-    const sheets = layout.sheets.map((sz) => createRgba(Math.max(1, sz.w), Math.max(1, sz.h)));
-    const sprites: Record<string, AtlasSprite> = {};
-    const placed = new Map(layout.placements.map((p) => [p.name, p]));
-    for (const s of [...sources].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))) {
-      const p = placed.get(s.key);
-      const img = images.get(s.key);
-      if (!p || !img) {
-        continue;
-      }
-      blit(sheets[p.sheet] as Rgba, img, p.x, p.y);
-      sprites[s.key] = [p.sheet, p.x, p.y, img.width, img.height, s.regX, s.regY];
-    }
-    const files = sheets.map((sheet, i) => {
+    const packed = packAtlas(sources, images);
+    const files = packed.sheets.map((sheet, i) => {
       const file = `${group}-${i}.png`;
       write(file, encodePng(sheet));
       return file;
     });
-    atlases[group] = { sheets: files, sprites };
-    stats.sheets[group] = layout.sheets;
+    atlases[group] = { sheets: files, sprites: packed.sprites };
+    stats.sheets[group] = packed.layout;
     stats.sprites[group] = sources.length;
+    // The Minimal pack's few pictures, packed on their own from the same keyed images.
+    const wanted = new Set(minimalArt[group]);
+    // A build with other inputs (a test's added folder) packs the listed pictures it has; the
+    // data tests check that the real build has them all.
+    const mine = sources.filter((s) => wanted.has(s.key));
+    const small = packAtlas(mine, images);
+    const minimalFiles = small.sheets.map((sheet, i) => {
+      const file = `${group}-${i}.png`;
+      minimalSheets.set(file, encodePng(sheet));
+      return file;
+    });
+    minimalAtlases[group] = { sheets: minimalFiles, sprites: small.sprites };
   }
 
   const ui: Record<string, UiFile> = {};
@@ -452,6 +520,19 @@ export function buildAssets(options: BuildOptions = {}): BuildStats {
   }
   const packIndex: PackArtIndex = { version: 1, inputHash: hash, atlases, sounds: packSounds };
   writeFileSync(packIndexPath, `${JSON.stringify(packIndex)}\n`);
+  // The Minimal pack's art: its atlases and no sounds.
+  rmSync(minimalArtDir, { recursive: true, force: true });
+  mkdirSync(minimalArtDir, { recursive: true });
+  for (const [file, bytes] of minimalSheets) {
+    writeFileSync(join(minimalArtDir, file), bytes);
+  }
+  const minimalIndex: PackArtIndex = {
+    version: 1,
+    inputHash: hash,
+    atlases: minimalAtlases,
+    sounds: {},
+  };
+  writeFileSync(join(minimalArtDir, "index.json"), `${JSON.stringify(minimalIndex)}\n`);
   const noAtlases = Object.fromEntries(
     groups.map((g) => [g, { sheets: [], sprites: {} }]),
   ) as unknown as Record<AtlasGroup, AtlasIndex>;

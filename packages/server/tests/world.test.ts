@@ -121,8 +121,15 @@ describe("seed map migration", () => {
 
 describe("settings", () => {
   test("defaults, and overrides that parse win", () => {
-    expect(defaultSettings().startPoint).toEqual({ map: "x1000y992", x: 6, y: 4 });
-    expect(defaultSettings().fallbackPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
+    // The engine's own points are the Minimal pack's; a Classic world stores its own (migration 66).
+    expect(defaultSettings().startPoint).toEqual({ map: "x0y0", x: 1, y: 1 });
+    expect(defaultSettings().fallbackPoint).toEqual({ map: "x0y0", x: 1, y: 1 });
+    expect(defaultSettings().jailPoint).toEqual({ map: "x50y50", x: 1, y: 1 });
+    expect(resolveSettings(loadSettingOverrides(db)).startPoint).toEqual({
+      map: "x1000y992",
+      x: 6,
+      y: 4,
+    });
     saveSettingOverride(db, "startPoint", { map: "x1y2", x: 3, y: 4 }, NOW);
     saveSettingOverride(db, "chatCooldown", "not a number", NOW);
     const s = resolveSettings(loadSettingOverrides(db));
@@ -735,8 +742,12 @@ describe("game: creation through the real database", () => {
     expect(snap?.msg).toMatchObject({ self: { x: 6, y: 4, facing: "S" }, you: { head: 8 } });
   });
 
-  test("SSO: new characters start on the operator's start point setting, default x1000y992 (6, 4) on the seed map", async () => {
-    expect(defaultSettings().startPoint).toEqual({ map: "x1000y992", x: 6, y: 4 });
+  test("SSO: new characters start on the operator's start point setting, x1000y992 (6, 4) on the seed map in a Classic world", async () => {
+    expect(resolveSettings(loadSettingOverrides(db)).startPoint).toEqual({
+      map: "x1000y992",
+      x: 6,
+      y: 4,
+    });
     saveSettingOverride(db, "startPoint", { map: "x1000y992", x: 8, y: 9 }, NOW);
     const g = createGame({
       db,
@@ -845,6 +856,7 @@ describe("the respawn point", () => {
     shrine.ground.push({ id: "e2", item: "Exit", x: 5, y: 5, kind: "admin", expiresAt: null });
     const maps = [island, main, shrine];
     const world = createWorld();
+    world.jail = { map: "x0y0", x: 4, y: 4 }; // Classic's, as Classic servers store it
     const deps = {
       loadMap: (n: string) => maps.find((m) => m.name === n) ?? null,
       loadMapById: (id: string) => maps.find((m) => m.id === id) ?? null,

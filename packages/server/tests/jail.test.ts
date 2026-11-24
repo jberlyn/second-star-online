@@ -53,6 +53,7 @@ function scene() {
   const jail = toWorldMap(findMapByCoords(db, 0, 0)!);
   const home = testMap("x1000y992");
   const world = createWorld();
+  world.jail = { map: "x0y0", x: 4, y: 4 }; // the seeded jail, as Classic servers store it
   const bob = player("Bob", jail, 4, 4);
   bob.char.respawn = { mapId: home.id, x: 5, y: 5 };
   addPlayer(world, bob);

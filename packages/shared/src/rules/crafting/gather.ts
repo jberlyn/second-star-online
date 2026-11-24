@@ -221,7 +221,7 @@ export function underOk(
  * odds improve as the skill rises; from the last row's bound up, the last row's pool.
  */
 export function orePool(skill: number): number {
-  const rows = G.mining.ore.base;
+  const rows = G.mining?.ore.base ?? [];
   const hit = rows.find((r) => skill < r.lt) ?? rows[rows.length - 1];
   return hit?.value ?? 0;
 }
@@ -234,6 +234,10 @@ export function orePool(skill: number): number {
  */
 export function rollMiningFind(skill: number, rng: Rng): string | null {
   const m = G.mining;
+  if (!m) {
+    // No mining section: no table can be an ore strike (the schema refuses one), so nothing drops.
+    return null;
+  }
   const count = gtRoll(m.count, skill, m.countDefault, rng);
   const roll = gtRoll(m.colourPool, skill, m.colourDefault, rng);
   let item = `${count} ${m.colours[roll - 1] ?? "Blue"} Crystal`;
@@ -286,7 +290,7 @@ export function isWateringTool(weapon: string): boolean {
 
 /** A tile code is fishing water: W1, N1, D2 or I2. */
 export function isFishingWater(code: string): boolean {
-  return G.fishing.waterTiles.some((w) => lingoEq(w, code));
+  return G.fishing?.waterTiles.some((w) => lingoEq(w, code)) ?? false;
 }
 
 /** The map layers fishing reads: water drawn on any of them can be fished. */
@@ -294,14 +298,14 @@ export let FISHING_LAYERS: readonly (1 | 2)[];
 
 /** The Fishing FX's offset from sprite 112. */
 export function fishingOffset(facing: Facing): readonly [number, number] {
-  return G.fishing.fxOffsets[facing] ?? [0, 0];
+  return G.fishing?.fxOffsets[facing] ?? [0, 0];
 }
 
 /** The catches one tile allows before you must fish from another. */
-export let ANTI_MACRO_START: typeof G.fishing.antiMacroStart;
+export let ANTI_MACRO_START: number;
 
 /** Told when a cast finds its tile's allowance spent. */
-export let FISHING_STOPPED_TEXT: typeof G.fishing.stoppedText;
+export let FISHING_STOPPED_TEXT: string;
 
 /** The tile a fisher's allowance belongs to, and the catches it has left. */
 export interface FishingSpot {
@@ -331,7 +335,7 @@ export function fishingSpot(
 /** The fish a skill catches: one kind per band. */
 export function fishFor(skill: number): string | null {
   let fish: string | null = null;
-  for (const b of G.fishing.bands) {
+  for (const b of G.fishing?.bands ?? []) {
     if (skill < b.lt) {
       fish = b.fish;
     }
@@ -341,7 +345,7 @@ export function fishFor(skill: number): string | null {
 
 /** The bite chance for a Fishing skill: `random(n) = 1`; skill 0 uses the first row's odds. */
 export function fishCheck(skill: number): number {
-  const rows = G.fishing.fishCheck;
+  const rows = G.fishing?.fishCheck ?? [];
   return gtCascade(rows, skill, rows[0]?.value ?? 1) ?? 1;
 }
 
@@ -370,33 +374,35 @@ export function castLine(
 
 /** What a seed item plants, or null when the item is not a seed. */
 export function seedTile(item: string): string | null {
-  return G.farming.seeds.find((s) => lingoEq(s.item, item))?.plants ?? null;
+  return G.farming?.seeds.find((s) => lingoEq(s.item, item))?.plants ?? null;
 }
 
 /** The faced tile is tilled soil (`SL`); off the map nothing can be planted. */
 export function canPlant(code: string): boolean {
-  return code !== "" && G.farming.seedTest.split("*").some((c) => c !== "" && lingoEq(c, code));
+  const test = G.farming?.seedTest ?? "";
+  return code !== "" && test.split("*").some((c) => c !== "" && lingoEq(c, code));
 }
 
-export let SEED_PAUSE: typeof G.farming.seedPause;
+export let SEED_PAUSE: number;
 
 /** The skill whose counter table a Water tool's hits read. */
 export let WATERING_SKILL: string;
 
 /** The watering routine: the watered form, or null (a wasted success). */
 export function wateredTile(code: string): string | null {
-  return G.farming.watering.find((w) => lingoEq(w.from, code))?.to ?? null;
+  return G.farming?.watering.find((w) => lingoEq(w.from, code))?.to ?? null;
 }
 
 /** The sprinkle FX's offset from sprite 112, or null facing north. */
 export function sprinkleOffset(facing: Facing): readonly [number, number] | null {
-  if (facing === G.sprinkle.notFacing) {
+  if (!G.sprinkle || facing === G.sprinkle.notFacing) {
     return null;
   }
   return G.sprinkle.offsets[facing as "E" | "W" | "S"] ?? null;
 }
 
-export let SPRINKLE_FX: typeof G.sprinkle.fx;
+/** The sprinkle FX's name; empty when the world has no sprinkle. */
+export let SPRINKLE_FX: string;
 
 export let GATHER_TEXT: typeof G.texts;
 
@@ -436,7 +442,7 @@ export function regrowthFrame(hooks: RegrowthHooks, rng: Rng): void {
       }
       continue;
     }
-    const grown = G.farming.produce.find((p) => lingoEq(p.tile, code));
+    const grown = G.farming?.produce.find((p) => lingoEq(p.tile, code));
     if (grown && !hooks.hasGround(x, y)) {
       hooks.produce(x, y, grown.item);
     }
@@ -451,6 +457,7 @@ export const REGROWTH_CATCH_UP_FRAMES = 72_000;
 
 // ---- treasure --------------------------------------------------------------------------------
 
+/** The treasure hunt, or undefined when the world has none (no buried treasure, no rumours). */
 export let TREASURE: typeof G.treasure;
 
 /** The treasure list build: its last pass decides; null when no map is set. */
@@ -458,12 +465,13 @@ export function buildTreasure(
   maps: readonly string[],
   rng: Rng,
 ): { map: string; item: string } | null {
-  if (maps.length === 0) {
+  const items = G.treasure?.items;
+  if (maps.length === 0 || !items) {
     return null;
   }
   let pick: { map: string; item: string } | null = null;
   for (let i = 0; i < 70; i++) {
-    const item = G.treasure.items[rng.random(G.treasure.items.length) - 1] ?? "";
+    const item = items[rng.random(items.length) - 1] ?? "";
     const map = maps[rng.random(maps.length) - 1] ?? "";
     pick = { map, item };
   }
@@ -495,13 +503,15 @@ export function rumourLine(npc: string, header: string, roll: number): string {
 
 onContent((c) => {
   G = c.gather.gathering;
-  FISHING_LAYERS = G.fishing.layers;
-  ANTI_MACRO_START = G.fishing.antiMacroStart;
-  FISHING_STOPPED_TEXT = G.fishing.stoppedText;
-  SEED_PAUSE = G.farming.seedPause;
-  WATERING_SKILL = G.farming.wateringSkill;
-  SPRINKLE_FX = G.sprinkle.fx;
+  // A section the world leaves out turns its mechanic off: no water can be fished, no seed planted,
+  // no sprinkle shown, no treasure buried.
+  FISHING_LAYERS = G.fishing?.layers ?? [];
+  ANTI_MACRO_START = G.fishing?.antiMacroStart ?? 0;
+  FISHING_STOPPED_TEXT = G.fishing?.stoppedText ?? "";
+  SEED_PAUSE = G.farming?.seedPause ?? 0;
+  WATERING_SKILL = G.farming?.wateringSkill ?? "";
+  SPRINKLE_FX = G.sprinkle?.fx ?? "";
   GATHER_TEXT = G.texts;
   TREASURE = G.treasure;
-  RUMOUR_NPCS = G.treasure.rumourNpcs;
+  RUMOUR_NPCS = G.treasure?.rumourNpcs ?? [];
 });

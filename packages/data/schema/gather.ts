@@ -77,70 +77,78 @@ export const gatherDataSchema = z
   .strictObject({
     gathering: z.strictObject({
       counterTable: z.array(gtRow).min(1),
-      mining: z.strictObject({
-        countDefault: z.number().int(),
-        count: z.array(gtRow).min(1),
-        colourDefault: z.number().int(),
-        colourPool: z.array(gtRow).min(1),
-        /** `colours[roll - 1]`. */
-        colours: z.array(z.string()).min(1),
-        ore: z.strictObject({
-          base: z.array(ltRow).min(1),
-          steelAdd: z.number().int(),
-          /** Added to the Steel pool, as `xoo = xii + 100`. */
-          starAdd: z.number().int(),
-          items: z.tuple([z.string(), z.string(), z.string()]),
-        }),
-        findChance: z.number().int().positive(),
-      }),
-      fishing: z.strictObject({
-        /** Water on any of these layers can be fished. */
-        layers: z.array(z.union([z.literal(1), z.literal(2)])).min(1),
-        waterTiles: z.array(z.string().length(2)).min(1),
-        fxOffsets: z.record(z.enum(["E", "W", "N", "S"]), offset),
-        bands: z.array(z.strictObject({ lt: z.number().int(), fish: z.string() })).min(1),
-        fishCheck: z.array(gtRow).min(1),
-        /** Catches allowed from one tile before you must fish from another. */
-        antiMacroStart: z.number().int().positive(),
-        /** Told when a cast finds the tile's allowance spent. */
-        stoppedText: z.string().min(1),
-      }),
-      sprinkle: z.strictObject({
-        fx: z.string(),
-        offsets: z.record(z.enum(["E", "W", "S"]), offset),
-        notFacing: z.literal("N"),
-      }),
-      farming: z.strictObject({
-        seedTest: z.string(),
-        seeds: z.array(z.strictObject({ item: z.string(), plants: z.string().length(2) })).min(1),
-        seedPause: z.number().int().positive(),
-        /** The skill whose counter a Water tool advances. */
-        wateringSkill: z.string().min(1),
-        watering: z.array(tilePair).min(1),
-        produce: z.array(z.strictObject({ tile: z.string().length(2), item: z.string() })).min(1),
-      }),
+      mining: z
+        .strictObject({
+          countDefault: z.number().int(),
+          count: z.array(gtRow).min(1),
+          colourDefault: z.number().int(),
+          colourPool: z.array(gtRow).min(1),
+          /** `colours[roll - 1]`. */
+          colours: z.array(z.string()).min(1),
+          ore: z.strictObject({
+            base: z.array(ltRow).min(1),
+            steelAdd: z.number().int(),
+            /** Added to the Steel pool, as `xoo = xii + 100`. */
+            starAdd: z.number().int(),
+            items: z.tuple([z.string(), z.string(), z.string()]),
+          }),
+          findChance: z.number().int().positive(),
+        })
+        .optional(),
+      fishing: z
+        .strictObject({
+          /** Water on any of these layers can be fished. */
+          layers: z.array(z.union([z.literal(1), z.literal(2)])).min(1),
+          waterTiles: z.array(z.string().length(2)).min(1),
+          fxOffsets: z.record(z.enum(["E", "W", "N", "S"]), offset),
+          bands: z.array(z.strictObject({ lt: z.number().int(), fish: z.string() })).min(1),
+          fishCheck: z.array(gtRow).min(1),
+          /** Catches allowed from one tile before you must fish from another. */
+          antiMacroStart: z.number().int().positive(),
+          /** Told when a cast finds the tile's allowance spent. */
+          stoppedText: z.string().min(1),
+        })
+        .optional(),
+      sprinkle: z
+        .strictObject({
+          fx: z.string(),
+          offsets: z.record(z.enum(["E", "W", "S"]), offset),
+          notFacing: z.literal("N"),
+        })
+        .optional(),
+      farming: z
+        .strictObject({
+          seedTest: z.string(),
+          seeds: z.array(z.strictObject({ item: z.string(), plants: z.string().length(2) })).min(1),
+          seedPause: z.number().int().positive(),
+          /** The skill whose counter a Water tool advances. */
+          wateringSkill: z.string().min(1),
+          watering: z.array(tilePair).min(1),
+          produce: z.array(z.strictObject({ tile: z.string().length(2), item: z.string() })).min(1),
+        })
+        .optional(),
       regrowth: z.strictObject({
         roll: z.number().int().positive(),
         tileRoll: z.tuple([z.number().int(), z.number().int()]),
-        checks: z
-          .array(
-            z.strictObject({
-              handler: z.string(),
-              /** Runs when the frame's roll is below this. */
-              below: z.number().int(),
-              /** Tested in order against one cached tile: at most one change per call. */
-              tiles: z.array(tilePair),
-            }),
-          )
-          .min(1),
+        checks: z.array(
+          z.strictObject({
+            handler: z.string(),
+            /** Runs when the frame's roll is below this. */
+            below: z.number().int(),
+            /** Tested in order against one cached tile: at most one change per call. */
+            tiles: z.array(tilePair),
+          }),
+        ),
       }),
-      treasure: z.strictObject({
-        items: z.array(z.string()).min(1),
-        originalMaps: z.array(z.string()).min(1),
-        rumourNpcs: z.array(z.string().min(1)).min(1),
-        chance: z.number().int().positive(),
-        text: z.string(),
-      }),
+      treasure: z
+        .strictObject({
+          items: z.array(z.string()).min(1),
+          originalMaps: z.array(z.string()).min(1),
+          rumourNpcs: z.array(z.string().min(1)).min(1),
+          chance: z.number().int().positive(),
+          text: z.string(),
+        })
+        .optional(),
       texts: z.strictObject({ plant: z.string(), plantWrong: z.string() }),
     }),
     harvest: z.array(harvestNodeSchema),
@@ -173,7 +181,24 @@ export const gatherDataSchema = z
           message: `yield table ${JSON.stringify(n.yield)} is not in yields`,
         });
       }
+      if (n.treasure && !data.gathering.treasure) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["harvest", i, "treasure"],
+          message: "this node digs up treasure, but gathering has no treasure section",
+        });
+      }
     });
+    // An ore strike rolls from gathering.mining: without it, no table may be an ore table.
+    for (const [name, t] of Object.entries(data.yields)) {
+      if (t.kind === "ore" && !data.gathering.mining) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["yields", name],
+          message: `yield table ${JSON.stringify(name)} is an ore strike, but gathering has no mining section`,
+        });
+      }
+    }
   });
 
 export type HarvestNode = z.infer<typeof harvestNodeSchema>;

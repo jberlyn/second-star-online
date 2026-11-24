@@ -69,7 +69,8 @@ export const cannonBindingSchema = z.strictObject({
  *   body. Left out (or empty), Morph does nothing.
  * - `tree`: Nature Shift's tree. Left out, Nature Shift does nothing.
  * - `smoke`: Smoke Bomb's body, which clients draw as nothing. Left out, Smoke Bomb does nothing.
- * - `riders`: what a rider of each vehicle shows. Vehicles are engine kinds, so each needs one.
+ * - `riders`: what a rider of each vehicle shows. Vehicles are engine kinds, so each needs one; left
+ *   out, the world has no vehicles (a deed that makes one is refused).
  */
 export const bodyBindingsSchema = z.strictObject({
   morph: z
@@ -78,7 +79,7 @@ export const bodyBindingsSchema = z.strictObject({
     .optional(),
   tree: body.optional(),
   smoke: body.optional(),
-  riders: z.strictObject({ Boat: body, Battleship: body, Airship: body }),
+  riders: z.strictObject({ Boat: body, Battleship: body, Airship: body }).optional(),
 });
 
 export const bindingsDataSchema = z.strictObject({

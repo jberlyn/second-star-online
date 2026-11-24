@@ -57,6 +57,8 @@ function scene(withJail = true) {
   const maps: WorldMap[] = withJail ? [seed, other, jail] : [seed, other];
   const clock = testClock();
   const s = setup(maps, undefined, undefined, () => clock.ms);
+  // Classic's jail, as every Classic server stores it (the engine's own default is Minimal's).
+  s.world.jail = { map: "x0y0", x: 4, y: 4 };
   const byName = new Map(maps.map((m) => [m.name, m]));
   const imm = player("Imm", seed, 5, 5);
   imm.role = ADMINISTRATOR;
@@ -1275,11 +1277,24 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       text: "x5y5 does not exist.",
     });
     expect(game.settings.fallbackPoint).toEqual({ map: "x1000y992", x: 5, y: 5 });
+    // The jail needs a map of its own: no start or fallback point may stand on it (#37 stage 7).
     expect(save({ jailPoint: { map: "x1000y992", x: 5, y: 5 } })).toEqual({
+      t: "settingsResult",
+      ok: false,
+      key: "jailPoint",
+      text: "x1000y992 holds the Starting map point: the jail needs a map of its own.",
+    });
+    expect(save({ fallbackPoint: { map: "x0y0", x: 4, y: 4 } })).toEqual({
+      t: "settingsResult",
+      ok: false,
+      key: "fallbackPoint",
+      text: "x0y0 is the jail's map.",
+    });
+    expect(save({ jailPoint: { map: "x999y999", x: 9, y: 4 } })).toEqual({
       t: "settingsResult",
       ok: true,
     });
-    expect(game.world.jail).toEqual({ map: "x1000y992", x: 5, y: 5 });
+    expect(game.world.jail).toEqual({ map: "x999y999", x: 9, y: 4 });
     // A point already broken (its map deleted since) does not stop another setting's save, and is
     // named by the contract check.
     saveSettingOverride(db, "startPoint", { map: "x5y5", x: 4, y: 4 }, NOW);
@@ -1305,15 +1320,10 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     expect(sent.at(-1)?.msg).toEqual({ t: "settingsResult", ok: true });
     expect(game.world.jail).toEqual({ map: "x0y0", x: 4, y: 4 });
     expect(p()?.map.name).toBe("x0y0");
-    // A jail on another map takes the prisoner there, sentence and all.
+    // A jail on another map takes the prisoner there, sentence and all. A player who is no
+    // prisoner, on the map that becomes the jail, goes to their respawn point (the Fallback map
+    // when that is on the jail's map); staff stay.
     const until = p()?.jailUntil;
-    game.intent(alice.characterId, {
-      t: "settingsSave",
-      values: { jailPoint: { map: "x1000y992", x: 5, y: 5 } },
-    });
-    expect([p()?.map.name, p()?.x, p()?.y, p()?.jailUntil]).toEqual(["x1000y992", 5, 5, until]);
-    // A player who is no prisoner, on the map that becomes the jail, goes to their respawn point
-    // (the Fallback map when that is on the jail's map); staff stay.
     const cat = await make("Cat");
     game.intent(alice.characterId, { t: "chat", text: "/warp Cat x999y999 9 4" });
     game.intent(alice.characterId, { t: "chat", text: "/warp Alice x999y999 9 5" });
@@ -1325,9 +1335,10 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       values: { jailPoint: { map: "x999y999", x: 9, y: 4 } },
     });
     expect(sent.at(-1)?.msg).toEqual({ t: "settingsResult", ok: true });
+    expect([p()?.map.name, p()?.x, p()?.y, p()?.jailUntil]).toEqual(["x999y999", 9, 4, until]);
     // Entering the church made it Cat's respawn point, so Cat goes to the Fallback map.
     expect([c()?.map.name, c()?.x, c()?.y]).toEqual(["x1000y992", 5, 5]);
-    expect([a()?.map.name, p()?.map.name]).toEqual(["x999y999", "x999y999"]);
+    expect(a()?.map.name).toBe("x999y999");
   });
 
   test("a publish that rebinds a body puts it on the players who wear it", async () => {

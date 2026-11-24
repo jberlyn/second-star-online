@@ -289,7 +289,7 @@ export interface CharacterState {
   vault: string[];
   /** The bank or vault changed: write it with the inventory. */
   storeDirty: boolean;
-  /** `sex`: 1 male, 2 female, for the bio. */
+  /** `sex`: the sex's code (Classic: 1 male, 2 female), for the bio. */
   sex: number;
   /** The profile (sheet item 6), shown in your bio and edited only there. */
   profile: string;

@@ -15,8 +15,10 @@ import {
 } from "@secondstaronline/shared";
 
 import {
+  datasetParts,
   KEYED_LISTS,
   keyField,
+  partOf,
   READ_ONLY_DATASETS,
   type RowRef,
   rowLabel,
@@ -34,7 +36,6 @@ export function refOf(r: ContentRowRef): RowRef | null {
 }
 
 export function overviewOf(service: ContentService, world?: ContentWorld): ContentOverview {
-  const packContent = service.packContent() as unknown as Record<string, Record<string, unknown>>;
   return {
     draft: service.draft().map((d) => ({
       dataset: d.dataset,
@@ -62,10 +63,15 @@ export function overviewOf(service: ContentService, world?: ContentWorld): Conte
       return {
         id,
         readOnly: READ_ONLY_DATASETS.includes(id),
-        parts: Object.keys(packContent[id] ?? {}).map((part) => {
+        // Every field the schema has, an optional section the world leaves out included (0 rows).
+        parts: datasetParts(id).map(({ part }) => {
           const keyed = KEYED_LISTS[id]?.[part] !== undefined;
           const value = published[part];
-          return { part, keyed, rows: keyed && Array.isArray(value) ? value.length : 1 };
+          return {
+            part,
+            keyed,
+            rows: keyed && Array.isArray(value) ? value.length : value === undefined ? 0 : 1,
+          };
         }),
       };
     }),
@@ -92,8 +98,7 @@ export function listingOf(
   service: ContentService,
   ref: { dataset: DatasetId; part: string },
 ): ContentListing | null {
-  const pack = service.packContent()[ref.dataset] as unknown as Record<string, unknown>;
-  if (!Object.hasOwn(pack, ref.part)) {
+  if (!partOf(ref.dataset, ref.part)) {
     return null;
   }
   const field = keyField(ref.dataset, ref.part);
@@ -141,8 +146,7 @@ export function listingOf(
 }
 
 export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDetail | null {
-  const pack = service.packContent()[ref.dataset] as unknown as Record<string, unknown>;
-  if (!Object.hasOwn(pack, ref.part)) {
+  if (!partOf(ref.dataset, ref.part)) {
     return null;
   }
   const field = keyField(ref.dataset, ref.part);

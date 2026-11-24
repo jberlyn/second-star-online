@@ -9,9 +9,10 @@
  */
 import {
   CREATION_POINTS,
-  HEADS_BY_SEX,
+  headsOf,
   nextHead,
   prevHead,
+  SEXES,
   type Sex,
   START_CLASSES,
   STAT_MAX,
@@ -209,6 +210,9 @@ const STAT_ROWS = [
 /** The rows 1.6's class list had room for, 15 px apart. */
 const CLASS_ROWS = 3;
 const CLASS_ROW_H = 15;
+/** The sex radios: 1.6's two rows, 15 px apart, scrolling when the content offers more. */
+const SEX_ROWS = 2;
+const SEX_ROW_H = 15;
 
 /** A label as part of an action id: "Fighter" → "fighter", "Dark Knight" → "dark-knight". */
 function actionSlug(text: string): string {
@@ -230,9 +234,10 @@ export function creationScreen(
   const v: CreationValues = {
     name: "",
     password: "",
-    sex: 1,
-    head: 1,
-    classCode: 1, // class = 1, sex = 1; the first class offered, below
+    // The first sex offered and its first head (Classic: Male, Head1), and the first class offered.
+    sex: SEXES[0]?.code ?? 1,
+    head: SEXES[0]?.heads[0] ?? 1,
+    classCode: 1, // the first class offered, below
     str: STAT_MIN,
     sta: STAT_MIN,
     int: STAT_MIN,
@@ -335,7 +340,14 @@ export function creationScreen(
 
   // Radio buttons: member 62 = selected, 63 = not (I64-I68).
   const radio = () => artImg(ui(a, 63));
-  const sexRadios = [radio(), radio()];
+  // The sexes the content offers. Classic's Male and Female are the backdrop's own words beside
+  // 1.6's two radios; any other list is written over them, scrolling past two rows.
+  const sexes = SEXES;
+  const sexesAreArt =
+    sexes.length === 2 &&
+    sexes[0]?.label.toLowerCase() === "male" &&
+    sexes[1]?.label.toLowerCase() === "female";
+  const sexRadios = sexes.map(() => radio());
   // The classes the content offers, in its order: Classic's Fighter, Ranger, Mage (field Internal
   // #196). fighter on channel 22, ranger on 24, mage on 23 (score frame 25). The fourth radio,
   // business (channel 25), sits off-stage at (189, 638) and nothing moves it.
@@ -344,7 +356,7 @@ export function creationScreen(
   v.classCode = offered[0]?.code ?? 1;
   const refreshRadios = () => {
     sexRadios.forEach((r, i) => {
-      r.src = ui(a, v.sex === i + 1 ? 62 : 63);
+      r.src = ui(a, v.sex === sexes[i]?.code ? 62 : 63);
     });
     classRadios.forEach((r, i) => {
       r.src = ui(a, v.classCode === offered[i]?.code ? 62 : 63);
@@ -352,23 +364,47 @@ export function creationScreen(
   };
   const setSex = (sex: Sex) => {
     v.sex = sex;
-    v.head = HEADS_BY_SEX[sex][0] ?? sex; // male shows HEAD1, female HEAD2
+    v.head = headsOf(sex)[0] ?? v.head; // the sex's first head: Classic's male HEAD1, female HEAD2
     refreshRadios();
     drawHead();
   };
-  sexRadios.forEach((r, i) => {
-    items.push({ el: r, x: 426, y: 153 + i * 15, w: 12, h: 12, z: 20 + i });
-    items.push({
-      el: hit(i === 0 ? "Male" : "Female", i === 0 ? "creation-male" : "creation-female", () =>
-        setSex((i + 1) as Sex),
-      ),
-      x: 424,
-      y: 151 + i * 15,
-      w: 50,
-      h: 15,
-      z: 100,
+  if (sexesAreArt) {
+    sexRadios.forEach((r, i) => {
+      const sex = sexes[i];
+      items.push({ el: r, x: 426, y: 153 + i * 15, w: 12, h: 12, z: 20 + i });
+      items.push({
+        el: hit(sex?.label ?? "", `creation-${actionSlug(sex?.label ?? "")}`, () =>
+          setSex(sex?.code ?? 1),
+        ),
+        x: 424,
+        y: 151 + i * 15,
+        w: 50,
+        h: 15,
+        z: 100,
+      });
     });
-  });
+  } else {
+    // Over the backdrop's MALE and FEMALE: the content's names, two rows, scrolling beyond.
+    const sexList = document.createElement("div");
+    sexList.className = "cc-sex-list";
+    sexList.classList.toggle("cc-sex-scroll", sexes.length > SEX_ROWS);
+    sexes.forEach((sex, i) => {
+      const r = sexRadios[i] as HTMLImageElement;
+      r.style.position = "absolute";
+      r.style.left = "2px";
+      r.style.top = `${2 + i * SEX_ROW_H}px`;
+      const name = label("cc-sex", sex.label);
+      name.style.top = `${i * SEX_ROW_H}px`;
+      const pick = hit(sex.label, `creation-${actionSlug(sex.label)}`, () => setSex(sex.code));
+      pick.style.position = "absolute";
+      pick.style.left = "0";
+      pick.style.top = `${i * SEX_ROW_H}px`;
+      pick.style.width = "100%";
+      pick.style.height = `${SEX_ROW_H}px`;
+      sexList.append(r, name, pick);
+    });
+    items.push({ el: sexList, x: 424, y: 151, w: 98, h: SEX_ROWS * SEX_ROW_H + 2, z: 20 });
+  }
   // The class list holds 1.6's three rows; more classes scroll within them.
   const classList = document.createElement("div");
   classList.className = "cc-class-list";

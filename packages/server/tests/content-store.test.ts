@@ -14,7 +14,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { readPackDir } from "../src/content/packs.ts";
-import { rowDetailOf } from "../src/content/page.ts";
+import { overviewOf, rowDetailOf } from "../src/content/page.ts";
 import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
 import {
@@ -122,7 +122,7 @@ describe("rows", () => {
       items: { ...classic.data.items, items: [{ name: "Moonblade", icon: null }] } as never,
     };
     const merged = mergePacks([classic.data, later]);
-    expect(merged.casino?.slots.cost).toBe(99);
+    expect(merged.casino?.slots?.cost).toBe(99);
     expect(merged.items?.items.at(-1)?.name).toBe("Moonblade");
     expect(merged.items?.items.length).toBe((classic.data.items?.items.length ?? 0) + 1);
   });
@@ -163,13 +163,13 @@ describe("draft and publish", () => {
       value: undefined,
     });
     // The draft is not live until it is published.
-    expect(service.store().casino.slots.cost).not.toBe(25);
+    expect(service.store().casino.slots!.cost).not.toBe(25);
     expect(service.draft()[0]?.author).toBe("Admin");
     const r = service.publish(ADMIN, seen(service), "Cheaper slots");
     expect(r.ok).toBe(true);
-    expect(service.store().casino.slots.cost).toBe(25);
+    expect(service.store().casino.slots!.cost).toBe(25);
     expect(published).toHaveLength(1);
-    expect(published[0]?.casino.slots.cost).toBe(25);
+    expect(published[0]?.casino.slots?.cost).toBe(25);
     expect(service.draft()).toEqual([]);
     expect(service.history()[0]?.summary).toBe("Cheaper slots");
   });
@@ -244,7 +244,7 @@ describe("draft and publish", () => {
     expect(service.draft()[0]?.author).toBe("Other");
     const r = service.publish(ADMIN, mine, "");
     expect(r.ok).toBe(false);
-    expect(service.store().casino.slots.cost).not.toBe(30);
+    expect(service.store().casino.slots!.cost).not.toBe(30);
   });
 
   test("operator changes are stored per row with the pack row they were based on", () => {
@@ -263,7 +263,7 @@ describe("draft and publish", () => {
     service.draftSet(ADMIN, { dataset: "casino", part: "slots", key: null }, "set", slots);
     service.publish(ADMIN, seen(service), "");
     const again = new ContentService({ db, now: () => "x", releasePacks: RELEASE_PACK_DIRS });
-    expect(again.store().casino.slots.cost).toBe(25);
+    expect(again.store().casino.slots!.cost).toBe(25);
     expect(again.store().hash).toBe(service.store().hash);
   });
 
@@ -277,10 +277,33 @@ describe("draft and publish", () => {
     expect(service.store().casino.slots).toEqual(classic.data.casino?.slots as never);
   });
 
-  test("removing a keyed row drops it; sections cannot be removed", () => {
+  test("an optional section (a casino game) can be taken out, and put back by reverting", () => {
+    const { service } = setup();
+    const slots = { dataset: "casino" as const, part: "slots", key: null };
+    expect(service.draftSet(ADMIN, slots, "remove", null)).toMatchObject({ ok: true });
+    expect(service.check()).toEqual([]);
+    const made = service.publish(ADMIN, service.draftRev(), "No slots");
+    expect(made.ok).toBe(true);
+    expect(service.publishedContent().casino.slots).toBeUndefined();
+    expect(service.store().casino.slots).toBeUndefined();
+    // Gone, it cannot be removed again; reverting brings the pack's back.
+    expect(service.draftSet(ADMIN, slots, "remove", null).ok).toBe(false);
+    expect(service.draftSet(ADMIN, slots, "revert", null)).toMatchObject({ ok: true });
+    expect(service.publish(ADMIN, service.draftRev(), "Slots back").ok).toBe(true);
+    expect(service.publishedContent().casino.slots).toEqual(classic.data.casino?.slots as never);
+    // The Content page lists it either way.
+    const { datasets } = overviewOf(service);
+    expect(datasets.find((d) => d.id === "casino")?.parts.map((p) => p.part)).toEqual([
+      "slots",
+      "blackjack",
+      "checkers",
+    ]);
+  });
+
+  test("removing a keyed row drops it; only an optional section can be removed", () => {
     const { service } = setup();
     expect(
-      service.draftSet(ADMIN, { dataset: "casino", part: "slots", key: null }, "remove", null).ok,
+      service.draftSet(ADMIN, { dataset: "craft", part: "stations", key: null }, "remove", null).ok,
     ).toBe(false);
     expect(
       service.draftSet(ADMIN, { dataset: "help", part: "topics", key: "nope" }, "remove", null).ok,
@@ -354,7 +377,7 @@ describe("undo", () => {
     const u = service.undo(ADMIN, p.ok ? p.value.id : "");
     expect(u.ok).toBe(false);
     expect(u.ok ? "" : u.error).toContain("casino/slots");
-    expect(service.store().casino.slots.cost).toBe(30);
+    expect(service.store().casino.slots!.cost).toBe(30);
   });
 });
 
@@ -384,7 +407,7 @@ describe("pack updates", () => {
     );
     try {
       const s = new ContentService({ db, now: () => "x", releasePacks: { classic: dir } });
-      expect(s.store().casino.slots.cost).toBe(77);
+      expect(s.store().casino.slots!.cost).toBe(77);
       expect(s.notices()).toEqual([]);
       expect(s.installedPacks()[0]).toMatchObject({
         version: "9.0.0",
@@ -407,8 +430,8 @@ describe("pack updates", () => {
     );
     try {
       const s = new ContentService({ db, now: () => "y", releasePacks: { classic: dir } });
-      expect(s.store().casino.slots.cost).toBe(25);
-      expect(s.store().casino.slots.spinFrames).not.toBe(3);
+      expect(s.store().casino.slots!.cost).toBe(25);
+      expect(s.store().casino.slots!.spinFrames).not.toBe(3);
       const [n] = s.notices();
       expect(n).toMatchObject({
         dataset: "casino",
@@ -421,7 +444,7 @@ describe("pack updates", () => {
       // Dismiss keeps the operator's row and stops the notice.
       expect(s.dismissNotice(ADMIN, ref).ok).toBe(true);
       expect(s.notices()).toEqual([]);
-      expect(s.store().casino.slots.cost).toBe(25);
+      expect(s.store().casino.slots!.cost).toBe(25);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -441,11 +464,11 @@ describe("pack updates", () => {
       const s = new ContentService({ db, now: () => "z", releasePacks: { classic: dir } });
       const r = s.acceptNotice(ADMIN, ref);
       expect(r.ok).toBe(true);
-      expect(s.store().casino.slots.spinFrames).toBe(3);
-      expect(s.store().casino.slots.cost).toBe(classic.data.casino?.slots.cost as number);
+      expect(s.store().casino.slots!.spinFrames).toBe(3);
+      expect(s.store().casino.slots!.cost).toBe(classic.data.casino?.slots?.cost as number);
       expect(s.notices()).toEqual([]);
       expect(s.undo(ADMIN, r.ok ? r.value.id : "").ok).toBe(true);
-      expect(s.store().casino.slots.cost).toBe(25);
+      expect(s.store().casino.slots!.cost).toBe(25);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -466,7 +489,7 @@ describe("pack updates", () => {
     try {
       const s = new ContentService({ db, now: () => "x", releasePacks: { classic: dir } });
       expect(s.notices()).toEqual([]);
-      expect(s.store().casino.blackjack.maxBid).toBe(5);
+      expect(s.store().casino.blackjack!.maxBid).toBe(5);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -777,7 +800,7 @@ describe("second review fixes", () => {
     cpSync(RELEASE_PACK_DIRS.classic as string, dir, { recursive: true });
     const file = join(dir, "data", "casino.json");
     const casino = JSON.parse(readFileSync(file, "utf8"));
-    casino.slots.spinFrames = 3;
+    casino.slots!.spinFrames = 3;
     writeFileSync(file, JSON.stringify(casino));
     const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
     writeFileSync(join(dir, "manifest.json"), JSON.stringify({ ...m, version: "1.1.0" }));
@@ -922,7 +945,7 @@ describe("fourth review fixes", () => {
     service.publish(ADMIN, seen(service), "C");
     const u = service.undo(ADMIN, a.ok ? a.value.id : "");
     expect(u.ok).toBe(false);
-    expect(service.store().casino.slots.cost).toBe(25);
+    expect(service.store().casino.slots!.cost).toBe(25);
   });
 
   test("a later publish and its undo cancel out, so the earlier publish can still be undone", () => {
@@ -1078,13 +1101,13 @@ describe("council review fixes", () => {
     const ub = service.undo(ADMIN, b.ok ? b.value.id : "");
     const redo = service.undo(ADMIN, ub.ok ? ub.value.id : "");
     expect(redo.ok).toBe(true);
-    expect(service.store().casino.slots.cost).toBe(30);
+    expect(service.store().casino.slots!.cost).toBe(30);
     // With the redo live, A cannot be undone underneath it, and B says to undo the redo.
     expect(service.undo(ADMIN, a.ok ? a.value.id : "").ok).toBe(false);
     const again = service.undo(ADMIN, b.ok ? b.value.id : "");
     expect(again.ok ? "" : again.error).toContain("undo the redo");
     expect(service.undo(ADMIN, redo.ok ? redo.value.id : "").ok).toBe(true);
-    expect(service.store().casino.slots.cost).toBe(25);
+    expect(service.store().casino.slots!.cost).toBe(25);
     expect(service.undo(ADMIN, a.ok ? a.value.id : "").ok).toBe(true);
     expect(service.store().casino.slots).toEqual(classic.data.casino?.slots as never);
   });

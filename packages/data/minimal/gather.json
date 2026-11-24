@@ -1,0 +1,60 @@
+{
+  "gathering": {
+    "counterTable": [
+      {
+        "gt": -1,
+        "value": 18
+      },
+      {
+        "gt": 10,
+        "value": 15
+      },
+      {
+        "gt": 20,
+        "value": 14
+      },
+      {
+        "gt": 30,
+        "value": 13
+      },
+      {
+        "gt": 40,
+        "value": 12
+      },
+      {
+        "gt": 50,
+        "value": 10
+      },
+      {
+        "gt": 60,
+        "value": 8
+      },
+      {
+        "gt": 70,
+        "value": 6
+      },
+      {
+        "gt": 80,
+        "value": 4
+      },
+      {
+        "gt": 90,
+        "value": 3
+      }
+    ],
+    "regrowth": {
+      "roll": 600,
+      "tileRoll": [
+        17,
+        12
+      ],
+      "checks": []
+    },
+    "texts": {
+      "plant": "You plant the seeds.",
+      "plantWrong": "You plant the seeds into the ground but realize this isn't going to grow anything here!"
+    }
+  },
+  "harvest": [],
+  "yields": {}
+}

@@ -290,7 +290,8 @@ function digTreasure(
   p: Player,
 ): void {
   const tr = ctx.world.treasure;
-  if (!tr || !lingoEq(tr.map, room.map.name)) {
+  // A world without treasure (`gathering.treasure` left out) buries none.
+  if (!tr || !TREASURE || !lingoEq(tr.map, room.map.name)) {
     return;
   }
   if (ctx.rng.random(TREASURE.chance) !== 1) {

@@ -18,8 +18,11 @@ import {
   findStaleModules,
   findStalePack,
   GENERATED_DIR,
+  MINIMAL_PACK_DIR,
+  MINIMAL_SOURCE,
   renderClassicPack,
   renderDataModules,
+  renderMinimalPack,
   renderRects,
 } from "../build/data.ts";
 import npcsData from "../test-fixtures/npc-expectations.json";
@@ -29,12 +32,14 @@ const CONTENT_DIR = resolve(import.meta.dir, "../content");
 import { bindingsDataSchema } from "../schema/bindings.ts";
 import { churchMapDataSchema } from "../schema/church-map.ts";
 import { classesDataSchema } from "../schema/classes.ts";
+import { gatherDataSchema } from "../schema/gather.ts";
 import { itemRulesDataSchema } from "../schema/item-rules.ts";
 import { itemSchema } from "../schema/items.ts";
 import { monsterSchema, monstersDataSchema } from "../schema/monsters.ts";
 import { seedMapDataSchema } from "../schema/seed-map.ts";
 import { spellsDataSchema } from "../schema/spells.ts";
 import { tileSchema, tilesDataSchema } from "../schema/tiles.ts";
+import { worldSeedSchema } from "../schema/world.ts";
 import { classicData } from "../src/classic.ts";
 import { churchMapData, seedMapData } from "../src/index.ts";
 
@@ -118,6 +123,147 @@ describe("the Classic pack (packages/data/packs/classic/)", () => {
     files.set("data/items.json", "{}");
     files.set("data/new.json", "{}");
     expect(findStalePack(files)).toEqual(["missing: data/new.json", "stale: data/items.json"]);
+  });
+});
+
+describe("the Minimal pack (packages/data/packs/minimal/)", () => {
+  const minimal = renderMinimalPack();
+  const data = (file: string) => JSON.parse(minimal.files.get(`data/${file}.json`) ?? "null");
+
+  test("is current, versioned like Classic, and carries a world seed", () => {
+    expect(findStalePack(minimal.files, MINIMAL_PACK_DIR)).toEqual([]);
+    expect(minimal.sourceStale).toBe(false);
+    expect(minimal.manifest).toMatchObject({
+      id: "minimal",
+      name: "Minimal",
+      format: 1,
+      art: "art",
+      world: "world.json",
+    });
+    const world = worldSeedSchema.parse(JSON.parse(minimal.files.get("world.json") ?? "{}"));
+    expect(world.maps.map((m) => m.map)).toEqual(["x0y0", "x50y50"]);
+    expect([world.startPoint, world.fallbackPoint, world.jailPoint, world.bellMap]).toEqual([
+      { map: "x0y0", x: 1, y: 1 },
+      { map: "x0y0", x: 1, y: 1 },
+      { map: "x50y50", x: 1, y: 1 },
+      null,
+    ]);
+  });
+
+  test("holds the bare minimum and no Classic content", () => {
+    expect(data("items").items.map((i: { name: string }) => i.name)).toEqual(["Gold"]);
+    expect(data("bindings").currency).toEqual({ item: "Gold" });
+    expect(data("classes").classes).toEqual([{ code: 1, name: "Novice", promotion: null }]);
+    expect(data("classes").skills).toEqual([{ skill: "Fighting" }]);
+    expect(data("classes").creation.sexes).toEqual([
+      { code: 1, label: "Male", heads: [1] },
+      { code: 2, label: "Female", heads: [2] },
+    ]);
+    for (const [file, part] of [
+      ["monsters", "monsters"],
+      ["spells", "spells"],
+      ["npc-files", "files"],
+      ["houses", "deeds"],
+      ["social", "factions"],
+      ["help", "topics"],
+    ] as const) {
+      expect([file, data(file)[part]]).toEqual([file, []]);
+    }
+    expect(data("casino")).toEqual({});
+    expect(data("social").assassin).toBeUndefined();
+    const g = data("gather").gathering;
+    expect([g.mining, g.fishing, g.farming, g.treasure]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(Object.keys(data("craft").stations).sort()).toEqual([
+      "failure",
+      "frameOrder",
+      "startPause",
+      "texts",
+    ]);
+    // The rects of its own art only.
+    expect(data("rects")).toEqual({
+      fx: {},
+      chars: {},
+      items: {
+        largegold: expect.any(Array),
+        mediumgold: expect.any(Array),
+        smallgold: expect.any(Array),
+      },
+    });
+  });
+
+  test("its art list names pictures the asset build has, and the build carries them all", () => {
+    const list = JSON.parse(readFileSync(join(MINIMAL_SOURCE, "art.json"), "utf8")) as Record<
+      string,
+      string[]
+    >;
+    expect(list.tiles).toEqual(["g1", "g3", "5a"]);
+    expect(list.items).toEqual(["smallgold", "mediumgold", "largegold"]);
+    expect(list.paperdoll).toContain("bim");
+    expect(list.paperdoll).toContain("defbod-f1-s");
+    expect(list.paperdoll).toContain("bare feet-f2-s");
+    expect(list.paperdoll).toContain("head1-f2-s");
+    expect(list.paperdoll).toContain("head2-f2-s");
+    expect(list.paperdoll?.some((k) => k.startsWith("head3-"))).toBe(false);
+    const index = join(MINIMAL_PACK_DIR, "art", "index.json");
+    if (existsSync(index)) {
+      const built = JSON.parse(readFileSync(index, "utf8")) as {
+        atlases: Record<string, { sprites: Record<string, unknown> }>;
+      };
+      for (const [group, keys] of Object.entries(list)) {
+        expect([group, keys.filter((k) => !(k in (built.atlases[group]?.sprites ?? {})))]).toEqual([
+          group,
+          [],
+        ]);
+      }
+    }
+  });
+
+  test("a world seed keeps the start and fallback off the jail's map, and holds its points' maps", () => {
+    const world = JSON.parse(minimal.files.get("world.json") ?? "{}");
+    const issues = (w: unknown) =>
+      worldSeedSchema.safeParse(w).error?.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+    expect(issues(world)).toBeUndefined();
+    expect(issues({ ...world, fallbackPoint: { map: "x50y50", x: 2, y: 2 } })).toEqual([
+      "fallbackPoint.map: the start and fallback points cannot be on the jail's map",
+    ]);
+    expect(issues({ ...world, jailPoint: { map: "x9y9", x: 1, y: 1 } })).toEqual([
+      "jailPoint.map: x9y9 is not one of the seed's maps",
+    ]);
+    // One map spelt two ways is one map, as the world saves it.
+    expect(issues({ ...world, jailPoint: { map: "x00y0", x: 2, y: 2 } })).toEqual([
+      "startPoint.map: the start and fallback points cannot be on the jail's map",
+      "fallbackPoint.map: the start and fallback points cannot be on the jail's map",
+    ]);
+    expect(issues({ ...world, maps: [...world.maps, { ...world.maps[0], map: "x0y00" }] })).toEqual(
+      ["maps.2.map: x0y00 twice"],
+    );
+  });
+});
+
+describe("gathering's optional sections", () => {
+  const gather = JSON.parse(readFileSync(join(CONTENT_DIR, "gather.json"), "utf8"));
+  const issues = (d: unknown) =>
+    gatherDataSchema.safeParse(d).error?.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+
+  test("an ore table needs the mining section, a treasure node the treasure section", () => {
+    expect(issues(gather)).toBeUndefined();
+    const { mining: _m, ...noMining } = gather.gathering;
+    expect(issues({ ...gather, gathering: noMining })).toEqual([
+      'yields.Mining: yield table "Mining" is an ore strike, but gathering has no mining section',
+    ]);
+    const { treasure: _t, ...noTreasure } = gather.gathering;
+    const found = issues({ ...gather, gathering: noTreasure }) ?? [];
+    expect(found.length).toBeGreaterThan(0);
+    expect(
+      found.every((m) =>
+        m.endsWith("this node digs up treasure, but gathering has no treasure section"),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -455,8 +601,8 @@ describe("monsters, NPCs and tiles", () => {
         named.push([`item-rules swing.sounds[${i}]`, r.sound]);
       }
     }
-    named.push(["casino slots.sound", casinoData.slots.sound.name]);
-    named.push(["casino slots.cash", casinoData.slots.cash.name]);
+    named.push(["casino slots.sound", casinoData.slots!.sound.name]);
+    named.push(["casino slots.cash", casinoData.slots!.cash.name]);
     expect(named.length).toBeGreaterThan(30);
     for (const [where, name] of named) {
       expect(valid.has(name.toLowerCase()), `${where}: ${name}`).toBe(true);
@@ -618,13 +764,14 @@ describe("monsters, NPCs and tiles", () => {
     ]);
   });
 
-  test("the optional bindings may be left out; the start and the riders may not", () => {
+  test("the optional bindings may be left out, the riders included; the start may not", () => {
     const b = classicData.bindings;
     const ok = (v: unknown) => bindingsDataSchema.safeParse(v).success;
     expect(ok({ ...b, currency: {}, cannon: {}, bodies: { riders: b.bodies.riders } })).toBe(true);
     expect(ok({ ...b, start: { ...b.start, bag: [] } })).toBe(true);
     const { riders: _riders, ...noRiders } = b.bodies;
-    expect(ok({ ...b, bodies: noRiders })).toBe(false);
+    // No riders: the world has no vehicles (the content contract refuses a deed that makes one).
+    expect(ok({ ...b, bodies: noRiders })).toBe(true);
     const { start: _start, ...noStart } = b;
     expect(ok(noStart)).toBe(false);
     const line = { item: "Apple", qty: 1 };

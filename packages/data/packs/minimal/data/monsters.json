@@ -1,0 +1,40 @@
+{
+  "monsters": [],
+  "editorLists": {
+    "worldEditor": {
+      "monsters": [],
+      "npcs": []
+    },
+    "npcEditor": {
+      "monsters": [],
+      "npcs": []
+    }
+  },
+  "rules": {
+    "sea": [],
+    "footprint": [],
+    "hostile": [],
+    "officer": [],
+    "sparesInnocent": [],
+    "clearsBlock": [],
+    "killXp": [],
+    "killBroadcasts": [],
+    "namesSelf": [],
+    "noQuests": []
+  },
+  "casting": {
+    "spells": [],
+    "neverCasts": []
+  },
+  "meleeAffinities": [],
+  "skillCaps": {
+    "default": 85,
+    "byBody": [],
+    "intelligenceTiers": []
+  },
+  "generic": {
+    "body": 200,
+    "hp": 128,
+    "defense": 13
+  }
+}

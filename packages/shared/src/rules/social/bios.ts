@@ -9,10 +9,12 @@
 import { type ContentStore, content, onContent } from "../../content/store.ts";
 import { skillValue } from "../core/fighter.ts";
 import { lingoEq, lingoWord } from "../core/lingo.ts";
+import { sexLabel } from "../progression/creation.ts";
 import { factionByKey } from "./factions.ts";
 
 let B: ContentStore["social"]["bios"];
-const tx = (k: keyof typeof B.texts) => B.texts[k].text;
+type BioText = Exclude<keyof typeof B.texts, "male" | "female">;
+const tx = (k: BioText) => B.texts[k].text;
 const fill = (s: string, k: string, v: string) => s.replace(`{${k}}`, v);
 
 /** The bio lines printed by the requester's own client. */
@@ -64,7 +66,7 @@ export function bioScore(skills: readonly number[], hpMax: number, spMax: number
 /** What the target's state gives the bio reply. */
 export interface BioSource {
   name: string;
-  /** 1 male, 2 female (`sex`). */
+  /** The sex's code (`classes.json` `creation.sexes`; Classic: 1 male, 2 female). */
   sex: number;
   level: number;
   profile: string;
@@ -139,9 +141,10 @@ export interface DrawnBio {
 /** The bio drawing for the viewer named `viewer`. A missing item reads as empty. */
 export function drawProfile(items: BioItems, viewer: string): DrawnBio {
   const item = (n: number) => items[n - 1] ?? "";
-  // The third field selects male for 1 and female for 2; any other value leaves the sex text
-  // empty (the default reading).
-  const sex = item(3) === "1" ? tx("male") : item(3) === "2" ? tx("female") : "";
+  // The third field is the sex's code; its label is shown (Classic: Male for 1, Female for 2), and
+  // a code the world lacks leaves the sex text empty (1.6's default reading).
+  const code = item(3);
+  const sex = /^\d+$/.test(code) ? sexLabel(Number(code)) : "";
   const bio = [
     fill(tx("name"), "TEXT", item(1)),
     fill(tx("class"), "TEXT", item(2)),

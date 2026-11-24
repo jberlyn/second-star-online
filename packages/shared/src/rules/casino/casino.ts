@@ -9,9 +9,11 @@ import { lingoContains, type Rng } from "../core/lingo.ts";
 import { hasBehaviour } from "../inventory/behaviours.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 
-type Slots = CasinoData["slots"];
+type Slots = NonNullable<CasinoData["slots"]>;
 
-let S: Slots;
+let S: Slots | undefined;
+/** The rules the last store with this game had, for a game a publish leaves running. */
+let LAST_S: Slots | undefined;
 export let SLOT_TEXT: {
   readonly stand: string;
   readonly poor: string;
@@ -26,16 +28,42 @@ export let SLOT_CASH: Slots["cash"];
 
 onContent((c) => {
   S = c.casino.slots;
-  SLOT_TEXT = { stand: S.standText, poor: S.poorText, win: S.winText, lose: S.loseText };
-  SLOT_COST = S.cost;
-  SLOT_SPIN_FRAMES = S.spinFrames;
-  SLOT_FX = S.fx;
-  SLOT_FACES = S.faces;
-  SLOT_CASH = S.cash;
+  LAST_S = S ?? LAST_S;
+  const r = LAST_S;
+  // The last rules the world had: a spin a publish leaves running finishes on them, and with none
+  // ever, no item plays (`isSlotMachine`), so these are never read.
+  SLOT_TEXT = {
+    stand: r?.standText ?? "",
+    poor: r?.poorText ?? "",
+    win: r?.winText ?? "",
+    lose: r?.loseText ?? "",
+  };
+  SLOT_COST = r?.cost ?? 0;
+  SLOT_SPIN_FRAMES = r?.spinFrames ?? 0;
+  SLOT_FX = r?.fx ?? "";
+  SLOT_FACES = r?.faces ?? 1;
+  SLOT_CASH = r?.cash ?? { name: "", ch: 1 };
 });
 
-/** An item with the `slotMachine` behaviour (Classic: a name containing "Slot Machine") plays. */
+/** The slots, past the `isSlotMachine` gate (which is false in a world without them). */
+function slots(): Slots {
+  // A game already running when a publish took this one out finishes on the rules it began with;
+  // no new one starts (the gate is false). A world that never had it has no game to finish.
+  const rules = S ?? LAST_S;
+  if (!rules) {
+    throw new Error("this world has no slot machines");
+  }
+  return rules;
+}
+
+/**
+ * An item with the `slotMachine` behaviour (Classic: a name containing "Slot Machine") plays, in a
+ * world that has slots.
+ */
 export function isSlotMachine(name: string): boolean {
+  if (!S) {
+    return false;
+  }
   return (
     hasBehaviour(name, "slotMachine") ||
     (S.item !== undefined && !isEngineFixture(name) && lingoContains(name, S.item.text))
@@ -59,16 +87,18 @@ export function slotOpenCheck(
 
 /** Three reels, `random(4)` each in order. */
 export function slotReels(rng: Rng): [number, number, number] {
-  const a = rng.random(S.faces);
-  const b = rng.random(S.faces);
-  const c = rng.random(S.faces);
+  const { faces } = slots();
+  const a = rng.random(faces);
+  const b = rng.random(faces);
+  const c = rng.random(faces);
   return [a, b, c];
 }
 
 /** The gross payout: 0, or `base` + the first matching row's bonus. */
 export function slotPayout(reels: readonly [number, number, number]): number {
-  const row = S.payouts.find((r) => r.faces.every((f, i) => f === reels[i]));
-  return row ? S.base + row.bonus : 0;
+  const s = slots();
+  const row = s.payouts.find((r) => r.faces.every((f, i) => f === reels[i]));
+  return row ? s.base + row.bonus : 0;
 }
 
 export type SlotSettlement = { ok: false } | { ok: true; gold: number; win: boolean };
@@ -78,11 +108,12 @@ export type SlotSettlement = { ok: false } | { ok: true; gold: number; win: bool
  * (SSO answers it with the poor text and a stopped lever).
  */
 export function slotSettle(gold: number, reels: readonly [number, number, number]): SlotSettlement {
-  if (gold - S.cost < 0) {
+  const { cost } = slots();
+  if (gold - cost < 0) {
     return { ok: false };
   }
   const gross = slotPayout(reels);
-  return { ok: true, gold: gold - S.cost + gross, win: gross > 0 };
+  return { ok: true, gold: gold - cost + gross, win: gross > 0 };
 }
 
 /**

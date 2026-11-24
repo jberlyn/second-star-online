@@ -92,11 +92,16 @@ export function questReward(bag: Bag, reward: string): number {
  * `FindNewQuest`: the NPC is one of the pool's named NPCs, each equally likely; then a roll over the
  * wanted pool and one over the rewards (1.6's were `random(20)` each; the Classic pack dropped the
  * items nobody could get). (1.6 rolled `random(44)` for the NPC, and roll 29 named nobody, writing a
- * line no NPC would answer.)
+ * line no NPC would answer.) Empty when the world has no pools to draw from.
  */
 export function findNewQuest(rng: Rng): string {
   const pools = content().quests.pools;
   const names = pools.npcs.flatMap((p) => (p.npc ? [p.npc] : []));
+  // A world with no quest pools (the Minimal pack's) has no quests: an empty line, never a broken
+  // one. Classic's pools are full, so its rolls are as they were.
+  if (names.length === 0 || pools.wanted.length === 0 || pools.rewards.length === 0) {
+    return "";
+  }
   const npc = names[rng.random(names.length) - 1] ?? names[0] ?? "";
   const w = rng.random(pools.wanted.length);
   const r = rng.random(pools.rewards.length);
@@ -135,16 +140,18 @@ export function questSorry(npc: string): string {
   return fill(content().social.questReplies.give.sorry, npc);
 }
 
-/** Oraku's exchange: his own orb for the Royal Ninja Uniform. */
-export let ORAKU: ContentStore["social"]["questReplies"]["oraku"];
+type Oraku = NonNullable<ContentStore["social"]["questReplies"]["oraku"]>;
 
-export function orakuLine(): string {
-  return fill(ORAKU.text, ORAKU.npc);
+/** Oraku's exchange: his own orb for the Royal Ninja Uniform; undefined in a world without it. */
+export let ORAKU: Oraku | undefined;
+
+export function orakuLine(o: Oraku): string {
+  return fill(o.text, o.npc);
 }
 
-/** True when `npc` and `given` are Oraku's exchange (`=`, case ignored). */
-export function isOrakuExchange(npc: string, given: string): boolean {
-  return lingoEq(npc, ORAKU.npc) && lingoEq(given, ORAKU.item);
+/** Oraku's exchange when `npc` and `given` are it (`=`, case ignored), else null. */
+export function orakuExchange(npc: string, given: string): Oraku | null {
+  return ORAKU && lingoEq(npc, ORAKU.npc) && lingoEq(given, ORAKU.item) ? ORAKU : null;
 }
 
 export interface QuestReply {
