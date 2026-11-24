@@ -116,6 +116,11 @@ export const itemRulesDataSchema = z
         tier: int.min(1).max(1000).optional(),
         /** A ladder in `ladders`. */
         ladder: z.string().min(1).optional(),
+        /**
+         * The hit counter a swing advances (default the row's `pattern`, so Classic's Axe and Gold
+         * Axe share one): an item editor's exact row keeps the counter of the row it came from.
+         */
+        counter: z.string().min(1).optional(),
       }),
     ),
     /**

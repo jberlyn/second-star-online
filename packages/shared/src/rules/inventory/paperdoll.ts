@@ -41,6 +41,11 @@ export function attackFrame(facing: Facing): BodyFrame {
 }
 
 /** `+N` and one trailing space stripped. */
+/** The name the paperdoll draws an item by: without a `+N` ending (`paperdoll.aliases` test it). */
+export function lookName(name: string): string {
+  return strip(name);
+}
+
 function strip(name: string): string {
   let n = name.includes("+") ? (name.split("+")[0] ?? "") : name;
   if (n.endsWith(" ")) {

@@ -155,8 +155,12 @@ describe("AttPower", () => {
   });
   test("every row value form evaluates", () => {
     expect(evalValue(3, minRng)).toBe(3);
-    expect(evalValue("random(4)", maxRng)).toBe(4);
-    expect(evalValue("2 + random(3)", maxRng)).toBe(5);
+    expect(evalValue({ flat: 0, randomN: 4 }, maxRng)).toBe(4);
+    expect(evalValue({ flat: 2, randomN: 3 }, maxRng)).toBe(5);
+    // A roll of 0 draws nothing, so it leaves the random sequence alone.
+    let draws = 0;
+    expect(evalValue({ flat: 7, randomN: 0 }, { random: () => ++draws })).toBe(7);
+    expect(draws).toBe(0);
   });
   test("bug fixed: a bow with no arrows, or no crystal for them, is refused before the swing", () => {
     const bow = { weapon: "Wooden Bow", offHand: "NOTHING" };

@@ -16,7 +16,12 @@ export type {
   ArtTransparency,
   ArtWorn,
 } from "../schema/art.ts";
-export type { AttPowerData, AttPowerTier } from "../schema/attpower.ts";
+export type {
+  AttPowerBase,
+  AttPowerData,
+  AttPowerTier,
+  RolledValue,
+} from "../schema/attpower.ts";
 export type {
   Amount,
   BalanceData,

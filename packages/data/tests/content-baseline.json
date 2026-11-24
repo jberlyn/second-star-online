@@ -28,145 +28,145 @@
   "attpower.json#/attPower/base": [
     [
       "Knife",
-      "c291b7dc725acb5c"
+      "171c39b152d551f6"
     ],
     [
       "Dagger",
-      "5465860b2ff99067"
+      "8f95aef29bbcc723"
     ],
     [
       "Short Sword",
-      "adca628de2e008b9"
+      "4f71eeb9e01d59f1"
     ],
     [
       "Axe",
-      "07d45909c386f25b"
+      "0680b848716fb778"
     ],
     [
       "Gold Axe",
-      "9e61ffa586596130"
+      "2a70f11b11d3c747"
     ],
     [
       "War Hammer",
-      "efd7c8b5b8f187cf"
+      "e3a49a1bcca9271b"
     ],
     [
       "Thor's Hammer",
-      "33378c08e38f4f02"
+      "5a37ea9357cc9d9f"
     ],
     [
       "Long Sword",
-      "e48951f3362c3443"
+      "cbc9ba74ac47a7b6"
     ],
     [
       "Gold Sword",
-      "42ea4e87968e877e"
+      "bfe57066f9b18010"
     ],
     [
       "Katana",
-      "c04fdabb51f3d88f"
+      "35abb92c940246e7"
     ],
     [
       "Steel Scimitar",
-      "4aae7c85486ec9e3"
+      "c42259dca7314bd5"
     ],
     [
       "Bo",
-      "bef02037b42a7ccf"
+      "c81d58c72e59a48b"
     ],
     [
       "Fire Sword",
-      "56d24b0ebc43b7f0"
+      "411ebe6ad9279dc7"
     ],
     [
       "Sword of Hope",
-      "17324e2eb78dd5ee"
+      "57c4359bf4abaadc"
     ],
     [
       "Broad Sword",
-      "ab91143c03a3670d"
+      "b895af1ceda5f8e0"
     ],
     [
       "Knight's Sword",
-      "a0bb4da1f93c9a62"
+      "c304bddc5399ed73"
     ],
     [
       "Star Sword",
-      "3102c32efda9fa36"
+      "1eab14e05a3135b8"
     ],
     [
       "Wooden Staff",
-      "b0acb5b6b63cb45c"
+      "3dfb7118b7f48071"
     ],
     [
       "Steel Staff",
-      "19adc6bededcaf31"
+      "81ef95b5d8a14352"
     ],
     [
       "Gold Staff",
-      "ac4f5f4b88b9c1c2"
+      "df74111408b0c698"
     ],
     [
       "Lord's Staff",
-      "02cdcb882cfad1bb"
+      "db67b14448fb99a9"
     ],
     [
       "Fire Staff",
-      "5eb5c8b16fac0037"
+      "3b2e3b69ee527559"
     ],
     [
       "Dark Sword",
-      "8fa83c713d1d304e"
+      "9c75af05452a8ff2"
     ],
     [
       "Dark Scimitar",
-      "7fc78de268516be0"
+      "240930bf2f96243e"
     ],
     [
       "Unholy Lance",
-      "1a215f99ac09d626"
+      "65ed973ddb7826a6"
     ],
     [
       "Mining Hammer",
-      "7847a295eb56f729"
+      "3769d02642b6dd53"
     ],
     [
       "Fishing Pole",
-      "7030cb74fac174c8"
+      "c942a87ed28c3138"
     ],
     [
       "Blacksmith Hammer",
-      "def0db0fac91c25a"
+      "337e80a4b11262f2"
     ],
     [
       "Damaged Sword",
-      "96caef12033a2c7a"
+      "d80988f049ee325d"
     ],
     [
       "Ice Sword",
-      "2fed6c083529f358"
+      "1cf60b35c8a6f537"
     ],
     [
       "Pharaoh Sword",
-      "be17e35039fe60bc"
+      "cddff42f19d3d550"
     ]
   ],
   "attpower.json#/attPower/exactOverrides": [
     [
       "Steel Bow",
-      "8791fdc024dc8bb8"
+      "fa82cf862d915057"
     ],
     [
       "Wooden Bow",
-      "781ae49ebf8b76d6"
+      "274c70dae5c0bd58"
     ],
     [
       "Wooden Crossbow",
-      "c0431a3bef59b156"
+      "0284addeb782904e"
     ],
     [
       "Silver Crossbow",
-      "66d7bb4b4fdb6f38"
+      "83102e2fbc2fafa8"
     ]
   ],
   "attpower.json#/attPower/ringBonus": [
@@ -182,7 +182,7 @@
   "attpower.json#/attPower/skillBlocks": [
     [
       "bow",
-      "4cd2870b14005a72"
+      "0e5bd650985793d7"
     ],
     [
       "nothing",
@@ -198,7 +198,7 @@
     ],
     [
       "Fire",
-      "b92cec6e499e09ac"
+      "172b32b798f2bbdc"
     ],
     [
       "Long Sword",
@@ -246,7 +246,7 @@
     ],
     [
       "dagger",
-      "ca44ad88055aece8"
+      "fa0a2a57f7dcc770"
     ],
     [
       "Staff",

@@ -83,7 +83,9 @@ export function runMigrations(db: Db, migrations: readonly Migration[]): Migrati
     const before = rebuild ? violations() : new Set<string>();
     try {
       db.transaction(() => {
-        db.run(m.sql);
+        // Trimmed: bun:sqlite reports only the error of a multi-statement run's last statement, and
+        // trailing whitespace counts as one, so a migration's last statement could fail silently.
+        db.run(m.sql.trimEnd());
         if (rebuild) {
           const broken = [...violations()].filter((v) => !before.has(v));
           if (broken.length > 0) {

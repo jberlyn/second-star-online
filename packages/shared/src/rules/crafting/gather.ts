@@ -98,7 +98,10 @@ export interface ToolUse {
   can: ToolCan;
   /** The row's tier, 1 when it gives none. */
   tier: number;
-  /** The hit counter it advances: the row's pattern, so an Axe and a Gold Axe share one. */
+  /**
+   * The hit counter it advances: the row's `counter`, else its pattern, so an Axe and a Gold Axe
+   * share one.
+   */
   counter: string;
 }
 
@@ -115,7 +118,7 @@ export function toolUses(weapon: string): ToolUse[] {
   const out: ToolUse[] = [];
   for (const r of content().itemRules.tools) {
     if (r.can !== undefined && ruleMatches(weapon, r)) {
-      out.push({ can: r.can, tier: r.tier ?? 1, counter: r.pattern });
+      out.push({ can: r.can, tier: r.tier ?? 1, counter: r.counter ?? r.pattern });
     }
   }
   return out;

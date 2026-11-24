@@ -69,6 +69,21 @@ describe("content report (lists every name rule a name matches)", () => {
     expect(text("Watering Bucket")).toContain("database edits may differ");
   });
 
+  test("a name prints its report from the command line, with no store installed", () => {
+    // The masterworks come from the data the report reads (#30 review): no "no content store".
+    const run = Bun.spawnSync([
+      "bun",
+      join(import.meta.dir, "../src/cli/content-report.ts"),
+      "Sword of Hope +1",
+    ]);
+    expect(run.stderr.toString()).toBe("");
+    expect(run.exitCode).toBe(0);
+    const out = run.stdout.toString();
+    expect(out).toContain('Content report for "Sword of Hope +1"');
+    expect(out).toContain('exact "Sword of Hope"');
+    expect(out).toContain("every matching row rolls; the last roll stands");
+  });
+
   test("an empty name prints the usage", () => {
     const run = Bun.spawnSync(["bun", join(import.meta.dir, "../src/cli/content-report.ts")]);
     expect(run.exitCode).toBe(2);

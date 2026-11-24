@@ -5,225 +5,193 @@
       {
         "match": "contains",
         "pattern": "Knife",
-        "expr": "2 + random(3)",
         "flat": 2,
         "randomN": 3
       },
       {
         "match": "contains",
         "pattern": "Dagger",
-        "expr": "4 + random(2)",
         "flat": 4,
         "randomN": 2
       },
       {
         "match": "contains",
         "pattern": "Short Sword",
-        "expr": "4 + random(5)",
         "flat": 4,
         "randomN": 5
       },
       {
         "match": "contains",
         "pattern": "Axe",
-        "expr": "4 + random(2)",
         "flat": 4,
         "randomN": 2
       },
       {
         "match": "contains",
         "pattern": "Gold Axe",
-        "expr": "6 + random(6) + (random(strength) / 2)",
         "flat": 6,
         "randomN": 6,
-        "extra": "random(strength) / 2"
+        "strengthHalf": true
       },
       {
         "match": "contains",
         "pattern": "War Hammer",
-        "expr": "9 + random(5)",
         "flat": 9,
         "randomN": 5
       },
       {
         "match": "contains",
         "pattern": "Thor's Hammer",
-        "expr": "12 + random(6)",
         "flat": 12,
         "randomN": 6
       },
       {
         "match": "contains",
         "pattern": "Long Sword",
-        "expr": "6 + random(6)",
         "flat": 6,
         "randomN": 6
       },
       {
         "match": "contains",
         "pattern": "Gold Sword",
-        "expr": "7 + random(9)",
         "flat": 7,
         "randomN": 9
       },
       {
         "match": "contains",
         "pattern": "Katana",
-        "expr": "3 + random(6)",
         "flat": 3,
         "randomN": 6
       },
       {
         "match": "contains",
         "pattern": "Steel Scimitar",
-        "expr": "6 + random(4)",
         "flat": 6,
         "randomN": 4
       },
       {
         "match": "exact",
         "pattern": "Bo",
-        "expr": "5 + random(8)",
         "flat": 5,
         "randomN": 8
       },
       {
         "match": "contains",
         "pattern": "Fire Sword",
-        "expr": "5 + random(4)",
         "flat": 5,
         "randomN": 4
       },
       {
         "match": "contains",
         "pattern": "Sword of Hope",
-        "expr": "8 + random(5)",
         "flat": 8,
         "randomN": 5
       },
       {
         "match": "contains",
         "pattern": "Broad Sword",
-        "expr": "8 + random(6)",
         "flat": 8,
         "randomN": 6
       },
       {
         "match": "contains",
         "pattern": "Knight's Sword",
-        "expr": "6 + random(8)",
         "flat": 6,
         "randomN": 8
       },
       {
         "match": "contains",
         "pattern": "Star Sword",
-        "expr": "11 + random(7)",
         "flat": 11,
         "randomN": 7
       },
       {
         "match": "contains",
         "pattern": "Wooden Staff",
-        "expr": "2 + random(3)",
         "flat": 2,
         "randomN": 3
       },
       {
         "match": "contains",
         "pattern": "Steel Staff",
-        "expr": "3 + random(4)",
         "flat": 3,
         "randomN": 4
       },
       {
         "match": "contains",
         "pattern": "Gold Staff",
-        "expr": "4 + random(4)",
         "flat": 4,
         "randomN": 4
       },
       {
         "match": "contains",
         "pattern": "Lord's Staff",
-        "expr": "6 + random(6)",
         "flat": 6,
         "randomN": 6
       },
       {
         "match": "contains",
         "pattern": "Fire Staff",
-        "expr": "3 + random(4)",
         "flat": 3,
         "randomN": 4
       },
       {
         "match": "contains",
         "pattern": "Dark Sword",
-        "expr": "5 + random(3)",
         "flat": 5,
         "randomN": 3
       },
       {
         "match": "contains",
         "pattern": "Dark Scimitar",
-        "expr": "4 + random(9)",
         "flat": 4,
         "randomN": 9
       },
       {
         "match": "contains",
         "pattern": "Unholy Lance",
-        "expr": "5 + random(5)",
         "flat": 5,
         "randomN": 5
       },
       {
         "match": "contains",
         "pattern": "Mining Hammer",
-        "expr": "2 + random(3)",
         "flat": 2,
         "randomN": 3
       },
       {
         "match": "contains",
         "pattern": "Fishing Pole",
-        "expr": "random(3)",
         "flat": 0,
         "randomN": 3
       },
       {
         "match": "contains",
         "pattern": "Blacksmith Hammer",
-        "expr": "random(3)",
         "flat": 0,
         "randomN": 3
       },
       {
         "match": "contains",
         "pattern": "Damaged Sword",
-        "expr": "random(3)",
         "flat": 0,
         "randomN": 3
       },
       {
         "match": "contains",
         "pattern": "Ice Sword",
-        "expr": "5 + random(12)",
         "flat": 5,
         "randomN": 12
       },
       {
         "match": "contains",
         "pattern": "Pharaoh Sword",
-        "expr": "13 + random(13)",
         "flat": 13,
         "randomN": 13
       },
       {
         "match": "contains",
         "pattern": "Dragon Sword",
-        "expr": "12 + random(8)",
         "flat": 12,
         "randomN": 8
       }
@@ -232,30 +200,26 @@
       {
         "match": "exact",
         "pattern": "Steel Bow",
-        "expr": "1 + random(3)",
         "flat": 1,
         "randomN": 3
       },
       {
         "match": "exact",
         "pattern": "Wooden Bow",
-        "expr": "1",
         "flat": 1,
-        "randomN": null
+        "randomN": 0
       },
       {
         "match": "exact",
         "pattern": "Wooden Crossbow",
-        "expr": "1",
         "flat": 1,
-        "randomN": null
+        "randomN": 0
       },
       {
         "match": "exact",
         "pattern": "Silver Crossbow",
-        "expr": "3",
         "flat": 3,
-        "randomN": null
+        "randomN": 0
       }
     ],
     "arrowBonus": [
@@ -315,7 +279,10 @@
               "Archery < 10"
             ],
             "op": "set",
-            "value": "1 + random(2)"
+            "value": {
+              "flat": 1,
+              "randomN": 2
+            }
           },
           {
             "subWeapon": null,
@@ -324,7 +291,10 @@
               "Archery < 20"
             ],
             "op": "set",
-            "value": "2 + random(3)"
+            "value": {
+              "flat": 2,
+              "randomN": 3
+            }
           },
           {
             "subWeapon": null,
@@ -333,7 +303,10 @@
               "Archery < 30"
             ],
             "op": "set",
-            "value": "3 + random(4)"
+            "value": {
+              "flat": 3,
+              "randomN": 4
+            }
           },
           {
             "subWeapon": null,
@@ -638,7 +611,10 @@
               "MartialArts > 90"
             ],
             "op": "add",
-            "value": "random(4)"
+            "value": {
+              "flat": 0,
+              "randomN": 4
+            }
           }
         ]
       },
@@ -1030,7 +1006,10 @@
               "fire > 90"
             ],
             "op": "add",
-            "value": "random(4)"
+            "value": {
+              "flat": 0,
+              "randomN": 4
+            }
           }
         ]
       },
@@ -1766,7 +1745,10 @@
               "Slash > 90"
             ],
             "op": "add",
-            "value": "random(5)"
+            "value": {
+              "flat": 0,
+              "randomN": 5
+            }
           }
         ]
       },

@@ -10,6 +10,7 @@ export {
 export * from "./content/balance.ts";
 export * from "./content/bodies.ts";
 export * from "./content/fx.ts";
+export * from "./content/name-tables.ts";
 export * from "./content/picture.ts";
 export * from "./content/sounds.ts";
 export * from "./content/store.ts";
@@ -125,6 +126,7 @@ export {
   TREASURE,
   WATERING_SKILL,
 } from "./rules/crafting/gather.ts";
+export * from "./rules/crafting/masterwork.ts";
 export * from "./rules/economy/playershop.ts";
 export * from "./rules/economy/quests.ts";
 export {

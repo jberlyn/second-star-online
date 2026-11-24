@@ -8,7 +8,7 @@
  * Mining Hammer's row is spelled right, the Archery tiers are steps rather than a cascade with a
  * gap at 30, and the Gold Sword's HeavyArms block runs once.
  */
-import type { AttPowerTier } from "@secondstaronline/data";
+import type { AttPowerBase, AttPowerTier, RolledValue } from "@secondstaronline/data";
 
 import { content } from "../../content/store.ts";
 import { type Fighter, skillValue } from "../core/fighter.ts";
@@ -78,20 +78,24 @@ export interface AttackPowerResult {
   crystal: CrystalColour | null;
 }
 
-/** Evaluates a row value: a number, `random(n)` or `a + random(n)`. */
-export function evalValue(v: number | string, rng: Rng): number {
+/** Evaluates a tier value: a number, or `flat + random(randomN)` (no draw when `randomN` is 0). */
+export function evalValue(v: number | RolledValue, rng: Rng): number {
   if (typeof v === "number") {
     return v;
   }
-  const m = /^(?:(\d+) \+ )?random\((\d+)\)$/.exec(v);
-  if (!m) {
-    const n = Number(v);
-    if (Number.isInteger(n)) {
-      return n;
-    }
-    throw new Error(`attpower: cannot evaluate ${v}`);
+  return v.flat + (v.randomN > 0 ? rng.random(v.randomN) : 0);
+}
+
+/**
+ * A base roll: `flat + random(randomN)`, then `random(strength) / 2` when the row says so (the
+ * Gold Axe). Draws in that order, as 1.6 did.
+ */
+export function rollBase(row: AttPowerBase, str: number, rng: Rng): number {
+  let power = row.flat + (row.randomN > 0 ? rng.random(row.randomN) : 0);
+  if (row.strengthHalf) {
+    power += lingoDiv(rng.random(str), 2);
   }
-  return Number(m[1] ?? 0) + rng.random(Number(m[2]));
+  return power;
 }
 
 /** What a tier condition reads: the skills, and the character level. */
@@ -165,10 +169,7 @@ export function attackPower(
   // Base rows by `contains`; every match re-rolls, the last one wins.
   for (const row of content().attPower.attPower.base) {
     if (row.match === "exact" ? lingoEq(w, row.pattern) : lingoContains(w, row.pattern)) {
-      power = row.flat + (row.randomN === null ? 0 : rng.random(row.randomN));
-      if (row.extra) {
-        power += lingoDiv(rng.random(f.str), 2); // Gold Axe
-      }
+      power = rollBase(row, f.str, rng);
     }
   }
   if (w.includes("+")) {
@@ -178,7 +179,7 @@ export function attackPower(
   const isBow = hasBehaviour(w, "bow");
   for (const row of content().attPower.attPower.exactOverrides) {
     if (lingoEq(w, row.pattern)) {
-      power = row.flat + (row.randomN === null ? 0 : rng.random(row.randomN));
+      power = rollBase(row, f.str, rng);
     }
   }
   // The faction perk `melee` (Classic: a Warrior's tier).
