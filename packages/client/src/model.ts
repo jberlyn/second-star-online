@@ -395,6 +395,13 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
         m.monsters.set(ev.monster.slot, toMonster(ev.monster));
         m.slotNames[ev.monster.slot - 1] = ev.monster.name;
         break;
+      case "mbody": {
+        const mon = m.monsters.get(ev.slot);
+        if (mon) {
+          mon.body = ev.body;
+        }
+        break;
+      }
       case "mmove": {
         const mon = m.monsters.get(ev.slot);
         if (mon) {

@@ -57,12 +57,30 @@ export const WORN_SHEET = {
   h: WORN_FACINGS.length * PAPERDOLL_SIZE.h,
 } as const;
 
-/** A frame's cell on the sheet, by its top-left corner. */
-export function sheetCell(id: ArtFrameId): { x: number; y: number } {
+/** A frame's cell on a sheet of `cell`-sized cells (the worn sheet's by default), by its top-left corner. */
+export function sheetCell(
+  id: ArtFrameId,
+  cell: { w: number; h: number } = WORN_CELL,
+): { x: number; y: number } {
   const [frame, facing] = id.split("-") as [string, string];
   const col = Number(frame.slice(1)) - 1;
   const row = WORN_FACINGS.indexOf(facing.toUpperCase() as Facing);
-  return { x: col * WORN_CELL.w, y: row * WORN_CELL.h };
+  return { x: col * cell.w, y: row * cell.h };
+}
+
+/** One cell of a sheet's pixels, exactly as they are. */
+export function cutCell(
+  sheet: Pixels,
+  id: ArtFrameId,
+  cell: { w: number; h: number } = WORN_CELL,
+): Pixels {
+  const { x: cx, y: cy } = sheetCell(id, cell);
+  const out = new Uint8Array(cell.w * cell.h * 4);
+  for (let y = 0; y < cell.h; y++) {
+    const from = ((cy + y) * sheet.width + cx) * 4;
+    out.set(sheet.data.subarray(from, from + cell.w * 4), y * cell.w * 4);
+  }
+  return { width: cell.w, height: cell.h, data: out };
 }
 
 /**

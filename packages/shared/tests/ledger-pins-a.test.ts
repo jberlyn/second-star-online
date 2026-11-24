@@ -50,9 +50,15 @@ describe("the client's messages", () => {
   });
 
   test("SSO: no client message sets a body, makes food or fires an effect; a cast names only the spell and the point", () => {
-    for (const t of types) {
+    // The Content page's body messages (issue #29, stage 4) paint content bodies or give a monster
+    // one (contentEditor permission); none changes the sender's own body.
+    const contentBodies: string[] = ["contentBodyArt", "contentBodySheet", "contentBody"];
+    for (const t of types.filter((x) => !contentBodies.includes(x))) {
       expect(t).not.toMatch(/body|food|fireball|effect|^fx|portal|summon/i);
     }
+    expect(types.filter((x) => contentBodies.includes(x)).sort() as string[]).toEqual(
+      [...contentBodies].sort(),
+    );
     expect(ok({ t: "cast", spell: "Fireball", x: 100, y: 100 })).toBe(true);
     for (const extra of [{ body: 57 }, { item: "Apple" }, { target: "Bob" }, { dmg: 9 }]) {
       expect(ok({ t: "cast", spell: "Fireball", x: 100, y: 100, ...extra })).toBe(false);

@@ -39,8 +39,10 @@ import {
 import { ART_FRAME_IDS, type ArtSoundFormat } from "@secondstaronline/data/schema";
 import {
   ALL_FRAME_IDS,
+  BODY_FRAMES,
   blankCell,
-  sheetCell,
+  bodySheetCell,
+  cutCell,
   visibleBounds,
   WORN_CELL,
   WORN_SHEET,
@@ -128,18 +130,32 @@ export function sliceWornSheet(sheet: Rgba): Map<ArtFrameId, Rgba> | string {
     if (id === "f4-s") {
       continue;
     }
-    const { x: cx, y: cy } = sheetCell(id);
-    const cell = createRgba(WORN_CELL.w, WORN_CELL.h);
-    for (let y = 0; y < WORN_CELL.h; y++) {
-      const from = ((cy + y) * sheet.width + cx) * 4;
-      cell.data.set(sheet.data.subarray(from, from + WORN_CELL.w * 4), y * WORN_CELL.w * 4);
-    }
-    const blank = blankCell(cell);
-    if (!blank) {
+    const cell = cutCell(sheet, id) as Rgba;
+    if (!blankCell(cell)) {
       out.set(id, cell);
     }
   }
   return out.size > 0 ? out : "every cell of the sheet is blank";
+}
+
+/**
+ * Cuts a body sheet (issue #29, stage 4) into its 16 frames: rows N, E, S, W of frames F1-F4,
+ * every cell the same size (the sheet's width and height divided by 4), at most 512×512. Every
+ * cell is kept, blank or not: a body draws all 16, and the page reports a frame that shows
+ * nothing. The cells keep their pixels exactly.
+ */
+export function sliceBodySheet(
+  sheet: Rgba,
+): { cell: { w: number; h: number }; frames: Map<ArtFrameId, Rgba> } | string {
+  const cell = bodySheetCell(sheet.width, sheet.height);
+  if ("error" in cell) {
+    return cell.error;
+  }
+  const frames = new Map<ArtFrameId, Rgba>();
+  for (const id of BODY_FRAMES) {
+    frames.set(id, cutCell(sheet, id, cell) as Rgba);
+  }
+  return { cell, frames };
 }
 
 /** "a WAV", "an MP3", "an OGG". */

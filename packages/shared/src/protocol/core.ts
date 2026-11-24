@@ -246,6 +246,11 @@ export type DeltaEvent =
   /** An operator emptied or changed the slot: the monster is removed without a kill. */
   | { e: "mgone"; slot: number }
   /**
+   * A content publish changed what a live monster is drawn with (issue #29): its body number now.
+   * Nothing else about it changes.
+   */
+  | { e: "mbody"; slot: number; body: number }
+  /**
    * A player swings: attack animation and the swing sound. `atDelay`/`actionDelay` are the
    * cooldowns it set, so the swinger's client can re-predict its attack lock.
    */

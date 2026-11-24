@@ -352,7 +352,7 @@ A species saved before these flags existed took its mechanics from its body numb
    { "name": "Frost Wolf", "text": "BIO|Name: Frost Wolf\rPRO|A fierce wolf of the snow.\rINV|5 Gold:1" }
    ```
 
-Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the atlases would leave the monster invisible (its `<body>-f2-s` key is also missing from the generated `packages/data/packs/classic/data/rects.json`, which is a quick way to check). Body numbers run from 1 to 9999 everywhere (monsters, `bindings.json` and uploads); a running server's operators can upload a body of their own, numbered from 1000, on the Content page instead (see [Art and sounds](running-a-server.md#art-and-sounds)).
+Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the atlases would leave the monster invisible (its `<body>-f2-s` key is also missing from the generated `packages/data/packs/classic/data/rects.json`, which is a quick way to check). Body numbers run from 1 to 9999 everywhere (monsters, `bindings.json` and uploads); a running server's operators can upload a body of their own on the Content page instead, from the monster's row or the Bodies section, and the server numbers it from 1000 (see [Bodies](running-a-server.md#bodies)).
 
 `npc-files.json` is not only a seed: the server loads it at every start as the base NPC store, then applies the `npc_files` rows saved by the NPC Editor on top. So a rebuilt image changes every NPC that has no saved NPC Editor edit, on existing servers too.
 
@@ -671,7 +671,7 @@ Every world runs on a pack, chosen when its database is created (`SSO_CONTENT`; 
 | Art | 1.6's, plus `assets/added/` | the few pictures it needs, listed in `minimal/pictures.json` and packed by `bun run assets:build` from the same sources as Classic's (copies of 1.6's) |
 | World | SSO's seed, Jail and Church maps, seeded by the original migrations (they move into the pack with issue #43) | its [world seed](#world-seeds): an all-grass start at `x0y0` and an all-grass jail at `x50y50` |
 
-`bun run data:build` validates and versions both packs the same way: each has a source `pack.json`, and a content change bumps its version. The Minimal pack is a preview while art uploads arrive (issue #29): item pictures and worn layers can be uploaded on the Content page, and body, effect and tile art follow, so until then new content of those kinds can only reuse the pictures a pack ships.
+`bun run data:build` validates and versions both packs the same way: each has a source `pack.json`, and a content change bumps its version. The Minimal pack is a preview while art uploads arrive (issue #29): item pictures, worn layers and monster bodies can be uploaded on the Content page, and effect and tile art follow, so until then new content of those kinds can only reuse the pictures a pack ships.
 
 **Building your own game on Minimal.** On a running server, use the Control Panel's [Content page](running-a-server.md#the-content-page): every row the Minimal pack has can be changed or removed, and new rows (skills, classes, items, monsters, NPC files, spells, recipes, harvest nodes) are added the same way as on Classic. The contract keeps the world playable: a draft that removes the last start class or skill, or the currency, is refused. To change the pack itself (a fork), edit `packages/data/minimal/` and rebuild, as with Classic's content files.
 

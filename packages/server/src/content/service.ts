@@ -10,16 +10,24 @@ import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
 import { type ArtFrameId, ASSET_INDEX_FILE, type PackArtIndex } from "@secondstaronline/data";
-import { encodePng } from "@secondstaronline/data/art";
+import { applyKey, encodePng, GREEN } from "@secondstaronline/data/art";
 import {
   artDataSchema,
   comparePackVersions,
   DATASET_SCHEMAS,
+  NO_BODY_NUMBERS,
+  nextOperatorBody,
   skillDependents,
 } from "@secondstaronline/data/schema";
 import {
+  type BodyChange,
+  type BodyFrameSet,
+  type BodyMonsterRow,
+  bodyNumbersOf,
+  bodyUses,
   buildContentStore,
   CONTENT_FORMAT,
+  type ContentBodyArtView,
   type ContentData,
   type ContentStore,
   type ContentWornArtView,
@@ -33,10 +41,12 @@ import {
   isUniqueContainer,
   ownLayerPossible,
   type PictureChange,
+  planBody,
   planPicture,
   planWorn,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
+  visibleBounds,
   type WornChange,
   wornLayerOf,
   wornLayers,
@@ -83,11 +93,13 @@ import {
   type BuiltArt,
   checkUpload,
   keysOf,
+  SPRITE_MAX_SIDE,
+  sliceBodySheet,
   sliceWornSheet,
   type UploadKind,
   withArtRects,
 } from "./art.ts";
-import { lostArtProblems, usedArt, wornSetProblems } from "./art-usage.ts";
+import { lostArtProblems, newBodyGaps, usedArt, wornSetProblems } from "./art-usage.ts";
 import {
   type CleanupRow,
   cleanUses,
@@ -800,6 +812,7 @@ export class ContentService {
     return [
       ...this.art.problems(next.art),
       ...lostArtProblems(next, this.packArt, before, after),
+      ...newBodyGaps(next, this.published, this.packArt, before, after),
       ...wornSetProblems(next, this.published),
     ];
   }
@@ -1207,6 +1220,174 @@ export class ContentService {
     }
     this.checked = null;
     return { ok: true, frames };
+  }
+
+  /** The body numbers the installed packs draw (issue #29, stage 4). */
+  packBodies(): number[] {
+    return [...bodyNumbersOf(this.packArt.sprites.bodies)].sort((a, b) => a - b);
+  }
+
+  /**
+   * The number a new body takes in `data`: the first from 1000 that no pack draws, no upload has
+   * and no content names (issue #29, stage 4).
+   */
+  private nextBody(data: ContentData): number | null {
+    const taken = new Set<number>([
+      ...bodyNumbersOf(this.packArt.sprites.bodies),
+      ...data.art.bodies.map((a) => Number(a.name)),
+      ...bodyUses(data).keys(),
+      // Smoke Bomb's body is drawn as nothing, so no draw counts it, but its number is taken.
+      ...(data.bindings.bodies?.smoke === undefined ? [] : [data.bindings.bodies.smoke]),
+    ]);
+    return nextOperatorBody(taken);
+  }
+
+  /** The body panels' view, from the draft (issue #29, stage 4). */
+  bodyArtView(): ContentBodyArtView {
+    const d = this.draftContent();
+    return {
+      bodies: [...bodyUses(d).values()],
+      monsters: d.monsters.monsters.map((m) => ({
+        name: m.name,
+        ...(m.display !== undefined ? { display: m.display } : {}),
+        body: m.body,
+      })),
+      art: d.art.bodies,
+      packBodies: this.packBodies(),
+      next: this.nextBody(d),
+      maxSide: SPRITE_MAX_SIDE,
+      head: d.classes.creation.sexes[0]?.heads[0] ?? 1,
+    };
+  }
+
+  /**
+   * One body change from the Content page (issue #29, stage 4), put in the draft as a whole: a
+   * new body's number is picked here, against the draft as it is now, in the same change that
+   * stores its frames and gives it to its monster, so two admins never take the same number.
+   */
+  draftBody(
+    actor: ContentActor,
+    change: BodyChange,
+  ): ContentResult<{ text: string; body: number }> {
+    const base = this.draftContent();
+    const uploads = new Set(base.art.bodies.map((a) => Number(a.name)));
+    const packs = bodyNumbersOf(this.packArt.sprites.bodies);
+    const plan = planBody(change, {
+      monsters: base.monsters.monsters as unknown as BodyMonsterRow[],
+      art: base.art.bodies,
+      exists: (n) => uploads.has(n) || packs.has(n),
+      nextNumber: change.op === "new" ? this.nextBody(base) : null,
+      noNumbers: NO_BODY_NUMBERS,
+      uses: (n) => bodyUses(base).get(n),
+    });
+    if (!plan.ok) {
+      return fail(plan.error);
+    }
+    // Every frame is checked here too, before either row is written: a stored PNG, at most
+    // 512×512, with something showing once its transparency is applied.
+    if (change.op === "set" || change.op === "new") {
+      const bad = this.bodyFrameProblem(change.frames, change.transparency);
+      if (bad) {
+        return fail(bad);
+      }
+    }
+    const wrote = this.writeDraftRows(actor, plan.rows, ["monsters", "art"]);
+    if (!wrote.ok) {
+      return fail("the change does not match the rows' schema", wrote.problems);
+    }
+    const monster =
+      "monster" in change && change.monster !== undefined
+        ? (base.monsters.monsters.find(
+            (m) => m.name.toLowerCase() === change.monster?.toLowerCase(),
+          )?.name ?? change.monster)
+        : null;
+    switch (change.op) {
+      case "remove":
+        return {
+          ok: true,
+          value: { text: `Body ${plan.body}'s upload is out of the draft.`, body: plan.body },
+        };
+      case "choose":
+        return {
+          ok: true,
+          value: { text: `${monster} has body ${plan.body} in the draft.`, body: plan.body },
+        };
+      case "new":
+        return {
+          ok: true,
+          value: {
+            text: monster
+              ? `Body ${plan.body} is in the draft, as ${monster}'s body.`
+              : `Body ${plan.body} is in the draft.`,
+            body: plan.body,
+          },
+        };
+      default:
+        return {
+          ok: true,
+          value: { text: `Body ${plan.body}'s frames are in the draft.`, body: plan.body },
+        };
+    }
+  }
+
+  /** What is wrong with a body's frame files, or null when nothing is (issue #29, stage 4). */
+  private bodyFrameProblem(
+    frames: BodyFrameSet["frames"],
+    transparency: "alpha" | "green",
+  ): string | null {
+    if (!this.art) {
+      return "this server stores no uploads";
+    }
+    for (const [id, f] of Object.entries(frames)) {
+      if (!f) {
+        continue;
+      }
+      const img = this.art.image(f.file);
+      if (typeof img === "string") {
+        return `${id}: ${img}`;
+      }
+      if (img.width > SPRITE_MAX_SIDE || img.height > SPRITE_MAX_SIDE) {
+        return `${id} is ${img.width}×${img.height}; body frames may be at most ${SPRITE_MAX_SIDE}×${SPRITE_MAX_SIDE}`;
+      }
+      const copy = { width: img.width, height: img.height, data: img.data.slice() };
+      if (transparency === "green") {
+        applyKey(copy, { kind: "color", rgb: GREEN });
+      }
+      if (visibleBounds(copy) === null) {
+        return `${id} shows nothing: every frame of a body is drawn`;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Cuts an uploaded body sheet into its 16 frame files, stored like any upload (issue #29,
+   * stage 4). Nothing goes in the draft.
+   */
+  bodySheet(
+    sheet: string,
+  ):
+    | { ok: true; cell: { w: number; h: number }; frames: Partial<Record<ArtFrameId, string>> }
+    | { ok: false; error: string } {
+    if (!this.art) {
+      return { ok: false, error: "this server stores no uploads" };
+    }
+    const img = this.art.image(sheet);
+    if (typeof img === "string") {
+      return { ok: false, error: `the sheet cannot be read: ${img}` };
+    }
+    const cut = sliceBodySheet(img);
+    if (typeof cut === "string") {
+      return { ok: false, error: cut };
+    }
+    const frames: Partial<Record<ArtFrameId, string>> = {};
+    for (const [id, cell] of cut.frames) {
+      const file = this.art.files.put("art", "png", encodePng(cell));
+      this.art.stored(file);
+      frames[id] = file;
+    }
+    this.checked = null;
+    return { ok: true, cell: cut.cell, frames };
   }
 
   /** Drops a change from the draft. */
@@ -1857,6 +2038,25 @@ export class ContentService {
       own.push({ ref, op: "remove", data: null });
       if (ownFile.length > 0 && rowValue(base, npcFileRef(key)) !== undefined) {
         own.push({ ref: npcFileRef(key), op: "remove", data: null });
+      }
+      // A monster that goes takes its uploaded body with it, unless something else still draws
+      // that body (another monster, a Morph row, a rider, or a spawn's replacement): issue #29.
+      const body = base.monsters.monsters.find(
+        (m) => m.name.toLowerCase() === key.toLowerCase(),
+      )?.body;
+      const art = base.art.bodies.find((a) => a.name === String(body));
+      if (art) {
+        const after = applyRows(
+          base,
+          [...cleaned.rows, ...own].map((r) => ({ ...r.ref, op: r.op, data: r.data })),
+        );
+        if (!usedArt(after).sprites.bodies.has(art.name)) {
+          own.push({
+            ref: { dataset: "art", part: "bodies", key: art.name },
+            op: "remove",
+            data: null,
+          });
+        }
       }
       action = {
         kind: "monster",

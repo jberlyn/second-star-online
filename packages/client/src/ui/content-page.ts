@@ -18,11 +18,15 @@
  * - **Worn layers** (issue #29, worn-art.ts): a worn picture panel in a worn item's row editor, and
  *   a section listing every worn layer, with a panel for each and a bulk upload of frames and
  *   sheets named after their layers or items.
+ * - **Bodies** (issue #29, body-art.ts): a body panel in a monster row's editor, and a section
+ *   listing every body the content draws, with a panel for each, New body and a bulk upload.
  * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
  * - **Problems**: references nothing resolves, in content and in the world.
  */
 import type { ArtFrameId } from "@secondstaronline/data";
 import type {
+  BodyChange,
+  ContentBodyArtView,
   ContentDraftView,
   ContentItemArtView,
   ContentListing,
@@ -42,6 +46,7 @@ import type {
 import type { Assets } from "../assets.ts";
 import { action, gameInput } from "./action.ts";
 import { createArtUploader, postUpload } from "./art-uploads.ts";
+import { createBodies, createBodyArtPicker } from "./body-art.ts";
 import { drawRemovals, drawUsage, type RemovalPlan, removalForm } from "./content-usage.ts";
 import {
   confirmBox,
@@ -81,6 +86,12 @@ export interface ContentPageActions {
   wornSheet(seq: number, sheet: string): void;
   /** One worn layer change, made in the draft as a whole by the server. */
   worn(seq: number, change: WornChange): void;
+  /** The draft's bodies, for the body panels. */
+  bodyArt(seq: number): void;
+  /** Cuts an uploaded body sheet into its 16 frame files. */
+  bodySheet(seq: number, sheet: string): void;
+  /** One body change, made in the draft as a whole by the server. */
+  body(seq: number, change: BodyChange): void;
   /** Opens a character's hub (a holder in a usage report). */
   openCharacter(name: string): void;
 }
@@ -96,7 +107,14 @@ export type ContentReply =
       content: ContentProblemView[];
       world: ContentProblemView[];
     }
-  | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] }
+  | {
+      t: "contentResult";
+      seq: number;
+      ok: boolean;
+      text: string;
+      problems?: ContentProblemView[];
+      body?: number;
+    }
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
   | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
   | { t: "contentWornArt"; seq: number; view: ContentWornArtView }
@@ -104,6 +122,14 @@ export type ContentReply =
       t: "contentWornSheet";
       seq: number;
       frames: Partial<Record<ArtFrameId, string>> | null;
+      error?: string;
+    }
+  | { t: "contentBodyArt"; seq: number; view: ContentBodyArtView }
+  | {
+      t: "contentBodySheet";
+      seq: number;
+      frames: Partial<Record<ArtFrameId, string>> | null;
+      cell?: { w: number; h: number };
       error?: string;
     };
 
@@ -515,9 +541,20 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   // ---- item pictures (issue #29) --------------------------------------------------------------
   /** Draft changes waiting for their result, by seq (the picture picker's saves). */
-  const resultWaits = new Map<number, (r: { ok: boolean; text: string }) => void>();
+  /** A content change's answer; `body` is the body a body change drew on. */
+  type ContentAnswer = { ok: boolean; text: string; body?: number };
+  const resultWaits = new Map<number, (r: ContentAnswer) => void>();
   const itemArtWaits = new Map<number, (v: ContentItemArtView) => void>();
   const wornArtWaits = new Map<number, (v: ContentWornArtView) => void>();
+  const bodyArtWaits = new Map<number, (v: ContentBodyArtView) => void>();
+  const bodySheetWaits = new Map<
+    number,
+    (
+      r:
+        | { ok: true; cell: { w: number; h: number }; frames: Partial<Record<ArtFrameId, string>> }
+        | { ok: false; error: string },
+    ) => void
+  >();
   const sheetWaits = new Map<
     number,
     (
@@ -561,9 +598,21 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         }
       }, 15_000);
     });
+  /** The draft's bodies, as the body panels need them. */
+  const askBodyArt = (): Promise<ContentBodyArtView> =>
+    new Promise((resolve, reject) => {
+      const s = next();
+      bodyArtWaits.set(s, resolve);
+      actions.bodyArt(s);
+      setTimeout(() => {
+        if (bodyArtWaits.delete(s)) {
+          reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
   /** Waits for a draft change's `contentResult`. */
   const awaitResult = (send: (seq: number) => void) =>
-    new Promise<{ ok: boolean; text: string }>((resolve) => {
+    new Promise<ContentAnswer>((resolve) => {
       const s = next();
       resultWaits.set(s, resolve);
       send(s);
@@ -645,6 +694,88 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       }
     : null;
   const wornPicker = wornOptions ? createWornArtPicker(wornOptions) : null;
+  const bodyOptions = artOptions
+    ? {
+        ...artOptions,
+        apply(change: BodyChange) {
+          return awaitResult((s) => actions.body(s, change));
+        },
+        saved() {
+          bodySaved(false);
+        },
+        slice(sheet: string) {
+          return new Promise<
+            | {
+                ok: true;
+                cell: { w: number; h: number };
+                frames: Partial<Record<ArtFrameId, string>>;
+              }
+            | { ok: false; error: string }
+          >((resolve) => {
+            const s = next();
+            bodySheetWaits.set(s, resolve);
+            actions.bodySheet(s, sheet);
+            setTimeout(() => {
+              if (bodySheetWaits.delete(s)) {
+                resolve({ ok: false, error: "the server did not answer" });
+              }
+            }, 15_000);
+          });
+        },
+      }
+    : null;
+  const bodyPicker = bodyOptions
+    ? createBodyArtPicker({ ...bodyOptions, saved: () => bodySaved(true) })
+    : null;
+  /**
+   * A body change is in the draft: the page refreshes, and the open row catches up, unless that
+   * would lose something: a new row not yet saved (no key), unsaved JSON (only the body panel
+   * catches up), or frames set up in the row's body panel when the save came from elsewhere.
+   */
+  function bodySaved(fromRowPanel: boolean): void {
+    refreshAll();
+    const ref = editing;
+    if (!ref || ref.key === null) {
+      return;
+    }
+    if (!fromRowPanel && bodyPicker?.pending()) {
+      return;
+    }
+    const monsterRow = ref.dataset === "monsters" && ref.part === "monsters";
+    if (!editor.hidden && json.value !== loaded) {
+      if (monsterRow) {
+        editorState.textContent = `${editorState.textContent?.replace(/ The draft changed this row's body.*$/, "") ?? ""} The draft changed this row's body: your unsaved JSON is kept, and saving it writes your version.`;
+        showBodyPicker(ref.key);
+      }
+    } else {
+      openRow(ref);
+    }
+  }
+  /** Shows the body panel for the monster row open in the editor (the draft's version of it). */
+  let bodySeq = 0;
+  function showBodyPicker(key: string): void {
+    if (!bodyPicker) {
+      return;
+    }
+    const mine = ++bodySeq;
+    void askBodyArt()
+      .then((view) => {
+        if (mine !== bodySeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
+          return;
+        }
+        if (view.monsters.some((m) => m.name.toLowerCase() === key.toLowerCase())) {
+          bodyPicker.show({ kind: "monster", monster: key }, view);
+        } else {
+          bodyPicker.clear();
+        }
+        bodies?.setView(view);
+      })
+      .catch(() => {
+        if (mine === bodySeq) {
+          bodyPicker.clear();
+        }
+      });
+  }
   /** Shows the picker for the item row open in the editor (the draft's version of it). */
   let pickerSeq = 0;
   function showPicker(key: string): void {
@@ -685,8 +816,10 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   }
   function hidePicker(): void {
     pickerSeq += 1;
+    bodySeq += 1;
     picker?.clear();
     wornPicker?.clear();
+    bodyPicker?.clear();
   }
 
   // ---- the row editor -------------------------------------------------------------------------
@@ -737,6 +870,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     packView,
     picker?.el ?? document.createElement("div"),
     wornPicker?.el ?? document.createElement("div"),
+    bodyPicker?.el ?? document.createElement("div"),
     formField(
       "JSON",
       json,
@@ -854,6 +988,14 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     // An item's picture, as the draft has it (one the draft removes has none to pick).
     if (d.dataset === "items" && d.part === "items" && d.key !== null && d.draft?.op !== "remove") {
       showPicker(d.key);
+    } else if (
+      d.dataset === "monsters" &&
+      d.part === "monsters" &&
+      d.key !== null &&
+      d.draft?.op !== "remove"
+    ) {
+      hidePicker();
+      showBodyPicker(d.key);
     } else {
       hidePicker();
     }
@@ -1008,6 +1150,16 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   } else {
     wornSection.el.hidden = true;
   }
+  const bodiesSection = section(
+    "Bodies",
+    "Every monster and Morph body the content draws, with its frames. Open one to upload, check and preview its frames, make a new body, or upload many bodies at once. A monster's own row shows its body and can give it a new one.",
+  );
+  const bodies = bodyOptions ? createBodies(bodyOptions) : null;
+  if (bodies) {
+    bodiesSection.body.append(bodies.el);
+  } else {
+    bodiesSection.el.hidden = true;
+  }
   const refreshPictures = () => {
     if (pictures) {
       void askItemArt()
@@ -1017,6 +1169,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     if (wornLayers) {
       void askWornArt()
         .then((v) => wornLayers.setView(v))
+        .catch(() => {});
+    }
+    if (bodies) {
+      void askBodyArt()
+        .then((v) => bodies.setView(v))
         .catch(() => {});
     }
   };
@@ -1116,6 +1273,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     rows.el,
     picturesSection.el,
     wornSection.el,
+    bodiesSection.el,
     artSection.el,
     history.el,
     problemsSection.el,
@@ -1188,6 +1346,22 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           wait?.(msg.view);
           return;
         }
+        case "contentBodyArt": {
+          const wait = bodyArtWaits.get(msg.seq);
+          bodyArtWaits.delete(msg.seq);
+          wait?.(msg.view);
+          return;
+        }
+        case "contentBodySheet": {
+          const wait = bodySheetWaits.get(msg.seq);
+          bodySheetWaits.delete(msg.seq);
+          wait?.(
+            msg.frames && msg.cell
+              ? { ok: true, cell: msg.cell, frames: msg.frames }
+              : { ok: false, error: msg.error ?? "the sheet could not be cut" },
+          );
+          return;
+        }
         case "contentWornSheet": {
           const wait = sheetWaits.get(msg.seq);
           sheetWaits.delete(msg.seq);
@@ -1243,7 +1417,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           if (resultWaits.has(msg.seq)) {
             const wait = resultWaits.get(msg.seq);
             resultWaits.delete(msg.seq);
-            wait?.({ ok: msg.ok, text: msg.text });
+            wait?.({
+              ok: msg.ok,
+              text: msg.text,
+              ...(msg.body !== undefined ? { body: msg.body } : {}),
+            });
             return;
           }
           if (msg.seq === resultSeq) {
@@ -1272,8 +1450,15 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       (!editor.hidden && json.value !== loaded ? 1 : 0) +
       (picker?.pending() ? 1 : 0) +
       (wornPicker?.pending() ? 1 : 0) +
-      (wornLayers?.pending() ? 1 : 0),
-    discard: () => closeEditor(),
+      (wornLayers?.pending() ? 1 : 0) +
+      (bodyPicker?.pending() ? 1 : 0) +
+      (bodies?.pending() ? 1 : 0),
+    discard: () => {
+      closeEditor();
+      // Frames set up in the sections' own panels go too.
+      wornLayers?.discard();
+      bodies?.discard();
+    },
     reset() {
       overview = null;
       listing = null;
@@ -1285,12 +1470,18 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       ticketWaits.clear();
       itemArtWaits.clear();
       wornArtWaits.clear();
+      bodyArtWaits.clear();
+      for (const wait of bodySheetWaits.values()) {
+        wait({ ok: false, error: "the session ended" });
+      }
+      bodySheetWaits.clear();
       for (const wait of sheetWaits.values()) {
         wait({ ok: false, error: "the session ended" });
       }
       sheetWaits.clear();
       pictures?.reset();
       wornLayers?.reset();
+      bodies?.reset();
       problemsBody.replaceChildren();
       closeEditor();
       datasetSel.replaceChildren();

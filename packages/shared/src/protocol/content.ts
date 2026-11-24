@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import type {
+  ArtBody,
   ArtFrameId,
   ArtItem,
   ArtWorn,
@@ -16,6 +17,7 @@ import type {
   ItemRulesData,
 } from "@secondstaronline/data";
 
+import type { BodyUse } from "../content/bodies.ts";
 import type { WornLayerUse } from "../content/worn.ts";
 
 const seq = z
@@ -215,6 +217,63 @@ export const contentWornSchema = z.strictObject({
   ]),
 });
 
+/** Asks for the body panels' view (issue #29, stage 4). */
+export const contentBodyArtSchema = z.strictObject({ t: z.literal("contentBodyArt"), seq });
+
+/**
+ * Cuts an uploaded body sheet (rows N, E, S, W of frames F1-F4, equal cells up to 512×512) into
+ * its 16 frame files, stored like any upload. Nothing goes in the draft: the answer names the
+ * frames and the cell size, to save with `contentBody`.
+ */
+export const contentBodySheetSchema = z.strictObject({
+  t: z.literal("contentBodySheet"),
+  seq,
+  sheet: fileHash,
+});
+
+/** A body number (1 to 9999, the data schema's `BODY_MAX`). */
+const bodyNumber = z.number().int().min(1).max(9999);
+const anchoredFile = z.strictObject({
+  file: fileHash,
+  regX: z.number().int().min(-2048).max(2048),
+  regY: z.number().int().min(-2048).max(2048),
+});
+const bodyFrameSet = {
+  frames: z.partialRecord(z.enum(frameIds), anchoredFile),
+  mirrored: z.boolean(),
+  transparency: z.enum(["alpha", "green"]),
+};
+
+/**
+ * One body change (issue #29, stage 4), made in the draft as a whole: paint a body that exists,
+ * make a new body (the server picks its number, and gives it to a monster when one is named),
+ * take a body's upload out, or give a monster another body. See `BodyChange`.
+ */
+export const contentBodySchema = z.strictObject({
+  t: z.literal("contentBody"),
+  seq,
+  change: z.discriminatedUnion("op", [
+    z.strictObject({
+      op: z.literal("set"),
+      body: bodyNumber,
+      /** A monster's own body being replaced: refused unless it still draws it alone. */
+      owner: z.string().min(1).max(80).optional(),
+      ...bodyFrameSet,
+    }),
+    z.strictObject({
+      op: z.literal("new"),
+      monster: z.string().min(1).max(80).optional(),
+      ...bodyFrameSet,
+    }),
+    z.strictObject({ op: z.literal("remove"), body: bodyNumber }),
+    z.strictObject({
+      op: z.literal("choose"),
+      monster: z.string().min(1).max(80),
+      body: bodyNumber,
+    }),
+  ]),
+});
+
 export const contentPictureSchema = z.strictObject({
   t: z.literal("contentPicture"),
   seq,
@@ -284,6 +343,28 @@ export interface ContentWornArtView {
     behaviours: ItemRulesData["behaviours"];
   };
   /** A hairstyle the preview's bare character wears (the first sex's first head). */
+  head: number;
+}
+
+/**
+ * Everything the body panels need at once (issue #29, stage 4), from the draft: every body the
+ * content draws and who draws it, the monsters and their bodies, the uploads, and the bodies the
+ * packs draw.
+ */
+export interface ContentBodyArtView {
+  /** Every body the content draws, with who draws it. */
+  bodies: BodyUse[];
+  /** Every monster as the draft would publish it: its key, the name players see, its body. */
+  monsters: { name: string; display?: string; body: number }[];
+  /** The `art` dataset's bodies as the draft would publish them. */
+  art: ArtBody[];
+  /** The body numbers the installed packs draw. */
+  packBodies: number[];
+  /** The number the next new body would take, or null with none left. */
+  next: number | null;
+  /** The largest side a body frame may have. */
+  maxSide: number;
+  /** A hairstyle the preview's player wears for scale (the first sex's first head). */
   head: number;
 }
 
@@ -468,6 +549,16 @@ export type ContentServerMsg =
       frames: Partial<Record<ArtFrameId, string>> | null;
       error?: string;
     }
+  /** The body panels' view. */
+  | { t: "contentBodyArt"; seq: number; view: ContentBodyArtView }
+  /** A body sheet cut into its 16 frames and its cell size, or why it could not be. */
+  | {
+      t: "contentBodySheet";
+      seq: number;
+      frames: Partial<Record<ArtFrameId, string>> | null;
+      cell?: { w: number; h: number };
+      error?: string;
+    }
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
@@ -479,4 +570,12 @@ export type ContentServerMsg =
       world: ContentProblemView[];
     }
   /** A draft, discard, publish, undo, notice or removal answer. */
-  | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] };
+  | {
+      t: "contentResult";
+      seq: number;
+      ok: boolean;
+      text: string;
+      problems?: ContentProblemView[];
+      /** The body a `contentBody` change drew on (a new body's number, picked by the server). */
+      body?: number;
+    };

@@ -13,6 +13,7 @@ A monster can appear on a map, move toward a player, attack and leave loot when 
 - [packages/server/src/systems/monsters/slots.ts](../../packages/server/src/systems/monsters/slots.ts): defines roster slots, live monsters and their views and properties.
 - [packages/server/src/systems/monsters/spawn.ts](../../packages/server/src/systems/monsters/spawn.ts): rolls spawn gates and places monsters in slots.
 - [packages/shared/src/rules/monsters/loot.ts](../../packages/shared/src/rules/monsters/loot.ts): rolls monster loot and death drops.
+- [packages/shared/src/content/bodies.ts](../../packages/shared/src/content/bodies.ts): who draws each body number, the body sheet, frame anchors and checks, and the draft rows an uploaded body writes (issue #29).
 
 Entry points include `packages/server/src/systems/monsters/spawn.ts` (`spawnPass`), `packages/server/src/systems/monsters/ai.ts` (`moverPass`) and `packages/server/src/systems/monsters/attack.ts` (`monsterAttack`).
 

@@ -16,6 +16,7 @@ import {
   type BodyFrame,
   blankCell,
   type ContentWornArtView,
+  cutCell,
   equipmentOf,
   type Facing,
   frameFileName,
@@ -108,7 +109,10 @@ export type WornFiles =
   | { kind: "bad"; error: string };
 
 /** Sorts the files chosen for one layer: a single sheet, or frames named `-f1-e`. */
-export function wornFiles(names: readonly string[]): WornFiles {
+export function wornFiles(
+  names: readonly string[],
+  hint = `name frames like Moonblade-f1-e.png, or choose one ${WORN_SHEET.w}×${WORN_SHEET.h} sheet on its own`,
+): WornFiles {
   if (names.length === 1 && frameFileName(names[0] as string) === null) {
     return { kind: "sheet", file: names[0] as string };
   }
@@ -118,7 +122,7 @@ export function wornFiles(names: readonly string[]): WornFiles {
     if (!f) {
       return {
         kind: "bad",
-        error: `${file} names no frame: name frames like Moonblade-f1-e.png, or choose one ${WORN_SHEET.w}×${WORN_SHEET.h} sheet on its own`,
+        error: `${file} names no frame: ${hint}`,
       };
     }
     if (frames.some((x) => x.frame === f.frame)) {
@@ -257,17 +261,9 @@ export function previewStack(
 // ---- pixels -----------------------------------------------------------------------------------
 
 /** One cell of a sheet's pixels. */
-export function sheetFrame(sheet: Pixels, id: ArtFrameId): Pixels {
-  const { x: cx, y: cy } = sheetCell(id);
-  const out = new Uint8ClampedArray(WORN_CELL.w * WORN_CELL.h * 4);
-  for (let y = 0; y < WORN_CELL.h; y++) {
-    const from = ((cy + y) * sheet.width + cx) * 4;
-    out.set(sheet.data.subarray(from, from + WORN_CELL.w * 4), y * WORN_CELL.w * 4);
-  }
-  return { width: WORN_CELL.w, height: WORN_CELL.h, data: out };
-}
+export const sheetFrame = (sheet: Pixels, id: ArtFrameId): Pixels => cutCell(sheet, id);
 
-function pixelCanvas(p: Pixels): HTMLCanvasElement {
+export function pixelCanvas(p: Pixels): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = p.width;
   c.height = p.height;
@@ -359,7 +355,7 @@ export async function guideSheet(
 }
 
 /** Grey diagonal lines over a cell: a frame the game never draws. */
-function hatch(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+export function hatch(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.fillStyle = "#8a8a8a";
   for (let k = 0; k < WORN_CELL.w + WORN_CELL.h; k += 6) {
     for (let t = 0; t < WORN_CELL.h; t++) {
@@ -371,7 +367,11 @@ function hatch(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   }
 }
 
-function guideLink(id: string, name: () => string, url: () => Promise<string>): HTMLAnchorElement {
+export function guideLink(
+  id: string,
+  name: () => string,
+  url: () => Promise<string>,
+): HTMLAnchorElement {
   const link = action(document.createElement("a"), id);
   link.className = "item-art-template";
   link.textContent = "Download a guide sheet";
@@ -1107,6 +1107,8 @@ export type WornLayersOptions = WornArtOptions;
 export interface WornLayers {
   /** Frames set up in the section's panel but not yet saved. */
   pending(): boolean;
+  /** Drops frames set up in the section's panel. */
+  discard(): void;
   readonly el: HTMLElement;
   setView(view: ContentWornArtView): void;
   reset(): void;
@@ -1422,8 +1424,9 @@ export function createWornLayers(opts: WornLayersOptions): WornLayers {
       }
     } finally {
       attaching = false;
+      // A batch cut short by Clear or a reset still gives the controls back.
+      redraw();
     }
-    redraw();
     status.textContent =
       saved === 0
         ? "Nothing was attached."
@@ -1570,6 +1573,7 @@ export function createWornLayers(opts: WornLayersOptions): WornLayers {
   return {
     el,
     pending: () => picker.pending(),
+    discard: () => picker.clear(),
     reset() {
       batch += 1;
       lines = [];

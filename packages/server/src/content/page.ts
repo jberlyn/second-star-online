@@ -219,7 +219,10 @@ type ContentIntent = Extract<
       | "contentPicture"
       | "contentWornArt"
       | "contentWornSheet"
-      | "contentWorn";
+      | "contentWorn"
+      | "contentBodyArt"
+      | "contentBodySheet"
+      | "contentBody";
   }
 >;
 
@@ -242,6 +245,9 @@ export const CONTENT_INTENTS = [
   "contentWornArt",
   "contentWornSheet",
   "contentWorn",
+  "contentBodyArt",
+  "contentBodySheet",
+  "contentBody",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -332,6 +338,20 @@ export function contentIntent(
       const r = service.draftWorn(actor, msg.change);
       return r.ok
         ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value }
+        : result(msg.seq, r, "");
+    }
+    case "contentBodyArt":
+      return { t: "contentBodyArt", seq: msg.seq, view: service.bodyArtView() };
+    case "contentBodySheet": {
+      const r = service.bodySheet(msg.sheet);
+      return r.ok
+        ? { t: "contentBodySheet", seq: msg.seq, frames: r.frames, cell: r.cell }
+        : { t: "contentBodySheet", seq: msg.seq, frames: null, error: r.error };
+    }
+    case "contentBody": {
+      const r = service.draftBody(actor, msg.change);
+      return r.ok
+        ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value.text, body: r.value.body }
         : result(msg.seq, r, "");
     }
     case "contentProblems": {

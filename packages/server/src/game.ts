@@ -366,7 +366,7 @@ import {
 } from "./systems/mail/newspapers.ts";
 import { clickNpc, closeBio } from "./systems/monsters/npc.ts";
 import { archiveNpcStore, npcFileNamed, setNpcFile } from "./systems/monsters/npcfiles.ts";
-import type { MonsterSlot } from "./systems/monsters/slots.ts";
+import { bodyOf, type MonsterSlot } from "./systems/monsters/slots.ts";
 import { noteShown, pressStep, scheduleStep, setHeld } from "./systems/movement/movement.ts";
 import { type AssassinDeps, endRemovedGame, setAssassinMode } from "./systems/social/assassin.ts";
 import { bioRequest, profileSave } from "./systems/social/bios.ts";
@@ -3436,6 +3436,11 @@ export function createGame(deps: GameDeps): Game {
       for (const room of world.rooms.values()) {
         const events: DeltaEvent[] = [
           ...(bodyEvents.get(room) ?? []),
+          // Each live monster's body as the published store draws it: a species given another
+          // body (or an upload taken out) is drawn and hit-tested with the new one at once.
+          ...room.map.slots.flatMap((s) =>
+            s.live ? [{ e: "mbody" as const, slot: s.slot, body: bodyOf(s.live.name) }] : [],
+          ),
           ...room.map.ground.map((g) => ({ e: "gadd" as const, item: groundView(g) })),
         ];
         for (const o of room.players) {

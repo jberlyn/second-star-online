@@ -173,6 +173,11 @@ describe("Only server systems create items", () => {
       // SHA-256 (checked by the schema), an item by key. A sheet to cut into frames, by SHA-256.
       contentWorn: ["change.layer:string", "change.frames{}:string", "change.item:string"],
       contentWornSheet: ["sheet:string"],
+      // A body change (issue #29, stage 4): a monster by key, its frames' uploaded files by
+      // SHA-256 (checked by the schema), and `owner`, the monster (by key) whose own body a
+      // replacement is for. A body sheet to cut into frames, by SHA-256.
+      contentBody: ["change.owner:string", "change.frames{}.file:string", "change.monster:string"],
+      contentBodySheet: ["sheet:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
@@ -269,6 +274,7 @@ describe("File editor and path-based file access removed", () => {
     // digits: a hash, never a path (issue #29).
     expect(keys.filter((k) => /path|file|folder|directory/i.test(k.split(": ")[1] ?? ""))).toEqual([
       "contentPicture: change.art.file",
+      "contentBody: change.frames{}.file",
     ]);
     const types = messages.map((m) => m.t);
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the
@@ -357,9 +363,11 @@ describe("File editor and path-based file access removed", () => {
     expect(
       named.filter(
         // `mailSend.body` is a letter's text, not a character's body; the character editor's
-        // `equip.body` is the worn armour's name.
+        // `equip.body` is the worn armour's name; `contentBody`'s body is the content body an
+        // operator paints or gives a monster (contentEditor permission), never the sender's own.
         (f) =>
           f !== "mailSend.body" &&
+          f !== "contentBody.change.body" &&
           !/^characterEdit\.(set|seen)\.equip\.body$/.test(f) &&
           /^(body|food|fx|effect|fireball|summon|portal)$/i.test(last(f)),
       ),

@@ -7,6 +7,9 @@
  */
 import type { AtlasGroup } from "@secondstaronline/data";
 import {
+  bodyNumbersOf,
+  bodyUsersText,
+  bodyUses,
   type ContentData,
   CURRENCY_PILES,
   missingFrames,
@@ -70,17 +73,9 @@ export function usedArt(data: ContentData): {
       note(sprites.paperdoll, `Head${head}`, `the ${sex.label} heads`);
     }
   }
-  for (const m of data.monsters.monsters) {
-    note(sprites.bodies, m.body, `monster ${m.name}`);
-  }
-  note(sprites.bodies, data.monsters.generic.body, "the generic monster");
-  const b = data.bindings.bodies;
-  for (const row of b?.morph ?? []) {
-    note(sprites.bodies, row.body, "the Morph bodies");
-  }
-  note(sprites.bodies, b?.tree, "the tree body");
-  for (const [vehicle, body] of Object.entries(b?.riders ?? {})) {
-    note(sprites.bodies, body as number, `the ${vehicle}`);
+  // Monsters, the generic monster, the Morph bodies, the tree and the riders (issue #29, stage 4).
+  for (const use of bodyUses(data).values()) {
+    note(sprites.bodies, use.body, use.users[0] ?? "");
   }
   for (const spell of data.spells.spells) {
     for (const run of spell.fx) {
@@ -169,6 +164,36 @@ export function lostArtProblems(
         message: `removing the sound ${name} leaves ${who} silent`,
       });
     }
+  }
+  return out;
+}
+
+/**
+ * Bodies the change newly names that nothing will draw (issue #29, stage 4): a monster given a
+ * body whose upload is taken out before it was ever published, or a number with no art at all.
+ * What the published content already named without art (Minimal's generic monster) is left
+ * alone, and a body that was drawn and is taken away is `lostArtProblems`'s to report.
+ */
+export function newBodyGaps(
+  next: ContentData,
+  published: ContentData,
+  packs: ArtKeys,
+  before: ArtKeys,
+  after: ArtKeys,
+): ContentProblem[] {
+  const drawn = (k: ArtKeys) => bodyNumbersOf([...packs.sprites.bodies, ...k.sprites.bodies]);
+  const had = drawn(before);
+  const has = drawn(after);
+  const named = bodyUses(published);
+  const out: ContentProblem[] = [];
+  for (const use of bodyUses(next).values()) {
+    if (has.has(use.body) || had.has(use.body) || named.has(use.body)) {
+      continue;
+    }
+    out.push({
+      where: "art/bodies",
+      message: `body ${use.body} has no picture, so ${bodyUsersText(use)} would draw nothing`,
+    });
   }
   return out;
 }

@@ -1397,6 +1397,56 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     }
   });
 
+  test("the body intents need the Content page's permission (issue #29)", async () => {
+    const { game, make } = await start();
+    const bob = await make("Bob");
+    sent.length = 0;
+    const sheet = "a".repeat(64);
+    game.intent(bob.characterId, { t: "contentBodyArt", seq: 1 });
+    game.intent(bob.characterId, { t: "contentBodySheet", seq: 2, sheet });
+    game.intent(bob.characterId, {
+      t: "contentBody",
+      seq: 3,
+      change: { op: "choose", monster: "Wolf", body: 31 },
+    });
+    // Nothing comes back, and each is cheat-logged.
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 3).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(3);
+  });
+
+  test("a publish that gives a live species another body tells everyone on its map (issue #29)", async () => {
+    const { game, make } = await start();
+    const ann = await make("Ann", "administrator");
+    const bob = await make("Bob");
+    game.intent(ann.characterId, { t: "chat", text: "/roster 1 Wolf" });
+    game.intent(ann.characterId, { t: "chat", text: "/spawn 1" });
+    const a = game.world.players.get(ann.characterId) as Player;
+    const live = a.map.slots.find((s) => s.live?.name === "Wolf");
+    expect(live).toBeDefined();
+    try {
+      const d = structuredClone(classicData) as ContentData;
+      const wolf = d.monsters.monsters.find((m) => m.name === "Wolf");
+      if (wolf) {
+        wolf.body = 31;
+      }
+      installContent(buildContentStore(d));
+      sent.length = 0;
+      game.contentPublished("next");
+      const told = sent.flatMap((o) =>
+        o.to === bob.characterId && o.msg.t === "delta"
+          ? o.msg.events.filter((e) => e.e === "mbody")
+          : [],
+      );
+      expect(told).toEqual([{ e: "mbody", slot: live?.slot as number, body: 31 }]);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  });
+
   test("/Refresh reads the stored settings again", async () => {
     const { game, make } = await start();
     const alice = await make("Alice", "administrator");

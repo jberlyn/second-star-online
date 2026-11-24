@@ -3,7 +3,7 @@
  * update notices, the shared draft with its checks and Publish, the rows of a dataset with a JSON
  * editor that saves to the draft, and the publish history with Undo.
  */
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import type { ContentOverview, ContentRowDetail, ContentUsageView } from "@secondstaronline/shared";
 
@@ -73,6 +73,9 @@ function page(assets?: Assets) {
       wornArt: rec("wornArt"),
       wornSheet: rec("wornSheet"),
       worn: rec("worn"),
+      bodyArt: rec("bodyArt"),
+      bodySheet: rec("bodySheet"),
+      body: rec("body"),
       openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
     },
     assets,
@@ -911,5 +914,174 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
     expect(p.el.textContent).toContain("In the world (1)");
     expect(p.el.textContent).toContain('"Moonblade" is not an item');
     expect(p.el.textContent).toContain("Every reference in content resolves.");
+  });
+});
+
+describe("monster bodies on the Content page (issue #29, stage 4)", () => {
+  const wolf: ContentRowDetail = {
+    dataset: "monsters",
+    part: "monsters",
+    key: "Wolf",
+    keyField: "name",
+    readOnly: false,
+    status: "pack",
+    pack: { name: "Wolf", body: 1000 },
+    published: { name: "Wolf", body: 1000 },
+    draft: null,
+  };
+  const frames = Object.fromEntries(
+    [
+      "f1-n",
+      "f1-e",
+      "f1-s",
+      "f1-w",
+      "f2-n",
+      "f2-e",
+      "f2-s",
+      "f2-w",
+      "f3-n",
+      "f3-e",
+      "f3-s",
+      "f3-w",
+      "f4-n",
+      "f4-e",
+      "f4-s",
+      "f4-w",
+    ].map((f) => [f, { file: "a".repeat(64), regX: 25, regY: 6 }]),
+  );
+  const bodyView = {
+    bodies: [{ body: 1000, users: ["monster Wolf"], monsters: ["Wolf"] }],
+    monsters: [{ name: "Wolf", body: 1000 }],
+    art: [{ name: "1000", frames }],
+    packBodies: [55],
+    next: 1001,
+    maxSide: 512,
+    head: 1,
+  };
+  /** An Image that "loads" at once, so a saved upload's frames finish loading in the test window. */
+  class LoadingImage {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    naturalWidth = 46;
+    naturalHeight = 45;
+    set src(_v: string) {
+      queueMicrotask(() => this.onload?.());
+    }
+  }
+  const realImage = globalThis.Image;
+  beforeEach(() => {
+    globalThis.Image = LoadingImage as unknown as typeof Image;
+  });
+  afterEach(() => {
+    globalThis.Image = realImage;
+  });
+
+  function openWolf(t: ReturnType<typeof page>) {
+    const { p, last } = t;
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({ t: "contentBodyArt", seq: last("bodyArt")?.seq ?? 0, view: bodyView });
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: {
+        dataset: "monsters",
+        part: "monsters",
+        keyField: "name",
+        rows: [{ key: "Wolf", status: "pack", draft: null }],
+      },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    p.receive({ t: "contentRow", seq: last("row")?.seq ?? 0, row: wolf });
+    p.receive({ t: "contentBodyArt", seq: last("bodyArt")?.seq ?? 0, view: bodyView });
+  }
+
+  test("a monster row shows its body panel; a body change there keeps unsaved JSON", async () => {
+    const t = page(noArt);
+    const { p, $, last, settle } = t;
+    openWolf(t);
+    await settle();
+    const panel = p.el.querySelector(".content-editor section.body-art") as HTMLElement;
+    expect(panel.hidden).toBe(false);
+    expect(panel.textContent).toContain("It draws body 1000, which nothing else draws.");
+    const json = $<HTMLTextAreaElement>("content-json");
+    json.value = JSON.stringify({ name: "Wolf", display: "Grey Wolf", body: 1000 });
+    const rowSeq = last("row")?.seq;
+    const sel = $<HTMLSelectElement>("body-art-choose");
+    sel.value = "55";
+    $("body-art-use").click();
+    await settle();
+    expect(last("body")?.args[0]).toEqual({ op: "choose", monster: "Wolf", body: 55 });
+    p.receive({ t: "contentResult", seq: last("body")?.seq ?? 0, ok: true, text: "ok", body: 55 });
+    await settle();
+    expect(last("row")?.seq).toBe(rowSeq);
+    expect(json.value).toContain("Grey Wolf");
+    expect(p.el.textContent).toContain("your unsaved JSON is kept");
+  });
+
+  test("Neon fix: a body saved in the Bodies section leaves a new row and the row panel's frames alone", async () => {
+    const t = page(noArt);
+    const { p, $, last, settle } = t;
+    openWolf(t);
+    await settle();
+    await settle();
+    // Frames being set up in the row's panel: its saved upload, moved 3 px.
+    const right = $<HTMLInputElement>("body-art-right");
+    right.value = "3";
+    right.dispatchEvent(new Event("change"));
+    expect(p.changes()).toBe(1);
+    const rowSeq = last("row")?.seq;
+    // In the section, body 1000's upload is taken out.
+    (p.el.querySelector('[data-action="bodies-open"][data-key="1000"]') as HTMLElement).click();
+    await settle();
+    $("body-remove").click();
+    await settle();
+    expect(last("body")?.args[0]).toEqual({ op: "remove", body: 1000 });
+    p.receive({
+      t: "contentResult",
+      seq: last("body")?.seq ?? 0,
+      ok: true,
+      text: "ok",
+      body: 1000,
+    });
+    await settle();
+    // The row is not reloaded, so its panel keeps its frames.
+    expect(last("row")?.seq).toBe(rowSeq);
+    expect(p.changes()).toBe(1);
+
+    // A new row being added is not wiped by a section save either.
+    $("content-add").click();
+    const json = $<HTMLTextAreaElement>("content-json");
+    json.value = '{"name": "Blob"}';
+    (p.el.querySelector('[data-action="bodies-open"][data-key="1000"]') as HTMLElement).click();
+    await settle();
+    $("body-remove").click();
+    await settle();
+    p.receive({
+      t: "contentResult",
+      seq: last("body")?.seq ?? 0,
+      ok: true,
+      text: "ok",
+      body: 1000,
+    });
+    await settle();
+    expect(json.value).toBe('{"name": "Blob"}');
+    expect(p.el.textContent).not.toContain("There is no such row.");
+  });
+
+  test("Neon fix: Discard drops frames set up in the Bodies section's panel too", async () => {
+    const t = page(noArt);
+    const { p, $, settle } = t;
+    openWolf(t);
+    await settle();
+    (p.el.querySelector('[data-action="bodies-open"][data-key="1000"]') as HTMLElement).click();
+    await settle();
+    await settle();
+    const right = $<HTMLInputElement>("body-right");
+    right.value = "2";
+    right.dispatchEvent(new Event("change"));
+    expect(p.changes()).toBe(1);
+    p.discard();
+    expect(p.changes()).toBe(0);
   });
 });

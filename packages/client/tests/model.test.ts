@@ -322,6 +322,18 @@ describe("monster blocking prediction", () => {
     expect(m.slotNames).toEqual(["Slime", "Overlord", "Web", null]);
   });
 
+  test("a publish's new body for a live monster changes only its body (issue #29)", () => {
+    const m = createModel();
+    applySnapshot(m, { map, you, self: self(), players: [], monsters: [mon(1, "Wolf", 32, 2, 2)] });
+    const before = structuredClone(m.monsters.get(1));
+    applyDelta(m, [
+      { e: "mbody", slot: 1, body: 1000 },
+      { e: "mbody", slot: 4, body: 7 },
+    ]);
+    expect(m.monsters.get(1)).toEqual(before && { ...before, body: 1000 });
+    expect(m.monsters.has(4)).toBe(false);
+  });
+
   test("bug fixed: a remembered Web does not let prediction walk into a standing peer", () => {
     const m = createModel();
     applySnapshot(m, {
