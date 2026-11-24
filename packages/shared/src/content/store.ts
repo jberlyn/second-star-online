@@ -14,6 +14,7 @@
  * fixture (`installClassicContent` in the test helpers).
  */
 import type {
+  ArtData,
   AttPowerData,
   BindingsData,
   CasinoData,
@@ -36,7 +37,8 @@ import type {
 } from "@secondstaronline/data";
 
 /**
- * Every dataset in a content store. Server-only datasets (NPC file text, collision rects) are
+ * Every dataset in a content store. Server-only datasets (NPC file text, collision rects, the
+ * uploaded art rows) are
  * left out of the copy sent to clients (`clientContent`), which install them as empty.
  */
 export interface ContentData {
@@ -57,6 +59,8 @@ export interface ContentData {
   tiles: TilesData;
   npcFiles: NpcFilesData;
   rects: RectsData;
+  /** Uploaded art and sounds (issue #29): rows naming files in the server's store. */
+  art: ArtData;
 }
 
 export type DatasetId = keyof ContentData;
@@ -68,7 +72,11 @@ export type DatasetId = keyof ContentData;
 export const CONTENT_FORMAT = 6;
 
 /** The datasets only the server reads. */
-export const SERVER_ONLY_DATASETS = ["npcFiles", "rects"] as const satisfies readonly DatasetId[];
+export const SERVER_ONLY_DATASETS = [
+  "npcFiles",
+  "rects",
+  "art",
+] as const satisfies readonly DatasetId[];
 
 /** Every dataset id, in a fixed order (the order hashes and pack files use). */
 export const DATASET_IDS = [
@@ -89,6 +97,7 @@ export const DATASET_IDS = [
   "tiles",
   "npcFiles",
   "rects",
+  "art",
 ] as const satisfies readonly DatasetId[];
 
 /** A built store: the data and its lookups. Treat it as read-only. */

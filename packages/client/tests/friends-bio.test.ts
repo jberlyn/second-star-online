@@ -24,6 +24,9 @@ const fakeAssets: Assets = {
   loadGroup: async () => {},
   sprite: () => undefined,
   ui: (cast, member) => `/assets/ui/${cast.toLowerCase()}-${member}.png`,
+  hash: null,
+  reload: async () => [],
+  onReload: () => {},
 };
 
 const SUB = join(import.meta.dir, "../../../assets/original/sub");

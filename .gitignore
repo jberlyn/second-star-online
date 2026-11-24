@@ -12,6 +12,8 @@ packages/data/assets/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+# Uploaded art and sounds beside a development database (issue #29).
+/sso-content/
 *.db
 *.db-wal
 *.db-shm

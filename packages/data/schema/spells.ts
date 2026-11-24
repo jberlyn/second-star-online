@@ -102,6 +102,11 @@ export const spellSchema = z.strictObject({
   school: spellSchoolSchema.optional(),
   /** The `power.tables` entry added after the base power. Absent = the base power alone. */
   power: z.string().min(1).optional(),
+  /**
+   * How many seconds the body this spell gives lasts (the Morph, Nature Shift and Smoke Bomb
+   * effects), 1 to 3600. Absent = 65, 1.6's 1,300 frames.
+   */
+  lasts: int.min(1).max(3600).optional(),
   /** Create Food's choices, one taken at random. Read only by the Create Food effect. */
   creates: z.array(spellCreatesSchema).min(1).optional(),
   fx: z.array(spellFxSchema),

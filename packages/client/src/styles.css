@@ -3166,3 +3166,21 @@ body {
 .title-credits .title-credit {
   white-space: nowrap;
 }
+
+/* The Content page's uploader (issue #29). */
+.art-uploader input[type="file"] {
+  max-width: 100%;
+}
+.art-upload-hash {
+  word-break: break-all;
+  font-size: 0.85em;
+}
+.art-upload-error {
+  color: #ff8a80;
+}
+.art-upload-preview {
+  max-width: 96px;
+  max-height: 96px;
+  image-rendering: pixelated;
+  background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 12px 12px;
+}

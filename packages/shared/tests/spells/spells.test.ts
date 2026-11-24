@@ -20,6 +20,7 @@ import { newFx, placeFx, stepFx } from "../../src/rules/spells/spellfx.ts";
 import {
   BOOK_TEXT,
   baseSpell,
+  bodySpellTicks,
   bookDex,
   type Caster,
   castMageCap,
@@ -31,7 +32,6 @@ import {
   isHarmful,
   isInert,
   morphBody,
-  morphCounterFor,
   playerSpellAmount,
   runBook,
   type SpellTarget,
@@ -315,9 +315,10 @@ describe("effects", () => {
     expect(morphBody(8, queue([5]))).toBe(31);
     expect(morphBody(20, queue([5]))).toBe(40);
   });
-  test("morph counter: 1300 below 300, unchanged at exactly 300", () => {
-    expect(morphCounterFor(80, 0)).toBe(1300);
-    expect(morphCounterFor(300, 7)).toBe(7);
+  test("SSO: a body spell lasts its row's seconds, 65 (1,300 frames) by default, whatever the body's number", () => {
+    expect(bodySpellTicks(undefined)).toBe(1300);
+    expect(bodySpellTicks({})).toBe(1300);
+    expect(bodySpellTicks({ lasts: 10 })).toBe(200);
   });
   test("Inxition: the band for ExpNeeded − exp; 10000 or more is the bare name", () => {
     expect(inxitionText("Ann", 400, 380)).toBe(

@@ -30,17 +30,17 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 83 |
-| [Fixed bugs](#fixed-bugs) | 304 |
+| [Fixed bugs](#fixed-bugs) | 305 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
-| [Server authority and exploits](#server-authority-and-exploits) | 137 |
+| [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **576** |
+| **Total** | **578** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [14](#admin) | [24](#server-side-admin) |
+| admin | [14](#admin) | [25](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [28](#combat) | [7](#server-side-combat) |
@@ -54,7 +54,7 @@ By system (the code folder that holds the change):
 | movement | [5](#movement) | [4](#server-side-movement) |
 | progression | [9](#progression) | [4](#server-side-progression) |
 | social | [21](#social) | [9](#server-side-social) |
-| spells | [25](#spells) | [9](#server-side-spells) |
+| spells | [26](#spells) | [9](#server-side-spells) |
 | vehicles | [4](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
 
@@ -1484,7 +1484,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** The back views were drawn as if seen from the front. Facing north the shield showed in the right hand and the sword in the left, and the body's attack arm was on the wrong side, so every character looked left-handed from behind. Most monster and NPC back views had the same mirror.
 - **SSO:** The asset build flips every north frame marked `"mirrored": true` before packing the atlas. Original art is marked in `assets/original-sidecars.json`, which holds the same correction fields as an added file's sidecar. Every original paperdoll layer's north frames are marked; a layer flips about the body's centre line. The north frames of 34 bodies are marked; each body flips about the centre line of its standing north frame, so it faces away from where it stood, and its hit rects move with it. The Lizard Warrior, Elf and Dwarf already held their weapon correctly from behind and are not marked, nor are the bodies whose north frame copies the south one (the Slimes, Dragon Hatchling, Death, Demons, Ghoul, Snared Loah, Ghost, Illusionary Spikes, Web, Holy Shield, Squid, Mutant Worm, Snow Demon and the bush). Asymmetric back-of-head details, such as some hairstyles, flip with the body. Added art drawn the 1.6 way is marked in its own sidecar, as the boot and bare-feet layers are.
 - **Why:** One character should not change hands when it turns around.
-- **In the code:** `assets/original-sidecars.json`; `packages/data/build/assets-lib/mirror.ts` (`mirrorPaperdoll`, `centreLine2`, `mirrorBody`, `checkMirroredFlags`), `packages/data/build/assets-lib/original-sidecars.ts` (`checkOriginalSidecars`), `packages/data/build/assets.ts` (`buildAssets`), `packages/data/build/data.ts` (`renderRects`)
+- **In the code:** `assets/original-sidecars.json`; `packages/data/src/art/mirror.ts` (`mirrorPaperdoll`, `centreLine2`, `mirrorBody`, `checkMirroredFlags`), `packages/data/build/assets-lib/original-sidecars.ts` (`checkOriginalSidecars`), `packages/data/build/assets.ts` (`buildAssets`), `packages/data/build/data.ts` (`renderRects`)
 - **Pinned by:** `bug fixed: from behind, a character holds the shield in the left hand and the weapon in the right`, `original sidecars: every paperdoll north frame and the listed bodies' north frames are mirrored, nothing else` and `added art marked mirrored is flipped in the atlas and its hit rect` (packages/data/tests/assets.test.ts)
 
 ### crafting
@@ -3314,6 +3314,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 ### spells
 
+#### A body spell lasts the spell's time, not its body number's
+- **Kind:** Other
+- **What you notice:** Morph, Nature Shift and Smoke Bomb last 65 seconds whatever body they give, or as long as the spell's row says (`lasts`, in seconds). Classic's spells last as they did.
+- **1.6:** The morph counter was chosen by the new body's number: 1,300 frames (65 seconds) under 300, ten billion frames (a morph that never ended on its own) over 300, and left as it was at exactly 300. Every body 1.6's spells gave was under 300.
+- **SSO:** The counter is the cast spell's `lasts` (1 to 3600 seconds, 65 when absent) at 20 frames a second. Uploaded bodies are numbered from 1000, so with 1.6's rule any of them used as a Morph form would never have worn off.
+- **Why:** A spell's length is the spell's to say; a body's number is only which picture it draws (issue #29).
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`bodySpellTicks`), `packages/server/src/systems/spells/collide.ts` (`setBody`), `packages/data/schema/spells.ts` (`lasts`)
+- **Pinned by:** `SSO: a body spell lasts its row's seconds, 65 (1,300 frames) by default, whatever the body's number` (packages/shared/tests/spells/spells.test.ts); `SSO: Morph into a body numbered over 300 still reverts, after the spell's own seconds` (packages/server/tests/spells.test.ts); `Morph changes the body for everyone; the morph counter 1300 then a revert` (packages/server/tests/spells.test.ts)
+
 #### Portal with nowhere to go cannot be cast
 - **Kind:** Bug fixed
 - **What you notice:** When the server has no Portal destination whose map exists, casting Portal says "The portal will not open." and costs neither SP nor crystals. A portal already open whose destinations have all gone moves no one.
@@ -3912,6 +3921,15 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** Running a server means fixing and adding content without a code change or a restart, and without being able to break saved characters (issue #27).
 - **In the code:** `packages/server/src/content/service.ts` (`ContentService`), `packages/server/src/content/validate.ts` (`checkStore`), `packages/server/src/content/rows.ts`, `packages/shared/src/content/store.ts` (`content`, `onContent`), `packages/client/src/content.ts` (`createContentSync`), `packages/client/src/ui/content-page.ts`
 - **Pinned by:** `a published edit changes the store, and the publish swaps it in`; `undoes a publish as a whole`; `a changed row the operator customised keeps their version and shows a notice` (packages/server/tests/content-store.test.ts); `a publish swaps the store in, and the rules see it` (packages/client/tests/content.test.ts)
+
+#### Operators upload art and sounds, with no client to hand out
+- **Kind:** Architecture
+- **What you notice:** The Content page's **Art and sounds** section takes PNG pictures and WAV, MP3 or OGG sounds. An `art` row in the draft names what each file draws or plays (an item's picture, a worn layer, a monster body, a spell effect, a tile or a sound), and once the draft is published every player sees and hears it, without a restart or a new client. A picture can replace a pack's picture of the same name; removing it brings the pack's back, and undoing the publish takes it all back.
+- **1.6:** Art and sounds were the client's Director casts. New art meant rebuilding the client and handing it out to every player, which is why operators shipped their own clients.
+- **SSO:** An upload is checked when it arrives (a real PNG of at most 2048×2048, or a real WAV, MP3 or OGG, at most 5 MB) and stored on the server under the SHA-256 of its bytes, in `<database name>-content/` beside the database (`sso-content/` for `sso.sqlite`). Each publish builds the rows into one atlas per kind, as the asset build packs the shipped packs: the picture's own transparency (or 1.6's green), north frames marked mirrored flipped, and items, bodies and effects trimmed to their visible pixels, which also gives the server their hit rectangles. The atlases and sounds are served under URLs named by their content, so browsers keep them, and a publish tells every client the new asset index, which loads only what changed before the messages that follow. A publish is refused while an art row names a missing or misshapen file (a worn frame larger than 46×45, a body without all 16 frames), or while it takes away a picture or sound that content still names and no pack supplies. Files nothing names are removed a day after they were uploaded, at start.
+- **Why:** Operators should be able to make a game of their own without code or a custom client (issue #29).
+- **In the code:** `packages/server/src/content/art.ts` (`checkUpload`, `ArtLibrary`), `packages/server/src/content/art-usage.ts` (`lostArtProblems`), `packages/server/src/content/served-assets.ts` (`ServedAssets`, `mergePackArt`), `packages/server/src/persistence/art-files.ts` (`diskArtFiles`, `sweepArtFiles`), `packages/data/schema/art.ts`, `packages/client/src/assets.ts` (`reload`), `packages/client/src/ui/art-uploads.ts`
+- **Pinned by:** `an upload needs a ticket, is checked, and is stored by its hash beside the database`; `a published picture is served in the operator's atlas over the pack's, with its hit rect`; `removing a picture an item still draws is refused; removing both together passes` (packages/server/tests/art-uploads.test.ts); `a publish naming a new asset index loads the art before the messages that follow` (packages/client/tests/content.test.ts)
 
 #### Removing content in use cleans up after itself
 - **Kind:** Architecture

@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./test-fixtures/npc-expectations": "./test-fixtures/npc-expectations.json",
+    "./art": "./src/art/index.ts",
     "./classic": "./src/classic.ts",
     "./packs": "./src/packs.ts",
     "./schema": "./schema/datasets.ts"

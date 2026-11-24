@@ -27,6 +27,9 @@ const fakeAssets: Assets = {
   loadGroup: async () => {},
   sprite: () => [0, 0, 0, 64, 64, 32, 32] as never,
   ui: (cast, member) => `/assets/ui/${cast.toLowerCase()}-${member}.png`,
+  hash: null,
+  reload: async () => [],
+  onReload: () => {},
 };
 
 let app: App | null = null;

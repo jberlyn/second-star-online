@@ -45,7 +45,7 @@ Open [http://localhost:3000](http://localhost:3000) on the Docker host and creat
 A new world starts from one of the two content packs shipped in each release:
 
 - **Classic** (the default): 1.6's items, monsters, NPCs, spells, skills and classes, its art and sounds, and SSO's starter maps (Willowbrook Wilds at `x1000y992`, the Jail at `x0y0` and the Church of the Bells at `x999y999`). This is the game as SSO plays it; you do not need to set anything.
-- **Minimal**: the blank pack you build your own game from. It holds the least a world needs to run and nothing else: the start class Novice, one skill (Fighting), the currency Gold, the plain grass tile, a bare body with one head for each of its two sexes, and two all-grass maps: the start at `x0y0` (start and fallback points at `1, 1`) and a jail at `x50y50` (`1, 1`). There are no monsters, NPCs, spells, shops or quests until you add them on the [Content page](#the-content-page). Its few pictures are copies of 1.6's. Minimal is a preview for now: until art uploads arrive (issue #29), anything you add has no picture of its own unless it reuses one of these.
+- **Minimal**: the blank pack you build your own game from. It holds the least a world needs to run and nothing else: the start class Novice, one skill (Fighting), the currency Gold, the plain grass tile, a bare body with one head for each of its two sexes, and two all-grass maps: the start at `x0y0` (start and fallback points at `1, 1`) and a jail at `x50y50` (`1, 1`). There are no monsters, NPCs, spells, shops or quests until you add them on the [Content page](#the-content-page). Its few pictures are copies of 1.6's. Minimal is a preview for now. Pictures and sounds of your own are uploaded on the Content page (see [Art and sounds](#art-and-sounds)).
 
 Set `SSO_CONTENT` to `minimal` (or `classic`) before the **first** start:
 
@@ -273,6 +273,21 @@ Publishes, undos and pack-update answers are in the audit log. Connected players
 **Upgrading from 1.13.0 or earlier (Classic v1.0.1):** back up your database first. Crystals are now named in the singular, like every other item ("Blue Crystal", not "Blue Crystals"), and the Classic pack drops the items nobody could get or that had no picture. The upgrade renames every saved crystal (bags, worn gear, vaults, containers, the ground, NPC files and their versions, shop ledgers, quest lines, map versions, your content changes and draft) and merges two stacks of one colour into one. Copies of 1.6's broken "Damaged Sword, Knight's" become "Damaged Sword, Knight", which repairs into the same sword. Damaged Armor, the Scimitar, the Hammer, the Laser Sword, the Green Laser Sword and the Magic Shield item are retired: copies players hold stay and work, but no shop, chest, recipe or quest makes more. A stored quest line that asks for or gives an item the catalogue no longer has, or has retired (Dantan's Water Orb), is rolled again at start. If you typed the old plural into your own NPC files or content, the upgrade rewrites the usual spellings; any other spelling still works and picks up singular.
 
 **Upgrading from 1.13.0 or earlier:** **Admin → Server Settings** moved into the Control Panel, and the floating Server Settings window is gone. A role that held every permission gets the three new Control Panel permissions, so it still holds every permission; other roles are left as they are.
+
+#### Art and sounds
+
+The Content page's **Art and sounds** section uploads PNG pictures and WAV, MP3 or OGG sounds (older Safari versions cannot play OGG). Each file is checked as it arrives (a real PNG of at most 2048×2048 pixels, or a real sound, at most 5 MB) and stored in the `<database name>-content/` folder beside the database (`sso-content/` for `sso.sqlite`) under the SHA-256 hash of its bytes, which the table shows with a preview. A stored file does nothing until an **art row** in the draft names it and the draft is published; then every player sees or hears it at once, without a restart or a new client, and undoing the publish takes it back. Rows live under the `art` dataset, one field per kind:
+
+| Field | A row | Notes |
+|---|---|---|
+| `items` | `{"name": "Frost Sword", "file": "<hash>", "regX": 8, "regY": 8}` | An item's picture in the bag, the equipment boxes and on the ground: `name` is the item's key or its `sprite`. At most 512×512; trimmed to its visible pixels. |
+| `paperdoll` | `{"name": "Frost Sword", "frames": {"f1-s": {"file": "<hash>"}, …}}` | A worn layer, by the worn item's key. Frames `f1`-`f4` with a facing `n`, `e`, `s` or `w` (no `f4-s`: attacking south shows `f3-s`), each at most 46×45 and drawn from the character's top-left. |
+| `bodies` | `{"name": "1000", "frames": {"f1-n": {"file": "<hash>", "regX": 18, "regY": 30}, …}}` | A monster or Morph body, by number: all 16 frames. Uploaded bodies are numbered from 1000; body numbers go up to 9999 everywhere. |
+| `fx` | `{"name": "Frost", "frames": [{"file": "<hash>", "regX": 4, "regY": 4}, …], "trail": […]}` | A spell effect run, `Frost-1` … `Frost-n`, and its trail `xFrost-n`, as a spell's FX run names it. |
+| `tiles` | `{"code": "q1", "file": "<hash>"}` | A map tile, by its 2-character code (it also needs its `tiles/catalogue` row). |
+| `sounds` | `{"name": "crack", "file": "<hash>", "format": "wav"}` | A sound, played where a content row names it. |
+
+Pictures use their own transparency; add `"transparency": "green"` for 1.6-style art drawn on pure green. A `paperdoll` or `bodies` row drawn with 1.6's mirrored back views takes `"mirrored": true`, and its north frames are flipped. A row may name a pack's picture or sound to replace it; removing the row brings the pack's back. A publish is refused while a row names a missing or misshapen file, or while it takes away a picture or sound that content still uses and no pack supplies. A spell that gives a body (Morph, Nature Shift, Smoke Bomb) lasts its row's `lasts` seconds, 65 when unset, whatever the body's number. Files nothing names are removed a day after their upload, when the server starts.
 
 ### Bans, jails, mutes and IP bans
 
@@ -536,13 +551,17 @@ Every character has a respawn point, where a death or the end of a jail sentence
 
 Send one `SIGINT` (Ctrl+C) or `SIGTERM` to the server process. The server stops the tick loop, saves all online characters and dirty maps, closes the WebSocket gateway, and closes the SQLite database cleanly. Wait for it to exit; a second signal forces an immediate exit without waiting.
 
+A world is the database file **and** the `<database name>-content/` folder beside it (`sso-content/` for `sso.sqlite`), which holds the art and sounds operators upload on the Content page (files named by their content's hash; the database names them). Back up and restore both together. A world that never had an upload has no such folder. Each database has its own, so a second world beside the first never touches its uploads.
+
 ### Offline backup (recommended)
 
 1. Stop the server cleanly (and ensure no CLI such as `admin:role`, `admin:audit` or `admin:chatlog` is running against the database).
-2. Copy the configured database file to a separate backup path, for example:
+2. Copy the configured database file and the `sso-content/` folder beside it to a separate backup path, for example:
 
    ```sh
-   cp sso.sqlite /path/to/scratch/sso-backup.sqlite
+   mkdir -p /path/to/scratch/sso-backup
+   cp sso.sqlite /path/to/scratch/sso-backup/sso.sqlite
+   cp -a sso-content /path/to/scratch/sso-backup/ 2>/dev/null || true
    ```
 
 3. Restart the server.
@@ -557,13 +576,15 @@ If the external `sqlite3` CLI is installed, you can take an online backup of com
 sqlite3 sso.sqlite ".backup '/path/to/scratch/sso-backup.sqlite'"
 ```
 
+Then copy the `sso-content/` folder too. Uploaded files are never changed once written, so copying it while the server runs is safe; copy it after the database backup, so every file the backup names is there.
+
 See the official SQLite [Online Backup](https://sqlite.org/backup.html) and [CLI `.backup`](https://sqlite.org/cli.html#backup) documentation for details.
 
 ### Restoring from a backup
 
 1. Stop the server and any other database users cleanly.
 2. Preserve the old database and its `-wal` and `-shm` sidecars together in another location if you want to keep them.
-3. Copy the backup into a clean destination path with no stale `-wal` or `-shm` files.
+3. Copy the backup into a clean destination path with no stale `-wal` or `-shm` files, with its `sso-content/` folder beside it.
 4. Point `SSO_DB` at that restored file, start the server, and verify logins and world state.
 
 ### Docker volume backup, restore, and upgrade

@@ -62,7 +62,13 @@ export function createAudio(
   assets: Assets,
   enabled = true,
   makeContext: () => AudioCtx | null = defaultContext,
-  load: (url: string) => Promise<ArrayBuffer> = (url) => fetch(url).then((r) => r.arrayBuffer()),
+  load: (url: string) => Promise<ArrayBuffer> = (url) =>
+    fetch(url).then((r) => {
+      if (!r.ok) {
+        throw new Error(`${url}: ${r.status}`);
+      }
+      return r.arrayBuffer();
+    }),
   isHidden: () => boolean = () => typeof document !== "undefined" && document.hidden === true,
   onMute?: () => void,
 ): Audio {
@@ -123,14 +129,48 @@ export function createAudio(
     }
   };
 
-  if (ctx) {
-    for (const [name, file] of Object.entries(assets.index.sounds ?? {})) {
-      void load(`/assets/${file}`)
-        .then((bytes) => ctx.decodeAudioData(bytes))
-        .then((buf) => buffers.set(name, buf))
-        .catch(() => {});
+  /** The file each sound was loaded from, so a reload fetches only the sounds that changed. */
+  const loadedFrom = new Map<string, string>();
+  const loadSounds = (sounds: Record<string, string>): Promise<void> => {
+    if (!ctx) {
+      return Promise.resolve();
     }
-  }
+    // A removed sound goes, a decode still on its way included (it checks `loadedFrom`).
+    for (const name of [...loadedFrom.keys()]) {
+      if (!(name in sounds)) {
+        buffers.delete(name);
+        loadedFrom.delete(name);
+      }
+    }
+    const loads: Promise<void>[] = [];
+    for (const [name, file] of Object.entries(sounds)) {
+      if (loadedFrom.get(name) === file) {
+        continue;
+      }
+      loadedFrom.set(name, file);
+      loads.push(
+        load(`/assets/${file}`)
+          .then((bytes) => ctx.decodeAudioData(bytes))
+          .then((buf) => {
+            // A later reload may have moved the sound on meanwhile.
+            if (loadedFrom.get(name) === file) {
+              buffers.set(name, buf);
+            }
+          })
+          .catch(() => {
+            // Tried again at the next reload.
+            if (loadedFrom.get(name) === file) {
+              loadedFrom.delete(name);
+            }
+          }),
+      );
+    }
+    return Promise.all(loads).then(() => {});
+  };
+  void loadSounds(assets.index.sounds ?? {});
+  // An operator's publish (issue #29) can add, replace or remove sounds: the reload waits for them,
+  // so the first sound after a publish is already the new one.
+  assets.onReload?.(() => loadSounds(assets.index.sounds ?? {}));
 
   const mutedByBackground = () => !backgroundAudio && isHidden();
 

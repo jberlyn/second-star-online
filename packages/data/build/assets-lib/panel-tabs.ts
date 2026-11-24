@@ -11,9 +11,10 @@
  * - keeps the bitmap's own size and makes everything outside the mask transparent, so the
  *   client can clip each icon to its `TAB_ART` crop and centre it without seams.
  */
+
+import { createRgba, type Rgba } from "../../src/art/png.ts";
 import { TAB_ART } from "../../src/panel-tabs.ts";
 import { TAB_MASKS } from "./panel-tab-masks.ts";
-import { createRgba, type Rgba } from "./png.ts";
 
 const PANEL_MEMBER = 186;
 const PANEL_STAGE_X = 566;

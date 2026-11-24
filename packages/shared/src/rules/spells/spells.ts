@@ -18,6 +18,7 @@ import type {
   SpellSummon,
 } from "@secondstaronline/data";
 
+import { TICK_HZ } from "../../constants.ts";
 import { content, onContent } from "../../content/store.ts";
 import { slotItem } from "../combat/armour.ts";
 import { applyTierRow } from "../combat/attpower.ts";
@@ -703,15 +704,18 @@ export function smokeBody(): number | null {
   return content().bindings.bodies.smoke ?? null;
 }
 
-/** The morph counter from a body change: unchanged at exactly 300. */
-export function morphCounterFor(body: number, current: number): number {
-  if (body < 300) {
-    return 1300;
-  }
-  if (body > 300) {
-    return 10_000_000_000;
-  }
-  return current;
+/** How long a body a spell gives lasts when its row does not say: 1.6's 1,300 frames. */
+export const BODY_SPELL_SECONDS = 65;
+
+/**
+ * The morph counter a body spell (Morph, Nature Shift, Smoke Bomb) sets: its row's `lasts`, in
+ * seconds, else 65. 1.6 chose by the body's number instead: 1,300 frames under 300, ten billion
+ * (never ending) over it, the counter left as it was at exactly 300. Every body 1.6's spells gave
+ * is under 300, so a Classic spell lasts as it did; an operator's body numbered 1000 or more no
+ * longer makes its morph endless (issue #29).
+ */
+export function bodySpellTicks(spell: { lasts?: number } | null | undefined): number {
+  return (spell?.lasts ?? BODY_SPELL_SECONDS) * TICK_HZ;
 }
 
 /** `runradar`: one of three lines by `random(3)`. */

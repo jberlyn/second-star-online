@@ -17,6 +17,9 @@ const fakeAssets: Assets = {
   loadGroup: async () => {},
   sprite: () => undefined,
   ui: (cast, member) => `/assets/ui/${cast.toLowerCase()}-${member}.png`,
+  hash: null,
+  reload: async () => [],
+  onReload: () => {},
 };
 
 let app: App | null = null;

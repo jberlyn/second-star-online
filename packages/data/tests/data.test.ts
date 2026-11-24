@@ -12,7 +12,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { listAdded } from "../build/assets-lib/added.ts";
-import { createRgba, encodePng } from "../build/assets-lib/png.ts";
 import { SOUNDS } from "../build/assets-lib/select.ts";
 import {
   findStaleModules,
@@ -25,6 +24,7 @@ import {
   renderMinimalPack,
   renderRects,
 } from "../build/data.ts";
+import { createRgba, encodePng } from "../src/art/png.ts";
 import npcsData from "../test-fixtures/npc-expectations.json";
 
 const CONTENT_DIR = resolve(import.meta.dir, "../content");
@@ -197,7 +197,7 @@ describe("the Minimal pack (packages/data/packs/minimal/)", () => {
   });
 
   test("its art list names pictures the asset build has, and the build carries them all", () => {
-    const list = JSON.parse(readFileSync(join(MINIMAL_SOURCE, "art.json"), "utf8")) as Record<
+    const list = JSON.parse(readFileSync(join(MINIMAL_SOURCE, "pictures.json"), "utf8")) as Record<
       string,
       string[]
     >;

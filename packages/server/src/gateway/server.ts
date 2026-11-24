@@ -17,6 +17,7 @@ import type { ServerWebSocket } from "bun";
 
 import { ASSET_INDEX_FILE, type AssetIndex, type PackArtIndex } from "@secondstaronline/data";
 import {
+  ASSETS_HASH_HEADER,
   CLOSE,
   type ClientMsg,
   EDITOR_MESSAGE_BYTES,
@@ -27,9 +28,13 @@ import {
   type ServerMsg,
   TEXT,
   UPLOAD_MESSAGE_BYTES,
+  UPLOAD_PATH,
+  UPLOAD_TICKET_HEADER,
 } from "@secondstaronline/shared";
 
 import type { Clock } from "../clock.ts";
+import { UPLOAD_MAX_BYTES } from "../content/art.ts";
+import { mergePackArt, OPERATOR_ART_PREFIX, UPLOADS_PREFIX } from "../content/served-assets.ts";
 import type { ClientCopy } from "../content/service.ts";
 import type { Game } from "../game.ts";
 import { ipKey } from "../systems/admin/login-limits.ts";
@@ -39,37 +44,39 @@ export const ASSETS_PATH = "/assets/";
 /** Where a pack's art is served, under `/assets/`: `packs/<id>/<file>`. */
 const PACK_ART_PREFIX = "packs/";
 
-/**
- * The asset index clients load: the engine's own art (the UI files and its sounds) with each
- * installed pack's atlases and sounds merged in, in load order. A pack's files are named under
- * `packs/<id>/`; a later pack's sprite or sound of the same name wins.
- */
-export function mergePackArt(
-  engine: AssetIndex,
-  packs: readonly { id: string; art: PackArtIndex }[],
-): AssetIndex {
-  const atlases = structuredClone(engine.atlases);
-  const sounds = { ...engine.sounds };
-  for (const { id, art } of packs) {
-    for (const [group, atlas] of Object.entries(art.atlases) as [
-      keyof AssetIndex["atlases"],
-      AssetIndex["atlases"][keyof AssetIndex["atlases"]],
-    ][]) {
-      const into = atlases[group] ?? { sheets: [], sprites: {} };
-      const offset = into.sheets.length;
-      into.sheets.push(...atlas.sheets.map((f) => `${PACK_ART_PREFIX}${id}/${f}`));
-      for (const [name, sprite] of Object.entries(atlas.sprites)) {
-        const [sheet, ...rest] = sprite;
-        into.sprites[name] = [sheet + offset, ...rest] as typeof sprite;
-      }
-      atlases[group] = into;
-    }
-    for (const [name, file] of Object.entries(art.sounds)) {
-      sounds[name] = `${PACK_ART_PREFIX}${id}/${file}`;
-    }
+export { mergePackArt };
+
+/** A request's body, or null once it passes `max` bytes (the read stops there). */
+async function readCapped(req: Request, max: number): Promise<Uint8Array | null> {
+  if (!req.body) {
+    return new Uint8Array();
   }
-  return { ...engine, atlases, sounds };
+  const reader = req.body.getReader();
+  const parts: Uint8Array[] = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    n += value.length;
+    if (n > max) {
+      await reader.cancel();
+      return null;
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(n);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
 }
+
+/** Cache headers for a URL that names one version of a file. */
+const IMMUTABLE = "public, max-age=31536000, immutable";
 
 /** Where the content store is served (`current.json`, `<hash>.json`). */
 export const CONTENT_PATH = "/content/";
@@ -102,6 +109,21 @@ export interface GatewayOptions {
    * `/assets/` serves the asset folder as it is (tests of the gateway alone).
    */
   packArt?: () => readonly { id: string; artDir: string | null }[];
+  /**
+   * The asset index as built at start and on each publish (engine, packs and the operator's art,
+   * issue #29). Absent: the index is merged from `packArt` on each request (tests of the gateway).
+   */
+  assets?: () => { json: string; hash: string };
+  /** The operator's served files (`operator/…`, `uploads/…` under `/assets/`), or null. */
+  operatorFile?: (path: string) => { bytes: Uint8Array; type: string } | null;
+  /** Whether a ticket is live and its holder may still upload, checked before the body is read. */
+  uploadTicketOk?: (ticket: string) => boolean;
+  /** Stores an upload posted with a ticket (`/upload/<image|sound>`); absent: uploads are refused. */
+  upload?: (
+    ticket: string,
+    kind: "image" | "sound",
+    bytes: Uint8Array,
+  ) => { status: number; body: unknown };
   clock: Clock;
   /** Folder of generated assets (packages/data/assets). */
   assetsDir: string;
@@ -255,6 +277,7 @@ const MIME_TYPES: Record<string, string> = {
   ".json": "application/json",
   ".wav": "audio/wav",
   ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
 };
 
 function mimeTypeFor(path: string): string {
@@ -361,6 +384,47 @@ export function startGateway(options: GatewayOptions): Gateway {
   };
   const respond = (body: BodyInit | null, init: ResponseInit = {}) =>
     new Response(body, { ...init, headers: { ...headers, ...(init.headers as object) } });
+
+  /**
+   * An upload (issue #29): one file posted raw to `/upload/<image|sound>` with a ticket from the
+   * Content page. The size is checked from the header before the body is read, and again after.
+   */
+  const uploadResponse = async (req: Request, kind: string): Promise<Response> => {
+    const json = (status: number, body: unknown) =>
+      respond(JSON.stringify(body), {
+        status,
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      });
+    if (!options.upload) {
+      return json(404, { ok: false, error: "this server takes no uploads" });
+    }
+    if (kind !== "image" && kind !== "sound") {
+      return json(404, { ok: false, error: "uploads go to /upload/image or /upload/sound" });
+    }
+    const ticket = req.headers.get(UPLOAD_TICKET_HEADER) ?? "";
+    // Nothing is read from a request without a live ticket.
+    if (!options.uploadTicketOk?.(ticket)) {
+      return json(403, { ok: false, error: "the upload ticket is missing or expired" });
+    }
+    const header = req.headers.get("content-length") ?? "";
+    const length = /^\d+$/.test(header) ? Number(header) : Number.NaN;
+    if (!Number.isSafeInteger(length) || length <= 0) {
+      return json(411, { ok: false, error: "an upload needs its length" });
+    }
+    if (length > UPLOAD_MAX_BYTES) {
+      return json(413, {
+        ok: false,
+        error: `uploads may be at most ${UPLOAD_MAX_BYTES / (1024 * 1024)} MB`,
+      });
+    }
+    // Read at most the limit, whatever the framing claims; past it the read stops.
+    const bytes = await readCapped(req, UPLOAD_MAX_BYTES);
+    if (!bytes) {
+      return json(413, { ok: false, error: "the upload is too big" });
+    }
+    const answer = options.upload(ticket, kind, bytes);
+    return json(answer.status, answer.body);
+  };
 
   /**
    * `current.json` is the published hash (never cached); `<hash>.json` is that store, cached for
@@ -470,6 +534,7 @@ export function startGateway(options: GatewayOptions): Gateway {
       resumed,
       rules: { chatMaxChars: game.settings.chatMaxChars },
       ...(options.content ? { content: options.content().hash } : {}),
+      ...(options.assets ? { assets: options.assets().hash } : {}),
     });
     if (!game.enter(characterId, resumed, ws.data.ip)) {
       live.delete(characterId);
@@ -658,6 +723,9 @@ export function startGateway(options: GatewayOptions): Gateway {
       ) {
         return contentResponse(req, url.pathname.slice(CONTENT_PATH.length), options.content());
       }
+      if (url.pathname.startsWith(UPLOAD_PATH) && req.method === "POST") {
+        return uploadResponse(req, url.pathname.slice(UPLOAD_PATH.length));
+      }
       if (url.pathname.startsWith(ASSETS_PATH) && (req.method === "GET" || req.method === "HEAD")) {
         let rel: string;
         try {
@@ -673,6 +741,38 @@ export function startGateway(options: GatewayOptions): Gateway {
         rel = posix.normalize(rel);
         if (rel.startsWith("/") || rel.startsWith("../")) {
           return respond("Not found", { status: 404 });
+        }
+        // Uploaded art: named by content hashes, so cached for good.
+        const own =
+          options.operatorFile &&
+          (rel.startsWith(OPERATOR_ART_PREFIX) || rel.startsWith(UPLOADS_PREFIX))
+            ? options.operatorFile(rel)
+            : undefined;
+        if (own !== undefined) {
+          if (own === null) {
+            return respond("Not found", { status: 404 });
+          }
+          return respond(
+            req.method === "HEAD" ? null : new Blob([own.bytes as Uint8Array<ArrayBuffer>]),
+            {
+              headers: {
+                "content-type": own.type,
+                "content-length": String(own.bytes.length),
+                "cache-control": IMMUTABLE,
+              },
+            },
+          );
+        }
+        if (options.assets && rel === ASSET_INDEX_FILE) {
+          const served = options.assets();
+          return respond(req.method === "HEAD" ? null : served.json, {
+            headers: {
+              "cache-control": "no-cache",
+              "content-type": "application/json",
+              // Which index this is, so a client knows whether a publish changed it.
+              [ASSETS_HASH_HEADER]: served.hash,
+            },
+          });
         }
         let base = options.assetsDir;
         if (options.packArt && rel.startsWith(PACK_ART_PREFIX)) {
@@ -707,7 +807,9 @@ export function startGateway(options: GatewayOptions): Gateway {
           });
         }
         const assetHeaders = {
-          "cache-control": "no-cache",
+          // A pack's file asked for by its version (`?v=`, as the index names it) never changes.
+          "cache-control":
+            base !== options.assetsDir && url.searchParams.has("v") ? IMMUTABLE : "no-cache",
           "content-type": mimeTypeFor(file.name ?? rel),
           "content-length": String(file.size),
         };

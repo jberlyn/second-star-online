@@ -118,6 +118,9 @@ const fakeAssets: Assets = {
   loadGroup: async () => {},
   sprite: () => undefined,
   ui: (cast, member) => `/assets/ui/${cast.toLowerCase()}-${member}.png`,
+  hash: null,
+  reload: async () => [],
+  onReload: () => {},
 };
 /** Actions that do nothing (and allow everything). */
 // biome-ignore lint/suspicious/noExplicitAny: a stand-in for every actions interface

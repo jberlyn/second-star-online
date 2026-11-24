@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { decodePng, encodePng } from "../packages/data/build/assets-lib/png.ts";
+import { decodePng, encodePng } from "../packages/data/src/art/png.ts";
 
 type Rgb = readonly [number, number, number];
 const RAMPS: Record<string, readonly Rgb[]> = {

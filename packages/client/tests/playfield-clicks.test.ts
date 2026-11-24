@@ -16,6 +16,9 @@ const assets: Assets = {
   loadGroup: async () => {},
   sprite: () => [0, 0, 0, 64, 64, 32, 32] as never,
   ui: (cast, member) => `/assets/ui/${cast}-${member}.png`,
+  hash: null,
+  reload: async () => [],
+  onReload: () => {},
 };
 
 function world(): { model: Model; at: Record<string, { x: number; y: number }> } {

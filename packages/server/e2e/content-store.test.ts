@@ -144,7 +144,8 @@ describe("the live content store", () => {
     // Both clients are told the new hash, then get their inventory again (its art may differ)...
     for (const bot of [alice, bob]) {
       const msg = await bot.waitFor((m) => m.t === "content");
-      expect(msg).toEqual({ t: "content", hash });
+      // With the asset index's hash, so a client loads any art the publish changed (issue #29).
+      expect(msg).toEqual({ t: "content", hash, assets: expect.stringMatching(/^[0-9a-f]{16}$/) });
       const at = bot.inbox.indexOf(msg);
       await bot.waitFor((m) => m.t === "inv" && bot.inbox.indexOf(m) > at);
     }

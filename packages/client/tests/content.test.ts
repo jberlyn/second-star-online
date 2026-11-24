@@ -27,6 +27,7 @@ function fileWith(maxBid: number, hash: string, format = CONTENT_FORMAT): Conten
   const data = structuredClone(classicData) as Partial<ContentData>;
   delete data.npcFiles;
   delete data.rects;
+  delete data.art;
   (data.casino as ContentData["casino"]).blackjack!.maxBid = maxBid;
   return { format, hash, data: data as ContentFile["data"] };
 }
@@ -282,4 +283,147 @@ test("a reset drops the dead session's waiting messages and ignores its store wh
   // The next session works as before.
   sync.receive({ t: "death" });
   expect(handled).toEqual(["death"]);
+});
+
+describe("art published with the content (issue #29)", () => {
+  test("a publish naming a new asset index loads the art before the messages that follow", async () => {
+    const { fetchImpl } = server({}, "x");
+    installContent(buildContentStore(classicData as ContentData, "same"));
+    const handled: string[] = [];
+    const loads: string[] = [];
+    let done: () => void = () => {};
+    const sync = createContentSync({
+      handle: (m) => handled.push(m.t),
+      fetch: fetchImpl,
+      assets: (hash) => {
+        loads.push(hash);
+        return new Promise<void>((r) => {
+          done = r;
+        });
+      },
+    });
+    sync.receive({ t: "content", hash: "same", assets: "a1" });
+    sync.receive({ t: "death" });
+    expect(loads).toEqual(["a1"]);
+    expect(sync.syncing).toBe(true);
+    expect(handled).toEqual([]);
+    done();
+    await settle();
+    expect(handled).toEqual(["death"]);
+    // The same index again (a publish that changed no art) loads nothing.
+    sync.receive({ t: "content", hash: "same", assets: "a1" });
+    sync.receive({ t: "death" });
+    expect(loads).toEqual(["a1"]);
+    expect(handled).toEqual(["death", "death"]);
+  });
+
+  test("art that stalls lets the messages through after the deadline, and is tried again until it loads", async () => {
+    const { fetchImpl } = server({}, "x");
+    installContent(buildContentStore(classicData as ContentData, "same"));
+    const handled: string[] = [];
+    const timers: { ms: number; fn: () => void }[] = [];
+    const loads: string[] = [];
+    let attempt = 0;
+    const sync = createContentSync({
+      handle: (m) => handled.push(m.t),
+      fetch: fetchImpl,
+      warn: () => {},
+      timeoutMs: 15,
+      recoverMs: 40,
+      later: (ms, fn) => timers.push({ ms, fn }),
+      assets: (hash) => {
+        loads.push(hash);
+        attempt += 1;
+        // The first load never answers; the retry works.
+        return attempt === 1 ? new Promise<void>(() => {}) : Promise.resolve();
+      },
+    });
+    sync.receive({ t: "content", hash: "same", assets: "a3" });
+    sync.receive({ t: "death" });
+    expect(handled).toEqual([]);
+    // The deadline passes: the messages go through.
+    timers.shift()?.fn();
+    expect(handled).toEqual(["death"]);
+    // The background retry loads it, and the same index is not loaded a third time.
+    timers.shift()?.fn();
+    await settle();
+    expect(loads).toEqual(["a3", "a3"]);
+    sync.receive({ t: "content", hash: "same", assets: "a3" });
+    expect(loads).toEqual(["a3", "a3"]);
+  });
+
+  test("art that failed is tried again in the background, without holding later messages", async () => {
+    const { fetchImpl } = server({}, "x");
+    installContent(buildContentStore(classicData as ContentData, "same"));
+    const loads: string[] = [];
+    const timers: (() => void)[] = [];
+    const handled: string[] = [];
+    let fail = true;
+    const sync = createContentSync({
+      handle: (m) => handled.push(m.t),
+      fetch: fetchImpl,
+      warn: () => {},
+      later: (ms, fn) => {
+        if (ms > 1000) {
+          timers.push(fn);
+        }
+      },
+      recoverMs: 30_000,
+      assets: (hash) => {
+        loads.push(hash);
+        return fail ? Promise.reject(new Error("offline")) : Promise.resolve();
+      },
+    });
+    sync.receive({ t: "content", hash: "same", assets: "a4" });
+    await settle();
+    // Another message naming it goes straight through while the retry is pending.
+    sync.receive({ t: "content", hash: "same", assets: "a4" });
+    sync.receive({ t: "death" });
+    expect(handled).toEqual(["death"]);
+    fail = false;
+    timers.at(-1)?.();
+    await settle();
+    expect(loads).toEqual(["a4", "a4"]);
+  });
+
+  test("a login naming other art than the page loaded loads it before the login is handled", async () => {
+    const { fetchImpl } = server({}, "x");
+    installContent(buildContentStore(classicData as ContentData, "same"));
+    const handled: string[] = [];
+    let loaded = "a0";
+    const loads: string[] = [];
+    const sync = createContentSync({
+      handle: (m) => handled.push(`${m.t}:${loaded}`),
+      fetch: fetchImpl,
+      assetsHash: () => loaded,
+      assets: async (hash) => {
+        loads.push(hash);
+        loaded = hash;
+      },
+    });
+    sync.receive({ ...welcome("same"), assets: "a0" } as ServerMsg);
+    expect(loads).toEqual([]);
+    sync.receive({ ...welcome("same"), assets: "a5" } as ServerMsg);
+    await settle();
+    expect(loads).toEqual(["a5"]);
+    expect(handled).toEqual(["welcome:a0", "welcome:a5"]);
+  });
+
+  test("art that cannot be loaded lets the messages through", async () => {
+    const { fetchImpl } = server({}, "x");
+    installContent(buildContentStore(classicData as ContentData, "same"));
+    const handled: string[] = [];
+    const warned: string[] = [];
+    const sync = createContentSync({
+      handle: (m) => handled.push(m.t),
+      fetch: fetchImpl,
+      warn: (t) => warned.push(t),
+      assets: () => Promise.reject(new Error("offline")),
+    });
+    sync.receive({ t: "content", hash: "same", assets: "a2" });
+    sync.receive({ t: "death" });
+    await settle();
+    expect(handled).toEqual(["death"]);
+    expect(warned).toEqual(["could not load the new art: offline"]);
+  });
 });

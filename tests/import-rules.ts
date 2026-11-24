@@ -70,9 +70,12 @@ export function checkImports(files: readonly SourceFile[]): Violation[] {
         const own = t.startsWith("packages/data/src/");
         const schemaType = ref.typeOnly && t.startsWith("packages/data/schema/");
         const packJson = t.startsWith("packages/data/packs/") && t.endsWith(".json");
-        if (!own && !schemaType && !packJson) {
+        // The art library (PNG, keying, mirroring, packing) runs in the asset build and the server,
+        // never the client, so it may inflate and deflate.
+        const zlib = p.startsWith("packages/data/src/art/") && t === "node:zlib";
+        if (!own && !schemaType && !packJson && !zlib) {
           bad(
-            "data/src imports nothing (type-only from data/schema, and the packs' JSON, allowed)",
+            "data/src imports nothing (type-only from data/schema, the packs' JSON, and node:zlib in src/art, allowed)",
           );
         }
       }

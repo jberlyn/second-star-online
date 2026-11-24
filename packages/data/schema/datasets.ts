@@ -3,6 +3,7 @@
  * build validates the Classic pack with these, and the server validates every pack, the operator
  * layer and each draft with the same schemas.
  */
+import { artDataSchema } from "./art.ts";
 import { attPowerDataSchema } from "./attpower.ts";
 import { bindingsDataSchema } from "./bindings.ts";
 import { casinoDataSchema } from "./casino.ts";
@@ -39,6 +40,7 @@ export const DATASET_SCHEMAS = {
   tiles: tilesDataSchema,
   npcFiles: npcFilesDataSchema,
   rects: rectsDataSchema,
+  art: artDataSchema,
 } as const;
 
 export type SchemaDatasetId = keyof typeof DATASET_SCHEMAS;
@@ -62,8 +64,28 @@ export const DATASET_FILES: Record<SchemaDatasetId, string> = {
   tiles: "tiles",
   npcFiles: "npc-files",
   rects: "rects",
+  art: "art",
 };
 
+/**
+ * Datasets a pack may leave out, each read as empty when it does: uploaded art (issue #29), which
+ * the shipped packs don't carry (their art is their built atlases).
+ */
+export const OPTIONAL_DATASETS: readonly SchemaDatasetId[] = ["art"];
+
+export {
+  ART_FRAME_IDS,
+  ART_SOUND_FORMATS,
+  type ArtData,
+  type ArtSoundFormat,
+  artDataSchema,
+  BODY_MAX,
+  bodyNumberSchema,
+  EMPTY_ART,
+  NO_BODY_NUMBERS,
+  nextOperatorBody,
+  OPERATOR_BODY_MIN,
+} from "./art.ts";
 export { comparePackVersions, PACK_FORMAT, type PackManifest, packManifestSchema } from "./pack.ts";
 export { checkProgression, FORMULA_MAX, formulaRange, skillDependents } from "./progression.ts";
 export {

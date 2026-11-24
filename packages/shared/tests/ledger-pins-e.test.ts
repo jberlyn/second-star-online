@@ -266,11 +266,13 @@ describe("File editor and path-based file access removed", () => {
     // through the server for a role with characterView, never a file), a guild page, closing a
     // painting, a newspaper, the profile. The hub's editor (characterEditor) changes a character
     // through the server's own checks, never by writing a file. The Content page's overview
-    // (contentEditor) reads the content store's draft and history, not a file.
+    // (contentEditor) reads the content store's draft and history, not a file. Its upload ticket
+    // (issue #29) carries nothing: an upload is stored under the hash of its bytes, never a path.
     expect(types.filter((t) => /file|transfer|char|view|load/i.test(t))).toEqual([
       "editLoad",
       "npcLoad",
       "contentOverview",
+      "contentUploadTicket",
       "characterSearch",
       "characterOpen",
       "characterModerate",

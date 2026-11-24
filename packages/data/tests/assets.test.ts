@@ -15,17 +15,17 @@ import { buildAssets, renderUsage, USAGE_PATH } from "../build/assets.ts";
 import { listAdded } from "../build/assets-lib/added.ts";
 import { applyKey, ruleForUsage } from "../build/assets-lib/key.ts";
 import { keyedOriginal } from "../build/assets-lib/load.ts";
-import { centreLine2, mirrorBody, mirrorPaperdoll } from "../build/assets-lib/mirror.ts";
 import {
   checkOriginalSidecars,
   readOriginalSidecars,
 } from "../build/assets-lib/original-sidecars.ts";
-import { pack } from "../build/assets-lib/pack.ts";
 import { TAB_MASKS } from "../build/assets-lib/panel-tab-masks.ts";
 import { applyTabMask, mendPanelSeam, PANEL_SEAM } from "../build/assets-lib/panel-tabs.ts";
-import { createRgba, decodePng, encodePng, type Rgba } from "../build/assets-lib/png.ts";
 import type { ManifestBitmap } from "../build/assets-lib/select.ts";
 import { renderRects } from "../build/data.ts";
+import { centreLine2, mirrorBody, mirrorPaperdoll } from "../src/art/mirror.ts";
+import { pack } from "../src/art/pack.ts";
+import { createRgba, decodePng, encodePng, type Rgba } from "../src/art/png.ts";
 import type { AssetIndex, PackArtIndex } from "../src/assets.ts";
 
 /**

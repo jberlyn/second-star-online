@@ -14,7 +14,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { createRgba, decodePng, encodePng } from "../assets-lib/png.ts";
+import { createRgba, decodePng, encodePng } from "../../src/art/png.ts";
 
 const ROOT = join(import.meta.dir, "../../../..");
 const FX = join(ROOT, "assets/added/fx");

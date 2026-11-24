@@ -4,10 +4,14 @@
  */
 import { describe, expect, test } from "bun:test";
 
+import { classicData } from "@secondstaronline/data/classic";
 import {
   ADMINISTRATOR,
+  buildContentStore,
   CAST_TEXT,
+  type ContentData,
   EFFECT_TEXT,
+  installContent,
   LEVEL_UP_TEXT,
   type ServerMsg,
   skillIndex,
@@ -472,6 +476,33 @@ describe("players", () => {
     expect(a.spell.morph).toBeGreaterThan(1290);
     a.spell.morph = 1;
     expect(events(run(1), "Bob")).toContainEqual({ e: "body", id: "Ann", body: null });
+  });
+});
+
+describe("a body spell's length (issue #29)", () => {
+  test("SSO: Morph into a body numbered over 300 still reverts, after the spell's own seconds", () => {
+    const d = structuredClone(classicData) as ContentData;
+    // An operator's body (numbered from 1000) as every Morph form, and a Morph lasting 10 s.
+    d.bindings.bodies.morph = [{ above: 0, body: 1000 }];
+    const morph = d.spells.spells.find((s) => s.name === "Morph");
+    if (morph) {
+      morph.lasts = 10;
+    }
+    installContent(buildContentStore(d));
+    try {
+      const { a, run, cast } = scene(rngByN({ 5: [1] }));
+      a.spell.book = ["Morph"];
+      give(a, "Yellow Crystal", 10);
+      const me = at(6, 6);
+      cast(a, "Morph", me.h, me.v);
+      expect(events(run(4), "Bob")).toContainEqual({ e: "body", id: "Ann", body: 1000 });
+      // 1.6 set ten billion frames for any body over 300: the morph never ended.
+      expect(a.spell.morph).toBeGreaterThan(190);
+      expect(a.spell.morph).toBeLessThanOrEqual(200);
+      expect(events(run(200), "Bob")).toContainEqual({ e: "body", id: "Ann", body: null });
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
   });
 });
 

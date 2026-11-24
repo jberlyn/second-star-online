@@ -27,7 +27,7 @@ import {
 
 import { cleanUses, npcTextCleaned, usesOf } from "../src/content/cleanup.ts";
 import { readPackDir } from "../src/content/packs.ts";
-import { rowValue } from "../src/content/rows.ts";
+import { rowValue, withOptionalDatasets } from "../src/content/rows.ts";
 import { type ContentActor, ContentService, entryRef } from "../src/content/service.ts";
 import { brokenReferences, schemaProblems } from "../src/content/validate.ts";
 import { createGame, type Game } from "../src/game.ts";
@@ -80,7 +80,8 @@ const editable = (): EditableCharacter => ({
   head: 1,
 });
 
-const classic = () => readPackDir(RELEASE_PACK_DIRS.classic as string).data as ContentData;
+const classic = () =>
+  withOptionalDatasets(readPackDir(RELEASE_PACK_DIRS.classic as string).data) as ContentData;
 
 describe("stored copies", () => {
   test("a stored name is a copy of an item by its key, a spelling, a count, an id or a level", () => {

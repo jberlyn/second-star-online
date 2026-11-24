@@ -500,7 +500,11 @@ export interface Game {
    * A new content store was installed (a publish or an undo): the NPC files are laid over it
    * again and every player in game is told the new hash, so their clients fetch it.
    */
-  contentPublished(hash: string, restoring?: boolean): void;
+  /**
+   * The published store changed: tell every client (`assets`: the asset index's hash, when the
+   * uploaded art may have changed with it).
+   */
+  contentPublished(hash: string, restoring?: boolean, assets?: string): void;
   /** The world as the content service sees it: where-used, removal cleanup and problems (#28). */
   readonly contentWorld: ContentWorld;
   /**
@@ -3337,7 +3341,7 @@ export function createGame(deps: GameDeps): Game {
       }
     },
 
-    contentPublished(hash, restoring = false) {
+    contentPublished(hash, restoring = false, assets) {
       // An Assassin's Game the published content no longer has ends (not when a failed publish is
       // putting the old store back: that store had the game, if it was running).
       if (!restoring) {
@@ -3426,6 +3430,9 @@ export function createGame(deps: GameDeps): Game {
       // a publish this waits until it commits, so a publish that fails tells nobody anything.
       const told = new Set<string>();
       const out: Outgoing[] = [];
+      const contentMsg: ServerMsg = assets
+        ? { t: "content", hash, assets }
+        : { t: "content", hash };
       for (const room of world.rooms.values()) {
         const events: DeltaEvent[] = [
           ...(bodyEvents.get(room) ?? []),
@@ -3433,7 +3440,7 @@ export function createGame(deps: GameDeps): Game {
         ];
         for (const o of room.players) {
           told.add(o.id);
-          out.push({ to: o.id, msg: { t: "content", hash } });
+          out.push({ to: o.id, msg: contentMsg });
           out.push({ to: o.id, msg: { t: "inv", inv: inventoryView(o) } });
           if (events.length > 0) {
             out.push({ to: o.id, msg: { t: "delta", events } });
@@ -3442,7 +3449,7 @@ export function createGame(deps: GameDeps): Game {
       }
       for (const o of world.players.values()) {
         if (!told.has(o.id)) {
-          out.push({ to: o.id, msg: { t: "content", hash } });
+          out.push({ to: o.id, msg: contentMsg });
         }
       }
       contentWorld.tell(out);

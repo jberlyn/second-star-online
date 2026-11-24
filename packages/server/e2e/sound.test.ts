@@ -115,7 +115,8 @@ describe("sound effects", () => {
     const bell = new Uint8Array(
       await (await fetch(new URL(`/assets/${index.sounds.churchy}`, server.url))).arrayBuffer(),
     );
-    expect(index.sounds.churchy?.endsWith(".mp3")).toBe(true);
+    // The pack's files carry its version (`?v=`), so browsers keep them (issue #29).
+    expect(index.sounds.churchy).toMatch(/\.mp3\?v=[0-9a-f]+$/);
     expect(bell.byteLength).toBe(195_187);
   });
 

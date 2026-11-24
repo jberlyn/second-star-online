@@ -25,6 +25,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
+import { centreLine2, mirrorBody, mirrorPaperdoll, standingFrameOf } from "../src/art/mirror.ts";
+import { pack } from "../src/art/pack.ts";
+import { blit, createRgba, decodePng, encodePng, type Rgba } from "../src/art/png.ts";
 import type {
   AssetIndex,
   AtlasGroup,
@@ -36,16 +39,13 @@ import type {
 import { addedSoundFile, listAdded } from "./assets-lib/added.ts";
 import { applyKey, type KeyRule, ruleForUsage } from "./assets-lib/key.ts";
 import { ATLAS_RULE, loadOriginal, MAIN_ROOT, rootOf, ruleForSidecar } from "./assets-lib/load.ts";
-import { centreLine2, mirrorBody, mirrorPaperdoll, standingFrameOf } from "./assets-lib/mirror.ts";
 import {
   checkOriginalSidecars,
   ORIGINAL_SIDECARS_PATH,
   originalSidecarKey,
   readOriginalSidecars,
 } from "./assets-lib/original-sidecars.ts";
-import { pack } from "./assets-lib/pack.ts";
 import { derivePanelTabs } from "./assets-lib/panel-tabs.ts";
-import { blit, createRgba, decodePng, encodePng, type Rgba } from "./assets-lib/png.ts";
 import {
   GROUP_CAST,
   MAIN_MOVIE,
@@ -71,7 +71,7 @@ export const MINIMAL_ART_DIR = join(import.meta.dir, "..", "packs", "minimal", "
  * lower-case key: the grass, empty and shadow tiles, the bare body and the first two heads, and
  * the three gold piles. They are copies of Classic's, packed from the same sources.
  */
-export const MINIMAL_ART_LIST = "packages/data/minimal/art.json";
+export const MINIMAL_ART_LIST = "packages/data/minimal/pictures.json";
 
 /**
  * Reads the Minimal pack's art list: every atlas group, each a list of sprite keys. A repo without
@@ -127,7 +127,7 @@ interface Source {
   regX: number;
   regY: number;
   rule: KeyRule;
-  /** A north frame stored mirrored (assets-lib/mirror.ts), flipped after keying. */
+  /** A north frame stored mirrored (src/art/mirror.ts), flipped after keying. */
   mirrored: boolean;
 }
 
@@ -145,7 +145,7 @@ export interface BuildOptions {
    * is given.
    */
   minimalArtDir?: string;
-  /** The list of the Minimal pack's pictures (default `packages/data/minimal/art.json` in the repo). */
+  /** The list of the Minimal pack's pictures (default `packages/data/minimal/pictures.json` in the repo). */
   minimalArtList?: string;
   force?: boolean;
 }
@@ -273,14 +273,15 @@ function inputHash(
     "assets-lib/added.ts",
     "assets-lib/key.ts",
     "assets-lib/load.ts",
-    "assets-lib/mirror.ts",
     "assets-lib/original-sidecars.ts",
-    "assets-lib/pack.ts",
     "assets-lib/panel-tab-masks.ts",
     "assets-lib/panel-tabs.ts",
-    "assets-lib/png.ts",
     "assets-lib/select.ts",
     "assets.ts",
+    "../src/art/key.ts",
+    "../src/art/mirror.ts",
+    "../src/art/pack.ts",
+    "../src/art/png.ts",
     "../src/panel-tabs.ts",
     "../schema/added-asset.ts",
     "../schema/original-sidecars.ts",

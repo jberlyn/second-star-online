@@ -1,6 +1,7 @@
 /** Schema for monster records, editor lists, name-matched rules, casting, affinities and skill caps. */
 import { z } from "zod";
 
+import { bodyNumberSchema } from "./art.ts";
 import { patternRow } from "./common.ts";
 
 const int = z.number().int();
@@ -48,8 +49,11 @@ export const monsterSchema = z.strictObject({
   name: z.string().min(1),
   /** The name players see, when an operator has renamed the species; the key otherwise. */
   display: z.string().min(1).max(40).optional(),
-  /** Cast line 1: the `Chars` body number; the sprite member is `<body>-F2-<dir>`. */
-  body: int,
+  /**
+   * Cast line 1: the `Chars` body number (1 to 9999, `BODY_MAX`); the sprite member is
+   * `<body>-F2-<dir>`. Uploaded bodies are numbered from 1000 (`OPERATOR_BODY_MIN`).
+   */
+  body: bodyNumberSchema,
   /** False for the bodies with no `Chars` bitmap (hidden from the editor). */
   bodyInMainChars: z.boolean(),
   /** Species hit points; every species has them. */
@@ -144,7 +148,7 @@ export const monstersDataSchema = z.strictObject({
    * drawn with this body and defense by the original's monster renderer, as a
    * player shop's shopkeeper is.
    */
-  generic: z.strictObject({ body: int, hp: int, defense: int }),
+  generic: z.strictObject({ body: bodyNumberSchema, hp: int, defense: int }),
 });
 
 export type Monster = z.infer<typeof monsterSchema>;

@@ -6,6 +6,8 @@
  */
 import { z } from "zod";
 
+import { bodyNumberSchema } from "./art.ts";
+
 /** A skill key from `classes.json` `skills`. */
 const skillKey = z.string().min(1).optional();
 
@@ -35,8 +37,8 @@ export const skillBindingsSchema = z.strictObject({
 /** An item key from `items.json`. */
 const itemKey = z.string().min(1);
 
-/** A `Chars` body number (the art's member names start with it, `80-…`). */
-const body = z.number().int().min(1).max(9999);
+/** A `Chars` body number (the art's member names start with it, `80-…`), 1 to `BODY_MAX`. */
+const body = bodyNumberSchema;
 
 /**
  * The currency: the item whose amount a character carries in their purse. A pile of it on the

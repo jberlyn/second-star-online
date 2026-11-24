@@ -30,6 +30,7 @@ import type {
 } from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
+import { createArtUploader } from "./art-uploads.ts";
 import { drawRemovals, drawUsage, type RemovalPlan, removalForm } from "./content-usage.ts";
 import {
   confirmBox,
@@ -55,6 +56,8 @@ export interface ContentPageActions {
   remove(seq: number, plan: RemovalPlan): void;
   /** The references nothing resolves. */
   problems(seq: number): void;
+  /** A ticket for uploading art and sounds (issue #29). */
+  uploadTicket(seq: number): void;
   /** Opens a character's hub (a holder in a usage report). */
   openCharacter(name: string): void;
 }
@@ -70,7 +73,8 @@ export type ContentReply =
       content: ContentProblemView[];
       world: ContentProblemView[];
     }
-  | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] };
+  | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] }
+  | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number };
 
 export interface ContentPage {
   readonly el: HTMLElement;
@@ -750,6 +754,28 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   }
 
   // ---- publish history ------------------------------------------------------------------------
+  // ---- art and sounds (issue #29) -------------------------------------------------------------
+  const artSection = section(
+    "Art and sounds",
+    "Upload PNG pictures and WAV, MP3 or OGG sounds. Each file is checked and stored on the server under the hash of its bytes, and goes live when an art row in the draft names it (under art: items, paperdoll, bodies, fx, tiles or sounds) and the draft is published.",
+  );
+  /** Ticket requests waiting for their answer, by seq. */
+  const ticketWaits = new Map<number, (t: { ticket: string; maxBytes: number }) => void>();
+  const uploader = createArtUploader({
+    ticket: () =>
+      new Promise((resolve, reject) => {
+        const s = next();
+        ticketWaits.set(s, resolve);
+        actions.uploadTicket(s);
+        setTimeout(() => {
+          if (ticketWaits.delete(s)) {
+            reject(new Error("the server did not answer"));
+          }
+        }, 15_000);
+      }),
+  });
+  artSection.body.append(uploader.el);
+
   const history = section("Publish history", "Newest first. Undo takes a whole publish back.");
   const historyTable = createTable<ContentPublishView>({
     label: "Publish history",
@@ -838,7 +864,15 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     );
   };
 
-  root.append(packs.el, notices.el, draft.el, rows.el, history.el, problemsSection.el);
+  root.append(
+    packs.el,
+    notices.el,
+    draft.el,
+    rows.el,
+    artSection.el,
+    history.el,
+    problemsSection.el,
+  );
 
   function refreshAll(): void {
     overviewSeq = next();
@@ -888,6 +922,12 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     onShow: refreshAll,
     receive(msg) {
       switch (msg.t) {
+        case "contentUploadTicket": {
+          const wait = ticketWaits.get(msg.seq);
+          ticketWaits.delete(msg.seq);
+          wait?.({ ticket: msg.ticket, maxBytes: msg.maxBytes });
+          return;
+        }
         case "contentOverview":
           if (msg.seq === overviewSeq) {
             drawOverview(msg.overview);

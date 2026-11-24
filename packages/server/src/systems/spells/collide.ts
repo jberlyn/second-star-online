@@ -3,6 +3,7 @@
  * monsters, run once on the server against its own state.
  */
 import {
+  bodySpellTicks,
   can,
   cannonballSweep,
   cannonballTile,
@@ -28,7 +29,6 @@ import {
   monsterDrawnTile,
   monsterFlags,
   morphBody,
-  morphCounterFor,
   type PlayerSpellBranch,
   playerSpellAmount,
   type Rng,
@@ -260,7 +260,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       }
       const body = morphBody(P, ctx.rng);
       if (body !== null) {
-        setBody(p, body, res);
+        setBody(p, body, res, bodySpellTicks(castSpellOf(fx)));
       }
     }
     if (has("Nature Shift-3")) {
@@ -269,7 +269,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       }
       const tree = treeBody();
       if (tree !== null) {
-        setBody(p, tree, res);
+        setBody(p, tree, res, bodySpellTicks(castSpellOf(fx)));
       }
     }
     if (has("Smoke Bomb-3")) {
@@ -279,7 +279,7 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
       const smoke = smokeBody();
       if (smoke !== null) {
         p.spell.smokeBomb = P;
-        setBody(p, smoke, res);
+        setBody(p, smoke, res, bodySpellTicks(castSpellOf(fx)));
       }
     }
     if (has("Hold-3")) {
@@ -344,13 +344,23 @@ export function argonsFist(p: Player): void {
 /** Argon's Fist's counter. */
 export const ARGON_FRAMES = 400;
 
+/** The spell an FX run was cast as: the cast's own spell, else the spell whose run it is. */
+function castSpellOf(fx: { castSpell?: string | null; name: string }) {
+  return fx.castSpell ? spellByName(fx.castSpell) : spellOfFx(fx.name);
+}
+
 /**
  * Changes or reverts a body: everyone on the map sees the new body; the target's morph counter is
- * set by a change and left by a revert.
+ * set by a change (to `ticks`, the spell's `lasts`) and left by a revert.
  */
-export function setBody(p: Player, body: number | null, res: { events: DeltaEvent[] }): void {
+export function setBody(
+  p: Player,
+  body: number | null,
+  res: { events: DeltaEvent[] },
+  ticks = 0,
+): void {
   if (body !== null) {
-    p.spell.morph = morphCounterFor(body, p.spell.morph);
+    p.spell.morph = ticks;
   }
   p.spell.body = body;
   res.events.push({ e: "body", id: p.id, body });

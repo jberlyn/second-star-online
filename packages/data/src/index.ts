@@ -4,6 +4,18 @@
  * Imports nothing at runtime.
  */
 
+export type {
+  ArtBody,
+  ArtData,
+  ArtFrameId,
+  ArtFx,
+  ArtItem,
+  ArtSound,
+  ArtSoundFormat,
+  ArtTile,
+  ArtTransparency,
+  ArtWorn,
+} from "../schema/art.ts";
 export type { AttPowerData, AttPowerTier } from "../schema/attpower.ts";
 export type { BindingsData, SkillBinding } from "../schema/bindings.ts";
 export type { CasinoData } from "../schema/casino.ts";

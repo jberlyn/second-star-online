@@ -5,9 +5,13 @@
  * whole, and lists the rows a newer pack version changed under an operator's change.
  */
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
+import { ASSET_INDEX_FILE, type PackArtIndex } from "@secondstaronline/data";
 import {
+  artDataSchema,
   comparePackVersions,
   DATASET_SCHEMAS,
   skillDependents,
@@ -65,6 +69,16 @@ import {
 } from "../persistence/npcfiles.ts";
 import { loadPlayerShops } from "../persistence/playershops.ts";
 import {
+  type ArtKeys,
+  type ArtLibrary,
+  type BuiltArt,
+  checkUpload,
+  keysOf,
+  type UploadKind,
+  withArtRects,
+} from "./art.ts";
+import { lostArtProblems } from "./art-usage.ts";
+import {
   type CleanupRow,
   cleanUses,
   type EntryKind,
@@ -90,6 +104,7 @@ import {
   rowsOf,
   rowValue,
   sameRow,
+  withOptionalDatasets,
 } from "./rows.ts";
 import {
   bindingProblems,
@@ -407,6 +422,13 @@ export interface ContentServiceOptions {
    * checked.
    */
   points?: () => ContentProblem[];
+  /**
+   * The uploaded art's library (issue #29): checks the `art` rows at publish and builds their hit
+   * rects into the store. Without it (tests of the store alone) art rows are taken as they are.
+   */
+  art?: ArtLibrary;
+  /** Whether an account may still upload (its role keeps the Content page's permission). */
+  mayUpload?: (accountId: string) => boolean;
 }
 
 /** "A", "A and B", "A, B and C". */
@@ -416,12 +438,50 @@ function listOf(names: readonly string[]): string {
     : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
+/** The sprites and sounds the packs' built atlases supply (a pack with no art supplies none). */
+function packArtKeys(packs: readonly PackInfo[]): ArtKeys {
+  const all = keysOf({
+    atlases: { tiles: {}, bodies: {}, paperdoll: {}, fx: {}, items: {} } as never,
+    sounds: {},
+  });
+  for (const p of packs) {
+    if (!p.artDir) {
+      continue;
+    }
+    const index = JSON.parse(
+      readFileSync(join(p.artDir, ASSET_INDEX_FILE), "utf8"),
+    ) as PackArtIndex;
+    const keys = keysOf(index);
+    for (const g of Object.keys(keys.sprites) as (keyof ArtKeys["sprites"])[]) {
+      for (const k of keys.sprites[g]) {
+        all.sprites[g].add(k);
+      }
+    }
+    for (const k of keys.sounds) {
+      all.sounds.add(k);
+    }
+  }
+  return all;
+}
+
+/** How long an upload ticket lasts. */
+export const UPLOAD_TICKET_MS = 30 * 60 * 1000;
+
+/** An upload's answer: the stored file's hash, or why it was refused. */
+export type UploadAnswer =
+  | { ok: true; file: string; ext: string; width?: number; height?: number }
+  | { ok: false; error: string };
+
 export class ContentService {
   private readonly db: Db;
   private readonly now: () => string;
   private readonly onPublish: (store: ContentStore, restoring: boolean) => void;
   private readonly log: (line: string) => void;
   private readonly points: () => ContentProblem[];
+  private readonly art: ArtLibrary | null;
+  private readonly mayUpload: (accountId: string) => boolean;
+  /** The sprites and sounds the installed packs' own atlases supply. */
+  private packArt: ArtKeys;
   /** The packs merged in install order, without the operator layer. */
   private packData: ContentData;
   private packs: PackInfo[];
@@ -440,6 +500,8 @@ export class ContentService {
     this.onPublish = opts.onPublish ?? (() => {});
     this.log = opts.log ?? (() => {});
     this.points = opts.points ?? (() => []);
+    this.art = opts.art ?? null;
+    this.mayUpload = opts.mayUpload ?? (() => true);
     const { data, packs, owners, updates } = this.loadPacks(opts.releasePacks);
     this.owners = owners;
     this.packData = data;
@@ -449,7 +511,13 @@ export class ContentService {
       monsters: new Set(data.monsters.monsters.map((m) => m.name.toLowerCase())),
       npcFiles: new Set(data.npcFiles.files.map((f) => f.name.toLowerCase())),
     };
-    this.published = applyRows(data, contentRows(this.db).map(toLayer));
+    this.packArt = packArtKeys(packs);
+    this.published = this.withArt(applyRows(data, contentRows(this.db).map(toLayer)));
+    const validArt = artDataSchema.safeParse(this.published.art).success;
+    for (const p of (validArt && this.art?.problems(this.published.art)) || []) {
+      // Art that cannot be read draws nothing; every publish names it until it is fixed.
+      this.log(`content: ${p.where}: ${p.message}`);
+    }
     const problems = schemaProblems(this.published);
     if (problems.length > 0) {
       throw new Error(
@@ -534,7 +602,7 @@ export class ContentService {
         updatedFrom,
       });
     }
-    const merged = mergePacks(loaded.map((l) => l.data));
+    const merged = withOptionalDatasets(mergePacks(loaded.map((l) => l.data)));
     const owners = new Map<string, PackInfo>();
     loaded.forEach((l, i) => {
       for (const r of rowsOf(l.data)) {
@@ -625,7 +693,101 @@ export class ContentService {
    * new rows follow in draft order.
    */
   draftContent(draft: readonly DraftRow[] = this.draft()): ContentData {
-    return applyRows(this.packData, this.layerWith(draft));
+    return this.withArt(applyRows(this.packData, this.layerWith(draft)));
+  }
+
+  /** The store's data with the uploaded art's hit rects over the packs'. */
+  private withArt(data: ContentData): ContentData {
+    // Rows that do not match the schema are named by the schema checks; only valid ones build.
+    return this.art && artDataSchema.safeParse(data.art).success
+      ? withArtRects(data, this.art.build(data.art).rects)
+      : data;
+  }
+
+  /** Open upload tickets: a Content page asks for one, then sends files over HTTP with it. */
+  private readonly tickets = new Map<string, { actor: ContentActor; expires: number }>();
+
+  /**
+   * A ticket for uploading art and sounds (the Content page's permission was checked when it was
+   * asked for). It lasts `UPLOAD_TICKET_MS`, for any number of files.
+   */
+  uploadTicket(actor: ContentActor, nowMs: number = Date.now()): string {
+    for (const [t, v] of this.tickets) {
+      if (v.expires <= nowMs) {
+        this.tickets.delete(t);
+      }
+    }
+    const ticket = crypto.randomUUID();
+    this.tickets.set(ticket, { actor, expires: nowMs + UPLOAD_TICKET_MS });
+    return ticket;
+  }
+
+  /**
+   * Stores an uploaded file once it passes its checks: it is named by its hash and goes live only
+   * when a published `art` row names it.
+   */
+  /** Whether a ticket is live and its holder still has the Content page's permission. */
+  uploadTicketOk(ticket: string, nowMs: number = Date.now()): boolean {
+    const t = this.tickets.get(ticket);
+    if (!t || t.expires <= nowMs) {
+      return false;
+    }
+    if (!this.mayUpload(t.actor.accountId)) {
+      this.tickets.delete(ticket);
+      return false;
+    }
+    return true;
+  }
+
+  upload(
+    ticket: string,
+    kind: UploadKind,
+    bytes: Uint8Array,
+    nowMs: number = Date.now(),
+  ): { status: number; body: UploadAnswer } {
+    const t = this.tickets.get(ticket);
+    if (!t || !this.uploadTicketOk(ticket, nowMs)) {
+      return { status: 403, body: { ok: false, error: "the upload ticket is missing or expired" } };
+    }
+    if (!this.art) {
+      return { status: 503, body: { ok: false, error: "this server stores no uploads" } };
+    }
+    const check = checkUpload(bytes, kind);
+    if (!check.ok) {
+      return { status: 422, body: { ok: false, error: check.error } };
+    }
+    const file = this.art.files.put(check.kind === "image" ? "art" : "sounds", check.ext, bytes);
+    // A draft may already name this file: check it again.
+    this.art.stored(file);
+    this.checked = null;
+    this.log(
+      `content: ${t.actor.name} uploaded ${check.kind} ${file}.${check.ext} (${bytes.length} bytes)`,
+    );
+    return {
+      status: 200,
+      body:
+        check.kind === "image"
+          ? { ok: true, file, ext: check.ext, width: check.width, height: check.height }
+          : { ok: true, file, ext: check.ext },
+    };
+  }
+
+  /** The uploaded art the published store draws (empty without an art library). */
+  builtArt(): BuiltArt | null {
+    return this.art?.build(this.published.art) ?? null;
+  }
+
+  /**
+   * The art problems of `next`: rows whose files are missing or misshapen, and art taken away
+   * while content still draws or plays it.
+   */
+  private artProblems(next: ContentData): ContentProblem[] {
+    if (!this.art) {
+      return [];
+    }
+    const before = keysOf(this.art.build(this.published.art).index);
+    const after = keysOf(this.art.build(next.art).index);
+    return [...this.art.problems(next.art), ...lostArtProblems(next, this.packArt, before, after)];
   }
 
   /** The operator layer with draft changes laid in, in the order the database will hold it. */
@@ -939,14 +1101,17 @@ export class ContentService {
    * install (which judges the contract's points with the next content's tiles).
    */
   private fullProblems(next: ContentData, actions: readonly WorldAction[] = []): ContentProblem[] {
-    const problems = checkStore(
-      next,
-      this.published,
-      this.packKeys,
-      this.npcSavesAfter(actions).flatMap((f) =>
-        f.text === null ? [] : [{ npc: f.npc, text: f.text }],
+    const problems = [
+      ...checkStore(
+        next,
+        this.published,
+        this.packKeys,
+        this.npcSavesAfter(actions).flatMap((f) =>
+          f.text === null ? [] : [{ npc: f.npc, text: f.text }],
+        ),
       ),
-    );
+      ...(schemaProblems(next).length > 0 ? [] : this.artProblems(next)),
+    ];
     // Content that does not match its schemas is named by them alone. Otherwise the contract is
     // named first, beside any broken references: a world with no currency also breaks every
     // `300 Gold` that named the old one.
@@ -966,7 +1131,7 @@ export class ContentService {
     try {
       this.db.transaction(() => {
         write();
-        next = applyRows(this.packData, contentRows(this.db).map(toLayer));
+        next = this.withArt(applyRows(this.packData, contentRows(this.db).map(toLayer)));
         throw ROLLBACK;
       })();
     } catch (e) {
@@ -979,7 +1144,9 @@ export class ContentService {
 
   /** Rebuilds the published store from the database and swaps it in. */
   private rebuild(restoring = false): void {
-    this.published = applyRows(this.packData, contentRows(this.db).map(toLayer));
+    // The uploaded art is server-only, so the store's hash may not change with it: check afresh.
+    this.checked = null;
+    this.published = this.withArt(applyRows(this.packData, contentRows(this.db).map(toLayer)));
     this.copy = clientCopyOf(this.published);
     this.remember(this.copy);
     this.current = buildContentStore(this.published, this.copy.hash);

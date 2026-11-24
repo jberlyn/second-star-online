@@ -23,7 +23,7 @@ export const CONTENT_URL = "/content/";
 export interface ContentFile {
   format: number;
   hash: string;
-  data: Omit<ContentData, "npcFiles" | "rects">;
+  data: Omit<ContentData, "npcFiles" | "rects" | "art">;
 }
 
 /** The server's store is in a format this client was not built for: reload to get the new client. */
@@ -33,7 +33,8 @@ export class ContentFormatError extends Error {}
 const SERVER_ONLY_EMPTY = {
   npcFiles: { files: [] },
   rects: { fx: {}, chars: {}, items: {} },
-} satisfies Pick<ContentData, "npcFiles" | "rects">;
+  art: { items: [], paperdoll: [], bodies: [], fx: [], tiles: [], sounds: [] },
+} satisfies Pick<ContentData, "npcFiles" | "rects" | "art">;
 
 /** Builds the client's store from a fetched file. */
 export function storeFromFile(file: ContentFile): ContentStore {
@@ -99,6 +100,14 @@ export interface ContentSyncOptions {
   timeoutMs?: number;
   /** Runs `fn` after `ms` (default `setTimeout`). */
   later?(ms: number, fn: () => void): void;
+  /**
+   * Loads the art again (issue #29): a `content` message names an asset index other than the last
+   * one seen. Messages wait until it settles, so an inventory or ground item that arrives with the
+   * publish is drawn with its new picture.
+   */
+  assets?(hash: string): Promise<void>;
+  /** The hash of the asset index loaded now (null: unknown, so any named index is loaded). */
+  assetsHash?(): string | null;
 }
 
 export interface ContentSync {
@@ -160,6 +169,17 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
   let generation = 0;
   /** A store the client gave up waiting for, still fetched in the background. */
   let behind: string | null = null;
+  /** The asset index hash being loaded, if any. */
+  let assetsLoading: string | null = null;
+  /** An index that would not load, tried again in the background rather than holding messages. */
+  let assetsFailed: string | null = null;
+  /** Whether `hash` is the index loaded now, on its way, or being retried in the background. */
+  const artCurrent = (hash: string) =>
+    hash === assetsLoading ||
+    hash === assetsFailed ||
+    (opts.assetsHash ? opts.assetsHash() : assetsLoaded) === hash;
+  /** The index last loaded here (used when `assetsHash` is not given). */
+  let assetsLoaded: string | null = null;
 
   const installStore = (store: ContentStore) => {
     install(store);
@@ -192,6 +212,59 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
           }
           recover(hash, gen);
         },
+      );
+    });
+  };
+
+  /**
+   * Loads new art while the messages wait, for at most `timeoutMs`. Art that fails or takes too
+   * long lets the messages through and is tried again in the background until it loads; only art
+   * that loaded counts as seen.
+   */
+  const loadArt = (hash: string) => {
+    const assets = opts.assets as (hash: string) => Promise<void>;
+    assetsLoading = hash;
+    syncing = true;
+    const gen = generation;
+    let settledHere = false;
+    const done = (err?: unknown) => {
+      if (settledHere || gen !== generation) {
+        return;
+      }
+      settledHere = true;
+      if (assetsLoading === hash) {
+        assetsLoading = null;
+      }
+      if (err === undefined) {
+        assetsLoaded = hash;
+      } else {
+        warn(`could not load the new art: ${err instanceof Error ? err.message : String(err)}`);
+        assetsFailed = hash;
+        retryArt(hash, gen);
+      }
+      drain();
+    };
+    later(timeoutMs, () => done(new Error("it took too long")));
+    assets(hash).then(
+      () => done(),
+      (err: unknown) => done(err),
+    );
+  };
+
+  /** Tries art that did not load again now and then, without holding messages. */
+  const retryArt = (hash: string, gen: number) => {
+    later(recoverMs, () => {
+      if (gen !== generation || assetsFailed !== hash) {
+        return;
+      }
+      (opts.assets as (hash: string) => Promise<void>)(hash).then(
+        () => {
+          if (assetsFailed === hash) {
+            assetsFailed = null;
+            assetsLoaded = hash;
+          }
+        },
+        () => retryArt(hash, gen),
       );
     });
   };
@@ -260,6 +333,15 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
       fetchStore(hash);
       return;
     }
+    // A publish, or a login after one, naming art other than the art loaded: load it first.
+    const art = msg.t === "content" || msg.t === "welcome" ? msg.assets : undefined;
+    if (art !== undefined && opts.assets && !artCurrent(art)) {
+      if (msg.t === "welcome") {
+        waiting.unshift(msg);
+      }
+      loadArt(art);
+      return;
+    }
     if (msg.t !== "content") {
       opts.handle(msg);
     }
@@ -283,6 +365,8 @@ export function createContentSync(opts: ContentSyncOptions): ContentSync {
       syncing = false;
       wanted = null;
       behind = null;
+      assetsLoading = null;
+      assetsFailed = null;
     },
   };
 }

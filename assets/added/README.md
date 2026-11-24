@@ -54,7 +54,7 @@ Sound (nothing else is allowed; the channel belongs to the content row that play
   is `items/<item name>.png`. A data test fails if the file or its sidecar is missing.
 - **North frames.** 1.6 drew the paperdoll's and most bodies' back views mirrored, holding the
   weapon in the left hand; those originals are marked `"mirrored": true` in
-  `../original-sidecars.json` and the build flips them (`packages/data/build/assets-lib/mirror.ts`). Draw a
+  `../original-sidecars.json` and the build flips them (`packages/data/src/art/mirror.ts`). Draw a
   new north frame as it should look, the right hand on the viewer's right. If you start from an
   original north frame instead, keep it as it is and set `"mirrored": true`; the boot and bare-feet
   layers do. A paperdoll layer flips about the body's centre line, column 22, so keep its pixels

@@ -97,6 +97,9 @@ describe("Equipment icons, × markers and the paperdoll centred on their boxes",
       loadGroup: async () => {},
       sprite: sprite as never,
       ui: (cast, member) => `/assets/ui/${cast.toLowerCase()}-${member}.png`,
+      hash: null,
+      reload: async () => [],
+      onReload: () => {},
     };
     const panel = createPanel(assets, {
       use: () => {},

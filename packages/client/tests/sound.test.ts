@@ -18,6 +18,9 @@ const assets = (sounds: Record<string, string>): Assets => ({
   loadGroup: async () => {},
   sprite: () => undefined,
   ui: (cast, member) => `/assets/ui/${cast}-${member}.png`,
+  hash: null,
+  reload: async () => [],
+  onReload: () => {},
 });
 
 class FakeSource {
@@ -210,5 +213,53 @@ describe("the amount dialog's OK", () => {
     ok.click();
     expect(got).toEqual([50]);
     expect(sounds).toEqual([SOUND.click, SOUND.click]);
+  });
+});
+
+describe("sounds an operator publishes (issue #29)", () => {
+  test("a reload waits for a replaced sound, and a sound removed while it decodes never plays", async () => {
+    const sources: FakeSource[] = [];
+    const ctx = {
+      state: "running" as AudioContextState,
+      destination: {},
+      resume: () => Promise.resolve(),
+      createBufferSource: () => {
+        const s = new FakeSource();
+        sources.push(s);
+        return s;
+      },
+      createGain: (): FakeGain => ({ gain: { value: 1 }, connect() {} }),
+      decodeAudioData: (b: ArrayBuffer) => Promise.resolve({ bytes: b.byteLength }),
+    };
+    let release: () => void = () => {};
+    const a = assets({ hitsound: "sounds/hitsound.wav" });
+    let listener: (() => void | Promise<void>) | null = null;
+    a.onReload = (fn) => {
+      listener = fn as () => void | Promise<void>;
+    };
+    const audio = createAudio(
+      a,
+      true,
+      () => ctx as unknown as AudioCtx,
+      (url) =>
+        url.includes("hitsound.wav")
+          ? new Promise<ArrayBuffer>((r) => {
+              release = () => r(new ArrayBuffer(4));
+            })
+          : Promise.resolve(new ArrayBuffer(8)),
+    );
+    audio.unlock();
+    // The publish removes the sound while its first decode is still on its way.
+    a.index.sounds = {};
+    await (listener as unknown as () => Promise<void>)();
+    release();
+    await settle();
+    audio.play(SOUND.monsterHit);
+    expect(sources).toEqual([]);
+    // A publish that brings it back: the reload is done only once it has decoded.
+    a.index.sounds = { hitsound: "operator/sounds/new.wav" };
+    await (listener as unknown as () => Promise<void>)();
+    audio.play(SOUND.monsterHit);
+    expect(sources).toHaveLength(1);
   });
 });

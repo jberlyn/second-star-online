@@ -7,7 +7,12 @@ import { join, relative } from "node:path";
 import type { z } from "zod";
 
 import { churchMapDataSchema } from "../schema/church-map.ts";
-import { DATASET_FILES, DATASET_SCHEMAS, type SchemaDatasetId } from "../schema/datasets.ts";
+import {
+  DATASET_FILES,
+  DATASET_SCHEMAS,
+  OPTIONAL_DATASETS,
+  type SchemaDatasetId,
+} from "../schema/datasets.ts";
 import { jailMapDataSchema } from "../schema/jail-map.ts";
 import { npcFilesDataSchema } from "../schema/npcfiles.ts";
 import { type PackManifest, packManifestSchema } from "../schema/pack.ts";
@@ -15,11 +20,11 @@ import { rectsDataSchema } from "../schema/rects.ts";
 import { seedMapDataSchema } from "../schema/seed-map.ts";
 import { tilesDataSchema } from "../schema/tiles.ts";
 import { worldSeedSchema } from "../schema/world.ts";
+import { centreLine2, standingFrameOf } from "../src/art/mirror.ts";
+import { pngSize } from "../src/art/png.ts";
 import { listAdded } from "./assets-lib/added.ts";
 import { keyedAdded, keyedOriginal } from "./assets-lib/load.ts";
-import { centreLine2, standingFrameOf } from "./assets-lib/mirror.ts";
 import { originalSidecarKey, readOriginalSidecars } from "./assets-lib/original-sidecars.ts";
-import { pngSize } from "./assets-lib/png.ts";
 import type { ManifestBitmap } from "./assets-lib/select.ts";
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
@@ -84,7 +89,7 @@ export const MODULES: readonly Module[] = [
  * member of each name, lower-cased; then the rect of each added `fx`, `bodies` and `items` image
  * (width and height from the PNG, registration point from its sidecar: the same bounding rect
  * Director's `intersects` uses for an original). A mirrored north frame's regX is moved by
- * the flip, as the asset build makes it (build/assets-lib/mirror.ts) when its sidecar says so.
+ * the flip, as the asset build makes it (src/art/mirror.ts) when its sidecar says so.
  * Pure apart from reading the manifest, assets/original-sidecars.json, the mirrored bodies'
  * standing frames and assets/added/.
  */
@@ -224,7 +229,13 @@ export function renderDataModules(contentDir = CONTENT): Map<string, string> {
 }
 
 /** A dataset as the Classic pack carries it: the content file, or the rects built from the art. */
-function classicDataset(id: SchemaDatasetId, contentDir: string): Json {
+function classicDataset(id: SchemaDatasetId, contentDir: string): Json | undefined {
+  if (
+    OPTIONAL_DATASETS.includes(id) &&
+    !existsSync(join(contentDir, `${DATASET_FILES[id]}.json`))
+  ) {
+    return undefined;
+  }
   if (id === "rects") {
     return rectsDataSchema.parse(renderRects()) as Json;
   }
@@ -245,6 +256,11 @@ export function packContentHash(files: Map<string, string>): string {
   const h = createHash("sha256");
   for (const id of Object.keys(DATASET_FILES) as SchemaDatasetId[]) {
     const path = `data/${DATASET_FILES[id]}.json`;
+    // A dataset a pack may leave out counts only when it is there, so adding one to the format
+    // leaves every pack's hash as it was.
+    if (OPTIONAL_DATASETS.includes(id) && !files.has(path)) {
+      continue;
+    }
     h.update(`${path}\n${files.get(path) ?? ""}\n`);
   }
   // Files beside the datasets (a world seed), by name; the Classic pack has none, so its hash is
@@ -295,11 +311,17 @@ export function renderMinimalPack(sourceDir = MINIMAL_SOURCE): RenderedPack {
   const source = packManifestSchema.parse(
     JSON.parse(readFileSync(join(sourceDir, PACK_SOURCE), "utf8")),
   );
-  const art = JSON.parse(readFileSync(join(sourceDir, "art.json"), "utf8")) as Record<
+  const art = JSON.parse(readFileSync(join(sourceDir, "pictures.json"), "utf8")) as Record<
     string,
     string[]
   >;
-  const dataset = (id: SchemaDatasetId): Json => {
+  const dataset = (id: SchemaDatasetId): Json | undefined => {
+    if (
+      OPTIONAL_DATASETS.includes(id) &&
+      !existsSync(join(sourceDir, `${DATASET_FILES[id]}.json`))
+    ) {
+      return undefined;
+    }
     if (id === "rects") {
       const all = rectsDataSchema.parse(renderRects());
       const cut = (rects: Record<string, unknown>, keys: readonly string[] = []) =>
@@ -334,12 +356,15 @@ export function renderMinimalPack(sourceDir = MINIMAL_SOURCE): RenderedPack {
  */
 function renderPack(
   source: PackManifest,
-  dataset: (id: SchemaDatasetId) => Json,
+  dataset: (id: SchemaDatasetId) => Json | undefined,
   extra: Readonly<Record<string, string>> = {},
 ): RenderedPack {
   const files = new Map<string, string>();
   for (const id of Object.keys(DATASET_FILES) as SchemaDatasetId[]) {
     const data = dataset(id);
+    if (data === undefined) {
+      continue;
+    }
     const text = id === "rects" ? JSON.stringify(data) : JSON.stringify(data, null, 2);
     files.set(`data/${DATASET_FILES[id]}.json`, `${text}\n`);
   }

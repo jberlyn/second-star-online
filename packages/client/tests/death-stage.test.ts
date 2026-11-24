@@ -53,6 +53,9 @@ function stage(selfHidden: boolean) {
       return undefined;
     },
     ui: () => "",
+    hash: null,
+    reload: async () => [],
+    onReload: () => {},
   };
   const real = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = (() => ctx) as never;

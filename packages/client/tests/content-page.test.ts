@@ -65,6 +65,7 @@ function page() {
     usage: rec("usage"),
     remove: rec("remove"),
     problems: rec("problems"),
+    uploadTicket: rec("uploadTicket"),
     openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
   });
   document.body.replaceChildren(p.el);

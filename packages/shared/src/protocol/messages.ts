@@ -66,6 +66,7 @@ import {
   contentRemoveSchema,
   contentRowSchema,
   contentUndoSchema,
+  contentUploadTicketSchema,
   contentUsageSchema,
 } from "./content.ts";
 import {
@@ -205,6 +206,7 @@ export const inGameSchema = z.discriminatedUnion("t", [
   contentUsageSchema,
   contentRemoveSchema,
   contentProblemsSchema,
+  contentUploadTicketSchema,
   characterSearchSchema,
   characterOpenSchema,
   characterModerateSchema,

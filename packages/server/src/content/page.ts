@@ -14,6 +14,7 @@ import {
   type InGameMsg,
 } from "@secondstaronline/shared";
 
+import { UPLOAD_MAX_BYTES } from "./art.ts";
 import {
   datasetParts,
   KEYED_LISTS,
@@ -212,7 +213,8 @@ type ContentIntent = Extract<
       | "contentNotice"
       | "contentUsage"
       | "contentRemove"
-      | "contentProblems";
+      | "contentProblems"
+      | "contentUploadTicket";
   }
 >;
 
@@ -229,6 +231,7 @@ export const CONTENT_INTENTS = [
   "contentUsage",
   "contentRemove",
   "contentProblems",
+  "contentUploadTicket",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -280,6 +283,13 @@ export function contentIntent(
         ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value }
         : result(msg.seq, r, "");
     }
+    case "contentUploadTicket":
+      return {
+        t: "contentUploadTicket",
+        seq: msg.seq,
+        ticket: service.uploadTicket(actor),
+        maxBytes: UPLOAD_MAX_BYTES,
+      };
     case "contentProblems": {
       const p = service.problems(world);
       return { t: "contentProblems", seq: msg.seq, content: p.content, world: p.world };

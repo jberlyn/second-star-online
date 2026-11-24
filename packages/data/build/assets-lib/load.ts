@@ -7,8 +7,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { AddedArt } from "../../schema/added-asset.ts";
+import { decodePng, type Rgba } from "../../src/art/png.ts";
 import { applyKey, GREEN, type KeyRule } from "./key.ts";
-import { decodePng, type Rgba } from "./png.ts";
 import type { ManifestBitmap } from "./select.ts";
 
 export const MAIN_ROOT = "assets/original/main";

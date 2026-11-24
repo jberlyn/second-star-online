@@ -35,6 +35,9 @@ function stage() {
       return undefined;
     },
     ui: () => "",
+    hash: null,
+    reload: async () => [],
+    onReload: () => {},
   };
   const real = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = (() => stubCtx()) as never;

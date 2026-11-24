@@ -8,7 +8,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { type AddedArt, type AddedSound, addedAssetSchema } from "../../schema/added-asset.ts";
-import { checkMirroredFlags } from "./mirror.ts";
+import { checkMirroredFlags } from "../../src/art/mirror.ts";
 
 export const ART_GROUPS = ["bodies", "fx", "items", "paperdoll", "tiles"] as const;
 export type ArtGroup = (typeof ART_GROUPS)[number];

@@ -7,7 +7,7 @@
  */
 import { createHash } from "node:crypto";
 
-import { DATASET_SCHEMAS } from "@secondstaronline/data/schema";
+import { DATASET_SCHEMAS, EMPTY_ART, OPTIONAL_DATASETS } from "@secondstaronline/data/schema";
 import { type ContentData, DATASET_IDS, type DatasetId } from "@secondstaronline/shared";
 
 /**
@@ -23,6 +23,14 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
   npcFiles: { files: "name" },
   houses: { deeds: "deed", types: "house" },
   social: { factions: "key" },
+  art: {
+    items: "name",
+    paperdoll: "name",
+    bodies: "name",
+    fx: "name",
+    tiles: "code",
+    sounds: "name",
+  },
 };
 
 /**
@@ -230,5 +238,12 @@ export function mergePacks(packs: readonly Partial<ContentData>[]): Partial<Cont
 
 /** The datasets every store needs; a merge missing one cannot be installed. */
 export function missingDatasets(data: Partial<ContentData>): DatasetId[] {
-  return DATASET_IDS.filter((d) => data[d] === undefined);
+  return DATASET_IDS.filter(
+    (d) => data[d] === undefined && !(OPTIONAL_DATASETS as readonly string[]).includes(d),
+  );
+}
+
+/** The packs' merge with every dataset a pack may leave out filled in empty. */
+export function withOptionalDatasets(data: Partial<ContentData>): Partial<ContentData> {
+  return data.art ? data : { ...data, art: structuredClone(EMPTY_ART) };
 }

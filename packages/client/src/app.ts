@@ -670,6 +670,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     usage: (seq, kind, key) => send({ t: "contentUsage", seq, kind, key }),
     remove: (seq, plan) => send({ t: "contentRemove", seq, ...plan }),
     problems: (seq) => send({ t: "contentProblems", seq }),
+    uploadTicket: (seq) => send({ t: "contentUploadTicket", seq }),
     openCharacter: (name) => {
       controlPanel.go("characters");
       if (controlPanel.page === "characters") {
@@ -1098,6 +1099,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   // Every message goes through the content sync: a login or publish naming another store fetches
   // it first, and the messages after it wait.
   const contentSync = createContentSync({
+    // An operator published art (issue #29): load what changed before the messages that follow.
+    assets: (hash) => assets.reload().then(() => void hash),
+    assetsHash: () => assets.hash,
     handle: (msg) => {
       handleMessage(msg);
       syncMenus();
@@ -1112,6 +1116,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       }
       contentPage.published();
     },
+  });
+  // Art published (issue #29): the map's tile layers are drawn once per map, so new tiles redraw
+  // them, and the Content page shows the publish (an art-only one leaves the store's hash as it was).
+  assets.onReload((changed) => {
+    if (changed.includes("tiles") && model.map) {
+      void playfield.setMap(model.map);
+    }
+    contentPage.published();
   });
   conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
   const handleMessage = (msg: ServerMsg) => {
@@ -1287,6 +1299,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentUsage":
       case "contentProblems":
       case "contentResult":
+      case "contentUploadTicket":
         contentPage.receive(msg);
         return;
       case "content":

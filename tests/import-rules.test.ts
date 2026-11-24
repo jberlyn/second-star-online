@@ -72,8 +72,8 @@ describe("import rules", () => {
       },
     ]).map((v) => v.rule);
     expect(rules).toEqual([
-      "data/src imports nothing (type-only from data/schema, and the packs' JSON, allowed)",
-      "data/src imports nothing (type-only from data/schema, and the packs' JSON, allowed)",
+      "data/src imports nothing (type-only from data/schema, the packs' JSON, and node:zlib in src/art, allowed)",
+      "data/src imports nothing (type-only from data/schema, the packs' JSON, and node:zlib in src/art, allowed)",
       "shared imports only @secondstaronline/data types and zod",
       "client never imports server",
       "client imports only the @secondstaronline/data index",

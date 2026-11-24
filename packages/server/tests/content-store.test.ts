@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
+import { EMPTY_ART } from "@secondstaronline/data/schema";
 import {
   buildContentStore,
   type ContentData,
@@ -15,7 +16,14 @@ import {
 
 import { readPackDir } from "../src/content/packs.ts";
 import { overviewOf, rowDetailOf } from "../src/content/page.ts";
-import { applyRows, mergePacks, rowHash, rowsOf, rowValue } from "../src/content/rows.ts";
+import {
+  applyRows,
+  mergePacks,
+  rowHash,
+  rowsOf,
+  rowValue,
+  withOptionalDatasets,
+} from "../src/content/rows.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
 import {
   badKeyForm,
@@ -62,12 +70,15 @@ const classic = readPackDir(RELEASE_PACK_DIRS.classic as string);
 describe("the Classic pack", () => {
   test("loads every dataset and matches its schemas", () => {
     expect(classic.manifest.id).toBe("classic");
+    // Every dataset but the uploaded art, which Classic leaves out (its art is its atlases).
     expect(Object.keys(classic.data).sort()).toHaveLength(17);
+    expect(classic.data.art).toBeUndefined();
   });
 
   test("a server with only Classic installed builds the Classic store unchanged", () => {
     const { service, db } = setup();
-    expect(service.publishedContent()).toEqual(classic.data as never);
+    expect(service.publishedContent()).toEqual(withOptionalDatasets(classic.data) as never);
+    expect(service.publishedContent().art).toEqual(EMPTY_ART);
     expect(installedPacks(db)[0]?.version).toBe(classic.manifest.version);
     expect(service.store().hash).toBe(service.clientCopy().hash);
   });

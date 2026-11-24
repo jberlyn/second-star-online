@@ -18,6 +18,9 @@ const assets: Assets = {
   loadGroup: async () => {},
   sprite: () => undefined,
   ui: (cast, member) => `/assets/ui/${cast}-${member}.png`,
+  hash: null,
+  reload: async () => [],
+  onReload: () => {},
 };
 
 /** The screen, every element on it (the class list's rows included), and a press by label. */

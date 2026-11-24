@@ -256,12 +256,20 @@ describe("each installed pack's art is served under /assets/packs/<id>/", () => 
 
   test("the index merges the pack's atlases and sounds into the engine's art", async () => {
     const index = await (await get("/assets/index.json")).json();
-    expect(index.atlases.tiles.sheets).toEqual(["packs/classic/tiles-0.png"]);
+    // A pack's files are named with its version, so browsers keep them for good (issue #29).
+    expect(index.atlases.tiles.sheets).toEqual(["packs/classic/tiles-0.png?v=x"]);
     expect(index.atlases.tiles.sprites.g1[0]).toBe(0);
     expect(index.sounds).toEqual({
       clicksound: "sounds/clicksound.wav",
-      hitsound: "packs/classic/sounds/hitsound.wav",
+      hitsound: "packs/classic/sounds/hitsound.wav?v=x",
     });
+    expect((await get("/assets/packs/classic/tiles-0.png?v=x")).headers.get("cache-control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    expect((await get("/assets/packs/classic/tiles-0.png")).headers.get("cache-control")).toBe(
+      "no-cache",
+    );
+
     expect(index.ui["internal:1"]).toBeDefined();
     expect((await get("/assets/packs/classic/tiles-0.png")).status).toBe(200);
     expect((await get("/assets/packs/classic/sounds/hitsound.wav")).status).toBe(200);

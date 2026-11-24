@@ -24,10 +24,12 @@
 import { join } from "node:path";
 
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
-import { installContent } from "@secondstaronline/shared";
+import { can, installContent } from "@secondstaronline/shared";
 
 import { type Clock, systemClock } from "./clock.ts";
 import { DEFAULT_SERVER_CONFIG, readServerConfig, type ServerConfig } from "./config.ts";
+import { ArtLibrary } from "./content/art.ts";
+import { ServedAssets } from "./content/served-assets.ts";
 import { ContentService } from "./content/service.ts";
 import {
   ContentChoiceError,
@@ -43,8 +45,16 @@ import {
   startGateway,
 } from "./gateway/server.ts";
 import { createPerfWriter } from "./perf-out.ts";
+import {
+  type ArtFiles,
+  artFilesDir,
+  diskArtFiles,
+  memoryArtFiles,
+  sweepArtFiles,
+} from "./persistence/art-files.ts";
 import { type Db, openDatabase } from "./persistence/database.ts";
 import { migrate } from "./persistence/migrations.ts";
+import { loadRoles, staffAccounts } from "./persistence/roles.ts";
 import { type Rng, systemRng } from "./rng.ts";
 import { TickLoop } from "./tick-loop.ts";
 import { createTickProbe, createTickStats, lagLine } from "./tick-stats.ts";
@@ -95,6 +105,8 @@ export interface ServerOptions {
    * only when this start creates the database.
    */
   content?: string;
+  /** Where uploaded art and sounds are kept (default: `<name>-content/` beside the database). */
+  artFiles?: ArtFiles;
   /** Ends the process after too many failed ticks (tests record it; default `process.exit`). */
   exit?: (code: number) => void;
 }
@@ -145,6 +157,13 @@ export function startServer(options: ServerOptions): RunningServer {
   // published changes on top. It is installed before the game loads anything, and each publish
   // swaps it in and tells every client.
   let live: Game | null = null;
+  // Uploaded art and sounds (issue #29): files named by their hash in `<name>-content/` beside the
+  // database (in memory for a world in memory), built into the operator's atlases on each publish.
+  const artFiles =
+    options.artFiles ??
+    (options.dbPath === ":memory:" ? memoryArtFiles() : diskArtFiles(artFilesDir(options.dbPath)));
+  const art = new ArtLibrary(artFiles);
+  let assets: ServedAssets | null = null;
   const content = new ContentService({
     db,
     now: isoNow,
@@ -152,10 +171,30 @@ export function startServer(options: ServerOptions): RunningServer {
     log: (line) => console.log(line),
     onPublish: (store, restoring) => {
       installContent(store);
-      live?.contentPublished(store.hash, restoring);
+      assets?.refresh();
+      live?.contentPublished(store.hash, restoring, assets?.index().hash);
     },
     points: () => live?.contractPointProblems() ?? [],
+    art,
+    // A ticket stops working once its holder's role loses the Content page.
+    mayUpload: (accountId) => {
+      const role = staffAccounts(db).find((a) => a.accountId === accountId)?.role;
+      return can(
+        loadRoles(db).find((r) => r.id === role),
+        "contentEditor",
+      );
+    },
   });
+  assets = new ServedAssets({
+    engineDir: ASSETS_DIR,
+    packs: () => content.installedPacks(),
+    built: () => content.builtArt(),
+    files: artFiles,
+  });
+  const swept = sweepArtFiles(db, artFiles, Date.now());
+  if (swept > 0) {
+    console.log(`content: removed ${swept} uploaded file${swept === 1 ? "" : "s"} nothing uses`);
+  }
   installContent(content.store());
   // The minute window behind the operator's lag line, and (only with a perf file) the per-phase
   // probe and its one-second window.
@@ -204,6 +243,10 @@ export function startServer(options: ServerOptions): RunningServer {
     content: () => content.clientCopy(),
     contentFor: (hash) => content.clientCopyFor(hash),
     packArt: () => content.installedPacks(),
+    assets: () => (assets as ServedAssets).index(),
+    operatorFile: (path) => (assets as ServedAssets).file(path),
+    uploadTicketOk: (ticket) => content.uploadTicketOk(ticket),
+    upload: (ticket, kind, bytes) => content.upload(ticket, kind, bytes),
     clock,
     assetsDir: ASSETS_DIR,
     proxyHops: options.proxyHops ?? 0,

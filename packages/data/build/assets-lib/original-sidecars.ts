@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { type OriginalSidecar, originalSidecarsSchema } from "../../schema/original-sidecars.ts";
-import { checkMirroredFlags } from "./mirror.ts";
+import { checkMirroredFlags } from "../../src/art/mirror.ts";
 
 export const ORIGINAL_SIDECARS_PATH = "assets/original-sidecars.json";
 

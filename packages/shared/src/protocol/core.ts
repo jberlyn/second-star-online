@@ -364,6 +364,11 @@ export type CoreServerMsg =
        * was away). The server always sends it; a message without it checks nothing.
        */
       content?: string;
+      /**
+       * The asset index's hash (issue #29): a client that loaded another index (art published
+       * while it was away or on the title screen) loads the art that changed before it plays.
+       */
+      assets?: string;
     }
   /** Login or creation refused, with the original alert text where one exists. */
   | { t: "denied"; text: string }

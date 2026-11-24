@@ -120,6 +120,23 @@ export const contentRemoveSchema = z.strictObject({
 /** The references nothing resolves: the Content problems list. */
 export const contentProblemsSchema = z.strictObject({ t: z.literal("contentProblems"), seq });
 
+/**
+ * A ticket for uploading art and sounds (issue #29). Files are too big for the socket, so the page
+ * posts each one to `/upload/<image|sound>` with the ticket in `x-upload-ticket`; the answer names
+ * the stored file by its hash, for an `art` row to use.
+ */
+export const contentUploadTicketSchema = z.strictObject({
+  t: z.literal("contentUploadTicket"),
+  seq,
+});
+
+/** Where uploads are posted: `/upload/image` or `/upload/sound`. */
+export const UPLOAD_PATH = "/upload/";
+/** The header `/assets/index.json` names its hash in (the one `content` and `welcome` carry). */
+export const ASSETS_HASH_HEADER = "x-assets-hash";
+/** The header an upload carries its ticket in. */
+export const UPLOAD_TICKET_HEADER = "x-upload-ticket";
+
 /** A kind of place the world keeps an item or a monster. */
 export type ContentPlaceKind =
   | "bag"
@@ -272,7 +289,17 @@ export type ContentServerMsg =
    * The published store changed (an operator published or undid a publish): fetch
    * `/content/<hash>.json` and install it. Sent to every player in game.
    */
-  | { t: "content"; hash: string }
+  | {
+      t: "content";
+      hash: string;
+      /**
+       * The asset index's hash (issue #29): when it differs from the one loaded, fetch
+       * `/assets/index.json` again and load the sheets and sounds that changed.
+       */
+      assets?: string;
+    }
+  /** An upload ticket, and the largest file the server takes. */
+  | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
