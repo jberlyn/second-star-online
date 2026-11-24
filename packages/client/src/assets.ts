@@ -138,7 +138,8 @@ export async function loadAssets(fetchImpl: typeof fetch = fetch): Promise<Asset
 
 /**
  * Draws an atlas sprite with its registration point at (x, y), or its top-left corner at
- * (x, y) when `topLeft` is set (paperdoll layers are pasted at their top-left).
+ * (x, y) when `topLeft` is set (paperdoll layers and the ground's pool pictures are pasted at
+ * their top-left; a trimmed upload's corner is where its picture's was).
  */
 export function drawSprite(
   ctx: CanvasRenderingContext2D,
@@ -155,7 +156,8 @@ export function drawSprite(
     return;
   }
   const [, sx, sy, w, h, rx, ry] = s;
-  const dx = topLeft ? x : x - rx;
-  const dy = topLeft ? y : y - ry;
+  // A trimmed upload pasted by its corner starts where its visible pixels did (issue #29).
+  const dx = topLeft ? x + (s[7] ?? 0) : x - rx;
+  const dy = topLeft ? y + (s[8] ?? 0) : y - ry;
   ctx.drawImage(sheet, sx, sy, w, h, dx, dy, w, h);
 }

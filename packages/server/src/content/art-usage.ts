@@ -6,7 +6,7 @@
  * its frames is left. Pure.
  */
 import type { AtlasGroup } from "@secondstaronline/data";
-import type { ContentData } from "@secondstaronline/shared";
+import { type ContentData, CURRENCY_PILES } from "@secondstaronline/shared";
 
 import type { ArtKeys } from "./art.ts";
 import type { ContentProblem } from "./validate.ts";
@@ -48,6 +48,10 @@ export function usedArt(data: ContentData): {
     note(sprites.items, item.sprite ?? item.name, `item ${item.name}`);
     // A worn item draws the layer of its name (`+N` dropped).
     note(sprites.paperdoll, item.name.split("+")[0]?.trimEnd(), `item ${item.name}`);
+  }
+  // The engine's currency piles, drawn for a pile of the currency whatever it is called.
+  for (const pile of CURRENCY_PILES) {
+    note(sprites.items, pile.name, "the currency's piles");
   }
   for (const row of data.itemRules.paperdoll.aliases) {
     note(sprites.paperdoll, row.becomes, "a paperdoll alias");

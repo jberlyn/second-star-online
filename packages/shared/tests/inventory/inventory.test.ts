@@ -513,7 +513,8 @@ describe("ground items", () => {
     expect(groundPicture("Cauldron")).toBe("Cauldron");
     expect(groundPicture("Wind Cabinet#3")).toBe("WindCabinetPic");
     expect(groundPicture("Crate#4")).toBe("CratePic");
-    expect(groundPicture("Treasure Map")).toBe("MapPic");
+    expect(groundPicture("Painting#7")).toBe("PaintingPic");
+    expect(groundPicture("Photo#8")).toBe("PhotoPic");
   });
   test("custom pictures sit at (1, 1) of a 32x32 scratch member, reg (16, -2)", () => {
     // The crystal picture's own regpoint (3, -4) plays no part.

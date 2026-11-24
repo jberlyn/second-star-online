@@ -297,12 +297,16 @@ describe("photos and the bag", () => {
     expect(artBagFull(line(15))).toBe(true);
     expect(artBagFull(line(3))).toBe(false);
   });
-  test("artRef: Painting before Photo, id after #", () => {
+  test("artRef: a player's Painting#<id> or Photo#<id>, by its whole name", () => {
     expect(artRef("Painting#123")).toEqual({ kind: "painting", id: "123" });
     expect(artRef("Photo#9")).toEqual({ kind: "photo", id: "9" });
-    expect(artRef("Painting of a Photo#5")).toEqual({ kind: "painting", id: "5" });
-    expect(artRef("Painting")).toEqual({ kind: "painting", id: "" });
     expect(artRef("Sword")).toBeNull();
+  });
+  test("bug fixed: a name holding Painting or Photo is not a player's art", () => {
+    // 1.6 read the words: "Painting of a Photo#5" was a painting, "Painting" one with no id.
+    expect(artRef("Painting of a Photo#5")).toBeNull();
+    expect(artRef("Painting")).toBeNull();
+    expect(artRef("Photo Album")).toBeNull();
   });
   test("texts are 1.6's", () => {
     expect(ART_TEXT.needCamera).toBe("You must equip a camera to take a picture!");

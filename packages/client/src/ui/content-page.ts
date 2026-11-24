@@ -13,11 +13,14 @@
  *   for one row's JSON that saves to the draft.
  * - **Where it is used** and **Remove** for an item or a monster (issue #28, content-usage.ts):
  *   the rows and the world's places that hold it, and a removal with its cleanup.
+ * - **Item pictures** (issue #29, item-art.ts): a picture panel in an item row's editor, and a bulk
+ *   upload that attaches PNGs named after items.
  * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
  * - **Problems**: references nothing resolves, in content and in the world.
  */
 import type {
   ContentDraftView,
+  ContentItemArtView,
   ContentListing,
   ContentNoticeView,
   ContentOverview,
@@ -27,10 +30,12 @@ import type {
   ContentRowRef,
   ContentRowStatus,
   ContentUsageView,
+  PictureChange,
 } from "@secondstaronline/shared";
 
+import type { Assets } from "../assets.ts";
 import { action, gameInput } from "./action.ts";
-import { createArtUploader } from "./art-uploads.ts";
+import { createArtUploader, postUpload } from "./art-uploads.ts";
 import { drawRemovals, drawUsage, type RemovalPlan, removalForm } from "./content-usage.ts";
 import {
   confirmBox,
@@ -39,6 +44,7 @@ import {
   pageHeading,
   panelButton,
 } from "./control-panel-kit.ts";
+import { createItemArtPicker, createItemPictures } from "./item-art.ts";
 
 /** What the page asks the server for (each answer comes back with its `seq`). */
 export interface ContentPageActions {
@@ -58,6 +64,10 @@ export interface ContentPageActions {
   problems(seq: number): void;
   /** A ticket for uploading art and sounds (issue #29). */
   uploadTicket(seq: number): void;
+  /** The draft's items and their pictures, for the item picture picker. */
+  itemArt(seq: number): void;
+  /** One picture change, made in the draft as a whole by the server. */
+  picture(seq: number, change: PictureChange): void;
   /** Opens a character's hub (a holder in a usage report). */
   openCharacter(name: string): void;
 }
@@ -74,7 +84,8 @@ export type ContentReply =
       world: ContentProblemView[];
     }
   | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] }
-  | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number };
+  | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
+  | { t: "contentItemArt"; seq: number; view: ContentItemArtView };
 
 export interface ContentPage {
   readonly el: HTMLElement;
@@ -226,7 +237,7 @@ function problemList(problems: readonly ContentProblemView[]): HTMLElement {
   return ul;
 }
 
-export function createContentPage(actions: ContentPageActions): ContentPage {
+export function createContentPage(actions: ContentPageActions, assets?: Assets): ContentPage {
   const root = document.createElement("section");
   root.className = "content-page";
   root.append(
@@ -482,6 +493,115 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
   });
   partSel.addEventListener("change", askList);
 
+  // ---- item pictures (issue #29) --------------------------------------------------------------
+  /** Draft changes waiting for their result, by seq (the picture picker's saves). */
+  const resultWaits = new Map<number, (r: { ok: boolean; text: string }) => void>();
+  const itemArtWaits = new Map<number, (v: ContentItemArtView) => void>();
+  /** Ticket requests waiting for their answer, by seq. */
+  const ticketWaits = new Map<number, (t: { ticket: string; maxBytes: number }) => void>();
+  const ticket = (): Promise<{ ticket: string; maxBytes: number }> =>
+    new Promise((resolve, reject) => {
+      const s = next();
+      ticketWaits.set(s, resolve);
+      actions.uploadTicket(s);
+      setTimeout(() => {
+        if (ticketWaits.delete(s)) {
+          reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
+  /** The draft's items and pictures, as the picker needs them. */
+  const askItemArt = (): Promise<ContentItemArtView> =>
+    new Promise((resolve, reject) => {
+      const s = next();
+      itemArtWaits.set(s, resolve);
+      actions.itemArt(s);
+      setTimeout(() => {
+        if (itemArtWaits.delete(s)) {
+          reject(new Error("the server did not answer"));
+        }
+      }, 15_000);
+    });
+  const artOptions = assets
+    ? {
+        assets,
+        async upload(file: File) {
+          try {
+            const t = await ticket();
+            if (file.size > t.maxBytes) {
+              return {
+                ok: false as const,
+                error: `the file is ${Math.ceil(file.size / 1024)} KB; uploads may be at most ${Math.floor(t.maxBytes / 1024)} KB`,
+              };
+            }
+            return (
+              (await postUpload(file, "image", t.ticket)) ?? {
+                ok: false as const,
+                error: "the server did not answer",
+              }
+            );
+          } catch (e) {
+            return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+          }
+        },
+        apply(change: PictureChange) {
+          return new Promise<{ ok: boolean; text: string }>((resolve) => {
+            const s = next();
+            resultWaits.set(s, resolve);
+            actions.picture(s, change);
+            setTimeout(() => {
+              if (resultWaits.delete(s)) {
+                resolve({ ok: false, text: "The server did not answer." });
+              }
+            }, 15_000);
+          });
+        },
+        saved() {
+          refreshAll();
+          const ref = editing;
+          if (!ref) {
+            return;
+          }
+          if (!editor.hidden && json.value !== loaded) {
+            // Unsaved JSON in the editor stays; only the picture panel catches up.
+            editorState.textContent = `${editorState.textContent?.replace(/ The draft changed this row's picture.*$/, "") ?? ""} The draft changed this row's picture: your unsaved JSON is kept, and saving it writes your version.`;
+            if (ref.key !== null) {
+              showPicker(ref.key);
+            }
+          } else {
+            openRow(ref);
+          }
+        },
+      }
+    : null;
+  const picker = artOptions ? createItemArtPicker(artOptions) : null;
+  /** Shows the picker for the item row open in the editor (the draft's version of it). */
+  let pickerSeq = 0;
+  function showPicker(key: string): void {
+    if (!picker) {
+      return;
+    }
+    const mine = ++pickerSeq;
+    void askItemArt()
+      .then((view) => {
+        const item = view.items.find((i) => i.name.toLowerCase() === key.toLowerCase());
+        if (mine !== pickerSeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
+          return;
+        }
+        if (item) {
+          picker.show(item, view);
+        } else {
+          picker.clear();
+        }
+        pictures?.setView(view);
+      })
+      .catch(() => picker.clear());
+  }
+  function hidePicker(): void {
+    pickerSeq += 1;
+    picker?.clear();
+  }
+
   // ---- the row editor -------------------------------------------------------------------------
   const editor = document.createElement("div");
   editor.className = "content-editor";
@@ -528,6 +648,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     usageBox,
     removalBox,
     packView,
+    picker?.el ?? document.createElement("div"),
     formField(
       "JSON",
       json,
@@ -577,6 +698,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     removalBox.replaceChildren();
     editing = ref;
     editingKeyField = null;
+    hidePicker();
     editor.hidden = false;
     editorTitle.textContent = refLabel(ref);
     editorState.textContent = "Loading…";
@@ -598,6 +720,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     removalBox.replaceChildren();
     editing = { dataset: listing.dataset, part: listing.part, key: null };
     editingKeyField = listing.keyField;
+    hidePicker();
     editor.hidden = false;
     json.readOnly = false;
     saveBtn.hidden = false;
@@ -640,6 +763,12 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     }
     revertBtn.hidden = d.readOnly || d.pack === null || d.status === "pack" || d.status === null;
     discardBtn.hidden = d.draft === null;
+    // An item's picture, as the draft has it (one the draft removes has none to pick).
+    if (d.dataset === "items" && d.part === "items" && d.key !== null && d.draft?.op !== "remove") {
+      showPicker(d.key);
+    } else {
+      hidePicker();
+    }
   }
 
   function closeEditor(): void {
@@ -650,6 +779,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     editor.hidden = true;
     editing = null;
     editingKeyField = null;
+    hidePicker();
     loaded = "";
     json.value = "";
   }
@@ -759,22 +889,34 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     "Art and sounds",
     "Upload PNG pictures and WAV, MP3 or OGG sounds. Each file is checked and stored on the server under the hash of its bytes, and goes live when an art row in the draft names it (under art: items, paperdoll, bodies, fx, tiles or sounds) and the draft is published.",
   );
-  /** Ticket requests waiting for their answer, by seq. */
-  const ticketWaits = new Map<number, (t: { ticket: string; maxBytes: number }) => void>();
-  const uploader = createArtUploader({
-    ticket: () =>
-      new Promise((resolve, reject) => {
-        const s = next();
-        ticketWaits.set(s, resolve);
-        actions.uploadTicket(s);
-        setTimeout(() => {
-          if (ticketWaits.delete(s)) {
-            reject(new Error("the server did not answer"));
-          }
-        }, 15_000);
-      }),
-  });
+  const uploader = createArtUploader({ ticket });
   artSection.body.append(uploader.el);
+
+  const picturesSection = section(
+    "Item pictures",
+    "Upload many item pictures at once, and see which items have none. Open an item's row to upload, choose or adjust its picture with a preview.",
+  );
+  const pictures = artOptions
+    ? createItemPictures({
+        ...artOptions,
+        openItem(key) {
+          openRow({ dataset: "items", part: "items", key });
+          editor.scrollIntoView?.({ block: "start" });
+        },
+      })
+    : null;
+  if (pictures) {
+    picturesSection.body.append(pictures.el);
+  } else {
+    picturesSection.el.hidden = true;
+  }
+  const refreshPictures = () => {
+    if (pictures) {
+      void askItemArt()
+        .then((v) => pictures.setView(v))
+        .catch(() => {});
+    }
+  };
 
   const history = section("Publish history", "Newest first. Undo takes a whole publish back.");
   const historyTable = createTable<ContentPublishView>({
@@ -869,6 +1011,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     notices.el,
     draft.el,
     rows.el,
+    picturesSection.el,
     artSection.el,
     history.el,
     problemsSection.el,
@@ -878,6 +1021,7 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
     overviewSeq = next();
     actions.overview(overviewSeq);
     askList();
+    refreshPictures();
   }
 
   function drawOverview(o: ContentOverview): void {
@@ -928,6 +1072,12 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
           wait?.({ ticket: msg.ticket, maxBytes: msg.maxBytes });
           return;
         }
+        case "contentItemArt": {
+          const wait = itemArtWaits.get(msg.seq);
+          itemArtWaits.delete(msg.seq);
+          wait?.(msg.view);
+          return;
+        }
         case "contentOverview":
           if (msg.seq === overviewSeq) {
             drawOverview(msg.overview);
@@ -970,6 +1120,12 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
           }
           return;
         case "contentResult":
+          if (resultWaits.has(msg.seq)) {
+            const wait = resultWaits.get(msg.seq);
+            resultWaits.delete(msg.seq);
+            wait?.({ ok: msg.ok, text: msg.text });
+            return;
+          }
           if (msg.seq === resultSeq) {
             if (msg.ok) {
               say(msg.text);
@@ -992,11 +1148,19 @@ export function createContentPage(actions: ContentPageActions): ContentPage {
         refreshAll();
       }
     },
-    changes: () => (!editor.hidden && json.value !== loaded ? 1 : 0),
+    changes: () => (!editor.hidden && json.value !== loaded ? 1 : 0) + (picker?.pending() ? 1 : 0),
     discard: () => closeEditor(),
     reset() {
       overview = null;
       listing = null;
+      // Answers still awaited belong to the session that ended.
+      for (const wait of resultWaits.values()) {
+        wait({ ok: false, text: "The session ended." });
+      }
+      resultWaits.clear();
+      ticketWaits.clear();
+      itemArtWaits.clear();
+      pictures?.reset();
       problemsBody.replaceChildren();
       closeEditor();
       datasetSel.replaceChildren();

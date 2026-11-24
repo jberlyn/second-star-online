@@ -658,26 +658,31 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     },
     can: (permission) => permissions.has(permission),
   });
-  const contentPage = createContentPage({
-    overview: (seq) => send({ t: "contentOverview", seq }),
-    list: (seq, dataset, part) => send({ t: "contentList", seq, dataset, part }),
-    row: (seq, ref) => send({ t: "contentRow", seq, ...ref }),
-    draft: (seq, ref, op, data) => send({ t: "contentDraft", seq, ...ref, op, data }),
-    discard: (seq, ref) => send({ t: "contentDiscard", seq, ...ref }),
-    publish: (seq, summary, draftRev) => send({ t: "contentPublish", seq, summary, draftRev }),
-    undo: (seq, id) => send({ t: "contentUndo", seq, id }),
-    notice: (seq, ref, accept) => send({ t: "contentNotice", seq, ...ref, accept }),
-    usage: (seq, kind, key) => send({ t: "contentUsage", seq, kind, key }),
-    remove: (seq, plan) => send({ t: "contentRemove", seq, ...plan }),
-    problems: (seq) => send({ t: "contentProblems", seq }),
-    uploadTicket: (seq) => send({ t: "contentUploadTicket", seq }),
-    openCharacter: (name) => {
-      controlPanel.go("characters");
-      if (controlPanel.page === "characters") {
-        charactersPage.openHub(name);
-      }
+  const contentPage = createContentPage(
+    {
+      overview: (seq) => send({ t: "contentOverview", seq }),
+      list: (seq, dataset, part) => send({ t: "contentList", seq, dataset, part }),
+      row: (seq, ref) => send({ t: "contentRow", seq, ...ref }),
+      draft: (seq, ref, op, data) => send({ t: "contentDraft", seq, ...ref, op, data }),
+      discard: (seq, ref) => send({ t: "contentDiscard", seq, ...ref }),
+      publish: (seq, summary, draftRev) => send({ t: "contentPublish", seq, summary, draftRev }),
+      undo: (seq, id) => send({ t: "contentUndo", seq, id }),
+      notice: (seq, ref, accept) => send({ t: "contentNotice", seq, ...ref, accept }),
+      usage: (seq, kind, key) => send({ t: "contentUsage", seq, kind, key }),
+      remove: (seq, plan) => send({ t: "contentRemove", seq, ...plan }),
+      problems: (seq) => send({ t: "contentProblems", seq }),
+      uploadTicket: (seq) => send({ t: "contentUploadTicket", seq }),
+      itemArt: (seq) => send({ t: "contentItemArt", seq }),
+      picture: (seq, change) => send({ t: "contentPicture", seq, change }),
+      openCharacter: (name) => {
+        controlPanel.go("characters");
+        if (controlPanel.page === "characters") {
+          charactersPage.openHub(name);
+        }
+      },
     },
-  });
+    assets,
+  );
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -1123,6 +1128,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     if (changed.includes("tiles") && model.map) {
       void playfield.setMap(model.map);
     }
+    // Pictures already painted in the panel are redrawn from the new sheets.
+    if (changed.includes("items")) {
+      panel.refreshArt();
+    }
     contentPage.published();
   });
   conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
@@ -1300,6 +1309,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentProblems":
       case "contentResult":
       case "contentUploadTicket":
+      case "contentItemArt":
         contentPage.receive(msg);
         return;
       case "content":

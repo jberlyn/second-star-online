@@ -78,3 +78,15 @@ export function isFixtureKind(name: string, ...kinds: EngineFixtureKind[]): bool
   const k = engineFixtureKind(name);
   return k !== null && kinds.includes(k);
 }
+
+/**
+ * A painting or photo a player made (`Painting#12`, `Photo#9`): the engine names them itself, so
+ * they are known by that whole shape, never by a word in an item's name (1.6 took any name
+ * holding "Painting" or "Photo" for one, so a "Photo Album" would have opened the viewer).
+ */
+export function playerArt(name: string): { kind: "painting" | "photo"; id: string } | null {
+  const m = /^(painting|photo)#(\d+)$/i.exec(name);
+  return m
+    ? { kind: (m[1] as string).toLowerCase() as "painting" | "photo", id: m[2] as string }
+    : null;
+}

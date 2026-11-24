@@ -12,8 +12,14 @@
  */
 export type AtlasGroup = "tiles" | "bodies" | "paperdoll" | "fx" | "items";
 
-/** `[sheet, x, y, w, h, regX, regY]` */
-export type AtlasSprite = [number, number, number, number, number, number, number];
+/**
+ * `[sheet, x, y, w, h, regX, regY]`, and for an uploaded item picture whose see-through edges were
+ * trimmed, `[..., trimX, trimY]`: where its visible pixels began in the picture as drawn, so a
+ * picture pasted by its corner (a currency pile, issue #29) lands where its artist put it.
+ */
+export type AtlasSprite =
+  | [number, number, number, number, number, number, number]
+  | [number, number, number, number, number, number, number, number, number];
 
 export interface AtlasIndex {
   /** Sheet files, relative to /assets/. */

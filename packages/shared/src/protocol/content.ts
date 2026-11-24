@@ -4,7 +4,10 @@
  * editor for one row), and the hash every client follows to fetch the store. The Content page's
  * intents are gated by the `contentEditor` permission.
  */
+
 import { z } from "zod";
+
+import type { ArtItem, Item } from "@secondstaronline/data";
 
 const seq = z
   .number()
@@ -129,6 +132,64 @@ export const contentUploadTicketSchema = z.strictObject({
   t: z.literal("contentUploadTicket"),
   seq,
 });
+
+/**
+ * Everything the item picture picker needs at once (issue #29): the draft's items, their uploaded
+ * pictures and the currency, so it never fetches hundreds of rows one by one.
+ */
+export const contentItemArtSchema = z.strictObject({ t: z.literal("contentItemArt"), seq });
+
+const pictureSettings = z.strictObject({
+  file: z.string().regex(/^[0-9a-f]{64}$/),
+  regX: z.number().int().min(-2048).max(2048),
+  regY: z.number().int().min(-2048).max(2048),
+  transparency: z.enum(["alpha", "green"]),
+});
+
+/**
+ * One picture change (issue #29), made in the draft as a whole: the server reads the item as the
+ * draft has it now and changes only its `sprite` and its upload, so no other edit is lost and no
+ * half of a change is left behind. See `PictureChange`.
+ */
+export const contentPictureSchema = z.strictObject({
+  t: z.literal("contentPicture"),
+  seq,
+  change: z.discriminatedUnion("op", [
+    z.strictObject({
+      op: z.literal("upload"),
+      item: z.string().min(1).max(80),
+      art: pictureSettings,
+    }),
+    z.strictObject({
+      op: z.literal("choose"),
+      item: z.string().min(1).max(80),
+      picture: z.string().trim().min(1).max(80),
+    }),
+    z.strictObject({ op: z.literal("remove"), item: z.string().min(1).max(80) }),
+    z.strictObject({
+      op: z.literal("pile"),
+      pile: z.enum(["SmallGold", "MediumGold", "LargeGold"]),
+      art: pictureSettings.nullable(),
+    }),
+  ]),
+});
+
+/** The item picture picker's view of the draft. */
+export interface ContentItemArtView {
+  /** Every item row as the draft would publish it. */
+  items: Item[];
+  /** The `art` dataset's item pictures as the draft would publish them. */
+  art: ArtItem[];
+  /** The currency item (its ground piles are `SmallGold`, `MediumGold` and `LargeGold`). */
+  currency: string | null;
+  /**
+   * The item pictures the installed packs draw, in lower case. With the draft's uploads, these are
+   * the pictures that will exist once the draft is published.
+   */
+  packPictures: string[];
+  /** The largest side an item picture may have. */
+  maxSide: number;
+}
 
 /** Where uploads are posted: `/upload/image` or `/upload/sound`. */
 export const UPLOAD_PATH = "/upload/";
@@ -300,6 +361,8 @@ export type ContentServerMsg =
     }
   /** An upload ticket, and the largest file the server takes. */
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
+  /** The item picture picker's view. */
+  | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
   | { t: "contentOverview"; seq: number; overview: ContentOverview }
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }

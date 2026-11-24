@@ -4,8 +4,8 @@ import { z } from "zod";
 const strings = z.array(z.string());
 
 /**
- * One catalogue entry. The game reads the name, the archived spellings (`variants`) and whether
- * there is an icon. What 1.6's scripts decide about an item (equip slot, power, price, loot,
+ * One catalogue entry. The game reads the name, the display name, the picture (`sprite`) and the
+ * archived spellings (`variants`). What 1.6's scripts decide about an item (equip slot, power, price, loot,
  * item code) is not on the record: it is in item-rules.json, attpower.json and the other rule
  * tables, which match items by name,.
  */
@@ -28,17 +28,19 @@ export const itemSchema = z.strictObject({
    */
   retired: z.literal(true).optional(),
   /**
-   * The picture: an original Inventory cast member, `"added"` for art in
-   * `assets/added/items/<name>.png` (a data test checks the file and its sidecar exist), or
-   * `null` for an item with none. Nothing reads more than `icon !== null`: an item with a
-   * picture is one `/drop` accepts and a book can be read.
+   * Where Classic's picture came from: an original Inventory cast member, `"added"` for art in
+   * `assets/added/items/<name>.png` (a data test checks the file and its sidecar exist), or `null`
+   * for an item 1.6 drew none for. A record only: whether an item has a picture is whether the art
+   * draws its sprite (a pack's atlas or an uploaded picture, issue #29), so a new item leaves this
+   * out.
    */
   icon: z
     .union([
       z.strictObject({ member: z.number().int(), castLib: z.number().int(), asset: z.string() }),
       z.literal("added"),
     ])
-    .nullable(),
+    .nullable()
+    .optional(),
 });
 
 /** The part of items.json that `data:build` emits. */

@@ -107,7 +107,11 @@ describe("building the operator's art", () => {
     const art = { ...EMPTY_ART, items: [{ name: "Frost Sword", file, regX: 8, regY: 8 }] };
     expect(lib.problems(art)).toEqual([]);
     const built = lib.build(art);
-    expect(built.index.atlases.items.sprites["frost sword"]?.slice(3)).toEqual([10, 10, 5, 5]);
+    // Width, height and anchor after the trim, then where the visible pixels began (issue #29:
+    // a picture pasted by its corner, such as a currency pile, lands where it was drawn).
+    expect(built.index.atlases.items.sprites["frost sword"]?.slice(3)).toEqual([
+      10, 10, 5, 5, 3, 3,
+    ]);
     expect(built.rects.items["frost sword"]).toEqual([10, 10, 5, 5]);
     expect(built.index.atlases.items.sheets[0]).toMatch(/^items-[0-9a-f]{16}\.png$/);
     // The same rows build the same sheets.
@@ -293,7 +297,7 @@ describe("uploading and publishing art on a running server", () => {
       const sprite = index.atlases.items.sprites["long sword"] as number[];
       const sheet = index.atlases.items.sheets[sprite[0] as number] as string;
       expect(sheet).toMatch(/^operator\/items-[0-9a-f]{16}\.png$/);
-      expect(sprite.slice(3)).toEqual([16, 16, 8, 8]);
+      expect(sprite.slice(3)).toEqual([16, 16, 8, 8, 2, 2]);
       const res = await fetch(new URL(`/assets/${sheet}`, server.url));
       expect(res.status).toBe(200);
       expect(res.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");

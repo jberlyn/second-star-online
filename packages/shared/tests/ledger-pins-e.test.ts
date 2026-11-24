@@ -165,6 +165,10 @@ describe("Only server systems create items", () => {
       // copies, spawns and references become. The server resolves both against the content store.
       contentUsage: ["key:string"],
       contentRemove: ["key:string", "replacement:string"],
+      // A picture change (issue #29): an item by key, an uploaded file by its SHA-256 (64 hex
+      // digits, checked by the schema), a picture's name. The server resolves the item and the
+      // picture against the draft and changes only the item's `sprite` and its upload.
+      contentPicture: ["change.item:string", "change.art.file:string", "change.picture:string"],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
@@ -257,9 +261,11 @@ describe("Only server systems create items", () => {
 describe("File editor and path-based file access removed", () => {
   test("SSO: no client message carries a file path or asks to view a character", () => {
     const keys = messages.flatMap((m) => fields(m.t).map((f) => `${m.t}: ${f.split(":")[0]}`));
-    expect(keys.filter((k) => /path|file|folder|directory/i.test(k.split(": ")[1] ?? ""))).toEqual(
-      [],
-    );
+    // A picture change names an uploaded file by its SHA-256, which the schema checks is 64 hex
+    // digits: a hash, never a path (issue #29).
+    expect(keys.filter((k) => /path|file|folder|directory/i.test(k.split(": ")[1] ?? ""))).toEqual([
+      "contentPicture: change.art.file",
+    ]);
     const types = messages.map((m) => m.t);
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the
     // names match: two editor loads, the Control Panel's player hub (a character by name, read

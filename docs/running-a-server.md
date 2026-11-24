@@ -280,7 +280,7 @@ The Content page's **Art and sounds** section uploads PNG pictures and WAV, MP3 
 
 | Field | A row | Notes |
 |---|---|---|
-| `items` | `{"name": "Frost Sword", "file": "<hash>", "regX": 8, "regY": 8}` | An item's picture in the bag, the equipment boxes and on the ground: `name` is the item's key or its `sprite`. At most 512×512; trimmed to its visible pixels. |
+| `items` | `{"name": "Frost Sword", "file": "<hash>", "regX": 8, "regY": 8}` | An item's picture in the bag, the equipment boxes and on the ground: `name` is the item's key or its `sprite`. At most 512×512; trimmed to its visible pixels. The [Picture panel](#item-pictures) writes these for you. |
 | `paperdoll` | `{"name": "Frost Sword", "frames": {"f1-s": {"file": "<hash>"}, …}}` | A worn layer, by the worn item's key. Frames `f1`-`f4` with a facing `n`, `e`, `s` or `w` (no `f4-s`: attacking south shows `f3-s`), each at most 46×45 and drawn from the character's top-left. |
 | `bodies` | `{"name": "1000", "frames": {"f1-n": {"file": "<hash>", "regX": 18, "regY": 30}, …}}` | A monster or Morph body, by number: all 16 frames. Uploaded bodies are numbered from 1000; body numbers go up to 9999 everywhere. |
 | `fx` | `{"name": "Frost", "frames": [{"file": "<hash>", "regX": 4, "regY": 4}, …], "trail": […]}` | A spell effect run, `Frost-1` … `Frost-n`, and its trail `xFrost-n`, as a spell's FX run names it. |
@@ -288,6 +288,20 @@ The Content page's **Art and sounds** section uploads PNG pictures and WAV, MP3 
 | `sounds` | `{"name": "crack", "file": "<hash>", "format": "wav"}` | A sound, played where a content row names it. |
 
 Pictures use their own transparency; add `"transparency": "green"` for 1.6-style art drawn on pure green. A `paperdoll` or `bodies` row drawn with 1.6's mirrored back views takes `"mirrored": true`, and its north frames are flipped. A row may name a pack's picture or sound to replace it; removing the row brings the pack's back. A publish is refused while a row names a missing or misshapen file, or while it takes away a picture or sound that content still uses and no pack supplies. A spell that gives a body (Morph, Nature Shift, Smoke Bomb) lasts its row's `lasts` seconds, 65 when unset, whatever the body's number. Files nothing names are removed a day after their upload, when the server starts.
+
+#### Item pictures
+
+Item pictures need no JSON. Open an item's row (dataset `items`, field `items`) and its **Picture** panel shows what it draws now, with previews in the bag, in the equipment box it is worn in and on the ground:
+
+- **Upload a PNG** to give the item a picture of its own. The page fills in the rest: the transparency (the picture's own see-through pixels, or "pure green is see-through" when it is fully opaque and holds pure green, as 1.6's art does) and the anchor, which centres the visible pixels on the item's tile as Classic's icons sit. Drag the picture on the ground preview, or type the anchor, to move it. The ground preview draws the hit box (the box round the visible pixels) and the anchor. The panel refuses what the server would (nothing visible, larger than 512×512) and warns about a picture bigger than a bag slot (32×32) or an equipment box (35×35), one with no see-through pixels, and an edge whose every pixel is nearly invisible (fainter than 32 of 255), which still counts in the hit box. **Download a 32×32 template** gives a pure green square to paint on.
+- **Use this picture** makes the item draw a picture the game already has, a pack's or an upload, by setting its `sprite`. Nothing is uploaded.
+- **Save the picture to the draft** writes the item's `art/items` row, named by its key. Each change is made as a whole against the draft as it is at that moment: only the item's `sprite` and its upload change, so another admin's edit to the row is kept. An item that borrowed another picture through `sprite` stops borrowing it, so the upload is what it draws. **Remove the upload** takes the row out; a pack picture of the same name shows again.
+
+Some views show a shared picture in place of an item's own, and the panel says so: containers in the bag (`CabinetBag`, `CrateBag` …) and once placed, crystals on the ground, maps (the `map` [behaviour](modding.md#item-behaviours)), clocks, and a player's paintings and photos. The currency's panel also offers its three ground piles, `SmallGold`, `MediumGold` and `LargeGold`, whatever the currency is called. A pile is pasted by its top-left corner, 1 px inside its tile, as 1.6 did, so draw it on the template where it should sit.
+
+The **Item pictures** section uploads many at once: choose PNGs named after their items (`Iron Sword.png`), and each is matched to an item key, then to the name players see, ignoring case (retired items take none). Files that match nothing are listed with a box to pick their item. A file for an item that already has a picture replaces it only while its **Replaces** box is ticked (it starts ticked). **Attach to their items** puts each picture in the draft with the page's transparency and anchor. Two files for the same item wait until you pick a different item for one of them. Below, **Items without a picture** lists every item that is not retired and will have no picture once the draft is published; choose one to open its row.
+
+An item has a picture when the art draws its `sprite`, or its key: only those can be made with `/drop` and the World Editor. Removing an item from the Content page also removes its upload, unless another item still draws it; retiring it keeps the picture, since players still hold copies.
 
 ### Bans, jails, mutes and IP bans
 

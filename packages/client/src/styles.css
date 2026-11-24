@@ -3184,3 +3184,114 @@ body {
   image-rendering: pixelated;
   background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 12px 12px;
 }
+
+/* Item pictures on the Content page (issue #29, ui/item-art.ts). */
+.item-art,
+.item-pictures {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.item-art {
+  border: 1px solid #4a4a4a;
+  padding: 10px;
+}
+.item-art[hidden],
+.item-art-controls[hidden] {
+  display: none;
+}
+.item-art-title {
+  margin: 0;
+  font-size: 1em;
+}
+.item-art-state,
+.item-art-status,
+.item-art-rules {
+  margin: 0;
+}
+.item-art-rules {
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+.item-art-pools {
+  margin: 0;
+  padding-left: 18px;
+}
+.item-art-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.item-art-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.item-art-preview {
+  image-rendering: pixelated;
+  border: 1px solid #4a4a4a;
+}
+.item-art-panel {
+  width: 204px;
+  height: 304px;
+}
+.item-art-ground {
+  width: 288px;
+  height: 288px;
+  cursor: move;
+  touch-action: none;
+}
+.item-art-pile .item-art-ground {
+  width: 192px;
+  height: 192px;
+  cursor: default;
+}
+.item-art-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+.item-art-controls input[type="number"] {
+  width: 6em;
+}
+.item-art-check {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.item-art-messages {
+  margin: 0;
+  padding-left: 18px;
+}
+.item-art-error {
+  color: #ff8a80;
+}
+.item-art-warning {
+  color: #ffd27f;
+}
+.item-art-piles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.item-art-pile {
+  border-top: 1px solid #4a4a4a;
+  padding-top: 8px;
+}
+.item-art-template {
+  color: inherit;
+}
+.item-art-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 288px;
+}
+.item-art-figure figcaption {
+  font-size: 12px;
+  color: #9a9a9a;
+}

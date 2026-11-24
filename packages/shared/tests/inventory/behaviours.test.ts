@@ -129,6 +129,29 @@ describe("engine fixtures", () => {
   });
 });
 
+describe("pictures by name (issue #29)", () => {
+  test("bug fixed: a name holding Map, Painting or Photo does not take their picture", () => {
+    // 1.6 pasted MapPic for any name holding "Map", and the painting and photo pictures for any
+    // holding "Painting" or "Photo" (the bag) or "Painting#"/"Photo#" (the ground).
+    expect(groundPicture("Maple Bow")).toBe("Maple Bow");
+    expect(groundPicture("Treasure Map")).toBe("Treasure Map");
+    expect(bagPicture("Oil Painting Kit")).toBe("Oil Painting Kit");
+    expect(bagPicture("Photo Album")).toBe("Photo Album");
+    expect(clickGate("Photo Album")).not.toEqual({ kind: "view" });
+    // A player's own painting and photo keep their pictures and their viewer.
+    expect(bagPicture("Painting#12")).toBe("PaintingBag");
+    expect(bagPicture("Photo#3")).toBe("PhotoBag");
+    expect(groundPicture("Painting#12")).toBe("PaintingPic");
+    expect(clickGate("Photo#3")).toEqual({ kind: "view" });
+  });
+  test("an item with the map behaviour shows the map picture on the ground", () => {
+    withBehaviours([{ match: "exact", pattern: "Treasure Map", behaviour: "map" }], () => {
+      expect(groundPicture("Treasure Map")).toBe("MapPic");
+      expect(groundPicture("Maple Bow")).toBe("Maple Bow");
+    });
+  });
+});
+
 describe("a world's own behaviours", () => {
   const own: ContentData["itemRules"]["behaviours"] = [
     { match: "exact", pattern: "Lockpick", behaviour: "key" },

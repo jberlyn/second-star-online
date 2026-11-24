@@ -36,6 +36,7 @@ import {
   type Rgba,
 } from "@secondstaronline/data/art";
 import { ART_FRAME_IDS, type ArtSoundFormat } from "@secondstaronline/data/schema";
+import { visibleBounds } from "@secondstaronline/shared";
 
 import type { ArtFiles } from "../persistence/art-files.ts";
 import type { ContentProblem } from "./validate.ts";
@@ -116,6 +117,9 @@ interface Prepared {
   img: Rgba;
   regX: number;
   regY: number;
+  /** Where a trimmed picture's visible pixels began (items only: pasted by their corner). */
+  trimX?: number;
+  trimY?: number;
 }
 
 /** A sprite or sound the operator's art supplies, by group, for the usage checks. */
@@ -149,27 +153,15 @@ export function trim(
   regX: number,
   regY: number,
 ): { img: Rgba; regX: number; regY: number } | null {
-  let x0 = img.width;
-  let y0 = img.height;
-  let x1 = -1;
-  let y1 = -1;
-  for (let y = 0; y < img.height; y++) {
-    for (let x = 0; x < img.width; x++) {
-      if (img.data[(y * img.width + x) * 4 + 3]) {
-        x0 = Math.min(x0, x);
-        y0 = Math.min(y0, y);
-        x1 = Math.max(x1, x);
-        y1 = Math.max(y1, y);
-      }
-    }
-  }
-  if (x1 < 0) {
+  const b = visibleBounds(img);
+  if (!b) {
     return null;
   }
-  if (x0 === 0 && y0 === 0 && x1 === img.width - 1 && y1 === img.height - 1) {
+  if (b.x === 0 && b.y === 0 && b.w === img.width && b.h === img.height) {
     return { img, regX, regY };
   }
-  const out = createRgba(x1 - x0 + 1, y1 - y0 + 1);
+  const [x0, y0] = [b.x, b.y];
+  const out = createRgba(b.w, b.h);
   for (let y = 0; y < out.height; y++) {
     const from = ((y0 + y) * img.width + x0) * 4;
     out.data.set(img.data.subarray(from, from + out.width * 4), y * out.width * 4);
@@ -312,7 +304,16 @@ export class ArtLibrary {
         row.regY,
       );
       if (t) {
-        prepared.push({ group: "items", key: row.name.toLowerCase(), ...t });
+        const { img: tImg, regX, regY } = t;
+        prepared.push({
+          group: "items",
+          key: row.name.toLowerCase(),
+          img: tImg,
+          regX,
+          regY,
+          trimX: row.regX - regX,
+          trimY: row.regY - regY,
+        });
       }
     }
 
@@ -507,7 +508,20 @@ export class ArtLibrary {
       for (const pl of [...layout.placements].sort((a, b) => (a.name < b.name ? -1 : 1))) {
         const p = byKey.get(pl.name) as Prepared;
         blit(imgs[pl.sheet] as Rgba, p.img, pl.x, pl.y);
-        sprites[p.key] = [pl.sheet, pl.x, pl.y, p.img.width, p.img.height, p.regX, p.regY];
+        sprites[p.key] =
+          p.trimX || p.trimY
+            ? [
+                pl.sheet,
+                pl.x,
+                pl.y,
+                p.img.width,
+                p.img.height,
+                p.regX,
+                p.regY,
+                p.trimX ?? 0,
+                p.trimY ?? 0,
+              ]
+            : [pl.sheet, pl.x, pl.y, p.img.width, p.img.height, p.regX, p.regY];
         const rect: MemberRect = [p.img.width, p.img.height, p.regX, p.regY];
         if (group === "fx") {
           rects.fx[p.key] = rect;

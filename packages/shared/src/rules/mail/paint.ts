@@ -6,6 +6,7 @@
  * only; the server receives the finished PNG.
  */
 import { type ContentStore, onContent } from "../../content/store.ts";
+import { playerArt } from "../core/fixtures.ts";
 import type { Rng } from "../core/lingo.ts";
 
 let A: ContentStore["social"]["art"];
@@ -328,17 +329,9 @@ export function artBagFull(bag: readonly string[]): boolean {
   return n > A.bagMax;
 }
 
-/**
- * A name containing "Painting" takes precedence over one containing "Photo". Return the kind
- * and the second part of the name split on `#`; return null for any other name.
- */
+/** A player's painting or photo (`Painting#12`): its kind and id; null for any other name. */
 export function artRef(name: string): { kind: "painting" | "photo"; id: string } | null {
-  const lower = name.toLowerCase();
-  const kind = lower.includes("painting") ? "painting" : lower.includes("photo") ? "photo" : null;
-  if (!kind) {
-    return null;
-  }
-  return { kind, id: name.split("#")[1] ?? "" };
+  return playerArt(name);
 }
 
 onContent((c) => {

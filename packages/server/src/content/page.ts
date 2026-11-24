@@ -14,7 +14,7 @@ import {
   type InGameMsg,
 } from "@secondstaronline/shared";
 
-import { UPLOAD_MAX_BYTES } from "./art.ts";
+import { SPRITE_MAX_SIDE, UPLOAD_MAX_BYTES } from "./art.ts";
 import {
   datasetParts,
   KEYED_LISTS,
@@ -214,7 +214,9 @@ type ContentIntent = Extract<
       | "contentUsage"
       | "contentRemove"
       | "contentProblems"
-      | "contentUploadTicket";
+      | "contentUploadTicket"
+      | "contentItemArt"
+      | "contentPicture";
   }
 >;
 
@@ -232,6 +234,8 @@ export const CONTENT_INTENTS = [
   "contentRemove",
   "contentProblems",
   "contentUploadTicket",
+  "contentItemArt",
+  "contentPicture",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -290,6 +294,26 @@ export function contentIntent(
         ticket: service.uploadTicket(actor),
         maxBytes: UPLOAD_MAX_BYTES,
       };
+    case "contentItemArt": {
+      const d = service.draftContent();
+      return {
+        t: "contentItemArt",
+        seq: msg.seq,
+        view: {
+          items: d.items.items,
+          art: d.art.items,
+          currency: d.bindings.currency.item ?? null,
+          maxSide: SPRITE_MAX_SIDE,
+          packPictures: service.packPictures(),
+        },
+      };
+    }
+    case "contentPicture": {
+      const r = service.draftPicture(actor, msg.change);
+      return r.ok
+        ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value }
+        : result(msg.seq, r, "");
+    }
     case "contentProblems": {
       const p = service.problems(world);
       return { t: "contentProblems", seq: msg.seq, content: p.content, world: p.world };

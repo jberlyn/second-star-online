@@ -7,6 +7,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { ContentOverview, ContentRowDetail, ContentUsageView } from "@secondstaronline/shared";
 
+import type { Assets } from "../src/assets.ts";
 import { createContentPage, lineDiff, refLabel } from "../src/ui/content-page.ts";
 import { removalHeadline } from "../src/ui/content-usage.ts";
 
@@ -47,27 +48,32 @@ const ale: ContentRowDetail = {
   draft: null,
 };
 
-function page() {
+function page(assets?: Assets) {
   const sent: { kind: string; seq: number; args: unknown[] }[] = [];
   const rec =
     (kind: string) =>
     (seq: number, ...args: unknown[]) =>
       sent.push({ kind, seq, args });
-  const p = createContentPage({
-    overview: rec("overview"),
-    list: rec("list"),
-    row: rec("row"),
-    draft: rec("draft"),
-    discard: rec("discard"),
-    publish: rec("publish"),
-    undo: rec("undo"),
-    notice: rec("notice"),
-    usage: rec("usage"),
-    remove: rec("remove"),
-    problems: rec("problems"),
-    uploadTicket: rec("uploadTicket"),
-    openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
-  });
+  const p = createContentPage(
+    {
+      overview: rec("overview"),
+      list: rec("list"),
+      row: rec("row"),
+      draft: rec("draft"),
+      discard: rec("discard"),
+      publish: rec("publish"),
+      undo: rec("undo"),
+      notice: rec("notice"),
+      usage: rec("usage"),
+      remove: rec("remove"),
+      problems: rec("problems"),
+      uploadTicket: rec("uploadTicket"),
+      itemArt: rec("itemArt"),
+      picture: rec("picture"),
+      openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
+    },
+    assets,
+  );
   document.body.replaceChildren(p.el);
   const $ = <T extends HTMLElement>(action: string) =>
     p.el.querySelector<T>(`[data-action="${action}"]`) as T;
@@ -91,6 +97,120 @@ describe("the helpers", () => {
       { kind: "add", text: "x" },
       { kind: "same", text: "c" },
     ]);
+  });
+});
+
+/** Assets with one picture (Long Sword), so the picture picker can be shown in a test window. */
+const SPRITES: Record<string, number[]> = { "long sword": [0, 0, 0, 1, 1, 0, 0] };
+const noArt = {
+  index: { atlases: { items: { sheets: [], sprites: SPRITES } }, ui: {} },
+  sheets: {},
+  sprite: (_g: string, n: string) => SPRITES[n.toLowerCase()],
+  ui: () => "",
+  loadGroup: async () => {},
+} as unknown as Assets;
+
+describe("item pictures on the Content page (issue #29)", () => {
+  test("an item row shows its picture panel, and a choice there goes into the draft", async () => {
+    const { p, $, last, settle } = page(noArt);
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: {
+        dataset: "items",
+        part: "items",
+        keyField: "name",
+        rows: [{ key: "Ale", status: "pack", draft: null }],
+      },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    p.receive({ t: "contentRow", seq: last("row")?.seq ?? 0, row: ale });
+    const ask = last("itemArt");
+    expect(ask).toBeDefined();
+    const view = {
+      items: [{ name: "Ale", icon: null }, { name: "Long Sword" }],
+      art: [],
+      currency: "Gold",
+      maxSide: 512,
+      packPictures: ["long sword"],
+    };
+    p.receive({ t: "contentItemArt", seq: ask?.seq ?? 0, view });
+    await settle();
+    const panel = p.el.querySelector(".content-editor .item-art") as HTMLElement;
+    expect(panel.hidden).toBe(false);
+    expect(panel.textContent).toContain("It has no picture yet");
+    $<HTMLInputElement>("item-art-choose").value = "Long Sword";
+    $("item-art-use").click();
+    await settle();
+    // One change, made whole by the server against the draft as it is then.
+    expect(last("picture")?.args).toEqual([{ op: "choose", item: "Ale", picture: "Long Sword" }]);
+    p.receive({
+      t: "contentResult",
+      seq: last("picture")?.seq ?? 0,
+      ok: true,
+      text: "Ale's picture is in the draft.",
+    });
+    await settle();
+    expect(panel.textContent).toContain("Ale's picture is in the draft.");
+    // The page refreshed: the overview and the row again.
+    expect(last("row")?.args).toEqual([{ dataset: "items", part: "items", key: "Ale" }]);
+  });
+
+  test("a picture change keeps unsaved JSON in the row editor", async () => {
+    const { p, $, last, settle } = page(noArt);
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({
+      t: "contentList",
+      seq: last("list")?.seq ?? 0,
+      listing: {
+        dataset: "items",
+        part: "items",
+        keyField: "name",
+        rows: [{ key: "Ale", status: "pack", draft: null }],
+      },
+    });
+    (p.el.querySelector('[data-action="content-row-open"]') as HTMLElement).click();
+    p.receive({ t: "contentRow", seq: last("row")?.seq ?? 0, row: ale });
+    p.receive({
+      t: "contentItemArt",
+      seq: last("itemArt")?.seq ?? 0,
+      view: {
+        items: [{ name: "Ale", icon: null }],
+        art: [],
+        currency: "Gold",
+        maxSide: 512,
+        packPictures: ["long sword"],
+      },
+    });
+    await settle();
+    const json = $<HTMLTextAreaElement>("content-json");
+    json.value = JSON.stringify({ name: "Ale", display: "Pale Ale", icon: null });
+    const rowSeq = last("row")?.seq;
+    $<HTMLInputElement>("item-art-choose").value = "Long Sword";
+    $("item-art-use").click();
+    await settle();
+    p.receive({ t: "contentResult", seq: last("picture")?.seq ?? 0, ok: true, text: "ok" });
+    await settle();
+    // The row was not asked for again, so the editor kept the operator's text.
+    expect(last("row")?.seq).toBe(rowSeq);
+    expect(json.value).toContain("Pale Ale");
+    expect(p.el.textContent).toContain("your unsaved JSON is kept");
+  });
+
+  test("a row that is not an item has no picture panel", () => {
+    const { p, last } = page(noArt);
+    p.onShow();
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    p.receive({
+      t: "contentRow",
+      seq: 0,
+      row: { ...ale, dataset: "casino", part: "blackjack", key: null, keyField: null },
+    });
+    const panel = p.el.querySelector(".content-editor .item-art") as HTMLElement;
+    expect(panel.hidden).toBe(true);
   });
 });
 

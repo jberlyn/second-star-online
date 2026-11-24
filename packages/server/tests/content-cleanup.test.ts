@@ -552,6 +552,33 @@ describe("removing content in use from a running game", () => {
     }
   });
 
+  test("the picture intents answer only a content editor (issue #29)", async () => {
+    const god = await make("God", "administrator");
+    const al = await make("Al");
+    const pick = { t: "contentPicture", seq: 2, change: { op: "remove", item: "Ruby Ring" } };
+    intent(al.characterId, { t: "contentItemArt", seq: 1 });
+    intent(al.characterId, pick);
+    expect(sent.filter((s) => s.to === al.characterId && s.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    intent(god.characterId, { t: "contentItemArt", seq: 1 });
+    expect(last(god.characterId, "contentItemArt")?.view.currency).toBe("Gold");
+    intent(god.characterId, pick);
+    expect(last(god.characterId, "contentResult")).toMatchObject({
+      seq: 2,
+      ok: false,
+      text: "Ruby Ring has no upload of its own.",
+    });
+    // A malformed change never reaches the game.
+    expect(() =>
+      intent(god.characterId, {
+        t: "contentPicture",
+        seq: 3,
+        change: { op: "pile", pile: "Gold", art: null },
+      }),
+    ).toThrow();
+  });
+
   /** A world with Ruby Rings everywhere: Al's bag and ring finger, Bo's offline bag and vault, the ground, a container and a quest line. */
   async function ringsEverywhere() {
     const god = await make("God", "administrator");

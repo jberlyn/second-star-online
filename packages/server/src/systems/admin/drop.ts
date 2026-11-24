@@ -1,7 +1,7 @@
 /**
  * `/drop <item>` and `/drop <n> gold` for the `drop` permission (administrators): the original's command. 1.6 took `N gold` or
  * any member name of the Inventory cast; SSO takes the catalogue items that are Inventory members
- * (the ones with an icon) and the cast's fixture members, plus a count (SSO's own addition). The
+ * (the ones the art draws a picture for) and the cast's fixture members, plus a count (SSO's own addition). The
  * item lands on the faced tile and never decays (SSO's own rule).
  */
 import {
@@ -13,6 +13,7 @@ import {
   isCrystal,
   isGoldName,
   isWalkable,
+  itemSprite,
   leadingInteger,
   lingoEq,
   lingoWord,
@@ -38,15 +39,25 @@ export interface DropPile {
 }
 
 /**
- * The catalogue spelling of a name that is an Inventory cast member: an item with an icon
- * (items.json `icon`: an original Inventory member, or added art), by its key or the display name it
- * was renamed to. Director's member lookup ignores case (`"Cash"` finds `cash`).
+ * Whether the art draws a picture for the item: a pack's atlas or an operator's upload has its
+ * sprite (`sprite`, else its key). The store's item rects hold exactly the pictures the art draws
+ * (an upload's rect is laid over the packs'), so a new item gets one by its picture alone, with no
+ * flag to keep in step (issue #29). Classic's `icon: null` items are the ones with no picture.
+ */
+export function hasItemPicture(key: string): boolean {
+  return content().rects.items[itemSprite(key).toLowerCase()] !== undefined;
+}
+
+/**
+ * The catalogue spelling of a name that is an Inventory cast member: an item with a picture, by
+ * its key or the display name it was renamed to. Director's member lookup ignores case (`"Cash"`
+ * finds `cash`).
  */
 function inventoryItem(name: string): string | null {
   // A renamed item may be typed by the name players see; it is put down by its key.
   const item = content().itemNamed(name);
   // A retired item's copies stay, but no more can be made (issue #28).
-  return item && item.icon !== null && !item.retired ? item.name : null;
+  return item && !item.retired && hasItemPicture(item.name) ? item.name : null;
 }
 
 /**

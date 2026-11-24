@@ -29,6 +29,8 @@ import {
   hasContent,
   installContent,
   isUniqueContainer,
+  type PictureChange,
+  planPicture,
   resolveNpcItemNames,
   SERVER_ONLY_DATASETS,
 } from "@secondstaronline/shared";
@@ -77,7 +79,7 @@ import {
   type UploadKind,
   withArtRects,
 } from "./art.ts";
-import { lostArtProblems } from "./art-usage.ts";
+import { lostArtProblems, usedArt } from "./art-usage.ts";
 import {
   type CleanupRow,
   cleanUses,
@@ -1018,6 +1020,71 @@ export class ContentService {
     return { ok: true, value: undefined };
   }
 
+  /** The item pictures the installed packs draw, in lower case (issue #29). */
+  packPictures(): string[] {
+    return [...this.packArt.sprites.items].sort();
+  }
+
+  /**
+   * One picture change from the Content page's picker (issue #29), put in the draft as a whole:
+   * the item is read as the draft has it now and only its `sprite` and its upload change, so an
+   * edit someone else made to the row meanwhile is kept, and no half of the change is left.
+   */
+  draftPicture(actor: ContentActor, change: PictureChange): ContentResult<string> {
+    const base = this.draftContent();
+    const uploads = new Set(base.art.items.map((a) => a.name.toLowerCase()));
+    const plan = planPicture(change, base.items.items, base.art.items, (name) => {
+      const n = name.toLowerCase();
+      return uploads.has(n) || this.packArt.sprites.items.has(n);
+    });
+    if (!plan.ok) {
+      return fail(plan.error);
+    }
+    const now = this.now();
+    const writes: DraftRow[] = [];
+    const drops: RowRef[] = [];
+    for (const r of plan.rows) {
+      // Taking out a row only the draft adds is dropping that draft change.
+      if (r.op === "remove" && rowValue(this.published, r.ref) === undefined) {
+        drops.push(r.ref);
+        continue;
+      }
+      writes.push({
+        ...r.ref,
+        op: r.op,
+        data: r.op === "set" ? r.data : null,
+        authorAccountId: actor.accountId,
+        author: actor.name,
+        updatedAt: now,
+      });
+    }
+    const draft = [
+      ...this.draft().filter(
+        (d) => !writes.some((w) => sameRow(w, d)) && !drops.some((x) => sameRow(x, d)),
+      ),
+      ...writes,
+    ];
+    const problems = schemaProblems(this.draftContent(draft)).filter((p) =>
+      ["items", "art"].some((d) => p.where === d || p.where.startsWith(`${d}/`)),
+    );
+    if (problems.length > 0) {
+      return fail("the picture does not match the art rows' schema", problems);
+    }
+    this.db.transaction(() => {
+      for (const d of drops) {
+        deleteDraftRow(this.db, d.dataset, d.part, d.key);
+      }
+      for (const w of writes) {
+        upsertDraftRow(this.db, w);
+      }
+    })();
+    const what =
+      change.op === "pile"
+        ? change.pile
+        : `${base.items.items.find((i) => i.name.toLowerCase() === change.item.toLowerCase())?.name ?? change.item}'s picture`;
+    return { ok: true, value: `${what} is in the draft.` };
+  }
+
   /** Drops a change from the draft. */
   draftDiscard(ref: RowRef): ContentResult {
     if (!this.draft().some((d) => sameRow(d, ref))) {
@@ -1290,7 +1357,8 @@ export class ContentService {
     actions: readonly WorldAction[],
     world: ContentWorld,
   ): DraftRow[] {
-    return draft.map((d) => {
+    const removed: DraftRow[] = [];
+    const settled = draft.map((d): DraftRow => {
       const a = actions.find(
         (x) => x.kind === "item" && x.copies === "retire" && sameRow(entryRef("item", x.key), d),
       );
@@ -1300,8 +1368,33 @@ export class ContentService {
       const held = world.usage("item", a.spellings).some((p) => p.count > 0 && p.place !== "quest");
       const wasRetired =
         (rowValue(this.published, d) as { retired?: unknown } | undefined)?.retired === true;
-      return held || wasRetired ? d : { ...d, op: "remove", data: null };
+      if (held || wasRetired) {
+        return d;
+      }
+      const row: DraftRow = { ...d, op: "remove", data: null };
+      removed.push(row);
+      return row;
     });
+    if (removed.length === 0) {
+      return settled;
+    }
+    // A retirement that became a removal takes the item's own upload with it, as a removal does,
+    // unless something else still draws that picture (issue #29).
+    let out = settled;
+    const next = this.draftContent(out);
+    const used = usedArt(next).sprites.items;
+    for (const d of removed) {
+      const art = next.art.items.find((r) => r.name.toLowerCase() === String(d.key).toLowerCase());
+      if (!art || used.has(art.name.toLowerCase())) {
+        continue;
+      }
+      const ref: RowRef = { dataset: "art", part: "items", key: art.name };
+      out = out.filter((x) => !sameRow(x, ref));
+      if (rowValue(this.published, ref) !== undefined) {
+        out.push({ ...d, ...ref, op: "remove", data: null });
+      }
+    }
+    return out;
   }
 
   /** Writes a publish's rows, empties the draft, and logs it (inside the caller's transaction). */
@@ -1604,6 +1697,23 @@ export class ContentService {
           ? { ref, op: "set", data: { ...current, retired: true } }
           : { ref, op: "remove", data: null },
       );
+      // An item that goes takes its own upload with it, unless something else still draws that
+      // picture (an item that borrows it as its `sprite`, an engine pile): issue #29.
+      if (own[0]?.op === "remove") {
+        // Its own upload, named by its key: a picture it borrowed through `sprite` is another's.
+        const art = base.art.items.find((a) => a.name.toLowerCase() === key.toLowerCase());
+        const after = applyRows(
+          base,
+          [...cleaned.rows, ...own].map((r) => ({ ...r.ref, op: r.op, data: r.data })),
+        );
+        if (art && !usedArt(after).sprites.items.has(art.name.toLowerCase())) {
+          own.push({
+            ref: { dataset: "art", part: "items", key: art.name },
+            op: "remove",
+            data: null,
+          });
+        }
+      }
       action = {
         kind: "item",
         key,

@@ -109,6 +109,8 @@ export interface Panel {
   tab: Tab;
   setTab(t: Tab): void;
   setInventory(inv: InventoryView, head: number): void;
+  /** The art was reloaded (an operator published pictures): draw the bag, boxes and gold again. */
+  refreshArt(): void;
   setStats(s: { str: number; sta: number; int: number; wis: number; dex: number }): void;
   /** The Stats tab's Level row, from the server's vitals. */
   setLevel(level: number): void;
@@ -191,8 +193,8 @@ function field(text: string, cls: string): HTMLElement {
   return el;
 }
 
-const BAG_X = (i: number) => 617 + 37 * (i % 5);
-const BAG_Y = (i: number) => [116, 153, 190][Math.floor(i / 5)] as number;
+export const BAG_X = (i: number) => 617 + 37 * (i % 5);
+export const BAG_Y = (i: number) => [116, 153, 190][Math.floor(i / 5)] as number;
 /** The bag's quantity field rects (frame-63.json channels 220-234). */
 const QTY_X = [612, 649, 683, 722, 755];
 const QTY_Y = [139, 177, 219];
@@ -215,12 +217,12 @@ const SKILL_ROW_H = 15;
 const BOX_X = { left: 626, right: 726 } as const;
 const BOX_Y = [280, 318, 358] as const;
 const BOX_SIZE = 35;
-const boxCentre = (col: keyof typeof BOX_X, row: number) => ({
+export const boxCentre = (col: keyof typeof BOX_X, row: number) => ({
   x: BOX_X[col] + BOX_SIZE / 2,
   y: (BOX_Y[row] as number) + BOX_SIZE / 2,
 });
 
-const EQUIP_BOX: {
+export const EQUIP_BOX: {
   slot: EquipSlot;
   col: keyof typeof BOX_X;
   row: number;
@@ -378,16 +380,35 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   smallGold.className = "small-gold";
   smallGold.setAttribute("aria-hidden", "true");
   const paintSmallGold = () => {
-    // Crop the empty padding in SmallGold’s 32 px ground sprite.
+    // Crop the empty padding in SmallGold’s 32 px ground sprite: the 11×8 at (10, 13) of the
+    // picture as drawn. An uploaded pile is trimmed, so the crop is taken from the part of it the
+    // atlas kept, shifted by where its visible pixels began (issue #29).
     smallGold.width = 11;
     smallGold.height = 8;
     const sprite = a.sprite("items", "SmallGold");
     const ctx = smallGold.getContext("2d");
     if (sprite && ctx) {
-      const [sheetIndex, x, y] = sprite;
+      ctx.clearRect(0, 0, 11, 8);
+      const [sheetIndex, x, y, w, h] = sprite;
+      const tx = sprite[7] ?? 0;
+      const ty = sprite[8] ?? 0;
       const sheet = a.sheets.items?.[sheetIndex];
-      if (sheet) {
-        ctx.drawImage(sheet, x + 10, y + 13, 11, 8, 0, 0, 11, 8);
+      const x0 = Math.max(10, tx);
+      const y0 = Math.max(13, ty);
+      const x1 = Math.min(21, tx + w);
+      const y1 = Math.min(21, ty + h);
+      if (sheet && x1 > x0 && y1 > y0) {
+        ctx.drawImage(
+          sheet,
+          x + x0 - tx,
+          y + y0 - ty,
+          x1 - x0,
+          y1 - y0,
+          x0 - 10,
+          y0 - 13,
+          x1 - x0,
+          y1 - y0,
+        );
       }
     }
   };
@@ -1055,6 +1076,14 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       skillsPage.hidden = t !== "skills";
       spellbook.page.hidden = t !== "spellbook";
       menu.hidden = true;
+    },
+    refreshArt() {
+      void a.loadGroup("items").then(() => {
+        paintSmallGold();
+        if (inventory) {
+          panel.setInventory(inventory, headNo);
+        }
+      });
     },
     setInventory(inv, head) {
       inventory = inv;

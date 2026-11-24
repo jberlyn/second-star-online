@@ -448,7 +448,13 @@ export function contentReport(name: string): string[] {
   for (const i of itemsData.items) {
     if (lingoEq(i.name, name)) {
       const icon =
-        i.icon === null ? "no icon" : i.icon === "added" ? "added icon" : "original icon";
+        i.icon === undefined
+          ? "no icon record"
+          : i.icon === null
+            ? "no icon"
+            : i.icon === "added"
+              ? "added icon"
+              : "original icon";
       cat.push(`  items.json items: "${i.name}" (${icon})`);
     }
   }

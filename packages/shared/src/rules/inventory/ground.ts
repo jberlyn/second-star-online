@@ -8,7 +8,7 @@ import { isBlackjackTable } from "../casino/blackjack.ts";
 import { isSlotMachine } from "../casino/casino.ts";
 import { isCheckersTable } from "../casino/checkers.ts";
 import { skillValue } from "../core/fighter.ts";
-import { engineFixtureKind } from "../core/fixtures.ts";
+import { engineFixtureKind, playerArt } from "../core/fixtures.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import { anyMatch, firstMatch, ruleMatches } from "../core/patterns.ts";
 import { switchState } from "../housing/doors.ts";
@@ -84,18 +84,20 @@ const placed =
 
 /**
  * The pictures pasted for names that `contain` these (or pass the test), in script order. Each
- * paste covers the 32×32 scratch member, so the last match is the one seen. 1.6 tested the
- * containers' words with their `#` (`Cabinet#`); content's behaviours now say which items they are.
+ * paste covers the 32×32 scratch member, so the last match is the one seen. 1.6 tested words: a
+ * name holding "Map" took the map picture, and the containers' words with their `#` (`Cabinet#`)
+ * and `Painting#` and `Photo#` theirs. Content's behaviours now say which items are maps and
+ * containers, and a painting or photo is a player's (`Painting#12`), known by its whole name.
  */
 const PICTURES: readonly [string | ((name: string) => boolean), string][] = [
-  ["Map", "MapPic"],
+  [(name) => hasBehaviour(name, "map"), "MapPic"],
   [isNewspaperStand, "NewspaperPic"],
   [placed("cabinet"), "CabinetPic"],
   [placed("windCabinet"), "WindCabinetPic"],
   [placed("crate"), "CratePic"],
   [placed("cauldron"), "CauldronPic"],
-  ["Painting#", "PaintingPic"],
-  ["Photo#", "PhotoPic"],
+  [(name) => playerArt(name)?.kind === "painting", "PaintingPic"],
+  [(name) => playerArt(name)?.kind === "photo", "PhotoPic"],
   ["'s Mailbox", "MailBoxPic"],
   ["'s Door", "DoorPic"],
   ["'s Opened Door", "OpenDoorPic"],
@@ -127,11 +129,12 @@ export function showsClockFace(picture: string): boolean {
 }
 
 /**
- * The picture a bag line shows (the bag-line drawing): a cabinet, a wind cabinet, a name that
- * contains "Painting" or "Photo", a cauldron or a crate is drawn from that pool's picture, the last
- * test to match winning; any other name is its own member, unless SSO has drawn it a new picture
- * (its `sprite`). The pools hold the carried containers' and art's `Name#n` pictures. 1.6 tested
- * the containers' words ("cabinet" without "Wind"); content's behaviours now say which they are.
+ * The picture a bag line shows (the bag-line drawing): a cabinet, a wind cabinet, a player's
+ * painting or photo, a cauldron or a crate is drawn from that pool's picture, the last test to
+ * match winning; any other name is its own member, unless SSO has drawn it a new picture (its
+ * `sprite`). The pools hold the carried containers' and art's `Name#n` pictures. 1.6 tested words
+ * ("cabinet" without "Wind", any name holding "Painting" or "Photo"); content's behaviours now say
+ * which items are containers, and a painting or photo is known by its whole name (`Painting#12`).
  */
 export function bagPicture(name: string): string {
   let pic = name;
@@ -141,10 +144,11 @@ export function bagPicture(name: string): string {
   if (hasBehaviour(name, "windCabinet")) {
     pic = "WindCabinetBag";
   }
-  if (lingoContains(name, "Painting")) {
+  const art = playerArt(name);
+  if (art?.kind === "painting") {
     pic = "PaintingBag";
   }
-  if (lingoContains(name, "Photo")) {
+  if (art?.kind === "photo") {
     pic = "PhotoBag";
   }
   if (hasBehaviour(name, "cauldron")) {
@@ -379,13 +383,13 @@ export function clickGate(name: string): PickupGate {
   if (fixture) {
     return fixture;
   }
-  // The newspaper, then a painting or photo, both tested on the part of the name before `#`,
-  // before the door/exit/Ray silence.
+  // The newspaper (tested on the part of the name before `#`), then a player's painting or photo
+  // (by its whole name), before the door/exit/Ray silence.
   const item1 = name.split("#")[0] ?? name;
   if (isNewspaperStand(item1)) {
     return { kind: "newspaper" };
   }
-  if (lingoContains(item1, "Painting") || lingoContains(item1, "Photo")) {
+  if (playerArt(name)) {
     return { kind: "view" };
   }
   // 1.6 tested " Ray", "door" and "exit", then "Sign" (and "Lair" after the vehicles); Classic's

@@ -30,11 +30,11 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 83 |
-| [Fixed bugs](#fixed-bugs) | 305 |
+| [Fixed bugs](#fixed-bugs) | 306 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **578** |
+| **Total** | **579** |
 
 By system (the code folder that holds the change):
 
@@ -48,7 +48,7 @@ By system (the code folder that holds the change):
 | crafting | [28](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
-| inventory | [38](#inventory) | [11](#server-side-inventory) |
+| inventory | [39](#inventory) | [11](#server-side-inventory) |
 | mail | [25](#mail) | [11](#server-side-mail) |
 | monsters | [20](#monsters) | [3](#server-side-monsters) |
 | movement | [5](#movement) | [4](#server-side-movement) |
@@ -2580,6 +2580,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** A player's or guild's name must not change what their fixture does (issue #37).
 - **In the code:** `packages/shared/src/rules/core/fixtures.ts` (`engineFixtureKind`), `packages/shared/src/rules/inventory/behaviours.ts` (`hasBehaviour`), `packages/shared/src/rules/inventory/ground.ts` (`clickGate`, `ctrlGate`), `packages/server/src/content/validate.ts` (`keyProblems`)
 - **Pinned by:** `bug fixed: an owner's fixture named after a container is not taken for one` (packages/shared/tests/inventory/behaviours.test.ts)
+
+#### A name holding Map, Painting or Photo is not taken for one
+- **Kind:** Bug fixed
+- **What you notice:** Nothing with Classic's items, none of which holds those words. An operator's "Maple Bow" shows its own picture on the ground, a "Photo Album" or "Oil Painting Kit" its own in the bag, and a click on one does not open the painting viewer. A player's own paintings and photos (`Painting#12`, `Photo#3`) look and work as before.
+- **1.6:** The ground showed the map picture for any name containing "Map", and the bag the painting or photo picture for any name containing "Painting" or "Photo" (the ground for "Painting#" or "Photo#"). A click viewed any name holding either word as a painting or photo, so "Painting of a Photo#5" opened painting 5.
+- **SSO:** An item is drawn as a map on the ground when content gives it the `map` behaviour (`item-rules.json` `behaviours`; Classic gives it to none). A painting or photo is a name the engine builds when a player saves one, `Painting#<id>` or `Photo#<id>`, known by that whole shape.
+- **Why:** An item's name must not change what it looks like or does (issues #29 and #37); a pack names its maps, and the engine its players' art.
+- **In the code:** `packages/shared/src/rules/inventory/ground.ts` (`bagPicture`, `groundPicture`, `clickGate`), `packages/shared/src/rules/core/fixtures.ts` (`playerArt`), `packages/shared/src/rules/mail/paint.ts` (`artRef`)
+- **Pinned by:** `bug fixed: a name holding Map, Painting or Photo does not take their picture`; `an item with the map behaviour shows the map picture on the ground` (packages/shared/tests/inventory/behaviours.test.ts); `bug fixed: a name holding Painting or Photo is not a player's art` (packages/shared/tests/mail/art-news.test.ts)
 
 ### mail
 

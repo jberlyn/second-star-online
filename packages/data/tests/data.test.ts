@@ -624,6 +624,8 @@ describe("monsters, NPCs and tiles", () => {
     expect(itemSchema.safeParse(row).success).toBe(true);
     expect(itemSchema.safeParse({ ...row, icon: "other" }).success).toBe(false);
     expect(itemSchema.safeParse({ ...row, icon: null }).success).toBe(true);
+    // A new item needs none: whether it has a picture is whether the art draws it (issue #29).
+    expect(itemSchema.safeParse({ name: "Frost Bow" }).success).toBe(true);
   });
 
   test("swing.sounds takes any sound name", () => {

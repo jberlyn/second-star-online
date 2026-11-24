@@ -33,6 +33,8 @@ export const itemBehaviourSchema = z.enum([
   "hidesName",
   /** A chest: opens with the chest click and is never carried. */
   "chest",
+  /** Drawn on the ground as the map picture (`MapPic`), whatever its own picture is. */
+  "map",
   /** A carried container drawn as a cabinet; Ctrl needs 19 Strength to lift it. */
   "cabinet",
   /** A cabinet drawn as the Wind Cabinet. */

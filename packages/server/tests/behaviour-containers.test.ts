@@ -16,9 +16,11 @@ const at = (item: string) => ({ item }) as GroundItem;
 /** Runs `body` with Classic plus two items of a world's own: a Barrel crate and a Brew Pot. */
 function withOwnContainers(body: () => void): void {
   const d = structuredClone(classicData) as ContentData;
-  // An item with no icon is no Inventory member, which `/drop` refuses; borrow the Cauldron's.
-  const icon = d.items.items.find((i) => i.name === "Cauldron")?.icon ?? null;
-  d.items.items.push({ name: "Barrel", icon }, { name: "Brew Pot", icon });
+  // An item with no picture is no Inventory member, which `/drop` refuses; borrow the Cauldron's.
+  d.items.items.push(
+    { name: "Barrel", sprite: "Cauldron" },
+    { name: "Brew Pot", sprite: "Cauldron" },
+  );
   d.itemRules.behaviours.push(
     { match: "exact", pattern: "Barrel", behaviour: "crate" },
     { match: "exact", pattern: "Brew Pot", behaviour: "cauldron" },
