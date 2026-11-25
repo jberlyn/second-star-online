@@ -2523,27 +2523,6 @@ body {
 .settings * {
   scrollbar-color: var(--ui-trim-dark) rgb(0 0 0 / 35%);
 }
-/* The Player Settings window's own frame: the item menu's purple, not Windows navy. */
-.sso-window.window-player-settings {
-  border: 2px solid var(--ui-purple);
-  box-shadow:
-    var(--ui-menu-frame),
-    0 2px 10px rgb(0 0 0 / 70%);
-  background: #000;
-}
-.window-player-settings .window-bar {
-  background: linear-gradient(180deg, var(--ui-purple), var(--ui-purple-dark));
-  border-bottom: 1px solid var(--ui-purple-light);
-  text-shadow: 1px 1px 0 #000;
-}
-.window-player-settings .window-close {
-  color: #fff;
-  background: linear-gradient(180deg, var(--ui-wood-5), var(--ui-wood-3));
-  border: 1px solid var(--ui-trim);
-}
-.window-player-settings .window-close:hover {
-  border-color: var(--ui-trim-light);
-}
 
 /* Who's Online (WhoWindow sub-movie, 120×240). */
 .who-stage {
