@@ -104,6 +104,7 @@ import { createMenuBar, MENU_BAR_H } from "./ui/menubar.ts";
 import { createMonstersPage } from "./ui/monsters-page.ts";
 import { createNewspaper } from "./ui/newspaper.ts";
 import { createNpcsPage } from "./ui/npcs-page.ts";
+import { createPacksPage } from "./ui/packs-page.ts";
 import { createPaintUi } from "./ui/paint.ts";
 import { createPanel, type Tab } from "./ui/panel.ts";
 import { type Ghost, ghostTile, placementClick } from "./ui/placement.ts";
@@ -741,6 +742,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openNpc: (name) => controlPanel.go("npcs", () => npcsPage.open(name)),
     canOpenNpc: () => permissions.has("npcEditor"),
   });
+  // The Packs page (issue #34): export and import, files over HTTP with an upload ticket.
+  const packsPage = createPacksPage({
+    view: (seq) => send({ t: "contentPacks", seq }),
+    apply: (seq, importId, mode) => send({ t: "contentPackApply", seq, importId, mode }),
+    remove: (seq, id) => send({ t: "contentPackRemove", seq, id }),
+    ticket: (seq) => send({ t: "contentUploadTicket", seq }),
+  });
   const npcsPage = createNpcsPage({
     view: (seq, name) => send({ t: "contentNpcs", seq, ...(name !== undefined ? { name } : {}) }),
     save: (seq, name, text, expect) => send({ t: "contentNpcSave", seq, name, text, expect }),
@@ -829,6 +837,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onShow: () => monstersPage.onShow(),
         changes: () => monstersPage.changes(),
         discard: () => monstersPage.discard(),
+      },
+      {
+        id: "packs",
+        title: "Packs",
+        group: "Game",
+        permission: "contentEditor",
+        el: packsPage.el,
+        onShow: () => packsPage.onShow(),
+        changes: () => 0,
+        discard: () => {},
       },
       {
         id: "world",
@@ -1421,6 +1439,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           worldPage.reset();
         }
         if (!permissions.has("contentEditor")) {
+          packsPage.reset();
           contentPage.reset();
           balancePage.reset();
           itemsPage.reset();
@@ -1447,7 +1466,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentUsage":
       case "contentProblems":
       case "contentResult":
-      case "contentUploadTicket":
       case "contentItemArt":
       case "contentWornArt":
       case "contentWornSheet":
@@ -1472,6 +1490,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "contentNpcs":
         npcsPage.receive(msg);
+        return;
+      case "contentPacks":
+        packsPage.receive(msg);
+        return;
+      // A ticket the Packs page asked for, else the Content page's.
+      case "contentUploadTicket":
+        if (!packsPage.receive(msg)) {
+          contentPage.receive(msg);
+        }
         return;
       case "contentMaps":
         worldPage.receive(msg);
@@ -1789,6 +1816,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     monstersPage.reset();
     npcsPage.reset();
     worldPage.reset();
+    packsPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

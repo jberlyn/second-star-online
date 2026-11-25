@@ -187,6 +187,8 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ env.C }}
             org.opencontainers.image.version=${{ env.VERSION_LABEL }}
+          build-args: |
+            SSO_VERSION=${{ env.VERSION }}
           provenance: false
           sbom: false
           push: false

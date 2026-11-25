@@ -169,6 +169,9 @@ describe("Only server systems create items", () => {
       // A picture change (issue #29): an item by key, an uploaded file by its SHA-256 (64 hex
       // digits, checked by the schema), a picture's name. The server resolves the item and the
       // picture against the draft and changes only the item's `sprite` and its upload.
+      // The Packs page (issue #34): a checked pack file by its import id, a pack by its id.
+      contentPackApply: ["importId:string"],
+      contentPackRemove: ["id:string"],
       contentPicture: ["change.item:string", "change.art.file:string", "change.picture:string"],
       // A worn layer change (issue #29, stage 3): a layer's name, its frames' uploaded files by
       // SHA-256 (checked by the schema), an item by key. A sheet to cut into frames, by SHA-256.

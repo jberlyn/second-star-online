@@ -814,7 +814,7 @@ Hit rectangles for `fx`, `bodies`, and `items` are computed from the images and 
 
 ## Pack format
 
-A content pack is a folder. The release ships two, Classic and Minimal, under `packages/data/packs/`; an exported pack (#34) uses the same layout.
+A content pack is a folder. The release ships two, Classic and Minimal, under `packages/data/packs/`. An exported pack is one file holding the same parts ([Exported pack files](#exported-pack-files)).
 
 ```text
 <pack>/
@@ -830,12 +830,14 @@ A content pack is a folder. The release ships two, Classic and Minimal, under `p
 |---|---|
 | `id` | The permanent id (`classic`): lower-case letters, digits and dashes. The pack owns the keys of the rows it defines. |
 | `name`, `version` | What operators see; `version` is `major.minor.patch`, bumped whenever the data changes (`data:build` bumps the shipped packs' patch). |
-| `format` | The pack layout this engine reads (`1`). |
+| `format` | The pack layout: `1` for a folder, `2` for an exported pack file. |
 | `sso` | The Second Star Online release the pack was made for (`1.10`). |
 | `contentHash` | The first 16 hex digits of the SHA-256 of the pack's data at this version. |
 | `art` | Optional: the folder of built atlases (`bun run assets:build` makes Classic's and Minimal's). |
 | `files` | Optional: the folder of the files the pack's `data/art.json` rows name. |
 | `world` | Optional: the world seed file. |
+| `builtOn` | An exported pack's: the packs installed under it when it was exported, with their versions. |
+| `exportedAt` | An exported pack's: when it was exported. |
 
 A pack may leave dataset files out: the installed packs are merged in order, and only the merge must have every dataset a world needs, so an add-on pack installed over Classic may hold just the files it changes. (That is not the same as [What a world may leave out](#what-a-world-may-leave-out), which is about optional tables inside the datasets.) `data/art.json` is always optional. Its rows have the same shape as the `art` rows operators write on the Content page ([Art and sounds](running-a-server.md#art-and-sounds)): item pictures, worn layers, bodies, spell effect runs, tiles and sounds, each naming its file by the SHA-256 of its bytes. Those files sit in the pack's `files/` folder under that hash; a pack without a `files` folder relies on the server's own upload store (an imported pack's files are stored there when it is imported).
 
@@ -846,7 +848,25 @@ How a pack's art rows behave:
 - The server's sweep of unused uploads only looks in its own upload store, so it never removes a pack's files. An operator row may name a file only a pack carries.
 - Classic and Minimal carry no art rows: their art is their built atlases.
 - A row's file is named by its SHA-256, so changing a file's bytes changes the row, and so the pack's `contentHash`: a pack update that changes a picture is a new version.
-- `bun run data:build` builds only the shipped packs, from `packages/data/content/`. It keeps a pack folder's `art/` and `files/` as they are, but it doesn't write or check `files/`. Put together a pack of your own (its `data/art.json` and the files it names) as its own folder, or export it from a running server ([#34](https://github.com/jberlyn/second-star-online/issues/34)).
+- `bun run data:build` builds only the shipped packs, from `packages/data/content/`. It keeps a pack folder's `art/` and `files/` as they are, but it doesn't write or check `files/`. Put together a pack of your own (its `data/art.json` and the files it names) as its own folder, or export it from a running server's Packs page.
+
+### Exported pack files
+
+The Control Panel's [Packs page](running-a-server.md#the-packs-page) exports the operator's published changes as one JSON file, `<id>-<version>.ssopack.json`, and imports such files:
+
+```text
+{
+  "manifest": { "id", "name", "version", "format": 2, "sso", "contentHash", "builtOn", "exportedAt" },
+  "data":     { "<dataset file stem>": { only the fields and rows it changes } },
+  "removals": [ { "dataset", "part", "key" } ],   // key null for a whole section
+  "files":    { "art/<sha256>.png": "<base64>", "sounds/<sha256>.<ext>": "<base64>" }
+}
+```
+
+- `data` holds only what the pack changes: each field it has is checked against its schema on its own, and the store the installed packs make is checked whole. Rows replace the same keys of the packs under it and add new ones, as a later pack's always do.
+- `removals` drop rows of the packs under it, as an operator's removal does.
+- `contentHash` is the hash of `data` and `removals` together; a file changed after it was exported is refused. Each file in `files` must match the hash it is named by, and be a PNG or a wav, mp3 or ogg sound.
+- Installed, the pack's files go into the server's upload store, and the database keeps the manifest, data and removals.
 
 ## The content report
 

@@ -10,6 +10,12 @@ import { z } from "zod";
 /** The pack format this engine reads. Bump it when a pack's layout changes incompatibly. */
 export const PACK_FORMAT = 1;
 
+/**
+ * The format of an exported pack (issue #34): format 1 plus the rows it removes from the packs
+ * under it (`removals`) and the packs it was built on (`builtOn`). This engine reads both.
+ */
+export const EXPORT_PACK_FORMAT = 2;
+
 /** A pack id: lower-case letters, digits and dashes. */
 export const packIdSchema = z.string().regex(/^[a-z][a-z0-9-]{0,31}$/);
 
@@ -23,8 +29,8 @@ export const packManifestSchema = z.strictObject({
   name: z.string().min(1).max(60),
   /** The pack's own version, bumped only when its content changes. */
   version: packVersionSchema,
-  /** The pack format (`PACK_FORMAT`). */
-  format: z.literal(PACK_FORMAT),
+  /** The pack format (`PACK_FORMAT`, or `EXPORT_PACK_FORMAT` for an exported pack). */
+  format: z.union([z.literal(PACK_FORMAT), z.literal(EXPORT_PACK_FORMAT)]),
   /** The Second Star Online release the pack was made for (`1.10`), shown to operators. */
   sso: z.string().regex(/^\d+\.\d+$/),
   /** The SHA-256 (first 16 hex) of the pack's data at this version, so a change needs a bump. */
@@ -58,6 +64,13 @@ export const packManifestSchema = z.strictObject({
     .string()
     .regex(/^[a-z0-9-]+\.json$/)
     .optional(),
+  /** The packs an exported pack was built on, in install order (issue #34). */
+  builtOn: z
+    .array(z.strictObject({ id: packIdSchema, version: packVersionSchema }))
+    .max(32)
+    .optional(),
+  /** When an exported pack was made (ISO time). */
+  exportedAt: z.string().max(40).optional(),
 });
 
 export type PackManifest = z.infer<typeof packManifestSchema>;

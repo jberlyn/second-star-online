@@ -442,6 +442,19 @@ Changes are published, undone and listed from the [Content](#the-content-page) p
 
 Monster levels and a configurable kill XP curve are not on this page yet.
 
+### The packs page
+
+**Control Panel → Packs** (permission **Control Panel: edit items, monsters and NPCs**) lists the installed packs in the order they lay over each other (your own changes on top of them all), with each pack's version, where it came from, the release it was made for and whether it is in play.
+
+- **Export** makes one file of your published changes: every edit, addition and removal, the NPCs page's saves, and the art and sounds you uploaded for them. The draft is not in it, and nor are maps, server settings or characters. Give it a pack id (keep the same one for every version), a name and a version, then **Download the pack file**. The file records the packs it was built on and this server's release. It is also a backup of your content.
+- **Import** takes such a file from another server (or a backup of this one). **Check the file** reads it whole first: a file changed since it was exported, a file whose pictures do not match their names, or anything that is not a pack is refused. You then see what it would do before anything changes: the rows it adds, changes and removes against what plays now, the rows you have changed too, the rows the draft holds, and whether it can be installed. Then choose:
+  - **Merge into the draft** makes its rows and removals your own changes (its files go into the upload store). Review them, see where things are used, and publish on the [Content page](#the-content-page) as any change; anything they break is listed under **Problems**. A row the draft held is replaced.
+  - **Install as a pack** lays it over the installed packs, under your own changes, which stay on top. It comes into play **when the server next starts** (the served art is built at start). It is checked as a start would check it first, and refused if it would not start. Installing another version of an installed pack's id updates it (the same version is refused); for a row you had changed, the Content page shows the pack-update notice. A release pack (Classic) cannot be imported over.
+- **Remove** takes an imported pack out at the next start. Your changes stay.
+- If an imported pack would stop the server starting (a later change of yours clashes with it), the server starts without the imported packs, says why in the log and on this page, and you can remove it here.
+
+Exports, imports, installs and removals are written to the audit log.
+
 ### The world page
 
 **Control Panel → World** (permission **World Editor**; **Admin → World Editor** opens it too) builds the world one map at a time. Saving applies at once, for everyone on the map, and keeps the map it replaced as a version; it does not wait for the content draft.

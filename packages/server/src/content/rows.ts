@@ -213,11 +213,15 @@ export function applyRows<T extends Partial<ContentData>>(base: T, rows: readonl
 /**
  * Merges packs in install order: the first pack that has a dataset supplies it whole; each later
  * pack's rows replace the earlier ones with the same key (or the whole section) and add new
- * keys at the end.
+ * keys at the end, and then its removals (an exported pack's, issue #34) drop rows of the packs
+ * under it. `removals` is aligned with `packs`.
  */
-export function mergePacks(packs: readonly Partial<ContentData>[]): Partial<ContentData> {
+export function mergePacks(
+  packs: readonly Partial<ContentData>[],
+  removals: readonly (readonly RowRef[])[] = [],
+): Partial<ContentData> {
   let merged: Partial<ContentData> = {};
-  for (const pack of packs) {
+  for (const [i, pack] of packs.entries()) {
     const firstTime: Partial<ContentData> = {};
     const later: LayerRow[] = [];
     for (const dataset of DATASET_IDS) {
@@ -231,6 +235,9 @@ export function mergePacks(packs: readonly Partial<ContentData>[]): Partial<Cont
           later.push({ ...r, op: "set", data: r.value });
         }
       }
+    }
+    for (const r of removals[i] ?? []) {
+      later.push({ ...r, op: "remove", data: null });
     }
     merged = applyRows({ ...merged, ...firstTime }, later);
   }

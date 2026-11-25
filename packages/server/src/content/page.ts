@@ -90,7 +90,9 @@ export function overviewOf(service: ContentService, world?: ContentWorld): Conte
       undoneBy: p.undoneBy,
       cleanup: p.cleanup,
     })),
-    packs: service.installedPacks().map(({ artDir: _art, filesDir: _files, ...p }) => p),
+    packs: service
+      .installedPacks()
+      .map(({ artDir: _art, filesDir: _files, removals: _removals, ...p }) => p),
     notices: service.notices().map((n) => ({ ...n })),
     datasets: DATASET_IDS.map((id) => {
       const published = service.publishedContent()[id] as unknown as Record<string, unknown>;
@@ -237,6 +239,9 @@ type ContentIntent = Extract<
   InGameMsg,
   {
     t:
+      | "contentPacks"
+      | "contentPackApply"
+      | "contentPackRemove"
       | "contentOverview"
       | "contentList"
       | "contentRow"
@@ -291,6 +296,10 @@ export const CONTENT_INTENTS = [
   "contentRemove",
   "contentProblems",
   "contentUploadTicket",
+  // The Packs page (issue #34).
+  "contentPacks",
+  "contentPackApply",
+  "contentPackRemove",
   "contentItemArt",
   "contentPicture",
   "contentWornArt",
@@ -367,6 +376,30 @@ export function contentIntent(
       return r.ok
         ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value }
         : result(msg.seq, r, "");
+    }
+    case "contentPacks":
+      return { t: "contentPacks", seq: msg.seq, view: service.packsView() };
+    case "contentPackApply": {
+      if (msg.mode === "cancel") {
+        service.cancelImport(actor, msg.importId);
+        return { t: "contentPacks", seq: msg.seq, view: service.packsView() };
+      }
+      const r = service.applyImport(actor, msg.importId, msg.mode);
+      return {
+        t: "contentPacks",
+        seq: msg.seq,
+        view: service.packsView(),
+        result: r.ok ? { ok: true, text: r.value } : { ok: false, text: r.error },
+      };
+    }
+    case "contentPackRemove": {
+      const r = service.removeImportedPack(actor, msg.id);
+      return {
+        t: "contentPacks",
+        seq: msg.seq,
+        view: service.packsView(),
+        result: r.ok ? { ok: true, text: r.value } : { ok: false, text: r.error },
+      };
     }
     case "contentUploadTicket":
       return {

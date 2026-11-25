@@ -24,8 +24,11 @@ import {
   artDataSchema,
   comparePackVersions,
   DATASET_SCHEMAS,
+  EMPTY_ART,
   NO_BODY_NUMBERS,
   nextOperatorBody,
+  packIdSchema,
+  packVersionSchema,
   skillDependents,
 } from "@secondstaronline/data/schema";
 import {
@@ -44,6 +47,9 @@ import {
   type ContentItemView,
   type ContentMonstersView,
   type ContentMonsterView,
+  type ContentPackEntry,
+  type ContentPackPreview,
+  type ContentPacksView,
   type ContentSoundArtView,
   type ContentStore,
   type ContentTileArtView,
@@ -119,9 +125,11 @@ import {
   deleteContentRow,
   deleteDraftAction,
   deleteDraftRow,
+  deleteImportedPack,
   draftActions,
   draftRows,
   type InstalledPack,
+  insertPack,
   insertPublish,
   installedPacks,
   type PublishChange,
@@ -131,6 +139,7 @@ import {
   recentPublishes,
   type StoredContentRow,
   type StoredPublish,
+  setImportedPackData,
   setPackVersion,
   setPublishCleanup,
   upsertContentRow,
@@ -193,6 +202,13 @@ import {
 import { contractProblems } from "./contract.ts";
 import { itemChoices, itemFingerprint, itemKind, itemProblems, ruleSources } from "./items-page.ts";
 import { monsterChoices, monsterFieldProblems, monsterRuleSources } from "./monsters-page.ts";
+import {
+  buildPackFile,
+  PACK_FILE_MAX_BYTES,
+  type PackFileEntry,
+  type ReadPackFile,
+  readPackFile,
+} from "./pack-file.ts";
 import { type LoadedPack, readPackBlob, readPackDir } from "./packs.ts";
 import {
   applyRows,
@@ -266,6 +282,10 @@ export interface PackInfo {
   source: "release" | "imported";
   /** The version recorded before this start, when a release brought a different one. */
   updatedFrom: string | null;
+  /** The release it was made for (its manifest's `sso`). */
+  sso: string;
+  /** The rows it removes from the packs under it (an exported pack's, issue #34). */
+  removals: RowRef[];
 }
 
 /** A row a newer pack version changed after an operator changed or removed it. */
@@ -570,6 +590,11 @@ export interface ContentServiceOptions {
   art?: ArtLibrary;
   /** Whether an account may still upload (its role keeps the Content page's permission). */
   mayUpload?: (accountId: string) => boolean;
+  /**
+   * The Second Star Online release this server runs (`1.13`), which an exported pack records
+   * (issue #34). Absent: the newest release pack's `sso`.
+   */
+  release?: string;
 }
 
 /** "A", "A and B", "A, B and C". */
@@ -648,6 +673,19 @@ export type UploadAnswer =
   | { ok: true; file: string; ext: string; width?: number; height?: number }
   | { ok: false; error: string };
 
+/** The most pack files kept waiting at once (each may hold 64 MB of files). */
+const MAX_PENDING_IMPORTS = 4;
+
+/** A checked pack file waiting for its poster's choice (issue #34). */
+interface PendingImport {
+  actor: ContentActor;
+  read: ReadPackFile;
+  rows: LayerRow[];
+  /** The draft as it was when the file was checked: a merge over a changed draft is refused. */
+  draftRev: string;
+  expires: number;
+}
+
 export class ContentService {
   private readonly db: Db;
   private readonly now: () => string;
@@ -682,6 +720,15 @@ export class ContentService {
   /** `packData` with its own item definitions compiled (for `packRowValue`). */
   private packCompiled: { from: ContentData; data: ContentData } | null = null;
   private packs: PackInfo[];
+  /** The release this server runs, as an exported pack records it. */
+  private readonly release: string;
+  private readonly releasePacks: Readonly<Record<string, string>>;
+  /** Why the imported packs were left out at start, or null (issue #34). */
+  private importedLeftOut: string | null = null;
+  /** The imported packs left out at start. */
+  private readonly leftOutIds = new Set<string>();
+  /** Pack files checked and waiting for their operator's choice (issue #34), by import id. */
+  private readonly imports = new Map<string, PendingImport>();
   /** The pack that supplies each row (the last to define it), by lower-cased row label. */
   private owners: Map<string, PackInfo>;
   private packKeys: { items: Set<string>; monsters: Set<string>; npcFiles: Set<string> };
@@ -701,6 +748,10 @@ export class ContentService {
     this.points = opts.points ?? (() => []);
     this.art = opts.art ?? null;
     this.mayUpload = opts.mayUpload ?? (() => true);
+    this.releasePacks = opts.releasePacks;
+    // An imported pack that would stop the server starting (its rows clash with the operator's
+    // changes, or it cannot be read) is left out, so the Control Panel can still remove it (#34).
+    const skipImported = this.importedPacksFail(opts.releasePacks);
     const {
       data: merged,
       packs,
@@ -708,7 +759,15 @@ export class ContentService {
       updates,
       rowArt,
       packRects,
-    } = this.loadPacks(opts.releasePacks);
+      releaseData,
+    } = this.loadPacks(opts.releasePacks, skipImported);
+    this.release =
+      opts.release ??
+      packs
+        .filter((p) => p.source === "release")
+        .map((p) => p.sso)
+        .sort((a, b) => comparePackVersions(`${b}.0`, `${a}.0`))[0] ??
+      "1.0";
     this.buildPackRows(packs, rowArt);
     // What the packs draw, hit and play, folded in the served index's order (each pack's atlases,
     // then its art rows, then the next pack's), so a sprite's hit rect is the one drawn.
@@ -725,10 +784,13 @@ export class ContentService {
     this.owners = owners;
     this.packData = data;
     this.packs = packs;
+    // The keys the release's packs own are exempt from the key rules; an imported pack's keys are
+    // checked as an operator's are (issue #34).
+    const own = releaseData;
     this.packKeys = {
-      items: new Set(data.items.items.map((i) => i.name.toLowerCase())),
-      monsters: new Set(data.monsters.monsters.map((m) => m.name.toLowerCase())),
-      npcFiles: new Set(data.npcFiles.files.map((f) => f.name.toLowerCase())),
+      items: new Set((own.items?.items ?? []).map((i) => i.name.toLowerCase())),
+      monsters: new Set((own.monsters?.monsters ?? []).map((m) => m.name.toLowerCase())),
+      npcFiles: new Set((own.npcFiles?.files ?? []).map((f) => f.name.toLowerCase())),
     };
     this.packArt = keysOf(drawn);
     this.packSounds = nullRecord<string>();
@@ -904,7 +966,55 @@ export class ContentService {
     return null;
   }
 
-  private loadPacks(releasePacks: Readonly<Record<string, string>>): {
+  /**
+   * Why the imported packs cannot be loaded with the rest (they fail to read, or the store they
+   * make fails the checks a start makes), or null. Their art files are kept from the upload sweep
+   * either way, so a pack left out can come back.
+   */
+  private importedPacksFail(releasePacks: Readonly<Record<string, string>>): boolean {
+    const imported = installedPacks(this.db).filter((p) => p.source === "imported");
+    if (imported.length === 0) {
+      return false;
+    }
+    for (const p of imported) {
+      // Read raw, not validated: a pack a newer engine refuses still keeps its files from the
+      // upload sweep, so it can come back once fixed.
+      try {
+        const raw = p.data ? (JSON.parse(p.data) as { data?: { art?: unknown } }) : null;
+        const art = raw?.data?.art;
+        if (art && typeof art === "object" && !Array.isArray(art)) {
+          for (const f of artFilesOf(art as Partial<Record<string, readonly unknown[]>>)) {
+            this.packRowHashSet.add(f.hash);
+          }
+        }
+      } catch {
+        // Not even JSON: there is nothing to keep.
+      }
+    }
+    try {
+      const { data } = this.loadPacks(releasePacks, false);
+      const published = applyRows(data, contentRows(this.db).map(toLayer));
+      const shaped = [...schemaProblems(published), ...skillProblems(published)];
+      // A store the schemas take is also built and tried by the rules, as the start will.
+      const problems = shaped.length > 0 ? shaped : this.installProblems(published);
+      if (problems.length > 0) {
+        throw new Error(problems.map((p) => `${p.where}: ${p.message}`).join("; "));
+      }
+      return false;
+    } catch (e) {
+      for (const p of imported) {
+        this.leftOutIds.add(p.id);
+      }
+      this.importedLeftOut = `The imported packs (${imported.map((p) => p.name).join(", ")}) were left out at start: ${(e as Error).message}`;
+      this.log(`content: ${this.importedLeftOut}`);
+      return true;
+    }
+  }
+
+  private loadPacks(
+    releasePacks: Readonly<Record<string, string>>,
+    skipImported = false,
+  ): {
     data: ContentData;
     packs: PackInfo[];
     owners: Map<string, PackInfo>;
@@ -912,11 +1022,16 @@ export class ContentService {
     rowArt: { pack: PackInfo; art: ArtData }[];
     /** Each pack's own collision rects (aligned with `packs`), for folding in draw order. */
     packRects: (RectsData | undefined)[];
+    /** The release packs' merge alone: the keys they own. */
+    releaseData: Partial<ContentData>;
   } {
     const loaded: LoadedPack[] = [];
     const packs: PackInfo[] = [];
     const updates: PackVersionUpdate[] = [];
     for (const p of installedPacks(this.db)) {
+      if (skipImported && p.source === "imported") {
+        continue;
+      }
       const pack = this.readInstalled(p, releasePacks);
       const updatedFrom =
         p.version !== null && p.version !== pack.manifest.version ? p.version : null;
@@ -937,6 +1052,8 @@ export class ContentService {
         version: pack.manifest.version,
         source: p.source,
         updatedFrom,
+        sso: pack.manifest.sso,
+        removals: pack.removals,
       });
     }
     // A pack's art rows are a layer of that pack's art, not rows of the operator's `art` dataset:
@@ -944,18 +1061,31 @@ export class ContentService {
     const rowArt: { pack: PackInfo; art: ArtData }[] = [];
     loaded.forEach((l, i) => {
       if (l.data.art) {
-        rowArt.push({ pack: packs[i] as PackInfo, art: l.data.art as ArtData });
+        // An exported pack's art holds only the parts it changes (issue #34).
+        const art = { ...structuredClone(EMPTY_ART), ...l.data.art } as ArtData;
+        rowArt.push({ pack: packs[i] as PackInfo, art });
         l.data = { ...l.data };
         delete l.data.art;
       }
     });
-    const merged = withOptionalDatasets(mergePacks(loaded.map((l) => l.data)));
+    const merged = withOptionalDatasets(
+      mergePacks(
+        loaded.map((l) => l.data),
+        loaded.map((l) => l.removals),
+      ),
+    );
     const owners = new Map<string, PackInfo>();
     loaded.forEach((l, i) => {
-      for (const r of rowsOf(l.data)) {
+      // A pack's removals are its changes too: a notice about one names it.
+      for (const r of [...rowsOf(l.data), ...l.removals]) {
         owners.set(rowLabel(r).toLowerCase(), packs[i] as PackInfo);
       }
     });
+    const release = loaded.filter((_, i) => packs[i]?.source === "release");
+    const releaseData = mergePacks(
+      release.map((l) => l.data),
+      release.map((l) => l.removals),
+    );
     const missing = missingDatasets(merged);
     if (missing.length > 0) {
       throw new Error(
@@ -969,6 +1099,7 @@ export class ContentService {
       updates,
       rowArt,
       packRects: loaded.map((l) => l.data.rects as RectsData | undefined),
+      releaseData,
     };
   }
 
@@ -1066,6 +1197,8 @@ export class ContentService {
    * asked for). It lasts `UPLOAD_TICKET_MS`, for any number of files.
    */
   uploadTicket(actor: ContentActor, nowMs: number = Date.now()): string {
+    // Any page asking for a ticket also lets go of pack files left waiting too long (issue #34).
+    this.sweepImports(nowMs);
     for (const [t, v] of this.tickets) {
       if (v.expires <= nowMs) {
         this.tickets.delete(t);
@@ -1123,6 +1256,646 @@ export class ContentService {
         check.kind === "image"
           ? { ok: true, file, ext: check.ext, width: check.width, height: check.height }
           : { ok: true, file, ext: check.ext },
+    };
+  }
+
+  // ---- packs: export and import (issue #34) ----
+
+  /** The Packs page's view: the installed packs (and what the next start changes). */
+  packsView(nowMs: number = Date.now()): ContentPacksView {
+    this.sweepImports(nowMs);
+    const stored = installedPacks(this.db);
+    const loaded = new Map(this.packs.map((p) => [p.id, p]));
+    const out: ContentPackEntry[] = stored.map((p) => {
+      const l = loaded.get(p.id);
+      let name = l?.name ?? p.name;
+      let version = l?.version ?? p.version ?? "";
+      let sso = l?.sso ?? "";
+      let state: ContentPackEntry["state"] = l
+        ? "loaded"
+        : this.leftOutIds.has(p.id)
+          ? "left out"
+          : "next start";
+      if (p.source === "imported" && p.data) {
+        try {
+          const m = readPackBlob(p.data).manifest;
+          if (l && m.version !== l.version) {
+            state = "next start";
+          }
+          if (!l || state === "next start") {
+            name = m.name;
+            version = m.version;
+          }
+          sso = sso || m.sso;
+        } catch {
+          // A pack that cannot be read is left out at start; the view still lists it.
+        }
+      }
+      return { id: p.id, name, version, source: p.source, sso, state };
+    });
+    for (const p of this.packs) {
+      if (!stored.some((s) => s.id === p.id)) {
+        out.push({
+          id: p.id,
+          name: p.name,
+          version: p.version,
+          source: p.source,
+          sso: p.sso,
+          state: "removed at next start",
+        });
+      }
+    }
+    return { packs: out, leftOut: this.importedLeftOut, release: this.release };
+  }
+
+  /** The account a live upload ticket belongs to, or null. */
+  private ticketActor(ticket: string, nowMs: number): ContentActor | null {
+    return this.uploadTicketOk(ticket, nowMs) ? (this.tickets.get(ticket)?.actor ?? null) : null;
+  }
+
+  /** The NPCs page's saves as the `npcFiles` rows they play as, spelled as the content spells them. */
+  private npcSaveRows(): LayerRow[] {
+    return this.npcSaves().map((f) => {
+      const ref: RowRef = { dataset: "npcFiles", part: "files", key: f.npc };
+      const name = (rowValue(this.published, ref) as { name: string } | undefined)?.name ?? f.npc;
+      return { ...ref, key: name, op: "set", data: { name, text: f.text } };
+    });
+  }
+
+  /**
+   * The published operator layer as an exported pack file: its edits and additions as rows, its
+   * removals, the NPCs page's saves (which play over their content rows; player shops' files are
+   * world data and stay out), and the uploaded files its art rows name. The draft is left out:
+   * what is exported is what plays.
+   */
+  exportPack(
+    ticket: string,
+    meta: { id: string; name: string; version: string },
+    nowMs: number = Date.now(),
+  ): ContentResult<{ file: string; text: string }> {
+    const actor = this.ticketActor(ticket, nowMs);
+    if (!actor) {
+      return fail("the upload ticket is missing or expired");
+    }
+    const id = meta.id.trim().toLowerCase();
+    const name = meta.name.trim();
+    const version = meta.version.trim();
+    if (!packIdSchema.safeParse(id).success) {
+      return fail(
+        "A pack id is a lower-case letter, then lower-case letters, digits or dashes (at most 32).",
+      );
+    }
+    if (this.releasePacks[id] || this.packs.some((p) => p.source === "release" && p.id === id)) {
+      return fail(`${id} is a release pack's id: give the export its own.`);
+    }
+    if (name === "" || name.length > 60) {
+      return fail("Name the pack (at most 60 characters).");
+    }
+    if (!packVersionSchema.safeParse(version).success) {
+      return fail("A pack version is three numbers: 1.0.0.");
+    }
+    const rows: LayerRow[] = contentRows(this.db).map(toLayer);
+    for (const s of this.npcSaveRows()) {
+      const at = rows.findIndex((r) => sameRow(r, s));
+      if (at >= 0) {
+        rows[at] = s;
+      } else {
+        rows.push(s);
+      }
+    }
+    const data: Record<string, Record<string, unknown>> = {};
+    const removals: RowRef[] = [];
+    for (const r of rows) {
+      if (r.op === "remove") {
+        removals.push({ dataset: r.dataset, part: r.part, key: r.key });
+        continue;
+      }
+      data[r.dataset] ??= {};
+      const d = data[r.dataset] as Record<string, unknown>;
+      if (keyField(r.dataset, r.part) === null) {
+        d[r.part] = r.data;
+      } else {
+        d[r.part] = [...((d[r.part] as unknown[] | undefined) ?? []), r.data];
+      }
+    }
+    const files: PackFileEntry[] = [];
+    const art = data.art as Partial<Record<string, readonly unknown[]>> | undefined;
+    const seen = new Set<string>();
+    for (const f of art ? artFilesOf(art) : []) {
+      const k = `${f.kind}/${f.hash}.${f.ext}`;
+      if (seen.has(k)) {
+        continue;
+      }
+      seen.add(k);
+      const bytes = this.art?.files.read(f.kind, f.hash, f.ext) ?? null;
+      if (!bytes) {
+        return fail(`The uploaded file ${k} an art row names is not in the upload store.`);
+      }
+      files.push({ ...f, bytes });
+    }
+    const text = buildPackFile({
+      id,
+      name,
+      version,
+      sso: this.release,
+      builtOn: this.packs.map((p) => ({ id: p.id, version: p.version })),
+      exportedAt: this.now(),
+      data: data as Partial<ContentData>,
+      removals,
+      files,
+    });
+    if (Buffer.byteLength(text) > PACK_FILE_MAX_BYTES) {
+      return fail(
+        `The pack file would be ${Math.ceil(Buffer.byteLength(text) / (1024 * 1024))} MB, more than the ${PACK_FILE_MAX_BYTES / (1024 * 1024)} MB a server imports: it could not be read back.`,
+      );
+    }
+    insertAudit(
+      this.db,
+      { actor: actor.accountId, command: "packExport", target: `${id} ${version}` },
+      this.now(),
+    );
+    this.log(`content: ${actor.name} exported the operator layer as pack ${id} v${version}`);
+    return { ok: true, value: { file: `${id}-${version}.ssopack.json`, text } };
+  }
+
+  /**
+   * The installed packs with `pack` installed, as a start would read them: an update takes its
+   * own id's place, a new pack goes last. Packs that cannot be read are named, not thrown.
+   */
+  private packsWith(pack: LoadedPack): LoadedPack[] {
+    const out: LoadedPack[] = [];
+    let placed = false;
+    for (const info of installedPacks(this.db)) {
+      if (info.id === pack.manifest.id) {
+        out.push(pack);
+        placed = true;
+        continue;
+      }
+      out.push(this.readInstalled(info, this.releasePacks));
+    }
+    if (!placed) {
+      out.push(pack);
+    }
+    return out;
+  }
+
+  /** Why a pack's art rows would draw nothing, checked against the files the pack brings. */
+  private packArtProblems(pack: LoadedPack, files: readonly PackFileEntry[]): ContentProblem[] {
+    if (!pack.data.art) {
+      return [];
+    }
+    const store = memoryArtFiles();
+    for (const f of files) {
+      store.put(f.kind, f.ext, f.bytes);
+    }
+    const library = new ArtLibrary(store);
+    // Files the server already keeps (an upload, another pack's) count too.
+    if (this.art) {
+      library.addReader((kind, hash, ext) => this.art?.files.read(kind, hash, ext) ?? null);
+    }
+    const art = { ...structuredClone(EMPTY_ART), ...pack.data.art } as ArtData;
+    return library
+      .problems(art)
+      .map((p) => ({ where: `pack ${pack.manifest.id}: ${p.where}`, message: p.message }));
+  }
+
+  /**
+   * Why `pack` cannot be installed: the store the packs would make, with the operator's published
+   * changes on top, checked as a start checks it, and as a publish checks content (keys, references,
+   * the contract), and its art rows against the files it brings.
+   */
+  private packInstallProblems(
+    pack: LoadedPack,
+    files: readonly PackFileEntry[],
+    out: { next?: ContentData } = {},
+  ): string[] {
+    try {
+      const loaded = this.packsWith(pack).map((l) => {
+        const data = { ...l.data };
+        delete data.art;
+        return { data, removals: l.removals };
+      });
+      const merged = withOptionalDatasets(
+        mergePacks(
+          loaded.map((l) => l.data),
+          loaded.map((l) => l.removals),
+        ),
+      );
+      const missing = missingDatasets(merged);
+      if (missing.length > 0) {
+        return [`The packs would leave out ${missing.join(", ")}.`];
+      }
+      const published = this.withArt(
+        applyRows(merged as ContentData, contentRows(this.db).map(toLayer)),
+      );
+      out.next = published;
+      const shaped = [...schemaProblems(published), ...skillProblems(published)];
+      const problems =
+        shaped.length > 0
+          ? shaped
+          : [...this.fullProblems(published), ...this.packArtProblems(pack, files)];
+      return problems.map((p) => `${p.where}: ${p.message}`);
+    } catch (e) {
+      return [(e as Error).message];
+    }
+  }
+
+  /** A pack id a file may not install over: a release pack's. */
+  private releaseId(id: string): boolean {
+    return (
+      Boolean(this.releasePacks[id]) ||
+      installedPacks(this.db).some((p) => p.id === id && p.source === "release")
+    );
+  }
+
+  /** Why installing `pack` over what is installed is refused before any check runs, or null. */
+  private installRefusal(pack: LoadedPack): { refusal: string | null; updates: string | null } {
+    const id = pack.manifest.id;
+    if (this.releaseId(id)) {
+      return {
+        refusal: `${id} is a release pack's id: a pack file cannot install over it.`,
+        updates: null,
+      };
+    }
+    const stored = installedPacks(this.db).find((p) => p.id === id);
+    if (!stored) {
+      return { refusal: null, updates: null };
+    }
+    let was: string | null = stored.version;
+    try {
+      was = stored.data ? readPackBlob(stored.data).manifest.version : was;
+    } catch {
+      // The installed copy cannot be read (it was left out): this replaces it.
+    }
+    return was === pack.manifest.version
+      ? {
+          refusal: `${pack.manifest.name} v${pack.manifest.version} is installed already: an update needs another version.`,
+          updates: was,
+        }
+      : { refusal: null, updates: was };
+  }
+
+  /**
+   * A merge's rows as draft changes, spelled as the content spells its keys. A row the draft or
+   * the published store already has as the pack has it, and a removal of a row nothing has, change
+   * nothing; a removal of a row only the draft adds drops that draft change. A row an NPCs page
+   * save plays over is left out (a merge would publish and never play), and named.
+   */
+  private mergePlan(
+    rows: readonly LayerRow[],
+    actor: ContentActor,
+  ): { draft: DraftRow[]; writes: DraftRow[]; drops: RowRef[]; skipped: string[] } {
+    const now = this.now();
+    const current = this.draftContent();
+    const saves = new Set(this.npcSaves().map((f) => f.npc.toLowerCase()));
+    const writes: DraftRow[] = [];
+    const drops: RowRef[] = [];
+    const skipped: string[] = [];
+    for (const r of rows) {
+      if (r.dataset === "npcFiles" && r.key !== null && saves.has(r.key.toLowerCase())) {
+        skipped.push(
+          `${rowLabel(r)}: an NPCs page save plays over it; change it on the NPCs page instead`,
+        );
+        continue;
+      }
+      const field = keyField(r.dataset, r.part);
+      const existing = (rowValue(current, r) ?? rowValue(this.packData, r)) as
+        | Record<string, unknown>
+        | undefined;
+      let data = r.data;
+      let key = r.key;
+      if (existing && field && key !== null && r.op === "set") {
+        // The key keeps the spelling it has here (keys compare ignoring case).
+        key = String(existing[field]);
+        data = { ...(r.data as Record<string, unknown>), [field]: key };
+      }
+      const ref = { dataset: r.dataset, part: r.part, key };
+      const live = rowValue(this.published, ref);
+      if (
+        (r.op === "remove" && live === undefined) ||
+        (r.op === "set" && live !== undefined && rowHash(live) === rowHash(data))
+      ) {
+        drops.push(ref);
+        continue;
+      }
+      if (r.op === "set" && r.dataset === "art") {
+        this.adoptPackFiles(r.part, data);
+      }
+      writes.push({
+        ...ref,
+        op: r.op,
+        data: r.op === "set" ? data : null,
+        authorAccountId: actor.accountId,
+        author: actor.name,
+        updatedAt: now,
+      });
+    }
+    const draft = [
+      ...this.draft().filter(
+        (d) => !writes.some((w) => sameRow(w, d)) && !drops.some((x) => sameRow(x, d)),
+      ),
+      ...writes,
+    ];
+    return { draft, writes, drops, skipped };
+  }
+
+  /** Lets go of waiting pack files whose time is up. */
+  private sweepImports(nowMs: number): void {
+    for (const [k, v] of this.imports) {
+      if (v.expires <= nowMs) {
+        this.imports.delete(k);
+      }
+    }
+  }
+
+  /** The waiting pack files, kept small: one per account, and a few in all. */
+  private keepImport(id: string, pending: PendingImport, nowMs: number): void {
+    this.sweepImports(nowMs);
+    for (const [k, v] of this.imports) {
+      if (v.actor.accountId === pending.actor.accountId) {
+        this.imports.delete(k);
+      }
+    }
+    while (this.imports.size >= MAX_PENDING_IMPORTS) {
+      this.imports.delete(this.imports.keys().next().value as string);
+    }
+    this.imports.set(id, pending);
+  }
+
+  /** Drops an account's waiting pack file (the page's Cancel). */
+  cancelImport(actor: ContentActor, importId: string): void {
+    if (this.imports.get(importId)?.actor.accountId === actor.accountId) {
+      this.imports.delete(importId);
+    }
+  }
+
+  /**
+   * Checks a posted pack file and says what it would change, keeping it (for its poster, for
+   * `UPLOAD_TICKET_MS`) until `applyImport` puts it in. Nothing changes here.
+   */
+  importPack(
+    ticket: string,
+    bytes: Uint8Array,
+    nowMs: number = Date.now(),
+  ): {
+    status: number;
+    body: { ok: true; preview: ContentPackPreview } | { ok: false; error: string };
+  } {
+    const actor = this.ticketActor(ticket, nowMs);
+    if (!actor) {
+      return { status: 403, body: { ok: false, error: "the upload ticket is missing or expired" } };
+    }
+    let read: ReadPackFile;
+    try {
+      read = readPackFile(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    } catch (e) {
+      return { status: 422, body: { ok: false, error: (e as Error).message } };
+    }
+    const { pack } = read;
+    const rows: LayerRow[] = [
+      ...rowsOf(pack.data).map((r): LayerRow => ({ ...r, op: "set", data: r.value })),
+      ...pack.removals.map((r): LayerRow => ({ ...r, op: "remove", data: null })),
+    ];
+    // Against what plays: the NPCs page's saves play over their content rows.
+    const playing = withNpcSaves(this.published, this.npcSaves());
+    const added: string[] = [];
+    const changed: string[] = [];
+    const removed: string[] = [];
+    let unchanged = 0;
+    for (const r of rows) {
+      const now = rowValue(playing, r);
+      if (r.op === "remove") {
+        if (now === undefined) {
+          unchanged += 1;
+        } else {
+          removed.push(rowLabel(r));
+        }
+      } else if (now === undefined) {
+        added.push(rowLabel(r));
+      } else if (rowHash(now) !== rowHash(r.data)) {
+        changed.push(rowLabel(r));
+      } else {
+        unchanged += 1;
+      }
+    }
+    const operator = contentRows(this.db);
+    const draftNow = this.draft();
+    const overYourChanges = rows.filter((r) => operator.some((o) => sameRow(o, r))).map(rowLabel);
+    const overTheDraft = rows.filter((r) => draftNow.some((d) => sameRow(d, r))).map(rowLabel);
+    // Installing as a pack.
+    const { refusal, updates } = this.installRefusal(pack);
+    const trial: { next?: ContentData } = {};
+    const errors = refusal ? [refusal] : this.packInstallProblems(pack, read.files, trial);
+    // An update can also take away rows the installed version had and this one does not.
+    if (updates !== null && trial.next) {
+      const next = trial.next;
+      for (const r of rowsOf(this.published)) {
+        if (r.dataset !== "art" && rowValue(next, r) === undefined) {
+          const label = rowLabel(r);
+          if (!removed.includes(label)) {
+            removed.push(`${label} (the installed version had it)`);
+          }
+        }
+      }
+    }
+    // Merging into the draft: the problems the draft would have, as a publish would name them.
+    let problems: string[];
+    try {
+      const plan = this.mergePlan(rows, actor);
+      problems = [
+        ...plan.skipped,
+        ...this.check(plan.draft).map((p) => `${p.where}: ${p.message}`),
+        ...this.packArtProblems(pack, read.files).map((p) => `${p.where}: ${p.message}`),
+      ];
+    } catch (e) {
+      problems = [(e as Error).message];
+    }
+    const importId = crypto.randomUUID();
+    this.keepImport(
+      importId,
+      { actor, read, rows, draftRev: this.draftRev(), expires: nowMs + UPLOAD_TICKET_MS },
+      nowMs,
+    );
+    const limit = (l: string[]) => l.slice(0, 200);
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        preview: {
+          importId,
+          manifest: {
+            id: pack.manifest.id,
+            name: pack.manifest.name,
+            version: pack.manifest.version,
+            sso: pack.manifest.sso,
+            builtOn: pack.manifest.builtOn ?? [],
+            exportedAt: pack.manifest.exportedAt ?? null,
+          },
+          files: read.files.length,
+          added: limit(added),
+          changed: limit(changed),
+          removed: limit(removed),
+          unchanged,
+          overYourChanges: limit(overYourChanges),
+          overTheDraft: limit(overTheDraft),
+          install: { ok: errors.length === 0, errors: limit(errors), updates },
+          merge: { problems: limit(problems) },
+        },
+      },
+    };
+  }
+
+  /** Stores a pack file's art and sound files with the uploads. */
+  private storePackFiles(files: readonly PackFileEntry[]): string | null {
+    if (files.length === 0) {
+      return null;
+    }
+    if (!this.art) {
+      return "This server stores no uploads, so a pack's art cannot come in.";
+    }
+    for (const f of files) {
+      this.art.stored(this.art.files.put(f.kind, f.ext, f.bytes));
+    }
+    this.checked = null;
+    return null;
+  }
+
+  /**
+   * Puts a checked pack file in. `merge`: its rows and removals go into the draft in one write
+   * (checked together, so rows that need each other come in together), to review and publish as
+   * any change. `install`: it is recorded as an imported pack after the others (an update keeps
+   * its place), in play from the next start.
+   */
+  applyImport(
+    actor: ContentActor,
+    importId: string,
+    mode: "merge" | "install",
+    nowMs: number = Date.now(),
+  ): ContentResult<string> {
+    const pending = this.imports.get(importId);
+    if (!pending || pending.expires <= nowMs || pending.actor.accountId !== actor.accountId) {
+      return fail("That pack file is no longer waiting: check it again.");
+    }
+    const { pack, blob, files } = pending.read;
+    const label = `${pack.manifest.name} v${pack.manifest.version}`;
+    if (mode === "install") {
+      const { refusal } = this.installRefusal(pack);
+      if (refusal) {
+        return fail(refusal);
+      }
+      const errors = this.packInstallProblems(pack, files);
+      if (errors.length > 0) {
+        return fail(`${label} cannot be installed: ${errors.slice(0, 5).join("; ")}`);
+      }
+      const noArt = this.storePackFiles(files);
+      if (noArt) {
+        return fail(noArt);
+      }
+      const json = JSON.stringify(blob);
+      const stored = installedPacks(this.db).find((p) => p.id === pack.manifest.id);
+      this.db.transaction(() => {
+        if (stored) {
+          setImportedPackData(this.db, pack.manifest.id, json);
+        } else {
+          insertPack(
+            this.db,
+            {
+              id: pack.manifest.id,
+              name: pack.manifest.name,
+              version: pack.manifest.version,
+              source: "imported",
+              data: json,
+            },
+            this.now(),
+          );
+        }
+        insertAudit(
+          this.db,
+          {
+            actor: actor.accountId,
+            command: stored ? "packUpdate" : "packInstall",
+            target: `${pack.manifest.id} ${pack.manifest.version}`,
+          },
+          this.now(),
+        );
+      })();
+      this.imports.delete(importId);
+      this.leftOutIds.delete(pack.manifest.id);
+      for (const f of artFilesOf((pack.data.art ?? {}) as ArtData)) {
+        this.packRowHashSet.add(f.hash);
+      }
+      this.log(`content: ${actor.name} installed pack ${label} (in play from the next start)`);
+      return {
+        ok: true,
+        value: `${label} is installed. It comes into play when the server next starts.`,
+      };
+    }
+    if (this.draftRev() !== pending.draftRev) {
+      return fail("The draft changed since the file was checked: check it again to see the merge.");
+    }
+    const plan = this.mergePlan(pending.rows, actor);
+    const shaped = schemaProblems(this.draftContent(plan.draft));
+    if (shaped.length > 0) {
+      return fail(
+        `${label} cannot be merged: the draft would not match the schemas.`,
+        shaped.slice(0, 20),
+      );
+    }
+    const noArt = this.storePackFiles(files);
+    if (noArt) {
+      return fail(noArt);
+    }
+    this.db.transaction(() => {
+      for (const d of plan.drops) {
+        deleteDraftRow(this.db, d.dataset, d.part, d.key);
+      }
+      for (const w of plan.writes) {
+        upsertDraftRow(this.db, w);
+      }
+      insertAudit(
+        this.db,
+        {
+          actor: actor.accountId,
+          command: "packMerge",
+          target: `${pack.manifest.id} ${pack.manifest.version}`,
+        },
+        this.now(),
+      );
+    })();
+    this.checked = null;
+    this.imports.delete(importId);
+    this.log(
+      `content: ${actor.name} merged pack ${label} into the draft (${plan.writes.length} rows)`,
+    );
+    return {
+      ok: true,
+      value: [
+        `${plan.writes.length} change${plan.writes.length === 1 ? "" : "s"} from ${label} ${plan.writes.length === 1 ? "is" : "are"} in the draft: review and publish them on the Content page.`,
+        ...(plan.skipped.length > 0
+          ? [`Left out (${plan.skipped.length}):`, ...plan.skipped.slice(0, 20)]
+          : []),
+      ].join("\n"),
+    };
+  }
+
+  /** Removes an imported pack; it leaves play at the next start. */
+  removeImportedPack(actor: ContentActor, id: string): ContentResult<string> {
+    const stored = installedPacks(this.db).find((p) => p.id === id);
+    if (!stored || stored.source !== "imported") {
+      return fail(`${id} is not an imported pack.`);
+    }
+    this.db.transaction(() => {
+      deleteImportedPack(this.db, id);
+      insertAudit(
+        this.db,
+        { actor: actor.accountId, command: "packRemove", target: id },
+        this.now(),
+      );
+    })();
+    this.log(`content: ${actor.name} removed pack ${stored.name} (it leaves at the next start)`);
+    return {
+      ok: true,
+      value: `${stored.name} is removed. It leaves play when the server next starts.`,
     };
   }
 
@@ -4645,6 +5418,8 @@ export class ContentService {
         })),
         // A pack's art row that can't be drawn: it draws nothing (issue #29, stage 8).
         ...this.packRowProblems,
+        // Imported packs left out at start (issue #34): the Packs page can remove them.
+        ...(this.importedLeftOut ? [{ where: "packs", message: this.importedLeftOut }] : []),
       ],
       world: world ? world.problems() : [],
     };

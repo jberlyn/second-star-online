@@ -18,6 +18,8 @@ Shared rules calculate outcomes; server systems apply them to world and player s
 - [packages/server/src/content/rows.ts](../../packages/server/src/content/rows.ts): the store's rows, their hashes, and merging packs and layers.
 - [packages/server/src/content/validate.ts](../../packages/server/src/content/validate.ts): the pre-publish checks.
 - [packages/server/src/content/packs.ts](../../packages/server/src/content/packs.ts): reads a pack folder or an imported pack.
+- [packages/server/src/content/pack-file.ts](../../packages/server/src/content/pack-file.ts): builds and reads an exported pack file (issue #34).
+- [packages/client/src/ui/packs-page.ts](../../packages/client/src/ui/packs-page.ts): the Control Panel's Packs page.
 - [packages/server/src/content/page.ts](../../packages/server/src/content/page.ts): the Content page's answers.
 - [packages/server/src/content/cleanup.ts](../../packages/server/src/content/cleanup.ts): where content refers to an item or a monster, and the cleanup that removes or replaces those references.
 - [packages/server/src/content/world.ts](../../packages/server/src/content/world.ts): what the content service asks of the world: usage, the published cleanup and stored problems.

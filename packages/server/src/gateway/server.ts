@@ -23,6 +23,7 @@ import {
   EDITOR_MESSAGE_BYTES,
   inGameSchema,
   MAX_MESSAGE_BYTES,
+  PACK_DOWNLOAD_PATH,
   PROTOCOL_VERSION,
   preAuthSchema,
   type ServerMsg,
@@ -34,6 +35,11 @@ import {
 
 import type { Clock } from "../clock.ts";
 import { UPLOAD_MAX_BYTES } from "../content/art.ts";
+import { PACK_FILE_MAX_BYTES } from "../content/pack-file.ts";
+
+/** Pack files read at once (each up to `PACK_FILE_MAX_BYTES`). */
+const MAX_PACK_READS = 2;
+
 import { mergePackArt, OPERATOR_ART_PREFIX, UPLOADS_PREFIX } from "../content/served-assets.ts";
 import type { ClientCopy } from "../content/service.ts";
 import type { Game } from "../game.ts";
@@ -124,6 +130,13 @@ export interface GatewayOptions {
     kind: "image" | "sound",
     bytes: Uint8Array,
   ) => { status: number; body: unknown };
+  /** Checks a pack file posted with a ticket (`/upload/pack`, issue #34); absent: refused. */
+  uploadPack?: (ticket: string, bytes: Uint8Array) => { status: number; body: unknown };
+  /** An exported pack file for a ticket (`PACK_DOWNLOAD_PATH`, issue #34); absent: refused. */
+  downloadPack?: (
+    ticket: string,
+    meta: { id: string; name: string; version: string },
+  ) => { ok: true; file: string; text: string } | { ok: false; error: string };
   clock: Clock;
   /** Folder of generated assets (packages/data/assets). */
   assetsDir: string;
@@ -389,6 +402,7 @@ export function startGateway(options: GatewayOptions): Gateway {
    * An upload (issue #29): one file posted raw to `/upload/<image|sound>` with a ticket from the
    * Content page. The size is checked from the header before the body is read, and again after.
    */
+  let packReads = 0;
   const uploadResponse = async (req: Request, kind: string): Promise<Response> => {
     const json = (status: number, body: unknown) =>
       respond(JSON.stringify(body), {
@@ -398,9 +412,17 @@ export function startGateway(options: GatewayOptions): Gateway {
     if (!options.upload) {
       return json(404, { ok: false, error: "this server takes no uploads" });
     }
-    if (kind !== "image" && kind !== "sound") {
-      return json(404, { ok: false, error: "uploads go to /upload/image or /upload/sound" });
+    if (kind !== "image" && kind !== "sound" && kind !== "pack") {
+      return json(404, {
+        ok: false,
+        error: "uploads go to /upload/image, /upload/sound or /upload/pack",
+      });
     }
+    if (kind === "pack" && !options.uploadPack) {
+      return json(404, { ok: false, error: "this server takes no pack files" });
+    }
+    // A pack file (issue #34) is bigger than one picture: it carries all of them.
+    const max = kind === "pack" ? PACK_FILE_MAX_BYTES : UPLOAD_MAX_BYTES;
     const ticket = req.headers.get(UPLOAD_TICKET_HEADER) ?? "";
     // Nothing is read from a request without a live ticket.
     if (!options.uploadTicketOk?.(ticket)) {
@@ -411,19 +433,64 @@ export function startGateway(options: GatewayOptions): Gateway {
     if (!Number.isSafeInteger(length) || length <= 0) {
       return json(411, { ok: false, error: "an upload needs its length" });
     }
-    if (length > UPLOAD_MAX_BYTES) {
+    if (length > max) {
       return json(413, {
         ok: false,
-        error: `uploads may be at most ${UPLOAD_MAX_BYTES / (1024 * 1024)} MB`,
+        error: `uploads may be at most ${max / (1024 * 1024)} MB`,
       });
     }
+    // Pack files are big: only a couple are read at once, so memory stays bounded (issue #34).
+    if (kind === "pack" && packReads >= MAX_PACK_READS) {
+      return json(429, { ok: false, error: "another pack file is being read: try again shortly" });
+    }
+    if (kind === "pack") {
+      packReads += 1;
+    }
     // Read at most the limit, whatever the framing claims; past it the read stops.
-    const bytes = await readCapped(req, UPLOAD_MAX_BYTES);
+    const bytes = await readCapped(req, max).finally(() => {
+      if (kind === "pack") {
+        packReads -= 1;
+      }
+    });
     if (!bytes) {
       return json(413, { ok: false, error: "the upload is too big" });
     }
+    if (kind === "pack") {
+      // Checked before the body was read.
+      const answer = options.uploadPack?.(ticket, bytes) ?? { status: 404, body: {} };
+      return json(answer.status, answer.body);
+    }
     const answer = options.upload(ticket, kind, bytes);
     return json(answer.status, answer.body);
+  };
+
+  /** An exported pack (issue #34): the operator layer as a file, for a ticket's holder. */
+  const downloadResponse = (req: Request, url: URL): Response => {
+    const ticket = req.headers.get(UPLOAD_TICKET_HEADER) ?? "";
+    if (!options.downloadPack || !options.uploadTicketOk?.(ticket)) {
+      return respond(
+        JSON.stringify({ ok: false, error: "the upload ticket is missing or expired" }),
+        {
+          status: 403,
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+        },
+      );
+    }
+    const q = (k: string) => (url.searchParams.get(k) ?? "").slice(0, 100);
+    const r = options.downloadPack(ticket, { id: q("id"), name: q("name"), version: q("version") });
+    if (!r.ok) {
+      return respond(JSON.stringify(r), {
+        status: 422,
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      });
+    }
+    return respond(r.text, {
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "no-store",
+        "content-disposition": `attachment; filename="${r.file}"`,
+      },
+    });
   };
 
   /**
@@ -725,6 +792,9 @@ export function startGateway(options: GatewayOptions): Gateway {
       }
       if (url.pathname.startsWith(UPLOAD_PATH) && req.method === "POST") {
         return uploadResponse(req, url.pathname.slice(UPLOAD_PATH.length));
+      }
+      if (url.pathname === PACK_DOWNLOAD_PATH && req.method === "GET") {
+        return downloadResponse(req, url);
       }
       if (url.pathname.startsWith(ASSETS_PATH) && (req.method === "GET" || req.method === "HEAD")) {
         let rel: string;

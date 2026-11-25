@@ -54,8 +54,11 @@ COPY --from=builder --chown=bun:bun /app/packages/data/assets ./packages/data/as
 COPY --from=builder --chown=bun:bun /app/dist/client ./dist/client
 
 USER bun
+# The release (a tag's version; empty on edge), which an exported content pack records.
+ARG SSO_VERSION=""
 ENV NODE_ENV=production \
     SSO_DB=/data/sso.sqlite \
+    SSO_VERSION=$SSO_VERSION \
     PORT=3000
 EXPOSE 3000
 

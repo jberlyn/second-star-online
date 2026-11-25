@@ -73,6 +73,16 @@ export function insertPack(
   ).run(p.id, p.name, p.version, next + 1, p.source, p.data, now);
 }
 
+/** Replaces an imported pack's data (an update, issue #34); its recorded version stays until start. */
+export function setImportedPackData(db: Db, id: string, data: string): void {
+  db.query("UPDATE content_packs SET data = ? WHERE id = ? AND source = 'imported'").run(data, id);
+}
+
+/** Removes an imported pack (it leaves at the next start). */
+export function deleteImportedPack(db: Db, id: string): void {
+  db.query("DELETE FROM content_packs WHERE id = ? AND source = 'imported'").run(id);
+}
+
 /** One operator-layer row: a change to a pack row, an added row, or a removal marker. */
 export interface StoredContentRow {
   dataset: DatasetId;

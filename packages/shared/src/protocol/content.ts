@@ -164,6 +164,88 @@ export const contentUploadTicketSchema = z.strictObject({
   seq,
 });
 
+// ---- the Packs page (issue #34) ----
+
+/**
+ * Exporting and importing packs. The files are too big for the socket: an export is downloaded
+ * from `PACK_DOWNLOAD_PATH` and an import posted to `/upload/pack`, each with an upload ticket in
+ * `x-upload-ticket`. The posted file is checked and answered with a `ContentPackPreview`; nothing
+ * changes until `contentPackApply` names it.
+ */
+export const PACK_DOWNLOAD_PATH = "/download/pack";
+
+/** Asks for the Packs page's view. */
+export const contentPacksSchema = z.strictObject({ t: z.literal("contentPacks"), seq });
+
+/**
+ * Puts a checked pack file in: its rows into the draft (`merge`), or as a pack (`install`); or
+ * lets it go (`cancel`).
+ */
+export const contentPackApplySchema = z.strictObject({
+  t: z.literal("contentPackApply"),
+  seq,
+  importId: z.string().uuid(),
+  mode: z.enum(["merge", "install", "cancel"]),
+});
+
+/** Removes an imported pack (at the next start). */
+export const contentPackRemoveSchema = z.strictObject({
+  t: z.literal("contentPackRemove"),
+  seq,
+  id: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/),
+});
+
+/** An installed pack as the Packs page lists it. */
+export interface ContentPackEntry {
+  id: string;
+  name: string;
+  version: string;
+  source: "release" | "imported";
+  /** The release it was made for. */
+  sso: string;
+  /**
+   * `loaded`: in play. `next start`: installed or updated, in play from the next start.
+   * `removed at next start`. `left out`: an imported pack the start could not load.
+   */
+  state: "loaded" | "next start" | "removed at next start" | "left out";
+}
+
+/** The Packs page's view. */
+export interface ContentPacksView {
+  packs: ContentPackEntry[];
+  /** Why the imported packs were left out at start, or null. */
+  leftOut: string | null;
+  /** The release this server runs, which an export records. */
+  release: string;
+}
+
+/** What a checked pack file would change, before anything does. */
+export interface ContentPackPreview {
+  importId: string;
+  manifest: {
+    id: string;
+    name: string;
+    version: string;
+    sso: string;
+    builtOn: { id: string; version: string }[];
+    exportedAt: string | null;
+  };
+  files: number;
+  /** Rows (as `items/items/Ale`) it adds, changes and removes against the published store. */
+  added: string[];
+  changed: string[];
+  removed: string[];
+  unchanged: number;
+  /** Rows the operator's published changes also change: theirs stay on top of an installed pack. */
+  overYourChanges: string[];
+  /** Rows the draft holds: a merge replaces them. */
+  overTheDraft: string[];
+  /** Installing it as a pack: whether it can be, why not, and the version it would update. */
+  install: { ok: boolean; errors: string[]; updates: string | null };
+  /** Merging it into the draft: the problems the draft would then have. */
+  merge: { problems: string[] };
+}
+
 /**
  * Everything the item picture picker needs at once (issue #29): the draft's items, their uploaded
  * pictures and the currency, so it never fetches hundreds of rows one by one.
@@ -1265,6 +1347,13 @@ export type ContentServerMsg =
     }
   /** An upload ticket, and the largest file the server takes. */
   | { t: "contentUploadTicket"; seq: number; ticket: string; maxBytes: number }
+  /** The Packs page's view, after an ask or with an apply's or removal's answer (issue #34). */
+  | {
+      t: "contentPacks";
+      seq: number;
+      view: ContentPacksView;
+      result?: { ok: boolean; text: string };
+    }
   /** The item picture picker's view. */
   | { t: "contentItemArt"; seq: number; view: ContentItemArtView }
   /** The worn frame set panels' view. */
