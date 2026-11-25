@@ -318,15 +318,36 @@ interface RowUi {
   busy: boolean;
 }
 
-export function createBalancePage(actions: BalancePageActions): BalancePage {
+/** Which cards a Balance panel shows, and where it sits. */
+export interface BalancePageOptions {
+  /** The cards (`BalanceGroupView.id`) it shows; all of them when left out. */
+  only?: readonly string[];
+  /** The cards it leaves out (shown on other pages). */
+  except?: readonly string[];
+  /** Shown as a tab of another page: no heading of its own. */
+  embedded?: boolean;
+  /** Its first request number, so two panels' answers are told apart (each range 100 000 000). */
+  seqBase?: number;
+}
+
+/** The cards that live on other pages: the spell effects (Spells) and the vehicles (Houses). */
+export const SPELL_BALANCE_GROUPS: readonly string[] = ["spells", "buffs"];
+export const VEHICLE_BALANCE_GROUPS: readonly string[] = ["vehicles"];
+
+export function createBalancePage(
+  actions: BalancePageActions,
+  opts: BalancePageOptions = {},
+): BalancePage {
   const el = document.createElement("div");
   el.className = "balance-page plain-editor";
-  el.append(
-    pageHeading(
-      "Balance",
-      "The game's global numbers: spells, buffs, hunger and death, timings, combat, monsters and vehicles. Pick a tab, or search. Saving puts your changes in the draft: players get them once you publish on the Content page.",
-    ),
-  );
+  if (!opts.embedded) {
+    el.append(
+      pageHeading(
+        "Game Rules",
+        "The numbers that apply to the whole game rather than to one item or creature: hunger and death, timings, combat and how monsters move and spawn. Pick a tab, or search. Saving puts your changes with the other unpublished changes: players get them once you publish.",
+      ),
+    );
+  }
   const draftLine = document.createElement("div");
   draftLine.className = "balance-draft";
   draftLine.hidden = true;
@@ -364,7 +385,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   strip.hidden = true;
   el.append(draftLine, searchWrap, strip, loading, noMatch, cards);
 
-  let seq = 0;
+  let seq = opts.seqBase ?? 0;
   /** Answers to requests sent before the last `reset` (a new session) are dropped. */
   let resetSeq = -1;
   /** The newest view applied: an older one never replaces it, whichever arrives first. */
@@ -913,7 +934,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     markTabs(view);
     const mine = view.groups.flatMap((g) => g.rows).filter((r) => r.pending !== null).length;
     const total = mine + view.otherDraft;
-    draftLine.hidden = total === 0;
+    draftLine.hidden = total === 0 || opts.embedded === true;
     draftText.textContent =
       total === 0
         ? ""
@@ -974,10 +995,19 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         update(r);
       }
     },
-    receive(msg) {
-      if (msg.seq <= resetSeq) {
+    receive(answer) {
+      if (answer.seq <= resetSeq) {
         return;
       }
+      const shown = (id: string) =>
+        (opts.only === undefined || opts.only.includes(id)) && !opts.except?.includes(id);
+      const msg =
+        opts.only || opts.except
+          ? {
+              ...answer,
+              view: { ...answer.view, groups: answer.view.groups.filter((g) => shown(g.id)) },
+            }
+          : answer;
       // An answer's view is newer than the one shown unless a later request's answer came first.
       const newer = msg.seq >= appliedSeq;
       const row = saving.get(msg.seq);

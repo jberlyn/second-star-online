@@ -4316,3 +4316,196 @@ body {
   align-self: flex-start;
   width: 64px;
 }
+/* The content area pages (ui/content-area-page.ts) and the forms drawn from content schemas
+   (ui/schema-form.ts): lists of rows to add, move and remove, optional parts behind a tick box. */
+.content-area-tab > .balance-row-title {
+  display: none;
+}
+.content-area-tab > .items-intro {
+  margin: 0 20px 4px;
+}
+/* An editor page shown as an area's tab keeps its form, not its own heading or publish line. */
+.content-area-tab .control-panel-heading,
+.content-area-tab .balance-draft {
+  display: none;
+}
+.content-area-page > .control-panel-tabs {
+  margin: 12px 20px 0;
+}
+.content-area-card {
+  margin: 16px 20px;
+  padding: 12px 16px;
+  background: var(--ui-wood-1);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 6px;
+}
+.content-area-records {
+  align-items: flex-start;
+}
+.content-area-search {
+  width: 100%;
+  margin: 8px 0 4px;
+  box-sizing: border-box;
+}
+.content-area-records .items-list-box > .control-panel-btn {
+  margin-bottom: 4px;
+}
+.content-area-row .balance-tags:empty,
+.content-area-row .control-panel-field-help[hidden] {
+  display: none;
+}
+.schema-form {
+  min-width: 0;
+}
+.schema-form-object {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.schema-form-fields {
+  align-items: flex-start;
+}
+.schema-form-field input[type="text"],
+.schema-form-field select,
+.schema-form-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.schema-form-field textarea,
+.schema-form-block textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.schema-form-check {
+  flex: 1 1 240px;
+  max-width: 420px;
+  align-self: center;
+}
+.schema-form-check > .control-panel-field-help {
+  flex-basis: 100%;
+  margin: 0 0 0 20px;
+}
+.schema-form-check {
+  flex-wrap: wrap;
+}
+.schema-form-number {
+  max-width: 10em;
+}
+.schema-form-block {
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+  background: var(--ui-wood-2);
+  border: 1px solid var(--ui-wood-4);
+  border-radius: 4px;
+}
+.schema-form-block .schema-form-block {
+  background: var(--ui-wood-1);
+}
+.schema-form-block-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.schema-form-block > .control-panel-field-help {
+  margin: 0 0 6px;
+}
+.schema-form-list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.schema-form-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-top: 1px solid var(--ui-wood-3);
+}
+.schema-form-list-row > input,
+.schema-form-list-row > select {
+  flex: 1 1 200px;
+  max-width: 420px;
+}
+.schema-form-list-row > .schema-form-object,
+.schema-form-list-row > .schema-form-union,
+.schema-form-list-row > .schema-form-optional {
+  flex: 1 1 300px;
+}
+.schema-form-entry {
+  border: 1px solid var(--ui-wood-4);
+  border-radius: 4px;
+  background: var(--ui-wood-1);
+}
+.schema-form-entry > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--ui-text);
+}
+.schema-form-entry[open] > summary {
+  border-bottom: 1px solid var(--ui-wood-3);
+}
+.schema-form-entry > .schema-form-object,
+.schema-form-entry > .schema-form-union,
+.schema-form-entry > .schema-form-optional,
+.schema-form-entry > .schema-form-list {
+  padding: 6px 10px 10px;
+}
+.schema-form-entry-title {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.schema-form-entry-tools {
+  display: inline-flex;
+  gap: 4px;
+}
+.control-panel-btn.schema-form-mini {
+  padding: 1px 7px;
+  font-size: 12px;
+}
+.schema-form-add {
+  margin-top: 6px;
+}
+.schema-form-empty {
+  margin: 2px 0;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+.schema-form-empty[hidden],
+.schema-form-optional-body[hidden] {
+  display: none;
+}
+.schema-form-set,
+.schema-form-shape {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--ui-text-soft);
+  font-size: 12px;
+}
+.schema-form-optional-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.schema-form-optional-inline > .schema-form-set {
+  margin: 0;
+}
+.schema-form-kept {
+  color: var(--ui-text-muted);
+}
+.schema-form-tuple .balance-field {
+  flex: 0 1 140px;
+}
+.schema-form-field > .control-panel-field-label {
+  display: block;
+}

@@ -608,16 +608,52 @@ describe("the Balance page on a running server", () => {
           expect: listed ?? "",
         }),
       ).toMatchObject({ ok: true });
-      // Rows of other datasets name no revision, as before (an item's catalogue row does since
-      // #30, and a monster's species row since #31: their editors fingerprint them).
-      const items = contentIntent(server.content, ADMIN, {
+      // Every other row names a plain revision too (the Control Panel's forms save with it), and
+      // a change naming none is still taken (a script, a test).
+      const spell = contentIntent(server.content, ADMIN, {
         t: "contentRow",
         seq: 10,
         dataset: "spells",
         part: "spells",
         key: "Firebolt",
-      }) as { row: { revision?: string } };
-      expect(items.row.revision).toBeUndefined();
+      }) as {
+        row: { revision?: string; published: Record<string, unknown>; schema?: unknown };
+      };
+      expect(spell.row.revision).toMatch(/^[0-9a-f]{16}$/);
+      // The row carries its shape, for the Control Panel's form: one spell's fields.
+      expect(spell.row.schema).toMatchObject({ type: "object", properties: { sp: {} } });
+      const spellRef = { dataset: "spells", part: "spells", key: "Firebolt" };
+      const changed = { ...spell.row.published, sp: 41 };
+      expect(
+        contentIntent(server.content, ADMIN, {
+          t: "contentDraft",
+          seq: 11,
+          ...spellRef,
+          op: "set",
+          data: changed,
+          expect: spell.row.revision ?? "",
+        }),
+      ).toMatchObject({ ok: true });
+      // A form opened before that save is refused: the row changed since.
+      expect(
+        contentIntent(server.content, ADMIN, {
+          t: "contentDraft",
+          seq: 12,
+          ...spellRef,
+          op: "set",
+          data: { ...changed, sp: 42 },
+          expect: spell.row.revision ?? "",
+        }),
+      ).toMatchObject({ ok: false });
+      expect(
+        contentIntent(server.content, ADMIN, {
+          t: "contentDraft",
+          seq: 13,
+          ...spellRef,
+          op: "set",
+          data: { ...changed, sp: 43 },
+        }),
+      ).toMatchObject({ ok: true });
     } finally {
       await server.stop();
     }

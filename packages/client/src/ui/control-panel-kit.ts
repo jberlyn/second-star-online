@@ -354,14 +354,19 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
   let labels: string[] = [];
   let sections: HTMLElement[] = [];
 
+  // Only what is inside the form counts: the form may itself sit in another page's tab.
+  const inside = (s: HTMLElement, sel: string) => {
+    const up = s.parentElement?.closest(sel);
+    return up !== null && up !== undefined && form.contains(up);
+  };
   const collect = () =>
     [...form.querySelectorAll<HTMLElement>(".balance-row")].filter(
       (s) =>
         !s.hidden &&
         !strip.contains(s) &&
-        !s.parentElement?.closest(".balance-row") &&
+        !inside(s, ".balance-row") &&
         // A section inside a part the page hid (a form not open) has no tab either.
-        !s.parentElement?.closest("[hidden]") &&
+        !inside(s, "[hidden]") &&
         tabLabel(s) !== "",
     );
 

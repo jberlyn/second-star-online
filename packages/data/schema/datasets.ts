@@ -3,6 +3,8 @@
  * build validates the Classic pack with these, and the server validates every pack, the operator
  * layer and each draft with the same schemas.
  */
+import { z } from "zod";
+
 import { artDataSchema } from "./art.ts";
 import { attPowerDataSchema } from "./attpower.ts";
 import { balanceDataSchema } from "./balance.ts";
@@ -46,6 +48,28 @@ export const DATASET_SCHEMAS = {
 } as const;
 
 export type SchemaDatasetId = keyof typeof DATASET_SCHEMAS;
+
+/**
+ * A dataset's top-level field as JSON Schema (its input shape), for the Control Panel's forms;
+ * null for a field the dataset does not have.
+ */
+export function partJsonSchema(
+  dataset: SchemaDatasetId,
+  part: string,
+): Record<string, unknown> | null {
+  const shape = (DATASET_SCHEMAS[dataset] as unknown as { shape?: Record<string, z.ZodType> })
+    .shape;
+  const field = shape?.[part];
+  if (!field) {
+    return null;
+  }
+  const json = z.toJSONSchema(field, { unrepresentable: "any", io: "input" }) as Record<
+    string,
+    unknown
+  >;
+  delete json.$schema;
+  return json;
+}
 
 /** Each dataset's file stem in `content/` and in a pack's `data/` folder. */
 export const DATASET_FILES: Record<SchemaDatasetId, string> = {

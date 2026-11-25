@@ -1,0 +1,151 @@
+/**
+ * The forms drawn from content schemas (ui/schema-form.ts): every part of the Classic pack reads
+ * back from its form exactly as it went in, so opening and saving a row never changes what it says.
+ */
+import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import {
+  DATASET_FILES,
+  DATASET_SCHEMAS,
+  partJsonSchema,
+  type SchemaDatasetId,
+} from "@secondstaronline/data/schema";
+
+import { canonical } from "../src/ui/content-area-page.ts";
+import { contentWords } from "../src/ui/content-words.ts";
+import {
+  blank,
+  entryTitle,
+  FormError,
+  fits,
+  humanize,
+  type JsonSchema,
+  schemaForm,
+} from "../src/ui/schema-form.ts";
+
+const CONTENT = join(import.meta.dir, "../../data/content");
+
+const schemaOf = (dataset: string, part: string) =>
+  (partJsonSchema(dataset as SchemaDatasetId, part) ?? {}) as JsonSchema;
+
+test("every Classic part reads back from its form unchanged", () => {
+  const checked: string[] = [];
+  for (const [dataset, schema] of Object.entries(DATASET_SCHEMAS)) {
+    if (dataset === "rects" || dataset === "art") {
+      continue;
+    }
+    const file = join(CONTENT, `${DATASET_FILES[dataset as keyof typeof DATASET_FILES]}.json`);
+    const data = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    const shape = (schema as unknown as { shape: Record<string, unknown> }).shape;
+    for (const part of Object.keys(shape)) {
+      if (data[part] === undefined) {
+        continue;
+      }
+      const form = schemaForm(schemaOf(dataset, part), data[part], contentWords(dataset, part), {
+        id: "test",
+      });
+      expect(`${dataset}/${part}:${canonical(form.value())}`).toBe(
+        `${dataset}/${part}:${canonical(data[part])}`,
+      );
+      checked.push(`${dataset}/${part}`);
+    }
+  }
+  expect(checked.length).toBeGreaterThan(90);
+});
+
+test("a form shows no JSON: every value has a control of its own", () => {
+  const data = JSON.parse(readFileSync(join(CONTENT, "spells.json"), "utf8")) as {
+    spells: unknown[];
+  };
+  const form = schemaForm(
+    schemaOf("spells", "spells"),
+    data.spells,
+    contentWords("spells", "spells"),
+    { id: "test" },
+  );
+  expect(form.el.querySelectorAll(".schema-form-kept").length).toBe(0);
+  expect(form.el.textContent).not.toContain("{");
+});
+
+test("a number out of its limits, or not whole, does not read", () => {
+  const schema: JsonSchema = {
+    type: "object",
+    properties: { n: { type: "integer", minimum: 1, maximum: 9 } },
+    required: ["n"],
+    additionalProperties: false,
+  };
+  const words = contentWords("balance", "x");
+  const form = schemaForm(schema, { n: 3 }, words, { id: "t" });
+  expect(form.value()).toEqual({ n: 3 });
+  const input = form.el.querySelector("input") as HTMLInputElement;
+  input.value = "12";
+  expect(() => form.value()).toThrow(FormError);
+  input.value = "2.5";
+  expect(() => form.value()).toThrow("whole number");
+  input.value = "4";
+  expect(form.value()).toEqual({ n: 4 });
+});
+
+test("an optional field is ticked on and off; a list's entries are added, moved and removed", () => {
+  const schema: JsonSchema = {
+    type: "object",
+    properties: {
+      note: { anyOf: [{ type: "string" }, { type: "null" }] },
+      tags: { type: "array", items: { type: "string" } },
+    },
+    required: ["note", "tags"],
+    additionalProperties: false,
+  };
+  const form = schemaForm(schema, { note: null, tags: ["a", "b"] }, contentWords("x", "y"), {
+    id: "t",
+  });
+  const tick = form.el.querySelector<HTMLInputElement>("[data-action='t-set']");
+  const toggle = () => {
+    if (tick) {
+      tick.checked = !tick.checked;
+      tick.dispatchEvent(new Event("change"));
+    }
+  };
+  toggle();
+  expect(form.value()).toEqual({ note: "", tags: ["a", "b"] });
+  toggle();
+  expect(form.value()).toEqual({ note: null, tags: ["a", "b"] });
+  form.el.querySelectorAll<HTMLButtonElement>("[data-action='t-down']")[0]?.click();
+  expect(form.value()).toEqual({ note: null, tags: ["b", "a"] });
+  form.el.querySelector<HTMLButtonElement>("[data-action='t-add']")?.click();
+  expect(form.value()).toEqual({ note: null, tags: ["b", "a", ""] });
+  form.el.querySelectorAll<HTMLButtonElement>("[data-action='t-remove']")[0]?.click();
+  expect(form.value()).toEqual({ note: null, tags: ["a", ""] });
+});
+
+test("a value of several shapes keeps its shape, and picking another starts it blank", () => {
+  const schema: JsonSchema = {
+    anyOf: [{ type: "integer" }, { type: "array", items: { type: "integer" } }],
+  };
+  const form = schemaForm(schema, [1, 2], contentWords("x", "y"), { id: "t" });
+  expect(form.value()).toEqual([1, 2]);
+  const pick = form.el.querySelector<HTMLSelectElement>("[data-action='t-shape']");
+  if (pick) {
+    pick.value = "0";
+    pick.dispatchEvent(new Event("change"));
+  }
+  expect(form.value()).toBe(0);
+});
+
+test("plain words: keys, entry titles, blanks and shapes", () => {
+  expect(humanize("periodFrames")).toBe("Period frames");
+  expect(humanize("npcSpawn")).toBe("NPC spawn");
+  expect(entryTitle({ name: "Firebolt", sp: 3 }, 0)).toBe("Firebolt");
+  expect(entryTitle({ sp: 3 }, 4)).toBe("Entry 5");
+  expect(blank({ type: "integer", minimum: 5 })).toBe(5);
+  expect(
+    blank({
+      type: "object",
+      properties: { a: { type: "string" }, b: { type: "boolean" } },
+      required: ["a"],
+    }),
+  ).toEqual({ a: "" });
+  expect(fits({ type: "object", properties: { k: { const: "x" } } }, { k: "y" })).toBe(false);
+});

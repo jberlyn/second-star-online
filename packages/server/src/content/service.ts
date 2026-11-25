@@ -3408,7 +3408,41 @@ export class ContentService {
         ref.key;
       return this.monsterFingerprintOf(name, draft);
     }
+    if (this.plainRevision(ref)) {
+      // Any other row: what it holds in the draft and whether the draft changes it, so a form
+      // saved over someone else's newer change is refused.
+      const draft = this.draft();
+      const value = rowValue(this.draftContent(draft), ref);
+      const pending = draft.find((r) => sameRow(r, ref))?.op ?? null;
+      if (value === undefined && pending === null) {
+        return null;
+      }
+      return rowHash({ value: value ?? null, pending });
+    }
     return null;
+  }
+
+  /**
+   * Whether `ref` has the plain revision (a hash of the row as the draft has it) rather than one
+   * an editor page computes. A change naming no revision is not refused for such a row.
+   */
+  plainRevision(ref: RowRef): boolean {
+    if (ref.dataset === "balance" || READ_ONLY_DATASETS.includes(ref.dataset)) {
+      return false;
+    }
+    if (ref.dataset === "items" && (ref.part === "definitions" || ref.part === "items")) {
+      return false;
+    }
+    if (ref.dataset === "monsters" && ["definitions", "monsters", "casting"].includes(ref.part)) {
+      return false;
+    }
+    if (ref.dataset === "classes" && ref.part === "skills") {
+      return false;
+    }
+    return !(
+      ref.dataset === "gather" &&
+      (ref.part === "harvest" || ref.part === "yields" || ref.part === "gathering")
+    );
   }
 
   // ---- the Monsters page (issue #31, stage 4) ----

@@ -1633,6 +1633,8 @@ export interface ContentListing {
   dataset: string;
   part: string;
   keyField: string | null;
+  /** One row's shape as JSON Schema (as `ContentRowDetail.schema`), for a new entry's form. */
+  schema?: unknown;
   rows: { key: string | null; status: ContentRowStatus; draft: ContentDraftView["op"] | null }[];
 }
 
@@ -1648,6 +1650,11 @@ export interface ContentRowDetail extends ContentRowRef {
   draft: { op: ContentDraftView["op"]; data: unknown; author: string } | null;
   /** Something the admin should know before editing (an NPC Editor save that plays instead). */
   note?: string;
+  /**
+   * The row's shape as JSON Schema (an entry of a keyed list, or the whole section): the Control
+   * Panel draws its form from it.
+   */
+  schema?: unknown;
   /**
    * The row's revision, for a row a change must name (a balance row, the Balance page's
    * fingerprint): a save or discard sends it back, and is refused once the row has changed.

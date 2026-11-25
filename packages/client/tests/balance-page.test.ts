@@ -705,7 +705,7 @@ describe("the Balance page in the app", () => {
     c.onMessage(SNAPSHOT);
     c.onMessage({ t: "controlPanel" });
     const link = root.querySelector<HTMLElement>('.control-panel-link[data-page="balance"]');
-    expect(link?.textContent).toBe("Balance");
+    expect(link?.textContent).toBe("Game Rules");
     link?.click();
     const asked = sent.filter((m) => m.t === "contentBalance").at(-1) as
       | { seq: number }
@@ -714,7 +714,13 @@ describe("the Balance page in the app", () => {
     c.onMessage({
       t: "contentBalance",
       seq: asked?.seq ?? 0,
-      view: view([hull("Boat", 60, "a".repeat(16))]),
+      // A Game Rules card (the vehicles card is the Houses & Vehicles page's).
+      view: {
+        ...view([hull("Boat", 60, "a".repeat(16))]),
+        groups: [
+          { id: "timings", title: "Timings", help: "", rows: [hull("Boat", 60, "a".repeat(16))] },
+        ],
+      },
     } as ServerMsg);
     expect(root.querySelector('[data-row="hulls/Boat"]')).not.toBeNull();
     // Edited and left: the Control Panel asks first.
@@ -724,9 +730,14 @@ describe("the Balance page in the app", () => {
     input.value = "70";
     input.dispatchEvent(new Event("input"));
     // A balance-only publish keeps the store's hash: the page asks again all the same.
-    const before = sent.filter((m) => m.t === "contentBalance").length;
+    // (The Spells and Houses pages' panels ask with their own numbers, from 100 000 000.)
+    const mine = () =>
+      sent.filter(
+        (m) => m.t === "contentBalance" && (m as unknown as { seq: number }).seq < 100_000_000,
+      ).length;
+    const before = mine();
     c.onMessage({ t: "content", hash: content().hash } as ServerMsg);
-    expect(sent.filter((m) => m.t === "contentBalance").length).toBe(before + 1);
+    expect(mine()).toBe(before + 1);
     root.querySelector<HTMLElement>('.control-panel-link[data-page="content"]')?.click();
     expect(root.querySelector(".control-panel-confirm")).not.toBeNull();
     // Discarded and on the Content page: a balance-only publish refreshes it too.

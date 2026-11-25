@@ -7,7 +7,12 @@
  */
 import { createHash } from "node:crypto";
 
-import { DATASET_SCHEMAS, EMPTY_ART, OPTIONAL_DATASETS } from "@secondstaronline/data/schema";
+import {
+  DATASET_SCHEMAS,
+  EMPTY_ART,
+  OPTIONAL_DATASETS,
+  partJsonSchema,
+} from "@secondstaronline/data/schema";
 import { type ContentData, DATASET_IDS, type DatasetId } from "@secondstaronline/shared";
 
 /**
@@ -52,6 +57,29 @@ export function datasetParts(dataset: DatasetId): { part: string; optional: bool
 /** Whether a dataset has a top-level field `part`, and whether it is optional. */
 export function partOf(dataset: DatasetId, part: string): { optional: boolean } | null {
   return datasetParts(dataset).find((p) => p.part === part) ?? null;
+}
+
+const rowSchemas = new Map<string, unknown>();
+
+/**
+ * One row's shape as JSON Schema (an entry of a keyed list, or the whole section), for the
+ * Control Panel's forms: they draw a row's fields from it instead of showing its JSON. Null for a
+ * part the dataset does not have.
+ */
+export function rowSchema(dataset: DatasetId, part: string): unknown {
+  const id = `${dataset}/${part}`;
+  if (rowSchemas.has(id)) {
+    return rowSchemas.get(id);
+  }
+  const json = partJsonSchema(dataset, part);
+  if (!json) {
+    return null;
+  }
+  // A keyed list's row is one of its entries.
+  const out =
+    keyField(dataset, part) !== null && json.type === "array" ? (json.items ?? null) : json;
+  rowSchemas.set(id, out);
+  return out;
 }
 
 /** Datasets operators cannot change: the collision rects are built from the art. */

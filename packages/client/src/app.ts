@@ -9,6 +9,7 @@ import {
   CHAT_COLOR,
   CHAT_SOCIAL_TEXT,
   type ClientMsg,
+  type ContentRowRef,
   type ContentStore,
   type Dir,
   footWalkGrid,
@@ -81,7 +82,11 @@ import {
   stackTitle,
 } from "./ui/amount.ts";
 import { createAwayWindow } from "./ui/away.ts";
-import { createBalancePage } from "./ui/balance-page.ts";
+import {
+  createBalancePage,
+  SPELL_BALANCE_GROUPS,
+  VEHICLE_BALANCE_GROUPS,
+} from "./ui/balance-page.ts";
 import { createBars } from "./ui/bars.ts";
 import { createBioWindow } from "./ui/bio.ts";
 import { createBlackjack } from "./ui/blackjack.ts";
@@ -91,7 +96,22 @@ import { createCharMenu } from "./ui/charmenu.ts";
 import { createChatInput, createChatLog } from "./ui/chat.ts";
 import { createChatRoomWindow } from "./ui/chatroom.ts";
 import { createCheckersWindow } from "./ui/checkers.ts";
-import { createContentPage, editorFor } from "./ui/content-page.ts";
+import { type AreaPage, type AreaTab, createAreaPage } from "./ui/content-area-page.ts";
+import {
+  CLASS_TABS,
+  COMMUNITY_TABS,
+  CRAFT_TABS,
+  CREATURE_RULE_TABS,
+  GAME_RULE_TABS,
+  HOUSE_TABS,
+  homeOf,
+  ITEM_RULE_TABS,
+  QUEST_TABS,
+  SPELL_TABS,
+} from "./ui/content-areas.ts";
+import { createContentPage } from "./ui/content-page.ts";
+import { createContentRequests } from "./ui/content-requests.ts";
+import { contentWords } from "./ui/content-words.ts";
 import { createControlPanel } from "./ui/control-panel.ts";
 import { createFriendsWindow } from "./ui/friends.ts";
 import { desktopMenus, type MenuActions, type MenuState } from "./ui/gamemenu.ts";
@@ -724,39 +744,20 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           charactersPage.openHub(name);
         }
       },
-      // A change opens on its own editor page, when the role may use it.
-      openEditor: (ref) => {
-        const to = editorFor(ref);
-        const allowed = to?.page === "npcs" ? "npcEditor" : "contentEditor";
-        if (!to || !permissions.has(allowed)) {
-          return false;
-        }
-        const key = to.key;
-        controlPanel.go(to.page, () => {
-          if (key === null) {
-            return;
-          }
-          if (to.page === "items") {
-            itemsPage.open(key);
-          } else if (to.page === "monsters") {
-            monstersPage.open(key);
-          } else if (to.page === "skills") {
-            skillsPage.open(key);
-          } else if (to.page === "npcs") {
-            npcsPage.open(key);
-          }
-        });
-        return true;
-      },
+      // A change opens on the page that edits it, when the role may use it.
+      openEditor: (ref) => openContentRow(ref),
     },
     assets,
   );
-  const balancePage = createBalancePage({
-    view: (seq) => send({ t: "contentBalance", seq }),
-    set: (seq, change) => send({ t: "contentBalanceSet", seq, ...change }),
-    openContent: () => controlPanel.go("content"),
-    openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
-  });
+  const balancePage = createBalancePage(
+    {
+      view: (seq) => send({ t: "contentBalance", seq }),
+      set: (seq, change) => send({ t: "contentBalanceSet", seq, ...change }),
+      openContent: () => controlPanel.go("content"),
+      openContentRow: (row) => openContentRow(row),
+    },
+    { except: [...SPELL_BALANCE_GROUPS, ...VEHICLE_BALANCE_GROUPS] },
+  );
   const itemsPage = createItemsPage({
     view: (seq, name) => send({ t: "contentItems", seq, ...(name !== undefined ? { name } : {}) }),
     set: (seq, change) => send({ t: "contentItemSet", seq, ...change }),
@@ -834,6 +835,212 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     },
     assets,
   );
+  // ---- the content editor pages built from forms (content-areas.ts): every part of the content
+  // has one page, and each existing editor is that page's first tab.
+  const contentRequests = createContentRequests(send);
+  const areaDeps = {
+    requests: contentRequests,
+    words: contentWords,
+    openContent: () => controlPanel.go("content"),
+  };
+  /** An existing editor page as the first tab of its area. */
+  const pageTab = (
+    label: string,
+    help: string,
+    page: { el: HTMLElement; onShow(): void; changes(): number; discard(): void },
+  ): AreaTab => ({
+    kind: "custom",
+    label,
+    help,
+    el: page.el,
+    onShow: () => page.onShow(),
+    changes: () => page.changes(),
+    discard: () => page.discard(),
+  });
+  // The Balance page's cards, split by where each belongs.
+  const spellNumbers = createBalancePage(
+    {
+      view: (seq) => send({ t: "contentBalance", seq }),
+      set: (seq, change) => send({ t: "contentBalanceSet", seq, ...change }),
+      openContent: () => controlPanel.go("content"),
+      openContentRow: (row) => openContentRow(row),
+    },
+    { only: SPELL_BALANCE_GROUPS, embedded: true, seqBase: 100_000_000 },
+  );
+  const vehicleNumbers = createBalancePage(
+    {
+      view: (seq) => send({ t: "contentBalance", seq }),
+      set: (seq, change) => send({ t: "contentBalanceSet", seq, ...change }),
+      openContent: () => controlPanel.go("content"),
+      openContentRow: (row) => openContentRow(row),
+    },
+    { only: VEHICLE_BALANCE_GROUPS, embedded: true, seqBase: 200_000_000 },
+  );
+  const itemsArea = createAreaPage(
+    {
+      id: "items-area",
+      title: "Items",
+      intro:
+        "Every item in the game, and the rules all items share. Pick an item to change it, or make a new one.",
+      tabs: [
+        pageTab("Items", "Each item: what it is, how it looks and what it does.", itemsPage),
+        ...ITEM_RULE_TABS,
+      ],
+    },
+    areaDeps,
+  );
+  const monstersArea = createAreaPage(
+    {
+      id: "monsters-area",
+      title: "Creatures & NPCs",
+      intro:
+        "Every monster, animal and NPC: their stats, pictures, behaviour, rewards, loot and spells, and the rules all creatures share.",
+      tabs: [pageTab("Creatures", "Each creature and NPC.", monstersPage), ...CREATURE_RULE_TABS],
+    },
+    areaDeps,
+  );
+  const spellsArea = createAreaPage(
+    {
+      id: "spells-area",
+      title: "Spells",
+      intro:
+        "Every spell, what each spell effect deals or heals, how long buffs last and how strong a cast is.",
+      tabs: SPELL_TABS(
+        pageTab(
+          "Damage and buffs",
+          "What each spell effect deals or heals, and how long buffs last. A spell effect is shared: a spell, a staff's free fireball, a creature's cast and a map hazard running it all use these numbers, unless a spell sets its own.",
+          spellNumbers,
+        ),
+      ),
+    },
+    areaDeps,
+  );
+  const skillsArea = createAreaPage(
+    {
+      id: "skills-area",
+      title: "Skills & Classes",
+      intro: "Every skill and how it rises, the classes, and how a new character starts out.",
+      tabs: [pageTab("Skills", "Each skill and how it rises.", skillsPage), ...CLASS_TABS],
+    },
+    areaDeps,
+  );
+  const gatheringArea = createAreaPage(
+    {
+      id: "gathering-area",
+      title: "Gathering & Crafting",
+      intro: "Chopping, mining, fishing and farming, and what the crafting stations make.",
+      tabs: [
+        pageTab(
+          "Gathering",
+          "Where players gather, with what tools and what they find.",
+          gatheringPage,
+        ),
+        ...CRAFT_TABS,
+      ],
+    },
+    areaDeps,
+  );
+  const housesArea = createAreaPage(
+    {
+      id: "houses-area",
+      title: "Houses & Vehicles",
+      intro: "The houses players build, their doors, keys and chests, and the vehicles they sail.",
+      tabs: HOUSE_TABS(
+        pageTab(
+          "Hull and cannon",
+          "How much a hit takes off a vehicle's hull, how fast a parked one mends, and the cannon.",
+          vehicleNumbers,
+        ),
+      ),
+    },
+    areaDeps,
+  );
+  const questsArea = createAreaPage(
+    {
+      id: "quests-area",
+      title: "Quests",
+      intro: "The quests NPCs give players, and what they reward.",
+      tabs: QUEST_TABS,
+    },
+    areaDeps,
+  );
+  const communityArea = createAreaPage(
+    {
+      id: "community-area",
+      title: "Community",
+      intro:
+        "Factions, guilds, chat, mail, the message boards, the newspaper, the casino and the help players read.",
+      tabs: COMMUNITY_TABS,
+    },
+    areaDeps,
+  );
+  const rulesArea = createAreaPage(
+    {
+      id: "rules-area",
+      title: "Game Rules",
+      intro:
+        "The rules for the whole game rather than for one item or creature: hunger and death, timings, combat, how monsters move and spawn, money and tiles.",
+      tabs: [
+        pageTab(
+          "Numbers",
+          "Hunger, death, drops, timings, combat and monsters. Pick a tab, or search.",
+          balancePage,
+        ),
+        ...GAME_RULE_TABS,
+      ],
+    },
+    areaDeps,
+  );
+  const areaPages: Record<string, AreaPage> = {
+    items: itemsArea,
+    monsters: monstersArea,
+    spells: spellsArea,
+    skills: skillsArea,
+    gathering: gatheringArea,
+    houses: housesArea,
+    quests: questsArea,
+    community: communityArea,
+    balance: rulesArea,
+  };
+  /**
+   * Opens a row on the page that edits it (a link from another page or from a change on the
+   * Content page): false when no page does or the role may not open it.
+   */
+  const openContentRow = (row: ContentRowRef): boolean => {
+    const home = homeOf(row.dataset, row.part);
+    if (!home) {
+      return false;
+    }
+    const allowed = home === "npcs" ? "npcEditor" : "contentEditor";
+    if (!permissions.has(allowed)) {
+      return false;
+    }
+    const key = row.key;
+    if (home === "pictures") {
+      controlPanel.go("content", () => contentPage.openRow(row));
+      return true;
+    }
+    controlPanel.go(home, () => {
+      if (home === "items" && key !== null) {
+        itemsPage.open(key);
+      } else if (home === "monsters" && key !== null && row.part !== "casting") {
+        monstersPage.open(key);
+      } else if (
+        home === "skills" &&
+        row.dataset === "classes" &&
+        row.part === "skills" &&
+        key !== null
+      ) {
+        skillsPage.open(key);
+      } else if (home === "npcs" && key !== null) {
+        npcsPage.open(key);
+      } else if (home !== "npcs" && home !== "gathering") {
+        areaPages[home]?.open(row.dataset, row.part, key);
+      }
+    });
+    return true;
+  };
+
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -862,9 +1069,31 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         el: activityPage.el,
         onShow: () => activityPage.onShow(),
       },
+      ...(
+        [
+          ["items", "Items", itemsArea],
+          ["monsters", "Creatures & NPCs", monstersArea],
+          ["spells", "Spells", spellsArea],
+          ["skills", "Skills & Classes", skillsArea],
+          ["gathering", "Gathering & Crafting", gatheringArea],
+          ["houses", "Houses & Vehicles", housesArea],
+          ["quests", "Quests", questsArea],
+          ["community", "Community", communityArea],
+          ["balance", "Game Rules", rulesArea],
+        ] as const
+      ).map(([id, title, area]) => ({
+        id,
+        title,
+        group: "Game",
+        permission: "contentEditor" as const,
+        el: area.el,
+        onShow: () => area.onShow(),
+        changes: () => area.changes(),
+        discard: () => area.discard(),
+      })),
       {
         id: "content",
-        title: "Content",
+        title: "Publish Changes",
         group: "Game",
         permission: "contentEditor",
         el: contentPage.el,
@@ -872,56 +1101,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onHide: () => contentPage.onHide(),
         changes: () => contentPage.changes(),
         discard: () => contentPage.discard(),
-      },
-      {
-        id: "balance",
-        title: "Balance",
-        group: "Game",
-        permission: "contentEditor",
-        el: balancePage.el,
-        onShow: () => balancePage.onShow(),
-        changes: () => balancePage.changes(),
-        discard: () => balancePage.discard(),
-      },
-      {
-        id: "items",
-        title: "Items",
-        group: "Game",
-        permission: "contentEditor",
-        el: itemsPage.el,
-        onShow: () => itemsPage.onShow(),
-        changes: () => itemsPage.changes(),
-        discard: () => itemsPage.discard(),
-      },
-      {
-        id: "monsters",
-        title: "Monsters",
-        group: "Game",
-        permission: "contentEditor",
-        el: monstersPage.el,
-        onShow: () => monstersPage.onShow(),
-        changes: () => monstersPage.changes(),
-        discard: () => monstersPage.discard(),
-      },
-      {
-        id: "skills",
-        title: "Skills",
-        group: "Game",
-        permission: "contentEditor",
-        el: skillsPage.el,
-        onShow: () => skillsPage.onShow(),
-        changes: () => skillsPage.changes(),
-        discard: () => skillsPage.discard(),
-      },
-      {
-        id: "gathering",
-        title: "Gathering",
-        group: "Game",
-        permission: "contentEditor",
-        el: gatheringPage.el,
-        onShow: () => gatheringPage.onShow(),
-        changes: () => gatheringPage.changes(),
-        discard: () => gatheringPage.discard(),
       },
       {
         id: "packs",
@@ -1342,6 +1521,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     published: () => {
       contentPage.published();
       balancePage.published();
+      spellNumbers.published();
+      vehicleNumbers.published();
+      for (const area of Object.values(areaPages)) {
+        area.published();
+      }
       itemsPage.published();
       monstersPage.published();
       skillsPage.published();
@@ -1530,6 +1714,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           packsPage.reset();
           contentPage.reset();
           balancePage.reset();
+          spellNumbers.reset();
+          vehicleNumbers.reset();
+          for (const area of Object.values(areaPages)) {
+            area.reset();
+          }
           itemsPage.reset();
           monstersPage.reset();
           skillsPage.reset();
@@ -1553,12 +1742,17 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "reconcile":
         activityPage.receiveReconcile(msg);
         return;
-      case "contentOverview":
       case "contentList":
       case "contentRow":
+      case "contentResult":
+        // An area page's request, else the Content page's.
+        if (!contentRequests.receive(msg)) {
+          contentPage.receive(msg);
+        }
+        return;
+      case "contentOverview":
       case "contentUsage":
       case "contentProblems":
-      case "contentResult":
       case "contentItemArt":
       case "contentWornArt":
       case "contentWornSheet":
@@ -1572,7 +1766,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         contentPage.receive(msg);
         return;
       case "contentBalance":
-        balancePage.receive(msg);
+        // Each Balance panel asks with its own range of numbers.
+        if (msg.seq >= 200_000_000) {
+          vehicleNumbers.receive(msg);
+        } else if (msg.seq >= 100_000_000) {
+          spellNumbers.receive(msg);
+        } else {
+          balancePage.receive(msg);
+        }
         return;
       case "contentItems":
         itemsPage.receive(msg);
@@ -1919,7 +2120,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     activityPage.reset();
     charactersPage.reset();
     contentPage.reset();
+    contentRequests.reset();
     balancePage.reset();
+    spellNumbers.reset();
+    vehicleNumbers.reset();
+    for (const area of Object.values(areaPages)) {
+      area.reset();
+    }
     itemsPage.reset();
     monstersPage.reset();
     skillsPage.reset();

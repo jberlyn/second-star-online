@@ -24,6 +24,7 @@ import {
   READ_ONLY_DATASETS,
   type RowRef,
   rowLabel,
+  rowSchema,
   rowValue,
   sameRow,
 } from "./rows.ts";
@@ -60,9 +61,11 @@ function staleRow(service: ContentService, ref: RowRef, expect: string | undefin
   // An item's catalogue row (and a monster's species record, issue #31) is checked when the editor
   // names the revision it opened (the Content page always does); a change naming none (a script, a
   // test) is not refused.
-  // So are a skill and the gathering sections (issue #38).
+  // So are a skill and the gathering sections (issue #38), and every row the editor pages' forms
+  // fingerprint only for themselves.
   if (
-    ((ref.dataset === "items" && ref.part === "items") ||
+    (service.plainRevision(ref) ||
+      (ref.dataset === "items" && ref.part === "items") ||
       (ref.dataset === "monsters" && ref.part === "monsters") ||
       (ref.dataset === "classes" && ref.part === "skills") ||
       ref.dataset === "gather") &&
@@ -152,6 +155,7 @@ export function listingOf(
       dataset: ref.dataset,
       part: ref.part,
       keyField: null,
+      schema: rowSchema(ref.dataset, ref.part),
       rows: [{ key: null, status: statusOf(service, r) ?? "pack", draft: draftOp(r) }],
     };
   }
@@ -180,6 +184,7 @@ export function listingOf(
     dataset: ref.dataset,
     part: ref.part,
     keyField: field,
+    schema: rowSchema(ref.dataset, ref.part),
     rows: keys.map((key) => {
       const r: RowRef = { dataset: ref.dataset, part: ref.part, key };
       return { key, status: statusOf(service, r) ?? "added", draft: draftOp(r) };
@@ -214,6 +219,7 @@ export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDet
     pack: packValue ?? null,
     published: published ?? null,
     draft: d ? { op: d.op, data: d.data, author: d.author } : null,
+    schema: rowSchema(ref.dataset, ref.part),
     ...revisionOf(service, ref),
     ...(ref.dataset === "npcFiles" && ref.key && service.npcEditorSaves().has(ref.key.toLowerCase())
       ? {
